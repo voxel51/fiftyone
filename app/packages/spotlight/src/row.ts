@@ -13,6 +13,7 @@ export default class Row<K, V> {
   #from: number;
   #hidden: boolean;
 
+  readonly #aborter: AbortController = new AbortController();
   readonly #config: SpotlightConfig<K, V>;
   readonly #dangle?: boolean;
   readonly #container: HTMLDivElement = create(DIV);
@@ -47,7 +48,7 @@ export default class Row<K, V> {
       element.style.top = pixels(ZERO);
 
       if (config.onItemClick) {
-        element.addEventListener("click", (event) => {
+        const handler = (event) => {
           if (event.metaKey || event.shiftKey) {
             return;
           }
@@ -59,18 +60,13 @@ export default class Row<K, V> {
             item,
             iter,
           });
+        };
+
+        element.addEventListener("click", handler, {
+          signal: this.#aborter.signal,
         });
-        element.addEventListener("contextmenu", (event) => {
-          if (event.metaKey || event.shiftKey) {
-            return;
-          }
-          event.preventDefault();
-          focus(item.id);
-          config.onItemClick({
-            event,
-            item,
-            iter,
-          });
+        element.addEventListener("contextmenu", handler, {
+          signal: this.#aborter.signal,
         });
       }
 
@@ -123,6 +119,11 @@ export default class Row<K, V> {
     return this.#row[this.#row.length - ONE].item.id;
   }
 
+  destroy() {
+    this.#destroyItems();
+    this.#aborter.abort();
+  }
+
   has(item: string) {
     for (const i of this.#row) {
       if (i.item.id.description === item) {
@@ -138,6 +139,7 @@ export default class Row<K, V> {
     }
 
     this.#container.remove();
+    this.#destroyItems();
   }
 
   show(
@@ -224,5 +226,25 @@ export default class Row<K, V> {
   get #singleAspectRatio() {
     const set = new Set(this.#row.map(({ item }) => item.aspectRatio));
     return set.size === ONE ? this.#row[ZERO].item.aspectRatio : null;
+  }
+
+  #destroyItems() {
+    const destroy = this.#config.destroy;
+    if (!destroy) {
+      return;
+    }
+
+    const errors = [];
+    for (const item of this.#row) {
+      try {
+        destroy(item.item.id);
+      } catch (e) {
+        errors.push(e);
+      }
+    }
+
+    if (errors.length > 0) {
+      console.error("Errors occurred during row destruction:", errors);
+    }
   }
 }
