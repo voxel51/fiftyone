@@ -50,9 +50,17 @@ export const { acquireReader, clearReader } = (() => {
     maxFrameStreamSize?: number,
     maxFrameStreamSizeBytes?: number
   ) => {
+    console.log(maxFrameStreamSize, maxFrameStreamSizeBytes);
     return new LRUCache<number, Frame>({
-      max: maxFrameStreamSize,
+      max: maxFrameStreamSize || undefined,
       maxSize: maxFrameStreamSizeBytes || MAX_FRAME_CACHE_SIZE_BYTES,
+      sizeCalculation: (frame) => {
+        let size = 1;
+        for (const overlay of frame.overlays) {
+          size += overlay.getSizeBytes();
+        }
+        return size;
+      },
       dispose: (_, key) => {
         removeFrame(key);
       },

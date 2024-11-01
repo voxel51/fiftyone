@@ -380,7 +380,7 @@ class AppConfig(EnvConfig):
         )
         self.max_frame_stream_size_bytes = self.parse_int(
             d,
-            "max_frame_stream_size",
+            "max_frame_stream_size_bytes",
             env_var="FIFTYONE_APP_MAX_FRAME_STREAM_SIZE_BYTES",
             default=1e9,
         )
