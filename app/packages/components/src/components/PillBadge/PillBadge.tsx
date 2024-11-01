@@ -11,6 +11,7 @@ const PillBadge = ({
   showIcon = true,
   operator,
   readOnly = false,
+  title = "",
 }: {
   text: string | string[] | [string, string][];
   color?: string;
@@ -18,6 +19,7 @@ const PillBadge = ({
   showIcon?: boolean;
   operator?: () => void;
   readOnly?: boolean;
+  title?: string;
 }) => {
   const getInitialChipSelection = (
     text: string | string[] | [string, string][]
@@ -72,6 +74,7 @@ const PillBadge = ({
     <span>
       {typeof text === "string" ? (
         <Chip
+          title={title || readOnly ? "Read-only mode" : ""}
           icon={
             showIcon ? (
               <CircleIcon color={"inherit"} sx={{ fontSize: 10 }} />
@@ -93,6 +96,7 @@ const PillBadge = ({
         <FormControl fullWidth>
           <Chip
             disabled={readOnly}
+            title={title || readOnly ? "Read-only mode" : ""}
             icon={
               showIcon ? (
                 <CircleIcon color={"inherit"} sx={{ fontSize: 10 }} />
