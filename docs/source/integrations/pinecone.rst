@@ -691,10 +691,6 @@ underlying Pinecone client instance and use its methods as desired:
 
     print(pinecone_index.index)
 
-    # The Pinecone SDK is already initialized for you as well
-    import pinecone
-    print(pinecone.list_indexes())
-
 .. _pinecone-advanced-usage:
 
 Advanced usage
@@ -734,7 +730,3 @@ product similarity, and populate the index for only a subset of our dataset:
     pinecone_index.add_to_index(embeddings, sample_ids)
 
     print(pinecone_index.index)
-
-    # The Pinecone SDK is already initialized for you as well
-    import pinecone
-    print(pinecone.list_indexes())
