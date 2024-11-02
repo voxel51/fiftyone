@@ -7,11 +7,11 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ModalActionsRow } from "../Actions";
 import Sidebar from "../Sidebar";
-import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
-import { modalContext } from "./modal-context";
 import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
 import { TooltipInfo } from "./TooltipInfo";
+import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
+import { modalContext } from "./modal-context";
 import { useModalSidebarRenderEntry } from "./use-sidebar-render-entry";
 
 const ModalWrapper = styled.div`
@@ -156,9 +156,9 @@ const Modal = () => {
           if (activeLookerRef.current) {
             // we handle close logic in modal + other places
             return;
-          } else {
-            await modalCloseHandler();
           }
+
+          await modalCloseHandler();
         }
       },
     []
@@ -188,11 +188,10 @@ const Modal = () => {
       looker.addEventListener("close", modalCloseHandler);
 
       // remove previous event listener
-      removeTooltipEventHanlderRef.current &&
-        removeTooltipEventHanlderRef.current();
+      removeTooltipEventHanlderRef.current?.();
       removeTooltipEventHanlderRef.current = addTooltipEventHandler(looker);
     },
-    [addTooltipEventHandler]
+    [modalCloseHandler, addTooltipEventHandler]
   );
 
   const setActiveLookerRef = useCallback(
