@@ -44,7 +44,7 @@ const Arrow = styled.span<{
   }
 `;
 
-const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
+const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   const showModalNavigationControls = useRecoilValue(
     fos.showModalNavigationControls
   );
@@ -75,10 +75,10 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
       createDebouncedNavigator({
         isNavigationIllegalWhen: () => modalRef.current?.hasNext === false,
         navigateFn: (offset) => navigation?.next(offset).then(setModal),
-        onNavigationStart: onNavigate,
+        onNavigationStart: closePanels,
         debounceTime: 150,
       }),
-    [navigation, onNavigate, setModal]
+    [navigation, closePanels, setModal]
   );
 
   const previousNavigator = useMemo(
@@ -86,10 +86,10 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
       createDebouncedNavigator({
         isNavigationIllegalWhen: () => modalRef.current?.hasPrevious === false,
         navigateFn: (offset) => navigation?.previous(offset).then(setModal),
-        onNavigationStart: onNavigate,
+        onNavigationStart: closePanels,
         debounceTime: 150,
       }),
-    [navigation, onNavigate, setModal]
+    [navigation, closePanels, setModal]
   );
 
   useEffect(() => {
