@@ -12,6 +12,7 @@ import { create, pixels } from "./utilities";
 export default class Row<K, V> {
   #from: number;
   #hidden: boolean;
+  #soft: boolean;
 
   readonly #aborter: AbortController = new AbortController();
   readonly #config: SpotlightConfig<K, V>;
@@ -139,7 +140,6 @@ export default class Row<K, V> {
     }
 
     this.#container.remove();
-    this.#destroyItems();
   }
 
   show(
@@ -166,6 +166,11 @@ export default class Row<K, V> {
       return;
     }
 
+    if (this.#soft === soft) {
+      return;
+    }
+
+    this.#soft = soft;
     for (const { element, item } of this.#row) {
       const width = item.aspectRatio * this.height;
       config.render(item.id, element, [width, this.height], soft, hidden);
