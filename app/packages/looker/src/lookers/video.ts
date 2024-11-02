@@ -249,7 +249,6 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
 
   private setReader() {
     this.requestFrames = acquireReader({
-      abortController: this.abortController,
       addFrame: (frameNumber, frame) =>
         this.frames.set(frameNumber, new WeakRef(frame)),
       addFrameBuffers: (range) => {
@@ -362,6 +361,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     if (LOOKER_WITH_READER === this) {
       if (this.state.config.thumbnail && !this.state.hovering) {
         clearReader();
+        LOOKER_WITH_READER = null;
       }
     }
 

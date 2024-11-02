@@ -24,7 +24,6 @@ export interface Frame {
 }
 
 interface AcquireReaderOptions {
-  abortController: AbortController;
   addFrame: (frameNumber: number, frame: Frame) => void;
   addFrameBuffers: (range: [number, number]) => void;
   coloring: Coloring;
@@ -50,7 +49,6 @@ export const { acquireReader, clearReader } = (() => {
     maxFrameStreamSize?: number,
     maxFrameStreamSizeBytes?: number
   ) => {
-    console.log(maxFrameStreamSize, maxFrameStreamSizeBytes);
     return new LRUCache<number, Frame>({
       max: maxFrameStreamSize || undefined,
       maxSize: maxFrameStreamSizeBytes || MAX_FRAME_CACHE_SIZE_BYTES,
@@ -74,7 +72,6 @@ export const { acquireReader, clearReader } = (() => {
   let requestingFrames = false;
 
   const setStream = ({
-    abortController,
     addFrame,
     addFrameBuffers,
     frameNumber,
@@ -93,54 +90,39 @@ export const { acquireReader, clearReader } = (() => {
     const subscription = uuid();
 
     frameReader?.terminate();
-    frameReader = createWorker(
-      LookerUtils.workerCallbacks,
-      dispatchEvent,
-      abortController
-    );
+    frameReader = createWorker({
+      ...LookerUtils.workerCallbacks,
+      frameChunk: [
+        (worker, { frames, range: [start, end] }: FrameChunkResponse) => {
+          addFrameBuffers([start, end]);
+          for (let i = 0; i < frames.length; i++) {
+            const frameSample = frames[i];
+            const prefixedFrameSample = withFrames(frameSample);
+            const overlays = loadOverlays(prefixedFrameSample, schema);
+            const frame = { overlays, sample: frameSample };
+            frameCache.set(frameSample.frame_number, frame);
+            addFrame(frameSample.frame_number, frame);
+          }
 
-    frameReader.addEventListener(
-      "message",
-      ({ data }: MessageEvent<FrameChunkResponse>) => {
-        if (data.uuid !== subscription || data.method !== "frameChunk") {
-          return;
-        }
+          if (end < frameCount) {
+            nextRange = [end + 1, Math.min(frameCount, end + 1 + CHUNK_SIZE)];
+            requestingFrames = true;
+            worker.postMessage({
+              method: "requestFrameChunk",
+              uuid: subscription,
+            });
+          } else {
+            requestingFrames = false;
+            nextRange = null;
+          }
 
-        const {
-          frames,
-          range: [start, end],
-        } = data;
-        addFrameBuffers([start, end]);
-
-        for (let i = 0; i < frames.length; i++) {
-          const frameSample = frames[i];
-          const prefixedFrameSample = withFrames(frameSample);
-
-          const overlays = loadOverlays(prefixedFrameSample, schema);
-          const frame = { overlays, sample: frameSample };
-          frameCache.set(frameSample.frame_number, frame);
-          addFrame(frameSample.frame_number, frame);
-        }
-
-        if (end < frameCount) {
-          nextRange = [end + 1, Math.min(frameCount, end + 1 + CHUNK_SIZE)];
-          requestingFrames = true;
-          frameReader.postMessage({
-            method: "requestFrameChunk",
-            uuid: subscription,
+          update((state) => {
+            state.buffering && dispatchEvent("buffering", false);
+            return { buffering: false };
           });
-        } else {
-          requestingFrames = false;
-          nextRange = null;
-        }
-
-        update((state) => {
-          state.buffering && dispatchEvent("buffering", false);
-          return { buffering: false };
-        });
-      },
-      { signal: abortController.signal }
-    );
+        },
+      ],
+    });
 
     requestingFrames = true;
     frameReader.postMessage({
@@ -187,6 +169,7 @@ export const { acquireReader, clearReader } = (() => {
     },
 
     clearReader: () => {
+      nextRange = null;
       frameCache = null;
       currentOptions = null;
       frameReader?.terminate();
