@@ -17,7 +17,6 @@ import fiftyone.core.labels as fol
 from fiftyone.core.models import Model
 import fiftyone.utils.torch as fout
 import fiftyone.core.utils as fou
-import fiftyone.zoo as foz
 import fiftyone.zoo.models as fozm
 
 ultralytics = fou.lazy_import("ultralytics")
