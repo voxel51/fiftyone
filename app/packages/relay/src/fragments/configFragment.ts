@@ -13,7 +13,6 @@ export default r(graphql`
       lightningThreshold
       loopVideos
       maxFrameStreamSize
-      maxFrameStreamSizeBytes
       mediaFallback
       multicolorKeypoints
       notebookHeight

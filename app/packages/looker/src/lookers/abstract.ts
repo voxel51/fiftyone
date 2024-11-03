@@ -326,7 +326,9 @@ export abstract class AbstractLooker<
         }
 
         ctx.lineWidth = this.state.strokeWidth;
-        ctx.font = `bold ${this.state.fontSize.toFixed(2)}px Palanquin`;
+        if (!this.state.config.thumbnail) {
+          ctx.font = `bold ${this.state.fontSize.toFixed(2)}px Palanquin`;
+        }
         ctx.textAlign = "left";
         ctx.textBaseline = "bottom";
         ctx.imageSmoothingEnabled = false;

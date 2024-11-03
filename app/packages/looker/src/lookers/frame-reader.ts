@@ -2,7 +2,7 @@ import type { Schema, Stage } from "@fiftyone/utilities";
 import { LRUCache } from "lru-cache";
 import { v4 as uuid } from "uuid";
 import type { Coloring, CustomizeColor } from "..";
-import { CHUNK_SIZE, MAX_FRAME_CACHE_SIZE_BYTES } from "../constants";
+import { CHUNK_SIZE } from "../constants";
 import { loadOverlays } from "../overlays";
 import type { Overlay } from "../overlays/base";
 import type {
@@ -35,7 +35,6 @@ interface AcquireReaderOptions {
   frameCount: number;
   group: BaseConfig["group"];
   maxFrameStreamSize?: number;
-  maxFrameStreamSizeBytes?: number;
   removeFrame: RemoveFrame;
   sampleId: string;
   schema: Schema;
@@ -46,19 +45,10 @@ interface AcquireReaderOptions {
 export const { acquireReader, clearReader } = (() => {
   const createCache = (
     removeFrame: RemoveFrame,
-    maxFrameStreamSize?: number,
-    maxFrameStreamSizeBytes?: number
+    maxFrameStreamSize?: number
   ) => {
     return new LRUCache<number, Frame>({
-      max: maxFrameStreamSize || undefined,
-      maxSize: maxFrameStreamSizeBytes || MAX_FRAME_CACHE_SIZE_BYTES,
-      sizeCalculation: (frame) => {
-        let size = 1;
-        for (const overlay of frame.overlays) {
-          size += overlay.getSizeBytes();
-        }
-        return size;
-      },
+      max: maxFrameStreamSize || 1000,
       dispose: (_, key) => {
         removeFrame(key);
       },
@@ -148,11 +138,7 @@ export const { acquireReader, clearReader } = (() => {
       currentOptions = options;
 
       let subscription = setStream(currentOptions);
-      frameCache = createCache(
-        options.removeFrame,
-        options.maxFrameStreamSize,
-        options.maxFrameStreamSizeBytes
-      );
+      frameCache = createCache(options.removeFrame, options.maxFrameStreamSize);
 
       return (frameNumber: number) => {
         if (!nextRange) {

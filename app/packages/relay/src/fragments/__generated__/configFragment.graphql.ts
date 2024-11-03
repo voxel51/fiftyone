@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<672cd829241fe461fa551b98c8fafe6e>>
+ * @generated SignedSource<<fa00e5dd265f83bcec97f536469cb06e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -24,7 +24,6 @@ export type configFragment$data = {
     readonly lightningThreshold: number | null;
     readonly loopVideos: boolean;
     readonly maxFrameStreamSize: number | null;
-    readonly maxFrameStreamSizeBytes: number | null;
     readonly mediaFallback: boolean;
     readonly multicolorKeypoints: boolean;
     readonly notebookHeight: number;
@@ -116,13 +115,6 @@ return {
           "args": null,
           "kind": "ScalarField",
           "name": "maxFrameStreamSize",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "maxFrameStreamSizeBytes",
           "storageKey": null
         },
         {
@@ -226,6 +218,6 @@ return {
 };
 })();
 
-(node as any).hash = "f5a3aa29fb1b887f1c924c8ed423ca4c";
+(node as any).hash = "6f5dc40b160be878c63b5ff54a32d6c1";
 
 export default node;

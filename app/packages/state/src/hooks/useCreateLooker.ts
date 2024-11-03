@@ -41,7 +41,6 @@ const videoLookerConfigSettings = selector({
   get: ({ get }) => {
     return {
       maxFrameStreamSize: get(config).maxFrameStreamSize,
-      maxFrameStreamSizeBytes: get(config).maxFrameStreamSizeBytes,
     };
   },
 });

@@ -3,10 +3,10 @@
  */
 
 import {
-  getCls,
   REGRESSION,
   TEMPORAL_DETECTION,
   TEMPORAL_DETECTIONS,
+  getCls,
 } from "@fiftyone/utilities";
 
 import { INFO_COLOR, MOMENT_CLASSIFICATIONS } from "../constants";
@@ -19,13 +19,13 @@ import {
 } from "../state";
 import {
   CONTAINS,
-  isShown,
   Overlay,
   PointInfo,
   RegularLabel,
   SelectData,
+  isShown,
 } from "./base";
-import { getLabelColor, sizeBytes } from "./util";
+import { getLabelColor } from "./util";
 
 export type Classification = RegularLabel;
 
@@ -161,16 +161,6 @@ export class ClassificationsOverlay<
       return getClassificationPoints([]);
     }
     return [];
-  }
-
-  getSizeBytes() {
-    let bytes = 100;
-    this.labels.forEach(([_, labels]) => {
-      labels.forEach((label) => {
-        bytes += sizeBytes(label);
-      });
-    });
-    return bytes;
   }
 
   protected getFiltered(state: Readonly<State>): Labels<Label> {

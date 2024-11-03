@@ -23,7 +23,7 @@ export const FONT_SIZE = 16;
 export const MIN_PIXELS = 16;
 export const SCALE_FACTOR = 1.09;
 export const MAX_FRAME_CACHE_SIZE_BYTES = 1e9;
-export const CHUNK_SIZE = 20;
+export const CHUNK_SIZE = 15;
 export const DATE_TIME = "DateTime";
 
 export const POINTCLOUD_OVERLAY_PADDING = 100;
