@@ -27,7 +27,7 @@ const Arrow = styled.span<{
   left: ${(props) => (props.$isRight ? "initial" : "0.75rem")};
   z-index: 99999;
   padding: 0.75rem;
-  bottom: 33vh;
+  top: 50%;
   width: 3rem;
   height: 3rem;
   background-color: var(--fo-palette-background-button);
@@ -41,6 +41,10 @@ const Arrow = styled.span<{
     box-shadow: inherit;
     transition: box-shadow 0.15s ease-in-out;
     transition: opacity 0.15s ease-in-out;
+  }
+
+  &:active {
+    top: calc(50% + 2px);
   }
 `;
 
