@@ -28,6 +28,7 @@ export default function registerPanel(ctx: ExecutionContext) {
       beta: ctx.params.beta,
       category: ctx.params.category,
       isNew: ctx.params.is_new,
+      priority: ctx.params.priority,
     },
   });
 }
