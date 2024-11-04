@@ -376,7 +376,7 @@ class AppConfig(EnvConfig):
             d,
             "max_frame_stream_size",
             env_var="FIFTYONE_APP_MAX_FRAME_STREAM_SIZE",
-            default=None,
+            default=1000,
         )
         self.multicolor_keypoints = self.parse_bool(
             d,
