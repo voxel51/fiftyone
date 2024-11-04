@@ -320,7 +320,6 @@ export function getCategoryLabel(category: CategoryID): string {
 }
 
 export function getCategoryForPanel(panel: PluginComponentRegistration) {
-  console.log(panel);
   return panel.panelOptions?.category || "custom";
 }
 
