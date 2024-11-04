@@ -153,6 +153,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       SHORTCUTS: VIDEO_SHORTCUTS,
       hasPoster: false,
       waitingForVideo: false,
+      waitingToStream: false,
       lockedToSupport: Boolean(config.support),
     };
   }

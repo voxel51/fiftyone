@@ -41,7 +41,7 @@ import {
 } from "./video.module.css";
 
 export class LoaderBar extends BaseElement<VideoState> {
-  private buffering = false;
+  private shown: boolean = undefined;
 
   isShown({ thumbnail }: Readonly<VideoState["config"]>) {
     return thumbnail;
@@ -58,25 +58,24 @@ export class LoaderBar extends BaseElement<VideoState> {
     buffering,
     hovering,
     waitingForVideo,
+    waitingToStream,
     error,
     lockedToSupport,
     config: { frameRate, support },
   }: Readonly<VideoState>) {
-    if (
-      (buffering || waitingForVideo) &&
-      hovering &&
-      !error === this.buffering
-    ) {
-      return this.element;
-    }
+    const shown =
+      !error && hovering && (waitingForVideo || buffering || waitingToStream);
     const start = lockedToSupport ? support[0] : 1;
     const end = lockedToSupport
       ? support[1]
       : getFrameNumber(duration, duration, frameRate);
-    this.buffering =
-      (buffering || waitingForVideo) && hovering && !error && start !== end;
+    if (shown === this.shown || start === end) {
+      return this.element;
+    }
 
-    if (this.buffering) {
+    this.shown = shown;
+
+    if (this.shown) {
       this.element.style.display = "block";
     } else {
       this.element.style.display = "none";
@@ -754,23 +753,36 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
 export function withVideoLookerEvents(): () => Events<VideoState> {
   return () => {
+    let timeout: ReturnType<typeof setTimeout> = null;
     return {
       mouseenter: ({ update }) => {
         update(({ config: { thumbnail } }) => {
           if (thumbnail) {
+            timeout = setTimeout(() => {
+              update({
+                playing: true,
+                waitingToStream: false,
+              });
+            }, 500);
+
             return {
-              playing: true,
+              waitingToStream: true,
             };
           }
           return {};
         });
       },
       mouseleave: ({ update }) => {
+        if (timeout) {
+          clearTimeout(timeout);
+          timeout = null;
+        }
         update(({ config: { thumbnail, support } }) => {
           if (thumbnail) {
             return {
               frameNumber: support ? support[0] : 1,
               playing: false,
+              waitingToStream: false,
             };
           }
           return {

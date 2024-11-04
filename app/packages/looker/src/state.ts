@@ -356,6 +356,7 @@ export interface VideoState extends BaseState {
   SHORTCUTS: Readonly<ControlMap<VideoState>>;
   hasPoster: boolean;
   waitingForVideo: boolean;
+  waitingToStream: boolean;
   lockedToSupport: boolean;
 }
 
