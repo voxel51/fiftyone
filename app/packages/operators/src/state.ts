@@ -327,7 +327,7 @@ const useOperatorPromptSubmitOptions = (
   const showWarning =
     executionOptions.orchestratorRegistrationEnabled &&
     !hasAvailableOrchestators &&
-    !allowImmediateExecution;
+    !executionOptions.allowImmediateExecution;
   const warningMessage =
     "There are no available orchestrators to schedule this operation. Please contact your administrator to add an orchestrator.";
 
