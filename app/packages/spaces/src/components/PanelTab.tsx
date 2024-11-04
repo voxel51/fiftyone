@@ -96,7 +96,10 @@ function PanelTabMeta({ showBeta, showNew }) {
       {showNew && (
         <Grid
           item
-          style={{ color: "var(--fo-palette-primary-main)", fontSize: 11 }}
+          style={{
+            color: "var(--fo-palette-custom-primarySoft)",
+            fontSize: 11,
+          }}
         >
           NEW
         </Grid>
@@ -104,7 +107,10 @@ function PanelTabMeta({ showBeta, showNew }) {
       {showBeta && (
         <Grid
           item
-          style={{ color: "var(--fo-palette-primary-main)", fontSize: 11 }}
+          style={{
+            color: "var(--fo-palette-custom-primarySoft)",
+            fontSize: 11,
+          }}
         >
           BETA
         </Grid>
