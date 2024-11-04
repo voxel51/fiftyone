@@ -277,6 +277,12 @@ const Selected = ({
     refresh?.();
   }, [samples.size, refresh]);
 
+  useEffect(() => {
+    return () => {
+      setLoading(false);
+    };
+  }, []);
+
   if (samples.size < 1 && !modal) {
     return null;
   }
@@ -287,12 +293,6 @@ const Selected = ({
   } else if (labels.size > 0 && modal) {
     text = labels.size.toLocaleString();
   }
-
-  useEffect(() => {
-    return () => {
-      setLoading(false);
-    };
-  }, []);
 
   return (
     <ActionDiv
