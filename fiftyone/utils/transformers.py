@@ -956,7 +956,6 @@ class FiftyOneTransformerForDepthEstimation(FiftyOneTransformer):
 
     def predict_all(self, args):
         target_sizes = [i.shape[:2] for i in args]
-        print(target_sizes)
         inputs = self.image_processor(args, return_tensors="pt")
         return self._predict(inputs, target_sizes)
 
