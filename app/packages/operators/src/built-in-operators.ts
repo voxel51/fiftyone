@@ -997,6 +997,10 @@ class RegisterPanel extends Operator {
     inputs.str("panel_name", { label: "Panel name", required: true });
     inputs.str("panel_label", { label: "Panel label", required: true });
     inputs.str("icon", { label: "Icon" });
+    inputs.str("help_markdown", { label: "Help markdown" });
+    inputs.str("category", { label: "Category" });
+    inputs.bool("beta", { label: "Beta", default: false });
+    inputs.bool("is_new", { label: "NEW", default: false });
     inputs.str("dark_icon", { label: "Icon for dark mode" });
     inputs.str("light_icon", { label: "Icon for light mode" });
     inputs.str("on_load", { label: "On load operator" });

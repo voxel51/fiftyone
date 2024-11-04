@@ -34,6 +34,7 @@ class PanelConfig(OperatorConfig):
         surfaces ("grid"): the surfaces on which the panel can be displayed
         help_markdown (None): a markdown string to display in the panel's help
             tooltip
+        category (Category): the category id of the panel
     """
 
     def __init__(
@@ -41,6 +42,9 @@ class PanelConfig(OperatorConfig):
         name,
         label,
         help_markdown=None,
+        beta=False,
+        is_new=False,
+        category=None,
         icon=None,
         light_icon=None,
         dark_icon=None,
@@ -61,6 +65,9 @@ class PanelConfig(OperatorConfig):
         self.on_startup = True
         self.reload_on_navigation = reload_on_navigation
         self.surfaces = surfaces
+        self.category = category
+        self.beta = beta
+        self.is_new = is_new
         self.kwargs = kwargs  # unused, placeholder for future extensibility
 
     def to_json(self):
@@ -68,6 +75,9 @@ class PanelConfig(OperatorConfig):
             "name": self.name,
             "label": self.label,
             "help_markdown": self.help_markdown,
+            "category": str(self.category) if self.category else None,
+            "beta": self.beta,
+            "is_new": self.is_new,
             "icon": self.icon,
             "light_icon": self.light_icon,
             "dark_icon": self.dark_icon,
@@ -115,6 +125,9 @@ class Panel(Operator):
             "light_icon": self.config.light_icon,
             "surfaces": self.config.surfaces,
             "reload_on_navigation": self.config.reload_on_navigation,
+            "category": self.config.category,
+            "beta": self.config.beta,
+            "is_new": self.config.is_new,
         }
         methods = ["on_load", "on_unload", "on_change"]
         ctx_change_events = [
