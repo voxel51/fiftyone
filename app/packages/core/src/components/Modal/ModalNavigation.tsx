@@ -66,7 +66,6 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
 
   const setModal = fos.useSetExpandedSample();
   const modal = useRecoilValue(fos.modalSelector);
-  const navigation = useRecoilValue(fos.modalNavigation);
 
   const modalRef = useRef(modal);
 
@@ -78,22 +77,32 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
     () =>
       createDebouncedNavigator({
         isNavigationIllegalWhen: () => modalRef.current?.hasNext === false,
-        navigateFn: (offset) => navigation?.next(offset).then(setModal),
+        navigateFn: async (offset) => {
+          const navigation = fos.modalNavigation.get();
+          if (navigation) {
+            return await navigation.next(offset).then(setModal);
+          }
+        },
         onNavigationStart: closePanels,
         debounceTime: 150,
       }),
-    [navigation, closePanels, setModal]
+    [closePanels, setModal]
   );
 
   const previousNavigator = useMemo(
     () =>
       createDebouncedNavigator({
         isNavigationIllegalWhen: () => modalRef.current?.hasPrevious === false,
-        navigateFn: (offset) => navigation?.previous(offset).then(setModal),
+        navigateFn: async (offset) => {
+          const navigation = fos.modalNavigation.get();
+          if (navigation) {
+            return await navigation.previous(offset).then(setModal);
+          }
+        },
         onNavigationStart: closePanels,
         debounceTime: 150,
       }),
-    [navigation, closePanels, setModal]
+    [closePanels, setModal]
   );
 
   useEffect(() => {
