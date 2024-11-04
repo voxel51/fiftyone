@@ -177,12 +177,12 @@ const ModalBase: React.FC<ModalBaseProps> = ({
     ) {
       setPrimaryButtonView({
         ...primaryButtonView,
-        disabled: primaryButtonView?.disabled || true,
+        disabled: true,
       });
     } else {
       setPrimaryButtonView({
         ...primaryButtonView,
-        disabled: primaryButtonView?.disabled || false,
+        disabled: false,
       });
     }
   }, [primaryButtonView.params]);
