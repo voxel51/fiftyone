@@ -1010,6 +1010,7 @@ class RegisterPanel extends Operator {
       label: "Allow duplicates",
       default: false,
     });
+    inputs.int("priority", { label: "Priority" });
     return new types.Property(inputs);
   }
   async execute(ctx: ExecutionContext): Promise<void> {

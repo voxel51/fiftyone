@@ -35,6 +35,7 @@ class PanelConfig(OperatorConfig):
         help_markdown (None): a markdown string to display in the panel's help
             tooltip
         category (Category): the category id of the panel
+        priority (None): the priority of the panel for sorting in the UI
     """
 
     def __init__(
@@ -51,6 +52,7 @@ class PanelConfig(OperatorConfig):
         allow_multiple=False,
         surfaces: PANEL_SURFACE = "grid",
         reload_on_navigation=False,
+        priority=None,
         **kwargs
     ):
         super().__init__(name)
@@ -68,6 +70,7 @@ class PanelConfig(OperatorConfig):
         self.category = category
         self.beta = beta
         self.is_new = is_new
+        self.priority = priority
         self.kwargs = kwargs  # unused, placeholder for future extensibility
 
     def to_json(self):
@@ -86,6 +89,7 @@ class PanelConfig(OperatorConfig):
             "unlisted": self.unlisted,
             "reload_on_navigation": self.reload_on_navigation,
             "surfaces": self.surfaces,
+            "priority": self.priority,
         }
 
 
@@ -128,6 +132,7 @@ class Panel(Operator):
             "category": self.config.category,
             "beta": self.config.beta,
             "is_new": self.config.is_new,
+            "priority": self.config.priority,
         }
         methods = ["on_load", "on_unload", "on_change"]
         ctx_change_events = [
