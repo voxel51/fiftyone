@@ -111,6 +111,7 @@ const NON_EDITABLE_VIEWS = [
   "ProgressView",
   "TableView",
   "TagsView",
+  "TreeSelectionView",
 ];
 
 export function isCompositeView(schema: SchemaType) {
