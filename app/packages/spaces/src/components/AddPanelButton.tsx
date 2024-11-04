@@ -1,6 +1,7 @@
 import { IconButton, Popout, scrollable, useTheme } from "@fiftyone/components";
 import {
   Categories,
+  getCategoryForPanel,
   getCategoryLabel,
   PluginComponentRegistration,
 } from "@fiftyone/plugins";
@@ -48,7 +49,7 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
     .sort(panelsCompareFn);
 
   const categorizedPanels = availablePanels.reduce((acc, panel) => {
-    const category = panel.panelOptions?.category || Categories.Custom;
+    const category = getCategoryForPanel(panel);
     if (!acc[category]) {
       acc[category] = {
         label: getCategoryLabel(category),
@@ -97,6 +98,7 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
                     spaceId={spaceId}
                     showBeta={panel.panelOptions?.beta}
                     showNew={panel.panelOptions?.isNew}
+                    onClick={() => setOpen(false)}
                   />
                 ))}
               </PanelCategory>
