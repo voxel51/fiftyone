@@ -25,6 +25,9 @@ export default function registerPanel(ctx: ExecutionContext) {
       helpMarkdown: ctx.params.help_markdown,
       reloadOnNavigation: ctx.params.reload_on_navigation,
       surfaces: ctx.params.surfaces,
+      beta: ctx.params.beta,
+      category: ctx.params.category,
+      isNew: ctx.params.is_new,
     },
   });
 }

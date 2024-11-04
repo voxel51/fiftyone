@@ -9,6 +9,7 @@ FiftyOne operator execution.
 import json
 
 from bson import json_util
+from .categories import Categories
 
 
 class Operations(object):
@@ -301,6 +302,9 @@ class Operations(object):
         name,
         label,
         help_markdown=None,
+        category=Categories.CUSTOM,
+        beta=False,
+        is_new=False,
         icon=None,
         light_icon=None,
         dark_icon=None,
@@ -337,6 +341,9 @@ class Operations(object):
             reload_on_navigation (False): whether to reload the panel when the
                 user navigates to a new page. This is only applicable to panels
                 that are not shown in a modal
+            beta (False): whether the panel is in beta
+            is_new (False): whether the panel is new
+            category (Categories.CUSTOM): the category of the panel
             on_load (None): an operator to invoke when the panel is loaded
             on_unload (None): an operator to invoke when the panel is unloaded
             on_change (None): an operator to invoke when the panel state
@@ -366,6 +373,9 @@ class Operations(object):
             "panel_name": name,
             "panel_label": label,
             "help_markdown": help_markdown,
+            "category": category.value if category is not None else None,
+            "beta": beta,
+            "is_new": is_new,
             "icon": icon,
             "light_icon": light_icon,
             "dark_icon": dark_icon,
