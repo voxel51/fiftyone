@@ -53,7 +53,7 @@ function Grid() {
     /** LOOKER STORE REFRESHER */
 
     return new LRUCache<string, Lookers>({
-      max: 128,
+      max: 1000,
       dispose: (looker) => {
         looker.destroy();
       },
