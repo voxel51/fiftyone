@@ -55,7 +55,7 @@ export default function AddPanelItem({
       {showNew && (
         <span
           style={{
-            color: theme.primary.main,
+            color: theme.custom.primarySoft,
             fontSize: "11px",
             marginLeft: "6px",
           }}
@@ -66,7 +66,7 @@ export default function AddPanelItem({
       {showBeta && (
         <span
           style={{
-            color: theme.primary.main,
+            color: theme.custom.primarySoft,
             fontSize: "11px",
             marginLeft: "6px",
           }}
