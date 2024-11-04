@@ -56,8 +56,8 @@ export default function AddPanelItem({
         <span
           style={{
             color: theme.primary.main,
-            fontSize: "10px",
-            marginLeft: "8px",
+            fontSize: "11px",
+            marginLeft: "6px",
           }}
         >
           NEW
@@ -67,8 +67,8 @@ export default function AddPanelItem({
         <span
           style={{
             color: theme.primary.main,
-            fontSize: "10px",
-            marginLeft: "8px",
+            fontSize: "11px",
+            marginLeft: "6px",
           }}
         >
           BETA
