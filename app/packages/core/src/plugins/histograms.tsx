@@ -112,6 +112,6 @@ registerComponent({
   Icon: BarChart,
   panelOptions: {
     priority: BUILT_IN_PANEL_PRIORITY_CONST,
-    category: Categories.Curate,
+    category: Categories.Analyze,
   },
 });
