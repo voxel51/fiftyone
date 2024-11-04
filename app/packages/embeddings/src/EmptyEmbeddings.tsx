@@ -37,7 +37,11 @@ export default function EmptyEmbeddings() {
         <Grid container direction="column" alignItems="center" spacing={2}>
           <Grid item>
             <WorkspacesIcon
-              sx={{ fontSize: 64, color: "#ffba85", marginBottom: 2 }}
+              sx={{
+                fontSize: 64,
+                color: theme.custom.primarySoft,
+                marginBottom: 2,
+              }}
             />
           </Grid>
           <Grid item>
