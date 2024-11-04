@@ -1,10 +1,10 @@
 import styles from "./Grid.module.css";
 
 import { freeVideos } from "@fiftyone/looker";
-import type { ID } from "@fiftyone/spotlight";
 import Spotlight from "@fiftyone/spotlight";
 import type { Lookers } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
+import { LRUCache } from "lru-cache";
 import React, {
   useEffect,
   useLayoutEffect,
@@ -49,7 +49,12 @@ function Grid() {
 
   const lookerStore = useMemo(() => {
     reset;
-    return new WeakMap<ID, Lookers>();
+    return new LRUCache<string, Lookers>({
+      max: 128,
+      dispose: (looker) => {
+        looker.destroy();
+      },
+    });
   }, [reset]);
   const spotlight = useMemo(() => {
     /** SPOTLIGHT REFRESHER */
@@ -63,15 +68,15 @@ function Grid() {
     return new Spotlight<number, fos.Sample>({
       ...get(),
       destroy: (id) => {
-        lookerStore.get(id)?.destroy();
-        lookerStore.delete(id);
+        lookerStore.get(id.description)?.destroy();
+        lookerStore.delete(id.description);
       },
       onItemClick: setSample,
       rowAspectRatioThreshold: threshold,
       get: (next) => page(next),
       render: (id, element, dimensions, soft, hide) => {
-        if (lookerStore.has(id)) {
-          const looker = lookerStore.get(id);
+        if (lookerStore.has(id.description)) {
+          const looker = lookerStore.get(id.description);
           hide ? looker?.disable() : looker?.attach(element, dimensions);
 
           return;
@@ -97,7 +102,7 @@ function Grid() {
         looker.addEventListener("selectthumbnail", ({ detail }) =>
           selectSample.current?.(detail)
         );
-        lookerStore.set(id, looker);
+        lookerStore.set(id.description, looker);
         looker.attach(element, dimensions);
       },
       scrollbar: true,
