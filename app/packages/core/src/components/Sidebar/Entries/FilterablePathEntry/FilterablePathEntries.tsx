@@ -9,19 +9,21 @@ const LABEL_TAGS = "_label_tags";
 const TIMEOUT = 5000;
 
 class QueryPerformanceToast extends Event {
-  constructor() {
+  path?: string;
+  constructor(path?: string) {
     super("queryperformance");
+    this.path = path;
   }
 }
 
-const QueryPerformanceDispatcher = () => {
+const QueryPerformanceDispatcher = ({ path }: { path: string }) => {
   useEffect(() => {
     const timeout = setTimeout(() => {
-      window.dispatchEvent(new QueryPerformanceToast());
+      window.dispatchEvent(new QueryPerformanceToast(path));
     }, TIMEOUT);
 
     return () => clearTimeout(timeout);
-  }, []);
+  }, [path]);
   return null;
 };
 
@@ -38,7 +40,7 @@ const QueryPerformance = ({ path }: { path: string }) => {
   }
 
   return (
-    <Suspense fallback={<QueryPerformanceDispatcher />}>
+    <Suspense fallback={<QueryPerformanceDispatcher path={path} />}>
       <QueryPerformanceSubscriber path={path} />
     </Suspense>
   );

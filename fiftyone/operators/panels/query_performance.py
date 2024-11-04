@@ -148,7 +148,6 @@ class IndexFieldCreationOperator(Operator):
             description="Choose your field to create: index field for faster queries, summary field for frame aggregation",
             view=field_choices,
         )
-
         field_type = ctx.params.get("field_type", "index_field")
 
         fields = []
@@ -169,12 +168,16 @@ class IndexFieldCreationOperator(Operator):
                 label="Choose your frame field to create summary field"
             )
             create_summary_field_inputs(ctx, inputs)
-
+        path = ctx.params.get("nonperformant_field")
         if fields:
             inputs.enum(
                 "path",
                 dropdown_choices.values(),
-                default=dropdown_choices.choices[0].value,
+                default=path
+                if any(
+                    choice.value == path for choice in dropdown_choices.choices
+                )
+                else dropdown_choices.choices[0].value,
                 view=dropdown_choices,
             )
         return Property(inputs)
@@ -182,6 +185,7 @@ class IndexFieldCreationOperator(Operator):
     def execute(self, ctx):
         field_type = ctx.params.get("field_type", "index_field")
         field_choice = ctx.params.get("path", "None provided")
+        ctx.ops.open_panel("query_performance_panel")
         if field_choice != "None provided":
             if field_type == "index_field":
                 try:
@@ -226,12 +230,6 @@ class IndexFieldCreationOperator(Operator):
                     return {"field_to_create": str(e), "field_type": "N/A"}
         else:
             return {"field_to_create": "None provided", "field_type": "N/A"}
-
-    def resolve_output(self, ctx):
-        outputs = Object()
-        outputs.str("field_to_create", label="Field created")
-        outputs.str("field_type", label="Field type")
-        return Property(outputs)
 
 
 class IndexFieldRemovalConfirmationOperator(Operator):
@@ -280,12 +278,6 @@ class IndexFieldRemovalConfirmationOperator(Operator):
             "field_to_delete": field_name,
             "field_type": field_type,
         }
-
-    def resolve_output(self, ctx):
-        outputs = Object()
-        outputs.str("field_to_delete", label="Field deleted")
-        outputs.str("field_type", label="Field type")
-        return Property(outputs)
 
 
 class QueryPerformancePanel(Panel):

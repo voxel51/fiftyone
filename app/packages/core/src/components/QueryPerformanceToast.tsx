@@ -1,12 +1,15 @@
 import { Toast } from "@fiftyone/components";
-import { QP_MODE } from "@fiftyone/core";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
-import { Box, Button, Typography } from "@material-ui/core";
+import { Box, Button, Typography } from "@mui/material";
 import { Bolt } from "@mui/icons-material";
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { atom, useRecoilState } from "recoil";
 import { useTheme } from "@fiftyone/components";
+import { usePromptOperatorInput } from "@fiftyone/operators/src/state";
+import { useSpaces, useSpaceNodes, SpaceNode } from "@fiftyone/spaces";
+import { usePanelEvent } from "@fiftyone/operators";
+import * as fos from "@fiftyone/state";
 
 const SHOWN_FOR = 5000;
 
@@ -22,11 +25,20 @@ const hideQueryPerformanceToast = atom({
 
 const QueryPerformanceToast = () => {
   const [shown, setShown] = useState(false);
+  const [path, setPath] = useState<string | undefined>(undefined);
   const [disabled, setDisabled] = useRecoilState(hideQueryPerformanceToast);
   const element = document.getElementById("queryPerformance");
   const theme = useTheme();
+  const promptForOperator = usePromptOperatorInput();
+  const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
+  const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
+  const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
+  const PANEL_NAME = "query_performance_panel";
+  const triggerPanelEvent = usePanelEvent();
+
   useEffect(() => {
-    const listen = () => {
+    const listen = (event) => {
+      setPath(event.path);
       setShown(true);
     };
     window.addEventListener("queryperformance", listen);
@@ -45,7 +57,7 @@ const QueryPerformanceToast = () => {
     <Toast
       duration={SHOWN_FOR}
       layout={{
-        bottom: "100px",
+        bottom: "100px !important",
         vertical: "bottom",
         horizontal: "center",
         backgroundColor: theme.custom.toastBackgroundColor,
@@ -56,7 +68,27 @@ const QueryPerformanceToast = () => {
             variant="contained"
             size="small"
             onClick={() => {
-              open(QP_MODE, "_blank")?.focus();
+              let openedPanel = openedPanels.find(
+                ({ type }) => type === PANEL_NAME
+              );
+              if (!openedPanel) {
+                openedPanel = new SpaceNode();
+                openedPanel.type = PANEL_NAME;
+                spaces.addNodeAfter(spaces.root, openedPanel, true);
+              }
+              if (path) {
+                promptForOperator(
+                  "index_field_creation_operator",
+                  { nonperformant_field: path },
+                  {
+                    callback: () => {
+                      triggerPanelEvent(openedPanel.id, {
+                        operator: PANEL_NAME + "#refresh",
+                      });
+                    },
+                  }
+                );
+              }
               setOpen(false);
             }}
             sx={{
@@ -66,7 +98,7 @@ const QueryPerformanceToast = () => {
               boxShadow: 0,
             }} // Right align the button
           >
-            View Documentation
+            Create an Index
           </Button>
         );
       }}
