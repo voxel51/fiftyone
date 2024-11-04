@@ -981,6 +981,11 @@ contains the following properties:
 -   `ctx.extended_selection` - the extended selection of the view, if any
 -   `ctx.group_slice` - the active group slice in the App, if any
 -   `ctx.user_id` - the ID of the user that invoked the operator, if known
+-   `ctx.user` - an object of information about the user that invoked the
+    operator, if known, including the user's `id`, `name`, `email`, `role`, and
+    `dataset_permission`
+-   `ctx.user_request_token` - the request token authenticating the user
+    executing the operation, if known
 -   `ctx.panel_id` - the ID of the panel that invoked the operator, if any
 -   `ctx.panel` - a :class:`PanelRef <fiftyone.operators.panel.PanelRef>`
     instance that you can use to read and write the :ref:`state <panel-state>`
@@ -2180,6 +2185,11 @@ The ``surfaces`` key defines the panel's scope:
     :ref:`modal view <app-sample-view>`, which allows you to build interactions
     that focus on individual samples and scenarios
 
+.. note::
+
+   For an example of a modal panel, refer to the
+   `label count panel <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/label_count>`_.
+
 .. _panel-execution-context:
 
 Execution context
@@ -2242,7 +2252,7 @@ The example code below shows how to access and update panel state.
 
         def decrement(self, ctx):
             count = ctx.panel.get_state("v_stack.h_stack.count", 0)
-            ctx.panel.set_state("v_stack.h_stack.count", count + 1)
+            ctx.panel.set_state("v_stack.h_stack.count", count - 1)
 
         def render(self, ctx):
             panel = types.Object()

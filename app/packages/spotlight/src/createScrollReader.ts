@@ -15,14 +15,17 @@ export default function createScrollReader(
   let timeout: ReturnType<typeof setTimeout>;
   let zooming = false;
 
-  element.addEventListener("scroll", () => {
+  const scroll = () => {
     scrolling = true;
-  });
+  };
+  element.addEventListener("scroll", scroll);
 
-  element.addEventListener("scrollend", () => {
+  const scrollEnd = () => {
     scrolling = false;
     requestAnimationFrame(() => render(zooming, true));
-  });
+  };
+
+  element.addEventListener("scrollend", scrollEnd);
 
   const updateScrollStatus = () => {
     const threshold = getScrollSpeedThreshold();
@@ -68,7 +71,9 @@ export default function createScrollReader(
   return {
     destroy: () => {
       destroyed = true;
+      element.removeEventListener("scroll", scroll);
+      element.removeEventListener("scrollend", scrollEnd);
     },
-    zooming: () => zooming
+    zooming: () => zooming,
   };
 }

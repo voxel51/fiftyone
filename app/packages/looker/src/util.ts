@@ -446,7 +446,8 @@ export const createWorker = (
   listeners?: {
     [key: string]: ((worker: Worker, args: any) => void)[];
   },
-  dispatchEvent?: DispatchEvent
+  dispatchEvent?: DispatchEvent,
+  abortController?: AbortController
 ): Worker => {
   let worker: Worker = null;
 
@@ -456,17 +457,26 @@ export const createWorker = (
     worker = new Worker(new URL("./worker/index.ts", import.meta.url));
   }
 
-  worker.onerror = (error) => {
-    dispatchEvent("error", error);
-  };
-  worker.addEventListener("message", ({ data }) => {
-    if (data.error) {
-      const error = !ERRORS[data.error.cls]
-        ? new Error(data.error.message)
-        : new ERRORS[data.error.cls](data.error.data, data.error.message);
-      dispatchEvent("error", new ErrorEvent("error", { error }));
-    }
-  });
+  worker.addEventListener(
+    "error",
+    (error) => {
+      dispatchEvent("error", error);
+    },
+    { signal: abortController?.signal }
+  );
+
+  worker.addEventListener(
+    "message",
+    ({ data }) => {
+      if (data.error) {
+        const error = !ERRORS[data.error.cls]
+          ? new Error(data.error.message)
+          : new ERRORS[data.error.cls](data.error.data, data.error.message);
+        dispatchEvent("error", new ErrorEvent("error", { error }));
+      }
+    },
+    { signal: abortController?.signal }
+  );
 
   worker.postMessage({
     method: "init",
@@ -477,13 +487,17 @@ export const createWorker = (
     return worker;
   }
 
-  worker.addEventListener("message", ({ data: { method, ...args } }) => {
-    if (!(method in listeners)) {
-      return;
-    }
+  worker.addEventListener(
+    "message",
+    ({ data: { method, ...args } }) => {
+      if (!(method in listeners)) {
+        return;
+      }
 
-    listeners[method].forEach((callback) => callback(worker, args));
-  });
+      listeners[method].forEach((callback) => callback(worker, args));
+    },
+    { signal: abortController?.signal }
+  );
   return worker;
 };
 

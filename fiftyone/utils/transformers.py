@@ -950,12 +950,12 @@ class FiftyOneTransformerForDepthEstimation(FiftyOneTransformer):
         return to_heatmap(prediction)
 
     def predict(self, arg):
-        target_sizes = [arg.shape[:-1][::-1]]
+        target_sizes = [arg.shape[:2]]
         inputs = self.image_processor(arg, return_tensors="pt")
         return self._predict(inputs, target_sizes)
 
     def predict_all(self, args):
-        target_sizes = [i.shape[:-1][::-1] for i in args]
+        target_sizes = [i.shape[:2] for i in args]
         inputs = self.image_processor(args, return_tensors="pt")
         return self._predict(inputs, target_sizes)
 

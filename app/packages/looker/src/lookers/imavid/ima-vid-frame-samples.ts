@@ -22,8 +22,11 @@ export class ImaVidFrameSamples {
 
   private readonly storeBufferManager: BufferManager;
 
+  private readonly abortController: AbortController;
+
   constructor(storeBufferManager: BufferManager) {
     this.storeBufferManager = storeBufferManager;
+    this.abortController = new AbortController();
 
     this.samples = new LRUCache<SampleId, ModalSampleExtendedWithImage>({
       max: MAX_FRAME_SAMPLES_CACHE_SIZE,
@@ -65,37 +68,45 @@ export class ImaVidFrameSamples {
     const source = getSampleSrc(standardizedUrls[mediaField]);
 
     return new Promise((resolve) => {
-      image.addEventListener("load", () => {
-        const sample = this.samples.get(sampleId);
+      image.addEventListener(
+        "load",
+        () => {
+          const sample = this.samples.get(sampleId);
 
-        if (!sample) {
-          // sample was removed from the cache, this shouldn't happen...
-          // but if it does, it might be because the cache was cleared
-          // todo: handle this case better
+          if (!sample) {
+            // sample was removed from the cache, this shouldn't happen...
+            // but if it does, it might be because the cache was cleared
+            // todo: handle this case better
+            console.error(
+              "Sample was removed from cache before image loaded",
+              sampleId
+            );
+            image.src = BASE64_BLACK_IMAGE;
+            return;
+          }
+
+          sample.image = image;
+          resolve(sampleId);
+        },
+        { signal: this.abortController?.signal }
+      );
+
+      image.addEventListener(
+        "error",
+        () => {
           console.error(
-            "Sample was removed from cache before image loaded",
-            sampleId
+            "Failed to load image for sample with id",
+            sampleId,
+            "at url",
+            source
           );
+
+          // use a placeholder blank black image to not block animation
+          // setting src should trigger the load event
           image.src = BASE64_BLACK_IMAGE;
-          return;
-        }
-
-        sample.image = image;
-        resolve(sampleId);
-      });
-
-      image.addEventListener("error", () => {
-        console.error(
-          "Failed to load image for sample with id",
-          sampleId,
-          "at url",
-          source
-        );
-
-        // use a placeholder blank black image to not block animation
-        // setting src should trigger the load event
-        image.src = BASE64_BLACK_IMAGE;
-      });
+        },
+        { signal: this.abortController?.signal }
+      );
 
       image.src = source;
     });
@@ -124,5 +135,6 @@ export class ImaVidFrameSamples {
     this.reverseFrameIndex.clear();
     this.samples.clear();
     this.storeBufferManager.reset();
+    this.abortController.abort();
   }
 }
