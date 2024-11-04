@@ -1,6 +1,6 @@
 import * as foq from "@fiftyone/relay";
 import { BufferManager } from "@fiftyone/utilities";
-import { Environment, fetchQuery, Subscription } from "relay-runtime";
+import { Environment, Subscription, fetchQuery } from "relay-runtime";
 import { BufferRange, ImaVidState, StateUpdate } from "../../state";
 import { BUFFERS_REFRESH_TIMEOUT_YIELD, DEFAULT_FRAME_RATE } from "./constants";
 import {
@@ -26,6 +26,7 @@ export class ImaVidFramesController {
 
   constructor(
     private readonly config: {
+      maxFrameStreamSize: number;
       environment: Environment;
       firstFrameNumber: number;
       // todo: remove any
@@ -173,7 +174,10 @@ export class ImaVidFramesController {
     if (!ImaVidStore.has(this.key)) {
       ImaVidStore.set(
         this.key,
-        new ImaVidFrameSamples(this.storeBufferManager)
+        new ImaVidFrameSamples(
+          this.config.maxFrameStreamSize,
+          this.storeBufferManager
+        )
       );
     }
 

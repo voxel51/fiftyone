@@ -239,6 +239,7 @@ export default <T extends AbstractLooker<BaseState>>(
             ImaVidFramesControllerStore.set(
               thisSampleId,
               new ImaVidFramesController({
+                maxFrameStreamSize: videoConfigSettings.maxFrameStreamSize,
                 environment,
                 firstFrameNumber,
                 page,

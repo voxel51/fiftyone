@@ -48,7 +48,10 @@ function Grid() {
   const getFontSize = useFontSize(id);
 
   const lookerStore = useMemo(() => {
+    /** LOOKER STORE REFRESHER */
     reset;
+    /** LOOKER STORE REFRESHER */
+
     return new LRUCache<string, Lookers>({
       max: 128,
       dispose: (looker) => {

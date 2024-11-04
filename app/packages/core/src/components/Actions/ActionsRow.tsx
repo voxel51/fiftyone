@@ -8,8 +8,8 @@ import {
 } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import {
-  OperatorPlacements,
   OperatorPlacementWithErrorBoundary,
+  OperatorPlacements,
   types,
   useOperatorBrowser,
   useOperatorPlacements,
@@ -287,6 +287,12 @@ const Selected = ({
   } else if (labels.size > 0 && modal) {
     text = labels.size.toLocaleString();
   }
+
+  useEffect(() => {
+    return () => {
+      setLoading(false);
+    };
+  }, []);
 
   return (
     <ActionDiv
