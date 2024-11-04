@@ -11,6 +11,7 @@ import type { Queries } from "../makeRoutes";
 import type RouteDefinition from "./RouteDefinition";
 import type { LocationState, MatchPathResult } from "./matchPath";
 
+import { viewsAreEqual } from "@fiftyone/state";
 import { NotFoundError, Resource, isNotebook } from "@fiftyone/utilities";
 import { createBrowserHistory, createMemoryHistory } from "history";
 import React from "react";
@@ -190,6 +191,18 @@ const makeGetEntryResource = <T extends OperationType>() => {
   let currentResource: Resource<Entry<T>>;
 
   const isReusable = (location: FiftyOneLocation) => {
+    if (location.pathname !== currentLocation?.pathname) {
+      return false;
+    }
+
+    if (location.search !== currentLocation?.search) {
+      return false;
+    }
+
+    if (!viewsAreEqual(location.state.view, currentLocation?.state.view)) {
+      return false;
+    }
+
     if (currentLocation) {
       return (
         SKIP_EVENTS.has(location.state.event || "") ||
