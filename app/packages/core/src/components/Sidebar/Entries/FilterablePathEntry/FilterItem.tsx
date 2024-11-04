@@ -14,8 +14,8 @@ interface FilterItem {
 
 export const FILTERS = {
   [fou.BOOLEAN_FIELD]: filters.BooleanFieldFilter,
-  [fou.DATE_FIELD]: filters.NumericFieldFilter,
-  [fou.DATE_TIME_FIELD]: filters.NumericFieldFilter,
+  [fou.DATE_FIELD]: filters.DateFieldFilter,
+  [fou.DATE_TIME_FIELD]: filters.DateFieldFilter,
   [fou.FLOAT_FIELD]: filters.NumericFieldFilter,
   [fou.FRAME_NUMBER_FIELD]: filters.NumericFieldFilter,
   [fou.FRAME_SUPPORT_FIELD]: filters.NumericFieldFilter,

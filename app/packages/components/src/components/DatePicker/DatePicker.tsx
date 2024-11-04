@@ -1,39 +1,58 @@
 import React from "react";
-import dayjs from 'dayjs';
-import { atom, useRecoilState } from "recoil";
-import TextField from '@mui/material/TextField';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-
+import dayjs from "dayjs";
+import {
+  LocalizationProvider,
+  DatePicker,
+  DateTimePicker,
+} from "@mui/x-date-pickers";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
 interface DatePickerProps {
   label: string;
+  isDateTime: boolean;
+  value: dayjs.Dayjs | null;
+  onChange: (newValue: dayjs.Dayjs | null) => void;
+  minDate?: dayjs.Dayjs;
+  maxDate?: dayjs.Dayjs;
 }
 
-const dateValue = atom({
-  key: "dateValue",
-  default: dayjs('2024-01-01'),
-});
+const format = "YYYY-M-D HH:mm:ss";
 
 const BasicDatePicker: React.FC<DatePickerProps> = ({
   label,
+  isDateTime,
+  value,
+  onChange,
+  minDate,
+  maxDate,
 }) => {
-  const [value, setValue] = useRecoilState(dateValue);
-
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <DatePicker
-        label={label}
-        value={value}
-        onChange={(newValue) => {
-          setValue(newValue);
-        }}
-        renderInput={(params) => <TextField {...params} />}
-      />
+      {isDateTime ? (
+        <DateTimePicker
+          label={label}
+          value={value}
+          onChange={(newValue) => {
+            onChange(newValue);
+          }}
+          minDate={minDate}
+          maxDate={maxDate}
+          format={format}
+        />
+      ) : (
+        <DatePicker
+          label={label}
+          value={value}
+          onChange={(newValue) => {
+            onChange(newValue);
+          }}
+          minDate={minDate}
+          maxDate={maxDate}
+          format={format}
+        />
+      )}
     </LocalizationProvider>
   );
-}
+};
 
 export default BasicDatePicker;
-
