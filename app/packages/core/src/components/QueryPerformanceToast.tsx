@@ -20,13 +20,20 @@ const hideQueryPerformanceToast = atom({
   ],
 });
 
-const QueryPerformanceToast = () => {
+const QueryPerformanceToast = ({
+  onClick = () => window.open(QP_MODE, "_blank")?.focus(),
+  onDispatch = (event) => {
+    console.debug(event);
+  },
+  text = "View Documentation",
+}) => {
   const [shown, setShown] = useState(false);
   const [disabled, setDisabled] = useRecoilState(hideQueryPerformanceToast);
   const element = document.getElementById("queryPerformance");
   const theme = useTheme();
   useEffect(() => {
-    const listen = () => {
+    const listen = (event) => {
+      onDispatch(event);
       setShown(true);
     };
     window.addEventListener("queryperformance", listen);
@@ -45,7 +52,7 @@ const QueryPerformanceToast = () => {
     <Toast
       duration={SHOWN_FOR}
       layout={{
-        bottom: "100px",
+        bottom: "100px !important",
         vertical: "bottom",
         horizontal: "center",
         backgroundColor: theme.custom.toastBackgroundColor,
@@ -56,7 +63,7 @@ const QueryPerformanceToast = () => {
             variant="contained"
             size="small"
             onClick={() => {
-              open(QP_MODE, "_blank")?.focus();
+              onClick();
               setOpen(false);
             }}
             sx={{
@@ -66,7 +73,7 @@ const QueryPerformanceToast = () => {
               boxShadow: 0,
             }} // Right align the button
           >
-            View Documentation
+            {text}
           </Button>
         );
       }}
