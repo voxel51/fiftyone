@@ -15,7 +15,6 @@ export default function useSelect(
   const selected = useRecoilValue(fos.selectedSamples);
   useEffect(() => {
     deferred(() => {
-      console.log("UPDATE");
       const fontSize = getFontSize();
       spotlight?.updateItems((id) => {
         store.get(id.description)?.updateOptions({
