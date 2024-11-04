@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import CircleIcon from "@mui/icons-material/Circle";
-import { Chip, FormControl, MenuItem, Select } from "@mui/material";
+import { Chip, FormControl, MenuItem, Select, Tooltip } from "@mui/material";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 
@@ -10,12 +10,16 @@ const PillBadge = ({
   variant = "filled",
   showIcon = true,
   operator,
+  readOnly = false,
+  tooltipTitle = "",
 }: {
   text: string | string[] | [string, string][];
   color?: string;
   variant?: "filled" | "outlined";
   showIcon?: boolean;
   operator?: () => void;
+  readOnly?: boolean;
+  tooltipTitle?: string;
 }) => {
   const getInitialChipSelection = (
     text: string | string[] | [string, string][]
@@ -68,90 +72,15 @@ const PillBadge = ({
 
   return (
     <span>
-      {typeof text === "string" ? (
-        <Chip
-          icon={
-            showIcon ? (
-              <CircleIcon color={"inherit"} sx={{ fontSize: 10 }} />
-            ) : undefined
-          }
-          label={text}
-          sx={{
-            ...chipStyle,
-            "& .MuiChip-icon": {
-              marginRight: "-7px",
-            },
-            "& .MuiChip-label": {
-              marginBottom: "1px",
-            },
-          }}
-          variant={variant as "filled" | "outlined" | undefined}
-        />
-      ) : (
-        <FormControl fullWidth>
+      <Tooltip title={tooltipTitle}>
+        {typeof text === "string" ? (
           <Chip
             icon={
               showIcon ? (
                 <CircleIcon color={"inherit"} sx={{ fontSize: 10 }} />
               ) : undefined
             }
-            label={
-              Array.isArray(text) &&
-              text.length > 0 &&
-              Array.isArray(text[0]) ? (
-                <Select
-                  value={chipSelection}
-                  variant={"standard"}
-                  disableUnderline={true}
-                  onChange={(event) => {
-                    const selectedText = text.find(
-                      (t) => t[0] === event.target.value
-                    );
-                    setChipSelection(event.target.value);
-                    setChipColor(selectedText?.[1] ?? "default");
-                    if (operator) {
-                      handleClick(panelId, {
-                        params: { value: event.target.value },
-                        operator,
-                      });
-                    }
-                  }}
-                  sx={{
-                    color: "inherit",
-                  }}
-                >
-                  {text.map((t, index) => (
-                    <MenuItem key={index} value={t[0]}>
-                      {t[0]}
-                    </MenuItem>
-                  ))}
-                </Select>
-              ) : (
-                <Select
-                  value={chipSelection}
-                  variant={"standard"}
-                  disableUnderline={true}
-                  onChange={(event) => {
-                    setChipSelection(event.target.value);
-                    if (operator) {
-                      handleClick(panelId, {
-                        params: { value: event.target.value },
-                        operator,
-                      });
-                    }
-                  }}
-                  sx={{
-                    color: "inherit",
-                  }}
-                >
-                  {text.map((t, index) => (
-                    <MenuItem key={index} value={t}>
-                      {t}
-                    </MenuItem>
-                  ))}
-                </Select>
-              )
-            }
+            label={text}
             sx={{
               ...chipStyle,
               "& .MuiChip-icon": {
@@ -160,14 +89,94 @@ const PillBadge = ({
               "& .MuiChip-label": {
                 marginBottom: "1px",
               },
-              "& .MuiInput-input:focus": {
-                backgroundColor: "inherit",
-              },
             }}
             variant={variant as "filled" | "outlined" | undefined}
-          ></Chip>
-        </FormControl>
-      )}
+          />
+        ) : (
+          <FormControl fullWidth>
+            <Chip
+              disabled={readOnly}
+              icon={
+                showIcon ? (
+                  <CircleIcon color={"inherit"} sx={{ fontSize: 10 }} />
+                ) : undefined
+              }
+              label={
+                Array.isArray(text) &&
+                text.length > 0 &&
+                Array.isArray(text[0]) ? (
+                  <Select
+                    disabled={readOnly}
+                    value={chipSelection}
+                    variant={"standard"}
+                    disableUnderline={true}
+                    onChange={(event) => {
+                      const selectedText = text.find(
+                        (t) => t[0] === event.target.value
+                      );
+                      setChipSelection(event.target.value);
+                      setChipColor(selectedText?.[1] ?? "default");
+                      if (operator) {
+                        handleClick(panelId, {
+                          params: { value: event.target.value },
+                          operator,
+                        });
+                      }
+                    }}
+                    sx={{
+                      color: "inherit",
+                    }}
+                  >
+                    {text.map((t, index) => (
+                      <MenuItem key={index} value={t[0]}>
+                        {t[0]}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                ) : (
+                  <Select
+                    disabled={readOnly}
+                    value={chipSelection}
+                    variant={"standard"}
+                    disableUnderline={true}
+                    onChange={(event) => {
+                      setChipSelection(event.target.value);
+                      if (operator) {
+                        handleClick(panelId, {
+                          params: { value: event.target.value },
+                          operator,
+                        });
+                      }
+                    }}
+                    sx={{
+                      color: "inherit",
+                    }}
+                  >
+                    {text.map((t, index) => (
+                      <MenuItem key={index} value={t}>
+                        {t}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                )
+              }
+              sx={{
+                ...chipStyle,
+                "& .MuiChip-icon": {
+                  marginRight: "-7px",
+                },
+                "& .MuiChip-label": {
+                  marginBottom: "1px",
+                },
+                "& .MuiInput-input:focus": {
+                  backgroundColor: "inherit",
+                },
+              }}
+              variant={variant as "filled" | "outlined" | undefined}
+            ></Chip>
+          </FormControl>
+        )}
+      </Tooltip>
     </span>
   );
 };

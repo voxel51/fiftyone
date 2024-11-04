@@ -44,6 +44,7 @@ interface ModalBaseProps {
 }
 
 interface ModalButtonView {
+  disabled?: boolean;
   variant: string;
   label: string;
   icon?: string;
@@ -102,6 +103,7 @@ const ModalBase: React.FC<ModalBaseProps> = ({
   const modalButtonView: ModalButtonView = {
     variant: props?.variant || "outlined",
     label: props?.label || "",
+    disabled: props?.disabled,
     componentsProps: {
       button: {
         sx: {
@@ -175,12 +177,12 @@ const ModalBase: React.FC<ModalBaseProps> = ({
     ) {
       setPrimaryButtonView({
         ...primaryButtonView,
-        disabled: primaryButtonView?.disabled || true,
+        disabled: true,
       });
     } else {
       setPrimaryButtonView({
         ...primaryButtonView,
-        disabled: primaryButtonView?.disabled || false,
+        disabled: false,
       });
     }
   }, [primaryButtonView.params]);
