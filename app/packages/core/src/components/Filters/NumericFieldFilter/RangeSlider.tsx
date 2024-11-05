@@ -65,7 +65,7 @@ const RangeSlider = ({
       {defaultRange && <Nonfinites modal={modal} path={path} />}
       <FilterOption color={color} modal={modal} path={path} />
       <Reset color={color} modal={modal} path={path} />
-      {!hasBounds && <Boxes path={path} />}
+      {!hasBounds && "No results"}
     </Container>
   );
 };

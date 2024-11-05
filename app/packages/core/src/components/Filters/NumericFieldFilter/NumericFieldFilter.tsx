@@ -6,6 +6,7 @@ import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import RangeSlider from "./RangeSlider";
 import { Button } from "@mui/material";
 import { useTheme } from "@fiftyone/components";
+import * as state from "./state";
 
 const Container = styled.div`
   margin: 3px;
@@ -45,6 +46,11 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   const [showRange, setShowRange] = React.useState(!isGroup);
   const field = fos.useAssertedRecoilValue(fos.field(path));
   const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const hasBounds = useRecoilValue(state.hasBounds({ path, modal }));
+
+  if (!queryPerformance && named && !hasBounds) {
+    return null;
+  }
 
   const handleShowRange = () => {
     setShowRange(true);

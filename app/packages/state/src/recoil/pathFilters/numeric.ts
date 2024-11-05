@@ -6,6 +6,7 @@ import * as filterAtoms from "../filters";
 import * as pathData from "../pathData";
 import type { Range } from "../utils";
 import { isFilterDefault } from "./utils";
+import { pathHasIndexes, queryPerformance } from "../queryPerformance";
 
 export interface NumericFilter {
   range: Range;
@@ -146,6 +147,10 @@ export const boundsAtom = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
+      if (get(queryPerformance)) {
+        return get(pathData.lightningBounds(params.path));
+      }
+
       const bounds = get(pathData.bounds({ ...params, extended: false }));
       return bounds ? bounds : [null, null];
     },
