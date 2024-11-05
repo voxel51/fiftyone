@@ -47,6 +47,7 @@ export const { acquireReader, clearReader } = (() => {
     removeFrame: RemoveFrame,
     maxFrameStreamSize?: number
   ) => {
+    console.log(maxFrameStreamSize);
     return new LRUCache<number, Frame>({
       max: maxFrameStreamSize || 1000,
       dispose: (_, key) => {

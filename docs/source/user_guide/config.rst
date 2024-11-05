@@ -670,8 +670,6 @@ The FiftyOne App can be configured in the ways described below:
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `disable_frame_filtering`  | `FIFTYONE_APP_DISABLE_FRAME_FILTERING`  | `False`       | Whether to disable frame filtering for video datasets in the App's grid view.              |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `frame_stream_size`        | `FIFTYONE_APP_FRAME_STREAM_SIZE`        | `1000`        | The number of frame samples to cache in the browser for video playback.                    |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `grid_zoom`                | `FIFTYONE_APP_GRID_ZOOM`                | `5`           | The zoom level of the App's sample grid. Larger values result in larger samples (and thus  |
 |                            |                                         |               | fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                        |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+

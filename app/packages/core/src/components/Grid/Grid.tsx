@@ -2,9 +2,7 @@ import styles from "./Grid.module.css";
 
 import { freeVideos } from "@fiftyone/looker";
 import Spotlight from "@fiftyone/spotlight";
-import type { Lookers } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
-import { LRUCache } from "lru-cache";
 import React, {
   useEffect,
   useLayoutEffect,
@@ -29,7 +27,7 @@ function Grid() {
   const id = useMemo(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
   const selectSample = useRef<ReturnType<typeof useSelectSample>>();
-  const { pageReset, reset } = useRefreshers();
+  const { caching, lookerStore, pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
   const threshold = useThreshold();
 
@@ -47,18 +45,6 @@ function Grid() {
   const setSample = fos.useExpandSample(store);
   const getFontSize = useFontSize(id);
 
-  const lookerStore = useMemo(() => {
-    /** LOOKER STORE REFRESHER */
-    reset;
-    /** LOOKER STORE REFRESHER */
-
-    return new LRUCache<string, Lookers>({
-      max: 1000,
-      dispose: (looker) => {
-        looker.destroy();
-      },
-    });
-  }, [reset]);
   const spotlight = useMemo(() => {
     /** SPOTLIGHT REFRESHER */
     reset;
@@ -71,10 +57,12 @@ function Grid() {
     return new Spotlight<number, fos.Sample>({
       ...get(),
       destroy: (id) => {
-        lookerStore.get(id.description)?.destroy();
+        const looker = lookerStore.get(id.description);
+        looker?.destroy();
         lookerStore.delete(id.description);
       },
       onItemClick: setSample,
+      retainItems: caching,
       rowAspectRatioThreshold: threshold,
       get: (next) => page(next),
       render: (id, element, dimensions, soft, hide) => {
@@ -112,6 +100,7 @@ function Grid() {
       spacing,
     });
   }, [
+    caching,
     createLooker,
     get,
     getFontSize,

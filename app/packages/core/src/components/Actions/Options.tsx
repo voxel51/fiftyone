@@ -7,10 +7,12 @@ import {
 import * as fos from "@fiftyone/state";
 import {
   configuredSidebarModeDefault,
+  frameCacheSize,
   groupStatistics,
   sidebarMode,
 } from "@fiftyone/state";
-import React, { RefObject, useMemo } from "react";
+import type { RefObject } from "react";
+import React, { useMemo } from "react";
 import {
   useRecoilState,
   useRecoilValue,
@@ -20,6 +22,7 @@ import {
 import { LIGHTNING_MODE, SIDEBAR_MODE } from "../../utils/links";
 import Checkbox from "../Common/Checkbox";
 import RadioGroup from "../Common/RadioGroup";
+import { lookerGridCaching } from "../Grid/recoil";
 import { Button } from "../utils";
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
@@ -354,6 +357,86 @@ const ShowModalNav = () => {
   );
 };
 
+const Caching = ({ modal }: { modal?: boolean }) => {
+  const [caching, setCaching] = useRecoilState(lookerGridCaching);
+  const [frameStream, setFrameStream] = useRecoilState(frameCacheSize);
+  const resetFrameCacheSize = useResetRecoilState(frameCacheSize);
+  const theme = useTheme();
+
+  return (
+    <>
+      {!modal && (
+        <>
+          <ActionOption
+            id="grid-caching"
+            text="Visualizer caching"
+            title={"Visualizer caching"}
+            style={{
+              background: "unset",
+              color: theme.text.primary,
+              paddingTop: 0,
+              paddingBottom: 0,
+            }}
+            svgStyles={{ height: "1rem", marginTop: 7.5 }}
+          />
+          <Checkbox
+            name={"Cache grid visualizers"}
+            value={caching}
+            setValue={setCaching}
+          />
+        </>
+      )}
+      {
+        <>
+          <ActionOption
+            id="frame-stream"
+            text="Frame cache size"
+            title={"Frame cache size"}
+            style={{
+              background: "unset",
+              color: theme.text.primary,
+              paddingTop: 0,
+              paddingBottom: 0,
+            }}
+            svgStyles={{ height: "1rem", marginTop: 7.5 }}
+          />
+          <Selector
+            placeholder="Frame cache size"
+            onSelect={async (text) => {
+              if (text === "") {
+                resetFrameCacheSize();
+                return "1024";
+              }
+              const value = Number.parseInt(text);
+
+              if (Number.isNaN(value)) {
+                resetFrameCacheSize();
+                return "1024";
+              }
+
+              setFrameStream(value);
+
+              return String(value);
+            }}
+            inputStyle={{
+              fontSize: "1rem",
+              textAlign: "right",
+              float: "right",
+              width: "100%",
+            }}
+            value={String(frameStream)}
+            containerStyle={{
+              display: "flex",
+              justifyContent: "right",
+              marginBottom: "0.5rem",
+            }}
+          />
+        </>
+      }
+    </>
+  );
+};
+
 type OptionsProps = {
   modal?: boolean;
   anchorRef: RefObject<HTMLElement>;
@@ -375,6 +458,7 @@ const Options = ({ modal, anchorRef }: OptionsProps) => {
       {!view?.length && <Lightning />}
       {!modal && <SidebarMode />}
       <SortFilterResults modal={modal} />
+      <Caching modal={modal} />
     </Popout>
   );
 };

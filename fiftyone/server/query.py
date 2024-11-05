@@ -376,8 +376,6 @@ class AppConfig:
     grid_zoom: int
     lightning_threshold: t.Optional[int]
     loop_videos: bool
-    max_frame_stream_size: t.Optional[int]
-    max_frame_stream_size_bytes: t.Optional[int]
     multicolor_keypoints: bool
     notebook_height: int
     plugins: t.Optional[JSON]

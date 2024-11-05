@@ -50,8 +50,6 @@ type AppConfig {
   gridZoom: Int!
   lightningThreshold: Int
   loopVideos: Boolean!
-  maxFrameStreamSize: Int
-  maxFrameStreamSizeBytes: Int
   multicolorKeypoints: Boolean!
   notebookHeight: Int!
   plugins: JSON

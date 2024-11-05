@@ -138,6 +138,10 @@ export default class Row<K, V> {
       throw new Error("row is not attached");
     }
 
+    if (!this.#config.retainItems) {
+      this.#destroyItems();
+    }
+
     this.#container.remove();
   }
 
