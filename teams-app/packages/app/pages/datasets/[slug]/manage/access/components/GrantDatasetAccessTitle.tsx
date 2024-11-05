@@ -11,7 +11,9 @@ export default function GrantDatasetAccessTitle(
 ) {
   const { displayName } = useCurrentOrganization();
   const { isGroup } = props;
-  const baseText = `You can grant access to any existing group at ${displayName}.`;
+  const baseText = `You can grant access to any existing ${
+    isGroup ? "group" : "user"
+  } in ${displayName}.`;
   const text = `${baseText}${
     isGroup
       ? ""

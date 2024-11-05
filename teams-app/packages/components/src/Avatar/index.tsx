@@ -34,6 +34,7 @@ export default function Avatar(props: AvatarProps) {
     fontSize: "1.4rem",
     fontWeight: 500,
   };
+  console.log("avatar props=", props);
   const AvatarComponent = (
     <MUIAvatar
       imgProps={{ referrerPolicy: "no-referrer" }}

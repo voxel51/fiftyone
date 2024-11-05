@@ -52,6 +52,7 @@ export default function UserInputSuggestion({
   }, [termLocal, isTermEmail, contents]);
 
   useEffect(() => {
+    console.log("userinputsuggestion options", options);
     if (state === "hasValue" || !term) setUsers(options);
     if (state !== "loading" || !term) {
       setShowNotice(
