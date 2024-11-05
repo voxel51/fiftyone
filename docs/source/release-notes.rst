@@ -3,6 +3,13 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 2.1.2
+--------------------
+*Released October 31, 2024*
+
+- Fixed an issue that prevented `delegation_target` from being properly set when
+  running delegated operations with orchestrator registration enabled
+
 FiftyOne Teams 2.1.1
 --------------------
 *Released October 14, 2024*
