@@ -21,6 +21,7 @@ from fiftyone.operators.panels import (
     QueryPerformancePanel,
 )
 from fiftyone.operators.utils import create_summary_field_inputs
+from .builtins.operators.evaluation import EvaluateModel
 
 
 class EditFieldInfo(foo.Operator):
@@ -2224,6 +2225,7 @@ BUILTIN_OPERATORS = (
         DeleteWorkspace(_builtin=True),
         SyncLastModifiedAt(_builtin=True),
         ListFiles(_builtin=True),
+        EvaluateModel(_builtin=True),
     ]
     + DATA_QUALITY_OPERATORS
     + QUERY_PERFORMANCE_OPERATORS
