@@ -23,7 +23,13 @@ const hideQueryPerformanceToast = atom({
   ],
 });
 
-const QueryPerformanceToast = () => {
+const QueryPerformanceToast = ({
+  onClick = () => window.open(QP_MODE, "_blank")?.focus(),
+  onDispatch = (event) => {
+    console.debug(event);
+  },
+  text = "View Documentation",
+}) => {
   const [shown, setShown] = useState(false);
   const [path, setPath] = useState<string | undefined>(undefined);
   const [disabled, setDisabled] = useRecoilState(hideQueryPerformanceToast);
@@ -38,7 +44,7 @@ const QueryPerformanceToast = () => {
 
   useEffect(() => {
     const listen = (event) => {
-      setPath(event.path);
+      onDispatch(event);
       setShown(true);
     };
     window.addEventListener("queryperformance", listen);
@@ -68,27 +74,7 @@ const QueryPerformanceToast = () => {
             variant="contained"
             size="small"
             onClick={() => {
-              let openedPanel = openedPanels.find(
-                ({ type }) => type === PANEL_NAME
-              );
-              if (!openedPanel) {
-                openedPanel = new SpaceNode();
-                openedPanel.type = PANEL_NAME;
-                spaces.addNodeAfter(spaces.root, openedPanel, true);
-              }
-              if (path) {
-                promptForOperator(
-                  "index_field_creation_operator",
-                  { nonperformant_field: path },
-                  {
-                    callback: () => {
-                      triggerPanelEvent(openedPanel.id, {
-                        operator: PANEL_NAME + "#refresh",
-                      });
-                    },
-                  }
-                );
-              }
+              onClick();
               setOpen(false);
             }}
             sx={{
@@ -98,7 +84,7 @@ const QueryPerformanceToast = () => {
               boxShadow: 0,
             }} // Right align the button
           >
-            Create an Index
+            {text}
           </Button>
         );
       }}

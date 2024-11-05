@@ -9,6 +9,7 @@ FiftyOne operator execution.
 import json
 
 from bson import json_util
+from .categories import Categories
 
 
 class Operations(object):
@@ -301,6 +302,9 @@ class Operations(object):
         name,
         label,
         help_markdown=None,
+        category=Categories.CUSTOM,
+        beta=False,
+        is_new=False,
         icon=None,
         light_icon=None,
         dark_icon=None,
@@ -319,6 +323,7 @@ class Operations(object):
         on_change_extended_selection=None,
         on_change_group_slice=None,
         allow_duplicates=False,
+        priority=None,
     ):
         """Registers a panel with the given name and lifecycle callbacks.
 
@@ -337,6 +342,9 @@ class Operations(object):
             reload_on_navigation (False): whether to reload the panel when the
                 user navigates to a new page. This is only applicable to panels
                 that are not shown in a modal
+            beta (False): whether the panel is in beta
+            is_new (False): whether the panel is new
+            category (Categories.CUSTOM): the category of the panel
             on_load (None): an operator to invoke when the panel is loaded
             on_unload (None): an operator to invoke when the panel is unloaded
             on_change (None): an operator to invoke when the panel state
@@ -361,11 +369,15 @@ class Operations(object):
                 slice changes
             allow_duplicates (False): whether to allow multiple instances of
                 the panel to the opened
+            priority (None): the priority of the panel, used for sort order
         """
         params = {
             "panel_name": name,
             "panel_label": label,
             "help_markdown": help_markdown,
+            "category": category.value if category is not None else None,
+            "beta": beta,
+            "is_new": is_new,
             "icon": icon,
             "light_icon": light_icon,
             "dark_icon": dark_icon,
@@ -384,6 +396,7 @@ class Operations(object):
             "on_change_extended_selection": on_change_extended_selection,
             "on_change_group_slice": on_change_group_slice,
             "allow_duplicates": allow_duplicates,
+            "priority": priority,
         }
         return self._ctx.trigger("register_panel", params=params)
 
