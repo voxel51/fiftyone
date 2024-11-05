@@ -48,8 +48,8 @@ export default class Row<K, V> {
       element.style.top = pixels(ZERO);
 
       if (config.onItemClick) {
-        const handler = (event) => {
-          if (event.metaKey || event.shiftKey) {
+        const handler = (event: MouseEvent) => {
+          if (event.metaKey || event.shiftKey || event.ctrlKey) {
             return;
           }
 
