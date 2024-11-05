@@ -23,6 +23,7 @@ export default function NativeModelEvaluationView(props) {
     statuses = {},
     notes = {},
     permissions = {},
+    pending_evaluations = [],
   } = data;
   const computedEvaluations = useMemo(() => {
     return evaluations.map(({ key, id }) => ({
@@ -77,6 +78,7 @@ export default function NativeModelEvaluationView(props) {
             onEvaluate={() => {
               triggerEvent(on_evaluate_model);
             }}
+            permissions={permissions}
           />
         ) : (
           <Overview
@@ -92,6 +94,7 @@ export default function NativeModelEvaluationView(props) {
             statuses={statuses}
             notes={notes}
             permissions={permissions}
+            pending_evaluations={pending_evaluations}
           />
         ))}
     </Box>
