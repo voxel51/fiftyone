@@ -3,10 +3,8 @@ import React from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
-import Boxes from "./Boxes";
 import RangeSlider from "./RangeSlider";
-import * as state from "./state";
-import { Button, Typography } from "@mui/material";
+import { Button } from "@mui/material";
 import { useTheme } from "@fiftyone/components";
 
 const Container = styled.div`
