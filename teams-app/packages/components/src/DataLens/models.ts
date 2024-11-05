@@ -40,6 +40,7 @@ export type ImportRequest = {
   dataset_name: string;
   request_type: RequestType;
   max_samples?: number;
+  tags?: string[];
 };
 
 /**

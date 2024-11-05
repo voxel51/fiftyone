@@ -61,11 +61,9 @@ export const OperatorConfigurator = ({
 
     setOperatorSchema({});
 
-    getFetchFunction()(
-      "POST",
-      "/operators/resolve-type",
-      requestBody
-    ).then((res: object) => setOperatorSchema(res));
+    getFetchFunction()("POST", "/operators/resolve-type", requestBody).then(
+      (res: object) => setOperatorSchema(res)
+    );
   }, [operator, setOperatorSchema]);
 
   // Callback which handles updates to the form state.

@@ -114,6 +114,7 @@ class DatasourceConnectorOperator(foo.Operator):
                     total_samples += self._import_samples(
                         dataset,
                         last_response.query_result,
+                        import_request.tags,
                         max_samples - total_samples,
                     )
 
@@ -134,6 +135,7 @@ class DatasourceConnectorOperator(foo.Operator):
                     total_samples += self._import_samples(
                         dataset,
                         last_response.query_result,
+                        import_request.tags,
                         max_samples - total_samples
                     )
 
@@ -179,13 +181,23 @@ class DatasourceConnectorOperator(foo.Operator):
             self,
             dataset: fo.Dataset,
             samples_json: list[dict],
+            tags: list[str],
             max_samples: int
     ) -> int:
         samples = [fo.Sample.from_dict(s) for s in samples_json]
 
+        # Append tags if not already present
+        for sample in samples:
+            sample_tags = sample.tags or []
+            for tag in tags:
+                if tag not in sample_tags:
+                    sample_tags.append(tag)
+            sample.tags = sample_tags
+
         # merge_samples will dedupe with samples already in the dataset, but will fail if there
         #  are duplicate samples within the list being merged.
         unique_samples = self._dedupe_samples(samples)
+
         dataset.merge_samples(
             unique_samples[:max_samples], skip_existing=True, insert_new=True, progress=False
         )

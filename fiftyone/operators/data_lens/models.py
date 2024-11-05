@@ -84,6 +84,7 @@ class ImportRequest:
     batch_size: int
     dataset_name: str
     max_samples: int = 0
+    tags: list[str] = field(default_factory=list)
 
 
 @dataclass

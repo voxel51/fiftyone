@@ -16,6 +16,7 @@ import { Writer, datasetQuery } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import {
   Box,
+  BuiltinPanels,
   EmptySamples,
   ThemeProvider as HubThemeProvider,
 } from "@fiftyone/teams-components";
@@ -144,7 +145,12 @@ const DynamicDataset = dynamic(
     function Plugins({ children }: React.PropsWithChildren<{}>) {
       const plugins = usePlugins();
       if (plugins.isLoading) return <Loading>Pixelating...</Loading>;
-      return <>{children}</>;
+      return (
+        <>
+          {children}
+          <BuiltinPanels />
+        </>
+      );
     }
 
     const useDynamicRouter = injectDynamicRouter();

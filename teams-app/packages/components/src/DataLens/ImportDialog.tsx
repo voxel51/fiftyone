@@ -13,6 +13,7 @@ import { Dialog } from "@fiftyone/components";
 import React, { useState } from "react";
 import { useRecoilValue } from "recoil";
 import { datasetName as fosDatasetName } from "@fiftyone/state";
+import TagsInput from "../TagsInput";
 
 /**
  * Data model for input to dialog CTA handler.
@@ -20,6 +21,7 @@ import { datasetName as fosDatasetName } from "@fiftyone/state";
 export type ImportDialogData = {
   datasetName: string;
   maxSamples: number;
+  tags: string[];
 };
 
 type ImportLimitType = "limit" | "all";
@@ -45,13 +47,12 @@ export const ImportDialog = ({
 }) => {
   const activeDataset = useRecoilValue(fosDatasetName);
   const [datasetName, setDatasetName] = useState(activeDataset);
-  const [importLimitType, setImportLimitType] = useState<ImportLimitType>(
-    "limit"
-  );
-  const [destDatasetType, setDestDatasetType] = useState<DestDatasetType>(
-    "existing"
-  );
+  const [importLimitType, setImportLimitType] =
+    useState<ImportLimitType>("limit");
+  const [destDatasetType, setDestDatasetType] =
+    useState<DestDatasetType>("existing");
   const [maxImportSamples, setMaxImportSamples] = useState(defaultMaxSamples);
+  const [sampleTags, setSampleTags] = useState<string[]>([]);
 
   // Callback which handles updates to the import destination dataset type
   const handleDestDatasetTypeChange = (value?: DestDatasetType) => {
@@ -67,11 +68,17 @@ export const ImportDialog = ({
     onImport({
       datasetName,
       maxSamples: importLimitType === "limit" ? maxImportSamples : 0,
+      tags: sampleTags ?? [],
     });
   };
 
+  const handleCloseClick = () => {
+    setSampleTags([]);
+    onClose();
+  };
+
   return (
-    <Dialog open={open} onClose={onClose}>
+    <Dialog open={open} onClose={handleCloseClick}>
       <Box sx={{ m: 2, maxWidth: "400px" }}>
         <Typography variant="h5">Import data to a Dataset</Typography>
 
@@ -196,6 +203,16 @@ export const ImportDialog = ({
               />
             )}
           </Box>
+        </Box>
+
+        {/*Tags*/}
+        <Box sx={{ mt: 3 }}>
+          <TagsInput
+            direction="v"
+            initialValues={[]}
+            onChange={(tags) => setSampleTags([...tags])}
+            placeholder="Enter tag name(s)"
+          />
         </Box>
 
         {/*Dialog actions*/}

@@ -50,7 +50,10 @@ type StateUpdateType = "update" | "reset";
 type PanelStateUpdate = PanelState & { type: StateUpdateType };
 
 // Internal state reducer.
-const panelStateReducer = (state: PanelState, action: PanelStateUpdate) => {
+const panelStateReducer = (
+  state: PanelState,
+  action: PanelStateUpdate
+): PanelState => {
   switch (action.type) {
     case "update": {
       const { type, ...rest } = action;
@@ -71,7 +74,7 @@ const panelStateReducer = (state: PanelState, action: PanelStateUpdate) => {
 
     default: {
       console.warn(`Unhandled action: ${action.type}`);
-      break;
+      return { ...state };
     }
   }
 };
@@ -235,6 +238,7 @@ export const LensPanel = ({
       request_type: "import",
       dataset_name: dialogData.datasetName,
       max_samples: dialogData.maxSamples,
+      tags: dialogData.tags,
     };
 
     // Callback which handles the response from the operator.
