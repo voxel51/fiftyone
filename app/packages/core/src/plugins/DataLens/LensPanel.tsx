@@ -1,4 +1,11 @@
-import React, { Fragment, useMemo, useRef, useState } from "react";
+import React, {
+  Fragment,
+  useCallback,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import {
@@ -29,6 +36,46 @@ import { Lens } from "./Lens";
 import { ImportDialog, ImportDialogData } from "./ImportDialog";
 import { useDatasets } from "./hooks";
 
+// Internal state.
+type PanelState = {
+  isQueryExpanded?: boolean;
+  isPreviewExpanded?: boolean;
+  isImportShown?: boolean;
+  isImportExpanded?: boolean;
+};
+
+// Reducer type.
+type StateUpdateType = "update" | "reset";
+// Reducer type.
+type PanelStateUpdate = PanelState & { type: StateUpdateType };
+
+// Internal state reducer.
+const panelStateReducer = (state: PanelState, action: PanelStateUpdate) => {
+  switch (action.type) {
+    case "update": {
+      const { type, ...rest } = action;
+      return {
+        ...state,
+        ...rest,
+      };
+    }
+
+    case "reset": {
+      return {
+        isQueryExpanded: true,
+        isPreviewExpanded: false,
+        isImportShown: false,
+        isImportExpanded: false,
+      };
+    }
+
+    default: {
+      console.warn(`Unhandled action: ${action.type}`);
+      break;
+    }
+  }
+};
+
 /**
  * Component responsible for handling query and preview functionality.
  */
@@ -43,14 +90,30 @@ export const LensPanel = ({
   const [activeConfig, setActiveConfig] = useState<LensConfig>(lensConfigs[0]);
   const [formState, setFormState] = useState<FormState>({});
   const [isFormValid, setIsFormValid] = useState(false);
-  const [isQueryExpanded, setIsQueryExpanded] = useState(true);
+  const [panelState, dispatchPanelStateUpdate] = useReducer(panelStateReducer, {
+    isQueryExpanded: true,
+  });
+  const dispatchPanelUpdate = useCallback(
+    (update: PanelState) => {
+      dispatchPanelStateUpdate({
+        type: "update",
+        ...update,
+      });
+    },
+    [dispatchPanelStateUpdate]
+  );
 
   // Preview state
   const [maxSamples, setMaxSamples] = useState(25);
   const [searchResponse, setSearchResponse] = useState<PreviewResponse>();
   const [previewTime, setPreviewTime] = useState(0);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
-  const [isPreviewExpanded, setIsPreviewExpanded] = useState(true);
+
+  const resetPanelState = useCallback(() => {
+    dispatchPanelStateUpdate({ type: "reset" });
+    setSearchResponse(null);
+    setIsImportEnabled(false);
+  }, [dispatchPanelStateUpdate, setSearchResponse]);
 
   // Import state
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -58,8 +121,6 @@ export const LensPanel = ({
   const [isImportEnabled, setIsImportEnabled] = useState(false);
   const [isImportLoading, setIsImportLoading] = useState(false);
   const [destDatasetName, setDestDatasetName] = useState("");
-  const [isImportExpanded, setIsImportExpanded] = useState(true);
-  const [showImportContent, setShowImportContent] = useState(false);
   const { datasets, activeDataset } = useDatasets();
 
   const previewStartTime = useRef(0);
@@ -107,7 +168,9 @@ export const LensPanel = ({
 
     // Any changes to the form invalidate the preview and thus disable import
     setIsImportEnabled(false);
-    setShowImportContent(false);
+    dispatchPanelUpdate({
+      isImportShown: false,
+    });
   };
 
   // Callback which handles updates to the selected lens configuration.
@@ -116,8 +179,7 @@ export const LensPanel = ({
     if (config) {
       setActiveConfig(config);
       handleFormStateChange({}, false);
-      setSearchResponse(null);
-      setShowImportContent(false);
+      resetPanelState();
     }
   };
 
@@ -143,10 +205,13 @@ export const LensPanel = ({
       onError(response.error || response.result?.error);
     };
 
-    setShowImportContent(false);
     setSearchResponse(null);
     setIsPreviewLoading(true);
-    setIsPreviewExpanded(true);
+    dispatchPanelUpdate({
+      isQueryExpanded: false,
+      isPreviewExpanded: true,
+      isImportShown: false,
+    });
     previewStartTime.current = new Date().getTime();
 
     await searchOperator.execute(request, { callback });
@@ -183,7 +248,6 @@ export const LensPanel = ({
     setImportTime(0);
     setIsImportLoading(true);
     setDestDatasetName(dialogData.datasetName);
-    setShowImportContent(true);
 
     importStartTime.current = new Date().getTime();
 
@@ -210,11 +274,14 @@ export const LensPanel = ({
   const handleImportClick = (dialogData: ImportDialogData) => {
     doImport(dialogData);
 
-    setIsQueryExpanded(false);
-    setIsPreviewExpanded(false);
-    setIsImportDialogOpen(false);
+    dispatchPanelUpdate({
+      isQueryExpanded: false,
+      isPreviewExpanded: false,
+      isImportShown: true,
+      isImportExpanded: true,
+    });
 
-    setIsImportExpanded(true);
+    setIsImportDialogOpen(false);
   };
 
   // LensConfig selection.
@@ -240,10 +307,15 @@ export const LensPanel = ({
   // Operator (search) configuration.
   const queryOperatorContent = (
     <Box sx={{ mt: 4 }}>
-      <Accordion expanded={isQueryExpanded}>
+      <Accordion expanded={panelState.isQueryExpanded}>
         <AccordionSummary
           expandIcon={<ExpandMoreIcon />}
-          onClick={() => setIsQueryExpanded((prev) => !prev)}
+          onClick={() =>
+            dispatchPanelUpdate({
+              isQueryExpanded: !panelState.isQueryExpanded,
+              isImportShown: false,
+            })
+          }
         >
           <Stack direction="row" alignItems="center" spacing={2}>
             <Typography variant="h6">Query parameters</Typography>
@@ -270,53 +342,64 @@ export const LensPanel = ({
   // Additional search controls.
   const searchControls = (
     <Box sx={{ m: 2 }}>
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <FormControl>
-          <TextField
-            label="Number of preview samples"
-            value={maxSamples}
-            onChange={(e) =>
-              setMaxSamples(
-                isNaN(Number.parseInt(e.target.value))
-                  ? 25
-                  : Number.parseInt(e.target.value)
-              )
-            }
-          />
-        </FormControl>
+      {panelState.isImportShown ? (
+        <Button fullWidth variant="contained" onClick={resetPanelState}>
+          Start a new query
+        </Button>
+      ) : (
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <FormControl>
+            <TextField
+              label="Number of preview samples"
+              value={maxSamples}
+              onChange={(e) =>
+                setMaxSamples(
+                  isNaN(Number.parseInt(e.target.value))
+                    ? 25
+                    : Number.parseInt(e.target.value)
+                )
+              }
+            />
+          </FormControl>
 
-        <Stack direction="row" spacing={2}>
-          {isImportEnabled && (
-            <Button variant="contained" onClick={openImportDialog}>
-              Import data
+          <Stack direction="row" spacing={2}>
+            {isImportEnabled && (
+              <Button variant="contained" onClick={openImportDialog}>
+                Import data
+              </Button>
+            )}
+
+            <Button
+              variant="contained"
+              disabled={!isFormValid || isPreviewLoading}
+              onClick={doSearch}
+            >
+              Preview data
             </Button>
-          )}
-
-          <Button
-            variant="contained"
-            disabled={!isFormValid || isPreviewLoading}
-            onClick={doSearch}
-          >
-            Preview data
-          </Button>
-        </Stack>
-      </Box>
+          </Stack>
+        </Box>
+      )}
     </Box>
   );
 
   // Sample preview.
   const previewContent = searchResponse ? (
     <Box sx={{ mt: 4 }}>
-      <Accordion expanded={isPreviewExpanded}>
+      <Accordion expanded={panelState.isPreviewExpanded}>
         <AccordionSummary
           expandIcon={<ExpandMoreIcon />}
-          onClick={() => setIsPreviewExpanded((prev) => !prev)}
+          onClick={() =>
+            dispatchPanelUpdate({
+              isPreviewExpanded: !panelState.isPreviewExpanded,
+              isImportShown: false,
+            })
+          }
         >
           <Stack direction="row" alignItems="center" spacing={2}>
             <Typography variant="h6">Preview</Typography>
@@ -350,10 +433,15 @@ export const LensPanel = ({
     </Box>
   ) : isPreviewLoading ? (
     <Box sx={{ mt: 4 }}>
-      <Accordion expanded={isPreviewExpanded}>
+      <Accordion expanded={panelState.isPreviewExpanded}>
         <AccordionSummary
           expandIcon={<CircularProgress size="1.5rem" />}
-          onClick={() => setIsPreviewExpanded((prev) => !prev)}
+          onClick={() =>
+            dispatchPanelUpdate({
+              isPreviewExpanded: !panelState.isPreviewExpanded,
+              isImportShown: false,
+            })
+          }
         >
           <Typography variant="h6">Preview</Typography>
         </AccordionSummary>
@@ -368,7 +456,7 @@ export const LensPanel = ({
   const importContent =
     isImportLoading || importTime > 0 ? (
       <Box sx={{ mt: 4 }}>
-        <Accordion expanded={isImportExpanded}>
+        <Accordion expanded={panelState.isImportExpanded}>
           <AccordionSummary
             expandIcon={
               isImportLoading ? (
@@ -377,7 +465,11 @@ export const LensPanel = ({
                 <ExpandMoreIcon />
               )
             }
-            onClick={() => setIsImportExpanded((prev) => !prev)}
+            onClick={() =>
+              dispatchPanelUpdate({
+                isImportExpanded: !panelState.isImportExpanded,
+              })
+            }
           >
             {isImportLoading ? (
               <Typography>Importing data</Typography>
@@ -444,7 +536,7 @@ export const LensPanel = ({
           {lensConfigContent}
           {queryOperatorContent}
           {previewContent}
-          {showImportContent && importContent}
+          {panelState.isImportShown && importContent}
         </Box>
       </Box>
 
