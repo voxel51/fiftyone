@@ -7,6 +7,7 @@ import RangeSlider from "./RangeSlider";
 import { Button } from "@mui/material";
 import { useTheme } from "@fiftyone/components";
 import * as state from "./state";
+import * as schemaAtoms from "@fiftyone/state/src/recoil/schema";
 
 const Container = styled.div`
   margin: 3px;
@@ -41,7 +42,8 @@ type Props = {
 
 const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   const name = path.split(".").slice(-1)[0];
-  const isGroup = path.includes(".");
+  const fieldType = useRecoilValue(schemaAtoms.filterFields(path));
+  const isGroup = fieldType.length > 1;
   const theme = useTheme();
   const [showRange, setShowRange] = React.useState(!isGroup);
   const field = fos.useAssertedRecoilValue(fos.field(path));
