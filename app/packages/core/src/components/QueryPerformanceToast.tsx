@@ -1,4 +1,5 @@
 import { Toast } from "@fiftyone/components";
+import { QP_MODE } from "@fiftyone/core";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { Box, Button, Typography } from "@mui/material";
 import { Bolt } from "@mui/icons-material";
@@ -6,10 +7,6 @@ import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { atom, useRecoilState } from "recoil";
 import { useTheme } from "@fiftyone/components";
-import { usePromptOperatorInput } from "@fiftyone/operators/src/state";
-import { useSpaces, useSpaceNodes, SpaceNode } from "@fiftyone/spaces";
-import { usePanelEvent } from "@fiftyone/operators";
-import * as fos from "@fiftyone/state";
 
 const SHOWN_FOR = 5000;
 
@@ -31,17 +28,9 @@ const QueryPerformanceToast = ({
   text = "View Documentation",
 }) => {
   const [shown, setShown] = useState(false);
-  const [path, setPath] = useState<string | undefined>(undefined);
   const [disabled, setDisabled] = useRecoilState(hideQueryPerformanceToast);
   const element = document.getElementById("queryPerformance");
   const theme = useTheme();
-  const promptForOperator = usePromptOperatorInput();
-  const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
-  const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
-  const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
-  const PANEL_NAME = "query_performance_panel";
-  const triggerPanelEvent = usePanelEvent();
-
   useEffect(() => {
     const listen = (event) => {
       onDispatch(event);

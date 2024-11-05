@@ -105,7 +105,7 @@ const DynamicDataset = dynamic(
       ViewBar,
       Snackbar,
       StarterSubtitle,
-      QueryPerformanceToast,
+      QueryPerformanceToastTeams,
     } = await import("@fiftyone/core");
     const { registerOperator, types, Operator, OperatorConfig, OperatorCore } =
       await import("@fiftyone/operators");
@@ -167,7 +167,7 @@ const DynamicDataset = dynamic(
                 </CoreDatasetContainer>
 
                 <Snackbar />
-                <QueryPerformanceToast />
+                <QueryPerformanceToastTeams />
               </>
             ) : (
               <HubThemeProvider>
