@@ -5,28 +5,27 @@ FiftyOne Server JIT metadata utilities
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from enum import Enum
+import asyncio
 import logging
 import shutil
 import struct
 import typing as t
-
+from enum import Enum
 from functools import reduce
 
-import asyncio
 import aiofiles
-import strawberry as gql
-
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
+import strawberry as gql
+
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-from fiftyone.core.collections import SampleCollection
-from fiftyone.utils.utils3d import OrthographicProjectionMetadata
-from fiftyone.utils.rerun import RrdFile
-
 import fiftyone.core.media as fom
+from fiftyone.core.collections import SampleCollection
+from fiftyone.utils.rerun import RrdFile
+from fiftyone.utils.splats import SplatFile
+from fiftyone.utils.utils3d import OrthographicProjectionMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +34,7 @@ _ADDITIONAL_MEDIA_FIELDS = {
     fol.Segmentation: "mask_path",
     OrthographicProjectionMetadata: "filepath",
     RrdFile: "filepath",
+    SplatFile: "filepath",
 }
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
