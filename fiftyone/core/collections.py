@@ -659,6 +659,20 @@ class SampleCollection(object):
         return self._get_extremum(path, -1)
 
     def _get_extremum(self, path, order):
+        #
+        # This method exists in addition to `min()` and `max()` aggregations
+        # for two reasons:
+        #
+        # 1. `$sort + $limit 1` is more efficient than `$group _id: None` when
+        #    the field is indexed
+        #
+        # 2. When `path` is a frame-level field, these methods are optimized to
+        #    directly aggregate on the frames collection, which is something
+        #    that the Aggregation classes do not yet support. In other words,
+        #    `dataset._max("frames.last_modified_at")` is currently more
+        #    performant than `dataset.max("frames.last_modified_at")`
+        #
+
         path, is_frame_field = self._handle_frame_field(path)
         path = self._handle_db_field(path, frames=is_frame_field)
 
