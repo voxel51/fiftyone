@@ -51,6 +51,7 @@ export default function ManageGroupUserTableRow({
       <TableCell width="50%" sx={isGroup ? { cursor: "pointer" } : {}}>
         <UserCard
           {...(userCardProps ?? {})}
+          id={id}
           name={name}
           email={description ?? email}
           src={picture}
