@@ -363,6 +363,10 @@ def _first(
     if sort:
         pipeline.append({"$match": {path: {"$ne": None}}})
 
+    matched_arrays = _match_arrays(dataset, path, is_frame_field)
+    if matched_arrays:
+        pipeline += matched_arrays
+
     pipeline.append({"$limit": 1})
 
     unwound = _unwind(dataset, path, is_frame_field)
@@ -408,6 +412,25 @@ def _parse_result(data, check=True):
             return value
 
     return None
+
+
+def _match_arrays(dataset: fo.Dataset, path: str, is_frame_field: bool):
+    keys = path.split(".")
+    path = None
+    pipeline = []
+
+    if is_frame_field:
+        path = keys[0]
+        keys = keys[1:]
+
+    for key in keys:
+        path = ".".join([path, key]) if path else key
+        field = dataset.get_field(path)
+        while isinstance(field, fof.ListField):
+            pipeline.append({"$match": {f"{path}.0": {"$exists": True}}})
+            field = field.field
+
+    return pipeline
 
 
 def _unwind(dataset: fo.Dataset, path: str, is_frame_field: bool):
