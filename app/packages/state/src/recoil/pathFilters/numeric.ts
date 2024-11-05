@@ -4,7 +4,6 @@ import * as fos from "../atoms";
 import * as visibilityAtoms from "../attributeVisibility";
 import * as filterAtoms from "../filters";
 import * as pathData from "../pathData";
-import { pathHasIndexes, queryPerformance } from "../queryPerformance";
 import type { Range } from "../utils";
 import { isFilterDefault } from "./utils";
 
@@ -147,14 +146,7 @@ export const boundsAtom = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      if (get(queryPerformance)) {
-        return get(pathHasIndexes(params.path))
-          ? get(pathData.lightningBounds(params.path))
-          : [null, null];
-      }
-
       const bounds = get(pathData.bounds({ ...params, extended: false }));
-
       return bounds ? bounds : [null, null];
     },
 });
