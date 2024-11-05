@@ -92,10 +92,7 @@ class DatasourceConnectorOperator(foo.Operator):
                 **filter_fields_for_type(ctx.params, ImportRequest)
             )
 
-            dataset: fo.Dataset = fo.load_dataset(
-                import_request.dataset_name,
-                create_if_necessary=True,
-            )
+            dataset = self._load_dataset(import_request.dataset_name)
 
             operator_result = self._execute_operator(import_request.operator_uri, ctx)
 
@@ -189,7 +186,9 @@ class DatasourceConnectorOperator(foo.Operator):
         # merge_samples will dedupe with samples already in the dataset, but will fail if there
         #  are duplicate samples within the list being merged.
         unique_samples = self._dedupe_samples(samples)
-        dataset.merge_samples(unique_samples[:max_samples], skip_existing=True, insert_new=True)
+        dataset.merge_samples(
+            unique_samples[:max_samples], skip_existing=True, insert_new=True, progress=False
+        )
 
         return min(len(unique_samples), max_samples)
 
@@ -197,6 +196,13 @@ class DatasourceConnectorOperator(foo.Operator):
         return {
             'params': self._build_params(base_ctx, overrides),
         }
+
+    @staticmethod
+    def _load_dataset(name: str) -> fo.Dataset:
+        if fo.dataset_exists(name):
+            return fo.load_dataset(name)
+        else:
+            return fo.Dataset(name, persistent=True)
 
     @staticmethod
     def _dedupe_samples(samples: list[fo.Sample]) -> list[fo.Sample]:

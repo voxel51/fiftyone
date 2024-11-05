@@ -5,8 +5,9 @@ FiftyOne Data Lens configuration manager.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import uuid
 from dataclasses import asdict
+
+import bson
 
 from fiftyone.operators.data_lens.models import LensConfig
 from fiftyone.operators.data_lens.utils import filter_fields_for_type
@@ -48,7 +49,7 @@ class ConfigManager:
             LensConfig: The updated config.
         """
         if config.id is None:
-            config.id = str(uuid.uuid4())
+            config.id = str(bson.ObjectId())
 
         self._store.set(config.id, self._serialize_config(config))
 
