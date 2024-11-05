@@ -30,6 +30,9 @@ class EvaluationPanel(Panel):
             is_new=is_new("2024-11-07"),
         )
 
+    def get_dataset_id(self, ctx):
+        return str(ctx.dataset._doc.id)
+
     def get_store(self, ctx):
         return ctx.create_store(STORE_NAME)
 
@@ -76,6 +79,7 @@ class EvaluationPanel(Panel):
         ctx.panel.set_data("statuses", statuses)
         ctx.panel.set_data("notes", notes)
         ctx.panel.set_data("permissions", permissions)
+        self.load_pending_evaluations(ctx)
         # keys = ctx.dataset.list_evaluations()
         # ctx.panel.set_state("keys", keys)
 
@@ -266,6 +270,50 @@ class EvaluationPanel(Panel):
         # Used only for triggering re-renders when the view changes
         pass
 
+    def load_pending_evaluations(self, ctx, skip_update=False):
+        store = self.get_store(ctx)
+        dataset_id = self.get_dataset_id(ctx)
+        pending_evaluations = store.get("pending_evaluations") or {}
+        pending = pending_evaluations.get(dataset_id, [])
+        if not skip_update:
+            eval_keys = ctx.dataset.list_evaluations()
+            updated_pending = []
+            update = False
+            for item in pending:
+                pending_eval_key = item.get("eval_key")
+                if pending_eval_key in eval_keys:
+                    update = True
+                else:
+                    updated_pending.append(item)
+            if update:
+                pending_evaluations[dataset_id] = updated_pending
+                store.set("pending_evaluations", pending_evaluations)
+                pending = updated_pending
+        ctx.panel.set_data("pending_evaluations", pending)
+
+    def on_evaluate_model_success(self, ctx):
+        dataset_id = self.get_dataset_id(ctx)
+        store = self.get_store(ctx)
+        result = ctx.params.get("result", {})
+        doc_id = result.get("id")
+        delegated_eval_key = (
+            result.get("context", {}).get("params", {}).get("eval_key")
+        )
+        eval_key = result.get("eval_key", delegated_eval_key)
+        pending = {}
+        if doc_id is None:
+            pending["eval_key"] = eval_key
+        else:
+            pending["doc_id"] = str(doc_id)
+            pending["eval_key"] = eval_key
+
+        pending_evaluations = store.get("pending_evaluations") or {}
+        if dataset_id not in pending_evaluations:
+            pending_evaluations[dataset_id] = []
+        pending_evaluations[dataset_id].append(pending)
+        store.set("pending_evaluations", pending_evaluations)
+        self.load_pending_evaluations(ctx, True)
+
     def on_evaluate_model(self, ctx):
         if not self.can_evaluate(ctx):
             ctx.ops.notify(
@@ -274,7 +322,10 @@ class EvaluationPanel(Panel):
             )
             return
         # Called when you click the "Evaluate Model" button
-        ctx.prompt("@voxel51/evaluation/evaluate_model")
+        ctx.prompt(
+            "@voxel51/operators/evaluate_model_async",
+            on_success=self.on_evaluate_model_success,
+        )
         # ctx.panel.state.view = "eval"
 
     def load_view(self, ctx):
