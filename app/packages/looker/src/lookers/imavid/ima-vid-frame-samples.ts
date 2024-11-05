@@ -1,7 +1,7 @@
 import {
+  ModalSample,
   getSampleSrc,
   getStandardizedUrls,
-  ModalSample,
 } from "@fiftyone/state";
 import { BufferManager } from "@fiftyone/utilities";
 import { LRUCache } from "lru-cache";
@@ -24,12 +24,12 @@ export class ImaVidFrameSamples {
 
   private readonly abortController: AbortController;
 
-  constructor(storeBufferManager: BufferManager) {
+  constructor(cacheSize: number, storeBufferManager: BufferManager) {
     this.storeBufferManager = storeBufferManager;
     this.abortController = new AbortController();
 
     this.samples = new LRUCache<SampleId, ModalSampleExtendedWithImage>({
-      max: MAX_FRAME_SAMPLES_CACHE_SIZE,
+      max: cacheSize || MAX_FRAME_SAMPLES_CACHE_SIZE,
       dispose: (_modal, sampleId) => {
         // remove it from the frame index
         const frameNumber = this.reverseFrameIndex.get(sampleId);

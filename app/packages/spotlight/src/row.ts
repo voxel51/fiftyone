@@ -119,8 +119,8 @@ export default class Row<K, V> {
     return this.#row[this.#row.length - ONE].item.id;
   }
 
-  destroy() {
-    this.#destroyItems();
+  destroy(destroyItems = false) {
+    destroyItems && this.#destroyItems();
     this.#aborter.abort();
   }
 
@@ -138,8 +138,11 @@ export default class Row<K, V> {
       throw new Error("row is not attached");
     }
 
+    if (!this.#config.retainItems) {
+      this.#destroyItems();
+    }
+
     this.#container.remove();
-    this.#destroyItems();
   }
 
   show(

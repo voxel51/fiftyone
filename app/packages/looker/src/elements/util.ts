@@ -2,8 +2,8 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { BaseState, StateUpdate } from "../state";
-import { BaseElement, Events } from "./base";
+import type { BaseState, StateUpdate } from "../state";
+import type { BaseElement, Events } from "./base";
 
 export const FRAME_ZERO_OFFSET = 1;
 
@@ -31,7 +31,7 @@ type ElementConstructor<
   Element extends BaseElement<State>
 > = new () => Element;
 
-interface ElementsTemplate<
+export interface ElementsTemplate<
   State extends BaseState,
   Element extends BaseElement<State> = BaseElement<State>
 > {
@@ -42,30 +42,25 @@ interface ElementsTemplate<
 export function createElementsTree<
   State extends BaseState,
   Element extends BaseElement<State> = BaseElement<State>
->(
-  config: Readonly<State["config"]>,
-  root: ElementsTemplate<State, Element>,
-  update: StateUpdate<State>,
-  dispatchEvent: (eventType: string, details?: any) => void,
-  batchUpdate?: (cb: () => unknown) => void
-): Element {
-  const element = new root.node();
-  element.boot(config, update, dispatchEvent, batchUpdate);
+>(params: {
+  abortController: AbortController;
+  batchUpdate?: (cb: () => unknown) => void;
+  config: Readonly<State["config"]>;
+  dispatchEvent: (eventType: string, details?: any) => void;
+  root: ElementsTemplate<State, Element>;
+  update: StateUpdate<State>;
+}): Element {
+  const element = new params.root.node();
+  element.boot(params);
 
-  if (!element.isShown(config)) {
+  if (!element.isShown(params.config)) {
     return element;
   }
 
   let children = new Array<BaseElement<State>>();
-  children = root.children
-    ? root.children.map((child) =>
-        createElementsTree<State>(
-          config,
-          child,
-          update,
-          dispatchEvent,
-          batchUpdate
-        )
+  children = params.root.children
+    ? params.root.children.map((child) =>
+        createElementsTree<State>({ ...params, root: child })
       )
     : children;
 
@@ -74,10 +69,7 @@ export function createElementsTree<
   return element;
 }
 
-const stringifyNumber = function (
-  number: number,
-  pad: boolean = false
-): string {
+const stringifyNumber = (number: number, pad = false): string => {
   let str = "";
   if (pad && number < 10) {
     str += "0" + number;
@@ -94,13 +86,14 @@ export const getFrameNumber = (
   duration: number,
   frameRate: number
 ): number => {
+  let stamp = time;
   const frameDuration = 1 / frameRate;
 
   // account for exact end of video
   if (time === duration) {
-    time -= 0.1 * frameDuration;
+    stamp -= 0.1 * frameDuration;
   }
-  return Math.floor(time * frameRate + FRAME_ZERO_OFFSET);
+  return Math.floor(stamp * frameRate + FRAME_ZERO_OFFSET);
 };
 
 export const getClampedTime = (
@@ -112,9 +105,7 @@ export const getClampedTime = (
 };
 
 export const getTime = (frameNumber: number, frameRate: number): number => {
-  frameNumber -= 1;
-
-  return (frameNumber + 0.01) / frameRate;
+  return (frameNumber - 1 + 0.01) / frameRate;
 };
 
 export const getFrameString = (

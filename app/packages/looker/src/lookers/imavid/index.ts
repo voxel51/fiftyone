@@ -66,7 +66,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   }
 
   destroy() {
-    this.unsubscribe && this.unsubscribe();
+    this.unsubscribe?.();
     this.frameStoreController.pauseFetch();
     this.pause();
     super.destroy();
@@ -87,12 +87,13 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   }
 
   getElements(config) {
-    const elements = getImaVidElements(
+    const elements = getImaVidElements({
+      abortController: this.abortController,
+      batchUpdate: this.batchUpdater.bind(this),
       config,
-      this.updater.bind(this),
-      this.getDispatchEvent(),
-      this.batchUpdater.bind(this)
-    );
+      update: this.updater.bind(this),
+      dispatchEvent: this.getDispatchEvent(),
+    });
     this.elements = elements;
     return elements;
   }

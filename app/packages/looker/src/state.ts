@@ -203,6 +203,7 @@ export interface BaseConfig {
   sampleId: string;
   symbol: symbol;
   fieldSchema: Schema;
+  isDynamicGroup: boolean;
   view: Stage[];
   dataset: string;
   group?: {
@@ -221,6 +222,7 @@ export type ImageConfig = BaseConfig;
 export interface VideoConfig extends BaseConfig {
   enableTimeline: boolean;
   frameRate: number;
+  maxFrameStreamSize?: number;
   support?: [number, number];
 }
 
@@ -354,6 +356,7 @@ export interface VideoState extends BaseState {
   SHORTCUTS: Readonly<ControlMap<VideoState>>;
   hasPoster: boolean;
   waitingForVideo: boolean;
+  waitingToStream: boolean;
   lockedToSupport: boolean;
 }
 

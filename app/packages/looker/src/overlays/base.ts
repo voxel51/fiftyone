@@ -4,7 +4,7 @@
 
 import { getCls } from "@fiftyone/utilities";
 import { BaseState, Coordinates, NONFINITE } from "../state";
-import { getLabelColor, shouldShowLabelTag, sizeBytes } from "./util";
+import { getLabelColor, shouldShowLabelTag } from "./util";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
 export enum CONTAINS {
@@ -66,7 +66,6 @@ export interface Overlay<State extends Partial<BaseState>> {
   getPointInfo(state: Readonly<State>): any;
   getSelectData(state: Readonly<State>): SelectData;
   getPoints(state: Readonly<State>): Coordinates[];
-  getSizeBytes(): number;
 }
 
 export abstract class CoordinateOverlay<
@@ -125,10 +124,6 @@ export abstract class CoordinateOverlay<
   abstract getPointInfo(state: Readonly<State>): PointInfo<Label>;
 
   abstract getPoints(state: Readonly<State>): Coordinates[];
-
-  getSizeBytes(): number {
-    return sizeBytes(this.label);
-  }
 
   getSelectData(state: Readonly<State>): SelectData {
     return {

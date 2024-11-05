@@ -2,11 +2,12 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { ImageState } from "../state";
-import { BaseElement, Events } from "./base";
+import type { ImageState } from "../state";
+import type { Events } from "./base";
+import { BaseElement } from "./base";
 
 export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
-  private src: string = "";
+  private src = "";
   private imageSource: HTMLImageElement;
 
   getEvents(): Events<ImageState> {

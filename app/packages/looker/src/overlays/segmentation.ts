@@ -13,7 +13,7 @@ import {
   SelectData,
   isShown,
 } from "./base";
-import { isRgbMaskTargets, sizeBytes, strokeCanvasRect, t } from "./util";
+import { isRgbMaskTargets, strokeCanvasRect, t } from "./util";
 
 interface SegmentationLabel extends BaseLabel {
   mask?: {
@@ -250,10 +250,6 @@ export default class SegmentationOverlay<State extends BaseState>
 
   getPoints(): Coordinates[] {
     return getSegmentationPoints([]);
-  }
-
-  getSizeBytes(): number {
-    return sizeBytes(this.label);
   }
 
   private getIndex(state: Readonly<State>): number {
