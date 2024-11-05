@@ -38,6 +38,7 @@ const BasicDatePicker: React.FC<DatePickerProps> = ({
           minDate={minDate}
           maxDate={maxDate}
           format={format}
+          slotProps={{ popper: { placement: "right-end" } }}
         />
       ) : (
         <DatePicker
@@ -49,6 +50,7 @@ const BasicDatePicker: React.FC<DatePickerProps> = ({
           minDate={minDate}
           maxDate={maxDate}
           format={format}
+          slotProps={{ popper: { placement: "right-end" } }}
         />
       )}
     </LocalizationProvider>

@@ -15,8 +15,9 @@ dayjs.extend(timezone);
 
 const Container = styled.div`
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
-  column-gap: 1rem;
+  row-gap: 1rem;
   background: ${({ theme }) => theme.background.level2};
   border: 1px solid var(--fo-palette-divider);
   border-radius: 2px;
