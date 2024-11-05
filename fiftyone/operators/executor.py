@@ -462,7 +462,7 @@ async def resolve_type(
         return ExecutionResult(error=traceback.format_exc())
 
 
-async def resolve_type_with_context(request_params, target: str = None):
+async def resolve_type_with_context(request_params, target=None):
     """Resolves the "inputs" or "outputs" schema of an operator with the given
     context.
 
@@ -819,6 +819,13 @@ class ExecutionContext(contextlib.AbstractContextManager):
         return self.user.id if self.user else None
 
     @property
+    def user_request_token(self):
+        """The request token authenticating the user executing the operation,
+        if known.
+        """
+        return self.user._request_token if self.user else None
+
+    @property
     def panel_id(self):
         """The ID of the panel that invoked the operator, if any."""
         # @todo: move panel_id to top level param
@@ -882,11 +889,6 @@ class ExecutionContext(contextlib.AbstractContextManager):
     def group_slice(self):
         """The current group slice of the view (if any)."""
         return self.request_params.get("group_slice", None)
-
-    @property
-    def user_request_token(self):
-        """The request token authenticating the user executing the operation."""
-        return self.user._request_token if self.user else None
 
     def __enter__(self):
         if self.__context_tokens:

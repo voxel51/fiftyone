@@ -88,6 +88,11 @@ When running inference with OpenCLIP, you can specify a text prompt to help
 guide the model towards a solution as well as only specify a certain number of
 classes to output during zero shot classification.
 
+.. note::
+
+    While OpenCLIP models are typically set to train mode by default, the FiftyOne
+    integration sets the model to eval mode before running inference.
+
 For example we can run inference as such:
 
 .. code-block:: python
