@@ -133,6 +133,7 @@ class Panel(Operator):
             "beta": self.config.beta,
             "is_new": self.config.is_new,
             "priority": self.config.priority,
+            "_builtin": self._builtin,
         }
         methods = ["on_load", "on_unload", "on_change"]
         ctx_change_events = [

@@ -324,6 +324,7 @@ class Operations(object):
         on_change_group_slice=None,
         allow_duplicates=False,
         priority=None,
+        _builtin=False,
     ):
         """Registers a panel with the given name and lifecycle callbacks.
 
@@ -370,6 +371,7 @@ class Operations(object):
             allow_duplicates (False): whether to allow multiple instances of
                 the panel to the opened
             priority (None): the priority of the panel, used for sort order
+            _builtin (False): whether the panel is a builtin panel
         """
         params = {
             "panel_name": name,
@@ -397,6 +399,7 @@ class Operations(object):
             "on_change_group_slice": on_change_group_slice,
             "allow_duplicates": allow_duplicates,
             "priority": priority,
+            "_builtin": _builtin,
         }
         return self._ctx.trigger("register_panel", params=params)
 

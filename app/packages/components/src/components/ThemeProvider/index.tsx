@@ -134,6 +134,7 @@ let theme = extendMuiTheme({
           popup: "hsl(200, 0%, 20%)",
           field: "hsl(200, 0%, 20%, 0.3)",
           activeCell: "hsl(200, 0%, 25%)",
+          card: "hsl(200, 0%, 16%)",
         },
         divider: "hsl(200, 0%, 20%)",
         dividerDisabled: "hsl(200, 0%, 15%)",
@@ -195,6 +196,14 @@ let theme = extendMuiTheme({
       defaultProps: {
         disableRipple: true,
       },
+    },
+    MuiButton: {
+      variants: [
+        {
+          props: { variant: "contained" },
+          style: { color: "#ffffff" },
+        },
+      ],
     },
     MuiModal: {
       styleOverrides: {
