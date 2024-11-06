@@ -89,6 +89,7 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
               color: theme.text.secondary,
               borderRadius: "8px",
               border: "1px solid " + theme.secondary.main,
+              height: "30px",
             }}
           >
             Filter by {name}

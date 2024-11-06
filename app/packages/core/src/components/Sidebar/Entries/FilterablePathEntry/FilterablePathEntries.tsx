@@ -1,29 +1,8 @@
 import { pathColor } from "@fiftyone/state";
-import React, { useEffect } from "react";
+import React from "react";
 import { useRecoilValue } from "recoil";
 import FilterItem from "./FilterItem";
 import useFilterData from "./useFilterData";
-
-const TIMEOUT = 0;
-
-class QueryPerformanceToast extends Event {
-  path?: string;
-  constructor(path?: string) {
-    super("queryperformance");
-    this.path = path;
-  }
-}
-
-const QueryPerformanceDispatcher = ({ path }: { path: string }) => {
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      window.dispatchEvent(new QueryPerformanceToast(path));
-    }, TIMEOUT);
-
-    return () => clearTimeout(timeout);
-  }, [path]);
-  return null;
-};
 
 const FilterablePathEntries = ({
   modal,
