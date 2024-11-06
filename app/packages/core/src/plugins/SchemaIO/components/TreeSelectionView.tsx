@@ -189,7 +189,7 @@ export default function TreeSelectionView(props: ViewPropsType) {
     structure: [string, (string | [string, string[]])[]][]
   ): number => {
     const idx = structure.findIndex(([id]) => id === groupId);
-    return idx === -1 ? 0 : idx;
+    return idx === -1 ? 0 : idx + 1;
   };
 
   // CheckboxView: Represents a single checkbox (either parent or child)
