@@ -27,8 +27,16 @@ Zoo
   :ref:`in the zoo <model-zoo-models>` for easier navigation
   `#4899 <https://github.com/voxel51/fiftyone/pull/4899>`_
 
+Core
+
+- Fixed input shape in the depth estimation transformer
+  `#5035 <https://github.com/voxel51/fiftyone/pull/5035>`_
+- Added graceful handling of empty datasets when computing embeddings
+  `#5043 <https://github.com/voxel51/fiftyone/pull/5043>`_
+
 App
 
+- Improved memo
 - Added a new :ref:`TimelineView <fiftyone.operators.types.TimelineView>` for
   building custom animations
   `#4965 <https://github.com/voxel51/fiftyone/pull/4965>`_
@@ -36,6 +44,14 @@ App
   `#4956 <https://github.com/voxel51/fiftyone/pull/4956>`_
 - Fixed bug where timeline name wasn't being forwarded in seek utils
   `#4975 <https://github.com/voxel51/fiftyone/pull/4975>`_
+- Performance improvements in the grid and modal
+  `#5009 <https://github.com/voxel51/fiftyone/pull/5009>`_
+  `#5015 <https://github.com/voxel51/fiftyone/pull/5015>`_
+  `#5018 <https://github.com/voxel51/fiftyone/pull/5018>`_
+  `#5019 <https://github.com/voxel51/fiftyone/pull/5019>`_
+  `#5022 <https://github.com/voxel51/fiftyone/pull/5022>`_
+- Fixed batch selection with ctrl + click in the grid
+  `#5046 <https://github.com/voxel51/fiftyone/pull/5046>`_
 
 FiftyOne Teams 2.1.2
 --------------------
