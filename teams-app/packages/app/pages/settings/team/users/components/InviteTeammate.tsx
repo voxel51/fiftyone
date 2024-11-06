@@ -27,6 +27,7 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
   const { hasSeatsLeft } = useUserAudit();
   const [errorMsg, setErrorMsg] = useState(null);
   const [url, setUrl] = useState("");
+  const [emailSendAttempted, setEmailSendAttempted] = useState(false);
   const [sendInvite, sendInviteInProgress] =
     useMutation<teamSendUserInvitationMutationType>(
       teamSendUserInvitationMutation
@@ -53,6 +54,8 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
     resetInvitee();
     setInvitationForm({ email: "", id: "", role: "MEMBER" });
     setUrl("");
+    setEmailSendAttempted(false);
+    setErrorMsg(null);
     setOpen(false);
     setInviteSent(false);
   }
@@ -69,7 +72,7 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
       }}
       onConfirm={() => {
         sendInvite({
-          successMessage: `Successfully created an invitation`,
+          successMessage: `Successfully invited ${email}`,
           variables: { email, role },
           onCompleted(data) {
             if (onInvite) onInvite(data);
@@ -82,14 +85,18 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
             }
           },
           onSuccess(data) {
-            setUrl(data.sendUserInvitation.url);
-            setInviteSent(true);
+            console.log("sendUserInvitation", data.sendUserInvitation);
+            const { url, emailSendAttemptedAt, emailSentAt } =
+              data.sendUserInvitation;
+            setUrl(url);
+            setEmailSendAttempted(!!emailSendAttemptedAt);
+            setInviteSent(!!emailSendAttemptedAt && !!emailSentAt);
           },
           onError(error) {
             const msg =
               error?.source?.errors[0]?.message ||
               error?.message ||
-              "An unknown error occured";
+              "An unknown error occurred";
             setErrorMsg(msg);
           },
         });
@@ -102,7 +109,7 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
         (hasSeatsLeft && !hasSeatsLeft(role)) ||
         (currInvitee && currInvitee.role === role) ||
         selectionNotValid ||
-        (inviteSent && url.length > 0)
+        url.length > 0
       }
       confirmationButtonText={"Send invitation"}
     >
@@ -117,6 +124,8 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
             setErrorMsg(null);
             setInvitationForm({ ...invitationForm, email: e.target.value });
             setUrl("");
+            setInviteSent(false);
+            setEmailSendAttempted(false);
           }}
           type="email"
           value={email}
@@ -130,10 +139,14 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
           onChange={(role) => {
             setInvitationForm({ ...invitationForm, role });
             setUrl("");
+            setInviteSent(false);
+            setEmailSendAttempted(false);
           }}
         />
       </Box>
-      {hasInvitationLink && <InviteUrl url={url} />}
+      {hasInvitationLink && !inviteSent && (
+        <InviteUrl url={url} emailSendAttempted={emailSendAttempted} />
+      )}
     </Dialog>
   );
 }

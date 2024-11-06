@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<61b6039f6a071a63caa07875aae33015>>
+ * @generated SignedSource<<df1836212f8a3b210b04ef8b23601873>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,8 +18,8 @@ export type teamSendUserInvitationMutation$data = {
   readonly sendUserInvitation: {
     readonly __typename: "Invitation";
     readonly createdAt: string;
-    readonly emailSendAttemptedAt: string;
-    readonly emailSentAt: string;
+    readonly emailSendAttemptedAt: string | null;
+    readonly emailSentAt: string | null;
     readonly expiresAt: string;
     readonly id: string;
     readonly inviteeEmail: string;

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<24d7c5c6d6a0fa436ec8318f954c0d89>>
+ * @generated SignedSource<<4113ceaf4535195e6ebfbf2f5941e922>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,8 +14,8 @@ export type teamInvitationsQuery$variables = {};
 export type teamInvitationsQuery$data = {
   readonly invitations: ReadonlyArray<{
     readonly createdAt: string;
-    readonly emailSendAttemptedAt: string;
-    readonly emailSentAt: string;
+    readonly emailSendAttemptedAt: string | null;
+    readonly emailSentAt: string | null;
     readonly expiresAt: string;
     readonly id: string;
     readonly inviteeEmail: string;
