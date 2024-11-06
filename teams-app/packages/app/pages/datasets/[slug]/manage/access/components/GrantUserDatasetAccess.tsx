@@ -161,7 +161,7 @@ function GrantUserDatasetAccess() {
           }}
         >
           <Typography variant="subtitle1" color="error">
-            No seat left for this permission {userStatePermission}
+            No seats available for this permission {userStatePermission}
           </Typography>
         </Box>
       )}
