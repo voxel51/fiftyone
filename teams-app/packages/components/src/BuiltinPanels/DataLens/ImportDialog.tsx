@@ -265,7 +265,13 @@ export const ImportDialog = ({
           >
             <MenuList>
               {importOptions.map((option) => (
-                <MenuItem key={option.label} onClick={option.onClick}>
+                <MenuItem
+                  key={option.label}
+                  onClick={() => {
+                    setIsImportMenuOpen(false);
+                    option.onClick();
+                  }}
+                >
                   <Stack direction="column" spacing={1}>
                     <Typography fontWeight="bold">{option.label}</Typography>
                     <Typography color="secondary">
