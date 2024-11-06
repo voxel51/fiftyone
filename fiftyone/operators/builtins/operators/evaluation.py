@@ -72,6 +72,37 @@ class EvaluateModel(foo.Operator):
         ctx.trigger("reload_dataset")
 
 
+class EvaluateModelAsync(foo.Operator):
+    def __init__(self, _builtin=False):
+        super().__init__(_builtin)
+        self.em = EvaluateModel()
+
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="evaluate_model_async",
+            label="Evaluate model async",
+            light_icon="/assets/icon-light.svg",
+            dark_icon="/assets/icon-dark.svg",
+            dynamic=True,
+            # unlisted=True,
+        )
+
+    def resolve_input(self, ctx):
+        return self.em.resolve_input(ctx)
+
+    def resolve_delegation(self, ctx):
+        return self.em.resolve_delegation(ctx)
+
+    def execute(self, ctx):
+        delegated = ctx.params.get("delegate", False)
+        eval_key = ctx.params.get("eval_key", None)
+        if delegated:
+            return self.em.execute(ctx)
+        ctx.trigger("@voxel51/operators/evaluate_model", params=ctx.params)
+        return {"eval_key": eval_key}
+
+
 def evaluate_model(ctx, inputs):
     target_view = get_target_view(ctx, inputs)
 

@@ -16,6 +16,7 @@ STATUS_LABELS = {
 }
 EVALUATION_TYPES_WITH_CONFIDENCE = ["detection", "classification"]
 EVALUATION_TYPES_WITH_IOU = ["detection"]
+EDIT_PERMISSIONS = ["MANAGE", "EDIT"]
 
 
 class EvaluationPanel(Panel):
@@ -43,10 +44,11 @@ class EvaluationPanel(Panel):
             return None
 
     def get_permissions(self, ctx):
+        can_edit = ctx.user.dataset_permission in EDIT_PERMISSIONS
         return {
-            "can_evaluate": True,
-            "can_edit_note": True,
-            "can_edit_status": True,
+            "can_evaluate": can_edit,
+            "can_edit_note": can_edit,
+            "can_edit_status": can_edit,
         }
 
     def can_evaluate(self, ctx):

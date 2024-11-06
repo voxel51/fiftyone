@@ -21,7 +21,7 @@ from fiftyone.operators.panels import (
     QueryPerformancePanel,
 )
 from fiftyone.operators.utils import create_summary_field_inputs
-from .builtins.operators.evaluation import EvaluateModel
+from .builtins.operators.evaluation import EvaluateModel, EvaluateModelAsync
 from fiftyone.operators.builtins.panels.model_evaluation import EvaluationPanel
 
 
@@ -2227,6 +2227,7 @@ BUILTIN_OPERATORS = (
         SyncLastModifiedAt(_builtin=True),
         ListFiles(_builtin=True),
         EvaluateModel(_builtin=True),
+        EvaluateModelAsync(_builtin=True),
     ]
     + DATA_QUALITY_OPERATORS
     + QUERY_PERFORMANCE_OPERATORS
