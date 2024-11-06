@@ -29,6 +29,7 @@ export interface PointInfo<Label extends BaseLabel = BaseLabel> {
     attributes: [string, unknown][];
     coordinates: Coordinates;
   };
+  instance?: bigint | number;
   target?: number;
   type: string;
 }
