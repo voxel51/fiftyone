@@ -31,6 +31,7 @@ export interface CustomPanelProps {
   dimensions: DimensionsType | null;
   panelName?: string;
   panelLabel?: string;
+  isModalPanel?: boolean;
 }
 
 export interface CustomPanelHooks {
