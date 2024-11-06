@@ -6,7 +6,7 @@ import FilterItem from "./FilterItem";
 import useFilterData from "./useFilterData";
 
 const LABEL_TAGS = "_label_tags";
-const TIMEOUT = 5000;
+const TIMEOUT = 0;
 
 class QueryPerformanceToast extends Event {
   path?: string;
@@ -35,7 +35,7 @@ const QueryPerformanceSubscriber = ({ path }: { path: string }) => {
 const QueryPerformance = ({ path }: { path: string }) => {
   const queryPerformance = useRecoilValue(fos.queryPerformance);
 
-  if (queryPerformance || path === LABEL_TAGS || !path) {
+  if (!queryPerformance || path === LABEL_TAGS || !path) {
     return null;
   }
 
