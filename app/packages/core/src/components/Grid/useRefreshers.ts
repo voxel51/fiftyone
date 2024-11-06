@@ -88,8 +88,7 @@ export default function useRefreshers() {
         looker.destroy();
       },
       max: MAX_LRU_CACHE_ITEMS,
-      maxSize: MAX_LRU_CACHE_SIZE,
-      sizeCalculation: () => {},
+      noDisposeOnSet: true,
     });
   }, [reset]);
 
