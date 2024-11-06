@@ -1,12 +1,13 @@
 import { Toast } from "@fiftyone/components";
-import { QP_MODE } from "@fiftyone/core";
+import { QP_MODE, QP_MODE_SUMMARY } from "@fiftyone/core";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { Box, Button, Typography } from "@mui/material";
 import { Bolt } from "@mui/icons-material";
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { atom, useRecoilState } from "recoil";
+import { atom, useRecoilState, useRecoilValue } from "recoil";
 import { useTheme } from "@fiftyone/components";
+import * as atoms from "@fiftyone/state/src/recoil/atoms";
 
 const SHOWN_FOR = 10000;
 
@@ -22,19 +23,27 @@ const hideQueryPerformanceToast = atom({
 });
 
 const QueryPerformanceToast = ({
-  onClick = () => window.open(QP_MODE, "_blank")?.focus(),
+  onClick = (isFrameFilter: boolean) => {
+    const link = isFrameFilter ? QP_MODE_SUMMARY : QP_MODE;
+    window.open(link, "_blank")?.focus();
+  },
   onDispatch = (event) => {
     console.debug(event);
   },
   text = "View Documentation",
 }) => {
+  const [path, setPath] = useState("");
   const [shown, setShown] = useState(false);
   const [disabled, setDisabled] = useRecoilState(hideQueryPerformanceToast);
   const element = document.getElementById("queryPerformance");
   const theme = useTheme();
+  const frameFields = useRecoilValue(atoms.frameFields);
+  console.log(frameFields);
+  console.log(path);
   useEffect(() => {
     const listen = (event) => {
       onDispatch(event);
+      setPath(event.path);
       setShown(true);
     };
     window.addEventListener("queryperformance", listen);
@@ -64,7 +73,11 @@ const QueryPerformanceToast = ({
             variant="contained"
             size="small"
             onClick={() => {
-              onClick();
+              onClick(
+                frameFields.some((frame) =>
+                  path.includes(`frames.${frame.path}`)
+                )
+              );
               setOpen(false);
             }}
             sx={{
