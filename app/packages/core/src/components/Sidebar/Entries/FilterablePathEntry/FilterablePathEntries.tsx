@@ -1,11 +1,9 @@
-import * as fos from "@fiftyone/state";
-import { count, pathColor } from "@fiftyone/state";
-import React, { Suspense, useEffect } from "react";
+import { pathColor } from "@fiftyone/state";
+import React, { useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import FilterItem from "./FilterItem";
 import useFilterData from "./useFilterData";
 
-const LABEL_TAGS = "_label_tags";
 const TIMEOUT = 0;
 
 class QueryPerformanceToast extends Event {
@@ -27,25 +25,6 @@ const QueryPerformanceDispatcher = ({ path }: { path: string }) => {
   return null;
 };
 
-const QueryPerformanceSubscriber = ({ path }: { path: string }) => {
-  useRecoilValue(count({ extended: false, modal: false, path }));
-  return null;
-};
-
-const QueryPerformance = ({ path }: { path: string }) => {
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
-
-  if (!queryPerformance || path === LABEL_TAGS || !path) {
-    return null;
-  }
-
-  return (
-    <Suspense fallback={<QueryPerformanceDispatcher path={path} />}>
-      <QueryPerformanceSubscriber path={path} />
-    </Suspense>
-  );
-};
-
 const FilterablePathEntries = ({
   modal,
   path,
@@ -61,12 +40,9 @@ const FilterablePathEntries = ({
 
   return (
     <>
-      {!modal && <QueryPerformance path={path} />}
-      <>
-        {data.map(({ color: _, ...props }) => (
-          <FilterItem key={props.path} color={color} {...events} {...props} />
-        ))}
-      </>
+      {data.map(({ color: _, ...props }) => (
+        <FilterItem key={props.path} color={color} {...events} {...props} />
+      ))}
     </>
   );
 };

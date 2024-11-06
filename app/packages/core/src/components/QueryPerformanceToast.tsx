@@ -8,7 +8,7 @@ import { createPortal } from "react-dom";
 import { atom, useRecoilState } from "recoil";
 import { useTheme } from "@fiftyone/components";
 
-const SHOWN_FOR = 5000;
+const SHOWN_FOR = 10000;
 
 const hideQueryPerformanceToast = atom({
   key: "hideQueryPerformanceToast",
@@ -16,6 +16,7 @@ const hideQueryPerformanceToast = atom({
   effects: [
     getBrowserStorageEffectForKey("hideQueryPerformanceToast", {
       valueClass: "boolean",
+      sessionStorage: true,
     }),
   ],
 });
