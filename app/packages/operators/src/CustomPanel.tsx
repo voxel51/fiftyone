@@ -16,7 +16,7 @@ import { CustomPanelProps, useCustomPanelHooks } from "./useCustomPanelHooks";
 import { useTrackEvent } from "@fiftyone/analytics";
 
 export function CustomPanel(props: CustomPanelProps) {
-  const { panelId, dimensions, panelName, panelLabel } = props;
+  const { panelId, dimensions, panelName, panelLabel, isModalPanel } = props;
   const { height, width } = dimensions?.bounds || {};
   const { count } = useActivePanelEventsCount(panelId);
   const [_, setLoading] = usePanelLoading(panelId);
@@ -89,6 +89,7 @@ export function CustomPanel(props: CustomPanelProps) {
             layout={{ height, width }}
             onPathChange={handlePanelStatePathChange}
             shouldClearUseKeyStores={false}
+            isModalPanel={isModalPanel}
           />
         </DimensionRefresher>
       </Box>
@@ -122,24 +123,28 @@ export function defineCustomPanel({
   panel_name,
   panel_label,
 }) {
-  return ({ panelNode, dimensions }) => (
-    <CustomPanel
-      panelId={panelNode?.id}
-      onLoad={on_load}
-      onUnLoad={on_unload}
-      onChange={on_change}
-      onChangeCtx={on_change_ctx}
-      onChangeView={on_change_view}
-      onChangeDataset={on_change_dataset}
-      onChangeCurrentSample={on_change_current_sample}
-      onChangeSelected={on_change_selected}
-      onChangeSelectedLabels={on_change_selected_labels}
-      onChangeExtendedSelection={on_change_extended_selection}
-      onChangeGroupSlice={on_change_group_slice}
-      onChangeSpaces={on_change_spaces}
-      dimensions={dimensions}
-      panelName={panel_name}
-      panelLabel={panel_label}
-    />
-  );
+  return (props) => {
+    const { dimensions, panelNode, isModalPanel } = props;
+    return (
+      <CustomPanel
+        panelId={panelNode?.id}
+        onLoad={on_load}
+        onUnLoad={on_unload}
+        onChange={on_change}
+        onChangeCtx={on_change_ctx}
+        onChangeView={on_change_view}
+        onChangeDataset={on_change_dataset}
+        onChangeCurrentSample={on_change_current_sample}
+        onChangeSelected={on_change_selected}
+        onChangeSelectedLabels={on_change_selected_labels}
+        onChangeExtendedSelection={on_change_extended_selection}
+        onChangeGroupSlice={on_change_group_slice}
+        onChangeSpaces={on_change_spaces}
+        dimensions={dimensions}
+        panelName={panel_name}
+        panelLabel={panel_label}
+        isModalPanel={isModalPanel}
+      />
+    );
+  };
 }
