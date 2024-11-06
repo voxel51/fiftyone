@@ -1691,14 +1691,24 @@ class SaveView(foo.Operator):
         name = ctx.params.get("name", None)
         description = ctx.params.get("description", None)
         color = ctx.params.get("color", None)
+        view = ctx.params.get("view", None)
+
+        curr_view = view is None
+        if curr_view:
+            view = ctx.view
+        else:
+            view = _parse_view(ctx, view)
 
         ctx.dataset.save_view(
             name,
-            ctx.view,
+            view,
             description=description,
             color=color,
             overwrite=True,
         )
+
+        if curr_view:
+            ctx.ops.set_view(name=name)
 
 
 class EditSavedViewInfo(foo.Operator):
@@ -1725,8 +1735,13 @@ class EditSavedViewInfo(foo.Operator):
         description = ctx.params.get("description", None)
         color = ctx.params.get("color", None)
 
+        curr_name = ctx.view.name
         info = dict(name=new_name, description=description, color=color)
+
         ctx.dataset.update_saved_view_info(name, info)
+
+        if curr_name is not None and curr_name != new_name:
+            ctx.ops.set_view(name=new_name)
 
 
 def _edit_saved_view_info_inputs(ctx, inputs):
@@ -1817,7 +1832,7 @@ class DeleteSavedView(foo.Operator):
             inputs.enum(
                 "name",
                 saved_view_selector.values(),
-                default=None,
+                default=ctx.view.name,
                 required=True,
                 label="Saved view",
                 description="The saved view to delete",
@@ -1838,7 +1853,11 @@ class DeleteSavedView(foo.Operator):
     def execute(self, ctx):
         name = ctx.params["name"]
 
+        curr_view = name == ctx.view.name
         ctx.dataset.delete_saved_view(name)
+
+        if curr_view:
+            ctx.ops.set_view(view=ctx.dataset.view())
 
 
 class ListWorkspaces(foo.Operator):
@@ -2286,6 +2305,13 @@ def _get_non_default_frame_fields(dataset):
         schema.pop(path, None)
 
     return schema
+
+
+def _parse_view(ctx, view):
+    if isinstance(view, str):
+        view = json.loads(view)
+
+    return fo.DatasetView._build(ctx.dataset, view)
 
 
 def _parse_spaces(ctx, spaces):
