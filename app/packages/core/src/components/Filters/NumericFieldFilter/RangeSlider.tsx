@@ -8,6 +8,7 @@ import FilterOption from "./FilterOption";
 import Nonfinites from "./Nonfinites";
 import Reset from "./Reset";
 import * as state from "./state";
+import Boxes from "./Boxes";
 
 const Container = styled.div`
   background: ${({ theme }) => theme.background.level2};
