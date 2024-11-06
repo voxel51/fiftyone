@@ -622,11 +622,9 @@ class Object(BaseType):
         """
         tree_selection_view = TreeSelectionView(**kwargs)
         tree_type = Object(*items)
-        print("tree", items, tree_type)
         self.define_property(
             name, tree_type, view=tree_selection_view, **kwargs
         )
-        print("tree_type", tree_type)
         return tree_type
 
     def clone(self):
@@ -1437,14 +1435,12 @@ class TupleView(View):
 class TreeSelectionView(View):
     """Displays a tree structure of selection checkboxes of :class:`View` instances."""
 
-    def __init__(self, *itemsView, **options):
+    def __init__(self, **options):
         super().__init__(**options)
-        self.items = itemsView
 
     def to_json(self):
         return {
             **super().to_json(),
-            "items": [item.to_json() for item in self.items],
         }
 
 

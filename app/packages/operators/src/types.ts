@@ -790,16 +790,12 @@ export class TreeSelectionView extends View {
   items: Array<View>;
   constructor(options: ViewProps) {
     super(options);
-    this.items = options.items as Array<View>;
-    console.log("tree selection view", this.items);
     this.name = "TreeSelectionView";
   }
 
   static fromJSON(json) {
-    console.log("fromJson", json, json.items.map(viewFromJSON));
     return new TreeSelectionView({
       ...json,
-      items: json.items.map(viewFromJSON),
     });
   }
 }
