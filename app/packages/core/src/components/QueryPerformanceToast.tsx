@@ -9,6 +9,7 @@ import { atom, useRecoilState, useRecoilValue } from "recoil";
 import { useTheme } from "@fiftyone/components";
 import * as atoms from "@fiftyone/state/src/recoil/atoms";
 import * as fos from "@fiftyone/state";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 const SHOWN_FOR = 10000;
 
@@ -40,6 +41,7 @@ const QueryPerformanceToast = ({
   const element = document.getElementById("queryPerformance");
   const theme = useTheme();
   const frameFields = useRecoilValue(atoms.frameFields);
+  const trackEvent = useTrackEvent();
 
   useEffect(() => {
     const listen = (event) => {
@@ -84,6 +86,7 @@ const QueryPerformanceToast = ({
                   path.includes(`frames.${frame.path}`)
                 )
               );
+              trackEvent("query_performance_toast_clicked", { path: path });
               setShown(false);
             }}
             sx={{
@@ -107,6 +110,7 @@ const QueryPerformanceToast = ({
               size="small"
               onClick={() => {
                 setDisabled(true);
+                trackEvent("query_performance_toast_dismissed", { path: path });
                 setShown(false);
               }}
               style={{ marginLeft: "auto", color: theme.text.secondary }} // Right align the button
