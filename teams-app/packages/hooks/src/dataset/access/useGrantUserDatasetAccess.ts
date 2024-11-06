@@ -1,9 +1,9 @@
 import {
   DatasetPermission,
   ManageDatasetAccessUser,
-  User,
   manageDatasetInviteUserToDatasetMutation,
   manageDatasetSetDatasetUserPermissionMutation,
+  User,
 } from "@fiftyone/teams-state";
 import { useCallback } from "react";
 import { useRouter } from "next/router";

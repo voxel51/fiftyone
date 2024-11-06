@@ -82,9 +82,9 @@ function GrantUserDatasetAccess() {
 
   const onGrantAccessByInviteComplete = useCallback(() => {
     // don't close the modal if false so user can see helper text
-    if (!canSendEmailInvitations) {
-      setShowInvitationHelperText(true);
-    }
+    // if (!canSendEmailInvitations) {
+    setShowInvitationHelperText(true);
+    // }
   }, [canSendEmailInvitations]);
 
   const showTextForCanManageOrg = showInvitationHelperText && canManageOrg;
@@ -123,12 +123,12 @@ function GrantUserDatasetAccess() {
         {user && (
           <ManageUser
             maxDatasetPermission={maxDatasetPermission(
-              user.id ? user?.role : currentUser.role
+              user.id && user?.role ? user?.role : currentUser.role
             )}
             target={user}
             permission={userStatePermission}
             hideRole
-            userCardProps={{ email: capitalize(user.role) }}
+            userCardProps={{ subtitle: user.role || "NEW USER" }}
             onDelete={() => {
               setUser(null);
             }}
