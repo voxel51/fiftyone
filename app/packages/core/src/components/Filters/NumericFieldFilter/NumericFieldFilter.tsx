@@ -48,7 +48,9 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   const [showRange, setShowRange] = React.useState(!isGroup);
   const field = fos.useAssertedRecoilValue(fos.field(path));
   const queryPerformance = useRecoilValue(fos.queryPerformance);
-  const hasBounds = useRecoilValue(state.hasBounds({ path, modal }));
+  const hasBounds = useRecoilValue(
+    state.hasBounds({ path, modal, shouldCalculate: !queryPerformance })
+  );
 
   if (!queryPerformance && named && !hasBounds) {
     return null;
@@ -87,6 +89,7 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
               color: theme.text.secondary,
               borderRadius: "8px",
               border: "1px solid " + theme.secondary.main,
+              height: "30px",
             }}
           >
             Filter by {name}
