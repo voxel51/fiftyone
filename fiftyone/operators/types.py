@@ -1433,7 +1433,31 @@ class TupleView(View):
 
 
 class TreeSelectionView(View):
-    """Displays a tree structure of selection checkboxes of :class:`View` instances."""
+    """Displays a tree selection checkbox groups.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        structure = [
+            ["group_id_1", ["sample_id_1", "sample_id_2"]],
+            ["group_id_2", ["sample_id_3", "sample_id_4", "sample_id_5"], ["group_id_8", ["sample_id_6"]]],
+        ]
+
+        tree_view = types.TreeSelectionView(
+            data=structure # this data represents the basic group structure;
+        )
+
+        panel.view('exact_duplicate_selections', view=tree_view, on_change=self.toggle_select)
+
+        def toggle_select(self, ctx):
+            selected = ctx.params['value']
+            print('selected samples:', selected)
+
+    Args:
+        data (None): a list of lists representing the tree structure of groups and its children
+        on_change (None): the operator to execute when the tree selection changes
+    """
 
     def __init__(self, **options):
         super().__init__(**options)
