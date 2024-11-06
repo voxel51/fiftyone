@@ -30,7 +30,7 @@ class QueryPerformanceToast extends Event {
   }
 }
 
-const TIMEOUT = 500000; // 500 seconds
+const TIMEOUT = 10000; // 10 seconds
 
 export const getFetchFunction = () => {
   return fetchFunctionSingleton;
