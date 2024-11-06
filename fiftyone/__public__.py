@@ -26,6 +26,8 @@ from .core.aggregations import (
     Distinct,
     FacetAggregations,
     HistogramValues,
+    Min,
+    Max,
     Mean,
     Quantiles,
     Schema,

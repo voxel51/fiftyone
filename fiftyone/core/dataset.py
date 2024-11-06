@@ -2243,15 +2243,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 update_indexes.append(path)
             elif self._is_frame_field(source_path):
                 if frames_last_modified_at is None:
-                    frames_last_modified_at = self._get_last_modified_at(
-                        frames=True
+                    frames_last_modified_at = self._max(
+                        "frames.last_modified_at"
                     )
 
                 if frames_last_modified_at > last_modified_at:
                     update_indexes.append(path)
             else:
                 if samples_last_modified_at is None:
-                    samples_last_modified_at = self._get_last_modified_at()
+                    samples_last_modified_at = self._max("last_modified_at")
 
                 if samples_last_modified_at > last_modified_at:
                     update_indexes.append(path)

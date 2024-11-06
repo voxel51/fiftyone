@@ -318,7 +318,7 @@ class Bounds(Aggregation):
         print(bounds)  # (min, max)
 
         #
-        # Compute the a bounds of a numeric list field
+        # Compute the bounds of a numeric list field
         #
 
         aggregation = fo.Bounds("numeric_list_field")
@@ -1480,6 +1480,250 @@ class HistogramValues(Aggregation):
             edges = [p(e) for e in edges]
 
         return edges
+
+
+class Min(Aggregation):
+    """Computes the minimum of a numeric field of a collection.
+
+    ``None``-valued fields are ignored.
+
+    This aggregation is typically applied to *numeric* or *date* field types
+    (or lists of such types):
+
+    -   :class:`fiftyone.core.fields.IntField`
+    -   :class:`fiftyone.core.fields.FloatField`
+    -   :class:`fiftyone.core.fields.DateField`
+    -   :class:`fiftyone.core.fields.DateTimeField`
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone import ViewField as F
+
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    numeric_field=1.0,
+                    numeric_list_field=[1, 2, 3],
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    numeric_field=4.0,
+                    numeric_list_field=[1, 2],
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    numeric_field=None,
+                    numeric_list_field=None,
+                ),
+            ]
+        )
+
+        #
+        # Compute the minimum of a numeric field
+        #
+
+        aggregation = fo.Min("numeric_field")
+        min = dataset.aggregate(aggregation)
+        print(min)  # the min
+
+        #
+        # Compute the minimum of a numeric list field
+        #
+
+        aggregation = fo.Min("numeric_list_field")
+        min = dataset.aggregate(aggregation)
+        print(min)  # the min
+
+        #
+        # Compute the minimum of a transformation of a numeric field
+        #
+
+        aggregation = fo.Min(2 * (F("numeric_field") + 1))
+        min = dataset.aggregate(aggregation)
+        print(min)  # the min
+
+    Args:
+        field_or_expr: a field name, ``embedded.field.name``,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            defining the field or expression to aggregate
+        expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
+        safe (False): whether to ignore nan/inf values when dealing with
+            floating point values
+    """
+
+    def default_result(self):
+        """Returns the default result for this aggregation.
+
+        Returns:
+            ``None``
+        """
+        return None
+
+    def parse_result(self, d):
+        """Parses the output of :meth:`to_mongo`.
+
+        Args:
+            d: the result dict
+
+        Returns:
+            the minimum value
+        """
+        value = d["min"]
+
+        if self._field_type is not None:
+            p = self._field_type.to_python
+            value = p(value)
+
+        return value
+
+    def to_mongo(self, sample_collection, context=None):
+        path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
+            sample_collection,
+            self._field_name,
+            expr=self._expr,
+            safe=self._safe,
+            context=context,
+        )
+
+        self._field_type = field_type
+
+        if id_to_str:
+            value = {"$toString": "$" + path}
+        else:
+            value = "$" + path
+
+        pipeline.append({"$group": {"_id": None, "min": {"$min": value}}})
+
+        return pipeline
+
+
+class Max(Aggregation):
+    """Computes the maximum of a numeric field of a collection.
+
+    ``None``-valued fields are ignored.
+
+    This aggregation is typically applied to *numeric* or *date* field types
+    (or lists of such types):
+
+    -   :class:`fiftyone.core.fields.IntField`
+    -   :class:`fiftyone.core.fields.FloatField`
+    -   :class:`fiftyone.core.fields.DateField`
+    -   :class:`fiftyone.core.fields.DateTimeField`
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone import ViewField as F
+
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    numeric_field=1.0,
+                    numeric_list_field=[1, 2, 3],
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    numeric_field=4.0,
+                    numeric_list_field=[1, 2],
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    numeric_field=None,
+                    numeric_list_field=None,
+                ),
+            ]
+        )
+
+        #
+        # Compute the maximum of a numeric field
+        #
+
+        aggregation = fo.Max("numeric_field")
+        max = dataset.aggregate(aggregation)
+        print(max)  # the max
+
+        #
+        # Compute the maximum of a numeric list field
+        #
+
+        aggregation = fo.Max("numeric_list_field")
+        max = dataset.aggregate(aggregation)
+        print(max)  # the max
+
+        #
+        # Compute the maximum of a transformation of a numeric field
+        #
+
+        aggregation = fo.Max(2 * (F("numeric_field") + 1))
+        max = dataset.aggregate(aggregation)
+        print(max)  # the max
+
+    Args:
+        field_or_expr: a field name, ``embedded.field.name``,
+            :class:`fiftyone.core.expressions.ViewExpression`, or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            defining the field or expression to aggregate
+        expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            to apply to ``field_or_expr`` (which must be a field) before
+            aggregating
+        safe (False): whether to ignore nan/inf values when dealing with
+            floating point values
+    """
+
+    def default_result(self):
+        """Returns the default result for this aggregation.
+
+        Returns:
+            ``None``
+        """
+        return None
+
+    def parse_result(self, d):
+        """Parses the output of :meth:`to_mongo`.
+
+        Args:
+            d: the result dict
+
+        Returns:
+            the maximum value
+        """
+        value = d["max"]
+
+        if self._field_type is not None:
+            p = self._field_type.to_python
+            value = p(value)
+
+        return value
+
+    def to_mongo(self, sample_collection, context=None):
+        path, pipeline, _, id_to_str, field_type = _parse_field_and_expr(
+            sample_collection,
+            self._field_name,
+            expr=self._expr,
+            safe=self._safe,
+            context=context,
+        )
+
+        self._field_type = field_type
+
+        if id_to_str:
+            value = {"$toString": "$" + path}
+        else:
+            value = "$" + path
+
+        pipeline.append({"$group": {"_id": None, "max": {"$max": value}}})
+
+        return pipeline
 
 
 class Mean(Aggregation):

@@ -6,14 +6,14 @@ import { autoFocus, getComponentProps } from "../utils";
 import FieldWrapper from "./FieldWrapper";
 import { ViewPropsType } from "../utils/types";
 
-type ValueFormat = "flt" | "%";
+type ValueFormat = "" | "%";
 
 const valueLabelFormat = (
   value: number,
   min: number,
   max: number,
   valueFormat: ValueFormat,
-  valuePrecision = 0,
+  valuePrecision = 6,
   skipUnit = true
 ) => {
   const formattedValue =
@@ -64,8 +64,8 @@ export default function SliderView(props: ViewPropsType) {
 
   const {
     value_label_display: valueLabelDisplay = "on",
-    value_format: valueFormat = "%",
-    value_precision: valuePrecision = 2,
+    value_format: valueFormat = "",
+    value_precision: valuePrecision = 6,
     variant = null,
     label_position: labelPosition = "left",
     label = "Threshold",
@@ -73,6 +73,8 @@ export default function SliderView(props: ViewPropsType) {
     min: viewMin,
     max: viewMax,
   } = view;
+
+  const isDoubleSlider = Boolean(viewMin) && Boolean(viewMax);
 
   const multipleOf = viewMultipleOf;
   const [min, max] = [
@@ -131,15 +133,19 @@ export default function SliderView(props: ViewPropsType) {
         val = min + (max - min) * (finalValue / 100);
       }
 
-      let finalMin = isMin ? val : data?.[0] || min;
-      let finalMax = !isMin ? val : data?.[1] || max;
+      if (isDoubleSlider) {
+        let finalMin = isMin ? val : data?.[0] || min;
+        let finalMax = !isMin ? val : data?.[1] || max;
 
-      if (finalMax <= finalMin) {
-        finalMin = finalMax;
-        finalMax = finalMin;
+        if (finalMax <= finalMin) {
+          finalMin = finalMax;
+          finalMax = finalMin;
+        }
+        onChange(path, [finalMin, finalMax], schema);
+      } else {
+        // single slider
+        onChange(path, val, schema);
       }
-
-      onChange(path, [finalMin, finalMax], schema);
     }
   };
 
@@ -152,7 +158,6 @@ export default function SliderView(props: ViewPropsType) {
 
   const handleSliderCommit = (_, value: number | number[]) => {
     onChange(path, value, schema);
-    setUserChanged();
     setFieldsRevision(fieldsRevision + 1);
   };
 
@@ -192,18 +197,20 @@ export default function SliderView(props: ViewPropsType) {
           {variant === "withInputs" && (
             <Grid container justifyContent="space-between" pl={1}>
               <Grid item pl={labelPosition === "left" ? "100px" : "0"}>
-                <SliderInputField
-                  key={fieldsRevision}
-                  label={`Min ${unit === "flt" ? "" : unit}`}
-                  value={minText}
-                  onKeyDown={(e) => handleKeyDown(e, true)}
-                  UnitSelection={null}
-                />
+                {isDoubleSlider && (
+                  <SliderInputField
+                    key={fieldsRevision}
+                    label={`Min ${unit}`}
+                    value={minText}
+                    onKeyDown={(e) => handleKeyDown(e, true)}
+                    UnitSelection={null}
+                  />
+                )}
               </Grid>
               <Grid item>
                 <SliderInputField
                   key={fieldsRevision}
-                  label={`Max ${unit === "flt" ? "" : unit}`}
+                  label={`Max ${unit}`}
                   value={maxText}
                   onKeyDown={(e) => handleKeyDown(e, false)}
                   UnitSelection={null}
