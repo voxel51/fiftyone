@@ -610,18 +610,16 @@ class Object(BaseType):
         self.define_property(name, tuple_type, view=tuple_view, **kwargs)
         return tuple_type
 
-    def tree(self, name, *items, **kwargs):
+    def tree(self, name, **kwargs):
         """Defines a tree property on the object.
-
         Args:
             name: the name of the property
-            *items: the types of the items in the tree
 
         Returns:
             a :class:`Tree`
         """
         tree_selection_view = TreeSelectionView(**kwargs)
-        tree_type = Object(*items)
+        tree_type = List(String())
         self.define_property(
             name, tree_type, view=tree_selection_view, **kwargs
         )
@@ -896,27 +894,6 @@ class Tuple(BaseType):
     def to_json(self):
         return {
             **super().to_json(),
-            "items": [item.to_json() for item in self.items],
-        }
-
-
-class Tree(BaseType):
-    """Represents a tree selection type.
-    Examples::
-
-        import fiftyone.operators.types as types
-        inputs = types.Object()
-
-    Args:
-    *items: the tree structure of items
-    """
-
-    def __init__(self, *items):
-        self.items = items
-
-    def to_json(self):
-        return {
-            "name": self.__class__.__name__,
             "items": [item.to_json() for item in self.items],
         }
 
