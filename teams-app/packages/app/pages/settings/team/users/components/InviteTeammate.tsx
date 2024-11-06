@@ -85,7 +85,6 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
             }
           },
           onSuccess(data) {
-            console.log("sendUserInvitation", data.sendUserInvitation);
             const { url, emailSendAttemptedAt, emailSentAt } =
               data.sendUserInvitation;
             setUrl(url);
