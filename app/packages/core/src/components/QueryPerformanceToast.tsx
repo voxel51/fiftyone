@@ -38,8 +38,7 @@ const QueryPerformanceToast = ({
   const element = document.getElementById("queryPerformance");
   const theme = useTheme();
   const frameFields = useRecoilValue(atoms.frameFields);
-  console.log(frameFields);
-  console.log(path);
+
   useEffect(() => {
     const listen = (event) => {
       onDispatch(event);
@@ -67,7 +66,7 @@ const QueryPerformanceToast = ({
         horizontal: "center",
         backgroundColor: theme.custom.toastBackgroundColor,
       }}
-      primary={(setOpen) => {
+      primary={() => {
         return (
           <Button
             variant="contained"
@@ -78,7 +77,7 @@ const QueryPerformanceToast = ({
                   path.includes(`frames.${frame.path}`)
                 )
               );
-              setOpen(false);
+              setShown(false);
             }}
             sx={{
               marginLeft: "auto",
@@ -91,7 +90,7 @@ const QueryPerformanceToast = ({
           </Button>
         );
       }}
-      secondary={(setOpen) => {
+      secondary={() => {
         return (
           <div>
             <Button
@@ -101,7 +100,7 @@ const QueryPerformanceToast = ({
               size="small"
               onClick={() => {
                 setDisabled(true);
-                setOpen(false);
+                setShown(false);
               }}
               style={{ marginLeft: "auto", color: theme.text.secondary }} // Right align the button
             >
