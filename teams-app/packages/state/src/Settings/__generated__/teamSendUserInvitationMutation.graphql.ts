@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1716af1e39670510488bd2ecc95addb1>>
+ * @generated SignedSource<<61b6039f6a071a63caa07875aae33015>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,6 +18,8 @@ export type teamSendUserInvitationMutation$data = {
   readonly sendUserInvitation: {
     readonly __typename: "Invitation";
     readonly createdAt: string;
+    readonly emailSendAttemptedAt: string;
+    readonly emailSentAt: string;
     readonly expiresAt: string;
     readonly id: string;
     readonly inviteeEmail: string;
@@ -81,6 +83,20 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "emailSendAttemptedAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "emailSentAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "expiresAt",
         "storageKey": null
       },
@@ -134,16 +150,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "bd4bca1af1abd4583d656ed62598dc04",
+    "cacheID": "925868536c5c45574678f3bbbe31f0ca",
     "id": null,
     "metadata": {},
     "name": "teamSendUserInvitationMutation",
     "operationKind": "mutation",
-    "text": "mutation teamSendUserInvitationMutation(\n  $email: String!\n  $role: UserRole!\n) {\n  sendUserInvitation(email: $email, role: $role) {\n    __typename\n    createdAt\n    expiresAt\n    id\n    inviteeEmail\n    inviteeRole\n    url\n  }\n}\n"
+    "text": "mutation teamSendUserInvitationMutation(\n  $email: String!\n  $role: UserRole!\n) {\n  sendUserInvitation(email: $email, role: $role) {\n    __typename\n    createdAt\n    emailSendAttemptedAt\n    emailSentAt\n    expiresAt\n    id\n    inviteeEmail\n    inviteeRole\n    url\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "2f70425ec69f5a68b4a990916a886434";
+(node as any).hash = "9d6c34127749103fe3e38826ff3e35be";
 
 export default node;

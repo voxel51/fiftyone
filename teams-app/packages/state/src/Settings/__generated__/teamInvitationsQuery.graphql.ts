@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ba1ed0f235818bdb19c6ce8aca382d60>>
+ * @generated SignedSource<<24d7c5c6d6a0fa436ec8318f954c0d89>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,6 +14,8 @@ export type teamInvitationsQuery$variables = {};
 export type teamInvitationsQuery$data = {
   readonly invitations: ReadonlyArray<{
     readonly createdAt: string;
+    readonly emailSendAttemptedAt: string;
+    readonly emailSentAt: string;
     readonly expiresAt: string;
     readonly id: string;
     readonly inviteeEmail: string;
@@ -41,6 +43,20 @@ var v0 = [
         "args": null,
         "kind": "ScalarField",
         "name": "createdAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "emailSendAttemptedAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "emailSentAt",
         "storageKey": null
       },
       {
@@ -100,16 +116,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "d9671021aac2ae62fbdbc3618636d4b8",
+    "cacheID": "68bf19b24dc80ed1c267a78e7de0f65a",
     "id": null,
     "metadata": {},
     "name": "teamInvitationsQuery",
     "operationKind": "query",
-    "text": "query teamInvitationsQuery {\n  invitations {\n    createdAt\n    expiresAt\n    id\n    inviteeEmail\n    inviteeRole\n    url\n  }\n}\n"
+    "text": "query teamInvitationsQuery {\n  invitations {\n    createdAt\n    emailSendAttemptedAt\n    emailSentAt\n    expiresAt\n    id\n    inviteeEmail\n    inviteeRole\n    url\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "44182b376c579085b770e0393b7990a6";
+(node as any).hash = "4c82bf5f1e5f7279f491d1116c1480f6";
 
 export default node;
