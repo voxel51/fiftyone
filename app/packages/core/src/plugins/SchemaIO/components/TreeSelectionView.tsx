@@ -73,11 +73,6 @@ export default function TreeSelectionView(props: ViewPropsType) {
 
   const unboundState = useUnboundState(checkedState);
 
-  // useEffect(() => {
-  //   console.log('unboundState useEffect', unboundState)
-  //   // no need to call onChange here, because the change comes from python side
-  // }, [data, unboundState])
-
   // Initialize collapsed state for all parents
   const initialCollapsedState: CollapsedState = React.useMemo(() => {
     const state: CollapsedState = {};
