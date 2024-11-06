@@ -610,18 +610,16 @@ class Object(BaseType):
         self.define_property(name, tuple_type, view=tuple_view, **kwargs)
         return tuple_type
 
-    def tree(self, name, *items, **kwargs):
+    def tree(self, name, **kwargs):
         """Defines a tree property on the object.
-
         Args:
             name: the name of the property
-            *items: the types of the items in the tree
 
         Returns:
             a :class:`Tree`
         """
         tree_selection_view = TreeSelectionView(**kwargs)
-        tree_type = Object(*items)
+        tree_type = List(String())
         self.define_property(
             name, tree_type, view=tree_selection_view, **kwargs
         )
