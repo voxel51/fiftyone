@@ -15,6 +15,7 @@ function OperatorIOComponent(props) {
     initialData,
     id,
     shouldClearUseKeyStores,
+    ...otherProps
   } = props;
   const ioSchema = operatorToIOSchema(schema, { isOutput: type === "output" });
 
@@ -29,6 +30,7 @@ function OperatorIOComponent(props) {
       errors={getErrorsByPath(errors)}
       initialData={initialData}
       layout={layout}
+      otherProps={otherProps}
     />
   );
 }

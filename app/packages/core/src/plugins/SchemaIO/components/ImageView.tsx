@@ -16,7 +16,7 @@ export default function ImageView(props) {
     operator,
     prompt = false,
     params,
-    cursor = true,
+    cursor = false,
   } = schema?.view || {};
   const imageURI = data ?? schema?.default;
 

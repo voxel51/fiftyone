@@ -59,6 +59,7 @@ function Panel(props: PanelProps) {
           key={shouldKeyComponent ? thisModalUniqueId : panelName}
           panelNode={node}
           dimensions={dimensions}
+          isModalPanel={isModalPanel}
         />
       </PanelContext.Provider>
     </StyledPanel>

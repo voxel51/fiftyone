@@ -4,9 +4,9 @@ import * as fos from "../atoms";
 import * as visibilityAtoms from "../attributeVisibility";
 import * as filterAtoms from "../filters";
 import * as pathData from "../pathData";
-import { pathHasIndexes, queryPerformance } from "../queryPerformance";
 import type { Range } from "../utils";
 import { isFilterDefault } from "./utils";
+import { pathHasIndexes, queryPerformance } from "../queryPerformance";
 
 export interface NumericFilter {
   range: Range;
@@ -148,13 +148,10 @@ export const boundsAtom = selectorFamily<
     (params) =>
     ({ get }) => {
       if (get(queryPerformance)) {
-        return get(pathHasIndexes(params.path))
-          ? get(pathData.lightningBounds(params.path))
-          : [null, null];
+        return get(pathData.lightningBounds(params.path));
       }
 
       const bounds = get(pathData.bounds({ ...params, extended: false }));
-
       return bounds ? bounds : [null, null];
     },
 });

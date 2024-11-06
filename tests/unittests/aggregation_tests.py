@@ -234,6 +234,92 @@ class DatasetTests(unittest.TestCase):
         self.assertAlmostEqual(d.sum(2.0 * (F("numeric_field") + 1)), 10.0)
 
     @drop_datasets
+    def test_min(self):
+        d = fo.Dataset()
+        d.add_sample_field("numbers", fo.ListField, subfield=fo.IntField())
+        s = fo.Sample(filepath="image.jpeg")
+        s["number"] = 0
+        s["numbers"] = [0, 1]
+        d.add_sample(s)
+        self.assertEqual(d.min("number"), 0)
+        self.assertEqual(d.min("numbers"), 0)
+
+        d = fo.Dataset()
+        s = fo.Sample(filepath="video.mp4")
+        d.add_sample(s)
+        d.add_frame_field("numbers", fo.ListField, subfield=fo.IntField())
+        s[1]["number"] = 0
+        s[1]["numbers"] = [0, 1]
+        s.save()
+        self.assertEqual(d.min("frames.number"), 0)
+        self.assertEqual(d.min("frames.numbers"), 0)
+
+        d = fo.Dataset()
+        s = fo.Sample(filepath="image.jpeg")
+        s["detection"] = fo.Detection(label="label", confidence=1)
+        d.add_sample(s)
+        self.assertEqual(d.min("detection.confidence"), 1)
+
+        s["detections"] = fo.Detections(
+            detections=[
+                fo.Detection(label="label", confidence=1),
+                fo.Detection(label="label", confidence=0),
+            ]
+        )
+        s.save()
+        self.assertEqual(d.min("detections.detections.confidence"), 0)
+        self.assertEqual(d.min(1 + F("detections.detections.confidence")), 1)
+
+        d = fo.Dataset()
+        s = fo.Sample(filepath="video.mp4")
+        s[1]["detection"] = fo.Detection(label="label", confidence=1)
+        d.add_sample(s)
+        self.assertEqual(d.min("frames.detection.confidence"), 1)
+
+    @drop_datasets
+    def test_max(self):
+        d = fo.Dataset()
+        d.add_sample_field("numbers", fo.ListField, subfield=fo.IntField())
+        s = fo.Sample(filepath="image.jpeg")
+        s["number"] = 0
+        s["numbers"] = [0, 1]
+        d.add_sample(s)
+        self.assertEqual(d.max("number"), 0)
+        self.assertEqual(d.max("numbers"), 1)
+
+        d = fo.Dataset()
+        s = fo.Sample(filepath="video.mp4")
+        d.add_sample(s)
+        d.add_frame_field("numbers", fo.ListField, subfield=fo.IntField())
+        s[1]["number"] = 0
+        s[1]["numbers"] = [0, 1]
+        s.save()
+        self.assertEqual(d.max("frames.number"), 0)
+        self.assertEqual(d.max("frames.numbers"), 1)
+
+        d = fo.Dataset()
+        s = fo.Sample(filepath="image.jpeg")
+        s["detection"] = fo.Detection(label="label", confidence=1)
+        d.add_sample(s)
+        self.assertEqual(d.max("detection.confidence"), 1)
+
+        s["detections"] = fo.Detections(
+            detections=[
+                fo.Detection(label="label", confidence=1),
+                fo.Detection(label="label", confidence=0),
+            ]
+        )
+        s.save()
+        self.assertEqual(d.max("detections.detections.confidence"), 1)
+        self.assertEqual(d.max(1 + F("detections.detections.confidence")), 2)
+
+        d = fo.Dataset()
+        s = fo.Sample(filepath="video.mp4")
+        s[1]["detection"] = fo.Detection(label="label", confidence=1)
+        d.add_sample(s)
+        self.assertEqual(d.max("frames.detection.confidence"), 1)
+
+    @drop_datasets
     def test_mean(self):
         d = fo.Dataset()
         d.add_sample_field("numeric_field", fo.IntField)

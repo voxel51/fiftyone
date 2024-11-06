@@ -898,6 +898,27 @@ class Tuple(BaseType):
         }
 
 
+class Tree(BaseType):
+    """Represents a tree selection type.
+    Examples::
+
+        import fiftyone.operators.types as types
+        inputs = types.Object()
+
+    Args:
+    *items: the tree structure of items
+    """
+
+    def __init__(self, *items):
+        self.items = items
+
+    def to_json(self):
+        return {
+            "name": self.__class__.__name__,
+            "items": [item.to_json() for item in self.items],
+        }
+
+
 class Map(BaseType):
     """Represents a map.
 

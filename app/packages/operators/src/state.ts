@@ -326,7 +326,8 @@ const useOperatorPromptSubmitOptions = (
   if (selectedOption) selectedOption.selected = true;
   const showWarning =
     executionOptions.orchestratorRegistrationEnabled &&
-    !hasAvailableOrchestators;
+    !hasAvailableOrchestators &&
+    !executionOptions.allowImmediateExecution;
   const warningMessage =
     "There are no available orchestrators to schedule this operation. Please contact your administrator to add an orchestrator.";
 
@@ -947,7 +948,9 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         handlers.onSuccess?.(result);
         callback?.(result);
         if (result.error) {
-          const isAbortError = result.error.name === "AbortError" || result.error instanceof DOMException;
+          const isAbortError =
+            result.error.name === "AbortError" ||
+            result.error instanceof DOMException;
           if (!isAbortError) {
             notify({
               msg: result.errorMessage || `Operation failed: ${uri}`,
