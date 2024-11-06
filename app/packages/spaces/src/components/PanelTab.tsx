@@ -1,7 +1,7 @@
 import { HelpTooltip, IconButton } from "@fiftyone/components";
 import { useTimeout } from "@fiftyone/state";
 import { Close } from "@mui/icons-material";
-import { CircularProgress, Skeleton, Typography } from "@mui/material";
+import { CircularProgress, Grid, Skeleton, Typography } from "@mui/material";
 import { useCallback } from "react";
 import { PANEL_LOADING_TIMEOUT } from "../constants";
 import {
@@ -55,6 +55,10 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
       {panel && loading && <CircularProgress size={14} sx={{ mr: 0.85 }} />}
       {panel && !loading && <PanelIcon name={panelName as string} />}
       {panel && <Typography>{title || panel.label || panel.name}</Typography>}
+      <PanelTabMeta
+        showBeta={panel?.panelOptions?.beta}
+        showNew={panel?.panelOptions?.isNew}
+      />
       {panel && TabIndicator && (
         <TabIndicatorContainer>
           <TabIndicator />
@@ -83,5 +87,34 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
         </IconButton>
       )}
     </StyledTab>
+  );
+}
+
+function PanelTabMeta({ showBeta, showNew }) {
+  return (
+    <Grid container gap={1} sx={{ width: "auto", ml: "6px" }}>
+      {showNew && (
+        <Grid
+          item
+          style={{
+            color: "var(--fo-palette-custom-primarySoft)",
+            fontSize: 11,
+          }}
+        >
+          NEW
+        </Grid>
+      )}
+      {showBeta && (
+        <Grid
+          item
+          style={{
+            color: "var(--fo-palette-custom-primarySoft)",
+            fontSize: 11,
+          }}
+        >
+          BETA
+        </Grid>
+      )}
+    </Grid>
   );
 }

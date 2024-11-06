@@ -297,6 +297,37 @@ export enum PluginComponentType {
    */
 }
 
+type CategoryID = "import" | "curate" | "analyze" | "custom";
+
+export enum Categories {
+  Import = "import",
+  Curate = "curate",
+  Analyze = "analyze",
+  Custom = "custom",
+}
+
+export function getCategoryLabel(category: CategoryID): string {
+  switch (category) {
+    case "import":
+      return "Import";
+    case "curate":
+      return "Curate";
+    case "analyze":
+      return "Analyze";
+    case "custom":
+      return "Custom";
+  }
+}
+
+export function getCategoryForPanel(panel: PluginComponentRegistration) {
+  return panel.panelOptions?.category || "custom";
+}
+
+type Category = {
+  id: CategoryID;
+  label: string;
+};
+
 type PluginActivator = (props: any) => boolean;
 
 type PanelOptions = {
@@ -331,11 +362,27 @@ type PanelOptions = {
    * This is only applicable to plugins that are in a modal.
    */
   reloadOnNavigation?: boolean;
+
+  /**
+   * The category of the plugin
+   */
+  category: CategoryID;
+
+  /**
+   * Whether the plugin is in beta
+   */
+  beta: boolean;
+
+  /**
+   * Whether the plugin is new
+   */
+  isNew: boolean;
 };
 
 type PluginComponentProps<T> = T & {
   panelNode?: unknown;
   dimensions?: unknown;
+  isModalPanel?: boolean;
 };
 
 /**

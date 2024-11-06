@@ -1,4 +1,4 @@
-import { IconButton, MenuItem, Select } from "@mui/material";
+import { IconButton, MenuItem, Select, Tooltip } from "@mui/material";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useKey } from "../hooks";
 import { getComponentProps, getFieldSx } from "../utils";
@@ -34,6 +34,7 @@ export default function DropdownView(props: ViewPropsType) {
     variant,
     icon,
     addOnClickToMenuItems = false,
+    tooltipTitle = "",
   } = view;
   const [IconComponent, setIconComponent] =
     useState<React.ComponentType<any> | null>(null);
@@ -156,61 +157,64 @@ export default function DropdownView(props: ViewPropsType) {
 
   return (
     <FieldWrapper {...props} hideHeader={compact}>
-      <Select
-        key={key}
-        disabled={readOnly}
-        autoFocus={autoFocus(props)}
-        defaultValue={computedDefaultValue}
-        size="small"
-        fullWidth={!icon}
-        displayEmpty
-        title={compact ? description : undefined}
-        renderValue={(value) => {
-          if (icon) {
-            return renderIcon();
-          }
-          const unselected = value?.length === 0;
-          setSelected(!unselected);
-          if (unselected) {
-            if (compact) {
-              return placeholder || label;
+      <Tooltip title={tooltipTitle}>
+        <Select
+          key={key}
+          disabled={readOnly}
+          autoFocus={autoFocus(props)}
+          defaultValue={computedDefaultValue}
+          size="small"
+          fullWidth={!icon}
+          displayEmpty
+          title={compact ? description : undefined}
+          renderValue={(value) => {
+            if (icon) {
+              return renderIcon();
             }
-            return placeholder;
-          }
-          if (multiple) {
-            return value.map((item) => choiceLabels[item] || item).join(", ");
-          }
-          return choiceLabels[value] || value;
-        }}
-        onChange={(e) => {
-          const value = e.target.value;
-          handleOnChange(value);
-        }}
-        multiple={multiple}
-        {...selectProps}
-        MenuProps={{
-          ...MenuProps,
-          sx: {
-            zIndex: (theme) => theme.zIndex.operatorPalette + 1,
-            ...(MenuProps?.sx || {}),
-          },
-        }}
-      >
-        {choices.map(({ value, ...choice }) => (
-          <MenuItem
-            key={value}
-            value={value}
-            onClick={() => {
-              if (addOnClickToMenuItems) {
-                handleOnChange(value);
+            const unselected = value?.length === 0;
+            setSelected(!unselected);
+            if (unselected) {
+              if (compact) {
+                return placeholder || label;
               }
-            }}
-            {...getComponentProps(props, "optionContainer")}
-          >
-            <ChoiceMenuItemBody {...choice} {...props} />
-          </MenuItem>
-        ))}
-      </Select>
+              return placeholder;
+            }
+            if (multiple) {
+              return value.map((item) => choiceLabels[item] || item).join(", ");
+            }
+            return choiceLabels[value] || value;
+          }}
+          onChange={(e) => {
+            const value = e.target.value;
+            handleOnChange(value);
+          }}
+          multiple={multiple}
+          {...selectProps}
+          MenuProps={{
+            ...MenuProps,
+            sx: {
+              zIndex: (theme) => theme.zIndex.operatorPalette + 1,
+              ...(MenuProps?.sx || {}),
+            },
+          }}
+        >
+          {choices.map(({ value, ...choice }) => (
+            <MenuItem
+              disabled={readOnly}
+              key={value}
+              value={value}
+              onClick={() => {
+                if (addOnClickToMenuItems) {
+                  handleOnChange(value);
+                }
+              }}
+              {...getComponentProps(props, "optionContainer")}
+            >
+              <ChoiceMenuItemBody {...choice} {...props} />
+            </MenuItem>
+          ))}
+        </Select>
+      </Tooltip>
     </FieldWrapper>
   );
 }
