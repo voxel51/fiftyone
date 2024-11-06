@@ -51,8 +51,6 @@ const QueryPerformanceToast = ({
     return () => window.removeEventListener("queryperformance", listen);
   }, []);
 
-  console.log("attempting to render ", path);
-
   if (!element) {
     throw new Error("no query performance element");
   }
