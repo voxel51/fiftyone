@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 import { atom, useRecoilState, useRecoilValue } from "recoil";
 import { useTheme } from "@fiftyone/components";
 import * as atoms from "@fiftyone/state/src/recoil/atoms";
+import * as fos from "@fiftyone/state";
 
 const SHOWN_FOR = 10000;
 
@@ -33,6 +34,7 @@ const QueryPerformanceToast = ({
   text = "View Documentation",
 }) => {
   const [path, setPath] = useState("");
+  const indexed = useRecoilValue(fos.pathHasIndexes(path));
   const [shown, setShown] = useState(false);
   const [disabled, setDisabled] = useRecoilState(hideQueryPerformanceToast);
   const element = document.getElementById("queryPerformance");
@@ -54,6 +56,11 @@ const QueryPerformanceToast = ({
   }
 
   if (!shown || disabled) {
+    return null;
+  }
+
+  // don't show the toast if the path is already indexed
+  if (path && indexed) {
     return null;
   }
 
