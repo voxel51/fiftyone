@@ -37,6 +37,7 @@ import AddIcon from "@mui/icons-material/Add";
 import HubIcon from "@mui/icons-material/HubOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import { useActiveDataset } from "./hooks";
 
 /**
  * Component responsible for handling LensConfig management.
@@ -56,6 +57,7 @@ export const LensConfigManager = ({
   const [activeActionsMenu, setActiveActionsMenu] = useState(-1);
   const [isUpsertDialogOpen, setIsUpsertDialogOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState(null);
+  const { activeDataset } = useActiveDataset();
 
   const upsertConfigOperator = useOperatorExecutor(
     "@voxel51/operators/lens_upsert_lens_config"
@@ -130,6 +132,7 @@ export const LensConfigManager = ({
   const checkOperatorExistence = (uri: string) => {
     const requestBody = {
       operator_uri: uri,
+      dataset_name: activeDataset,
       target: "inputs",
     };
 

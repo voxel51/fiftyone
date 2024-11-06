@@ -10,13 +10,21 @@ import { useRecoilValue } from "recoil";
 import { datasetName } from "@fiftyone/state";
 
 /**
+ * Hook which provides the active dataset.
+ */
+export const useActiveDataset = () => {
+  const activeDataset = useRecoilValue(datasetName);
+  return { activeDataset };
+};
+
+/**
  * Hook which fetches the list of datasets available to the current user.
  */
 export const useDatasets = (): {
   datasets: string[];
   activeDataset: string;
 } => {
-  const activeDataset = useRecoilValue(datasetName);
+  const { activeDataset } = useActiveDataset();
   const [datasets, setDatasets] = useState<string[]>([]);
 
   const listDatasetsOperator = useOperatorExecutor(

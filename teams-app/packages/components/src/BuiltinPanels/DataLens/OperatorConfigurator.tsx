@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Box, Typography } from "@mui/material";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { OperatorIO, types } from "@fiftyone/operators";
+import { useActiveDataset } from "./hooks";
 
 /**
  * Data model which captures the current values of the form inputs.
@@ -26,6 +27,7 @@ export const OperatorConfigurator = ({
   onStateChange?: (state: FormState, isValid: boolean) => void;
 }) => {
   const [operatorSchema, setOperatorSchema] = useState({});
+  const { activeDataset } = useActiveDataset();
 
   // JSON schema needs to be converted to the type expected by OperatorIO.
   const schema = useMemo(() => {
@@ -56,6 +58,7 @@ export const OperatorConfigurator = ({
   useEffect(() => {
     const requestBody = {
       operator_uri: operator,
+      dataset_name: activeDataset,
       target: "inputs",
     };
 
