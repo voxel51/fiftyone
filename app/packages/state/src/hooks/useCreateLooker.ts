@@ -21,54 +21,16 @@ import { get } from "lodash";
 import { useEffect, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
-import {
-  DefaultValue,
-  atomFamily,
-  selector,
-  useRecoilCallback,
-  useRecoilValue,
-} from "recoil";
-import {
-  dynamicGroupsElementCount,
-  getBrowserStorageEffectForKey,
-  selectedMediaField,
-} from "../recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
+import { dynamicGroupsElementCount, selectedMediaField } from "../recoil";
 import { selectedSamples } from "../recoil/atoms";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as schemaAtoms from "../recoil/schema";
-import { datasetId, datasetName } from "../recoil/selectors";
+import { datasetName } from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import { getStandardizedUrls } from "../utils";
-
-const frameCacheSizeStore = atomFamily<number, string>({
-  key: "frameCacheSizeStore",
-  default: 1024,
-  effects: (id) => [
-    getBrowserStorageEffectForKey(`frame-cache-size-${id}`, {
-      valueClass: "number",
-    }),
-  ],
-});
-
-export const frameCacheSize = selector({
-  key: "frameCacheSize",
-  get: ({ get }) => {
-    const id = get(datasetId);
-    if (!id) {
-      throw new Error("no dataset");
-    }
-    return get(frameCacheSizeStore(id));
-  },
-  set: ({ get, set }, value) => {
-    const id = get(datasetId);
-    if (!id) {
-      throw new Error("no dataset");
-    }
-    set(frameCacheSizeStore(id), value instanceof DefaultValue ? 1024 : value);
-  },
-});
 
 export default <T extends AbstractLooker<BaseState>>(
   isModal: boolean,
@@ -100,7 +62,6 @@ export default <T extends AbstractLooker<BaseState>>(
     dynamicGroupAtoms.shouldRenderImaVidLooker(isModal)
   );
 
-  const maxFrameStreamSize = useRecoilValue(frameCacheSize);
   const isDynamicGroup = useRecoilValue(dynamicGroupAtoms.isDynamicGroup);
 
   // callback to get the latest promise inside another recoil callback
@@ -264,7 +225,6 @@ export default <T extends AbstractLooker<BaseState>>(
             ImaVidFramesControllerStore.set(
               thisSampleId,
               new ImaVidFramesController({
-                maxFrameStreamSize: maxFrameStreamSize,
                 environment,
                 firstFrameNumber,
                 page,
@@ -290,7 +250,7 @@ export default <T extends AbstractLooker<BaseState>>(
 
         const looker = new create(
           sample,
-          { ...config, maxFrameStreamSize, symbol },
+          { ...config, symbol },
           {
             ...options,
             ...extra,
@@ -319,7 +279,6 @@ export default <T extends AbstractLooker<BaseState>>(
       isFrame,
       isPatch,
       isModal,
-      maxFrameStreamSize,
       mediaField,
       options,
       shouldRenderImaVidLooker,

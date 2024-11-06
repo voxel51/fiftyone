@@ -27,7 +27,7 @@ function Grid() {
   const id = useMemo(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
   const selectSample = useRef<ReturnType<typeof useSelectSample>>();
-  const { caching, lookerStore, pageReset, reset } = useRefreshers();
+  const { lookerStore, pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
   const threshold = useThreshold();
 
@@ -62,7 +62,7 @@ function Grid() {
         lookerStore.delete(id.description);
       },
       onItemClick: setSample,
-      retainItems: caching,
+      retainItems: true,
       rowAspectRatioThreshold: threshold,
       get: (next) => page(next),
       render: (id, element, dimensions, soft, hide) => {
@@ -100,7 +100,6 @@ function Grid() {
       spacing,
     });
   }, [
-    caching,
     createLooker,
     get,
     getFontSize,
