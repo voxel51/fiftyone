@@ -125,6 +125,7 @@ export const LensPanel = ({
   const [isImportLoading, setIsImportLoading] = useState(false);
   const [destDatasetName, setDestDatasetName] = useState("");
   const { datasets, activeDataset } = useDatasets();
+  const [isDelegatedImport, setIsDelegatedImport] = useState(false);
 
   const previewStartTime = useRef(0);
   const importStartTime = useRef(0);
@@ -252,10 +253,14 @@ export const LensPanel = ({
     setImportTime(0);
     setIsImportLoading(true);
     setDestDatasetName(dialogData.datasetName);
+    setIsDelegatedImport(dialogData.isDelegated);
 
     importStartTime.current = new Date().getTime();
 
-    await searchOperator.execute(request, { callback });
+    await searchOperator.execute(request, {
+      callback,
+      requestDelegation: dialogData.isDelegated,
+    });
   };
 
   // Callback which opens the target dataset.
@@ -323,7 +328,7 @@ export const LensPanel = ({
         >
           <Stack direction="row" alignItems="center" spacing={2}>
             <Typography variant="h6">Query parameters</Typography>
-            <Typography></Typography>
+            <Typography>&bull;</Typography>
             <Typography color="secondary">
               {Object.keys(formState)
                 .map((k) => (formState[k] ? 1 : 0))
@@ -407,7 +412,7 @@ export const LensPanel = ({
         >
           <Stack direction="row" alignItems="center" spacing={2}>
             <Typography variant="h6">Preview</Typography>
-            <Typography></Typography>
+            <Typography>&bull;</Typography>
             <Typography color="secondary">
               {(previewTime / 1000).toLocaleString(undefined, {
                 minimumFractionDigits: 1,
@@ -456,9 +461,64 @@ export const LensPanel = ({
     <Fragment />
   );
 
+  const importDetails = (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}
+    >
+      {isDelegatedImport ? (
+        <>
+          <Box
+            sx={{
+              borderLeft: "3px solid var(--fo-palette-primary-main)",
+              display: "flex",
+              alignItems: "center",
+              pl: 1,
+            }}
+          >
+            <Typography color="secondary">
+              You've scheduled an import to {destDatasetName}.
+            </Typography>
+          </Box>
+
+          <Button
+            variant="outlined"
+            color="secondary"
+            href={`/datasets/${activeDataset}/runs`}
+          >
+            View status
+          </Button>
+        </>
+      ) : (
+        <>
+          <Box
+            sx={{
+              borderLeft: "3px solid var(--fo-palette-success-main)",
+              display: "flex",
+              alignItems: "center",
+              pl: 1,
+            }}
+          >
+            <CheckCircleOutlineIcon sx={{ mr: 1 }} color="success" />
+            <Typography color="secondary">
+              Samples were added to {destDatasetName}
+            </Typography>
+          </Box>
+
+          <Button variant="outlined" color="secondary" onClick={openDataset}>
+            View samples
+          </Button>
+        </>
+      )}
+    </Box>
+  );
+
   // Import status
   const importContent =
-    isImportLoading || importTime > 0 ? (
+    panelState.isImportShown && (isImportLoading || importTime > 0) ? (
       <Box sx={{ mt: 4 }}>
         <Accordion expanded={panelState.isImportExpanded}>
           <AccordionSummary
@@ -479,8 +539,10 @@ export const LensPanel = ({
               <Typography>Importing data</Typography>
             ) : (
               <Stack direction="row" alignItems="center" spacing={2}>
-                <Typography variant="h6">Data import completed</Typography>
-                <Typography></Typography>
+                <Typography variant="h6">
+                  Data import {isDelegatedImport ? "scheduled" : "complete"}
+                </Typography>
+                <Typography>&bull;</Typography>
                 <Typography color="secondary">
                   {(importTime / 1000).toLocaleString(undefined, {
                     minimumFractionDigits: 1,
@@ -491,41 +553,7 @@ export const LensPanel = ({
               </Stack>
             )}
           </AccordionSummary>
-          <AccordionDetails>
-            {importTime > 0 && (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <Box
-                  sx={{
-                    borderLeft: "3px solid var(--fo-palette-success-main)",
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                >
-                  <CheckCircleOutlineIcon
-                    sx={{ ml: 1, mr: 1 }}
-                    color="success"
-                  />
-                  <Typography color="secondary">
-                    Samples were added to {destDatasetName}
-                  </Typography>
-                </Box>
-
-                <Button
-                  variant="outlined"
-                  color="secondary"
-                  onClick={openDataset}
-                >
-                  View samples
-                </Button>
-              </Box>
-            )}
-          </AccordionDetails>
+          <AccordionDetails>{importTime > 0 && importDetails}</AccordionDetails>
         </Accordion>
       </Box>
     ) : (
@@ -540,7 +568,7 @@ export const LensPanel = ({
           {lensConfigContent}
           {queryOperatorContent}
           {previewContent}
-          {panelState.isImportShown && importContent}
+          {importContent}
         </Box>
       </Box>
 

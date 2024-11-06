@@ -7,7 +7,7 @@ import { Fragment } from "react";
  */
 const BuiltinPanels = dynamic(
   async () => {
-    await import("../DataLens");
+    await import("./DataLens");
 
     return Fragment;
   },

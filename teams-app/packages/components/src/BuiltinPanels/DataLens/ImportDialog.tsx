@@ -1,8 +1,11 @@
 import {
   Box,
   Button,
+  Menu,
   MenuItem,
+  MenuList,
   Select,
+  Stack,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
@@ -10,10 +13,10 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { Dialog } from "@fiftyone/components";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { datasetName as fosDatasetName } from "@fiftyone/state";
-import TagsInput from "../TagsInput";
+import { TagsInput } from "@fiftyone/teams-components";
 
 /**
  * Data model for input to dialog CTA handler.
@@ -22,10 +25,17 @@ export type ImportDialogData = {
   datasetName: string;
   maxSamples: number;
   tags: string[];
+  isDelegated: boolean;
 };
 
 type ImportLimitType = "limit" | "all";
 type DestDatasetType = "new" | "existing";
+
+type ImportOption = {
+  label: string;
+  description: string;
+  onClick: () => void;
+};
 
 const defaultMaxSamples = 500;
 
@@ -45,7 +55,7 @@ export const ImportDialog = ({
   onCancel: () => void;
   onImport: (data: ImportDialogData) => void;
 }) => {
-  const activeDataset = useRecoilValue(fosDatasetName);
+  const activeDataset: string = useRecoilValue(fosDatasetName);
   const [datasetName, setDatasetName] = useState(activeDataset);
   const [importLimitType, setImportLimitType] =
     useState<ImportLimitType>("limit");
@@ -53,6 +63,9 @@ export const ImportDialog = ({
     useState<DestDatasetType>("existing");
   const [maxImportSamples, setMaxImportSamples] = useState(defaultMaxSamples);
   const [sampleTags, setSampleTags] = useState<string[]>([]);
+  const [isImportMenuOpen, setIsImportMenuOpen] = useState(false);
+
+  const importButtonRef = useRef(null);
 
   // Callback which handles updates to the import destination dataset type
   const handleDestDatasetTypeChange = (value?: DestDatasetType) => {
@@ -64,11 +77,12 @@ export const ImportDialog = ({
     }
   };
 
-  const handleImportClick = () => {
+  const handleImportClick = ({ isDelegated }: { isDelegated: boolean }) => {
     onImport({
       datasetName,
       maxSamples: importLimitType === "limit" ? maxImportSamples : 0,
       tags: sampleTags ?? [],
+      isDelegated,
     });
   };
 
@@ -76,6 +90,19 @@ export const ImportDialog = ({
     setSampleTags([]);
     onClose();
   };
+
+  const importOptions: ImportOption[] = [
+    {
+      label: "Import now",
+      description: "Execution times may vary",
+      onClick: () => handleImportClick({ isDelegated: false }),
+    },
+    {
+      label: "Schedule",
+      description: "Recommended for large imports",
+      onClick: () => handleImportClick({ isDelegated: true }),
+    },
+  ];
 
   return (
     <Dialog open={open} onClose={handleCloseClick}>
@@ -222,13 +249,33 @@ export const ImportDialog = ({
           </Button>
 
           <Button
+            ref={importButtonRef}
             variant="contained"
             endIcon={<ExpandMoreIcon />}
             disabled={!datasetName}
-            onClick={handleImportClick}
+            onClick={() => setIsImportMenuOpen((prev) => !prev)}
           >
             Import data
           </Button>
+
+          <Menu
+            anchorEl={importButtonRef.current}
+            open={isImportMenuOpen}
+            onClose={() => setIsImportMenuOpen(false)}
+          >
+            <MenuList>
+              {importOptions.map((option) => (
+                <MenuItem key={option.label} onClick={option.onClick}>
+                  <Stack direction="column" spacing={1}>
+                    <Typography fontWeight="bold">{option.label}</Typography>
+                    <Typography color="secondary">
+                      {option.description}
+                    </Typography>
+                  </Stack>
+                </MenuItem>
+              ))}
+            </MenuList>
+          </Menu>
         </Box>
       </Box>
     </Dialog>

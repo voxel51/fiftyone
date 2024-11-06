@@ -29,6 +29,7 @@ class DatasourceConnectorOperator(foo.Operator):
             name='lens_datasource_connector',
             label='Data Lens Datasource Connector',
             unlisted=True,
+            allow_delegated_execution=True,
         )
 
     def execute(self, ctx: foo.ExecutionContext) -> dict:
