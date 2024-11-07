@@ -228,6 +228,21 @@ export function getAbsolutePluginPath(name: string, path: string): string {
   }
 }
 
+/** a utility for safely calling plugin defined activator functions */
+export function safePluginActivator(
+  plugin: PluginComponentRegistration,
+  ctx: any
+): boolean {
+  if (typeof plugin.activator === "function") {
+    try {
+      return plugin.activator(ctx);
+    } catch (e) {
+      console.error(`Error activating plugin ${plugin.name}`, e);
+    }
+  }
+  return false;
+}
+
 /**
  * A react hook that returns a list of active plugins.
  *
@@ -240,18 +255,7 @@ export function useActivePlugins(type: PluginComponentType, ctx: any) {
     usingRegistry()
       .getByType(type)
       .filter((p) => {
-        if (typeof p.activator === "function") {
-          try {
-            return p.activator(ctx);
-          } catch (e) {
-            console.error(
-              `Error activating plugin "${p.name}".`,
-              "The plugin will not be available.",
-              e
-            );
-          }
-        }
-        return false;
+        return safePluginActivator(p, ctx);
       })
   );
 
@@ -260,18 +264,7 @@ export function useActivePlugins(type: PluginComponentType, ctx: any) {
       const refreshedPlugins = usingRegistry()
         .getByType(type)
         .filter((p) => {
-          if (typeof p.activator === "function") {
-            try {
-              return p.activator(ctx);
-            } catch (e) {
-              console.error(
-                `Error activating plugin "${p.name}".`,
-                "The plugin will not be available.",
-                e
-              );
-            }
-          }
-          return false;
+          return safePluginActivator(p, ctx);
         });
 
       setPlugins(refreshedPlugins);
