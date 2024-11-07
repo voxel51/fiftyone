@@ -2,9 +2,9 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { getCls } from "@fiftyone/utilities";
-import { BaseState, Coordinates, NONFINITE } from "../state";
-import { getLabelColor, shouldShowLabelTag, sizeBytes } from "./util";
+import { getCls, sizeBytesEstimate } from "@fiftyone/utilities";
+import type { BaseState, Coordinates, NONFINITE } from "../state";
+import { getLabelColor, shouldShowLabelTag } from "./util";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
 export enum CONTAINS {
@@ -64,8 +64,8 @@ export interface Overlay<State extends Partial<BaseState>> {
   containsPoint(state: Readonly<State>): CONTAINS;
   getMouseDistance(state: Readonly<State>): number;
   getPointInfo(state: Readonly<State>): any;
-  getSelectData(state: Readonly<State>): SelectData;
   getPoints(state: Readonly<State>): Coordinates[];
+  getSelectData(state: Readonly<State>): SelectData;
   getSizeBytes(): number;
 }
 
@@ -126,10 +126,6 @@ export abstract class CoordinateOverlay<
 
   abstract getPoints(state: Readonly<State>): Coordinates[];
 
-  getSizeBytes(): number {
-    return sizeBytes(this.label);
-  }
-
   getSelectData(state: Readonly<State>): SelectData {
     return {
       id: this.label.id,
@@ -137,5 +133,9 @@ export abstract class CoordinateOverlay<
       // @ts-ignore
       frameNumber: state.frameNumber,
     };
+  }
+
+  getSizeBytes(): number {
+    return sizeBytesEstimate(this.label);
   }
 }

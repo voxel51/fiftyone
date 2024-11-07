@@ -63,6 +63,7 @@ export interface SpotlightConfig<K, V> {
   offset?: number;
   onItemClick?: ItemClick<K, V>;
   render: Render;
+  retainItems: boolean;
   rowAspectRatioThreshold: (width: number) => number;
   spacing?: number;
   scrollbar?: boolean;

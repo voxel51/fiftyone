@@ -1042,6 +1042,9 @@ def _compute_image_embeddings_single(
     if errors:
         return embeddings  # may contain None, must return as list
 
+    if not embeddings:
+        return np.empty((0, 0), dtype=float)
+
     return np.stack(embeddings)
 
 
@@ -1096,6 +1099,9 @@ def _compute_image_embeddings_batch(
 
     if errors:
         return embeddings  # may contain None, must return as list
+
+    if not embeddings:
+        return np.empty((0, 0), dtype=float)
 
     return np.stack(embeddings)
 
@@ -1166,6 +1172,9 @@ def _compute_image_embeddings_data_loader(
 
     if errors:
         return embeddings  # may contain None, must return as list
+
+    if not embeddings:
+        return np.empty((0, 0), dtype=float)
 
     return np.stack(embeddings)
 
@@ -1364,6 +1373,9 @@ def _compute_video_embeddings(
 
     if errors:
         return embeddings  # may contain None, must return as list
+
+    if not embeddings:
+        return np.empty((0, 0), dtype=float)
 
     return np.stack(embeddings)
 
@@ -1666,6 +1678,9 @@ def _embed_patches_single(model, img, detections, force_square, alpha):
         )
         embedding = model.embed(patch)
         embeddings.append(embedding)
+
+    if not embeddings:
+        return None
 
     return np.stack(embeddings)
 

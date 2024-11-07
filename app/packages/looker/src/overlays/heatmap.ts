@@ -19,7 +19,7 @@ import {
   SelectData,
   isShown,
 } from "./base";
-import { sizeBytes, strokeCanvasRect, t } from "./util";
+import { strokeCanvasRect, t } from "./util";
 
 interface HeatMap {
   data: OverlayMask;
@@ -173,10 +173,6 @@ export default class HeatmapOverlay<State extends BaseState>
 
   getPoints(): Coordinates[] {
     return getHeatmapPoints([]);
-  }
-
-  getSizeBytes(): number {
-    return sizeBytes(this.label);
   }
 
   private getIndex(state: Readonly<State>): number {

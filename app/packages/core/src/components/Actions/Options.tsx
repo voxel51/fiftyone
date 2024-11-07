@@ -10,7 +10,8 @@ import {
   groupStatistics,
   sidebarMode,
 } from "@fiftyone/state";
-import React, { RefObject, useMemo } from "react";
+import type { RefObject } from "react";
+import React, { useMemo } from "react";
 import {
   useRecoilState,
   useRecoilValue,

@@ -1,11 +1,14 @@
 import {
+  ModalSample,
   getSampleSrc,
   getStandardizedUrls,
-  ModalSample,
 } from "@fiftyone/state";
-import { BufferManager } from "@fiftyone/utilities";
+import { BufferManager, sizeBytesEstimate } from "@fiftyone/utilities";
 import { LRUCache } from "lru-cache";
-import { MAX_FRAME_SAMPLES_CACHE_SIZE } from "./constants";
+import {
+  MAX_FRAME_STREAM_SIZE,
+  MAX_FRAME_STREAM_SIZE_BYTES,
+} from "../../constants";
 import { SampleId } from "./types";
 
 const BASE64_BLACK_IMAGE =
@@ -29,7 +32,6 @@ export class ImaVidFrameSamples {
     this.abortController = new AbortController();
 
     this.samples = new LRUCache<SampleId, ModalSampleExtendedWithImage>({
-      max: MAX_FRAME_SAMPLES_CACHE_SIZE,
       dispose: (_modal, sampleId) => {
         // remove it from the frame index
         const frameNumber = this.reverseFrameIndex.get(sampleId);
@@ -42,7 +44,10 @@ export class ImaVidFrameSamples {
         // remove from store buffer manager
         this.storeBufferManager.removeBufferValue(frameNumber);
       },
+      max: MAX_FRAME_STREAM_SIZE,
+      maxSize: MAX_FRAME_STREAM_SIZE_BYTES,
       noDisposeOnSet: true,
+      sizeCalculation: (data) => sizeBytesEstimate(data.sample),
     });
 
     this.frameIndex = new Map<number, string>();

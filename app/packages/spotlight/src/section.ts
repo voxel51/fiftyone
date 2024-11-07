@@ -108,9 +108,9 @@ export default class Section<K, V> {
       : element.appendChild(this.#section);
   }
 
-  destroy() {
+  destroy(destroyItems = false) {
     this.#section.remove();
-    for (const row of this.#rows) row.destroy();
+    for (const row of this.#rows) row.destroy(destroyItems);
     this.#rows = [];
   }
 
