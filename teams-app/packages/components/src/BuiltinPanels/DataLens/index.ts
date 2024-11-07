@@ -9,4 +9,9 @@ registerComponent({
   type: PluginComponentType.Panel,
   Icon: CenterFocusWeakIcon,
   activator: () => true,
+  panelOptions: {
+    category: "import",
+    beta: true,
+    isNew: false,
+  },
 });
