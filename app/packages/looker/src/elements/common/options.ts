@@ -2,7 +2,7 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { BaseState, VideoState } from "../../state";
+import { BaseState, ImaVidState, VideoState } from "../../state";
 import { BaseElement, Events } from "../base";
 
 import { lookerOptionsInput, lookerOptionsPanel } from "./options.module.css";
@@ -58,11 +58,13 @@ export class OptionsPanelElement<
   }
 }
 
-export class LoopVideoOptionElement extends BaseElement<VideoState> {
+export class LoopVideoOptionElement<
+  State extends ImaVidState | VideoState = VideoState
+> extends BaseElement<State> {
   checkbox?: HTMLInputElement;
   label?: HTMLLabelElement;
 
-  getEvents(): Events<VideoState> {
+  getEvents(): Events<State> {
     return {
       click: ({ event, update, dispatchEvent }) => {
         event.stopPropagation();
@@ -80,7 +82,7 @@ export class LoopVideoOptionElement extends BaseElement<VideoState> {
     return makeWrapper([this.label]);
   }
 
-  renderSelf({ options: { loop } }: Readonly<VideoState>) {
+  renderSelf({ options: { loop } }: Readonly<State>) {
     //@ts-ignore
     this.checkbox.checked = loop;
     return this.element;

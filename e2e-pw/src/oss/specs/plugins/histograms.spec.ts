@@ -75,15 +75,13 @@ test("histograms panel", async ({ histogram, panel }) => {
     "str",
     "tags",
   ]);
-  await expect(await histogram.locator).toHaveScreenshot("bool-histogram.png", {
+  await expect(histogram.locator).toHaveScreenshot("bool-histogram.png", {
     animations: "allow",
   });
+  await histogram.selector.closeResults();
 
   await histogram.selectField("float");
-  await expect(await histogram.locator).toHaveScreenshot(
-    "float-histogram.png",
-    {
-      animations: "allow",
-    }
-  );
+  await expect(histogram.locator).toHaveScreenshot("float-histogram.png", {
+    animations: "allow",
+  });
 });

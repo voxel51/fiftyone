@@ -108,6 +108,12 @@ export default class Section<K, V> {
       : element.appendChild(this.#section);
   }
 
+  destroy(destroyItems = false) {
+    this.#section.remove();
+    for (const row of this.#rows) row.destroy(destroyItems);
+    this.#rows = [];
+  }
+
   find(item: string): Row<K, V> | null {
     for (const row of this.#rows) {
       if (row.has(item)) {
@@ -116,11 +122,6 @@ export default class Section<K, V> {
     }
 
     return null;
-  }
-
-  remove() {
-    this.#section.remove();
-    this.#rows = [];
   }
 
   render({

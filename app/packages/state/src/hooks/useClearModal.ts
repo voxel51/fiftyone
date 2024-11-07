@@ -35,6 +35,7 @@ export default () => {
         set(fos.savedLookerOptions, { ...currentOptions, showJSON: false });
         reset(fos.selectedLabels);
         reset(fos.hiddenLabels);
+        fos.modalNavigation.set(null);
         return true;
       },
     []
