@@ -1,3 +1,4 @@
+import bson
 from dataclasses import dataclass, field, asdict
 from typing import Optional, Dict, Any
 import datetime
@@ -7,7 +8,6 @@ import datetime
 class KeyDocument:
     """Model representing a key in the store."""
 
-    dataset_id: Optional[str] = None
     store_name: str
     key: str
     value: Any
@@ -17,6 +17,7 @@ class KeyDocument:
     _id: Optional[Any] = None
     updated_at: Optional[datetime.datetime] = None
     expires_at: Optional[datetime.datetime] = None
+    dataset_id: Optional[bson.ObjectId] = None
 
     @staticmethod
     def get_expiration(ttl: Optional[int]) -> Optional[datetime.datetime]:
@@ -30,6 +31,8 @@ class KeyDocument:
         data = asdict(self)
         if exclude_id:
             data.pop("_id", None)
+        if self.dataset_id is None:
+            data.pop("dataset_id", None)
         return data
 
 
