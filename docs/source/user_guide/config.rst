@@ -814,7 +814,6 @@ You can print your App config at any time via the Python library and the CLI:
             "enable_query_performance": true,
             "loop_videos": false,
             "media_fallback": false,
-            "disable_frame_filtering": false,
             "multicolor_keypoints": false,
             "notebook_height": 800,
             "proxy_url": None,
