@@ -53,4 +53,6 @@ export { default as TextView } from "./TextView";
 export { default as TimelineView } from "./TimelineView";
 export { default as ToastView } from "./ToastView";
 export { default as TupleView } from "./TupleView";
+export { default as TreeSelectionView } from "./TreeSelectionView";
 export { default as UnsupportedView } from "./UnsupportedView";
+export { default as NativeModelEvaluationView } from "./NativeModelEvaluationView";

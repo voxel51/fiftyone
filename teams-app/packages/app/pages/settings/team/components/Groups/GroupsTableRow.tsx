@@ -24,7 +24,7 @@ const { GROUP_MEMBER_AVATARS_TO_SHOW_COUNT } = CONSTANT_VARIABLES;
 
 const GroupsTableRow: FC<Props> = (props) => {
   const { group, readOnly } = props;
-  const { usersCount, description, slug, name, users } = group || {};
+  const { id, usersCount, description, slug, name, users } = group || {};
   const text = usersCount == 1 ? "member" : "members";
 
   const setRemoveGroupState = useSetRecoilState(removeGroupState);
@@ -59,6 +59,7 @@ const GroupsTableRow: FC<Props> = (props) => {
       >
         <TableCell>
           <UserCard
+            id={id}
             name={name}
             subtitle={description}
             src={""}

@@ -16,6 +16,9 @@ export const FRAME_FILTERING_DISABLED =
 export const QP_MODE =
   "https://docs.voxel51.com/user_guide/app.html#query-performance";
 
+export const QP_MODE_SUMMARY =
+  "https://docs.voxel51.com/user_guide/using_datasets.html#summary-fields";
+
 export const NAME_COLORSCALE = "https://plotly.com/python/colorscales/";
 
 export const OBJECT_PATCHES =

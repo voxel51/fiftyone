@@ -17,6 +17,7 @@ import { useState } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import LicenseAudit from "./LicenseAudit";
 import InviteUrl from "./invitationUrl";
+import * as EmailValidator from "email-validator";
 
 type InviteTeammateProps = {
   onInvite?: Function;
@@ -27,6 +28,7 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
   const { hasSeatsLeft } = useUserAudit();
   const [errorMsg, setErrorMsg] = useState(null);
   const [url, setUrl] = useState("");
+  const [emailSendAttempted, setEmailSendAttempted] = useState(false);
   const [sendInvite, sendInviteInProgress] =
     useMutation<teamSendUserInvitationMutationType>(
       teamSendUserInvitationMutation
@@ -49,12 +51,23 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
   const items = getInviteRoles(inviteeRole);
   const hasInvitationLink = Boolean(url !== "");
 
+  // check if email address looks like an email address
+  const [isValidEmail, setIsValidEmail] = useState(true);
+
+  const handleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const email = event.target.value;
+    setIsValidEmail(checkValidEmail(email));
+  };
+
   function handleClose() {
     resetInvitee();
     setInvitationForm({ email: "", id: "", role: "MEMBER" });
     setUrl("");
+    setEmailSendAttempted(false);
+    setErrorMsg(null);
     setOpen(false);
     setInviteSent(false);
+    setIsValidEmail(true);
   }
 
   // if current role is disabled
@@ -69,7 +82,7 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
       }}
       onConfirm={() => {
         sendInvite({
-          successMessage: `Successfully created an invitation`,
+          successMessage: `Successfully invited ${email}`,
           variables: { email, role },
           onCompleted(data) {
             if (onInvite) onInvite(data);
@@ -82,14 +95,18 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
             }
           },
           onSuccess(data) {
-            setUrl(data.sendUserInvitation.url);
-            setInviteSent(true);
+            const { url, emailSendAttemptedAt, emailSentAt } =
+              data.sendUserInvitation;
+            setUrl(url);
+            setEmailSendAttempted(!!emailSendAttemptedAt);
+            setInviteSent(!!emailSendAttemptedAt && !!emailSentAt);
           },
           onError(error) {
+            const srcErrors = error?.source?.errors || [];
             const msg =
-              error?.source?.errors[0]?.message ||
+              srcErrors[0]?.message ||
               error?.message ||
-              "An unknown error occured";
+              "An unknown error occurred";
             setErrorMsg(msg);
           },
         });
@@ -102,7 +119,8 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
         (hasSeatsLeft && !hasSeatsLeft(role)) ||
         (currInvitee && currInvitee.role === role) ||
         selectionNotValid ||
-        (inviteSent && url.length > 0)
+        url.length > 0 ||
+        isValidEmail === false
       }
       confirmationButtonText={"Send invitation"}
     >
@@ -117,10 +135,20 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
             setErrorMsg(null);
             setInvitationForm({ ...invitationForm, email: e.target.value });
             setUrl("");
+            handleEmailChange(e);
+            setInviteSent(false);
+            setEmailSendAttempted(false);
           }}
           type="email"
           value={email}
           disabled={editMode}
+          helperText={
+            !isValidEmail && (
+              <Typography color="error">
+                Please enter a valid email address
+              </Typography>
+            )
+          }
         />
         <InputLabel sx={{ paddingTop: 2 }}>Role</InputLabel>
         <RoleSelection
@@ -130,10 +158,14 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
           onChange={(role) => {
             setInvitationForm({ ...invitationForm, role });
             setUrl("");
+            setInviteSent(false);
+            setEmailSendAttempted(false);
           }}
         />
       </Box>
-      {hasInvitationLink && <InviteUrl url={url} />}
+      {hasInvitationLink && !inviteSent && (
+        <InviteUrl url={url} emailSendAttempted={emailSendAttempted} />
+      )}
     </Dialog>
   );
 }
@@ -148,4 +180,8 @@ function InviteError({ children }) {
       </Alert>
     </Box>
   );
+}
+
+function checkValidEmail(email: string) {
+  return EmailValidator.validate(email);
 }

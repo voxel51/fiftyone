@@ -783,6 +783,24 @@ export class TupleView extends View {
 }
 
 /**
+ * Operator class for describing a tree node selection {@link View} for an
+ * operator type.
+ */
+export class TreeSelectionView extends View {
+  items: Array<View>;
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "TreeSelectionView";
+  }
+
+  static fromJSON(json) {
+    return new TreeSelectionView({
+      ...json,
+    });
+  }
+}
+
+/**
  * Operator class for describing a code block {@link View} for an
  * operator type.
  */
@@ -1258,6 +1276,7 @@ const VIEWS = {
   OneOfView,
   ListView,
   TupleView,
+  TreeSelectionView,
   CodeView,
   ColorView,
   JSONView,

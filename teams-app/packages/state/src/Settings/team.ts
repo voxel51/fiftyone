@@ -4,7 +4,7 @@ import {
 } from "@fiftyone/teams-state";
 import Router from "next/router";
 import { graphql } from "react-relay";
-import { RecoilState, atom, selector } from "recoil";
+import { atom, RecoilState } from "recoil";
 import { graphQLSelector } from "recoil-relay";
 import { changeRoute } from "../routing.utils";
 import { PARAMS } from "../urlSyncCommon";
@@ -64,6 +64,8 @@ export const teamInvitationsQuery = graphql`
   query teamInvitationsQuery {
     invitations {
       createdAt
+      emailSendAttemptedAt
+      emailSentAt
       expiresAt
       id
       inviteeEmail
@@ -97,6 +99,8 @@ export const teamSendUserInvitationMutation = graphql`
     sendUserInvitation(email: $email, role: $role) {
       __typename
       createdAt
+      emailSendAttemptedAt
+      emailSentAt
       expiresAt
       id
       inviteeEmail

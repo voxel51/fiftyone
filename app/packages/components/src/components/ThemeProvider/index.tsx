@@ -95,6 +95,7 @@ let theme = extendMuiTheme({
           shadowDark: "hsl(200, 0%, 70%)",
           lightning: "hsl(25, 100%, 51%)",
           toastBackgroundColor: "#FFFFFF",
+          primarySoft: "hsl(25, 100%, 51%)",
         },
         voxel: {
           500: "#FF6D04",
@@ -133,6 +134,7 @@ let theme = extendMuiTheme({
           popup: "hsl(200, 0%, 20%)",
           field: "hsl(200, 0%, 20%, 0.3)",
           activeCell: "hsl(200, 0%, 25%)",
+          card: "hsl(200, 0%, 16%)",
         },
         divider: "hsl(200, 0%, 20%)",
         dividerDisabled: "hsl(200, 0%, 15%)",
@@ -177,6 +179,7 @@ let theme = extendMuiTheme({
           shadowDark: "hsl(200, 0%, 0%)",
           lightning: "#f5b700",
           toastBackgroundColor: "#333",
+          primarySoft: "hsl(25, 100%, 80%)",
         },
         voxel: {
           500: "#FF6D04",
@@ -193,6 +196,14 @@ let theme = extendMuiTheme({
       defaultProps: {
         disableRipple: true,
       },
+    },
+    MuiButton: {
+      variants: [
+        {
+          props: { variant: "contained" },
+          style: { color: "#ffffff" },
+        },
+      ],
     },
     MuiModal: {
       styleOverrides: {

@@ -21,6 +21,8 @@ from fiftyone.operators.panels import (
     QueryPerformancePanel,
 )
 from fiftyone.operators.utils import create_summary_field_inputs
+from .builtins.operators.evaluation import EvaluateModel, EvaluateModelAsync
+from fiftyone.operators.builtins.panels.model_evaluation import EvaluationPanel
 
 from fiftyone.operators.brain.compute_visualization import ComputeVisualization
 
@@ -2226,12 +2228,17 @@ BUILTIN_OPERATORS = (
         SyncLastModifiedAt(_builtin=True),
         ListFiles(_builtin=True),
         ComputeVisualization(_builtin=True),
+        EvaluateModel(_builtin=True),
+        EvaluateModelAsync(_builtin=True),
     ]
     + DATA_QUALITY_OPERATORS
     + QUERY_PERFORMANCE_OPERATORS
 )
 
-BUILTIN_PANELS = [DataQualityPanel(_builtin=True)]
+BUILTIN_PANELS = [
+    DataQualityPanel(_builtin=True),
+    EvaluationPanel(_builtin=True),
+]
 
 if fo.app_config.enable_query_performance:
     BUILTIN_PANELS.append(QueryPerformancePanel(_builtin=True))

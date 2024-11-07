@@ -74,7 +74,7 @@ export default function LicenseAudit(props: Props) {
         }}
       >
         <AlertTitle sx={{ display: "flex", alignItems: "center" }}>
-          <Typography variant="body2">Seats remaining</Typography>
+          <Typography variant="body2">Available Seats</Typography>
           {Boolean(remaining) && isAdmin && (
             <CustomTooltip
               placement="bottom-start"

@@ -10,6 +10,7 @@ from ..types import (
     TableView,
     GridView,
 )
+from fiftyone.management.dataset import DatasetPermission
 from ..operator import Operator, OperatorConfig
 from ..panel import Panel, PanelConfig
 from fiftyone.operators.utils import create_summary_field_inputs
@@ -26,6 +27,8 @@ _INDEXABLE_FIELDS = (
     fo.StringField,
     fo.ListField,
 )
+
+PERMISSION = [DatasetPermission.EDIT.value, DatasetPermission.MANAGE.value]
 
 
 def _get_existing_indexes(ctx):
@@ -138,17 +141,20 @@ class IndexFieldCreationOperator(Operator):
         field_choices.add_choice("index_field", label="Index Field")
         if ctx.dataset._has_frame_fields:
             field_choices.add_choice("summary_field", label="Summary Field")
-
+        default_field = (
+            "summary_field"
+            if ctx.params.get("is_frame_filter")
+            else "index_field"
+        )
         inputs.enum(
             "field_type",
             field_choices.values(),
             required=True,
-            default="index_field",
+            default=default_field,
             label="CREATE NEW INDEX",
             description="Choose your field to create: index field for faster queries, summary field for frame aggregation",
             view=field_choices,
         )
-
         field_type = ctx.params.get("field_type", "index_field")
 
         fields = []
@@ -169,12 +175,19 @@ class IndexFieldCreationOperator(Operator):
                 label="Choose your frame field to create summary field"
             )
             create_summary_field_inputs(ctx, inputs)
-
+        path = ctx.params.get("nonperformant_field")
         if fields:
             inputs.enum(
                 "path",
                 dropdown_choices.values(),
-                default=dropdown_choices.choices[0].value,
+                default=(
+                    path
+                    if any(
+                        choice.value == path
+                        for choice in dropdown_choices.choices
+                    )
+                    else dropdown_choices.choices[0].value
+                ),
                 view=dropdown_choices,
             )
         return Property(inputs)
@@ -182,6 +195,7 @@ class IndexFieldCreationOperator(Operator):
     def execute(self, ctx):
         field_type = ctx.params.get("field_type", "index_field")
         field_choice = ctx.params.get("path", "None provided")
+        ctx.ops.open_panel("query_performance_panel")
         if field_choice != "None provided":
             if field_type == "index_field":
                 try:
@@ -226,12 +240,6 @@ class IndexFieldCreationOperator(Operator):
                     return {"field_to_create": str(e), "field_type": "N/A"}
         else:
             return {"field_to_create": "None provided", "field_type": "N/A"}
-
-    def resolve_output(self, ctx):
-        outputs = Object()
-        outputs.str("field_to_create", label="Field created")
-        outputs.str("field_type", label="Field type")
-        return Property(outputs)
 
 
 class IndexFieldRemovalConfirmationOperator(Operator):
@@ -281,12 +289,6 @@ class IndexFieldRemovalConfirmationOperator(Operator):
             "field_type": field_type,
         }
 
-    def resolve_output(self, ctx):
-        outputs = Object()
-        outputs.str("field_to_delete", label="Field deleted")
-        outputs.str("field_type", label="Field type")
-        return Property(outputs)
-
 
 class QueryPerformancePanel(Panel):
     @property
@@ -296,9 +298,7 @@ class QueryPerformancePanel(Panel):
             label="Query Performance Panel",
             description="A place to optimize the query performance of datasets.",
             surfaces="grid",
-            icon="/assets/icon-light.svg",
-            light_icon="/assets/icon-light.svg",  # light theme only
-            dark_icon="/assets/icon-dark.svg",  # dark theme only
+            icon="bolt",
             allow_multiple=False,
         )
 
@@ -351,9 +351,6 @@ class QueryPerformancePanel(Panel):
         table_data = {
             "rows": [[r["FIELD"], r["SIZE"], r["TYPE"]] for r in rows],
             "columns": ["FIELD", "SIZE", "TYPE"],
-            "selected_cells": [],
-            "selected_rows": [0],
-            "selected_columns": [],
         }
         return table_data
 
@@ -373,29 +370,32 @@ class QueryPerformancePanel(Panel):
         ctx.panel.set_data("table", table_data)
 
     def on_click_delete(self, ctx):
-        row = int(ctx.params.get("row"))
-        table_data = self._get_index_table_data(ctx)
-        field_name = table_data["rows"][row][0]
-        field_type = table_data["rows"][row][2]
-        params = {"field_to_delete": field_name}
+        if ctx.user.dataset_permission in PERMISSION:
+            row = int(ctx.params.get("row"))
+            table_data = self._get_index_table_data(ctx)
+            field_name = table_data["rows"][row][0]
+            field_type = table_data["rows"][row][2]
+            params = {"field_to_delete": field_name}
 
-        if field_type == "Summary":
-            params["field_type"] = "summary_field"
-            ctx.ops.notify(f"Dropping summary field {field_name}")
+            if field_type == "Summary":
+                params["field_type"] = "summary_field"
+                ctx.ops.notify(f"Dropping summary field {field_name}")
+            else:
+                default_indexes = set(_get_default_indexes(ctx))
+                if field_name in default_indexes:
+                    ctx.ops.notify(f"Cannot drop default index {field_name}.")
+                    return
+
+                ctx.ops.notify(f"Dropping index {field_name}")
+                params["field_type"] = "index_field"
+
+            ctx.prompt(
+                "index_field_removal_confirmation",
+                on_success=self.refresh,
+                params=params,
+            )
         else:
-            default_indexes = set(_get_default_indexes(ctx))
-            if field_name in default_indexes:
-                ctx.ops.notify(f"Cannot drop default index {field_name}.")
-                return
-
-            ctx.ops.notify(f"Dropping index {field_name}")
-            params["field_type"] = "index_field"
-
-        ctx.prompt(
-            "index_field_removal_confirmation",
-            on_success=self.refresh,
-            params=params,
-        )
+            ctx.ops.notify("You do not have permission to delete.")
 
     def toggle_qp(self, ctx):
         if ctx.query_performance:
@@ -415,14 +415,17 @@ class QueryPerformancePanel(Panel):
         ctx.ops.clear_sidebar_filters()
 
     def create_index_or_summary(self, ctx):
-        ctx.ops.track_event(
-            "index_field_creation_operator",
-            {"location": "query_performance_panel"},
-        )
-        ctx.prompt(
-            "index_field_creation_operator",
-            on_success=self.refresh,
-        )
+        if ctx.user.dataset_permission in PERMISSION:
+            ctx.ops.track_event(
+                "index_field_creation_operator",
+                {"location": "query_performance_panel"},
+            )
+            ctx.prompt(
+                "index_field_creation_operator",
+                on_success=self.refresh,
+            )
+        else:
+            ctx.ops.notify("You do not have permission to create an index.")
 
     def update_summary_field(self, ctx):
         ctx.ops.notify(f"Opening `update_summary_field` operator")
@@ -468,12 +471,16 @@ class QueryPerformancePanel(Panel):
 
             message = f"Existent indexes and fields for dataset `{ctx.dataset.name}`: {message}"
 
-            h_stack = panel.h_stack("v_stack", align_y="center")
-            h_stack.md(f"{message}", width=49, gap=2)
+            h_stack = panel.h_stack(
+                "v_stack",
+                align_y="center",
+                componentsProps={"grid": {"sx": {"display": "flex"}}},
+            )
+            h_stack.md(f"{message}", width="100%")
 
             # The row of buttons
             button_menu = h_stack.h_stack(
-                "create_menu", align_x="right", width=49
+                "create_menu", align_x="right", width="100%"
             )
 
             button_menu.btn(
@@ -496,12 +503,13 @@ class QueryPerformancePanel(Panel):
                     on_click=self.toggle_qp,
                 )
 
-            button_menu.btn(
-                "add_btn",
-                label="Create field",
-                on_click=self.create_index_or_summary,
-                variant="contained",
-            )
+            if ctx.user.dataset_permission in PERMISSION:
+                button_menu.btn(
+                    "add_btn",
+                    label="Create Index",
+                    on_click=self.create_index_or_summary,
+                    variant="contained",
+                )
 
             if summary_fields:
                 button_menu.btn(
@@ -511,23 +519,27 @@ class QueryPerformancePanel(Panel):
                     variant="contained",
                 )
 
-            table = TableView(
-                on_click_row=self.on_click_row,
-            )
-            table.add_column("FIELD", label="FIELD")
-            table.add_column("SIZE", label="SIZE")
-            table.add_column("TYPE", label="TYPE")
+            table = TableView()
+            table.add_column("FIELD", label="Field")
+            table.add_column("SIZE", label="Size")
+            table.add_column("TYPE", label="Type")
 
-            # Calculating row conditionality for the delete button
-            rows = (
-                [False] * (len(all_indices) - len(droppable_index))
-                + [True] * len(droppable_index)
-                + [True] * len(summary_fields)
-            )
-            table.add_row_action(  # pylint: disable=E1101
-                "delete", self.on_click_delete, icon="delete", rows=rows
-            )
+            if ctx.user.dataset_permission in PERMISSION:
+                # Calculating row conditionality for the delete button
+                rows = (
+                    [False] * (len(all_indices) - len(droppable_index))
+                    + [True] * len(droppable_index)
+                    + [True] * len(summary_fields)
+                )
+
+                table.add_row_action(  # pylint: disable=E1101
+                    "delete",
+                    self.on_click_delete,
+                    icon="delete",
+                    rows=rows,
+                    color="secondary",
+                )
 
             panel.list("table", Object(), view=table)
 
-        return Property(panel)
+        return Property(panel, view=GridView(pad=3, gap=3))
