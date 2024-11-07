@@ -28,7 +28,7 @@ _INDEXABLE_FIELDS = (
     fo.ListField,
 )
 
-PERMISSION = [DatasetPermission.EDIT, DatasetPermission.MANAGE]
+PERMISSION = [DatasetPermission.EDIT.value, DatasetPermission.MANAGE.value]
 
 
 def _get_existing_indexes(ctx):
@@ -180,11 +180,14 @@ class IndexFieldCreationOperator(Operator):
             inputs.enum(
                 "path",
                 dropdown_choices.values(),
-                default=path
-                if any(
-                    choice.value == path for choice in dropdown_choices.choices
-                )
-                else dropdown_choices.choices[0].value,
+                default=(
+                    path
+                    if any(
+                        choice.value == path
+                        for choice in dropdown_choices.choices
+                    )
+                    else dropdown_choices.choices[0].value
+                ),
                 view=dropdown_choices,
             )
         return Property(inputs)
@@ -295,9 +298,7 @@ class QueryPerformancePanel(Panel):
             label="Query Performance Panel",
             description="A place to optimize the query performance of datasets.",
             surfaces="grid",
-            icon="/assets/icon-light.svg",
-            light_icon="/assets/icon-light.svg",  # light theme only
-            dark_icon="/assets/icon-dark.svg",  # dark theme only
+            icon="bolt",
             allow_multiple=False,
         )
 
@@ -350,9 +351,6 @@ class QueryPerformancePanel(Panel):
         table_data = {
             "rows": [[r["FIELD"], r["SIZE"], r["TYPE"]] for r in rows],
             "columns": ["FIELD", "SIZE", "TYPE"],
-            "selected_cells": [],
-            "selected_rows": [0],
-            "selected_columns": [],
         }
         return table_data
 
@@ -473,12 +471,16 @@ class QueryPerformancePanel(Panel):
 
             message = f"Existent indexes and fields for dataset `{ctx.dataset.name}`: {message}"
 
-            h_stack = panel.h_stack("v_stack", align_y="center")
-            h_stack.md(f"{message}", width=49, gap=2)
+            h_stack = panel.h_stack(
+                "v_stack",
+                align_y="center",
+                componentsProps={"grid": {"sx": {"display": "flex"}}},
+            )
+            h_stack.md(f"{message}", width="100%")
 
             # The row of buttons
             button_menu = h_stack.h_stack(
-                "create_menu", align_x="right", width=49
+                "create_menu", align_x="right", width="100%"
             )
 
             button_menu.btn(
@@ -517,12 +519,10 @@ class QueryPerformancePanel(Panel):
                     variant="contained",
                 )
 
-            table = TableView(
-                on_click_row=self.on_click_row,
-            )
-            table.add_column("FIELD", label="FIELD")
-            table.add_column("SIZE", label="SIZE")
-            table.add_column("TYPE", label="TYPE")
+            table = TableView()
+            table.add_column("FIELD", label="Field")
+            table.add_column("SIZE", label="Size")
+            table.add_column("TYPE", label="Type")
 
             if ctx.user.dataset_permission in PERMISSION:
                 # Calculating row conditionality for the delete button
@@ -533,9 +533,13 @@ class QueryPerformancePanel(Panel):
                 )
 
                 table.add_row_action(  # pylint: disable=E1101
-                    "delete", self.on_click_delete, icon="delete", rows=rows
+                    "delete",
+                    self.on_click_delete,
+                    icon="delete",
+                    rows=rows,
+                    color="secondary",
                 )
 
             panel.list("table", Object(), view=table)
 
-        return Property(panel)
+        return Property(panel, view=GridView(pad=3, gap=3))
