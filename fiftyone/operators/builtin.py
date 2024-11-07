@@ -14,15 +14,14 @@ import fiftyone.core.media as fom
 import fiftyone.core.storage as fos
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
-
 from fiftyone.core.odm.workspace import default_workspace_factory
+from fiftyone.operators.builtins.panels.model_evaluation import EvaluationPanel
 from fiftyone.operators.panels import (
     DataQualityPanel,
     QueryPerformancePanel,
 )
 from fiftyone.operators.utils import create_summary_field_inputs
 from .builtins.operators.evaluation import EvaluateModel, EvaluateModelAsync
-from fiftyone.operators.builtins.panels.model_evaluation import EvaluationPanel
 
 
 class EditFieldInfo(foo.Operator):
@@ -1705,6 +1704,19 @@ class DeleteSavedView(foo.Operator):
         ctx.dataset.delete_saved_view(name)
 
 
+class ListDatasets(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="list_datasets",
+            label="List datasets",
+            unlisted=True,
+        )
+
+    def execute(self, ctx):
+        return {"datasets": fo.list_datasets()}
+
+
 class ListWorkspaces(foo.Operator):
     @property
     def config(self):
@@ -2192,6 +2204,8 @@ from fiftyone.operators.panels.data_quality import (
 
 from fiftyone.operators.panels import QUERY_PERFORMANCE_OPERATORS
 
+from fiftyone.operators.data_lens.builtin import DATA_LENS_OPERATORS
+
 BUILTIN_OPERATORS = (
     [
         EditFieldInfo(_builtin=True),
@@ -2219,6 +2233,7 @@ BUILTIN_OPERATORS = (
         SaveView(_builtin=True),
         EditSavedViewInfo(_builtin=True),
         DeleteSavedView(_builtin=True),
+        ListDatasets(_builtin=True),
         ListWorkspaces(_builtin=True),
         LoadWorkspace(_builtin=True),
         SaveWorkspace(_builtin=True),
@@ -2231,6 +2246,7 @@ BUILTIN_OPERATORS = (
     ]
     + DATA_QUALITY_OPERATORS
     + QUERY_PERFORMANCE_OPERATORS
+    + DATA_LENS_OPERATORS
 )
 
 BUILTIN_PANELS = [

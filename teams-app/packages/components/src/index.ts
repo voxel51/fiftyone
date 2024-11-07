@@ -7,6 +7,7 @@ import BasicForm from "./BasicForm";
 import BasicTable from "./BasicTable";
 import Box from "./Box";
 import Bubbles from "./Bubbles";
+import BuiltinPanels from "./BuiltinPanels";
 import Button from "./Button";
 import CodeBlock from "./CodeBlock";
 import CodeTabs from "./CodeTabs";
@@ -97,6 +98,7 @@ export {
   BasicTable,
   Box,
   Bubbles,
+  BuiltinPanels,
   Button,
   CodeBlock,
   CodeTabs,
