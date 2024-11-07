@@ -125,7 +125,7 @@ function GrantUserDatasetAccess() {
             target={user}
             permission={userStatePermission}
             hideRole
-            userCardProps={{ subtitle: user.role || "NEW USER" }}
+            userCardProps={{ subtitle: user.role || "" }}
             onDelete={() => {
               setUser(null);
             }}
