@@ -244,7 +244,7 @@ export const ImportDialog = ({
 
         {/*Dialog actions*/}
         <Box sx={{ mt: 5, display: "flex", justifyContent: "space-between" }}>
-          <Button variant="contained" color="secondary" onClick={onCancel}>
+          <Button variant="outlined" color="secondary" onClick={onCancel}>
             Cancel
           </Button>
 

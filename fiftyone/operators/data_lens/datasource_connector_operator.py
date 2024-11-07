@@ -100,7 +100,7 @@ class DatasourceConnectorOperator(foo.Operator):
             max_samples = (
                 import_request.max_samples
                 if import_request.max_samples > 0
-                else (1 << 30)  # 1B seems like a reasonable limit...
+                else 1_000_000_000 # 1B seems like a reasonable limit...
             )
             total_samples = 0
 
