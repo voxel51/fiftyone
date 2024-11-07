@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Teams 2.1.3
 --------------------
-*Released November XX, 2024*
+*Released November 8, 2024*
 
 Includes all updates from :ref:`FiftyOne 1.0.2 <release-notes-v1.0.2>`
 
@@ -13,7 +13,7 @@ Includes all updates from :ref:`FiftyOne 1.0.2 <release-notes-v1.0.2>`
 
 FiftyOne 1.0.2
 --------------
-*Released November XX, 2024*
+*Released November 8, 2024*
 
 Zoo
 
