@@ -54,7 +54,6 @@ function GrantUserDatasetAccess() {
     useState(false);
 
   const { hasSeatsLeft } = useUserAudit();
-  const { canSendEmailInvitations } = useUserRole();
 
   const shouldDisableSubmit =
     userStatePermission &&
@@ -82,10 +81,8 @@ function GrantUserDatasetAccess() {
 
   const onGrantAccessByInviteComplete = useCallback(() => {
     // don't close the modal if false so user can see helper text
-    if (!canSendEmailInvitations) {
-      setShowInvitationHelperText(true);
-    }
-  }, [canSendEmailInvitations]);
+    setShowInvitationHelperText(true);
+  }, []);
 
   const showTextForCanManageOrg = showInvitationHelperText && canManageOrg;
   const showTextForCanManageDataset =
@@ -123,12 +120,12 @@ function GrantUserDatasetAccess() {
         {user && (
           <ManageUser
             maxDatasetPermission={maxDatasetPermission(
-              user.id ? user?.role : currentUser.role
+              user?.id && user?.role ? user.role : currentUser.role
             )}
             target={user}
             permission={userStatePermission}
             hideRole
-            userCardProps={{ email: capitalize(user.role) }}
+            userCardProps={{ subtitle: user.role || "NEW USER" }}
             onDelete={() => {
               setUser(null);
             }}
@@ -164,7 +161,7 @@ function GrantUserDatasetAccess() {
           }}
         >
           <Typography variant="subtitle1" color="error">
-            No seat left for this permission {userStatePermission}
+            No seats available for this permission {userStatePermission}
           </Typography>
         </Box>
       )}

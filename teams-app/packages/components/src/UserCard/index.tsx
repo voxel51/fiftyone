@@ -1,5 +1,6 @@
 import { Avatar, AvatarProps } from "@fiftyone/teams-components";
 import { getInitials } from "../utils";
+import { UserRole } from "@fiftyone/teams-state/src/User/__generated__/UserQuery.graphql";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
 
 export type UserCardProps = AvatarProps & {
@@ -7,6 +8,7 @@ export type UserCardProps = AvatarProps & {
   name: string;
   email?: string;
   src?: string;
+  role?: UserRole;
   detailed?: boolean;
   compact?: boolean;
   color?: "primary" | "secondary";
@@ -16,6 +18,7 @@ export default function UserCard({
   id,
   name,
   email,
+  role,
   src,
   detailed,
   ...props
@@ -26,7 +29,7 @@ export default function UserCard({
       src={src}
       alt={name}
       title={name}
-      subtitle={email ?? props.subtitle}
+      subtitle={props.subtitle ?? email}
       detailed={detailed}
       {...props}
     >
