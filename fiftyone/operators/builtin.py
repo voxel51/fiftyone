@@ -21,10 +21,10 @@ from fiftyone.operators.panels import (
     QueryPerformancePanel,
 )
 from fiftyone.operators.utils import create_summary_field_inputs
-from .builtins.operators.evaluation import EvaluateModel, EvaluateModelAsync
 from .builtins.panels.model_evaluation import EvaluationPanel
 
-from fiftyone.operators.brain.compute_visualization import ComputeVisualization
+from .builtins.operators.evaluation import EvaluateModel, EvaluateModelAsync
+from .builtins.operators.compute_visualization import ComputeVisualization
 
 
 class EditFieldInfo(foo.Operator):
