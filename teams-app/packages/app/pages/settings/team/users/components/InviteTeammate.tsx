@@ -17,6 +17,7 @@ import { useState } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import LicenseAudit from "./LicenseAudit";
 import InviteUrl from "./invitationUrl";
+import * as EmailValidator from "email-validator";
 
 type InviteTeammateProps = {
   onInvite?: Function;
@@ -50,6 +51,14 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
   const items = getInviteRoles(inviteeRole);
   const hasInvitationLink = Boolean(url !== "");
 
+  // check if email address looks like an email address
+  const [isValidEmail, setIsValidEmail] = useState(true);
+
+  const handleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const email = event.target.value;
+    setIsValidEmail(checkValidEmail(email));
+  };
+
   function handleClose() {
     resetInvitee();
     setInvitationForm({ email: "", id: "", role: "MEMBER" });
@@ -58,6 +67,7 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
     setErrorMsg(null);
     setOpen(false);
     setInviteSent(false);
+    setIsValidEmail(true);
   }
 
   // if current role is disabled
@@ -109,7 +119,8 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
         (hasSeatsLeft && !hasSeatsLeft(role)) ||
         (currInvitee && currInvitee.role === role) ||
         selectionNotValid ||
-        url.length > 0
+        url.length > 0 ||
+        isValidEmail === false
       }
       confirmationButtonText={"Send invitation"}
     >
@@ -124,12 +135,20 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
             setErrorMsg(null);
             setInvitationForm({ ...invitationForm, email: e.target.value });
             setUrl("");
+            handleEmailChange(e);
             setInviteSent(false);
             setEmailSendAttempted(false);
           }}
           type="email"
           value={email}
           disabled={editMode}
+          helperText={
+            !isValidEmail && (
+              <Typography color="error">
+                Please enter a valid email address
+              </Typography>
+            )
+          }
         />
         <InputLabel sx={{ paddingTop: 2 }}>Role</InputLabel>
         <RoleSelection
@@ -161,4 +180,8 @@ function InviteError({ children }) {
       </Alert>
     </Box>
   );
+}
+
+function checkValidEmail(email: string) {
+  return EmailValidator.validate(email);
 }
