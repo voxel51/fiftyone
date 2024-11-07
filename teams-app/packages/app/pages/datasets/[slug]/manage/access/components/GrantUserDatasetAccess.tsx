@@ -20,7 +20,6 @@ import {
 import { Link } from "@mui/material";
 import { UserRole } from "@fiftyone/teams-state/src/Dataset/__generated__/manageDatasetInviteUserToDatasetMutation.graphql";
 import { Box, Stack, Typography } from "@mui/material";
-import { capitalize } from "lodash";
 import LicenseAudit from "pages/settings/team/users/components/LicenseAudit";
 import { Suspense, useCallback, useState } from "react";
 import { useRecoilState } from "recoil";
@@ -54,6 +53,7 @@ function GrantUserDatasetAccess() {
     useState(false);
 
   const { hasSeatsLeft } = useUserAudit();
+  const { canSendEmailInvitations } = useUserRole();
 
   const shouldDisableSubmit =
     userStatePermission &&
@@ -81,8 +81,10 @@ function GrantUserDatasetAccess() {
 
   const onGrantAccessByInviteComplete = useCallback(() => {
     // don't close the modal if false so user can see helper text
-    setShowInvitationHelperText(true);
-  }, []);
+    if (!canSendEmailInvitations) {
+      setShowInvitationHelperText(true);
+    }
+  }, [canSendEmailInvitations]);
 
   const showTextForCanManageOrg = showInvitationHelperText && canManageOrg;
   const showTextForCanManageDataset =
