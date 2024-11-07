@@ -7,6 +7,7 @@ import datetime
 class KeyDocument:
     """Model representing a key in the store."""
 
+    dataset_id: Optional[str] = None
     store_name: str
     key: str
     value: Any
