@@ -98,12 +98,12 @@ export default function SliderView(props: ViewPropsType) {
     ? schemaMultipleOf
     : (max - min) / 100;
 
-  // if external reset happens, update the key for inputs
+  // external data reset re-renders the inputs
   useEffect(() => {
-    if (isEqual(data, [min, max])) {
+    if (!isEqual(data, [min, max])) {
       return setFieldsRevision(fieldsRevision + 1);
     }
-  }, [key]);
+  }, [data]);
 
   const [unit, _] = useState<ValueFormat>(valueFormat);
 
