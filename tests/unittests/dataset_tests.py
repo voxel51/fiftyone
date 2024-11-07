@@ -28,6 +28,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.utils.data as foud
 from fiftyone import ViewField as F
+from fiftyone.operators.store import ExecutionStoreService
 
 from decorators import drop_datasets, skip_windows
 
@@ -138,8 +139,17 @@ class DatasetTests(unittest.TestCase):
         self.assertListEqual(list_datasets(), dataset_names)
 
         name = dataset_names.pop(0)
-        datasets[name].delete()
+        dataset = datasets[name]
+        dataset_id = dataset._doc.id
+        exec_store_svc = ExecutionStoreService(dataset_id=dataset_id)
+        store_name = "test_store"
+        exec_store_svc.set_key(store_name, "foo", "bar")
+        keys = exec_store_svc.list_keys(store_name)
+        self.assertEqual(keys, ["foo"])
+        dataset.delete()
         self.assertListEqual(list_datasets(), dataset_names)
+        keys = exec_store_svc.list_keys(store_name)
+        self.assertEqual(keys, [])
         with self.assertRaises(ValueError):
             len(datasets[name])
 
