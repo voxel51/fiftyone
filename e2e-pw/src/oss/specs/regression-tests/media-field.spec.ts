@@ -64,13 +64,8 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
   dataset.save()`);
 });
 
-test("grid media field", async ({ eventUtils, fiftyoneLoader, grid, page }) => {
+test("grid media field", async ({ fiftyoneLoader, grid, page }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  const wait = eventUtils.getEventReceivedPromiseForPredicate(
-    "canvas-loaded",
-    ({ detail }) => detail.sampleFilepath === "/tmp/empty.png"
-  );
-  await wait;
   await expect(grid.getNthLooker(0)).toHaveScreenshot("grid-media-field.png");
 });
 

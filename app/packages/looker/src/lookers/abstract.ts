@@ -60,11 +60,11 @@ const getLabelsWorker = (() => {
   let workers: Worker[];
 
   let next = -1;
-  return (dispatchEvent) => {
+  return () => {
     if (!workers) {
       workers = [];
       for (let i = 0; i < numWorkers; i++) {
-        workers.push(createWorker(LookerUtils.workerCallbacks, dispatchEvent));
+        workers.push(createWorker(LookerUtils.workerCallbacks));
       }
     }
 
@@ -91,6 +91,7 @@ export abstract class AbstractLooker<
   private previousState?: Readonly<State>;
   private readonly rootEvents: Events<State>;
 
+  protected readonly abortController: AbortController;
   protected sampleOverlays: Overlay<State>[];
   protected currentOverlays: Overlay<State>[];
   protected pluckedOverlays: Overlay<State>[];
@@ -107,10 +108,12 @@ export abstract class AbstractLooker<
     config: State["config"],
     options: Partial<State["options"]> = {}
   ) {
+    this.abortController = new AbortController();
     this.eventTarget = new EventTarget();
     this.subscriptions = {};
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
+
     this.loadSample(sample);
     this.state.options.mimetype = getMimeType(sample);
     this.pluckedOverlays = [];
@@ -311,7 +314,7 @@ export abstract class AbstractLooker<
           Boolean(this.currentOverlays.length) &&
           this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
 
-        postUpdate && postUpdate(this.state, this.currentOverlays, this.sample);
+        postUpdate?.(this.state, this.currentOverlays, this.sample);
 
         this.dispatchImpliedEvents(this.previousState, this.state);
 
@@ -323,7 +326,9 @@ export abstract class AbstractLooker<
         }
 
         ctx.lineWidth = this.state.strokeWidth;
-        ctx.font = `bold ${this.state.fontSize.toFixed(2)}px Palanquin`;
+        if (!this.state.config.thumbnail) {
+          ctx.font = `bold ${this.state.fontSize.toFixed(2)}px Palanquin`;
+        }
         ctx.textAlign = "left";
         ctx.textBaseline = "bottom";
         ctx.imageSmoothingEnabled = false;
@@ -383,9 +388,19 @@ export abstract class AbstractLooker<
   addEventListener(
     eventType: string,
     handler: EventListenerOrEventListenerObject | null,
-    ...args: any[]
+    optionsOrUseCapture?: boolean | AddEventListenerOptions
   ) {
-    this.eventTarget.addEventListener(eventType, handler, ...args);
+    const argsWithSignal: AddEventListenerOptions =
+      typeof optionsOrUseCapture === "boolean"
+        ? {
+            signal: this.abortController?.signal,
+            capture: optionsOrUseCapture,
+          }
+        : {
+            ...(optionsOrUseCapture ?? {}),
+            signal: this.abortController?.signal,
+          };
+    this.eventTarget.addEventListener(eventType, handler, argsWithSignal);
   }
 
   removeEventListener(
@@ -446,6 +461,9 @@ export abstract class AbstractLooker<
     };
   }
 
+  /**
+   * Attaches the instance to the provided HTMLElement and adds event listeners
+   */
   attach(element: HTMLElement | string, dimensions?: Dimensions): void {
     if (typeof element === "string") {
       element = document.getElementById(element);
@@ -457,17 +475,13 @@ export abstract class AbstractLooker<
     }
 
     if (this.lookerElement.element.parentElement) {
-      const parent = this.lookerElement.element.parentElement;
-      this.resizeObserver.disconnect();
-      parent.removeChild(this.lookerElement.element);
-
-      for (const eventType in this.rootEvents) {
-        parent.removeEventListener(eventType, this.rootEvents[eventType]);
-      }
+      console.warn("instance is already attached");
     }
 
     for (const eventType in this.rootEvents) {
-      element.addEventListener(eventType, this.rootEvents[eventType]);
+      element.addEventListener(eventType, this.rootEvents[eventType], {
+        signal: this.abortController.signal,
+      });
     }
     this.updater({
       windowBBox: dimensions ? [0, 0, ...dimensions] : getElementBBox(element),
@@ -483,12 +497,14 @@ export abstract class AbstractLooker<
     });
   }
 
+  /**
+   * Detaches the instance from the DOM
+   */
   detach(): void {
     this.resizeObserver.disconnect();
-    this.lookerElement.element.parentNode &&
-      this.lookerElement.element.parentNode.removeChild(
-        this.lookerElement.element
-      );
+    this.lookerElement.element.parentNode?.removeChild(
+      this.lookerElement.element
+    );
   }
 
   abstract updateOptions(options: Partial<State["options"]>): void;
@@ -512,20 +528,20 @@ export abstract class AbstractLooker<
 
   getCurrentSampleLabels(): LabelData[] {
     const labels: LabelData[] = [];
-    this.currentOverlays.forEach((overlay) => {
+    for (const overlay of this.currentOverlays) {
       if (overlay instanceof ClassificationsOverlay) {
-        overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
+        for (const [field, label] of overlay.getFilteredAndFlat(this.state)) {
           labels.push({
             field: field,
             labelId: label.id,
             sampleId: this.sample.id,
           });
-        });
+        }
       } else {
         const { id: labelId, field } = overlay.getSelectData(this.state);
         labels.push({ labelId, field, sampleId: this.sample.id });
       }
-    });
+    }
 
     return labels;
   }
@@ -534,14 +550,19 @@ export abstract class AbstractLooker<
     return false;
   }
 
+  /**
+   * Detaches the instance from the DOM and aborts all associated event
+   * listeners
+   *
+   * This method must be called to avoid memory leaks associated with detached
+   * elements
+   */
   destroy() {
-    this.resizeObserver.disconnect();
-    this.lookerElement.element.parentElement &&
-      this.lookerElement.element.parentElement.removeChild(
-        this.lookerElement.element
-      );
+    this.detach();
+    this.abortController.abort();
     this.updater({ destroyed: true });
   }
+
   disable() {
     this.updater({ disabled: true });
   }
@@ -674,9 +695,9 @@ export abstract class AbstractLooker<
 
   private loadSample(sample: Sample) {
     const messageUUID = uuid();
-    const labelsWorker = getLabelsWorker((event, detail) =>
-      this.dispatchEvent(event, detail)
-    );
+
+    const labelsWorker = getLabelsWorker();
+
     const listener = ({ data: { sample, coloring, uuid } }) => {
       if (uuid === messageUUID) {
         this.sample = sample;
@@ -690,6 +711,7 @@ export abstract class AbstractLooker<
         labelsWorker.removeEventListener("message", listener);
       }
     };
+
     labelsWorker.addEventListener("message", listener);
 
     labelsWorker.postMessage({

@@ -1,6 +1,6 @@
 import { ClassificationsOverlay } from "../overlays";
-import { Overlay } from "../overlays/base";
-import {
+import type { Overlay } from "../overlays/base";
+import type {
   BaseState,
   FrameState,
   ImaVidState,
@@ -109,3 +109,8 @@ export const LookerUtils = {
     ],
   },
 };
+
+export const withFrames = <T extends { [key: string]: unknown }>(obj: T): T =>
+  Object.fromEntries(
+    Object.entries(obj).map(([k, v]) => ["frames." + k, v])
+  ) as T;

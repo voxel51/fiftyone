@@ -2,7 +2,7 @@ import { PopoutSectionTitle, TabOption, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { groupStatistics } from "@fiftyone/state";
 import type { RefObject } from "react";
-import React, { useMemo } from "react";
+import { default as React, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { QP_MODE } from "../../utils/links";
 import Checkbox from "../Common/Checkbox";

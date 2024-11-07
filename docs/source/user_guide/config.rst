@@ -756,6 +756,7 @@ You can print your App config at any time via the Python library and the CLI:
                 "#777799"
             ],
             "colorscale": "viridis",
+            "frame_stream_size": 1000,
             "grid_zoom": 5,
             "loop_videos": false,
             "media_fallback": false,
@@ -808,6 +809,7 @@ You can print your App config at any time via the Python library and the CLI:
                 "#777799"
             ],
             "colorscale": "viridis",
+            "frame_stream_size": 1000,
             "grid_zoom": 5,
             "default_query_performance": true,
             "disable_frame_filtering": false,

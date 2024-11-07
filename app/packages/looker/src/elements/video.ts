@@ -5,20 +5,15 @@
 import { playbackRate, volume as volumeIcon, volumeMuted } from "../icons";
 import lockIcon from "../icons/lock.svg";
 import lockOpenIcon from "../icons/lockOpen.svg";
-import { VideoState } from "../state";
-import { BaseElement, Events } from "./base";
+import type { VideoState } from "../state";
+import type { Events } from "./base";
+import { BaseElement } from "./base";
 import {
   muteUnmute,
   playPause,
   resetPlaybackRate,
   supportLock,
 } from "./common/actions";
-import {
-  lookerClickable,
-  lookerControlActive,
-  lookerTime,
-} from "./common/controls.module.css";
-import { lookerLoader } from "./common/looker.module.css";
 import { dispatchTooltipEvent } from "./common/util";
 import {
   acquirePlayer,
@@ -28,6 +23,13 @@ import {
   getFullTimeString,
   getTime,
 } from "./util";
+
+import {
+  lookerClickable,
+  lookerControlActive,
+  lookerTime,
+} from "./common/controls.module.css";
+import { lookerLoader } from "./common/looker.module.css";
 import {
   bufferingCircle,
   bufferingPath,
@@ -39,7 +41,7 @@ import {
 } from "./video.module.css";
 
 export class LoaderBar extends BaseElement<VideoState> {
-  private buffering = false;
+  private shown: boolean = undefined;
 
   isShown({ thumbnail }: Readonly<VideoState["config"]>) {
     return thumbnail;
@@ -56,25 +58,24 @@ export class LoaderBar extends BaseElement<VideoState> {
     buffering,
     hovering,
     waitingForVideo,
+    waitingToStream,
     error,
     lockedToSupport,
     config: { frameRate, support },
   }: Readonly<VideoState>) {
-    if (
-      (buffering || waitingForVideo) &&
-      hovering &&
-      !error === this.buffering
-    ) {
-      return this.element;
-    }
+    const shown =
+      !error && hovering && (waitingForVideo || buffering || waitingToStream);
     const start = lockedToSupport ? support[0] : 1;
     const end = lockedToSupport
       ? support[1]
       : getFrameNumber(duration, duration, frameRate);
-    this.buffering =
-      (buffering || waitingForVideo) && hovering && !error && start !== end;
+    if (shown === this.shown || start === end) {
+      return this.element;
+    }
 
-    if (this.buffering) {
+    this.shown = shown;
+
+    if (this.shown) {
       this.element.style.display = "block";
     } else {
       this.element.style.display = "none";
@@ -593,6 +594,17 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     return this.element;
   }
 
+  private attachEvents() {
+    for (const eventType in this.events) {
+      this.element.addEventListener(eventType, this.events[eventType]);
+    }
+  }
+  private removeEvents() {
+    for (const eventType in this.events) {
+      this.element.removeEventListener(eventType, this.events[eventType]);
+    }
+  }
+
   private acquireVideo() {
     let called = false;
 
@@ -645,7 +657,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 
     this.removeEvents();
     this.element = null;
-    this.release && this.release();
+    this.release?.();
     this.release = null;
 
     this.update({
@@ -708,7 +720,11 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       });
     }
     if (loaded && (!playing || seeking || buffering) && !this.element.paused) {
-      !this.waitingToPlay ? this.element.pause() : (this.waitingToPause = true);
+      if (this.waitingToPlay) {
+        this.waitingToPause = true;
+      } else {
+        this.element.pause();
+      }
     }
 
     if (this.loop !== loop) {
@@ -736,24 +752,37 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
 }
 
 export function withVideoLookerEvents(): () => Events<VideoState> {
-  return function () {
+  return () => {
+    let timeout: ReturnType<typeof setTimeout> = null;
     return {
       mouseenter: ({ update }) => {
         update(({ config: { thumbnail } }) => {
           if (thumbnail) {
+            timeout = setTimeout(() => {
+              update({
+                playing: true,
+                waitingToStream: false,
+              });
+            }, 500);
+
             return {
-              playing: true,
+              waitingToStream: true,
             };
           }
           return {};
         });
       },
       mouseleave: ({ update }) => {
+        if (timeout) {
+          clearTimeout(timeout);
+          timeout = null;
+        }
         update(({ config: { thumbnail, support } }) => {
           if (thumbnail) {
             return {
               frameNumber: support ? support[0] : 1,
               playing: false,
+              waitingToStream: false,
             };
           }
           return {
