@@ -209,12 +209,14 @@ const ModalBase: React.FC<ModalBaseProps> = ({
         onClose={() => setOpen(false)}
         aria-labelledby="modal-title"
         aria-describedby="modal-subtitle"
+        sx={{ zIndex: 999 }}
       >
         <Box sx={modalStyle}>
           <Typography
             id="modal-title"
             variant="h5"
             component="h5"
+            color="text.primary"
             sx={{
               textAlign: titleAlign,
               display: "flex",
@@ -237,11 +239,16 @@ const ModalBase: React.FC<ModalBaseProps> = ({
             id="modal-subtitle"
             variant="h6"
             component="h6"
+            color="text.primary"
             sx={{ mt: 4, textAlign: subtitleAlign }}
           >
             {subtitle}
           </Typography>
-          <Typography id="modal-body" sx={{ my: 1, textAlign: bodyAlign }}>
+          <Typography
+            id="modal-body"
+            sx={{ my: 1, textAlign: bodyAlign }}
+            color="text.primary"
+          >
             {body}
           </Typography>
           {(functionality === "tagging" || functionality === "Tagging") && (

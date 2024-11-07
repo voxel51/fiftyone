@@ -63,6 +63,7 @@ export type ViewPropsType<Schema extends SchemaType = SchemaType> = {
     ROWS: number;
   };
   autoFocused?: React.MutableRefObject<boolean>;
+  otherProps: { [key: string]: any };
 };
 
 export type CustomComponentsType = {
