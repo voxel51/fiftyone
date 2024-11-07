@@ -18,17 +18,18 @@ const QueryPerformanceToastTeams = () => {
     setPath(event.path);
   };
 
-  const onClick = () => {
+  const onClick = (isFrameFilter: boolean) => {
     let openedPanel = openedPanels.find(({ type }) => type === PANEL_NAME);
     if (!openedPanel) {
       openedPanel = new SpaceNode();
       openedPanel.type = PANEL_NAME;
       spaces.addNodeAfter(spaces.root, openedPanel, true);
     }
+    spaces.setNodeActive(openedPanel);
     if (path) {
       promptForOperator(
         "index_field_creation_operator",
-        { nonperformant_field: path },
+        { nonperformant_field: path, is_frame_filter: isFrameFilter },
         {
           callback: () => {
             triggerPanelEvent(openedPanel.id, {

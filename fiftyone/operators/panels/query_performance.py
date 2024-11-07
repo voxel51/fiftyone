@@ -141,12 +141,16 @@ class IndexFieldCreationOperator(Operator):
         field_choices.add_choice("index_field", label="Index Field")
         if ctx.dataset._has_frame_fields:
             field_choices.add_choice("summary_field", label="Summary Field")
-
+        default_field = (
+            "summary_field"
+            if ctx.params.get("is_frame_filter")
+            else "index_field"
+        )
         inputs.enum(
             "field_type",
             field_choices.values(),
             required=True,
-            default="index_field",
+            default=default_field,
             label="CREATE NEW INDEX",
             description="Choose your field to create: index field for faster queries, summary field for frame aggregation",
             view=field_choices,
