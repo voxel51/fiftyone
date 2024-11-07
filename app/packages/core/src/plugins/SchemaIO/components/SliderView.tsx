@@ -60,7 +60,14 @@ export default function SliderView(props: ViewPropsType) {
   const sliderRef = useRef<HTMLInputElement>(null);
   const focus = autoFocus(props);
 
-  const { view } = schema;
+  // @NOTE: using schema min/max/viewMultipleOf is deprecated
+  // in favor of using view's alternatives.
+  const {
+    view,
+    min: schemaMin,
+    max: schemaMax,
+    viewMultipleOf: schemaMultipleOf,
+  } = schema;
 
   const {
     value_label_display: valueLabelDisplay = "on",
@@ -69,7 +76,7 @@ export default function SliderView(props: ViewPropsType) {
     variant = null,
     label_position: labelPosition = "left",
     label = "Threshold",
-    viewMultipleOf = null,
+    view_multiple_of: viewMultipleOf = null,
     min: viewMin,
     max: viewMax,
   } = view;
@@ -78,8 +85,8 @@ export default function SliderView(props: ViewPropsType) {
 
   const multipleOf = viewMultipleOf;
   const [min, max] = [
-    isNumber(viewMin) ? viewMin : 0,
-    isNumber(viewMax) ? viewMax : 100,
+    isNumber(viewMin) ? viewMin : isNumber(schemaMin) ? schemaMin : 0,
+    isNumber(viewMax) ? viewMax : isNumber(schemaMax) ? schemaMax : 100,
   ];
 
   const [key, setUserChanged] = useKey(path, schema, data, true);
@@ -87,6 +94,8 @@ export default function SliderView(props: ViewPropsType) {
 
   const computedMultipleOf = isNumber(multipleOf)
     ? multipleOf
+    : isNumber(schemaMultipleOf)
+    ? schemaMultipleOf
     : (max - min) / 100;
 
   // if external reset happens, update the key for inputs
