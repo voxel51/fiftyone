@@ -144,7 +144,6 @@ export default function UserInputSuggestion({
               email={option.email}
               role={option.role}
               src={option.picture}
-              bgColor={option.id ? undefined : "gray"}
               detailed
             />
           </Box>
