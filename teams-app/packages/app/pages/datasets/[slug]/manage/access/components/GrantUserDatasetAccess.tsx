@@ -127,7 +127,10 @@ function GrantUserDatasetAccess() {
             target={user}
             permission={userStatePermission}
             hideRole
-            userCardProps={{ subtitle: user.role || "" }}
+            userCardProps={{
+              subtitle: user.role || "",
+              bgColor: user.role || "gray",
+            }}
             onDelete={() => {
               setUser(null);
             }}

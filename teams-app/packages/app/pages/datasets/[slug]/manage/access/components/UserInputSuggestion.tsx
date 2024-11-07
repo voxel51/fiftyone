@@ -16,7 +16,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { capitalize, debounce } from "lodash";
+import { debounce } from "lodash";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilState, useRecoilValueLoadable } from "recoil";
 import * as EmailValidation from "email-validator";
@@ -144,6 +144,7 @@ export default function UserInputSuggestion({
               email={option.email}
               role={option.role}
               src={option.picture}
+              bgColor={option.id ? undefined : "gray"}
               detailed
             />
           </Box>
