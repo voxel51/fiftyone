@@ -1,6 +1,6 @@
 {
     "name": "fiftyone-teams-app-packages",
-    "version": "2.2.0-dev.41",
+    "version": "2.2.0-dev.42",
     "private": true,
     "workspaces": [
         "packages/*",
