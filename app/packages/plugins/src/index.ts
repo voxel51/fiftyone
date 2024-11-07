@@ -241,7 +241,15 @@ export function useActivePlugins(type: PluginComponentType, ctx: any) {
       .getByType(type)
       .filter((p) => {
         if (typeof p.activator === "function") {
-          return p.activator(ctx);
+          try {
+            return p.activator(ctx);
+          } catch (e) {
+            console.error(
+              `Error activating plugin "${p.name}".`,
+              "The plugin will not be available.",
+              e
+            );
+          }
         }
         return false;
       })
@@ -253,7 +261,15 @@ export function useActivePlugins(type: PluginComponentType, ctx: any) {
         .getByType(type)
         .filter((p) => {
           if (typeof p.activator === "function") {
-            return p.activator(ctx);
+            try {
+              return p.activator(ctx);
+            } catch (e) {
+              console.error(
+                `Error activating plugin "${p.name}".`,
+                "The plugin will not be available.",
+                e
+              );
+            }
           }
           return false;
         });
