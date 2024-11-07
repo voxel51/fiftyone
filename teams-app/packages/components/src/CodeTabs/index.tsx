@@ -54,7 +54,11 @@ export default function CodeTabs(props: CodeTabsProps) {
           ))}
         </Tabs>
       </Box>
-      {Boolean(description) && <Typography py={2}>{description}</Typography>}
+      {Boolean(description) && (
+        <Typography py={2} sx={{ whiteSpace: "pre-line" }}>
+          {description}
+        </Typography>
+      )}
       <Box mt={1} sx={{ cursor: "pointer" }}>
         <CodeBlock {...tabProps} text={tabProps.code} />
       </Box>

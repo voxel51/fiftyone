@@ -65,6 +65,7 @@ export default function ManageUser({
           src={target?.picture}
           detailed
           titleSx={{ maxWidth: "150px" }}
+          bgColor={target.role ? undefined : "gray"}
           {...userCardProps}
         />
       </TableCell>

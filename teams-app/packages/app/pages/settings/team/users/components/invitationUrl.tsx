@@ -15,7 +15,7 @@ const InviteUrl = ({
   return (
     <Box>
       <CodeTabs
-        description={`${emailErrorDesc} ${INVITE_URL_HELPER_TEXT}`}
+        description={`${emailErrorDesc} \n${INVITE_URL_HELPER_TEXT}`}
         tabs={[
           {
             id: "invitee-url",

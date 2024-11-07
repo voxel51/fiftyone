@@ -14,6 +14,7 @@ export type AvatarProps = MUIAvatarProps & {
   detailed?: boolean;
   compact?: boolean;
   color?: "primary" | "secondary";
+  bgColor?: string;
   titleSx?: Record<string, string>;
 };
 
@@ -25,11 +26,12 @@ export default function Avatar(props: AvatarProps) {
     title,
     subtitle,
     titleSx = {},
+    bgColor,
     ...avatarProps
   } = props;
   const theme = useTheme();
   const baseStyle = {
-    bgcolor: stringToColor(title),
+    bgcolor: bgColor || stringToColor(title),
     color: "#fff", // consistent color with gmail default avatars
     fontSize: "1.4rem",
     fontWeight: 500,
