@@ -36,12 +36,15 @@ export default class Iter<K, V> {
     let current = Math.abs(from);
     const iter = this.#iter(from);
     let section = this.#section;
+
     while (current !== ZERO) {
       let result: ID;
       try {
         result = await iter(section, answer);
         if (!result) {
-          answer = undefined;
+          if (soft) {
+            answer = undefined;
+          }
           break;
         }
       } catch (e) {

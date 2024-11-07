@@ -1,6 +1,6 @@
 import * as foq from "@fiftyone/relay";
 import { BufferManager } from "@fiftyone/utilities";
-import { Environment, fetchQuery, Subscription } from "relay-runtime";
+import { Environment, Subscription, fetchQuery } from "relay-runtime";
 import { BufferRange, ImaVidState, StateUpdate } from "../../state";
 import { BUFFERS_REFRESH_TIMEOUT_YIELD, DEFAULT_FRAME_RATE } from "./constants";
 import {

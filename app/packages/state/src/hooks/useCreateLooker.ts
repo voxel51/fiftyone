@@ -62,6 +62,8 @@ export default <T extends AbstractLooker<BaseState>>(
     dynamicGroupAtoms.shouldRenderImaVidLooker(isModal)
   );
 
+  const isDynamicGroup = useRecoilValue(dynamicGroupAtoms.isDynamicGroup);
+
   // callback to get the latest promise inside another recoil callback
   // gets around the limitation of the fact that snapshot inside callback refs to the committed state at the time
   const getPromise = useRecoilCallback(
@@ -136,6 +138,7 @@ export default <T extends AbstractLooker<BaseState>>(
           sources: urls,
           frameNumber: create === FrameLooker ? frameNumber : undefined,
           frameRate,
+          isDynamicGroup,
           sampleId: sample._id,
           support: isClip ? sample.support : undefined,
           dataset,
@@ -274,11 +277,11 @@ export default <T extends AbstractLooker<BaseState>>(
       highlight,
       isClip,
       isFrame,
-      isModal,
-      shouldRenderImaVidLooker,
       isPatch,
+      isModal,
       mediaField,
       options,
+      shouldRenderImaVidLooker,
       selected,
       thumbnail,
       view,

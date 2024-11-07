@@ -108,8 +108,8 @@ export default class Spotlight<K, V> extends EventTarget {
       return;
     }
 
-    this.#backward?.destroy();
-    this.#forward?.destroy();
+    this.#backward?.destroy(!this.#config.retainItems);
+    this.#forward?.destroy(!this.#config.retainItems);
     this.#element?.classList.remove(styles.spotlightLoaded);
     this.#element?.remove();
     this.#scrollReader?.destroy();

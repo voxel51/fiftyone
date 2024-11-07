@@ -8,14 +8,14 @@ import {
   DETECTIONS,
   DYNAMIC_EMBEDDED_DOCUMENT,
   EMBEDDED_DOCUMENT,
-  getCls,
-  getFetchFunction,
   HEATMAP,
   LABEL_LIST,
   Schema,
-  setFetchFunction,
   Stage,
   VALID_LABEL_TYPES,
+  getCls,
+  getFetchFunction,
+  setFetchFunction,
 } from "@fiftyone/utilities";
 import { decode as decodePng } from "fast-png";
 import { decode as decodeJpg } from "jpeg-js";
@@ -533,7 +533,7 @@ type RequestFrameChunkMethod = ReaderMethod & RequestFrameChunk;
 
 const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
   if (uuid === streamId) {
-    stream && stream.reader.read().then(getSendChunk(uuid));
+    stream?.reader.read().then(getSendChunk(uuid));
   }
 };
 

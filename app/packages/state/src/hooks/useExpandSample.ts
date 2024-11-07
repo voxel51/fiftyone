@@ -65,7 +65,7 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           return { id: id.description, groupId };
         };
 
-        const next = async (offset: number = 1) => {
+        const next = async (offset = 1) => {
           const nextId = await cursor.next(offset);
           const nextCheckId = await cursor.next(offset, true);
 

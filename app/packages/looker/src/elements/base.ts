@@ -2,7 +2,7 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { BaseState, DispatchEvent, Sample, StateUpdate } from "../state";
+import type { BaseState, DispatchEvent, Sample, StateUpdate } from "../state";
 
 type ElementEvent<State extends BaseState, E extends Event> = (args: {
   event: E;
@@ -23,6 +23,14 @@ export type Events<
 type LoadedEvents = {
   [K in keyof HTMLElementEventMap]?: HTMLElementEventMap[K];
 };
+
+interface BootParams<State extends BaseState> {
+  abortController: AbortController;
+  batchUpdate?: (cb: () => unknown) => void;
+  config: Readonly<State["config"]>;
+  dispatchEvent: (eventType: string, details?: any) => void;
+  update: StateUpdate<State>;
+}
 
 export abstract class BaseElement<
   State extends BaseState,
@@ -46,12 +54,17 @@ export abstract class BaseElement<
 
   protected readonly events: LoadedEvents = {};
 
-  boot(
-    config: Readonly<State["config"]>,
-    update: StateUpdate<State>,
-    dispatchEvent: (eventType: string, details?: any) => void,
-    batchUpdate?: (cb: () => unknown) => void
-  ) {
+  applyChildren(children: BaseElement<State>[]) {
+    this.children = children || [];
+  }
+
+  boot({
+    abortController,
+    batchUpdate,
+    config,
+    dispatchEvent,
+    update,
+  }: BootParams<State>) {
     if (!this.isShown(config)) {
       return;
     }
@@ -64,11 +77,10 @@ export abstract class BaseElement<
     for (const [eventType, handler] of Object.entries(this.getEvents(config))) {
       this.events[eventType] = (event) =>
         handler({ event, update, dispatchEvent });
-      this.element?.addEventListener(eventType, this.events[eventType]);
+      this.element?.addEventListener(eventType, this.events[eventType], {
+        signal: abortController.signal,
+      });
     }
-  }
-  applyChildren(children: BaseElement<State>[]) {
-    this.children = children || [];
   }
 
   isShown(config: Readonly<State["config"]>): boolean {
@@ -77,17 +89,17 @@ export abstract class BaseElement<
 
   render(state: Readonly<State>, sample: Readonly<Sample>): Element | null {
     const self = this.renderSelf(state, sample);
-    this.children.forEach((child) => {
+    for (const child of this.children) {
       if (!child.isShown(state.config)) {
-        return;
+        continue;
       }
 
       const element = child.render(state, sample);
       if (!element || element.parentNode === this.element) {
-        return;
+        continue;
       }
-      self && self.appendChild(element);
-    });
+      self?.appendChild(element);
+    }
 
     return self;
   }
@@ -104,17 +116,5 @@ export abstract class BaseElement<
 
   protected getEvents(config: Readonly<State["config"]>): Events<State> {
     return {};
-  }
-
-  protected removeEvents() {
-    for (const eventType in this.events) {
-      this.element.removeEventListener(eventType, this.events[eventType]);
-    }
-  }
-
-  protected attachEvents() {
-    for (const eventType in this.events) {
-      this.element.addEventListener(eventType, this.events[eventType]);
-    }
   }
 }

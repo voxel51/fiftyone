@@ -11,6 +11,7 @@ import type { Queries } from "../makeRoutes";
 import type RouteDefinition from "./RouteDefinition";
 import type { LocationState, MatchPathResult } from "./matchPath";
 
+import { viewsAreEqual } from "@fiftyone/state";
 import { NotFoundError, Resource, isNotebook } from "@fiftyone/utilities";
 import { createBrowserHistory, createMemoryHistory } from "history";
 import React from "react";
@@ -183,13 +184,21 @@ export const createRouter = <T extends OperationType>(
   };
 };
 
-const SKIP_EVENTS = new Set(["modal", "slice"]);
+const SKIP_EVENTS = new Set(["modal", "slice", "spaces"]);
 
 const makeGetEntryResource = <T extends OperationType>() => {
   let currentLocation: FiftyOneLocation;
   let currentResource: Resource<Entry<T>>;
 
   const isReusable = (location: FiftyOneLocation) => {
+    if (location.pathname !== currentLocation?.pathname) {
+      return false;
+    }
+
+    if (!viewsAreEqual(location.state.view, currentLocation?.state.view)) {
+      return false;
+    }
+
     if (currentLocation) {
       return (
         SKIP_EVENTS.has(location.state.event || "") ||

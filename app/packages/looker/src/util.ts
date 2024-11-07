@@ -17,10 +17,10 @@ import {
 
 import {
   AppError,
-  getFetchParameters,
   GraphQLError,
   NetworkError,
   ServerError,
+  getFetchParameters,
 } from "@fiftyone/utilities";
 import { DEFAULT_FRAME_RATE } from "./lookers/imavid/constants";
 import LookerWorker from "./worker/index.ts?worker&inline";
@@ -451,6 +451,10 @@ export const createWorker = (
 ): Worker => {
   let worker: Worker = null;
 
+  const signal = abortController
+    ? { signal: abortController.signal }
+    : undefined;
+
   try {
     worker = new LookerWorker();
   } catch {
@@ -462,7 +466,7 @@ export const createWorker = (
     (error) => {
       dispatchEvent("error", error);
     },
-    { signal: abortController?.signal }
+    signal
   );
 
   worker.addEventListener(
@@ -475,7 +479,7 @@ export const createWorker = (
         dispatchEvent("error", new ErrorEvent("error", { error }));
       }
     },
-    { signal: abortController?.signal }
+    signal
   );
 
   worker.postMessage({
@@ -496,7 +500,7 @@ export const createWorker = (
 
       listeners[method].forEach((callback) => callback(worker, args));
     },
-    { signal: abortController?.signal }
+    signal
   );
   return worker;
 };
