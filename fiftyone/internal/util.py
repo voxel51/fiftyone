@@ -52,6 +52,15 @@ def has_encryption_key():
     return is_internal_service() and ENCRYPTION_KEY_ENV_VAR in os.environ
 
 
+def get_encryption_key():
+    """Get encryption key system configured with, if set
+
+    Returns:
+        string encryption key
+    """
+    return os.environ.get(ENCRYPTION_KEY_ENV_VAR)
+
+
 def get_api_url():
     # use `or` to default to localhost if envar is falsy
     return os.getenv(API_URL_ENV_VAR) or "http://localhost:8000"

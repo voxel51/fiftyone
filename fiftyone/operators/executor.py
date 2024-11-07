@@ -326,6 +326,7 @@ async def prepare_operator_executor(
     set_progress=None,
     delegated_operation_id=None,
     request_token=None,  # teams-only
+    api_key=None,  # teams-only
     user=None,  # teams-only
 ):
     registry = OperatorRegistry()
@@ -336,7 +337,7 @@ async def prepare_operator_executor(
     executor = Executor()
     dataset = request_params.get("dataset_name", None)
     user = await resolve_operation_user(
-        id=user, dataset=dataset, token=request_token
+        id=user, dataset=dataset, token=request_token, api_key=api_key
     )
     execution_context_user = (
         ExecutionContextUser.from_dict(user) if user else None
@@ -586,6 +587,7 @@ class ExecutionContextUser(object):
         role=None,
         dataset_permission=None,
         _request_token=None,
+        _api_key=None,
     ):
         self.id = id
         self.email = email
@@ -593,6 +595,7 @@ class ExecutionContextUser(object):
         self.role = role
         self.dataset_permission = dataset_permission
         self._request_token = _request_token
+        self._api_key = _api_key
 
     @classmethod
     def from_dict(self, user):
@@ -603,6 +606,7 @@ class ExecutionContextUser(object):
             role=user.get("role", None),
             dataset_permission=user.get("dataset_permission", None),
             _request_token=user.get("_request_token"),
+            _api_key=user.get("_api_key"),
         )
 
     def to_dict(self):
@@ -684,6 +688,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
         self.__context_tokens = [
             ficv.running_user_id.set(self.user_id),
             ficv.running_user_request_token.set(self.user_request_token),
+            ficv.running_user_api_key.set(self.user_api_key),
             ficv.no_singleton_cache.set(True),
         ]
 
@@ -692,16 +697,19 @@ class ExecutionContext(contextlib.AbstractContextManager):
             (
                 running_uid_tok,
                 running_user_request_token,
+                running_user_api_key_token,
                 singleton_token,
             ) = self.__context_tokens
             self.__context_tokens = None
             ficv.running_user_id.reset(running_uid_tok)
             ficv.running_user_request_token.reset(running_user_request_token)
+            ficv.running_user_api_key.reset(running_user_api_key_token)
             ficv.no_singleton_cache.reset(singleton_token)
         except ValueError:
             # In case of any error, swallow and just reset to defaults.
             ficv.running_user_id.set(None)
             ficv.running_user_request_token.set(None)
+            ficv.running_user_api_key.set(None)
             ficv.no_singleton_cache.set(False)
 
     @property
@@ -868,6 +876,10 @@ class ExecutionContext(contextlib.AbstractContextManager):
         if known.
         """
         return self.user._request_token if self.user else None
+
+    @property
+    def user_api_key(self):
+        return self.user._api_key if self.user else None
 
     @property
     def panel_id(self):
