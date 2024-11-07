@@ -16,14 +16,20 @@ logger = logging.getLogger(__name__)
 class ExecutionStoreService:
     """Service for managing execution store operations."""
 
-    def __init__(self, repo: Optional["ExecutionStoreRepo"] = None):
+    def __init__(
+        self,
+        repo: Optional["ExecutionStoreRepo"] = None,
+        dataset_id: Optional[str] = None,
+    ):
         from fiftyone.factory.repo_factory import (
             RepositoryFactory,
             ExecutionStoreRepo,
         )
 
         if repo is None:
-            repo = RepositoryFactory.execution_store_repo()
+            repo = RepositoryFactory.execution_store_repo(
+                dataset_id=dataset_id
+            )
 
         self._repo: ExecutionStoreRepo = repo
 

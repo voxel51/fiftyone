@@ -15,8 +15,12 @@ logger = logging.getLogger(__name__)
 
 class ExecutionStore:
     @staticmethod
-    def create(store_name: str) -> "ExecutionStore":
-        return ExecutionStore(store_name, ExecutionStoreService())
+    def create(
+        store_name: str, dataset_id: Optional[str] = None
+    ) -> "ExecutionStore":
+        return ExecutionStore(
+            store_name, ExecutionStoreService(dataset_id=dataset_id)
+        )
 
     def __init__(self, store_name: str, store_service: ExecutionStoreService):
         """
