@@ -323,15 +323,15 @@ class QueryPerformancePanel(Panel):
 
             rows.append(
                 {
-                    "FIELD": name,
-                    "SIZE": str(size),
-                    "TYPE": ", ".join(types),
+                    "Field": name,
+                    "Size": str(size),
+                    "Type": ", ".join(types),
                 }
             )
 
         # sort the rows, with default field first and then alphabetical order
         rows = sorted(
-            rows, key=lambda x: ("Default" not in x["TYPE"], x["FIELD"])
+            rows, key=lambda x: ("Default" not in x["Type"], x["Field"])
         )
 
         # add summary fields
@@ -342,15 +342,15 @@ class QueryPerformancePanel(Panel):
             for name in sorted(summary_fields):
                 rows.append(
                     {
-                        "FIELD": name,
-                        "SIZE": "N/A",
-                        "TYPE": "Summary",
+                        "Field": name,
+                        "Size": "N/A",
+                        "Type": "Summary",
                     }
                 )
 
         table_data = {
-            "rows": [[r["FIELD"], r["SIZE"], r["TYPE"]] for r in rows],
-            "columns": ["FIELD", "SIZE", "TYPE"],
+            "rows": [[r["Field"], r["Size"], r["Type"]] for r in rows],
+            "columns": ["Field", "Size", "Type"],
         }
         return table_data
 
@@ -520,9 +520,9 @@ class QueryPerformancePanel(Panel):
                 )
 
             table = TableView()
-            table.add_column("FIELD", label="Field")
-            table.add_column("SIZE", label="Size")
-            table.add_column("TYPE", label="Type")
+            table.add_column("Field", label="Field")
+            table.add_column("Size", label="Size")
+            table.add_column("Type", label="Type")
 
             if ctx.user.dataset_permission in PERMISSION:
                 # Calculating row conditionality for the delete button
