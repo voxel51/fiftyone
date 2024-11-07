@@ -4,7 +4,10 @@ import { LRUCache } from "lru-cache";
 import { useEffect, useMemo } from "react";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
-import { gridAt, gridOffset, gridPage, lookerGridCaching } from "./recoil";
+import { gridAt, gridOffset, gridPage } from "./recoil";
+
+const MAX_LRU_CACHE_ITEMS = 510;
+const MAX_LRU_CACHE_SIZE = 1e9;
 
 export default function useRefreshers() {
   const cropToContent = useRecoilValue(fos.cropToContent(false));
@@ -26,17 +29,15 @@ export default function useRefreshers() {
     fos.shouldRenderImaVidLooker(false)
   );
   const view = fos.filterView(useRecoilValue(fos.view));
-  const caching = useRecoilValue(lookerGridCaching);
 
   // only reload, attempt to return to the last grid location
   const layoutReset = useMemo(() => {
-    caching;
     cropToContent;
     fieldVisibilityStage;
     mediaField;
     refresher;
     return uuid();
-  }, [caching, cropToContent, fieldVisibilityStage, mediaField, refresher]);
+  }, [cropToContent, fieldVisibilityStage, mediaField, refresher]);
 
   // the values reset the page, i.e. return to the top
   const pageReset = useMemo(() => {
@@ -83,15 +84,15 @@ export default function useRefreshers() {
     /** LOOKER STORE REFRESHER */
 
     return new LRUCache<string, fos.Lookers>({
-      max: 512,
       dispose: (looker) => {
         looker.destroy();
       },
+      max: MAX_LRU_CACHE_ITEMS,
+      noDisposeOnSet: true,
     });
   }, [reset]);
 
   return {
-    caching,
     lookerStore,
     pageReset,
     reset,

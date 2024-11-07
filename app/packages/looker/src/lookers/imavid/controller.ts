@@ -26,7 +26,6 @@ export class ImaVidFramesController {
 
   constructor(
     private readonly config: {
-      maxFrameStreamSize: number;
       environment: Environment;
       firstFrameNumber: number;
       // todo: remove any
@@ -174,10 +173,7 @@ export class ImaVidFramesController {
     if (!ImaVidStore.has(this.key)) {
       ImaVidStore.set(
         this.key,
-        new ImaVidFrameSamples(
-          this.config.maxFrameStreamSize,
-          this.storeBufferManager
-        )
+        new ImaVidFrameSamples(this.storeBufferManager)
       );
     }
 

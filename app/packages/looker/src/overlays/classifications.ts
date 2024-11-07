@@ -7,6 +7,7 @@ import {
   TEMPORAL_DETECTION,
   TEMPORAL_DETECTIONS,
   getCls,
+  sizeBytesEstimate,
 } from "@fiftyone/utilities";
 
 import { INFO_COLOR, MOMENT_CLASSIFICATIONS } from "../constants";
@@ -331,6 +332,10 @@ export class ClassificationsOverlay<
 
   getCls(field: string, state: Readonly<State>) {
     return getCls(field, state.config.fieldSchema);
+  }
+
+  getSizeBytes() {
+    return sizeBytesEstimate(this.labels);
   }
 }
 

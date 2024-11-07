@@ -1,37 +1,6 @@
-import { DefaultValue, atom, atomFamily, selector } from "recoil";
+import { atom, selector } from "recoil";
 
 import * as fos from "@fiftyone/state";
-
-const lookerGridCachingStore = atomFamily<boolean, string>({
-  key: "lookerGridCachingStore",
-  default: true,
-  effects: (id) => [
-    fos.getBrowserStorageEffectForKey(`looker-grid-caching-${id}`, {
-      valueClass: "boolean",
-    }),
-  ],
-});
-
-export const lookerGridCaching = selector({
-  key: "lookerGridCaching",
-  get: ({ get }) => {
-    const id = get(fos.datasetId);
-    if (!id) {
-      throw new Error("no dataset");
-    }
-    return get(lookerGridCachingStore(id));
-  },
-  set: ({ get, set }, value) => {
-    const id = get(fos.datasetId);
-    if (!id) {
-      throw new Error("no dataset");
-    }
-    set(
-      lookerGridCachingStore(id),
-      value instanceof DefaultValue ? false : value
-    );
-  },
-});
 
 export const defaultGridZoom = selector<number>({
   key: "defaultGridZoom",

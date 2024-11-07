@@ -267,8 +267,6 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       frameNumber: this.state.frameNumber,
       getCurrentFrame: () => this.frameNumber,
       group: this.state.config.group,
-      maxFrameStreamSize: this.state.config.maxFrameStreamSize,
-      maxFrameStreamSizeBytes: this.state.config.maxFrameStreamSizeBytes,
       removeFrame: (frameNumber) =>
         removeFromBuffers(frameNumber, this.state.buffers),
       sampleId: this.state.config.sampleId,

@@ -195,10 +195,6 @@ const makeGetEntryResource = <T extends OperationType>() => {
       return false;
     }
 
-    if (location.search !== currentLocation?.search) {
-      return false;
-    }
-
     if (!viewsAreEqual(location.state.view, currentLocation?.state.view)) {
       return false;
     }
