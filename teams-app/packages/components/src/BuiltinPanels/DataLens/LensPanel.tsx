@@ -349,13 +349,38 @@ export const LensPanel = ({
   );
 
   // Additional search controls.
-  const searchControls = (
-    <Box sx={{ m: 2 }}>
-      {panelState.isImportShown ? (
-        <Button fullWidth variant="contained" onClick={resetPanelState}>
+  const getSearchControls = () => {
+    const numSamplesInput = (
+      <FormControl>
+        <TextField
+          label="Number of preview samples"
+          value={maxSamples}
+          onChange={(e) =>
+            setMaxSamples(
+              isNaN(Number.parseInt(e.target.value))
+                ? 25
+                : Number.parseInt(e.target.value)
+            )
+          }
+        />
+      </FormControl>
+    );
+
+    if (panelState.isImportShown) {
+      // Show new query button
+      return (
+        <Button
+          fullWidth
+          variant="contained"
+          onClick={resetPanelState}
+          disabled={isImportLoading}
+        >
           Start a new query
         </Button>
-      ) : (
+      );
+    } else if (isImportEnabled) {
+      // Import button as main CTA, preview button as secondary
+      return (
         <Box
           sx={{
             display: "flex",
@@ -363,29 +388,45 @@ export const LensPanel = ({
             alignItems: "center",
           }}
         >
-          <FormControl>
-            <TextField
-              label="Number of preview samples"
-              value={maxSamples}
-              onChange={(e) =>
-                setMaxSamples(
-                  isNaN(Number.parseInt(e.target.value))
-                    ? 25
-                    : Number.parseInt(e.target.value)
-                )
-              }
-            />
-          </FormControl>
+          <Stack direction="row" spacing={2} alignItems="center">
+            {numSamplesInput}
 
-          <Stack direction="row" spacing={2}>
-            {isImportEnabled && (
-              <Button variant="contained" onClick={openImportDialog}>
-                Import data
-              </Button>
-            )}
+            <Button
+              variant="outlined"
+              color="secondary"
+              sx={{ height: "fit-content" }}
+              disabled={!isFormValid || isPreviewLoading}
+              onClick={doSearch}
+            >
+              Preview data
+            </Button>
+          </Stack>
+
+          <Button variant="contained" onClick={openImportDialog}>
+            Import data
+          </Button>
+        </Box>
+      );
+    } else {
+      // In query/preview mode; preview button as main CTA
+      return (
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Typography color="secondary">
+            Try a preview &rarr; import unlimited samples
+          </Typography>
+
+          <Stack direction="row" spacing={2} alignItems="center">
+            {numSamplesInput}
 
             <Button
               variant="contained"
+              sx={{ height: "fit-content" }}
               disabled={!isFormValid || isPreviewLoading}
               onClick={doSearch}
             >
@@ -393,9 +434,11 @@ export const LensPanel = ({
             </Button>
           </Stack>
         </Box>
-      )}
-    </Box>
-  );
+      );
+    }
+  };
+
+  const searchControls = <Box sx={{ m: 2 }}>{getSearchControls()}</Box>;
 
   // Sample preview.
   const previewContent = searchResponse ? (
