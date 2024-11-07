@@ -86,10 +86,11 @@ export default function InviteTeammate({ onInvite }: InviteTeammateProps) {
             setInviteSent(true);
           },
           onError(error) {
+            const srcErrors = error?.source?.errors || [];
             const msg =
-              error?.source?.errors[0]?.message ||
+              srcErrors[0]?.message ||
               error?.message ||
-              "An unknown error occured";
+              "An unknown error occurred";
             setErrorMsg(msg);
           },
         });

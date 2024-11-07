@@ -138,6 +138,7 @@ export default function UserInputSuggestion({
         return (
           <Box component="li" {...props} key={option.id}>
             <UserCard
+              id={option.id}
               name={option.name}
               email={capitalize(option.role)}
               src={option.picture}
