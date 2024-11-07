@@ -2086,6 +2086,7 @@ __metadata:
     case-sensitive-paths-webpack-plugin: "npm:^2.4.0"
     cookie: "npm:^0.6.0"
     cookies-next: "npm:^2.1.1"
+    email-validator: "npm:^2.0.4"
     eslint: "npm:8.19.0"
     eslint-config-next: "npm:^14.2.5"
     file-loader: "npm:^6.2.0"
@@ -9609,6 +9610,13 @@ __metadata:
   dependencies:
     strongly-connected-components: "npm:^1.0.1"
   checksum: 10/740f053c31fa88edbde721e91b531185976dcc4007107d5099ceceaa90eef2b22b35466c9a79e2c71e7b03b1a9627a028bcf3469cfa2fb8c74e3eae31dab25b0
+  languageName: node
+  linkType: hard
+
+"email-validator@npm:^2.0.4":
+  version: 2.0.4
+  resolution: "email-validator@npm:2.0.4"
+  checksum: 10/8444077b052686ca272e42f43aeea7cb2935147890f3ed48869f6029d21f6914500bee23b2346348ed88659119ebad223c11c998843b30a3bcec2fa0abaffda3
   languageName: node
   linkType: hard
 

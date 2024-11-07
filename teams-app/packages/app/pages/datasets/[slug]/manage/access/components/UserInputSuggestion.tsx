@@ -19,6 +19,7 @@ import {
 import { capitalize, debounce } from "lodash";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilState, useRecoilValueLoadable } from "recoil";
+import * as EmailValidation from "email-validator";
 
 type SuggestedUsersType = manageDatasetUsersSuggestionQuery$data["users"];
 interface Props {
@@ -154,5 +155,5 @@ export default function UserInputSuggestion({
 
 // Note: check is intentionally simple to be non-restrictive
 function isTextEmail(text: string, enableInvitation: boolean) {
-  return enableInvitation && text.includes("@");
+  return enableInvitation && EmailValidation.validate(text);
 }
