@@ -1,7 +1,8 @@
 import { getImageElements } from "../elements";
 import { COMMON_SHORTCUTS } from "../elements/common";
-import { Overlay } from "../overlays/base";
-import { DEFAULT_IMAGE_OPTIONS, ImageState } from "../state";
+import type { Overlay } from "../overlays/base";
+import type { ImageState } from "../state";
+import { DEFAULT_IMAGE_OPTIONS } from "../state";
 import { AbstractLooker } from "./abstract";
 import { LookerUtils } from "./shared";
 
@@ -13,14 +14,19 @@ import { zoomToContent } from "../zoom";
 
 export class ImageLooker extends AbstractLooker<ImageState> {
   getElements(config) {
-    return getImageElements(config, this.updater, this.getDispatchEvent());
+    return getImageElements({
+      abortController: this.abortController,
+      config,
+      dispatchEvent: this.getDispatchEvent(),
+      update: this.updater,
+    });
   }
 
   getInitialState(
     config: ImageState["config"],
     options: ImageState["options"]
   ) {
-    options = {
+    const resolved = {
       ...this.getDefaultOptions(),
       ...options,
     };
@@ -38,7 +44,7 @@ export class ImageLooker extends AbstractLooker<ImageState> {
     return {
       ...this.getInitialBaseState(),
       config: { ...config },
-      options,
+      options: resolved,
       SHORTCUTS: shortcuts,
     };
   }

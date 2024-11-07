@@ -1,17 +1,17 @@
 import { HelpPanel, JSONPanel } from "@fiftyone/components";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ModalActionsRow } from "../Actions";
 import Sidebar from "../Sidebar";
-import { useLookerHelpers } from "./hooks";
-import { modalContext } from "./modal-context";
 import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
 import { TooltipInfo } from "./TooltipInfo";
+import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
+import { modalContext } from "./modal-context";
 import { useModalSidebarRenderEntry } from "./use-sidebar-render-entry";
 
 const ModalWrapper = styled.div`
@@ -156,9 +156,9 @@ const Modal = () => {
           if (activeLookerRef.current) {
             // we handle close logic in modal + other places
             return;
-          } else {
-            await modalCloseHandler();
           }
+
+          await modalCloseHandler();
         }
       },
     []
@@ -168,7 +168,7 @@ const Modal = () => {
 
   const isFullScreen = useRecoilValue(fos.fullscreen);
 
-  const { onNavigate } = useLookerHelpers();
+  const { closePanels } = useLookerHelpers();
 
   const screenParams = useMemo(() => {
     return isFullScreen
@@ -178,14 +178,21 @@ const Modal = () => {
 
   const activeLookerRef = useRef<fos.Lookers>();
 
-  // this is so that other components can add event listeners to the active looker
-  const onLookerSetSubscribers = useRef<((looker: fos.Lookers) => void)[]>([]);
+  const addTooltipEventHandler = useTooltipEventHandler();
+  const removeTooltipEventHanlderRef = useRef<ReturnType<
+    typeof addTooltipEventHandler
+  > | null>(null);
 
-  const onLookerSet = useCallback((looker: fos.Lookers) => {
-    onLookerSetSubscribers.current.forEach((sub) => sub(looker));
+  const onLookerSet = useCallback(
+    (looker: fos.Lookers) => {
+      looker.addEventListener("close", modalCloseHandler);
 
-    looker.addEventListener("close", modalCloseHandler);
-  }, []);
+      // remove previous event listener
+      removeTooltipEventHanlderRef.current?.();
+      removeTooltipEventHanlderRef.current = addTooltipEventHandler(looker);
+    },
+    [modalCloseHandler, addTooltipEventHandler]
+  );
 
   const setActiveLookerRef = useCallback(
     (looker: fos.Lookers) => {
@@ -200,7 +207,6 @@ const Modal = () => {
       value={{
         activeLookerRef,
         setActiveLookerRef,
-        onLookerSetSubscribers,
       }}
     >
       <ModalWrapper
@@ -212,7 +218,7 @@ const Modal = () => {
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }}>
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
-          <ModalNavigation onNavigate={onNavigate} />
+          <ModalNavigation closePanels={closePanels} />
           <SpacesContainer>
             <ModalSpace />
           </SpacesContainer>

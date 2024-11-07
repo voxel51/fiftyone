@@ -123,10 +123,16 @@ export type ModalNavigation = {
   previous: (offset?: number) => Promise<ModalSelector>;
 };
 
-export const modalNavigation = atom<ModalNavigation>({
-  key: "modalNavigation",
-  default: null,
-});
+export const modalNavigation = (() => {
+  let current: ModalNavigation | null;
+
+  return {
+    get: () => current,
+    set: (value: ModalNavigation | null) => {
+      current = value;
+    },
+  };
+})();
 
 export const modalSampleId = selector<string>({
   key: "modalSampleId",

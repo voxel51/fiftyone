@@ -27,7 +27,7 @@ const Arrow = styled.span<{
   left: ${(props) => (props.$isRight ? "initial" : "0.75rem")};
   z-index: 99999;
   padding: 0.75rem;
-  bottom: 33vh;
+  top: 50%;
   width: 3rem;
   height: 3rem;
   background-color: var(--fo-palette-background-button);
@@ -42,9 +42,13 @@ const Arrow = styled.span<{
     transition: box-shadow 0.15s ease-in-out;
     transition: opacity 0.15s ease-in-out;
   }
+
+  &:active {
+    top: calc(50% + 2px);
+  }
 `;
 
-const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
+const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   const showModalNavigationControls = useRecoilValue(
     fos.showModalNavigationControls
   );
@@ -62,7 +66,6 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
 
   const setModal = fos.useSetExpandedSample();
   const modal = useRecoilValue(fos.modalSelector);
-  const navigation = useRecoilValue(fos.modalNavigation);
 
   const modalRef = useRef(modal);
 
@@ -74,22 +77,32 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
     () =>
       createDebouncedNavigator({
         isNavigationIllegalWhen: () => modalRef.current?.hasNext === false,
-        navigateFn: (offset) => navigation?.next(offset).then(setModal),
-        onNavigationStart: onNavigate,
+        navigateFn: async (offset) => {
+          const navigation = fos.modalNavigation.get();
+          if (navigation) {
+            return await navigation.next(offset).then(setModal);
+          }
+        },
+        onNavigationStart: closePanels,
         debounceTime: 150,
       }),
-    [navigation, onNavigate, setModal]
+    [closePanels, setModal]
   );
 
   const previousNavigator = useMemo(
     () =>
       createDebouncedNavigator({
         isNavigationIllegalWhen: () => modalRef.current?.hasPrevious === false,
-        navigateFn: (offset) => navigation?.previous(offset).then(setModal),
-        onNavigationStart: onNavigate,
+        navigateFn: async (offset) => {
+          const navigation = fos.modalNavigation.get();
+          if (navigation) {
+            return await navigation.previous(offset).then(setModal);
+          }
+        },
+        onNavigationStart: closePanels,
         debounceTime: 150,
       }),
-    [navigation, onNavigate, setModal]
+    [closePanels, setModal]
   );
 
   useEffect(() => {
