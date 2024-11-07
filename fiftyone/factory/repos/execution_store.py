@@ -3,6 +3,7 @@ Execution store repository.
 """
 
 import datetime
+import bson
 from pymongo.collection import Collection
 from fiftyone.operators.store.models import StoreDocument, KeyDocument
 
@@ -21,7 +22,9 @@ class ExecutionStoreRepo:
 
     COLLECTION_NAME = "execution_store"
 
-    def __init__(self, collection: Collection, dataset_id: str = None):
+    def __init__(
+        self, collection: Collection, dataset_id: bson.ObjectId = None
+    ):
         self._collection = collection
         self._dataset_id = dataset_id
 
@@ -53,26 +56,40 @@ class ExecutionStoreRepo:
             dataset_id=self._dataset_id,
         )
 
+        on_insert_fields = {
+            "store_name": store_name,
+            "key": key,
+            "created_at": now,
+            "expires_at": expiration if ttl else None,
+            "dataset_id": self._dataset_id,
+        }
+
+        if self._dataset_id is None:
+            on_insert_fields.pop("dataset_id")
+
         # Prepare the update operations
         update_fields = {
             "$set": {
                 k: v
                 for k, v in key_doc.to_mongo_dict().items()
                 if k
-                not in {"_id", "created_at", "expires_at", "store_name", "key"}
+                not in {
+                    "_id",
+                    "created_at",
+                    "expires_at",
+                    "store_name",
+                    "key",
+                    "dataset_id",
+                }
             },
-            "$setOnInsert": {
-                "store_name": store_name,
-                "key": key,
-                "created_at": now,
-                "expires_at": expiration if ttl else None,
-                "dataset_id": self._dataset_id,
-            },
+            "$setOnInsert": on_insert_fields,
         }
 
         # Perform the upsert operation
         result = self._collection.update_one(
-            _where(store_name, key), update_fields, upsert=True
+            _where(store_name, key, self._dataset_id),
+            update_fields,
+            upsert=True,
         )
 
         if result.upserted_id:
@@ -92,14 +109,17 @@ class ExecutionStoreRepo:
 
     def list_keys(self, store_name) -> list[str]:
         """Lists all keys in the specified store."""
-        keys = self._collection.find(_where(store_name), {"key": 1})
+        keys = self._collection.find(
+            _where(store_name, dataset_id=self._dataset_id), {"key": 1}
+        )
         return [key["key"] for key in keys]
 
     def update_ttl(self, store_name, key, ttl) -> bool:
         """Updates the TTL for a key."""
         expiration = KeyDocument.get_expiration(ttl)
         result = self._collection.update_one(
-            _where(store_name, key), {"$set": {"expires_at": expiration}}
+            _where(store_name, key, self._dataset_id),
+            {"$set": {"expires_at": expiration}},
         )
         return result.modified_count > 0
 
@@ -126,12 +146,14 @@ class ExecutionStoreRepo:
 class MongoExecutionStoreRepo(ExecutionStoreRepo):
     """MongoDB implementation of execution store repository."""
 
-    def __init__(self, collection: Collection, dataset_id: str = None):
+    def __init__(
+        self, collection: Collection, dataset_id: bson.ObjectId = None
+    ):
         super().__init__(collection, dataset_id)
         self._create_indexes()
 
     def _create_indexes(self):
-        indices = self._collection.list_indexes()
+        indices = [idx["name"] for idx in self._collection.list_indexes()]
         expires_at_name = "expires_at"
         store_name_name = "store_name"
         key_name = "key"

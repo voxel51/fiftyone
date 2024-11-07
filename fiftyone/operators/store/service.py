@@ -132,3 +132,11 @@ class ExecutionStoreService:
             a list of keys in the store
         """
         return self._repo.list_keys(store_name)
+
+    def cleanup_for_dataset(self, dataset_id: str) -> None:
+        """Cleans up the execution store for the specified dataset.
+
+        Args:
+            dataset_id: the ID of the dataset
+        """
+        self._repo.cleanup_for_dataset(dataset_id=dataset_id)

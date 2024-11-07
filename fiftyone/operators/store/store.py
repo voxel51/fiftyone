@@ -6,6 +6,7 @@ FiftyOne execution store.
 |
 """
 
+import bson
 import logging
 from fiftyone.operators.store.service import ExecutionStoreService
 from typing import Any, Optional
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 class ExecutionStore:
     @staticmethod
     def create(
-        store_name: str, dataset_id: Optional[str] = None
+        store_name: str, dataset_id: Optional[bson.ObjectId] = None
     ) -> "ExecutionStore":
         return ExecutionStore(
             store_name, ExecutionStoreService(dataset_id=dataset_id)
