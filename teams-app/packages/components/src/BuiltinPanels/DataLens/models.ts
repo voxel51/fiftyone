@@ -105,3 +105,11 @@ export type OperatorResponse<T> = {
   result: T;
   error?: string;
 };
+
+/**
+ * Generic sample data.
+ */
+export type LensSample = {
+  filepath: string;
+  [k: string]: any;
+};
