@@ -358,12 +358,6 @@ type PanelOptions = {
   TabIndicator?: React.ComponentType;
 
   /**
-   * If true, the plugin will be remounted when the user navigates to a different sample or group.
-   * This is only applicable to plugins that are in a modal.
-   */
-  reloadOnNavigation?: boolean;
-
-  /**
    * The category of the plugin
    */
   category: CategoryID;

@@ -1,21 +1,21 @@
+import { viewsAreEqual } from "@fiftyone/state";
+import { NotFoundError, Resource, isNotebook } from "@fiftyone/utilities";
 import type { Action, Location } from "history";
+import { createBrowserHistory, createMemoryHistory } from "history";
+import React from "react";
 import type { PreloadedQuery } from "react-relay";
+import { loadQuery } from "react-relay";
 import type {
   ConcreteRequest,
   Environment,
   OperationType,
   VariablesOf,
 } from "relay-runtime";
+import { fetchQuery } from "relay-runtime";
 import type { Route } from ".";
 import type { Queries } from "../makeRoutes";
 import type RouteDefinition from "./RouteDefinition";
 import type { LocationState, MatchPathResult } from "./matchPath";
-
-import { NotFoundError, Resource, isNotebook } from "@fiftyone/utilities";
-import { createBrowserHistory, createMemoryHistory } from "history";
-import React from "react";
-import { loadQuery } from "react-relay";
-import { fetchQuery } from "relay-runtime";
 import { matchPath } from "./matchPath";
 
 export interface RouteData<T extends OperationType> {
@@ -90,8 +90,14 @@ export const createRouter = <T extends OperationType>(
           hard: false,
           handleError,
         });
-      } catch {
-        return;
+      } catch (e) {
+        if (e instanceof Resource) {
+          // skip the page change if a resource is thrown
+          return;
+        }
+
+        throw e;
+
       }
 
       requestAnimationFrame(() => {
@@ -178,13 +184,21 @@ export const createRouter = <T extends OperationType>(
   };
 };
 
-const SKIP_EVENTS = new Set(["modal", "slice"]);
+const SKIP_EVENTS = new Set(["modal", "slice", "spaces"]);
 
 const makeGetEntryResource = <T extends OperationType>() => {
   let currentLocation: FiftyOneLocation;
   let currentResource: Resource<Entry<T>>;
 
   const isReusable = (location: FiftyOneLocation) => {
+    if (location.pathname !== currentLocation?.pathname) {
+      return false;
+    }
+
+    if (!viewsAreEqual(location.state.view, currentLocation?.state.view)) {
+      return false;
+    }
+
     if (currentLocation) {
       return (
         SKIP_EVENTS.has(location.state.event || "") ||
@@ -210,6 +224,7 @@ const makeGetEntryResource = <T extends OperationType>() => {
     handleError?: (error: unknown) => void;
   }): Resource<Entry<T>> => {
     if (isReusable(location)) {
+      // throw the current resource (page) if it can be reused
       throw currentResource;
     }
 

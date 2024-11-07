@@ -94,7 +94,7 @@ export default () => {
       }
       // do not set modal filters from grid when navigation is not provided
       navigation && (await setModalFilters(cbInterface));
-      navigation && set(modalAtoms.modalNavigation, () => navigation);
+      navigation && modalAtoms.modalNavigation.set(navigation);
     },
     [environment]
   );

@@ -1,21 +1,30 @@
 import * as fos from "@fiftyone/state";
 import { useHelpPanel, useJSONPanel } from "@fiftyone/state";
-import { useCallback, useContext } from "react";
+import { useCallback, useContext, useRef } from "react";
 import { useRecoilCallback } from "recoil";
 import { modalContext } from "./modal-context";
 
 export const useLookerHelpers = () => {
   const jsonPanel = useJSONPanel();
   const helpPanel = useHelpPanel();
-  const onNavigate = useCallback(() => {
-    jsonPanel.close();
-    helpPanel.close();
-  }, [helpPanel, jsonPanel]);
+
+  // todo: jsonPanel and helpPanel are not referentially stable
+  // so use refs here
+  const jsonPanelRef = useRef<typeof jsonPanel>(jsonPanel);
+  const helpPanelRef = useRef<typeof helpPanel>(helpPanel);
+
+  jsonPanelRef.current = jsonPanel;
+  helpPanelRef.current = helpPanel;
+
+  const closePanels = useCallback(() => {
+    jsonPanelRef.current?.close();
+    helpPanelRef.current?.close();
+  }, []);
 
   return {
     jsonPanel,
     helpPanel,
-    onNavigate,
+    closePanels,
   };
 };
 
@@ -68,4 +77,39 @@ export const useModalContext = () => {
   }
 
   return ctx;
+};
+
+export const useTooltipEventHandler = () => {
+  const tooltip = fos.useTooltip();
+
+  const tooltipEventHandler = useRecoilCallback(
+    ({ snapshot, set }) =>
+      (e) => {
+        const isTooltipLocked = snapshot
+          .getLoadable(fos.isTooltipLocked)
+          .getValue();
+
+        if (e.detail) {
+          set(fos.tooltipDetail, e.detail);
+          if (!isTooltipLocked && e.detail?.coordinates) {
+            tooltip.setCoords(e.detail.coordinates);
+          }
+        } else if (!isTooltipLocked) {
+          set(fos.tooltipDetail, null);
+        }
+      },
+    [tooltip]
+  );
+
+  return useCallback(
+    (looker: fos.Lookers) => {
+      looker.removeEventListener("tooltip", tooltipEventHandler);
+      looker.addEventListener("tooltip", tooltipEventHandler);
+
+      return () => {
+        looker.removeEventListener("tooltip", tooltipEventHandler);
+      };
+    },
+    [tooltipEventHandler]
+  );
 };

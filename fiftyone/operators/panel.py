@@ -28,9 +28,6 @@ class PanelConfig(OperatorConfig):
             in dark mode
         allow_multiple (False): whether to allow multiple instances of the
             panel to be opened
-        reload_on_navigation (False): whether to reload the panel when the
-            user navigates to a new page. This is only applicable to panels
-            that are not shown in a modal
         surfaces ("grid"): the surfaces on which the panel can be displayed
         help_markdown (None): a markdown string to display in the panel's help
             tooltip
@@ -51,7 +48,6 @@ class PanelConfig(OperatorConfig):
         dark_icon=None,
         allow_multiple=False,
         surfaces: PANEL_SURFACE = "grid",
-        reload_on_navigation=False,
         priority=None,
         **kwargs
     ):
@@ -65,7 +61,6 @@ class PanelConfig(OperatorConfig):
         self.allow_multiple = allow_multiple
         self.unlisted = True
         self.on_startup = True
-        self.reload_on_navigation = reload_on_navigation
         self.surfaces = surfaces
         self.category = category
         self.beta = beta
@@ -87,7 +82,6 @@ class PanelConfig(OperatorConfig):
             "allow_multiple": self.allow_multiple,
             "on_startup": self.on_startup,
             "unlisted": self.unlisted,
-            "reload_on_navigation": self.reload_on_navigation,
             "surfaces": self.surfaces,
             "priority": self.priority,
         }
@@ -128,7 +122,6 @@ class Panel(Operator):
             "dark_icon": self.config.dark_icon,
             "light_icon": self.config.light_icon,
             "surfaces": self.config.surfaces,
-            "reload_on_navigation": self.config.reload_on_navigation,
             "category": self.config.category,
             "beta": self.config.beta,
             "is_new": self.config.is_new,
