@@ -13,12 +13,12 @@ const isObject = (object: object) => {
   return oClass === "Object" || oClass === "Array";
 };
 
-type SizeTypes = null | object | string | undefined;
+type SizeTypes = boolean | null | number | object | string | undefined;
 
 type SizerTypes = SizeTypes | Array<SizeTypes>;
 
 const sizer = (object: SizerTypes) => {
-  if (object !== null && object !== undefined) {
+  if (object === null || object === undefined) {
     return 1;
   }
 
