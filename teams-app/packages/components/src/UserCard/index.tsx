@@ -1,8 +1,10 @@
 import { Avatar, AvatarProps } from "@fiftyone/teams-components";
 import { getInitials } from "../utils";
 import { UserRole } from "@fiftyone/teams-state/src/User/__generated__/UserQuery.graphql";
+import MailOutlineIcon from "@mui/icons-material/MailOutline";
 
 export type UserCardProps = AvatarProps & {
+  id?: string;
   name: string;
   email?: string;
   src?: string;
@@ -13,6 +15,7 @@ export type UserCardProps = AvatarProps & {
 };
 
 export default function UserCard({
+  id,
   name,
   email,
   role,
@@ -20,7 +23,7 @@ export default function UserCard({
   detailed,
   ...props
 }: UserCardProps) {
-  const initial = getInitials(name?.toLocaleUpperCase() ?? "");
+  const initial = getInitials(id ? name?.toLocaleUpperCase() : "");
   return (
     <Avatar
       src={src}
@@ -30,7 +33,7 @@ export default function UserCard({
       detailed={detailed}
       {...props}
     >
-      {initial}
+      {initial ? initial : <MailOutlineIcon />}
     </Avatar>
   );
 }

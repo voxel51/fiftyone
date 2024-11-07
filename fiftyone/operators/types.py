@@ -610,6 +610,23 @@ class Object(BaseType):
         self.define_property(name, tuple_type, view=tuple_view, **kwargs)
         return tuple_type
 
+    def tree(self, name, *items, **kwargs):
+        """Defines a tree property on the object.
+
+        Args:
+            name: the name of the property
+            *items: the types of the items in the tree
+
+        Returns:
+            a :class:`Tree`
+        """
+        tree_selection_view = TreeSelectionView(**kwargs)
+        tree_type = Object(*items)
+        self.define_property(
+            name, tree_type, view=tree_selection_view, **kwargs
+        )
+        return tree_type
+
     def clone(self):
         """Clones the definition of the object.
 
@@ -879,6 +896,27 @@ class Tuple(BaseType):
     def to_json(self):
         return {
             **super().to_json(),
+            "items": [item.to_json() for item in self.items],
+        }
+
+
+class Tree(BaseType):
+    """Represents a tree selection type.
+    Examples::
+
+        import fiftyone.operators.types as types
+        inputs = types.Object()
+
+    Args:
+    *items: the tree structure of items
+    """
+
+    def __init__(self, *items):
+        self.items = items
+
+    def to_json(self):
+        return {
+            "name": self.__class__.__name__,
             "items": [item.to_json() for item in self.items],
         }
 
@@ -1391,6 +1429,42 @@ class TupleView(View):
         return {
             **super().to_json(),
             "items": [item.to_json() for item in self.items],
+        }
+
+
+class TreeSelectionView(View):
+    """Displays a tree selection checkbox groups.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        structure = [
+            ["group_id_1", ["sample_id_1", "sample_id_2"]],
+            ["group_id_2", ["sample_id_3", "sample_id_4", "sample_id_5"], ["group_id_8", ["sample_id_6"]]],
+        ]
+
+        tree_view = types.TreeSelectionView(
+            data=structure # this data represents the basic group structure;
+        )
+
+        panel.view('exact_duplicate_selections', view=tree_view, on_change=self.toggle_select)
+
+        def toggle_select(self, ctx):
+            selected = ctx.params['value']
+            print('selected samples:', selected)
+
+    Args:
+        data (None): a list of lists representing the tree structure of groups and its children
+        on_change (None): the operator to execute when the tree selection changes
+    """
+
+    def __init__(self, **options):
+        super().__init__(**options)
+
+    def to_json(self):
+        return {
+            **super().to_json(),
         }
 
 

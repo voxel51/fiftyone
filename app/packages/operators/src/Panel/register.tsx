@@ -17,6 +17,8 @@ export default function registerPanel(ctx: ExecutionContext) {
           darkIcon={ctx.params.dark_icon}
           lightIcon={ctx.params.light_icon}
           iconProps={{ sx: { fontSize: 14, mr: "0.5rem" } }}
+          _builtIn={ctx.params._builtin}
+          canExecute={true}
         />
       );
     },

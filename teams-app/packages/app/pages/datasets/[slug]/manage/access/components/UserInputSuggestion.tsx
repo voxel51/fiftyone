@@ -138,6 +138,7 @@ export default function UserInputSuggestion({
         return (
           <Box component="li" {...props} key={option.id || option.name}>
             <UserCard
+              id={option.id}
               name={option.name}
               email={option.email}
               role={option.role}

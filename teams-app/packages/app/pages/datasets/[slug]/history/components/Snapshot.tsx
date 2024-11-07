@@ -169,6 +169,7 @@ export function SnapshotSummary(props: SnapshotSummaryProps) {
       {createdBy && (
         <Box pt={0.25}>
           <UserCard
+            id={createdBy.id}
             name={createdBy?.name}
             src={createdBy?.picture || ""}
             color="secondary"

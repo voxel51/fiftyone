@@ -124,7 +124,7 @@ export default function GroupInputSuggestion(props: GroupInputProps) {
       renderOption={(props, option) => {
         return (
           <Box component="li" {...props} key={option.name}>
-            <UserCard name={option.name} src={""} detailed />
+            <UserCard id={option.id} name={option.name} src={""} detailed />
           </Box>
         );
       }}

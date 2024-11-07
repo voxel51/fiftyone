@@ -26,7 +26,7 @@ export default function Account() {
   }, []);
 
   const [currentUser] = useCurrentUser();
-  const { name, email, picture, userGroups = [], role } = currentUser || {};
+  const { id, name, email, picture, userGroups = [], role } = currentUser || {};
   const canSeeGroups = role !== "GUEST";
   const [analyticsTracking, setAnalyticsTracking] = useState(true);
 
@@ -44,7 +44,7 @@ export default function Account() {
       <Container>
         <Grid container columnSpacing={4} alignItems="center" paddingTop={1}>
           <Grid item>
-            <UserCard name={name ?? ""} src={picture ?? undefined} />
+            <UserCard id={id} name={name ?? ""} src={picture ?? undefined} />
           </Grid>
           <Grid item>
             <TextInput

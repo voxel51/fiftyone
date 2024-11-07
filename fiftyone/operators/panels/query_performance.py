@@ -10,6 +10,7 @@ from ..types import (
     TableView,
     GridView,
 )
+from fiftyone.management.dataset import DatasetPermission
 from ..operator import Operator, OperatorConfig
 from ..panel import Panel, PanelConfig
 from fiftyone.operators.utils import create_summary_field_inputs
@@ -26,6 +27,8 @@ _INDEXABLE_FIELDS = (
     fo.StringField,
     fo.ListField,
 )
+
+PERMISSION = [DatasetPermission.EDIT, DatasetPermission.MANAGE]
 
 
 def _get_existing_indexes(ctx):
@@ -138,12 +141,16 @@ class IndexFieldCreationOperator(Operator):
         field_choices.add_choice("index_field", label="Index Field")
         if ctx.dataset._has_frame_fields:
             field_choices.add_choice("summary_field", label="Summary Field")
-
+        default_field = (
+            "summary_field"
+            if ctx.params.get("is_frame_filter")
+            else "index_field"
+        )
         inputs.enum(
             "field_type",
             field_choices.values(),
             required=True,
-            default="index_field",
+            default=default_field,
             label="CREATE NEW INDEX",
             description="Choose your field to create: index field for faster queries, summary field for frame aggregation",
             view=field_choices,
@@ -365,29 +372,32 @@ class QueryPerformancePanel(Panel):
         ctx.panel.set_data("table", table_data)
 
     def on_click_delete(self, ctx):
-        row = int(ctx.params.get("row"))
-        table_data = self._get_index_table_data(ctx)
-        field_name = table_data["rows"][row][0]
-        field_type = table_data["rows"][row][2]
-        params = {"field_to_delete": field_name}
+        if ctx.user.dataset_permission in PERMISSION:
+            row = int(ctx.params.get("row"))
+            table_data = self._get_index_table_data(ctx)
+            field_name = table_data["rows"][row][0]
+            field_type = table_data["rows"][row][2]
+            params = {"field_to_delete": field_name}
 
-        if field_type == "Summary":
-            params["field_type"] = "summary_field"
-            ctx.ops.notify(f"Dropping summary field {field_name}")
+            if field_type == "Summary":
+                params["field_type"] = "summary_field"
+                ctx.ops.notify(f"Dropping summary field {field_name}")
+            else:
+                default_indexes = set(_get_default_indexes(ctx))
+                if field_name in default_indexes:
+                    ctx.ops.notify(f"Cannot drop default index {field_name}.")
+                    return
+
+                ctx.ops.notify(f"Dropping index {field_name}")
+                params["field_type"] = "index_field"
+
+            ctx.prompt(
+                "index_field_removal_confirmation",
+                on_success=self.refresh,
+                params=params,
+            )
         else:
-            default_indexes = set(_get_default_indexes(ctx))
-            if field_name in default_indexes:
-                ctx.ops.notify(f"Cannot drop default index {field_name}.")
-                return
-
-            ctx.ops.notify(f"Dropping index {field_name}")
-            params["field_type"] = "index_field"
-
-        ctx.prompt(
-            "index_field_removal_confirmation",
-            on_success=self.refresh,
-            params=params,
-        )
+            ctx.ops.notify("You do not have permission to delete.")
 
     def toggle_qp(self, ctx):
         if ctx.query_performance:
@@ -407,14 +417,17 @@ class QueryPerformancePanel(Panel):
         ctx.ops.clear_sidebar_filters()
 
     def create_index_or_summary(self, ctx):
-        ctx.ops.track_event(
-            "index_field_creation_operator",
-            {"location": "query_performance_panel"},
-        )
-        ctx.prompt(
-            "index_field_creation_operator",
-            on_success=self.refresh,
-        )
+        if ctx.user.dataset_permission in PERMISSION:
+            ctx.ops.track_event(
+                "index_field_creation_operator",
+                {"location": "query_performance_panel"},
+            )
+            ctx.prompt(
+                "index_field_creation_operator",
+                on_success=self.refresh,
+            )
+        else:
+            ctx.ops.notify("You do not have permission to create an index.")
 
     def update_summary_field(self, ctx):
         ctx.ops.notify(f"Opening `update_summary_field` operator")
@@ -488,12 +501,13 @@ class QueryPerformancePanel(Panel):
                     on_click=self.toggle_qp,
                 )
 
-            button_menu.btn(
-                "add_btn",
-                label="Create field",
-                on_click=self.create_index_or_summary,
-                variant="contained",
-            )
+            if ctx.user.dataset_permission in PERMISSION:
+                button_menu.btn(
+                    "add_btn",
+                    label="Create Index",
+                    on_click=self.create_index_or_summary,
+                    variant="contained",
+                )
 
             if summary_fields:
                 button_menu.btn(
@@ -510,15 +524,17 @@ class QueryPerformancePanel(Panel):
             table.add_column("SIZE", label="SIZE")
             table.add_column("TYPE", label="TYPE")
 
-            # Calculating row conditionality for the delete button
-            rows = (
-                [False] * (len(all_indices) - len(droppable_index))
-                + [True] * len(droppable_index)
-                + [True] * len(summary_fields)
-            )
-            table.add_row_action(  # pylint: disable=E1101
-                "delete", self.on_click_delete, icon="delete", rows=rows
-            )
+            if ctx.user.dataset_permission in PERMISSION:
+                # Calculating row conditionality for the delete button
+                rows = (
+                    [False] * (len(all_indices) - len(droppable_index))
+                    + [True] * len(droppable_index)
+                    + [True] * len(summary_fields)
+                )
+
+                table.add_row_action(  # pylint: disable=E1101
+                    "delete", self.on_click_delete, icon="delete", rows=rows
+                )
 
             panel.list("table", Object(), view=table)
 

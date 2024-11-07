@@ -1,14 +1,17 @@
 import { Toast } from "@fiftyone/components";
-import { QP_MODE } from "@fiftyone/core";
+import { QP_MODE, QP_MODE_SUMMARY } from "@fiftyone/core";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { Box, Button, Typography } from "@mui/material";
 import { Bolt } from "@mui/icons-material";
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { atom, useRecoilState } from "recoil";
+import { atom, useRecoilState, useRecoilValue } from "recoil";
 import { useTheme } from "@fiftyone/components";
+import * as atoms from "@fiftyone/state/src/recoil/atoms";
+import * as fos from "@fiftyone/state";
+import { useTrackEvent } from "@fiftyone/analytics";
 
-const SHOWN_FOR = 5000;
+const SHOWN_FOR = 10000;
 
 const hideQueryPerformanceToast = atom({
   key: "hideQueryPerformanceToast",
@@ -16,24 +19,34 @@ const hideQueryPerformanceToast = atom({
   effects: [
     getBrowserStorageEffectForKey("hideQueryPerformanceToast", {
       valueClass: "boolean",
+      sessionStorage: true,
     }),
   ],
 });
 
 const QueryPerformanceToast = ({
-  onClick = () => window.open(QP_MODE, "_blank")?.focus(),
+  onClick = (isFrameFilter: boolean) => {
+    const link = isFrameFilter ? QP_MODE_SUMMARY : QP_MODE;
+    window.open(link, "_blank")?.focus();
+  },
   onDispatch = (event) => {
     console.debug(event);
   },
   text = "View Documentation",
 }) => {
+  const [path, setPath] = useState("");
+  const indexed = useRecoilValue(fos.pathHasIndexes(path));
   const [shown, setShown] = useState(false);
   const [disabled, setDisabled] = useRecoilState(hideQueryPerformanceToast);
   const element = document.getElementById("queryPerformance");
   const theme = useTheme();
+  const frameFields = useRecoilValue(atoms.frameFields);
+  const trackEvent = useTrackEvent();
+
   useEffect(() => {
     const listen = (event) => {
       onDispatch(event);
+      setPath(event.path);
       setShown(true);
     };
     window.addEventListener("queryperformance", listen);
@@ -48,6 +61,11 @@ const QueryPerformanceToast = ({
     return null;
   }
 
+  // don't show the toast if the path is already indexed
+  if (path && indexed) {
+    return null;
+  }
+
   return createPortal(
     <Toast
       duration={SHOWN_FOR}
@@ -57,14 +75,19 @@ const QueryPerformanceToast = ({
         horizontal: "center",
         backgroundColor: theme.custom.toastBackgroundColor,
       }}
-      primary={(setOpen) => {
+      primary={() => {
         return (
           <Button
             variant="contained"
             size="small"
             onClick={() => {
-              onClick();
-              setOpen(false);
+              onClick(
+                frameFields.some((frame) =>
+                  path.includes(`frames.${frame.path}`)
+                )
+              );
+              trackEvent("query_performance_toast_clicked", { path: path });
+              setShown(false);
             }}
             sx={{
               marginLeft: "auto",
@@ -77,7 +100,7 @@ const QueryPerformanceToast = ({
           </Button>
         );
       }}
-      secondary={(setOpen) => {
+      secondary={() => {
         return (
           <div>
             <Button
@@ -87,7 +110,8 @@ const QueryPerformanceToast = ({
               size="small"
               onClick={() => {
                 setDisabled(true);
-                setOpen(false);
+                trackEvent("query_performance_toast_dismissed", { path: path });
+                setShown(false);
               }}
               style={{ marginLeft: "auto", color: theme.text.secondary }} // Right align the button
             >

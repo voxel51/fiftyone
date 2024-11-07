@@ -53,9 +53,6 @@ export default function useGrantUserDatasetAccess() {
         successMessage: id
           ? "Successfully granted special access on the dataset to user"
           : "Successfully invited user with a special access to the dataset",
-        errorMessage: id
-          ? "Failed to grant special access to user"
-          : "Failed to invite user with a special access to the dataset",
         variables,
         onCompleted(result) {
           if (id) {

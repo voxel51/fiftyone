@@ -26,11 +26,11 @@ import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 function UserAccessOverviewCard() {
   const userId = useRecoilValue(settingsTeamSelectedUserId);
   const result = useLazyLoadQuery<teamUserQueryType>(teamUserQuery, { userId });
-  const { datasetsCount, email, name, picture } = result?.user || {};
+  const { id, datasetsCount, email, name, picture } = result?.user || {};
 
   return (
     <Box>
-      <UserCard detailed name={name} email={email} src={picture} />
+      <UserCard detailed name={name} email={email} src={picture} id={id} />
       <Typography paddingTop={2}>
         {name} has access to {labelWithCount(datasetsCount, "dataset")}.
         {/* {' '}<Link href={DATASET_PERMISSION_LINK}>

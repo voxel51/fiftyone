@@ -74,7 +74,7 @@ export default function ProfileMenu() {
           aria-haspopup="true"
           aria-expanded={open ? "true" : undefined}
         >
-          <UserCard name={userName} src={userPicture} />
+          <UserCard id={currentUser.id} name={userName} src={userPicture} />
         </IconButton>
       </Tooltip>
       <Menu
@@ -110,7 +110,11 @@ export default function ProfileMenu() {
           <MenuItem>
             <Box display="flex" flexDirection="row">
               <Box>
-                <UserCard name={userName} src={userPicture} />
+                <UserCard
+                  id={currentUser.id}
+                  name={userName}
+                  src={userPicture}
+                />
               </Box>
               <Box pl={1.5} display="flex" alignItems="center">
                 <Typography

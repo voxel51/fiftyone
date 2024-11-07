@@ -68,13 +68,14 @@ export default function Bubble(props: Props) {
               zIndex: index + 1,
             }}
           >
-            <UserCard name={item.title} src={item.picture} />
+            <UserCard id={item.id} name={item.title} src={item.picture} />
           </Box>
         </Tooltip>
       ))}
       {hiddenCount > 0 && (
         <Tooltip title={hiddenTitle} key="more-members">
           <UserCard
+            id={hiddenCount}
             name={`+ ${hiddenCount}`}
             sx={{
               boxShadow: theme.voxelShadows.leftSm,
