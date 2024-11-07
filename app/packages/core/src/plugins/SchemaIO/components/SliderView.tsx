@@ -100,9 +100,7 @@ export default function SliderView(props: ViewPropsType) {
 
   // external data reset re-renders the inputs
   useEffect(() => {
-    if (!isEqual(data, [min, max])) {
-      return setFieldsRevision(fieldsRevision + 1);
-    }
+    return setFieldsRevision(fieldsRevision + 1);
   }, [data]);
 
   const [unit, _] = useState<ValueFormat>(valueFormat);
