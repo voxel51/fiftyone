@@ -668,13 +668,17 @@ The FiftyOne App can be configured in the ways described below:
 | `colorscale`               | `FIFTYONE_APP_COLORSCALE`               | `"viridis"`   | The colorscale to use when rendering heatmaps in the App. See                              |
 |                            |                                         |               | :ref:`this section <heatmaps>` for more details.                                           |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `disable_frame_filtering`  | `FIFTYONE_APP_DISABLE_FRAME_FILTERING`  | `False`       | Whether to disable frame filtering for video datasets in the App's grid view.              |
+| `default_query_performance`| `FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE`| `True`        | Default if a user hasn't selected a query performance mode in their current session. See   |
+|                            |                                         |               | :ref:`this section <app-query-performance-mode>` for more details.                         |
++----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `disable_frame_filtering`  | `FIFTYONE_APP_DISABLE_FRAME_FILTERING`  | `False`       | Whether to disable frame filtering for video datasets in the App's grid view. See          |
+|                            |                                         |               | :ref:`this section <app-query-performance-mode>` for more details.                         |
++----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `enable_query_performance` | `FIFTYONE_APP_ENABLE_QUERY_PERFORMANCE` | `True`        | Whether to show the query performance toggle in the UI for users to select. See            |
+|                            |                                         |               | :ref:`this section <app-query-performance-mode>` for more details.                         |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `grid_zoom`                | `FIFTYONE_APP_GRID_ZOOM`                | `5`           | The zoom level of the App's sample grid. Larger values result in larger samples (and thus  |
 |                            |                                         |               | fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                        |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `lightning_threshold`      | `FIFTYONE_APP_LIGHTNING_THRESHOLD`      | `None`        | A dataset sample count threshold that enables performant sidebar filtering on indexed      |
-|                            |                                         |               | fields. See :ref:`this section <app-lightning-mode>` for more details.                     |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `loop_videos`              | `FIFTYONE_APP_LOOP_VIDEOS`              | `False`       | Whether to loop videos by default in the expanded sample view.                             |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
@@ -753,10 +757,11 @@ You can print your App config at any time via the Python library and the CLI:
             ],
             "colorscale": "viridis",
             "grid_zoom": 5,
-            "lightning_threshold": null,
             "loop_videos": false,
             "media_fallback": false,
+            "default_query_performance": true,
             "disable_frame_filtering": false,
+            "enable_query_performance": true,
             "multicolor_keypoints": false,
             "notebook_height": 800,
             "proxy_url": None,
@@ -804,10 +809,11 @@ You can print your App config at any time via the Python library and the CLI:
             ],
             "colorscale": "viridis",
             "grid_zoom": 5,
-            "lightning_threshold": null,
+            "default_query_performance": true,
+            "disable_frame_filtering": false,
+            "enable_query_performance": true,
             "loop_videos": false,
             "media_fallback": false,
-            "disable_frame_filtering": false,
             "multicolor_keypoints": false,
             "notebook_height": 800,
             "proxy_url": None,
