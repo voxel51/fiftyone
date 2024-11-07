@@ -3,6 +3,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { Box, Checkbox, FormControlLabel, IconButton } from "@mui/material";
 import React, { useEffect } from "react";
 import { ViewPropsType } from "../utils/types";
+import { useUnboundState } from "@fiftyone/state";
 
 interface CheckedState {
   [key: string]: {
@@ -69,6 +70,8 @@ export default function TreeSelectionView(props: ViewPropsType) {
 
   const [checkedState, setCheckedState] =
     React.useState<CheckedState>(initialCheckedState);
+
+  const unboundState = useUnboundState(checkedState);
 
   // Initialize collapsed state for all parents
   const initialCollapsedState: CollapsedState = React.useMemo(() => {
@@ -191,6 +194,16 @@ export default function TreeSelectionView(props: ViewPropsType) {
     const idx = structure.findIndex(([id]) => id === groupId);
     return idx === -1 ? 0 : idx + 1;
   };
+
+  useEffect(() => {
+    const sampleIds = view?.data.flatMap(([parentId, children]) => {
+      return children.map((childId) =>
+        typeof childId === "string" ? childId : childId[0]
+      );
+    });
+    onChange(path, sampleIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // CheckboxView: Represents a single checkbox (either parent or child)
   function CheckboxView({

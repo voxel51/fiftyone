@@ -1,11 +1,11 @@
 import * as fos from "@fiftyone/state";
-import React from "react";
+import React, { Suspense } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import RangeSlider from "./RangeSlider";
 import { Button } from "@mui/material";
-import { useTheme } from "@fiftyone/components";
+import { LoadingDots, useTheme } from "@fiftyone/components";
 import * as state from "./state";
 import * as schemaAtoms from "@fiftyone/state/src/recoil/schema";
 
@@ -29,6 +29,7 @@ const Box = styled.div`
   color: ${({ theme }) => theme.text.secondary};
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem;
+  height: 30px;
 `;
 
 type Props = {
@@ -76,28 +77,35 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
           )}
         />
       )}
-      {showButton ? (
-        <Box>
-          <Button
-            onClick={handleShowRange}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "100%",
-              padding: "10px",
-              color: theme.text.secondary,
-              borderRadius: "8px",
-              border: "1px solid " + theme.secondary.main,
-              height: "30px",
-            }}
-          >
-            Filter by {name}
-          </Button>
-        </Box>
-      ) : (
-        <RangeSlider color={color} modal={modal} path={path} />
-      )}
+      <Suspense
+        fallback={
+          <Box>
+            <LoadingDots text="Loading" />
+          </Box>
+        }
+      >
+        {showButton ? (
+          <Box>
+            <Button
+              onClick={handleShowRange}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "100%",
+                padding: "10px",
+                color: theme.text.secondary,
+                borderRadius: "8px",
+                border: "1px solid " + theme.secondary.main,
+              }}
+            >
+              Filter by {name}
+            </Button>
+          </Box>
+        ) : (
+          <RangeSlider color={color} modal={modal} path={path} />
+        )}
+      </Suspense>
     </Container>
   );
 };
