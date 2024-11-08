@@ -1,9 +1,9 @@
+import { useUnboundState } from "@fiftyone/state";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { Box, Checkbox, FormControlLabel, IconButton } from "@mui/material";
 import React, { useEffect } from "react";
 import { ViewPropsType } from "../utils/types";
-import { useUnboundState } from "@fiftyone/state";
 
 interface CheckedState {
   [key: string]: {
@@ -72,6 +72,80 @@ export default function TreeSelectionView(props: ViewPropsType) {
     React.useState<CheckedState>(initialCheckedState);
 
   const unboundState = useUnboundState(checkedState);
+
+  useEffect(() => {
+    // this only runs when data and checkboxstate are different
+    // meaning the user selected samples from the grid
+    // we will handle the state change of checkedState here
+    // ! do not use onChange here. A change triggered by python should not be sent back to python.
+    if (!data) return;
+
+    // extract the selected sample ids from the unboundState
+    const selectedIdsFromUnboundState = Object.keys(unboundState).filter(
+      (key) => {
+        const isSample =
+          !structure.some(([parentId]) => parentId === key) &&
+          key !== "selectAll";
+        return isSample && unboundState[key].checked; // Only checked samples
+      }
+    );
+
+    const dataSet: Set<string> = new Set(data);
+    const unboundSet: Set<string> = new Set(selectedIdsFromUnboundState);
+    const hasDifference =
+      dataSet.size !== unboundSet.size ||
+      [...dataSet].some((id) => !unboundSet.has(id));
+
+    if (hasDifference) {
+      setCheckedState((prevState) => {
+        const updatedState = { ...prevState };
+
+        // Update the checked state of individual samples based on `dataSet`
+        Object.keys(updatedState).forEach((key) => {
+          if (
+            key !== "selectAll" &&
+            !structure.some(([parentId]) => parentId === key)
+          ) {
+            updatedState[key].checked = dataSet.has(key);
+          }
+        });
+
+        // Update group (parent) states based on their children's state
+        structure.forEach(([parentId, children]) => {
+          const allChildrenChecked = children.every((childId) =>
+            typeof childId === "string"
+              ? updatedState[childId].checked
+              : updatedState[childId[0]].checked
+          );
+          const someChildrenChecked = children.some((childId) =>
+            typeof childId === "string"
+              ? updatedState[childId].checked
+              : updatedState[childId[0]].checked
+          );
+
+          updatedState[parentId] = {
+            checked: allChildrenChecked,
+            indeterminate: someChildrenChecked && !allChildrenChecked,
+          };
+        });
+
+        // Update `selectAll` based on the sample checkboxes
+        const allSamplesChecked = Object.keys(updatedState).every((key) => {
+          const isSample =
+            !structure.some(([parentId]) => parentId === key) &&
+            key !== "selectAll";
+          return !isSample || updatedState[key].checked;
+        });
+
+        updatedState["selectAll"] = {
+          checked: allSamplesChecked,
+          indeterminate: !allSamplesChecked && dataSet.size > 0,
+        };
+
+        return updatedState;
+      });
+    }
+  }, [data, unboundState]);
 
   // Initialize collapsed state for all parents
   const initialCollapsedState: CollapsedState = React.useMemo(() => {
@@ -288,7 +362,6 @@ export default function TreeSelectionView(props: ViewPropsType) {
     );
   }
 
-  // render the full structure
   return (
     <div>
       {/* Select All Checkbox */}
