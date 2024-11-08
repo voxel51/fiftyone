@@ -13,7 +13,6 @@ import {
   ButtonProps,
 } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import ScienceIcon from "@mui/icons-material/Science";
 import { onEnter } from "./utils";
 import { useTheme } from "@fiftyone/components";
 
