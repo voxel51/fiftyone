@@ -10,13 +10,46 @@ on:
       - release/v[0-9]+.[0-9]+.[0-9]+
 
 jobs:
+  modified-files:
+    runs-on: ubuntu-latest
+    outputs:
+      app-changes: ${{ steps.filter.outputs.app }}
+      e2e-changes: ${{ steps.filter.outputs.e2e-pw }}
+      fiftyone-changes: ${{ steps.filter.outputs.fiftyone }}
+      teams-app-changes: ${{ steps.filter.outputs.teams-app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          predicate-quantifier: 'every'
+          filters: |
+            app:
+              - 'app/**'
+            e2e-pw:
+              - 'e2e-pw/**'
+            fiftyone:
+              - 'fiftyone/**'
+              - 'requirements/**'
+              - 'tests/**'
+              - 'requirements.txt'
+              - 'setup.py'
+            teams-app:
+              - 'teams-app/**'
+              - '!teams-app/Dockerfile'
   build:
+    needs: modified-files
+    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' || needs.modified-files.outputs.teams-app-changes == 'true' }}
     uses: ./.github/workflows/build.yml
 
   e2e:
+    needs: modified-files
+    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.e2e-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' || needs.modified-files.outputs.teams-app-changes == 'true' }}
     uses: ./.github/workflows/e2e.yml
 
   lint:
+    needs: modified-files
+    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' || needs.modified-files.outputs.teams-app-changes == 'true' }}
     uses: ./.github/workflows/lint-app.yml
 
   teams:
@@ -43,6 +76,8 @@ jobs:
           wait_workflow: true
 
   test:
+    needs: modified-files
+    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' || needs.modified-files.outputs.teams-app-changes == 'true' }}
     uses: ./.github/workflows/test.yml
 
   all-tests:
@@ -51,6 +86,6 @@ jobs:
     if: always()
     steps:
       - run: sh -c ${{
-          needs.build.result == 'success' &&
-          needs.lint.result == 'success' &&
-          needs.test.result == 'success' }}
+          (needs.build.result == 'success' || needs.build.result == 'skipped') &&
+          (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
+          (needs.test.result == 'success' || needs.test.result == 'skipped') }}
