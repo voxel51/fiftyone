@@ -3,6 +3,55 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 2.1.3
+--------------------
+*Released November 8, 2024*
+
+Includes all updates from :ref:`FiftyOne 1.0.2 <release-notes-v1.0.2>`
+
+.. _release-notes-v1.0.3:
+
+FiftyOne 1.0.2
+--------------
+*Released November 8, 2024*
+
+Zoo
+
+- Added :ref:`SAM 2.1 <model-zoo-segment-anything-2.1-hiera-base-plus-image-torch>`
+  to the :ref:`Model Zoo <model-zoo>`
+  `#4979 <https://github.com/voxel51/fiftyone/pull/4979>`_
+- Added :ref:`YOLO11 <ultralytics-instance-segmentation>` to the
+  :ref:`Model Zoo <model-zoo>`
+  `#4899 <https://github.com/voxel51/fiftyone/pull/4899>`_
+- Added generic model architecture and backbone tags to all relevant models
+  :ref:`in the zoo <model-zoo-models>` for easier navigation
+  `#4899 <https://github.com/voxel51/fiftyone/pull/4899>`_
+
+Core
+
+- Fixed input shape in the depth estimation transformer
+  `#5035 <https://github.com/voxel51/fiftyone/pull/5035>`_
+- Added graceful handling of empty datasets when computing embeddings
+  `#5043 <https://github.com/voxel51/fiftyone/pull/5043>`_
+
+App
+
+- Added a new :ref:`TimelineView <fiftyone.operators.types.TimelineView>` for
+  building custom animations
+  `#4965 <https://github.com/voxel51/fiftyone/pull/4965>`_
+- Fixed overlay z-index and overflow for panels
+  `#4956 <https://github.com/voxel51/fiftyone/pull/4956>`_
+- Fixed bug where timeline name wasn't being forwarded in seek utils
+  `#4975 <https://github.com/voxel51/fiftyone/pull/4975>`_
+- Performance improvements in the grid and modal
+  `#5009 <https://github.com/voxel51/fiftyone/pull/5009>`_,
+  `#5015 <https://github.com/voxel51/fiftyone/pull/5015>`_,
+  `#5018 <https://github.com/voxel51/fiftyone/pull/5018>`_,
+  `#5019 <https://github.com/voxel51/fiftyone/pull/5019>`_,
+  `#5022 <https://github.com/voxel51/fiftyone/pull/5022>`_
+- Fixed batch selection with ctrl + click in the grid
+  `#5046 <https://github.com/voxel51/fiftyone/pull/5046>`_
+
 FiftyOne Teams 2.1.2
 --------------------
 *Released October 31, 2024*

@@ -119,14 +119,20 @@ export const isModalActive = selector<boolean>({
 });
 
 export type ModalNavigation = {
-  next: () => Promise<ModalSelector>;
-  previous: () => Promise<ModalSelector>;
+  next: (offset?: number) => Promise<ModalSelector>;
+  previous: (offset?: number) => Promise<ModalSelector>;
 };
 
-export const modalNavigation = atom<ModalNavigation>({
-  key: "modalNavigation",
-  default: null,
-});
+export const modalNavigation = (() => {
+  let current: ModalNavigation | null;
+
+  return {
+    get: () => current,
+    set: (value: ModalNavigation | null) => {
+      current = value;
+    },
+  };
+})();
 
 export const modalSampleId = selector<string>({
   key: "modalSampleId",

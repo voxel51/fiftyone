@@ -7,6 +7,7 @@ import {
   overlayToSx,
 } from "../utils";
 import { ViewPropsType } from "../utils/types";
+import { has } from "lodash";
 
 export default function ContainerizedComponent(props: ContainerizedComponent) {
   const { schema, children } = props;
@@ -22,7 +23,11 @@ export default function ContainerizedComponent(props: ContainerizedComponent) {
   }
 
   if (isCompositeView(schema)) {
+    const hasOverlay = !!schema?.view?.overlay;
     const sxForOverlay = overlayToSx[schema?.view?.overlay] || {};
+    if (hasOverlay) {
+      sxForOverlay.zIndex = 999;
+    }
     return (
       <Box sx={{ position: "relative", ...sxForOverlay }}>
         {containerizedChildren}

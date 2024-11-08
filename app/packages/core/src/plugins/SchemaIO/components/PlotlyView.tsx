@@ -212,7 +212,6 @@ export default function PlotlyView(props: ViewPropsType) {
   return (
     <Box
       {...getComponentProps(props, "container")}
-      useResizeHandler
       sx={{ height: "100%", width: "100%" }}
     >
       <HeaderView {...props} nested />

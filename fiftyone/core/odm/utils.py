@@ -658,7 +658,8 @@ class DocumentRegistry(object):
             pass
 
         # Then full module list
-        for module in sys.modules.values():
+        all_modules = sys.modules.copy().values()
+        for module in all_modules:
             try:
                 cls = self._get_cls(module, name)
                 self._cache[name] = cls

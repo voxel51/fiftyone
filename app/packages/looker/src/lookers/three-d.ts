@@ -1,12 +1,18 @@
 import { get3dElements } from "../elements";
 import { COMMON_SHORTCUTS } from "../elements/common";
-import { DEFAULT_3D_OPTIONS, ThreeDState } from "../state";
+import type { ThreeDState } from "../state";
+import { DEFAULT_3D_OPTIONS } from "../state";
 import { AbstractLooker } from "./abstract";
 import { LookerUtils } from "./shared";
 
 export class ThreeDLooker extends AbstractLooker<ThreeDState> {
   getElements(config) {
-    return get3dElements(config, this.updater, this.getDispatchEvent());
+    return get3dElements({
+      abortController: this.abortController,
+      config,
+      update: this.updater,
+      dispatchEvent: this.getDispatchEvent(),
+    });
   }
 
   hasDefaultZoom(): boolean {

@@ -14,9 +14,10 @@ export const DeserializerFactory = {
     }
   },
   Detections: (labels, buffers) => {
-    labels?.detections?.forEach((label) =>
-      DeserializerFactory.Detection(label, buffers)
-    );
+    const list = labels?.detections || [];
+    for (const label of list) {
+      DeserializerFactory.Detection(label, buffers);
+    }
   },
   Heatmap: (label, buffers) => {
     if (typeof label?.map === "string") {

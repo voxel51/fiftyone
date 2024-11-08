@@ -46,6 +46,6 @@ export { default as TableView } from "./TableView";
 export { default as TabsView } from "./TabsView";
 export { default as TagsView } from "./TagsView";
 export { default as TextFieldView } from "./TextFieldView";
+export { default as TimelineView } from "./TimelineView";
 export { default as TupleView } from "./TupleView";
 export { default as UnsupportedView } from "./UnsupportedView";
-export { default as FrameLoaderView } from "./FrameLoaderView";
