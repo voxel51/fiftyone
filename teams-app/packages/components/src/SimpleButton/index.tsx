@@ -1,11 +1,11 @@
-import { useMemo } from 'react';
-import Typography from '@mui/material/Typography';
-import { useTheme } from '@mui/material/styles';
-import { Button, ButtonProps } from '@mui/material';
+import { useMemo } from "react";
+import Typography from "@mui/material/Typography";
+import { useTheme } from "@mui/material/styles";
+import { Button, ButtonProps } from "@mui/material";
 
 interface Props {
   onClick?: () => void;
-  style?: 'primary.submit' | 'white.cancel' | 'error';
+  style?: "primary.submit" | "white.cancel" | "error";
   buttonText?: string;
   overrideStyle?: {};
   loading?: boolean;
@@ -19,24 +19,24 @@ export default function SimpleButton(props: Props & ButtonProps) {
 
   const buttonProps = useMemo(() => {
     return {
-      'primary.submit': {
+      "primary.submit": {
         background: theme.palette.voxel[500],
-        '&:hover': {
-          background: theme.palette.voxel[600]
+        "&:hover": {
+          background: theme.palette.voxel[600],
         },
         borderRadius: 2,
-        color: theme.palette.text.secondary
+        color: theme.palette.text.secondary,
       },
-      'white.cancel': {
+      "white.cancel": {
         marginRight: 1,
         border: `1px solid ${theme.palette.grey[500]}`,
         background: theme.palette.grey[50],
-        '&:hover': {
-          background: theme.palette.grey[200]
+        "&:hover": {
+          background: theme.palette.grey[200],
         },
         borderRadius: 2,
-        color: theme.palette.grey[600]
-      }
+        color: theme.palette.grey[600],
+      },
     };
   }, [theme]);
 
@@ -46,7 +46,7 @@ export default function SimpleButton(props: Props & ButtonProps) {
       sx={{
         ...(style ? buttonProps[style] : {}),
         ...props?.overrideStyle,
-        ...props?.sx
+        ...props?.sx,
       }}
       onClick={(e) => {
         e.preventDefault();
@@ -62,7 +62,7 @@ export default function SimpleButton(props: Props & ButtonProps) {
           fontWeight="medium"
           color={buttonProps[style].color}
         >
-          {loadingText || buttonText || '...'}
+          {loadingText || buttonText || "..."}
         </Typography>
       )}
       {!props.loading && buttonText && (

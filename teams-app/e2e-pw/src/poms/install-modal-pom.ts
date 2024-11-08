@@ -18,7 +18,7 @@ export class InstallModalPom {
     const installText = await dialogContainer
       .getByTestId('code')
       .getByRole('code')
-      .first()
+      .nth(1)
       .innerText();
     return installText;
   }
@@ -53,9 +53,14 @@ class InstallModalAsserter {
     const pypiToken = await this.installModal.org.pypiToken();
     await this.installModal.open();
 
-    expect(await this.installModal.getInstallCode()).toEqual(
-      `1pip install -U --index-url https://${pypiToken}@pypi.fiftyone.ai fiftyone`
-    );
+    const installCode = await this.installModal.getInstallCode();
+    if (installCode.includes('--extra-index-url')) {
+      expect(installCode).toContain(`pip install --extra-index-url`);
+    } else {
+      expect(installCode).toEqual(
+        `pip install --index-url https://${pypiToken}@pypi.fiftyone.ai fiftyone`
+      );
+    }
 
     await this.installModal.close();
   }

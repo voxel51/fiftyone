@@ -1,9 +1,9 @@
-import { useRecoilCallback } from 'recoil';
-import {  view } from '@fiftyone/state';
-import { useState, useCallback } from 'react';
-import { isObjectEmpty } from '@fiftyone/teams-utilities/src/isObjectEmpty';
-import { ViewSelectors } from '@fiftyone/teams-state/src/Dataset/__generated__/DatasetCloneViewMutation.graphql';
-import { currentDatasetFilters } from './useCurrentFilters';
+import { useRecoilCallback } from "recoil";
+import { view } from "@fiftyone/state";
+import { useState, useCallback } from "react";
+import { isObjectEmpty } from "@fiftyone/teams-utilities/src/isObjectEmpty";
+import { ViewSelectors } from "@fiftyone/teams-state/src/Dataset/__generated__/DatasetCloneViewMutation.graphql";
+import { currentDatasetFilters } from "./useCurrentFilters";
 
 export function useFetchData(setType: (type: string) => void) {
   const getView = useRecoilCallback(
@@ -32,9 +32,9 @@ export function useFetchData(setType: (type: string) => void) {
         viewStages: view || [],
       } as ViewSelectors;
       setSourceView(sourceViewData);
-      setType(isObjectEmpty(sourceViewData) ? 'dataset' : 'view');
+      setType(isObjectEmpty(sourceViewData) ? "dataset" : "view");
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error("Error fetching data:", error);
     }
   }, [getView, getForm, setType]);
 

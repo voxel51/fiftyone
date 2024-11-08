@@ -1,9 +1,9 @@
-const match = RegExp('/datasets/.*/samples');
+const match = RegExp("/datasets/.*/samples");
 
 // All pages except the embedded dataset/samples page
 // deregister the worker to avoid unintended issues
 export const deregisterAllServiceWorkers = () => {
-  const isSWAvailable = 'serviceWorker' in navigator;
+  const isSWAvailable = "serviceWorker" in navigator;
   if (isSWAvailable) {
     navigator.serviceWorker.getRegistrations().then(function (registrations) {
       for (let registration of registrations) {
@@ -19,13 +19,13 @@ export const registerServiceWorker = async (
   token?: string,
   serviceWorkerHeaderKey?: string
 ) => {
-  const isSWAvailable = 'serviceWorker' in navigator;
+  const isSWAvailable = "serviceWorker" in navigator;
   if (isSWAvailable && match.test(path)) {
     if (token) {
       const registration = await navigator.serviceWorker.register(
         `/service-worker.js?token=${
-          token ? encodeURIComponent(token) : ''
-        }&tokenKey=${encodeURIComponent(serviceWorkerHeaderKey || 'jwt')}`
+          token ? encodeURIComponent(token) : ""
+        }&tokenKey=${encodeURIComponent(serviceWorkerHeaderKey || "jwt")}`
       );
       // update to latest
       return registration.update();

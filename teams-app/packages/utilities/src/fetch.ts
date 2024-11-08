@@ -12,7 +12,7 @@ export default async function fotFetch(
       // todo: use error from OSS
       const { result } = await parseResponseBody(response);
       const serverMessage = getErrorMessage(result);
-      const message = serverMessage || statusText || 'Something went wrong';
+      const message = serverMessage || statusText || "Something went wrong";
       throw new Error(`${status}: ${message}`);
     }
 
@@ -27,8 +27,8 @@ export default async function fotFetch(
 
 async function parseResponseBody(response: Response) {
   try {
-    const contentType = response.headers.get('content-type');
-    const body = await (contentType === 'application/json'
+    const contentType = response.headers.get("content-type");
+    const body = await (contentType === "application/json"
       ? response.json()
       : response.text());
     return { result: body };
@@ -40,7 +40,7 @@ async function parseResponseBody(response: Response) {
 
 function getErrorMessage(result: string) {
   // SanicException
-  if (typeof result === 'string' && result.includes('===')) {
+  if (typeof result === "string" && result.includes("===")) {
     return result.split(/={3,}/)[1].trim();
   }
 }

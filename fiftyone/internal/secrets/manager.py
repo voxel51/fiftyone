@@ -118,6 +118,14 @@ class SecretsManager(ISecretProvider):
                     )
                     logging.error(traceback.format_exc())
                     continue
+        if len(self._providers) == 0:
+            raise Exception(
+                f"No provider in the secret manager for key: {key}"
+            )
+        else:
+            logging.info(
+                f"No secret found in the list of providers for key: {key}"
+            )
         return None
 
     def _get_secret_from_providers_sync(
@@ -145,6 +153,14 @@ class SecretsManager(ISecretProvider):
                     )
                     logging.debug(traceback.format_exc())
                     continue
+        if len(self._providers) == 0:
+            raise Exception(
+                f"No provider in the secret manager for key: {key}"
+            )
+        else:
+            logging.info(
+                f"No secret found in the list of providers for key: {key}"
+            )
         return None
 
     async def _get_secrets_from_providers(
@@ -164,7 +180,12 @@ class SecretsManager(ISecretProvider):
                     print("Failed to get secret for key", k)
                     print(traceback.format_exc())
                     secrets.pop(k, None)
-
+        if len(self._providers) == 0:
+            raise Exception(f"No provider in the secret manager")
+        if len(secrets) == 0:
+            logging.info(
+                f"No secrets found in the list of providers for keys: {keys}"
+            )
         return secrets
 
     async def get(

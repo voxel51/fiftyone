@@ -1,6 +1,6 @@
-import useDatasetsFilter from '@fiftyone/hooks/src/datasets/DatasetList/useFilters';
-import { Selection } from '@fiftyone/teams-components';
-import { mediaTypeItems } from '@fiftyone/teams-state/src/constants';
+import useDatasetsFilter from "@fiftyone/hooks/src/datasets/DatasetList/useFilters";
+import { Selection } from "@fiftyone/teams-components";
+import { mediaTypeItems } from "@fiftyone/teams-state/src/constants";
 
 export default function MediaTypeSelection() {
   const { mediaTypes, setMediaTypes } = useDatasetsFilter();
@@ -9,7 +9,7 @@ export default function MediaTypeSelection() {
     <Selection
       items={mediaTypeItems.map(({ id, label }) => ({
         id,
-        label
+        label,
       }))}
       hidePlaceholder
       menuSize="small"
@@ -20,7 +20,7 @@ export default function MediaTypeSelection() {
       selectProps={{
         sx: { mr: 1, ml: 1, color: (theme) => theme.palette.text.secondary },
         multiple: true,
-        inputProps: { sx: { maxWidth: 100 } }
+        inputProps: { sx: { maxWidth: 100 } },
       }}
       labelPrefix="Media types "
       value={mediaTypes}

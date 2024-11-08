@@ -1,6 +1,6 @@
-import { InfoIcon, useTheme } from '@fiftyone/components';
-import { useCurrentUser, useUserAudit } from '@fiftyone/hooks';
-import { Box } from '@fiftyone/teams-components';
+import { InfoIcon, useTheme } from "@fiftyone/components";
+import { useCurrentUser, useUserAudit } from "@fiftyone/hooks";
+import { Box } from "@fiftyone/teams-components";
 import {
   Alert,
   AlertTitle,
@@ -8,10 +8,10 @@ import {
   TooltipProps,
   Typography,
   styled,
-  tooltipClasses
-} from '@mui/material';
-import React, { useState } from 'react';
-import UserAuditTable from './UserAuditTable';
+  tooltipClasses,
+} from "@mui/material";
+import React, { useState } from "react";
+import UserAuditTable from "./UserAuditTable";
 
 interface Props {
   showComplianceWarning?: boolean;
@@ -21,13 +21,13 @@ export default function LicenseAudit(props: Props) {
   const theme = useTheme();
 
   const currentUser = useCurrentUser()?.[0];
-  const isAdmin = currentUser?.role === 'ADMIN';
+  const isAdmin = currentUser?.role === "ADMIN";
 
   const {
     remaining,
     hasCollaborators,
     notInComplianceText,
-    error: userAuditError
+    error: userAuditError,
   } = useUserAudit();
   const [alertDismissed, _] = useState(false);
 
@@ -46,9 +46,9 @@ export default function LicenseAudit(props: Props) {
   ))({
     [`& .${tooltipClasses.tooltip}`]: {
       maxWidth: 600,
-      background: 'none',
-      color: theme.text.secondary
-    }
+      background: "none",
+      color: theme.text.secondary,
+    },
   });
 
   return (
@@ -67,14 +67,14 @@ export default function LicenseAudit(props: Props) {
         variant="outlined"
         sx={{
           borderColor: theme.text.disabled,
-          '& .MuiAlert-icon': {
-            color: theme.text.disabled
+          "& .MuiAlert-icon": {
+            color: theme.text.disabled,
           },
-          my: 1
+          my: 1,
         }}
       >
-        <AlertTitle sx={{ display: 'flex', alignItems: 'center' }}>
-          <Typography variant="body2">Seats remaining</Typography>
+        <AlertTitle sx={{ display: "flex", alignItems: "center" }}>
+          <Typography variant="body2">Available Seats</Typography>
           {Boolean(remaining) && isAdmin && (
             <CustomTooltip
               placement="bottom-start"
@@ -91,7 +91,7 @@ export default function LicenseAudit(props: Props) {
                 data-testid="license-info-icon"
                 sx={{
                   color: theme.text.disabled,
-                  ml: 1
+                  ml: 1,
                 }}
               />
             </CustomTooltip>
@@ -100,14 +100,14 @@ export default function LicenseAudit(props: Props) {
         <Box display="flex" flexDirection="column">
           <Typography variant="caption" data-testid="license-counts-text">
             <b data-testid="license-users-label">
-              Users{' '}
-              {`(Admins, Members${!hasCollaborators ? ', Collaborators' : ''})`}
+              Users{" "}
+              {`(Admins, Members${!hasCollaborators ? ", Collaborators" : ""})`}
             </b>
-            :{' '}
+            :{" "}
             <span data-testid="license-users-count">
               {remaining.USERS.remaining}
-            </span>{' '}
-            <b data-testid="license-guests-label">Guests</b>:{' '}
+            </span>{" "}
+            <b data-testid="license-guests-label">Guests</b>:{" "}
             <span data-testid="license-guests-count">
               {remaining.GUESTS.remaining}
             </span>

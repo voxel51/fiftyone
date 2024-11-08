@@ -1,13 +1,13 @@
-import { useCreateGroup, useEditGroupInfo } from '@fiftyone/hooks';
-import { Dialog } from '@fiftyone/teams-components';
-import { groupInModalState } from '@fiftyone/teams-state';
-import Button from '@mui/material/Button';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent/DialogContent';
-import TextField from '@mui/material/TextField';
-import Typography from '@mui/material/Typography';
-import React, { FC, useCallback, useEffect } from 'react';
-import { useRecoilState } from 'recoil';
+import { useCreateGroup, useEditGroupInfo } from "@fiftyone/hooks";
+import { Dialog } from "@fiftyone/teams-components";
+import { groupInModalState } from "@fiftyone/teams-state";
+import Button from "@mui/material/Button";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent/DialogContent";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import React, { FC, useCallback, useEffect } from "react";
+import { useRecoilState } from "recoil";
 
 interface Props {}
 
@@ -18,44 +18,44 @@ type Command = {
 };
 
 const UserGroupModal: FC<Props> = () => {
-  const [showNameError, setShowNameError] = React.useState<string>('');
+  const [showNameError, setShowNameError] = React.useState<string>("");
   const { createGroup, isCreatingGroup } = useCreateGroup();
   const { editGroup, isEditingGroup } = useEditGroupInfo();
   const [groupInModal, setGroupInModal] = useRecoilState(groupInModalState);
-  const actionTitle = `${groupInModal === null ? 'Create ' : 'Edit '} group`;
+  const actionTitle = `${groupInModal === null ? "Create " : "Edit "} group`;
   const isOpen = groupInModal !== undefined;
   const handleClose = useCallback(() => {
     setGroupInModal(undefined);
   }, [setGroupInModal]);
   const [command, setCommand] = React.useState<Command>({
-    name: groupInModal?.name || '',
-    description: groupInModal?.description || '',
-    id: groupInModal?.id
+    name: groupInModal?.name || "",
+    description: groupInModal?.description || "",
+    id: groupInModal?.id,
   });
 
   useEffect(() => {
     setCommand({
-      name: groupInModal?.name || '',
-      description: groupInModal?.description || '',
-      id: groupInModal?.id
+      name: groupInModal?.name || "",
+      description: groupInModal?.description || "",
+      id: groupInModal?.id,
     });
   }, [groupInModal]);
 
   const handleNameError = useCallback(
     (error) => {
       // not perfect - we are planning to= improve error handling
-      const alreadyExistsError = `${error}`.includes('already exists');
+      const alreadyExistsError = `${error}`.includes("already exists");
       if (alreadyExistsError) {
-        setShowNameError('Name already exists');
+        setShowNameError("Name already exists");
       } else {
-        setShowNameError('Bad name');
+        setShowNameError("Bad name");
       }
     },
     [setShowNameError]
   );
 
   const actionBtnDisabled =
-    isCreatingGroup || isEditingGroup || command.name.trim() === '';
+    isCreatingGroup || isEditingGroup || command.name.trim() === "";
 
   return (
     <Dialog
@@ -81,18 +81,18 @@ const UserGroupModal: FC<Props> = () => {
           error={!!showNameError}
           onChange={(e) => {
             setCommand({ ...command, name: e.target.value });
-            setShowNameError(e.target.value.trim() === '' ? 'Requred' : '');
+            setShowNameError(e.target.value.trim() === "" ? "Requred" : "");
           }}
-          sx={{ paddingBottom: !!showNameError ? 'none' : '1rem' }}
+          sx={{ paddingBottom: !!showNameError ? "none" : "1rem" }}
         />
         {!!showNameError && (
           <Typography
             variant="subtitle2"
             color="error"
             sx={{
-              transition: 'height 0.3s ease-in',
-              overflow: 'hidden',
-              paddingBottom: '1rem'
+              transition: "height 0.3s ease-in",
+              overflow: "hidden",
+              paddingBottom: "1rem",
             }}
           >
             {showNameError}
@@ -111,7 +111,7 @@ const UserGroupModal: FC<Props> = () => {
           multiline
           value={command?.description}
           rows={2}
-          sx={{ paddingBottom: '1rem' }}
+          sx={{ paddingBottom: "1rem" }}
           onChange={(e) => {
             setCommand({ ...command, description: e.target.value });
           }}
@@ -124,7 +124,7 @@ const UserGroupModal: FC<Props> = () => {
         <Button
           type="submit"
           onClick={() => {
-            const { name, id, description = '' } = command;
+            const { name, id, description = "" } = command;
             if (groupInModal?.id) {
               // edit
               editGroup({
@@ -134,7 +134,7 @@ const UserGroupModal: FC<Props> = () => {
                 onComplete: handleClose,
                 onHandleError: (error) => {
                   handleNameError(error);
-                }
+                },
               });
             } else {
               // create
@@ -144,7 +144,7 @@ const UserGroupModal: FC<Props> = () => {
                 onComplete: handleClose,
                 onHandleError: (error) => {
                   handleNameError(error);
-                }
+                },
               });
             }
           }}

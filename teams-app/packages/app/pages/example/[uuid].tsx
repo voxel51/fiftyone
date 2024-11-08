@@ -1,14 +1,14 @@
-import { graphql, useFragment, usePreloadedQuery } from 'react-relay/hooks';
-import { Suspense, useState } from 'react';
-import { useRecoilValue } from 'recoil';
+import { graphql, useFragment, usePreloadedQuery } from "react-relay/hooks";
+import { Suspense, useState } from "react";
+import { useRecoilValue } from "recoil";
 
-import { exampleGraphQLSelector } from '@fiftyone/teams-state';
+import { exampleGraphQLSelector } from "@fiftyone/teams-state";
 
-import { UuidExampleQuery } from './__generated__/UuidExampleQuery.graphql';
-import { UuidExampleFragment_viewer$key } from './__generated__/UuidExampleFragment_viewer.graphql';
+import { UuidExampleQuery } from "./__generated__/UuidExampleQuery.graphql";
+import { UuidExampleFragment_viewer$key } from "./__generated__/UuidExampleFragment_viewer.graphql";
 
-import withRelay from '../../lib/withRelay';
-import { RelayProps } from 'relay-nextjs';
+import withRelay from "../../lib/withRelay";
+import { RelayProps } from "relay-nextjs";
 
 const ExampleFragment = graphql`
   fragment UuidExampleFragment_viewer on User {
@@ -59,7 +59,7 @@ function Example({ preloadedQuery }: RelayProps<{}, UuidExampleQuery>) {
       <div>{example}</div>
       <button onClick={() => setShowSelector(true)}>Click Me</button>
       {showSelector && (
-        <Suspense fallback={'loading...'}>
+        <Suspense fallback={"loading..."}>
           <ExampleGraphQLRecoilComponent />
         </Suspense>
       )}

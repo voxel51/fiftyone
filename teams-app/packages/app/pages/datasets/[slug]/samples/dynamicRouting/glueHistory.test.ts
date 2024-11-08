@@ -1,20 +1,20 @@
-import { expect, test, vi } from 'vitest';
-import glueHistory from './glueHistory';
+import { expect, test, vi } from "vitest";
+import glueHistory from "./glueHistory";
 
-test('glue history', () => {
+test("glue history", () => {
   const stub = {
-    pathname: '/datasets'
+    pathname: "/datasets",
   };
-  vi.stubGlobal('location', stub);
-  vi.stubGlobal('history', {
-    state: { options: { fiftyone: true } }
+  vi.stubGlobal("location", stub);
+  vi.stubGlobal("history", {
+    state: { options: { fiftyone: true } },
   });
   let replaced = false;
   let counter = 0;
   glueHistory(
     (cb) => {
       if (counter === 1) {
-        stub.pathname = '/datasets/my-dataset/samples';
+        stub.pathname = "/datasets/my-dataset/samples";
       }
 
       if (counter < 2) {

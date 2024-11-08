@@ -1,10 +1,10 @@
-import { useMutation } from '../common';
+import { useMutation } from "../common";
 import {
   groupsDeleteUserGroupMutationT,
-  groupsDeleteUserGroupMutation
-} from '@fiftyone/teams-state';
-import { useCallback } from 'react';
-import { useRouter } from 'next/router';
+  groupsDeleteUserGroupMutation,
+} from "@fiftyone/teams-state";
+import { useCallback } from "react";
+import { useRouter } from "next/router";
 
 export default function useDeleteGroup() {
   const router = useRouter();
@@ -21,12 +21,12 @@ export default function useDeleteGroup() {
     ) => {
       return deleteGroupMutation({
         variables: {
-          id
+          id,
         },
         successMessage,
         errorMessage,
         onCompleted: (data) => onComplete && onComplete(data),
-        onError: (error) => onHandleError && onHandleError(error)
+        onError: (error) => onHandleError && onHandleError(error),
       });
     },
     [router]
@@ -34,6 +34,6 @@ export default function useDeleteGroup() {
 
   return {
     deleteGroup,
-    isDeletingGroup: loading
+    isDeletingGroup: loading,
   };
 }

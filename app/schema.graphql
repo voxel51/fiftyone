@@ -48,7 +48,8 @@ type AppConfig {
   colorPool: [String!]!
   colorscale: String!
   gridZoom: Int!
-  lightningThreshold: Int
+  enableQueryPerformance: Boolean!
+  defaultQueryPerformance: Boolean!
   loopVideos: Boolean!
   multicolorKeypoints: Boolean!
   notebookHeight: Int!
@@ -58,12 +59,13 @@ type AppConfig {
   showLabel: Boolean!
   showSkeletons: Boolean!
   showTooltip: Boolean!
-  sidebarMode: SidebarMode!
   theme: Theme!
   timezone: String
   useFrameNumber: Boolean!
   spaces: JSON
   disableFrameFiltering: Boolean!
+  defaultQueryPerformance: Boolean
+  enableQueryPerformance: Boolean
   mediaFallback: Boolean!
 }
 
@@ -243,7 +245,7 @@ type Dataset {
   headName: String
   snapshotName: String
   stages(slug: String = null, view: BSONArray = null): BSONArray
-  workspace(slug: String): Workspace
+  workspace(slug: String = null): Workspace
 }
 
 type DatasetAppConfig {
@@ -255,7 +257,6 @@ type DatasetAppConfig {
   mediaFallback: Boolean!
   plugins: JSON
   sidebarGroups: [SidebarGroup!]
-  sidebarMode: SidebarMode
   spaces: JSON
 }
 
@@ -465,6 +466,7 @@ union LightningResults =
   | DateTimeLightningResult
   | FloatLightningResult
   | IntLightningResult
+  | ObjectIdLightningResult
   | StringLightningResult
 
 type MaskColor {
@@ -579,6 +581,11 @@ type NamedKeypointSkeleton {
 type NamedTargets {
   name: String!
   targets: [Target!]!
+}
+
+type ObjectIdLightningResult implements LightningResult {
+  path: String!
+  values: [String]
 }
 
 type PointCloudSample implements Sample {
@@ -742,13 +749,6 @@ input SidebarGroupInput {
   name: String!
   paths: [String!]
   expanded: Boolean = null
-}
-
-enum SidebarMode {
-  all
-  best
-  disabled
-  fast
 }
 
 type StageDefinition {

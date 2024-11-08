@@ -1,6 +1,6 @@
-import React from 'react';
-import { Table, TableBody } from '@mui/material';
-import { ManageUserDatasetsRow } from '@fiftyone/teams-components';
+import React from "react";
+import { Table, TableBody } from "@mui/material";
+import { ManageUserDatasetsRow } from "@fiftyone/teams-components";
 
 type UserDataset = {
   name: string;
@@ -15,7 +15,7 @@ type ManageUserDatasetsProps = {
 
 export default function ManageUserDatasets({
   datasets,
-  readOnly
+  readOnly,
 }: ManageUserDatasetsProps) {
   return (
     <Table>

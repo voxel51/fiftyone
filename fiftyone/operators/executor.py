@@ -119,7 +119,7 @@ class Executor(object):
         }
 
 
-def execute_operator(operator_uri, ctx=None, **kwargs):
+def execute_operator(operator_uri, ctx=None, exhaust=True, **kwargs):
     """Executes the operator with the given name.
 
     Args:
@@ -144,6 +144,7 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
                 execution, if supported by the operator
             -   ``delegation_target`` (None): an optional orchestrator on which
                 to schedule the operation, if it is delegated
+        exhaust (True): whether to immediately exhaust generator operators
         **kwargs: you can optionally provide any of the supported ``ctx`` keys
             as keyword arguments rather than including them in ``ctx``
 
@@ -157,7 +158,9 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
     """
     request_params = _parse_ctx(ctx=ctx, **kwargs)
     coroutine = execute_or_delegate_operator(
-        operator_uri, request_params, exhaust=True
+        operator_uri,
+        request_params,
+        exhaust=exhaust,
     )
 
     try:
@@ -326,6 +329,7 @@ async def prepare_operator_executor(
     set_progress=None,
     delegated_operation_id=None,
     request_token=None,  # teams-only
+    api_key=None,  # teams-only
     user=None,  # teams-only
 ):
     registry = OperatorRegistry()
@@ -336,7 +340,7 @@ async def prepare_operator_executor(
     executor = Executor()
     dataset = request_params.get("dataset_name", None)
     user = await resolve_operation_user(
-        id=user, dataset=dataset, token=request_token
+        id=user, dataset=dataset, token=request_token, api_key=api_key
     )
     execution_context_user = (
         ExecutionContextUser.from_dict(user) if user else None
@@ -571,44 +575,47 @@ class ExecutionContextUser(object):
     """Represents the user executing the operator.
 
     Args:
-        name (None): the user name
         id (None): the user ID
         email (None): the user email
+        name (None): the user name
         role (None): the user role
-        dataset_permission (None): the dataset permission
+        dataset_permission (None): the user's dataset permission
     """
 
     def __init__(
         self,
-        email=None,
         id=None,
+        email=None,
         name=None,
         role=None,
         dataset_permission=None,
         _request_token=None,
+        _api_key=None,
     ):
-        self.email = email
         self.id = id
+        self.email = email
         self.name = name
         self.role = role
         self.dataset_permission = dataset_permission
         self._request_token = _request_token
+        self._api_key = _api_key
 
     @classmethod
     def from_dict(self, user):
         return ExecutionContextUser(
-            email=user.get("email", None),
             id=user.get("id", None),
+            email=user.get("email", None),
             name=user.get("name", None),
             role=user.get("role", None),
             dataset_permission=user.get("dataset_permission", None),
             _request_token=user.get("_request_token"),
+            _api_key=user.get("_api_key"),
         )
 
     def to_dict(self):
         return {
-            "email": self.email,
             "id": self.id,
+            "email": self.email,
             "name": self.name,
             "role": self.role,
             "dataset_permission": self.dataset_permission,
@@ -635,6 +642,8 @@ class ExecutionContext(contextlib.AbstractContextManager):
         operator_uri (None): the unique id of the operator
         required_secrets (None): the list of required secrets from the
             plugin's definition
+        user (None): the :class:`ExecutionContextUser` for the user executing
+            the operation, if known
     """
 
     def __init__(
@@ -643,9 +652,9 @@ class ExecutionContext(contextlib.AbstractContextManager):
         executor=None,
         set_progress=None,
         delegated_operation_id=None,
-        user: ExecutionContextUser = None,
         operator_uri=None,
         required_secrets=None,
+        user=None,
     ):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
@@ -672,6 +681,39 @@ class ExecutionContext(contextlib.AbstractContextManager):
             self._panel = PanelRef(self)
 
         self.__context_tokens = None
+
+    def __enter__(self):
+        if self.__context_tokens:
+            raise RuntimeError(
+                "ExecutionContext can't run with nested with expressions"
+            )
+
+        self.__context_tokens = [
+            ficv.running_user_id.set(self.user_id),
+            ficv.running_user_request_token.set(self.user_request_token),
+            ficv.running_user_api_key.set(self.user_api_key),
+            ficv.no_singleton_cache.set(True),
+        ]
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            (
+                running_uid_tok,
+                running_user_request_token,
+                running_user_api_key_token,
+                singleton_token,
+            ) = self.__context_tokens
+            self.__context_tokens = None
+            ficv.running_user_id.reset(running_uid_tok)
+            ficv.running_user_request_token.reset(running_user_request_token)
+            ficv.running_user_api_key.reset(running_user_api_key_token)
+            ficv.no_singleton_cache.reset(singleton_token)
+        except ValueError:
+            # In case of any error, swallow and just reset to defaults.
+            ficv.running_user_id.set(None)
+            ficv.running_user_request_token.set(None)
+            ficv.running_user_api_key.set(None)
+            ficv.no_singleton_cache.set(False)
 
     @property
     def dataset(self):
@@ -781,6 +823,19 @@ class ExecutionContext(contextlib.AbstractContextManager):
         return has_stages or has_filters or has_extended
 
     @property
+    def spaces(self):
+        """The current spaces layout in the FiftyOne App."""
+        workspace_name = self.request_params.get("workspace_name", None)
+        if workspace_name is not None:
+            return self.dataset.load_workspace(workspace_name)
+
+        spaces_dict = self.request_params.get("spaces", None)
+        if spaces_dict is not None:
+            return fo.Space.from_dict(spaces_dict)
+
+        return None
+
+    @property
     def selected(self):
         """The list of selected sample IDs (if any)."""
         return self.request_params.get("selected", [])
@@ -824,6 +879,10 @@ class ExecutionContext(contextlib.AbstractContextManager):
         if known.
         """
         return self.user._request_token if self.user else None
+
+    @property
+    def user_api_key(self):
+        return self.user._api_key if self.user else None
 
     @property
     def panel_id(self):
@@ -890,34 +949,10 @@ class ExecutionContext(contextlib.AbstractContextManager):
         """The current group slice of the view (if any)."""
         return self.request_params.get("group_slice", None)
 
-    def __enter__(self):
-        if self.__context_tokens:
-            raise RuntimeError(
-                "ExecutionContext can't run with nested with expressions"
-            )
-
-        self.__context_tokens = [
-            ficv.running_user_id.set(self.user_id),
-            ficv.running_user_request_token.set(self.user_request_token),
-            ficv.no_singleton_cache.set(True),
-        ]
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        try:
-            (
-                running_uid_tok,
-                running_user_request_token,
-                singleton_token,
-            ) = self.__context_tokens
-            self.__context_tokens = None
-            ficv.running_user_id.reset(running_uid_tok)
-            ficv.running_user_request_token.reset(running_user_request_token)
-            ficv.no_singleton_cache.reset(singleton_token)
-        except ValueError:
-            # In case of any error, swallow and just reset to defaults.
-            ficv.running_user_id.set(None)
-            ficv.running_user_request_token.set(None)
-            ficv.no_singleton_cache.set(False)
+    @property
+    def query_performance(self):
+        """Whether query performance is enabled."""
+        return self.request_params.get("query_performance", None)
 
     def prompt(
         self,
@@ -925,6 +960,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
         params=None,
         on_success=None,
         on_error=None,
+        skip_prompt=False,
     ):
         """Prompts the user to execute the operator with the given URI.
 
@@ -934,6 +970,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
             on_success (None): a callback to invoke if the user successfully
                 executes the operator
             on_error (None): a callback to invoke if the execution fails
+            skip_prompt (False): whether to skip the prompt
 
         Returns:
             a :class:`fiftyone.operators.message.GeneratedMessage` containing
@@ -948,6 +985,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
                     "params": params,
                     "on_success": on_success,
                     "on_error": on_error,
+                    "skip_prompt": skip_prompt,
                 }
             ),
         )
@@ -1052,6 +1090,20 @@ class ExecutionContext(contextlib.AbstractContextManager):
             )
         else:
             self.log(f"Progress: {progress} - {label}")
+
+    # TODO resolve circular import so this can have a type
+    def create_store(self, store_name):
+        """Creates a new store with the specified name.
+
+        Args:
+            store_name: the name of the store
+
+        Returns:
+            a :class:`fiftyone.operators.store.ExecutionStore`
+        """
+        from fiftyone.operators.store import ExecutionStore
+
+        return ExecutionStore.create(store_name)
 
     def serialize(self):
         """Serializes the execution context.

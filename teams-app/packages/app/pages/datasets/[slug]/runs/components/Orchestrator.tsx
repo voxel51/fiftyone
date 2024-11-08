@@ -1,22 +1,22 @@
-import { BasicTable, Timestamp, scrollable } from '@fiftyone/teams-components';
+import { BasicTable, Timestamp, scrollable } from "@fiftyone/teams-components";
 import {
   orchestratorDialogAtom,
   runsOrchestratorQuery,
   runsOrchestratorQueryT,
-  runsOrchestratorsQuery$dataT
-} from '@fiftyone/teams-state';
-import { Close } from '@mui/icons-material';
+  runsOrchestratorsQuery$dataT,
+} from "@fiftyone/teams-state";
+import { Close } from "@mui/icons-material";
 import {
   Stack,
   Typography,
   Dialog,
   DialogTitle,
   DialogContent,
-  IconButton
-} from '@mui/material';
-import { Suspense, useCallback } from 'react';
-import { useLazyLoadQuery } from 'react-relay';
-import { useRecoilState } from 'recoil';
+  IconButton,
+} from "@mui/material";
+import { Suspense, useCallback } from "react";
+import { useLazyLoadQuery } from "react-relay";
+import { useRecoilState } from "recoil";
 
 export default function Orchestrator() {
   const [state, setState] = useRecoilState(orchestratorDialogAtom);
@@ -37,7 +37,7 @@ export default function Orchestrator() {
           </Typography>
         </Stack>
         <IconButton
-          sx={{ position: 'absolute', top: 16, right: 16 }}
+          sx={{ position: "absolute", top: 16, right: 16 }}
           onClick={handleClose}
         >
           <Close color="secondary" />
@@ -55,7 +55,7 @@ export default function Orchestrator() {
 function OrchestratorOperators(props: { id: string }) {
   const { id } = props;
   const data = useLazyLoadQuery<runsOrchestratorQueryT>(runsOrchestratorQuery, {
-    orchestratorIdentifier: id
+    orchestratorIdentifier: id,
   });
   const operators = data?.orchestrator?.availableOperators || [];
 
@@ -65,7 +65,7 @@ function OrchestratorOperators(props: { id: string }) {
     <BasicTable
       rows={operators.map((operator) => ({
         id: operator,
-        cells: [{ id: operator + '-label', value: operator }]
+        cells: [{ id: operator + "-label", value: operator }],
       }))}
     />
   );
@@ -86,7 +86,7 @@ export function Subtitle(props: SubtitlePropsType) {
         </Typography>
       )}
       <Typography>
-        {deactivatedAt ? 'Deactivated' : 'Created'}{' '}
+        {deactivatedAt ? "Deactivated" : "Created"}{" "}
         <Timestamp timestamp={deactivatedAt || createdAt} />
       </Typography>
     </Stack>
@@ -94,10 +94,10 @@ export function Subtitle(props: SubtitlePropsType) {
 }
 
 type OrchestratorNode =
-  runsOrchestratorsQuery$dataT['orchestratorsPage']['nodes'][number];
+  runsOrchestratorsQuery$dataT["orchestratorsPage"]["nodes"][number];
 
 type SubtitlePropsType = {
-  createdAt: OrchestratorNode['createdAt'];
-  deactivatedAt: OrchestratorNode['deactivatedAt'];
-  updatedAt: OrchestratorNode['updatedAt'];
+  createdAt: OrchestratorNode["createdAt"];
+  deactivatedAt: OrchestratorNode["deactivatedAt"];
+  updatedAt: OrchestratorNode["updatedAt"];
 };

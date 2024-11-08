@@ -1,18 +1,18 @@
-import { atom } from 'recoil';
+import { atom } from "recoil";
 
 export const teamsGettingStartedAtom = atom({
-  key: 'teamsGettingStarted',
+  key: "teamsGettingStarted",
   default: false,
   effects: [
     ({ setSelf, onSet }) => {
-      const key = 'teamsGettingStartedShown';
+      const key = "teamsGettingStartedShown";
       const savedValue = sessionStorage.getItem(key);
-      if (savedValue !== 'true') {
+      if (savedValue !== "true") {
         setSelf(true);
       }
       onSet(() => {
-        sessionStorage.setItem(key, 'true');
+        sessionStorage.setItem(key, "true");
       });
-    }
-  ]
+    },
+  ],
 });

@@ -1,4 +1,4 @@
-import { BoxProps } from '@mui/material';
+import { BoxProps } from "@mui/material";
 
 export type SettingComponentProps = {
   onChange: (value: unknown) => void;
@@ -15,7 +15,7 @@ export type Setting = {
   caption?: string;
 };
 
-export type SettingsGroupProps = Omit<BoxProps, 'onChange'> & {
+export type SettingsGroupProps = Omit<BoxProps, "onChange"> & {
   title: string;
   description?: string;
   settings: Array<Setting>;

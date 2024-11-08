@@ -1,4 +1,4 @@
-import { Box, Skeleton, SkeletonProps, BoxProps } from '@mui/material';
+import { Box, Skeleton, SkeletonProps, BoxProps } from "@mui/material";
 
 type TableSkeletonProps = {
   rows?: number;
@@ -9,9 +9,9 @@ type TableSkeletonProps = {
 export default function TableSkeleton({
   rows = 3,
   skeletonProps = {},
-  containerProps = {}
+  containerProps = {},
 }: TableSkeletonProps) {
-  const skeletonItems = Array(rows).fill('');
+  const skeletonItems = Array(rows).fill("");
   return (
     <Box {...containerProps}>
       {skeletonItems.map((i, index: number) => (

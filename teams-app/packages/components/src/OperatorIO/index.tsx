@@ -1,7 +1,7 @@
-import { ThemeProvider } from '@fiftyone/components';
-import { operatorToIOSchema } from '@fiftyone/core/src/plugins/OperatorIO/utils';
-import { SchemaIOComponent } from '@fiftyone/core/src/plugins/SchemaIO';
-import { BaseStylesProvider } from '@fiftyone/operators/src/styled-components';
+import { ThemeProvider } from "@fiftyone/components";
+import { operatorToIOSchema } from "@fiftyone/core/src/plugins/OperatorIO/utils";
+import { SchemaIOComponent } from "@fiftyone/core/src/plugins/SchemaIO";
+import { BaseStylesProvider } from "@fiftyone/operators/src/styled-components";
 
 export default function OperatorIO(props: OperatorIOPropsType) {
   const { isOutput, data, readOnly, property } = props;

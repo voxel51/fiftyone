@@ -997,6 +997,10 @@ class RegisterPanel extends Operator {
     inputs.str("panel_name", { label: "Panel name", required: true });
     inputs.str("panel_label", { label: "Panel label", required: true });
     inputs.str("icon", { label: "Icon" });
+    inputs.str("help_markdown", { label: "Help markdown" });
+    inputs.str("category", { label: "Category" });
+    inputs.bool("beta", { label: "Beta", default: false });
+    inputs.bool("is_new", { label: "NEW", default: false });
     inputs.str("dark_icon", { label: "Icon for dark mode" });
     inputs.str("light_icon", { label: "Icon for light mode" });
     inputs.str("on_load", { label: "On load operator" });
@@ -1006,6 +1010,7 @@ class RegisterPanel extends Operator {
       label: "Allow duplicates",
       default: false,
     });
+    inputs.int("priority", { label: "Priority" });
     return new types.Property(inputs);
   }
   async execute(ctx: ExecutionContext): Promise<void> {
@@ -1027,6 +1032,7 @@ class PromptUserForOperation extends Operator {
     inputs.obj("params", { label: "Params" });
     inputs.str("on_success", { label: "On success" });
     inputs.str("on_error", { label: "On error" });
+    inputs.bool("skip_prompt", { label: "Skip prompt", default: false });
     return new types.Property(inputs);
   }
   useHooks(ctx: ExecutionContext): {} {
@@ -1037,22 +1043,27 @@ class PromptUserForOperation extends Operator {
     const { params, operator_uri, on_success, on_error } = ctx.params;
     const { triggerEvent } = ctx.hooks;
     const panelId = ctx.getCurrentPanelId();
+    const shouldPrompt = !ctx.params.skip_prompt;
 
     triggerEvent(panelId, {
       operator: operator_uri,
       params,
-      prompt: true,
+      prompt: shouldPrompt,
       callback: (result: OperatorResult) => {
         if (result.error) {
-          triggerEvent(panelId, {
-            operator: on_error,
-            params: { error: result.error },
-          });
+          if (on_error) {
+            triggerEvent(panelId, {
+              operator: on_error,
+              params: { error: result.error },
+            });
+          }
         } else {
-          triggerEvent(panelId, {
-            operator: on_success,
-            params: { result: result.result },
-          });
+          if (on_success) {
+            triggerEvent(panelId, {
+              operator: on_success,
+              params: { result: result.result },
+            });
+          }
         }
       },
     });
@@ -1313,6 +1324,42 @@ export class SetGroupSlice extends Operator {
   }
 }
 
+export class DisableQueryPerformance extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "disable_query_performance",
+      label: "Disable query performance",
+    });
+  }
+
+  useHooks() {
+    const { disable } = fos.useQueryPerformance();
+    return { disable };
+  }
+  async execute({ hooks }: ExecutionContext) {
+    hooks.disable();
+  }
+}
+
+export class EnableQueryPerformance extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "enable_query_performance",
+      label: "Enable query performance",
+    });
+  }
+
+  useHooks() {
+    const { enable } = fos.useQueryPerformance();
+    return { enable };
+  }
+  async execute({ hooks }: ExecutionContext) {
+    hooks.enable();
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -1362,6 +1409,8 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(SetGroupSlice);
     _registerBuiltInOperator(SetPlayheadState);
     _registerBuiltInOperator(SetFrameNumber);
+    _registerBuiltInOperator(DisableQueryPerformance);
+    _registerBuiltInOperator(EnableQueryPerformance);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);

@@ -1,15 +1,15 @@
-import type { State } from '@fiftyone/state';
-import { setPending } from 'pages/state';
-import { DefaultValue } from 'recoil';
+import type { State } from "@fiftyone/state";
+import { setPending } from "pages/state";
+import { DefaultValue } from "recoil";
 import {
   FIELD_VISIBILITY_EVENT,
   type HistoryState,
   getHistoryState,
-  replaceHistoryState
-} from '../state';
-import { transition } from '../transition';
-import { writeSession } from '../useLocalSession';
-import type { RegisteredSetter } from './registerSetter';
+  replaceHistoryState,
+} from "../state";
+import { transition } from "../transition";
+import { writeSession } from "../useLocalSession";
+import type { RegisteredSetter } from "./registerSetter";
 
 const onSetFieldVisibilityStage: RegisteredSetter =
   () => (_, input?: DefaultValue | State.FieldVisibilityStage) => {
@@ -22,7 +22,7 @@ const onSetFieldVisibilityStage: RegisteredSetter =
       const newState: HistoryState = {
         ...state,
         event: FIELD_VISIBILITY_EVENT,
-        fieldVisibilityStage: input instanceof DefaultValue ? undefined : input
+        fieldVisibilityStage: input instanceof DefaultValue ? undefined : input,
       };
 
       // write the field visibility setting to browser storage

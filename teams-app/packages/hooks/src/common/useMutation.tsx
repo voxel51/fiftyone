@@ -5,18 +5,18 @@ import {
   IEnvironment,
   MutationConfig,
   MutationParameters,
-  PayloadError
-} from 'relay-runtime';
+  PayloadError,
+} from "relay-runtime";
 import {
   useMutation as useRelayMutation,
-  UseMutationConfig
-} from 'react-relay';
-import { useNotification } from '@fiftyone/hooks';
-import { useContext } from 'react';
+  UseMutationConfig,
+} from "react-relay";
+import { useNotification } from "@fiftyone/hooks";
+import { useContext } from "react";
 import {
   OSSRelayEnvironment,
-  TeamsRelayEnvironment
-} from '@fiftyone/teams-state';
+  TeamsRelayEnvironment,
+} from "@fiftyone/teams-state";
 
 type MutationError = Error | PayloadError[];
 
@@ -24,7 +24,7 @@ type ExtendedConfig<TMutation extends MutationParameters> = {
   successMessage?: string;
   errorMessage?: string;
   onFailure?: ((error: MutationError) => void) | undefined;
-  onSuccess?: ((response: TMutation['response']) => void) | undefined;
+  onSuccess?: ((response: TMutation["response"]) => void) | undefined;
 };
 
 export default function useMutation<TMutation extends MutationParameters>(
@@ -61,7 +61,7 @@ export default function useMutation<TMutation extends MutationParameters>(
       onSuccess,
       onFailure,
       errorMessage,
-      onError
+      onError,
     } = config;
 
     function handleError(error: MutationError) {
@@ -69,10 +69,10 @@ export default function useMutation<TMutation extends MutationParameters>(
       const mutationError = error?.source?.errors?.[0]?.message;
       console.error(error);
       if (errorMessage)
-        sendNotification({ msg: errorMessage, variant: 'error' });
+        sendNotification({ msg: errorMessage, variant: "error" });
       else if (mutationError) {
         // show the error from mutation response
-        sendNotification({ msg: mutationError, variant: 'error' });
+        sendNotification({ msg: mutationError, variant: "error" });
       }
       if (error instanceof Error && onError) onError(error);
       if (onFailure) onFailure(error);
@@ -88,11 +88,11 @@ export default function useMutation<TMutation extends MutationParameters>(
           handleError(errors);
         } else {
           if (successMessage)
-            sendNotification({ msg: successMessage, variant: 'success' });
+            sendNotification({ msg: successMessage, variant: "success" });
           if (onSuccess) onSuccess(data);
         }
       },
-      onError: handleError
+      onError: handleError,
     });
   }
 

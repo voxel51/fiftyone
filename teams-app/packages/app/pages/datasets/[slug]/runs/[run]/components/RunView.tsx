@@ -1,9 +1,9 @@
-import { Box, Button, JSONView } from '@fiftyone/teams-components';
-import { SAMPLES_NEXT_PATH } from '@fiftyone/teams-state/src/constants';
-import { FormControlLabel, Link, Stack, Switch } from '@mui/material';
-import NextLink from 'next/link';
-import { useRouter } from 'next/router';
-import { useState } from 'react';
+import { Box, Button, JSONView } from "@fiftyone/teams-components";
+import { SAMPLES_NEXT_PATH } from "@fiftyone/teams-state/src/constants";
+import { FormControlLabel, Link, Stack, Switch } from "@mui/material";
+import NextLink from "next/link";
+import { useRouter } from "next/router";
+import { useState } from "react";
 
 export default function RunView(props: RunViewPropsType) {
   const { view } = props;
@@ -20,12 +20,12 @@ export default function RunView(props: RunViewPropsType) {
             <Switch
               disabled={previewModeAvailable}
               defaultChecked={!previewModeAvailable}
-              title={rawMode ? 'Active' : 'Inactive'}
+              title={rawMode ? "Active" : "Inactive"}
               onChange={(e, checked) => setRawMode(checked)}
             />
           }
           title={
-            !previewModeAvailable ? 'Preview mode is unavailable' : undefined
+            !previewModeAvailable ? "Preview mode is unavailable" : undefined
           }
           label="Show raw"
           sx={{ pb: 2, pl: 1 }}

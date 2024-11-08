@@ -1,7 +1,7 @@
-import { useCurrentOrganization, useCurrentUser } from '@fiftyone/hooks';
-import { CONSTANT_VARIABLES } from '@fiftyone/teams-state';
-import { InstallModal, UserCard } from '@fiftyone/teams-components';
-import SlackIcon from '@fiftyone/teams-components/src/Icons/Slack.icon';
+import { useCurrentOrganization, useCurrentUser } from "@fiftyone/hooks";
+import { CONSTANT_VARIABLES } from "@fiftyone/teams-state";
+import { InstallModal, UserCard } from "@fiftyone/teams-components";
+import SlackIcon from "@fiftyone/teams-components/src/Icons/Slack.icon";
 import {
   ArrowCircleDown,
   CodeOutlined as CodeOutlinedIcon,
@@ -9,8 +9,8 @@ import {
   SupportOutlined as SupportOutlinedIcon,
   SettingsOutlined as SettingsOutlinedIcon,
   DarkMode as DarkModeIcon,
-  LightMode as LightModeIcon
-} from '@mui/icons-material';
+  LightMode as LightModeIcon,
+} from "@mui/icons-material";
 import {
   Box,
   Divider,
@@ -20,14 +20,14 @@ import {
   MenuItem,
   Tooltip,
   Typography,
-  useColorScheme
-} from '@mui/material';
-import { useTheme } from '@mui/material/styles';
-import NextLink from 'next/link';
-import React, { useCallback, useState } from 'react';
-import { useRouter } from 'next/router';
-import { deregisterAllServiceWorkers } from 'lib/serviceWorkerUtils';
-import { casSignOut } from '@fiftyone/teams-utilities';
+  useColorScheme,
+} from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import NextLink from "next/link";
+import React, { useCallback, useState } from "react";
+import { useRouter } from "next/router";
+import { deregisterAllServiceWorkers } from "lib/serviceWorkerUtils";
+import { casSignOut } from "@fiftyone/teams-utilities";
 
 const { DOCUMENTATION_LINK, CONTACT_LINK, SLACK_LINK, SIGN_OUT_PAGE } =
   CONSTANT_VARIABLES;
@@ -40,7 +40,7 @@ export default function ProfileMenu() {
   const userPicture = currentUser.picture;
   const [installModalOpen, setInstallModalOpen] = useState<boolean>(false);
   const { mode, setMode } = useColorScheme();
-  const nextMode = mode === 'dark' ? 'light' : 'dark';
+  const nextMode = mode === "dark" ? "light" : "dark";
   const currentOrganization = useCurrentOrganization();
   const organizationDisplayName = currentOrganization?.displayName;
 
@@ -70,11 +70,11 @@ export default function ProfileMenu() {
           onClick={handleClick}
           size="small"
           sx={{ ml: 2 }}
-          aria-controls={open ? 'account-menu' : undefined}
+          aria-controls={open ? "account-menu" : undefined}
           aria-haspopup="true"
-          aria-expanded={open ? 'true' : undefined}
+          aria-expanded={open ? "true" : undefined}
         >
-          <UserCard name={userName} src={userPicture} />
+          <UserCard id={currentUser.id} name={userName} src={userPicture} />
         </IconButton>
       </Tooltip>
       <Menu
@@ -87,30 +87,34 @@ export default function ProfileMenu() {
         PaperProps={{
           elevation: 0,
           sx: {
-            overflow: 'visible',
+            overflow: "visible",
             mt: 1.5,
-            '&:before': {
+            "&:before": {
               content: '""',
-              display: 'block',
-              position: 'absolute',
+              display: "block",
+              position: "absolute",
               top: 0,
               right: 14,
               width: 10,
               height: 10,
-              bgcolor: 'background.paper',
-              transform: 'translateY(-50%) rotate(45deg)',
-              zIndex: 0
-            }
-          }
+              bgcolor: "background.paper",
+              transform: "translateY(-50%) rotate(45deg)",
+              zIndex: 0,
+            },
+          },
         }}
-        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        transformOrigin={{ horizontal: "right", vertical: "top" }}
+        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
       >
         <NextLink href="/settings/account">
           <MenuItem>
             <Box display="flex" flexDirection="row">
               <Box>
-                <UserCard name={userName} src={userPicture} />
+                <UserCard
+                  id={currentUser.id}
+                  name={userName}
+                  src={userPicture}
+                />
               </Box>
               <Box pl={1.5} display="flex" alignItems="center">
                 <Typography
@@ -123,7 +127,7 @@ export default function ProfileMenu() {
                     variant="body1"
                     color={theme.palette.text.secondary}
                     component="p"
-                    sx={{ maxWidth: '10rem', whiteSpace: 'pre-wrap' }}
+                    sx={{ maxWidth: "10rem", whiteSpace: "pre-wrap" }}
                   >
                     {organizationDisplayName}
                   </Typography>
@@ -135,7 +139,7 @@ export default function ProfileMenu() {
         <Divider />
         <MenuItem onClick={handleInstallModalOpen} data-testid="install">
           <Box display="flex">
-            <ListItemIcon sx={{ display: 'flex', justifyContent: 'center' }}>
+            <ListItemIcon sx={{ display: "flex", justifyContent: "center" }}>
               <ArrowCircleDown />
             </ListItemIcon>
             Install FiftyOne
@@ -144,7 +148,7 @@ export default function ProfileMenu() {
         <a href={SLACK_LINK} target="_blank">
           <MenuItem>
             <Box display="flex">
-              <ListItemIcon sx={{ display: 'flex', justifyContent: 'center' }}>
+              <ListItemIcon sx={{ display: "flex", justifyContent: "center" }}>
                 <SlackIcon />
               </ListItemIcon>
               Join Slack community
@@ -154,7 +158,7 @@ export default function ProfileMenu() {
         <a href={CONTACT_LINK} target="_blank">
           <MenuItem>
             <Box display="flex">
-              <ListItemIcon sx={{ display: 'flex', justifyContent: 'center' }}>
+              <ListItemIcon sx={{ display: "flex", justifyContent: "center" }}>
                 <SupportOutlinedIcon />
               </ListItemIcon>
               Contact support
@@ -164,7 +168,7 @@ export default function ProfileMenu() {
         <a href={DOCUMENTATION_LINK} target="_blank">
           <MenuItem>
             <Box display="flex">
-              <ListItemIcon sx={{ display: 'flex', justifyContent: 'center' }}>
+              <ListItemIcon sx={{ display: "flex", justifyContent: "center" }}>
                 <CodeOutlinedIcon />
               </ListItemIcon>
             </Box>
@@ -178,8 +182,8 @@ export default function ProfileMenu() {
           }}
         >
           <Box display="flex">
-            <ListItemIcon sx={{ display: 'flex', justifyContent: 'center' }}>
-              {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+            <ListItemIcon sx={{ display: "flex", justifyContent: "center" }}>
+              {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
             </ListItemIcon>
           </Box>
           Switch to {nextMode} theme
@@ -187,7 +191,7 @@ export default function ProfileMenu() {
         <NextLink href="/settings/account">
           <MenuItem>
             <Box display="flex">
-              <ListItemIcon sx={{ display: 'flex', justifyContent: 'center' }}>
+              <ListItemIcon sx={{ display: "flex", justifyContent: "center" }}>
                 <SettingsOutlinedIcon />
               </ListItemIcon>
             </Box>
@@ -196,7 +200,7 @@ export default function ProfileMenu() {
         </NextLink>
         <MenuItem onClick={handleLogout}>
           <Box display="flex">
-            <ListItemIcon sx={{ display: 'flex', justifyContent: 'center' }}>
+            <ListItemIcon sx={{ display: "flex", justifyContent: "center" }}>
               <Logout />
             </ListItemIcon>
           </Box>

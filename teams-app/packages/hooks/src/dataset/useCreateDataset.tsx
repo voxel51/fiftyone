@@ -1,14 +1,14 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from "react";
 import {
   DatasetCreateDatasetMutation,
   nameAvailableState,
   newDatasetDescriptionState,
   newDatasetNameState,
   newDatasetState,
-  newDatasetTagsState
-} from '@fiftyone/teams-state';
-import { useRecoilState, useRecoilValue, useSetRecoilState } from 'recoil';
-import { useMutation } from '@fiftyone/hooks';
+  newDatasetTagsState,
+} from "@fiftyone/teams-state";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { useMutation } from "@fiftyone/hooks";
 
 /**
  * provides utilities for creating a dataset.
@@ -23,7 +23,7 @@ export const useCreateDataset = () => {
   const [newName, SetNewName] = useRecoilState(newDatasetNameState);
   const nameAvailable = useRecoilValue(nameAvailableState);
   const [newDescription, SetNewDescription] = useRecoilState(
-    newDatasetDescriptionState('')
+    newDatasetDescriptionState("")
   );
 
   // set in recoil so subscribers get an update
@@ -32,8 +32,8 @@ export const useCreateDataset = () => {
   const setNewTagsRecoil = useSetRecoilState(newDatasetTagsState([]));
 
   const reset = useCallback(() => {
-    SetNewName('');
-    SetNewDescription('');
+    SetNewName("");
+    SetNewDescription("");
     setNewTags([]);
     setNewTagsRecoil([]);
   }, []);
@@ -45,7 +45,7 @@ export const useCreateDataset = () => {
   const [successMsg, errorMsg] = useMemo(
     () => [
       `Successfully created dataset ${newName}!`,
-      `Failed to create dataset ${newName}.`
+      `Failed to create dataset ${newName}.`,
     ],
     [newName]
   );
@@ -53,7 +53,7 @@ export const useCreateDataset = () => {
   return useMemo(() => {
     return {
       createDataset: ({
-        onComplete
+        onComplete,
       }: {
         onComplete: (newSlug: string) => void;
       }) => {
@@ -63,7 +63,7 @@ export const useCreateDataset = () => {
           variables: {
             name: newName,
             description: newDescription,
-            tags: newTags
+            tags: newTags,
           },
           onCompleted: (newDataset: { createDataset }) => {
             const finalNewDataset = newDataset?.createDataset;
@@ -71,8 +71,8 @@ export const useCreateDataset = () => {
             onComplete(finalNewDataset?.slug);
           },
           onError: (e) => {
-            console.error('failed to update dataset', e);
-          }
+            console.error("failed to update dataset", e);
+          },
         });
       },
       creatingDataset, // loading state
@@ -84,7 +84,7 @@ export const useCreateDataset = () => {
       setNewTags,
       setNewDataset,
       reset,
-      nameAvailable
+      nameAvailable,
     };
   }, [
     newName,
@@ -95,6 +95,6 @@ export const useCreateDataset = () => {
     setNewTags,
     setNewDataset,
     creatingDataset,
-    nameAvailable
+    nameAvailable,
   ]);
 };

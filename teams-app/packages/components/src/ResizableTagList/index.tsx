@@ -3,9 +3,9 @@ import React, {
   useEffect,
   useMemo,
   useRef,
-  useState
-} from 'react';
-import { Box, Chip, Tooltip } from '@mui/material';
+  useState,
+} from "react";
+import { Box, Chip, Tooltip } from "@mui/material";
 
 interface ResizableTagListProps {
   tags: string[];
@@ -23,7 +23,7 @@ const ResizableTagList = (props: ResizableTagListProps) => {
     maxTagWidth = 100,
     lengthFactor = 10,
     addWidth = 20,
-    height = 24
+    height = 24,
   } = props;
 
   const containerRef = useRef(null);
@@ -85,7 +85,7 @@ const ResizableTagList = (props: ResizableTagListProps) => {
           sx={{
             maxWidth: maxTagWidth,
             paddingLeft: 0.5,
-            paddingTop: showAllTags ? '0.2rem' : 0
+            paddingTop: showAllTags ? "0.2rem" : 0,
           }}
           onClick={disableOnClick}
         >
@@ -103,7 +103,7 @@ const ResizableTagList = (props: ResizableTagListProps) => {
             <Chip
               title={remainingTitle}
               label={remainingTitle}
-              sx={{ height, cursor: 'pointer' }}
+              sx={{ height, cursor: "pointer" }}
             />
           </Box>
         </Tooltip>
@@ -113,8 +113,8 @@ const ResizableTagList = (props: ResizableTagListProps) => {
   }, [tags, parentWidth, showAllTags]);
 
   const containerStyles = {
-    display: 'flex',
-    flexWrap: showAllTags ? 'wrap' : 'no-wrap'
+    display: "flex",
+    flexWrap: showAllTags ? "wrap" : "no-wrap",
   };
 
   return (

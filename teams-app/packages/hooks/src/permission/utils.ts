@@ -1,10 +1,10 @@
-import { UserRole } from '@fiftyone/teams-state/src/Settings/__generated__/teamInvitationsQuery.graphql';
-import { FragmentRefs } from 'relay-runtime';
+import { UserRole } from "@fiftyone/teams-state/src/Settings/__generated__/teamInvitationsQuery.graphql";
+import { FragmentRefs } from "relay-runtime";
 
 export type RoleAttribute = {
   readonly role: UserRole;
   readonly attributes: readonly {
-    readonly ' $fragmentSpreads': FragmentRefs<'teamAttrFrag'>;
+    readonly " $fragmentSpreads": FragmentRefs<"teamAttrFrag">;
   }[];
 };
 

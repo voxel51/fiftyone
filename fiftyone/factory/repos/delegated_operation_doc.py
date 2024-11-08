@@ -26,6 +26,7 @@ class DelegatedOperationDocument(object):
         operator: str = None,
         delegation_target: str = None,
         context: dict = None,
+        is_remote: bool = False,
     ):
         self.operator = operator
         self.label = None
@@ -36,10 +37,12 @@ class DelegatedOperationDocument(object):
             else context
         )
         self.run_state = (
-            ExecutionRunState.QUEUED
-        )  # default to queued state on create
+            ExecutionRunState.SCHEDULED
+            if is_remote
+            else ExecutionRunState.QUEUED
+        )  # if running locally use QUEUED otherwise SCHEDULED
         self.run_link = None
-        self.queued_at = datetime.utcnow()
+        self.queued_at = datetime.utcnow() if not is_remote else None
         self.updated_at = datetime.utcnow()
         self.status = None
         self.dataset_id = None
@@ -47,11 +50,12 @@ class DelegatedOperationDocument(object):
         self.pinned = False
         self.completed_at = None
         self.failed_at = None
-        self.scheduled_at = None
+        self.scheduled_at = datetime.utcnow() if is_remote else None
         self.result = None
         self.id = None
         self._doc = None
         self.metadata = None
+        self.scoped_access_key = None
 
     def from_pymongo(self, doc: dict):
         # required fields
@@ -71,23 +75,25 @@ class DelegatedOperationDocument(object):
         self.metadata = doc.get("metadata", None)
         self.label = doc.get("label", None)
         self.updated_at = doc.get("updated_at", None)
+        self.scoped_access_key = doc.get("scoped_access_key", None)
 
         # internal fields
         self.id = doc["_id"]
         self._doc = doc
 
-        user = ExecutionContextUser(id=doc["context"]["user"])
         # nested fields
-        if (
-            "context" in doc
-            and doc["context"] is not None
-            and "request_params" in doc["context"]
-        ):
-            user = ExecutionContextUser(id=doc["context"]["user"])
-            self.context = ExecutionContext(
-                request_params=doc["context"]["request_params"],
-                user=user,
+        if "context" in doc and doc["context"] is not None:
+            user = (
+                ExecutionContextUser(id=doc["context"]["user"])
+                if doc["context"]["user"]
+                else None
             )
+            request_params = doc["context"].get("request_params")
+            if user or request_params:
+                self.context = ExecutionContext(
+                    request_params=request_params,
+                    user=user,
+                )
 
         if "result" in doc and doc["result"] is not None:
             res = ExecutionResult()

@@ -1,6 +1,6 @@
-import { Box, Container, SectionHeader } from '@fiftyone/teams-components';
-import { Grid, Typography } from '@mui/material';
-import { SettingsGroupProps } from '../config/types';
+import { Box, Container, SectionHeader } from "@fiftyone/teams-components";
+import { Grid, Typography } from "@mui/material";
+import { SettingsGroupProps } from "../config/types";
 
 export default function SettingsGroup(props: SettingsGroupProps) {
   const { title, description, settings, onChange, ...boxProps } = props;

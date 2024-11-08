@@ -1,6 +1,6 @@
-import { graphql } from 'react-relay';
-import { atom } from 'recoil';
-import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from '../constants';
+import { graphql } from "react-relay";
+import { atom } from "recoil";
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from "../constants";
 
 /**
  * Recoil
@@ -11,8 +11,8 @@ export const cloneSnapshotState = atom<{
   id?: string;
   name?: string;
 }>({
-  key: 'cloneSnapshotState',
-  default: { open: false }
+  key: "cloneSnapshotState",
+  default: { open: false },
 });
 
 export const deleteSnapshotState = atom<{
@@ -20,8 +20,8 @@ export const deleteSnapshotState = atom<{
   id?: string;
   name?: string;
 }>({
-  key: 'deleteSnapshotState',
-  default: { open: false }
+  key: "deleteSnapshotState",
+  default: { open: false },
 });
 
 export const openSnapshotLocallyState = atom<{
@@ -29,8 +29,8 @@ export const openSnapshotLocallyState = atom<{
   id?: string;
   name?: string;
 }>({
-  key: 'openSnapshotLocallyState',
-  default: { open: false }
+  key: "openSnapshotLocallyState",
+  default: { open: false },
 });
 
 export const rollbackSnapshotState = atom<{
@@ -40,16 +40,16 @@ export const rollbackSnapshotState = atom<{
   author?: string;
   since?: number;
 }>({
-  key: 'rollbackSnapshotState',
-  default: { open: false }
+  key: "rollbackSnapshotState",
+  default: { open: false },
 });
 
 export const snapshotsPageState = atom({
-  key: 'snapshotsPageState',
+  key: "snapshotsPageState",
   default: {
     page: DEFAULT_PAGE,
-    pageSize: DEFAULT_PAGE_SIZE
-  }
+    pageSize: DEFAULT_PAGE_SIZE,
+  },
 });
 
 /**

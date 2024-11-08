@@ -3,7 +3,7 @@ import { selectorFamily } from "recoil";
 import { aggregation } from "../aggregations";
 import { datasetSampleCount } from "../dataset";
 import * as filterAtoms from "../filters";
-import { lightning } from "../lightning";
+import { queryPerformance } from "../queryPerformance";
 import * as schemaAtoms from "../schema";
 import * as selectors from "../selectors";
 import { MATCH_LABEL_TAGS } from "../sidebar";
@@ -39,7 +39,7 @@ export const count = selectorFamily({
         !params.modal &&
         params.path === "" &&
         !get(viewAtoms.view).length &&
-        get(lightning)
+        get(queryPerformance)
       ) {
         if (
           !get(filterAtoms.hasFilters(false)) ||

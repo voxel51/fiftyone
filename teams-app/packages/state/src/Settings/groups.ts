@@ -1,13 +1,13 @@
-import { graphql } from 'react-relay';
-import { RecoilState, atom, selector } from 'recoil';
-import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from '../constants';
-import { changeRoute } from '../routing.utils';
-import { PARAMS } from '../urlSyncCommon';
-import * as groupsQuery from './__generated__/groupsListQuery.graphql';
-import Router from 'next/router';
-import { UserGroupOrderFieldsOrder } from '@fiftyone/teams-state/src/Settings/__generated__/groupsListQuery.graphql';
+import { graphql } from "react-relay";
+import { RecoilState, atom, selector } from "recoil";
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from "../constants";
+import { changeRoute } from "../routing.utils";
+import { PARAMS } from "../urlSyncCommon";
+import * as groupsQuery from "./__generated__/groupsListQuery.graphql";
+import Router from "next/router";
+import { UserGroupOrderFieldsOrder } from "@fiftyone/teams-state/src/Settings/__generated__/groupsListQuery.graphql";
 
-export const GROUPS_PAGE = '/settings/team/groups';
+export const GROUPS_PAGE = "/settings/team/groups";
 
 export interface GroupUser {
   id: string;
@@ -89,13 +89,13 @@ export const groupsDeleteUserGroupMutation = graphql`
 `;
 
 export const settingsTeamSelectedGroupSlug = atom({
-  key: 'settingsTeamSelectedGroupSlug',
-  default: {}
+  key: "settingsTeamSelectedGroupSlug",
+  default: {},
 });
 
 export const removeGroupState = atom<Group | null>({
-  key: 'removeGroupState',
-  default: null
+  key: "removeGroupState",
+  default: null,
 });
 
 /**
@@ -104,19 +104,19 @@ export const removeGroupState = atom<Group | null>({
  * undefined -> modal is closed
  */
 export const groupInModalState = atom<Group | null | undefined>({
-  key: 'groupInModalState',
-  default: undefined
+  key: "groupInModalState",
+  default: undefined,
 });
 
 export const groupsListPageInfoState = atom({
-  key: 'groupsListPageInfoState',
+  key: "groupsListPageInfoState",
   default: { page: DEFAULT_PAGE, pageSize: DEFAULT_PAGE_SIZE },
   effects: [
     ({ trigger, onSet, setSelf }) => {
-      if (trigger == 'get') {
+      if (trigger == "get") {
         setSelf({
           page: Number(Router.query?.page || 1),
-          pageSize: Number(Router.query?.pageSize || DEFAULT_PAGE_SIZE)
+          pageSize: Number(Router.query?.pageSize || DEFAULT_PAGE_SIZE),
         });
       }
       onSet((newValue, oldValue) => {
@@ -124,11 +124,11 @@ export const groupsListPageInfoState = atom({
           changeRoute({
             pathname: GROUPS_PAGE,
             params: newValue,
-            resetPage: false
+            resetPage: false,
           });
         }
       });
-      Router.events.on('routeChangeComplete', () => {
+      Router.events.on("routeChangeComplete", () => {
         const queryString = window.location.search;
         const urlPram = new URLSearchParams(queryString);
         const pageSize = Number(
@@ -137,8 +137,8 @@ export const groupsListPageInfoState = atom({
         const page = Number(urlPram.get(PARAMS.PAGE) || 1);
         setSelf({ page, pageSize });
       });
-    }
-  ]
+    },
+  ],
 });
 
 export interface GroupsSearchExpression {
@@ -148,7 +148,7 @@ export interface GroupsSearchExpression {
 
 type GroupsSearchFields = groupsQuery.UserGroupSearchFields;
 
-const defaultGroupFields: GroupsSearchFields[] = ['name', 'slug'];
+const defaultGroupFields: GroupsSearchFields[] = ["name", "slug"];
 
 export interface sortOptionType extends UserGroupOrderFieldsOrder {
   displayName: string;
@@ -164,33 +164,33 @@ export interface SortT {
 
 export const GROUPS_SORT_OPTIONS: sortOptionType[] = [
   {
-    field: 'name',
-    direction: 'ASC',
-    displayName: 'Name A-Z'
+    field: "name",
+    direction: "ASC",
+    displayName: "Name A-Z",
   },
   {
-    field: 'name',
-    direction: 'DESC',
-    displayName: 'Name Z-A'
+    field: "name",
+    direction: "DESC",
+    displayName: "Name Z-A",
   },
   {
-    field: 'createdAt',
-    direction: 'DESC',
-    displayName: 'Newest'
+    field: "createdAt",
+    direction: "DESC",
+    displayName: "Newest",
   },
   {
-    field: 'createdAt',
-    direction: 'ASC',
-    displayName: 'Oldest'
-  }
+    field: "createdAt",
+    direction: "ASC",
+    displayName: "Oldest",
+  },
 ];
 
 export const groupSearchInputState = atom({
-  key: 'groupSearchInput',
-  default: '',
+  key: "groupSearchInput",
+  default: "",
   effects: [
     ({ trigger, setSelf }) => {
-      if (trigger == 'get') {
+      if (trigger == "get") {
         const srch = Router.query?.search;
         if (srch) {
           setSelf(srch as string);
@@ -198,11 +198,11 @@ export const groupSearchInputState = atom({
           delete Router.query?.[PARAMS.SEARCH];
           Router.replace({
             pathname: GROUPS_PAGE,
-            query: Router.query
+            query: Router.query,
           });
         }
       }
-      Router.events.on('routeChangeComplete', () => {
+      Router.events.on("routeChangeComplete", () => {
         const queryString = window.location.search;
         const urlPram = new URLSearchParams(queryString);
         const searchParam = urlPram.get(PARAMS.SEARCH);
@@ -210,21 +210,21 @@ export const groupSearchInputState = atom({
           setSelf(searchParam);
         }
       });
-    }
-  ]
+    },
+  ],
 });
 
 export const groupSearchTermState: RecoilState<GroupsSearchExpression | null> =
   atom({
-    key: 'groupSearchTermState',
+    key: "groupSearchTermState",
     default: null,
     effects: [
       ({ trigger, onSet, setSelf, getPromise }) => {
-        if (trigger == 'get') {
+        if (trigger == "get") {
           setSelf(
             toSearchGroupFilter({
               term: Router.query?.search as string,
-              fields: []
+              fields: [],
             })
           );
         }
@@ -237,8 +237,8 @@ export const groupSearchTermState: RecoilState<GroupsSearchExpression | null> =
               pathname: GROUPS_PAGE,
               params: {
                 ...Router.query,
-                ...{ page: 1, pageSize }
-              }
+                ...{ page: 1, pageSize },
+              },
             });
             return;
           }
@@ -246,20 +246,20 @@ export const groupSearchTermState: RecoilState<GroupsSearchExpression | null> =
           if (oldValue !== newValue && newValue?.term) {
             changeRoute({
               pathname: GROUPS_PAGE,
-              params: { search: newValue.term }
+              params: { search: newValue.term },
             });
           }
         });
-      }
-    ]
+      },
+    ],
   });
 
 export const groupListSortState = atom({
-  key: 'groupListSortState',
+  key: "groupListSortState",
   default: GROUPS_SORT_OPTIONS[0],
   effects: [
     ({ trigger, onSet, setSelf }) => {
-      if (trigger == 'get') {
+      if (trigger == "get") {
         setSelf(getCurrentSortOption());
       }
       onSet((newValue, oldValue) => {
@@ -268,16 +268,16 @@ export const groupListSortState = atom({
             pathname: GROUPS_PAGE,
             params: {
               [PARAMS.ORDER_FIELD]: newValue.field,
-              [PARAMS.ORDER_DIRECTION]: newValue.direction.toLowerCase()
-            }
+              [PARAMS.ORDER_DIRECTION]: newValue.direction.toLowerCase(),
+            },
           });
         }
       });
-      Router.events.on('routeChangeComplete', () => {
+      Router.events.on("routeChangeComplete", () => {
         setSelf(getCurrentSortOption());
       });
-    }
-  ]
+    },
+  ],
 });
 
 // this is from datasets, move it to common
@@ -297,12 +297,12 @@ export const toSearchGroupFilter = (search: GroupsSearchExpression) => {
   if (!search?.term) {
     return {
       fields: defaultGroupFields,
-      term: ''
+      term: "",
     };
   }
   const rawSearch = decodeURIComponent(search.term);
 
-  const rawSplit = rawSearch.split(':');
+  const rawSplit = rawSearch.split(":");
   let fields = search.fields.length ? search.fields : defaultGroupFields;
   let term = rawSearch;
 
@@ -320,16 +320,16 @@ export const toSearchGroupFilter = (search: GroupsSearchExpression) => {
 
   return {
     fields,
-    term
+    term,
   };
 };
 
 export const isGroupSearchActiveSelector = selector({
-  key: 'isGroupSearchActiveSelector',
+  key: "isGroupSearchActiveSelector",
   get: ({ get }) => {
     const searchInput = get(groupSearchInputState);
     const isSearchActive = searchInput?.length > 0;
 
     return Boolean(isSearchActive);
-  }
+  },
 });

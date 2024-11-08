@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef } from "react";
 
 export default function useDebounceThrottle<T extends (...args: any[]) => void>(
   func: T,

@@ -1,16 +1,16 @@
-import { useExportVariables, useExportView } from '@fiftyone/hooks';
-import { Box } from '@fiftyone/teams-components';
+import { useExportVariables, useExportView } from "@fiftyone/hooks";
+import { Box } from "@fiftyone/teams-components";
 import {
   CONSTANT_VARIABLES,
   DatasetExportEstimateQuery,
   DatasetSnapshotExportEstimateQuery,
-  exportMode
-} from '@fiftyone/teams-state';
-import { Alert, AlertTitle, Typography } from '@mui/material';
-import bytes from 'bytes';
-import { useEffect, useMemo } from 'react';
-import { useLazyLoadQuery } from 'react-relay';
-import { useRecoilValue } from 'recoil';
+  exportMode,
+} from "@fiftyone/teams-state";
+import { Alert, AlertTitle, Typography } from "@mui/material";
+import bytes from "bytes";
+import { useEffect, useMemo } from "react";
+import { useLazyLoadQuery } from "react-relay";
+import { useRecoilValue } from "recoil";
 const { MAX_EXPORT_SIZE } = CONSTANT_VARIABLES;
 
 export default function ExportInfo() {
@@ -30,7 +30,7 @@ export default function ExportInfo() {
       : estimateResponse?.dataset;
     return datasetOrSnapshot?.sizeEstimate;
   }, [estimateResponse, snapshot]);
-  const showWarning = mode === 'direct' && !canExport;
+  const showWarning = mode === "direct" && !canExport;
 
   useEffect(() => {
     setSize(exportSize);

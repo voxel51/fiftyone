@@ -1,9 +1,9 @@
-import { setView, setViewMutation } from '@fiftyone/relay';
-import { DefaultValue } from 'recoil';
-import { commitMutation } from 'relay-runtime';
-import { getHistoryState, pushHistoryState } from '../state';
-import { writeSession } from '../useLocalSession';
-import { RegisteredSetter } from './registerSetter';
+import { setView, setViewMutation } from "@fiftyone/relay";
+import { DefaultValue } from "recoil";
+import { commitMutation } from "relay-runtime";
+import { getHistoryState, pushHistoryState } from "../state";
+import { writeSession } from "../useLocalSession";
+import { RegisteredSetter } from "./registerSetter";
 
 const onSetViewName: RegisteredSetter =
   ({ environment }) =>
@@ -24,11 +24,11 @@ const onSetViewName: RegisteredSetter =
       mutation: setView,
       variables: {
         view: [],
-        savedViewSlug: typeof view === 'string' ? view : null,
+        savedViewSlug: typeof view === "string" ? view : null,
         datasetName: state.datasetName,
-        subscription: '',
-        form: {}
-      }
+        subscription: "",
+        form: {},
+      },
     });
 
     // transition to next page

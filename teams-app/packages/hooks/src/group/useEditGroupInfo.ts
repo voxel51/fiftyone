@@ -1,10 +1,10 @@
-import { useMutation } from '../common';
+import { useMutation } from "../common";
 import {
   groupsEditUserGroupInfoMutation,
-  groupsEditUserGroupInfoMutationT
-} from '@fiftyone/teams-state';
-import { useCallback } from 'react';
-import { useRouter } from 'next/router';
+  groupsEditUserGroupInfoMutationT,
+} from "@fiftyone/teams-state";
+import { useCallback } from "react";
+import { useRouter } from "next/router";
 
 interface Props {
   identifier: string;
@@ -16,7 +16,7 @@ interface Props {
   onHandleError?: (error) => void;
 }
 
-const ROUTE = '/settings/team/groups';
+const ROUTE = "/settings/team/groups";
 
 export default function useEditGroupInfo() {
   const router = useRouter();
@@ -34,13 +34,13 @@ export default function useEditGroupInfo() {
         successMessage,
         errorMessage,
         onComplete,
-        onHandleError
+        onHandleError,
       } = props;
       return editGroupInfoMutation({
         variables: {
           identifier,
           name,
-          description
+          description,
         },
         successMessage: successMessage || `Successfully updated group info`,
         errorMessage: errorMessage || `Failed to update group info`,
@@ -60,7 +60,7 @@ export default function useEditGroupInfo() {
           }
           onComplete && onComplete(data);
         },
-        onError: (error) => onHandleError && onHandleError(error)
+        onError: (error) => onHandleError && onHandleError(error),
       });
     },
     [router]
@@ -68,6 +68,6 @@ export default function useEditGroupInfo() {
 
   return {
     editGroup,
-    isEditingGroup: loading
+    isEditingGroup: loading,
   };
 }

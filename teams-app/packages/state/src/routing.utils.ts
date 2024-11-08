@@ -1,12 +1,12 @@
-import Router from 'next/router';
-import { DEFAULT_LIST_PAGE_SIZE } from '@fiftyone/teams-state/src/constants';
+import Router from "next/router";
+import { DEFAULT_LIST_PAGE_SIZE } from "@fiftyone/teams-state/src/constants";
 
 export const changeRoute = ({
-  pathname = '/datasets',
+  pathname = "/datasets",
   params = {},
   resetPage = true,
   asParams = null,
-  deleteParams = new Set()
+  deleteParams = new Set(),
 }: {
   params: object;
   pathname?: string;
@@ -17,23 +17,23 @@ export const changeRoute = ({
   const query = {
     ...Router.query,
     ...(resetPage ? { page: 1, pageSize: DEFAULT_LIST_PAGE_SIZE } : {}),
-    ...params
+    ...params,
   };
   deleteParams.forEach((pm: string) => {
     delete query[pm];
   });
   const asQuery = {
     ...query,
-    ...asParams
+    ...asParams,
   };
   Router.push(
     {
       pathname,
-      query
+      query,
     },
     {
       pathname,
-      query: asQuery
+      query: asQuery,
     }
   );
 };

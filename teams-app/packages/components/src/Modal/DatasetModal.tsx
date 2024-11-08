@@ -1,35 +1,35 @@
-import { useRouter } from 'next/router';
-import { useCallback, useMemo } from 'react';
+import { useRouter } from "next/router";
+import { useCallback, useMemo } from "react";
 
 import {
   DatasetDescriptionInput,
   DatasetNameInput,
   TagsInput,
-  Button
-} from '@fiftyone/teams-components';
+  Button,
+} from "@fiftyone/teams-components";
 
-import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
-import Box from '@mui/material/Box';
-import Modal from '@mui/material/Modal';
-import { Theme, useTheme } from '@mui/material/styles';
-import Typography from '@mui/material/Typography';
+import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
+import Box from "@mui/material/Box";
+import Modal from "@mui/material/Modal";
+import { Theme, useTheme } from "@mui/material/styles";
+import Typography from "@mui/material/Typography";
 
-import { useCreateDataset } from '@fiftyone/hooks';
+import { useCreateDataset } from "@fiftyone/hooks";
 
-import { IconButton, Stack } from '@mui/material';
+import { IconButton, Stack } from "@mui/material";
 
 const style = (theme: Theme) => ({
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
+  position: "absolute",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
   width: 515,
-  bgcolor: 'background.paper',
+  bgcolor: "background.paper",
   boxShadow: theme.shadows[1],
   p: 4,
-  display: 'flex',
-  flexDirection: 'column',
-  borderRadius: 3
+  display: "flex",
+  flexDirection: "column",
+  borderRadius: 3,
 });
 
 interface Props {
@@ -52,11 +52,11 @@ export default function DatasetModal(props: Props) {
     title,
     actionButtonText,
     handleUpdated,
-    loading
+    loading,
   } = props;
   const theme = useTheme();
   const router = useRouter();
-  const buttonText = actionButtonText || 'Create dataset';
+  const buttonText = actionButtonText || "Create dataset";
 
   const {
     createDataset,
@@ -67,12 +67,12 @@ export default function DatasetModal(props: Props) {
     SetNewDescription,
     setNewTags,
     creatingDataset,
-    nameAvailable
+    nameAvailable,
   } = useCreateDataset();
 
   const handleClose = () => {
-    SetNewName('');
-    SetNewDescription('');
+    SetNewName("");
+    SetNewDescription("");
     setNewTags([]);
     props.onClose();
   };
@@ -94,15 +94,15 @@ export default function DatasetModal(props: Props) {
         if (newSlug) {
           router.push(
             {
-              pathname: `/datasets/[slug]/samples`
+              pathname: `/datasets/[slug]/samples`,
             },
             `/datasets/${newSlug}/samples`,
             { shallow: true }
           );
         } else {
-          console.error('update dataset: new slug is not defined');
+          console.error("update dataset: new slug is not defined");
         }
-      }
+      },
     });
   }, [
     createDataset,
@@ -113,10 +113,10 @@ export default function DatasetModal(props: Props) {
     SetNewDescription,
     setNewTags,
     creatingDataset,
-    handleUpdated
+    handleUpdated,
   ]);
 
-  const finalTitle = title || 'Create new dataset';
+  const finalTitle = title || "Create new dataset";
 
   return (
     <Modal
@@ -130,8 +130,8 @@ export default function DatasetModal(props: Props) {
         <Box
           sx={{
             paddingBottom: 4,
-            display: 'flex',
-            justifyContent: 'space-between'
+            display: "flex",
+            justifyContent: "space-between",
           }}
         >
           <Typography id="modal-modal-title" variant="h6" component="h2">

@@ -1,7 +1,7 @@
-import { DEFAULT_ANIMATION_DURATION } from '@fiftyone/teams-state/src/constants';
-import { BoxProps } from '@mui/material';
-import Box from '@mui/material/Box';
-import { PropsWithChildren } from 'react';
+import { DEFAULT_ANIMATION_DURATION } from "@fiftyone/teams-state/src/constants";
+import { BoxProps } from "@mui/material";
+import Box from "@mui/material/Box";
+import { PropsWithChildren } from "react";
 
 export default function HoverVisible(
   props: PropsWithChildren<HoverVisiblePropsType>
@@ -17,10 +17,10 @@ export default function HoverVisible(
     <Box
       {...boxProps}
       sx={{
-        visibility: !isHovering ? 'hidden' : 'visible',
-        opacity: !isHovering ? '0' : '1',
+        visibility: !isHovering ? "hidden" : "visible",
+        opacity: !isHovering ? "0" : "1",
         transition: `visibility 0s, opacity ${duration}s linear`,
-        ...(boxProps?.sx || {})
+        ...(boxProps?.sx || {}),
       }}
     >
       {children}

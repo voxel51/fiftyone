@@ -3,10 +3,10 @@ import {
   ListSubheader,
   ListItem,
   ListItemText,
-  ListItemButton
-} from '@mui/material';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
+  ListItemButton,
+} from "@mui/material";
+import Link from "next/link";
+import { useRouter } from "next/router";
 
 type Route = {
   label: string;
@@ -26,7 +26,7 @@ export default function RouteNav(props: RouteNavProps) {
 
   return (
     <List
-      sx={{ width: '100%', maxWidth: 360 }}
+      sx={{ width: "100%", maxWidth: 360 }}
       subheader={header && <ListSubheader>{header}</ListSubheader>}
     >
       {routes.map((route) => {

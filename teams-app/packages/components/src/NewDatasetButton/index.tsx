@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { useCreateDataset, useCurrentUserPermission } from '@fiftyone/hooks';
-import { CREATE_DATASETS } from '@fiftyone/teams-state';
-import { Button, DatasetModal } from '@fiftyone/teams-components';
-import { Box } from '@mui/material';
+import { useState } from "react";
+import { useCreateDataset, useCurrentUserPermission } from "@fiftyone/hooks";
+import { CREATE_DATASETS } from "@fiftyone/teams-state";
+import { Button, DatasetModal } from "@fiftyone/teams-components";
+import { Box } from "@mui/material";
 
 interface Props {}
 

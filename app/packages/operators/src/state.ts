@@ -17,6 +17,7 @@ import {
   BROWSER_CONTROL_KEYS,
   RESOLVE_INPUT_VALIDATION_TTL,
   RESOLVE_TYPE_TTL,
+  LAST_USED_ORCHESTRATOR,
 } from "./constants";
 import {
   ExecutionContext,
@@ -94,6 +95,9 @@ const globalContextSelector = selector({
     const viewName = get(fos.viewName);
     const extendedSelection = get(fos.extendedSelection);
     const groupSlice = get(fos.groupSlice);
+    const queryPerformance = get(fos.queryPerformance);
+    const spaces = get(fos.sessionSpaces);
+    const workspaceName = spaces?._name;
 
     // Teams only
     const datasetHeadName = get(fos.datasetHeadName);
@@ -110,6 +114,9 @@ const globalContextSelector = selector({
       datasetHeadName,
       extendedSelection,
       groupSlice,
+      queryPerformance,
+      spaces,
+      workspaceName,
     };
   },
 });
@@ -152,6 +159,9 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     datasetHeadName,
     extendedSelection,
     groupSlice,
+    queryPerformance,
+    spaces,
+    workspaceName,
   } = curCtx;
   const [analyticsInfo] = useAnalyticsInfo();
   const ctx = useMemo(() => {
@@ -171,6 +181,9 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         extendedSelection,
         analyticsInfo,
         groupSlice,
+        queryPerformance,
+        spaces,
+        workspaceName,
       },
       hooks
     );
@@ -186,6 +199,9 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     viewName,
     currentSample,
     groupSlice,
+    queryPerformance,
+    spaces,
+    workspaceName,
   ]);
 
   return ctx;
@@ -244,8 +260,10 @@ const useOperatorPromptSubmitOptions = (
         promptView?.submit_button_label ||
         "Execute",
       id: "execute",
+      tag: "FOR TESTING",
       default: defaultToExecute,
-      description: "Run this operation now",
+      description:
+        "Run this operation synchronously. Only suitable for small datasets",
       onSelect() {
         setSelectedID("execute");
       },
@@ -262,7 +280,7 @@ const useOperatorPromptSubmitOptions = (
       label: "Schedule",
       id: "schedule",
       default: defaultToSchedule,
-      description: "Schedule this operation to run later",
+      description: "Run this operation on your compute cluster",
       onSelect() {
         setSelectedID("schedule");
       },
@@ -280,13 +298,14 @@ const useOperatorPromptSubmitOptions = (
     for (let orc of execDetails.executionOptions.availableOrchestrators) {
       options.push({
         label: "Schedule",
-        choiceLabel: `Schedule on "${orc.instanceID}"`,
+        choiceLabel: `Schedule on ${orc.instanceID}`,
         id: orc.id,
         description: `Run this operation on ${orc.instanceID}`,
         onSelect() {
           setSelectedID(orc.id);
         },
         onClick() {
+          localStorage.setItem(LAST_USED_ORCHESTRATOR, orc.instanceID);
           execute({
             delegationTarget: orc.instanceID,
             requestDelegation: true,
@@ -296,13 +315,22 @@ const useOperatorPromptSubmitOptions = (
     }
   }
 
+  // sort options so that the default is always the first in the list
+  options.sort((a, b) => {
+    if (a.default) return -1;
+    if (b.default) return 1;
+    return 0;
+  });
+
   const fallbackId = executionOptions.allowImmediateExecution
     ? "execute"
     : "schedule";
+
   const defaultID =
     options.find((option) => option.default)?.id ||
     options[0]?.id ||
     fallbackId;
+
   let [selectedID, setSelectedID] = fos.useBrowserStorage(
     persistUnderKey,
     defaultID
@@ -330,7 +358,8 @@ const useOperatorPromptSubmitOptions = (
   if (selectedOption) selectedOption.selected = true;
   const showWarning =
     executionOptions.orchestratorRegistrationEnabled &&
-    !hasAvailableOrchestators;
+    !hasAvailableOrchestators &&
+    !executionOptions.allowImmediateExecution;
   const warningMessage =
     "There are no available orchestrators to schedule this operation. Please contact your administrator to add an orchestrator.";
 
@@ -514,7 +543,11 @@ export const useOperatorPrompt = () => {
     if (executor.hasExecuted && !executor.needsOutput && !executorError) {
       close();
       if (executor.isDelegated) {
-        notify({ msg: "Operation successfully scheduled", variant: "success" });
+        notify({
+          msg: "Operation successfully scheduled",
+          link: "runs",
+          variant: "success",
+        });
       }
     }
   }, [
@@ -951,6 +984,19 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         setIsDelegated(result.delegated);
         handlers.onSuccess?.(result);
         callback?.(result);
+        if (result.error) {
+          const isAbortError =
+            result.error.name === "AbortError" ||
+            result.error instanceof DOMException;
+          if (!isAbortError) {
+            notify({
+              msg: result.errorMessage || `Operation failed: ${uri}`,
+              variant: "error",
+            });
+            console.error("Error executing operator", uri, result.errorMessage);
+            console.error(result.error);
+          }
+        }
       } catch (e) {
         callback?.(new OperatorResult(operator, null, ctx.executor, e, false));
         const isAbortError =

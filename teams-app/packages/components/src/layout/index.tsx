@@ -1,22 +1,22 @@
-import { GridProps } from '@mui/material';
-import Box from '@mui/material/Box';
-import Container from '@mui/material/Container';
-import Grid from '@mui/material/Grid';
-import React from 'react';
+import { GridProps } from "@mui/material";
+import Box from "@mui/material/Box";
+import Container from "@mui/material/Container";
+import Grid from "@mui/material/Grid";
+import React from "react";
 
-const MAX_WIDTH = 'lg';
+const MAX_WIDTH = "lg";
 const DEFAULT_SPACING = 2;
 
 export function MainLayout({ children }) {
   return (
     <Box
       sx={{
-        width: '100%',
-        height: '100%',
-        bgcolor: 'background.secondary'
+        width: "100%",
+        height: "100%",
+        bgcolor: "background.secondary",
       }}
     >
-      <Container disableGutters maxWidth={false} sx={{ flexWrap: 'nowrap' }}>
+      <Container disableGutters maxWidth={false} sx={{ flexWrap: "nowrap" }}>
         <Grid container>{children}</Grid>
       </Container>
     </Box>
@@ -29,8 +29,8 @@ export const MainColumn = React.memo(
     paddingLeft = 0,
     paddingRight = 0,
     marginLeft = 0,
-    overflow = 'auto',
-    size = {}
+    overflow = "auto",
+    size = {},
   }) => {
     return (
       /* margin is for the fixed left nav bar - alternative is to make body scrollable
@@ -83,12 +83,12 @@ export function SidePanelLayout(props: SidePanelLayoutProps) {
     reverse,
     sideGridProps = {},
     mainGridProps = {},
-    containerProps = {}
+    containerProps = {},
   } = props;
   const containers = [...children];
   const sizeProps = [
     { xs: 12, sm: 4, md: 3 },
-    { xs: 12, sm: 8, md: 9 }
+    { xs: 12, sm: 8, md: 9 },
   ];
 
   if (reverse) {

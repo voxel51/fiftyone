@@ -6,13 +6,13 @@ Installs FiftyOne Teams App
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os
-from pkg_resources import DistributionNotFound, get_distribution
 import re
+
+from pkg_resources import DistributionNotFound, get_distribution
 from setuptools import setup
 
 INSTALL_REQUIRES = [
-    "fiftyone>2.0,<2.2",
+    "fiftyone>2.1,<2.3",
     "python-jose>=3.3.0,<4",
     "strawberry-graphql==0.243",
 ]
@@ -48,7 +48,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone-teams-app",
-    version="2.1.3",
+    version="2.2.0.dev45",
     description=("FiftyOne Teams"),
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",

@@ -3,7 +3,7 @@ import { Tune } from "@mui/icons-material";
 import React from "react";
 import type { RecoilState } from "recoil";
 import { useSetRecoilState } from "recoil";
-import { LIGHTNING_MODE } from "../../../../utils/links";
+import { QP_MODE } from "../../../../utils/links";
 import DisabledReason from "./DisabledReason";
 
 export default ({
@@ -54,7 +54,7 @@ export default ({
   if (disabled) {
     return (
       <Tooltip
-        text={<DisabledReason href={LIGHTNING_MODE} text={"add an index"} />}
+        text={<DisabledReason href={QP_MODE} text={"add an index"} />}
         placement="top-center"
       >
         {children}

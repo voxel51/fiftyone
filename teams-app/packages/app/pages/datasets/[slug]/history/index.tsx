@@ -2,29 +2,29 @@ import {
   useCacheStore,
   useCurrentDataset,
   useCurrentDatasetPermission,
-  withPermissions
-} from '@fiftyone/hooks';
-import { Box } from '@fiftyone/teams-components';
+  withPermissions,
+} from "@fiftyone/hooks";
+import { Box } from "@fiftyone/teams-components";
 import {
   CREATE_DATASET_SNAPSHOT,
   Dataset,
   SNAPSHOT_BANNER_QUERY_CACHE_KEY,
   VIEW_DATASET,
   historySnapshotsQuery,
-  snapshotsPageState
-} from '@fiftyone/teams-state';
-import { Stack } from '@mui/material';
-import withRelay from 'lib/withRelay';
-import DatasetNavigation from '../components/navigation';
-import CreateSnapshot from './components/CreateSnapshot';
-import PreviousSnapshots from './components/PreviousSnapshots';
+  snapshotsPageState,
+} from "@fiftyone/teams-state";
+import { Stack } from "@mui/material";
+import withRelay from "lib/withRelay";
+import DatasetNavigation from "../components/navigation";
+import CreateSnapshot from "./components/CreateSnapshot";
+import PreviousSnapshots from "./components/PreviousSnapshots";
 import {
   DEFAULT_PAGE,
-  DEFAULT_PAGE_SIZE
-} from '@fiftyone/teams-state/src/constants';
-import { useRecoilValue } from 'recoil';
-import { useQueryLoader } from 'react-relay';
-import { useCallback, useEffect } from 'react';
+  DEFAULT_PAGE_SIZE,
+} from "@fiftyone/teams-state/src/constants";
+import { useRecoilValue } from "recoil";
+import { useQueryLoader } from "react-relay";
+import { useCallback, useEffect } from "react";
 
 function History(props) {
   const { preloadedQuery } = props;
@@ -37,14 +37,14 @@ function History(props) {
   const fetchSnapshots = useCallback(() => {
     loadQuery(
       { slug: name, ...pageState },
-      { fetchPolicy: 'store-and-network' }
+      { fetchPolicy: "store-and-network" }
     );
   }, [loadQuery, name, pageState]);
   useEffect(() => {
     fetchSnapshots();
   }, [fetchSnapshots]);
   const canCreateSnapshot = useCurrentDatasetPermission([
-    CREATE_DATASET_SNAPSHOT
+    CREATE_DATASET_SNAPSHOT,
   ]);
   const [_, setStale] = useCacheStore(SNAPSHOT_BANNER_QUERY_CACHE_KEY);
   const refresh = useCallback(() => {
@@ -67,7 +67,7 @@ function History(props) {
   );
 }
 export default withRelay(
-  withPermissions(History, [VIEW_DATASET], 'dataset'),
+  withPermissions(History, [VIEW_DATASET], "dataset"),
   historySnapshotsQuery,
   { getLayoutProps: () => ({ topNavProps: { noBorder: true } }) },
   { pageSize: DEFAULT_PAGE_SIZE, page: DEFAULT_PAGE }

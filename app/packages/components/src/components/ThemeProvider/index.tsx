@@ -44,12 +44,13 @@ let theme = extendMuiTheme({
           mediaSpace: "hsl(200,0%,98%)",
           mediaSpaceTransparent: "hsla(200,0%,98%,0)",
           modalBackdrop: "hsl(200, 0%, 0%, 0.5)",
-          sidebar: "hsl(200, 0%, 100%)",
+          sidebar: "hsl(200,0%,98%)",
           tooltip: "hsl(200, 0%, 100%)",
           viewBarButtons: "hsl(200, 0%, 100%)",
           inactiveTab: "hsl(200, 0%, 90%)",
           popup: "hsl(200, 0%, 95%)",
           field: "hsl(200, 0%, 95%)",
+          activeCell: "hsl(200, 0%, 95%)",
         },
         divider: "hsl(200, 0%, 80%)",
         dividerDisabled: "hsl(200, 0%, 85%)",
@@ -92,6 +93,9 @@ let theme = extendMuiTheme({
         custom: {
           shadow: "hsl(200, 0%, 90%)",
           shadowDark: "hsl(200, 0%, 70%)",
+          lightning: "hsl(25, 100%, 51%)",
+          toastBackgroundColor: "#FFFFFF",
+          primarySoft: "hsl(25, 100%, 51%)",
         },
         voxel: {
           500: "#FF6D04",
@@ -122,13 +126,15 @@ let theme = extendMuiTheme({
           mediaSpace: "hsl(200, 0%, 10%)",
           mediaSpaceTransparent: "hsla(200, 0%, 10%,0)",
           modalBackdrop: "hsl(200, 0%, 0%, 0.75)",
-          sidebar: "hsl(200, 0%, 15%)",
+          sidebar: "hsl(200, 0%, 10%)",
           tooltip: "hsl(200, 0%, 5%)",
           viewBarButtons: "hsl(200, 0%, 15%)",
           inactiveTab: "hsl(200, 0%, 18%)",
           paper: "hsl(200, 0%, 10%)",
           popup: "hsl(200, 0%, 20%)",
           field: "hsl(200, 0%, 20%, 0.3)",
+          activeCell: "hsl(200, 0%, 25%)",
+          card: "hsl(200, 0%, 16%)",
         },
         divider: "hsl(200, 0%, 20%)",
         dividerDisabled: "hsl(200, 0%, 15%)",
@@ -171,6 +177,9 @@ let theme = extendMuiTheme({
         custom: {
           shadow: "hsl(200, 0%, 10%)",
           shadowDark: "hsl(200, 0%, 0%)",
+          lightning: "#f5b700",
+          toastBackgroundColor: "#333",
+          primarySoft: "hsl(25, 100%, 80%)",
         },
         voxel: {
           500: "#FF6D04",
@@ -187,6 +196,14 @@ let theme = extendMuiTheme({
       defaultProps: {
         disableRipple: true,
       },
+    },
+    MuiButton: {
+      variants: [
+        {
+          props: { variant: "contained" },
+          style: { color: "#ffffff" },
+        },
+      ],
     },
     MuiModal: {
       styleOverrides: {
@@ -246,6 +263,13 @@ let theme = extendMuiTheme({
       styleOverrides: {
         root: {
           fontSize: "1rem",
+        },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        root: {
+          borderBottom: `1px solid ${dynamicTheme("palette.divider")}`,
         },
       },
     },

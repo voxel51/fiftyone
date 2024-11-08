@@ -1,8 +1,8 @@
-import { CodeTabs } from '@fiftyone/teams-components';
-import { Divider, Link, Stack, Typography } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
-import NextLink from 'next/link';
-import { ComponentType } from 'react';
+import { CodeTabs } from "@fiftyone/teams-components";
+import { Divider, Link, Stack, Typography } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import NextLink from "next/link";
+import { ComponentType } from "react";
 // const { DATASET_CREATION_DOCUMENTATION_LINK } = CONSTANT_VARIABLES;
 
 type EmptySamplesProps = {
@@ -21,7 +21,7 @@ export default function EmptySamples(props: EmptySamplesProps) {
     canEdit,
     canInvite,
     slug,
-    OperatorComponent
+    OperatorComponent,
   } = props;
   const theme = useTheme();
 
@@ -46,8 +46,8 @@ dataset.add_dir(
 
   return (
     <Stack
-      divider={<Divider sx={{ width: '100%' }} />}
-      sx={{ alignItems: 'center', py: 4 }}
+      divider={<Divider sx={{ width: "100%" }} />}
+      sx={{ alignItems: "center", py: 4 }}
       spacing={4}
     >
       <Stack alignItems="center" spacing={1} pb={4}>
@@ -61,7 +61,7 @@ dataset.add_dir(
         {OperatorComponent && <OperatorComponent mode="ADD_SAMPLE" />}
         {canInvite && (
           <Typography>
-            Want to invite other people?{' '}
+            Want to invite other people?{" "}
             <NextLink href={`/datasets/${slug}/manage/access`} passHref>
               <Link>Manage access</Link>
             </NextLink>
@@ -96,10 +96,10 @@ dataset.add_dir(
           <CodeTabs
             tabs={[
               {
-                id: 'python-add',
-                label: 'Python',
-                code: addSamplesToDatasetSnippet
-              }
+                id: "python-add",
+                label: "Python",
+                code: addSamplesToDatasetSnippet,
+              },
             ]}
           />
         </Stack>
@@ -110,5 +110,5 @@ dataset.add_dir(
 
 // todo: re-use from oss (not yet exported)
 type StarterPropsType = {
-  mode: 'SELECT_DATASET' | 'ADD_DATASET' | 'ADD_SAMPLE';
+  mode: "SELECT_DATASET" | "ADD_DATASET" | "ADD_SAMPLE";
 };

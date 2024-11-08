@@ -1,6 +1,6 @@
-import { ComponentType, useCallback } from 'react';
-import { GraphQLTaggedNode, Variables, useQueryLoader } from 'react-relay';
-import { WiredProps } from 'relay-nextjs/wired/component';
+import { ComponentType, useCallback } from "react";
+import { GraphQLTaggedNode, Variables, useQueryLoader } from "react-relay";
+import { WiredProps } from "relay-nextjs/wired/component";
 
 export default function withQueryRefresher<Props extends WiredProps>(
   Component: ComponentType<Props>,
@@ -12,7 +12,7 @@ export default function withQueryRefresher<Props extends WiredProps>(
 
     const refresh = useCallback(() => {
       loadQuery(queryRef?.variables as Variables, {
-        fetchPolicy: 'store-and-network'
+        fetchPolicy: "store-and-network",
       });
     }, [loadQuery, queryRef]);
 

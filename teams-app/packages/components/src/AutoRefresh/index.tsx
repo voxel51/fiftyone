@@ -2,11 +2,11 @@ import {
   FormControlLabel,
   FormControlLabelProps,
   Switch,
-  SwitchProps
-} from '@mui/material';
-import { useEffect, useState } from 'react';
-import { useAutoRefresh } from '@fiftyone/hooks';
-import { useBrowserStorage } from '@fiftyone/state';
+  SwitchProps,
+} from "@mui/material";
+import { useEffect, useState } from "react";
+import { useAutoRefresh } from "@fiftyone/hooks";
+import { useBrowserStorage } from "@fiftyone/state";
 
 export default function AutoRefresh(props: AutoRefreshPropsType) {
   const {
@@ -19,7 +19,7 @@ export default function AutoRefresh(props: AutoRefreshPropsType) {
     ...otherProps
   } = props;
   const useStateHook =
-    typeof persistanceKey === 'string' ? useBrowserStorage : useState;
+    typeof persistanceKey === "string" ? useBrowserStorage : useState;
   const stateHookArgs = persistanceKey
     ? [persistanceKey, !defaultInactive]
     : [!defaultInactive];
@@ -53,11 +53,11 @@ export default function AutoRefresh(props: AutoRefreshPropsType) {
   );
 }
 
-type AutoRefreshPropsType = Omit<FormControlLabelProps, 'label' | 'control'> & {
-  control?: FormControlLabelProps['control'];
+type AutoRefreshPropsType = Omit<FormControlLabelProps, "label" | "control"> & {
+  control?: FormControlLabelProps["control"];
   defaultInactive?: boolean;
   interval?: number;
-  label?: FormControlLabelProps['label'];
+  label?: FormControlLabelProps["label"];
   paused?: boolean;
   refresh: () => void;
   switchProps?: SwitchProps;

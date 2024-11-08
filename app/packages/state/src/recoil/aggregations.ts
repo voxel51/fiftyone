@@ -1,12 +1,11 @@
 import * as foq from "@fiftyone/relay";
-import { VariablesOf } from "react-relay";
+import type { VariablesOf } from "react-relay";
 import { selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
-import { ResponseFrom } from "../utils";
+import type { ResponseFrom } from "../utils";
 import { refresher } from "./atoms";
 import * as filterAtoms from "./filters";
 import { currentSlices, groupId, groupSlice, groupStatistics } from "./groups";
-import { lightning as lightningOn, lightningUnlocked } from "./lightning";
 import { sidebarSampleId } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
@@ -30,7 +29,6 @@ export const aggregationQuery = graphQLSelectorFamily<
   {
     customView?: any;
     extended: boolean;
-    lightning?: boolean;
     modal: boolean;
     mixed?: boolean;
     paths: string[];
@@ -47,7 +45,6 @@ export const aggregationQuery = graphQLSelectorFamily<
     ({
       customView = undefined,
       extended,
-      lightning,
       mixed = false,
       modal,
       paths,
@@ -65,15 +62,6 @@ export const aggregationQuery = graphQLSelectorFamily<
         return null;
       }
 
-      const lightningFilters =
-        lightning ||
-        (!modal &&
-          !root &&
-          !extended &&
-          paths[0] !== "" &&
-          get(lightningOn) &&
-          get(lightningUnlocked));
-
       mixed = mixed || get(groupStatistics(modal)) === "group";
       const aggForm = {
         index: get(refresher),
@@ -82,8 +70,6 @@ export const aggregationQuery = graphQLSelectorFamily<
         filters:
           extended && !root
             ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
-            : lightningFilters
-            ? get(filterAtoms.lightningFilters)
             : null,
         groupId: !root && modal ? get(groupId) || null : null,
         hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],

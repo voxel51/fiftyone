@@ -6,6 +6,7 @@ FiftyOne Server lightning queries
 |
 """
 
+from bson import ObjectId
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
 import math
@@ -22,6 +23,9 @@ import fiftyone.core.fields as fof
 import fiftyone.server.constants as foc
 from fiftyone.server.data import Info
 from fiftyone.server.utils import meets_type
+
+
+_TWENTY_FOUR = 24
 
 
 @gql.input
@@ -80,15 +84,14 @@ class IntLightningResult(LightningResult):
 
 
 @gql.type
-class StringLightningResult(LightningResult):
+class ObjectIdLightningResult(LightningResult):
     values: t.Optional[t.List[t.Optional[str]]] = None
 
 
-LIGHTNING_QUERIES = (
-    BooleanLightningResult,
-    FloatLightningResult,
-    IntLightningResult,
-)
+@gql.type
+class StringLightningResult(LightningResult):
+    values: t.Optional[t.List[t.Optional[str]]] = None
+
 
 INT_CLS = {
     fof.DateField: DateLightningResult,
@@ -104,6 +107,7 @@ LightningResults = gql.union(
         DateTimeLightningResult,
         FloatLightningResult,
         IntLightningResult,
+        ObjectIdLightningResult,
         StringLightningResult,
     ),
 )
@@ -141,6 +145,7 @@ class DistinctQuery:
     path: str
     first: int
     has_list: bool
+    is_object_id_field: bool
     exclude: t.Optional[t.List[str]] = None
     search: t.Optional[str] = None
 
@@ -154,6 +159,7 @@ def _resolve_lightning_path_queries(
 ]:
     field_path = path.path
     field = dataset.get_field(field_path)
+    field_path = f"{'.'.join(field_path.split('.')[:-1] + [field.db_field])}"
     collection = dataset._sample_collection_name
     is_frame_field = bool(dataset._is_frame_field(field_path))
     if is_frame_field:
@@ -165,7 +171,7 @@ def _resolve_lightning_path_queries(
     while isinstance(field, fof.ListField):
         field = field.field
 
-    if not isinstance(field, fof.StringField) and (
+    if not isinstance(field, (fof.ObjectIdField, fof.StringField)) and (
         path.exclude or path.search
     ):
         raise ValueError(
@@ -231,14 +237,30 @@ def _resolve_lightning_path_queries(
 
         return collection, queries, _resolve_float
 
+    if meets_type(field, fof.ObjectIdField):
+
+        def _resolve_object_id(results):
+            return ObjectIdLightningResult(path=path.path, values=results[0])
+
+        d = asdict(path)
+        d["has_list"] = _has_list(dataset, field_path, is_frame_field)
+        d["is_object_id_field"] = True
+        d["path"] = field_path
+        return (
+            collection,
+            [DistinctQuery(**d)],
+            _resolve_object_id,
+        )
+
     if meets_type(field, fof.StringField):
 
         def _resolve_string(results):
             return StringLightningResult(path=path.path, values=results[0])
 
         d = asdict(path)
-        d["path"] = field_path
         d["has_list"] = _has_list(dataset, field_path, is_frame_field)
+        d["is_object_id_field"] = False
+        d["path"] = field_path
         return (
             collection,
             [DistinctQuery(**d)],
@@ -306,7 +328,12 @@ async def _do_distinct_pipeline(
 ):
     pipeline = [{"$sort": {query.path: 1}}]
     if query.search:
-        pipeline.append({"$match": {query.path: Regex(f"^{query.search}")}})
+        if query.is_object_id_field:
+            add = (_TWENTY_FOUR - len(query.search)) * "0"
+            value = {"$gte": ObjectId(f"{query.search}{add}")}
+        else:
+            value = Regex(f"^{query.search}")
+        pipeline.append({"$match": {query.path: value}})
 
     pipeline += [{"$group": {"_id": f"${query.path}"}}]
 
@@ -335,6 +362,10 @@ def _first(
 
     if sort:
         pipeline.append({"$match": {path: {"$ne": None}}})
+
+    matched_arrays = _match_arrays(dataset, path, is_frame_field)
+    if matched_arrays:
+        pipeline += matched_arrays
 
     pipeline.append({"$limit": 1})
 
@@ -381,6 +412,25 @@ def _parse_result(data, check=True):
             return value
 
     return None
+
+
+def _match_arrays(dataset: fo.Dataset, path: str, is_frame_field: bool):
+    keys = path.split(".")
+    path = None
+    pipeline = []
+
+    if is_frame_field:
+        path = keys[0]
+        keys = keys[1:]
+
+    for key in keys:
+        path = ".".join([path, key]) if path else key
+        field = dataset.get_field(path)
+        while isinstance(field, fof.ListField):
+            pipeline.append({"$match": {f"{path}.0": {"$exists": True}}})
+            field = field.field
+
+    return pipeline
 
 
 def _unwind(dataset: fo.Dataset, path: str, is_frame_field: bool):

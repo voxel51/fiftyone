@@ -1,31 +1,31 @@
-import { setPending } from 'pages/state';
-import { useEffect } from 'react';
-import { useErrorHandler } from 'react-error-boundary';
-import { atom, useRecoilState } from 'recoil';
-import { Page } from './loadPageQuery';
-import { getHistoryState } from './state';
+import { setPending } from "pages/state";
+import { useEffect } from "react";
+import { useErrorHandler } from "react-error-boundary";
+import { atom, useRecoilState } from "recoil";
+import { Page } from "./loadPageQuery";
+import { getHistoryState } from "./state";
 import {
   DatasetData,
   load,
   transition,
   transitionDataset,
-  useGridReset
-} from './transition';
-import { useLocalSession } from './useLocalSession';
-import useSetters from './useSetters';
+  useGridReset,
+} from "./transition";
+import { useLocalSession } from "./useLocalSession";
+import useSetters from "./useSetters";
 
 export const [datasetPage, resetPage] = (() => {
   let reset: () => void;
 
   const page = atom<Page | null>({
-    key: 'datasetPage',
+    key: "datasetPage",
     default: null,
     effects: [
       ({ setSelf }) => {
         reset = () => setSelf(null);
-      }
+      },
     ],
-    dangerouslyAllowMutability: true
+    dangerouslyAllowMutability: true,
   });
 
   return [page, () => reset?.()];
@@ -35,7 +35,7 @@ let ref: ((page: Page) => void) | null = null;
 
 export const pageRunner = (page: Page) => {
   if (!ref) {
-    throw new Error('runner not defined');
+    throw new Error("runner not defined");
   }
   ref(page);
 };
@@ -70,9 +70,9 @@ const usePage = (dataset: DatasetData) => {
       } catch {}
     };
 
-    addEventListener('popstate', run);
+    addEventListener("popstate", run);
 
-    return () => removeEventListener('popstate', run);
+    return () => removeEventListener("popstate", run);
   }, []);
 
   return {
@@ -81,7 +81,7 @@ const usePage = (dataset: DatasetData) => {
     subscribe: (fn: (page: Page) => void) => {
       ref = fn;
       return () => null;
-    }
+    },
   };
 };
 

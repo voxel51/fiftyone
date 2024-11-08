@@ -1,7 +1,7 @@
-import { useSnackbar, VariantType } from 'notistack';
-import { useTheme, IconButton } from '@mui/material';
-import { Close } from '@mui/icons-material';
-import React, { useEffect, useState } from 'react';
+import { useSnackbar, VariantType } from "notistack";
+import { useTheme, IconButton } from "@mui/material";
+import { Close } from "@mui/icons-material";
+import React, { useEffect, useState } from "react";
 
 interface Config {
   msg?: string;
@@ -34,14 +34,14 @@ export function useNotification(): [
   useEffect(() => {
     if (conf?.msg) {
       enqueueSnackbar(conf.msg, {
-        variant: conf.variant || 'success',
+        variant: conf.variant || "success",
         autoHideDuration: conf.duration || DURATION_DEFAULT,
         action,
         anchorOrigin: {
-          horizontal: 'center',
-          vertical: 'bottom'
+          horizontal: "center",
+          vertical: "bottom",
         },
-        preventDuplicate: true
+        preventDuplicate: true,
       });
     }
   }, [conf]);

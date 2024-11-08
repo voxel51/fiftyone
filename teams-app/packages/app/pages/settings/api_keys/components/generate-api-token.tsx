@@ -1,19 +1,19 @@
-import { Button, CircularProgress, Alert, AlertTitle } from '@mui/material';
+import { Button, CircularProgress, Alert, AlertTitle } from "@mui/material";
 import {
   Box,
   TextInput,
   TextInputCopy,
-  Dialog
-} from '@fiftyone/teams-components';
+  Dialog,
+} from "@fiftyone/teams-components";
 import {
   showGenerateAPITokenDialog,
-  apiTokensGenerateMutation
-} from '@fiftyone/teams-state';
-import { useRecoilState } from 'recoil';
-import { Typography } from '@mui/material';
-import { useCallback, useState } from 'react';
-import { get } from 'lodash';
-import { useMutation } from '@fiftyone/hooks';
+  apiTokensGenerateMutation,
+} from "@fiftyone/teams-state";
+import { useRecoilState } from "recoil";
+import { Typography } from "@mui/material";
+import { useCallback, useState } from "react";
+import { get } from "lodash";
+import { useMutation } from "@fiftyone/hooks";
 
 type GenerateAPITokenProps = {
   onGenerate?: Function;
@@ -21,8 +21,8 @@ type GenerateAPITokenProps = {
 
 export default function GenerateAPIToken(props: GenerateAPITokenProps) {
   const [open, setOpen] = useRecoilState(showGenerateAPITokenDialog);
-  const [tokenName, setTokenName] = useState('');
-  const [token, setToken] = useState('');
+  const [tokenName, setTokenName] = useState("");
+  const [token, setToken] = useState("");
   const [generateAPIToken, generatingAPIToken] = useMutation(
     apiTokensGenerateMutation
   );
@@ -30,8 +30,8 @@ export default function GenerateAPIToken(props: GenerateAPITokenProps) {
 
   const handleClose = useCallback(() => {
     setOpen(false);
-    setTokenName('');
-    setToken('');
+    setTokenName("");
+    setToken("");
   }, [setOpen, setTokenName, setToken]);
 
   return (
@@ -78,8 +78,8 @@ export default function GenerateAPIToken(props: GenerateAPITokenProps) {
         <Box
           paddingTop={3}
           sx={{
-            display: 'flex',
-            justifyContent: 'flex-end'
+            display: "flex",
+            justifyContent: "flex-end",
           }}
         >
           {!token && (
@@ -96,28 +96,28 @@ export default function GenerateAPIToken(props: GenerateAPITokenProps) {
               <Button
                 onClick={(e) => {
                   generateAPIToken({
-                    successMessage: 'Successfully generated a new API key',
-                    errorMessage: 'Failed to generate an API key',
+                    successMessage: "Successfully generated a new API key",
+                    errorMessage: "Failed to generate an API key",
                     variables: {
-                      name: tokenName
+                      name: tokenName,
                     },
                     onCompleted(data) {
-                      const newToken = get(data, 'generateApiKey');
+                      const newToken = get(data, "generateApiKey");
                       setToken(newToken);
                       if (onGenerate) onGenerate(newToken);
                     },
                     onError(error) {
                       console.error(error);
-                    }
+                    },
                   });
                 }}
                 variant="contained"
-                sx={{ marginLeft: 2, minWidth: '10rem' }}
+                sx={{ marginLeft: 2, minWidth: "10rem" }}
                 disabled={generatingAPIToken || !tokenName}
               >
                 Generate key
                 {generatingAPIToken && (
-                  <CircularProgress size={16} sx={{ position: 'absolute' }} />
+                  <CircularProgress size={16} sx={{ position: "absolute" }} />
                 )}
               </Button>
             </>

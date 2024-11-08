@@ -20,7 +20,6 @@ import {
 import { Link } from "@mui/material";
 import { UserRole } from "@fiftyone/teams-state/src/Dataset/__generated__/manageDatasetInviteUserToDatasetMutation.graphql";
 import { Box, Stack, Typography } from "@mui/material";
-import { capitalize } from "lodash";
 import LicenseAudit from "pages/settings/team/users/components/LicenseAudit";
 import { Suspense, useCallback, useState } from "react";
 import { useRecoilState } from "recoil";
@@ -123,12 +122,14 @@ function GrantUserDatasetAccess() {
         {user && (
           <ManageUser
             maxDatasetPermission={maxDatasetPermission(
-              user.id ? user?.role : currentUser.role
+              user?.id && user?.role ? user.role : currentUser.role
             )}
             target={user}
             permission={userStatePermission}
             hideRole
-            userCardProps={{ email: capitalize(user.role) }}
+            userCardProps={{
+              subtitle: user.role || "",
+            }}
             onDelete={() => {
               setUser(null);
             }}
@@ -164,7 +165,7 @@ function GrantUserDatasetAccess() {
           }}
         >
           <Typography variant="subtitle1" color="error">
-            No seat left for this permission {userStatePermission}
+            No seats available for this permission {userStatePermission}
           </Typography>
         </Box>
       )}

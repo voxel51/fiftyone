@@ -197,6 +197,14 @@ class DatasetTests(unittest.TestCase):
         self.assertTrue(last_loaded_at3 > last_loaded_at2)
 
     @drop_datasets
+    def test_set_unknown_attribute(self):
+        dataset_name = self.test_set_unknown_attribute.__name__
+
+        dataset = fo.Dataset(dataset_name)
+        self.assertRaises(AttributeError, setattr, dataset, "persistant", True)
+        self.assertRaises(AttributeError, setattr, dataset, "somethingelse", 5)
+
+    @drop_datasets
     def test_dataset_tags(self):
         dataset_name = self.test_dataset_tags.__name__
 
@@ -695,8 +703,10 @@ class DatasetTests(unittest.TestCase):
         frame_stats["indexBuilds"] = ["gt.detections.label_1"]
 
         with patch.object(
-            dataset, "_sample_collstats", return_value=sample_stats
-        ), patch.object(dataset, "_frame_collstats", return_value=frame_stats):
+            fo.Dataset, "_sample_collstats", return_value=sample_stats
+        ), patch.object(
+            fo.Dataset, "_frame_collstats", return_value=frame_stats
+        ):
             info = dataset.get_index_information(include_stats=True)
             for key in [
                 "gt.detections.label",
@@ -5634,14 +5644,14 @@ class DatasetDeletionTests(unittest.TestCase):
         self.assertTrue(last_modified_at4b < last_modified_at5b)
         self.assertEqual(last_modified_at4c, last_modified_at5c)
 
-        last_modified_at6b = dataset._get_last_modified_at()
-        last_modified_at6c = dataset._get_last_modified_at(frames=True)
+        last_modified_at6b = dataset._max("last_modified_at")
+        last_modified_at6c = dataset._max("frames.last_modified_at")
 
         self.assertEqual(last_modified_at6b, last_modified_at5b)
         self.assertEqual(last_modified_at6c, last_modified_at5c)
 
-        last_modified_at7b = dataset.view()._get_last_modified_at()
-        last_modified_at7c = dataset.view()._get_last_modified_at(frames=True)
+        last_modified_at7b = dataset.view()._max("last_modified_at")
+        last_modified_at7c = dataset.view()._max("frames.last_modified_at")
 
         self.assertEqual(last_modified_at7b, last_modified_at5b)
         self.assertEqual(last_modified_at7c, last_modified_at5c)

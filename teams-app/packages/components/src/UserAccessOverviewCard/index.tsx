@@ -1,38 +1,38 @@
-import { withSuspense } from '@fiftyone/hooks';
+import { withSuspense } from "@fiftyone/hooks";
 import {
   ManageUserDatasets,
   Pagination,
   SectionHeader,
   TableSkeleton,
-  UserCard
-} from '@fiftyone/teams-components';
+  UserCard,
+} from "@fiftyone/teams-components";
 import {
   settingsTeamSelectedUserId,
   settingsTeamUserDatasetsByInvitePageState,
   settingsTeamUserDatasetsPageState,
   settingsTeamUserDatasetsUpdateCount,
   teamUserDatasetsPageQuery,
-  teamUserQuery
-} from '@fiftyone/teams-state';
-import { teamUserDatasetsPageQuery as teamUserDatasetsPageQueryType } from '@fiftyone/teams-state/src/Settings/__generated__/teamUserDatasetsPageQuery.graphql';
-import { teamUserQuery as teamUserQueryType } from '@fiftyone/teams-state/src/Settings/__generated__/teamUserQuery.graphql';
-import { DEFAULT_LIST_PAGE_SIZES } from '@fiftyone/teams-state/src/constants';
-import { labelWithCount } from '@fiftyone/teams-utilities';
-import { Alert, AlertTitle, Box, Typography } from '@mui/material';
-import { Suspense, useEffect } from 'react';
-import { useLazyLoadQuery } from 'react-relay';
-import { useRecoilState, useRecoilValue, useResetRecoilState } from 'recoil';
+  teamUserQuery,
+} from "@fiftyone/teams-state";
+import { teamUserDatasetsPageQuery as teamUserDatasetsPageQueryType } from "@fiftyone/teams-state/src/Settings/__generated__/teamUserDatasetsPageQuery.graphql";
+import { teamUserQuery as teamUserQueryType } from "@fiftyone/teams-state/src/Settings/__generated__/teamUserQuery.graphql";
+import { DEFAULT_LIST_PAGE_SIZES } from "@fiftyone/teams-state/src/constants";
+import { labelWithCount } from "@fiftyone/teams-utilities";
+import { Alert, AlertTitle, Box, Typography } from "@mui/material";
+import { Suspense, useEffect } from "react";
+import { useLazyLoadQuery } from "react-relay";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 
 function UserAccessOverviewCard() {
   const userId = useRecoilValue(settingsTeamSelectedUserId);
   const result = useLazyLoadQuery<teamUserQueryType>(teamUserQuery, { userId });
-  const { datasetsCount, email, name, picture } = result?.user || {};
+  const { id, datasetsCount, email, name, picture } = result?.user || {};
 
   return (
     <Box>
-      <UserCard detailed name={name} email={email} src={picture} />
+      <UserCard detailed name={name} email={email} src={picture} id={id} />
       <Typography paddingTop={2}>
-        {name} has access to {labelWithCount(datasetsCount, 'dataset')}.
+        {name} has access to {labelWithCount(datasetsCount, "dataset")}.
         {/* {' '}<Link href={DATASET_PERMISSION_LINK}>
           Learn more about dataset permission in FiftyOne
         </Link>
@@ -68,7 +68,7 @@ function ManageUserDatasetsSection(props: ManageUserDatasetsContainerProps) {
   const result = useLazyLoadQuery<teamUserDatasetsPageQueryType>(
     teamUserDatasetsPageQuery,
     { userId, ...pageState, filter },
-    { fetchPolicy: 'store-and-network', fetchKey: updateCount }
+    { fetchPolicy: "store-and-network", fetchKey: updateCount }
   );
   const datasetsPage = result?.user?.datasetsPage;
   const { nodes: datasets = [], pageTotal } = datasetsPage || {};
@@ -77,10 +77,10 @@ function ManageUserDatasetsSection(props: ManageUserDatasetsContainerProps) {
       id,
       name,
       samplesCount,
-      permission: byInviteOnly ? user?.userPermission : user?.activePermission
+      permission: byInviteOnly ? user?.userPermission : user?.activePermission,
     })
   );
-  const title = byInviteOnly ? 'By invitation' : 'As a member';
+  const title = byInviteOnly ? "By invitation" : "As a member";
 
   useEffect(() => resetPageState, []);
 
@@ -115,7 +115,7 @@ function ManageUserDatasetsSection(props: ManageUserDatasetsContainerProps) {
         onManualPageChange={(page) => {
           setPageState((pageState) => ({ ...pageState, page }));
         }}
-        availablePageSizes={['3', ...DEFAULT_LIST_PAGE_SIZES]}
+        availablePageSizes={["3", ...DEFAULT_LIST_PAGE_SIZES]}
       />
     </>
   );

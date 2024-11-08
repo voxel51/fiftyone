@@ -564,19 +564,32 @@ def _make_range_query(path: str, field: fof.Field, args):
         mn, mx = None, None
 
     exclude = args.get("exclude", False)
+
+    min_expr = {path: {"$gte": mn}} if mn is not None else None
+    max_expr = {path: {"$lte": mx}} if mx is not None else None
     if not exclude and range_:
         return {
             "$and": [
-                {path: {"$gte": mn}},
-                {path: {"$lte": mx}},
+                e
+                for e in [
+                    min_expr,
+                    max_expr,
+                ]
+                if e
             ]
         }
 
+    min_expr = {path: {"$lt": mn}} if mn is not None else None
+    max_expr = {path: {"$gt": mx}} if mx is not None else None
     if range_:
         return {
             "$or": [
-                {path: {"$lt": mn}},
-                {path: {"$gt": mx}},
+                e
+                for e in [
+                    min_expr,
+                    max_expr,
+                ]
+                if e
             ]
         }
 

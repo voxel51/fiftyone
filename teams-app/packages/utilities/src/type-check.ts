@@ -1,9 +1,9 @@
 export function getType(value: any) {
   const basicType = typeof value;
-  if (basicType !== 'object') return basicType;
+  if (basicType !== "object") return basicType;
   const constructorName = value?.constructor?.name;
   if (constructorName) return constructorName;
-  return 'Unknown';
+  return "Unknown";
 }
 
-export const OBJECT_VALUE_TYPE = 'Object';
+export const OBJECT_VALUE_TYPE = "Object";

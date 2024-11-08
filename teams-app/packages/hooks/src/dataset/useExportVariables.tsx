@@ -1,7 +1,7 @@
-import { useCurrentFilters, useExportView } from '@fiftyone/hooks';
-import { exportMode, exportType } from '@fiftyone/teams-state';
-import { useRouter } from 'next/router';
-import { useRecoilValue } from 'recoil';
+import { useCurrentFilters, useExportView } from "@fiftyone/hooks";
+import { exportMode, exportType } from "@fiftyone/teams-state";
+import { useRouter } from "next/router";
+import { useRecoilValue } from "recoil";
 
 export function useExportVariables(estimate?: boolean) {
   const router = useRouter();
@@ -12,18 +12,18 @@ export function useExportVariables(estimate?: boolean) {
   const { filters = {}, sampleIds = [] } = form;
   const type = useRecoilValue(exportType);
   const viewSelectors =
-    type === 'view'
+    type === "view"
       ? { viewStages: view, filters, sampleIds }
       : { viewStages: [], filters: {}, sampleIds: [] };
   const variables: any = {
     datasetIdentifier: slug as string,
-    snapshot: snapshot as string
+    snapshot: snapshot as string,
   };
-  const includeFilepaths = data?.includes('filepaths');
-  const includeTags = data?.includes('tags');
+  const includeFilepaths = data?.includes("filepaths");
+  const includeTags = data?.includes("tags");
 
   // common variables for estimate and export mutation
-  variables.includeMedia = data?.includes('media');
+  variables.includeMedia = data?.includes("media");
   if (estimate) {
     variables.viewSelectors = viewSelectors;
   } else {
@@ -35,8 +35,8 @@ export function useExportVariables(estimate?: boolean) {
       const fieldAsArray = Array.isArray(field) ? field : [field];
       fieldsForEstimate.push(...fieldAsArray);
     }
-    if (includeFilepaths) fieldsForEstimate.push('filepath');
-    if (includeTags) fieldsForEstimate.push('tags');
+    if (includeFilepaths) fieldsForEstimate.push("filepath");
+    if (includeTags) fieldsForEstimate.push("tags");
     variables.fields = fieldsForEstimate;
   }
   if (estimate) return variables;
@@ -54,7 +54,7 @@ export function useExportVariables(estimate?: boolean) {
   }
 
   // variables unique to cloud export mutation
-  if (mode === 'cloud') {
+  if (mode === "cloud") {
     variables.cloudStoragePath = path;
   }
 

@@ -1,11 +1,11 @@
-import * as fos from '@fiftyone/state';
-import { OSSRelayEnvironment } from '@fiftyone/teams-state';
-import { RecoilRelayEnvironmentProvider } from 'recoil-relay';
-import { Page } from '../dynamicRouting/loadPageQuery';
+import * as fos from "@fiftyone/state";
+import { OSSRelayEnvironment } from "@fiftyone/teams-state";
+import { RecoilRelayEnvironmentProvider } from "recoil-relay";
+import { Page } from "../dynamicRouting/loadPageQuery";
 
 const SessionContext: React.FC<React.PropsWithChildren<{ page: Page }>> = ({
   children,
-  page
+  page,
 }) => {
   return (
     <OSSRelayEnvironment.Provider value={fos.getCurrentEnvironment()}>

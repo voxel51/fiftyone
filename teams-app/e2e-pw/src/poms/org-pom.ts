@@ -70,11 +70,13 @@ export class OrgPom {
   async isCompliant() {
     const audit = await this.defaultAudit();
     let isCompliant = true;
-    Object.entries(audit).forEach(([_, item]) => {
-      if (item?.remaining && item?.remaining < 0) {
-        isCompliant = false;
+    Object.entries(audit).forEach(
+      ([_, item]: [string, { remaining: number }]) => {
+        if (item?.remaining && item?.remaining < 0) {
+          isCompliant = false;
+        }
       }
-    });
+    );
     return isCompliant;
   }
 }

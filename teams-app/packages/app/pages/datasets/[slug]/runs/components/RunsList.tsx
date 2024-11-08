@@ -1,36 +1,36 @@
-import { useCurrentDataset } from '@fiftyone/hooks';
+import { useCurrentDataset } from "@fiftyone/hooks";
 import {
   BasicTable,
   Box,
   EmptyState,
   Pagination,
   TableSkeleton,
-  Timestamp
-} from '@fiftyone/teams-components';
+  Timestamp,
+} from "@fiftyone/teams-components";
 import {
   Dataset,
   autoRefreshRunsStatus,
   runsPageQuery,
   runsPageQueryDynamicVariables,
   runsPageQueryT,
-  runsPageStatusQuery
-} from '@fiftyone/teams-state';
+  runsPageStatusQuery,
+} from "@fiftyone/teams-state";
 import {
   ENABLE_ORCHESTRATOR_REGISTRATION_ENV_KEY,
-  OPERATOR_RUN_STATES
-} from '@fiftyone/teams-state/src/constants';
-import { Stack, Typography } from '@mui/material';
-import { useRouter } from 'next/router';
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { usePreloadedQuery, useQueryLoader } from 'react-relay';
-import { useRecoilState, useRecoilValue, useSetRecoilState } from 'recoil';
-import getTimestamp from '../utils/getTimestamp';
-import useRefresher, { RUNS_STATUS_REFRESHER_ID } from '../utils/useRefresher';
-import RunActions from './RunActions';
-import RunLabel from './RunLabel';
-import RunStatus from './RunStatus';
-import RunsPin from './RunsPin';
-import { useBooleanEnv } from '@fiftyone/hooks/src/common/useEnv';
+  OPERATOR_RUN_STATES,
+} from "@fiftyone/teams-state/src/constants";
+import { Stack, Typography } from "@mui/material";
+import { useRouter } from "next/router";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { usePreloadedQuery, useQueryLoader } from "react-relay";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import getTimestamp from "../utils/getTimestamp";
+import useRefresher, { RUNS_STATUS_REFRESHER_ID } from "../utils/useRefresher";
+import RunActions from "./RunActions";
+import RunLabel from "./RunLabel";
+import RunStatus from "./RunStatus";
+import RunsPin from "./RunsPin";
+import { useBooleanEnv } from "@fiftyone/hooks/src/common/useEnv";
 
 function RunsListWithQuery(props) {
   const { queryRef, refresh, refreshStatus } = props;
@@ -38,7 +38,7 @@ function RunsListWithQuery(props) {
   const result = usePreloadedQuery<runsPageQueryT>(runsPageQuery, queryRef);
   const [vars, setVars] = useRecoilState(runsPageQueryDynamicVariables);
   const setAutoRefresh = useSetRecoilState(autoRefreshRunsStatus);
-  const [hovered, setHovered] = useState('');
+  const [hovered, setHovered] = useState("");
   const [_, setRefresher] = useRefresher(RUNS_STATUS_REFRESHER_ID);
   const showOrchestrators = useBooleanEnv(
     ENABLE_ORCHESTRATOR_REGISTRATION_ENV_KEY
@@ -70,7 +70,7 @@ function RunsListWithQuery(props) {
       link: `${asPath}/${id}`,
       onHover: (e, row, hovered) => {
         if (hovered) setHovered(row.id);
-        else setHovered('');
+        else setHovered("");
       },
       cells: [
         {
@@ -94,7 +94,7 @@ function RunsListWithQuery(props) {
                 {operator}
               </Typography>
             </Box>
-          )
+          ),
         },
         {
           id: `${id}-status`,
@@ -103,15 +103,15 @@ function RunsListWithQuery(props) {
               status={runState}
               progress={showProgress ? status : undefined}
             />
-          )
+          ),
         },
         {
           id: `${id}-timestamp`,
-          Component: <Timestamp timestamp={timestamp} />
+          Component: <Timestamp timestamp={timestamp} />,
         },
         {
           id: `${id}-creator`,
-          value: runBy?.name
+          value: runBy?.name,
         },
         {
           id: `${id}-actions`,
@@ -121,9 +121,9 @@ function RunsListWithQuery(props) {
               {...node}
               hideViewInOrchestrator={!showOrchestrators}
             />
-          )
-        }
-      ]
+          ),
+        },
+      ],
     };
   });
 
@@ -158,24 +158,24 @@ export default function RunsList() {
   const loadQueryVariables = useMemo(
     () => ({
       ...dynamicVars,
-      filter: { ...(dynamicVars.filter || {}), datasetIdentifier: { eq: id } }
+      filter: { ...(dynamicVars.filter || {}), datasetIdentifier: { eq: id } },
     }),
     [dynamicVars, id]
   );
 
   const refresh = useCallback(() => {
-    loadQuery(loadQueryVariables, { fetchPolicy: 'store-and-network' });
+    loadQuery(loadQueryVariables, { fetchPolicy: "store-and-network" });
   }, [loadQuery, loadQueryVariables]);
 
   const refreshStatus = useCallback(() => {
     loadStatusQuery(
       { ...loadQueryVariables, pageSize: loadQueryVariables?.pageSize + 1 },
-      { fetchPolicy: 'store-and-network' }
+      { fetchPolicy: "store-and-network" }
     );
   }, [loadStatusQuery, loadQueryVariables]);
 
   useEffect(() => {
-    loadQuery(loadQueryVariables, { fetchPolicy: 'store-and-network' });
+    loadQuery(loadQueryVariables, { fetchPolicy: "store-and-network" });
   }, [loadQuery, loadQueryVariables]);
 
   if (!queryRef) return <TableSkeleton rows={dynamicVars.pageSize} />;

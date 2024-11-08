@@ -1,7 +1,7 @@
-import { PARAMS, QParamT } from '@fiftyone/teams-state/src/urlSyncCommon';
-import { ParsedUrlQuery } from 'querystring';
-import { commonQueryParams, normalizeQueryParams } from './urlSyncCommon';
-import { toSearchUserFilter } from '@fiftyone/teams-state/src/Settings/team';
+import { PARAMS, QParamT } from "@fiftyone/teams-state/src/urlSyncCommon";
+import { ParsedUrlQuery } from "querystring";
+import { commonQueryParams, normalizeQueryParams } from "./urlSyncCommon";
+import { toSearchUserFilter } from "@fiftyone/teams-state/src/Settings/team";
 
 const settingsTeamQueryParams: { [key: string]: QParamT } = {
   ...commonQueryParams,
@@ -10,11 +10,11 @@ const settingsTeamQueryParams: { [key: string]: QParamT } = {
       input
         ? toSearchUserFilter({
             fields: [],
-            term: encodeURIComponent(input as string)
+            term: encodeURIComponent(input as string),
           })
         : null,
-    topKey: 'search'
-  }
+    topKey: "search",
+  },
 };
 
 export const normalizeSettingsTeamQueryParams = (

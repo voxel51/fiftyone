@@ -4,16 +4,16 @@ import {
   securityDisplayRolesQuery,
   securityGetEverythingQueryT,
   securityRoleAttrFragment,
-  UserAttributeT
-} from '@fiftyone/teams-state';
-import { UserAttribute } from '@fiftyone/teams-state/src/Settings/__generated__/securityAttrFrag.graphql';
-import { useFragment } from 'react-relay';
-import { convertRoleAttributes, RoleAttribute } from './utils';
-import { useCallback, useState } from 'react';
-import { useLazyLoadLatestQuery } from '../common';
+  UserAttributeT,
+} from "@fiftyone/teams-state";
+import { UserAttribute } from "@fiftyone/teams-state/src/Settings/__generated__/securityAttrFrag.graphql";
+import { useFragment } from "react-relay";
+import { convertRoleAttributes, RoleAttribute } from "./utils";
+import { useCallback, useState } from "react";
+import { useLazyLoadLatestQuery } from "../common";
 
 // Define the order of roles
-export const roleOrder: Role[] = ['ADMIN', 'MEMBER', 'COLLABORATOR', 'GUEST'];
+export const roleOrder: Role[] = ["ADMIN", "MEMBER", "COLLABORATOR", "GUEST"];
 
 type RawAttributesRolePermission = RowPermission[][];
 
@@ -42,7 +42,7 @@ const useSecurityRoleData = () => {
   const data = useLazyLoadLatestQuery<securityGetEverythingQueryT>(
     securityDisplayRolesQuery,
     {},
-    { fetchPolicy: 'store-and-network', fetchKey }
+    { fetchPolicy: "store-and-network", fetchKey }
   );
 
   const refetch = useCallback(() => {
@@ -71,8 +71,8 @@ const useSecurityRole = (): UseSecurityRoleResult => {
 
   const maxDatasetPermission = useCallback(
     (role: Role) => {
-      if (!dataByRole) return 'EDIT';
-      return dataByRole[role]['MAX_DATASET_PERMISSION'] as DatasetPermission;
+      if (!dataByRole) return "EDIT";
+      return dataByRole[role]["MAX_DATASET_PERMISSION"] as DatasetPermission;
     },
     [dataByRole]
   );
@@ -80,7 +80,7 @@ const useSecurityRole = (): UseSecurityRoleResult => {
   return {
     byUserAction: finalData,
     byRole: dataByRole,
-    maxDatasetPermission
+    maxDatasetPermission,
   };
 };
 
@@ -94,7 +94,7 @@ const convertData: (
     ADMIN: {},
     MEMBER: {},
     COLLABORATOR: {},
-    GUEST: {}
+    GUEST: {},
   } as RoleAttributesResults;
 
   data.forEach((attributeDataList) => {

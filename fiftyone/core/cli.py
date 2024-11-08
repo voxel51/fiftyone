@@ -7,12 +7,12 @@ Definition of the `fiftyone` command-line interface (CLI).
 """
 
 import argparse
-import warnings
 from collections import defaultdict
 from cryptography.fernet import Fernet
 from datetime import datetime
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -20,8 +20,6 @@ import textwrap
 
 import argcomplete
 from bson import ObjectId
-import humanize
-import pytz
 from tabulate import tabulate
 import webbrowser
 
@@ -38,6 +36,7 @@ import fiftyone.core.utils as fou
 import fiftyone.migrations as fom
 import fiftyone.operators as foo
 import fiftyone.operators.delegated as food
+import fiftyone.operators.delegated_executors.continual as fodec
 import fiftyone.operators.executor as fooe
 import fiftyone.plugins as fop
 import fiftyone.utils.data as foud
@@ -3187,7 +3186,7 @@ class DelegatedCommand(Command):
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
-        # _register_command(subparsers, "launch", DelegatedLaunchCommand)
+        _register_command(subparsers, "launch", DelegatedLaunchCommand)
         _register_command(subparsers, "list", DelegatedListCommand)
         _register_command(subparsers, "info", DelegatedInfoCommand)
         _register_command(subparsers, "fail", DelegatedFailCommand)
@@ -3210,6 +3209,8 @@ class DelegatedLaunchCommand(Command):
 
     @staticmethod
     def setup(parser):
+        # Default is local which is unsupported in Teams. This is so that
+        #   caller must be intentional about wanting "remote" mode.
         parser.add_argument(
             "-t",
             "--type",
@@ -3218,9 +3219,22 @@ class DelegatedLaunchCommand(Command):
             help="the type of service to launch. The default is 'local'",
         )
 
+        parser.add_argument(
+            "--interval",
+            "-i",
+            type=int,
+            default=10,
+            help="Interval in seconds to check for new operations",
+        )
+
+        parser.add_argument(
+            "--no-validate", action="store_false", dest="validate"
+        )
+
     @staticmethod
     def execute(parser, args):
-        supported_types = ("local",)
+        # "local" not supported in Teams
+        supported_types = {"remote"}
         if args.type not in supported_types:
             raise ValueError(
                 "Unsupported service type '%s'. Supported values are %s"
@@ -3229,6 +3243,21 @@ class DelegatedLaunchCommand(Command):
 
         if args.type == "local":
             _launch_delegated_local()
+        elif args.type == "remote":
+            do_svc = food.DelegatedOperationService()
+            orch_svc = foo.orchestrator.OrchestratorService()
+            run_link_path = fo.config.delegated_operation_run_link_path
+            executor = fodec.ContinualExecutor(
+                do_svc,
+                orch_svc,
+                execution_interval=args.interval,
+                run_link_path=run_link_path,
+            )
+            if args.validate:
+                executor.validate()
+            signal.signal(signal.SIGTERM, executor.signal_handler)
+            signal.signal(signal.SIGINT, executor.signal_handler)
+            executor.start()
 
 
 def _launch_delegated_local():

@@ -1,13 +1,13 @@
-import { useMutation } from '@fiftyone/hooks';
-import { Dialog } from '@fiftyone/teams-components';
+import { useMutation } from "@fiftyone/hooks";
+import { Dialog } from "@fiftyone/teams-components";
 import {
   removePluginMutation,
-  uninstallPluginAtom
-} from '@fiftyone/teams-state';
-import { Typography } from '@mui/material';
-import { useRecoilState } from 'recoil';
-import { PluginsRefreshProps } from './types';
-import { useCallback } from 'react';
+  uninstallPluginAtom,
+} from "@fiftyone/teams-state";
+import { Typography } from "@mui/material";
+import { useRecoilState } from "recoil";
+import { PluginsRefreshProps } from "./types";
+import { useCallback } from "react";
 
 export default function UninstallPlugin(props: PluginsRefreshProps) {
   const { refresh } = props;
@@ -36,7 +36,7 @@ export default function UninstallPlugin(props: PluginsRefreshProps) {
           onSuccess: () => {
             handleClose();
             refresh();
-          }
+          },
         });
       }}
     >

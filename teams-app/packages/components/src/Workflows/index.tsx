@@ -1,23 +1,23 @@
-import { useTrackEvent } from '@fiftyone/analytics';
-import { teamsGettingStartedAtom } from '@fiftyone/teams-state';
-import SchoolIcon from '@mui/icons-material/School';
+import { useTrackEvent } from "@fiftyone/analytics";
+import { teamsGettingStartedAtom } from "@fiftyone/teams-state";
+import SchoolIcon from "@mui/icons-material/School";
 import {
   Box,
   Button,
   CardActionArea,
   Grid,
   Stack,
-  SxProps
-} from '@mui/material';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import CardMedia from '@mui/material/CardMedia';
-import Typography from '@mui/material/Typography';
-import Link from 'next/link';
-import { useEffect } from 'react';
-import { useRecoilState } from 'recoil';
-import Dialog from '../Dialog';
-import { scrollable } from '../Scrollable';
+  SxProps,
+} from "@mui/material";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CardMedia from "@mui/material/CardMedia";
+import Typography from "@mui/material/Typography";
+import Link from "next/link";
+import { useEffect } from "react";
+import { useRecoilState } from "recoil";
+import Dialog from "../Dialog";
+import { scrollable } from "../Scrollable";
 
 export default function Workflows() {
   const [open, setOpen] = useRecoilState(teamsGettingStartedAtom);
@@ -25,7 +25,7 @@ export default function Workflows() {
 
   useEffect(() => {
     if (open) {
-      trackEvent('view_get_started');
+      trackEvent("view_get_started");
     }
   }, [open]);
 
@@ -35,7 +35,7 @@ export default function Workflows() {
         variant="outlined"
         sx={ORANGE_OUTLINED_BUTTON_STYLE}
         onClick={() => {
-          trackEvent('click_get_started');
+          trackEvent("click_get_started");
           setOpen(true);
         }}
         startIcon={<SchoolIcon />}
@@ -46,25 +46,25 @@ export default function Workflows() {
         hideActionButtons
         open={open}
         onClose={() => {
-          trackEvent('close_get_started');
+          trackEvent("close_get_started");
           setOpen(false);
         }}
         title={
           <Stack>
             <Typography
               sx={{
-                fontSize: '2.5rem',
+                fontSize: "2.5rem",
                 color: (theme) => theme.palette.text.primary,
-                fontWeight: '200'
+                fontWeight: "200",
               }}
               gutterBottom
             >
               Welcome to&nbsp;
               <Typography
                 sx={{
-                  fontWeight: '370',
-                  fontSize: 'inherit',
-                  color: 'inherit'
+                  fontWeight: "370",
+                  fontSize: "inherit",
+                  color: "inherit",
                 }}
                 component="span"
               >
@@ -80,10 +80,10 @@ export default function Workflows() {
         fullWidth
         PaperProps={{
           sx: {
-            maxWidth: 'min(90vw, 850px)',
-            maxHeight: 'calc(100% - 32px)',
-            margin: 2
-          }
+            maxWidth: "min(90vw, 850px)",
+            maxHeight: "calc(100% - 32px)",
+            margin: 2,
+          },
         }}
       >
         <Typography sx={{ pt: 2.5, pb: 1.5 }}>
@@ -93,24 +93,24 @@ export default function Workflows() {
         <Grid
           container
           gap={2}
-          sx={{ maxHeight: 'calc(100vh - 340px)', overflow: 'auto', py: 1 }}
+          sx={{ maxHeight: "calc(100vh - 340px)", overflow: "auto", py: 1 }}
           className={scrollable}
         >
           {WORKFLOWS.map((workflow) => (
             <Grid item xs>
               <Link href={workflow.href}>
                 <CardActionArea
-                  sx={{ height: '100%' }}
+                  sx={{ height: "100%" }}
                   onClick={() => {
-                    trackEvent('click_workflow', { workflow: workflow.title });
+                    trackEvent("click_workflow", { workflow: workflow.title });
                     setOpen(false);
                   }}
                 >
-                  <Card sx={{ minWidth: 300, height: 'inherit' }}>
+                  <Card sx={{ minWidth: 300, height: "inherit" }}>
                     <CardMedia
                       sx={{
-                        height: 'clamp(0px, 150px, calc(100vh - 765px))',
-                        maxHeight: 'calc(100vh - 640px)'
+                        height: "clamp(0px, 150px, calc(100vh - 765px))",
+                        maxHeight: "calc(100vh - 640px)",
                       }}
                       image={workflow.image}
                     />
@@ -135,7 +135,7 @@ export default function Workflows() {
               variant="outlined"
               href="https://github.com/voxel51/fiftyone"
               onClick={() => {
-                trackEvent('click_install_open_source_locally');
+                trackEvent("click_install_open_source_locally");
               }}
               target="_blank"
               sx={ORANGE_OUTLINED_BUTTON_STYLE}
@@ -146,7 +146,7 @@ export default function Workflows() {
               variant="contained"
               href="https://voxel51.com/book-a-demo/"
               onClick={() => {
-                trackEvent('click_schedule_demo');
+                trackEvent("click_schedule_demo");
               }}
               target="_blank"
             >
@@ -161,39 +161,39 @@ export default function Workflows() {
 
 const WORKFLOWS = [
   {
-    title: 'Explore Embeddings',
+    title: "Explore Embeddings",
     description:
-      'Learn how to leverage embeddings to find mistakes and outliers in your dataset in a few simple steps.',
-    image: '/workflows/bdd.png',
-    href: '/datasets/try-bdd/samples'
+      "Learn how to leverage embeddings to find mistakes and outliers in your dataset in a few simple steps.",
+    image: "/workflows/bdd.png",
+    href: "/datasets/try-bdd/samples",
   },
   {
-    title: 'Filter and Evaluate Datasets',
+    title: "Filter and Evaluate Datasets",
     description:
-      'Model evaluation can be hard. See how FiftyOne can help you find samples of interest and take action to refine your data and models.',
-    image: '/workflows/visdrone.png',
-    href: '/datasets/try-visdrone/samples'
+      "Model evaluation can be hard. See how FiftyOne can help you find samples of interest and take action to refine your data and models.",
+    image: "/workflows/visdrone.png",
+    href: "/datasets/try-visdrone/samples",
   },
   {
-    title: 'Curate Unlabeled Data',
+    title: "Curate Unlabeled Data",
     description:
-      'Discover the tools available to you to explore, curate, clean, and automatically annotate your unlabeled data.',
-    image: '/workflows/bear.png',
-    href: '/datasets/try-coco/samples'
+      "Discover the tools available to you to explore, curate, clean, and automatically annotate your unlabeled data.",
+    image: "/workflows/bear.png",
+    href: "/datasets/try-coco/samples",
   },
   {
-    title: 'VoxelGPT',
+    title: "VoxelGPT",
     description:
-      'VoxelGPT is an open source plugin that translates your natural language prompts into actions that organize and explore your data.',
-    image: '/workflows/voxelgpt.png',
-    href: '/datasets/coco-demo/samples'
-  }
+      "VoxelGPT is an open source plugin that translates your natural language prompts into actions that organize and explore your data.",
+    image: "/workflows/voxelgpt.png",
+    href: "/datasets/coco-demo/samples",
+  },
 ];
 
 const ORANGE_OUTLINED_BUTTON_STYLE: SxProps = {
   borderColor: (theme) => theme.palette.voxel.main,
   color: (theme) => theme.palette.voxel.main,
-  ':hover': {
-    borderColor: (theme) => theme.palette.voxel.main
-  }
+  ":hover": {
+    borderColor: (theme) => theme.palette.voxel.main,
+  },
 };

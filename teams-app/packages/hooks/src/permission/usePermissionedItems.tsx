@@ -2,10 +2,10 @@ import {
   PermissionResolver,
   canMutateDataset,
   hasUserPermission,
-  useCurrentDataset
-} from '@fiftyone/teams-state';
-import { useRouter } from 'next/router';
-import { useCurrentUser } from '../user';
+  useCurrentDataset,
+} from "@fiftyone/teams-state";
+import { useRouter } from "next/router";
+import { useCurrentUser } from "../user";
 
 export default function usePermissionedItems<
   ItemType extends ItemWithPermission
@@ -18,7 +18,7 @@ export default function usePermissionedItems<
       const { permission = {} } = item;
       if (permission && !hasDatasetPermission(permission, dataset, user)) {
         const { error, label } = permission;
-        const computedLabel = label ? ` to ${label}` : '';
+        const computedLabel = label ? ` to ${label}` : "";
         const title = error || `You do not have permission${computedLabel}`;
         return { ...item, disabled: true, title };
       }

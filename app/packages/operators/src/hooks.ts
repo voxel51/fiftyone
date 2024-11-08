@@ -2,7 +2,7 @@ import { pluginsLoaderAtom } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { debounce, isEqual } from "lodash";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilValue, useSetRecoilState, useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { RESOLVE_PLACEMENTS_TTL } from "./constants";
 import {
   ExecutionContext,
@@ -27,6 +27,8 @@ function useOperatorThrottledContextSetter() {
   const selectedLabels = useRecoilValue(fos.selectedLabels);
   const groupSlice = useRecoilValue(fos.groupSlice);
   const currentSample = useCurrentSample();
+  const spaces = useRecoilValue(fos.sessionSpaces);
+  const workspaceName = spaces._name;
   const setContext = useSetRecoilState(operatorThrottledContext);
 
   // Teams only
@@ -54,6 +56,8 @@ function useOperatorThrottledContextSetter() {
       currentSample,
       viewName,
       groupSlice,
+      spaces,
+      workspaceName,
     });
   }, [
     setThrottledContext,
@@ -67,6 +71,8 @@ function useOperatorThrottledContextSetter() {
     currentSample,
     viewName,
     groupSlice,
+    spaces,
+    workspaceName,
   ]);
 }
 

@@ -1,13 +1,16 @@
-import { BasicForm, Box } from '@fiftyone/teams-components';
-import { HOW_TO_CONNECT_TO_GCP_LINK } from '@fiftyone/teams-state/src/constants';
-import { Link, Typography } from '@mui/material';
-import { COMMON_FIELDS, ConnectCloudStorageProps } from '../utils';
+import { BasicForm, Box } from "@fiftyone/teams-components";
+import { HOW_TO_CONNECT_TO_GCP_LINK } from "@fiftyone/teams-state/src/constants";
+import { Link, Typography } from "@mui/material";
+import { COMMON_FIELDS, ConnectCloudStorageProps } from "../utils";
 
-export default function ConnectGoogleCloud({ onChange }: ConnectCloudStorageProps) {
+export default function ConnectGoogleCloud({
+  onChange,
+}: ConnectCloudStorageProps) {
   return (
     <Box>
       <Typography variant="body1" sx={{ mb: 3 }}>
-      FiftyOne connects to your GCP instance using credentials you provide below. Learn&nbsp;
+        FiftyOne connects to your GCP instance using credentials you provide
+        below. Learn&nbsp;
         <Link href={HOW_TO_CONNECT_TO_GCP_LINK} sx={{ fontWeight: 600 }}>
           how to connect to GCP
         </Link>
@@ -16,16 +19,16 @@ export default function ConnectGoogleCloud({ onChange }: ConnectCloudStorageProp
       <BasicForm
         fields={[
           {
-            type: 'file',
-            id: 'service-account-file',
-            label: 'Credentials file',
+            type: "file",
+            id: "service-account-file",
+            label: "Credentials file",
             fieldProps: {
-              caption: '.json file only',
-              types: '.json'
+              caption: ".json file only",
+              types: ".json",
             },
-            required: true
+            required: true,
           },
-          ...COMMON_FIELDS
+          ...COMMON_FIELDS,
         ]}
         onChange={onChange}
       />

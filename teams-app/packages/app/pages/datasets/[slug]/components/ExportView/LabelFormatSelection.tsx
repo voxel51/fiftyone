@@ -1,12 +1,12 @@
-import { useExportView } from '@fiftyone/hooks';
-import { Selection } from '@fiftyone/teams-components';
+import { useExportView } from "@fiftyone/hooks";
+import { Selection } from "@fiftyone/teams-components";
 import {
   DatasetExportFormatsQuery,
-  DatasetSnapshotExportFormatsQuery
-} from '@fiftyone/teams-state';
-import { useRouter } from 'next/router';
-import { useMemo } from 'react';
-import { useLazyLoadQuery } from 'react-relay';
+  DatasetSnapshotExportFormatsQuery,
+} from "@fiftyone/teams-state";
+import { useRouter } from "next/router";
+import { useMemo } from "react";
+import { useLazyLoadQuery } from "react-relay";
 
 export default function LabelFormatSelection() {
   const router = useRouter();
@@ -17,7 +17,7 @@ export default function LabelFormatSelection() {
     {
       datasetIdentifier: slug as string,
       snapshot: snapshot as string,
-      includeMedia: hasMedia
+      includeMedia: hasMedia,
     }
   );
   const computedExportFormats = useMemo(() => {
@@ -27,7 +27,7 @@ export default function LabelFormatSelection() {
     const { exportFormats = [] } = datasetOrSnapshot || {};
     return exportFormats.map(({ name, displayName }) => ({
       id: name,
-      label: displayName
+      label: displayName,
     }));
   }, [exportFormatsResponse, snapshot]);
 
@@ -37,7 +37,7 @@ export default function LabelFormatSelection() {
       items={computedExportFormats}
       value={format}
       selectProps={{
-        fullWidth: true
+        fullWidth: true,
       }}
       containerProps={{ sx: { mt: 1 } }}
       onChange={(selectedType) => {

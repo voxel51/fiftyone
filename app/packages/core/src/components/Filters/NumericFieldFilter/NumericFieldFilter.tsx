@@ -1,32 +1,35 @@
 import * as fos from "@fiftyone/state";
-import { formatPrimitive } from "@fiftyone/utilities";
-import React from "react";
+import React, { Suspense } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-import RangeSlider from "../../Common/RangeSlider";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
-import FilterOption from "./FilterOption";
-import Nonfinites from "./Nonfinites";
-import Reset from "./Reset";
+import RangeSlider from "./RangeSlider";
+import { Button } from "@mui/material";
+import { LoadingDots, useTheme } from "@fiftyone/components";
 import * as state from "./state";
+import * as schemaAtoms from "@fiftyone/state/src/recoil/schema";
 
-const NamedRangeSliderContainer = styled.div`
+const Container = styled.div`
   margin: 3px;
   font-weight: bold;
 `;
 
-const NamedRangeSliderHeader = styled.div`
+const Header = styled.div`
   display: flex;
   justify-content: space-between;
 `;
 
-const RangeSliderContainer = styled.div`
+const Box = styled.div`
+  display: flex;
+  justify-content: space-between;
+  column-gap: 1rem;
   background: ${({ theme }) => theme.background.level2};
   border: 1px solid var(--fo-palette-divider);
   border-radius: 2px;
   color: ${({ theme }) => theme.text.secondary};
   margin-top: 0.25rem;
   padding: 0.25rem 0.5rem;
+  height: 30px;
 `;
 
 type Props = {
@@ -40,66 +43,70 @@ type Props = {
 
 const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   const name = path.split(".").slice(-1)[0];
-  const ftype = useRecoilValue(fos.fieldType({ path }));
+  const fieldType = useRecoilValue(schemaAtoms.filterFields(path));
+  const isGroup = fieldType.length > 1;
+  const theme = useTheme();
+  const [showRange, setShowRange] = React.useState(!isGroup);
   const field = fos.useAssertedRecoilValue(fos.field(path));
-  const hasBounds = useRecoilValue(state.hasBounds({ path, modal }));
-  const lightning = useRecoilValue(fos.isLightningPath(path));
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const hasBounds = useRecoilValue(
+    state.hasBounds({ path, modal, shouldCalculate: !queryPerformance })
+  );
 
-  const key = path.replace(/[ ,.]/g, "-");
-  const excluded = useRecoilValue(fos.numericExcludeAtom({ modal, path }));
-  const defaultRange = useRecoilValue(state.hasDefaultRange({ modal, path }));
-  const one = useRecoilValue(state.oneBound({ path, modal }));
-  const timeZone = useRecoilValue(fos.timeZone);
-
-  if (named && !lightning && !hasBounds) {
+  if (!queryPerformance && named && !hasBounds) {
     return null;
   }
 
+  const handleShowRange = () => {
+    setShowRange(true);
+  };
+
+  const showButton = isGroup && queryPerformance && !showRange && !modal;
+
   return (
-    <NamedRangeSliderContainer onClick={(e) => e.stopPropagation()}>
+    <Container onClick={(e) => e.stopPropagation()}>
       {named && name && (
         <FieldLabelAndInfo
           nested
           field={field}
           color={color}
           template={({ label, hoverTarget }) => (
-            <NamedRangeSliderHeader>
+            <Header>
               <span ref={hoverTarget}>{label}</span>
-            </NamedRangeSliderHeader>
+            </Header>
           )}
         />
       )}
-      <RangeSliderContainer
-        onMouseDown={(e) => e.stopPropagation()}
-        style={{ cursor: "default" }}
-        data-cy={`numeric-slider-container-${key}`}
+      <Suspense
+        fallback={
+          <Box>
+            <LoadingDots text="Loading" />
+          </Box>
+        }
       >
-        {hasBounds &&
-          !(excluded && defaultRange) &&
-          (one !== null ? (
-            formatPrimitive({ ftype, timeZone, value: one })?.toString()
-          ) : (
-            <RangeSlider
-              showBounds={false}
-              fieldType={ftype}
-              valueAtom={fos.rangeAtom({
-                modal,
-                path,
-                withBounds: true,
-              })}
-              boundsAtom={fos.boundsAtom({
-                path,
-                modal,
-              })}
-              color={color}
-            />
-          ))}
-        {defaultRange && <Nonfinites modal={modal} path={path} />}
-        <FilterOption color={color} modal={modal} path={path} />
-        <Reset color={color} modal={modal} path={path} />
-        {!lightning && !hasBounds && <>No results</>}
-      </RangeSliderContainer>
-    </NamedRangeSliderContainer>
+        {showButton ? (
+          <Box>
+            <Button
+              onClick={handleShowRange}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "100%",
+                padding: "10px",
+                color: theme.text.secondary,
+                borderRadius: "8px",
+                border: "1px solid " + theme.secondary.main,
+              }}
+            >
+              Filter by {name}
+            </Button>
+          </Box>
+        ) : (
+          <RangeSlider color={color} modal={modal} path={path} />
+        )}
+      </Suspense>
+    </Container>
   );
 };
 

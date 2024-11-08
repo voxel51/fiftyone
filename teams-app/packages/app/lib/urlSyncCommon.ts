@@ -1,40 +1,40 @@
-import { PARAMS, QParamT } from '@fiftyone/teams-state/src/urlSyncCommon';
-import { ParsedUrlQuery } from 'querystring';
-import { toSearchFilter } from '@fiftyone/teams-state';
+import { PARAMS, QParamT } from "@fiftyone/teams-state/src/urlSyncCommon";
+import { ParsedUrlQuery } from "querystring";
+import { toSearchFilter } from "@fiftyone/teams-state";
 
 export const commonQueryParams: { [key: string]: QParamT } = {
   [PARAMS.PAGE]: {
     toVariable: (input: string) => Number(input),
-    topKey: 'page'
+    topKey: "page",
   },
   [PARAMS.PAGE_SIZE]: {
     toVariable: (input: string) => Number(input),
-    topKey: 'pageSize'
+    topKey: "pageSize",
   },
   [PARAMS.ORDER_FIELD]: {
     toVariable: (input: string) => input,
-    topKey: 'order',
-    nestedKey: 'field'
+    topKey: "order",
+    nestedKey: "field",
   },
   [PARAMS.ORDER_DIRECTION]: {
     toVariable: (input: string) => {
-      if (['asc', 'desc', 'ASC', 'DESC'].includes(input))
+      if (["asc", "desc", "ASC", "DESC"].includes(input))
         return input.toUpperCase();
-      return 'ASC';
+      return "ASC";
     },
-    topKey: 'order',
-    nestedKey: 'direction'
+    topKey: "order",
+    nestedKey: "direction",
   },
   [PARAMS.SEARCH]: {
     toVariable: (input: string) =>
       input
         ? toSearchFilter({
             fields: [],
-            term: encodeURIComponent(input as string)
+            term: encodeURIComponent(input as string),
           })
         : null,
-    topKey: 'search'
-  }
+    topKey: "search",
+  },
 };
 
 // parse query parameters
@@ -47,7 +47,7 @@ export const normalizeQueryParams = (
   const normalizedQuery: { [key: string]: any } = {};
 
   for (const [key, value] of Object.entries(query)) {
-    if (typeof value !== 'string') {
+    if (typeof value !== "string") {
       throw new Error(`bad parameter ${key}: '${value?.toString()}'`);
     }
 
@@ -64,7 +64,7 @@ export const normalizeQueryParams = (
     } else {
       normalizedQuery[topKey] = {
         ...normalizedQuery[topKey],
-        [nestedKey]: res
+        [nestedKey]: res,
       };
     }
   }

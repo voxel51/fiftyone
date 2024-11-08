@@ -1,12 +1,12 @@
 // todo: move to hooks?
 
-import { useCallback } from 'react';
+import { useCallback } from "react";
 
 const refreshers = new Map();
 
 function refresh(id: string) {
   const refresher = refreshers.get(id);
-  if (typeof refresher === 'function') {
+  if (typeof refresher === "function") {
     refresher();
   }
 }
@@ -30,7 +30,7 @@ export default function useRefresher(
   return [refreshForId, setRefresherForId];
 }
 
-export const PINNED_RUNS_REFRESHER_ID = 'PINNED_RUNS_REFRESHER';
-export const RUNS_STATUS_REFRESHER_ID = 'RUNS_STATUS_REFRESHER';
+export const PINNED_RUNS_REFRESHER_ID = "PINNED_RUNS_REFRESHER";
+export const RUNS_STATUS_REFRESHER_ID = "RUNS_STATUS_REFRESHER";
 
 type refresherType = () => void;

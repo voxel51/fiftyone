@@ -1,3 +1,5 @@
+import { usePanelEvent } from "@fiftyone/operators";
+import { usePanelId } from "@fiftyone/spaces";
 import { Box, Paper, PaperProps } from "@mui/material";
 import React, { PropsWithChildren } from "react";
 import {
@@ -10,13 +12,17 @@ import { ViewPropsType } from "../utils/types";
 import { has } from "lodash";
 
 export default function ContainerizedComponent(props: ContainerizedComponent) {
-  const { schema, children } = props;
+  const { schema, children, path } = props;
   const container = schema?.view?.container;
   let containerizedChildren = children;
   if (container) {
     const Container = containersByName[container.name];
     if (Container) {
-      containerizedChildren = <Container {...container}>{children}</Container>;
+      containerizedChildren = (
+        <Container {...container} path={path}>
+          {children}
+        </Container>
+      );
     } else {
       console.warn(`Container ${container.name} can not be found`);
     }
@@ -39,14 +45,52 @@ export default function ContainerizedComponent(props: ContainerizedComponent) {
 }
 
 function PaperContainer(props: PaperContainerProps) {
-  const { elevation = 1, children, rounded = true, ...paperProps } = props;
+  const {
+    elevation = 1,
+    children,
+    rounded = true,
+    on_click,
+    params = {},
+    path,
+    prompt,
+    ...paperProps
+  } = props;
+  const panelId = usePanelId();
+  const handleClick = usePanelEvent();
+  const computedParams = { ...params, path };
   const roundedSx = rounded ? {} : { borderRadius: 0 };
   const paddingSx = getPaddingSx(props);
   const marginSx = getMarginSx(props);
+  const hoverProps = on_click
+    ? {
+        "&:hover": {
+          cursor: "pointer",
+          backgroundColor: (theme) => theme.palette.action.hover,
+        },
+      }
+    : {};
+
   return (
     <Paper
-      sx={{ p: 1, m: 0.5, ...roundedSx, ...paddingSx, ...marginSx }}
+      sx={{
+        p: 1,
+        m: 0.5,
+        transition: "background 0.25s ease",
+        ...roundedSx,
+        ...paddingSx,
+        ...marginSx,
+        ...hoverProps,
+      }}
       elevation={elevation}
+      onClick={() => {
+        if (on_click) {
+          handleClick(panelId, {
+            params: computedParams,
+            operator: on_click,
+            prompt,
+          });
+        }
+      }}
       {...paperProps}
     >
       {children}
@@ -63,5 +107,5 @@ const containersByName = { PaperContainer, OutlinedContainer };
 type ContainerizedComponent = PropsWithChildren<ViewPropsType>;
 
 type PaperContainerProps = PropsWithChildren<
-  PaperProps & { rounded?: boolean }
+  PaperProps & { rounded?: boolean; [key: string]: any }
 >;

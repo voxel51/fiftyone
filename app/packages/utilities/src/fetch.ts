@@ -22,6 +22,16 @@ export interface FetchFunction {
   ): Promise<R>;
 }
 
+class QueryPerformanceToast extends Event {
+  path?: string;
+  constructor(path?: string) {
+    super("queryperformance");
+    this.path = path;
+  }
+}
+
+const TIMEOUT = 5000;
+
 export const getFetchFunction = () => {
   return fetchFunctionSingleton;
 };
@@ -122,6 +132,14 @@ export const setFetchFunction = (
         })
       : fetch;
 
+    let timeoutId = undefined;
+    const filterPath = getFirstFilterPath(body);
+    if (filterPath) {
+      timeoutId = setTimeout(() => {
+        window.dispatchEvent(new QueryPerformanceToast(filterPath));
+      }, TIMEOUT);
+    }
+
     const response = await fetchCall(url, {
       method: method,
       cache: "no-cache",
@@ -129,7 +147,12 @@ export const setFetchFunction = (
       mode: "cors",
       body: body ? JSON.stringify(body) : null,
       signal: controller.signal,
+      referrerPolicy: "same-origin",
     });
+
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
 
     if (response.status >= 400) {
       const errorMetadata = {
@@ -271,6 +294,7 @@ export const getEventSource = (
       method: "POST",
       signal,
       body: JSON.stringify(body),
+      referrerPolicy: "same-origin",
       async onopen(response) {
         if (response.ok) {
           events.onopen && events.onopen();
@@ -405,4 +429,19 @@ const pollingEventSource = (
         2000
       );
     });
+};
+
+const getFirstFilterPath = (requestBody: any) => {
+  if (requestBody && requestBody.query) {
+    if (requestBody.query.includes("paginateSamplesQuery")) {
+      const pathsArray = requestBody?.variables?.filters;
+      const paths = pathsArray ? Object.keys(pathsArray) : [];
+      return paths.length > 0 ? paths[0] : undefined;
+    }
+    if (requestBody.query.includes("lightningQuery")) {
+      const paths = requestBody?.variables?.input?.paths;
+      return paths && paths.length > 0 ? paths[0].path : undefined;
+    }
+  }
+  return undefined;
 };

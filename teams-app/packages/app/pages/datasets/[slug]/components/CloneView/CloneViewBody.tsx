@@ -1,11 +1,11 @@
-import { useFetchData, useMutation } from '@fiftyone/hooks';
-import { State } from '@fiftyone/state';
+import { useFetchData, useMutation } from "@fiftyone/hooks";
+import { State } from "@fiftyone/state";
 import {
   Box,
   Button,
   DatasetNameInput,
-  TableSkeleton
-} from '@fiftyone/teams-components';
+  TableSkeleton,
+} from "@fiftyone/teams-components";
 import {
   DatasetCloneMutation,
   DatasetCloneMutationT,
@@ -15,15 +15,15 @@ import {
   cloneViewForceClosePopoverCount,
   isEditingDatasetName,
   newDatasetNameState,
-  newDatasetState
-} from '@fiftyone/teams-state';
-import { CLONE_OPTIONS } from '@fiftyone/teams-state/src/constants';
-import { isObjectEmpty } from '@fiftyone/teams-utilities/src/isObjectEmpty';
-import { ContentCopy } from '@mui/icons-material';
-import { useRouter } from 'next/router';
-import { Suspense, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useRecoilState, useSetRecoilState } from 'recoil';
-import ViewOrDatasetSelection from '../ViewSelection';
+  newDatasetState,
+} from "@fiftyone/teams-state";
+import { CLONE_OPTIONS } from "@fiftyone/teams-state/src/constants";
+import { isObjectEmpty } from "@fiftyone/teams-utilities/src/isObjectEmpty";
+import { ContentCopy } from "@mui/icons-material";
+import { useRouter } from "next/router";
+import { Suspense, useCallback, useEffect, useMemo, useRef } from "react";
+import { useRecoilState, useSetRecoilState } from "recoil";
+import ViewOrDatasetSelection from "../ViewSelection";
 
 interface SourceView {
   filters?: State.Filters;
@@ -58,26 +58,26 @@ export default function CloneViewBody() {
   const emptySourceView = {
     filters: {},
     sampleIds: [],
-    viewStages: []
+    viewStages: [],
   } as SourceView;
 
   const viewOptions = useMemo(() => {
     if (isFilterNull) {
       return [
         CLONE_OPTIONS.DATASET_WITH_RUN,
-        CLONE_OPTIONS.DATASET_WITHOUT_RUN
+        CLONE_OPTIONS.DATASET_WITHOUT_RUN,
       ];
     }
     return [
       CLONE_OPTIONS.WITH_FILTER,
       CLONE_OPTIONS.DATASET_WITH_RUN,
-      CLONE_OPTIONS.DATASET_WITHOUT_RUN
+      CLONE_OPTIONS.DATASET_WITHOUT_RUN,
     ];
   }, [isFilterNull]);
 
   const performClone = useCallback(async () => {
     setIsEditingDatasetName(false);
-    const isCloningView = type.includes('view'); // both view and view-no-filter
+    const isCloningView = type.includes("view"); // both view and view-no-filter
     const cloneOperation = isCloningView ? cloneView : cloneDataset;
     const variables = isCloningView
       ? {
@@ -87,21 +87,21 @@ export default function CloneViewBody() {
               : emptySourceView,
           sourceIdentifier: slug,
           name,
-          snapshot
+          snapshot,
         }
       : { name, sourceIdentifier: slug, snapshot };
 
     cloneOperation({
       variables,
       successMessage: `Successfully cloned ${
-        isCloningView ? 'view' : 'dataset'
+        isCloningView ? "view" : "dataset"
       } to new dataset "${name}"`,
       errorMessage: `Failed to clone ${
-        isCloningView ? 'view' : 'dataset'
+        isCloningView ? "view" : "dataset"
       } to new dataset "${name}"`,
       onCompleted: () => {
-        setName('');
-        setType('current');
+        setName("");
+        setType("current");
         setCount(count + 1);
       },
       onSuccess: (data) => {
@@ -109,13 +109,13 @@ export default function CloneViewBody() {
         if (newSlug) {
           setNewDataset(newSlug);
           ref.current?.dispatchEvent(
-            new CustomEvent('clone-created', {
+            new CustomEvent("clone-created", {
               bubbles: true,
-              detail: { slug: newSlug }
+              detail: { slug: newSlug },
             })
           );
         }
-      }
+      },
     });
   }, [
     cloneDataset,
@@ -129,13 +129,13 @@ export default function CloneViewBody() {
     setNewDataset,
     setType,
     slug,
-    snapshot
+    snapshot,
   ]);
 
   return (
     <Box
       ref={ref}
-      sx={{ p: 2, width: '90vw', maxWidth: '450px' }}
+      sx={{ p: 2, width: "90vw", maxWidth: "450px" }}
       data-cy="clone-body"
     >
       <DatasetNameInput

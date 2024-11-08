@@ -1,5 +1,5 @@
-import { Box, TableSkeleton, Timestamp } from '@fiftyone/teams-components';
-import { formatNumber, pluralize } from '@fiftyone/teams-utilities';
+import { Box, TableSkeleton, Timestamp } from "@fiftyone/teams-components";
+import { formatNumber, pluralize } from "@fiftyone/teams-utilities";
 import {
   BoxProps,
   Divider,
@@ -10,10 +10,10 @@ import {
   ListItemIcon,
   ListItemText,
   Stack,
-  Typography
-} from '@mui/material';
-import NextLink from 'next/link';
-import { useMemo } from 'react';
+  Typography,
+} from "@mui/material";
+import NextLink from "next/link";
+import { useMemo } from "react";
 
 export default function DatasetHighlightsWidget(
   props: DatasetHighlightsWidgetProps
@@ -37,7 +37,7 @@ export default function DatasetHighlightsWidget(
           paddingTop={2}
           textAlign="center"
         >
-          {emptyTitle || 'No items yet'}
+          {emptyTitle || "No items yet"}
         </Typography>
       )}
       {!showEmptyState && !loading && (
@@ -61,7 +61,7 @@ function WidgetItem(props: DatasetHighlightsWidgetItem) {
     samplesCount,
     subtitle,
     timestamp,
-    title
+    title,
   } = props;
 
   const subtitleArray = Array.isArray(subtitle) ? subtitle : [subtitle];
@@ -81,7 +81,7 @@ function WidgetItem(props: DatasetHighlightsWidgetItem) {
         sx={{ borderRadius: 1, py: 0.25, px: 1.25 }}
       >
         {Icon && (
-          <ListItemIcon sx={{ minWidth: 'auto', pr: 1, pl: 0 }}>
+          <ListItemIcon sx={{ minWidth: "auto", pr: 1, pl: 0 }}>
             {Icon}
           </ListItemIcon>
         )}
@@ -90,9 +90,9 @@ function WidgetItem(props: DatasetHighlightsWidgetItem) {
             variant="body2"
             fontWeight="medium"
             sx={{
-              whiteSpace: 'nowrap',
-              textOverflow: 'ellipsis',
-              overflow: 'hidden'
+              whiteSpace: "nowrap",
+              textOverflow: "ellipsis",
+              overflow: "hidden",
             }}
           >
             {title}
@@ -109,7 +109,7 @@ function WidgetItem(props: DatasetHighlightsWidgetItem) {
             )}
             {samplesCount && (
               <Typography variant="body1" noWrap>
-                {formatNumber(samplesCount)} {pluralize(samplesCount, 'sample')}
+                {formatNumber(samplesCount)} {pluralize(samplesCount, "sample")}
               </Typography>
             )}
             {timestamp && (

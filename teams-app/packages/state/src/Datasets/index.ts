@@ -1,36 +1,36 @@
-import { SORT_OPTIONS } from '@fiftyone/teams-components/src/DatasetListFilterBar/constants';
-import * as DatasetsListQuery from '@fiftyone/teams-state/src/Datasets/__generated__/DatasetsListQuery.graphql';
-import { SearchSuggestionQuery$data } from '@fiftyone/teams-state/src/Search/__generated__/SearchSuggestionQuery.graphql';
+import { SORT_OPTIONS } from "@fiftyone/teams-components/src/DatasetListFilterBar/constants";
+import * as DatasetsListQuery from "@fiftyone/teams-state/src/Datasets/__generated__/DatasetsListQuery.graphql";
+import { SearchSuggestionQuery$data } from "@fiftyone/teams-state/src/Search/__generated__/SearchSuggestionQuery.graphql";
 import {
   DEFAULT_LIST_PAGE_SIZE,
   DEFAULT_PAGE,
-  mediaTypeItemsKeys
-} from '@fiftyone/teams-state/src/constants';
-import { some, startCase, uniqBy } from 'lodash';
-import Router from 'next/router';
-import { graphql } from 'react-relay/hooks';
-import { RecoilState, atom, selector } from 'recoil';
-import { graphQLSelector } from 'recoil-relay';
-import { recoilEnvironmentKey } from '../Common/recoil-env';
-import { TheSearchSuggestionQuery } from '../Search/index';
-import { PARAMS } from '../urlSyncCommon';
+  mediaTypeItemsKeys,
+} from "@fiftyone/teams-state/src/constants";
+import { some, startCase, uniqBy } from "lodash";
+import Router from "next/router";
+import { graphql } from "react-relay/hooks";
+import { RecoilState, atom, selector } from "recoil";
+import { graphQLSelector } from "recoil-relay";
+import { recoilEnvironmentKey } from "../Common/recoil-env";
+import { TheSearchSuggestionQuery } from "../Search/index";
+import { PARAMS } from "../urlSyncCommon";
 
-type SearchableSuggestionFields = 'Dataset' | 'Tag' | 'Name';
-const defaultSearchListingFields: ListingSearchFields[] = ['name', 'tags'];
+type SearchableSuggestionFields = "Dataset" | "Tag" | "Name";
+const defaultSearchListingFields: ListingSearchFields[] = ["name", "tags"];
 
 export type SearchSuggestionResult =
   | {
       field: DatasetsListQuery.DatasetSearchFields;
-      type: 'Dataset' | 'MediaType' | 'Tag';
+      type: "Dataset" | "MediaType" | "Tag";
       label: string;
       slug?: string;
     }
-  | { label: string; type: 'hidden_count' }
-  | { help: string; label: string; type: 'help' };
+  | { label: string; type: "hidden_count" }
+  | { help: string; label: string; type: "help" };
 
 export const defaultSearchFields: SearchableSuggestionFields[] = [
-  'Tag',
-  'Dataset'
+  "Tag",
+  "Dataset",
 ];
 export interface DatasetListingSearchExpression {
   fields: string[];
@@ -43,7 +43,7 @@ export type FieldValueListingSearch = {
 };
 
 export const searchSuggestions = graphQLSelector({
-  key: 'searchSuggestions',
+  key: "searchSuggestions",
   environment: recoilEnvironmentKey,
   query: TheSearchSuggestionQuery,
   variables: ({ get }) => {
@@ -56,27 +56,27 @@ export const searchSuggestions = graphQLSelector({
 
     return {
       searchTerm: searchExpression.value,
-      searchTypes: searchExpression.fields
+      searchTypes: searchExpression.fields,
     };
   },
   mapResponse: (data: SearchSuggestionQuery$data): SearchSuggestionResult[] => {
     return uniqBy(
       data.search.map((data) => {
         switch (data.__typename) {
-          case 'Dataset':
+          case "Dataset":
             return {
               type: data.__typename,
               label: data.name,
-              field: 'name',
-              slug: data.slug
+              field: "name",
+              slug: data.slug,
             };
-          case 'Tag':
-            return { type: data.__typename, label: data.text, field: 'tags' };
-          case 'MediaType':
+          case "Tag":
+            return { type: data.__typename, label: data.text, field: "tags" };
+          case "MediaType":
             return {
               type: data.__typename,
               label: data.type,
-              field: 'mediaType'
+              field: "mediaType",
             };
           default:
             break;
@@ -85,15 +85,15 @@ export const searchSuggestions = graphQLSelector({
       ({ type, label }) => `${type}-${label}`
     );
   },
-  default: []
+  default: [],
 });
 
 // TODO: deprecate and use a shared one
 export const changeRoute = ({
-  pathname = '/datasets',
+  pathname = "/datasets",
   params = {},
   resetPage = true,
-  asParams = null
+  asParams = null,
 }: {
   params: object;
   pathname?: string;
@@ -103,43 +103,43 @@ export const changeRoute = ({
   const query = {
     ...Router.query,
     ...(resetPage ? { page: 1, pageSize: DEFAULT_LIST_PAGE_SIZE } : {}),
-    ...params
+    ...params,
   };
 
   Router.push(
     {
       pathname,
-      query
+      query,
     },
     {
       pathname,
       query: {
         ...query,
-        ...asParams
-      }
+        ...asParams,
+      },
     }
   );
 };
 
 export const createdByUserState: RecoilState<string> = atom({
-  key: 'createdByUserState',
-  default: 'all',
+  key: "createdByUserState",
+  default: "all",
   effects: [
     ({ trigger, onSet, setSelf }) => {
-      if (trigger === 'get') {
-        if (Router.query?.[PARAMS.CREATED_BY] === 'mine') {
-          setSelf('mine');
+      if (trigger === "get") {
+        if (Router.query?.[PARAMS.CREATED_BY] === "mine") {
+          setSelf("mine");
         }
       }
       onSet((newValue, _, isReset) => {
         setSelf(newValue);
         if (!isReset) {
           changeRoute({
-            params: { createdBy: newValue }
+            params: { createdBy: newValue },
           });
         }
       });
-      Router.events.on('routeChangeComplete', () => {
+      Router.events.on("routeChangeComplete", () => {
         const queryString = window.location.search;
         const urlParams = new URLSearchParams(queryString);
         const newCreatedBy = urlParams.get(PARAMS.CREATED_BY);
@@ -147,12 +147,12 @@ export const createdByUserState: RecoilState<string> = atom({
           setSelf(newCreatedBy);
         }
       });
-    }
-  ]
+    },
+  ],
 });
 
 export const isSearchOrFiltersSelector = selector({
-  key: 'isSearchOrFiltersSelector',
+  key: "isSearchOrFiltersSelector",
   get: ({ get }) => {
     const searchInput = get(searchInputState);
     const isSearchActive = searchInput?.length > 0;
@@ -161,11 +161,11 @@ export const isSearchOrFiltersSelector = selector({
     const isMediaTypeActive = mediaTypes.length;
 
     return Boolean(isSearchActive || isMediaTypeActive);
-  }
+  },
 });
 
 export const searchHelpTextSelector = selector<string>({
-  key: 'searchHelpTextSelector',
+  key: "searchHelpTextSelector",
   get: ({ get }) => {
     const searchExpr = get(searchExpressionState);
     const { value, fields } = searchExpr;
@@ -173,11 +173,11 @@ export const searchHelpTextSelector = selector<string>({
       return `Search datasets matching ${value}`;
     }
     if (fields.length === 1 && value) {
-      const fieldText = fields[0] === 'Tag' ? 'tags' : 'datasets';
+      const fieldText = fields[0] === "Tag" ? "tags" : "datasets";
       return `Search ${fieldText} containing ${value}`;
     }
-    return 'Search datasets';
-  }
+    return "Search datasets";
+  },
 });
 
 const getCurrentSortOption = () => {
@@ -193,11 +193,11 @@ const getCurrentSortOption = () => {
 };
 
 export const datasetListSortState = atom({
-  key: 'datasetListSortState',
+  key: "datasetListSortState",
   default: SORT_OPTIONS[0],
   effects: [
     ({ trigger, onSet, setSelf }) => {
-      if (trigger == 'get') {
+      if (trigger == "get") {
         setSelf(getCurrentSortOption());
       }
       onSet((newValue, oldValue) => {
@@ -205,16 +205,16 @@ export const datasetListSortState = atom({
           changeRoute({
             params: {
               [PARAMS.ORDER_FIELD]: newValue.field,
-              [PARAMS.ORDER_DIRECTION]: newValue.direction.toLowerCase()
-            }
+              [PARAMS.ORDER_DIRECTION]: newValue.direction.toLowerCase(),
+            },
           });
         }
       });
-      Router.events.on('routeChangeComplete', () => {
+      Router.events.on("routeChangeComplete", () => {
         const queryString = window.location.search;
         const urlParams = new URLSearchParams(queryString);
 
-        if (Router.query?.[PARAMS.CREATED_BY] === 'mine') {
+        if (Router.query?.[PARAMS.CREATED_BY] === "mine") {
           if (!urlParams.get(PARAMS.ORDER_FIELD)) {
             setSelf(SORT_OPTIONS[0]);
           }
@@ -222,30 +222,30 @@ export const datasetListSortState = atom({
           setSelf(getCurrentSortOption());
         }
       });
-    }
-  ]
+    },
+  ],
 });
 
 export const datasetListPageInfoState = atom({
-  key: 'datasetListPageInfoState',
+  key: "datasetListPageInfoState",
   default: { page: DEFAULT_PAGE, pageSize: DEFAULT_LIST_PAGE_SIZE },
   effects: [
     ({ trigger, onSet, setSelf }) => {
-      if (trigger == 'get') {
+      if (trigger == "get") {
         setSelf({
           page: Number(Router.query?.page || 1),
-          pageSize: Number(Router.query?.pageSize || DEFAULT_LIST_PAGE_SIZE)
+          pageSize: Number(Router.query?.pageSize || DEFAULT_LIST_PAGE_SIZE),
         });
       }
       onSet((newValue, oldValue) => {
         if (newValue && newValue !== oldValue) {
           changeRoute({
             params: newValue,
-            resetPage: false
+            resetPage: false,
           });
         }
       });
-      Router.events.on('routeChangeComplete', () => {
+      Router.events.on("routeChangeComplete", () => {
         const queryString = window.location.search;
         const urlPram = new URLSearchParams(queryString);
         const pageSize = Number(
@@ -254,28 +254,28 @@ export const datasetListPageInfoState = atom({
         const page = Number(urlPram.get(PARAMS.PAGE) || 1);
         setSelf({ page, pageSize });
       });
-    }
-  ]
+    },
+  ],
 });
 
 export const searchInputState = atom({
-  key: 'searchInput',
-  default: '',
+  key: "searchInput",
+  default: "",
   effects: [
     ({ trigger, setSelf }) => {
-      if (trigger == 'get') {
+      if (trigger == "get") {
         const srch = Router.query?.search;
         if (srch) {
           setSelf(srch as string);
         } else {
           delete Router.query?.[PARAMS.SEARCH];
           Router.replace({
-            pathname: '/datasets',
-            query: Router.query
+            pathname: "/datasets",
+            query: Router.query,
           });
         }
       }
-      Router.events.on('routeChangeComplete', () => {
+      Router.events.on("routeChangeComplete", () => {
         const queryString = window.location.search;
         const urlPram = new URLSearchParams(queryString);
         const searchParam = urlPram.get(PARAMS.SEARCH);
@@ -284,16 +284,16 @@ export const searchInputState = atom({
           setSelf(searchParam);
         }
       });
-    }
-  ]
+    },
+  ],
 });
 
 export const searchTermState = atom({
-  key: 'search',
-  default: '',
+  key: "search",
+  default: "",
   effects: [
     ({ trigger, onSet, setSelf, getPromise }) => {
-      if (trigger == 'get') {
+      if (trigger == "get") {
         setSelf(Router.query?.search as string);
       }
       onSet(async (_, __, isReset) => {
@@ -303,26 +303,26 @@ export const searchTermState = atom({
           changeRoute({
             params: {
               ...Router.query,
-              ...{ page: 1, pageSize }
-            }
+              ...{ page: 1, pageSize },
+            },
           });
         }
       });
-    }
-  ]
+    },
+  ],
 });
 
 export const datasetSearchTermState: RecoilState<DatasetListingSearchExpression | null> =
   atom({
-    key: 'datasetSearchTermState',
+    key: "datasetSearchTermState",
     default: null,
     effects: [
       ({ trigger, onSet, setSelf }) => {
-        if (trigger == 'get') {
+        if (trigger == "get") {
           setSelf(
             toSearchFilter({
               term: Router.query?.search as string,
-              fields: []
+              fields: [],
             })
           );
         }
@@ -331,8 +331,8 @@ export const datasetSearchTermState: RecoilState<DatasetListingSearchExpression 
             changeRoute({ params: { search: newValue.term } });
           }
         });
-      }
-    ]
+      },
+    ],
   });
 
 export type FieldValueSearch = {
@@ -340,25 +340,25 @@ export type FieldValueSearch = {
   value: string;
 };
 const searchExpressionState = selector<FieldValueSearch>({
-  key: 'searchExpressionState',
+  key: "searchExpressionState",
   get: ({ get }) => {
     const rawSearch = get(searchTermState);
     if (!rawSearch) {
       return {
         fields: defaultSearchFields,
-        value: ''
+        value: "",
       };
     }
-    const rawSplit = rawSearch.split(':');
+    const rawSplit = rawSearch.split(":");
     let fields = defaultSearchFields;
-    let value = rawSearch.replace(':', '');
+    let value = rawSearch.replace(":", "");
 
     if (rawSplit.length > 1) {
       let potentialField = startCase(rawSplit[0]) as SearchableSuggestionFields;
 
       // so name:foo works
-      if (potentialField === 'Name') {
-        potentialField = 'Dataset';
+      if (potentialField === "Name") {
+        potentialField = "Dataset";
       }
 
       const potentialValue = rawSplit[1] as string;
@@ -371,21 +371,21 @@ const searchExpressionState = selector<FieldValueSearch>({
 
     return {
       fields,
-      value
+      value,
     };
-  }
+  },
 });
 
 export const mediaTypeState: RecoilState<string[]> = atom({
-  key: 'mediaTypeState',
+  key: "mediaTypeState",
   default: [],
   effects: [
     ({ trigger, onSet, setSelf }) => {
-      if (trigger == 'get') {
+      if (trigger == "get") {
         const queryMediaTypes = Router.query?.mediaType as string;
         if (queryMediaTypes) {
           const mediaTypes = queryMediaTypes
-            .split(',')
+            .split(",")
             .map((mt) => mt.toUpperCase());
           setSelf(mediaTypes);
         }
@@ -400,10 +400,10 @@ export const mediaTypeState: RecoilState<string[]> = atom({
           }
           const newMediaTypes = newValue
             .map((nv) => nv.toLowerCase())
-            .join(',');
+            .join(",");
           if (newMediaTypes.length) {
             changeRoute({
-              params: { mediaType: newMediaTypes }
+              params: { mediaType: newMediaTypes },
             });
           } else {
             if (Router.query?.[PARAMS.MEDIA_TYPE]) {
@@ -413,10 +413,10 @@ export const mediaTypeState: RecoilState<string[]> = atom({
           }
         }
       });
-      Router.events.on('routeChangeComplete', () => {
+      Router.events.on("routeChangeComplete", () => {
         const queryString = window.location.search;
         const urlPram = new URLSearchParams(queryString);
-        const currMediaTypes = urlPram.get(PARAMS.MEDIA_TYPE)?.split(',') || [];
+        const currMediaTypes = urlPram.get(PARAMS.MEDIA_TYPE)?.split(",") || [];
         if (!currMediaTypes.length) {
           setSelf([]);
         } else {
@@ -430,20 +430,20 @@ export const mediaTypeState: RecoilState<string[]> = atom({
           );
         }
       });
-    }
-  ]
+    },
+  ],
 });
 
 export const toSearchFilter = (search: DatasetListingSearchExpression) => {
   if (!search?.term) {
     return {
       fields: defaultSearchListingFields,
-      term: ''
+      term: "",
     };
   }
   const rawSearch = decodeURIComponent(search.term);
 
-  const rawSplit = rawSearch.split(':');
+  const rawSplit = rawSearch.split(":");
   let fields = search.fields.length
     ? search.fields
     : defaultSearchListingFields;
@@ -456,8 +456,8 @@ export const toSearchFilter = (search: DatasetListingSearchExpression) => {
     // DO NOT DELETE
     // Listing Search Fields could be TAG, but search fields expected to be tags
     const potentialField = potentialFieldRaw as ListingSearchFields;
-    if (potentialFieldRaw === 'tag') {
-      potentialFieldRaw = 'tags';
+    if (potentialFieldRaw === "tag") {
+      potentialFieldRaw = "tags";
     }
 
     if (defaultSearchListingFields.includes(potentialField) && potentialValue) {
@@ -468,7 +468,7 @@ export const toSearchFilter = (search: DatasetListingSearchExpression) => {
 
   return {
     fields,
-    term
+    term,
   };
 };
 

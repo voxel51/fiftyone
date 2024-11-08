@@ -1,5 +1,5 @@
-import { Tooltip } from '@mui/material';
-import React from 'react';
+import { Tooltip } from "@mui/material";
+import React from "react";
 
 interface Props {
   children: React.ReactNode;
@@ -9,11 +9,11 @@ interface Props {
 export default function WithTooltip(props: Props) {
   const { children, disabled, text } = props;
   return (
-    <Tooltip title={text || ''} disableHoverListener={!disabled}>
+    <Tooltip title={text || ""} disableHoverListener={!disabled}>
       <span
         style={{
-          display: 'inline-block',
-          cursor: disabled ? 'not-allowed' : 'default'
+          display: "inline-block",
+          cursor: disabled ? "not-allowed" : "default",
         }}
       >
         {children}

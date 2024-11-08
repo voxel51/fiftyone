@@ -1,21 +1,21 @@
 import {
   UserQueryT,
   currentUserQuery,
-  userAttrFragment
-} from '@fiftyone/teams-state';
-import { useState } from 'react';
-import { useFragment, useLazyLoadQuery } from 'react-relay';
+  userAttrFragment,
+} from "@fiftyone/teams-state";
+import { useState } from "react";
+import { useFragment, useLazyLoadQuery } from "react-relay";
 
-
-export default function useCurrentUser(
-): [UserQuery$dataT['viewer'], () => void] {
-
+export default function useCurrentUser(): [
+  UserQuery$dataT["viewer"],
+  () => void
+] {
   const [fetchKey, setFetchKey] = useState(0);
 
   const data = useLazyLoadQuery<UserQueryT>(
     currentUserQuery,
     {},
-    { fetchPolicy: 'store-and-network', fetchKey }
+    { fetchPolicy: "store-and-network", fetchKey }
   );
 
   function refetch() {
@@ -26,23 +26,23 @@ export default function useCurrentUser(
     let data;
     data = useFragment(userAttrFragment, attr);
     switch (data.__typename) {
-      case 'BoolUserAttributeInfo':
+      case "BoolUserAttributeInfo":
         return {
           id: data.attribute,
-          value: data.boolValue
+          value: data.boolValue,
         };
-      case 'DatasetAccessLevelUserAttributeInfo':
+      case "DatasetAccessLevelUserAttributeInfo":
         return {
           id: data.attribute,
-          value: data.accessLevelValue
+          value: data.accessLevelValue,
         };
-      case 'DatasetPermissionUserAttributeInfo':
+      case "DatasetPermissionUserAttributeInfo":
         return {
           id: data.attribute,
-          value: data.permissionValue
+          value: data.permissionValue,
         };
       default:
-        console.error('unexpected typename:', data.__typename);
+        console.error("unexpected typename:", data.__typename);
         return null; // Handle unexpected types or provide a default behavior
     }
   });

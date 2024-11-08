@@ -2,19 +2,19 @@ import {
   Box,
   ColorCircle,
   DatasetHighlightsWidget,
-  Timestamp
-} from '@fiftyone/teams-components';
+  Timestamp,
+} from "@fiftyone/teams-components";
 import {
   orchestratorDialogAtom,
   runsOrchestratorsQuery,
-  runsOrchestratorsQueryT
-} from '@fiftyone/teams-state';
-import { INITIAL_ORCHESTRATORS_LIMIT } from '@fiftyone/teams-state/src/constants';
-import { Button, Typography } from '@mui/material';
-import { Suspense, useEffect, useMemo, useState } from 'react';
-import { usePreloadedQuery, useQueryLoader } from 'react-relay';
-import { useSetRecoilState } from 'recoil';
-import Orchestrator, { Subtitle } from './Orchestrator';
+  runsOrchestratorsQueryT,
+} from "@fiftyone/teams-state";
+import { INITIAL_ORCHESTRATORS_LIMIT } from "@fiftyone/teams-state/src/constants";
+import { Button, Typography } from "@mui/material";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { usePreloadedQuery, useQueryLoader } from "react-relay";
+import { useSetRecoilState } from "recoil";
+import Orchestrator, { Subtitle } from "./Orchestrator";
 
 function OrchestratorsWithQuery(props) {
   const { queryRef, pageSize, setPageSize } = props;
@@ -31,7 +31,7 @@ function OrchestratorsWithQuery(props) {
       createdAt,
       deactivatedAt,
       orchestratorIdentifier,
-      updatedAt
+      updatedAt,
     } = orchestrator;
 
     return {
@@ -39,8 +39,8 @@ function OrchestratorsWithQuery(props) {
       subtitle: [<Subtitle {...orchestrator} />],
       Icon: (
         <ColorCircle
-          title={deactivatedAt ? 'Inactive' : 'Available'}
-          color={deactivatedAt ? 'gray' : 'green'}
+          title={deactivatedAt ? "Inactive" : "Available"}
+          color={deactivatedAt ? "gray" : "green"}
           sx={{ mr: 1 }}
         />
       ),
@@ -50,10 +50,10 @@ function OrchestratorsWithQuery(props) {
           id: orchestratorIdentifier,
           open: true,
           createdAt,
-          deactivatedAt: deactivatedAt ?? '',
-          updatedAt: updatedAt ?? ''
+          deactivatedAt: deactivatedAt ?? "",
+          updatedAt: updatedAt ?? "",
         });
-      }
+      },
     };
   });
   const leftoverOrchestrators = nodeTotal - pageSize;

@@ -15,7 +15,7 @@ html,
 body,
 input,
 button {
-  font-family: 'Palanquin', sans-serif;
+  font-family: "Palanquin", sans-serif;
   font-size: 14px;
 }
 
@@ -29,68 +29,68 @@ a {
 }
 
 @font-face {
-  font-family: 'Roboto Mono';
-  src: url('/RobotoMono-Regular.ttf');
+  font-family: "Roboto Mono";
+  src: url("/RobotoMono-Regular.ttf");
   font-weight: normal;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Roboto Mono';
-  src: url('/RobotoMono-Italic.ttf');
+  font-family: "Roboto Mono";
+  src: url("/RobotoMono-Italic.ttf");
   font-weight: normal;
   font-style: italic;
 }
 
 pre {
-  font-family: 'Roboto Mono';
+  font-family: "Roboto Mono";
 }
 
 @font-face {
-  font-family: 'Palanquin';
-  src: url('/Palanquin-Thin.ttf');
+  font-family: "Palanquin";
+  src: url("/Palanquin-Thin.ttf");
   font-weight: 100;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Palanquin';
-  src: url('/Palanquin-ExtraLight.ttf');
+  font-family: "Palanquin";
+  src: url("/Palanquin-ExtraLight.ttf");
   font-weight: 200;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Palanquin';
-  src: url('/Palanquin-Light.ttf');
+  font-family: "Palanquin";
+  src: url("/Palanquin-Light.ttf");
   font-weight: 300;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Palanquin';
-  src: url('/Palanquin-Regular.ttf');
+  font-family: "Palanquin";
+  src: url("/Palanquin-Regular.ttf");
   font-weight: 400;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Palanquin';
-  src: url('/Palanquin-Medium.ttf');
+  font-family: "Palanquin";
+  src: url("/Palanquin-Medium.ttf");
   font-weight: 350;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Palanquin';
-  src: url('/Palanquin-SemiBold.ttf');
+  font-family: "Palanquin";
+  src: url("/Palanquin-SemiBold.ttf");
   font-weight: 360;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Palanquin';
-  src: url('/Palanquin-Bold.ttf');
+  font-family: "Palanquin";
+  src: url("/Palanquin-Bold.ttf");
   font-weight: 370;
   font-style: normal;
 }

@@ -1,11 +1,11 @@
-import { BasicTable, Box, Dialog, Timestamp } from '@fiftyone/teams-components';
+import { BasicTable, Box, Dialog, Timestamp } from "@fiftyone/teams-components";
 import {
   CONSTANT_VARIABLES,
   deleteCredentialAtom,
-  manageCloudStorageAtom
-} from '@fiftyone/teams-state';
-import { Button, Stack, Typography } from '@mui/material';
-import { useRecoilState, useSetRecoilState } from 'recoil';
+  manageCloudStorageAtom,
+} from "@fiftyone/teams-state";
+import { Button, Stack, Typography } from "@mui/material";
+import { useRecoilState, useSetRecoilState } from "recoil";
 
 const { CLOUD_STORAGE_PROVIDERS } = CONSTANT_VARIABLES;
 
@@ -34,44 +34,44 @@ export default function ManageCredentials() {
         excludeContainer
         rows={[
           {
-            id: provider + '-credentials-heading',
+            id: provider + "-credentials-heading",
             cells: [
               {
-                id: 'prefixes',
-                Component: <Typography variant="body2">Buckets</Typography>
+                id: "prefixes",
+                Component: <Typography variant="body2">Buckets</Typography>,
               },
               {
-                id: 'description',
-                Component: <Typography variant="body2">Description</Typography>
+                id: "description",
+                Component: <Typography variant="body2">Description</Typography>,
               },
               {
-                id: 'created',
-                Component: <Typography variant="body2">Created</Typography>
+                id: "created",
+                Component: <Typography variant="body2">Created</Typography>,
               },
               {
-                id: 'delete',
-                value: ''
-              }
-            ]
+                id: "delete",
+                value: "",
+              },
+            ],
           },
           ...credentials.map(({ description, prefixes, createdAt }, i) => {
             return {
-              id: provider + '-credential-' + i,
+              id: provider + "-credential-" + i,
               cells: [
                 {
-                  id: 'prefixes',
-                  value: prefixes.join(', ')
+                  id: "prefixes",
+                  value: prefixes.join(", "),
                 },
                 {
-                  id: 'description',
-                  value: description || ''
+                  id: "description",
+                  value: description || "",
                 },
                 {
-                  id: 'created',
-                  Component: <Timestamp timestamp={createdAt} />
+                  id: "created",
+                  Component: <Timestamp timestamp={createdAt} />,
                 },
                 {
-                  id: 'delete',
+                  id: "delete",
                   Component: (
                     <Box textAlign="right">
                       <Button
@@ -83,11 +83,11 @@ export default function ManageCredentials() {
                         Delete
                       </Button>
                     </Box>
-                  )
-                }
-              ]
+                  ),
+                },
+              ],
             };
-          })
+          }),
         ]}
       />
     </Dialog>

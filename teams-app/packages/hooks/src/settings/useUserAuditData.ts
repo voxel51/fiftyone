@@ -1,17 +1,17 @@
-import { useLazyLoadLatestQuery } from '@fiftyone/hooks';
+import { useLazyLoadLatestQuery } from "@fiftyone/hooks";
 import {
   teamGetUsersAuditQueryT,
-  teamUsersAuditQuery
-} from '@fiftyone/teams-state';
-import { useCallback, useEffect, useState } from 'react';
+  teamUsersAuditQuery,
+} from "@fiftyone/teams-state";
+import { useCallback, useEffect, useState } from "react";
 
 const useUserAuditData = () => {
   const [queryKey, setQueryKey] = useState(0);
-  const [fetchError, setFetchError] = useState('');
+  const [fetchError, setFetchError] = useState("");
   const defaultUserAudit = {
     users: { remaining: 0, current: 0 },
     guests: { remaining: 0, current: 0 },
-    collaborators: { remaining: 0, current: 0 }
+    collaborators: { remaining: 0, current: 0 },
   };
 
   const response = useLazyLoadLatestQuery<teamGetUsersAuditQueryT>(
@@ -19,16 +19,16 @@ const useUserAuditData = () => {
     {},
     {
       fetchKey: queryKey,
-      fetchPolicy: 'store-and-network' // TODO: test this or revert to network only
+      fetchPolicy: "store-and-network", // TODO: test this or revert to network only
     }
   );
 
   useEffect(() => {
     if (response) {
       if (response.usersAudit === null) {
-        setFetchError('Failed to fetch license audit data. please try again.');
+        setFetchError("Failed to fetch license audit data. please try again.");
       } else {
-        setFetchError('');
+        setFetchError("");
       }
     }
   }, [response]);

@@ -1,27 +1,23 @@
-import { useMutation } from '@fiftyone/hooks';
+import { useMutation } from "@fiftyone/hooks";
 import {
   BasicTable,
   Button,
   EmptyState,
-  OverflowMenu, Timestamp
-} from '@fiftyone/teams-components';
+  OverflowMenu,
+  Timestamp,
+} from "@fiftyone/teams-components";
 import {
   UPLOAD_PLUGIN_MODE,
   enableDisablePluginMutation,
   manageOperatorsPluginAtom,
   uninstallPluginAtom,
-  uploadPluginAtom
-} from '@fiftyone/teams-state';
-import { RemoveCircleOutline, UpgradeOutlined } from '@mui/icons-material';
-import {
-  FormControlLabel,
-  Stack,
-  Switch,
-  Typography
-} from '@mui/material';
-import { useState } from 'react';
-import { useSetRecoilState } from 'recoil';
-import { PluginsComponentProps } from './types';
+  uploadPluginAtom,
+} from "@fiftyone/teams-state";
+import { RemoveCircleOutline, UpgradeOutlined } from "@mui/icons-material";
+import { FormControlLabel, Stack, Switch, Typography } from "@mui/material";
+import { useState } from "react";
+import { useSetRecoilState } from "recoil";
+import { PluginsComponentProps } from "./types";
 
 export default function PluginsList(props: PluginsComponentProps) {
   const { plugins } = props;
@@ -38,68 +34,68 @@ export default function PluginsList(props: PluginsComponentProps) {
             id: name,
             cells: [
               {
-                id: name + '-name',
+                id: name + "-name",
                 Component: (
                   <Stack>
                     <Typography variant="body2">{name}</Typography>
                     {description && <Typography>{description}</Typography>}
                   </Stack>
-                )
+                ),
               },
-              { id: name + '-version', value: version },
+              { id: name + "-version", value: version },
               {
-                id: name + '-operators',
-                Component: <OperatorsCount {...plugin} />
+                id: name + "-operators",
+                Component: <OperatorsCount {...plugin} />,
               },
               {
-                id: name + '-modifiedAt',
+                id: name + "-modifiedAt",
                 Component: modifiedAt ? (
                   <Typography>
                     Modified <Timestamp timestamp={modifiedAt} />
                   </Typography>
                 ) : (
-                  ''
-                )
+                  ""
+                ),
               },
               {
-                id: name + '-toggle',
-                Component: <TogglePlugin {...plugin} />
+                id: name + "-toggle",
+                Component: <TogglePlugin {...plugin} />,
               },
               {
-                id: name + '-manage',
+                id: name + "-manage",
                 Component: (
                   <OverflowMenu
                     items={[
                       {
-                        primaryText: 'Uninstall plugin',
+                        primaryText: "Uninstall plugin",
                         IconComponent: (
                           <RemoveCircleOutline color="secondary" />
                         ),
                         onClick: () => {
                           setUninstallPluginState({
                             pluginName: name,
-                            open: true
+                            open: true,
                           });
-                        }
+                        },
                       },
                       {
-                        primaryText: 'Upgrade plugin',
+                        primaryText: "Upgrade plugin",
                         IconComponent: <UpgradeOutlined color="secondary" />,
                         onClick: () => {
                           setUploadPluginState({
                             mode: UPLOAD_PLUGIN_MODE.UPGRADE,
                             open: true,
-                            pluginName: name
+                            pluginName: name,
                           });
-                        }
-                      }
+                        },
+                      },
                     ]}
                   />
-                )
-              }
-            ]
+                ),
+              },
+            ],
           };
-        })
+        }),
       ]}
     />
   );
@@ -111,7 +107,7 @@ function OperatorsCount(props) {
   );
   const { name, operators } = props;
   if (!Array.isArray(operators)) return null;
-  const label = operators.length === 1 ? 'operator' : 'operators';
+  const label = operators.length === 1 ? "operator" : "operators";
   return (
     <Button
       onClick={() =>
@@ -129,8 +125,8 @@ function TogglePlugin(props) {
   );
   const { name, enabled } = props;
   const [checked, setChecked] = useState(enabled);
-  const label = checked ? 'Enabled' : 'Disabled';
-  const updateType = !checked ? 'enabled' : 'disabled';
+  const label = checked ? "Enabled" : "Disabled";
+  const updateType = !checked ? "enabled" : "disabled";
 
   return (
     <FormControlLabel
@@ -146,7 +142,7 @@ function TogglePlugin(props) {
               onSuccess() {
                 setChecked(!checked);
               },
-              successMessage: `Successfully ${updateType} the plugin`
+              successMessage: `Successfully ${updateType} the plugin`,
             });
           }}
         />

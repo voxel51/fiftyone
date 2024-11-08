@@ -1,5 +1,5 @@
-import { graphql } from 'react-relay/hooks';
-import { atom, selector } from 'recoil';
+import { graphql } from "react-relay/hooks";
+import { atom, selector } from "recoil";
 
 export interface Dataset {
   id: string;
@@ -15,7 +15,7 @@ export interface Dataset {
     name: string;
   };
   description?: string;
-  mediaType?: 'image' | 'video';
+  mediaType?: "image" | "video";
   sampleFieldsCount?: number;
   lastLoadedAt?: number;
   tags?: string[] | null;
@@ -155,7 +155,7 @@ export const DatasetUpdateMutation = graphql`
   }
 `;
 
-export { DatasetCloneViewMutation as DatasetCloneViewMutationType } from './__generated__/DatasetCloneViewMutation.graphql';
+export { DatasetCloneViewMutation as DatasetCloneViewMutationType } from "./__generated__/DatasetCloneViewMutation.graphql";
 export const DatasetCloneViewMutation = graphql`
   mutation DatasetCloneViewMutation(
     $sourceIdentifier: String!
@@ -326,8 +326,8 @@ export const DatasetExportMutation = graphql`
 `;
 
 export const shareDatasetOpen = atom({
-  key: 'shareDatasetOpen',
-  default: false
+  key: "shareDatasetOpen",
+  default: false,
 });
 
 /* 
@@ -336,14 +336,14 @@ dataset: entire dataset with runs and saved views,
 view-no-filter: entire dataset w/t runs and saved views. 
 Naming the third one with view becuase we call view.clone()
 */
-export const cloneType = atom<'view' | 'dataset' | 'view-no-filter'>({
-  key: 'cloneType',
-  default: 'view'
+export const cloneType = atom<"view" | "dataset" | "view-no-filter">({
+  key: "cloneType",
+  default: "view",
 });
 
-export const exportType = atom<'view' | 'dataset'>({
-  key: 'exportType',
-  default: 'view'
+export const exportType = atom<"view" | "dataset">({
+  key: "exportType",
+  default: "view",
 });
 
 type FormState = {
@@ -358,43 +358,43 @@ type FormState = {
 };
 
 export const exportSelectionDefault = selector<FormState>({
-  key: 'exportSelectionDefault',
+  key: "exportSelectionDefault",
   get: ({ get }) => {
     const currentExportType = get(exportType);
     return {
-      view: currentExportType
+      view: currentExportType,
     };
-  }
+  },
 });
 
 export const exportSelection = atom<FormState>({
-  key: 'exportSelection',
+  key: "exportSelection",
   default: {
-    view: 'view'
-  }
+    view: "view",
+  },
 });
 
 export const cloneViewForceClosePopoverCount = atom({
-  key: 'cloneViewForceClosePopoverCount',
-  default: 0
+  key: "cloneViewForceClosePopoverCount",
+  default: 0,
 });
 
 export const exportViewForceClosePopoverCount = atom({
-  key: 'exportViewForceClosePopoverCount',
-  default: 0
+  key: "exportViewForceClosePopoverCount",
+  default: 0,
 });
 
 export const exportMode = atom({
-  key: 'exportMode',
-  default: 'direct'
+  key: "exportMode",
+  default: "direct",
 });
 
 export const pendingDatasetRefresh = atom({
-  key: 'pendingDatasetRefresh',
-  default: false
+  key: "pendingDatasetRefresh",
+  default: false,
 });
 
 export const showReadonlyDatasetIndicator = atom({
-  key: 'showReadonlyDatasetIndicator',
-  default: false
+  key: "showReadonlyDatasetIndicator",
+  default: false,
 });

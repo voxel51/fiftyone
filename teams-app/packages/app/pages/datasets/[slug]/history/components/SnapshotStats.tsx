@@ -1,7 +1,7 @@
-import { Stack, Typography } from '@mui/material';
-import formatChanges from '../utils/format-changes';
-import SamplesTotal from './SamplesTotal';
-import SnapshotChanges from './SnapshotChanges';
+import { Stack, Typography } from "@mui/material";
+import formatChanges from "../utils/format-changes";
+import SamplesTotal from "./SamplesTotal";
+import SnapshotChanges from "./SnapshotChanges";
 
 export default function SnapshotStats(props: SnapshotStatsPropsType) {
   const { singleLine, totalSamples } = props;
@@ -10,7 +10,7 @@ export default function SnapshotStats(props: SnapshotStatsPropsType) {
 
   return (
     <Stack
-      direction={singleLine ? 'row' : 'column'}
+      direction={singleLine ? "row" : "column"}
       spacing={singleLine ? 1 : 0}
       divider={singleLine ? <Typography>&middot;</Typography> : null}
     >

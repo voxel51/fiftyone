@@ -15,6 +15,7 @@ from bson import ObjectId
 from pymongo import IndexModel
 from pymongo.collection import Collection
 
+from fiftyone.internal.util import is_remote_service
 from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.factory.repos import DelegatedOperationDocument
 from fiftyone.operators.executor import (
@@ -45,6 +46,7 @@ class DelegatedOperationRepo(object):
         result: ExecutionResult = None,
         run_link: str = None,
         progress: ExecutionProgress = None,
+        required_state: ExecutionRunState = None,
     ) -> DelegatedOperationDocument:
         """Update the run state of an operation."""
         raise NotImplementedError("subclass must implement update_run_state()")
@@ -135,7 +137,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         self._collection = (
             collection if collection is not None else self._get_collection()
         )
-
+        self.is_remote = is_remote_service()
         self._create_indexes()
 
     def _get_collection(self) -> Collection:
@@ -178,7 +180,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             self._collection.create_indexes(indices_to_create)
 
     def queue_operation(self, **kwargs: Any) -> DelegatedOperationDocument:
-        op = DelegatedOperationDocument()
+        op = DelegatedOperationDocument(is_remote=self.is_remote)
         for prop in self.required_props:
             if prop not in kwargs:
                 raise ValueError("Missing required property '%s'" % prop)
@@ -253,6 +255,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         result: ExecutionResult = None,
         run_link: str = None,
         progress: ExecutionProgress = None,
+        required_state: ExecutionRunState = None,
     ) -> DelegatedOperationDocument:
         update = None
 
@@ -269,6 +272,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             else None
         )
 
+        needs_pipeline_update = False
+
         if run_state == ExecutionRunState.COMPLETED:
             update = {
                 "$set": {
@@ -279,10 +284,11 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 }
             }
 
-        if outputs_schema:
-            update["$set"]["metadata.outputs_schema"] = {
-                "$ifNull": [outputs_schema, {}]
-            }
+            if outputs_schema:
+                update["$set"]["metadata.outputs_schema"] = (
+                    outputs_schema or {}
+                )
+                needs_pipeline_update = True
 
         elif run_state == ExecutionRunState.FAILED:
             update = {
@@ -309,6 +315,14 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                     "updated_at": datetime.utcnow(),
                 }
             }
+        elif run_state == ExecutionRunState.QUEUED:
+            update = {
+                "$set": {
+                    "run_state": run_state,
+                    "queued_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow(),
+                }
+            }
 
         if run_link is not None:
             update["$set"]["run_link"] = run_link
@@ -320,13 +334,27 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             update["$set"]["status"] = progress
             update["$set"]["status"]["updated_at"] = datetime.utcnow()
 
+        collection_filter = {"_id": _id}
+        if required_state is not None:
+            collection_filter["run_state"] = required_state
+
+        # Using pipeline update instead of a single update doc fixes a case
+        #   where `metadata` is null and so accessing the dotted field
+        #   `metadata.output_schema` creates the document instead of erroring.
+        if needs_pipeline_update:
+            update = [update]
+
         doc = self._collection.find_one_and_update(
-            filter={"_id": _id},
-            update=[update],
+            filter=collection_filter,
+            update=update,
             return_document=pymongo.ReturnDocument.AFTER,
         )
 
-        return DelegatedOperationDocument().from_pymongo(doc)
+        return (
+            DelegatedOperationDocument().from_pymongo(doc)
+            if doc is not None
+            else None
+        )
 
     def update_progress(
         self,
@@ -420,7 +448,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if run_state:
             query["run_state"] = run_state
         if delegation_target:
-            query["delegation_target"] = delegation_target
+            query["delegation_target"] = {"$in": [delegation_target, None]}
         if run_by:
             query["context.user"] = run_by
         if dataset_id:

@@ -1,5 +1,5 @@
-import { graphql } from 'react-relay/hooks';
-import { Group } from '../Settings';
+import { graphql } from "react-relay/hooks";
+import { Group } from "../Settings";
 
 export const currentUserQuery = graphql`
   query UserQuery {
@@ -28,32 +28,34 @@ export const currentUserQuery = graphql`
 `;
 
 // define the fragments
-export const userAttrFragment = graphql`fragment UserAttrFrag on UserAttributeInfo {
-  ... on BoolUserAttributeInfo {
-    attribute
-    display
-    description
-    __typename
-    boolValue: value
-    boolOptions: options
+export const userAttrFragment = graphql`
+  fragment UserAttrFrag on UserAttributeInfo {
+    ... on BoolUserAttributeInfo {
+      attribute
+      display
+      description
+      __typename
+      boolValue: value
+      boolOptions: options
+    }
+    ... on DatasetAccessLevelUserAttributeInfo {
+      attribute
+      display
+      description
+      __typename
+      accessLevelValue: value
+      accessLevelOptions: options
+    }
+    ... on DatasetPermissionUserAttributeInfo {
+      attribute
+      display
+      description
+      __typename
+      permissionValue: value
+      permissionOptions: options
+    }
   }
-  ... on DatasetAccessLevelUserAttributeInfo {
-    attribute
-    display
-    description
-    __typename
-    accessLevelValue: value
-    accessLevelOptions: options
-  }
-  ... on DatasetPermissionUserAttributeInfo {
-    attribute
-    display
-    description
-    __typename
-    permissionValue: value
-    permissionOptions: options
-  }
-}`
+`;
 
 export interface User {
   id: string;

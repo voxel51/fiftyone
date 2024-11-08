@@ -253,6 +253,7 @@ class Object(BaseType):
         label,
         icon=None,
         variant=None,
+        disabled=False,
         on_click=None,
         prompt=False,
         params=None,
@@ -282,6 +283,7 @@ class Object(BaseType):
             label: the label of the button
             icon (None): the name of the icon to display
             icon_position ("left"): the position of the icon. Can be ``"left"`` or ``"right"``
+            disabled (False): whether the button is disabled
             variant (None): the variant of the button. Can be ``"contained"``, ``"outlined"``,
                 ``"round"`` or ``"square"``
             on_click (None): the name of the operator to execute when the button is clicked
@@ -295,6 +297,7 @@ class Object(BaseType):
             href=href,
             icon=icon,
             icon_position=icon_position,
+            disabled=disabled,
             label=label,
             operator=on_click,
             params=params,
@@ -305,6 +308,66 @@ class Object(BaseType):
         )
 
         return self.view(name, btn)
+
+    def img(
+        self,
+        name,
+        href=None,
+        on_click=None,
+        prompt=False,
+        params=None,
+        point_on_hover=True,
+        height=None,
+        width=None,
+        alt_text=None,
+        **kwargs,
+    ):
+        """Defines an image to display to the user as a :class:`ImageView`.
+
+        Examples::
+
+            import fiftyone.operators.types as types
+
+            ctx.panel.state.my_img = "https://i.imgur.com/TGEZj1Rl.jpg"
+
+            panel = types.Object()
+            panel.img(
+                "my_img",
+                href="https://voxel51.com",
+                on_click=self.do_something,
+                prompt=False,
+                params={"foo": "bar"},
+                point_on_hover=True,
+                height="100px",
+                width="100px",
+                alt_text="My image alt text"
+            )
+
+        Args:
+            name: the name of the property from state
+            href (None): the URL to navigate to when the button is clicked
+            on_click (None): the name of the operator to execute when the button is clicked
+            prompt (False): whether to prompt the user before executing the operator
+            params (None): the parameters to pass to the operator
+            point_on_hover (True): whether to show a pointer when hovering over the image
+            height (None): the height of the image
+            width (None): the width of the image
+            alt_text (None): the alt text of the image
+
+        """
+        img = ImageView(
+            href=href,
+            operator=on_click,
+            params=params,
+            prompt=prompt,
+            cursor=point_on_hover,
+            height=height,
+            width=width,
+            alt=alt_text,
+            **kwargs,
+        )
+
+        return self.view(name, img)
 
     def message(self, name, label, **kwargs):
         """Defines a message to display to the user as a :class:`Notice`.
@@ -406,6 +469,9 @@ class Object(BaseType):
             ``"top-center"``, ``"top-right"``, ``"bottom-left"``, `"bottom-center"``, or
             ``"bottom-right"``. Overlay is useful when you want to display a floating menu on top of
             another content (for example, menu for full-panel-width plot)
+            icon (None): when set, the icon will be displayed as the menu button instead of the label.
+            Can be "SettingsIcon", "MoreVertIcon".
+
         Returns:
             a :class:`Object`
         """
@@ -543,6 +609,21 @@ class Object(BaseType):
         tuple_type = Tuple(*items)
         self.define_property(name, tuple_type, view=tuple_view, **kwargs)
         return tuple_type
+
+    def tree(self, name, **kwargs):
+        """Defines a tree property on the object.
+        Args:
+            name: the name of the property
+
+        Returns:
+            a :class:`Tree`
+        """
+        tree_selection_view = TreeSelectionView(**kwargs)
+        tree_type = List(String())
+        self.define_property(
+            name, tree_type, view=tree_selection_view, **kwargs
+        )
+        return tree_type
 
     def clone(self):
         """Clones the definition of the object.
@@ -813,6 +894,27 @@ class Tuple(BaseType):
     def to_json(self):
         return {
             **super().to_json(),
+            "items": [item.to_json() for item in self.items],
+        }
+
+
+class Tree(BaseType):
+    """Represents a tree selection type.
+    Examples::
+
+        import fiftyone.operators.types as types
+        inputs = types.Object()
+
+    Args:
+    *items: the tree structure of items
+    """
+
+    def __init__(self, *items):
+        self.items = items
+
+    def to_json(self):
+        return {
+            "name": self.__class__.__name__,
             "items": [item.to_json() for item in self.items],
         }
 
@@ -1255,7 +1357,6 @@ class Button(View):
         self.operator = kwargs.get("operator", None)
         self.prompt = kwargs.get("prompt", False)
         self.params = kwargs.get("params", None)
-        self.href = kwargs.get("href", None)
 
     def to_json(self):
         return _convert_callables_to_operator_uris(
@@ -1326,6 +1427,42 @@ class TupleView(View):
         return {
             **super().to_json(),
             "items": [item.to_json() for item in self.items],
+        }
+
+
+class TreeSelectionView(View):
+    """Displays a tree selection checkbox groups.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        structure = [
+            ["group_id_1", ["sample_id_1", "sample_id_2"]],
+            ["group_id_2", ["sample_id_3", "sample_id_4", "sample_id_5"], ["group_id_8", ["sample_id_6"]]],
+        ]
+
+        tree_view = types.TreeSelectionView(
+            data=structure # this data represents the basic group structure;
+        )
+
+        panel.view('exact_duplicate_selections', view=tree_view, on_change=self.toggle_select)
+
+        def toggle_select(self, ctx):
+            selected = ctx.params['value']
+            print('selected samples:', selected)
+
+    Args:
+        data (None): a list of lists representing the tree structure of groups and its children
+        on_change (None): the operator to execute when the tree selection changes
+    """
+
+    def __init__(self, **options):
+        super().__init__(**options)
+
+    def to_json(self):
+        return {
+            **super().to_json(),
         }
 
 
@@ -1468,7 +1605,24 @@ class LoadingView(ReadOnlyView):
     """Displays a loading indicator.
 
     Args:
-        label ("Loading"): a label for the loading indicator
+        text ("Loading"): a label for the loading indicator
+        variant ("spinner"): the variant of the loading indicator
+        color ("primary"): the color of the loading indicator
+        size ("medium"): the size of the loading indicator
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class PillBadgeView(View):
+    """Displays a pill shaped badge.
+
+    Args:
+        text ("Reviewed" | ["Reviewed", "Not Reviewed"] | [["Not Started", "primary"], ["Reviewed", "success"], ["In Review", "warning"]): a label or set of label options with or without a color for the pill badge
+        color ("primary"): the color of the pill
+        variant ("outlined"): the variant of the pill
+        show_icon (False | True): whether to display indicator icon
     """
 
     def __init__(self, **kwargs):
@@ -1618,16 +1772,39 @@ class Column(View):
         return {**super().to_json(), "key": self.key}
 
 
+class Action(View):
+    """An action (currently supported only in a :class:`TableView`).
+
+    Args:
+        name: the name of the action
+        label (None): the label of the action
+        icon (None): the icon of the action
+        on_click: the operator to execute when the action is clicked
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def clone(self):
+        clone = Action(**self._kwargs)
+        return clone
+
+    def to_json(self):
+        return {**super().to_json()}
+
+
 class TableView(View):
     """Displays a table.
 
     Args:
         columns (None): a list of :class:`Column` objects to display
+        row_actions (None): a list of :class:`Action` objects to display
     """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.columns = kwargs.get("columns", [])
+        self.row_actions = kwargs.get("row_actions", [])
 
     def keys(self):
         return [column.key for column in self.columns]
@@ -1637,15 +1814,24 @@ class TableView(View):
         self.columns.append(column)
         return column
 
+    def add_row_action(self, name, on_click, label=None, icon=None, **kwargs):
+        row_action = Action(
+            name=name, on_click=on_click, label=label, icon=icon, **kwargs
+        )
+        self.row_actions.append(row_action)
+        return row_action
+
     def clone(self):
         clone = super().clone()
         clone.columns = [column.clone() for column in self.columns]
+        clone.row_actions = [action.clone() for action in self.row_actions]
         return clone
 
     def to_json(self):
         return {
             **super().to_json(),
             "columns": [column.to_json() for column in self.columns],
+            "row_actions": [action.to_json() for action in self.row_actions],
         }
 
 
@@ -1723,6 +1909,15 @@ class ImageView(View):
             return {"image": "https://voxel51.com/your/image.png"}
 
         def resolve_output(self, ctx):
+            schema = {
+                "height": "100px",
+                "width": "100px",
+                "alt": "My image alt text",
+                "href": "https://voxel51.com",
+                "operator": "@my/plugin/my_operator" | self.my_operator (in Python Panels),
+                "prompt": False,
+                "params": {"foo": "bar"},
+            }
             outputs = types.Object()
             outputs.define_property(
                 "image",
@@ -1731,6 +1926,15 @@ class ImageView(View):
                 view=types.ImageView(),
             )
             return types.Property(outputs)
+
+    Args:
+        height (None): the height of the image
+        width (None): the width of the image
+        alt (None): the alt text of the image
+        href (None): the href of the image
+        operator (None): the name of the callable operator to execute when the image is clicked
+        prompt (False): whether to prompt the user before executing the operator
+        params (None): the parameters to pass to the operator
     """
 
     def __init__(self, **kwargs):
@@ -1757,6 +1961,33 @@ class AlertView(View):
 
     def to_json(self):
         return {**super().to_json(), "severity": self.severity}
+
+
+class ToastView(View):
+    """Displays a snackbar style toast element.
+
+    Examples::
+
+    schema = {
+            "message": "Test",
+            "duration": 30000,
+            "layout": {
+                "vertical": "top",
+                "horizontal": "center",
+                "top": "200px"
+            },
+        }
+        snackbar = types.ToastView(**schema)
+        panel.obj("toast", view=snackbar)
+
+    Args:
+        message: the message to display
+        duration (None): the duration to stay on screen in milliseconds
+        layout (None): the layout of the toast
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
 
 class CheckboxView(View):
@@ -1826,6 +2057,16 @@ class SwitchView(View):
     .. note::
 
         Must be used with :class:`Boolean` properties.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class TextView(View):
+    """Displays a text.
+    .. note::
+        Must be used with :class:`String` properties.
     """
 
     def __init__(self, **kwargs):
@@ -2301,6 +2542,44 @@ class IconButtonView(Button):
         super().__init__(**kwargs)
 
 
+class ModalView(Button):
+    """Represents a button in a :class:`View` that opens up an interactive modal.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        schema = {
+            "modal": {"icon": "local_offer", "iconVariant": "outlined", "title": "Modal Title", "subtitle": "Modal Subtitle", "body": "Modal Body", textAlign: {title: "center", subtitle: "left", body: "right"}},
+            "primaryButton": {"primaryText": "This is the primary button", "primaryColor": "primary", "params": {"foo": "bar", "multiple": True}},
+            "secondaryButton": {"secondaryText": "This is the secondary button", "secondaryColor": "secondary"},
+            "primaryCallback": self.do_something(),
+            "secondaryCallback": self.do_nothing(),
+            "functionality": "tagging",
+        }
+        modal = types.ModalView(**schema, label="This is a modal", variant="outlined", icon="local_offer")
+
+        .. note::
+            The primary callback is called when the primary button is clicked and the secondary callback is called when the secondary button is clicked.
+            Secondary callback defaults to a closure of the modal unless defined.
+            Buttons of ModalView inherit all functionality of ButtonView.
+
+        inputs = types.Object()
+        inputs.view("modal_btn", modal)
+
+    Args:
+        modal: the textual content of the modal
+        primaryButton (None): the properties of the primary button
+        secondaryButton (None): the properties of the secondary button
+        primaryCallback (None): the function to execute when the primary button is clicked
+        secondaryCallback (None): the function to execute when the secondary button is clicked
+        functionality (None): the name of the functionality to execute when the primary button is clicked. Available options are 'tagging'
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class HStackView(GridView):
     """Displays properties of an object as a horizontal stack of components.
 
@@ -2361,6 +2640,8 @@ class MenuView(GridView):
         ``"top-center"``, ``"top-right"``, ``"bottom-left"``, `"bottom-center"``, or
         ``"bottom-right"``. Overlay is useful when you want to display a floating menu on top of
         another content (for example, menu for full-panel-width plot)
+        icon (None): when set, the icon button will be displayed as the menu trigger,
+        instead of the selected value. Can be "SettingsIcon" or "MoreVertIcon"
     Returns:
         a :class:`Object`
     """
@@ -2400,13 +2681,43 @@ class ArrowNavView(View):
 
 
 class FrameLoaderView(View):
-    """Utility for loading frames and animated panels.
+    """Utility for animating panel state based on the given timeline_name.
+
+    Examples::
+
+        def on_load(self, ctx):
+            panel.state.plot = {
+                "type": "scatter",
+                "x": [1, 2, 3],
+                "y": [1, 2, 3],
+            }
+
+        def render(self, ctx):
+            panel.obj(
+                "frame_data",
+                view=types.FrameLoaderView(
+                    on_load_range=self.on_load_range,
+                    target="plot.selectedpoints",
+                ),
+            )
+            panel.plot("plot")
+
+        def load_range(self, ctx, range_to_load):
+            r = ctx.params.get("range")
+
+            chunk = {}
+            for i in range(r[0], r[1]):
+                rendered_frame = [i]
+                chunk[f"frame_data.frames[{i}]"] = rendered_frame
+
+            ctx.panel.set_data(chunk)
+            current_field = ctx.panel.state.selected_field or "default_field"
+            ctx.panel.set_state("frame_data.signature", current_field + str(r))
 
     Args:
-        timeline_id (None): the ID of the timeline to load
-        on_load (None): the operator to execute when the frame is loaded
-        on_error (None): the operator to execute when the frame fails to load
+        timeline_name (None): the name of the timeline to load if provided, otherwise the default timeline
         on_load_range (None): the operator to execute when the frame is loading
+        target: the path to the property to animate
     """
 
     def __init__(self, **kwargs):
@@ -2432,8 +2743,12 @@ class Container(BaseType):
     def __init__(self, **kwargs):
         self._kwargs = kwargs
 
+    def kwargs_to_json(self):
+        view_kwargs = {**self._kwargs}
+        return _convert_callables_to_operator_uris(view_kwargs)
+
     def to_json(self):
-        return {**super().to_json(), **self._kwargs}
+        return {**super().to_json(), **self.kwargs_to_json()}
 
 
 class PaperContainer(Container):

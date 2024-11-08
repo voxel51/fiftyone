@@ -9,6 +9,7 @@ FiftyOne operator execution.
 import json
 
 from bson import json_util
+from .categories import Categories
 
 
 class Operations(object):
@@ -301,6 +302,9 @@ class Operations(object):
         name,
         label,
         help_markdown=None,
+        category=Categories.CUSTOM,
+        beta=False,
+        is_new=False,
         icon=None,
         light_icon=None,
         dark_icon=None,
@@ -309,14 +313,18 @@ class Operations(object):
         on_unload=None,
         on_change=None,
         on_change_ctx=None,
-        on_change_view=None,
         on_change_dataset=None,
+        on_change_view=None,
+        on_change_spaces=None,
         on_change_current_sample=None,
         on_change_selected=None,
         on_change_selected_labels=None,
         on_change_extended_selection=None,
         on_change_group_slice=None,
+        on_change_query_performance=None,
         allow_duplicates=False,
+        priority=None,
+        _builtin=False,
     ):
         """Registers a panel with the given name and lifecycle callbacks.
 
@@ -332,16 +340,21 @@ class Operations(object):
                 is in dark mode
             surfaces ('grid'): surfaces in which to show the panel. Must be
                 one of 'grid', 'modal', or 'grid modal'
-           on_load (None): an operator to invoke when the panel is loaded
+            beta (False): whether the panel is in beta
+            is_new (False): whether the panel is new
+            category (Categories.CUSTOM): the category of the panel
+            on_load (None): an operator to invoke when the panel is loaded
             on_unload (None): an operator to invoke when the panel is unloaded
             on_change (None): an operator to invoke when the panel state
                 changes
             on_change_ctx (None): an operator to invoke when the panel
                 execution context changes
-            on_change_view (None): an operator to invoke when the current view
-                changes
             on_change_dataset (None): an operator to invoke when the current
                 dataset changes
+            on_change_view (None): an operator to invoke when the current view
+                changes
+            on_change_spaces (None): an operator to invoke when the current
+                spaces layout changes
             on_change_current_sample (None): an operator to invoke when the
                 current sample changes
             on_change_selected (None): an operator to invoke when the current
@@ -352,13 +365,20 @@ class Operations(object):
                 current extended selection changes
             on_change_group_slice (None): an operator to invoke when the group
                 slice changes
+            on_change_query_performance (None): an operator to invoke when the
+                query performance changes
             allow_duplicates (False): whether to allow multiple instances of
                 the panel to the opened
+            priority (None): the priority of the panel, used for sort order
+            _builtin (False): whether the panel is a builtin panel
         """
         params = {
             "panel_name": name,
             "panel_label": label,
             "help_markdown": help_markdown,
+            "category": category.value if category is not None else None,
+            "beta": beta,
+            "is_new": is_new,
             "icon": icon,
             "light_icon": light_icon,
             "dark_icon": dark_icon,
@@ -367,14 +387,18 @@ class Operations(object):
             "on_unload": on_unload,
             "on_change": on_change,
             "on_change_ctx": on_change_ctx,
-            "on_change_view": on_change_view,
             "on_change_dataset": on_change_dataset,
+            "on_change_view": on_change_view,
+            "on_change_spaces": on_change_spaces,
             "on_change_current_sample": on_change_current_sample,
             "on_change_selected": on_change_selected,
             "on_change_selected_labels": on_change_selected_labels,
             "on_change_extended_selection": on_change_extended_selection,
             "on_change_group_slice": on_change_group_slice,
+            "on_change_query_performance": on_change_query_performance,
             "allow_duplicates": allow_duplicates,
+            "priority": priority,
+            "_builtin": _builtin,
         }
         return self._ctx.trigger("register_panel", params=params)
 

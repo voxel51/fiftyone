@@ -3,8 +3,8 @@ import {
   useCurrentDatasetPermission,
   useCurrentUserPermission,
   useMutation,
-  withPermissions
-} from '@fiftyone/hooks';
+  withPermissions,
+} from "@fiftyone/hooks";
 import {
   CLONE_DATASET,
   Dataset,
@@ -17,9 +17,9 @@ import {
   useCurrentDataset,
   useIsEditingDatasetName,
   VIEW_DATASET,
-  VIEW_DATASET_CREATED_BY
-} from '@fiftyone/teams-state';
-import { CLONE_DATASET_DOCUMENTATION_LINK } from '@fiftyone/teams-state/src/constants';
+  VIEW_DATASET_CREATED_BY,
+} from "@fiftyone/teams-state";
+import { CLONE_DATASET_DOCUMENTATION_LINK } from "@fiftyone/teams-state/src/constants";
 import {
   Box,
   Container,
@@ -27,23 +27,23 @@ import {
   DatasetModal,
   DatasetNameInput,
   TagsInput,
-  Timestamp
-} from '@fiftyone/teams-components';
-import { timeFromNow } from '@fiftyone/teams-utilities';
-import { Button, Divider, Link, Typography } from '@mui/material';
-import { xor } from 'lodash';
-import { useRouter } from 'next/router';
-import { DatasetUpdateMutation$data } from 'queries/__generated__/DatasetUpdateMutation.graphql';
-import { useEffect, useMemo, useState } from 'react';
-import 'react-loading-skeleton/dist/skeleton.css';
-import { useRecoilState, useRecoilValue, useSetRecoilState } from 'recoil';
-import Layout from '../components/Layout';
+  Timestamp,
+} from "@fiftyone/teams-components";
+import { timeFromNow } from "@fiftyone/teams-utilities";
+import { Button, Divider, Link, Typography } from "@mui/material";
+import { xor } from "lodash";
+import { useRouter } from "next/router";
+import { DatasetUpdateMutation$data } from "queries/__generated__/DatasetUpdateMutation.graphql";
+import { useEffect, useMemo, useState } from "react";
+import "react-loading-skeleton/dist/skeleton.css";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import Layout from "../components/Layout";
 
 function BasicInfo() {
   const [cloneModalOpen, setCloneModalOpen] = useState<boolean>(false);
   const {
     query: { slug },
-    push
+    push,
   } = useRouter();
 
   const { cloneDataset, cloningDataset, setNewCloneName, newCloneName } =
@@ -56,11 +56,11 @@ function BasicInfo() {
     name: currentDatasetName,
     tags: currDatasetTags = [],
     createdAt,
-    description: currDatasetDesc
+    description: currDatasetDesc,
   } = currentDataset || {};
   const currentTags = (currDatasetTags || []).map((tag) => ({
     label: tag,
-    value: tag
+    value: tag,
   }));
   const setNewTags = useSetRecoilState<
     { label: string; value: string }[] | null
@@ -72,7 +72,7 @@ function BasicInfo() {
     useRecoilState<string>(newDatasetNameState);
 
   const [newDatasetDescription, SetNewDatasetDescription] =
-    useRecoilState<string>(newDatasetDescriptionState(currDatasetDesc || ''));
+    useRecoilState<string>(newDatasetDescriptionState(currDatasetDesc || ""));
 
   const newTags = useRecoilValue(
     newDatasetTagsState(
@@ -83,10 +83,10 @@ function BasicInfo() {
   // clear description and tags if current dataset changes
   useEffect(() => {
     if (currentDatasetName !== newDatasetName) {
-      SetNewDatasetName('');
+      SetNewDatasetName("");
     }
     if (currDatasetDesc !== newDatasetDescription) {
-      SetNewDatasetDescription('');
+      SetNewDatasetDescription("");
     }
     if (!currDatasetTags?.length) {
       setNewTags([]);
@@ -133,7 +133,7 @@ function BasicInfo() {
     !isNewNameAvailable,
     !nameHasChanged,
     tagsHaveChanged,
-    descHasChanged
+    descHasChanged,
   ]);
 
   return (
@@ -159,7 +159,7 @@ function BasicInfo() {
                     `/datasets/${newSlug}/samples`,
                     { shallow: true }
                   );
-                }
+                },
               });
             }
           }}
@@ -174,13 +174,13 @@ function BasicInfo() {
           >
             <DatasetNameInput
               label="Name"
-              value={newDatasetName || currentDatasetName || ''}
+              value={newDatasetName || currentDatasetName || ""}
               onChange={(e) => SetNewDatasetName(e.target.value)}
               direction="h"
               withDatasetUrl
               slug={slug as string}
               disabled={!canUpdateDataset}
-              inputProps={{ width: '77%' }}
+              inputProps={{ width: "77%" }}
             />
           </Box>
         </Box>
@@ -222,7 +222,7 @@ function BasicInfo() {
                     size="medium"
                     variant="outlined"
                     onClick={() => {
-                      setNewCloneName(currentDatasetName + '-clone');
+                      setNewCloneName(currentDatasetName + "-clone");
                       setCloneModalOpen(true);
                     }}
                     disabled={cloningDataset}
@@ -256,11 +256,11 @@ function BasicInfo() {
         <Box display="flex" flex="1" />
         <Box pt={1} pl={1} flex="3" justifyContent="start">
           <Typography variant="subtitle1">
-            Dataset was created{' '}
+            Dataset was created{" "}
             <Timestamp timestamp={createdAt as string} variant="subtitle1" />
             {currentDataset?.createdBy?.name && canViewCreatedBy
               ? ` by ${currentDataset?.createdBy?.name}`
-              : ''}
+              : ""}
           </Typography>
         </Box>
       </Box>
@@ -271,8 +271,8 @@ function BasicInfo() {
             <Button
               variant="outlined"
               onClick={() => {
-                SetNewDatasetName(currentDatasetName || '');
-                SetNewDatasetDescription(currDatasetDesc || '');
+                SetNewDatasetName(currentDatasetName || "");
+                SetNewDatasetDescription(currDatasetDesc || "");
                 setNewTags(currentTags);
                 setIsEditing(false);
               }}
@@ -292,13 +292,13 @@ function BasicInfo() {
               onClick={() => {
                 // TODO:MANI move to hooks
                 updateDataset({
-                  successMessage: 'Successfully edited the dataset',
-                  errorMessage: 'Failed to edit the dataset',
+                  successMessage: "Successfully edited the dataset",
+                  errorMessage: "Failed to edit the dataset",
                   variables: {
                     identifier: slug,
                     name: newDatasetName || currentDatasetName,
                     description: newDatasetDescription,
-                    tags: newTagsLabels
+                    tags: newTagsLabels,
                   },
                   onCompleted: (response: {}) => {
                     const res = response as DatasetUpdateMutation$data;
@@ -306,10 +306,10 @@ function BasicInfo() {
                     const oldSlug = currentDataset?.slug;
 
                     const {
-                      updateDataset: { description, name, tags }
+                      updateDataset: { description, name, tags },
                     } = res;
                     SetNewDatasetName(name);
-                    SetNewDatasetDescription(description || '');
+                    SetNewDatasetDescription(description || "");
                     setNewTags(
                       tags?.map((tag) => ({ label: tag, value: tag }))
                     );
@@ -317,7 +317,7 @@ function BasicInfo() {
                     if (newSlug !== oldSlug) {
                       push(
                         {
-                          pathname: `/datasets/[slug]/manage/basic_info`
+                          pathname: `/datasets/[slug]/manage/basic_info`,
                         },
                         `/datasets/${newSlug}/manage/basic_info`,
                         { shallow: true }
@@ -326,8 +326,8 @@ function BasicInfo() {
                     }
                   },
                   onError: (error: Error) => {
-                    console.error('failed to edit the dataset', error);
-                  }
+                    console.error("failed to edit the dataset", error);
+                  },
                 });
               }}
             >
@@ -340,12 +340,12 @@ function BasicInfo() {
   );
 }
 
-export { getServerSideProps } from 'lib/env';
+export { getServerSideProps } from "lib/env";
 
-export default withPermissions(BasicInfo, [VIEW_DATASET], 'dataset', {
+export default withPermissions(BasicInfo, [VIEW_DATASET], "dataset", {
   getLayoutProps: () => ({
     topNavProps: {
-      noBorder: true
-    }
-  })
+      noBorder: true,
+    },
+  }),
 });

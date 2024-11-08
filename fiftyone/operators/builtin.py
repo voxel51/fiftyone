@@ -14,6 +14,27 @@ import fiftyone.core.media as fom
 import fiftyone.core.storage as fos
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
+from fiftyone.core.odm.workspace import default_workspace_factory
+
+# pylint: disable=no-name-in-module
+from fiftyone.operators.builtins.panels.model_evaluation import EvaluationPanel
+from fiftyone.operators.builtins.operators.evaluation import (
+    EvaluateModel,
+    EvaluateModelAsync,
+)
+from fiftyone.operators.builtins.operators.embeddings import (
+    ComputeVisualization,
+)
+from fiftyone.operators.data_lens.builtin import DATA_LENS_OPERATORS
+from fiftyone.operators.panels import (
+    DataQualityPanel,
+    QueryPerformancePanel,
+)
+from fiftyone.operators.panels import QUERY_PERFORMANCE_OPERATORS
+from fiftyone.operators.panels.data_quality import (
+    OPERATORS as DATA_QUALITY_OPERATORS,
+)
+from fiftyone.operators.utils import create_summary_field_inputs
 
 
 class EditFieldInfo(foo.Operator):
@@ -1115,7 +1136,7 @@ class CreateSummaryField(foo.Operator):
     def resolve_input(self, ctx):
         inputs = types.Object()
 
-        _create_summary_field_inputs(ctx, inputs)
+        create_summary_field_inputs(ctx, inputs)
 
         return types.Property(
             inputs, view=types.View(label="Create summary field")
@@ -1144,149 +1165,6 @@ class CreateSummaryField(foo.Operator):
         )
 
         ctx.trigger("reload_dataset")
-
-
-def _create_summary_field_inputs(ctx, inputs):
-    schema = ctx.dataset.get_field_schema(flat=True)
-    if ctx.dataset._has_frame_fields():
-        frame_schema = ctx.dataset.get_frame_field_schema(flat=True)
-        schema.update(
-            {
-                ctx.dataset._FRAMES_PREFIX + path: field
-                for path, field in frame_schema.items()
-            }
-        )
-
-    categorical_field_types = (fo.StringField, fo.BooleanField)
-    numeric_field_types = (
-        fo.FloatField,
-        fo.IntField,
-        fo.DateField,
-        fo.DateTimeField,
-    )
-
-    schema = {
-        p: f
-        for p, f in schema.items()
-        if (
-            isinstance(f, categorical_field_types)
-            or isinstance(f, numeric_field_types)
-        )
-    }
-
-    path_keys = list(schema.keys())
-    path_selector = types.AutocompleteView()
-    for key in path_keys:
-        path_selector.add_choice(key, label=key)
-
-    inputs.enum(
-        "path",
-        path_selector.values(),
-        label="Input field",
-        description="The input field to summarize",
-        view=path_selector,
-        required=True,
-    )
-
-    path = ctx.params.get("path", None)
-    if path is None or path not in path_keys:
-        return
-
-    field_name = ctx.params.get("field_name", None)
-    if field_name is None:
-        default_field_name = ctx.dataset._get_default_summary_field_name(path)
-    else:
-        default_field_name = field_name
-
-    field_name_prop = inputs.str(
-        "field_name",
-        required=False,
-        label="Summary field",
-        description="The sample field in which to store the summary data",
-        default=default_field_name,
-    )
-
-    if field_name and field_name in path_keys:
-        field_name_prop.invalid = True
-        field_name_prop.error_message = f"Field '{field_name}' already exists"
-        inputs.str(
-            "error",
-            label="Error",
-            view=types.Error(
-                label="Field already exists",
-                description=f"Field '{field_name}' already exists",
-            ),
-        )
-        return
-
-    if ctx.dataset.app_config.sidebar_groups is not None:
-        sidebar_group_selector = types.AutocompleteView()
-        for group in ctx.dataset.app_config.sidebar_groups:
-            sidebar_group_selector.add_choice(group.name, label=group.name)
-    else:
-        sidebar_group_selector = None
-
-    inputs.str(
-        "sidebar_group",
-        default="summaries",
-        required=False,
-        label="Sidebar group",
-        description=(
-            "The name of an "
-            "[App sidebar group](https://docs.voxel51.com/user_guide/app.html#sidebar-groups) "
-            "to which to add the summary field"
-        ),
-        view=sidebar_group_selector,
-    )
-
-    field = schema.get(path, None)
-    if isinstance(field, categorical_field_types):
-        inputs.bool(
-            "include_counts",
-            label="Include counts",
-            description=(
-                "Whether to include per-value counts when summarizing the "
-                "categorical field"
-            ),
-            default=False,
-        )
-    elif isinstance(field, numeric_field_types):
-        group_prefix = path.rsplit(".", 1)[0] + "."
-        group_by_keys = sorted(p for p in schema if p.startswith(group_prefix))
-        group_by_selector = types.AutocompleteView()
-        for group in group_by_keys:
-            group_by_selector.add_choice(group, label=group)
-
-        inputs.enum(
-            "group_by",
-            group_by_selector.values(),
-            default=None,
-            required=False,
-            label="Group by",
-            description=(
-                "An optional attribute to group by when to generate "
-                "per-attribute `[min, max]` ranges"
-            ),
-            view=group_by_selector,
-        )
-
-    inputs.bool(
-        "read_only",
-        default=True,
-        required=False,
-        label="Read-only",
-        description="Whether to mark the summary field as read-only",
-    )
-
-    inputs.bool(
-        "create_index",
-        default=True,
-        required=False,
-        label="Create index",
-        description=(
-            "Whether to create database index(es) for the summary field"
-        ),
-    )
 
 
 class UpdateSummaryField(foo.Operator):
@@ -1839,6 +1717,19 @@ class DeleteSavedView(foo.Operator):
         ctx.dataset.delete_saved_view(name)
 
 
+class ListDatasets(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="list_datasets",
+            label="List datasets",
+            unlisted=True,
+        )
+
+    def execute(self, ctx):
+        return {"datasets": fo.list_datasets()}
+
+
 class ListWorkspaces(foo.Operator):
     @property
     def config(self):
@@ -1939,28 +1830,6 @@ class SaveWorkspace(foo.Operator):
             ),
         )
 
-        # @todo infer this automatically from current App spaces
-        spaces_prop = inputs.oneof(
-            "spaces",
-            [types.String(), types.Object()],
-            default=None,
-            required=True,
-            label="Spaces",
-            description=(
-                "JSON description of the workspace to save: "
-                "`print(session.spaces.to_json(True))`"
-            ),
-            view=types.CodeView(),
-        )
-
-        spaces = ctx.params.get("spaces", None)
-        if spaces is not None:
-            try:
-                _parse_spaces(spaces)
-            except:
-                spaces_prop.invalid = True
-                spaces_prop.error_message = "Invalid workspace definition"
-
         name = ctx.params.get("name", None)
 
         if name in workspaces:
@@ -1979,7 +1848,11 @@ class SaveWorkspace(foo.Operator):
         color = ctx.params.get("color", None)
         spaces = ctx.params.get("spaces", None)
 
-        spaces = _parse_spaces(spaces)
+        curr_spaces = spaces is None
+        if curr_spaces:
+            spaces = ctx.spaces
+        else:
+            spaces = _parse_spaces(ctx, spaces)
 
         ctx.dataset.save_workspace(
             name,
@@ -1988,6 +1861,9 @@ class SaveWorkspace(foo.Operator):
             color=color,
             overwrite=True,
         )
+
+        if curr_spaces:
+            ctx.ops.set_spaces(name=name)
 
 
 class EditWorkspaceInfo(foo.Operator):
@@ -2014,8 +1890,13 @@ class EditWorkspaceInfo(foo.Operator):
         description = ctx.params.get("description", None)
         color = ctx.params.get("color", None)
 
+        curr_name = ctx.spaces.name
         info = dict(name=new_name, description=description, color=color)
+
         ctx.dataset.update_workspace_info(name, info)
+
+        if curr_name is not None and curr_name != new_name:
+            ctx.ops.set_spaces(name=new_name)
 
 
 def _edit_workspace_info_inputs(ctx, inputs):
@@ -2034,10 +1915,10 @@ def _edit_workspace_info_inputs(ctx, inputs):
     for key in workspaces:
         workspace_selector.add_choice(key, label=key)
 
-    # @todo default to current workspace name, if one is currently open
     inputs.enum(
         "name",
         workspace_selector.values(),
+        default=ctx.spaces.name,
         required=True,
         label="Workspace",
         description="The workspace to edit",
@@ -2106,7 +1987,7 @@ class DeleteWorkspace(foo.Operator):
             inputs.enum(
                 "name",
                 workspace_selector.values(),
-                default=None,
+                default=ctx.spaces.name,
                 required=True,
                 label="Workspace",
                 description="The workspace to delete",
@@ -2127,7 +2008,11 @@ class DeleteWorkspace(foo.Operator):
     def execute(self, ctx):
         name = ctx.params["name"]
 
+        curr_spaces = name == ctx.spaces.name
         ctx.dataset.delete_workspace(name)
+
+        if curr_spaces:
+            ctx.ops.set_spaces(spaces=default_workspace_factory())
 
 
 class SyncLastModifiedAt(foo.Operator):
@@ -2319,10 +2204,11 @@ def _get_non_default_frame_fields(dataset):
     return schema
 
 
-def _parse_spaces(spaces):
-    if isinstance(spaces, dict):
-        return fo.Space.from_dict(spaces)
-    return fo.Space.from_json(spaces)
+def _parse_spaces(ctx, spaces):
+    if isinstance(spaces, str):
+        spaces = json.loads(spaces)
+
+    return fo.Space.from_dict(spaces)
 
 
 BUILTIN_OPERATORS = [
@@ -2359,3 +2245,26 @@ BUILTIN_OPERATORS = [
     SyncLastModifiedAt(_builtin=True),
     ListFiles(_builtin=True),
 ]
+
+BUILTIN_PANELS = []
+
+#
+# Teams-only
+#
+
+BUILTIN_OPERATORS.extend(DATA_QUALITY_OPERATORS)
+BUILTIN_OPERATORS.extend(QUERY_PERFORMANCE_OPERATORS)
+BUILTIN_OPERATORS.extend(DATA_LENS_OPERATORS)
+BUILTIN_OPERATORS.append(EvaluateModel(_builtin=True))
+BUILTIN_OPERATORS.append(EvaluateModelAsync(_builtin=True))
+BUILTIN_OPERATORS.append(ComputeVisualization(_builtin=True))
+
+BUILTIN_PANELS.append(EvaluationPanel(_builtin=True))
+BUILTIN_PANELS.append(DataQualityPanel(_builtin=True))
+
+if fo.app_config.enable_query_performance:
+    BUILTIN_PANELS.append(QueryPerformancePanel(_builtin=True))
+
+#
+# end of Teams-only
+#

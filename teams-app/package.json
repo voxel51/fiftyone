@@ -1,6 +1,6 @@
 {
     "name": "fiftyone-teams-app-packages",
-    "version": "2.1.3",
+    "version": "2.2.0-dev.45",
     "private": true,
     "workspaces": [
         "packages/*",
@@ -14,6 +14,7 @@
         "start": "",
         "format": "npx prettier --write .",
         "pretty-quick": "pretty-quick",
+        "lint:prettify": "prettier --config ../.prettierrc.js --ignore-path ../.prettierignore  --write \"packages/**/*.(ts|js|jsx|tsx|json|css|scss)\"",
         "prepare": "cd .. && husky install app/.husky",
         "test": "vitest",
         "dev:app": "yarn workspace @fiftyone/teams-app dev",

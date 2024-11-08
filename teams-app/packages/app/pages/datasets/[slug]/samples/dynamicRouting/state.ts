@@ -1,4 +1,5 @@
-import { type ModalSelector, type State, viewsAreEqual } from "@fiftyone/state";
+import type { ModalSelector, State } from "@fiftyone/state";
+import { viewsAreEqual } from "@fiftyone/state";
 import { setPending } from "pages/state";
 import { v4 } from "uuid";
 import { transition } from "./transition";

@@ -11,17 +11,10 @@ import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { config } from "./config";
 import { getBrowserStorageEffectForKey } from "./customEffects";
-import { datasetSampleCount } from "./dataset";
-import { filters } from "./filters";
 import { isLabelPath } from "./labels";
-import { count } from "./pathData";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
 import { datasetId, datasetName } from "./selectors";
-import {
-  granularSidebarExpandedStore,
-  sidebarExpandedStore,
-} from "./sidebarExpanded";
 import { State } from "./types";
 import { view } from "./view";
 
@@ -104,18 +97,18 @@ const indexesByPath = selector({
     ) => {
       const projection = frames ? framesProjection : samplesProjection;
 
-      fields = fields.map((field) => get(schemaAtoms.dbPath(field)));
+      const filtered = fields.map((field) => get(schemaAtoms.dbPath(field)));
 
       if (field === "$**") {
         if (!projection) {
-          return fields;
+          return filtered;
         }
         const set = new Set(projection.fields);
         const filter = projection.inclusion
           ? (f: string) => set.has(f)
           : (f: string) => !set.has(f);
 
-        return fields.filter(filter);
+        return filtered.filter(filter);
       }
 
       if (!field.endsWith(".$**")) {
@@ -123,18 +116,17 @@ const indexesByPath = selector({
       }
 
       const parent = field.split(".").slice(0, -1).join(".");
-      return fields.filter((field) => field.startsWith(parent));
+      return filtered.filter((field) => field.startsWith(parent));
     };
 
     return new Set([
-      ...samples
-        .map(({ key: [{ field }] }) => convertWildcards(field, schema, false))
-        .flat(),
+      ...samples.flatMap(({ key: [{ field }] }) =>
+        convertWildcards(field, schema, false)
+      ),
       ...frames
-        .map(({ key: [{ field }] }) =>
+        .flatMap(({ key: [{ field }] }) =>
           convertWildcards(field, frameSchema, true)
         )
-        .flat()
         .map((field) => `frames.${field}`),
     ]);
   },
@@ -150,8 +142,16 @@ export const pathIndex = selectorFamily({
     },
 });
 
-export const lightningPaths = selectorFamily<Set<string>, string>({
-  key: "lightningPaths",
+export const pathHasIndexes = selectorFamily({
+  key: "pathHasIndexes",
+  get:
+    (path: string) =>
+    ({ get }) =>
+      !!get(indexedPaths(path)).size,
+});
+
+export const indexedPaths = selectorFamily<Set<string>, string>({
+  key: "indexedPaths",
   get:
     (path: string) =>
     ({ get }) => {
@@ -186,90 +186,49 @@ export const lightningPaths = selectorFamily<Set<string>, string>({
     },
 });
 
-export const pathIsLocked = selectorFamily({
-  key: "pathIsLocked",
-  get:
-    (path: string) =>
-    ({ get }) => {
-      return !get(lightningPaths(path)).size;
-    },
+export const enableQueryPerformanceConfig = selector({
+  key: "enableQueryPerformanceConfig",
+  get: ({ get }) => get(config).enableQueryPerformance,
 });
 
-export const lightningThresholdConfig = selector({
-  key: "lightningThresholdConfig",
-  get: ({ get }) => get(config).lightningThreshold,
+export const defaultQueryPerformanceConfig = selector({
+  key: "defaultQueryPerformanceConfig",
+  get: ({ get }) => get(config).defaultQueryPerformance,
 });
 
-const lightningThresholdAtom = atomFamily<string, string>({
-  key: "lightningThresholdAtom",
+const queryPerformanceStore = atomFamily<boolean, string>({
+  key: "queryPerformanceStore",
   default: undefined,
   effects: (datasetId) => [
-    getBrowserStorageEffectForKey(`lightningThresholdAtom-${datasetId}`, {
+    getBrowserStorageEffectForKey(`queryPerformance-${datasetId}`, {
       sessionStorage: true,
+      valueClass: "boolean",
     }),
   ],
 });
 
-export const lightningThreshold = selector<null | number>({
-  key: "lightningThreshold",
-  get: ({ get }) => {
-    const setting = get(lightningThresholdAtom(get(datasetId)));
-    if (setting === undefined) {
-      return get(lightningThresholdConfig);
-    }
-
-    if (setting === "null") {
-      return null;
-    }
-
-    return Number(setting);
-  },
-  set: ({ get, reset, set }, value) => {
-    set(
-      lightningThresholdAtom(get(datasetId)),
-      value instanceof DefaultValue ? value : String(value)
-    );
-    reset(granularSidebarExpandedStore);
-    reset(sidebarExpandedStore(false));
-    reset(filters);
-  },
-});
-
-export const lightning = selector({
-  key: "lightning",
+export const queryPerformance = selector<boolean>({
+  key: "queryPerformance",
   get: ({ get }) => {
     if (get(view).length) {
       return false;
     }
 
-    const threshold = get(lightningThreshold);
-    if (threshold === null) {
+    if (!get(enableQueryPerformanceConfig)) {
       return false;
     }
 
-    return get(datasetSampleCount) >= threshold;
+    const storedValue = get(queryPerformanceStore(get(datasetId)));
+    if (storedValue !== undefined) {
+      return storedValue;
+    }
+
+    return get(defaultQueryPerformanceConfig);
   },
-});
-
-export const isLightningPath = selectorFamily({
-  key: "isLightningPath",
-  get:
-    (path: string) =>
-    ({ get }) => {
-      return get(lightning) && !get(pathIsLocked(path));
-    },
-});
-
-export const lightningUnlocked = selector({
-  key: "lightningUnlocked",
-  get: ({ get }) => {
-    if (!get(lightning)) {
-      return false;
-    }
-
-    return (
-      get(count({ path: "", extended: false, modal: false, lightning: true })) <
-      get(lightningThreshold)
+  set: ({ get, set }, value) => {
+    set(
+      queryPerformanceStore(get(datasetId)),
+      value instanceof DefaultValue ? undefined : value
     );
   },
 });

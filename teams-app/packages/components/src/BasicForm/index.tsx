@@ -2,12 +2,12 @@ import {
   Box,
   FileDrop,
   Selection,
-  TextInput
-} from '@fiftyone/teams-components';
-import { Stack, StackProps } from '@mui/material';
-import { ComponentType, useEffect, useMemo, useState } from 'react';
+  TextInput,
+} from "@fiftyone/teams-components";
+import { Stack, StackProps } from "@mui/material";
+import { ComponentType, useEffect, useMemo, useState } from "react";
 
-type FieldType = 'text' | 'secret' | 'file' | 'select';
+type FieldType = "text" | "secret" | "file" | "select";
 
 type SelectOption = {
   label: string;
@@ -87,7 +87,7 @@ function getFieldComponent(field: BasicFormField) {
     file: FileDrop,
     text: TextInput,
     secret: TextInput,
-    select: Selection
+    select: Selection,
   };
 
   return componentByFieldType[type];
@@ -101,19 +101,19 @@ function getPropsForField(
 
   if (field.Component) {
     // Do nothing... Handled by the default return
-  } else if (type === 'text' || type === 'secret') {
+  } else if (type === "text" || type === "secret") {
     return {
-      fieldLabel: label || '',
+      fieldLabel: label || "",
       description,
       caption,
       id,
-      size: 'small',
+      size: "small",
       fullWidth: true,
-      type: type === 'secret' ? 'password' : 'text',
+      type: type === "secret" ? "password" : "text",
       onChange: (e) => changeHandler(id, e.target.value),
-      ...fieldProps
+      ...fieldProps,
     };
-  } else if (type === 'select') {
+  } else if (type === "select") {
     return {
       label,
       description,
@@ -123,7 +123,7 @@ function getPropsForField(
       selectProps: { fullWidth: true },
       items: options,
       onChange: (value) => changeHandler(id, value),
-      ...fieldProps
+      ...fieldProps,
     };
   }
 
@@ -134,7 +134,7 @@ function getPropsForField(
     key: id,
     id,
     onChange: (value) => changeHandler(id, value),
-    ...fieldProps
+    ...fieldProps,
   };
 }
 
@@ -143,17 +143,17 @@ function validateForm(form, formSchema) {
   const { fieldsById, requiredFields } = formSchema;
   for (const fieldId in fieldsById) {
     const field = fieldsById[fieldId];
-    if (field.type === 'file') {
+    if (field.type === "file") {
       if (requiredFields.includes(fieldId) && form[fieldId]?.length === 0) {
         errors.push({
           field: fieldId,
-          message: 'At least one file is required'
+          message: "At least one file is required",
         });
       }
     } else if (requiredFields.includes(fieldId) && !Boolean(form[fieldId])) {
       errors.push({
         field: fieldId,
-        message: 'Must be a non-empty value'
+        message: "Must be a non-empty value",
       });
     }
   }

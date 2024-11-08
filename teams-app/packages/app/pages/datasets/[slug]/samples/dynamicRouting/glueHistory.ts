@@ -3,7 +3,7 @@ const hasHistoryState = () => {
 };
 
 const glueHistory = (cb: (cb: () => void) => void, replace: () => void) => {
-  const match = RegExp('/datasets/.*/samples');
+  const match = RegExp("/datasets/.*/samples");
   let exitedPage = false;
   // This is the glue between NextJS's built-in router and the routing
   // managed by the embedded dataset page.

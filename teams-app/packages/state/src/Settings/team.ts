@@ -1,20 +1,20 @@
 import {
   CONSTANT_VARIABLES,
-  recoilEnvironmentKey
-} from '@fiftyone/teams-state';
-import Router from 'next/router';
-import { graphql } from 'react-relay';
-import { RecoilState, atom, selector } from 'recoil';
-import { graphQLSelector } from 'recoil-relay';
-import { changeRoute } from '../routing.utils';
-import { PARAMS } from '../urlSyncCommon';
-import * as usersListQuery from './__generated__/teamUsersListQuery.graphql';
+  recoilEnvironmentKey,
+} from "@fiftyone/teams-state";
+import Router from "next/router";
+import { graphql } from "react-relay";
+import { atom, RecoilState } from "recoil";
+import { graphQLSelector } from "recoil-relay";
+import { changeRoute } from "../routing.utils";
+import { PARAMS } from "../urlSyncCommon";
+import * as usersListQuery from "./__generated__/teamUsersListQuery.graphql";
 
 const {
   DEFAULT_PAGE,
   DEFAULT_USERS_PAGE_SIZE,
   DEFAULT_USER_DATASETS_LIST_PAGE,
-  DEFAULT_USER_DATASETS_LIST_PAGE_SIZE
+  DEFAULT_USER_DATASETS_LIST_PAGE_SIZE,
 } = CONSTANT_VARIABLES;
 
 export const teamUsersListQuery = graphql`
@@ -64,6 +64,8 @@ export const teamInvitationsQuery = graphql`
   query teamInvitationsQuery {
     invitations {
       createdAt
+      emailSendAttemptedAt
+      emailSentAt
       expiresAt
       id
       inviteeEmail
@@ -97,6 +99,8 @@ export const teamSendUserInvitationMutation = graphql`
     sendUserInvitation(email: $email, role: $role) {
       __typename
       createdAt
+      emailSendAttemptedAt
+      emailSentAt
       expiresAt
       id
       inviteeEmail
@@ -152,73 +156,73 @@ export const teamUserDatasetsPageQuery = graphql`
 `;
 
 export const teamRemoveTeammateOpenState = atom({
-  key: 'teamRemoveTeammateOpenState',
-  default: false
+  key: "teamRemoveTeammateOpenState",
+  default: false,
 });
 
 export const teamRemoveTeammateTargetState = atom({
-  key: 'teamRemoveTeammateTargetState',
+  key: "teamRemoveTeammateTargetState",
   default: {
-    name: '',
-    slug: '',
-    open: false
-  }
+    name: "",
+    slug: "",
+    open: false,
+  },
 });
 
 export const teamInvitationFormState = atom({
-  key: 'teamInvitationFormState',
+  key: "teamInvitationFormState",
   default: {
-    email: '',
-    id: '',
-    role: 'MEMBER'
-  }
+    email: "",
+    id: "",
+    role: "MEMBER",
+  },
 });
 
 export const currentInviteeState = atom<{ role: string }>({
-  key: 'currentInviteeState',
-  default: undefined
+  key: "currentInviteeState",
+  default: undefined,
 });
 
 // todo: combine into single large query for the whole setting > team page
 export const teamInvitationsSelector = graphQLSelector({
-  key: 'teamInvitationsSelector',
+  key: "teamInvitationsSelector",
   environment: recoilEnvironmentKey,
   query: teamInvitationsQuery,
   variables: {},
   mapResponse: ({ invitations }) => {
     return invitations;
-  }
+  },
 });
 
 export const settingsTeamSelectedUserId = atom({
-  key: 'settingsTeamSelectedUserId',
-  default: ''
+  key: "settingsTeamSelectedUserId",
+  default: "",
 });
 
 export const settingsTeamInviteTeammateOpen = atom({
-  key: 'settingsTeamInviteTeammateOpen',
-  default: false
+  key: "settingsTeamInviteTeammateOpen",
+  default: false,
 });
 
 export const settingsTeamUserDatasetsByInvitePageState = atom({
-  key: 'settingsTeamUserDatasetsByInvitePageState',
+  key: "settingsTeamUserDatasetsByInvitePageState",
   default: {
     page: DEFAULT_USER_DATASETS_LIST_PAGE,
-    pageSize: DEFAULT_USER_DATASETS_LIST_PAGE_SIZE
-  }
+    pageSize: DEFAULT_USER_DATASETS_LIST_PAGE_SIZE,
+  },
 });
 
 export const settingsTeamUserDatasetsPageState = atom({
-  key: 'settingsTeamUserDatasetsPageState',
+  key: "settingsTeamUserDatasetsPageState",
   default: {
     page: DEFAULT_USER_DATASETS_LIST_PAGE,
-    pageSize: DEFAULT_USER_DATASETS_LIST_PAGE_SIZE
-  }
+    pageSize: DEFAULT_USER_DATASETS_LIST_PAGE_SIZE,
+  },
 });
 
 export const settingsTeamUserDatasetsUpdateCount = atom({
-  key: 'settingsTeamUserDatasetsUpdateCount',
-  default: 0
+  key: "settingsTeamUserDatasetsUpdateCount",
+  default: 0,
 });
 export interface UserListingSearchExpression {
   fields: string[];
@@ -227,24 +231,24 @@ export interface UserListingSearchExpression {
 
 type UsersListingSearchFields = usersListQuery.UserSearchFields;
 const defaultSearchListingFields: UsersListingSearchFields[] = [
-  'name',
-  'email'
+  "name",
+  "email",
 ];
 // TODO: when last joined datetime is available, we should allow sort by that
 const SORT_OPTIONS = [
   {
-    field: 'name',
-    direction: 'ASC',
-    displayName: 'Name A-Z'
+    field: "name",
+    direction: "ASC",
+    displayName: "Name A-Z",
   },
   {
-    field: 'name',
-    direction: 'DESC',
-    displayName: 'Name Z-A'
-  }
+    field: "name",
+    direction: "DESC",
+    displayName: "Name Z-A",
+  },
 ];
 
-export const USER_TEAM_PATH = '/settings/team/users';
+export const USER_TEAM_PATH = "/settings/team/users";
 
 export interface UserListingSearchExpression {
   fields: string[];
@@ -252,24 +256,24 @@ export interface UserListingSearchExpression {
 }
 
 export const userListUsersCountState = atom({
-  key: 'userListUsersCountState',
-  default: null
+  key: "userListUsersCountState",
+  default: null,
 });
 
 export const userListInvitationsCountState = atom({
-  key: 'userListInvitationsCountState',
-  default: null
+  key: "userListInvitationsCountState",
+  default: null,
 });
 
 export const userListPageInfoState = atom({
-  key: 'userListPageInfoState',
+  key: "userListPageInfoState",
   default: { page: DEFAULT_PAGE, pageSize: DEFAULT_USERS_PAGE_SIZE },
   effects: [
     ({ trigger, onSet, setSelf }) => {
-      if (trigger == 'get') {
+      if (trigger == "get") {
         setSelf({
           page: Number(Router.query?.page || 1),
-          pageSize: Number(Router.query?.pageSize || DEFAULT_USERS_PAGE_SIZE)
+          pageSize: Number(Router.query?.pageSize || DEFAULT_USERS_PAGE_SIZE),
         });
       }
       onSet((newValue, oldValue) => {
@@ -277,11 +281,11 @@ export const userListPageInfoState = atom({
           changeRoute({
             pathname: USER_TEAM_PATH,
             params: newValue,
-            resetPage: false
+            resetPage: false,
           });
         }
       });
-      Router.events.on('routeChangeComplete', () => {
+      Router.events.on("routeChangeComplete", () => {
         const queryString = window.location.search;
         const urlPram = new URLSearchParams(queryString);
         const pageSize = Number(
@@ -290,16 +294,16 @@ export const userListPageInfoState = atom({
         const page = Number(urlPram.get(PARAMS.PAGE) || 1);
         setSelf({ page, pageSize });
       });
-    }
-  ]
+    },
+  ],
 });
 
 export const userSearchInputState = atom({
-  key: 'userSearchInput',
-  default: '',
+  key: "userSearchInput",
+  default: "",
   effects: [
     ({ trigger, setSelf, getPromise }) => {
-      if (trigger == 'get') {
+      if (trigger == "get") {
         const search = Router.query?.search;
         if (search) {
           setSelf(search as string);
@@ -308,12 +312,12 @@ export const userSearchInputState = atom({
             delete Router.query?.[PARAMS.SEARCH];
             Router.replace({
               pathname: USER_TEAM_PATH,
-              query: Router.query
+              query: Router.query,
             });
           }
         }
       }
-      Router.events.on('routeChangeComplete', async () => {
+      Router.events.on("routeChangeComplete", async () => {
         const input = await getPromise(userSearchInputState);
         const queryString = window.location.search;
         const urlPram = new URLSearchParams(queryString);
@@ -322,19 +326,19 @@ export const userSearchInputState = atom({
         if (searchParam && !input) {
           setSelf(searchParam);
         } else if (!searchParam) {
-          setSelf('');
+          setSelf("");
         }
       });
-    }
-  ]
+    },
+  ],
 });
 
 export const searchUserTermState = atom({
-  key: 'searchUser',
-  default: '',
+  key: "searchUser",
+  default: "",
   effects: [
     ({ trigger, onSet, setSelf, getPromise }) => {
-      if (trigger == 'get') {
+      if (trigger == "get") {
         setSelf(Router.query?.search as string);
       }
       onSet(async (_, __, isReset) => {
@@ -344,26 +348,26 @@ export const searchUserTermState = atom({
           changeRoute({
             params: {
               ...Router.query,
-              ...{ page: 1, pageSize }
-            }
+              ...{ page: 1, pageSize },
+            },
           });
         }
       });
-    }
-  ]
+    },
+  ],
 });
 
 export const userSearchTermState: RecoilState<UserListingSearchExpression | null> =
   atom({
-    key: 'userSearchTermState',
+    key: "userSearchTermState",
     default: null,
     effects: [
       ({ trigger, onSet, setSelf, getPromise }) => {
-        if (trigger == 'get') {
+        if (trigger == "get") {
           setSelf(
             toSearchUserFilter({
               term: Router.query?.search as string,
-              fields: []
+              fields: [],
             })
           );
         }
@@ -376,8 +380,8 @@ export const userSearchTermState: RecoilState<UserListingSearchExpression | null
               pathname: USER_TEAM_PATH,
               params: {
                 ...Router.query,
-                ...{ page: 1, pageSize }
-              }
+                ...{ page: 1, pageSize },
+              },
             });
             return;
           }
@@ -386,31 +390,31 @@ export const userSearchTermState: RecoilState<UserListingSearchExpression | null
             changeRoute({
               pathname: USER_TEAM_PATH,
               params: { search: newValue.term },
-              deleteParams: !newValue.term ? new Set(['search']) : new Set()
+              deleteParams: !newValue.term ? new Set(["search"]) : new Set(),
             });
           }
         });
-        Router.events.on('routeChangeComplete', () => {
+        Router.events.on("routeChangeComplete", () => {
           const queryString = window.location.search;
           const urlPram = new URLSearchParams(queryString);
           const searchParam = urlPram.get(PARAMS.SEARCH);
           setSelf(
             toSearchUserFilter({
               term: searchParam,
-              fields: []
+              fields: [],
             })
           );
         });
-      }
-    ]
+      },
+    ],
   });
 
 export const userListSortState = atom({
-  key: 'userListSortState',
+  key: "userListSortState",
   default: SORT_OPTIONS[0],
   effects: [
     ({ trigger, onSet, setSelf }) => {
-      if (trigger == 'get') {
+      if (trigger == "get") {
         setSelf(getCurrentSortOption());
       }
       onSet((newValue, oldValue) => {
@@ -419,16 +423,16 @@ export const userListSortState = atom({
             pathname: USER_TEAM_PATH,
             params: {
               [PARAMS.ORDER_FIELD]: newValue.field,
-              [PARAMS.ORDER_DIRECTION]: newValue.direction.toLowerCase()
-            }
+              [PARAMS.ORDER_DIRECTION]: newValue.direction.toLowerCase(),
+            },
           });
         }
       });
-      Router.events.on('routeChangeComplete', () => {
+      Router.events.on("routeChangeComplete", () => {
         setSelf(getCurrentSortOption());
       });
-    }
-  ]
+    },
+  ],
 });
 
 // this is from datasets, move it to common
@@ -448,12 +452,12 @@ export const toSearchUserFilter = (search: UserListingSearchExpression) => {
   if (!search?.term) {
     return {
       fields: defaultSearchListingFields,
-      term: ''
+      term: "",
     };
   }
   const rawSearch = decodeURIComponent(search.term);
 
-  const rawSplit = rawSearch.split(':');
+  const rawSplit = rawSearch.split(":");
   let fields = search.fields.length
     ? search.fields
     : defaultSearchListingFields;
@@ -473,6 +477,6 @@ export const toSearchUserFilter = (search: UserListingSearchExpression) => {
 
   return {
     fields,
-    term
+    term,
   };
 };

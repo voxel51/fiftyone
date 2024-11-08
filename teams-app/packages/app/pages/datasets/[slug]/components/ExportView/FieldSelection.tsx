@@ -1,14 +1,14 @@
-import { useExportView } from '@fiftyone/hooks';
-import { Selection } from '@fiftyone/teams-components';
+import { useExportView } from "@fiftyone/hooks";
+import { Selection } from "@fiftyone/teams-components";
 import {
   DatasetExportFieldsQuery,
   DatasetExportFormatsQuery,
   DatasetSnapshotExportFieldsQuery,
-  DatasetSnapshotExportFormatsQuery
-} from '@fiftyone/teams-state';
-import { useRouter } from 'next/router';
-import { useEffect, useMemo } from 'react';
-import { useLazyLoadQuery } from 'react-relay';
+  DatasetSnapshotExportFormatsQuery,
+} from "@fiftyone/teams-state";
+import { useRouter } from "next/router";
+import { useEffect, useMemo } from "react";
+import { useLazyLoadQuery } from "react-relay";
 
 export default function FieldSelection() {
   const router = useRouter();
@@ -20,7 +20,7 @@ export default function FieldSelection() {
     {
       datasetIdentifier: slug as string,
       snapshot: snapshot as string,
-      includeMedia: hasMedia
+      includeMedia: hasMedia,
     }
   );
   const exportFieldsResponse = useLazyLoadQuery(
@@ -28,7 +28,7 @@ export default function FieldSelection() {
     {
       datasetIdentifier: slug as string,
       snapshot: snapshot as string,
-      exportFormat: format
+      exportFormat: format,
     },
     { networkCacheConfig: { force: false } }
   );
@@ -58,7 +58,7 @@ export default function FieldSelection() {
       value={field}
       selectProps={{
         fullWidth: true,
-        multiple: exportFormat?.allowMultiFieldSelect
+        multiple: exportFormat?.allowMultiFieldSelect,
       }}
       containerProps={{ sx: { mt: 1 } }}
       onChange={(field) => {

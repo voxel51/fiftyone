@@ -142,8 +142,8 @@ directory.
 .. note::
 
    For vite configs we recommend forking the
-   `FiftyOne Plugins <https://github.com/voxel51/fiftyone-plugins>`_ repository
-   and following the conventions there to build your plugin.
+   `FiftyOne Plugins <https://github.com/voxel51/hello-world-plugin-js>`_
+   repository and following the conventions there to build your plugin.
 
 .. _plugin-anatomy:
 
@@ -974,6 +974,7 @@ contains the following properties:
 -   `ctx.dataset_name`:  the name of the current dataset
 -   `ctx.dataset` - the current |Dataset| instance
 -   `ctx.view` - the current |DatasetView| instance
+-   `ctx.spaces` - the current :ref:`Spaces layout <app-spaces>` in the App
 -   `ctx.current_sample` - the ID of the active sample in the App modal, if any
 -   `ctx.selected` - the list of currently selected samples in the App, if any
 -   `ctx.selected_labels` - the list of currently selected labels in the App,
@@ -1994,6 +1995,19 @@ subsequent sections.
                 "description": "the current view",
             }
             ctx.panel.set_state("event", "on_change_view")
+            ctx.panel.set_data("event_data", event)
+
+        def on_change_spaces(self, ctx):
+            """Implement this method to set panel state/data when the current
+            spaces layout changes.
+
+            The current spaces layout will be available via ``ctx.spaces``.
+            """
+            event = {
+                "data": ctx.spaces,
+                "description": "the current spaces layout",
+            }
+            ctx.panel.set_state("event", "on_change_spaces")
             ctx.panel.set_data("event_data", event)
 
         def on_change_current_sample(self, ctx):

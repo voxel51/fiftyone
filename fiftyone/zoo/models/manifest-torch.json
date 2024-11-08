@@ -43,7 +43,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "alexnet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -83,7 +84,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch"],
+            "tags": ["segmentation", "coco", "torch", "resnet", "deeplabv3"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -801,7 +802,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch"],
+            "tags": ["segmentation", "coco", "torch", "resnet", "deeplabv3"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -847,7 +848,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "densenet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -894,7 +896,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "densenet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -941,7 +944,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "densenet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -988,7 +992,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "densenet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1026,7 +1031,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch"],
+            "tags": ["detection", "coco", "torch", "faster-rcnn", "resnet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1065,7 +1070,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch"],
+            "tags": ["segmentation", "coco", "torch", "fcn", "resnet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1104,7 +1109,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch"],
+            "tags": ["segmentation", "coco", "torch", "fcn", "resnet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1150,7 +1155,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "googlenet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1196,7 +1202,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "inception"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1260,7 +1267,7 @@
                     "support": true
                 }
             },
-            "tags": ["keypoints", "coco", "torch"],
+            "tags": ["keypoints", "coco", "torch", "keypoint-rcnn", "resnet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1296,7 +1303,7 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch"],
+            "tags": ["instances", "coco", "torch", "mask-rcnn", "resnet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1342,7 +1349,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "mnasnet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1389,7 +1397,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "mnasnet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1436,7 +1445,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "mobilenet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1483,7 +1493,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "resnet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1530,7 +1541,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "resnet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1577,7 +1589,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "resnet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1624,7 +1637,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "resnet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1671,7 +1685,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "resnet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1718,7 +1733,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "resnext"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1765,7 +1781,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "resnext"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1803,7 +1820,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch"],
+            "tags": ["detection", "coco", "torch", "retinanet", "resnet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1849,7 +1866,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "shufflenet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1896,7 +1914,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "shufflenet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1937,7 +1956,7 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "imagenet", "torch"],
+            "tags": ["classification", "imagenet", "torch", "squeezenet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1977,7 +1996,7 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "imagenet", "torch"],
+            "tags": ["classification", "imagenet", "torch", "squeezenet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2023,7 +2042,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "vgg"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2068,7 +2088,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "vgg"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2115,7 +2136,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "vgg"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2160,7 +2182,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "vgg"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2207,7 +2230,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "vgg"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2252,7 +2276,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "vgg"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2299,7 +2324,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "vgg"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2344,7 +2370,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "vgg"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2391,7 +2418,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "wide-resnet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2438,7 +2466,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "torch"
+                "torch",
+                "wide-resnet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2721,7 +2750,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch"],
+            "tags": ["embeddings", "torch", "dinov2"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -2750,7 +2779,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch"],
+            "tags": ["embeddings", "torch", "dinov2"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -2779,7 +2808,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch"],
+            "tags": ["embeddings", "torch", "dinov2"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -2808,7 +2837,7 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch"],
+            "tags": ["embeddings", "torch", "dinov2"],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3888,7 +3917,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformer"],
+            "tags": ["detection", "coco", "torch", "transformer", "rtdetr"],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -3920,7 +3949,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformer"],
+            "tags": ["detection", "coco", "torch", "transformer", "rtdetr"],
             "date_added": "2024-07-01 19:22:51"
         },
         {
