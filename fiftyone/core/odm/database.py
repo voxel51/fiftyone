@@ -37,6 +37,7 @@ fob = fou.lazy_import("fiftyone.core.brain")
 fod = fou.lazy_import("fiftyone.core.dataset")
 foe = fou.lazy_import("fiftyone.core.evaluation")
 fors = fou.lazy_import("fiftyone.core.runs")
+foos = fou.lazy_import("fiftyone.operators.store")
 
 
 logger = logging.getLogger(__name__)
@@ -1125,6 +1126,16 @@ def delete_dataset(name, dry_run=False):
         _logger.info("Deleting %d run result(s)", len(result_ids))
         if not dry_run:
             _delete_run_results(conn, result_ids)
+
+    dataset_id = dataset_dict["_id"]
+    svc = foos.ExecutionStoreService(dataset_id=dataset_id)
+    num_docs = sum(
+        len(svc.list_keys(store_name)) for store_name in svc.list_stores()
+    )
+    if num_docs > 0:
+        _logger.info("Deleting %d store doc(s)", num_docs)
+        if not dry_run:
+            foos.cleanup_store_for_dataset(dataset_id)
 
 
 def delete_saved_view(dataset_name, view_name, dry_run=False):
