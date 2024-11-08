@@ -354,6 +354,14 @@ class QueryPerformancePanel(Panel):
         }
         return table_data
 
+    def on_change_query_performance(self, ctx):
+        event = {
+            "data": ctx.query_performance,
+            "description": "the current query performance mode",
+        }
+        ctx.panel.set_state("event", "on_change_query_performance")
+        ctx.panel.set_data("event_data", event)
+
     def _build_view(self, ctx):
         ctx.panel.set_data("table", self._get_index_table_data(ctx))
 
@@ -400,10 +408,10 @@ class QueryPerformancePanel(Panel):
     def toggle_qp(self, ctx):
         if ctx.query_performance:
             ctx.ops.notify("Disabling query performance mode")
-            ctx.prompt("disable_query_performance", on_success=self.refresh)
+            ctx.trigger("disable_query_performance")
         else:
             ctx.ops.notify("Enabling query performance mode")
-            ctx.prompt("enable_query_performance", on_success=self.refresh)
+            ctx.trigger("enable_query_performance")
 
         self._build_view(ctx)
 

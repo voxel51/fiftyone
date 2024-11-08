@@ -322,6 +322,7 @@ class Operations(object):
         on_change_selected_labels=None,
         on_change_extended_selection=None,
         on_change_group_slice=None,
+        on_change_query_performance=None,
         allow_duplicates=False,
         priority=None,
         _builtin=False,
@@ -368,6 +369,8 @@ class Operations(object):
                 current extended selection changes
             on_change_group_slice (None): an operator to invoke when the group
                 slice changes
+            on_change_query_performance (None): an operator to invoke when the
+                query performance changes
             allow_duplicates (False): whether to allow multiple instances of
                 the panel to the opened
             priority (None): the priority of the panel, used for sort order
@@ -397,6 +400,7 @@ class Operations(object):
             "on_change_selected_labels": on_change_selected_labels,
             "on_change_extended_selection": on_change_extended_selection,
             "on_change_group_slice": on_change_group_slice,
+            "on_change_query_performance": on_change_query_performance,
             "allow_duplicates": allow_duplicates,
             "priority": priority,
             "_builtin": _builtin,

@@ -158,7 +158,9 @@ def execute_operator(operator_uri, ctx=None, exhaust=True, **kwargs):
     """
     request_params = _parse_ctx(ctx=ctx, **kwargs)
     coroutine = execute_or_delegate_operator(
-        operator_uri, request_params, exhaust=exhaust,
+        operator_uri,
+        request_params,
+        exhaust=exhaust,
     )
 
     try:
@@ -947,6 +949,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
         """The current group slice of the view (if any)."""
         return self.request_params.get("group_slice", None)
 
+    @property
     def query_performance(self):
         """Whether query performance is enabled."""
         return self.request_params.get("query_performance", None)
