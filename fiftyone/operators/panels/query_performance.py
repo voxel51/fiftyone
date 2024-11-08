@@ -1,14 +1,15 @@
 import eta.core.utils as etau
 import fiftyone as fo
 from ..types import (
-    TabsView,
     AutocompleteView,
+    GridView,
+    ImageView,
+    Notice,
     Object,
     Property,
-    Notice,
-    ImageView,
+    RadioGroup,
     TableView,
-    GridView,
+    TabsView,
 )
 from fiftyone.management.dataset import DatasetPermission
 from ..operator import Operator, OperatorConfig
@@ -290,6 +291,60 @@ class IndexFieldRemovalConfirmationOperator(Operator):
         }
 
 
+class QueryPerformanceConfigConfirmationOperator(Operator):
+    @property
+    def config(self):
+        return OperatorConfig(
+            name="query_performance_config_confirmation",
+            label="Query Performance Settings",
+            dynamic=True,
+            unlisted=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = Object()
+        query_performance = ctx.query_performance
+
+        radio_group = RadioGroup(
+            label="Query Performance Status",
+        )
+
+        radio_group.add_choice("Enabled", label="Enable Query Performance")
+        radio_group.add_choice("Disabled", label="Disable Query Performance")
+        inputs.enum(
+            "query_performance",
+            radio_group.values(),
+            view=radio_group,
+            default="Enabled" if query_performance else "Disabled",
+        )
+
+        message = (
+            "Enabling this setting speeds up loading times by prioritizing queries on indexed fields. "
+            "If disabled, indexed fields won't be prioritized, which may slow query performance."
+        )
+
+        inputs.md(message)
+
+        return Property(inputs)
+
+    def execute(self, ctx):
+        if ctx.params.get("query_performance") == "Enabled":
+            ctx.ops.notify("Enabling query performance mode")
+            ctx.trigger("enable_query_performance")
+        else:
+            ctx.ops.notify("Disabling query performance mode")
+            ctx.trigger("disable_query_performance")
+
+        return {
+            "query_performance": ctx.params.get("query_performance"),
+        }
+
+    def resolve_output(self, ctx):
+        outputs = Object()
+        outputs.str("query_performance", label="Query Performance")
+        return Property(outputs)
+
+
 class QueryPerformancePanel(Panel):
     @property
     def config(self):
@@ -415,6 +470,9 @@ class QueryPerformancePanel(Panel):
 
         self._build_view(ctx)
 
+    def qp_setting(self, ctx):
+        ctx.prompt("query_performance_config_confirmation")
+
     def refresh(self, ctx):
         self._build_view(ctx)
 
@@ -510,6 +568,12 @@ class QueryPerformancePanel(Panel):
                     label="Disabled",
                     on_click=self.toggle_qp,
                 )
+
+            button_menu.btn(
+                "setting_btn",
+                label="Settings",
+                on_click=self.qp_setting,
+            )
 
             if ctx.user.dataset_permission in PERMISSION:
                 button_menu.btn(

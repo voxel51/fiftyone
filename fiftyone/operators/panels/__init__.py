@@ -10,12 +10,14 @@ from .query_performance import (
     QueryPerformancePanel,
     IndexFieldCreationOperator,
     IndexFieldRemovalConfirmationOperator,
+    QueryPerformanceConfigConfirmationOperator,
 )
 from .data_quality import DataQualityPanel
 
 QUERY_PERFORMANCE_OPERATORS = [
     IndexFieldCreationOperator(_builtin=True),
     IndexFieldRemovalConfirmationOperator(_builtin=True),
+    QueryPerformanceConfigConfirmationOperator(_builtin=True),
 ]
 
 # This enables Sphinx refs to directly use paths imported here
