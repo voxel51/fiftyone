@@ -13,7 +13,9 @@ import {
   ButtonProps,
 } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import ScienceIcon from "@mui/icons-material/Science";
 import { onEnter } from "./utils";
+import { useTheme } from "@fiftyone/components";
 
 const ButtonStylesOverrides: ButtonProps["sx"] = {
   color: (theme) => theme.palette.text.secondary,
@@ -136,7 +138,12 @@ export default function SplitButton({
                                 ? theme.palette.text.primary
                                 : theme.palette.text.disabled,
                           }}
-                          primary={option.choiceLabel || option.label}
+                          primary={
+                            <PrimaryWithTag
+                              label={option.choiceLabel || option.label}
+                              tag={option.tag}
+                            />
+                          }
                           secondary={option.description}
                         />
                       </MenuItem>
@@ -149,5 +156,26 @@ export default function SplitButton({
         </Popper>
       )}
     </React.Fragment>
+  );
+}
+
+function PrimaryWithTag({ label, tag }) {
+  const theme = useTheme();
+  const tagEl = tag ? (
+    <span
+      style={{
+        fontSize: "11px",
+        color: theme.custom.primarySoft,
+        marginLeft: "5px",
+      }}
+    >
+      {tag}
+    </span>
+  ) : null;
+  return (
+    <div style={{ display: "flex", alignItems: "center" }}>
+      {label}
+      {tagEl}
+    </div>
   );
 }
