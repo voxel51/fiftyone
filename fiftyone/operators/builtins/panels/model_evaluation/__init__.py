@@ -24,7 +24,7 @@ class EvaluationPanel(Panel):
     def config(self):
         return PanelConfig(
             name="evaluation_panel",
-            label="Evaluation Panel",
+            label="Model Evaluation",
             icon="ssid_chart",
             category=Categories.ANALYZE,
             beta=True,
