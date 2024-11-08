@@ -8,7 +8,7 @@ FiftyOne repository factory.
 
 from pymongo.database import Database
 
-from bson import ObjectId
+import bson
 from typing import Optional
 import fiftyone.core.odm as foo
 from fiftyone.factory.repos.delegated_operation import (
@@ -53,7 +53,7 @@ class RepositoryFactory(object):
 
     @staticmethod
     def execution_store_repo(
-        dataset_id: Optional[str] = None,
+        dataset_id: Optional[bson.ObjectId] = None,
     ) -> ExecutionStoreRepo:
         """Factory method for execution store repository."""
         if (
