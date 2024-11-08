@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest-m
     env:
       FIFTYONE_DO_NOT_TRACK: true
-      FIFTYONE_APP_ENABLE_QUERY_PERFORMANCE: false
+      FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE: false
       FIFTYONE_DATABASE_URI: mongodb://localhost:27017
       FIFTYONE_DATABASE_NAME: playwright
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
