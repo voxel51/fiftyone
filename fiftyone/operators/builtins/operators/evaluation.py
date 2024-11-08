@@ -1,7 +1,7 @@
 """
 Evaluation operators.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -17,23 +17,20 @@ class EvaluateModel(foo.Operator):
         return foo.OperatorConfig(
             name="evaluate_model",
             label="Evaluate model",
-            light_icon="/assets/icon-light.svg",
-            dark_icon="/assets/icon-dark.svg",
             dynamic=True,
+            unlisted=True,
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=True,
         )
 
     def resolve_input(self, ctx):
         inputs = types.Object()
 
-        ready = evaluate_model(ctx, inputs)
-        if ready:
-            _execution_mode(ctx, inputs)
+        evaluate_model(ctx, inputs)
 
         view = types.View(label="Evaluate model")
         return types.Property(inputs, view=view)
-
-    def resolve_delegation(self, ctx):
-        return ctx.params.get("delegate", False)
 
     def execute(self, ctx):
         kwargs = ctx.params.copy()
@@ -42,7 +39,6 @@ class EvaluateModel(foo.Operator):
         gt_field = kwargs.pop("gt_field")
         eval_key = kwargs.pop("eval_key")
         method = kwargs.pop("method")
-        kwargs.pop("delegate")
 
         target_view = _get_target_view(ctx, target)
         _, eval_type, _ = _get_evaluation_type(target_view, pred_field)
@@ -82,23 +78,23 @@ class EvaluateModelAsync(foo.Operator):
         return foo.OperatorConfig(
             name="evaluate_model_async",
             label="Evaluate model async",
-            light_icon="/assets/icon-light.svg",
-            dark_icon="/assets/icon-dark.svg",
             dynamic=True,
-            # unlisted=True,
+            unlisted=True,
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=True,
         )
 
     def resolve_input(self, ctx):
         return self.em.resolve_input(ctx)
 
-    def resolve_delegation(self, ctx):
-        return self.em.resolve_delegation(ctx)
-
     def execute(self, ctx):
-        delegated = ctx.params.get("delegate", False)
+        delegate = ctx.params.get("delegate", False)
         eval_key = ctx.params.get("eval_key", None)
-        if delegated:
+
+        if delegate:
             return self.em.execute(ctx)
+
         ctx.trigger("@voxel51/operators/evaluate_model", params=ctx.params)
         return {"eval_key": eval_key}
 
@@ -956,34 +952,3 @@ def get_new_eval_key(
         eval_key = None
 
     return eval_key
-
-
-def _execution_mode(ctx, inputs):
-    delegate = ctx.params.get("delegate", False)
-
-    if delegate:
-        description = "Uncheck this box to execute the operation immediately"
-    else:
-        description = "Check this box to delegate execution of this task"
-
-    inputs.bool(
-        "delegate",
-        default=False,
-        label="Delegate execution?",
-        description=description,
-        view=types.CheckboxView(),
-    )
-
-    if delegate:
-        inputs.view(
-            "notice",
-            types.Notice(
-                label=(
-                    "You've chosen delegated execution. Note that you must "
-                    "have a delegated operation service running in order for "
-                    "this task to be processed. See "
-                    "https://docs.voxel51.com/plugins/using_plugins.html#delegated-operations "
-                    "for more information"
-                )
-            ),
-        )

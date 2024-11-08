@@ -15,16 +15,26 @@ import fiftyone.core.storage as fos
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 from fiftyone.core.odm.workspace import default_workspace_factory
-from .builtins.panels.model_evaluation import EvaluationPanel
+
+# pylint: disable=no-name-in-module
+from fiftyone.operators.builtins.panels.model_evaluation import EvaluationPanel
+from fiftyone.operators.builtins.operators.evaluation import (
+    EvaluateModel,
+    EvaluateModelAsync,
+)
+from fiftyone.operators.builtins.operators.embeddings import (
+    ComputeVisualization,
+)
+from fiftyone.operators.data_lens.builtin import DATA_LENS_OPERATORS
 from fiftyone.operators.panels import (
     DataQualityPanel,
     QueryPerformancePanel,
 )
+from fiftyone.operators.panels import QUERY_PERFORMANCE_OPERATORS
+from fiftyone.operators.panels.data_quality import (
+    OPERATORS as DATA_QUALITY_OPERATORS,
+)
 from fiftyone.operators.utils import create_summary_field_inputs
-from .builtins.panels.model_evaluation import EvaluationPanel
-
-from .builtins.operators.evaluation import EvaluateModel, EvaluateModelAsync
-from .builtins.operators.compute_visualization import ComputeVisualization
 
 
 class EditFieldInfo(foo.Operator):
@@ -2201,12 +2211,6 @@ def _parse_spaces(ctx, spaces):
     return fo.Space.from_dict(spaces)
 
 
-from fiftyone.operators.panels.data_quality import (
-    OPERATORS as DATA_QUALITY_OPERATORS,
-)
-from fiftyone.operators.panels import QUERY_PERFORMANCE_OPERATORS
-from fiftyone.operators.data_lens.builtin import DATA_LENS_OPERATORS
-
 BUILTIN_OPERATORS = [
     EditFieldInfo(_builtin=True),
     CloneSelectedSamples(_builtin=True),
@@ -2240,21 +2244,27 @@ BUILTIN_OPERATORS = [
     DeleteWorkspace(_builtin=True),
     SyncLastModifiedAt(_builtin=True),
     ListFiles(_builtin=True),
-    EvaluateModel(_builtin=True),
-    EvaluateModelAsync(_builtin=True),
 ]
 
-BUILTIN_PANELS = [
-    EvaluationPanel(_builtin=True),
-]
+BUILTIN_PANELS = []
 
+#
 # Teams-only
+#
+
 BUILTIN_OPERATORS.extend(DATA_QUALITY_OPERATORS)
 BUILTIN_OPERATORS.extend(QUERY_PERFORMANCE_OPERATORS)
 BUILTIN_OPERATORS.extend(DATA_LENS_OPERATORS)
+BUILTIN_OPERATORS.append(EvaluateModel(_builtin=True))
+BUILTIN_OPERATORS.append(EvaluateModelAsync(_builtin=True))
 BUILTIN_OPERATORS.append(ComputeVisualization(_builtin=True))
+
+BUILTIN_PANELS.append(EvaluationPanel(_builtin=True))
 BUILTIN_PANELS.append(DataQualityPanel(_builtin=True))
 
 if fo.app_config.enable_query_performance:
     BUILTIN_PANELS.append(QueryPerformancePanel(_builtin=True))
+
+#
 # end of Teams-only
+#

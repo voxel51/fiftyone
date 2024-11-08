@@ -1,5 +1,5 @@
 """
-ComputeVisualization Operator for FiftyOne.
+Embeddings operators.
 
 | Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -29,13 +29,11 @@ class ComputeVisualization(foo.Operator):
 
     def resolve_input(self, ctx):
         inputs = types.Object()
+
         compute_visualization(ctx, inputs)
 
         view = types.View(label="Compute visualization")
         return types.Property(inputs, view=view)
-
-    def resolve_delegation(self, ctx):
-        return ctx.params.get("delegate", False)
 
     def execute(self, ctx):
         target = ctx.params.get("target", None)
@@ -47,9 +45,9 @@ class ComputeVisualization(foo.Operator):
         batch_size = ctx.params.get("batch_size", None)
         num_workers = ctx.params.get("num_workers", None)
         skip_failures = ctx.params.get("skip_failures", True)
-        delegate = ctx.params.get("delegate", False)
 
-        if not delegate:
+        # @todo how can we only set to 0 for immediate execution?
+        if num_workers is None:
             num_workers = 0
 
         target_view = _get_target_view(ctx, target)
@@ -121,9 +119,11 @@ def compute_visualization(ctx, inputs):
 def brain_init(ctx, inputs):
     target_view = get_target_view(ctx, inputs)
 
-    brain_key = get_new_brain_key(ctx, inputs)
-    if brain_key is None:
-        return False
+    brain_key = get_new_brain_key(
+        ctx,
+        inputs,
+        description="Provide a brain key to use to refer to this run",
+    )
 
     patches_fields = _get_label_fields(
         target_view,
@@ -151,7 +151,7 @@ def brain_init(ctx, inputs):
 
     get_embeddings(ctx, inputs, target_view, patches_field)
 
-    return True
+    return bool(brain_key)
 
 
 def get_embeddings(ctx, inputs, view, patches_field):
@@ -194,8 +194,9 @@ def get_embeddings(ctx, inputs, view, patches_field):
             required=False,
             label="Model",
             description=(
-                "An optional name of a model from the FiftyOne Model Zoo to "
-                "use to generate embeddings"
+                "An optional name of a model from the "
+                "[FiftyOne Model Zoo](https://docs.voxel51.com/user_guide/model_zoo/models.html) "
+                "to use to generate embeddings"
             ),
             view=model_choices,
         )
@@ -239,7 +240,7 @@ def get_new_brain_key(
     inputs,
     name="brain_key",
     label="Brain key",
-    description="Provide a brain key for this run",
+    description=None,
 ):
     prop = inputs.str(
         name,
