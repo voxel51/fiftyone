@@ -5,7 +5,8 @@ import { LightningBolt } from "./FilterablePathEntry/Icon";
 import { Tooltip, Button, Box } from "@mui/material";
 import { useTheme } from "@fiftyone/components";
 import styled from "styled-components";
-import { QP_MODE } from "@fiftyone/core";
+import { useSpaces, useSpaceNodes, SpaceNode } from "@fiftyone/spaces";
+import * as fos from "@fiftyone/state";
 
 const SectionTitle = styled.div`
   font-size: 1rem;
@@ -40,6 +41,10 @@ const showExpandedTooltip = atom({
 const QueryPerformanceIcon = () => {
   const theme = useTheme();
   const [showExpanded, setShowExpanded] = useRecoilState(showExpandedTooltip);
+  const PANEL_NAME = "query_performance_panel";
+  const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
+  const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
+  const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
   return (
     <Tooltip
       title={
@@ -61,10 +66,18 @@ const QueryPerformanceIcon = () => {
                     boxShadow: 0,
                   }}
                   onClick={() => {
-                    window.open(QP_MODE, "_blank")?.focus();
+                    let openedPanel = openedPanels.find(
+                      ({ type }) => type === PANEL_NAME
+                    );
+                    if (!openedPanel) {
+                      openedPanel = new SpaceNode();
+                      openedPanel.type = PANEL_NAME;
+                      spaces.addNodeAfter(spaces.root, openedPanel, true);
+                    }
+                    spaces.setNodeActive(openedPanel);
                   }}
                 >
-                  View Documentation
+                  Manage Indexes
                 </Button>
                 <Button
                   onClick={() => {
