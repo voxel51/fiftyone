@@ -1,4 +1,5 @@
 import type { ModalSelector, State } from "@fiftyone/state";
+import { viewsAreEqual } from "@fiftyone/state";
 import { setPending } from "pages/state";
 import { v4 } from "uuid";
 import { transition } from "./transition";
@@ -6,19 +7,22 @@ import { transition } from "./transition";
 export const FIELD_VISIBILITY_EVENT = "fieldVisibility";
 export const MODAL_EVENT = "modal";
 export const SLICE_EVENT = "slice";
+export const SPACES_EVENT = "spaces";
 
 export const CONST_EVENTS = new Set([
   FIELD_VISIBILITY_EVENT,
   MODAL_EVENT,
   SLICE_EVENT,
+  SPACES_EVENT,
 ]);
 
-const SKIP_EVENTS = new Set([MODAL_EVENT, SLICE_EVENT]);
+const SKIP_EVENTS = new Set([MODAL_EVENT, SLICE_EVENT, SPACES_EVENT]);
 
 type Events =
   | typeof FIELD_VISIBILITY_EVENT
   | typeof MODAL_EVENT
-  | typeof SLICE_EVENT;
+  | typeof SLICE_EVENT
+  | typeof SPACES_EVENT;
 
 export interface HistoryState {
   datasetId: string;
@@ -54,7 +58,14 @@ export const pushHistoryState = (
     const search = resolveSearchParameters(next);
     const href = `${window.location.pathname}${search}`;
 
-    setPending();
+    let skipTransition = false;
+    if (current?.event && isReusable(next, current)) {
+      skipTransition =
+        (next.event && SKIP_EVENTS.has(next.event)) ||
+        (current.event && SKIP_EVENTS.has(current.event));
+    }
+
+    !skipTransition && setPending();
     window.history.pushState(
       {
         ...window.history.state,
@@ -74,10 +85,25 @@ export const pushHistoryState = (
       href
     );
 
-    if (next.event && SKIP_EVENTS.has(next.event)) return;
-    if (current.event && SKIP_EVENTS.has(current.event)) return;
-    transition(next);
+    !skipTransition && transition(next);
   });
+};
+
+const isReusable = (next: HistoryState, current: HistoryState) => {
+  if (next.datasetId !== current.datasetId) {
+    return false;
+  }
+  if (!viewsAreEqual(next.view, current.view)) {
+    return false;
+  }
+
+  if (next.snapshot !== current.snapshot) {
+    return false;
+  }
+
+  return (
+    SKIP_EVENTS.has(next.event || "") || SKIP_EVENTS.has(current.event || "")
+  );
 };
 
 const resolveSearchParameters = (

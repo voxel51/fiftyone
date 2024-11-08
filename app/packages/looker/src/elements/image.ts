@@ -7,8 +7,11 @@ import type { Events } from "./base";
 import { BaseElement } from "./base";
 
 export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
-  private src = "";
+  // Teams only
   private allowAnonymousOrigin: boolean;
+
+  private src = "";
+  private imageSource: HTMLImageElement;
 
   constructor() {
     super();

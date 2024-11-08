@@ -915,15 +915,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/runtime@npm:^7.23.9":
-  version: 7.26.0
-  resolution: "@babel/runtime@npm:7.26.0"
-  dependencies:
-    regenerator-runtime: "npm:^0.14.0"
-  checksum: 10/9f4ea1c1d566c497c052d505587554e782e021e6ccd302c2ad7ae8291c8e16e3f19d4a7726fb64469e057779ea2081c28b7dbefec6d813a22f08a35712c0f699
-  languageName: node
-  linkType: hard
-
 "@babel/template@npm:^7.18.10, @babel/template@npm:^7.3.3":
   version: 7.18.10
   resolution: "@babel/template@npm:7.18.10"
@@ -3012,10 +3003,10 @@ __metadata:
   linkType: hard
 
 "@mui/icons-material@npm:^5.10.2":
-  version: 5.16.7
-  resolution: "@mui/icons-material@npm:5.16.7"
+  version: 5.10.16
+  resolution: "@mui/icons-material@npm:5.10.16"
   dependencies:
-    "@babel/runtime": "npm:^7.23.9"
+    "@babel/runtime": "npm:^7.20.1"
   peerDependencies:
     "@mui/material": ^5.0.0
     "@types/react": ^17.0.0 || ^18.0.0
@@ -3023,7 +3014,7 @@ __metadata:
   peerDependenciesMeta:
     "@types/react":
       optional: true
-  checksum: 10/39bd989f566951e8898e955309506b4f37eeed50bc3631869b5967ecb143c19372ea13e49994504f6c0e3969e8b73ad17cdc6cfc4eaff1201a852231539b83df
+  checksum: 10/430573ce57a883c38f8b18143b0bdc9e24fb146f282e7000eee0894062f7f3fc80d693085a40ceaa48fc1dbba085811208945a16a900db3849521ebf6b52353f
   languageName: node
   linkType: hard
 
@@ -7167,9 +7158,9 @@ __metadata:
   linkType: hard
 
 "@webgpu/types@npm:*":
-  version: 0.1.49
-  resolution: "@webgpu/types@npm:0.1.49"
-  checksum: 10/0d505d928d9cdec6a4c12bbcb73386085f128ff934dab9191ff7cc85296893f01158c26a024b24f24d53b4c87e487ccc41fc787bfdb1b99953fc62cb96a6c14e
+  version: 0.1.51
+  resolution: "@webgpu/types@npm:0.1.51"
+  checksum: 10/bc96807da8d92a0c10256191f6ab791cb8bc1682616bbbe04d65d3d4757687b095fc96766d9cfa59108ffec5bae11e39a8f6887a01eca0d839cb2d9a817f36d6
   languageName: node
   linkType: hard
 
@@ -10220,11 +10211,11 @@ __metadata:
   linkType: hard
 
 "eslint-plugin-react-hooks@npm:rc":
-  version: 5.1.0-rc-02c0e824-20241028
-  resolution: "eslint-plugin-react-hooks@npm:5.1.0-rc-02c0e824-20241028"
+  version: 5.1.0-rc-4d577fd2-20241104
+  resolution: "eslint-plugin-react-hooks@npm:5.1.0-rc-4d577fd2-20241104"
   peerDependencies:
     eslint: ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0-0 || ^9.0.0
-  checksum: 10/2275c09cdd986dc395e8f49bcbe72e91b4980644bc74350d0643a4e633e2d5419ff2ec698ff89bc98b736532a754349c16b5ce19ee066c657c6eece3d735f888
+  checksum: 10/f790e41518380d3650fcca4594bf164e1af44cf440578e281a19e7b2c5beaa8268270ca794916a519f9d8f7d495cf9c5fa802e5e94e65ed7f4325b65f9bd61a1
   languageName: node
   linkType: hard
 
@@ -16052,8 +16043,8 @@ __metadata:
   linkType: hard
 
 "r3f-perf@npm:^7.2.2":
-  version: 7.2.2
-  resolution: "r3f-perf@npm:7.2.2"
+  version: 7.2.3
+  resolution: "r3f-perf@npm:7.2.3"
   dependencies:
     "@radix-ui/react-icons": "npm:^1.3.0"
     "@react-three/drei": "npm:^9.103.0"
@@ -16072,7 +16063,7 @@ __metadata:
       optional: true
     react-dom:
       optional: true
-  checksum: 10/2cb3949f69baf6cbb6eecd84a2f8d14719254b1314f802461c976a777d3c5eb6b6c2613a4219cf8e899b5086a411c1ad9cc89e33e9ddef73991d2a4d2c1a049c
+  checksum: 10/6da10604b735524b4c9db63be1f38b160234975e64de4871378755ae2577e0120e81824f64fa516c8a1eba07af48e4eef2ceaffdbaabfb2977624ad767199a4f
   languageName: node
   linkType: hard
 

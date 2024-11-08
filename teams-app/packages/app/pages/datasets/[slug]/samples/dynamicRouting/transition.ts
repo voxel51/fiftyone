@@ -6,7 +6,7 @@ import {
 import { subscribe } from "@fiftyone/relay";
 import type { SpaceNodeJSON } from "@fiftyone/spaces";
 import {
-  SPACES_DEFAULT,
+  GRID_SPACES_DEFAULT,
   ensureColorScheme,
   getSessionRef,
 } from "@fiftyone/state";
@@ -56,7 +56,7 @@ export const initializeSession = (session: Session, search: string) => {
     session.selectedLabels = [];
     session.selectedSamples = new Set();
     session.sessionGroupSlice = params.get("slice") || undefined;
-    session.sessionSpaces = SPACES_DEFAULT;
+    session.sessionSpaces = GRID_SPACES_DEFAULT;
     session.snapshot = params.get("snapshot") || undefined;
     session.view = params.get("view") || data.view || undefined;
 
@@ -74,7 +74,7 @@ export const initializeSession = (session: Session, search: string) => {
     session.selectedLabels = [];
     session.selectedSamples = new Set();
     session.sessionGroupSlice = undefined;
-    session.sessionSpaces = SPACES_DEFAULT;
+    session.sessionSpaces = GRID_SPACES_DEFAULT;
     session.snapshot = snapshot;
     session.view = [];
     params.delete("id");
@@ -189,7 +189,7 @@ export const load = async (
       session.selectedLabels = [];
       session.selectedSamples = new Set();
       session.sessionGroupSlice = undefined;
-      session.sessionSpaces = SPACES_DEFAULT;
+      session.sessionSpaces = GRID_SPACES_DEFAULT;
       session.view = [];
 
       if (!session.view || !session.view.length) {

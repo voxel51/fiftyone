@@ -25,6 +25,7 @@ import { useSetRecoilState } from "recoil";
 import {
   MODAL_EVENT,
   SLICE_EVENT,
+  SPACES_EVENT,
   getHistoryState,
   pushHistoryState,
   replaceHistoryState,
@@ -185,6 +186,7 @@ export const useLocalSession = (datasetIdentifier, snapshot) => {
         const name = (value as SpaceNodeJSON)._name;
         return {
           ...state,
+          event: SPACES_EVENT,
           workspaceSlug: name ? toSlug(name) : name,
         };
       });
