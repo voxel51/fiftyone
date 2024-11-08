@@ -228,6 +228,21 @@ export function getAbsolutePluginPath(name: string, path: string): string {
   }
 }
 
+/** a utility for safely calling plugin defined activator functions */
+export function safePluginActivator(
+  plugin: PluginComponentRegistration,
+  ctx: any
+): boolean {
+  if (typeof plugin.activator === "function") {
+    try {
+      return plugin.activator(ctx);
+    } catch (e) {
+      console.error(`Error activating plugin ${plugin.name}`, e);
+    }
+  }
+  return false;
+}
+
 /**
  * A react hook that returns a list of active plugins.
  *
@@ -240,10 +255,7 @@ export function useActivePlugins(type: PluginComponentType, ctx: any) {
     usingRegistry()
       .getByType(type)
       .filter((p) => {
-        if (typeof p.activator === "function") {
-          return p.activator(ctx);
-        }
-        return false;
+        return safePluginActivator(p, ctx);
       })
   );
 
@@ -252,10 +264,7 @@ export function useActivePlugins(type: PluginComponentType, ctx: any) {
       const refreshedPlugins = usingRegistry()
         .getByType(type)
         .filter((p) => {
-          if (typeof p.activator === "function") {
-            return p.activator(ctx);
-          }
-          return false;
+          return safePluginActivator(p, ctx);
         });
 
       setPlugins(refreshedPlugins);
@@ -356,12 +365,6 @@ type PanelOptions = {
    * Content displayed on the right side of the label in the panel title bar.
    */
   TabIndicator?: React.ComponentType;
-
-  /**
-   * If true, the plugin will be remounted when the user navigates to a different sample or group.
-   * This is only applicable to plugins that are in a modal.
-   */
-  reloadOnNavigation?: boolean;
 
   /**
    * The category of the plugin

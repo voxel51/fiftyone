@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 import useThreshold from "./useThreshold";
 
-const MAX = 32;
-const MIN = 14;
+const MAX = 14;
+const MIN = 10;
 const SCALE_FACTOR = 0.09;
 
 export default (id: string) => {

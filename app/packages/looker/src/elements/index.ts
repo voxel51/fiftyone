@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2024, Voxel51, Inc.
  */
-import {
+import type {
   BaseState,
   FrameState,
   ImaVidState,
@@ -10,26 +10,25 @@ import {
   ThreeDState,
   VideoState,
 } from "../state";
+import type { BaseElement } from "./base";
 import * as common from "./common";
 import * as frame from "./frame";
 import * as image from "./image";
 import * as imavid from "./imavid";
 import * as pcd from "./three-d";
+import type { ElementsTemplate } from "./util";
 import { createElementsTree, withEvents } from "./util";
 import * as video from "./video";
 
-export type GetElements<State extends BaseState> = (
-  config: Readonly<State["config"]>,
-  update: StateUpdate<State>,
-  dispatchEvent: (eventType: string, details?: any) => void,
-  batchUpdate?: (cb: () => unknown) => void | undefined
-) => common.LookerElement<State>;
+export type GetElements<State extends BaseState> = (params: {
+  abortController: AbortController;
+  batchUpdate?: (cb: () => unknown) => void;
+  config: Readonly<State["config"]>;
+  dispatchEvent: (eventType: string, details?: any) => void;
+  update: StateUpdate<State>;
+}) => common.LookerElement<State>;
 
-export const getFrameElements: GetElements<FrameState> = (
-  config,
-  update,
-  dispatchEvent
-) => {
+export const getFrameElements: GetElements<FrameState> = (params) => {
   const elements = {
     node: common.LookerElement,
     children: [
@@ -72,19 +71,13 @@ export const getFrameElements: GetElements<FrameState> = (
     ],
   };
 
-  return createElementsTree<FrameState, common.LookerElement<FrameState>>(
-    config,
-    elements,
-    update,
-    dispatchEvent
-  );
+  return createElementsTree<FrameState, common.LookerElement<FrameState>>({
+    ...params,
+    root: elements,
+  });
 };
 
-export const getImageElements: GetElements<ImageState> = (
-  config,
-  update,
-  dispatchEvent
-) => {
+export const getImageElements: GetElements<ImageState> = (params) => {
   const elements = {
     node: common.LookerElement,
     children: [
@@ -127,19 +120,13 @@ export const getImageElements: GetElements<ImageState> = (
     ],
   };
 
-  return createElementsTree<ImageState, common.LookerElement<ImageState>>(
-    config,
-    elements,
-    update,
-    dispatchEvent
-  );
+  return createElementsTree<ImageState, common.LookerElement<ImageState>>({
+    ...params,
+    root: elements,
+  });
 };
 
-export const getVideoElements: GetElements<VideoState> = (
-  config,
-  update,
-  dispatchEvent
-) => {
+export const getVideoElements: GetElements<VideoState> = (params) => {
   const elements = {
     node: withEvents(common.LookerElement, video.withVideoLookerEvents()),
     children: [
@@ -193,22 +180,18 @@ export const getVideoElements: GetElements<VideoState> = (
     ],
   };
 
-  return createElementsTree<VideoState, common.LookerElement<VideoState>>(
-    config,
-    elements,
-    update,
-    dispatchEvent
-  );
+  return createElementsTree<VideoState, common.LookerElement<VideoState>>({
+    ...params,
+    root: elements,
+  });
 };
 
-export const getImaVidElements: GetElements<ImaVidState> = (
-  config,
-  update,
-  dispatchEvent,
-  batchUpdate
-) => {
-  const isThumbnail = config.thumbnail;
-  const children: Array<unknown> = [
+export const getImaVidElements: GetElements<ImaVidState> = (params) => {
+  const isThumbnail = params.config.thumbnail;
+  const children: ElementsTemplate<
+    ImaVidState,
+    BaseElement<ImaVidState>
+  >["children"] = [
     {
       node: imavid.ImaVidElement,
     },
@@ -231,31 +214,29 @@ export const getImaVidElements: GetElements<ImaVidState> = (
   }
 
   children.push(
-    ...[
-      {
-        node: imavid.ImaVidControlsElement,
-        children: [
-          { node: common.PlusElement },
-          { node: common.MinusElement },
-          { node: common.CropToContentButtonElement },
-          { node: common.ToggleOverlaysButtonElement },
-          { node: common.JSONButtonElement },
-          { node: common.OptionsButtonElement },
-          { node: common.HelpButtonElement },
-        ],
-      },
-      {
-        node: common.OptionsPanelElement,
-        children: [
-          { node: common.LoopVideoOptionElement },
-          { node: common.OnlyShowHoveredOnLabelOptionElement },
-          { node: common.ShowConfidenceOptionElement },
-          { node: common.ShowIndexOptionElement },
-          { node: common.ShowLabelOptionElement },
-          { node: common.ShowTooltipOptionElement },
-        ],
-      },
-    ]
+    {
+      node: imavid.ImaVidControlsElement,
+      children: [
+        { node: common.PlusElement },
+        { node: common.MinusElement },
+        { node: common.CropToContentButtonElement },
+        { node: common.ToggleOverlaysButtonElement },
+        { node: common.JSONButtonElement },
+        { node: common.OptionsButtonElement },
+        { node: common.HelpButtonElement },
+      ],
+    },
+    {
+      node: common.OptionsPanelElement,
+      children: [
+        { node: common.LoopVideoOptionElement },
+        { node: common.OnlyShowHoveredOnLabelOptionElement },
+        { node: common.ShowConfidenceOptionElement },
+        { node: common.ShowIndexOptionElement },
+        { node: common.ShowLabelOptionElement },
+        { node: common.ShowTooltipOptionElement },
+      ],
+    }
   );
 
   const elements = {
@@ -263,20 +244,13 @@ export const getImaVidElements: GetElements<ImaVidState> = (
     children,
   };
 
-  return createElementsTree<ImaVidState, common.LookerElement<ImaVidState>>(
-    config,
-    elements,
-    update,
-    dispatchEvent,
-    batchUpdate
-  );
+  return createElementsTree<ImaVidState, common.LookerElement<ImaVidState>>({
+    ...params,
+    root: elements,
+  });
 };
 
-export const get3dElements: GetElements<ThreeDState> = (
-  config,
-  update,
-  dispatchEvent
-) => {
+export const get3dElements: GetElements<ThreeDState> = (params) => {
   const elements = {
     node: common.LookerElement,
     children: [
@@ -306,10 +280,8 @@ export const get3dElements: GetElements<ThreeDState> = (
     ],
   };
 
-  return createElementsTree<ThreeDState, common.LookerElement<ThreeDState>>(
-    config,
-    elements,
-    update,
-    dispatchEvent
-  );
+  return createElementsTree<ThreeDState, common.LookerElement<ThreeDState>>({
+    ...params,
+    root: elements,
+  });
 };

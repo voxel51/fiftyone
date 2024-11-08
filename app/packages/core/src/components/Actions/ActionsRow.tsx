@@ -8,8 +8,8 @@ import {
 } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import {
-  OperatorPlacements,
   OperatorPlacementWithErrorBoundary,
+  OperatorPlacements,
   types,
   useOperatorBrowser,
   useOperatorPlacements,
@@ -276,6 +276,12 @@ const Selected = ({
   useEffect(() => {
     refresh?.();
   }, [samples.size, refresh]);
+
+  useEffect(() => {
+    return () => {
+      setLoading(false);
+    };
+  }, []);
 
   if (samples.size < 1 && !modal) {
     return null;

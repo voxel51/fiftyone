@@ -10,6 +10,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  useTheme,
 } from "@mui/material";
 import { isPlainObject } from "lodash";
 import React, { useCallback } from "react";
@@ -30,6 +31,8 @@ export default function TableView(props: ViewPropsType) {
     on_click_column,
     actions_label,
     selected_color,
+    size = "small",
+    variant = "filled",
   } = view;
   const { rows, selectedCells, selectedRows, selectedColumns } =
     getTableData(props);
@@ -37,8 +40,9 @@ export default function TableView(props: ViewPropsType) {
   const hasRowActions = row_actions.length > 0;
   const panelId = usePanelId();
   const handleClick = usePanelEvent();
+  const theme = useTheme();
   const selectedCellColor =
-    selected_color || ((theme) => theme.palette.background.activeCell);
+    selected_color || theme.palette.background.activeCell;
 
   const getRowActions = useCallback((row) => {
     const computedRowActions = [] as any;
@@ -82,27 +86,53 @@ export default function TableView(props: ViewPropsType) {
     [on_click_cell, on_click_row, on_click_column, handleClick, panelId, path]
   );
 
+  const headingCellBaseStyles = {
+    fontWeight: 360,
+    fontSize: "1rem",
+    color: theme.palette.text.secondary,
+  };
+  const filled = variant === "filled";
+
   return (
     <Box {...getComponentProps(props, "container")}>
       <HeaderView {...props} divider nested />
       {dataMissing && <EmptyState>No data provided</EmptyState>}
       {!dataMissing && (
         <TableContainer
-          component={Paper}
+          component={filled ? Paper : Box}
           className={scrollable}
+          sx={
+            filled
+              ? {}
+              : {
+                  border: `1px solid ${theme.palette.divider}`,
+                  borderRadius: 1,
+                  "& .MuiTableCell-root": {
+                    borderRight: `1px solid ${theme.palette.divider}!important`,
+                  },
+                  "& .MuiTableRow-root .MuiTableCell-root:last-child": {
+                    borderRight: `none!important`,
+                  },
+                }
+          }
           {...getComponentProps(props, "tableContainer")}
         >
-          <Table sx={{ minWidth: 650 }} {...getComponentProps(props, "table")}>
+          <Table
+            sx={{ minWidth: 650 }}
+            {...getComponentProps(props, "table")}
+            size={size}
+          >
             <TableHead {...getComponentProps(props, "tableHead")}>
               <TableRow {...getComponentProps(props, "tableHeadRow")}>
                 {columns.map(({ key, label }, columnIndex) => (
                   <TableCell
                     key={key}
-                    sx={{ fontWeight: 600, fontSize: "1rem" }}
                     onClick={() => {
                       handleCellClick(-1, columnIndex);
                     }}
-                    {...getComponentProps(props, "tableHeadCell")}
+                    {...getComponentProps(props, "tableHeadCell", {
+                      sx: headingCellBaseStyles,
+                    })}
                   >
                     {label}
                   </TableCell>
@@ -110,11 +140,7 @@ export default function TableView(props: ViewPropsType) {
                 {hasRowActions && (
                   <TableCell
                     {...getComponentProps(props, "tableHeadCell", {
-                      sx: {
-                        textAlign: "right",
-                        fontWeight: 600,
-                        fontSize: "1rem",
-                      },
+                      sx: { ...headingCellBaseStyles, textAlign: "right" },
                     })}
                     onClick={() => {
                       handleCellClick(-1, -1);
@@ -169,7 +195,10 @@ export default function TableView(props: ViewPropsType) {
                         }}
                       >
                         {currentRowHasActions && (
-                          <ActionsMenu actions={getRowActions(rowIndex)} />
+                          <ActionsMenu
+                            actions={getRowActions(rowIndex)}
+                            size={size}
+                          />
                         )}
                       </TableCell>
                     )}

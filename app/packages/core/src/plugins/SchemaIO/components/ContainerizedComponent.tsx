@@ -1,3 +1,5 @@
+import { usePanelEvent } from "@fiftyone/operators";
+import { usePanelId } from "@fiftyone/spaces";
 import { Box, Paper, PaperProps } from "@mui/material";
 import React, { PropsWithChildren } from "react";
 import {
@@ -7,9 +9,6 @@ import {
   overlayToSx,
 } from "../utils";
 import { ViewPropsType } from "../utils/types";
-import { usePanelEvent } from "@fiftyone/operators";
-import { usePanelId } from "@fiftyone/spaces";
-import { has } from "lodash";
 
 export default function ContainerizedComponent(props: ContainerizedComponent) {
   const { schema, children, path } = props;

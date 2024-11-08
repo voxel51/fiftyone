@@ -38,6 +38,7 @@ const QueryPerformanceToast = ({
   const indexed = useRecoilValue(fos.pathHasIndexes(path));
   const [shown, setShown] = useState(false);
   const [disabled, setDisabled] = useRecoilState(hideQueryPerformanceToast);
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
   const element = document.getElementById("queryPerformance");
   const theme = useTheme();
   const frameFields = useRecoilValue(atoms.frameFields);
@@ -57,7 +58,7 @@ const QueryPerformanceToast = ({
     throw new Error("no query performance element");
   }
 
-  if (!shown || disabled) {
+  if (!shown || disabled || !queryPerformance) {
     return null;
   }
 
