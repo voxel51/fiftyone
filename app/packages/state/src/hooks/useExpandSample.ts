@@ -22,6 +22,7 @@ export type Sample = Exclude<
 export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
   const setExpandedSample = useSetExpandedSample();
   const setModalState = useSetModalState();
+
   return useRecoilCallback(
     ({ snapshot, set }) =>
       async ({
@@ -64,20 +65,26 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
           return { id: id.description, groupId };
         };
 
-        const next = async () => {
-          const result = await iter(cursor.next(1));
+        const next = async (offset = 1) => {
+          const nextId = await cursor.next(offset);
+          const nextCheckId = await cursor.next(offset, true);
+
+          const result = await iter(Promise.resolve(nextId));
           return {
-            hasNext: Boolean(await cursor.next(1, true)),
+            hasNext: Boolean(nextCheckId),
             hasPrevious: true,
             ...result,
           };
         };
 
-        const previous = async () => {
-          const result = await iter(cursor.next(-1));
+        const previous = async (offset: number) => {
+          const prevId = await cursor.next(-1 * offset);
+          const prevCheckId = await cursor.next(-1 * offset, true);
+
+          const result = await iter(Promise.resolve(prevId));
           return {
             hasNext: true,
-            hasPrevious: Boolean(await cursor.next(-1, true)),
+            hasPrevious: Boolean(prevCheckId),
             ...result,
           };
         };

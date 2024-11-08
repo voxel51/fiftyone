@@ -26,3 +26,12 @@ Python 3.8
 `Python 3.8 <https://devguide.python.org/versions/>`_
 transitions to `end-of-life` effective October of 2024. FiftyOne releases after
 September 30, 2024 will no longer support Python 3.8.
+
+Kubernetes 1.27
+---------------
+*Support ended November 1, 2024*
+
+`Kubernetes 1.27 <https://kubernetes.io/releases/>`_
+transitioned to `end-of-life` effective July of 2024. FiftyOne Teams 
+releases after October 31, 2024 might no longer be compatible with
+Kubernetes 1.27 and older.

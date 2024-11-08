@@ -147,17 +147,6 @@ _MODEL_TEMPLATE = """
     dataset.apply_model(model, label_field="auto")
 
     session = fo.launch_app(dataset)
-{% elif 'segment-anything' in tags and 'video' in tags  and 'med-SAM' not in tags %}
-    model = foz.load_zoo_model("{{ name }}")
-
-    # Segment inside boxes and propagate to all frames
-    dataset.apply_model(
-        model,
-        label_field="segmentations",
-        prompt_field="frames.detections",  # can contain Detections or Keypoints
-    )
-
-    session = fo.launch_app(dataset)
 {% elif 'med-sam' in name %}
     model = foz.load_zoo_model("{{ name }}")
 
@@ -166,6 +155,17 @@ _MODEL_TEMPLATE = """
         model,
         label_field="pred_segmentations",
         prompt_field="frames.gt_detections",
+    )
+
+    session = fo.launch_app(dataset)
+{% elif 'segment-anything' in tags and 'video' in tags %}
+    model = foz.load_zoo_model("{{ name }}")
+
+    # Segment inside boxes and propagate to all frames
+    dataset.apply_model(
+        model,
+        label_field="segmentations",
+        prompt_field="frames.detections",  # can contain Detections or Keypoints
     )
 
     session = fo.launch_app(dataset)
@@ -354,7 +354,7 @@ def _render_card_model_content(template, model_name):
 
     tags = ",".join(tags)
 
-    link = "models.html#%s" % zoo_model.name
+    link = "models.html#%s" % zoo_model.name.replace(".", "-")
 
     description = zoo_model.description
 
@@ -423,7 +423,7 @@ def main():
     # Write docs page
 
     docs_dir = "/".join(os.path.realpath(__file__).split("/")[:-2])
-    outpath = os.path.join(docs_dir, "source/user_guide/model_zoo/models.rst")
+    outpath = os.path.join(docs_dir, "source/model_zoo/models.rst")
 
     print("Writing '%s'" % outpath)
     etau.write_file("\n".join(content), outpath)

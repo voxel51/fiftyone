@@ -18,7 +18,7 @@ import {
   isNullish,
 } from "@fiftyone/utilities";
 import { get } from "lodash";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
@@ -39,6 +39,7 @@ export default <T extends AbstractLooker<BaseState>>(
   highlight?: (sample: Sample) => boolean,
   enableTimeline?: boolean
 ) => {
+  const abortControllerRef = useRef(new AbortController());
   const environment = useRelayEnvironment();
   const selected = useRecoilValue(selectedSamples);
   const isClip = useRecoilValue(viewAtoms.isClipsView);
@@ -61,12 +62,21 @@ export default <T extends AbstractLooker<BaseState>>(
     dynamicGroupAtoms.shouldRenderImaVidLooker(isModal)
   );
 
+  const isDynamicGroup = useRecoilValue(dynamicGroupAtoms.isDynamicGroup);
+
   // callback to get the latest promise inside another recoil callback
   // gets around the limitation of the fact that snapshot inside callback refs to the committed state at the time
   const getPromise = useRecoilCallback(
     ({ snapshot: { getPromise } }) => getPromise,
     []
   );
+
+  useEffect(() => {
+    return () => {
+      // sending abort signal to clean up all event handlers
+      return abortControllerRef.current.abort();
+    };
+  }, []);
 
   const create = useRecoilCallback(
     ({ snapshot }) =>
@@ -128,6 +138,7 @@ export default <T extends AbstractLooker<BaseState>>(
           sources: urls,
           frameNumber: create === FrameLooker ? frameNumber : undefined,
           frameRate,
+          isDynamicGroup,
           sampleId: sample._id,
           support: isClip ? sample.support : undefined,
           dataset,
@@ -248,9 +259,13 @@ export default <T extends AbstractLooker<BaseState>>(
           }
         );
 
-        looker.addEventListener("error", (event) => {
-          handleError(event.error);
-        });
+        looker.addEventListener(
+          "error",
+          (event) => {
+            handleError(event.error);
+          },
+          { signal: abortControllerRef.current.signal }
+        );
 
         return looker;
       },
@@ -262,11 +277,11 @@ export default <T extends AbstractLooker<BaseState>>(
       highlight,
       isClip,
       isFrame,
-      isModal,
-      shouldRenderImaVidLooker,
       isPatch,
+      isModal,
       mediaField,
       options,
+      shouldRenderImaVidLooker,
       selected,
       thumbnail,
       view,

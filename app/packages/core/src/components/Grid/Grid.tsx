@@ -1,9 +1,7 @@
 import styles from "./Grid.module.css";
 
 import { freeVideos } from "@fiftyone/looker";
-import type { ID } from "@fiftyone/spotlight";
 import Spotlight from "@fiftyone/spotlight";
-import type { Lookers } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import React, {
   useEffect,
@@ -27,11 +25,9 @@ import useThreshold from "./useThreshold";
 
 function Grid() {
   const id = useMemo(() => uuid(), []);
-  const lookerStore = useMemo(() => new WeakMap<ID, Lookers>(), []);
   const spacing = useRecoilValue(gridSpacing);
-
   const selectSample = useRef<ReturnType<typeof useSelectSample>>();
-  const { pageReset, reset } = useRefreshers();
+  const { lookerStore, pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
   const threshold = useThreshold();
 
@@ -50,19 +46,28 @@ function Grid() {
   const getFontSize = useFontSize(id);
 
   const spotlight = useMemo(() => {
+    /** SPOTLIGHT REFRESHER */
     reset;
+    /** SPOTLIGHT REFRESHER */
+
     if (resizing) {
       return undefined;
     }
 
     return new Spotlight<number, fos.Sample>({
       ...get(),
+      destroy: (id) => {
+        const looker = lookerStore.get(id.description);
+        looker?.destroy();
+        lookerStore.delete(id.description);
+      },
       onItemClick: setSample,
+      retainItems: true,
       rowAspectRatioThreshold: threshold,
       get: (next) => page(next),
       render: (id, element, dimensions, soft, hide) => {
-        if (lookerStore.has(id)) {
-          const looker = lookerStore.get(id);
+        if (lookerStore.has(id.description)) {
+          const looker = lookerStore.get(id.description);
           hide ? looker?.disable() : looker?.attach(element, dimensions);
 
           return;
@@ -74,24 +79,22 @@ function Grid() {
           throw new Error("bad data");
         }
 
-        const init = (l) => {
-          l.addEventListener("selectthumbnail", ({ detail }: CustomEvent) => {
-            selectSample.current?.(detail);
-          });
-          lookerStore.set(id, l);
-          l.attach(element, dimensions);
-        };
-
-        if (!soft) {
-          init(
-            createLooker.current?.(
-              { ...result, symbol: id },
-              {
-                fontSize: getFontSize(),
-              }
-            )
-          );
+        if (soft) {
+          // we are scrolling fast, skip creation
+          return;
         }
+
+        const looker = createLooker.current?.(
+          { ...result, symbol: id },
+          {
+            fontSize: getFontSize(),
+          }
+        );
+        looker.addEventListener("selectthumbnail", ({ detail }) =>
+          selectSample.current?.(detail)
+        );
+        lookerStore.set(id.description, looker);
+        looker.attach(element, dimensions);
       },
       scrollbar: true,
       spacing,
@@ -102,7 +105,6 @@ function Grid() {
     getFontSize,
     lookerStore,
     page,
-    records,
     reset,
     resizing,
     setSample,
