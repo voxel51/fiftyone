@@ -57,6 +57,7 @@ import fiftyone.core.view as fov
 
 fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
+foos = fou.lazy_import("fiftyone.operators.store")
 
 
 _SUMMARY_FIELD_KEY = "_summary_field"
@@ -5180,12 +5181,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_collection.drop()
             fofr.Frame._reset_docs(self._frame_collection_name)
 
+        foos.cleanup_store_for_dataset(self._doc.id)
+
         # Update singleton
         self._instances.pop(self._doc.name, None)
         _delete_dataset_doc(self._doc)
         self._deleted = True
-
-        _cleanup_execution_store_for_dataset(self._doc.id)
 
     def add_dir(
         self,
@@ -10177,11 +10178,3 @@ def _extract_archive_if_necessary(archive_path, cleanup):
         )
 
     return dataset_dir
-
-
-def _cleanup_execution_store_for_dataset(dataset_id):
-    """Cleans up the execution store for the given dataset."""
-    from fiftyone.operators.store import ExecutionStoreService
-
-    svc = ExecutionStoreService(dataset_id=dataset_id)
-    svc.cleanup_for_dataset()
