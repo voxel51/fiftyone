@@ -16,6 +16,7 @@ import {
   getFieldInfo,
   getMimeType,
   isNullish,
+  Schema,
 } from "@fiftyone/utilities";
 import { get } from "lodash";
 import { useRef } from "react";
@@ -37,7 +38,8 @@ export default <T extends AbstractLooker<BaseState>>(
   thumbnail: boolean,
   options: Omit<Parameters<T["updateOptions"]>[0], "selected">,
   highlight?: (sample: Sample) => boolean,
-  enableTimeline?: boolean
+  enableTimeline?: boolean,
+  sampleSchema?: Schema,
 ) => {
   const environment = useRelayEnvironment();
   const selected = useRecoilValue(selectedSamples);
@@ -50,7 +52,7 @@ export default <T extends AbstractLooker<BaseState>>(
   const dataset = useRecoilValue(datasetName);
   const mediaField = useRecoilValue(selectedMediaField(isModal));
 
-  const fieldSchema = useRecoilValue(
+  const fieldSchema = sampleSchema ?? useRecoilValue(
     schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE })
   );
   const frameFieldSchema = useRecoilValue(

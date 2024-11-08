@@ -28,13 +28,20 @@ interface PropsType {
   onChange?: (labels: string[]) => void;
   autoSave?: boolean;
   initialValues?: TagType[];
+  placeholder?: string;
 }
 
 export default function TagsInput(props: PropsType) {
   const {
     query: { slug },
   } = useRouter();
-  const { initialValues = [], direction, onChange, disabled } = props;
+  const {
+    initialValues = [],
+    direction,
+    onChange,
+    disabled,
+    placeholder,
+  } = props;
   const [input, setInput] = useState("");
 
   const dir = direction || "v";
@@ -136,7 +143,8 @@ export default function TagsInput(props: PropsType) {
               placeholder={
                 !!disabled
                   ? ""
-                  : "Type to add tags. Use comma or tab to add multiple"
+                  : placeholder ??
+                    "Type to add tags. Use comma or tab to add multiple"
               }
             />
           )}

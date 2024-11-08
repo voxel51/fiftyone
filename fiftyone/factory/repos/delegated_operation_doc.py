@@ -55,6 +55,7 @@ class DelegatedOperationDocument(object):
         self.id = None
         self._doc = None
         self.metadata = None
+        self.scoped_access_key = None
 
     def from_pymongo(self, doc: dict):
         # required fields
@@ -74,23 +75,25 @@ class DelegatedOperationDocument(object):
         self.metadata = doc.get("metadata", None)
         self.label = doc.get("label", None)
         self.updated_at = doc.get("updated_at", None)
+        self.scoped_access_key = doc.get("scoped_access_key", None)
 
         # internal fields
         self.id = doc["_id"]
         self._doc = doc
 
-        user = ExecutionContextUser(id=doc["context"]["user"])
         # nested fields
-        if (
-            "context" in doc
-            and doc["context"] is not None
-            and "request_params" in doc["context"]
-        ):
-            user = ExecutionContextUser(id=doc["context"]["user"])
-            self.context = ExecutionContext(
-                request_params=doc["context"]["request_params"],
-                user=user,
+        if "context" in doc and doc["context"] is not None:
+            user = (
+                ExecutionContextUser(id=doc["context"]["user"])
+                if doc["context"]["user"]
+                else None
             )
+            request_params = doc["context"].get("request_params")
+            if user or request_params:
+                self.context = ExecutionContext(
+                    request_params=request_params,
+                    user=user,
+                )
 
         if "result" in doc and doc["result"] is not None:
             res = ExecutionResult()

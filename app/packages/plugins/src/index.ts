@@ -382,6 +382,7 @@ type PanelOptions = {
 type PluginComponentProps<T> = T & {
   panelNode?: unknown;
   dimensions?: unknown;
+  isModalPanel?: boolean;
 };
 
 /**

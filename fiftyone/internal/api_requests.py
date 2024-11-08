@@ -126,8 +126,8 @@ query ViewerQuery {
 """
 
 
-async def make_request(url, access_token, query, variables=None):
-    headers = _prepare_headers(access_token)
+async def make_request(url, access_token, query, variables=None, api_key=None):
+    headers = _prepare_headers(access_token, api_key)
     async with aiohttp.ClientSession() as session:
         async with session.post(
             url, headers=headers, json={"query": query, "variables": variables}
@@ -142,8 +142,8 @@ async def make_request(url, access_token, query, variables=None):
                 )
 
 
-def make_sync_request(url, access_token, query, variables=None):
-    headers = _prepare_headers(access_token)
+def make_sync_request(url, access_token, query, variables=None, api_key=None):
+    headers = _prepare_headers(access_token, api_key)
     resp = requests.post(
         url, headers=headers, json={"query": query, "variables": variables}
     )
@@ -156,16 +156,18 @@ def make_sync_request(url, access_token, query, variables=None):
         )
 
 
-def _get_key_or_token(access_token=None):
-    if access_token:
-        # Explicit access token passed
-        return None, access_token
+def _get_key_or_token(access_token=None, api_key=None):
+    # Explicit access token or api key passed
+    if access_token or api_key:
+        return api_key, access_token
     elif fo_context_vars.running_user_request_token.get():
         # Access token is in contextvars.Context
         return None, fo_context_vars.running_user_request_token.get()
+    elif fo_context_vars.running_user_api_key.get():
+        return fo_context_vars.running_user_api_key.get(), None
 
-    # If no access token is provided, we can try to authenticate with
-    # an api key, but the client must be configured as an internal
+    # If no access token or API key is provided, we can try to authenticate with
+    # a default API key, but the client must be configured as an internal
     # service with the encryption key set.
     # TODO: eventually replace with a service account token for
     #  internal authentication
@@ -175,12 +177,14 @@ def _get_key_or_token(access_token=None):
     return None, None
 
 
-def _prepare_headers(access_token):
+def _prepare_headers(access_token, api_key):
     headers = {
         "Content-Type": "application/json",
     }
 
-    key, access_token = _get_key_or_token(access_token)
+    key, access_token = _get_key_or_token(
+        access_token=access_token, api_key=api_key
+    )
     if access_token:
         headers["Authorization"] = access_token
     elif key:
@@ -208,6 +212,7 @@ async def resolve_user(
     id: Optional[str] = None,
     dataset: Optional[str] = None,
     token: Optional[str] = None,
+    api_key: Optional[str] = None,
 ) -> Optional[dict]:
     """
     Resolve a user asynchronously using the teams API.
@@ -216,6 +221,7 @@ async def resolve_user(
         id: the user ID
         dataset: the dataset ID
         token: the request token
+        api_key: the api key
 
     Returns:
         the user
@@ -238,6 +244,7 @@ async def resolve_user(
         token,  # FIFTYONE_API_KEY will be used if token is None
         query,
         variables=variables,
+        api_key=api_key,
     )
     user = access_nested_element(result, access_nodes)
     return user
@@ -247,6 +254,7 @@ async def resolve_operation_user(
     id: Optional[str] = None,
     dataset: Optional[str] = None,
     token: Optional[str] = None,
+    api_key: Optional[str] = None,
 ) -> Optional[dict]:
     """Resolve a user asynchronously using the teams API.
     Raise an exception if the user cannot be resolved when it is expected to
@@ -254,9 +262,11 @@ async def resolve_operation_user(
     expected to be resolvable.
     """
     try:
-        user = await resolve_user(id=id, dataset=dataset, token=token)
+        user = await resolve_user(
+            id=id, dataset=dataset, token=token, api_key=api_key
+        )
         if user:
-            user.update({"_request_token": token})
+            user.update({"_request_token": token, "_api_key": api_key})
         return user
     except Exception as e:
         if is_internal_service():

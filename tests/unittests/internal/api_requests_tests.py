@@ -120,14 +120,22 @@ class TestResolveUser:
         mock_make_request.return_value = {"data": {"viewer": {"id": "123"}}}
         user = await api_requests.resolve_operation_user()
         mock_make_request.assert_called_with(
-            api_url, None, api_requests._VIEWER_QUERY, variables={}
+            api_url,
+            None,
+            api_requests._VIEWER_QUERY,
+            variables={},
+            api_key=None,
         )
-        assert user == {"id": "123", "_request_token": None}
+        assert user == {"id": "123", "_request_token": None, "_api_key": None}
 
         # Test TTL caching
         mock_make_request.return_value = None
         user_two = await api_requests.resolve_operation_user()
-        assert user_two == {"id": "123", "_request_token": None}
+        assert user_two == {
+            "id": "123",
+            "_request_token": None,
+            "_api_key": None,
+        }
         mock_make_request.assert_called_once()
 
     @pytest.mark.asyncio
@@ -140,8 +148,9 @@ class TestResolveUser:
             None,
             api_requests._USER_QUERY,
             variables={"userId": "123"},
+            api_key=None,
         )
-        assert user == {"id": "123", "_request_token": None}
+        assert user == {"id": "123", "_request_token": None, "_api_key": None}
 
         # Test exception is raised if user cannot be resolved when it is expected to be resolvable
         os.environ["FIFTYONE_INTERNAL_SERVICE"] = "true"
@@ -163,8 +172,9 @@ class TestResolveUser:
             None,
             api_requests._DATASET_VIEWER_QUERY,
             variables={"dataset": "123"},
+            api_key=None,
         )
-        assert user == {"id": "123", "_request_token": None}
+        assert user == {"id": "123", "_request_token": None, "_api_key": None}
 
     @pytest.mark.asyncio
     @mock.patch.object(api_requests, "make_request")
@@ -180,45 +190,52 @@ class TestResolveUser:
             None,
             api_requests._DATASET_USER_QUERY,
             variables={"userId": "123", "dataset": "456"},
+            api_key=None,
         )
-        assert user == {"id": "123", "_request_token": None}
+        assert user == {"id": "123", "_request_token": None, "_api_key": None}
 
         # Test with token
+        token, api_key = mock.Mock(), mock.Mock()
         mock_make_request.return_value = {
             "data": {"dataset": {"viewer": {"id": "789"}}}
         }
         user = await api_requests.resolve_operation_user(
-            dataset="789", token="token"
+            dataset="789", token=token, api_key=api_key
         )
         mock_make_request.assert_called_with(
             api_url,
-            "token",
+            token,
             api_requests._DATASET_VIEWER_QUERY,
             variables={"dataset": "789"},
+            api_key=api_key,
         )
-        assert user == {"id": "789", "_request_token": "token"}
+        assert user == {
+            "id": "789",
+            "_request_token": token,
+            "_api_key": api_key,
+        }
 
     @pytest.mark.asyncio
     @mock.patch.object(api_requests, "resolve_user")
     async def test_resolve_operation_user2(self, resolve_user_mock):
         dataset = "dataset"
-        token = "tok"
+        token, api_key = mock.Mock(), mock.Mock()
         expected = {
             "id": "test_user",
             "email": "testuser@voxel51.com",
             "name": "TEST USER",
         }
         resolve_user_mock.return_value = expected.copy()
-        expected.update({"_request_token": token})
+        expected.update({"_request_token": token, "_api_key": api_key})
 
         #####
         result = await api_requests.resolve_operation_user(
-            expected["id"], dataset, token
+            expected["id"], dataset, token, api_key
         )
         #####
 
         resolve_user_mock.assert_called_once_with(
-            id=expected["id"], dataset=dataset, token=token
+            id=expected["id"], dataset=dataset, token=token, api_key=api_key
         )
         assert result == expected
 
