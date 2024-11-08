@@ -38,10 +38,7 @@ export default function ButtonView(props: ViewPropsType) {
 
   return (
     <Box {...getComponentProps(props, "container")}>
-      <TooltipProvider
-        title={disabled ? "" : title}
-        {...getComponentProps(props, "tooltip")}
-      >
+      <TooltipProvider title={title} {...getComponentProps(props, "tooltip")}>
         <Button
           disabled={disabled}
           variant={variant}

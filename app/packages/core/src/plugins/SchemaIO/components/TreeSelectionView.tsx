@@ -1,9 +1,10 @@
+import { useUnboundState } from "@fiftyone/state";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { Box, Checkbox, FormControlLabel, IconButton } from "@mui/material";
 import React, { useEffect } from "react";
+import { getComponentProps } from "../utils";
 import { ViewPropsType } from "../utils/types";
-import { useUnboundState } from "@fiftyone/state";
 
 interface CheckedState {
   [key: string]: {
@@ -85,6 +86,19 @@ export default function TreeSelectionView(props: ViewPropsType) {
   const [collapsedState, setCollapsedState] = React.useState<CollapsedState>(
     initialCollapsedState
   );
+
+  const [allCollapsed, setAllCollapsed] = React.useState(false);
+
+  const handleExpandCollapseAll = () => {
+    setCollapsedState((prevState) => {
+      const newState = { ...prevState };
+      Object.keys(newState).forEach((key) => {
+        newState[key] = allCollapsed;
+      });
+      return newState;
+    });
+    setAllCollapsed(!allCollapsed); // Toggle the expand/collapse state
+  };
 
   const handleCheckboxChange = (id: string, isChecked: boolean) => {
     setCheckedState((prevState) => {
@@ -195,6 +209,7 @@ export default function TreeSelectionView(props: ViewPropsType) {
     return idx === -1 ? 0 : idx + 1;
   };
 
+  // On init, all samples are selected by default
   useEffect(() => {
     const sampleIds = view?.data.flatMap(([parentId, children]) => {
       return children.map((childId) =>
@@ -204,6 +219,79 @@ export default function TreeSelectionView(props: ViewPropsType) {
     onChange(path, sampleIds);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // this only runs when data and checkboxstate are different
+  // meaning the user selected samples from the grid
+  // we will handle the state change of checkedState here
+  // ! do not use onChange here. A change triggered by python should not be sent back to python.
+  useEffect(() => {
+    if (!data) return;
+    // extract the selected sample ids from the unboundState
+    const selectedIdsFromUnboundState = Object.keys(unboundState).filter(
+      (key) => {
+        const isSample =
+          !structure.some(([parentId]) => parentId === key) &&
+          key !== "selectAll";
+        return isSample && unboundState[key].checked; // Only checked samples
+      }
+    );
+
+    const dataSet: Set<string> = new Set(data);
+    const unboundSet: Set<string> = new Set(selectedIdsFromUnboundState);
+    const hasDifference =
+      dataSet.size !== unboundSet.size ||
+      [...dataSet].some((id) => !unboundSet.has(id));
+
+    if (hasDifference) {
+      setCheckedState((prevState) => {
+        const updatedState = { ...prevState };
+
+        // Update the checked state of individual samples based on `dataSet`
+        Object.keys(updatedState).forEach((key) => {
+          if (
+            key !== "selectAll" &&
+            !structure.some(([parentId]) => parentId === key)
+          ) {
+            updatedState[key].checked = dataSet.has(key);
+          }
+        });
+
+        // Update group (parent) states based on their children's state
+        structure.forEach(([parentId, children]) => {
+          const allChildrenChecked = children.every((childId) =>
+            typeof childId === "string"
+              ? updatedState[childId].checked
+              : updatedState[childId[0]].checked
+          );
+          const someChildrenChecked = children.some((childId) =>
+            typeof childId === "string"
+              ? updatedState[childId].checked
+              : updatedState[childId[0]].checked
+          );
+
+          updatedState[parentId] = {
+            checked: allChildrenChecked,
+            indeterminate: someChildrenChecked && !allChildrenChecked,
+          };
+        });
+
+        // Update `selectAll` based on the sample checkboxes
+        const allSamplesChecked = Object.keys(updatedState).every((key) => {
+          const isSample =
+            !structure.some(([parentId]) => parentId === key) &&
+            key !== "selectAll";
+          return !isSample || updatedState[key].checked;
+        });
+
+        updatedState["selectAll"] = {
+          checked: allSamplesChecked,
+          indeterminate: !allSamplesChecked && dataSet.size > 0,
+        };
+
+        return updatedState;
+      });
+    }
+  }, [data, unboundState]);
 
   // CheckboxView: Represents a single checkbox (either parent or child)
   function CheckboxView({
@@ -239,7 +327,10 @@ export default function TreeSelectionView(props: ViewPropsType) {
   }: TreeNodeProps) {
     const isCollapsed = collapsedState[nodeId] || false;
     const count = childrenIds.length;
-    const title = `Group ${getGroupIdx(nodeId, structure)}  • ${count} Samples`;
+    const title = `Group ${getGroupIdx(
+      nodeId,
+      structure
+    )}  • ${count} Samples • ${nodeId}`;
     return (
       <Box sx={{ display: "flex", flexDirection: "column", ml: 3 }}>
         <Box sx={{ display: "flex", alignItems: "center" }}>
@@ -288,19 +379,21 @@ export default function TreeSelectionView(props: ViewPropsType) {
     );
   }
 
-  // render the full structure
   return (
-    <div>
-      {/* Select All Checkbox */}
-      <CheckboxView
-        id="selectAll"
-        label="Select All"
-        isChecked={checkedState.selectAll.checked}
-        isIndeterminate={checkedState.selectAll.indeterminate || false}
-        onChange={handleCheckboxChange}
-      />
+    <Box {...getComponentProps(props, "container")}>
+      <Box display="flex" alignItems="center">
+        <CheckboxView
+          id="selectAll"
+          label="Select All"
+          isChecked={checkedState.selectAll.checked}
+          isIndeterminate={checkedState.selectAll.indeterminate || false}
+          onChange={handleCheckboxChange}
+        />
+        <IconButton onClick={handleExpandCollapseAll} size="small">
+          {allCollapsed ? <ChevronRightIcon /> : <ExpandMoreIcon />}
+        </IconButton>
+      </Box>
 
-      {/* Render Tree Structure */}
       {structure.map(([parentId, children]) => (
         <TreeNode
           key={parentId}
@@ -312,6 +405,6 @@ export default function TreeSelectionView(props: ViewPropsType) {
           onToggleCollapse={handleToggleCollapse}
         />
       ))}
-    </div>
+    </Box>
   );
 }
