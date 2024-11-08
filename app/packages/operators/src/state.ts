@@ -250,8 +250,10 @@ const useOperatorPromptSubmitOptions = (
         promptView?.submit_button_label ||
         "Execute",
       id: "execute",
+      tag: "FOR TESTING",
       default: defaultToExecute,
-      description: "Run this operation now",
+      description:
+        "Run this operation synchronously. Only suitable for small datasets.",
       onSelect() {
         setSelectedID("execute");
       },
@@ -268,7 +270,7 @@ const useOperatorPromptSubmitOptions = (
       label: "Schedule",
       id: "schedule",
       default: defaultToSchedule,
-      description: "Schedule this operation to run later",
+      description: "Schedule this operation on your compute cluster.",
       onSelect() {
         setSelectedID("schedule");
       },
@@ -301,6 +303,13 @@ const useOperatorPromptSubmitOptions = (
       });
     }
   }
+
+  // sort options so that the default is always the first in the list
+  options.sort((a, b) => {
+    if (a.default) return -1;
+    if (b.default) return 1;
+    return 0;
+  });
 
   const defaultID =
     options.find((option) => option.default)?.id || options[0]?.id || "execute";
