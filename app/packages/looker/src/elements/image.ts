@@ -11,7 +11,6 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
   private allowAnonymousOrigin: boolean;
 
   private src = "";
-
   private imageSource: HTMLImageElement;
 
   constructor() {
