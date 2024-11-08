@@ -8,6 +8,7 @@ FiftyOne repository factory.
 
 from pymongo.database import Database
 
+from bson import ObjectId
 from typing import Optional
 import fiftyone.core.odm as foo
 from fiftyone.factory.repos.delegated_operation import (
