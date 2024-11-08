@@ -34,10 +34,13 @@ class EncryptedDatastore(object):
         plaintext = self._fernet.decrypt(encrypted).decode()
         return plaintext
 
-    def put(self, value):
+    def put(self, value, key_id=None):
         """Store value encrypted"""
         encrypted = self._fernet.encrypt(value.encode())
-        result = self._mongodb_collection.insert_one({"data": encrypted})
+        doc = {"data": encrypted}
+        if key_id:
+            doc["_id"] = bson.ObjectId(key_id)
+        result = self._mongodb_collection.insert_one(doc)
         return result.inserted_id
 
 
