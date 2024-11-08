@@ -15,13 +15,26 @@ import fiftyone.core.storage as fos
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 from fiftyone.core.odm.workspace import default_workspace_factory
+
+# pylint: disable=no-name-in-module
 from fiftyone.operators.builtins.panels.model_evaluation import EvaluationPanel
+from fiftyone.operators.builtins.operators.evaluation import (
+    EvaluateModel,
+    EvaluateModelAsync,
+)
+from fiftyone.operators.builtins.operators.embeddings import (
+    ComputeVisualization,
+)
+from fiftyone.operators.data_lens.builtin import DATA_LENS_OPERATORS
 from fiftyone.operators.panels import (
     DataQualityPanel,
     QueryPerformancePanel,
 )
+from fiftyone.operators.panels import QUERY_PERFORMANCE_OPERATORS
+from fiftyone.operators.panels.data_quality import (
+    OPERATORS as DATA_QUALITY_OPERATORS,
+)
 from fiftyone.operators.utils import create_summary_field_inputs
-from .builtins.operators.evaluation import EvaluateModel, EvaluateModelAsync
 
 
 class EditFieldInfo(foo.Operator):
@@ -2198,61 +2211,60 @@ def _parse_spaces(ctx, spaces):
     return fo.Space.from_dict(spaces)
 
 
-from fiftyone.operators.panels.data_quality import (
-    OPERATORS as DATA_QUALITY_OPERATORS,
-)
-
-from fiftyone.operators.panels import QUERY_PERFORMANCE_OPERATORS
-
-from fiftyone.operators.data_lens.builtin import DATA_LENS_OPERATORS
-
-BUILTIN_OPERATORS = (
-    [
-        EditFieldInfo(_builtin=True),
-        CloneSelectedSamples(_builtin=True),
-        CloneSampleField(_builtin=True),
-        CloneFrameField(_builtin=True),
-        RenameSampleField(_builtin=True),
-        RenameFrameField(_builtin=True),
-        ClearSampleField(_builtin=True),
-        ClearFrameField(_builtin=True),
-        DeleteSelectedSamples(_builtin=True),
-        DeleteSelectedLabels(_builtin=True),
-        DeleteSampleField(_builtin=True),
-        DeleteFrameField(_builtin=True),
-        CreateIndex(_builtin=True),
-        DropIndex(_builtin=True),
-        CreateSummaryField(_builtin=True),
-        UpdateSummaryField(_builtin=True),
-        DeleteSummaryField(_builtin=True),
-        AddGroupSlice(_builtin=True),
-        RenameGroupSlice(_builtin=True),
-        DeleteGroupSlice(_builtin=True),
-        ListSavedViews(_builtin=True),
-        LoadSavedView(_builtin=True),
-        SaveView(_builtin=True),
-        EditSavedViewInfo(_builtin=True),
-        DeleteSavedView(_builtin=True),
-        ListDatasets(_builtin=True),
-        ListWorkspaces(_builtin=True),
-        LoadWorkspace(_builtin=True),
-        SaveWorkspace(_builtin=True),
-        EditWorkspaceInfo(_builtin=True),
-        DeleteWorkspace(_builtin=True),
-        SyncLastModifiedAt(_builtin=True),
-        ListFiles(_builtin=True),
-        EvaluateModel(_builtin=True),
-        EvaluateModelAsync(_builtin=True),
-    ]
-    + DATA_QUALITY_OPERATORS
-    + QUERY_PERFORMANCE_OPERATORS
-    + DATA_LENS_OPERATORS
-)
-
-BUILTIN_PANELS = [
-    DataQualityPanel(_builtin=True),
-    EvaluationPanel(_builtin=True),
+BUILTIN_OPERATORS = [
+    EditFieldInfo(_builtin=True),
+    CloneSelectedSamples(_builtin=True),
+    CloneSampleField(_builtin=True),
+    CloneFrameField(_builtin=True),
+    RenameSampleField(_builtin=True),
+    RenameFrameField(_builtin=True),
+    ClearSampleField(_builtin=True),
+    ClearFrameField(_builtin=True),
+    DeleteSelectedSamples(_builtin=True),
+    DeleteSelectedLabels(_builtin=True),
+    DeleteSampleField(_builtin=True),
+    DeleteFrameField(_builtin=True),
+    CreateIndex(_builtin=True),
+    DropIndex(_builtin=True),
+    CreateSummaryField(_builtin=True),
+    UpdateSummaryField(_builtin=True),
+    DeleteSummaryField(_builtin=True),
+    AddGroupSlice(_builtin=True),
+    RenameGroupSlice(_builtin=True),
+    DeleteGroupSlice(_builtin=True),
+    ListSavedViews(_builtin=True),
+    LoadSavedView(_builtin=True),
+    SaveView(_builtin=True),
+    EditSavedViewInfo(_builtin=True),
+    DeleteSavedView(_builtin=True),
+    ListWorkspaces(_builtin=True),
+    LoadWorkspace(_builtin=True),
+    SaveWorkspace(_builtin=True),
+    EditWorkspaceInfo(_builtin=True),
+    DeleteWorkspace(_builtin=True),
+    SyncLastModifiedAt(_builtin=True),
+    ListFiles(_builtin=True),
 ]
+
+BUILTIN_PANELS = []
+
+#
+# Teams-only
+#
+
+BUILTIN_OPERATORS.extend(DATA_QUALITY_OPERATORS)
+BUILTIN_OPERATORS.extend(QUERY_PERFORMANCE_OPERATORS)
+BUILTIN_OPERATORS.extend(DATA_LENS_OPERATORS)
+BUILTIN_OPERATORS.append(EvaluateModel(_builtin=True))
+BUILTIN_OPERATORS.append(EvaluateModelAsync(_builtin=True))
+BUILTIN_OPERATORS.append(ComputeVisualization(_builtin=True))
+
+BUILTIN_PANELS.append(EvaluationPanel(_builtin=True))
+BUILTIN_PANELS.append(DataQualityPanel(_builtin=True))
 
 if fo.app_config.enable_query_performance:
     BUILTIN_PANELS.append(QueryPerformancePanel(_builtin=True))
+
+#
+# end of Teams-only
+#
