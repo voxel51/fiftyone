@@ -253,7 +253,7 @@ const useOperatorPromptSubmitOptions = (
       tag: "FOR TESTING",
       default: defaultToExecute,
       description:
-        "Run this operation synchronously. Only suitable for small datasets.",
+        "Run this operation synchronously. Only suitable for small datasets",
       onSelect() {
         setSelectedID("execute");
       },
@@ -270,7 +270,7 @@ const useOperatorPromptSubmitOptions = (
       label: "Schedule",
       id: "schedule",
       default: defaultToSchedule,
-      description: "Schedule this operation on your compute cluster.",
+      description: "Run this operation on your compute cluster",
       onSelect() {
         setSelectedID("schedule");
       },
