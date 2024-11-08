@@ -61,7 +61,7 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
     setShowRange(true);
   };
 
-  const showButton = isGroup && queryPerformance && !showRange;
+  const showButton = isGroup && queryPerformance && !showRange && !modal;
 
   return (
     <Container onClick={(e) => e.stopPropagation()}>
