@@ -54,7 +54,6 @@ import fiftyone.core.storage as fost
 from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-from fiftyone.operators.store import ExecutionStoreService
 
 fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
@@ -10182,5 +10181,7 @@ def _extract_archive_if_necessary(archive_path, cleanup):
 
 def _cleanup_execution_store_for_dataset(dataset_id):
     """Cleans up the execution store for the given dataset."""
+    from fiftyone.operators.store import ExecutionStoreService
+
     svc = ExecutionStoreService(dataset_id=dataset_id)
     svc.cleanup_for_dataset()

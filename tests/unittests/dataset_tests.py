@@ -28,7 +28,6 @@ import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.utils.data as foud
 from fiftyone import ViewField as F
-from fiftyone.operators.store import ExecutionStoreService
 
 from decorators import drop_datasets, skip_windows
 
@@ -124,6 +123,8 @@ class DatasetTests(unittest.TestCase):
 
     @drop_datasets
     def test_delete_dataset(self):
+        from fiftyone.operators.store import ExecutionStoreService
+
         IGNORED_DATASET_NAMES = fo.list_datasets()
 
         def list_datasets():
