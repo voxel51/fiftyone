@@ -1,9 +1,8 @@
 import fiftyone as fo
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
-from .duplication_operators import compute_filehashes
 
-from .ctx_inp import _execution_mode, _handle_patch_inputs
+from .ctx_inp import _handle_patch_inputs
 from .image_operations import (
     compute_sample_brightness,
     compute_patch_brightness,
@@ -75,23 +74,35 @@ def compute_dataset_property(property, dataset, view=None, patches_field=None):
 
 def _handle_inputs(ctx, property_name):
     inputs = types.Object()
-    label = "compute " + property_name.replace("_", " ")
-    inputs.message(label, label=label)
-    _execution_mode(ctx, inputs)
+
+    label = f'Compute {property_name.replace("_", " ").title()}'
+    inputs.message("computation_label", label=label)
+
     inputs.view_target(ctx)
     _handle_patch_inputs(ctx, inputs)
     return types.Property(inputs)
 
 
 def _handle_execution(ctx, property_name):
-    view = ctx.target_view()
+    new_sample_exist = (
+        ctx.params.get("panel_state", {})
+        .get("new_samples", {})
+        .get(property_name, [0, False])[0]
+        > 0
+    )
+
+    view = (
+        ctx.dataset.exists(property_name, bool=False)
+        if new_sample_exist
+        else ctx.target_view()
+    )
     patches_field = ctx.params.get("patches_field", None)
     compute_dataset_property(
         property_name, ctx.dataset, view=view, patches_field=patches_field
     )
     # update the flag that computation has been done
     print("Computation done for ", property_name)
-    # TODO: triggers to screen update to analysis view
+
     ctx.ops.reload_dataset()
 
 
@@ -107,8 +118,9 @@ def _handle_calling(
     return foo.execute_operator(uri, ctx, params=params)
 
 
-# TODO: For all of these operators, check if the field exists before adding it.
 # Ask the user if they want to recompute for all samples or just those w/o the
+
+
 # field populated
 class ComputeBrightness(foo.Operator):
     @property
@@ -235,76 +247,6 @@ class ComputeBlurriness(foo.Operator):
 
     def execute(self, ctx):
         _handle_execution(ctx, "blurriness")
-
-    def __call__(self, sample_collection, patches_field=None, delegate=False):
-        return _handle_calling(
-            self.uri,
-            sample_collection,
-            patches_field=patches_field,
-            delegate=delegate,
-        )
-
-
-class ComputeAllIssues(foo.Operator):
-    @property
-    def config(self):
-        return foo.OperatorConfig(
-            name="compute_all_issues",
-            label="Data Quality Panel All Issues",
-            dynamic=True,
-        )
-
-    def resolve_delegation(self, ctx):
-        return ctx.params.get("delegate", False)
-
-    def resolve_input(self, ctx):
-        inputs = types.Object()
-
-        # Check which issues have already been computed
-        present_issues = []
-        not_present_issues = []
-        for issue in ISSUE_TYPES:
-            if not ctx.dataset.has_sample_field(issue):
-                not_present_issues.append(issue)
-            else:
-                present_issues.append(issue)
-
-        # Ask if user wants to recompute all or just those w/o the field
-        radio_group = types.RadioGroup(
-            label="Data Quality Issues",
-            description="Select which issues to compute",
-            caption="Issues already computed: " + ", ".join(present_issues),
-        )
-        radio_group.add_choice(
-            "all", label="All", description="Recompute all issues"
-        )
-        radio_group.add_choice(
-            "not_present",
-            label="Not Present",
-            description="Recompute only issues not already computed",
-        )
-        inputs.enum("compute", radio_group.values(), view=radio_group)
-
-        _execution_mode(ctx, inputs)
-        inputs.view_target(ctx)
-        _handle_patch_inputs(ctx, inputs)
-        return types.Property(inputs)
-
-    def execute(self, ctx):
-        if ctx.params["compute"] == "all":
-            _handle_execution(ctx, "blurriness")
-            _handle_execution(ctx, "exposure")
-            _handle_execution(ctx, "aspect_ratio")
-            _handle_execution(ctx, "entropy")
-            _handle_execution(ctx, "brightness")
-        else:
-            for issue in ISSUE_TYPES:
-                if not (ctx.dataset.has_sample_field(issue)):
-                    _handle_execution(ctx, issue)
-                    if issue == "duplicates":
-                        # assume if someone runs "Execute All" then they consent
-                        # to use our preferred defaults
-                        continue
 
     def __call__(self, sample_collection, patches_field=None, delegate=False):
         return _handle_calling(
