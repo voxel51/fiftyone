@@ -12,7 +12,7 @@ from pkg_resources import DistributionNotFound, get_distribution
 from setuptools import setup
 
 INSTALL_REQUIRES = [
-    "fiftyone>2.1,<2.3",
+    "fiftyone>2.2,<2.4",
     "python-jose>=3.3.0,<4",
     "strawberry-graphql==0.243",
 ]
@@ -48,7 +48,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone-teams-app",
-    version="2.2.0.dev47",
+    version="2.3.0.dev1",
     description=("FiftyOne Teams"),
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
