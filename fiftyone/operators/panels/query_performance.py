@@ -6,6 +6,7 @@ from ..types import (
     ImageView,
     Notice,
     Object,
+    PromptView,
     Property,
     RadioGroup,
     TableView,
@@ -14,7 +15,8 @@ from ..types import (
 from fiftyone.management.dataset import DatasetPermission
 from ..operator import Operator, OperatorConfig
 from ..panel import Panel, PanelConfig
-from fiftyone.operators.utils import create_summary_field_inputs
+from fiftyone.operators.categories import Categories
+from fiftyone.operators.utils import create_summary_field_inputs, is_new
 import fiftyone.core.fields as fof
 
 
@@ -325,7 +327,13 @@ class QueryPerformanceConfigConfirmationOperator(Operator):
 
         inputs.md(message)
 
-        return Property(inputs)
+        return Property(
+            inputs,
+            view=PromptView(
+                caption="Query Performance Settings",
+                submit_button_label="Accept",
+            ),
+        )
 
     def execute(self, ctx):
         if ctx.params.get("query_performance") == "Enabled":
@@ -350,11 +358,13 @@ class QueryPerformancePanel(Panel):
     def config(self):
         return PanelConfig(
             name="query_performance_panel",
-            label="Query Performance Panel",
+            label="Query Performance",
             description="A place to optimize the query performance of datasets.",
             surfaces="grid",
             icon="bolt",
             allow_multiple=False,
+            category=Categories.IMPORT,
+            is_new=is_new("2024-11-07"),
         )
 
     def _get_index_table_data(self, ctx):
