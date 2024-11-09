@@ -28,7 +28,6 @@ class EvaluationPanel(Panel):
             icon="ssid_chart",
             category=Categories.ANALYZE,
             beta=True,
-            is_new=is_new("2024-11-07"),
         )
 
     def get_dataset_id(self, ctx):
