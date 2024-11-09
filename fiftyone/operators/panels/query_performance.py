@@ -6,6 +6,7 @@ from ..types import (
     ImageView,
     Notice,
     Object,
+    PromptView,
     Property,
     RadioGroup,
     TableView,
@@ -326,7 +327,13 @@ class QueryPerformanceConfigConfirmationOperator(Operator):
 
         inputs.md(message)
 
-        return Property(inputs)
+        return Property(
+            inputs,
+            view=PromptView(
+                caption="Query Performance Settings",
+                submit_button_label="Accept",
+            ),
+        )
 
     def execute(self, ctx):
         if ctx.params.get("query_performance") == "Enabled":
