@@ -34,11 +34,10 @@ class ExecutionStoreRepo(object):
         self._collection = collection
         self._dataset_id = dataset_id
 
-    def create_store(self, store_name, permissions=None) -> StoreDocument:
+    def create_store(self, store_name) -> StoreDocument:
         """Creates a store associated with the current context."""
         store_doc = StoreDocument(
             store_name=store_name,
-            value=permissions,
             dataset_id=self._dataset_id,
         )
         self._collection.insert_one(store_doc.to_mongo_dict())
