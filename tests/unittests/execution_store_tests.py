@@ -31,7 +31,7 @@ def assert_delta_seconds_approx(time_delta, seconds, epsilon=EPSILON):
     assert abs(time_delta.total_seconds() - seconds) < epsilon
 
 
-class TeskKeyDocument(unittest.TestCase):
+class TestKeyDocument(unittest.TestCase):
     def test_get_expiration(self):
         ttl = 1
         now = datetime.utcnow()
