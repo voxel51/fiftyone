@@ -15,7 +15,18 @@ from fiftyone.operators.store.models import StoreDocument, KeyDocument
 
 
 class ExecutionStoreRepo(object):
-    """Base class for execution store repositories."""
+    """Base class for execution store repositories.
+
+    Each instance of this repository has a context:
+
+    -   If a ``dataset_id`` is provided, it operates on stores associated with
+        that dataset
+    -   If no ``dataset_id`` is provided, it operates on stores that are not
+        associated with a dataset
+
+    To operate on all stores across all contexts, use the ``XXX_global()``
+    methods that this class provides.
+    """
 
     COLLECTION_NAME = "execution_store"
 
