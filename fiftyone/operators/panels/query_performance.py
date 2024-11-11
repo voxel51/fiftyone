@@ -3,6 +3,7 @@ import fiftyone as fo
 from ..types import (
     AutocompleteView,
     GridView,
+    IconButtonView,
     ImageView,
     Notice,
     Object,
@@ -579,11 +580,12 @@ class QueryPerformancePanel(Panel):
                     on_click=self.toggle_qp,
                 )
 
-            button_menu.btn(
-                "setting_btn",
-                label="Settings",
-                on_click=self.qp_setting,
+            iconButtonView = IconButtonView(
+                icon="settings",
+                operator="query_performance_config_confirmation",
             )
+
+            button_menu.view("icon_btn", iconButtonView)
 
             if ctx.user.dataset_permission in PERMISSION:
                 button_menu.btn(
