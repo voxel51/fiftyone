@@ -583,6 +583,7 @@ class QueryPerformancePanel(Panel):
                 "setting_btn",
                 label="Settings",
                 on_click=self.qp_setting,
+                icon="settings",
             )
 
             if ctx.user.dataset_permission in PERMISSION:
