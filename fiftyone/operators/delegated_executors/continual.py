@@ -146,10 +146,6 @@ class ContinualExecutor:
             error_message += (
                 "- Must be configured with a `FIFTYONE_ENCRYPTION_KEY`\n"
             )
-        if not foiu.has_api_key():
-            error_message += (
-                "- Must be configured with an admin `FIFTYONE_API_KEY`\n"
-            )
 
         if error_message:
             raise RuntimeError(
