@@ -13,17 +13,31 @@ from fiftyone.operators.store.models import StoreDocument, KeyDocument
 
 
 class ExecutionStoreService(object):
+    """Service for managing execution store operations.
+
+    Note that each instance of this service has a context:
+
+    -   If a ``dataset_id`` is provided (or a ``repo`` associated with one),
+        this instance operates on stores associated with that dataset
+    -   If no ``dataset_id`` is provided (or a ``repo`` is provided that is not
+        associated with one), this instance operates on stores that are not
+        associated with a dataset
+
+    To operate on all stores across all contexts, use the ``XXX_global()``
+    methods that this class provides.
+
+    Args:
+        repo (None): a
+            :class:`fiftyone.factory.repos.execution_store.ExecutionStoreRepo`
+        dataset_id (None): a dataset ID to scope operations to
+    """
+
     def __init__(
         self,
         repo: Optional["ExecutionStoreRepo"] = None,
         dataset_id: Optional[ObjectId] = None,
     ):
-        """Service for managing execution store operations.
 
-        Args:
-            repo (None): execution store repository instance
-            dataset_id (None): a dataset ID to scope operations to
-        """
         from fiftyone.factory.repo_factory import (
             RepositoryFactory,
             ExecutionStoreRepo,
