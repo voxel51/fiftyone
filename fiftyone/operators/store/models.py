@@ -22,7 +22,7 @@ class KeyDocument:
     value: Any
     _id: Optional[Any] = None
     dataset_id: Optional[ObjectId] = None
-    created_at: datetime = field(default_factory=datetime.now)
+    created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
     expires_at: Optional[datetime] = None
 
@@ -32,7 +32,7 @@ class KeyDocument:
         if ttl is None:
             return None
 
-        return datetime.now() + timedelta(seconds=ttl)
+        return datetime.utcnow() + timedelta(seconds=ttl)
 
     def to_mongo_dict(self, exclude_id: bool = True) -> dict[str, Any]:
         """Serializes the document to a MongoDB dictionary."""
