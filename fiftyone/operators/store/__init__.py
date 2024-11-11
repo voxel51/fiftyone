@@ -1,5 +1,5 @@
 """
-FiftyOne execution store module.
+Execution store.
 
 | Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -7,7 +7,7 @@ FiftyOne execution store module.
 """
 import types
 
-from .service import cleanup_store_for_dataset, ExecutionStoreService
+from .service import ExecutionStoreService
 from .store import ExecutionStore
 from .models import StoreDocument, KeyDocument
 

@@ -218,27 +218,32 @@ def is_new(release_date, days=30):
     """
     Determines if a feature is considered "new" based on its release date.
 
-    A feature is considered new if its release date is within the specified number of days.
+    A feature is considered new if its release date is within the specified
+    number of days.
+
+    Examples::
+
+        is_new("2024-11-09")
+        # True if today's date is within 30 days after 2024-11-09
+
+        is_new(datetime(2024, 11, 9), days=15)
+        # True if today's date is within 15 days after November 9, 2024
+
+        is_new("2024-10-01", days=45)
+        # False if today's date is more than 45 days after October 1, 2024
 
     Args:
-        release_date (str or datetime): The release date of the feature.
-            - If a string, it should be in the format "%Y-%m-%d" (e.g., "2024-11-09").
-            - If a datetime object, it will be used directly without conversion.
-        days (int, optional): The number of days within which the feature is considered new.
-            Defaults to 30.
+        release_date: the release date of the feature, in one of the following
+            formats:
+
+            -   a string in the format ``"%Y-%m-%d"``, e.g., ``"2024-11-09"``
+            -   a datetime instance
+
+        days (30): the number of days for which the feature is considered new
 
     Returns:
-        bool: True if the release date is within the specified number of days, False otherwise.
-
-    Examples:
-        >>> is_new("2024-11-09")  # Using a string date and default days
-        True  # if today's date is within 30 days after 2024-11-09
-
-        >>> is_new(datetime(2024, 11, 9), days=15)  # Using a datetime object with 15-day threshold
-        True  # if today's date is within 15 days after November 9, 2024
-
-        >>> is_new("2024-10-01", days=45)
-        False  # if today's date is more than 45 days after October 1, 2024
+        True/False whether the release date is within the specified number of
+        days
     """
     if isinstance(release_date, str):
         release_date = datetime.strptime(release_date, "%Y-%m-%d")

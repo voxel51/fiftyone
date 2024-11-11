@@ -6,10 +6,11 @@ FiftyOne repository factory.
 |
 """
 
+from typing import Optional
+
+from bson import ObjectId
 from pymongo.database import Database
 
-import bson
-from typing import Optional
 import fiftyone.core.odm as foo
 from fiftyone.factory.repos.delegated_operation import (
     DelegatedOperationRepo,
@@ -23,6 +24,7 @@ from fiftyone.factory.repos.execution_store import (
     ExecutionStoreRepo,
     MongoExecutionStoreRepo,
 )
+
 
 _db: Database = None
 
@@ -71,9 +73,8 @@ class RepositoryFactory(object):
 
     @staticmethod
     def execution_store_repo(
-        dataset_id: Optional[bson.ObjectId] = None,
+        dataset_id: Optional[ObjectId] = None,
     ) -> ExecutionStoreRepo:
-        """Factory method for execution store repository."""
         if (
             MongoExecutionStoreRepo.COLLECTION_NAME
             not in RepositoryFactory.repos
