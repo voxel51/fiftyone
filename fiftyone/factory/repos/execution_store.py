@@ -52,8 +52,7 @@ class ExecutionStoreRepo(object):
                 store_name=store_name,
                 key="__store__",
                 dataset_id=self._dataset_id,
-            ),
-            {},
+            )
         )
         return bool(result)
 

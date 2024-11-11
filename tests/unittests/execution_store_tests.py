@@ -249,6 +249,22 @@ class TestExecutionStoreIntegration(unittest.TestCase):
             {"key": 1},
         )
 
+    def test_has_store(self):
+        self.mock_collection.find_one.return_value = {
+            "store_name": "mock_store",
+            "key": "__store__",
+        }
+        has_store = self.store_service.has_store("mock_store")
+        assert has_store
+        self.mock_collection.find_one.assert_called_once()
+        self.mock_collection.find_one.assert_called_with(
+            {
+                "store_name": "mock_store",
+                "key": "__store__",
+                "dataset_id": None,
+            }
+        )
+
     def test_delete(self):
         self.mock_collection.delete_one.return_value = Mock(deleted_count=1)
         deleted = self.store.delete("widget_1")
