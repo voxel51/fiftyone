@@ -1,7 +1,16 @@
-import bson
+"""
+Execution store models.
+
+| Copyright 2017-2024, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
+from datetime import datetime, timedelta
 from dataclasses import dataclass, field, asdict
-from typing import Optional, Dict, Any
-import datetime
+from typing import Optional, Any
+
+from bson import ObjectId
 
 
 @dataclass
@@ -11,22 +20,21 @@ class KeyDocument:
     store_name: str
     key: str
     value: Any
-    created_at: datetime.datetime = field(
-        default_factory=datetime.datetime.now
-    )
     _id: Optional[Any] = None
-    updated_at: Optional[datetime.datetime] = None
-    expires_at: Optional[datetime.datetime] = None
-    dataset_id: Optional[bson.ObjectId] = None
+    dataset_id: Optional[ObjectId] = None
+    created_at: datetime = field(default_factory=datetime.now)
+    updated_at: Optional[datetime] = None
+    expires_at: Optional[datetime] = None
 
     @staticmethod
-    def get_expiration(ttl: Optional[int]) -> Optional[datetime.datetime]:
+    def get_expiration(ttl: Optional[int]) -> Optional[datetime]:
         """Gets the expiration date for a key with the given TTL."""
         if ttl is None:
             return None
-        return datetime.datetime.now() + datetime.timedelta(seconds=ttl)
 
-    def to_mongo_dict(self, exclude_id: bool = True) -> Dict[str, Any]:
+        return datetime.now() + timedelta(seconds=ttl)
+
+    def to_mongo_dict(self, exclude_id: bool = True) -> dict[str, Any]:
         """Serializes the document to a MongoDB dictionary."""
         data = asdict(self)
         if exclude_id:
@@ -41,4 +49,4 @@ class StoreDocument(KeyDocument):
     """Model representing a Store."""
 
     key: str = "__store__"
-    value: Optional[Dict[str, Any]] = None
+    value: Optional[dict[str, Any]] = None

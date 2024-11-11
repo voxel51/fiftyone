@@ -1,43 +1,28 @@
 """
-FiftyOne execution store service.
+Execution store service.
 
 | Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
-import bson
-import logging
-from typing import Optional, List
+from bson import ObjectId
+from typing import Any, Optional
 
 from fiftyone.operators.store.models import StoreDocument, KeyDocument
-
-
-logger = logging.getLogger(__name__)
-
-
-def cleanup_store_for_dataset(dataset_id):
-    """Deletes all documents in the execution store associated with the given
-    dataset.
-
-    Args:
-        dataset_id: the dataset ID
-    """
-    svc = ExecutionStoreService(dataset_id=dataset_id)
-    svc.cleanup_for_dataset()
 
 
 class ExecutionStoreService(object):
     def __init__(
         self,
         repo: Optional["ExecutionStoreRepo"] = None,
-        dataset_id: Optional[bson.ObjectId] = None,
+        dataset_id: Optional[ObjectId] = None,
     ):
         """Service for managing execution store operations.
 
         Args:
             repo (None): execution store repository instance
-            dataset_id (None): dataset ID to scope operations to
+            dataset_id (None): a dataset ID to scope operations to
         """
         from fiftyone.factory.repo_factory import (
             RepositoryFactory,
@@ -60,10 +45,49 @@ class ExecutionStoreService(object):
         Returns:
             a :class:`fiftyone.store.models.StoreDocument`
         """
-        return self._repo.create_store(store_name=store_name)
+        return self._repo.create_store(store_name)
+
+    def list_stores(self) -> list[str]:
+        """Lists all stores for the current context.
+
+        Returns:
+            a list of store names
+        """
+        return self._repo.list_stores()
+
+    def count_stores(self) -> int:
+        """Counts the stores for the current context.
+
+        Returns:
+            the number of stores
+        """
+        return self._repo.count_stores()
+
+    def has_store(self, store_name) -> bool:
+        """Determines whether the specified store exists in the current
+        context.
+
+        Args:
+            store_name: the name of the store
+
+        Returns:
+            True/False
+        """
+        return self._repo.has_store(store_name)
+
+    def delete_store(self, store_name: str) -> StoreDocument:
+        """Deletes the specified store.
+
+        Args:
+            store_name: the name of the store
+
+        Returns:
+            a :class:`fiftyone.store.models.StoreDocument`
+        """
+        return self._repo.delete_store(store_name)
 
     def set_key(
-        self, store_name: str, key: str, value: str, ttl: Optional[int] = None
+        self, store_name: str, key: str, value: Any, ttl: Optional[int] = None
     ) -> KeyDocument:
         """Sets the value of a key in the specified store.
 
@@ -76,9 +100,7 @@ class ExecutionStoreService(object):
         Returns:
             a :class:`fiftyone.store.models.KeyDocument`
         """
-        return self._repo.set_key(
-            store_name=store_name, key=key, value=value, ttl=ttl
-        )
+        return self._repo.set_key(store_name, key, value, ttl=ttl)
 
     def get_key(self, store_name: str, key: str) -> KeyDocument:
         """Retrieves the value of a key from the specified store.
@@ -90,7 +112,7 @@ class ExecutionStoreService(object):
         Returns:
             a :class:`fiftyone.store.models.KeyDocument`
         """
-        return self._repo.get_key(store_name=store_name, key=key)
+        return self._repo.get_key(store_name, key)
 
     def delete_key(self, store_name: str, key: str) -> bool:
         """Deletes the specified key from the store.
@@ -102,7 +124,7 @@ class ExecutionStoreService(object):
         Returns:
             `True` if the key was deleted, `False` otherwise
         """
-        return self._repo.delete_key(store_name=store_name, key=key)
+        return self._repo.delete_key(store_name, key)
 
     def update_ttl(
         self, store_name: str, key: str, new_ttl: int
@@ -117,30 +139,9 @@ class ExecutionStoreService(object):
         Returns:
             a :class:`fiftyone.store.models.KeyDocument`
         """
-        return self._repo.update_ttl(
-            store_name=store_name, key=key, ttl=new_ttl
-        )
+        return self._repo.update_ttl(store_name, key, new_ttl)
 
-    def list_stores(self) -> List[StoreDocument]:
-        """Lists all stores matching the given criteria.
-
-        Returns:
-            a list of :class:`fiftyone.store.models.StoreDocument`
-        """
-        return self._repo.list_stores()
-
-    def delete_store(self, store_name: str) -> StoreDocument:
-        """Deletes the specified store.
-
-        Args:
-            store_name: the name of the store
-
-        Returns:
-            a :class:`fiftyone.store.models.StoreDocument`
-        """
-        return self._repo.delete_store(store_name=store_name)
-
-    def list_keys(self, store_name: str) -> List[str]:
+    def list_keys(self, store_name: str) -> list[str]:
         """Lists all keys in the specified store.
 
         Args:
@@ -151,8 +152,45 @@ class ExecutionStoreService(object):
         """
         return self._repo.list_keys(store_name)
 
-    def cleanup_for_dataset(self) -> None:
-        """Cleans up the execution store for the dataset specified during
-        initialization.
+    def count_keys(self, store_name: str) -> int:
+        """Counts the keys in the specified store.
+
+        Args:
+            store_name: the name of the store
+
+        Returns:
+            the number of keys in the store
         """
-        self._repo.cleanup_for_dataset()
+        return self._repo.count_keys(store_name)
+
+    def cleanup(self) -> None:
+        """Deletes all stores associated with the current context."""
+        self._repo.cleanup()
+
+    def has_store_global(self, store_name) -> bool:
+        """Determines whether a store with the given name exists across all
+        datasets and the global context.
+
+        Args:
+            store_name: the name of the store
+
+        Returns:
+            True/False
+        """
+        return self._repo.has_store_global(store_name)
+
+    def list_stores_global(self) -> list[StoreDocument]:
+        """Lists the stores across all datasets and the global context.
+
+        Returns:
+            a list of :class:`fiftyone.store.models.StoreDocument`
+        """
+        return self._repo.list_stores_global()
+
+    def count_stores_global(self) -> int:
+        """Counts the stores across all datasets and the global context.
+
+        Returns:
+            the number of stores
+        """
+        return self._repo.count_stores_global()

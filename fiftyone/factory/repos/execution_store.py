@@ -1,35 +1,30 @@
 """
 Execution store repository.
+
+| Copyright 2017-2024, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
 
-import datetime
-import bson
+from datetime import datetime
+
+from bson import ObjectId
 from pymongo.collection import Collection
+
 from fiftyone.operators.store.models import StoreDocument, KeyDocument
 
 
-def _where(store_name, key=None, dataset_id=None):
-    query = {"store_name": store_name}
-    if key is not None:
-        query["key"] = key
-    if dataset_id is not None:
-        query["dataset_id"] = dataset_id
-    return query
-
-
-class ExecutionStoreRepo:
+class ExecutionStoreRepo(object):
     """Base class for execution store repositories."""
 
     COLLECTION_NAME = "execution_store"
 
-    def __init__(
-        self, collection: Collection, dataset_id: bson.ObjectId = None
-    ):
+    def __init__(self, collection: Collection, dataset_id: ObjectId = None):
         self._collection = collection
         self._dataset_id = dataset_id
 
     def create_store(self, store_name, permissions=None) -> StoreDocument:
-        """Creates a store in the execution store."""
+        """Creates a store associated with the current context."""
         store_doc = StoreDocument(
             store_name=store_name,
             value=permissions,
@@ -38,15 +33,46 @@ class ExecutionStoreRepo:
         self._collection.insert_one(store_doc.to_mongo_dict())
         return store_doc
 
+    def has_store(self, store_name):
+        """Checks whether a store with the given name exists in the current
+        context.
+        """
+        result = self._collection.find_one(
+            dict(
+                store_name=store_name,
+                key="__store__",
+                dataset_id=self._dataset_id,
+            ),
+            {},
+        )
+        return bool(result)
+
     def list_stores(self) -> list[str]:
-        """Lists all stores in the execution store."""
-        # ensure that only store_name is returned, and only unique values
-        return self._collection.distinct("store_name")
+        """Lists the stores associated with the current context."""
+        result = self._collection.find(
+            dict(key="__store__", dataset_id=self._dataset_id),
+            {"store_name": 1},
+        )
+        return [d["store_name"] for d in result]
+
+    def count_stores(self) -> int:
+        """Counts the stores associated with the current context."""
+        return self._collection.count_documents(
+            dict(key="__store__", dataset_id=self._dataset_id),
+        )
+
+    def delete_store(self, store_name) -> int:
+        """Deletes the specified store."""
+        result = self._collection.delete_many(
+            dict(store_name=store_name, dataset_id=self._dataset_id)
+        )
+        return result.deleted_count
 
     def set_key(self, store_name, key, value, ttl=None) -> KeyDocument:
-        """Sets or updates a key in the specified store"""
-        now = datetime.datetime.now()
+        """Sets or updates a key in the specified store."""
+        now = datetime.utcnow()
         expiration = KeyDocument.get_expiration(ttl)
+
         key_doc = KeyDocument(
             store_name=store_name,
             key=key,
@@ -87,7 +113,7 @@ class ExecutionStoreRepo:
 
         # Perform the upsert operation
         result = self._collection.update_one(
-            _where(store_name, key, self._dataset_id),
+            dict(store_name=store_name, key=key, dataset_id=self._dataset_id),
             update_fields,
             upsert=True,
         )
@@ -102,53 +128,79 @@ class ExecutionStoreRepo:
     def get_key(self, store_name, key) -> KeyDocument:
         """Gets a key from the specified store."""
         raw_key_doc = self._collection.find_one(
-            _where(store_name, key, self._dataset_id)
+            dict(store_name=store_name, key=key, dataset_id=self._dataset_id)
         )
         key_doc = KeyDocument(**raw_key_doc) if raw_key_doc else None
         return key_doc
-
-    def list_keys(self, store_name) -> list[str]:
-        """Lists all keys in the specified store."""
-        keys = self._collection.find(
-            _where(store_name, dataset_id=self._dataset_id), {"key": 1}
-        )
-        return [key["key"] for key in keys]
 
     def update_ttl(self, store_name, key, ttl) -> bool:
         """Updates the TTL for a key."""
         expiration = KeyDocument.get_expiration(ttl)
         result = self._collection.update_one(
-            _where(store_name, key, self._dataset_id),
+            dict(store_name=store_name, key=key, dataset_id=self._dataset_id),
             {"$set": {"expires_at": expiration}},
         )
         return result.modified_count > 0
 
     def delete_key(self, store_name, key) -> bool:
-        """Deletes the document that matches the store name and key."""
+        """Deletes the document that matches the store name and key, if one
+        exists.
+        """
         result = self._collection.delete_one(
-            _where(store_name, key, self._dataset_id)
+            dict(store_name=store_name, key=key, dataset_id=self._dataset_id)
         )
         return result.deleted_count > 0
 
-    def delete_store(self, store_name) -> int:
-        """Deletes the entire store."""
+    def list_keys(self, store_name) -> list[str]:
+        """Lists all keys in the specified store."""
+        result = self._collection.find(
+            dict(store_name=store_name, dataset_id=self._dataset_id),
+            {"key": 1},
+        )
+        return [d["key"] for d in result]
+
+    def count_keys(self, store_name) -> int:
+        """Counts the keys in the specified store."""
+        return self._collection.count_documents(
+            dict(store_name=store_name, dataset_id=self._dataset_id)
+        )
+
+    def cleanup(self) -> int:
+        """Deletes all stores and keys associated with the current context."""
         result = self._collection.delete_many(
-            _where(store_name, dataset_id=self._dataset_id)
+            dict(dataset_id=self._dataset_id)
         )
         return result.deleted_count
 
-    def cleanup_for_dataset(self) -> int:
-        """Deletes all keys for a specific dataset."""
-        result = self._collection.delete_many({"dataset_id": self._dataset_id})
-        return result.deleted_count
+    def has_store_global(self, store_name):
+        """Determines whether a store with the given name exists across all
+        datasets and the global context.
+        """
+        result = self._collection.find_one(
+            dict(store_name=store_name, key="__store__"), {}
+        )
+        return bool(result)
+
+    def list_stores_global(self) -> list[str]:
+        """Lists the stores in the execution store across all datasets and the
+        global context.
+        """
+        result = self._collection.find(
+            dict(key="__store__"), {"store_name": 1}
+        )
+        return [d["store_name"] for d in result]
+
+    def count_stores_global(self) -> int:
+        """Counts the stores in the execution store across all datasets and the
+        global context.
+        """
+        return self._collection.count_documents(dict(key="__store__"))
 
 
 class MongoExecutionStoreRepo(ExecutionStoreRepo):
     """MongoDB implementation of execution store repository."""
 
-    def __init__(
-        self, collection: Collection, dataset_id: bson.ObjectId = None
-    ):
+    def __init__(self, collection: Collection, dataset_id: ObjectId = None):
         super().__init__(collection, dataset_id)
         self._create_indexes()
 

@@ -5181,7 +5181,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_collection.drop()
             fofr.Frame._reset_docs(self._frame_collection_name)
 
-        foos.cleanup_store_for_dataset(self._doc.id)
+        svc = foos.ExecutionStoreService(dataset_id=self._doc.id)
+        svc.cleanup()
 
         # Update singleton
         self._instances.pop(self._doc.name, None)

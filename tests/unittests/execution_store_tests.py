@@ -59,7 +59,11 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
         )
         self.mock_collection.update_one.assert_called_once()
         self.mock_collection.update_one.assert_called_with(
-            {"store_name": "widgets", "key": "widget_1"},
+            {
+                "store_name": "widgets",
+                "key": "widget_1",
+                "dataset_id": None,
+            },
             {
                 "$set": {
                     "value": {"name": "Widget One", "value": 100},
@@ -80,6 +84,7 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
             "store_name": "widgets",
             "key": "widget_1",
             "value": {"name": "Widget One", "value": 100},
+            "dataset_id": None,
             "created_at": time.time(),
             "updated_at": time.time(),
             "expires_at": time.time() + 60000,
@@ -87,7 +92,11 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
         self.store_service.get_key(store_name="widgets", key="widget_1")
         self.mock_collection.find_one.assert_called_once()
         self.mock_collection.find_one.assert_called_with(
-            {"store_name": "widgets", "key": "widget_1"}
+            {
+                "store_name": "widgets",
+                "key": "widget_1",
+                "dataset_id": None,
+            }
         )
 
     def test_create_store(self):
@@ -109,7 +118,11 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
         self.store_repo.delete_key("widgets", "widget_1")
         self.mock_collection.delete_one.assert_called_once()
         self.mock_collection.delete_one.assert_called_with(
-            {"store_name": "widgets", "key": "widget_1"}
+            {
+                "store_name": "widgets",
+                "key": "widget_1",
+                "dataset_id": None,
+            }
         )
 
     def test_update_ttl(self):
@@ -129,7 +142,7 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
         self.store_repo.delete_store("widgets")
         self.mock_collection.delete_many.assert_called_once()
         self.mock_collection.delete_many.assert_called_with(
-            {"store_name": "widgets"}
+            {"store_name": "widgets", "dataset_id": None}
         )
 
     def test_list_keys(self):
@@ -141,15 +154,22 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
         assert keys == ["widget_1", "widget_2"]
         self.mock_collection.find.assert_called_once()
         self.mock_collection.find.assert_called_with(
-            {"store_name": "widgets"}, {"key": 1}
+            {"store_name": "widgets", "dataset_id": None},
+            {"key": 1},
         )
 
     def test_list_stores(self):
-        self.mock_collection.distinct.return_value = ["widgets", "gadgets"]
+        self.mock_collection.find.return_value = [
+            {"store_name": "widgets"},
+            {"store_name": "gadgets"},
+        ]
         stores = self.store_repo.list_stores()
         assert stores == ["widgets", "gadgets"]
-        self.mock_collection.distinct.assert_called_once()
-        self.mock_collection.distinct.assert_called_with("store_name")
+        self.mock_collection.find.assert_called_once()
+        self.mock_collection.find.assert_called_with(
+            {"key": "__store__", "dataset_id": None},
+            {"store_name": 1},
+        )
 
 
 class TestExecutionStoreIntegration(unittest.TestCase):
@@ -165,7 +185,11 @@ class TestExecutionStoreIntegration(unittest.TestCase):
         )
         self.mock_collection.update_one.assert_called_once()
         self.mock_collection.update_one.assert_called_with(
-            {"store_name": "mock_store", "key": "widget_1"},
+            {
+                "store_name": "mock_store",
+                "key": "widget_1",
+                "dataset_id": None,
+            },
             {
                 "$set": {
                     "updated_at": IsDateTime(),
@@ -186,6 +210,7 @@ class TestExecutionStoreIntegration(unittest.TestCase):
             "store_name": "mock_store",
             "key": "widget_1",
             "value": {"name": "Widget One", "value": 100},
+            "dataset_id": None,
             "created_at": time.time(),
             "updated_at": time.time(),
             "expires_at": time.time() + 60000,
@@ -194,7 +219,11 @@ class TestExecutionStoreIntegration(unittest.TestCase):
         assert value == {"name": "Widget One", "value": 100}
         self.mock_collection.find_one.assert_called_once()
         self.mock_collection.find_one.assert_called_with(
-            {"store_name": "mock_store", "key": "widget_1"}
+            {
+                "store_name": "mock_store",
+                "key": "widget_1",
+                "dataset_id": None,
+            }
         )
 
     def test_list_keys(self):
@@ -206,7 +235,8 @@ class TestExecutionStoreIntegration(unittest.TestCase):
         assert keys == ["widget_1", "widget_2"]
         self.mock_collection.find.assert_called_once()
         self.mock_collection.find.assert_called_with(
-            {"store_name": "mock_store"}, {"key": 1}
+            {"store_name": "mock_store", "dataset_id": None},
+            {"key": 1},
         )
 
     def test_delete(self):
@@ -215,14 +245,18 @@ class TestExecutionStoreIntegration(unittest.TestCase):
         assert deleted
         self.mock_collection.delete_one.assert_called_once()
         self.mock_collection.delete_one.assert_called_with(
-            {"store_name": "mock_store", "key": "widget_1"}
+            {
+                "store_name": "mock_store",
+                "key": "widget_1",
+                "dataset_id": None,
+            }
         )
 
     def test_clear(self):
         self.store.clear()
         self.mock_collection.delete_many.assert_called_once()
         self.mock_collection.delete_many.assert_called_with(
-            {"store_name": "mock_store"}
+            {"store_name": "mock_store", "dataset_id": None}
         )
 
 
