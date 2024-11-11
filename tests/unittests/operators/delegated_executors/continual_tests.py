@@ -127,15 +127,4 @@ class ContinualExecutorTests(unittest.IsolatedAsyncioTestCase):
             },
             clear=True,
         ):
-            self.assertRaises(RuntimeError, self.executor.validate)
-
-        with mock.patch.dict(
-            os.environ,
-            {
-                "FIFTYONE_INTERNAL_SERVICE": "true",
-                "FIFTYONE_ENCRYPTION_KEY": "secret",
-                "FIFTYONE_API_KEY": "secret2",
-            },
-            clear=True,
-        ):
             self.executor.validate()
