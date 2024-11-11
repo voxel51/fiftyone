@@ -2,7 +2,7 @@ export { default as useTrackEvent } from "./useTrackEvent";
 export {
   default as usingAnalytics,
   Analytics,
-  AnalyticsInfo,
+  type AnalyticsInfo,
 } from "./usingAnalytics";
 export { default as useAnalyticsInfo } from "./useAnalyticsInfo";
 export { analyticsInfo } from "./state";
