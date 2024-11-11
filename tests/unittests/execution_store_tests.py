@@ -6,10 +6,11 @@ FiftyOne execution store related unit tests.
 |
 """
 
+from datetime import datetime
 import time
 import unittest
 from unittest.mock import patch, MagicMock, ANY, Mock
-import datetime
+
 from bson import ObjectId
 
 from fiftyone.operators.store import ExecutionStoreService
@@ -17,12 +18,13 @@ from fiftyone.operators.store.models import KeyDocument
 from fiftyone.factory.repo_factory import ExecutionStoreRepo
 from fiftyone.operators.store import ExecutionStore
 
+
 EPSILON = 0.1
 
 
 class IsDateTime:
     def __eq__(self, other):
-        return isinstance(other, datetime.datetime)
+        return isinstance(other, datetime)
 
 
 def assert_delta_seconds_approx(time_delta, seconds, epsilon=EPSILON):
@@ -32,11 +34,11 @@ def assert_delta_seconds_approx(time_delta, seconds, epsilon=EPSILON):
 class TeskKeyDocument(unittest.TestCase):
     def test_get_expiration(self):
         ttl = 1
-        now = datetime.datetime.now()
+        now = datetime.utcnow()
         expiration = KeyDocument.get_expiration(ttl)
         time_delta = expiration - now
         assert_delta_seconds_approx(time_delta, ttl)
-        assert isinstance(expiration, datetime.datetime)
+        assert isinstance(expiration, datetime)
 
     def test_get_expiration_none(self):
         ttl = None
@@ -154,7 +156,11 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
         assert keys == ["widget_1", "widget_2"]
         self.mock_collection.find.assert_called_once()
         self.mock_collection.find.assert_called_with(
-            {"store_name": "widgets", "dataset_id": None},
+            {
+                "store_name": "widgets",
+                "key": {"$ne": "__store__"},
+                "dataset_id": None,
+            },
             {"key": 1},
         )
 
@@ -235,7 +241,11 @@ class TestExecutionStoreIntegration(unittest.TestCase):
         assert keys == ["widget_1", "widget_2"]
         self.mock_collection.find.assert_called_once()
         self.mock_collection.find.assert_called_with(
-            {"store_name": "mock_store", "dataset_id": None},
+            {
+                "store_name": "mock_store",
+                "key": {"$ne": "__store__"},
+                "dataset_id": None,
+            },
             {"key": 1},
         )
 
@@ -323,7 +333,11 @@ class ExecutionStoreServiceDatasetIdTests(unittest.TestCase):
         self.store_service.list_keys("widgets")
         self.mock_collection.find.assert_called_once()
         self.mock_collection.find.assert_called_with(
-            {"store_name": "widgets", "dataset_id": self.dataset_id},
+            {
+                "store_name": "widgets",
+                "key": {"$ne": "__store__"},
+                "dataset_id": self.dataset_id,
+            },
             {"key": 1},
         )
 
@@ -388,7 +402,7 @@ class ExecutionStoreServiceDatasetIdTests(unittest.TestCase):
         }
 
         actual_expires_at = actual_update["$set"]["expires_at"]
-        assert isinstance(actual_expires_at, datetime.datetime)
+        assert isinstance(actual_expires_at, datetime)
 
         time_delta = actual_expires_at - expected_expiration
         assert_delta_seconds_approx(

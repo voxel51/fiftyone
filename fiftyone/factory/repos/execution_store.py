@@ -164,7 +164,11 @@ class ExecutionStoreRepo(object):
     def list_keys(self, store_name) -> list[str]:
         """Lists all keys in the specified store."""
         result = self._collection.find(
-            dict(store_name=store_name, dataset_id=self._dataset_id),
+            dict(
+                store_name=store_name,
+                key={"$ne": "__store__"},
+                dataset_id=self._dataset_id,
+            ),
             {"key": 1},
         )
         return [d["key"] for d in result]
@@ -172,7 +176,11 @@ class ExecutionStoreRepo(object):
     def count_keys(self, store_name) -> int:
         """Counts the keys in the specified store."""
         return self._collection.count_documents(
-            dict(store_name=store_name, dataset_id=self._dataset_id)
+            dict(
+                store_name=store_name,
+                key={"$ne": "__store__"},
+                dataset_id=self._dataset_id,
+            )
         )
 
     def cleanup(self) -> int:
