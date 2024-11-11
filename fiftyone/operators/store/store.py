@@ -6,18 +6,17 @@ FiftyOne execution store.
 |
 """
 
+import bson
 import logging
-from fiftyone.operators.store.service import ExecutionStoreService
 from typing import Any, Optional
+
+from fiftyone.operators.store.service import ExecutionStoreService
+
 
 logger = logging.getLogger(__name__)
 
 
-class ExecutionStore:
-    @staticmethod
-    def create(store_name: str) -> "ExecutionStore":
-        return ExecutionStore(store_name, ExecutionStoreService())
-
+class ExecutionStore(object):
     def __init__(self, store_name: str, store_service: ExecutionStoreService):
         """
         Args:
@@ -27,11 +26,19 @@ class ExecutionStore:
         self.store_name: str = store_name
         self._store_service: ExecutionStoreService = store_service
 
+    @staticmethod
+    def create(
+        store_name: str, dataset_id: Optional[bson.ObjectId] = None
+    ) -> "ExecutionStore":
+        return ExecutionStore(
+            store_name, ExecutionStoreService(dataset_id=dataset_id)
+        )
+
     def list_all_stores(self) -> list[str]:
         """Lists all stores in the execution store.
 
         Returns:
-            list: A list of store names.
+            list: a list of store names
         """
         return self._store_service.list_stores()
 
@@ -39,10 +46,10 @@ class ExecutionStore:
         """Retrieves a value from the store by its key.
 
         Args:
-            key (str): The key to retrieve the value for.
+            key: the key to retrieve the value for
 
         Returns:
-            Optional[Any]: The value stored under the given key, or None if not found.
+            the value stored under the given key, or None if not found
         """
         key_doc = self._store_service.get_key(self.store_name, key)
         if key_doc is None:
@@ -53,9 +60,9 @@ class ExecutionStore:
         """Sets a value in the store with an optional TTL.
 
         Args:
-            key (str): The key to store the value under.
-            value (Any): The value to store.
-            ttl (Optional[int], optional): The time-to-live in seconds. Defaults to None.
+            key: the key to store the value under
+            value: the value to store
+            ttl (None): the time-to-live in seconds
         """
         self._store_service.set_key(self.store_name, key, value, ttl)
 
@@ -63,10 +70,10 @@ class ExecutionStore:
         """Deletes a key from the store.
 
         Args:
-            key (str): The key to delete.
+            key: the key to delete.
 
         Returns:
-            bool: True if the key was deleted, False otherwise.
+            True/False whether the key was deleted
         """
         return self._store_service.delete_key(self.store_name, key)
 
@@ -74,10 +81,10 @@ class ExecutionStore:
         """Checks if the store has a specific key.
 
         Args:
-            key (str): The key to check.
+            key: the key to check
 
         Returns:
-            bool: True if the key exists, False otherwise.
+            True/False whether the key exists
         """
         return self._store_service.has_key(self.store_name, key)
 
@@ -89,8 +96,8 @@ class ExecutionStore:
         """Updates the TTL for a specific key.
 
         Args:
-            key (str): The key to update the TTL for.
-            new_ttl (int): The new TTL in seconds.
+            key: the key to update the TTL for
+            new_ttl: the new TTL in seconds
         """
         self._store_service.update_ttl(self.store_name, key, new_ttl)
 
@@ -98,10 +105,10 @@ class ExecutionStore:
         """Retrieves the TTL for a specific key.
 
         Args:
-            key (str): The key to get the TTL for.
+            key: the key to get the TTL for
 
         Returns:
-            Optional[int]: The TTL in seconds, or None if the key does not have a TTL.
+            the TTL in seconds, or None if the key does not have a TTL
         """
         return self._store_service.get_ttl(self.store_name, key)
 
@@ -109,6 +116,6 @@ class ExecutionStore:
         """Lists all keys in the store.
 
         Returns:
-            list: A list of keys in the store.
+            a list of keys in the store
         """
         return self._store_service.list_keys(self.store_name)

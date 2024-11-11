@@ -63,6 +63,7 @@ from fiftyone.internal.dataset_permissions import (
 
 fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
+foos = fou.lazy_import("fiftyone.operators.store")
 
 
 _SUMMARY_FIELD_KEY = "_summary_field"
@@ -5398,9 +5399,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_collection.drop()
             fofr.Frame._reset_docs(self._frame_collection_name)
 
+        foos.cleanup_store_for_dataset(self._doc.id)
+
         # Update singleton
         self._instances.pop(self._doc.name, None)
-
         _delete_dataset_doc(self._doc)
         self._deleted = True
 

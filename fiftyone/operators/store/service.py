@@ -6,24 +6,48 @@ FiftyOne execution store service.
 |
 """
 
+import bson
 import logging
 from typing import Optional, List
+
 from fiftyone.operators.store.models import StoreDocument, KeyDocument
+
 
 logger = logging.getLogger(__name__)
 
 
-class ExecutionStoreService:
-    """Service for managing execution store operations."""
+def cleanup_store_for_dataset(dataset_id):
+    """Deletes all documents in the execution store associated with the given
+    dataset.
 
-    def __init__(self, repo: Optional["ExecutionStoreRepo"] = None):
+    Args:
+        dataset_id: the dataset ID
+    """
+    svc = ExecutionStoreService(dataset_id=dataset_id)
+    svc.cleanup_for_dataset()
+
+
+class ExecutionStoreService(object):
+    def __init__(
+        self,
+        repo: Optional["ExecutionStoreRepo"] = None,
+        dataset_id: Optional[bson.ObjectId] = None,
+    ):
+        """Service for managing execution store operations.
+
+        Args:
+            repo (None): execution store repository instance
+            dataset_id (None): dataset ID to scope operations to
+        """
         from fiftyone.factory.repo_factory import (
             RepositoryFactory,
             ExecutionStoreRepo,
         )
 
         if repo is None:
-            repo = RepositoryFactory.execution_store_repo()
+            repo = RepositoryFactory.execution_store_repo(
+                dataset_id=dataset_id
+            )
 
         self._repo: ExecutionStoreRepo = repo
 
@@ -126,3 +150,9 @@ class ExecutionStoreService:
             a list of keys in the store
         """
         return self._repo.list_keys(store_name)
+
+    def cleanup_for_dataset(self) -> None:
+        """Cleans up the execution store for the dataset specified during
+        initialization.
+        """
+        self._repo.cleanup_for_dataset()

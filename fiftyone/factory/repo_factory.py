@@ -8,6 +8,8 @@ FiftyOne repository factory.
 
 from pymongo.database import Database
 
+import bson
+from typing import Optional
 import fiftyone.core.odm as foo
 from fiftyone.factory.repos.delegated_operation import (
     DelegatedOperationRepo,
@@ -67,7 +69,10 @@ class RepositoryFactory(object):
 
         return RepositoryFactory.repos[MongoOrchestratorRepo.COLLECTION_NAME]
 
-    def execution_store_repo() -> ExecutionStoreRepo:  # pylint: disable=E0211
+    @staticmethod
+    def execution_store_repo(
+        dataset_id: Optional[bson.ObjectId] = None,
+    ) -> ExecutionStoreRepo:
         """Factory method for execution store repository."""
         if (
             MongoExecutionStoreRepo.COLLECTION_NAME
@@ -76,7 +81,8 @@ class RepositoryFactory(object):
             RepositoryFactory.repos[
                 MongoExecutionStoreRepo.COLLECTION_NAME
             ] = MongoExecutionStoreRepo(
-                collection=_get_db()[MongoExecutionStoreRepo.COLLECTION_NAME]
+                collection=_get_db()[MongoExecutionStoreRepo.COLLECTION_NAME],
+                dataset_id=dataset_id,
             )
 
         return RepositoryFactory.repos[MongoExecutionStoreRepo.COLLECTION_NAME]
