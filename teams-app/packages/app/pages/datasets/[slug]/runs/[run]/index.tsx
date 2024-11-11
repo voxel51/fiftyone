@@ -170,16 +170,16 @@ function Run(props) {
                 {runState === RUNNING ? "Started" : capitalize(runState)}{" "}
                 <Timestamp timestamp={timestamp} />
               </Typography>
-              {runState !== QUEUED && (
-                <Typography color="text.tertiary">
-                  Queued{" "}
-                  <Timestamp timestamp={queuedAt} color="text.tertiary" />
-                </Typography>
-              )}
               {runState !== SCHEDULED && scheduledAt && (
                 <Typography color="text.tertiary">
                   Scheduled{" "}
                   <Timestamp timestamp={scheduledAt} color="text.tertiary" />
+                </Typography>
+              )}
+              {runState !== QUEUED && queuedAt && (
+                <Typography color="text.tertiary">
+                  Queued{" "}
+                  <Timestamp timestamp={queuedAt} color="text.tertiary" />
                 </Typography>
               )}
               {EXITED_STATES.includes(runState) && (
