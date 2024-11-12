@@ -249,9 +249,7 @@ class ExecutionStoreRepo(object):
         return [StoreDocument(**d) for d in result]
 
     def count_stores_global(self) -> int:
-        """Counts the stores in the execution store across all datasets and the
-        global context.
-        """
+        """Counts stores across all datasets and the global context."""
         return self._collection.count_documents(dict(key="__store__"))
 
     def delete_store_global(self, store_name) -> int:
