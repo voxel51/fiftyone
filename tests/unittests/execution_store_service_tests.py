@@ -23,7 +23,7 @@ def svc():
 def svc_with_dataset():
     dataset = fo.Dataset(name="test_dataset")
     dataset.save()
-    yield ExecutionStoreService(dataset_id=dataset._doc.id)
+    return ExecutionStoreService(dataset_id=dataset._doc.id)
 
 
 @drop_stores
