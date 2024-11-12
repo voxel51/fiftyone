@@ -1,5 +1,8 @@
 import { OverlayMask } from "../numpy";
 
+/**
+ * Decodes a given image source into an OverlayMask using an OffscreenCanvas
+ */
 export const decodeWithCanvas = async (blob: ImageBitmapSource) => {
   const imageBitmap = await createImageBitmap(blob);
   const width = imageBitmap.width;
@@ -12,17 +15,17 @@ export const decodeWithCanvas = async (blob: ImageBitmapSource) => {
 
   const imageData = ctx.getImageData(0, 0, width, height);
 
+  const numChannels = imageData.data.length / (width * height);
+
   const overlayData = {
     width,
     height,
     data: imageData.data,
-    // RGBA
-    channels: 4,
+    channels: numChannels,
   };
 
-  const numChannels =
-    overlayData.channels ??
-    overlayData.data.length / (overlayData.width * overlayData.height);
+  // dispose
+  imageBitmap.close();
 
   return {
     buffer: overlayData.data.buffer,
