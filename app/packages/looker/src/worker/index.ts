@@ -159,7 +159,15 @@ const imputeOverlayFromPath = async (
     "arrayBuffer"
   );
 
-  const blobType = fileExtension === "png" ? "image/png" : "image/jpeg";
+  const mimeTypes = {
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    gif: "image/gif",
+    bmp: "image/bmp",
+  };
+  const blobType =
+    mimeTypes[fileExtension.toLowerCase()] || "application/octet-stream";
   const blob = new Blob([overlayImageBuffer], { type: blobType });
 
   const overlayMask = await decodeWithCanvas(blob);
