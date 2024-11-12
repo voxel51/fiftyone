@@ -55,8 +55,12 @@ def drop_stores(func, pattern="*"):
         for store in stores:
             store_name = store.store_name
             if fnmatch.fnmatch(store_name, pattern):
-                print(f"Deleting store: {store_name}", pattern)
-                svc.delete_store_global(store_name)
+                try:
+                    svc.delete_store_global(store_name)
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Failed to delete store '{store_name}'"
+                    ) from e
         return func(*args, **kwargs)
 
     return wrapper
