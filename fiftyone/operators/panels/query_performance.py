@@ -235,9 +235,7 @@ def _create_index_or_summary_field_inputs(ctx, inputs):
         prop.error_message = label
         prop.invalid = True
 
-        return field_type
-
-    if path is None or path not in path_keys:
+    if path is None or path not in field_keys:
         return field_type
 
     field_types = types.RadioGroup()
