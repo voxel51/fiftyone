@@ -1,4 +1,4 @@
-.. _fiftyone-teams:
+.. _fiftyone-enterprise:
 
 FiftyOne Enterprise
 ==============
@@ -10,13 +10,13 @@ FiftyOne Enterprise
   <div class="social-links">
     <table id="social-links-table">
       <th>
-        <a target="_blank" href="https://voxel51.com/fiftyone-teams">
+        <a target="_blank" href="https://voxel51.com/fiftyone-enterprise">
           <img src="../_static/images/icons/browser-512px.png">
           &nbsp Learn more
         </a>
       </th>
       <th>
-        <a target="_blank" href="https://voxel51.com/schedule-teams-workshop">
+        <a target="_blank" href="https://voxel51.com/schedule-enterprise-workshop">
           <img src="../_static/images/icons/zoom-512px.png">
           &nbsp Talk to us
         </a>
@@ -32,7 +32,7 @@ FiftyOne Enterprise
 
 .. End social links -----------------------------------------------------------
 
-`FiftyOne Enterprise <https://voxel51.com/fiftyone-teams/>`_ enables multiple users
+`FiftyOne Enterprise <https://voxel51.com/fiftyone-enterprise/>`_ enables multiple users
 to securely collaborate on the same datasets and models, either on-premises or
 in the cloud, all built on top of the open source FiftyOne workflows that
 you're already relying on.
@@ -43,8 +43,8 @@ pages on this site apply to Enterprise deployments as well.
 
 |br|
 
-.. image:: /images/teams/hero.png
-   :alt: teams-hero
+.. image:: /images/enterprise/hero.png
+   :alt: enterprise-hero
    :align: center
 
 .. Callout items --------------------------------------------------------------
@@ -90,7 +90,7 @@ pages on this site apply to Enterprise deployments as well.
     :header: FiftyOne Enterprise App
     :description: See how you can collaboratively work on datasets in the FiftyOne Enterprise App.
     :button_text: Explore the Enterprise App
-    :button_link: teams_app.html
+    :button_link: enterprise_app.html
 
 .. customcalloutitem::
     :header: Management SDK
@@ -102,7 +102,7 @@ pages on this site apply to Enterprise deployments as well.
     :header: Plugins
     :description: Learn how to install and manage shared plugins for your Enterprise deployment.
     :button_text: Get plugins for Enterprise
-    :button_link: teams_plugins.html
+    :button_link: enterprise_plugins.html
 
 .. customcalloutitem::
     :header: Secrets
@@ -128,7 +128,7 @@ pages on this site apply to Enterprise deployments as well.
 .. note::
 
     Look interesting?
-    `Schedule a demo <https://voxel51.com/schedule-teams-workshop>`_ to get
+    `Schedule a demo <https://voxel51.com/schedule-enterprise-workshop>`_ to get
     started with Enterprise
 
 .. toctree::
@@ -141,9 +141,9 @@ pages on this site apply to Enterprise deployments as well.
     Cloud-backed media <cloud_media>
     Roles and permissions <roles_and_permissions>
     Dataset Versioning <dataset_versioning>
-    FiftyOne Enterprise App <teams_app>
+    FiftyOne Enterprise App <enterprise_app>
     Management SDK <management_sdk>
-    Plugins <teams_plugins>
+    Plugins <enterprise_plugins>
     Secrets <secrets>
     Migrations <migrations>
     Pluggable Auth <pluggable_auth>

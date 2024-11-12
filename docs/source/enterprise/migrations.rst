@@ -1,4 +1,4 @@
-.. _teams-migrations:
+.. _enterprise-migrations:
 
 Migrations
 ==========
@@ -6,14 +6,14 @@ Migrations
 .. default-role:: code
 
 This page describes how to migrate between FiftyOne Enterprise versions, both for
-:ref:`admins <teams-upgrading>` migrating the core Enterprise App infrastructure and
-:ref:`individual users <teams-upgrade-python-sdk>` who need to install a new
+:ref:`admins <enterprise-upgrading>` migrating the core Enterprise App infrastructure and
+:ref:`individual users <enterprise-upgrade-python-sdk>` who need to install a new
 version of the Enterprise Python SDK.
 
-Refer to :ref:`this section <teams-migrating-datasets>` to see how to migrate
+Refer to :ref:`this section <enterprise-migrating-datasets>` to see how to migrate
 existing datasets from open source to Enterprise.
 
-.. _teams-upgrade-python-sdk:
+.. _enterprise-upgrade-python-sdk:
 
 Upgrading your Python SDK
 _________________________
@@ -34,16 +34,16 @@ A specific FiftyOne Enterprise client version can be installed like so:
 .. note::
 
     You can find your `TOKEN` by logging into the FiftyOne Enterprise App and
-    clicking on the :ref:`account icon <teams-python-sdk>` in the upper right.
+    clicking on the :ref:`account icon <enterprise-python-sdk>` in the upper right.
 
-.. _teams-upgrading:
+.. _enterprise-upgrading:
 
 Upgrading your deployment
 _________________________
 
 The basic **admin workflow** for upgrading a FiftyOne Enterprise deployment is:
 
--   :ref:`Upgrade <teams-upgrade-python-sdk>` all automated services and
+-   :ref:`Upgrade <enterprise-upgrade-python-sdk>` all automated services and
     individual user workflows that use the Enterprise Python SDK to an appropriate
     SDK version
 -   Upgrade your core Enterprise App infrastructure (via Kubernetes, Docker, etc)
@@ -98,7 +98,7 @@ locally, assuming admin privileges, and running the command shown below:
     compatible version. Any connections from incompatible Python clients will
     be refused and an informative error message will be displayed.
 
-.. _teams-downgrading:
+.. _enterprise-downgrading:
 
 Downgrading your deployment
 ___________________________
@@ -106,7 +106,7 @@ ___________________________
 Admins can also downgrade their FiftyOne Enterprise deployment to an older version
 if necessary.
 
-The steps are the same as :ref:`when upgrading <teams-upgrading>`, except that
+The steps are the same as :ref:`when upgrading <enterprise-upgrading>`, except that
 you’ll need to know the appropriate database version to migrate down to. Each
 version of Enterprise corresponds to a version of open source FiftyOne called its
 "open source compatibility version", and this versioning system is used to set
@@ -131,7 +131,7 @@ For example, you can downgrade to Enterprise v0.10 like so:
     compatibility version for a particular Enterprise version that you wish to
     downgrade to.
 
-.. _teams-migrating-datasets:
+.. _enterprise-migrating-datasets:
 
 Migrating datasets to Enterprise
 ___________________________

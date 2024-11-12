@@ -50,7 +50,7 @@ and [OAuth2](https://oauth.net/2/).
 
 ## Super Admin UI
 
-![Super Admin UI](/images/teams/cas/cas_api_docs.png)
+![Super Admin UI](/images/enterprise/cas/cas_api_docs.png)
 
 The Super Admin UI contains FiftyOne Enterprise deployment wide configurations.
 When logging into FiftyOne Enterprise as an admin, you are in the context of an
@@ -61,7 +61,7 @@ global configurations (Identity Providers, Session timeouts, and JS hooks).
 > **NOTE**: In v1.6.0, the Super Admin UI is only available in
 > [internal mode](#internal-mode)
 
-![Sign In to CAS](/images/teams/cas/cas_sign_in.png)
+![Sign In to CAS](/images/enterprise/cas/cas_sign_in.png)
 
 To login to this application navigate to
 `https://<YOUR_FIFTYONE_TEAMS_URL>/cas/configurations`. In the top right of the
@@ -75,9 +75,9 @@ screen, and provide the `FIFTYONE_AUTH_SECRET` to login.
 ## Identity Providers (IdP)
 
 In [internal mode](#internal-mode), use the CAS REST API or Super Admin UI to
-configure FiftyOne teams to authenticate users via OIDC or OAuth2 compatible
-Identity Providers. Below is an example configuration for KeyCloak as an
-Identity Provider.
+configure FiftyOne enterprise to authenticate users via OIDC or OAuth2
+compatible Identity Providers. Below is an example configuration for KeyCloak
+as an Identity Provider.
 
 ```json
 {

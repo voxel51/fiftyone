@@ -1,4 +1,4 @@
-.. _teams-cloud-media:
+.. _enterprise-cloud-media:
 
 Cloud-Backed Media
 ==================
@@ -10,16 +10,16 @@ object storage paths and/or publicly available URLs.
 
 .. note::
 
-   :ref:`Click here <teams-cloud-credentials>` to see how to configure FiftyOne
+   :ref:`Click here <enterprise-cloud-credentials>` to see how to configure FiftyOne
    Enterprise to load your cloud credentials!
 
-.. _teams-cloud-media-caching:
+.. _enterprise-cloud-media-caching:
 
 Cloud media caching
 ___________________
 
 When you work with cloud-backed datasets using the
-:ref:`Enterprise SDK <teams-python-sdk>`, media files will automatically be
+:ref:`Enterprise SDK <enterprise-python-sdk>`, media files will automatically be
 downloaded and cached on the machine you’re working from when you execute
 workflows such as model inference or Brain methods that require access to the
 pixels of the media files. This design minimizes bandwidth usage and can
@@ -32,7 +32,7 @@ file repeatedly:
     import fiftyone as fo
     import fiftyone.brain as fob
 
-    dataset = fo.load_dataset("a-teams-dataset")
+    dataset = fo.load_dataset("a-enterprise-dataset")
 
     # Automatically downloads cloud media to your local cache for processing
     fob.compute_visualization(dataset, brain_key="img_viz")
@@ -46,14 +46,14 @@ retrieved from the cloud:
 
     import fiftyone as fo
 
-    dataset = fo.load_dataset("a-teams-dataset")
+    dataset = fo.load_dataset("a-enterprise-dataset")
 
     # Any media you view will be automatically retrieved from the cloud
     session = fo.launch_app(dataset)
 
 By default, viewing media in the App will not add it to your local media cache,
 but, if desired, you can enable caching of images via the `cache_app_images`
-parameter of your :ref:`media cache config <teams-media-cache-config>`. Viewing
+parameter of your :ref:`media cache config <enterprise-media-cache-config>`. Viewing
 video datasets in the App will never cause previously uncached videos to be
 cached locally.
 
@@ -70,7 +70,7 @@ cached locally.
     available when viewing datasets in the App. Otherwise, the App must pull
     this metadata each time you view a sample.
 
-.. _teams-media-cache-config:
+.. _enterprise-media-cache-config:
 
 Media cache config
 __________________
@@ -116,7 +116,7 @@ You can change the location of this file by setting the
 If you combine multiple options above, environment variables will take
 precedence over JSON config settings.
 
-.. _teams-cloud-media-python:
+.. _enterprise-cloud-media-python:
 
 Working with cloud-backed datasets
 __________________________________
@@ -130,7 +130,7 @@ the location of the locally cached version of a media file:
 
     import fiftyone as fo
 
-    dataset = fo.load_dataset("a-teams-dataset")
+    dataset = fo.load_dataset("a-enterprise-dataset")
     sample = dataset.first()
 
     print(sample.filepath)
@@ -179,7 +179,7 @@ when iterating over samples in a collection:
 
     import fiftyone as fo
 
-    dataset = fo.load_dataset("a-teams-dataset")
+    dataset = fo.load_dataset("a-enterprise-dataset")
 
     # Download media using the default batching strategy
     with dataset.download_context():
@@ -195,7 +195,7 @@ when iterating over samples in a collection:
 
     You can configure the default size of each download batch via the
     ``download_size_bytes`` parameter of your
-    :ref:`media cache config <teams-media-cache-config>`.
+    :ref:`media cache config <enterprise-media-cache-config>`.
 
 Download contexts provide a middle ground between the two extremes:
 
@@ -378,7 +378,7 @@ or you can use `delete_files()` to delete assets:
     All of the above methods use the media cache's thread pool to maximize
     throughput.
 
-.. _teams-cloud-api-reference:
+.. _enterprise-cloud-api-reference:
 
 API reference
 _____________
@@ -721,7 +721,7 @@ _____________
             the list of remote paths
         """
 
-.. _teams-annotating-cloud-media:
+.. _enterprise-annotating-cloud-media:
 
 Annotating cloud-backed datasets with CVAT
 __________________________________________
@@ -769,7 +769,7 @@ collection being annotated, then you can simply pass `cloud_manifest=True`:
     The cloud manifest file must contain all media files in the sample
     collection being annotated.
 
-.. _teams-annotating-cloud-media-v7:
+.. _enterprise-annotating-cloud-media-v7:
 
 Annotating cloud-backed datasets with V7 Darwin
 _______________________________________________
@@ -798,7 +798,7 @@ specify the sluggified external storage name:
         ...
     )
 
-.. _teams-annotating-cloud-media-labelbox:
+.. _enterprise-annotating-cloud-media-labelbox:
 
 Annotating cloud-backed datasets with Labelbox
 ______________________________________________
@@ -832,7 +832,7 @@ method to pass URLs for your S3-backed media when creating Labelbox data rows.
     any Google Cloud, Azure, or local media will still be uploaded to Labelbox
     as usual.
 
-.. _teams-cloud-functions:
+.. _enterprise-cloud-functions:
 
 AWS Lambda and Google Cloud Functions
 _____________________________________
