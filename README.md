@@ -58,6 +58,33 @@ Medium, and following us on social media:
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?logo=linkedin&logoColor=white)](https://www.linkedin.com/company/voxel51)
 [![Facebook](https://img.shields.io/badge/Facebook-1877F2?logo=facebook&logoColor=white)](https://www.facebook.com/voxel51)
 
+
+## Table of Contents
+
+- [Table of Contents](#table-of-contents)
+- [📝 Installation Guide](#-installation-guide)
+- [🚀 Getting Started](#-getting-started)
+- [⚙️ System Requirements](#️-system-requirements)
+- [💻 Run the Notebooks](#-run-the-notebooks)
+	- [To Launch a Single Notebook](#to-launch-a-single-notebook)
+	- [To Launch all Notebooks](#to-launch-all-notebooks)
+- [🧹 Cleaning Up](#-cleaning-up)
+- [⚠️ Troubleshooting](#️-troubleshooting)
+- [📚 Additional Resources](#-additional-resources)
+- [🧑‍💻 Contributors](#-contributors)
+- [❓ FAQ](#-faq)
+
+[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+
+<div id='-installation-guide'/>
+
+## Prerequisites
+
+fiftyone requires Python, Git and other dependencies. To get started, select the guide for your operating system or environment:
+
+| [Windows](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [Linux](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [macOS](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [NodeRed,js](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [CentOS](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [Azure ML](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [Docker](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [Amazon SageMaker](https://github.com/voxel51/fiftyone/blob/develop/README.md) |
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 
 ## Installation
@@ -72,6 +99,8 @@ Consult the
 [installation guide](https://voxel51.com/docs/fiftyone/getting_started/install.html)
 for troubleshooting and other information about getting up-and-running with
 FiftyOne.
+
+[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 
 ## Quickstart
 
@@ -99,6 +128,8 @@ Note that if you are running the above code in a script, you must include
 [this page](https://voxel51.com/docs/fiftyone/user_guide/app.html#creating-a-session)
 for more information.
 
+[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+
 ## Documentation
 
 Full documentation for FiftyOne is available at
@@ -110,11 +141,16 @@ Full documentation for FiftyOne is available at
 -   [CLI Documentation](https://voxel51.com/docs/fiftyone/cli/index.html)
 -   [API Reference](https://voxel51.com/docs/fiftyone/api/fiftyone.html)
 
+
+[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+
 ## Examples
 
 Check out the [fiftyone-examples](https://github.com/voxel51/fiftyone-examples)
 repository for open source and community-contributed examples of using
 FiftyOne.
+
+[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 
 ## Contributing to FiftyOne
 
@@ -124,6 +160,9 @@ open source and community contributions are welcome!
 Check out the
 [contribution guide](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md)
 to learn how to get involved.
+
+
+[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 
 ## Installing from source
 
