@@ -116,11 +116,35 @@ def test_list_global_stores(svc, svc_with_dataset):
 @drop_datasets
 def test_has_store(svc, svc_with_dataset):
     NAME = "test_store"
+    GLOBAL_STORE = "global_store"
+    DATASET_STORE = "dataset_store"
     KEY = "key1"
+
+    svc.create_store(GLOBAL_STORE)
     svc.set_key(NAME, KEY, "value1")
-    assert svc.has_store(NAME)
-    assert svc.has_store("nonexistent") is False
-    assert svc_with_dataset.has_store(NAME) is False
+
+    svc_with_dataset.create_store(DATASET_STORE)
+
+    assert svc.has_store(NAME), "Global context should have 'test_store'"
+    assert (
+        svc.has_store("nonexistent") is False
+    ), "Nonexistent store should return False in global context"
+    assert (
+        svc_with_dataset.has_store(NAME) is False
+    ), "Dataset context should not have 'test_store'"
+    assert svc_with_dataset.has_store(
+        DATASET_STORE
+    ), "Dataset context should have 'dataset_store'"
+
+    assert svc.has_store_global(
+        GLOBAL_STORE
+    ), "Global store should exist globally"
+    assert svc.has_store_global(
+        DATASET_STORE
+    ), "Dataset store should exist globally"
+    assert (
+        svc.has_store_global("nonexistent") is False
+    ), "Nonexistent store should return False globally"
 
 
 @drop_stores
@@ -159,6 +183,96 @@ def test_get_store_with_only_keys(svc):
 
 @drop_stores
 @drop_datasets
+def test_delete_store(svc, svc_with_dataset):
+    NAME = "test_store"
+    DATASET_STORE = "dataset_store"
+    GLOBAL_KEY = "global_key"
+    DATASET_KEY = "dataset_key"
+    VALUE = "value1"
+
+    svc.create_store(NAME)
+    svc_with_dataset.create_store(DATASET_STORE)
+
+    assert svc.has_store(NAME), "Global context should have 'test_store'"
+    assert svc_with_dataset.has_store(
+        DATASET_STORE
+    ), "Dataset context should have 'dataset_store'"
+
+    svc.set_key(NAME, GLOBAL_KEY, VALUE)
+    svc_with_dataset.set_key(DATASET_STORE, DATASET_KEY, VALUE)
+
+    assert svc.has_key(
+        NAME, GLOBAL_KEY
+    ), "Global store should contain 'global_key'"
+    assert svc_with_dataset.has_key(
+        DATASET_STORE, DATASET_KEY
+    ), "Dataset store should contain 'dataset_key'"
+
+    svc.delete_store(NAME)
+    assert not svc.has_store(NAME), "Global 'test_store' should be deleted"
+    assert not svc.has_key(
+        NAME, GLOBAL_KEY
+    ), "Global 'test_store' should no longer contain 'global_key' after deletion"
+    assert svc_with_dataset.has_store(
+        DATASET_STORE
+    ), "Dataset-specific 'dataset_store' should still exist"
+    assert svc_with_dataset.has_key(
+        DATASET_STORE, DATASET_KEY
+    ), "Dataset-specific 'dataset_key' should remain"
+
+    svc.create_store(NAME)
+    svc.set_key(NAME, GLOBAL_KEY, VALUE)
+    assert svc.has_store(NAME), "Global 'test_store' should be recreated"
+    assert svc.has_key(
+        NAME, GLOBAL_KEY
+    ), "Recreated 'test_store' in global context should contain 'global_key'"
+
+    svc_with_dataset.delete_store(DATASET_STORE)
+    assert not svc_with_dataset.has_store(
+        DATASET_STORE
+    ), "Dataset-specific 'dataset_store' should be deleted"
+    assert not svc_with_dataset.has_key(
+        DATASET_STORE, DATASET_KEY
+    ), "Dataset-specific 'dataset_key' should no longer exist after deletion"
+    assert svc.has_store(
+        NAME
+    ), "Global 'test_store' should remain unaffected by dataset-specific delete"
+
+    svc_with_dataset.set_key(NAME, DATASET_KEY, VALUE)
+    svc.delete_store(NAME)
+    assert not svc.has_store(
+        NAME
+    ), "Global 'test_store' should be deleted again"
+    assert svc_with_dataset.has_key(
+        NAME, DATASET_KEY
+    ), "Dataset-specific 'test_store' should still contain 'dataset_key'"
+
+    svc_with_dataset.delete_store(NAME)
+    assert not svc_with_dataset.has_store(
+        NAME
+    ), "Final cleanup of 'test_store' in dataset context should succeed"
+
+
+@drop_stores
+@drop_datasets
+def test_global_delete_store(svc, svc_with_dataset):
+    SHARED_NAME = "shared_store"
+    KEY = "key1"
+    VALUE = "value1"
+    svc.create_store(SHARED_NAME)
+    svc.set_key(SHARED_NAME, KEY, VALUE)
+    svc.delete_store_global(SHARED_NAME)
+
+    assert not svc.has_store(
+        SHARED_NAME
+    ), "SHARED_NAME store should be deleted"
+    assert not svc_with_dataset.has_store(
+        SHARED_NAME
+    ), "SHARED_NAME store should not exist globally"
+
+
+@drop_stores
+@drop_datasets
 def test_scoping(svc, svc_with_dataset):
     NAME = "test_store"
     KEY = "test_key"
@@ -167,17 +281,22 @@ def test_scoping(svc, svc_with_dataset):
     svc_with_dataset.set_key(NAME, KEY, VALUE)
     global_list = svc.list_stores_global()
     global_names = [store.store_name for store in global_list]
+
     assert global_names == [NAME, NAME], "Global store should be listed"
     assert svc.count_keys(NAME) == 1, "Global store should have 1 key"
     assert (
         svc_with_dataset.count_keys(NAME) == 1
     ), "Dataset store should have 1 key"
+
     svc_with_dataset.delete_store(NAME)
+
     assert svc.count_keys(NAME) == 1, "Global store should still have 1 key"
     assert (
         svc_with_dataset.count_keys(NAME) == 0
     ), "Dataset store should have 0 keys"
+
     svc.delete_store(NAME)
+
     assert svc.count_keys(NAME) == 0, "Global store should have 0 keys"
     global_list = svc.list_stores_global()
     assert NAME not in global_list, "Global store should not be listed"
