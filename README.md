@@ -59,7 +59,7 @@ Medium, and following us on social media:
 [![Facebook](https://img.shields.io/badge/Facebook-1877F2?logo=facebook&logoColor=white)](https://www.facebook.com/voxel51)
 
 
-## ![image|10](https://github.com/user-attachments/assets/f3cebeb4-2613-464c-b519-03089608f1f2) Table of Contents
+## <img src="[https://your-image-url.type](https://github.com/user-attachments/assets/f3cebeb4-2613-464c-b519-03089608f1f2" width="10" height="10"> Table of Contents
 
 - [Table of Contents](#table-of-contents)
 - [Prerequisites](#-prerequisites)
