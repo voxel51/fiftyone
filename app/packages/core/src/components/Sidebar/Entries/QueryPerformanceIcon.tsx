@@ -40,6 +40,9 @@ const showExpandedTooltip = atom({
 const QueryPerformanceIcon = () => {
   const theme = useTheme();
   const [showExpanded, setShowExpanded] = useRecoilState(showExpandedTooltip);
+  const lightningBoltColor = showExpanded
+    ? theme.custom.lightning
+    : theme.text.secondary;
   return (
     <Tooltip
       title={
@@ -96,7 +99,7 @@ const QueryPerformanceIcon = () => {
         },
       }}
     >
-      <LightningBolt style={{ color: "#f5b700" }} />
+      <LightningBolt style={{ color: lightningBoltColor }} />
     </Tooltip>
   );
 };
