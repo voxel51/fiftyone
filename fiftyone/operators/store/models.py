@@ -39,8 +39,6 @@ class KeyDocument:
         data = asdict(self)
         if exclude_id:
             data.pop("_id", None)
-        if self.dataset_id is None:
-            data.pop("dataset_id", None)
 
         return data
 
