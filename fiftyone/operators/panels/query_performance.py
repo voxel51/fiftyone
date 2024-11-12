@@ -1,7 +1,21 @@
+"""
+Query performance panel.
+
+| Copyright 2017-2024, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
 import eta.core.utils as etau
+
 import fiftyone as fo
+from fiftyone.management.dataset import DatasetPermission
+import fiftyone.operators as foo
+from fiftyone.operators.categories import Categories
+import fiftyone.operators.types as types
+from fiftyone.operators.utils import is_new
+
 from ..types import (
-    AutocompleteView,
     GridView,
     ImageView,
     Notice,
@@ -10,28 +24,10 @@ from ..types import (
     Property,
     RadioGroup,
     TableView,
-    TabsView,
 )
-from fiftyone.management.dataset import DatasetPermission
 from ..operator import Operator, OperatorConfig
 from ..panel import Panel, PanelConfig
-import fiftyone.operators as foo
-from fiftyone.operators.categories import Categories
-from fiftyone.operators.utils import is_new
-import fiftyone.operators.types as types
-import fiftyone.core.fields as fof
 
-
-_INDEXABLE_FIELDS = (
-    fo.IntField,
-    fo.ObjectIdField,
-    fo.BooleanField,
-    fo.DateField,
-    fo.DateTimeField,
-    fo.FloatField,
-    fo.StringField,
-    fo.ListField,
-)
 
 PERMISSION = [DatasetPermission.EDIT.value, DatasetPermission.MANAGE.value]
 
@@ -72,61 +68,6 @@ def _get_summary_fields(ctx):
         return ctx.dataset.list_summary_fields()
     else:
         return []
-
-
-def _get_indexable_paths(ctx):
-    schema = ctx.view.get_field_schema(flat=True)
-    if ctx.view._has_frame_fields():
-        schema.update(
-            {
-                "frames." + k: v
-                for k, v in ctx.view.get_frame_field_schema(flat=True).items()
-            }
-        )
-
-    paths = set()
-    for path, field in schema.items():
-        # Skip non-leaf paths
-        if any(p.startswith(path + ".") for p in schema.keys()):
-            continue
-
-        if isinstance(field, _INDEXABLE_FIELDS):
-            paths.add(path)
-
-    # Discard paths within dicts
-    for path, field in schema.items():
-        if isinstance(field, fo.DictField):
-            for p in list(paths):
-                if p.startswith(path + "."):
-                    paths.discard(p)
-
-    # Discard fields that are already indexed
-    for index_name in ctx.dataset.list_indexes():
-        paths.discard(index_name)
-
-    # Discard fields that are already being newly indexed
-    for obj in ctx.params.get("create", []):
-        paths.discard(obj.get("field_name", None))
-
-    return sorted(paths)
-
-
-def _get_frame_fields(ctx):
-    schema = ctx.view.get_frame_field_schema(flat=True).items()
-    result = []
-    supported_types = [
-        fof.StringField,
-        fof.BooleanField,
-        fof.FloatField,
-        fof.IntField,
-        fof.DateField,
-        fof.DateTimeField,
-    ]
-    if schema:
-        for item in schema:
-            if isinstance(item[1], tuple(supported_types)):
-                result.append("frames." + item[0])
-    return sorted(result)
 
 
 class CreateIndexOrSummaryFieldOperator(foo.Operator):
