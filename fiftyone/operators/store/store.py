@@ -110,7 +110,10 @@ class ExecutionStore(object):
         Returns:
             the TTL in seconds, or None if the key does not have a TTL
         """
-        return self._store_service.get_ttl(self.store_name, key)
+        key_doc = self._store_service.get_key(self.store_name, key)
+        if key_doc is None:
+            return None
+        return key_doc.ttl
 
     def list_keys(self) -> list[str]:
         """Lists all keys in the store.
