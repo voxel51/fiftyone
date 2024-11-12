@@ -1,7 +1,7 @@
 .. _teams-secrets:
 
 FiftyOne Enterprise Secrets
-======================
+===========================
 
 .. default-role:: code
 

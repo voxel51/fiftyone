@@ -1,7 +1,7 @@
 .. _teams-app:
 
 FiftyOne Enterprise App
-==================
+=======================
 
 .. default-role:: code
 

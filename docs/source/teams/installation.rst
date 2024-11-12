@@ -1,7 +1,7 @@
 .. _teams-installation:
 
 FiftyOne Enterprise Installation
-===========================
+================================
 
 .. default-role:: code
 

@@ -333,7 +333,7 @@ Any user with Can View permissions to a dataset can view and load its snapshots
 via the Enterprise UI or the SDK.
 
 Enterprise UI
-~~~~~~~~
+~~~~~~~~~~~~~
 
 From the dataset's History tab, click the "Browse" button next to a Snapshot in
 the :ref:`snapshot list <dataset-versioning-list-snapshots>` to load the
@@ -416,7 +416,7 @@ Enterprise UI or the Management SDK.
     Snapshots can only be created from the HEAD of the dataset.
 
 Enterprise UI
-~~~~~~~~
+~~~~~~~~~~~~~
 
 At the top of the History tab for a dataset is the Create snapshot panel.
 This panel shows the number of changes that have happened between the last
@@ -521,7 +521,7 @@ Snapshot.
     Deleting a Snapshot cannot be undone!
 
 Enterprise UI
-~~~~~~~~
+~~~~~~~~~~~~~
 
 To delete a Snapshot via the App, open the 3-dot (kebab) menu for the Snapshot.
 In the menu, click "Delete snapshot". This will bring up a confirmation dialog
@@ -563,7 +563,7 @@ of a given Snapshot.
     version of the dataset, including all newer Snapshots.
 
 Enterprise UI
-~~~~~~~~
+~~~~~~~~~~~~~
 
 To revert a dataset to a Snapshot's state, click the 3-dot (kebab) menu in
 the History tab for the Snapshot you want to rollback to and select
@@ -616,7 +616,7 @@ configured cold storage location via the UI or the Management SDK.
     :ref:`unarchived <dataset-versioning-unarchive-snapshot>`.
 
 Enterprise UI
-~~~~~~~~
+~~~~~~~~~~~~~
 
 To manually archive a snapshot, click the 3-dot (kebab) menu in the History tab
 for a snapshot you want to archive and select "Archive snapshot". This will
@@ -656,7 +656,7 @@ To make an archived snapshot browsable again, users with Can Manage
 permissions to the dataset can unarchive it via the UI or Management SDK.
 
 Enterprise UI
-~~~~~~~~
+~~~~~~~~~~~~~
 
 To unarchive a snapshot, click the "Unarchive" button in the History tab for a
 snapshot you want to unarchive. This will begin the unarchival process and the

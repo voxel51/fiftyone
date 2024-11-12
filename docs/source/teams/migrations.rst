@@ -64,7 +64,7 @@ below:
 .. code-block:: shell
 
     $ fiftyone migrate --info
-    FiftyOne Enterprise version: 0.7.1
+    FiftyOne Teams version: 0.7.1
     FiftyOne compatibility version: 0.15.1
     Database version: 0.15.1
 
@@ -134,7 +134,7 @@ For example, you can downgrade to Enterprise v0.10 like so:
 .. _teams-migrating-datasets:
 
 Migrating datasets to Enterprise
-___________________________
+________________________________
 
 Any datasets that you have created via open source FiftyOne can be migrated to
 your Enterprise deployment by exporting them in

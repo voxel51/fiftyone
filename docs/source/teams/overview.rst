@@ -1,7 +1,7 @@
 .. _teams-overview:
 
 FiftyOne Enterprise Overview
-=======================
+============================
 
 .. default-role:: code
 
@@ -16,7 +16,7 @@ including annotation, evaluation, model training, and deployment.
 .. _fiftyone-vs-fiftyone-teams:
 
 FiftyOne vs FiftyOne Enterprise
-__________________________
+_______________________________
 
 Here's a high-level overview of the capabilities that FiftyOne Enterprise brings:
 

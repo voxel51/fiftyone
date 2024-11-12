@@ -1,7 +1,7 @@
 .. _teams-plugins:
 
 FiftyOne Enterprise Plugins
-======================
+===========================
 
 .. default-role:: code
 
@@ -48,7 +48,7 @@ Admins can install plugins via the Enterprise UI or Management SDK.
     ``fiftyone.yml`` file.
 
 Enterprise UI
---------
+-------------
 
 To install a plugin, click the "Install plugin" button on the plugins page.
 
@@ -93,7 +93,7 @@ __________________
 Admins can upgrade plugins at any time through the Enterprise UI or Management SDK.
 
 Enterprise UI
---------
+-------------
 
 To upgrade a plugin, click the plugin's dropdown and select "Upgrade plugin".
 
@@ -151,7 +151,7 @@ SDK.
     permanently uninstalling them.
 
 Enterprise UI
---------
+-------------
 
 To uninstall a plugin, click the plugin's dropdown and select
 "Uninstall plugin".
@@ -180,7 +180,7 @@ Enabling/disabling plugins
 __________________________
 
 Enterprise UI
----------
+-------------
 
 When plugins are first installed into Enterprise, they are enabled by default, along
 with any operators they contain.
@@ -245,7 +245,7 @@ within them via any combination of the permissions described below:
     +-------------------------------+----------------------------------------------------------------------------+
 
 Enterprise UI
---------
+-------------
 
 To configure the permissions for an operator, first click on the plugin's
 operators link.
@@ -320,7 +320,7 @@ By default, the initial permissions are:
     +-------------------------------+---------------+
 
 Enterprise UI
-^^^^^^^^
+^^^^^^^^^^^^^
 
 Default operator permissions can be configured by navigating to the page at
 Settings > Security and looking under the Plugins header. Click the dropdown

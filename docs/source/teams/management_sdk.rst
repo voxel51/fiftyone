@@ -1,7 +1,7 @@
 .. _teams-management-sdk:
 
 Enterprise Management SDK
-====================
+=========================
 
 .. default-role:: code
 
