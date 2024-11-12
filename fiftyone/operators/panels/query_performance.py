@@ -463,16 +463,6 @@ class QueryPerformancePanel(Panel):
         else:
             ctx.ops.notify("You do not have permission to delete.")
 
-    def toggle_qp(self, ctx):
-        if ctx.query_performance:
-            ctx.ops.notify("Disabling query performance mode")
-            ctx.trigger("disable_query_performance")
-        else:
-            ctx.ops.notify("Enabling query performance mode")
-            ctx.trigger("enable_query_performance")
-
-        self._build_view(ctx)
-
     def qp_setting(self, ctx):
         ctx.prompt("query_performance_config_confirmation")
 
@@ -538,8 +528,6 @@ class QueryPerformancePanel(Panel):
             else:
                 message = f"{len(all_indices)} Indexed Fields"
 
-            message = f"Existent indexes and fields for dataset `{ctx.dataset.name}`: {message}"
-
             h_stack = panel.h_stack(
                 "v_stack",
                 align_y="center",
@@ -557,20 +545,6 @@ class QueryPerformancePanel(Panel):
                 label="Refresh",
                 on_click=self.on_refresh_button_click,
             )
-
-            if ctx.query_performance:
-                button_menu.btn(
-                    "lightning_btn",
-                    label="Enabled",
-                    on_click=self.toggle_qp,
-                    variant="contained",
-                )
-            else:
-                button_menu.btn(
-                    "lightning_btn",
-                    label="Disabled",
-                    on_click=self.toggle_qp,
-                )
 
             button_menu.btn(
                 "setting_btn",
