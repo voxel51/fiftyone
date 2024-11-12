@@ -36,7 +36,7 @@ class ExecutionStoreRepo(object):
         self._dataset_id = dataset_id
 
     def create_store(
-        self, store_name, metadata: dict[str, Any] = None
+        self, store_name, metadata: Dict[str, Any] = None
     ) -> StoreDocument:
         """Creates a store associated with the current context."""
         store_doc = StoreDocument(
