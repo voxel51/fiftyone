@@ -97,7 +97,6 @@ INT_CLS = {
     fof.DateField: DateLightningResult,
     fof.DateTimeField: DateTimeLightningResult,
     fof.FrameNumberField: IntLightningResult,
-    fof.FrameSupportField: IntLightningResult,
     fof.IntField: IntLightningResult,
 }
 
