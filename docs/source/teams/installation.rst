@@ -1,21 +1,21 @@
 .. _teams-installation:
 
-FiftyOne Teams Installation
+FiftyOne Enterprise Installation
 ===========================
 
 .. default-role:: code
 
-FiftyOne Teams deployments come with a centralized FiftyOne Teams App and
+FiftyOne Enterprise deployments come with a centralized FiftyOne Enterprise App and
 database that allows your entire team to collaborate securely on the same
-datasets. FiftyOne Teams is deployed entirely into your environment, either
+datasets. FiftyOne Enterprise is deployed entirely into your environment, either
 on-premises or in a private cloud. Your data never leaves your environment.
 
-FiftyOne Teams can be deployed on a wide variety of infrastructure solutions,
+FiftyOne Enterprise can be deployed on a wide variety of infrastructure solutions,
 including Kubernetes and Docker.
 
 .. note::
 
-    Detailed instructions for the initial FiftyOne Teams deployment, along with
+    Detailed instructions for the initial FiftyOne Enterprise deployment, along with
     all necessary components, are made available by your Voxel51 CS engineer
     during the onboarding process.
 
@@ -24,17 +24,17 @@ including Kubernetes and Docker.
 Python SDK
 ----------
 
-While the :ref:`FiftyOne Teams App <teams-app>` allows for countless new
+While the :ref:`FiftyOne Enterprise App <teams-app>` allows for countless new
 App-centric workflows, any existing Python-based workflows that you've fallen
 in love with in the open-source version of FiftyOne are still directly
 applicable!
 
-FiftyOne Teams requires an updated Python SDK, which is a wrapper around the
+FiftyOne Enterprise requires an updated Python SDK, which is a wrapper around the
 open-source FiftyOne package that adds new functionality like support for
 cloud-backed media.
 
 You can find the installation instructions under the "Install FiftyOne" section
-of the Teams App by clicking on your user icon in the upper right corner:
+of the Enterprise App by clicking on your user icon in the upper right corner:
 
 .. image:: /images/teams/install_fiftyone.png
    :alt: install-teams
@@ -55,14 +55,14 @@ private PyPI server as shown below:
 
 .. note::
 
-   The Teams Python package is named ``fiftyone`` and has the same module
+   The Enterprise Python package is named ``fiftyone`` and has the same module
    structure as :doc:`fiftyone <../api/fiftyone>`, so any existing scripts you
    built using open source will continue to run after you upgrade!
 
 Next Steps
 __________
 
-After installing the Teams Python SDK in your virtual environment, you'll need
+After installing the Enterprise Python SDK in your virtual environment, you'll need
 to configure two things:
 
 *   Your team's :ref:`API connection <teams-api-connection>` or
@@ -73,7 +73,7 @@ to configure two things:
 
 That's it! Any operations you perform will be stored in a centralized location
 and will be available to all users with access to the same datasets in the
-Teams App or their Python workflows.
+Enterprise App or their Python workflows.
 
 .. _teams-installation-poetry:
 
@@ -160,10 +160,10 @@ You should then see snippets in the ``pyproject.toml`` file like the following
 Cloud credentials
 -----------------
 
-In order to utilize cloud-backed media functionality of FiftyOne Teams, at
+In order to utilize cloud-backed media functionality of FiftyOne Enterprise, at
 least one cloud source must be configured with proper credentials. Below are
 instructions for configuring each supported cloud provider for local SDK use
-or directly to the Teams containers. An admin can also :ref:`configure
+or directly to the Enterprise containers. An admin can also :ref:`configure
 credentials for use by all app users <teams-cloud-storage-page>`.
 
 .. _teams-cors:
@@ -193,7 +193,7 @@ _________
 To work with FiftyOne datasets whose media are stored in Amazon S3, you simply
 need to provide
 `AWS credentials <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file>`_
-to your Teams client with read access to the relevant objects and buckets.
+to your Enterprise client with read access to the relevant objects and buckets.
 
 You can do this in any of the following ways:
 
@@ -240,7 +240,7 @@ and the shared credentials file should use
 
 .. note::
 
-    FiftyOne Teams requires either the `s3:ListBucket` or
+    FiftyOne Enterprise requires either the `s3:ListBucket` or
     `s3:GetBucketLocation` permission in order to access objects in S3 buckets.
 
     If you wish to use multi-account credentials, your credentials must have
@@ -283,7 +283,7 @@ ____________________
 
 To work with FiftyOne datasets whose media are stored in Google Cloud Storage,
 you simply need to provide `credentials <https://cloud.google.com/docs/authentication>`_
-to your Teams client with read access to the relevant objects and buckets.
+to your Enterprise client with read access to the relevant objects and buckets.
 
 You can do this in any of the following ways:
 
@@ -341,7 +341,7 @@ _______________
 To work with FiftyOne datasets whose media are stored in Azure Storage, you
 simply need to provide
 `Azure credentials <https://learn.microsoft.com/en-us/azure/storage/blobs/authorize-data-operations-cli>`_
-to your Teams client with read access to the relevant objects and containers.
+to your Enterprise client with read access to the relevant objects and containers.
 
 You can do this in any of the following ways:
 
@@ -456,7 +456,7 @@ _____
 
 To work with FiftyOne datasets whose media are stored in
 `MinIO <https://min.io/>`_, you simply need to provide the credentials to your
-Teams client with read access to the relevant objects and buckets.
+Enterprise client with read access to the relevant objects and buckets.
 
 You can do this in any of the following ways:
 
@@ -531,7 +531,7 @@ Extra client arguments
 ______________________
 
 Configuring credentials following the instructions above is almost always
-sufficient for FiftyOne Teams to properly utilize them. In rare cases where the
+sufficient for FiftyOne Enterprise to properly utilize them. In rare cases where the
 cloud provider client needs non-default configuration, you can add extra client
 kwargs via the :ref:`media cache config <teams-media-cache-config>`:
 
@@ -565,9 +565,9 @@ Cloud storage page
 Admins can also configure cloud credentials via the Settings > Cloud storage
 page.
 
-Credentials configured via this page are stored (encrypted) in the Teams
+Credentials configured via this page are stored (encrypted) in the Enterprise
 database, rather than needing to be configured through environment variables in
-your Teams deployment.
+your Enterprise deployment.
 
 .. note::
 
@@ -616,17 +616,17 @@ Alternatively, credentials can be updated programmatically with the
 method in the Management SDK.
 
 Any cloud credentials uploaded via this method will automatically be used by
-the Teams UI when any user attempts to load media associated with the
+the Enterprise UI when any user attempts to load media associated with the
 appropriate provider or specific bucket.
 
 .. note::
 
-    By default, Teams servers refresh their credentials every 120 seconds, so
+    By default, Enterprise servers refresh their credentials every 120 seconds, so
     you may need to wait up to two minutes after modifying your credentials via
     this page in order for the changes to take effect.
 
 .. note::
 
-    Users cannot access stored credentials directly, either via the Teams UI or
-    by using the Teams SDK locally. The credentials are only decrypted and
-    used internally by the Teams servers.
+    Users cannot access stored credentials directly, either via the Enterprise UI or
+    by using the Enterprise SDK locally. The credentials are only decrypted and
+    used internally by the Enterprise servers.

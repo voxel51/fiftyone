@@ -1,6 +1,6 @@
 .. _fiftyone-teams:
 
-FiftyOne Teams
+FiftyOne Enterprise
 ==============
 
 .. Social links ---------------------------------------------------------------
@@ -32,14 +32,14 @@ FiftyOne Teams
 
 .. End social links -----------------------------------------------------------
 
-`FiftyOne Teams <https://voxel51.com/fiftyone-teams/>`_ enables multiple users
+`FiftyOne Enterprise <https://voxel51.com/fiftyone-teams/>`_ enables multiple users
 to securely collaborate on the same datasets and models, either on-premises or
 in the cloud, all built on top of the open source FiftyOne workflows that
 you're already relying on.
 
-FiftyOne Teams is fully backwards-compatible with the
+FiftyOne Enterprise is fully backwards-compatible with the
 `open source project <https://github.com/voxel51/fiftyone>`_, so all other
-pages on this site apply to Teams deployments as well.
+pages on this site apply to Enterprise deployments as well.
 
 |br|
 
@@ -58,19 +58,19 @@ pages on this site apply to Teams deployments as well.
 
 .. customcalloutitem::
     :header: Overview
-    :description: What's FiftyOne Teams? We think you'll be glad you asked!
+    :description: What's FiftyOne Enterprise? We think you'll be glad you asked!
     :button_text: Learn the basics
     :button_link: overview.html
 
 .. customcalloutitem::
     :header: Installation
-    :description: Learn how to install the FiftyOne Teams Python SDK.
+    :description: Learn how to install the FiftyOne Enterprise Python SDK.
     :button_text: Install the SDK
     :button_link: installation.html
 
 .. customcalloutitem::
     :header: Cloud-backed media
-    :description: Integrate FiftyOne Teams with your media stored in the cloud.
+    :description: Integrate FiftyOne Enterprise with your media stored in the cloud.
     :button_text: Get started with cloud media
     :button_link: cloud_media.html
 
@@ -82,38 +82,38 @@ pages on this site apply to Teams deployments as well.
 
 .. customcalloutitem::
     :header: Dataset Versioning
-    :description: Explore or revert to historical snapshots of your FiftyOne Teams datasets.
+    :description: Explore or revert to historical snapshots of your FiftyOne Enterprise datasets.
     :button_text: Version your FiftyOne datasets
     :button_link: dataset_versioning.html
 
 .. customcalloutitem::
-    :header: FiftyOne Teams App
-    :description: See how you can collaboratively work on datasets in the FiftyOne Teams App.
-    :button_text: Explore the Teams App
+    :header: FiftyOne Enterprise App
+    :description: See how you can collaboratively work on datasets in the FiftyOne Enterprise App.
+    :button_text: Explore the Enterprise App
     :button_link: teams_app.html
 
 .. customcalloutitem::
     :header: Management SDK
     :description: Learn how to programmatically manage your deployment with the Management SDK.
-    :button_text: Manage your Teams deployment
+    :button_text: Manage your Enterprise deployment
     :button_link: management_sdk.html
 
 .. customcalloutitem::
     :header: Plugins
-    :description: Learn how to install and manage shared plugins for your Teams deployment.
-    :button_text: Get plugins for Teams
+    :description: Learn how to install and manage shared plugins for your Enterprise deployment.
+    :button_text: Get plugins for Enterprise
     :button_link: teams_plugins.html
 
 .. customcalloutitem::
     :header: Secrets
-    :description: Safely store and access secrets in your Teams deployment.
+    :description: Safely store and access secrets in your Enterprise deployment.
     :button_text: Learn more about secrets
     :button_link: secrets.html
 
 .. customcalloutitem::
     :header: Migrations
-    :description: Learn how to migrate to FiftyOne Teams and manage your Teams deployment.
-    :button_text: Migrate to Teams
+    :description: Learn how to migrate to FiftyOne Enterprise and manage your Enterprise deployment.
+    :button_text: Migrate to Enterprise
     :button_link: migrations.html
 
 .. End callouts ---------------------------------------------------------------
@@ -129,7 +129,7 @@ pages on this site apply to Teams deployments as well.
 
     Look interesting?
     `Schedule a demo <https://voxel51.com/schedule-teams-workshop>`_ to get
-    started with Teams
+    started with Enterprise
 
 .. toctree::
     :maxdepth: 1
@@ -141,7 +141,7 @@ pages on this site apply to Teams deployments as well.
     Cloud-backed media <cloud_media>
     Roles and permissions <roles_and_permissions>
     Dataset Versioning <dataset_versioning>
-    FiftyOne Teams App <teams_app>
+    FiftyOne Enterprise App <teams_app>
     Management SDK <management_sdk>
     Plugins <teams_plugins>
     Secrets <secrets>

@@ -1,6 +1,6 @@
 .. _teams-management-sdk:
 
-Teams Management SDK
+Enterprise Management SDK
 ====================
 
 .. default-role:: code
@@ -8,7 +8,7 @@ Teams Management SDK
 One of FiftyOne's core design principles is that you should be able to do
 everything *programmatically* if you want.
 
-To this end, the `fiftyone.management` module provides Teams-specific methods
+To this end, the `fiftyone.management` module provides Enterprise-specific methods
 for managing users, invitations, dataset permissions, plugins, API keys, and
 more.
 

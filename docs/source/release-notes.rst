@@ -3,7 +3,7 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-FiftyOne Teams 2.1.3
+FiftyOne Enterprise 2.1.3
 --------------------
 *Released November XX, 2024*
 
@@ -52,14 +52,14 @@ App
 - Fixed batch selection with ctrl + click in the grid
   `#5046 <https://github.com/voxel51/fiftyone/pull/5046>`_
 
-FiftyOne Teams 2.1.2
+FiftyOne Enterprise 2.1.2
 --------------------
 *Released October 31, 2024*
 
 - Fixed an issue that prevented `delegation_target` from being properly set when
   running delegated operations with orchestrator registration enabled
 
-FiftyOne Teams 2.1.1
+FiftyOne Enterprise 2.1.1
 --------------------
 *Released October 14, 2024*
 
@@ -94,7 +94,7 @@ Core
   :ref:`COCO format <COCODetectionDataset-import>`
   `#4884 <https://github.com/voxel51/fiftyone/pull/4884>`_
 
-FiftyOne Teams 2.1.0
+FiftyOne Enterprise 2.1.0
 --------------------
 *Released October 1, 2024*
 
@@ -107,7 +107,7 @@ Includes all updates from :ref:`FiftyOne 1.0.0 <release-notes-v1.0.0>`, plus:
   :ref:`Internal Mode <internal-mode>`
 - Optimized performance of the :ref:`dataset page <teams-homepage>`
 - Fixed a BSON serialization bug that could cause errors when cloning or
-  exporting certain dataset views from the Teams UI
+  exporting certain dataset views from the Enterprise UI
 
 .. _release-notes-v1.0.0:
 
@@ -214,7 +214,7 @@ FiftyOne 0.25.2
 - Require `pymongo<4.9` to fix database connections
 - Require `pydicom<3` for :ref:`DICOM datasets <DICOMDataset-import>`
 
-FiftyOne Teams 2.0.1
+FiftyOne Enterprise 2.0.1
 --------------------
 *Released September 6, 2024*
 
@@ -280,7 +280,7 @@ Plugins
   don't return outputs
   `#4715 <https://github.com/voxel51/fiftyone/pull/4715>`_
 
-FiftyOne Teams 2.0.0
+FiftyOne Enterprise 2.0.0
 --------------------
 *Released August 20, 2024*
 
@@ -321,7 +321,7 @@ SDK
 
 - Added a :mod:`user_groups <fiftyone.management.user_groups>` module to the
   Management SDK for programmatically managing user groups
-- The `fiftyone delegated` CLI command is now available to Teams users
+- The `fiftyone delegated` CLI command is now available to Enterprise users
 - Upgraded the :ref:`upload_media() <teams-cloud-media-python>` function to
   gracefully support fields with missing media paths
 - Added an `overwrite` parameter to
@@ -466,7 +466,7 @@ Zoo
   `#4509 <https://github.com/voxel51/fiftyone/pull/4509>`_,
   `#4512 <https://github.com/voxel51/fiftyone/pull/4512>`_
 
-FiftyOne Teams 1.7.1
+FiftyOne Enterprise 1.7.1
 --------------------
 *Released June 11, 2024*
 
@@ -516,7 +516,7 @@ Annotation
 - Added support loading annotations for large CVAT tasks with many jobs
   `#4392 <https://github.com/voxel51/fiftyone/pull/4392>`_
 
-FiftyOne Teams 1.7.0
+FiftyOne Enterprise 1.7.0
 --------------------
 *Released May 29, 2024*
 
@@ -527,8 +527,8 @@ Includes all updates from :ref:`FiftyOne 0.24.0 <release-notes-v0.24.0>`, plus:
 - Added support for customizing the role that a user will have when sending an
   invitation for a new user to access a specific dataset
 - Added the ability to configure the expiration time for signed URLs used by
-  your FiftyOne Teams deployment
-- Fixed a regression from FiftyOne Teams 1.6 that could cause login errors when
+  your FiftyOne Enterprise deployment
+- Fixed a regression from FiftyOne Enterprise 1.6 that could cause login errors when
   accepting invites
 
 .. _release-notes-v0.24.0:
@@ -629,16 +629,16 @@ Zoo
 - Fixed a bug with :ref:`YOLO-NAS inference <super-gradients-integration>`
   `#4429 <https://github.com/voxel51/fiftyone/pull/4429>`_
 
-FiftyOne Teams 1.6.1
+FiftyOne Enterprise 1.6.1
 --------------------
 *Released May 10, 2024*
 
 Bugs
 
-- Fixed an issue with logging into FiftyOne Teams in Enterprise Proxy
+- Fixed an issue with logging into FiftyOne Enterprise in Enterprise Proxy
   enviornments
 
-FiftyOne Teams 1.6.0
+FiftyOne Enterprise 1.6.0
 --------------------
 *Released April 30, 2024*
 
@@ -647,22 +647,22 @@ What's New
 - Added :ref:`Groups <teams-groups>` for managing and dataset access for groups
   of users
 - Introduced a new :ref:`Pluggable Authentication <pluggable-auth>` system for
-  customizing FiftyOne Teams authentication
-- Removed Auth0 as a hard dependency for Teams deployments with the
+  customizing FiftyOne Enterprise authentication
+- Removed Auth0 as a hard dependency for Enterprise deployments with the
   introduction of :ref:`Internal Mode <internal-mode>`
 - Added support for directly authenticating with
   :ref:`Identity Providers <identity-providers>`
 - Added a :ref:`Super Admin UI <super-admin-ui>` for administering FiftyOne
-  Teams deployments
+  Enterprise deployments
 - Added the ability to search for users on the Users page
 
-FiftyOne Teams 1.5.10
+FiftyOne Enterprise 1.5.10
 ---------------------
 *Released April 18, 2024*
 
 - Fixed an issue where video datasets were not loading due to ffmpeg dependency
 
-FiftyOne Teams 1.5.9
+FiftyOne Enterprise 1.5.9
 --------------------
 *Released April 15, 2024*
 
@@ -793,7 +793,7 @@ Zoo
   frames of video datasets
   `#4229 <https://github.com/voxel51/fiftyone/pull/4229>`_
 
-FiftyOne Teams 1.5.8
+FiftyOne Enterprise 1.5.8
 --------------------
 *Released March 21, 2024*
 
@@ -900,7 +900,7 @@ Core
 - Cloning a dataset or view now includes any custom MongoDB indexes
   `#4115 <https://github.com/voxel51/fiftyone/pull/4115>`_
 
-FiftyOne Teams 1.5.7
+FiftyOne Enterprise 1.5.7
 --------------------
 *Released March 6, 2024*
 
@@ -958,7 +958,7 @@ Bugs
   selection is present
   `#4113 <https://github.com/voxel51/fiftyone/pull/4113>`_
 
-FiftyOne Teams 1.5.6
+FiftyOne Enterprise 1.5.6
 --------------------
 *Released February 14, 2024*
 
@@ -1005,7 +1005,7 @@ Bugs
   `#4048 <https://github.com/voxel51/fiftyone/pull/4048>`_
 
 
-FiftyOne Teams 1.5.5
+FiftyOne Enterprise 1.5.5
 --------------------
 *Released January 25, 2024*
 
@@ -1032,7 +1032,7 @@ Brain
   :ref:`custom visualization methods <brain-visualization-api>`
   `#4038 <https://github.com/voxel51/fiftyone/pull/4038>`_
 
-FiftyOne Teams 1.5.4
+FiftyOne Enterprise 1.5.4
 --------------------
 *Released January 19, 2024*
 
@@ -1044,7 +1044,7 @@ General
   :meth:`export() <fiftyone.core.collections.SampleCollection.export>` calls
   involving cloud-backed media
 - Deployments with their `FIFTYONE_API_URI` environment variable set will now
-  display the API URI to users in the Teams App
+  display the API URI to users in the Enterprise App
 - Improved debug logs by adding the head and tail of large results
 - Updated `motor` dependency to 3.3.0
 
@@ -1151,7 +1151,7 @@ Tutorials
 
 .. _release-notes-teams-v1.5.3:
 
-FiftyOne Teams 1.5.3
+FiftyOne Enterprise 1.5.3
 --------------------
 *Released December 21, 2023*
 
@@ -1247,7 +1247,7 @@ Plugins
 
 .. _release-notes-teams-v1.5.2:
 
-FiftyOne Teams 1.5.2
+FiftyOne Enterprise 1.5.2
 --------------------
 *Released December 11, 2023*
 
@@ -1258,7 +1258,7 @@ Bugs
 
 .. _release-notes-teams-v1.5.1:
 
-FiftyOne Teams 1.5.1
+FiftyOne Enterprise 1.5.1
 --------------------
 *Released December 8, 2023*
 
@@ -1293,7 +1293,7 @@ Core
 
 .. _release-notes-teams-v1.5.0:
 
-FiftyOne Teams 1.5.0
+FiftyOne Enterprise 1.5.0
 --------------------
 *Released December 6, 2023*
 
@@ -1312,7 +1312,7 @@ Features
 - Added support for uploading media :ref:`to Labelbox <labelbox-integration>`
   directly from S3 buckets
 - Added support for executing the builtin ``open_dataset`` operator in the
-  Teams UI
+  Enterprise UI
 - Added support for executing operators when viewing datasets with no samples,
   for example to add media/labels to the dataset from within the App
 - Added support for :ref:`editing the label <teams-runs-renaming>` of a
@@ -1337,7 +1337,7 @@ Bugs
   delegated operations that were scheduled via the SDK
 - Users with special access to a dataset are now displayed properly
 - Fixed an issue when loading certain datasets with saved
-  :ref:`color schemes <app-color-schemes>` in the Teams UI
+  :ref:`color schemes <app-color-schemes>` in the Enterprise UI
 - Fixed an issue on the dataset listing page where the page size menu would
   sometimes stay open after making a selection
 - Fixed an issue when downloading plugins via the API that contain bytes data
@@ -1518,7 +1518,7 @@ Bugs
 
 .. _release-notes-teams-v1.4.5:
 
-FiftyOne Teams 1.4.5
+FiftyOne Enterprise 1.4.5
 --------------------
 *Released November 21, 2023*
 
@@ -1528,7 +1528,7 @@ General
 
 .. _release-notes-teams-v1.4.4:
 
-FiftyOne Teams 1.4.4
+FiftyOne Enterprise 1.4.4
 --------------------
 *Released November 3, 2023*
 
@@ -1610,7 +1610,7 @@ CLI
 
 .. _release-notes-teams-v1.4.3:
 
-FiftyOne Teams 1.4.3
+FiftyOne Enterprise 1.4.3
 --------------------
 *Released October 20, 2023*
 
@@ -1699,7 +1699,7 @@ Zoo
 
 .. _release-notes-teams-v1.4.2:
 
-FiftyOne Teams 1.4.2
+FiftyOne Enterprise 1.4.2
 --------------------
 *Released October 6, 2023*
 
@@ -1779,17 +1779,17 @@ Plugins
 
 .. _release-notes-teams-v1.4.1:
 
-FiftyOne Teams 1.4.1
+FiftyOne Enterprise 1.4.1
 --------------------
 *Released September 21, 2023*
 
 Bugs
 
-- Patched a regression that prevented the Teams App from working behind proxies
+- Patched a regression that prevented the Enterprise App from working behind proxies
 
 .. _release-notes-teams-v1.4.0:
 
-FiftyOne Teams 1.4.0
+FiftyOne Enterprise 1.4.0
 --------------------
 *Released September 20, 2023*
 
@@ -1926,7 +1926,7 @@ Zoo
 
 .. _release-notes-teams-v1.3.6:
 
-FiftyOne Teams 1.3.6
+FiftyOne Enterprise 1.3.6
 --------------------
 *Released August 8, 2023*
 
@@ -1947,7 +1947,7 @@ App
 
 .. _release-notes-teams-v1.3.5:
 
-FiftyOne Teams 1.3.5
+FiftyOne Enterprise 1.3.5
 --------------------
 *Released August 7, 2023*
 
@@ -2109,7 +2109,7 @@ FiftyOne 0.21.4
 
 .. _release-notes-teams-v1.3.3:
 
-FiftyOne Teams 1.3.3
+FiftyOne Enterprise 1.3.3
 --------------------
 *Released July 12, 2023*
 
@@ -2163,7 +2163,7 @@ Core
 
 .. _release-notes-teams-v1.3.2:
 
-FiftyOne Teams 1.3.2
+FiftyOne Enterprise 1.3.2
 --------------------
 *Released July 5, 2023*
 
@@ -2184,7 +2184,7 @@ App
 
 .. _release-notes-teams-v1.3.1:
 
-FiftyOne Teams 1.3.1
+FiftyOne Enterprise 1.3.1
 --------------------
 *Released June 30, 2023*
 
@@ -2194,9 +2194,9 @@ plus:
 General
 
 - App containers no longer need to be restarted in order for Azure/MinIO
-  credentials uploaded via the Teams UI to be properly recognized
+  credentials uploaded via the Enterprise UI to be properly recognized
 - Fixed an intermittent bug when computing metadata for remote filepaths
-- Reverted a change from Teams 1.3.0 so that the SDK again supports the
+- Reverted a change from Enterprise 1.3.0 so that the SDK again supports the
   declared minimum version requirement of `pymongo==3.12`
 
 SDK
@@ -2204,7 +2204,7 @@ SDK
 - Updated the order of precedence for SDK connections so that
   :ref:`API connections <teams-api-connection>` take precedence over
   :ref:`direct database connections <configuring-mongodb-connection>`
-- Fixed a bug when connecting to Teams deployments with non-standard database
+- Fixed a bug when connecting to Enterprise deployments with non-standard database
   names via API connections
 - Fixed a bug when saving run results using API connections
 - Fixed a bug when deleting datasets using API connections
@@ -2293,7 +2293,7 @@ Annotation
 
 .. _release-notes-teams-v1.3.0:
 
-FiftyOne Teams 1.3.0
+FiftyOne Enterprise 1.3.0
 --------------------
 *Released May 31, 2023*
 
@@ -2311,15 +2311,15 @@ General
 - Improved non-persistent dataset cleanup behavior
 - Fixed a bug that could cause the media cache to erroneously garbage collect
   large files while they are downloading
-- Fixed a bug when cloning views into new datasets via the Teams UI
+- Fixed a bug when cloning views into new datasets via the Enterprise UI
 
 Admin
 
 - Added support for :ref:`uploading and managing plugins <teams-plugins>` via
-  the Teams UI
+  the Enterprise UI
 - Added support for cross account IAM roles when configuring cloud storage
   credentials
-- Fixed a bug that prevented Azure/MinIO credentials uploaded via the Teams UI
+- Fixed a bug that prevented Azure/MinIO credentials uploaded via the Enterprise UI
   from being properly recognized by the App
 
 .. _release-notes-v0.21.0:
@@ -2432,7 +2432,7 @@ Tutorials
 
 .. _release-notes-teams-v1.2.1:
 
-FiftyOne Teams 1.2.1
+FiftyOne Enterprise 1.2.1
 --------------------
 *Released April 5, 2023*
 
@@ -2444,7 +2444,7 @@ General
 - When your session expires, you are now automatically logged out rather than
   being presented with a cryptic server error
 - Improved the accuracy of size estimates when exporting filepaths and/or tags
-  from the Teams UI
+  from the Enterprise UI
 
 Admin
 
@@ -2528,7 +2528,7 @@ Documentation
 
 .. _release-notes-teams-v1.2:
 
-FiftyOne Teams 1.2
+FiftyOne Enterprise 1.2
 ------------------
 *Released March 22, 2023*
 
@@ -2537,7 +2537,7 @@ plus:
 
 Admin settings
 
-- Admins who use SSO to authorize new users to auto-join their FiftyOne Teams
+- Admins who use SSO to authorize new users to auto-join their FiftyOne Enterprise
   deployment can now configure the :ref:`default role <teams-roles>` for those
   users
 - Admins can now configure the
@@ -2549,7 +2549,7 @@ Dataset page
 - Added support for viewing :ref:`Segmentation <semantic-segmentation>` and
   :ref:`Heatmap <heatmaps>` data stored as images in the cloud in the App
 - Added support for exporting one or more fields of a dataset in CSV format
-  through the Teams UI
+  through the Enterprise UI
 - Stack traces for unhandled errors are now presented directly in the App so
   that users can self-diagnose issues
 
@@ -2773,7 +2773,7 @@ Tutorials
 
 .. _release-notes-teams-v1.1.1:
 
-FiftyOne Teams 1.1.1
+FiftyOne Enterprise 1.1.1
 --------------------
 *Released February 14, 2023*
 
@@ -2782,7 +2782,7 @@ plus:
 
 Plugins
 
-- Resolved a bug that prevented Teams deployments from recognizing installed
+- Resolved a bug that prevented Enterprise deployments from recognizing installed
   plugins
 
 .. _release-notes-v0.19.1:
@@ -2806,7 +2806,7 @@ Core
 
 .. _release-notes-teams-v1.1:
 
-FiftyOne Teams 1.1
+FiftyOne Enterprise 1.1
 ------------------
 *Released February 9, 2023*
 
@@ -2825,7 +2825,7 @@ User roles
 Homepage
 
 - Added a Recent views widget to the homepage that shows the most recent saved
-  views that you have viewed in the Teams UI
+  views that you have viewed in the Enterprise UI
 
 Dataset page
 
@@ -2837,7 +2837,7 @@ Dataset page
 
 Deployment
 
-- Added support for deploying Teams into environments with proxy networks
+- Added support for deploying Enterprise into environments with proxy networks
 
 .. _release-notes-v0.19.0:
 
@@ -2847,7 +2847,7 @@ FiftyOne 0.19.0
 
 News
 
-- :ref:`FiftyOne Teams <fiftyone-teams>` documentation is now publicly
+- :ref:`FiftyOne Enterprise <fiftyone-teams>` documentation is now publicly
   available! `#2388 <https://github.com/voxel51/fiftyone/pull/2388>`_
 
 App
@@ -3045,7 +3045,7 @@ Docs
 
 .. _release-notes-teams-v1.0:
 
-FiftyOne Teams 1.0
+FiftyOne Enterprise 1.0
 ------------------
 *Released November 8, 2022*
 
@@ -3054,7 +3054,7 @@ plus:
 
 News
 
-- FiftyOne Teams is now generally available,
+- FiftyOne Enterprise is now generally available,
   :ref:`read more here <fiftyone-teams>`!
 
 .. _release-notes-v0.18.0:

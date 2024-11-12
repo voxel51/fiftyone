@@ -5,13 +5,13 @@ Cloud-Backed Media
 
 .. default-role:: code
 
-FiftyOne Teams datasets may contain samples whose filepath refers to cloud
+FiftyOne Enterprise datasets may contain samples whose filepath refers to cloud
 object storage paths and/or publicly available URLs.
 
 .. note::
 
    :ref:`Click here <teams-cloud-credentials>` to see how to configure FiftyOne
-   Teams to load your cloud credentials!
+   Enterprise to load your cloud credentials!
 
 .. _teams-cloud-media-caching:
 
@@ -19,7 +19,7 @@ Cloud media caching
 ___________________
 
 When you work with cloud-backed datasets using the
-:ref:`Teams SDK <teams-python-sdk>`, media files will automatically be
+:ref:`Enterprise SDK <teams-python-sdk>`, media files will automatically be
 downloaded and cached on the machine you’re working from when you execute
 workflows such as model inference or Brain methods that require access to the
 pixels of the media files. This design minimizes bandwidth usage and can
@@ -37,7 +37,7 @@ file repeatedly:
     # Automatically downloads cloud media to your local cache for processing
     fob.compute_visualization(dataset, brain_key="img_viz")
 
-When launching the App locally using the Teams SDK, media will be served from
+When launching the App locally using the Enterprise SDK, media will be served from
 your local cache whenever possible; otherwise it will be automatically
 retrieved from the cloud:
 
@@ -121,7 +121,7 @@ precedence over JSON config settings.
 Working with cloud-backed datasets
 __________________________________
 
-When writing Python code using the Teams client that may involve cloud-backed
+When writing Python code using the Enterprise client that may involve cloud-backed
 datasets, use `sample.local_path` instead of `sample.filepath` to retrieve
 the location of the locally cached version of a media file:
 
@@ -142,7 +142,7 @@ the location of the locally cached version of a media file:
 .. note::
 
     If `sample.filepath` itself is a local path, then `sample.local_path`
-    will simply return that path. In other words, it is safe to write all Teams
+    will simply return that path. In other words, it is safe to write all Enterprise
     Python code as if the dataset contains cloud-backed media.
 
 .. note::
@@ -837,15 +837,15 @@ method to pass URLs for your S3-backed media when creating Labelbox data rows.
 AWS Lambda and Google Cloud Functions
 _____________________________________
 
-FiftyOne Teams can easily be used in AWS Lambda Functions and Google Cloud
+FiftyOne Enterprise can easily be used in AWS Lambda Functions and Google Cloud
 Functions.
 
 **Requirements**
 
-We recommend including Teams in your  function’s `requirements.txt` file by
+We recommend including Enterprise in your  function’s `requirements.txt` file by
 passing your token as a build environment variable, e.g.,
 `FIFTYONE_TEAMS_TOKEN` and then using the syntax below to specify the version
-of the Teams client to use:
+of the Enterprise client to use:
 
 .. code-block:: text
 

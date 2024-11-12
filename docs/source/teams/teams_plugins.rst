@@ -1,13 +1,13 @@
 .. _teams-plugins:
 
-FiftyOne Teams Plugins
+FiftyOne Enterprise Plugins
 ======================
 
 .. default-role:: code
 
-FiftyOne Teams provides native support for installing and running
+FiftyOne Enterprise provides native support for installing and running
 :ref:`FiftyOne plugins <fiftyone-plugins>`, which offers powerful opportunities
-to extend and customize the functionality of your Teams deployment to suit your
+to extend and customize the functionality of your Enterprise deployment to suit your
 needs.
 
 .. note::
@@ -17,7 +17,7 @@ needs.
     examples, then check out the
     `FiftyOne plugins <https://github.com/voxel51/fiftyone-plugins>`_
     repository for a growing collection of prebuilt plugins that you can add to
-    your Teams deployment!
+    your Enterprise deployment!
 
 .. _teams-plugins-page:
 
@@ -25,7 +25,7 @@ Plugins page
 ____________
 
 Admins can use the plugins page to upload, manage, and configure permissions
-for plugins that are made available to users of your Teams deployment.
+for plugins that are made available to users of your Enterprise deployment.
 
 Admins can access the plugins page under Settings > Plugins. It displays a
 list of all installed plugins and their operators, as well as the enablement
@@ -40,14 +40,14 @@ and permissions of each.
 Installing a plugin
 ___________________
 
-Admins can install plugins via the Teams UI or Management SDK.
+Admins can install plugins via the Enterprise UI or Management SDK.
 
 .. note::
 
     A plugin is a directory (or ZIP of it) that contains a top-level
     ``fiftyone.yml`` file.
 
-Teams UI
+Enterprise UI
 --------
 
 To install a plugin, click the "Install plugin" button on the plugins page.
@@ -90,9 +90,9 @@ the Management SDK:
 Upgrading a plugin
 __________________
 
-Admins can upgrade plugins at any time through the Teams UI or Management SDK.
+Admins can upgrade plugins at any time through the Enterprise UI or Management SDK.
 
-Teams UI
+Enterprise UI
 --------
 
 To upgrade a plugin, click the plugin's dropdown and select "Upgrade plugin".
@@ -141,7 +141,7 @@ the Management SDK with the `overwrite=True` option:
 Uninstalling a plugin
 _____________________
 
-Admins can uninstall plugins at any time through the Teams UI or Management
+Admins can uninstall plugins at any time through the Enterprise UI or Management
 SDK.
 
 .. note::
@@ -150,7 +150,7 @@ SDK.
     :ref:`enable/disable plugins <teams-plugins-enable-disable>` rather than
     permanently uninstalling them.
 
-Teams UI
+Enterprise UI
 --------
 
 To uninstall a plugin, click the plugin's dropdown and select
@@ -179,10 +179,10 @@ the Management SDK:
 Enabling/disabling plugins
 __________________________
 
-Teams UI
+Enterprise UI
 ---------
 
-When plugins are first installed into Teams, they are enabled by default, along
+When plugins are first installed into Enterprise, they are enabled by default, along
 with any operators they contain.
 
 Admins can enable/disable a plugin and all of its operators by toggling the
@@ -244,7 +244,7 @@ within them via any combination of the permissions described below:
     |                               | on a particular dataset.                                                   |
     +-------------------------------+----------------------------------------------------------------------------+
 
-Teams UI
+Enterprise UI
 --------
 
 To configure the permissions for an operator, first click on the plugin's
@@ -319,7 +319,7 @@ By default, the initial permissions are:
     | Minimum Dataset Permission    | Edit          |
     +-------------------------------+---------------+
 
-Teams UI
+Enterprise UI
 ^^^^^^^^
 
 Default operator permissions can be configured by navigating to the page at
@@ -356,17 +356,17 @@ ____________________
 FiftyOne's plugin framework that allows users to schedule tasks from within the
 App that are executed on a connected workflow orchestrator like Apache Airflow.
 
-With FiftyOne Teams, your team can
+With FiftyOne Enterprise, your team can
 :ref:`upload and permission <teams-plugins-page>` custom operations that your
-users can execute from the Teams App, all of which run against a central
+users can execute from the Enterprise App, all of which run against a central
 orchestrator :ref:`configured by <teams-delegated-orchestrator>` your admins.
 
 Why is this awesome? Your AI stack needs a flexible data-centric component that
 enables you to organize and compute on your data. With delegated operations,
-FiftyOne Teams becomes both a dataset management/visualization tool and a
+FiftyOne Enterprise becomes both a dataset management/visualization tool and a
 workflow automation tool that defines how your data-centric workflows like
 ingestion, curation, and evaluation are performed. In short, think of FiftyOne
-Teams as the single source of truth on which you co-develop your data and
+Enterprise as the single source of truth on which you co-develop your data and
 models together.
 
 What can delegated operations do for you? Get started by installing any of
@@ -432,7 +432,7 @@ and their status.
 Setting up an orchestrator
 __________________________
 
-All delegated operations that have been scheduled by users of a FiftyOne Teams
+All delegated operations that have been scheduled by users of a FiftyOne Enterprise
 deployment will remain queued until a connected orchestrator picks them up and
 executes them.
 
@@ -443,7 +443,7 @@ executes them.
     development environment.
 
     Want to run delegated operations at scale? Contact your Voxel51 support
-    team to discuss adding a production-grade cluster to your FiftyOne Teams
+    team to discuss adding a production-grade cluster to your FiftyOne Enterprise
     deployment.
 
 To set up Airflow as an orchestrator to run delegated operations, you will need
@@ -454,7 +454,7 @@ to:
 -   Install
     `Apache Airflow <https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html>`_
     on the VM
--   Install the appropriate version of the FiftyOne Teams SDK for the Teams
+-   Install the appropriate version of the FiftyOne Enterprise SDK for the Enterprise
     deployment that you are connecting to
 -   Ensure that your :ref:`team's plugins <teams-plugins-page>` are available
     to the Orchestrator, either by installing them on the same machine or by
@@ -494,7 +494,7 @@ configurations, see :ref:`Configuring FiftyOne <configuring-fiftyone>`.
 .. note::
 
     Refer to :ref:`this section <teams-media-cache-config>` for more
-    information on media caching and access in FiftyOne Teams. Make sure that
+    information on media caching and access in FiftyOne Enterprise. Make sure that
     cloud storage permissions are configured if some operators will access
     media.
 
@@ -648,7 +648,7 @@ the appropriate values for your deployment.
     export FIFTYONE_PLUGINS_DIR=...  # eg /mnt/nfs/shared/plugins
 
     #
-    # Copy the values below from your Teams deployment
+    # Copy the values below from your Enterprise deployment
     #
 
     # Provide your encryption key so the orchestrator can access secrets
@@ -700,7 +700,7 @@ still run a check and all runs should be green.
 Managing delegated operations
 _____________________________
 
-Every Teams dataset has a Runs page that allows users to monitor and explore
+Every Enterprise dataset has a Runs page that allows users to monitor and explore
 delegated operations scheduled against that dataset.
 
 .. note::

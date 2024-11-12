@@ -2,12 +2,12 @@
 
 # Pluggable Authentication
 
-FiftyOne Teams v1.6.0 introduces Pluggable Authentication that provides the
-Central Authentication Service (CAS). CAS is a self-contained authentication
-system with two modes (`legacy` and `internal`). Legacy mode uses Auth0.
-Internal mode eliminates the Auth0 external dependency and may run in
-environments without egress to the internet. CAS provides a UI, REST API, and
-JavaScript (JS) Hook mechanism to manage FiftyOne Teams user data and
+FiftyOne Enterprise v1.6.0 introduces Pluggable Authentication that provides
+the Central Authentication Service (CAS). CAS is a self-contained
+authentication system with two modes (`legacy` and `internal`). Legacy mode
+uses Auth0. Internal mode eliminates the Auth0 external dependency and may run
+in environments without egress to the internet. CAS provides a UI, REST API,
+and JavaScript (JS) Hook mechanism to manage FiftyOne Enterprise user data and
 authentication.
 
 ## FiftyOne Authentication Modes
@@ -19,10 +19,10 @@ The setting `FIFTYONE_AUTH_MODE` specifies the authentication mode `legacy` or
 
 ### Legacy Mode
 
-In legacy mode, FiftyOne Teams uses Auth0 for user authentication and
+In legacy mode, FiftyOne Enterprise uses Auth0 for user authentication and
 authorization. This mode requires an external connection to Auth0 endpoints.
 User data is eventually consistent (where changes are reflected across
-FiftyOneTeams eventually). Auth0 contains the configuration for identity
+FiftyOneEnterprise eventually). Auth0 contains the configuration for identity
 providers and the persistence of user data. Auth0 supports multiple providers
 (including SAML). For the supported IdPs, see
 [Auth0 Enterprise Identity Providers](https://auth0.com/docs/authenticate/identity-providers/enterprise-identity-providers).
@@ -31,12 +31,12 @@ providers and the persistence of user data. Auth0 supports multiple providers
 
 ### Internal Mode
 
-In internal mode, FiftyOne Teams the CAS replaces Auth0. FiftyOne Teams will
-not require network egress to external services. User data is immediately
-consistent (where changes are reflected across FiftyOne Teams instantly).
-Directory data is immediately written to MongoDB, and organizations have the
-autonomy to manage their Identity Provider Configuration. Internal mode
-supports
+In internal mode, FiftyOne Enterprise the CAS replaces Auth0. FiftyOne
+Enterprise will not require network egress to external services. User data is
+immediately consistent (where changes are reflected across FiftyOne Enterprise
+instantly). Directory data is immediately written to MongoDB, and organizations
+have the autonomy to manage their Identity Provider Configuration. Internal
+mode supports
 [OpenID Connect (OIDC)](https://openid.net/developers/discover-openid-and-openid-connect/)
 and [OAuth2](https://oauth.net/2/).
 
@@ -52,8 +52,8 @@ and [OAuth2](https://oauth.net/2/).
 
 ![Super Admin UI](/images/teams/cas/cas_api_docs.png)
 
-The Super Admin UI contains FiftyOne Teams deployment wide configurations. When
-logging into FiftyOne Teams as an admin, you are in the context of an
+The Super Admin UI contains FiftyOne Enterprise deployment wide configurations.
+When logging into FiftyOne Enterprise as an admin, you are in the context of an
 organization. Settings are scoped by organization and only apply to that
 organization. The Super Admin UI allows you to administer all organizations and
 global configurations (Identity Providers, Session timeouts, and JS hooks).
@@ -121,7 +121,7 @@ API to ensure a comprehensive transfer of information.
 
 For each user, the migration involves several steps:
 
-1. Creating a FiftyOne Teams user profile via `POST /cas/api/users`.
+1. Creating a FiftyOne Enterprise user profile via `POST /cas/api/users`.
 1. Assigning the user to the default organization through a membership entry.
 1. Linking the user's account to the new authentication provider by creating an
    account reference via `POST /cas/api/accounts`.
@@ -133,7 +133,7 @@ Mode, completing the migration process.
 
 ## Getting Started with Internal Mode
 
-These steps are only required to run FiftyOne Teams in
+These steps are only required to run FiftyOne Enterprise in
 [internal mode](#internal-mode). Please skip when using Auth0 in
 [legacy mode](#legacy-mode).
 
@@ -168,10 +168,10 @@ These steps are only required to run FiftyOne Teams in
 
 ## Syncing with 3rd Party Directories (Open Directory, LDAP, and Active Directory)
 
-Below is an example of how to use JavaScript hooks to sync FiftyOne Teams with
-a corporate directory (such as Open Directory, LDAP, or Active Directory) via
-an intermediary REST API or Identity Provider. The recommended setup is with
-OAuth/OIDC claims, however the example below illustrates a more intricate
+Below is an example of how to use JavaScript hooks to sync FiftyOne Enterprise
+with a corporate directory (such as Open Directory, LDAP, or Active Directory)
+via an intermediary REST API or Identity Provider. The recommended setup is
+with OAuth/OIDC claims, however the example below illustrates a more intricate
 integration.
 
 This example specifically addresses a scenario in which additional actions are

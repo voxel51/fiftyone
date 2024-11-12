@@ -15,7 +15,7 @@ Options:
 -f      Perform a fast build (don't regenerate zoo/plugin docs).
 -c      Perform a clean build (deletes existing build directory).
 -s      Copy static files only (CSS, JS).
--t      Path to fiftyone-teams clone to use for Teams docs
+-t      Path to fiftyone-teams clone to use for Enterprise docs
 "
 }
 

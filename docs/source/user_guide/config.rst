@@ -63,7 +63,7 @@ FiftyOne supports the configuration options described below:
 |                               |                                     |                               |                                                                                        |
 |                               |                                     |                               | `latency` is the default, which uses a dynamic batch size to achieve a target latency  |
 |                               |                                     |                               | of `batcher_target_latency` between calls. The default changes to `size` for the       |
-|                               |                                     |                               | FiftyOne Teams SDK in :ref:`API connection mode <teams-api-connection>`, which targets |
+|                               |                                     |                               | FiftyOne Enterprise SDK in :ref:`API connection mode <teams-api-connection>`, which targets |
 |                               |                                     |                               | a size of `batcher_target_size_bytes` for each call. `static` uses a fixed batch size  |
 |                               |                                     |                               | of `batcher_static_size`.                                                              |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+

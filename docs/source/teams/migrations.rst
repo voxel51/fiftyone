@@ -5,27 +5,27 @@ Migrations
 
 .. default-role:: code
 
-This page describes how to migrate between FiftyOne Teams versions, both for
-:ref:`admins <teams-upgrading>` migrating the core Teams App infrastructure and
+This page describes how to migrate between FiftyOne Enterprise versions, both for
+:ref:`admins <teams-upgrading>` migrating the core Enterprise App infrastructure and
 :ref:`individual users <teams-upgrade-python-sdk>` who need to install a new
-version of the Teams Python SDK.
+version of the Enterprise Python SDK.
 
 Refer to :ref:`this section <teams-migrating-datasets>` to see how to migrate
-existing datasets from open source to Teams.
+existing datasets from open source to Enterprise.
 
 .. _teams-upgrade-python-sdk:
 
 Upgrading your Python SDK
 _________________________
 
-Users can upgrade their FiftyOne Teams Python client to the latest version as
+Users can upgrade their FiftyOne Enterprise Python client to the latest version as
 follows:
 
 .. code-block:: shell
 
     pip install --index-url https://${TOKEN}@pypi.fiftyone.ai –-upgrade fiftyone
 
-A specific FiftyOne Teams client version can be installed like so:
+A specific FiftyOne Enterprise client version can be installed like so:
 
 .. code-block:: shell
 
@@ -33,7 +33,7 @@ A specific FiftyOne Teams client version can be installed like so:
 
 .. note::
 
-    You can find your `TOKEN` by logging into the FiftyOne Teams App and
+    You can find your `TOKEN` by logging into the FiftyOne Enterprise App and
     clicking on the :ref:`account icon <teams-python-sdk>` in the upper right.
 
 .. _teams-upgrading:
@@ -41,12 +41,12 @@ A specific FiftyOne Teams client version can be installed like so:
 Upgrading your deployment
 _________________________
 
-The basic **admin workflow** for upgrading a FiftyOne Teams deployment is:
+The basic **admin workflow** for upgrading a FiftyOne Enterprise deployment is:
 
 -   :ref:`Upgrade <teams-upgrade-python-sdk>` all automated services and
-    individual user workflows that use the Teams Python SDK to an appropriate
+    individual user workflows that use the Enterprise Python SDK to an appropriate
     SDK version
--   Upgrade your core Teams App infrastructure (via Kubernetes, Docker, etc)
+-   Upgrade your core Enterprise App infrastructure (via Kubernetes, Docker, etc)
 -   Upgrade your database's version, as described below
 
 .. note::
@@ -55,7 +55,7 @@ The basic **admin workflow** for upgrading a FiftyOne Teams deployment is:
     including compatible SDK versions, deployment assets, and upgrade
     assistance.
 
-New FiftyOne Teams versions occasionally introduce data model changes that
+New FiftyOne Enterprise versions occasionally introduce data model changes that
 require database migrations when upgrading your deployment.
 
 Admins can check a deployment's current version via the Python SDK as shown
@@ -64,7 +64,7 @@ below:
 .. code-block:: shell
 
     $ fiftyone migrate --info
-    FiftyOne Teams version: 0.7.1
+    FiftyOne Enterprise version: 0.7.1
     FiftyOne compatibility version: 0.15.1
     Database version: 0.15.1
 
@@ -77,9 +77,9 @@ below:
     migration required, but there could be.
 
 `Unlike open source FiftyOne <https://voxel51.com/docs/fiftyone/user_guide/config.html#database-migrations>`_,
-a Teams database is not automatically upgraded when a user connects to the
+a Enterprise database is not automatically upgraded when a user connects to the
 database with a newer Python client version. Instead, an admin must manually
-upgrade your Teams database by installing the newest version of the Teams SDK
+upgrade your Enterprise database by installing the newest version of the Enterprise SDK
 locally, assuming admin privileges, and running the command shown below:
 
 .. code-block:: shell
@@ -103,20 +103,20 @@ locally, assuming admin privileges, and running the command shown below:
 Downgrading your deployment
 ___________________________
 
-Admins can also downgrade their FiftyOne Teams deployment to an older version
+Admins can also downgrade their FiftyOne Enterprise deployment to an older version
 if necessary.
 
 The steps are the same as :ref:`when upgrading <teams-upgrading>`, except that
 you’ll need to know the appropriate database version to migrate down to. Each
-version of Teams corresponds to a version of open source FiftyOne called its
+version of Enterprise corresponds to a version of open source FiftyOne called its
 "open source compatibility version", and this versioning system is used to set
 the database version.
 
-For example, you can downgrade to Teams v0.10 like so:
+For example, you can downgrade to Enterprise v0.10 like so:
 
 .. code-block:: shell
 
-    OS_COMPAT_VERSION=0.18.0  # OS compatibility version for Teams v0.10.0
+    OS_COMPAT_VERSION=0.18.0  # OS compatibility version for Enterprise v0.10.0
 
     export FIFTYONE_DATABASE_ADMIN=true
     fiftyone migrate --all -v ${OS_COMPAT_VERSION}
@@ -128,16 +128,16 @@ For example, you can downgrade to Teams v0.10 like so:
 .. note::
 
     Contact your Voxel51 CS engineer if you need to know the open source
-    compatibility version for a particular Teams version that you wish to
+    compatibility version for a particular Enterprise version that you wish to
     downgrade to.
 
 .. _teams-migrating-datasets:
 
-Migrating datasets to Teams
+Migrating datasets to Enterprise
 ___________________________
 
 Any datasets that you have created via open source FiftyOne can be migrated to
-your Teams deployment by exporting them in
+your Enterprise deployment by exporting them in
 :ref:`FiftyOneDataset <FiftyOneDataset-export>` format:
 
 .. code-block:: python
@@ -154,13 +154,13 @@ your Teams deployment by exporting them in
         export_media=False,
     )
 
-and then re-importing them with the Teams SDK connected to your Teams
+and then re-importing them with the Enterprise SDK connected to your Enterprise
 deployment:
 
 .. code-block:: python
     :linenos:
 
-    # Teams SDK
+    # Enterprise SDK
     import fiftyone as fo
 
     dataset = fo.Dataset.from_dir(
@@ -170,9 +170,9 @@ deployment:
     )
 
 Note that you'll need to update any local filepaths to cloud paths in order to
-use the dataset in Teams.
+use the dataset in Enterprise.
 
-If you need to upload the local media to the cloud, the Teams SDK provides a
+If you need to upload the local media to the cloud, the Enterprise SDK provides a
 builtin utility for this:
 
 .. code-block:: python

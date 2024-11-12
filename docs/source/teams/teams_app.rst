@@ -1,24 +1,24 @@
 .. _teams-app:
 
-FiftyOne Teams App
+FiftyOne Enterprise App
 ==================
 
 .. default-role:: code
 
-The FiftyOne Teams App allows you to visualize, browse, and interact with your
+The FiftyOne Enterprise App allows you to visualize, browse, and interact with your
 individual datasets like you can with the :ref:`FiftyOne App <fiftyone-app>`,
 but with expanded features for organizing, permissionsing, versioning, and
 sharing your team's datasets, all from a centralized web portal.
 
 This page provides a brief overview of some features available only in the
-FiftyOne Teams App.
+FiftyOne Enterprise App.
 
 .. _teams-homepage:
 
 The homepage
 ____________
 
-When you login to the FiftyOne Teams App, you'll land on the homepage pictured
+When you login to the FiftyOne Enterprise App, you'll land on the homepage pictured
 below.
 
 In the top bar of this page, on the left side, the gray number next to
@@ -28,7 +28,7 @@ buttons at the bottom of the page to see different batches of datasets.
 
 .. note::
 
-   You can return to the homepage from any page of the Teams App by clicking on
+   You can return to the homepage from any page of the Enterprise App by clicking on
    the Voxel51 logo in the upper left corner.
 
 .. image:: /images/teams/homepage.png
@@ -126,7 +126,7 @@ description, and tags for the dataset:
 
 .. note::
 
-   What next? Use the :ref:`Teams Python SDK <teams-python-sdk>` to upload new
+   What next? Use the :ref:`Enterprise Python SDK <teams-python-sdk>` to upload new
    samples, labels, and metadata to your dataset. A common approach is to
    automate this process via :ref:`cloud functions <teams-cloud-functions>`.
 
@@ -154,7 +154,7 @@ just as you would via the :ref:`FiftyOne App <fiftyone-app>`.
 Managing a dataset
 __________________
 
-The FiftyOne Teams App provides a number of options for managing existing
+The FiftyOne Enterprise App provides a number of options for managing existing
 datasets, as described below.
 
 You can access these options from the :ref:`Samples tab <teams-using-datasets>`
@@ -167,7 +167,7 @@ right hand side of a row of the dataset listing table and selecting
 
 .. note::
 
-   Did you know? You can also use the :ref:`Teams SDK <teams-python-sdk>` to
+   Did you know? You can also use the :ref:`Enterprise SDK <teams-python-sdk>` to
    programmatically, create, edit, and delete datasets.
 
 .. _teams-dataset-basic-info:
@@ -213,7 +213,7 @@ The "Danger zone" tab is only accessible to users with
 :ref:`Can manage <teams-can-manage>` permissions on the dataset.
 
 From this tab, you can select "Delete entire dataset" to permanently delete a
-dataset from your Teams deployment. You must type the dataset's full name in
+dataset from your Enterprise deployment. You must type the dataset's full name in
 the modal to confirm this action.
 
 .. image:: /images/teams/dataset_danger_zone.png
