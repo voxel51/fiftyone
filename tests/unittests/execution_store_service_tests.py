@@ -142,6 +142,7 @@ def test_get_key(svc):
     svc.set_key(NAME, KEY, "value1")
     key_doc = svc.get_key(NAME, KEY)
     assert key_doc.value == "value1"
+    assert svc.get_key(NAME, "nonexistent") is None
 
 
 @drop_stores
@@ -180,3 +181,77 @@ def test_scoping(svc, svc_with_dataset):
     assert svc.count_keys(NAME) == 0, "Global store should have 0 keys"
     global_list = svc.list_stores_global()
     assert NAME not in global_list, "Global store should not be listed"
+
+
+@drop_datasets
+@drop_stores
+def test_set_key_with_ttl(svc):
+    NAME = "test_store"
+    KEY = "ttl_key"
+    VALUE = "value"
+    TTL = 100
+    svc.set_key(NAME, KEY, VALUE, ttl=TTL)
+    key_doc = svc.get_key(NAME, KEY)
+    assert key_doc.value == VALUE
+    assert key_doc.expires_at is not None
+
+
+@drop_datasets
+@drop_stores
+def test_set_key_with_ttl_and_update(svc):
+    NAME = "test_store"
+    KEY = "ttl_key"
+    VALUE = "value"
+    TTL = 100
+    UPDATED_TTL = 200
+    svc.set_key(NAME, KEY, VALUE, ttl=TTL)
+    key_doc = svc.get_key(NAME, KEY)
+    original_expiry = key_doc.expires_at
+    assert key_doc.value == VALUE
+    svc.update_ttl(NAME, KEY, UPDATED_TTL)
+    updated_key_doc = svc.get_key(NAME, KEY)
+    assert updated_key_doc.expires_at > original_expiry
+
+
+@drop_datasets
+@drop_stores
+def test_set_key_with_dict_value(svc):
+    NAME = "test_store"
+    KEY = "dict_key"
+    VALUE = {"key": "value"}
+    svc.set_key(NAME, KEY, VALUE)
+    key_doc = svc.get_key(NAME, KEY)
+    assert key_doc.value == VALUE
+
+
+@drop_datasets
+@drop_stores
+def test_count_stores(svc, svc_with_dataset):
+    assert svc.count_stores() == 0
+    svc.create_store("store_a")
+    svc.create_store("store_b")
+    assert svc.count_stores() == 2
+    assert svc_with_dataset.count_stores() == 0
+    svc_with_dataset.create_store("store_c")
+    assert svc_with_dataset.count_stores() == 1
+    assert svc.count_stores() == 2
+    svc.set_key("store_x", "key_a", "value")
+    assert svc.count_stores() == 3
+
+
+@drop_datasets
+@drop_stores
+def test_cleanup(svc, svc_with_dataset):
+    A_STORE_NAME = "store_a"
+    B_STORE_NAME = "store_b"
+    KEY_A = "key_a"
+    KEY_B = "key_b"
+    svc.create_store(A_STORE_NAME)
+    svc_with_dataset.set_key(B_STORE_NAME, KEY_B, "value_b")
+    svc.cleanup()
+    assert svc.has_store(A_STORE_NAME) is False
+    assert svc_with_dataset.has_store(B_STORE_NAME) is True
+    assert svc.count_stores() == 0
+    assert svc_with_dataset.count_stores() == 1
+    svc_with_dataset.cleanup()
+    assert svc_with_dataset.has_store(B_STORE_NAME) is False
