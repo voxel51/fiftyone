@@ -8,6 +8,7 @@ FiftyOne panels.
 
 from .query_performance import (
     QueryPerformancePanel,
+    CreateIndexOrSummaryField,
     IndexFieldCreationOperator,
     IndexFieldRemovalConfirmationOperator,
     QueryPerformanceConfigConfirmationOperator,
@@ -15,6 +16,7 @@ from .query_performance import (
 from .data_quality import DataQualityPanel
 
 QUERY_PERFORMANCE_OPERATORS = [
+    CreateIndexOrSummaryField(_builtin=True),
     IndexFieldCreationOperator(_builtin=True),
     IndexFieldRemovalConfirmationOperator(_builtin=True),
     QueryPerformanceConfigConfirmationOperator(_builtin=True),
