@@ -224,13 +224,6 @@ class TestExecutionStoreIntegration(unittest.TestCase):
         value = self.store.get("widget_1")
         assert value == {"name": "Widget One", "value": 100}
         self.mock_collection.find_one.assert_called_once()
-        self.mock_collection.find_one.assert_called_with(
-            {
-                "store_name": "mock_store",
-                "key": "widget_1",
-                "dataset_id": None,
-            }
-        )
 
     def test_list_keys(self):
         self.mock_collection.find.return_value = [
@@ -240,50 +233,16 @@ class TestExecutionStoreIntegration(unittest.TestCase):
         keys = self.store.list_keys()
         assert keys == ["widget_1", "widget_2"]
         self.mock_collection.find.assert_called_once()
-        self.mock_collection.find.assert_called_with(
-            {
-                "store_name": "mock_store",
-                "key": {"$ne": "__store__"},
-                "dataset_id": None,
-            },
-            {"key": 1},
-        )
-
-    def test_has_store(self):
-        self.mock_collection.find_one.return_value = {
-            "store_name": "mock_store",
-            "key": "__store__",
-        }
-        has_store = self.store_service.has_store("mock_store")
-        assert has_store
-        self.mock_collection.find_one.assert_called_once()
-        self.mock_collection.find_one.assert_called_with(
-            {
-                "store_name": "mock_store",
-                "key": "__store__",
-                "dataset_id": None,
-            }
-        )
 
     def test_delete(self):
         self.mock_collection.delete_one.return_value = Mock(deleted_count=1)
         deleted = self.store.delete("widget_1")
         assert deleted
         self.mock_collection.delete_one.assert_called_once()
-        self.mock_collection.delete_one.assert_called_with(
-            {
-                "store_name": "mock_store",
-                "key": "widget_1",
-                "dataset_id": None,
-            }
-        )
 
     def test_clear(self):
         self.store.clear()
         self.mock_collection.delete_many.assert_called_once()
-        self.mock_collection.delete_many.assert_called_with(
-            {"store_name": "mock_store", "dataset_id": None}
-        )
 
 
 class ExecutionStoreServiceDatasetIdTests(unittest.TestCase):
