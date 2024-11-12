@@ -72,7 +72,7 @@ Medium, and following us on social media:
 - [Troubleshooting](#-troubleshooting)
 - [Contributors](#-contributors)
 - [Citation](#-citation)
-- [FAQ](#-faq)
+- [FAQ and additional resources](#-faq)
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 
@@ -340,3 +340,14 @@ if you love it 😊):
   year={2020}
 }
 ```
+
+[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+<div id='-faq'/>
+
+## FAQ & Additional Resources
+
+- [FAQ](https://github.com/voxel51/fiftyone/issues): Reqport you issue in our Github repo.
+- [fiftyone-team](https://github.com/voxel51/fiftyone-teams): Upgrade to FiftyOne Teams to enable multiple users to securely collaborate on the same datasets and models, either on-premises or in the cloud, all built on top of the open source FiftyOne workflows that you’re already relying on.
+- [VoxelGPT](https://github.com/voxel51/voxelgpt): VoxelGPT is an open source plugin for FiftyOne that translates your natural language prompts into actions that organize and explore your data.
+- [Plugins](https://voxel51.com/plugins/): Use FiftyOne Plugins to unlock infinite ways to extend and customize your AI workbench so you can save time, focus on building exceptional AI, and get to production faster.
+- [Vector Search](https://voxel51.com/blog/the-computer-vision-interface-for-vector-search/): Vector search engines solve this problem by transforming complex data into entities called embedding vectors. 
