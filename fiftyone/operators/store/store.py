@@ -1,40 +1,40 @@
 """
-FiftyOne execution store.
+Execution store class.
 
 | Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
-import bson
-import logging
 from typing import Any, Optional
+
+from bson import ObjectId
 
 from fiftyone.operators.store.service import ExecutionStoreService
 
 
-logger = logging.getLogger(__name__)
-
-
 class ExecutionStore(object):
+    """Execution store.
+
+    Args:
+        store_name: the name of the store
+        store_service: an
+            :class:`fiftyone.operators.store.service.ExecutionStoreService`
+    """
+
     def __init__(self, store_name: str, store_service: ExecutionStoreService):
-        """
-        Args:
-            store_name (str): The name of the store.
-            store_service (ExecutionStoreService): The store service instance.
-        """
         self.store_name: str = store_name
         self._store_service: ExecutionStoreService = store_service
 
     @staticmethod
     def create(
-        store_name: str, dataset_id: Optional[bson.ObjectId] = None
+        store_name: str, dataset_id: Optional[ObjectId] = None
     ) -> "ExecutionStore":
         return ExecutionStore(
             store_name, ExecutionStoreService(dataset_id=dataset_id)
         )
 
-    def list_all_stores(self) -> list[str]:
+    def list_stores(self) -> list[str]:
         """Lists all stores in the execution store.
 
         Returns:
@@ -64,7 +64,7 @@ class ExecutionStore(object):
             value: the value to store
             ttl (None): the time-to-live in seconds
         """
-        self._store_service.set_key(self.store_name, key, value, ttl)
+        self._store_service.set_key(self.store_name, key, value, ttl=ttl)
 
     def delete(self, key: str) -> bool:
         """Deletes a key from the store.

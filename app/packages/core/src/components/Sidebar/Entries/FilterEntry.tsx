@@ -90,7 +90,7 @@ const Filter = () => {
         )}
       </Box>
 
-      <Box display="flex" alignItems="center">
+      <Box display="flex" alignItems="center" gap="4px">
         {isFieldVisibilityActive && (
           <Tooltip text="Clear field selection" placement="bottom-center">
             <Box
