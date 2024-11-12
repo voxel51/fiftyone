@@ -58,6 +58,45 @@ Medium, and following us on social media:
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?logo=linkedin&logoColor=white)](https://www.linkedin.com/company/voxel51)
 [![Facebook](https://img.shields.io/badge/Facebook-1877F2?logo=facebook&logoColor=white)](https://www.facebook.com/voxel51)
 
+## Prerequisites
+
+The fiftyone README provides instructions for how to install and get started with some code samples. These instructions assume that you have Python and Git installed already, and that Python is installed with a system installer. In this section, you can find more detailed installation guides per OS, Windows, Linux and MacOS. If you run into an issue, please feel free to open a discussion topic!
+
+Also, we recommend setting up a separate environment for running your test.
+
+### Guides per Operating System
+
+These links go to pages that include instructions on how to install fiftyone and all required software (including Python and Git)
+
+Windows
+macOS
+Linux
+Ubuntu
+Red Hat, CentOS, Amazon Linux and Fedora
+Guides for using specific Python distributions
+
+Installation with Anaconda/Miniconda
+Guides for Cloud Service Providers
+
+Installation with AzureML
+Installation with Sagemaker
+Guide for Docker
+
+Installation using Docker
+Connect with us
+
+Visit this page to learn more on how to connect with us!
+
+## 📝 Installation Guide
+
+OpenVINO Notebooks require Python and Git. To get started, select the guide for your operating system or environment:
+
+| [Windows](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [Linux](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [macOS](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [Red Hat](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [CentOS](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [Azure ML](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [Docker](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [Amazon SageMaker](https://github.com/voxel51/fiftyone/blob/develop/README.md) |
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+
+[![-----------------------------------------------------](https://user-images.githubusercontent.com/10940214/155750931-fc094349-b6ec-4e1f-9f9a-113e67941119.jpg)]()
+
+
 ## Installation
 
 You can install the latest stable version of FiftyOne via `pip`:
