@@ -17,7 +17,7 @@ from ..operator import Operator, OperatorConfig
 from ..panel import Panel, PanelConfig
 import fiftyone.operators as foo
 from fiftyone.operators.categories import Categories
-from fiftyone.operators.utils import create_summary_field_inputs, is_new
+from fiftyone.operators.utils import is_new
 import fiftyone.operators.types as types
 import fiftyone.core.fields as fof
 
@@ -129,13 +129,14 @@ def _get_frame_fields(ctx):
     return sorted(result)
 
 
-class CreateIndexOrSummaryField(foo.Operator):
+class CreateIndexOrSummaryFieldOperator(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
             name="create_index_or_summary_field",
             label="Create index or summary field",
             dynamic=True,
+            # unlisted=True,
         )
 
     def resolve_input(self, ctx):
@@ -413,124 +414,6 @@ def _create_index_or_summary_field_inputs(ctx, inputs):
     return field_type
 
 
-class IndexFieldCreationOperator(Operator):
-    @property
-    def config(self):
-        return OperatorConfig(
-            name="index_field_creation_operator",
-            label="Index Field Creation Operator",
-            dynamic=True,
-            unlisted=True,
-        )
-
-    def resolve_input(self, ctx):
-        inputs = Object()
-
-        field_choices = TabsView()
-        field_choices.add_choice("index_field", label="Index Field")
-        if ctx.dataset._has_frame_fields:
-            field_choices.add_choice("summary_field", label="Summary Field")
-        default_field = (
-            "summary_field"
-            if ctx.params.get("is_frame_filter")
-            else "index_field"
-        )
-        inputs.enum(
-            "field_type",
-            field_choices.values(),
-            required=True,
-            default=default_field,
-            label="CREATE NEW INDEX",
-            description="Choose your field to create: index field for faster queries, summary field for frame aggregation",
-            view=field_choices,
-        )
-        field_type = ctx.params.get("field_type", "index_field")
-
-        fields = []
-        if field_type == "index_field":
-            dropdown_choices = AutocompleteView(
-                label="Choose your field to create index"
-            )
-            fields = _get_indexable_paths(ctx) or []
-            for index in fields:
-                dropdown_choices.add_choice(
-                    index,
-                    label=index,
-                    description=f"Index {index}",
-                )
-
-        elif field_type == "summary_field":
-            dropdown_choices = AutocompleteView(
-                label="Choose your frame field to create summary field"
-            )
-            create_summary_field_inputs(ctx, inputs)
-        path = ctx.params.get("nonperformant_field")
-        if fields:
-            inputs.enum(
-                "path",
-                dropdown_choices.values(),
-                default=(
-                    path
-                    if any(
-                        choice.value == path
-                        for choice in dropdown_choices.choices
-                    )
-                    else dropdown_choices.choices[0].value
-                ),
-                view=dropdown_choices,
-            )
-        return Property(inputs)
-
-    def execute(self, ctx):
-        field_type = ctx.params.get("field_type", "index_field")
-        field_choice = ctx.params.get("path", "None provided")
-        ctx.ops.open_panel("query_performance_panel")
-        if field_choice != "None provided":
-            if field_type == "index_field":
-                try:
-                    ctx.dataset.create_index(
-                        field_choice, unique=False, wait=False
-                    )
-                    ctx.trigger("reload_dataset")
-                except Exception:
-                    ctx.dataset.create_index(field_choice)
-                return {
-                    "field_to_create": field_choice,
-                    "field_type": "Index Field",
-                }
-            else:
-                try:
-                    summary_field_name = ctx.params.get("field_name", None)
-                    sidebar_group = ctx.params.get("sidebar_group", None)
-                    include_counts = ctx.params.get("include_counts", False)
-                    group_by = ctx.params.get("group_by", None)
-                    read_only = ctx.params.get("read_only", True)
-
-                    if not sidebar_group:
-                        sidebar_group = False
-
-                    ctx.dataset.create_summary_field(
-                        field_choice,
-                        field_name=summary_field_name,
-                        sidebar_group=sidebar_group,
-                        include_counts=include_counts,
-                        group_by=group_by,
-                        read_only=read_only,
-                        create_index=True,
-                    )
-
-                    ctx.trigger("reload_dataset")
-
-                    return {
-                        "field_to_create": field_choice,
-                        "field_type": "Summary Field",
-                    }
-                except Exception as e:
-                    return {"field_to_create": str(e), "field_type": "N/A"}
-        else:
-            return {"field_to_create": "None provided", "field_type": "N/A"}
-
-
 class IndexFieldRemovalConfirmationOperator(Operator):
     @property
     def config(self):
@@ -776,14 +659,14 @@ class QueryPerformancePanel(Panel):
         self._build_view(ctx)
         ctx.ops.clear_sidebar_filters()
 
-    def create_index_or_summary(self, ctx):
+    def create_index_or_summary_field(self, ctx):
         if ctx.user.dataset_permission in PERMISSION:
             ctx.ops.track_event(
-                "index_field_creation_operator",
+                "create_index_or_summary_field",
                 {"location": "query_performance_panel"},
             )
             ctx.prompt(
-                "index_field_creation_operator",
+                "create_index_or_summary_field",
                 on_success=self.refresh,
             )
         else:
@@ -815,7 +698,7 @@ class QueryPerformancePanel(Panel):
             v_stack.btn(
                 "add_btn",
                 label="Create index",
-                on_click=self.create_index_or_summary,
+                on_click=self.create_index_or_summary_field,
                 variant="contained",
             )
             return Property(
@@ -876,7 +759,7 @@ class QueryPerformancePanel(Panel):
                 button_menu.btn(
                     "add_btn",
                     label="Create Index",
-                    on_click=self.create_index_or_summary,
+                    on_click=self.create_index_or_summary_field,
                     variant="contained",
                 )
 
