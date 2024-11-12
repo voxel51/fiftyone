@@ -11,6 +11,8 @@ import ResultComponent from "./Result";
 import useOnSelect from "./useOnSelect";
 import type { ResultsAtom } from "./useSelected";
 import useSelected from "./useSelected";
+import * as schemaAtoms from "@fiftyone/state/src/recoil/schema";
+import Bolt from "@mui/icons-material/Bolt";
 
 const StringFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
@@ -31,6 +33,7 @@ const NamedStringFilterHeader = styled.div`
   display: flex;
   justify-content: space-between;
   text-overflow: ellipsis;
+  align-items: center;
 `;
 
 interface Props {
@@ -73,14 +76,20 @@ const StringFilter = ({
     path,
     resultsAtom
   );
+  const fieldType = useRecoilValue(schemaAtoms.filterFields(path));
+  const isGroup = fieldType.length > 1;
   const onSelect = useOnSelect(modal, path, selectedAtom);
   const skeleton =
     useRecoilValue(isInKeypointsField(path)) && name === "keypoints";
+  const indexed = useRecoilValue(fos.pathHasIndexes(path));
   const theme = useTheme();
   const queryPerformance = useRecoilValue(fos.queryPerformance);
   if (named && !queryPerformance && !results?.count) {
     return null;
   }
+
+  const showQueryPerformanceIcon =
+    isGroup && queryPerformance && indexed && !modal;
 
   return (
     <NamedStringFilterContainer
@@ -95,6 +104,9 @@ const StringFilter = ({
           template={({ label, hoverTarget }) => (
             <NamedStringFilterHeader>
               <span ref={hoverTarget}>{label}</span>
+              {showQueryPerformanceIcon && (
+                <Bolt fontSize={"small"} sx={{ color: theme.action.active }} />
+              )}
             </NamedStringFilterHeader>
           )}
         />

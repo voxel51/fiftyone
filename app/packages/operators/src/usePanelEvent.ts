@@ -36,7 +36,7 @@ export default function usePanelEvent() {
       panel_state: currentPanelState ?? (panelState?.state || {}),
     };
 
-    const eventCallback = (result) => {
+    const eventCallback = (result, opts) => {
       decrement(panelId);
       const msg =
         result.errorMessage || result.error || "Failed to execute operation";
@@ -45,7 +45,7 @@ export default function usePanelEvent() {
         notify({ msg: computedMsg, variant: "error" });
         console.error(result?.error);
       }
-      options?.callback?.(result);
+      options?.callback?.(result, opts);
     };
 
     if (prompt) {

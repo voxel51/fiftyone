@@ -41,6 +41,9 @@ const showExpandedTooltip = atom({
 const QueryPerformanceIcon = () => {
   const theme = useTheme();
   const [showExpanded, setShowExpanded] = useRecoilState(showExpandedTooltip);
+  const lightningBoltColor = showExpanded
+    ? theme.custom.lightning
+    : theme.text.secondary;
   const PANEL_NAME = "query_performance_panel";
   const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
   const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
@@ -109,7 +112,7 @@ const QueryPerformanceIcon = () => {
         },
       }}
     >
-      <LightningBolt style={{ color: "#f5b700" }} />
+      <LightningBolt style={{ color: lightningBoltColor }} />
     </Tooltip>
   );
 };

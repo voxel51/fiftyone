@@ -982,8 +982,8 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         setResult(result.result);
         setError(result.error);
         setIsDelegated(result.delegated);
-        handlers.onSuccess?.(result);
-        callback?.(result);
+        handlers.onSuccess?.(result, { ctx });
+        callback?.(result, { ctx });
         if (result.error) {
           const isAbortError =
             result.error.name === "AbortError" ||
@@ -998,7 +998,9 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
           }
         }
       } catch (e) {
-        callback?.(new OperatorResult(operator, null, ctx.executor, e, false));
+        callback?.(new OperatorResult(operator, null, ctx.executor, e, false), {
+          ctx,
+        });
         const isAbortError =
           e.name === "AbortError" || e instanceof DOMException;
         const msg = e.message || "Failed to execute an operation";

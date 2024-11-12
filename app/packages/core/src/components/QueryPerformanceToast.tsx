@@ -54,6 +54,10 @@ const QueryPerformanceToast = ({
     return () => window.removeEventListener("queryperformance", listen);
   }, []);
 
+  const onHandleClose = (event, reason) => {
+    setShown(false);
+  };
+
   if (!element) {
     throw new Error("no query performance element");
   }
@@ -69,6 +73,7 @@ const QueryPerformanceToast = ({
 
   return createPortal(
     <Toast
+      onHandleClose={onHandleClose}
       duration={SHOWN_FOR}
       layout={{
         bottom: "100px !important",

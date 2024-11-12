@@ -282,6 +282,98 @@ class TestDatetimeLightningQueries(unittest.IsolatedAsyncioTestCase):
         )
 
 
+class TestIntLightningQueries(unittest.IsolatedAsyncioTestCase):
+    @drop_async_dataset
+    async def test_ints(self, dataset: fo.Dataset):
+        dataset.add_sample_field("frame_numbers", fo.FrameNumberField)
+        dataset.add_sample_field("frame_supports", fo.FrameSupportField)
+        dataset.add_sample_field("ints", fo.IntField)
+        keys = _add_samples(
+            dataset,
+            dict(ints=1, frame_numbers=1, frame_supports=[1, 1]),
+            dict(ints=2, frame_numbers=2, frame_supports=[2, 2]),
+        )
+
+        query = """
+            query Query($input: LightningInput!) {
+                lightning(input: $input) {
+                    ... on IntLightningResult {
+                        max
+                        min
+                        path
+                    }
+                }
+            }
+        """
+
+        result = await _execute(
+            query,
+            dataset,
+            (fo.FrameNumberField, fo.FrameSupportField, fo.IntField),
+            keys,
+        )
+
+        self.assertListEqual(
+            result.data["lightning"],
+            [
+                {
+                    "max": 2.0,
+                    "min": 1.0,
+                    "path": "classification.frame_numbers",
+                },
+                {
+                    "max": 2.0,
+                    "min": 1.0,
+                    "path": "classification.frame_supports",
+                },
+                {"max": 2.0, "min": 1.0, "path": "classification.ints"},
+                {
+                    "max": 2.0,
+                    "min": 1.0,
+                    "path": "detections.detections.frame_numbers",
+                },
+                {
+                    "max": 2.0,
+                    "min": 1.0,
+                    "path": "detections.detections.frame_supports",
+                },
+                {"max": 2.0, "min": 1.0, "path": "detections.detections.ints"},
+                {"max": 2.0, "min": 1.0, "path": "frame_numbers"},
+                {"max": 2.0, "min": 1.0, "path": "frame_supports"},
+                {
+                    "max": 2.0,
+                    "min": 1.0,
+                    "path": "frames.classification.frame_numbers",
+                },
+                {
+                    "max": 2.0,
+                    "min": 1.0,
+                    "path": "frames.classification.frame_supports",
+                },
+                {"max": 2.0, "min": 1.0, "path": "frames.classification.ints"},
+                {
+                    "max": 2.0,
+                    "min": 1.0,
+                    "path": "frames.detections.detections.frame_numbers",
+                },
+                {
+                    "max": 2.0,
+                    "min": 1.0,
+                    "path": "frames.detections.detections.frame_supports",
+                },
+                {
+                    "max": 2.0,
+                    "min": 1.0,
+                    "path": "frames.detections.detections.ints",
+                },
+                {"max": 2.0, "min": 1.0, "path": "frames.frame_numbers"},
+                {"max": 2.0, "min": 1.0, "path": "frames.frame_supports"},
+                {"max": 2.0, "min": 1.0, "path": "frames.ints"},
+                {"max": 2.0, "min": 1.0, "path": "ints"},
+            ],
+        )
+
+
 class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
     @drop_async_dataset
     async def test_floats(self, dataset: fo.Dataset):
