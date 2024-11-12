@@ -34,7 +34,6 @@ from fiftyone.operators.panels import QUERY_PERFORMANCE_OPERATORS
 from fiftyone.operators.panels.data_quality import (
     OPERATORS as DATA_QUALITY_OPERATORS,
 )
-from fiftyone.operators.utils import create_summary_field_inputs
 
 
 class EditFieldInfo(foo.Operator):

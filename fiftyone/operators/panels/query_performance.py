@@ -29,7 +29,14 @@ from ..operator import Operator, OperatorConfig
 from ..panel import Panel, PanelConfig
 
 
-PERMISSION = [DatasetPermission.EDIT.value, DatasetPermission.MANAGE.value]
+def _has_edit_permission(ctx):
+    if ctx.user is None:
+        return True
+
+    return ctx.user.dataset_permission in [
+        DatasetPermission.EDIT.value,
+        DatasetPermission.MANAGE.value,
+    ]
 
 
 def _get_existing_indexes(ctx):
@@ -77,7 +84,7 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
             name="create_index_or_summary_field",
             label="Create index or summary field",
             dynamic=True,
-            # unlisted=True,
+            unlisted=True,
         )
 
     def resolve_input(self, ctx):
@@ -132,6 +139,8 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
                 read_only=read_only,
                 create_index=create_index,
             )
+
+        ctx.trigger("reload_dataset")
 
 
 def _create_index_or_summary_field_inputs(ctx, inputs):
@@ -553,7 +562,7 @@ class QueryPerformancePanel(Panel):
         ctx.panel.set_data("table", table_data)
 
     def on_click_delete(self, ctx):
-        if ctx.user.dataset_permission in PERMISSION:
+        if _has_edit_permission(ctx):
             row = int(ctx.params.get("row"))
             table_data = self._get_index_table_data(ctx)
             field_name = table_data["rows"][row][0]
@@ -601,7 +610,7 @@ class QueryPerformancePanel(Panel):
         ctx.ops.clear_sidebar_filters()
 
     def create_index_or_summary_field(self, ctx):
-        if ctx.user.dataset_permission in PERMISSION:
+        if _has_edit_permission(ctx):
             ctx.ops.track_event(
                 "create_index_or_summary_field",
                 {"location": "query_performance_panel"},
@@ -696,7 +705,7 @@ class QueryPerformancePanel(Panel):
                 icon="settings",
             )
 
-            if ctx.user.dataset_permission in PERMISSION:
+            if _has_edit_permission(ctx):
                 button_menu.btn(
                     "add_btn",
                     label="Create Index",
@@ -717,7 +726,7 @@ class QueryPerformancePanel(Panel):
             table.add_column("Size", label="Size")
             table.add_column("Type", label="Type")
 
-            if ctx.user.dataset_permission in PERMISSION:
+            if _has_edit_permission(ctx):
                 # Calculating row conditionality for the delete button
                 rows = (
                     [False] * (len(all_indices) - len(droppable_index))
