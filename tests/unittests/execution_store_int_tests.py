@@ -91,6 +91,73 @@ def test_set_get_key(svc):
 
 @drop_stores
 @drop_datasets
+def test_list_global_stores(svc, svc_with_dataset):
+    NO_DATASET_STORE_NAME = "dataset_less_store"
+    DATASET_STORE_NAME = "dataset_store"
+    KEY_ONLY_STORE_NAME = "key_only_store"
+
+    svc.create_store(NO_DATASET_STORE_NAME)
+    svc_with_dataset.create_store(DATASET_STORE_NAME)
+    svc_with_dataset.set_key(DATASET_STORE_NAME, "key", "value")
+    svc_with_dataset.set_key(KEY_ONLY_STORE_NAME, "key", "value")
+
+    global_list = svc.list_stores_global()
+    store_names = [store.store_name for store in global_list]
+    dataset_ids = [store.dataset_id for store in global_list]
+    assert len(global_list) == 3
+    assert NO_DATASET_STORE_NAME in store_names
+    assert DATASET_STORE_NAME in store_names
+    assert KEY_ONLY_STORE_NAME in store_names
+    assert None in dataset_ids
+    assert svc_with_dataset._dataset_id in dataset_ids
+
+
+@drop_stores
+@drop_datasets
+def test_has_store(svc, svc_with_dataset):
+    NAME = "test_store"
+    KEY = "key1"
+    svc.set_key(NAME, KEY, "value1")
+    assert svc.has_store(NAME)
+    assert svc.has_store("nonexistent") is False
+    assert svc_with_dataset.has_store(NAME) is False
+
+
+@drop_stores
+@drop_datasets
+def test_has_key(svc, svc_with_dataset):
+    NAME = "test_store"
+    KEY = "key1"
+    svc.set_key(NAME, KEY, "value1")
+    assert svc.has_key(NAME, KEY)
+    assert svc.has_key(NAME, "nonexistent") is False
+    assert svc_with_dataset.has_key(NAME, KEY) is False
+
+
+@drop_stores
+@drop_datasets
+def test_get_key(svc):
+    NAME = "test_store"
+    KEY = "key1"
+    svc.set_key(NAME, KEY, "value1")
+    key_doc = svc.get_key(NAME, KEY)
+    assert key_doc.value == "value1"
+
+
+@drop_stores
+@drop_datasets
+def test_get_store_with_only_keys(svc):
+    NAME = "test_store"
+    KEY = "key1"
+    svc.set_key(NAME, KEY, "value1")
+    store = svc.get_store(NAME)
+    assert store.store_name == NAME
+    key_doc = svc.get_key(NAME, KEY)
+    assert key_doc.value == "value1"
+
+
+@drop_stores
+@drop_datasets
 def test_scoping(svc, svc_with_dataset):
     NAME = "test_store"
     KEY = "test_key"
@@ -113,26 +180,3 @@ def test_scoping(svc, svc_with_dataset):
     assert svc.count_keys(NAME) == 0, "Global store should have 0 keys"
     global_list = svc.list_stores_global()
     assert NAME not in global_list, "Global store should not be listed"
-
-
-@drop_stores
-@drop_datasets
-def test_list_global_stores(svc, svc_with_dataset):
-    NO_DATASET_STORE_NAME = "dataset_less_store"
-    DATASET_STORE_NAME = "dataset_store"
-    KEY_ONLY_STORE_NAME = "key_only_store"
-
-    svc.create_store(NO_DATASET_STORE_NAME)
-    svc_with_dataset.create_store(DATASET_STORE_NAME)
-    svc_with_dataset.set_key(DATASET_STORE_NAME, "key", "value")
-    svc_with_dataset.set_key(KEY_ONLY_STORE_NAME, "key", "value")
-
-    global_list = svc.list_stores_global()
-    store_names = [store.store_name for store in global_list]
-    dataset_ids = [store.dataset_id for store in global_list]
-    assert len(global_list) == 3
-    assert NO_DATASET_STORE_NAME in store_names
-    assert DATASET_STORE_NAME in store_names
-    assert KEY_ONLY_STORE_NAME in store_names
-    assert None in dataset_ids
-    assert svc_with_dataset._dataset_id in dataset_ids

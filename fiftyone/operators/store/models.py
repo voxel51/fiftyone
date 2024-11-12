@@ -51,3 +51,8 @@ class StoreDocument(KeyDocument):
 
     key: str = "__store__"
     value: Optional[dict[str, Any]] = None
+
+    @property
+    def metadata(self) -> dict[str, Any]:
+        """The metadata associated with the store."""
+        return self.value or {}
