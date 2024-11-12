@@ -8,14 +8,14 @@ FiftyOne panels.
 
 from .query_performance import (
     QueryPerformancePanel,
-    IndexFieldCreationOperator,
+    CreateIndexOrSummaryFieldOperator,
     IndexFieldRemovalConfirmationOperator,
     QueryPerformanceConfigConfirmationOperator,
 )
 from .data_quality import DataQualityPanel
 
 QUERY_PERFORMANCE_OPERATORS = [
-    IndexFieldCreationOperator(_builtin=True),
+    CreateIndexOrSummaryFieldOperator(_builtin=True),
     IndexFieldRemovalConfirmationOperator(_builtin=True),
     QueryPerformanceConfigConfirmationOperator(_builtin=True),
 ]
