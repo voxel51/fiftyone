@@ -15,6 +15,8 @@ import fiftyone.core.storage as fos
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 from fiftyone.core.odm.workspace import default_workspace_factory
+
+# pylint: disable=no-name-in-module
 from fiftyone.operators.builtins.panels.model_evaluation import EvaluationPanel
 
 
@@ -66,8 +68,9 @@ def _edit_field_info_inputs(ctx, inputs):
             }
         )
 
+    path_keys = list(schema.keys())
     path_selector = types.AutocompleteView()
-    for key in sorted(schema.keys()):
+    for key in path_keys:
         path_selector.add_choice(key, label=key)
 
     inputs.enum(
@@ -239,7 +242,7 @@ def _clone_sample_field_inputs(ctx, inputs):
     schema = target_view.get_field_schema(flat=True)
     full_schema = ctx.dataset.get_field_schema(flat=True)
 
-    field_keys = sorted(schema.keys())
+    field_keys = list(schema.keys())
     field_selector = types.AutocompleteView()
     for key in field_keys:
         field_selector.add_choice(key, label=key)
@@ -367,7 +370,7 @@ def _clone_frame_field_inputs(ctx, inputs):
     schema = target_view.get_frame_field_schema(flat=True)
     full_schema = ctx.dataset.get_frame_field_schema(flat=True)
 
-    field_keys = sorted(schema.keys())
+    field_keys = list(schema.keys())
     field_selector = types.AutocompleteView()
     for key in field_keys:
         field_selector.add_choice(key, label=key)
@@ -454,8 +457,9 @@ def _rename_sample_field_inputs(ctx, inputs):
         prop.invalid = True
         return
 
+    field_keys = list(schema.keys())
     field_selector = types.AutocompleteView()
-    for key in sorted(schema.keys()):
+    for key in field_keys:
         field_selector.add_choice(key, label=key)
 
     field_prop = inputs.enum(
@@ -549,8 +553,9 @@ def _rename_frame_field_inputs(ctx, inputs):
         prop.invalid = True
         return
 
+    field_keys = list(schema.keys())
     field_selector = types.AutocompleteView()
-    for key in sorted(schema.keys()):
+    for key in field_keys:
         field_selector.add_choice(key, label=key)
 
     field_prop = inputs.enum(
@@ -664,7 +669,7 @@ def _clear_sample_field_inputs(ctx, inputs):
     schema.pop("id", None)
     schema.pop("filepath", None)
 
-    field_keys = sorted(schema.keys())
+    field_keys = list(schema.keys())
     field_selector = types.AutocompleteView()
     for key in field_keys:
         field_selector.add_choice(key, label=key)
@@ -764,7 +769,7 @@ def _clear_frame_field_inputs(ctx, inputs):
     schema.pop("id", None)
     schema.pop("frame_number", None)
 
-    field_keys = sorted(schema.keys())
+    field_keys = list(schema.keys())
     field_selector = types.AutocompleteView()
     for key in field_keys:
         field_selector.add_choice(key, label=key)
@@ -907,8 +912,9 @@ def _delete_sample_field_inputs(ctx, inputs):
         prop.invalid = True
         return
 
+    field_keys = list(schema.keys())
     field_selector = types.AutocompleteView()
-    for key in sorted(schema.keys()):
+    for key in field_keys:
         field_selector.add_choice(key, label=key)
 
     field_prop = inputs.enum(
@@ -976,8 +982,9 @@ def _delete_frame_field_inputs(ctx, inputs):
         prop.invalid = True
         return
 
+    field_keys = list(schema.keys())
     field_selector = types.AutocompleteView()
-    for key in sorted(schema.keys()):
+    for key in field_keys:
         field_selector.add_choice(key, label=key)
 
     field_prop = inputs.enum(
@@ -1021,9 +1028,34 @@ class CreateIndex(foo.Operator):
                 }
             )
 
+        categorical_field_types = (
+            fo.StringField,
+            fo.BooleanField,
+            fo.ObjectIdField,
+        )
+        numeric_field_types = (
+            fo.FloatField,
+            fo.IntField,
+            fo.DateField,
+            fo.DateTimeField,
+        )
+        valid_field_types = categorical_field_types + numeric_field_types
+
+        path_keys = [
+            p
+            for p, f in schema.items()
+            if (
+                isinstance(f, valid_field_types)
+                or (
+                    isinstance(f, fo.ListField)
+                    and isinstance(f.field, valid_field_types)
+                )
+            )
+        ]
+
         indexes = set(ctx.dataset.list_indexes())
 
-        field_keys = sorted(p for p in schema if p not in indexes)
+        field_keys = [p for p in path_keys if p not in indexes]
         field_selector = types.AutocompleteView()
         for key in field_keys:
             field_selector.add_choice(key, label=key)
@@ -1051,7 +1083,7 @@ class CreateIndex(foo.Operator):
         field_name = ctx.params["field_name"]
         unique = ctx.params.get("unique", False)
 
-        ctx.dataset.create_index(field_name, unique=unique)
+        ctx.dataset.create_index(field_name, unique=unique, wait=False)
 
 
 class DropIndex(foo.Operator):
@@ -1071,7 +1103,8 @@ class DropIndex(foo.Operator):
         default_indexes = set(ctx.dataset._get_default_indexes())
         if ctx.dataset._has_frame_fields():
             default_indexes.update(
-                ctx.dataset._get_default_indexes(frames=True)
+                ctx.dataset._FRAMES_PREFIX + path
+                for path in ctx.dataset._get_default_indexes(frames=True)
             )
 
         indexes = [i for i in indexes if i not in default_indexes]
@@ -1132,6 +1165,9 @@ class CreateSummaryField(foo.Operator):
         read_only = ctx.params.get("read_only", True)
         create_index = ctx.params.get("create_index", True)
 
+        if not field_name:
+            field_name = None
+
         if not sidebar_group:
             sidebar_group = False
 
@@ -1159,24 +1195,34 @@ def _create_summary_field_inputs(ctx, inputs):
             }
         )
 
-    categorical_field_types = (fo.StringField, fo.BooleanField)
+    categorical_field_types = (
+        fo.StringField,
+        fo.BooleanField,
+        fo.ObjectIdField,
+    )
     numeric_field_types = (
         fo.FloatField,
         fo.IntField,
         fo.DateField,
         fo.DateTimeField,
     )
+    valid_field_types = categorical_field_types + numeric_field_types
 
-    schema = {
-        p: f
+    field_keys = [
+        p
         for p, f in schema.items()
         if (
-            isinstance(f, categorical_field_types)
-            or isinstance(f, numeric_field_types)
+            isinstance(f, valid_field_types)
+            or (
+                isinstance(f, fo.ListField)
+                and isinstance(f.field, valid_field_types)
+            )
         )
-    }
+    ]
 
-    path_keys = list(schema.keys())
+    summarized_fields = set(ctx.dataset._get_summarized_fields_map())
+
+    path_keys = [p for p in field_keys if p not in summarized_fields]
     path_selector = types.AutocompleteView()
     for key in path_keys:
         path_selector.add_choice(key, label=key)
@@ -1208,7 +1254,7 @@ def _create_summary_field_inputs(ctx, inputs):
         default=default_field_name,
     )
 
-    if field_name and field_name in path_keys:
+    if field_name and field_name in schema:
         field_name_prop.invalid = True
         field_name_prop.error_message = f"Field '{field_name}' already exists"
         inputs.str(
@@ -1254,7 +1300,7 @@ def _create_summary_field_inputs(ctx, inputs):
         )
     elif isinstance(field, numeric_field_types):
         group_prefix = path.rsplit(".", 1)[0] + "."
-        group_by_keys = sorted(p for p in schema if p.startswith(group_prefix))
+        group_by_keys = [p for p in field_keys if p.startswith(group_prefix)]
         group_by_selector = types.AutocompleteView()
         for group in group_by_keys:
             group_by_selector.add_choice(group, label=group)
