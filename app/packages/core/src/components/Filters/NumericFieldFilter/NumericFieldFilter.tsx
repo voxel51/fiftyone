@@ -1,4 +1,4 @@
-import { LoadingDots } from "@fiftyone/components";
+import { LoadingDots, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import * as schemaAtoms from "@fiftyone/state/src/recoil/schema";
 import React, { Suspense } from "react";
@@ -8,6 +8,7 @@ import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { Button } from "../../utils";
 import RangeSlider from "./RangeSlider";
 import * as state from "./state";
+import Bolt from "@mui/icons-material/Bolt";
 
 const Container = styled.div`
   margin: 3px;
@@ -17,6 +18,7 @@ const Container = styled.div`
 const Header = styled.div`
   display: flex;
   justify-content: space-between;
+  align-items: center;
 `;
 
 const Box = styled.div`
@@ -44,9 +46,11 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   const [showRange, setShowRange] = React.useState(!isGroup);
   const field = fos.useAssertedRecoilValue(fos.field(path));
   const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const indexed = useRecoilValue(fos.pathHasIndexes(path));
   const hasBounds = useRecoilValue(
     state.hasBounds({ path, modal, shouldCalculate: !queryPerformance })
   );
+  const theme = useTheme();
 
   if (!queryPerformance && named && !hasBounds) {
     return null;
@@ -57,7 +61,8 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   };
 
   const showButton = isGroup && queryPerformance && !showRange && !modal;
-
+  const showQueryPerformanceIcon =
+    isGroup && queryPerformance && indexed && !modal;
   return (
     <Container onClick={(e) => e.stopPropagation()}>
       {named && name && (
@@ -68,6 +73,9 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
           template={({ label, hoverTarget }) => (
             <Header>
               <span ref={hoverTarget}>{label}</span>
+              {showQueryPerformanceIcon && (
+                <Bolt fontSize={"small"} sx={{ color: theme.action.active }} />
+              )}
             </Header>
           )}
         />
