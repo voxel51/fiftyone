@@ -6,30 +6,29 @@ FiftyOne Server queries.
 |
 """
 
+import logging
+import typing as t
 from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
-import logging
-import typing as t
 
 import eta.core.utils as etau
+import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 import strawberry as gql
 from bson import ObjectId, json_util
 
 import fiftyone as fo
-import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 import fiftyone.constants as foc
 import fiftyone.core.context as focx
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
-from fiftyone.core.odm import SavedViewDocument
 import fiftyone.core.stages as fosg
-from fiftyone.core.state import SampleField, serialize_fields
 import fiftyone.core.uid as fou
-from fiftyone.core.utils import run_sync_task
 import fiftyone.core.view as fov
-
 import fiftyone.server.aggregate as fosa
+from fiftyone.core.odm import SavedViewDocument
+from fiftyone.core.state import SampleField, serialize_fields
+from fiftyone.core.utils import run_sync_task
 from fiftyone.server.aggregations import aggregate_resolver
 from fiftyone.server.color import ColorBy, ColorScheme
 from fiftyone.server.data import Info
@@ -48,7 +47,6 @@ from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.stage_definitions import stage_definitions
 from fiftyone.server.utils import from_dict
 from fiftyone.server.workspace import Workspace
-
 
 ID = gql.scalar(
     t.NewType("ID", str),
@@ -257,6 +255,10 @@ class Dataset:
     frame_collection_name: gql.Private[t.Optional[str]]
     sample_collection_name: gql.Private[t.Optional[str]]
 
+    # Teams only
+    head_name: t.Optional[str]
+    snapshot_name: t.Optional[str]
+
     @gql.field
     def stages(
         self, slug: t.Optional[str] = None, view: t.Optional[BSONArray] = None
@@ -285,7 +287,7 @@ class Dataset:
 
     @gql.field
     async def workspace(
-        self, slug: t.Optional[str], info: Info
+        self, info: Info, slug: t.Optional[str] = None
     ) -> t.Optional[Workspace]:
         if slug:
             doc = await info.context.db["workspaces"].find_one({"slug": slug})
@@ -484,7 +486,7 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def version(self) -> str:
-        return foc.VERSION
+        return f"teams{foc.TEAMS_VERSION}"
 
     @gql.field
     def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:
@@ -608,6 +610,12 @@ async def serialize_dataset(
         data.view_cls = None
         data.view_name = view_name
         data.saved_view_slug = saved_view_slug
+
+        # Teams only for versioning
+        if hasattr(dataset, "head_name"):
+            data.head_name = dataset.head_name
+        if hasattr(dataset, "snapshot_name"):
+            data.snapshot_name = dataset.snapshot_name
 
         collection = dataset.view()
         if view is not None:

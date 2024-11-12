@@ -13,6 +13,7 @@ prune tests
 prune dist
 
 global-exclude .*
+exclude TEAMS.md
 
 recursive-exclude fiftyone *.md
 

@@ -6,6 +6,7 @@ FiftyOne env secrets provider
 |
 """
 import re
+import logging
 
 from ..providers.iprovider import ISecretProvider
 from ..secret import UnencryptedSecret, ISecret
@@ -21,11 +22,21 @@ class EnvSecretProvider(ISecretProvider):
     async def get(self, key, **kwargs) -> Optional[ISecret]:
         if key in os.environ:
             return UnencryptedSecret(key, os.getenv(key))
+        logging.error(
+            f"Failed to get secret for key {key}"
+            f" due to the key not being present in the"
+            f" operating system environment variables"
+        )
         return None
 
     def get_sync(self, key, **kwargs) -> Optional[ISecret]:
         if key in os.environ:
             return UnencryptedSecret(key, os.getenv(key))
+        logging.error(
+            f"Failed to get secret for key {key}"
+            f" due to the key not being present in the"
+            f" operating system environment variables"
+        )
         return None
 
     async def get_multiple(

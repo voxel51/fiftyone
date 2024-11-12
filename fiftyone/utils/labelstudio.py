@@ -22,6 +22,7 @@ import os
 from bson import ObjectId
 import numpy as np
 
+import fiftyone.core.cache as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
@@ -241,6 +242,14 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         ids, mime_types, filepaths = samples.values(
             ["id", "metadata.mime_type", media_field]
         )
+
+        filepaths = foc.media_cache.get_local_paths(filepaths)
+
+        label_fields = samples._get_media_fields(whitelist=label_schema)
+        label_fields = list(label_fields.keys())
+
+        if label_fields:
+            samples.download_media(media_fields=label_fields)
 
         tasks = [
             {

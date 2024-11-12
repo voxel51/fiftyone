@@ -7,6 +7,8 @@ Core utilities.
 """
 import abc
 import atexit
+import contextvars
+
 from bson import json_util
 from base64 import b64encode, b64decode
 from collections import defaultdict
@@ -35,8 +37,6 @@ import types
 from xml.parsers.expat import ExpatError
 import zlib
 
-from bson import ObjectId
-from bson.errors import InvalidId
 from matplotlib import colors as mcolors
 from concurrent.futures import ThreadPoolExecutor
 
@@ -345,6 +345,8 @@ def find_files(root_dir, patt, max_depth=1):
     Returns:
         a list of matching paths
     """
+    fos.ensure_local(root_dir)
+
     if etau.is_str(patt):
         patt = [patt]
 
@@ -798,7 +800,7 @@ def load_xml_as_json_dict(xml_path):
         a JSON dict
     """
     try:
-        with open(xml_path, "rb") as f:
+        with fos.open_file(xml_path, "rb") as f:
             return xmltodict.parse(f.read())
     except ExpatError as ex:
         raise ExpatError(f"Failed to read {xml_path}: {ex}")
@@ -1801,13 +1803,13 @@ class UniqueFilenameMaker(object):
         if not self.output_dir:
             return
 
-        etau.ensure_dir(self.output_dir)
+        fos.ensure_dir(self.output_dir)
 
         if self.ignore_existing:
             return
 
         recursive = self.rel_dir is not None
-        filenames = etau.list_files(self.output_dir, recursive=recursive)
+        filenames = fos.list_files(self.output_dir, recursive=recursive)
 
         self._idx = len(filenames)
         for filename in filenames:
@@ -1872,7 +1874,7 @@ class UniqueFilenameMaker(object):
 
         if self.chunk_size is not None:
             chunk_dir = self._chunk_root + "_" + str(self._chunk_num)
-            filename = os.path.join(chunk_dir, filename)
+            filename = fos.join(chunk_dir, filename)
 
             self._chunk_count += 1
             if self._chunk_count >= self.chunk_size:
@@ -1880,7 +1882,7 @@ class UniqueFilenameMaker(object):
                 self._chunk_count = 0
 
         if self.output_dir:
-            output_path = os.path.join(self.output_dir, filename)
+            output_path = fos.join(self.output_dir, filename)
         else:
             output_path = filename
 
@@ -1903,13 +1905,16 @@ class UniqueFilenameMaker(object):
         """
         root_dir = alt_dir or self.alt_dir or self.output_dir
         rel_path = os.path.relpath(output_path, self.output_dir)
-        return os.path.join(root_dir, rel_path)
+        return fos.join(root_dir, rel_path)
 
 
 def safe_relpath(path, start=None, default=None):
     """A safe version of ``os.path.relpath`` that returns a configurable
     default value if the given path if it does not lie within the given
     relative start.
+
+    When dealing with cloud paths, the provided paths may be any mix of cloud
+    paths and corresponding local cache paths.
 
     Args:
         path: a path
@@ -1920,7 +1925,14 @@ def safe_relpath(path, start=None, default=None):
     Returns:
         the relative path
     """
-    relpath = os.path.relpath(path, start)
+    _path = foca.media_cache.get_local_path(path, download=False)
+
+    if start:
+        _start = foca.media_cache.get_local_path(start, download=False)
+    else:
+        _start = start
+
+    relpath = os.path.relpath(_path, _start)
     if relpath.startswith(".."):
         if default is not None:
             return default
@@ -1950,14 +1962,14 @@ def compute_filehash(filepath, method=None, chunk_size=None):
         the hash
     """
     if method is None:
-        with open(filepath, "rb") as f:
+        with fos.open_file(filepath, "rb") as f:
             return hash(f.read())
 
     if chunk_size is None:
         chunk_size = 65536
 
     hasher = getattr(hashlib, method)()
-    with open(filepath, "rb") as f:
+    with fos.open_file(filepath, "rb") as f:
         while True:
             data = f.read(chunk_size)
             if not data:
@@ -2352,7 +2364,11 @@ async def run_sync_task(func, *args):
         the function's return value(s)
     """
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(_get_sync_task_executor(), func, *args)
+    # Run sync function in threadpool with current `contextvars.Context`
+    context = contextvars.copy_context()
+    return await loop.run_in_executor(
+        _get_sync_task_executor(), context.run, func, *args
+    )
 
 
 def datetime_to_timestamp(dt):
@@ -2578,3 +2594,4 @@ def validate_hex_color(value):
 
 
 fos = lazy_import("fiftyone.core.storage")
+foca = lazy_import("fiftyone.core.cache")

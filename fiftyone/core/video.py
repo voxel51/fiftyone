@@ -19,7 +19,9 @@ import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
+from fiftyone.internal.dataset_permissions import requires_can_edit
 import fiftyone.core.sample as fos
+import fiftyone.core.storage as fost
 import fiftyone.core.odm as foo
 import fiftyone.core.odm.sample as foos
 import fiftyone.core.utils as fou
@@ -52,6 +54,14 @@ class FrameView(fos.SampleView):
     @property
     def _sample_id(self):
         return ObjectId(self._doc.sample_id)
+
+    @property
+    def _readonly(self):
+        return self._collection._readonly
+
+    @property
+    def _permission(self):
+        return self._collection._permission
 
     def _save(self, deferred=False):
         sample_ops, frame_ops = super()._save(deferred=deferred)
@@ -133,6 +143,14 @@ class FramesView(fov.DatasetView):
         return self._frames_dataset
 
     @property
+    def _readonly(self):
+        return self._source_collection._readonly
+
+    @property
+    def _permission(self):
+        return self._source_collection._permission
+
+    @property
     def _root_dataset(self):
         return self._source_collection._root_dataset
 
@@ -210,6 +228,7 @@ class FramesView(fov.DatasetView):
             tags, frame_field, ids=ids, label_ids=label_ids
         )
 
+    @requires_can_edit
     def set_values(self, field_name, *args, **kwargs):
         # The `set_values()` operation could change the contents of this view,
         # so we first record the sample IDs that need to be synced
@@ -224,12 +243,14 @@ class FramesView(fov.DatasetView):
         self._sync_source(fields=[field], ids=ids)
         self._sync_source_field_schema(field_name)
 
+    @requires_can_edit
     def set_label_values(self, field_name, *args, **kwargs):
         super().set_label_values(field_name, *args, **kwargs)
 
         frame_field = self._source_collection._FRAMES_PREFIX + field_name
         self._source_collection.set_label_values(frame_field, *args, **kwargs)
 
+    @requires_can_edit
     def save(self, fields=None):
         """Saves the frames in this view to the underlying dataset.
 
@@ -255,6 +276,7 @@ class FramesView(fov.DatasetView):
 
         self._sync_source(fields=fields)
 
+    @requires_can_edit
     def keep(self):
         """Deletes all frames that are **not** in this view from the underlying
         dataset.
@@ -272,6 +294,7 @@ class FramesView(fov.DatasetView):
 
         super().keep()
 
+    @requires_can_edit
     def keep_fields(self):
         """Deletes any sample fields that have been excluded in this view from
         the frames of the underlying dataset.
@@ -835,7 +858,7 @@ def _init_frames(
         _outpath = fouv._get_outpath(
             video_path, output_dir=output_dir, rel_dir=rel_dir
         )
-        images_patt = os.path.join(os.path.splitext(_outpath)[0], frames_patt)
+        images_patt = fost.join(os.path.splitext(_outpath)[0], frames_patt)
 
         # Determine which frame numbers to include in the frames dataset and
         # whether any frame images need to be sampled
@@ -1087,4 +1110,12 @@ def _parse_video_frames(
 
 
 def _get_non_existent_frame_numbers(images_patt, frame_numbers):
-    return [fn for fn in frame_numbers if not os.path.isfile(images_patt % fn)]
+    if fost.is_local(images_patt):
+        return [
+            fn for fn in frame_numbers if not os.path.isfile(images_patt % fn)
+        ]
+
+    images_dir = os.path.dirname(images_patt)
+    frames_patt = os.path.basename(images_patt)
+    existing = set(fost.list_files(images_dir, sort=False))
+    return [fn for fn in frame_numbers if (frames_patt % fn) not in existing]

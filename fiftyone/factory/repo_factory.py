@@ -16,6 +16,10 @@ from fiftyone.factory.repos.delegated_operation import (
     DelegatedOperationRepo,
     MongoDelegatedOperationRepo,
 )
+from fiftyone.factory.repos.orchestrator import (
+    OrchestratorRepo,
+    MongoOrchestratorRepo,
+)
 from fiftyone.factory.repos.execution_store import (
     ExecutionStoreRepo,
     MongoExecutionStoreRepo,
@@ -52,6 +56,20 @@ class RepositoryFactory(object):
         return RepositoryFactory.repos[
             MongoDelegatedOperationRepo.COLLECTION_NAME
         ]
+
+    @staticmethod
+    def orchestrator_repo() -> OrchestratorRepo:
+        if (
+            MongoOrchestratorRepo.COLLECTION_NAME
+            not in RepositoryFactory.repos
+        ):
+            RepositoryFactory.repos[
+                MongoOrchestratorRepo.COLLECTION_NAME
+            ] = MongoOrchestratorRepo(
+                collection=_get_db()[MongoOrchestratorRepo.COLLECTION_NAME]
+            )
+
+        return RepositoryFactory.repos[MongoOrchestratorRepo.COLLECTION_NAME]
 
     @staticmethod
     def execution_store_repo(

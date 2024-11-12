@@ -3,7 +3,7 @@ import { listLocalAndRemoteOperators } from "@fiftyone/operators/src/operators";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 
-const IS_OSS = true; // false in fiftyone-teams
+const IS_OSS = false; // false in fiftyone-teams
 
 const useFirstExistingUri = (uris: string[]) => {
   const availableOperators = useMemo(() => listLocalAndRemoteOperators(), []);

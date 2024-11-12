@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "commonjs",
+        "lib": ["ESNext", "DOM", "DOM.Iterable"],
+        "noImplicitAny": false,
+        "sourceMap": true,
+        "outDir": "dist",
+        "jsx": "preserve",
+        "composite": true,
+        "esModuleInterop": true,
+        "moduleResolution": "node"
+    },
+    "include": ["**/*.ts", "**/*.tsx"],
+    "exclude": ["node_modules", "dist"]
+}

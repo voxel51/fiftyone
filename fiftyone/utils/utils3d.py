@@ -1,10 +1,11 @@
 """
 3D utilities.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import contextlib
 import functools
 import logging
@@ -17,6 +18,7 @@ import scipy.spatial as sp
 import eta.core.numutils as etan
 import eta.core.utils as etau
 
+import fiftyone.core.cache as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -444,9 +446,9 @@ class OrthographicProjectionMetadata(DynamicEmbeddedDocument, fol._HasMedia):
 
 def _get_scene_paths(scene_paths):
     """Return Tuple of scene paths to use and whether all are local
-    This function is a no-op here but could be different in a repo fork.
+    This differs from oss due to remote file / local-cache support.
     """
-    return scene_paths, True
+    return foc.media_cache.use_cached_paths(scene_paths)
 
 
 def _get_scene_asset_paths_single(task, abs_paths=False, skip_failures=True):
@@ -629,50 +631,62 @@ def compute_orthographic_projection_images(
     if out_group_slice is not None:
         out_samples = []
 
-    filename_maker = fou.UniqueFilenameMaker(
-        output_dir=output_dir, rel_dir=rel_dir, ignore_existing=overwrite
-    )
-
-    for sample in view.iter_samples(autosave=True, progress=progress):
-        if view.media_type == fom.THREE_D:
-            pcd_filepath = _get_pcd_filepath_from_scene(sample.filepath)
-        else:
-            pcd_filepath = sample.filepath
-
-        image_path = filename_maker.get_output_path(
-            pcd_filepath, output_ext=".png"
+    with contextlib.ExitStack() as context:
+        context.enter_context(
+            view.download_context(media_fields="filepath", progress=progress)
         )
 
-        try:
-            img, metadata = compute_orthographic_projection_image(
-                pcd_filepath,
-                size,
-                shading_mode=shading_mode,
-                colormap=colormap,
-                subsampling_rate=subsampling_rate,
-                projection_normal=projection_normal,
-                bounds=bounds,
-                padding=padding,
+        local_dir = context.enter_context(fos.LocalDir(output_dir, "w"))
+
+        filename_maker = fou.UniqueFilenameMaker(
+            output_dir=output_dir,
+            rel_dir=rel_dir,
+            alt_dir=local_dir,
+            idempotent=False,
+            ignore_existing=overwrite,
+        )
+
+        for sample in view.iter_samples(autosave=True, progress=progress):
+            if view.media_type == fom.THREE_D:
+                pcd_filepath = _get_pcd_filepath_from_scene(sample.filepath)
+            else:
+                pcd_filepath = sample.filepath
+
+            image_path = filename_maker.get_output_path(
+                pcd_filepath, output_ext=".png"
             )
-        except Exception as e:
-            if not skip_failures:
-                raise
+            local_image_path = filename_maker.get_alt_path(image_path)
 
-            if skip_failures != "ignore":
-                logger.warning(e)
+            try:
+                img, metadata = compute_orthographic_projection_image(
+                    pcd_filepath,
+                    size,
+                    shading_mode=shading_mode,
+                    colormap=colormap,
+                    subsampling_rate=subsampling_rate,
+                    projection_normal=projection_normal,
+                    bounds=bounds,
+                    padding=padding,
+                )
+            except Exception as e:
+                if not skip_failures:
+                    raise
 
-            continue
+                if skip_failures != "ignore":
+                    logger.warning(e)
 
-        foui.write(img, image_path)
-        metadata.filepath = image_path
+                continue
 
-        sample[metadata_field] = metadata
+            foui.write(img, local_image_path)
+            metadata.filepath = image_path
 
-        if out_group_slice is not None:
-            s = Sample(filepath=image_path)
-            s[group_field] = sample[group_field].element(out_group_slice)
-            s[metadata_field] = metadata
-            out_samples.append(s)
+            sample[metadata_field] = metadata
+
+            if out_group_slice is not None:
+                s = Sample(filepath=image_path)
+                s[group_field] = sample[group_field].element(out_group_slice)
+                s[metadata_field] = metadata
+                out_samples.append(s)
 
     if out_group_slice is not None:
         samples._root_dataset.add_samples(out_samples)
@@ -801,7 +815,7 @@ def compute_orthographic_projection_image(
     return image, metadata
 
 
-def _get_pcd_filepath_from_scene(scene_path: str):
+def _get_pcd_filepath_from_scene(scene_path):
     scene = Scene.from_fo3d(scene_path)
 
     explicitly_flagged_pcd_path = None
@@ -845,7 +859,8 @@ def _parse_point_cloud(
     projection_normal=None,
     subsampling_rate=None,
 ):
-    pc = o3d.io.read_point_cloud(filepath)
+    local_path = foc.media_cache.get_local_path(filepath)
+    pc = o3d.io.read_point_cloud(local_path)
 
     if projection_normal is not None and not np.array_equal(
         projection_normal, np.array([0, 0, 1])
@@ -1137,10 +1152,12 @@ def _pcd_to_3d(
             context.enter_context(media_exporter)
 
         pb = context.enter_context(fou.ProgressBar(progress=progress))
+        file_writer = context.enter_context(fos.FileWriter())
 
         for pcd_path in pb(pcd_paths):
             scene_path = _make_scene(
                 pcd_path,
+                file_writer,
                 filename_maker=filename_maker,
                 media_exporter=media_exporter,
                 abs_paths=abs_paths,
@@ -1155,6 +1172,7 @@ def _pcd_to_3d(
 
 def _make_scene(
     pcd_path,
+    file_writer,
     filename_maker=None,
     media_exporter=None,
     abs_paths=False,
@@ -1174,8 +1192,10 @@ def _make_scene(
         if not rel_path.startswith(".."):
             pcd_path = rel_path
 
+    local_scene_path = file_writer.get_local_path(scene_path)
+
     scene = Scene(camera=PerspectiveCamera(up="Z"))
     scene.add(PointCloud("point cloud", pcd_path))
-    scene.write(scene_path)
+    scene.write(local_scene_path)
 
     return scene_path

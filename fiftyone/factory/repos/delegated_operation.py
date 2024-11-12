@@ -23,6 +23,7 @@ from fiftyone.operators.executor import (
     ExecutionProgress,
     ExecutionResult,
     ExecutionRunState,
+    ExecutionContextUser,
 )
 
 logger = logging.getLogger(__name__)
@@ -89,6 +90,7 @@ class DelegatedOperationRepo(object):
         dataset_id: ObjectId = None,
         run_state: ExecutionRunState = None,
         delegation_target: str = None,
+        run_by: str = None,
         pinned: bool = None,
         paging: DelegatedOperationPagingParams = None,
         search: dict = None,
@@ -167,6 +169,13 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 )
             )
 
+        if "run_by_1" not in index_names:
+            indices_to_create.append(
+                IndexModel(
+                    [("context.user", pymongo.ASCENDING)], name="run_by_1"
+                )
+            )
+
         if indices_to_create:
             self._collection.create_indexes(indices_to_create)
 
@@ -189,8 +198,9 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         context = None
         if isinstance(op.context, dict):
+            user = ExecutionContextUser(id=op.context.get("user"))
             context = ExecutionContext(
-                request_params=op.context.get("request_params", {})
+                request_params=op.context.get("request_params", {}), user=user
             )
         elif isinstance(op.context, ExecutionContext):
             context = op.context
@@ -422,6 +432,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         dataset_id: ObjectId = None,
         run_state: ExecutionRunState = None,
         delegation_target: str = None,
+        run_by: str = None,
         pinned: bool = None,
         paging: DelegatedOperationPagingParams = None,
         search: dict = None,
@@ -437,7 +448,9 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if run_state:
             query["run_state"] = run_state
         if delegation_target:
-            query["delegation_target"] = delegation_target
+            query["delegation_target"] = {"$in": [delegation_target, None]}
+        if run_by:
+            query["context.user"] = run_by
         if dataset_id:
             query["dataset_id"] = dataset_id
 
@@ -487,6 +500,11 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 "dataset_name"
             ]
             del query["dataset_name"]
+
+        if "run_by" in query:
+            query["context.user"] = query["run_by"]
+            del query["run_by"]
+
         if search:
             query.update(self._extract_search_query(search))
 

@@ -7,8 +7,10 @@ FiftyOne config.
 """
 
 import logging
+import multiprocessing
 import os
 from importlib import metadata
+
 import pytz
 
 import eta
@@ -63,6 +65,12 @@ class FiftyOneConfig(EnvConfig):
         if d is None:
             d = {}
 
+        self.api_key = self.parse_string(
+            d, "api_key", env_var="FIFTYONE_API_KEY", default=None
+        )
+        self.api_uri = self.parse_string(
+            d, "api_uri", env_var="FIFTYONE_API_URI", default=None
+        )
         self.database_uri = self.parse_string(
             d, "database_uri", env_var="FIFTYONE_DATABASE_URI", default=None
         )
@@ -76,7 +84,7 @@ class FiftyOneConfig(EnvConfig):
             d,
             "database_admin",
             env_var="FIFTYONE_DATABASE_ADMIN",
-            default=True,
+            default=False,  # Teams clients can't migrate by default
         )
         self.database_dir = self.parse_path(
             d,
@@ -154,7 +162,7 @@ class FiftyOneConfig(EnvConfig):
             d,
             "default_batcher",
             env_var="FIFTYONE_DEFAULT_BATCHER",
-            default="latency",
+            default="latency" if self.api_uri is None else "size",
         )
         self.batcher_static_size = self.parse_int(
             d,
@@ -217,6 +225,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_SHOW_PROGRESS_BARS",
             default=True,
         )
+        self.disable_websocket_info_logs = self.parse_bool(
+            d,
+            "disable_websocket_info_logs",
+            env_var="FIFTYONE_DISABLE_WEBSOCKET_INFO_LOGS",
+            default=True,
+        )
         self.do_not_track = self.parse_bool(
             d,
             "do_not_track",
@@ -228,6 +242,12 @@ class FiftyOneConfig(EnvConfig):
             "requirement_error_level",
             env_var="FIFTYONE_REQUIREMENT_ERROR_LEVEL",
             default=0,
+        )
+        self.delegated_operation_run_link_path = self.parse_string(
+            d,
+            "delegated_operation_run_link_path",
+            env_var="FIFTYONE_DELEGATED_OPERATION_RUN_LINK_PATH",
+            default=None,
         )
         self.timezone = self.parse_string(
             d, "timezone", env_var="FIFTYONE_TIMEZONE", default=None
@@ -243,6 +263,18 @@ class FiftyOneConfig(EnvConfig):
             "max_process_pool_workers",
             env_var="FIFTYONE_MAX_PROCESS_POOL_WORKERS",
             default=None,
+        )
+        self.signed_url_cache_size = self.parse_int(
+            d,
+            "signed_url_cache_size",
+            env_var="FIFTYONE_SIGNED_URL_CACHE_SIZE",
+            default=1000,
+        )
+        self.signed_url_expiration = self.parse_int(
+            d,
+            "signed_url_expiration",
+            env_var="FIFTYONE_SIGNED_URL_EXPIRATION",
+            default=24,
         )
 
         self._init()
@@ -621,6 +653,128 @@ class AnnotationConfig(EnvConfig):
         return d
 
 
+class MediaCacheConfig(EnvConfig):
+    """FiftyOne media cache configuration settings."""
+
+    def __init__(self, d=None):
+        if d is None:
+            d = {}
+
+        self.cache_dir = self.parse_path(
+            d,
+            "cache_dir",
+            env_var="FIFTYONE_MEDIA_CACHE_DIR",
+            default=None,
+        )
+        self.cache_size_bytes = self.parse_int(
+            d,
+            "cache_size_bytes",
+            env_var="FIFTYONE_MEDIA_CACHE_SIZE_BYTES",
+            default=32 * 1024**3,  # 32 GB
+        )
+        self.download_size_bytes = self.parse_int(
+            d,
+            "download_size_bytes",
+            env_var="FIFTYONE_MEDIA_CACHE_DOWNLOAD_SIZE_BYTES",
+            default=128 * 1024**2,  # 128MB
+        )
+        self.cache_app_images = self.parse_bool(
+            d,
+            "cache_app_images",
+            env_var="FIFTYONE_MEDIA_CACHE_APP_IMAGES",
+            default=False,
+        )
+        self.num_workers = self.parse_int(
+            d,
+            "num_workers",
+            env_var="FIFTYONE_MEDIA_CACHE_NUM_WORKERS",
+            default=None,
+        )
+        self.gc_sleep_seconds = self.parse_number(
+            d,
+            "gc_sleep_seconds",
+            env_var="FIFTYONE_MEDIA_CACHE_GC_SLEEP_SECONDS",
+            default=60,
+        )
+        self.gc_log = self.parse_bool(
+            d,
+            "gc_log",
+            env_var="FIFTYONE_MEDIA_CACHE_GC_LOG",
+            default=False,
+        )
+        self.gc_log_max_bytes = self.parse_number(
+            d,
+            "gc_log_max_bytes",
+            env_var="FIFTYONE_MEDIA_CACHE_GC_LOG_MAX_BYTES",
+            default=512 * 1024**2,  # 512 KB
+        )
+        self.gc_log_backup_count = self.parse_int(
+            d,
+            "gc_log_backup_count",
+            env_var="FIFTYONE_MEDIA_CACHE_GC_LOG_BACKUP_COUNT",
+            default=10,
+        )
+        self.aws_config_file = self.parse_path(
+            d,
+            "aws_config_file",
+            env_var="AWS_CONFIG_FILE",
+            default=None,
+        )
+        self.aws_profile = self.parse_string(
+            d,
+            "aws_profile",
+            env_var="AWS_PROFILE",
+            default=None,
+        )
+        self.google_application_credentials = self.parse_path(
+            d,
+            "google_application_credentials",
+            env_var="GOOGLE_APPLICATION_CREDENTIALS",
+            default=None,
+        )
+        self.azure_credentials_file = self.parse_path(
+            d,
+            "azure_credentials_file",
+            env_var="AZURE_CREDENTIALS_FILE",
+            default=None,
+        )
+        self.azure_profile = self.parse_string(
+            d,
+            "azure_profile",
+            env_var="AZURE_PROFILE",
+            default=None,
+        )
+        self.minio_config_file = self.parse_path(
+            d,
+            "minio_config_file",
+            env_var="MINIO_CONFIG_FILE",
+            default=None,
+        )
+        self.minio_profile = self.parse_string(
+            d,
+            "minio_profile",
+            env_var="MINIO_PROFILE",
+            default=None,
+        )
+        self.extra_client_kwargs = self.parse_dict(
+            d,
+            "extra_client_kwargs",
+            env_var="FIFTYONE_MEDIA_EXTRA_CLIENT_KWARGS",
+            default=None,
+        )
+
+        self._set_defaults()
+
+    def _set_defaults(self):
+        if self.cache_dir is None:
+            self.cache_dir = os.path.join(
+                os.path.expanduser("~"), "fiftyone", "__cache__"
+            )
+
+        if self.num_workers is None:
+            self.num_workers = multiprocessing.cpu_count()
+
+
 class EvaluationConfig(EnvConfig):
     """FiftyOne evaluation configuration settings."""
 
@@ -689,33 +843,11 @@ class EvaluationConfig(EnvConfig):
         )
 
         self.regression_backends = self._parse_backends(d, "regression")
-        if self.default_regression_backend not in self.regression_backends:
-            self.default_regression_backend = next(
-                iter(sorted(self.regression_backends.keys())), None
-            )
-
         self.classification_backends = self._parse_backends(
             d, "classification"
         )
-        if (
-            self.default_classification_backend
-            not in self.classification_backends
-        ):
-            self.default_classification_backend = next(
-                iter(sorted(self.classification_backends.keys())), None
-            )
-
         self.detection_backends = self._parse_backends(d, "detection")
-        if self.default_detection_backend not in self.detection_backends:
-            self.default_detection_backend = next(
-                iter(sorted(self.detection_backends.keys())), None
-            )
-
         self.segmentation_backends = self._parse_backends(d, "segmentation")
-        if self.default_segmentation_backend not in self.segmentation_backends:
-            self.default_segmentation_backend = next(
-                iter(sorted(self.segmentation_backends.keys())), None
-            )
 
     def _parse_backends(self, d, type):
         TYPE = type.upper()
@@ -732,14 +864,13 @@ class EvaluationConfig(EnvConfig):
         if f"FIFTYONE_{TYPE}_BACKENDS" in env_vars:
             backends = env_vars[f"FIFTYONE_{TYPE}_BACKENDS"].split(",")
 
-            # Special syntax to append rather than override default backends
-            if "*" in backends:
-                backends = set(b for b in backends if b != "*")
-                backends |= set(self._BUILTIN_BACKENDS[type].keys())
-
+            # Declare new backends and omit any others not in `backends`
             d = {backend: d.get(backend, {}) for backend in backends}
         else:
-            for backend in self._BUILTIN_BACKENDS[type].keys():
+            backends = sorted(self._BUILTIN_BACKENDS[type].keys())
+
+            # Declare builtin backends if necessary
+            for backend in backends:
                 if backend not in d:
                     d[backend] = {}
 
@@ -748,14 +879,14 @@ class EvaluationConfig(EnvConfig):
         # `FIFTYONE_{TYPE}_{BACKEND}_{PARAMETER}`
         #
 
-        for backend, d_backend in d.items():
+        for backend, parameters in d.items():
             BACKEND = backend.upper()
             prefix = f"FIFTYONE_{TYPE}_{BACKEND}_"
             for env_name, env_value in env_vars.items():
                 if env_name.startswith(prefix):
-                    name = env_name[len(prefix) :].lower()
+                    type = env_name[len(prefix) :].lower()
                     value = _parse_env_value(env_value)
-                    d_backend[name] = value
+                    parameters[type] = value
 
         #
         # Set default parameters for builtin similarity backends
@@ -766,9 +897,9 @@ class EvaluationConfig(EnvConfig):
                 continue
 
             d_backend = d[backend]
-            for name, value in defaults.items():
-                if name not in d_backend:
-                    d_backend[name] = value
+            for type, value in defaults.items():
+                if type not in d_backend:
+                    d_backend[type] = value
 
         return d
 
@@ -826,6 +957,33 @@ def locate_annotation_config():
     return os.environ["FIFTYONE_ANNOTATION_CONFIG_PATH"]
 
 
+def locate_media_cache_config():
+    """Returns the path to the :class:`MediaCacheConfig` on disk.
+
+    The default location is ``~/.fiftyone/media_cache_config.json``, but you
+    can override this path by setting the ``FIFTYONE_MEDIA_CACHE_CONFIG_PATH``
+    environment variable.
+
+    Note that a config file may not actually exist on disk in the default
+    location, in which case the default config settings will be used.
+
+    Returns:
+        the path to the :class:`MediaCacheConfig` on disk
+
+    Raises:
+        OSError: if the media cache config path has been customized but the
+            file does not exist on disk
+    """
+    if "FIFTYONE_MEDIA_CACHE_CONFIG_PATH" not in os.environ:
+        return foc.FIFTYONE_MEDIA_CACHE_CONFIG_PATH
+
+    config_path = os.environ["FIFTYONE_MEDIA_CACHE_CONFIG_PATH"]
+    if not os.path.isfile(config_path):
+        raise OSError("Media cache config file '%s' not found" % config_path)
+
+    return config_path
+
+
 def locate_evaluation_config():
     """Returns the path to the :class:`EvaluationConfig` on disk.
 
@@ -881,6 +1039,39 @@ def load_annotation_config():
         return AnnotationConfig.from_json(annotation_config_path)
 
     return AnnotationConfig()
+
+
+def load_media_cache_config():
+    """Loads the FiftyOne media cache config.
+
+    Returns:
+        an :class:`MediaCacheConfig` instance
+    """
+    media_cache_config_path = locate_media_cache_config()
+    if os.path.isfile(media_cache_config_path):
+        return MediaCacheConfig.from_json(media_cache_config_path)
+
+    return MediaCacheConfig()
+
+
+class HTTPRetryConfig(object):
+    """Values used to configure the behavior of the retry logic of HTTP calls
+    made throughout the library.
+
+    NOTE: calls made directly through storage clients (GCS, S3) use their own
+    internal retry logic implementation and may not perfectly match this
+    configuration. This configuration is for direct HTTP requests.
+    """
+
+    # HTTP codes that should trigger a retry
+    RETRY_CODES = {408, 429, 500, 502, 503, 504, 509}
+
+    # Exponential backoff factor
+    # See https://github.com/litl/backoff/blob/master/backoff/_wait_gen.py#L17
+    FACTOR = 0.1
+
+    # Maximum number of times to execute a retry before throwing an exception
+    MAX_TRIES = 10
 
 
 def load_evaluation_config():

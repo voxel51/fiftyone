@@ -4,7 +4,11 @@ import { SpaceNodeJSON } from "@fiftyone/spaces/src/types";
 import { spaceNodeFromJSON } from "@fiftyone/spaces/src/utils";
 import { getFetchFunction, isNullish, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
-import { QueueItemStatus } from "./constants";
+import {
+  BUILT_IN_ORCHESTATOR_ID,
+  LAST_USED_ORCHESTRATOR,
+  QueueItemStatus,
+} from "./constants";
 import * as types from "./types";
 import { ExecutionCallback, OperatorExecutorOptions } from "./types-internal";
 import { stringifyError } from "./utils";
@@ -397,13 +401,16 @@ export function _registerBuiltInOperator(OperatorType: typeof Operator) {
   localRegistry.register(operator);
 }
 
-export async function loadOperatorsFromServer(datasetName: string) {
+export async function loadOperatorsFromServer(
+  datasetName: string,
+  headName?: string
+) {
   initializationErrors = [];
   try {
     const { operators, errors } = await getFetchFunction()(
       "POST",
       "/operators",
-      { dataset_name: datasetName }
+      { dataset_name: datasetName, dataset_head_name: headName }
     );
     const operatorInstances = operators.map((d: any) =>
       Operator.fromRemoteJSON(d)
@@ -545,7 +552,8 @@ async function executeOperatorAsGenerator(
     {
       current_sample: currentContext.currentSample,
       dataset_name: currentContext.datasetName,
-      delegation_target: currentContext.delegationTarget,
+      delegation_target: ctx.delegationTarget,
+      request_delegation: ctx.requestDelegation,
       extended: currentContext.extended,
       extended_selection: currentContext.extendedSelection,
       filters: currentContext.filters,
@@ -561,6 +569,8 @@ async function executeOperatorAsGenerator(
       group_slice: currentContext.groupSlice,
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
+      // Teams only
+      dataset_head_name: currentContext.datasetHeadName,
     },
     "json-stream"
   );
@@ -710,7 +720,7 @@ export async function executeOperatorWithContext(
         {
           current_sample: currentContext.currentSample,
           dataset_name: currentContext.datasetName,
-          delegation_target: currentContext.delegationTarget,
+          delegation_target: ctx.delegationTarget,
           extended: currentContext.extended,
           extended_selection: currentContext.extendedSelection,
           filters: currentContext.filters,
@@ -727,6 +737,9 @@ export async function executeOperatorWithContext(
           query_performance: currentContext.queryPerformance,
           spaces: currentContext.spaces,
           workspace_name: currentContext.workspaceName,
+
+          // Teams only
+          dataset_head_name: currentContext.datasetHeadName,
         }
       );
       result = serverResult.result;
@@ -814,7 +827,7 @@ export async function resolveRemoteType(
     {
       current_sample: currentContext.currentSample,
       dataset_name: currentContext.datasetName,
-      delegation_target: currentContext.delegationTarget,
+      delegation_target: ctx.delegationTarget,
       extended: currentContext.extended,
       extended_selection: currentContext.extendedSelection,
       filters: currentContext.filters,
@@ -832,6 +845,9 @@ export async function resolveRemoteType(
       group_slice: currentContext.groupSlice,
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
+
+      // Teams only
+      dataset_head_name: currentContext.datasetHeadName,
     }
   );
 
@@ -892,7 +908,7 @@ export async function resolveExecutionOptions(
     {
       current_sample: currentContext.currentSample,
       dataset_name: currentContext.datasetName,
-      delegation_target: currentContext.delegationTarget,
+      delegation_target: ctx.delegationTarget,
       extended: currentContext.extended,
       extended_selection: currentContext.extendedSelection,
       filters: currentContext.filters,
@@ -908,16 +924,33 @@ export async function resolveExecutionOptions(
       group_slice: currentContext.groupSlice,
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
+
+      // Teams only
+      dataset_head_name: currentContext.datasetHeadName,
     }
   );
-
+  const availableOrchestrators =
+    executionOptionsAsJSON?.available_orchestrators?.map(
+      Orchestrator.fromJSON
+    ) || [];
+  const lastUsed = localStorage.getItem(LAST_USED_ORCHESTRATOR);
+  const filteredOrchestrators = [
+    ...availableOrchestrators.filter(
+      (o) => o.instanceID === lastUsed && lastUsed !== BUILT_IN_ORCHESTATOR_ID
+    ),
+    ...availableOrchestrators.filter(
+      (o) => o.instanceID === BUILT_IN_ORCHESTATOR_ID
+    ),
+    ...availableOrchestrators.filter(
+      (o) =>
+        o.instanceID !== lastUsed && o.instanceID !== BUILT_IN_ORCHESTATOR_ID
+    ),
+  ];
   return new ExecutionOptions(
     executionOptionsAsJSON.orchestrator_registration_enabled,
     executionOptionsAsJSON.allow_immediate_execution,
     executionOptionsAsJSON.allow_delegated_execution,
-    executionOptionsAsJSON?.available_orchestrators?.map(
-      Orchestrator.fromJSON
-    ) || [],
+    filteredOrchestrators,
     executionOptionsAsJSON.default_choice_to_delegated
   );
 }
@@ -941,6 +974,9 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
       group_slice: currentContext.groupSlice,
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
+
+      // Teams only
+      dataset_head_name: currentContext.datasetHeadName,
     }
   );
   if (result && result.error) {

@@ -1,0 +1,3 @@
+smoke-tests/quickstart.spec.ts
+smoke-tests/quickstart-groups.spec.ts
+smoke-tests/saved-views.spec.ts

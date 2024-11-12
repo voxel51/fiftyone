@@ -17,6 +17,7 @@ import {
   BROWSER_CONTROL_KEYS,
   RESOLVE_INPUT_VALIDATION_TTL,
   RESOLVE_TYPE_TTL,
+  LAST_USED_ORCHESTRATOR,
 } from "./constants";
 import {
   ExecutionContext,
@@ -98,6 +99,9 @@ const globalContextSelector = selector({
     const spaces = get(fos.sessionSpaces);
     const workspaceName = spaces?._name;
 
+    // Teams only
+    const datasetHeadName = get(fos.datasetHeadName);
+
     return {
       datasetName,
       view,
@@ -106,6 +110,8 @@ const globalContextSelector = selector({
       selectedSamples,
       selectedLabels,
       viewName,
+      // Teams only
+      datasetHeadName,
       extendedSelection,
       groupSlice,
       queryPerformance,
@@ -149,6 +155,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     params,
     selectedLabels,
     viewName,
+    // Teams only
+    datasetHeadName,
     extendedSelection,
     groupSlice,
     queryPerformance,
@@ -168,6 +176,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         selectedLabels,
         currentSample,
         viewName,
+        // Teams only
+        datasetHeadName,
         extendedSelection,
         analyticsInfo,
         groupSlice,
@@ -295,6 +305,7 @@ const useOperatorPromptSubmitOptions = (
           setSelectedID(orc.id);
         },
         onClick() {
+          localStorage.setItem(LAST_USED_ORCHESTRATOR, orc.instanceID);
           execute({
             delegationTarget: orc.instanceID,
             requestDelegation: true,
@@ -311,8 +322,15 @@ const useOperatorPromptSubmitOptions = (
     return 0;
   });
 
+  const fallbackId = executionOptions.allowImmediateExecution
+    ? "execute"
+    : "schedule";
+
   const defaultID =
-    options.find((option) => option.default)?.id || options[0]?.id || "execute";
+    options.find((option) => option.default)?.id ||
+    options[0]?.id ||
+    fallbackId;
+
   let [selectedID, setSelectedID] = fos.useBrowserStorage(
     persistUnderKey,
     defaultID
@@ -320,8 +338,13 @@ const useOperatorPromptSubmitOptions = (
   const selectedOption = options.find((option) => option.id === selectedID);
 
   useEffect(() => {
+    const selectedOptionExists = !!options.find((o) => o.id === selectedID);
     if (options.length === 1) {
       setSelectedID(options[0].id);
+    } else if (!selectedOptionExists) {
+      const nextSelectedID =
+        options.find((option) => option.default)?.id || options[0]?.id;
+      setSelectedID(nextSelectedID);
     }
   }, [options]);
 
@@ -485,6 +508,7 @@ export const useOperatorPrompt = () => {
         return;
       }
       executor.execute(promptingOperator.params, {
+        ...options,
         ...promptingOperator.options,
       });
     },
@@ -519,7 +543,11 @@ export const useOperatorPrompt = () => {
     if (executor.hasExecuted && !executor.needsOutput && !executorError) {
       close();
       if (executor.isDelegated) {
-        notify({ msg: "Operation successfully scheduled", variant: "success" });
+        notify({
+          msg: "Operation successfully scheduled",
+          link: "runs",
+          variant: "success",
+        });
       }
     }
   }, [
@@ -970,7 +998,9 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
           }
         }
       } catch (e) {
-        callback?.(new OperatorResult(operator, null, ctx.executor, e, false), {ctx});
+        callback?.(new OperatorResult(operator, null, ctx.executor, e, false), {
+          ctx,
+        });
         const isAbortError =
           e.name === "AbortError" || e instanceof DOMException;
         const msg = e.message || "Failed to execute an operation";

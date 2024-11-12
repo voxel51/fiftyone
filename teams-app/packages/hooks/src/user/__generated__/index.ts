@@ -1,0 +1,6 @@
+export type { UserRole as UserRoleT } from './CurrentUserFragment.graphql'
+export type { CurrentUserFragment$data as CurrentUserFragment$dataT } from './CurrentUserFragment.graphql'
+export type { CurrentUserFragment$key as CurrentUserFragment$keyT } from './CurrentUserFragment.graphql'
+export type { CurrentUserFragmentQuery$variables as CurrentUserFragmentQuery$variablesT } from './CurrentUserFragmentQuery.graphql'
+export type { CurrentUserFragmentQuery$data as CurrentUserFragmentQuery$dataT } from './CurrentUserFragmentQuery.graphql'
+export type { CurrentUserFragmentQuery as CurrentUserFragmentQueryT } from './CurrentUserFragmentQuery.graphql'

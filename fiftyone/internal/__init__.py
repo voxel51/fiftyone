@@ -1,10 +1,9 @@
 """
-Internal classes and utilities.
+FiftyOne internal classes and utilities.
 
 | Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
-from .secrets import *
-from .util import is_remote_service
+from .util import is_internal_service, has_encryption_key, is_remote_service

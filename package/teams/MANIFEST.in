@@ -1,0 +1,6 @@
+global-include *
+global-exclude *.py[cod]
+
+prune .*
+
+global-exclude .*

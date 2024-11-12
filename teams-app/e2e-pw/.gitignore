@@ -1,0 +1,9 @@
+node_modules/
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/playwright/.auth/
+.logs
+.oss
+.env.dev
+.yarn/

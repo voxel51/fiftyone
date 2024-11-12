@@ -18,7 +18,7 @@ import fiftyone.constants as foc
 from fiftyone.core.config import Config, Configurable
 from fiftyone.core.odm import patch_runs
 from fiftyone.core.odm.runs import RunDocument
-
+from fiftyone.internal.dataset_permissions import requires_can_edit
 
 logger = logging.getLogger(__name__)
 
@@ -275,6 +275,8 @@ class BaseRun(Configurable):
         """
         return []
 
+    # Implementations of this method may mutate data, but this method is only
+    # called internally behind other methods that enforce mutation protection
     def rename(self, samples, key, new_key):
         """Performs any necessary operations required to rename this run's key.
 
@@ -285,6 +287,8 @@ class BaseRun(Configurable):
         """
         pass
 
+    # Implementations of this method may mutate data, but this method is only
+    # called internally behind other methods that enforce mutation protection
     def cleanup(self, samples, key):
         """Cleans up the results of the run with the given key from the
         collection.
@@ -295,6 +299,7 @@ class BaseRun(Configurable):
         """
         pass
 
+    @requires_can_edit(data_obj_param="samples")
     def register_run(self, samples, key, overwrite=True, cleanup=True):
         """Registers a run of this method under the given key on the given
         collection.
@@ -471,6 +476,7 @@ class BaseRun(Configurable):
         return sorted(keys)
 
     @classmethod
+    @requires_can_edit(data_obj_param="samples")
     def update_run_key(cls, samples, key, new_key):
         """Replaces the key for the given run with a new key.
 
@@ -537,20 +543,24 @@ class BaseRun(Configurable):
                 raise e
 
             raise ValueError(
-                "Failed to load info for %s with key '%s'. The %s used "
-                "fiftyone==%s but you are currently using fiftyone==%s. We "
+                "Failed to load info for %s with key '%s'. The %s used a "
+                "version of FiftyOne with open source compatibility version "
+                "fiftyone==%s but you are currently running FiftyOne Teams "
+                "v%s with open source compatibility fiftyone==%s. We "
                 "recommend that you re-run the method with your current "
-                "FiftyOne version"
+                "FiftyOne Teams version"
                 % (
                     cls._run_str(),
                     key,
                     cls._run_str(),
                     run_doc.version or "????",
+                    foc.TEAMS_VERSION,
                     foc.VERSION,
                 )
             ) from e
 
     @classmethod
+    @requires_can_edit(data_obj_param="samples")
     def save_run_info(cls, samples, run_info, overwrite=True, cleanup=True):
         """Saves the run information on the collection.
 
@@ -594,6 +604,7 @@ class BaseRun(Configurable):
         dataset.save()
 
     @classmethod
+    @requires_can_edit(data_obj_param="samples")
     def update_run_config(cls, samples, key, config):
         """Updates the :class:`BaseRunConfig` for the given run on the
         collection.
@@ -611,6 +622,7 @@ class BaseRun(Configurable):
         run_doc.save()
 
     @classmethod
+    @requires_can_edit(data_obj_param="samples")
     def save_run_results(
         cls, samples, key, run_results, overwrite=True, cache=True
     ):
@@ -794,6 +806,7 @@ class BaseRun(Configurable):
         return view
 
     @classmethod
+    @requires_can_edit(data_obj_param="samples")
     def delete_run(cls, samples, key, cleanup=True):
         """Deletes the results associated with the given run key from the
         collection.
@@ -844,6 +857,7 @@ class BaseRun(Configurable):
         dataset.save()
 
     @classmethod
+    @requires_can_edit(data_obj_param="samples")
     def delete_runs(cls, samples, cleanup=True):
         """Deletes all runs from the collection.
 
@@ -939,6 +953,7 @@ class BaseRunResults(etas.Serializable):
         """The run key for these results."""
         return self._key
 
+    @requires_can_edit(data_obj_param="self.samples")
     def save(self):
         """Saves the results to the database."""
         # Only cache if the results are already cached
@@ -952,6 +967,7 @@ class BaseRunResults(etas.Serializable):
             cache=cache,
         )
 
+    @requires_can_edit(data_obj_param="self.samples")
     def save_config(self):
         """Saves these results config to the database."""
         self.backend.update_run_config(self.samples, self.key, self.config)

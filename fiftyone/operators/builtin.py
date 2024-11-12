@@ -18,6 +18,22 @@ from fiftyone.core.odm.workspace import default_workspace_factory
 
 # pylint: disable=no-name-in-module
 from fiftyone.operators.builtins.panels.model_evaluation import EvaluationPanel
+from fiftyone.operators.builtins.operators.evaluation import (
+    EvaluateModel,
+    EvaluateModelAsync,
+)
+from fiftyone.operators.builtins.operators.embeddings import (
+    ComputeVisualization,
+)
+from fiftyone.operators.data_lens.builtin import DATA_LENS_OPERATORS
+from fiftyone.operators.panels import (
+    DataQualityPanel,
+    QueryPerformancePanel,
+)
+from fiftyone.operators.panels import QUERY_PERFORMANCE_OPERATORS
+from fiftyone.operators.panels.data_quality import (
+    OPERATORS as DATA_QUALITY_OPERATORS,
+)
 
 
 class EditFieldInfo(foo.Operator):
@@ -1893,6 +1909,19 @@ class DeleteSavedView(foo.Operator):
         ctx.dataset.delete_saved_view(name)
 
 
+class ListDatasets(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="list_datasets",
+            label="List datasets",
+            unlisted=True,
+        )
+
+    def execute(self, ctx):
+        return {"datasets": fo.list_datasets()}
+
+
 class ListWorkspaces(foo.Operator):
     @property
     def config(self):
@@ -2251,6 +2280,22 @@ def get_default_path_for_filesystem(fs):
     if fs == fos.FileSystem.LOCAL:
         HOME = os.environ.get("HOME", None)
         return os.environ.get("FIFTYONE_DEFAULT_LOCAL_PATH", HOME)
+    elif fs == fos.FileSystem.S3:
+        return fos.S3_PREFIX
+    elif fs == fos.FileSystem.GCS:
+        return fos.GCS_PREFIX
+    elif fs == fos.FileSystem.AZURE:
+        if not fos.azure_prefixes:
+            return None
+
+        azure_alias_prefix, azure_endpoint_prefix = fos.azure_prefixes[0]
+        return azure_alias_prefix or azure_endpoint_prefix
+    elif fs == fos.FileSystem.MINIO:
+        if not fos.minio_prefixes:
+            return None
+
+        minio_alias_prefix, minio_endpoint_prefix = fos.minio_prefixes[0]
+        return minio_alias_prefix or minio_endpoint_prefix
     else:
         raise ValueError("Unsupported file system '%s'" % fs)
 
@@ -2258,18 +2303,29 @@ def get_default_path_for_filesystem(fs):
 def list_filesystems():
     filesystems = fos.list_available_file_systems()
     results = []
-    for fs in fos.FileSystem:
-        if fs in filesystems:
-            results.append(
-                {
-                    "name": fs.name,
-                    "default_path": get_default_path_for_filesystem(fs),
-                }
-            )
+    for fs in filesystems:
+        results.append(
+            {
+                "name": fs,
+                "default_path": get_default_path_for_filesystem(fs),
+            }
+        )
     return results
 
 
 def list_files(dirpath):
+    fs = fos.get_file_system(dirpath)
+    if fos._is_root(dirpath) and fs is not fos.FileSystem.LOCAL:
+        dirs = [
+            {
+                "name": path.rsplit("/", 1)[-1],
+                "type": "directory",
+                "absolute_path": path,
+            }
+            for path in fos.list_buckets(fs, abs_paths=True)
+        ]
+        return dirs
+
     dirs = [
         {
             "name": name,
@@ -2373,6 +2429,7 @@ BUILTIN_OPERATORS = [
     SaveView(_builtin=True),
     EditSavedViewInfo(_builtin=True),
     DeleteSavedView(_builtin=True),
+    ListDatasets(_builtin=True),
     ListWorkspaces(_builtin=True),
     LoadWorkspace(_builtin=True),
     SaveWorkspace(_builtin=True),
@@ -2382,4 +2439,25 @@ BUILTIN_OPERATORS = [
     ListFiles(_builtin=True),
 ]
 
-BUILTIN_PANELS = [EvaluationPanel(_builtin=True)]
+BUILTIN_PANELS = []
+
+#
+# Teams-only
+#
+
+BUILTIN_OPERATORS.extend(DATA_QUALITY_OPERATORS)
+BUILTIN_OPERATORS.extend(QUERY_PERFORMANCE_OPERATORS)
+BUILTIN_OPERATORS.extend(DATA_LENS_OPERATORS)
+BUILTIN_OPERATORS.append(EvaluateModel(_builtin=True))
+BUILTIN_OPERATORS.append(EvaluateModelAsync(_builtin=True))
+BUILTIN_OPERATORS.append(ComputeVisualization(_builtin=True))
+
+BUILTIN_PANELS.append(EvaluationPanel(_builtin=True))
+BUILTIN_PANELS.append(DataQualityPanel(_builtin=True))
+
+if fo.app_config.enable_query_performance:
+    BUILTIN_PANELS.append(QueryPerformancePanel(_builtin=True))
+
+#
+# end of Teams-only
+#

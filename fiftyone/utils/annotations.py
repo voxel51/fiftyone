@@ -6,6 +6,7 @@ Annotation utilities.
 |
 """
 from collections import defaultdict, OrderedDict
+import contextlib
 from copy import deepcopy
 import getpass
 import inspect
@@ -26,6 +27,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
+import fiftyone.core.storage as fos
 import fiftyone.core.validation as fov
 import fiftyone.utils.eta as foue
 import fiftyone.utils.image as foui
@@ -2548,20 +2550,35 @@ def draw_labeled_images(
         config, kwargs, samples=samples, label_fields=label_fields
     )
 
+    media_fields = samples._get_media_fields(whitelist=label_fields)
+    media_fields["filepath"] = None
+    media_fields = list(media_fields.keys())
+
     filename_maker = fou.UniqueFilenameMaker(
         output_dir=output_dir, rel_dir=rel_dir, idempotent=False
     )
     output_ext = fo.config.default_image_ext
 
     outpaths = []
-    for sample in samples.iter_samples(progress=progress):
-        outpath = filename_maker.get_output_path(
-            sample.filepath, output_ext=output_ext
+    with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(
+                media_fields=media_fields, progress=progress
+            )
         )
-        draw_labeled_image(
-            sample, outpath, label_fields=label_fields, config=config
-        )
-        outpaths.append(outpath)
+
+        writer = context.enter_context(fos.FileWriter(type_str="images"))
+
+        for sample in samples.iter_samples(progress=progress):
+            outpath = filename_maker.get_output_path(
+                sample.local_path, output_ext=output_ext
+            )
+            local_path = writer.get_local_path(outpath)
+
+            draw_labeled_image(
+                sample, local_path, label_fields=label_fields, config=config
+            )
+            outpaths.append(outpath)
 
     return outpaths
 
@@ -2585,7 +2602,7 @@ def draw_labeled_image(
     config = _parse_draw_config(config, kwargs)
 
     fov.validate_image_sample(sample)
-    img = foui.read(sample.filepath)
+    img = foui.read(sample.local_path)
 
     image_labels = _to_image_labels(sample, label_fields=label_fields)
 
@@ -2650,12 +2667,12 @@ def draw_labeled_videos(
     for idx, sample in enumerate(samples.iter_samples(progress=progress), 1):
         if is_clips:
             logger.info("Drawing labels for clip %d/%d", idx, num_videos)
-            base, ext = os.path.splitext(sample.filepath)
+            base, ext = os.path.splitext(sample.local_path)
             first, last = sample.support
             inpath = "%s-clip-%d-%d%s" % (base, first, last, ext)
         else:
             logger.info("Drawing labels for video %d/%d", idx, num_videos)
-            inpath = sample.filepath
+            inpath = sample.local_path
 
         outpath = filename_maker.get_output_path(inpath, output_ext=output_ext)
         draw_labeled_video(
@@ -2686,19 +2703,20 @@ def draw_labeled_video(
     """
     config = _parse_draw_config(config, kwargs)
 
-    video_path = sample.filepath
+    video_path = sample.local_path
     video_labels = _to_video_labels(sample, label_fields=label_fields)
 
     if support is None and isinstance(sample, foc.ClipView):
         support = sample.support
 
-    etaa.annotate_video(
-        video_path,
-        video_labels,
-        outpath,
-        support=support,
-        annotation_config=config,
-    )
+    with fos.LocalFile(outpath, "w") as local_path:
+        etaa.annotate_video(
+            video_path,
+            video_labels,
+            local_path,
+            support=support,
+            annotation_config=config,
+        )
 
 
 def _parse_draw_config(config, kwargs, samples=None, label_fields=None):
@@ -2761,7 +2779,7 @@ def _to_video_labels(sample, label_fields=None):
     else:
         metadata = sample.metadata
         if metadata is None:
-            metadata = fom.VideoMetadata.build_for(sample.filepath)
+            metadata = fom.VideoMetadata.build_for(sample.local_path)
 
         support = [1, metadata.total_frame_count]
 

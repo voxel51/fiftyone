@@ -5,6 +5,8 @@ import React from "react";
 export default function Evaluate(props: EvaluateProps) {
   const { variant } = props;
 
+  return <EvaluateButton {...props} />; // teams-only
+
   if (variant === "empty") return null;
 
   return (
@@ -16,6 +18,20 @@ export default function Evaluate(props: EvaluateProps) {
       target="_blank"
     >
       View documentation
+    </Button>
+  );
+}
+
+function EvaluateButton(props: EvaluateProps) {
+  const { onEvaluate } = props;
+  return (
+    <Button
+      variant="contained"
+      onClick={() => {
+        onEvaluate();
+      }}
+    >
+      Evaluate Model
     </Button>
   );
 }

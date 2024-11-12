@@ -21,6 +21,7 @@ import eta.core.utils as etau
 
 import fiftyone.core.context as foc
 import fiftyone.core.labels as fol
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 
 from .base import Plot, InteractivePlot, ResponsivePlot
@@ -1601,10 +1602,12 @@ class PlotlyWidgetMixin(object):
                 :meth:`plotly:plotly.graph_objects.Figure.to_image` or
                 :meth:`plotly:plotly.graph_objects.Figure.write_html`
         """
-        etau.ensure_basedir(path)
+        fos.ensure_basedir(path)
 
         if os.path.splitext(path)[1] == ".html":
-            self._widget.write_html(path, **kwargs)
+            with fos.LocalFile(path, "w") as local_path:
+                self._widget.write_html(local_path, **kwargs)
+
             return
 
         if width is None:
@@ -1616,9 +1619,10 @@ class PlotlyWidgetMixin(object):
         if scale is None:
             scale = 1.0
 
-        self._widget.write_image(
-            path, width=width, height=height, scale=scale, **kwargs
-        )
+        with fos.LocalFile(path, "w") as local_path:
+            self._widget.write_image(
+                local_path, width=width, height=height, scale=scale, **kwargs
+            )
 
     def _update_layout(self, **kwargs):
         if kwargs:
@@ -2563,33 +2567,6 @@ def _plot_scatter_numeric(
             figure.update_layout(zaxis_scaleanchor="x")
 
     return figure
-
-
-def _set_map_type_to_figure(
-    figure,
-    map_type,
-):
-    if map_type == "satellite":
-        figure.update_layout(
-            mapbox_style="white-bg",
-            mapbox_layers=[
-                {
-                    "below": "traces",
-                    "sourcetype": "raster",
-                    "sourceattribution": "United States Geological Survey",
-                    "source": [
-                        "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}"
-                    ],
-                }
-            ],
-            margin={"r": 0, "t": 0, "l": 0, "b": 0},
-        )
-    elif map_type == "roadmap":
-        figure.update_layout(mapbox_style="carto-positron")
-    else:
-        figure.update_layout(mapbox_style="carto-positron")
-        msg = "Unsupported map type '%s'; defaulted to 'roadmap'" % map_type
-        warnings.warn(msg)
 
 
 def _set_map_type_to_figure(

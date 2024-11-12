@@ -38,15 +38,15 @@ export default function VolumeSelector({ onOpenPath }) {
           Icon={icons.AWSIcon}
         />
       )}
-      {fs.hasGCP && (
+      {fs.gcs && (
         <VolumeChoice
           onOpen={onOpenPath}
-          path={fs.gcp.default_path}
-          label="GCP"
+          path={fs.gcs.default_path}
+          label="GCS"
           Icon={icons.GCPIcon}
         />
       )}
-      {fs.hasMinIO && (
+      {fs.minio && (
         <VolumeChoice
           onOpen={onOpenPath}
           label="MinIO"

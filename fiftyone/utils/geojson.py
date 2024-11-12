@@ -8,7 +8,6 @@ GeoJSON utilities.
 import logging
 import os
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.fields as fof
@@ -112,7 +111,7 @@ def load_location_data(
     location_cls = samples._get_label_field_type(location_field)
 
     if etau.is_str(geojson_or_path):
-        d = etas.read_json(geojson_or_path)
+        d = fos.read_json(geojson_or_path)
     else:
         d = geojson_or_path
 
@@ -461,15 +460,15 @@ class GeoJSONDatasetImporter(
 
         features_map = {}
 
-        if self.labels_path is not None and os.path.isfile(self.labels_path):
-            geojson = etas.read_json(self.labels_path)
+        if self.labels_path is not None and fos.isfile(self.labels_path):
+            geojson = fos.read_json(self.labels_path)
             _ensure_type(geojson, "FeatureCollection")
 
             for feature in geojson.get("features", []):
                 properties = feature["properties"]
                 if "filename" in properties:
                     filename = fos.normpath(properties.pop("filename"))
-                    if os.path.isabs(filename):
+                    if fos.isabs(filename):
                         filepath = filename
                     else:
                         filepath = media_paths_map.get(filename, None)
@@ -676,7 +675,7 @@ class GeoJSONDatasetExporter(
 
     def close(self, *args):
         features = {"type": "FeatureCollection", "features": self._features}
-        etas.write_json(
+        fos.write_json(
             features, self.labels_path, pretty_print=self.pretty_print
         )
         self._media_exporter.close()

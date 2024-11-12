@@ -7,8 +7,16 @@ import type { Events } from "./base";
 import { BaseElement } from "./base";
 
 export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
+  // Teams only
+  private allowAnonymousOrigin: boolean;
+
   private src = "";
   private imageSource: HTMLImageElement;
+
+  constructor() {
+    super();
+    this.allowAnonymousOrigin = window.LOOKER_CROSS_ORIGIN_MEDIA;
+  }
 
   getEvents(): Events<ImageState> {
     return {
@@ -28,7 +36,9 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
 
   createHTMLElement() {
     const element = new Image();
-    element.crossOrigin = "Anonymous";
+    if (this.allowAnonymousOrigin) {
+      element.crossOrigin = "Anonymous";
+    }
     element.loading = "eager";
     return element;
   }
