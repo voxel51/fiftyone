@@ -62,21 +62,21 @@ Medium, and following us on social media:
 ## Table of Contents
 
 - [Table of Contents](#table-of-contents)
-- [📝 Installation Guide](#-installation-guide)
-- [🚀 Getting Started](#-getting-started)
-- [⚙️ System Requirements](#️-system-requirements)
-- [💻 Run the Notebooks](#-run-the-notebooks)
-	- [To Launch a Single Notebook](#to-launch-a-single-notebook)
-	- [To Launch all Notebooks](#to-launch-all-notebooks)
-- [🧹 Cleaning Up](#-cleaning-up)
-- [⚠️ Troubleshooting](#️-troubleshooting)
-- [📚 Additional Resources](#-additional-resources)
-- [🧑‍💻 Contributors](#-contributors)
-- [❓ FAQ](#-faq)
+- [Prerequisites](#-prerequisites)
+- [Installation](#-installation)
+- [Quickstart](#-quickstart)
+- [Documentation](#-documentation)
+- [Examples](#-examples)
+- [Contributing to fiftyone](#-contributing)
+- [Installing from source](#-fromsource)
+- [Troubleshooting](#-troubleshooting)
+- [Contributors](#-contributors)
+- [Citation](#-citation)
+- [FAQ](#-faq)
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 
-<div id='-installation-guide'/>
+<div id='-prerequisites'/>
 
 ## Prerequisites
 
@@ -86,6 +86,8 @@ fiftyone requires Python, Git and other dependencies. To get started, select the
 | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+
+<div id='-installation'/>
 
 ## Installation
 
@@ -101,6 +103,8 @@ for troubleshooting and other information about getting up-and-running with
 FiftyOne.
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+
+<div id='-quickstart'/>
 
 ## Quickstart
 
@@ -130,6 +134,8 @@ for more information.
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 
+<div id='-documentation'/>
+
 ## Documentation
 
 Full documentation for FiftyOne is available at
@@ -144,6 +150,8 @@ Full documentation for FiftyOne is available at
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 
+<div id='-examples'/>
+
 ## Examples
 
 Check out the [fiftyone-examples](https://github.com/voxel51/fiftyone-examples)
@@ -151,6 +159,8 @@ repository for open source and community-contributed examples of using
 FiftyOne.
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+
+<div id='-contributing'/>
 
 ## Contributing to FiftyOne
 
@@ -163,6 +173,8 @@ to learn how to get involved.
 
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+
+<div id='-fromsource'/>
 
 ## Installing from source
 
@@ -301,6 +313,9 @@ You can uninstall FiftyOne as follows:
 pip uninstall fiftyone fiftyone-brain fiftyone-db
 ```
 
+[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+<div id='-contributors'/>
+
 ## Contributors
 
 Special thanks to these amazing people for contributing to FiftyOne! 🙌
@@ -308,6 +323,9 @@ Special thanks to these amazing people for contributing to FiftyOne! 🙌
 <a href="https://github.com/voxel51/fiftyone/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=voxel51/fiftyone" />
 </a>
+
+[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+<div id='-citation'/>
 
 ## Citation
 
