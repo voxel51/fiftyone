@@ -2237,6 +2237,7 @@ BUILTIN_OPERATORS = [
     SaveView(_builtin=True),
     EditSavedViewInfo(_builtin=True),
     DeleteSavedView(_builtin=True),
+    ListDatasets(_builtin=True),
     ListWorkspaces(_builtin=True),
     LoadWorkspace(_builtin=True),
     SaveWorkspace(_builtin=True),
