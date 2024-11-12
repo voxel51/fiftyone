@@ -28,8 +28,8 @@ const QueryPerformanceToastTeams = () => {
     spaces.setNodeActive(openedPanel);
     if (path) {
       promptForOperator(
-        "index_field_creation_operator",
-        { nonperformant_field: path, is_frame_filter: isFrameFilter },
+        "create_index_or_summary_field",
+        { path: path },
         {
           callback: () => {
             triggerPanelEvent(openedPanel.id, {
