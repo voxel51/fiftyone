@@ -2038,7 +2038,6 @@ __metadata:
     eslint-plugin-prettier: ^4.2.1
     eslint-plugin-react: ^7.31.11
     eslint-plugin-react-hooks: ^4.6.0
-    jpeg-js: ^0.4.4
     jsdom: ^20.0.2
     prettier: ^2.8.0
     react-player: ^2.16.0
@@ -2112,7 +2111,6 @@ __metadata:
     "@xmldom/xmldom": ^0.8.6
     buffer: ^6.0.3
     copy-to-clipboard: ^3.3.1
-    fast-png: ^6.1.0
     immutable: ^4.0.0-rc.12
     lodash: ^4.17.21
     lru-cache: ^11.0.1
@@ -4974,13 +4972,6 @@ __metadata:
   version: 2019.7.3
   resolution: "@types/offscreencanvas@npm:2019.7.3"
   checksum: 53a394a65ae08eddff6e0a2a8db72abecc94f41fc8fee166e8900075d3c1ca32540ddf5b4836c37357d53a0253a03fea4d781b2db543e3f08bc1cdc2dc0fefb5
-  languageName: node
-  linkType: hard
-
-"@types/pako@npm:^2.0.0":
-  version: 2.0.3
-  resolution: "@types/pako@npm:2.0.3"
-  checksum: 0746dd5d29eccf5b2e6cceb3ccb093851219e78bd2e2e20d25757e247987139e061e5d4ba37cb5295493f06e3c683c74f8876011cd8a3f3748a09244fbc841d9
   languageName: node
   linkType: hard
 
@@ -9179,17 +9170,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-png@npm:^6.1.0":
-  version: 6.2.0
-  resolution: "fast-png@npm:6.2.0"
-  dependencies:
-    "@types/pako": ^2.0.0
-    iobuffer: ^5.3.2
-    pako: ^2.1.0
-  checksum: a3d004a20373f333ab1c00f4613034012e45074a3c0491685e7bae8959535e1ce64f478caa40cd57c392823f705647ef562f908d29d68b44a53973d6d704236d
-  languageName: node
-  linkType: hard
-
 "fast-shallow-equal@npm:^1.0.0":
   version: 1.0.0
   resolution: "fast-shallow-equal@npm:1.0.0"
@@ -10487,13 +10467,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"iobuffer@npm:^5.3.2":
-  version: 5.3.2
-  resolution: "iobuffer@npm:5.3.2"
-  checksum: 9ae2a7dc7ffa8dbb6c6b230a42b028804ba6ee31fbe86d638fdcde941f3c28fc3472659f3fbaa7916357eb78c9512382f73cd4735de01c4f14a0e8cf166ec6ac
-  languageName: node
-  linkType: hard
-
 "ip-address@npm:^9.0.5":
   version: 9.0.5
   resolution: "ip-address@npm:9.0.5"
@@ -11607,13 +11580,6 @@ __metadata:
     react:
       optional: true
   checksum: 1630f8f332c9e459352ec227eca79c4e601823ea958ea793f1c93262b57dc6b28f0c84dba263c705b14898b5b329d241cd4379e64c0de5b8d5b8c3d929f04b88
-  languageName: node
-  linkType: hard
-
-"jpeg-js@npm:^0.4.4":
-  version: 0.4.4
-  resolution: "jpeg-js@npm:0.4.4"
-  checksum: bd7cb61aa8df40a9ee2c2106839c3df6054891e56cfc22c0ac581402e06c6295f962a4754b0b2ac50a401789131b1c6dc9df8d24400f1352168be1894833c590
   languageName: node
   linkType: hard
 
@@ -13730,13 +13696,6 @@ __metadata:
   version: 1.0.0
   resolution: "package-json-from-dist@npm:1.0.0"
   checksum: ac706ec856a5a03f5261e4e48fa974f24feb044d51f84f8332e2af0af04fbdbdd5bbbfb9cbbe354190409bc8307c83a9e38c6672c3c8855f709afb0006a009ea
-  languageName: node
-  linkType: hard
-
-"pako@npm:^2.1.0":
-  version: 2.1.0
-  resolution: "pako@npm:2.1.0"
-  checksum: 71666548644c9a4d056bcaba849ca6fd7242c6cf1af0646d3346f3079a1c7f4a66ffec6f7369ee0dc88f61926c10d6ab05da3e1fca44b83551839e89edd75a3e
   languageName: node
   linkType: hard
 
