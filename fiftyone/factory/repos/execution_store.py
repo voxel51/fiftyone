@@ -86,9 +86,25 @@ class ExecutionStoreRepo(object):
 
     def count_stores(self) -> int:
         """Counts the stores associated with the current context."""
-        return self._collection.count_documents(
-            dict(key="__store__", dataset_id=self._dataset_id),
-        )
+        pipeline = [
+            {
+                "$match": {
+                    "dataset_id": self._dataset_id,
+                }
+            },
+            {
+                "$group": {
+                    "_id": {
+                        "store_name": "$store_name",
+                        "dataset_id": "$dataset_id",
+                    }
+                }
+            },
+            {"$count": "total_stores"},
+        ]
+
+        result = list(self._collection.aggregate(pipeline))
+        return result[0]["total_stores"] if result else 0
 
     def delete_store(self, store_name) -> int:
         """Deletes the specified store."""
@@ -118,9 +134,6 @@ class ExecutionStoreRepo(object):
             "expires_at": expiration if ttl else None,
             "dataset_id": self._dataset_id,
         }
-
-        if self._dataset_id is None:
-            on_insert_fields.pop("dataset_id")
 
         # Prepare the update operations
         update_fields = {
@@ -250,7 +263,20 @@ class ExecutionStoreRepo(object):
 
     def count_stores_global(self) -> int:
         """Counts stores across all datasets and the global context."""
-        return self._collection.count_documents(dict(key="__store__"))
+        pipeline = [
+            {
+                "$group": {
+                    "_id": {
+                        "store_name": "$store_name",
+                        "dataset_id": "$dataset_id",
+                    }
+                }
+            },
+            {"$count": "total_stores"},
+        ]
+
+        result = list(self._collection.aggregate(pipeline))
+        return result[0]["total_stores"] if result else 0
 
     def delete_store_global(self, store_name) -> int:
         """Deletes the specified store across all datasets and the global

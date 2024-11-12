@@ -228,15 +228,23 @@ def test_set_key_with_dict_value(svc):
 @drop_stores
 def test_count_stores(svc, svc_with_dataset):
     assert svc.count_stores() == 0
+    assert svc.count_stores_global() == 0
+
     svc.create_store("store_a")
     svc.create_store("store_b")
     assert svc.count_stores() == 2
+    assert svc.count_stores_global() == 2
+
     assert svc_with_dataset.count_stores() == 0
+
     svc_with_dataset.create_store("store_c")
     assert svc_with_dataset.count_stores() == 1
-    assert svc.count_stores() == 2
+    assert svc.count_stores() == 2  # global count should still be 2
+    assert svc.count_stores_global() == 3  # total across contexts should be 3
+
     svc.set_key("store_x", "key_a", "value")
     assert svc.count_stores() == 3
+    assert svc.count_stores_global() == 4
 
 
 @drop_datasets
@@ -244,7 +252,7 @@ def test_count_stores(svc, svc_with_dataset):
 def test_cleanup(svc, svc_with_dataset):
     A_STORE_NAME = "store_a"
     B_STORE_NAME = "store_b"
-    KEY_A = "key_a"
+
     KEY_B = "key_b"
     svc.create_store(A_STORE_NAME)
     svc_with_dataset.set_key(B_STORE_NAME, KEY_B, "value_b")
