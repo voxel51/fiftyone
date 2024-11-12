@@ -78,7 +78,7 @@ Medium, and following us on social media:
 
 <div id='-prerequisites'/>
 
-## Prerequisites
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Prerequisites
 
 fiftyone requires Python, Git and other dependencies. To get started, select the guide for your operating system or environment:
 
@@ -89,7 +89,7 @@ fiftyone requires Python, Git and other dependencies. To get started, select the
 
 <div id='-installation'/>
 
-## Installation
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Installation
 
 You can install the latest stable version of FiftyOne via `pip`:
 
@@ -106,7 +106,7 @@ FiftyOne.
 
 <div id='-quickstart'/>
 
-## Quickstart
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Quickstart
 
 Dive right into FiftyOne by opening a Python shell and running the snippet
 below, which downloads a
@@ -136,7 +136,7 @@ for more information.
 
 <div id='-documentation'/>
 
-## Documentation
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Documentation
 
 Full documentation for FiftyOne is available at
 [fiftyone.ai](https://fiftyone.ai). In particular, see these resources:
@@ -162,7 +162,7 @@ FiftyOne.
 
 <div id='-contributing'/>
 
-## Contributing to FiftyOne
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Contributing to FiftyOne
 
 FiftyOne and [FiftyOne Brain](https://github.com/voxel51/fiftyone-brain) are
 open source and community contributions are welcome!
@@ -176,7 +176,7 @@ to learn how to get involved.
 
 <div id='-fromsource'/>
 
-## Installing from source
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Installing from source
 
 The instructions below are for macOS and Linux systems. Windows users may need
 to make adjustments. If you are working in Google Colab,
@@ -305,7 +305,7 @@ See the
 [docs guide](https://github.com/voxel51/fiftyone/blob/develop/docs/README.md)
 for information on building and contributing to the documentation.
 
-## Uninstallation
+### Uninstallation
 
 You can uninstall FiftyOne as follows:
 
@@ -316,7 +316,7 @@ pip uninstall fiftyone fiftyone-brain fiftyone-db
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 <div id='-contributors'/>
 
-## Contributors
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Contributors
 
 Special thanks to these amazing people for contributing to FiftyOne! 🙌
 
@@ -327,7 +327,7 @@ Special thanks to these amazing people for contributing to FiftyOne! 🙌
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 <div id='-citation'/>
 
-## Citation
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Citation
 
 If you use FiftyOne in your research, feel free to cite the project (but only
 if you love it 😊):
@@ -344,7 +344,7 @@ if you love it 😊):
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 <div id='-faq'/>
 
-## FAQ & Additional Resources
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> FAQ & Additional Resources
 
 - [FAQ](https://github.com/voxel51/fiftyone/issues): Reqport you issue in our Github repo.
 - [fiftyone-team](https://github.com/voxel51/fiftyone-teams): Upgrade to FiftyOne Teams to enable multiple users to securely collaborate on the same datasets and models, either on-premises or in the cloud, all built on top of the open source FiftyOne workflows that you’re already relying on.
