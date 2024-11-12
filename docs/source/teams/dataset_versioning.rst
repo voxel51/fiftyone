@@ -165,7 +165,7 @@ creating snapshots causes database storage to grow quickly!
 When a snapshot is archived, all of its contents are stored in an archive in
 the configured cold storage location: either a mounted filesystem or cloud
 storage folder (using your deployment's
-:ref:`cloud credentials <enterprise-cloud-credentials>`).
+:ref:`cloud credentials <teams-cloud-credentials>`).
 
 .. note::
 
@@ -237,7 +237,7 @@ Usage notes
 Snapshot permissions
 ____________________
 
-The table below shows the :ref:`dataset permissions <enterprise-permissions>`
+The table below shows the :ref:`dataset permissions <teams-permissions>`
 required to perform different Snapshot-related operations:
 
 +----------------------------+----------------------------------+
@@ -284,14 +284,14 @@ Enterprise UI
 To access the Snapshot history and management page, click the "History tab" on
 a dataset's main page.
 
-.. image:: /images/enterprise/versioning/history-tab-button.png
+.. image:: /images/teams/versioning/history-tab-button.png
     :alt: history-tab-button
     :align: center
 
 On this page you can see a listing of the Snapshot history for the dataset.
 Each row contains information about a single Snapshot.
 
-.. image:: /images/enterprise/versioning/snapshot-list.png
+.. image:: /images/teams/versioning/snapshot-list.png
     :alt: snapshot-list
     :align: center
 
@@ -339,7 +339,7 @@ From the dataset's History tab, click the "Browse" button next to a Snapshot in
 the :ref:`snapshot list <dataset-versioning-list-snapshots>` to load the
 Snapshot in the UI.
 
-.. image:: /images/enterprise/versioning/browse-button.png
+.. image:: /images/teams/versioning/browse-button.png
     :alt: history-browse-button
     :align: center
 
@@ -353,7 +353,7 @@ button. For the above Snapshot, it would look like this:
 
 .. code-block:: text
 
-    https://<your-enterprise-url>/datasets/roadscene-vehicle-detection/samples?snapshot=new+snapshot
+    https://<your-teams-url>/datasets/roadscene-vehicle-detection/samples?snapshot=new+snapshot
 
 One other difference from the normal page is the Snapshot banner which gives
 information about the Snapshot being viewed, and other quick-click operations.
@@ -361,7 +361,7 @@ Clicking the name line drops down a list of the Snapshots where the current one
 is highlighted. Clicking on a Snapshot in the dropdown will navigate to the
 browse page for that Snapshot.
 
-.. image:: /images/enterprise/versioning/browse-banner-dropdown.png
+.. image:: /images/teams/versioning/browse-banner-dropdown.png
     :alt: browse-banner-dropdown
     :align: center
 
@@ -372,7 +372,7 @@ from the 3-dot (kebab) menu which gives various
 :ref:`management functions <dataset-versioning-snapshot-management>` for the
 current Snapshot.
 
-.. image:: /images/enterprise/versioning/browse-banner-right.png
+.. image:: /images/teams/versioning/browse-banner-right.png
     :alt: browse-banner-rightside
     :align: center
 
@@ -427,7 +427,7 @@ Snapshot and the current state of the dataset.
     The latest changes summary is not continuously updated; click the "Refresh"
     button to recompute these values.
 
-.. image:: /images/enterprise/versioning/create-refresh-button.png
+.. image:: /images/teams/versioning/create-refresh-button.png
     :alt: create-refresh-button
     :align: center
 
@@ -440,13 +440,13 @@ click the "Save new snapshot" button.
     used, deployment options chosen, and the size of the dataset, this may take
     some time.
 
-.. image:: /images/enterprise/versioning/create-save-button.png
+.. image:: /images/teams/versioning/create-save-button.png
     :alt: create-save-button
     :align: center
 
 After creation, the new Snapshot will show up in the list!
 
-.. image:: /images/enterprise/versioning/history-new-snapshot.png
+.. image:: /images/teams/versioning/history-new-snapshot.png
     :alt: history-new-snapshot
     :align: center
 
@@ -527,7 +527,7 @@ To delete a Snapshot via the App, open the 3-dot (kebab) menu for the Snapshot.
 In the menu, click "Delete snapshot". This will bring up a confirmation dialog
 to prevent accidental deletions.
 
-.. image:: /images/enterprise/versioning/delete-snapshot.png
+.. image:: /images/teams/versioning/delete-snapshot.png
     :alt: delete-snapshot
     :align: center
 
@@ -570,7 +570,7 @@ the History tab for the Snapshot you want to rollback to and select
 "Rollback to this snapshot". This will bring up a confirmation dialog to
 prevent accidental deletions.
 
-.. image:: /images/enterprise/versioning/rollback-snapshot.png
+.. image:: /images/teams/versioning/rollback-snapshot.png
     :alt: rollback-snapshot
     :align: center
 
@@ -623,7 +623,7 @@ for a snapshot you want to archive and select "Archive snapshot". This will
 begin the archival process and the browse button will be replaced with an
 "Archiving" spinner":
 
-.. image:: /images/enterprise/versioning/archive-snapshot.png
+.. image:: /images/teams/versioning/archive-snapshot.png
     :alt: archive-snapshot
     :align: center
 
@@ -662,7 +662,7 @@ To unarchive a snapshot, click the "Unarchive" button in the History tab for a
 snapshot you want to unarchive. This will begin the unarchival process and the
 archive button will be replaced with an "Unarchiving" spinner:
 
-.. image:: /images/enterprise/versioning/unarchive-snapshot.png
+.. image:: /images/teams/versioning/unarchive-snapshot.png
     :alt: unarchive-snapshot
     :align: center
 

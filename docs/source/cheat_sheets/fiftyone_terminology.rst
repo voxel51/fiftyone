@@ -21,7 +21,7 @@ __________
        viewing, filtering, and understanding your datasets. Can be launched in
        the browser or within notebooks.
    * - FiftyOne Enterprise
-     - `The enterprise-grade suite <https://voxel51.com/fiftyone-enterprise/>`_
+     - `The enterprise-grade suite <https://voxel51.com/fiftyone-teams/>`_
        built on top of FiftyOne for collaboration, permissioning, and working
        with cloud-backed media.
 

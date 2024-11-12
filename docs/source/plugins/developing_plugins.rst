@@ -1323,9 +1323,9 @@ on their execution context from within
 
 .. note::
 
-    :ref:`FiftyOne Enterprise <fiftyone-enterprise>` users can view the current progress
+    :ref:`FiftyOne Enterprise <fiftyone-teams>` users can view the current progress
     of their delegated operations from the
-    :ref:`Runs page <enterprise-managing-delegated-operations>` of the Enterprise App!
+    :ref:`Runs page <teams-managing-delegated-operations>` of the Enterprise App!
 
 For your convenience, all builtin methods of the FiftyOne SDK that support
 rendering progress bars provide an optional `progress` method that you can use

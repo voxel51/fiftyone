@@ -15,7 +15,7 @@ Options:
 -f      Perform a fast build (don't regenerate zoo/plugin docs).
 -c      Perform a clean build (deletes existing build directory).
 -s      Copy static files only (CSS, JS).
--t      Path to fiftyone-enterprise clone to use for Enterprise docs
+-t      Path to fiftyone-teams clone to use for Enterprise docs
 "
 }
 
@@ -74,7 +74,7 @@ fi
 
 echo "**** Generating documentation ****"
 
-# Symlink to fiftyone-enterprise
+# Symlink to fiftyone-teams
 if [[ -n "${PATH_TO_TEAMS}" ]]; then
     # macOS users may need to run `brew install coreutils` to get `realpath``
     PATH_TO_TEAMS="$(realpath "$PATH_TO_TEAMS")"
@@ -88,7 +88,7 @@ if [[ -n "${PATH_TO_TEAMS}" ]]; then
 
     ln -sfn "${PATH_TO_TEAMS}/fiftyone/management" "${PATH_TO_FIFTYONE_DIR}/management"
     ln -sfn "${PATH_TO_TEAMS}/fiftyone/api" "${PATH_TO_FIFTYONE_DIR}/api"
-    echo "Linking to fiftyone-enterprise at: ${PATH_TO_TEAMS}"
+    echo "Linking to fiftyone-teams at: ${PATH_TO_TEAMS}"
     echo "In fiftyone path: ${PATH_TO_FIFTYONE_DIR}"
 fi
 
@@ -127,7 +127,7 @@ echo "Building docs"
 # sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
 sphinx-build -M html source build $SPHINXOPTS
 
-# Remove symlink to fiftyone-enterprise
+# Remove symlink to fiftyone-teams
 if [[ -n "${PATH_TO_TEAMS}" ]]; then
     unlink "$PATH_TO_FIFTYONE_DIR/management"
     unlink "$PATH_TO_FIFTYONE_DIR/api"

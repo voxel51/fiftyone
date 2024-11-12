@@ -72,7 +72,7 @@ Voxel51 developers can include Enterprise SDK-related components in their local
 docs build by including the `-t` flag:
 
 ```shell
-bash docs/generate_docs.bash -t /path/to/fiftyone-enterprise
+bash docs/generate_docs.bash -t /path/to/fiftyone-teams
 ```
 
 ### Style Guide

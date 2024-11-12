@@ -1,4 +1,4 @@
-.. _enterprise-secrets:
+.. _teams-secrets:
 
 FiftyOne Enterprise Secrets
 ======================
@@ -7,17 +7,17 @@ FiftyOne Enterprise Secrets
 
 FiftyOne Enterprise provides a Secrets interface for storing sensitive information
 such as API tokens and login credentials in a secure manner for use by your
-:ref:`Team's plugins <enterprise-plugins>`.
+:ref:`Team's plugins <teams-plugins>`.
 
 Managing secrets through the Enterprise App is a straightforward and secure way to
 configure connections to and integrations with external services and APIs such
 as GCP, OpenAI, CVAT, etc without the need to change the configuration or
 environment variables of your FiftyOne Enterprise containers and restarting them.
 Instead, you can simply add or remove secrets using the
-:ref:`Enterprise UI <enterprise-adding-secrets>` and they will immediately be available
+:ref:`Enterprise UI <teams-adding-secrets>` and they will immediately be available
 to any plugins that require them.
 
-.. _enterprise-adding-secrets:
+.. _teams-adding-secrets:
 
 Adding secrets
 --------------
@@ -25,15 +25,15 @@ Adding secrets
 Admins can add, configure, and remove secrets in the FiftyOne Enterprise App by
 navigating to the Secrets Management page under Settings > Secrets:
 
-.. image:: /images/enterprise/secrets_page.png
-    :alt: enterprise-secrets-page
+.. image:: /images/teams/secrets_page.png
+    :alt: teams-secrets-page
     :align: center
 
 When you tap on the "Add secret" button, you will see that a secret is
 comprised of a key, value, and optional description:
 
-.. image:: /images/enterprise/create_secret_form.png
-    :alt: enterprise-create-secret-form
+.. image:: /images/teams/create_secret_form.png
+    :alt: teams-create-secret-form
     :align: center
 
 Secret keys must be upper snake case strings like `MY_SECRET_KEY`.
@@ -45,15 +45,15 @@ encryption key.
 .. note::
 
     Only Admins have access to the Secrets page. However, once added, any App
-    component or :ref:`plugin <enterprise-plugins>` requiring secret values can
-    access them via the :ref:`Secrets interface <enterprise-using-secrets>`.
+    component or :ref:`plugin <teams-plugins>` requiring secret values can
+    access them via the :ref:`Secrets interface <teams-using-secrets>`.
 
-.. _enterprise-using-secrets:
+.. _teams-using-secrets:
 
 Using secrets
 -------------
 
-In order to access secrets, :ref:`plugins <enterprise-plugins>` must declare the
+In order to access secrets, :ref:`plugins <teams-plugins>` must declare the
 secrets that they may use by adding them to the plugin's ``fiftyone.yml`` file.
 
 For example, the

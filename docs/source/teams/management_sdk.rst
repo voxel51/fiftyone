@@ -1,4 +1,4 @@
-.. _enterprise-management-sdk:
+.. _teams-management-sdk:
 
 Enterprise Management SDK
 ====================
@@ -14,15 +14,15 @@ more.
 
 .. note::
 
-   You must use an :ref:`API connection <enterprise-api-connection>` (not a direct
+   You must use an :ref:`API connection <teams-api-connection>` (not a direct
    MongoDB connection) in order to use Management SDK methods.
 
-.. _enterprise-sdk-api-reference:
+.. _teams-sdk-api-reference:
 
 API reference
 _____________
 
-.. _enterprise-sdk-connections:
+.. _teams-sdk-connections:
 
 Connections
 -----------
@@ -30,7 +30,7 @@ Connections
 .. automodule:: fiftyone.management.connection
    :members: test_api_connection, reload_connection
 
-.. _enterprise-sdk-api-keys:
+.. _teams-sdk-api-keys:
 
 API keys
 --------
@@ -39,7 +39,7 @@ API keys
    :members:
    :undoc-members:
 
-.. _enterprise-sdk-cloud-credentials:
+.. _teams-sdk-cloud-credentials:
 
 Cloud credentials
 -----------------
@@ -48,7 +48,7 @@ Cloud credentials
    :members:
    :undoc-members:
 
-.. _enterprise-sdk-dataset-permissions:
+.. _teams-sdk-dataset-permissions:
 
 Dataset permissions
 -------------------
@@ -57,7 +57,7 @@ Dataset permissions
    :members:
    :undoc-members:
 
-.. _enterprise-sdk-organization-settings:
+.. _teams-sdk-organization-settings:
 
 
 Organization settings
@@ -67,7 +67,7 @@ Organization settings
    :members:
    :undoc-members:
 
-.. _enterprise-sdk-plugin-management:
+.. _teams-sdk-plugin-management:
 
 Plugin management
 -----------------
@@ -76,7 +76,7 @@ Plugin management
    :members:
    :undoc-members:
 
-.. _enterprise-sdk-snapshots:
+.. _teams-sdk-snapshots:
 
 Snapshots
 ---------
@@ -85,7 +85,7 @@ Snapshots
    :members:
    :undoc-members:
 
-.. _enterprise-sdk-user-management:
+.. _teams-sdk-user-management:
 
 User management
 ---------------
@@ -94,7 +94,7 @@ User management
    :members:
    :undoc-members:
 
-.. _enterprise-sdk-group-management:
+.. _teams-sdk-group-management:
 
 Group management
 ----------------

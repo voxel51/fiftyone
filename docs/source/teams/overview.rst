@@ -1,4 +1,4 @@
-.. _enterprise-overview:
+.. _teams-overview:
 
 FiftyOne Enterprise Overview
 =======================
@@ -10,10 +10,10 @@ including annotation, evaluation, model training, and deployment.
 
 .. note::
 
-    `Learn more <https://voxel51.com/fiftyone-enterprise>`_ about FiftyOne Enterprise and
-    `contact us <https://voxel51.com/get-fiftyone-enterprise>`_ to try it!
+    `Learn more <https://voxel51.com/fiftyone-teams>`_ about FiftyOne Enterprise and
+    `contact us <https://voxel51.com/get-fiftyone-teams>`_ to try it!
 
-.. _fiftyone-vs-fiftyone-enterprise:
+.. _fiftyone-vs-fiftyone-teams:
 
 FiftyOne vs FiftyOne Enterprise
 __________________________
@@ -83,7 +83,7 @@ Here's a high-level overview of the capabilities that FiftyOne Enterprise brings
     </tbody>
     </table>
 
-.. _enterprise-backwards-compatibility:
+.. _teams-backwards-compatibility:
 
 Backwards compatibility
 _______________________
@@ -117,7 +117,7 @@ would with open source FiftyOne:
        | :ref:`Evaluating models in FiftyOne <evaluating-models>`
        | :ref:`Using interactive plots to explore results <interactive-plots>`
 
-.. _enterprise-system-architecture:
+.. _teams-system-architecture:
 
 System architecture
 ___________________
@@ -125,8 +125,8 @@ ___________________
 FiftyOne Enterprise is implemented as a set of interoperable services, as described
 in the figure below.
 
-.. image:: /images/enterprise/enterprise_architecture.png
-   :alt: enterprise-architecture
+.. image:: /images/teams/teams_architecture.png
+   :alt: teams-architecture
    :align: center
 
 FiftyOne Enterprise is strictly a software offering. All relevant hardware is owned

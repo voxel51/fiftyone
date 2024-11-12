@@ -1,4 +1,4 @@
-.. _enterprise-app:
+.. _teams-app:
 
 FiftyOne Enterprise App
 ==================
@@ -13,7 +13,7 @@ sharing your team's datasets, all from a centralized web portal.
 This page provides a brief overview of some features available only in the
 FiftyOne Enterprise App.
 
-.. _enterprise-homepage:
+.. _teams-homepage:
 
 The homepage
 ____________
@@ -31,11 +31,11 @@ buttons at the bottom of the page to see different batches of datasets.
    You can return to the homepage from any page of the Enterprise App by clicking on
    the Voxel51 logo in the upper left corner.
 
-.. image:: /images/enterprise/homepage.png
+.. image:: /images/teams/homepage.png
    :alt: app-homepage
    :align: center
 
-.. _enterprise-pinned-datasets:
+.. _teams-pinned-datasets:
 
 Pinned datasets
 ---------------
@@ -52,12 +52,12 @@ To unpin a dataset, click the pin icon next to the dataset name in the "Your
 pinned datasets" widget or the pin next to the dataset's name in the main
 table.
 
-.. image:: /images/enterprise/pinned_datasets.png
+.. image:: /images/teams/pinned_datasets.png
    :alt: pin-datasets
    :align: center
    :width: 500
 
-.. _enterprise-sorting-datasets:
+.. _teams-sorting-datasets:
 
 Sorting datasets
 ----------------
@@ -66,12 +66,12 @@ You can use the drop-down menu in the upper left of the main table to sort your
 datasets by various criteria, including size, creation date, recently used, and
 alphabetically by name:
 
-.. image:: /images/enterprise/ordering_datasets.png
+.. image:: /images/teams/ordering_datasets.png
    :alt: order-datasets
    :align: center
    :width: 500
 
-.. _enterprise-filtering-datasets:
+.. _teams-filtering-datasets:
 
 Filtering datasets
 ------------------
@@ -79,7 +79,7 @@ Filtering datasets
 You can use the search bar (with the magnifying glass icon) in the upper right
 corner of the dataset table to filter datasets by name, tags, and media type:
 
-.. image:: /images/enterprise/dataset_search_bar.png
+.. image:: /images/teams/dataset_search_bar.png
    :alt: dataset-search-bar
    :align: center
    :width: 500
@@ -88,12 +88,12 @@ By default, datasets that match across any supported field are returned, but
 you can narrow the search to specific fields by selecting the relevant option
 in the search dropdown:
 
-.. image:: /images/enterprise/dataset_search_fields.png
+.. image:: /images/teams/dataset_search_fields.png
    :alt: dataset-search-fields
    :align: center
    :width: 500
 
-.. _enterprise-creating-datasets:
+.. _teams-creating-datasets:
 
 Creating datasets
 _________________
@@ -118,19 +118,19 @@ description, and tags for the dataset:
 .. note::
 
    A dataset's name, description, and tags can be edited later from the
-   dataset's :ref:`Manage tab <enterprise-managing-datasets>`.
+   dataset's :ref:`Manage tab <teams-managing-datasets>`.
 
-.. image:: /images/enterprise/create_dataset.png
+.. image:: /images/teams/create_dataset.png
    :alt: create-dataset
    :align: center
 
 .. note::
 
-   What next? Use the :ref:`Enterprise Python SDK <enterprise-python-sdk>` to upload new
+   What next? Use the :ref:`Enterprise Python SDK <teams-python-sdk>` to upload new
    samples, labels, and metadata to your dataset. A common approach is to
-   automate this process via :ref:`cloud functions <enterprise-cloud-functions>`.
+   automate this process via :ref:`cloud functions <teams-cloud-functions>`.
 
-.. _enterprise-using-datasets:
+.. _teams-using-datasets:
 
 Using a dataset
 _______________
@@ -140,7 +140,7 @@ Click on a dataset from the homepage to open the dataset's "Samples" tab.
 From the Samples tab you can visualize, tag, filter, and explore your dataset
 just as you would via the :ref:`FiftyOne App <fiftyone-app>`.
 
-.. image:: /images/enterprise/samples_page.png
+.. image:: /images/teams/samples_page.png
    :alt: samples-page
    :align: center
 
@@ -149,7 +149,7 @@ just as you would via the :ref:`FiftyOne App <fiftyone-app>`.
    Did you know? You can also navigate directly to a dataset of interest by
    pasting its URL into your browser's URL bar.
 
-.. _enterprise-managing-datasets:
+.. _teams-managing-datasets:
 
 Managing a dataset
 __________________
@@ -157,66 +157,66 @@ __________________
 The FiftyOne Enterprise App provides a number of options for managing existing
 datasets, as described below.
 
-You can access these options from the :ref:`Samples tab <enterprise-using-datasets>`
+You can access these options from the :ref:`Samples tab <teams-using-datasets>`
 by clicking on the "Manage" tab in the upper left corner of the page.
 
 You can also directly navigate to this page from the
-:ref:`homepage <enterprise-homepage>` by clicking the three dots on the
+:ref:`homepage <teams-homepage>` by clicking the three dots on the
 right hand side of a row of the dataset listing table and selecting
 "Edit dataset".
 
 .. note::
 
-   Did you know? You can also use the :ref:`Enterprise SDK <enterprise-python-sdk>` to
+   Did you know? You can also use the :ref:`Enterprise SDK <teams-python-sdk>` to
    programmatically, create, edit, and delete datasets.
 
-.. _enterprise-dataset-basic-info:
+.. _teams-dataset-basic-info:
 
 Basic info
 ----------
 
 The "Basic info" tab is accessible to all users with
-:ref:`Can view <enterprise-can-view>` access to the dataset.
+:ref:`Can view <teams-can-view>` access to the dataset.
 
-Users with :ref:`Can manage <enterprise-can-manage>` permissions on the dataset can
+Users with :ref:`Can manage <teams-can-manage>` permissions on the dataset can
 edit the name, description, and tags of a dataset from this page.
 
 Additionally, members can create a copy of the dataset by clicking on the
 "Clone this dataset" button.
 
-.. image:: /images/enterprise/dataset_basic_info.png
+.. image:: /images/teams/dataset_basic_info.png
    :alt: dataset-basic-info
    :align: center
 
-.. _enterprise-dataset-access:
+.. _teams-dataset-access:
 
 Access
 ------
 
 The "Access" tab is only accessible to users with
-:ref:`Can manage <enterprise-can-manage>` permissions on the dataset.
+:ref:`Can manage <teams-can-manage>` permissions on the dataset.
 
 From this tab, users can add, remove, edit, or invite users to the dataset.
-Refer to :ref:`this page <enterprise-permissions>` for more information about the
+Refer to :ref:`this page <teams-permissions>` for more information about the
 available dataset-level permissions that you can grant.
 
-.. image:: /images/enterprise/dataset_access.png
+.. image:: /images/teams/dataset_access.png
    :alt: dataset-access
    :align: center
 
-.. _enterprise-dataset-danger-zone:
+.. _teams-dataset-danger-zone:
 
 Danger zone
 -----------
 
 The "Danger zone" tab is only accessible to users with
-:ref:`Can manage <enterprise-can-manage>` permissions on the dataset.
+:ref:`Can manage <teams-can-manage>` permissions on the dataset.
 
 From this tab, you can select "Delete entire dataset" to permanently delete a
 dataset from your Enterprise deployment. You must type the dataset's full name in
 the modal to confirm this action.
 
-.. image:: /images/enterprise/dataset_danger_zone.png
+.. image:: /images/teams/dataset_danger_zone.png
    :alt: danger-zone
    :align: center
 

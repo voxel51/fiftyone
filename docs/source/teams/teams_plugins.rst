@@ -1,4 +1,4 @@
-.. _enterprise-plugins:
+.. _teams-plugins:
 
 FiftyOne Enterprise Plugins
 ======================
@@ -13,13 +13,13 @@ needs.
 .. note::
 
     What can you do with plugins? Check out
-    :ref:`delegated operations <enterprise-delegated-operations>` to see some quick
+    :ref:`delegated operations <teams-delegated-operations>` to see some quick
     examples, then check out the
     `FiftyOne plugins <https://github.com/voxel51/fiftyone-plugins>`_
     repository for a growing collection of prebuilt plugins that you can add to
     your Enterprise deployment!
 
-.. _enterprise-plugins-page:
+.. _teams-plugins-page:
 
 Plugins page
 ____________
@@ -31,11 +31,11 @@ Admins can access the plugins page under Settings > Plugins. It displays a
 list of all installed plugins and their operators, as well as the enablement
 and permissions of each.
 
-.. image:: /images/enterprise/plugins_page.png
-   :alt: enterprise-plugins-page
+.. image:: /images/teams/plugins_page.png
+   :alt: teams-plugins-page
    :align: center
 
-.. _enterprise-plugins-install:
+.. _teams-plugins-install:
 
 Installing a plugin
 ___________________
@@ -52,22 +52,22 @@ Enterprise UI
 
 To install a plugin, click the "Install plugin" button on the plugins page.
 
-.. image:: /images/enterprise/plugins_install_btn.png
-   :alt: enterprise-plugins-page-install-button
+.. image:: /images/teams/plugins_install_btn.png
+   :alt: teams-plugins-page-install-button
    :align: center
 
 Then upload or drag and drop the plugin contents as a ZIP file and click
 install.
 
-.. image:: /images/enterprise/plugins_install.png
-   :alt: enterprise-plugins-page-install-page
+.. image:: /images/teams/plugins_install.png
+   :alt: teams-plugins-page-install-page
    :align: center
 
 You should then see a success message and the newly installed plugin listed on
 the plugins page.
 
-.. image:: /images/enterprise/plugins_install_success.png
-   :alt: enterprise-plugins-page-install-success-page
+.. image:: /images/teams/plugins_install_success.png
+   :alt: teams-plugins-page-install-success-page
    :align: center
 
 SDK
@@ -85,7 +85,7 @@ the Management SDK:
     # You can pass the directory or an already zipped version of it
     fom.upload_plugin("/path/to/plugin_dir")
 
-.. _enterprise-plugins-upgrade:
+.. _teams-plugins-upgrade:
 
 Upgrading a plugin
 __________________
@@ -97,15 +97,15 @@ Enterprise UI
 
 To upgrade a plugin, click the plugin's dropdown and select "Upgrade plugin".
 
-.. image:: /images/enterprise/plugins_upgrade_btn.png
-   :alt: enterprise-plugins-page-upgrade-btn
+.. image:: /images/teams/plugins_upgrade_btn.png
+   :alt: teams-plugins-page-upgrade-btn
    :align: center
 
 Then upload or drag and drop the upgraded plugin as a ZIP file and click
 upgrade.
 
-.. image:: /images/enterprise/plugins_upgrade_page.png
-   :alt: enterprise-plugins-page-upgrade-page
+.. image:: /images/teams/plugins_upgrade_page.png
+   :alt: teams-plugins-page-upgrade-page
    :align: center
 
 .. note::
@@ -117,8 +117,8 @@ upgrade.
 You should then see a success message and the updated information about the
 plugin on the plugins page.
 
-.. image:: /images/enterprise/plugins_upgrade_success_page.png
-   :alt: enterprise-plugins-page-upgrade-success-page
+.. image:: /images/teams/plugins_upgrade_success_page.png
+   :alt: teams-plugins-page-upgrade-success-page
    :align: center
 
 SDK
@@ -136,7 +136,7 @@ the Management SDK with the `overwrite=True` option:
     # You can pass the directory or an already zipped version of it
     fom.upload_plugin("/path/to/plugin_dir", overwrite=True)
 
-.. _enterprise-plugins-uninstall:
+.. _teams-plugins-uninstall:
 
 Uninstalling a plugin
 _____________________
@@ -147,7 +147,7 @@ SDK.
 .. note::
 
     Did you know? You can
-    :ref:`enable/disable plugins <enterprise-plugins-enable-disable>` rather than
+    :ref:`enable/disable plugins <teams-plugins-enable-disable>` rather than
     permanently uninstalling them.
 
 Enterprise UI
@@ -156,8 +156,8 @@ Enterprise UI
 To uninstall a plugin, click the plugin's dropdown and select
 "Uninstall plugin".
 
-.. image:: /images/enterprise/plugins_uninstall_btn.png
-   :alt: enterprise-plugins-page-uninstall-btn
+.. image:: /images/teams/plugins_uninstall_btn.png
+   :alt: teams-plugins-page-uninstall-btn
    :align: center
 
 SDK
@@ -174,7 +174,7 @@ the Management SDK:
 
     fom.delete_plugin(plugin_name)
 
-.. _enterprise-plugins-enable-disable:
+.. _teams-plugins-enable-disable:
 
 Enabling/disabling plugins
 __________________________
@@ -188,21 +188,21 @@ with any operators they contain.
 Admins can enable/disable a plugin and all of its operators by toggling the
 enabled/disabled switch.
 
-.. image:: /images/enterprise/plugins_disable.png
-   :alt: enterprise-plugins-page-disable
+.. image:: /images/teams/plugins_disable.png
+   :alt: teams-plugins-page-disable
    :align: center
 
 Admins can also disable/enable specific operators within an (enabled) plugin
 by clicking on the plugin's operators link.
 
-.. image:: /images/enterprise/plugins_operators_btn.png
-   :alt: enterprise-plugins-page-operators-btn
+.. image:: /images/teams/plugins_operators_btn.png
+   :alt: teams-plugins-page-operators-btn
    :align: center
 
 and then toggling the enabled/disabled switch for each operator as necessary.
 
-.. image:: /images/enterprise/plugins_operators_disable.png
-   :alt: enterprise-plugins-page-operators-disable
+.. image:: /images/teams/plugins_operators_disable.png
+   :alt: teams-plugins-page-operators-disable
    :align: center
 
 SDK
@@ -225,7 +225,7 @@ methods from the management SDK:
     # Disable a particular operator
     fom.set_plugin_operator_enabled(plugin_name, operator_name, False)
 
-.. _enterprise-plugins-permissions:
+.. _teams-plugins-permissions:
 
 Plugin permissions
 __________________
@@ -250,20 +250,20 @@ Enterprise UI
 To configure the permissions for an operator, first click on the plugin's
 operators link.
 
-.. image:: /images/enterprise/plugins_operators_btn.png
-   :alt: enterprise-plugins-page-operators-btn
+.. image:: /images/teams/plugins_operators_btn.png
+   :alt: teams-plugins-page-operators-btn
    :align: center
 
 Then change the dropdown for the operator to reflect the desired permission
 level.
 
-.. image:: /images/enterprise/plugins_operators_perms.png
-   :alt: enterprise-plugins-page-operators-perms
+.. image:: /images/teams/plugins_operators_perms.png
+   :alt: teams-plugins-page-operators-perms
    :align: left
    :width: 49%
 
-.. image:: /images/enterprise/plugins_operators_perms2.png
-   :alt: enterprise-plugins-page-operators-perms2
+.. image:: /images/teams/plugins_operators_perms2.png
+   :alt: teams-plugins-page-operators-perms2
    :align: right
    :width: 49%
 
@@ -326,8 +326,8 @@ Default operator permissions can be configured by navigating to the page at
 Settings > Security and looking under the Plugins header. Click the dropdown
 for the permission you want to change and select the new value.
 
-.. image:: /images/enterprise/plugins_org_settings.png
-   :alt: enterprise-plugins-page-org-settings
+.. image:: /images/teams/plugins_org_settings.png
+   :alt: teams-plugins-page-org-settings
    :align: center
 
 SDK
@@ -347,7 +347,7 @@ method from the Management SDK:
         default_operator_minimum_dataset_permission=fom.EDIT,
     )
 
-.. _enterprise-delegated-operations:
+.. _teams-delegated-operations:
 
 Delegated operations
 ____________________
@@ -357,9 +357,9 @@ FiftyOne's plugin framework that allows users to schedule tasks from within the
 App that are executed on a connected workflow orchestrator like Apache Airflow.
 
 With FiftyOne Enterprise, your team can
-:ref:`upload and permission <enterprise-plugins-page>` custom operations that your
+:ref:`upload and permission <teams-plugins-page>` custom operations that your
 users can execute from the Enterprise App, all of which run against a central
-orchestrator :ref:`configured by <enterprise-delegated-orchestrator>` your admins.
+orchestrator :ref:`configured by <teams-delegated-orchestrator>` your admins.
 
 Why is this awesome? Your AI stack needs a flexible data-centric component that
 enables you to organize and compute on your data. With delegated operations,
@@ -421,13 +421,13 @@ plugin and proceed with other work while the execution happens in the background
 
 When you choose delegated execution in the App, these tasks are automatically
 scheduled for execution on your
-:ref:`connected orchestrator <enterprise-delegated-orchestrator>` and you can
+:ref:`connected orchestrator <teams-delegated-orchestrator>` and you can
 continue with other work. Meanwhile, all datasets have a
-:ref:`Runs tab <enterprise-managing-delegated-operations>` in the App where you can
+:ref:`Runs tab <teams-managing-delegated-operations>` in the App where you can
 browse a history of all delegated operations that have been run on the dataset
 and their status.
 
-.. _enterprise-delegated-orchestrator:
+.. _teams-delegated-orchestrator:
 
 Setting up an orchestrator
 __________________________
@@ -456,7 +456,7 @@ to:
     on the VM
 -   Install the appropriate version of the FiftyOne Enterprise SDK for the Enterprise
     deployment that you are connecting to
--   Ensure that your :ref:`team's plugins <enterprise-plugins-page>` are available
+-   Ensure that your :ref:`team's plugins <teams-plugins-page>` are available
     to the Orchestrator, either by installing them on the same machine or by
     making them available via a shared filesystem
 -   Ensure that the required environment variables are set (see below)
@@ -493,7 +493,7 @@ configurations, see :ref:`Configuring FiftyOne <configuring-fiftyone>`.
 
 .. note::
 
-    Refer to :ref:`this section <enterprise-media-cache-config>` for more
+    Refer to :ref:`this section <teams-media-cache-config>` for more
     information on media caching and access in FiftyOne Enterprise. Make sure that
     cloud storage permissions are configured if some operators will access
     media.
@@ -683,7 +683,7 @@ should be immediately visible as errors. Locate the dag and toggle it on, then
 refresh to make sure it's running. If no operations have been queued, it will
 still run a check and all runs should be green.
 
-.. image:: /images/enterprise/airflow.png
+.. image:: /images/teams/airflow.png
    :alt: airflow-dag
    :align: center
 
@@ -695,7 +695,7 @@ still run a check and all runs should be green.
     operator, the orchestrator will need the `torch` and `torchvision` packages
     installed.
 
-.. _enterprise-managing-delegated-operations:
+.. _teams-managing-delegated-operations:
 
 Managing delegated operations
 _____________________________
@@ -708,7 +708,7 @@ delegated operations scheduled against that dataset.
     The Runs page only tracks operations that are *delegated* to your Team's
     orchestrator, not operations that are executed immediately in the App.
 
-.. _enterprise-runs-page:
+.. _teams-runs-page:
 
 Runs page
 ---------
@@ -716,7 +716,7 @@ Runs page
 The Runs page is accessible to all users with Can view access to the dataset.
 
 You can access the Runs page by clicking on the "Runs" tab from the
-:ref:`Samples tab <enterprise-using-datasets>`.
+:ref:`Samples tab <teams-using-datasets>`.
 
 Once you are on the Runs page, you will see a table with the list of all
 operators scheduled by any user of your organization on the dataset. You can
@@ -724,7 +724,7 @@ sort, search and filter runs listed to refine the list as you like:
 
 .. image:: /images/plugins/operators/runs/runs_page.png
 
-.. _enterprise-runs-sorting:
+.. _teams-runs-sorting:
 
 Sorting
 ^^^^^^^
@@ -735,7 +735,7 @@ name of the operator:
 
 .. image:: /images/plugins/operators/runs/sort.png
 
-.. _enterprise-runs-filtering:
+.. _teams-runs-filtering:
 
 Filtering
 ^^^^^^^^^
@@ -751,7 +751,7 @@ or more status you would like to filter by:
 
 .. image:: /images/plugins/operators/runs/filter_by_status.png
 
-.. _enterprise-runs-searching:
+.. _teams-runs-searching:
 
 Searching
 ^^^^^^^^^
@@ -768,7 +768,7 @@ updated to show only the runs matching your query:
     name, not label. For example, searches will not match against
     **Demo: Export to GCP** in the image above.
 
-.. _enterprise-runs-re-running:
+.. _teams-runs-re-running:
 
 Re-running
 ^^^^^^^^^^
@@ -778,7 +778,7 @@ three-dots to open actions menu and then clicking "Re-run":
 
 .. image:: /images/plugins/operators/runs/re_run.png
 
-.. _enterprise-runs-pinning:
+.. _teams-runs-pinning:
 
 Pinning
 ^^^^^^^
@@ -797,7 +797,7 @@ appears beside the operator label:
     Pinned runs are stored at the dataset-level and will be visible to all
     users with access to the dataset.
 
-.. _enterprise-runs-renaming:
+.. _teams-runs-renaming:
 
 Renaming
 ^^^^^^^^
@@ -813,7 +813,7 @@ indicated by "3".
 
 .. image:: /images/plugins/operators/runs/edit_label.png
 
-.. _enterprise-runs-mark-as-failed:
+.. _teams-runs-mark-as-failed:
 
 Mark as failed
 ^^^^^^^^^^^^^^
@@ -833,7 +833,7 @@ updated and will now display as failed.
     orchestrator, marking the run as failed will **not** terminate the
     execution of operation.
 
-.. _enterprise-runs-monitoring-progress:
+.. _teams-runs-monitoring-progress:
 
 Monitoring progress
 ^^^^^^^^^^^^^^^^^^^
@@ -852,7 +852,7 @@ toggling the auto refresh setting indicated by "1".
 
     Only the progress of running operations is automatically refreshed.
 
-.. _enterprise-run-page:
+.. _teams-run-page:
 
 Run page
 --------

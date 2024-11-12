@@ -197,17 +197,17 @@ learn how:
     :image_title: Scale AI
 
 .. customimagelink::
-    :image_link: enterprise/installation.html#google-cloud-storage
+    :image_link: teams/installation.html#google-cloud-storage
     :image_src: https://voxel51.com/images/integrations/google-cloud-128.png
     :image_title: Google Cloud
 
 .. customimagelink::
-    :image_link: enterprise/installation.html#amazon-s3
+    :image_link: teams/installation.html#amazon-s3
     :image_src: https://voxel51.com/images/integrations/aws-128.png
     :image_title: Amazon Web Services
 
 .. customimagelink::
-    :image_link: enterprise/installation.html#microsoft-azure
+    :image_link: teams/installation.html#microsoft-azure
     :image_src: https://voxel51.com/images/integrations/azure-128.png
     :image_title: Azure
 
@@ -477,7 +477,7 @@ us at support@voxel51.com.
    :hidden:
 
    Overview <self>
-   FiftyOne Enterprise 🚀 <enterprise/index>
+   FiftyOne Enterprise 🚀 <teams/index>
    Installation <getting_started/install>
    Environments <environments/index>
    Tutorials <tutorials/index>

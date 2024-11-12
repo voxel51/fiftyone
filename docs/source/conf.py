@@ -13,7 +13,8 @@ import os
 import re
 import sys
 
-import fiftyone.constants as foc
+sys.path.insert(0, os.path.abspath("."))
+
 from custom_directives import (
     CustomButtonDirective,
     CustomCalloutItemDirective,
@@ -22,7 +23,7 @@ from custom_directives import (
 )
 from redirects import generate_redirects
 
-sys.path.insert(0, os.path.abspath("."))
+import fiftyone.constants as foc
 
 
 with open("../../setup.py") as f:
@@ -191,7 +192,7 @@ html_context = {
     "link_contactus": "mailto:solutions@voxel51.com?subject=[Voxel51]%20Contact%20us",
     "link_docs_fiftyone": "https://docs.voxel51.com/",
     "link_fiftyone": "https://voxel51.com/fiftyone/",
-    "link_fiftyone_enterprise": "https://voxel51.com/fiftyone-teams/",
+    "link_fiftyone_teams": "https://voxel51.com/fiftyone-teams/",
     "link_usecases": "https://voxel51.com/computer-vision-use-cases/",
     "link_success_stories": "https://voxel51.com/success-stories/",
     "link_talk_to_sales": "https://voxel51.com/talk-to-sales/",
