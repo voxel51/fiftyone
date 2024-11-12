@@ -117,7 +117,7 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
 
             ctx.dataset.create_index(path, unique=unique, wait=False)
         else:
-            field_name = ctx.params.get("field_name", None)
+            _, field_name = _get_dynamic(ctx.params, "field_name", path, None)
             sidebar_group = ctx.params.get("sidebar_group", None)
             include_counts = ctx.params.get("include_counts", False)
             group_by = ctx.params.get("group_by", None)
@@ -141,6 +141,12 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
             )
 
         ctx.trigger("reload_dataset")
+
+
+def _get_dynamic(params, key, ref_path, default=None):
+    dynamic_key = key + "|" + ref_path.replace(".", "_")
+    value = params.get(dynamic_key, default)
+    return dynamic_key, value
 
 
 def _create_index_or_summary_field_inputs(ctx, inputs):
@@ -263,14 +269,14 @@ def _create_index_or_summary_field_inputs(ctx, inputs):
 
         return field_type
 
-    field_name = ctx.params.get("field_name", None)
+    prop_name, field_name = _get_dynamic(ctx.params, "field_name", path, None)
     if field_name is None:
         default_field_name = ctx.dataset._get_default_summary_field_name(path)
     else:
         default_field_name = field_name
 
-    field_name_prop = inputs.str(
-        "field_name",
+    prop = inputs.str(
+        prop_name,
         required=False,
         label="Summary field",
         description="The sample field in which to store the summary data",
@@ -278,8 +284,8 @@ def _create_index_or_summary_field_inputs(ctx, inputs):
     )
 
     if field_name and field_name in schema:
-        field_name_prop.invalid = True
-        field_name_prop.error_message = f"Field '{field_name}' already exists"
+        prop.invalid = True
+        prop.error_message = f"Field '{field_name}' already exists"
         inputs.str(
             "error",
             label="Error",
