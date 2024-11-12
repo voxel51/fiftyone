@@ -8,8 +8,10 @@ Decorator utils for unit tests.
 from functools import wraps
 import platform
 import unittest
+import fnmatch
 
 import fiftyone as fo
+import fiftyone.operators.store as foos
 
 
 def drop_datasets(func):
@@ -39,6 +41,23 @@ def drop_async_dataset(func):
             raise exc
 
         dataset.delete()
+
+    return wrapper
+
+
+def drop_stores(func, pattern="*"):
+    """Decorator that drops all stores from the database before running a test."""
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        svc = foos.ExecutionStoreService()
+        stores = svc.list_stores_global()
+        for store in stores:
+            store_name = store.store_name
+            if fnmatch.fnmatch(store_name, pattern):
+                print(f"Deleting store: {store_name}", pattern)
+                svc.delete_store_global(store_name)
+        return func(*args, **kwargs)
 
     return wrapper
 

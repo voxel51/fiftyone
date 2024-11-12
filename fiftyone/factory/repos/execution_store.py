@@ -198,20 +198,41 @@ class ExecutionStoreRepo(object):
         )
         return bool(result)
 
-    def list_stores_global(self) -> list[str]:
-        """Lists the stores in the execution store across all datasets and the
-        global context.
-        """
-        result = self._collection.find(
-            dict(key="__store__"), {"store_name": 1}
-        )
-        return [d["store_name"] for d in result]
+    def list_stores_global(self) -> list[StoreDocument]:
+        """Lists stores across all datasets and the global context."""
+        pipeline = [
+            {
+                "$group": {
+                    "_id": {
+                        "store_name": "$store_name",
+                        "dataset_id": "$dataset_id",
+                    }
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "store_name": "$_id.store_name",
+                    "dataset_id": "$_id.dataset_id",
+                }
+            },
+        ]
+
+        result = self._collection.aggregate(pipeline)
+        return [StoreDocument(**d) for d in result]
 
     def count_stores_global(self) -> int:
         """Counts the stores in the execution store across all datasets and the
         global context.
         """
         return self._collection.count_documents(dict(key="__store__"))
+
+    def delete_store_global(self, store_name) -> int:
+        """Deletes the specified store across all datasets and the global
+        context.
+        """
+        result = self._collection.delete_many(dict(store_name=store_name))
+        return result.deleted_count
 
 
 class MongoExecutionStoreRepo(ExecutionStoreRepo):
