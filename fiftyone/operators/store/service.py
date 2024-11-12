@@ -208,3 +208,15 @@ class ExecutionStoreService(object):
             the number of stores
         """
         return self._repo.count_stores_global()
+
+    def delete_store_global(self, store_name) -> int:
+        """Deletes the specified store across all datasets and the global
+        context.
+
+        Args:
+            store_name: the name of the store
+
+        Returns:
+            the number of stores deleted
+        """
+        return self._repo.delete_store_global(store_name)

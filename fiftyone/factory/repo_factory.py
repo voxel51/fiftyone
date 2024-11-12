@@ -57,15 +57,16 @@ class RepositoryFactory(object):
     def execution_store_repo(
         dataset_id: Optional[ObjectId] = None,
     ) -> ExecutionStoreRepo:
-        if (
-            MongoExecutionStoreRepo.COLLECTION_NAME
-            not in RepositoryFactory.repos
-        ):
-            RepositoryFactory.repos[
-                MongoExecutionStoreRepo.COLLECTION_NAME
-            ] = MongoExecutionStoreRepo(
+        repo_key = (
+            f"{MongoExecutionStoreRepo.COLLECTION_NAME}_{dataset_id}"
+            if dataset_id
+            else MongoExecutionStoreRepo.COLLECTION_NAME
+        )
+
+        if repo_key not in RepositoryFactory.repos:
+            RepositoryFactory.repos[repo_key] = MongoExecutionStoreRepo(
                 collection=_get_db()[MongoExecutionStoreRepo.COLLECTION_NAME],
                 dataset_id=dataset_id,
             )
 
-        return RepositoryFactory.repos[MongoExecutionStoreRepo.COLLECTION_NAME]
+        return RepositoryFactory.repos[repo_key]

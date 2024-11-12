@@ -41,6 +41,7 @@ class KeyDocument:
             data.pop("_id", None)
         if self.dataset_id is None:
             data.pop("dataset_id", None)
+
         return data
 
 

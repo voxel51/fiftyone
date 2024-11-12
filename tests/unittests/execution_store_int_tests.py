@@ -1,0 +1,95 @@
+"""
+FiftyOne execution store related unit tests.
+
+| Copyright 2017-2024, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
+import pytest
+
+import fiftyone as fo
+from fiftyone.operators.store import ExecutionStoreService
+
+from decorators import drop_stores
+
+
+@pytest.fixture
+def svc():
+    return ExecutionStoreService()
+
+
+@pytest.fixture
+def svc_with_dataset():
+    dataset = fo.Dataset(name="test_dataset")
+    dataset.save()
+    yield ExecutionStoreService(dataset_id=dataset._doc.id)
+    dataset.delete()
+
+
+@drop_stores
+def test_store_creation(svc):
+    NAME = "test_store"
+    created_store = svc.create_store(NAME)
+
+    assert (
+        created_store.store_name == NAME
+    ), "Store name should match the given name"
+    assert (
+        created_store.dataset_id is None
+    ), "Dataset ID should be None when not provided"
+    assert svc.count_stores() == 1, "Store count should be 1"
+
+
+@drop_stores
+def test_store_creation_with_dataset(svc_with_dataset):
+    NAME = "test_store"
+    created_store = svc_with_dataset.create_store(NAME)
+
+    assert (
+        created_store.store_name == NAME
+    ), "Store name should match the given name"
+    assert (
+        created_store.dataset_id is not None
+    ), "Dataset ID should be set when provided"
+    assert svc_with_dataset.count_stores() == 1, "Store count should be 1"
+
+
+@drop_stores
+def test_set_get_key(svc):
+    NAME = "test_store"
+    KEY = "test_key"
+    VALUE = "test_value"
+
+    svc.set_key(NAME, KEY, VALUE)
+    assert (
+        svc.count_keys(NAME) == 1
+    ), "Store should have 1 key after setting it"
+    assert (
+        svc.get_key(NAME, KEY).value == VALUE
+    ), "Retrieved value should match the set value"
+
+
+@drop_stores
+def test_scoping(svc, svc_with_dataset):
+    NAME = "test_store"
+    KEY = "test_key"
+    VALUE = "test_value"
+    svc.set_key(NAME, KEY, VALUE)
+    svc_with_dataset.set_key(NAME, KEY, VALUE)
+    global_list = svc.list_stores_global()
+    global_names = [store.store_name for store in global_list]
+    assert global_names == [NAME, NAME], "Global store should be listed"
+    assert svc.count_keys(NAME) == 1, "Global store should have 1 key"
+    assert (
+        svc_with_dataset.count_keys(NAME) == 1
+    ), "Dataset store should have 1 key"
+    svc_with_dataset.delete_store(NAME)
+    assert svc.count_keys(NAME) == 1, "Global store should still have 1 key"
+    assert (
+        svc_with_dataset.count_keys(NAME) == 0
+    ), "Dataset store should have 0 keys"
+    svc.delete_store(NAME)
+    assert svc.count_keys(NAME) == 0, "Global store should have 0 keys"
+    global_list = svc.list_stores_global()
+    assert NAME not in global_list, "Global store should not be listed"
