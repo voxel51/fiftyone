@@ -1,16 +1,16 @@
 export {
   Close,
+  CommunityLink,
   Copy,
   DocsLink,
   GitHubLink,
   HelpIcon,
   IconButton,
-  iconContainer,
   InfoIcon,
   JSONIcon,
   KeyboardArrowDown,
   KeyboardArrowUp,
   LookerArrowLeftIcon,
   LookerArrowRightIcon,
-  SlackLink,
+  iconContainer,
 } from "./Icons";

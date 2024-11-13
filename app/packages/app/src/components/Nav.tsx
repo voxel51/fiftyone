@@ -1,9 +1,9 @@
 import {
+  CommunityLink,
   DocsLink,
   GitHubLink,
   Header,
   IconButton,
-  SlackLink,
   iconContainer,
 } from "@fiftyone/components";
 import { ViewBar } from "@fiftyone/core";
@@ -111,7 +111,7 @@ const Nav: React.FC<
           >
             {mode === "dark" ? <LightMode color="inherit" /> : <DarkMode />}
           </IconButton>
-          <SlackLink />
+          <CommunityLink />
           <GitHubLink />
           <DocsLink />
         </div>
