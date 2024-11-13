@@ -8,10 +8,9 @@ Decorator utils for unit tests.
 from functools import wraps
 import platform
 import unittest
-import fnmatch
 
 import fiftyone as fo
-import fiftyone.operators.store as foos
+import fiftyone.core.odm as foo
 
 
 def drop_datasets(func):
@@ -45,25 +44,22 @@ def drop_async_dataset(func):
     return wrapper
 
 
-def drop_stores(func, pattern="*"):
-    """Decorator that drops all stores from the database before running a test."""
+def drop_collection(collection_name):
+    """Decorator that drops a collection from the database before and after running a test."""
 
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        svc = foos.ExecutionStoreService()
-        stores = svc.list_stores_global()
-        for store in stores:
-            store_name = store.store_name
-            if fnmatch.fnmatch(store_name, pattern):
-                try:
-                    svc.delete_store_global(store_name)
-                except Exception as e:
-                    raise RuntimeError(
-                        f"Failed to delete store '{store_name}'"
-                    ) from e
-        return func(*args, **kwargs)
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            db = foo.get_db_conn()
+            db.drop_collection(collection_name)
+            try:
+                return func(*args, **kwargs)
+            finally:
+                db.drop_collection(collection_name)
 
-    return wrapper
+        return wrapper
+
+    return decorator
 
 
 def skip_windows(func):

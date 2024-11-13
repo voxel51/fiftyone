@@ -10,7 +10,7 @@ from datetime import datetime
 
 from bson import ObjectId
 from pymongo.collection import Collection
-from typing import Any
+from typing import Any, Dict
 
 from fiftyone.operators.store.models import StoreDocument, KeyDocument
 

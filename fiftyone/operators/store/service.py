@@ -36,6 +36,7 @@ class ExecutionStoreService(object):
         self,
         repo: Optional["ExecutionStoreRepo"] = None,
         dataset_id: Optional[ObjectId] = None,
+        collection_name: str = None,
     ):
 
         from fiftyone.factory.repo_factory import (
@@ -45,7 +46,8 @@ class ExecutionStoreService(object):
 
         if repo is None:
             repo = RepositoryFactory.execution_store_repo(
-                dataset_id=dataset_id
+                dataset_id=dataset_id,
+                collection_name=collection_name,
             )
         self._dataset_id = dataset_id
         self._repo: ExecutionStoreRepo = repo
