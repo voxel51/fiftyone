@@ -100,7 +100,7 @@ const useTitleTemplate = ({
         {!disabled && isFilterMode && (
           <PathEntryCounts key="count" modal={modal} path={expandedPath} />
         )}
-        <Icon modal={modal} path={path} />
+        {!disabled && <Icon modal={modal} path={path} />}
       </NameAndCountContainer>
     );
   };

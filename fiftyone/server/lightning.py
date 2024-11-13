@@ -53,6 +53,7 @@ class LightningResult:
 @gql.type
 class BooleanLightningResult(LightningResult):
     false: bool
+    none: bool
     true: bool
 
 
@@ -60,12 +61,14 @@ class BooleanLightningResult(LightningResult):
 class DateLightningResult(LightningResult):
     max: t.Optional[date]
     min: t.Optional[date]
+    none: bool
 
 
 @gql.type
 class DateTimeLightningResult(LightningResult):
     max: t.Optional[datetime]
     min: t.Optional[datetime]
+    none: bool
 
 
 @gql.type
@@ -75,12 +78,14 @@ class FloatLightningResult(LightningResult):
     min: t.Optional[float]
     nan: bool
     ninf: bool
+    none: bool
 
 
 @gql.type
 class IntLightningResult(LightningResult):
     max: t.Optional[float]
     min: t.Optional[float]
+    none: bool
 
 
 @gql.type
@@ -183,6 +188,7 @@ def _resolve_lightning_path_queries(
         queries = [
             _match(field_path, False),
             _match(field_path, True),
+            _match(field_path, None),
         ]
 
         def _resolve_bool(results):
@@ -197,14 +203,16 @@ def _resolve_lightning_path_queries(
         queries = [
             _first(field_path, dataset, 1, is_frame_field),
             _first(field_path, dataset, -1, is_frame_field),
+            _match(field_path, None),
         ]
 
         def _resolve_int(results):
-            min, max = results
+            min, max, none = results
             return INT_CLS[field.__class__](
                 path=path.path,
                 max=_parse_result(max),
                 min=_parse_result(min),
+                none=bool(none),
             )
 
         return collection, queries, _resolve_int
@@ -215,23 +223,25 @@ def _resolve_lightning_path_queries(
             _first(field_path, dataset, -1, is_frame_field, floats=True),
         ] + [
             _match(field_path, v)
-            for v in (float("-inf"), float("inf"), float("nan"))
+            for v in (float("-inf"), float("inf"), float("nan"), None)
         ]
 
         def _resolve_float(results):
-            min, max, ninf, inf, nan = results
+            min, max, ninf, inf, nan, none = results
 
             inf = bool(inf)
             nan = bool(nan)
             ninf = bool(ninf)
+            none = bool(none)
 
             return FloatLightningResult(
+                inf=inf,
                 path=path.path,
                 max=_parse_result(max),
                 min=_parse_result(min),
-                ninf=ninf,
-                inf=inf,
                 nan=nan,
+                ninf=ninf,
+                none=none,
             )
 
         return collection, queries, _resolve_float
