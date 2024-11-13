@@ -3,3 +3,5 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+from .brain import *

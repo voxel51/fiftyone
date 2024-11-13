@@ -1,39 +1,54 @@
 import asyncio
 import time
-from typing import List
 import uuid
 
-from fiftyone.core.view import DatasetView
-from datetime import datetime, timedelta
+from datetime import datetime
 from collections import Counter
 
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 from fiftyone import ViewField as F
 import numpy as np
-from .duplication_operators import (
-    ComputeHash,
-)
-from .image_quality_operators import (
+
+# pylint:disable=import-error,no-name-in-module
+from fiftyone.operators.builtins.operators.data_quality import (
     ComputeAspectRatio,
     ComputeBlurriness,
     ComputeBrightness,
     ComputeEntropy,
     ComputeExposure,
+    ComputeHash,
+    DeleteSamples,
+    SaveView,
+    TagSamples,
 )
-from .fix_issue_operators import DeleteSamples, SaveView, TagSamples
+
+# pylint:disable=import-error,no-name-in-module
+from fiftyone.operators.builtins.operators.brain import ComputeSimilarity
+
+
+from .constants import (
+    ISSUE_TYPES,
+    DEFAULT_ISSUE_CONFIG,
+    DEFAULT_ISSUE_COUNTS,
+    FIELD_NAME,
+    TITLE,
+    STATUS,
+    STATUS_COLOR,
+    DEFAULT_COMPUTING,
+    SAMPLE_STORE,
+    IMAGES,
+)
+
+from fiftyone.operators.panel import Panel, PanelConfig
 
 ########## UNCOMMENT for OSS to WORK ###############################
 # is_in_teams_context = False
-# from fiftyone.operators import Panel, PanelConfig
-
-# ICON_PATH = "troubleshoot"  # @Note: subject to change
 ########## COMMENT ^ && UNCOMMENT for TEAMS to WORK ################
 is_in_teams_context = True
-from ...panel import Panel, PanelConfig
-
-ICON_PATH = "troubleshoot"  # @Note: subject to change
 ####################################################################
+
+ICON_PATH = "troubleshoot"
 NOT_PERMITTED_TEXT = "You do not have sufficient permission."
 
 
@@ -48,149 +63,6 @@ def missing_min_access_required(ctx, min_required_dataset_access="EDIT"):
     if min_required_dataset_access == "EDIT":
         return user_dataset_access not in ["EDIT", "MANAGE"]
     return True
-
-
-ISSUE_TYPES = [
-    "brightness",
-    "blurriness",
-    "aspect_ratio",
-    "entropy",
-    "near_duplicates",
-    "exact_duplicates",
-]
-
-DEFAULT_ISSUE_CONFIG = {
-    "brightness": {
-        "detect_method": "threshold",  # this is actually standard dev
-        "min": 0.9,
-        "max": 1.0,
-    },
-    "blurriness": {"detect_method": "threshold", "min": 0, "max": 150},
-    "aspect_ratio": {
-        "detect_method": "threshold",
-        "min": 0,
-        "max": 0.3,
-    },
-    "entropy": {"detect_method": "threshold", "min": 0, "max": 4.5},
-    "near_duplicates": {
-        "detect_method": "threshold",
-        "min": 0,
-        "max": 0.15,
-    },
-}
-
-DEFAULT_ISSUE_COUNTS = {
-    "brightness": None,
-    "blurriness": None,
-    "aspect_ratio": None,
-    "entropy": None,
-    "near_duplicates": None,
-    "exact_duplicates": None,
-}
-
-# TODO: allow user to be able to use other names for the fields
-FIELD_NAME = {
-    "brightness": "brightness",
-    "blurriness": "blurriness",
-    "aspect_ratio": "aspect_ratio",
-    "entropy": "entropy",
-    "near_duplicates": "nearest_neighbor",
-    "exact_duplicates": "filehash",
-}
-
-TITLE = {
-    "brightness": "brightness",
-    "blurriness": "blurriness",
-    "aspect_ratio": "aspect ratio",
-    "entropy": "entropy",
-    "near_duplicates": "near duplicates",
-    "exact_duplicates": "exact duplicates",
-}
-
-STATUS = {
-    0: "Not Started",
-    # 1: "In Progress", when the issue is being computed
-    2: "In Review",
-    3: "Reviewed",
-}
-
-STATUS_COLOR = {
-    0: "#777777",
-    # 1: "info",
-    2: "primary",
-    3: "success",
-}
-
-BADGE_STATUS = {
-    STATUS[0]: [[STATUS[0], STATUS_COLOR[0]]],
-    # STATUS[1]: [[STATUS[1], STATUS_COLOR[1]]],
-    STATUS[2]: [[STATUS[2], STATUS_COLOR[2]]],
-    STATUS[3]: [[STATUS[3], STATUS_COLOR[3]]],
-}
-
-DEFAULT_ISSUE_STATUS = {
-    "brightness": STATUS[0],
-    "blurriness": STATUS[0],
-    "aspect_ratio": STATUS[0],
-    "entropy": STATUS[0],
-    "near_duplicates": STATUS[0],
-    "exact_duplicates": STATUS[0],
-}
-
-DEFAULT_COMPUTING = {
-    # [is_computing, "execute_now" | "delegate_execution", delegation_run_id]
-    "brightness": [False, "", ""],
-    "blurriness": [False, "", ""],
-    "aspect_ratio": [False, "", ""],
-    "entropy": [False, "", ""],
-    "near_duplicates": [False, "", ""],
-    "exact_duplicates": [False, "", ""],
-}
-
-SAMPLE_STORE = {
-    "config": DEFAULT_ISSUE_CONFIG,
-    "counts": DEFAULT_ISSUE_COUNTS,
-    "current_counts": DEFAULT_ISSUE_COUNTS,
-    "status": DEFAULT_ISSUE_STATUS,
-    "computing": DEFAULT_COMPUTING,
-    "timestamp": datetime.now(),
-    "results": {
-        "brightness": {
-            "counts": None,
-            "edges": None,
-        },
-        "blurriness": {
-            "counts": None,
-            "edges": None,
-        },
-        "aspect_ratio": {
-            "counts": None,
-            "edges": None,
-        },
-        "entropy": {
-            "counts": None,
-            "edges": None,
-        },
-        "near_duplicates": {
-            "counts": None,
-            "edges": None,
-        },
-        "exact_duplicates": {
-            "dup_filehash": [],
-            "dup_sample_ids": [],
-        },
-    },
-}
-
-IMAGES = {
-    "brightness": "https://i.imgur.com/6aLFlZw.png",
-    "blurriness": "https://i.imgur.com/8Tb3ind.png",
-    "aspect_ratio": "https://i.imgur.com/BftM2H3.png",
-    "entropy": "https://i.imgur.com/K9iV3jR.png",
-    "near_duplicates": "https://i.imgur.com/46UclZG.png",
-    "exact_duplicates": "https://i.imgur.com/3MDGmZS.png",
-    "unsupported_dataset": "https://i.imgur.com/w9B9hES.png",
-}
 
 
 class DataQualityPanel(Panel):
@@ -224,7 +96,13 @@ class DataQualityPanel(Panel):
 
     def get_store(self, ctx):
         """Returns latest state of execution store or creates a new one with given key"""
-        store = ctx.create_store(self._get_store_key(ctx))
+        try:
+            store = ctx.create_store(
+                self._get_store_key(ctx)
+            )  # backwards compatibility
+        except AttributeError:
+            store = ctx.store(self._get_store_key(ctx))
+
         return store
 
     # TODO: delete this method after dev finishes; only for dev process
@@ -299,7 +177,8 @@ class DataQualityPanel(Panel):
                 )
             elif issue_type == "exact_duplicates":
                 if (
-                    len(result_object.get("dup_filehash", [])) > 0
+                    result_object.get("dup_filehash", None) is not None
+                    and len(result_object.get("dup_filehash", [])) > 0
                     and len(result_object.get("dup_sample_ids", [])) > 0
                 ):
                     self.check_for_new_samples(
@@ -361,7 +240,6 @@ class DataQualityPanel(Panel):
         # when change to analysis screen, change view
         if ctx.params.get("next_screen", next_screen) == "analysis":
 
-            print("navigating to analysis")
             if issue_type in [
                 "brightness",
                 "blurriness",
@@ -372,11 +250,12 @@ class DataQualityPanel(Panel):
                 self.set_hist_defaults(ctx)
 
             self.change_view(ctx, ctx.params.get("issue_type", issue_type))
-            ctx.panel.state.computing[issue_type] = [
-                False,
-                ctx.panel.state.computing[issue_type][1],
-                ctx.panel.state.computing[issue_type][2],
-            ]
+            if ctx.panel.state.computing:
+                ctx.panel.state.computing[issue_type] = [
+                    False,
+                    ctx.panel.state.computing[issue_type][1],
+                    ctx.panel.state.computing[issue_type][2],
+                ]
 
     def on_compute_click(
         self,
@@ -560,13 +439,13 @@ class DataQualityPanel(Panel):
                     store = self.get_store(ctx)
                     key = self._get_store_key(ctx)
                     content = store.get(key)
-                    if content["results"]["exact_duplicates"]:
-                        dups = content["results"]["exact_duplicates"][
-                            "dup_filehash"
-                        ]
-                        filehash_ids = content["results"]["exact_duplicates"][
-                            "dup_sample_ids"
-                        ]
+                    dups = content["results"]["exact_duplicates"][
+                        "dup_filehash"
+                    ]
+                    filehash_ids = content["results"]["exact_duplicates"][
+                        "dup_sample_ids"
+                    ]
+                    if dups is not None and filehash_ids is not None:
                         dup_sample_ids = [
                             sample_id
                             for _, ids in filehash_ids
@@ -591,7 +470,49 @@ class DataQualityPanel(Panel):
                         ctx.ops.set_selected_samples(dup_sample_ids)
                         return True
                     else:
-                        print("exact duplicate computation failed")
+                        filehash_counts = Counter(
+                            sample.filehash for sample in ctx.dataset
+                        )
+                        dup_filehash = [
+                            k for k, v in filehash_counts.items() if v > 1
+                        ]
+                        filehash_to_ids = {}
+                        for sample in ctx.dataset:
+                            if sample.filehash in dup_filehash:
+                                filehash_to_ids.setdefault(
+                                    sample.filehash, []
+                                ).append(sample.id)
+                        dup_hash_sample_ids = [
+                            (filehash, ids)
+                            for filehash, ids in filehash_to_ids.items()
+                        ]
+                        content["results"]["exact_duplicates"][
+                            "dup_filehash"
+                        ] = dup_filehash
+                        content["results"]["exact_duplicates"][
+                            "dup_sample_ids"
+                        ] = dup_hash_sample_ids
+                        dup_sample_ids = [
+                            sample_id
+                            for _, ids in dup_hash_sample_ids
+                            for sample_id in ids
+                        ]
+                        exact_dup_view = ctx.dataset.match(
+                            F("filehash").is_in(dup_filehash)
+                        ).sort_by("filehash")
+                        ctx.panel.state.issue_counts[
+                            ctx.panel.state.issue_type
+                        ] = len(dup_sample_ids)
+                        counts[ctx.panel.state.issue_type] = len(
+                            dup_sample_ids
+                        )
+                        current_counts[ctx.panel.state.issue_type] = len(
+                            dup_sample_ids
+                        )
+                        store.set(key, content)
+                        ctx.ops.set_view(exact_dup_view)
+                        ctx.ops.set_selected_samples(dup_sample_ids)
+                        return True
             # Set view to entire dataset
             ctx.ops.clear_view()
             return True
@@ -670,6 +591,14 @@ class DataQualityPanel(Panel):
             return lower_thresh, upper_thresh
 
         elif method == "threshold":
+            if (
+                new_upper < min_v
+            ):  # threshold max is lower than bound's min value
+                return new_upper, new_upper
+            if (
+                new_lower > max_v
+            ):  # threshold min is larger than bound's max value
+                return new_lower, new_lower
             return new_lower, new_upper
 
     def set_hist_defaults(self, ctx):
@@ -759,7 +688,7 @@ class DataQualityPanel(Panel):
         if content is None:
             return 0
         else:
-            return content["counts"][issue_type]
+            return content["counts"][issue_type] or 0
 
     def _get_current_issue_count(self, ctx, issue_type):
         """Get the status of the issue type (the state, modified with view changes)"""
@@ -935,7 +864,7 @@ class DataQualityPanel(Panel):
     def compute_brightness(self, ctx, params, skip_prompt):
 
         ctx.prompt(
-            "@voxel51/data_quality/compute_brightness",
+            "@voxel51/operators/compute_brightness",
             params=params,
             skip_prompt=skip_prompt,
             on_success=self._on_complete_brightness_issue_computation,  # scheduler we can grab state after
@@ -943,7 +872,7 @@ class DataQualityPanel(Panel):
 
     def compute_blurriness(self, ctx, params, skip_prompt):
         ctx.prompt(
-            "@voxel51/data_quality/compute_blurriness",
+            "@voxel51/operators/compute_blurriness",
             params=params,
             skip_prompt=skip_prompt,
             on_success=self._on_complete_compute_blurriness,
@@ -951,7 +880,7 @@ class DataQualityPanel(Panel):
 
     def compute_aspect_ratio(self, ctx, params, skip_prompt):
         ctx.prompt(
-            "@voxel51/data_quality/compute_aspect_ratio",
+            "@voxel51/operators/compute_aspect_ratio",
             params=params,
             skip_prompt=skip_prompt,
             on_success=self._on_complete_compute_aspect_ratio,
@@ -959,7 +888,7 @@ class DataQualityPanel(Panel):
 
     def compute_entropy(self, ctx, params, skip_prompt):
         ctx.prompt(
-            "@voxel51/data_quality/compute_entropy",
+            "@voxel51/operators/compute_entropy",
             params=params,
             skip_prompt=skip_prompt,
             on_success=self._on_complete_compute_entropy,
@@ -967,7 +896,7 @@ class DataQualityPanel(Panel):
 
     def compute_exact_duplicates(self, ctx, params, skip_prompt):
         ctx.prompt(
-            "@voxel51/data_quality/compute_hash",
+            "@voxel51/operators/compute_hash",
             params=params,
             skip_prompt=skip_prompt,
             on_success=self._on_complete_compute_exact_duplicates,
@@ -978,7 +907,7 @@ class DataQualityPanel(Panel):
         params["uniqueness_field"] = "nearest_neighbor"
 
         ctx.prompt(
-            "@voxel51/brain/compute_similarity",
+            "@voxel51/operators/compute_similarity",
             params={
                 "brain_key": "data_quality_panel_similarity",
                 "backend": "sklearn",
@@ -1031,7 +960,7 @@ class DataQualityPanel(Panel):
             dup_hash_sample_ids = [
                 (filehash, ids) for filehash, ids in filehash_to_ids.items()
             ]
-            print("dup_filehash", dup_filehash)
+
             content["results"][field]["dup_filehash"] = dup_filehash
             content["results"][field]["dup_sample_ids"] = dup_hash_sample_ids
 
@@ -1041,9 +970,15 @@ class DataQualityPanel(Panel):
             )
 
         elif field == "near_duplicates":
-            # load the latest similarity index from brain_key
-            sim_brain_keys = ctx.dataset.list_brain_runs(type="similarity")
-            brain_key = self._get_latest_sim_brain_key(ctx, sim_brain_keys)
+            brain_key = ctx.params.get("original_params", {}).get(
+                "brain_key", None
+            )
+
+            if brain_key is None:
+                # fallback load the latest similarity index from brain_key
+                sim_brain_keys = ctx.dataset.list_brain_runs(type="similarity")
+                brain_key = self._get_latest_sim_brain_key(ctx, sim_brain_keys)
+
             index = ctx.dataset.load_brain_results(brain_key=brain_key)
 
             nearest_inds, dists = index._kneighbors(k=1, return_dists=True)
@@ -1146,7 +1081,7 @@ class DataQualityPanel(Panel):
         panel.view("title_view", title_view)
 
         for issue_type in ISSUE_TYPES:
-            self._render_issue_card(panel, issue_type, ctx)
+            self._render_issue_card(panel, issue_type, ctx, expanded=False)
 
     def pre_load_compute_screen(
         self,
@@ -1159,6 +1094,8 @@ class DataQualityPanel(Panel):
         card_main = panel.v_stack(
             "pre_load_compute",
             gap=2,
+            px=4,
+            py=2,
             componentsProps={
                 "grid": {
                     "sx": {
@@ -1177,7 +1114,7 @@ class DataQualityPanel(Panel):
                     "padding": "0px",
                     "textAlign": "center",
                     "alignItems": "center",
-                    "height": "750px",
+                    "height": "calc(100vh - 275px)",
                 }
             ),
         )
@@ -1470,25 +1407,64 @@ class DataQualityPanel(Panel):
                     computing_card_text_runs_link,
                 )
 
+    def add_stack(
+        self,
+        id,
+        container,
+        container_justify_content="center",
+        height="calc(100vh - 210px)",
+        px=0,
+        py=0,
+        h_stack=False,
+    ):
+        stack_type = (
+            container.v_stack if h_stack is False else container.h_stack
+        )
+        return stack_type(
+            id,
+            px=px,
+            py=py,
+            componentsProps={
+                "grid": {
+                    "sx": {
+                        "display": "flex",
+                        "flexDirection": (
+                            "column" if h_stack is False else "row"
+                        ),
+                        "alignItems": "center",
+                    }
+                },
+                "container": {"sx": {"width": "100%"}},
+            },
+            container=types.PaperContainer(
+                sx={
+                    "display": "flex",
+                    "flexDirection": "column" if h_stack is False else "row",
+                    "width": "100%",
+                    "textAlign": "center",
+                    "alignItems": "center",
+                    "height": height,
+                    "justifyContent": container_justify_content,
+                    "overflow-y": "auto",
+                    "boxShadow": "none",
+                }
+            ),
+        )
+
     def analysis_screen(self, panel, issue_type, ctx):
         self._render_header(panel, issue_type, ctx)
 
-        card_main = panel.v_stack(
-            f"{issue_type}_analysis",
-            align_y="center",
-            align_x="justify-content",
-            container=types.PaperContainer(sx={"height": "750px"}),
-        )
-        self._render_issue_card(card_main, issue_type, ctx)
+        card_main = self.add_stack(f"{issue_type}_analysis", panel)
 
-        card_content = card_main.v_stack(
+        card_content = self.add_stack(
             f"{issue_type}_analysis_content",
-            align_y="center",
-            align_x="center",
-            container=types.PaperContainer(
-                sx={"padding": "1rem", "height": "750px"}
-            ),
+            card_main,
+            container_justify_content="normal",
+            height="calc(100vh - 210px - 158px)",
+            px=2,
+            py=2,
         )
+        self._render_issue_card(card_content, issue_type, ctx)
 
         # sync the grid view
         ctx.ops.set_active_fields(fields=[FIELD_NAME[issue_type]])
@@ -1508,12 +1484,12 @@ class DataQualityPanel(Panel):
             ctx.ops.set_active_fields(fields=[FIELD_NAME[issue_type]])
             self._get_histogram_screen(card_content, ctx, field=issue_type)
 
-        card_content.md("---", name="divider")
-        functionality_stack = card_content.h_stack(
+        functionality_stack = self.add_stack(
             f"functionality_stack_{issue_type}",
-            align_x="space-between",
-            align_y="center",
-            gap=3,
+            card_main,
+            height="150px",
+            h_stack=True,
+            px=2,
         )
 
         # tagging button side
@@ -1522,6 +1498,9 @@ class DataQualityPanel(Panel):
             align_y="center",
             align_x="center",
             width="100%",
+            componentsProps={
+                "grid": {"sx": {"display": "flex", "flexDirection": "column"}},
+            },
         )
         if len(ctx.selected) == 0:
             tagging_text = f"Tag {self._get_current_issue_count(ctx, ctx.panel.state.issue_type)} samples in current view:"
@@ -1555,6 +1534,9 @@ class DataQualityPanel(Panel):
             align_y="center",
             align_x="center",
             width="100%",
+            componentsProps={
+                "grid": {"sx": {"display": "flex", "flexDirection": "column"}},
+            },
         )
         rescan_text_h_stack = rescan_functionality_stack.h_stack(
             f"rescan_text_h_stack",
@@ -1607,52 +1589,13 @@ class DataQualityPanel(Panel):
         self._get_rescan_modal_screen(rescan_functionality_stack, ctx)
 
     def wrapper_screen(self, panel, ctx, which_wrapper):
-
-        card_main = panel.v_stack(
-            "pre_load_compute",
-            gap=2,
-            componentsProps={
-                "grid": {
-                    "sx": {
-                        "display": "flex",
-                        "flexDirection": "column",
-                        "alignItems": "center",
-                    }
-                },
-                "container": {"sx": {"width": "100%"}},
-            },
-            container=types.PaperContainer(
-                sx={
-                    "display": "flex",
-                    "flexDirection": "column",
-                    "width": "100%",
-                    "padding": "0px",
-                    "textAlign": "center",
-                    "alignItems": "center",
-                }
-            ),
-        )
-        card_content = card_main.v_stack(
-            "card_content",
-            align_x="center",
-            align_y="center",
-            gap=2,
-            componentsProps={
-                "grid": {
-                    "sx": {
-                        "display": "flex",
-                        "flexDirection": "column",
-                        "minHeight": "50vh",
-                    }
-                }
-            },
-        )
+        card_main = self.add_stack("pre_load_compute", panel)
         wrapper_dataset_image = types.ImageView(
             width="75px",
             height="75px",
             alt=f"{which_wrapper.title()} Image",
         )
-        card_content.view(
+        card_main.view(
             f"{which_wrapper}dataset_image",
             view=wrapper_dataset_image,
             default=(
@@ -1668,7 +1611,7 @@ class DataQualityPanel(Panel):
             bold=False,
             color="text.primary",
         )
-        card_content.view("wrapper_info", view=wrapper_info)
+        card_main.view("wrapper_info", view=wrapper_info)
         if which_wrapper == "unsupported":
             unsupported_note = types.TextView(
                 title=f"This panel currently only supports image datasets.",
@@ -1677,9 +1620,9 @@ class DataQualityPanel(Panel):
                 bold=True,
                 color="text.primary",
             )
-            card_content.view("unsupported_note", view=unsupported_note)
+            card_main.view("unsupported_note", view=unsupported_note)
         elif which_wrapper == "entry":
-            card_content.btn(
+            card_main.btn(
                 f"get_started",
                 label=f"Get Started",
                 variant="contained",
@@ -1776,7 +1719,10 @@ class DataQualityPanel(Panel):
             align_x="space-between",
             align_y="center",
             container=types.PaperContainer(
-                sx={"padding": "1rem", "boxShadow": "none"}
+                sx={
+                    "boxShadow": "none",
+                    "padding": "none" if expanded else "1rem",
+                }
             ),
         )
 
@@ -1788,7 +1734,6 @@ class DataQualityPanel(Panel):
             orientation="horizontal",
             container=types.PaperContainer(
                 sx={
-                    "padding": "0px 0px 0px 16px",
                     "width": "100%",
                     "boxShadow": "none",
                 }
@@ -1826,7 +1771,7 @@ class DataQualityPanel(Panel):
                 ),
             )
         if (screen == "analysis") and (
-            self._get_current_issue_count(ctx, issue_type) > 0
+            self._get_current_issue_count(ctx, issue_type) is not None
             and self._get_issue_status(ctx, issue_type) == STATUS[2]
         ):
             current_count = self._get_current_issue_count(ctx, issue_type)
@@ -1862,7 +1807,6 @@ class DataQualityPanel(Panel):
             orientation="horizontal",
             container=types.PaperContainer(
                 sx={
-                    "padding": "0px 16px 0px 0px",
                     "width": "100%",
                     "boxShadow": "none",
                 }
@@ -1997,7 +1941,7 @@ class DataQualityPanel(Panel):
                     "sx": {
                         "display": "flex",
                         "flexDirection": "column",
-                        "minHeight": "40vh",
+                        "minHeight": "50vh",
                     }
                 }
             },
@@ -2034,14 +1978,6 @@ class DataQualityPanel(Panel):
         result = store_content["results"]["exact_duplicates"]["dup_sample_ids"]
         tree_view = types.TreeSelectionView(
             data=result,  # this data represents the basic group structure;
-            componentsProps={
-                "container": {
-                    "sx": {
-                        "height": "calc(100vh - 410px)",
-                        "overflow": "auto",
-                    }
-                }
-            },
         )
         stack.view(
             "exact_duplicate_selections",
@@ -2119,8 +2055,9 @@ class DataQualityPanel(Panel):
         custom_field_titles = {"near_duplicates": "Nearest Neighbor Distance"}
 
         layout = {
-            "width": "800px",
-            "height": "1000px",
+            "autosize": True,  # Enable autosizing for responsive behavior
+            "responsive": True,
+            "height": 400,
             "xaxis": {
                 "title": custom_field_titles.get(
                     field, " ".join(field.split("_")).title()
@@ -2149,16 +2086,34 @@ class DataQualityPanel(Panel):
             "barmode": "overlay",  # Overlay the two histograms
             "plot_bgcolor": "rgba(0, 0, 0, 0)",  # Transparent background for the plotting area
             "paper_bgcolor": "rgba(0, 0, 0, 0)",  # Transparent background for the entire layout
+            "colorway": ["grey", "#FF6D04", "blue"],
         }
         ctx.panel.state.histogram = histogram_data
         ctx.panel.state.layout = layout
 
+        wrapper_stack = stack.h_stack(
+            "plot_wrapper",
+            px=0,
+            py=0,
+            componentsProps={
+                "grid": {
+                    "sx": {
+                        "display": "flex",
+                    }
+                },
+                "container": {"sx": {"min-height": "400px"}},
+            },
+        )
         # Bar Chart - Histogram
-        stack.plot(
+        wrapper_stack.plot(
             f"{field}-histogram",
             data=ctx.panel.state.histogram,
             layout=ctx.panel.state.layout,
-            config={"scrollZoom": False, "displayModeBar": False},
+            config={
+                "scrollZoom": False,
+                "displayModeBar": False,
+                "responsive": True,
+            },
             # on_selected=self.hist_select,
         )
 
@@ -2216,7 +2171,6 @@ class DataQualityPanel(Panel):
             label="Add Tags",
             variant="outlined",
             icon="local_offer",
-            width="350px",
             disabled=no_access,
             title=NOT_PERMITTED_TEXT if no_access else "",
         )
@@ -2264,7 +2218,6 @@ class DataQualityPanel(Panel):
             label="Scan New Samples",
             variant="outlined",
             icon="search",
-            width="350px",
             disabled=number_of_new_samples == 0 or no_access,
             title=(
                 NOT_PERMITTED_TEXT
@@ -2341,5 +2294,6 @@ OPERATORS = [
     TagSamples(_builtin=True),
     SaveView(_builtin=True),
     ComputeHash(_builtin=True),
+    ComputeSimilarity(_builtin=True),
 ]
 ####################################################################

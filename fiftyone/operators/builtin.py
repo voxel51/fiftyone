@@ -18,6 +18,11 @@ from fiftyone.core.odm.workspace import default_workspace_factory
 
 # pylint: disable=no-name-in-module
 from fiftyone.operators.builtins.panels.model_evaluation import EvaluationPanel
+from fiftyone.operators.builtins.panels.data_quality import (
+    OPERATORS as DATA_QUALITY_OPERATORS,
+    DataQualityPanel,
+)
+
 from fiftyone.operators.builtins.operators.evaluation import (
     EvaluateModel,
     EvaluateModelAsync,
@@ -26,14 +31,9 @@ from fiftyone.operators.builtins.operators.embeddings import (
     ComputeVisualization,
 )
 from fiftyone.operators.data_lens.builtin import DATA_LENS_OPERATORS
-from fiftyone.operators.panels import (
-    DataQualityPanel,
-    QueryPerformancePanel,
-)
+from fiftyone.operators.panels import QueryPerformancePanel
+
 from fiftyone.operators.panels import QUERY_PERFORMANCE_OPERATORS
-from fiftyone.operators.panels.data_quality import (
-    OPERATORS as DATA_QUALITY_OPERATORS,
-)
 
 
 class EditFieldInfo(foo.Operator):

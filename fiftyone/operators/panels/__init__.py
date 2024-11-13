@@ -12,7 +12,6 @@ from .query_performance import (
     IndexFieldRemovalConfirmationOperator,
     QueryPerformanceConfigConfirmationOperator,
 )
-from .data_quality import DataQualityPanel
 
 QUERY_PERFORMANCE_OPERATORS = [
     CreateIndexOrSummaryFieldOperator(_builtin=True),
