@@ -1,6 +1,12 @@
 import { useRef, Fragment, useEffect } from "react";
 import { useExternalLink } from "@fiftyone/utilities";
-import { Loading, Selector, useTheme } from "@fiftyone/components";
+import {
+  Button,
+  Loading,
+  Selector,
+  StatusButton,
+  useTheme,
+} from "@fiftyone/components";
 import { usePanelStatePartial, useSetPanelCloseEffect } from "@fiftyone/spaces";
 import {
   HighlightAlt,
@@ -72,6 +78,8 @@ export default function Embeddings({ containerHeight, dimensions }) {
       <EmbeddingsContainer ref={el} data-cy="embeddings-container">
         <Selectors>
           <div>
+            <StatusButton />
+            <Button>Hello</Button>
             <Selector
               cy="embeddings"
               {...brainResultSelector.handlers}
