@@ -27,10 +27,12 @@ export interface DetectionLabel extends RegularLabel {
 export default class DetectionOverlay<
   State extends BaseState
 > extends CoordinateOverlay<State, DetectionLabel> {
-  private imageData: ImageData;
+  // private imageData: ImageData;
   private is3D: boolean;
   private labelBoundingBox: BoundingBox;
   private canvas: HTMLCanvasElement;
+
+  private imageBitmap: ImageBitmap | null = null;
 
   constructor(field, label) {
     super(field, label);
@@ -51,20 +53,30 @@ export default class DetectionOverlay<
       this.canvas = document.createElement("canvas");
       this.canvas.width = width;
       this.canvas.height = height;
-      this.imageData = new ImageData(
+      const imageData = new ImageData(
         new Uint8ClampedArray(this.label.mask.image),
         width,
         height
       );
-      const maskCtx = this.canvas.getContext("2d");
-      maskCtx.imageSmoothingEnabled = false;
-      maskCtx.clearRect(
-        0,
-        0,
-        this.label.mask.data.shape[1],
-        this.label.mask.data.shape[0]
-      );
-      maskCtx.putImageData(this.imageData, 0, 0);
+
+      // Asynchronously create an ImageBitmap from the ImageData
+      createImageBitmap(imageData)
+        .then((imageBitmap) => {
+          this.imageBitmap = imageBitmap;
+        })
+        .catch((error) => {
+          console.error("Failed to create ImageBitmap:", error);
+        });
+
+      // const maskCtx = this.canvas.getContext("2d");
+      // maskCtx.imageSmoothingEnabled = false;
+      // maskCtx.clearRect(
+      //   0,
+      //   0,
+      //   this.label.mask.data.shape[1],
+      //   this.label.mask.data.shape[0]
+      // );
+      // maskCtx.putImageData(this.imageData, 0, 0);
     }
   }
 
@@ -169,22 +181,44 @@ export default class DetectionOverlay<
   }
 
   private drawMask(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
-    if (!this.canvas) {
+    // if (!this.canvas) {
+    //   return;
+    // }
+    if (!this.imageBitmap) {
+      // ImageBitmap is not ready yet
       return;
     }
+
+    // const [tlx, tly, w, h] = this.label.bounding_box;
+    // const [x, y] = t(state, tlx, tly);
+    // const tmp = ctx.globalAlpha;
+    // ctx.globalAlpha = state.options.alpha;
+    // ctx.drawImage(
+    //   this.canvas,
+    //   x,
+    //   y,
+    //   w * state.canvasBBox[2],
+    //   h * state.canvasBBox[3]
+    // );
+    // ctx.globalAlpha = tmp;
 
     const [tlx, tly, w, h] = this.label.bounding_box;
     const [x, y] = t(state, tlx, tly);
     const tmp = ctx.globalAlpha;
     ctx.globalAlpha = state.options.alpha;
+    // retain pixel sharpness on zoom
+    ctx.imageSmoothingEnabled = false;
+
+    // Draw the ImageBitmap instead of the canvas
     ctx.drawImage(
-      this.canvas,
+      this.imageBitmap,
       x,
       y,
       w * state.canvasBBox[2],
       h * state.canvasBBox[3]
     );
     ctx.globalAlpha = tmp;
+
   }
 
   private getLabelText(state: Readonly<State>): string {

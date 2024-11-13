@@ -35,7 +35,8 @@ export default class SegmentationOverlay<State extends BaseState>
   private label: SegmentationLabel;
   private targets?: TypedArray;
   private canvas: HTMLCanvasElement;
-  private imageData: ImageData;
+  // private imageData: ImageData;
+  private imageBitmap: ImageBitmap | null = null;
 
   private isRgbMaskTargets = false;
 
@@ -67,20 +68,30 @@ export default class SegmentationOverlay<State extends BaseState>
     this.canvas.width = width;
     this.canvas.height = height;
 
-    this.imageData = new ImageData(
+    const imageData = new ImageData(
       new Uint8ClampedArray(this.label.mask.image),
       width,
       height
     );
-    const maskCtx = this.canvas.getContext("2d");
-    maskCtx.imageSmoothingEnabled = false;
-    maskCtx.clearRect(
-      0,
-      0,
-      this.label.mask.data.shape[1],
-      this.label.mask.data.shape[0]
-    );
-    maskCtx.putImageData(this.imageData, 0, 0);
+
+    // Asynchronously create an ImageBitmap from the ImageData
+    createImageBitmap(imageData)
+      .then((imageBitmap) => {
+        this.imageBitmap = imageBitmap;
+      })
+      .catch((error) => {
+        console.error("Failed to create ImageBitmap:", error);
+      });
+
+    // const maskCtx = this.canvas.getContext("2d");
+    // maskCtx.imageSmoothingEnabled = false;
+    // maskCtx.clearRect(
+    //   0,
+    //   0,
+    //   this.label.mask.data.shape[1],
+    //   this.label.mask.data.shape[0]
+    // );
+    // maskCtx.putImageData(this.imageData, 0, 0);
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
