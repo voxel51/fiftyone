@@ -11,22 +11,34 @@ import pytest
 import fiftyone as fo
 from fiftyone.operators.store import ExecutionStoreService
 
-from decorators import drop_stores, drop_datasets
+from decorators import drop_collection, drop_datasets
+
+TEST_COLLECTION_NAME = "execution_store_test_collection"
+
+
+@pytest.fixture
+def dataset():
+    return fo.Dataset(name="test_dataset")
+
+
+@pytest.fixture
+def dataset_id(dataset):
+    return dataset._doc.id
 
 
 @pytest.fixture
 def svc():
-    return ExecutionStoreService()
+    return ExecutionStoreService(collection_name=TEST_COLLECTION_NAME)
 
 
 @pytest.fixture
-def svc_with_dataset():
-    dataset = fo.Dataset(name="test_dataset")
-    dataset.save()
-    return ExecutionStoreService(dataset_id=dataset._doc.id)
+def svc_with_dataset(dataset_id):
+    return ExecutionStoreService(
+        dataset_id=dataset_id, collection_name=TEST_COLLECTION_NAME
+    )
 
 
-@drop_stores
+@drop_collection(TEST_COLLECTION_NAME)
 @drop_datasets
 def test_store_creation(svc):
     NAME = "test_store"
@@ -41,7 +53,7 @@ def test_store_creation(svc):
     assert svc.count_stores() == 1, "Store count should be 1"
 
 
-@drop_stores
+@drop_collection(TEST_COLLECTION_NAME)
 @drop_datasets
 def test_store_creation_with_dataset(svc_with_dataset):
     NAME = "test_store"
@@ -56,7 +68,7 @@ def test_store_creation_with_dataset(svc_with_dataset):
     assert svc_with_dataset.count_stores() == 1, "Store count should be 1"
 
 
-@drop_stores
+@drop_collection(TEST_COLLECTION_NAME)
 @drop_datasets
 def test_store_creation_with_metadata(svc):
     NAME = "test_store"
@@ -73,7 +85,7 @@ def test_store_creation_with_metadata(svc):
     assert svc.count_stores() == 1, "Store count should be 1"
 
 
-@drop_stores
+@drop_collection(TEST_COLLECTION_NAME)
 @drop_datasets
 def test_set_get_key(svc):
     NAME = "test_store"
@@ -89,7 +101,7 @@ def test_set_get_key(svc):
     ), "Retrieved value should match the set value"
 
 
-@drop_stores
+@drop_collection(TEST_COLLECTION_NAME)
 @drop_datasets
 def test_list_global_stores(svc, svc_with_dataset):
     NO_DATASET_STORE_NAME = "dataset_less_store"
@@ -112,7 +124,7 @@ def test_list_global_stores(svc, svc_with_dataset):
     assert svc_with_dataset._dataset_id in dataset_ids
 
 
-@drop_stores
+@drop_collection(TEST_COLLECTION_NAME)
 @drop_datasets
 def test_has_store(svc, svc_with_dataset):
     NAME = "test_store"
@@ -147,7 +159,7 @@ def test_has_store(svc, svc_with_dataset):
     ), "Nonexistent store should return False globally"
 
 
-@drop_stores
+@drop_collection(TEST_COLLECTION_NAME)
 @drop_datasets
 def test_has_key(svc, svc_with_dataset):
     NAME = "test_store"
@@ -158,7 +170,7 @@ def test_has_key(svc, svc_with_dataset):
     assert svc_with_dataset.has_key(NAME, KEY) is False
 
 
-@drop_stores
+@drop_collection(TEST_COLLECTION_NAME)
 @drop_datasets
 def test_get_key(svc):
     NAME = "test_store"
@@ -169,7 +181,7 @@ def test_get_key(svc):
     assert svc.get_key(NAME, "nonexistent") is None
 
 
-@drop_stores
+@drop_collection(TEST_COLLECTION_NAME)
 @drop_datasets
 def test_get_store_with_only_keys(svc):
     NAME = "test_store"
@@ -181,7 +193,7 @@ def test_get_store_with_only_keys(svc):
     assert key_doc.value == "value1"
 
 
-@drop_stores
+@drop_collection(TEST_COLLECTION_NAME)
 @drop_datasets
 def test_delete_store(svc, svc_with_dataset):
     NAME = "test_store"
@@ -253,7 +265,7 @@ def test_delete_store(svc, svc_with_dataset):
     ), "Final cleanup of 'test_store' in dataset context should succeed"
 
 
-@drop_stores
+@drop_collection(TEST_COLLECTION_NAME)
 @drop_datasets
 def test_global_delete_store(svc, svc_with_dataset):
     SHARED_NAME = "shared_store"
@@ -271,7 +283,7 @@ def test_global_delete_store(svc, svc_with_dataset):
     ), "SHARED_NAME store should not exist globally"
 
 
-@drop_stores
+@drop_collection(TEST_COLLECTION_NAME)
 @drop_datasets
 def test_scoping(svc, svc_with_dataset):
     NAME = "test_store"
@@ -303,7 +315,7 @@ def test_scoping(svc, svc_with_dataset):
 
 
 @drop_datasets
-@drop_stores
+@drop_collection(TEST_COLLECTION_NAME)
 def test_set_key_with_ttl(svc):
     NAME = "test_store"
     KEY = "ttl_key"
@@ -316,7 +328,7 @@ def test_set_key_with_ttl(svc):
 
 
 @drop_datasets
-@drop_stores
+@drop_collection(TEST_COLLECTION_NAME)
 def test_set_key_with_ttl_and_update(svc):
     NAME = "test_store"
     KEY = "ttl_key"
@@ -333,7 +345,7 @@ def test_set_key_with_ttl_and_update(svc):
 
 
 @drop_datasets
-@drop_stores
+@drop_collection(TEST_COLLECTION_NAME)
 def test_set_key_with_dict_value(svc):
     NAME = "test_store"
     KEY = "dict_key"
@@ -344,7 +356,7 @@ def test_set_key_with_dict_value(svc):
 
 
 @drop_datasets
-@drop_stores
+@drop_collection(TEST_COLLECTION_NAME)
 def test_count_stores(svc, svc_with_dataset):
     assert svc.count_stores() == 0
     assert svc.count_stores_global() == 0
@@ -367,7 +379,7 @@ def test_count_stores(svc, svc_with_dataset):
 
 
 @drop_datasets
-@drop_stores
+@drop_collection(TEST_COLLECTION_NAME)
 def test_cleanup(svc, svc_with_dataset):
     A_STORE_NAME = "store_a"
     B_STORE_NAME = "store_b"

@@ -76,6 +76,7 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
                     "key": "widget_1",
                     "created_at": IsDateTime(),
                     "expires_at": IsDateTime(),
+                    "dataset_id": None,
                 },
             },
             upsert=True,
@@ -112,6 +113,7 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
                 "created_at": IsDateTime(),
                 "updated_at": None,
                 "expires_at": None,
+                "dataset_id": None,
             }
         )
 
@@ -206,6 +208,7 @@ class TestExecutionStoreIntegration(unittest.TestCase):
                     "key": "widget_1",
                     "created_at": IsDateTime(),
                     "expires_at": IsDateTime(),
+                    "dataset_id": None,
                 },
             },
             upsert=True,
