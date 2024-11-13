@@ -636,7 +636,7 @@ class QueryPerformancePanel(Panel):
         summary_fields = _get_summary_fields(ctx)
 
         if not (droppable_index or summary_fields):
-            lightning_path = "https://upload.wikimedia.org/wikipedia/commons/f/fc/Lightning_bolt_inside_dark_orange_circle.svg"
+            lightning_path = "https://i.imgur.com/1NdrvHl.png"
 
             card_main = panel.v_stack(
                 "homepage_card",
@@ -659,6 +659,8 @@ class QueryPerformancePanel(Panel):
                         "padding": "0px",
                         "textAlign": "center",
                         "alignItems": "center",
+                        "background": "transparent",
+                        "border": "none",
                     }
                 ),
             )
@@ -678,8 +680,8 @@ class QueryPerformancePanel(Panel):
                 },
             )
             wrapper_dataset_image = types.ImageView(
-                width="75px",
-                height="75px",
+                width="40px",
+                height="60px",
                 alt=f"Query Performance Image",
             )
             card_content.view(
@@ -689,10 +691,11 @@ class QueryPerformancePanel(Panel):
             )
             title_info = types.TextView(
                 title=f"Improve Query Performance with Indexing",
-                variant="title",
+                variant="h5",
                 padding=0,
-                bold=False,
+                bold=True,
                 color="text.primary",
+                font_size="1.75rem",
             )
 
             card_content.view("title_info", view=title_info)
@@ -702,7 +705,7 @@ class QueryPerformancePanel(Panel):
                 variant="body2",
                 padding=0,
                 bold=False,
-                color="text.primary",
+                color="text.secondary",
             )
             card_content.view("wrapper_info", view=wrapper_info)
 
@@ -711,18 +714,10 @@ class QueryPerformancePanel(Panel):
                 label="Create index",
                 on_click=self.create_index_or_summary_field,
                 variant="contained",
+                padding=1,
             )
 
-            # return Property(
-            #     panel,
-            #     view=types.GridView(
-            #         gap=1.5,
-            #         px=2,
-            #         py=2,
-            #     ),
-            # )
-
-            return Property(
+            return types.Property(
                 panel,
                 view=GridView(
                     align_x="center", align_y="center", height=100, width=100
