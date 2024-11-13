@@ -187,14 +187,17 @@ def _resolve_lightning_path_queries(
     if meets_type(field, fof.BooleanField):
         queries = [
             _match(field_path, False),
-            _match(field_path, True),
             _match(field_path, None),
+            _match(field_path, True),
         ]
 
         def _resolve_bool(results):
-            false, true = results
+            false, none, true = results
             return BooleanLightningResult(
-                path=path.path, false=bool(false), true=bool(true)
+                path=path.path,
+                false=bool(false),
+                none=bool(none),
+                true=bool(true),
             )
 
         return collection, queries, _resolve_bool
