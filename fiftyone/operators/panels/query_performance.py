@@ -24,6 +24,7 @@ from ..types import (
     Property,
     RadioGroup,
     TableView,
+    Button,
 )
 from ..operator import Operator, OperatorConfig
 from ..panel import Panel, PanelConfig
@@ -723,9 +724,32 @@ class QueryPerformancePanel(Panel):
             h_stack = panel.h_stack(
                 "v_stack",
                 align_y="center",
-                componentsProps={"grid": {"sx": {"display": "flex"}}},
+                componentsProps={
+                    "grid": {"sx": {"display": "flex", "overflow": "hidden"}},
+                },
             )
-            h_stack.md(f"{message}", width="100%")
+
+            message_text = types.TextView(
+                title=message,
+                padding="0 0.5rem 0rem 0.5rem",
+                variant="body2",
+                color="text.primary",
+                width="75%",
+                componentsProps={
+                    "text": {
+                        "sx": {
+                            "whiteSpace": "nowrap",
+                            "textOverflow": "ellipsis",
+                            "overflow": "hidden",
+                        }
+                    }
+                },
+            )
+
+            h_stack.view(
+                f"indexed_information_text",
+                message_text,
+            )
 
             # The row of buttons
             button_menu = h_stack.h_stack(
@@ -751,6 +775,9 @@ class QueryPerformancePanel(Panel):
                     label="Create Index",
                     on_click=self.create_index_or_summary_field,
                     variant="contained",
+                    componentsProps={
+                        "button": {"sx": {"whiteSpace": "nowrap"}}
+                    },
                 )
 
             if summary_fields:
@@ -759,6 +786,9 @@ class QueryPerformancePanel(Panel):
                     label="Refresh summary field",
                     on_click=self.update_summary_field,
                     variant="contained",
+                    componentsProps={
+                        "button": {"sx": {"whiteSpace": "nowrap"}}
+                    },
                 )
 
             table = TableView()
