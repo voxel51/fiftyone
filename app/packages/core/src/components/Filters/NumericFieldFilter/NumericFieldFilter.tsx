@@ -1,5 +1,7 @@
+import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import * as schemaAtoms from "@fiftyone/state/src/recoil/schema";
+import Bolt from "@mui/icons-material/Bolt";
 import React, { Suspense } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -17,6 +19,7 @@ const Container = styled.div`
 const Header = styled.div`
   display: flex;
   justify-content: space-between;
+  align-items: center;
 `;
 
 type Props = {
@@ -36,14 +39,15 @@ const useShow = (
   showRange: boolean
 ) => {
   const queryPerformance = useRecoilValue(fos.queryPerformance);
-
   const hasBounds = useRecoilValue(
     state.hasBounds({ path, modal, shouldCalculate: !queryPerformance })
   );
+  const indexed = useRecoilValue(fos.pathHasIndexes(path));
 
   return {
     show: !(!queryPerformance && named && !hasBounds),
     showLoadButton: isGroup && queryPerformance && !showRange && !modal,
+    showQueryPerformanceIcon: isGroup && queryPerformance && indexed && !modal,
   };
 };
 
@@ -54,13 +58,14 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   const [showRange, setShowRange] = React.useState(!isGroup);
   const field = fos.useAssertedRecoilValue(fos.field(path));
 
-  const { show, showLoadButton } = useShow(
+  const { show, showLoadButton, showQueryPerformanceIcon } = useShow(
     isGroup,
     modal,
     named,
     path,
     showRange
   );
+  const theme = useTheme();
 
   if (!show) {
     return null;
@@ -80,6 +85,9 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
           template={({ label, hoverTarget }) => (
             <Header>
               <span ref={hoverTarget}>{label}</span>
+              {showQueryPerformanceIcon && (
+                <Bolt fontSize={"small"} sx={{ color: theme.action.active }} />
+              )}
             </Header>
           )}
         />
