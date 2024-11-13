@@ -2200,6 +2200,13 @@ class MarkdownView(View):
         super().__init__(**kwargs)
 
 
+class StatusButtonView(View):
+    """Renders a status button."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class MediaPlayerView(View):
     """Renders a media player for audio and video files.
 
