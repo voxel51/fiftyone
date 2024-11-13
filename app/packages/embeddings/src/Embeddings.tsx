@@ -1,12 +1,6 @@
 import { useRef, Fragment, useEffect } from "react";
 import { useExternalLink } from "@fiftyone/utilities";
-import {
-  Button,
-  Loading,
-  Selector,
-  StatusButton,
-  useTheme,
-} from "@fiftyone/components";
+import { Selector, useTheme } from "@fiftyone/components";
 import { usePanelStatePartial, useSetPanelCloseEffect } from "@fiftyone/spaces";
 import {
   HighlightAlt,
@@ -30,7 +24,6 @@ import { EmbeddingsPlot } from "./EmbeddingsPlot";
 import { usePlotSelection } from "./usePlotSelection";
 import { useResetPlotZoom } from "./useResetPlotZoom";
 import { OperatorPlacements, types } from "@fiftyone/operators";
-import ComputeVisualizationButton from "./ComputeVisualizationButton";
 import EmptyEmbeddings from "./EmptyEmbeddings";
 import useComputeVisualization from "./useComputeVisualization";
 
@@ -78,8 +71,6 @@ export default function Embeddings({ containerHeight, dimensions }) {
       <EmbeddingsContainer ref={el} data-cy="embeddings-container">
         <Selectors>
           <div>
-            <StatusButton />
-            <Button>Hello</Button>
             <Selector
               cy="embeddings"
               {...brainResultSelector.handlers}
