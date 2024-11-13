@@ -654,9 +654,7 @@ Certainly, refer to :ref:`these instructions <downgrading-fiftyone>`.
 Are the Brain methods open source?
 ----------------------------------
 
-Although the `core library <https://github.com/voxel51/fiftyone>`_ is open
-source and the :ref:`Brain methods <fiftyone-brain>` are freely available for
-use for any commercial or non-commercial purposes, the Brain methods are closed
+Yes, the `FiftyOne Brain <https://github.com/voxel51/fiftyone-brain>`_ methods are open
 source.
 
 Check out the :ref:`Brain documentation <fiftyone-brain>` for detailed
