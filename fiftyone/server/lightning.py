@@ -211,8 +211,8 @@ def _resolve_lightning_path_queries(
 
     if meets_type(field, fof.FloatField):
         queries = [
-            _first(field_path, dataset, 1, is_frame_field),
-            _first(field_path, dataset, -1, is_frame_field),
+            _first(field_path, dataset, 1, is_frame_field, floats=True),
+            _first(field_path, dataset, -1, is_frame_field, floats=True),
         ] + [
             _match(field_path, v)
             for v in (float("-inf"), float("inf"), float("nan"))
@@ -225,12 +225,10 @@ def _resolve_lightning_path_queries(
             nan = bool(nan)
             ninf = bool(ninf)
 
-            has_bounds = not inf and not ninf
-
             return FloatLightningResult(
                 path=path.path,
-                max=_parse_result(max, has_bounds),
-                min=_parse_result(min, has_bounds),
+                max=_parse_result(max),
+                min=_parse_result(min),
                 ninf=ninf,
                 inf=inf,
                 nan=nan,
@@ -358,8 +356,12 @@ def _first(
     dataset: fo.Dataset,
     sort: t.Union[t.Literal[-1], t.Literal[1]],
     is_frame_field: bool,
+    floats=False,
 ):
     pipeline = [{"$sort": {path: sort}}]
+
+    if floats:
+        pipeline.extend(_handle_nonfinites(path, sort))
 
     if sort:
         pipeline.append({"$match": {path: {"$ne": None}}})
@@ -371,14 +373,30 @@ def _first(
     pipeline.append({"$limit": 1})
 
     unwound = _unwind(dataset, path, is_frame_field)
-
     if unwound:
         pipeline += unwound
+        if floats:
+            pipeline.extend(_handle_nonfinites(path, sort))
+
         if sort:
             pipeline.append({"$match": {path: {"$ne": None}}})
 
     return pipeline + [
         {"$group": {"_id": {"$min" if sort == 1 else "$max": f"${path}"}}}
+    ]
+
+
+def _handle_nonfinites(path: str, sort: t.Union[t.Literal[-1], t.Literal[1]]):
+    return [
+        {
+            "$match": {
+                path: (
+                    {"$gt": float("-inf")}
+                    if sort == 1
+                    else {"$lt": float("inf")}
+                )
+            }
+        }
     ]
 
 
@@ -406,15 +424,6 @@ def _match(path: str, value: t.Union[str, float, int, bool]):
     ]
 
 
-def _parse_result(data, check=True):
-    if check and data and data[0]:
-        value = data[0].get("_id", None)
-        if not isinstance(value, float) or not math.isnan(value):
-            return value
-
-    return None
-
-
 def _match_arrays(dataset: fo.Dataset, path: str, is_frame_field: bool):
     keys = path.split(".")
     path = None
@@ -432,6 +441,13 @@ def _match_arrays(dataset: fo.Dataset, path: str, is_frame_field: bool):
             field = field.field
 
     return pipeline
+
+
+def _parse_result(data):
+    if data and data[0]:
+        return data[0].get("_id", None)
+
+    return None
 
 
 def _unwind(dataset: fo.Dataset, path: str, is_frame_field: bool):
