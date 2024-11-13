@@ -104,7 +104,7 @@ class ContinualExecutor:
 
     def configure_logging(self):
         if self.run_link_path is not None:
-            self.temp_dir = fos.make_temp_dir()
+            self.temp_dir = fos.make_temp_dir(ensure_writeable=True)
             self.log_path = fos.join(
                 self.temp_dir, "fiftyone_delegated_executor.log"
             )
