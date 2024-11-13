@@ -636,25 +636,92 @@ class QueryPerformancePanel(Panel):
         summary_fields = _get_summary_fields(ctx)
 
         if not (droppable_index or summary_fields):
-            lines = [
-                "Improve Query Performance with Indexing",
-                "Index the most critical fields for efficient data loading and improved query experience.",
-            ]
+            lightning_path = "https://upload.wikimedia.org/wikipedia/commons/f/fc/Lightning_bolt_inside_dark_orange_circle.svg"
 
-            v_stack = panel.v_stack("v_stack", width=50, align_x="center")
-            v_stack.str(
-                "img",
-                view=ImageView(width="32px", height="32px"),
-                default="https://upload.wikimedia.org/wikipedia/commons/f/fc/Lightning_bolt_inside_dark_orange_circle.svg",
+            card_main = panel.v_stack(
+                "homepage_card",
+                gap=2,
+                componentsProps={
+                    "grid": {
+                        "sx": {
+                            "display": "flex",
+                            "flexDirection": "column",
+                            "alignItems": "center",
+                        }
+                    },
+                    "container": {"sx": {"width": "100%"}},
+                },
+                container=types.PaperContainer(
+                    sx={
+                        "display": "flex",
+                        "flexDirection": "column",
+                        "width": "100%",
+                        "padding": "0px",
+                        "textAlign": "center",
+                        "alignItems": "center",
+                    }
+                ),
             )
-            v_stack.md(f"#### {lines[0]}", align_x="center")
-            v_stack.md(lines[1], name="desc", align_x="center")
-            v_stack.btn(
+            card_content = card_main.v_stack(
+                "card_content",
+                align_x="center",
+                align_y="center",
+                gap=2,
+                componentsProps={
+                    "grid": {
+                        "sx": {
+                            "display": "flex",
+                            "flexDirection": "column",
+                            "minHeight": "50vh",
+                        }
+                    }
+                },
+            )
+            wrapper_dataset_image = types.ImageView(
+                width="75px",
+                height="75px",
+                alt=f"Query Performance Image",
+            )
+            card_content.view(
+                f"dataset_image",
+                view=wrapper_dataset_image,
+                default=lightning_path,
+            )
+            title_info = types.TextView(
+                title=f"Improve Query Performance with Indexing",
+                variant="title",
+                padding=0,
+                bold=False,
+                color="text.primary",
+            )
+
+            card_content.view("title_info", view=title_info)
+
+            wrapper_info = types.TextView(
+                title=f"Index the most critical fields for efficient data loading and improved query experience.",
+                variant="body2",
+                padding=0,
+                bold=False,
+                color="text.primary",
+            )
+            card_content.view("wrapper_info", view=wrapper_info)
+
+            card_content.btn(
                 "add_btn",
                 label="Create index",
                 on_click=self.create_index_or_summary_field,
                 variant="contained",
             )
+
+            # return Property(
+            #     panel,
+            #     view=types.GridView(
+            #         gap=1.5,
+            #         px=2,
+            #         py=2,
+            #     ),
+            # )
+
             return Property(
                 panel,
                 view=GridView(
