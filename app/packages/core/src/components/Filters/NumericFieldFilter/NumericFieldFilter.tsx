@@ -1,15 +1,12 @@
-import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import * as schemaAtoms from "@fiftyone/state/src/recoil/schema";
-import Bolt from "@mui/icons-material/Bolt";
 import React, { Suspense } from "react";
-import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import { LightningBolt } from "../../Sidebar/Entries/FilterablePathEntry/Icon";
 import { Button } from "../../utils";
 import Box from "./Box";
 import RangeSlider from "./RangeSlider";
-import * as state from "./state";
+import useShow from "./use-show";
 
 const Container = styled.div`
   margin: 3px;
@@ -31,41 +28,17 @@ type Props = {
   path: string;
 };
 
-const useShow = (
-  isGroup: boolean,
-  modal: boolean,
-  named: boolean,
-  path: string,
-  showRange: boolean
-) => {
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
-  const hasBounds = useRecoilValue(
-    state.hasBounds({ path, modal, shouldCalculate: !queryPerformance })
-  );
-  const indexed = useRecoilValue(fos.pathHasIndexes(path));
-
-  return {
-    show: !(!queryPerformance && named && !hasBounds),
-    showLoadButton: isGroup && queryPerformance && !showRange && !modal,
-    showQueryPerformanceIcon: isGroup && queryPerformance && indexed && !modal,
-  };
-};
-
 const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   const name = path.split(".").slice(-1)[0];
-  const fieldType = useRecoilValue(schemaAtoms.filterFields(path));
-  const isGroup = fieldType.length > 1;
-  const [showRange, setShowRange] = React.useState(!isGroup);
+  const [showRange, setShowRange] = React.useState(!named);
   const field = fos.useAssertedRecoilValue(fos.field(path));
 
   const { show, showLoadButton, showQueryPerformanceIcon } = useShow(
-    isGroup,
     modal,
     named,
     path,
     showRange
   );
-  const theme = useTheme();
 
   if (!show) {
     return null;
@@ -85,9 +58,7 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
           template={({ label, hoverTarget }) => (
             <Header>
               <span ref={hoverTarget}>{label}</span>
-              {showQueryPerformanceIcon && (
-                <Bolt fontSize={"small"} sx={{ color: theme.action.active }} />
-              )}
+              {showQueryPerformanceIcon && <LightningBolt />}
             </Header>
           )}
         />
