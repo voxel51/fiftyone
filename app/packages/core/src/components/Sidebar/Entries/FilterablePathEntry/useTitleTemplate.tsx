@@ -78,7 +78,7 @@ const useTitleTemplate = ({
   path: string;
 }) => {
   return function useTitleTemplate({ hoverHandlers, hoverTarget, container }) {
-    const disabled = useRecoilValue(fos.isDisabledFilterPath(path));
+    const enabled = useRecoilValue(fos.isDisabledFilterPath(path)) || modal;
     const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
     const expandedPath = useRecoilValue(fos.expandPath(path));
 
@@ -97,10 +97,10 @@ const useTitleTemplate = ({
             <Hidden path={path} />
           </Suspense>
         )}
-        {(modal || !disabled) && isFilterMode && (
+        {enabled && isFilterMode && (
           <PathEntryCounts key="count" modal={modal} path={expandedPath} />
         )}
-        {!disabled && <Icon modal={modal} path={path} />}
+        {enabled && <Icon modal={modal} path={path} />}
       </NameAndCountContainer>
     );
   };
