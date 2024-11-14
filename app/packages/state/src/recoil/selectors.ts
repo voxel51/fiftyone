@@ -583,3 +583,19 @@ export const hasSelectedSamples = selector<boolean>({
     return selected.size > 0;
   },
 });
+
+const frameFieldsList = selector({
+  key: "frameFieldsList",
+  get: ({ get }) => {
+    const fields = get(atoms.frameFields);
+    return fields.map((f) => `frames.${f.path}`);
+  },
+});
+
+export const isFrameField = selectorFamily({
+  key: "isFrameField",
+  get:
+    (path: string) =>
+    ({ get }) =>
+      get(frameFieldsList).some((p) => path.startsWith(p)),
+});

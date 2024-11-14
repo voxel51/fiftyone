@@ -184,7 +184,7 @@ class SidebarAsserter {
   }
 
   async assertFieldDisabled(fieldName: string) {
-    await expect(this.sb.fieldArrow(fieldName, false)).toBeVisible();
+    await expect(this.sb.fieldArrow(fieldName, true)).toHaveCount(0);
   }
 
   async assertFieldArrowRemoved(fieldName: string) {

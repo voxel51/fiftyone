@@ -58,8 +58,11 @@ const GroupsCount = () => {
 const Count = () => {
   let element = useRecoilValue(fos.elementNames);
   const isDynamicGroupViewStageActive = useRecoilValue(fos.isDynamicGroup);
-  const total = useRecoilValue(
+  let total = useRecoilValue(
     fos.count({ path: "", extended: false, modal: false })
+  );
+  const subtotal = useRecoilValue(
+    fos.count({ path: "", extended: true, modal: false })
   );
 
   const parent = useRecoilValue(parentMediaTypeSelector);
@@ -67,6 +70,9 @@ const Count = () => {
 
   const isGroup = useRecoilValue(isGroupAtom);
   const queryPerformance = useRecoilValue(fos.queryPerformance);
+  if (queryPerformance) {
+    total = subtotal;
+  }
   if (
     !queryPerformance &&
     ((isGroup && !isDynamicGroupViewStageActive) ||

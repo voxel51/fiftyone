@@ -113,7 +113,7 @@ export const unwind = (name: string, value: Data | Data[], depth = 0) => {
     return depth < 2 ? value.map((val) => unwind(name, val), next).flat(3) : [];
   }
 
-  const v = value[name];
+  const v = value?.[name];
   if (v !== undefined && v !== null) {
     return [v].flat(3);
   }

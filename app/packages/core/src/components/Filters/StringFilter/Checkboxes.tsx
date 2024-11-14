@@ -20,10 +20,12 @@ interface CheckboxesProps {
   color: string;
   excludeAtom: RecoilState<boolean>;
   isMatchingAtom: RecoilState<boolean>;
+
   modal: boolean;
   path: string;
   results: Result[] | null;
   selectedAtom: RecoilState<(string | null)[]>;
+  skeleton?: boolean;
 }
 
 const isSkeleton = selectorFamily({
@@ -32,7 +34,7 @@ const isSkeleton = selectorFamily({
     (path: string) =>
     ({ get }) =>
       get(isInKeypointsField(path)) &&
-      path.split(".").slice(-1)[0] === "keypoints",
+      path.split(".").slice(-1)[0] === "points",
 });
 
 const checkboxCounts = selectorFamily({
@@ -162,6 +164,7 @@ const Checkboxes = ({
   path,
   results,
   selectedAtom,
+  skeleton,
 }: CheckboxesProps) => {
   const [selected, setSelected] = useRecoilState(selectedAtom);
   const queryPerformance = useRecoilValue(fos.queryPerformance);
@@ -173,10 +176,10 @@ const Checkboxes = ({
     selected,
   });
 
-  const show = useRecoilValue(isBooleanField(path));
+  const show = useRecoilValue(fos.isObjectIdField(path));
   const getCount = useGetCount(modal, path);
 
-  if (!modal && queryPerformance && values.length === 0) {
+  if (!modal && queryPerformance && !skeleton && values.length === 0) {
     return null;
   }
 

@@ -4,6 +4,7 @@ import React from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import CommonRangeSlider from "../../Common/RangeSlider";
+import Box from "./Box";
 import FilterOption from "./FilterOption";
 import Nonfinites from "./Nonfinites";
 import Reset from "./Reset";
@@ -35,36 +36,44 @@ const RangeSlider = ({
   const timeZone = useRecoilValue(fos.timeZone);
   const hasBounds = useRecoilValue(state.hasBounds({ path, modal }));
 
+  if (!hasBounds) {
+    return <Box text="No results" />;
+  }
+
+  const showSlider = hasBounds && !(excluded && defaultRange);
+  if (showSlider && one !== null) {
+    return (
+      <Box
+        text={formatPrimitive({ ftype, timeZone, value: one })?.toString()}
+      />
+    );
+  }
+
   return (
     <Container
       onMouseDown={(e) => e.stopPropagation()}
       style={{ cursor: "default" }}
       data-cy={`numeric-slider-container-${key}`}
     >
-      {hasBounds &&
-        !(excluded && defaultRange) &&
-        (one !== null ? (
-          formatPrimitive({ ftype, timeZone, value: one })?.toString()
-        ) : (
-          <CommonRangeSlider
-            showBounds={false}
-            fieldType={ftype}
-            valueAtom={fos.rangeAtom({
-              modal,
-              path,
-              withBounds: true,
-            })}
-            boundsAtom={fos.boundsAtom({
-              path,
-              modal,
-            })}
-            color={color}
-          />
-        ))}
+      {showSlider && (
+        <CommonRangeSlider
+          showBounds={false}
+          fieldType={ftype}
+          valueAtom={fos.rangeAtom({
+            modal,
+            path,
+            withBounds: true,
+          })}
+          boundsAtom={fos.boundsAtom({
+            path,
+            modal,
+          })}
+          color={color}
+        />
+      )}
       {defaultRange && <Nonfinites modal={modal} path={path} />}
       <FilterOption color={color} modal={modal} path={path} />
       <Reset color={color} modal={modal} path={path} />
-      {!hasBounds && "No results"}
     </Container>
   );
 };
