@@ -74,16 +74,12 @@ class RepositoryFactory(object):
     @staticmethod
     def execution_store_repo(
         dataset_id: Optional[ObjectId] = None,
+        collection_name: Optional[str] = None,
     ) -> ExecutionStoreRepo:
-        if (
-            MongoExecutionStoreRepo.COLLECTION_NAME
-            not in RepositoryFactory.repos
-        ):
-            RepositoryFactory.repos[
-                MongoExecutionStoreRepo.COLLECTION_NAME
-            ] = MongoExecutionStoreRepo(
-                collection=_get_db()[MongoExecutionStoreRepo.COLLECTION_NAME],
-                dataset_id=dataset_id,
-            )
-
-        return RepositoryFactory.repos[MongoExecutionStoreRepo.COLLECTION_NAME]
+        collection = _get_db()[
+            collection_name or MongoExecutionStoreRepo.COLLECTION_NAME
+        ]
+        return MongoExecutionStoreRepo(
+            collection=collection,
+            dataset_id=dataset_id,
+        )

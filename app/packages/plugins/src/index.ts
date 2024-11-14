@@ -323,7 +323,7 @@ export function getCategoryLabel(category: CategoryID): string {
       return "Curate";
     case "analyze":
       return "Analyze";
-    case "custom":
+    default:
       return "Custom";
   }
 }
@@ -332,16 +332,13 @@ export function getCategoryForPanel(panel: PluginComponentRegistration) {
   return panel.panelOptions?.category || "custom";
 }
 
-type Category = {
-  id: CategoryID;
-  label: string;
-};
-
 type PluginActivator = (props: any) => boolean;
 
 type PanelOptions = {
   /**
-   * Whether to allow multiple instances of the plugin
+   * Whether to allow multiple instances of the plugin.
+   *
+   * Defaults to `false`.
    */
   allowDuplicates?: boolean;
 
@@ -352,7 +349,7 @@ type PanelOptions = {
   priority?: number;
 
   /**
-   * Markdown help text for the plugin
+   * Markdown help text for the plugin.
    */
   helpMarkdown?: string;
 
@@ -367,19 +364,27 @@ type PanelOptions = {
   TabIndicator?: React.ComponentType;
 
   /**
-   * The category of the plugin
+   * The category of the plugin.
+   *
+   * Defaults to `custom`.
    */
-  category: CategoryID;
+  category?: CategoryID;
 
   /**
-   * Whether the plugin is in beta
+   * Whether the plugin is in beta.
+   * This is used to highlight beta plugins.
+   *
+   * Defaults to `false`.
    */
-  beta: boolean;
+  beta?: boolean;
 
   /**
-   * Whether the plugin is new
+   * Whether the plugin is new.
+   * This is used to highlight new plugins.
+   *
+   * Defaults to `false`.
    */
-  isNew: boolean;
+  isNew?: boolean;
 };
 
 type PluginComponentProps<T> = T & {
