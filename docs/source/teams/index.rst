@@ -144,6 +144,7 @@ pages on this site apply to Teams deployments as well.
     FiftyOne Teams App <teams_app>
     Management SDK <management_sdk>
     Plugins <teams_plugins>
+    Data Lens <data_lens>
     Secrets <secrets>
     Migrations <migrations>
     Pluggable Auth <pluggable_auth>
