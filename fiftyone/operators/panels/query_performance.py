@@ -23,6 +23,7 @@ from ..types import (
     Property,
     RadioGroup,
     TableView,
+    Button,
 )
 from ..operator import Operator, OperatorConfig
 from ..panel import Panel, PanelConfig
@@ -98,6 +99,7 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
 
         return types.Property(inputs, view=types.View(label=label))
 
+    """
     def resolve_execution_options(self, ctx):
         field_type = ctx.params.get("field_type", None)
         allow_delegated_execution = field_type == "SUMMARY"
@@ -106,6 +108,7 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
             allow_delegated_execution=allow_delegated_execution,
             default_choice_to_delegated=allow_delegated_execution,
         )
+    """
 
     def execute(self, ctx):
         path = ctx.params["path"]
@@ -383,22 +386,11 @@ class IndexFieldRemovalConfirmationOperator(Operator):
         field_type = ctx.params.get("field_type", "N/A")
 
         if field_type == "summary_field":
-            message = (
-                f"Are you sure you would like to delete Summary Field: {field_name}?"
-                f"\n\nThis action cannot be undone."
-            )
+            message = f"Are you sure you want to delete summary field `{field_name}`?"
         else:
-            message = (
-                f"Are you sure you would like to delete Indexed Field: {field_name}?"
-                f"\n\nThis action cannot be undone."
-            )
+            message = f"Are you sure you want to delete the `{field_name}` field's index?"
 
-        inputs.view(
-            "confirmation",
-            Notice(
-                label=message,
-            ),
-        )
+        inputs.view("confirmation", types.Warning(label=message))
         return Property(inputs)
 
     def execute(self, ctx):
@@ -430,7 +422,12 @@ class QueryPerformanceConfigConfirmationOperator(Operator):
         query_performance = ctx.query_performance
 
         radio_group = RadioGroup(
-            label="Query Performance Status",
+            label="Query Performance",
+            description=(
+                "Enabling Query Performance optimizes filters on indexed "
+                "fields. If disabled, the sidebar may not fully leverage "
+                "indexes when they exist"
+            ),
         )
 
         radio_group.add_choice("Enabled", label="Enable Query Performance")
@@ -442,37 +439,25 @@ class QueryPerformanceConfigConfirmationOperator(Operator):
             default="Enabled" if query_performance else "Disabled",
         )
 
-        message = (
-            "Enabling this setting speeds up loading times by prioritizing queries on indexed fields. "
-            "If disabled, indexed fields won't be prioritized, which may slow query performance."
-        )
-
-        inputs.md(message)
-
         return Property(
             inputs,
             view=PromptView(
-                caption="Query Performance Settings",
+                label="Query Performance Settings",
                 submit_button_label="Accept",
             ),
         )
 
     def execute(self, ctx):
         if ctx.params.get("query_performance") == "Enabled":
-            ctx.ops.notify("Enabling query performance mode")
             ctx.trigger("enable_query_performance")
+            ctx.ops.notify("Query performance enabled")
         else:
-            ctx.ops.notify("Disabling query performance mode")
             ctx.trigger("disable_query_performance")
+            ctx.ops.notify("Query performance disabled")
 
         return {
             "query_performance": ctx.params.get("query_performance"),
         }
-
-    def resolve_output(self, ctx):
-        outputs = Object()
-        outputs.str("query_performance", label="Query Performance")
-        return Property(outputs)
 
 
 class QueryPerformancePanel(Panel):
@@ -575,14 +560,15 @@ class QueryPerformancePanel(Panel):
 
             if field_type == "Summary":
                 params["field_type"] = "summary_field"
-                ctx.ops.notify(f"Dropping summary field {field_name}")
             else:
                 default_indexes = set(_get_default_indexes(ctx))
                 if field_name in default_indexes:
-                    ctx.ops.notify(f"Cannot drop default index {field_name}.")
+                    ctx.ops.notify(
+                        f"Cannot drop default index `{field_name}`",
+                        variant="error",
+                    )
                     return
 
-                ctx.ops.notify(f"Dropping index {field_name}")
                 params["field_type"] = "index_field"
 
             ctx.prompt(
@@ -591,7 +577,7 @@ class QueryPerformancePanel(Panel):
                 params=params,
             )
         else:
-            ctx.ops.notify("You do not have permission to delete.")
+            ctx.ops.notify("You do not have edit permissions", variant="error")
 
     def qp_setting(self, ctx):
         ctx.prompt("query_performance_config_confirmation")
@@ -605,19 +591,17 @@ class QueryPerformancePanel(Panel):
 
     def create_index_or_summary_field(self, ctx):
         if _has_edit_permission(ctx):
-            ctx.ops.track_event(
-                "create_index_or_summary_field",
-                {"location": "query_performance_panel"},
-            )
             ctx.prompt(
                 "create_index_or_summary_field",
                 on_success=self.refresh,
             )
         else:
-            ctx.ops.notify("You do not have permission to create an index.")
+            ctx.ops.notify(
+                "You do not have permission to create an index",
+                variant="error",
+            )
 
     def update_summary_field(self, ctx):
-        ctx.ops.notify(f"Opening `update_summary_field` operator")
         ctx.prompt("update_summary_field", on_success=self.refresh)
 
     def render(self, ctx):
@@ -723,9 +707,32 @@ class QueryPerformancePanel(Panel):
             h_stack = panel.h_stack(
                 "v_stack",
                 align_y="center",
-                componentsProps={"grid": {"sx": {"display": "flex"}}},
+                componentsProps={
+                    "grid": {"sx": {"display": "flex", "overflow": "hidden"}},
+                },
             )
-            h_stack.md(f"{message}", width="100%")
+
+            message_text = types.TextView(
+                title=message,
+                padding="0 0.5rem 0rem 0.5rem",
+                variant="body2",
+                color="text.primary",
+                width="75%",
+                componentsProps={
+                    "text": {
+                        "sx": {
+                            "whiteSpace": "nowrap",
+                            "textOverflow": "ellipsis",
+                            "overflow": "hidden",
+                        }
+                    }
+                },
+            )
+
+            h_stack.view(
+                f"indexed_information_text",
+                message_text,
+            )
 
             # The row of buttons
             button_menu = h_stack.h_stack(
@@ -769,6 +776,9 @@ class QueryPerformancePanel(Panel):
                     label="Create Index",
                     on_click=self.create_index_or_summary_field,
                     variant="contained",
+                    componentsProps={
+                        "button": {"sx": {"whiteSpace": "nowrap"}}
+                    },
                 )
 
             if summary_fields:
@@ -777,6 +787,9 @@ class QueryPerformancePanel(Panel):
                     label="Refresh summary field",
                     on_click=self.update_summary_field,
                     variant="contained",
+                    componentsProps={
+                        "button": {"sx": {"whiteSpace": "nowrap"}}
+                    },
                 )
 
             table = TableView()

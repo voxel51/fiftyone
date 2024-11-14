@@ -39,8 +39,7 @@ class KeyDocument:
         data = asdict(self)
         if exclude_id:
             data.pop("_id", None)
-        if self.dataset_id is None:
-            data.pop("dataset_id", None)
+
         return data
 
 
@@ -50,3 +49,8 @@ class StoreDocument(KeyDocument):
 
     key: str = "__store__"
     value: Optional[dict[str, Any]] = None
+
+    @property
+    def metadata(self) -> dict[str, Any]:
+        """The metadata associated with the store."""
+        return self.value or {}

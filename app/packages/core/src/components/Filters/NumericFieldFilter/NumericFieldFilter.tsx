@@ -1,14 +1,12 @@
-import { LoadingDots, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import * as schemaAtoms from "@fiftyone/state/src/recoil/schema";
 import React, { Suspense } from "react";
-import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import { LightningBolt } from "../../Sidebar/Entries/FilterablePathEntry/Icon";
 import { Button } from "../../utils";
+import Box from "./Box";
 import RangeSlider from "./RangeSlider";
-import * as state from "./state";
-import Bolt from "@mui/icons-material/Bolt";
+import useShow from "./use-show";
 
 const Container = styled.div`
   margin: 3px;
@@ -19,15 +17,6 @@ const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-`;
-
-const Box = styled.div`
-  background: ${({ theme }) => theme.background.level2};
-  border: 1px solid var(--fo-palette-divider);
-  border-radius: 2px;
-  color: ${({ theme }) => theme.text.secondary};
-  margin-top: 0.25rem;
-  padding: 0.25rem 0.5rem;
 `;
 
 type Props = {
@@ -41,18 +30,17 @@ type Props = {
 
 const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   const name = path.split(".").slice(-1)[0];
-  const fieldType = useRecoilValue(schemaAtoms.filterFields(path));
-  const isGroup = fieldType.length > 1;
-  const [showRange, setShowRange] = React.useState(!isGroup);
+  const [showRange, setShowRange] = React.useState(!named);
   const field = fos.useAssertedRecoilValue(fos.field(path));
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
-  const indexed = useRecoilValue(fos.pathHasIndexes(path));
-  const hasBounds = useRecoilValue(
-    state.hasBounds({ path, modal, shouldCalculate: !queryPerformance })
-  );
-  const theme = useTheme();
 
-  if (!queryPerformance && named && !hasBounds) {
+  const { show, showLoadButton, showQueryPerformanceIcon } = useShow(
+    modal,
+    named,
+    path,
+    showRange
+  );
+
+  if (!show) {
     return null;
   }
 
@@ -60,9 +48,6 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
     setShowRange(true);
   };
 
-  const showButton = isGroup && queryPerformance && !showRange && !modal;
-  const showQueryPerformanceIcon =
-    isGroup && queryPerformance && indexed && !modal;
   return (
     <Container onClick={(e) => e.stopPropagation()}>
       {named && name && (
@@ -73,29 +58,21 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
           template={({ label, hoverTarget }) => (
             <Header>
               <span ref={hoverTarget}>{label}</span>
-              {showQueryPerformanceIcon && (
-                <Bolt fontSize={"small"} sx={{ color: theme.action.active }} />
-              )}
+              {showQueryPerformanceIcon && <LightningBolt />}
             </Header>
           )}
         />
       )}
-      <Suspense
-        fallback={
-          <Box>
-            <LoadingDots text="Loading" />
-          </Box>
-        }
-      >
-        {showButton ? (
+      <Suspense fallback={<Box text="Loading" />}>
+        {showLoadButton ? (
           <Box>
             <Button
               text={`Filter by ${name}`}
               color={color}
               onClick={handleShowRange}
               style={{
-                margin: "0.25rem -0.5rem",
                 height: "2rem",
+                margin: "0 -0.5rem",
                 borderRadius: 0,
                 textAlign: "center",
               }}

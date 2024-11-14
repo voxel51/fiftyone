@@ -36,6 +36,7 @@ class ExecutionStoreService(object):
         self,
         repo: Optional["ExecutionStoreRepo"] = None,
         dataset_id: Optional[ObjectId] = None,
+        collection_name: str = None,
     ):
 
         from fiftyone.factory.repo_factory import (
@@ -45,12 +46,15 @@ class ExecutionStoreService(object):
 
         if repo is None:
             repo = RepositoryFactory.execution_store_repo(
-                dataset_id=dataset_id
+                dataset_id=dataset_id,
+                collection_name=collection_name,
             )
-
+        self._dataset_id = dataset_id
         self._repo: ExecutionStoreRepo = repo
 
-    def create_store(self, store_name: str) -> StoreDocument:
+    def create_store(
+        self, store_name: str, metadata: Optional[dict[str, Any]] = None
+    ) -> StoreDocument:
         """Creates a new store with the specified name.
 
         Args:
@@ -59,7 +63,18 @@ class ExecutionStoreService(object):
         Returns:
             a :class:`fiftyone.store.models.StoreDocument`
         """
-        return self._repo.create_store(store_name)
+        return self._repo.create_store(store_name, metadata)
+
+    def get_store(self, store_name: str) -> StoreDocument:
+        """Gets the specified store for the current context.
+
+        Args:
+            store_name: the name of the store
+
+        Returns:
+            a :class:`fiftyone.store.models.StoreDocument`
+        """
+        return self._repo.get_store(store_name)
 
     def list_stores(self) -> list[str]:
         """Lists all stores for the current context.
@@ -115,6 +130,15 @@ class ExecutionStoreService(object):
             a :class:`fiftyone.store.models.KeyDocument`
         """
         return self._repo.set_key(store_name, key, value, ttl=ttl)
+
+    def has_key(self, store_name: str, key: str) -> bool:
+        """Determines whether the specified key exists in the specified store.
+
+        Args:
+            store_name: the name of the store
+            key: the key to check
+        """
+        return self._repo.has_key(store_name, key)
 
     def get_key(self, store_name: str, key: str) -> KeyDocument:
         """Retrieves the value of a key from the specified store.
@@ -208,3 +232,15 @@ class ExecutionStoreService(object):
             the number of stores
         """
         return self._repo.count_stores_global()
+
+    def delete_store_global(self, store_name) -> int:
+        """Deletes the specified store across all datasets and the global
+        context.
+
+        Args:
+            store_name: the name of the store
+
+        Returns:
+            the number of stores deleted
+        """
+        return self._repo.delete_store_global(store_name)

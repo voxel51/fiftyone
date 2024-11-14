@@ -185,7 +185,7 @@ html_copy_source = False
 html_context = {
     "address_main_line1": "330 E Liberty St",
     "address_main_line2": "Ann Arbor, MI 48104",
-    "phone_main": "+1 734-489-1134",
+    "phone_main": "+1 734-519-0955",
     "email_info": "info@voxel51.com",
     # Links - copied from website config
     "link_blog": "https://voxel51.com/blog/",

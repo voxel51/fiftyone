@@ -6,6 +6,19 @@ import cv2
 
 from PIL import Image
 
+########## COMMENT below && UNCOMMENT for OSS to WORK ################
+
+# from .utils import (
+#     get_filepath,
+#     _convert_opencv_to_pillow,
+#     _convert_pillow_to_opencv,
+#     _crop_pillow_image,
+#     _get_opencv_grayscale_image,
+#     _get_pillow_patch,
+#     _handle_patch_inputs,
+# )
+
+########## COMMENT ^ && UNCOMMENT for TEAMS to WORK ################
 # pylint:disable=import-error,no-name-in-module
 from fiftyone.operators.builtins.operators.utils import (
     get_filepath,
@@ -16,6 +29,9 @@ from fiftyone.operators.builtins.operators.utils import (
     _get_pillow_patch,
     _handle_patch_inputs,
 )
+
+########################## ################ ################ ################
+
 
 ###
 # Operator Setup
@@ -34,18 +50,25 @@ def _handle_inputs(ctx, property_name):
 
 
 def _handle_execution(ctx, property_name):
-    new_sample_exist = (
-        ctx.params.get("panel_state", {})
-        .get("new_samples", {})
-        .get(property_name, [0, False])[0]
-        > 0
-    )
+    # UNCOMMENT below & delete line 51 if we ever want to overwrite existing samples w/ property_name
+    #
+    # new_sample_exist = (
+    #     ctx.params.get("panel_state", {})
+    #     .get("new_samples", {})
+    #     .get(property_name, [0, False])[0]
+    #     > 0
+    # )
+    #
+    # view = (
+    #     ctx.dataset.exists(property_name, bool=False)
+    #     if new_sample_exist
+    #     else ctx.target_view()
+    # )
 
-    view = (
-        ctx.dataset.exists(property_name, bool=False)
-        if new_sample_exist
-        else ctx.target_view()
-    )
+    view = ctx.dataset.exists(
+        property_name, bool=False
+    )  # default to always scanning samples w/o property_name
+
     patches_field = ctx.params.get("patches_field", None)
     compute_dataset_property(
         property_name, ctx.dataset, view=view, patches_field=patches_field

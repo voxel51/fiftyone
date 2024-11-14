@@ -53,6 +53,7 @@ class LightningResult:
 @gql.type
 class BooleanLightningResult(LightningResult):
     false: bool
+    none: bool
     true: bool
 
 
@@ -60,12 +61,14 @@ class BooleanLightningResult(LightningResult):
 class DateLightningResult(LightningResult):
     max: t.Optional[date]
     min: t.Optional[date]
+    none: bool
 
 
 @gql.type
 class DateTimeLightningResult(LightningResult):
     max: t.Optional[datetime]
     min: t.Optional[datetime]
+    none: bool
 
 
 @gql.type
@@ -75,12 +78,14 @@ class FloatLightningResult(LightningResult):
     min: t.Optional[float]
     nan: bool
     ninf: bool
+    none: bool
 
 
 @gql.type
 class IntLightningResult(LightningResult):
     max: t.Optional[float]
     min: t.Optional[float]
+    none: bool
 
 
 @gql.type
@@ -182,13 +187,17 @@ def _resolve_lightning_path_queries(
     if meets_type(field, fof.BooleanField):
         queries = [
             _match(field_path, False),
+            _match(field_path, None),
             _match(field_path, True),
         ]
 
         def _resolve_bool(results):
-            false, true = results
+            false, none, true = results
             return BooleanLightningResult(
-                path=path.path, false=bool(false), true=bool(true)
+                path=path.path,
+                false=bool(false),
+                none=bool(none),
+                true=bool(true),
             )
 
         return collection, queries, _resolve_bool
@@ -197,43 +206,45 @@ def _resolve_lightning_path_queries(
         queries = [
             _first(field_path, dataset, 1, is_frame_field),
             _first(field_path, dataset, -1, is_frame_field),
+            _match(field_path, None),
         ]
 
         def _resolve_int(results):
-            min, max = results
+            min, max, none = results
             return INT_CLS[field.__class__](
                 path=path.path,
                 max=_parse_result(max),
                 min=_parse_result(min),
+                none=bool(none),
             )
 
         return collection, queries, _resolve_int
 
     if meets_type(field, fof.FloatField):
         queries = [
-            _first(field_path, dataset, 1, is_frame_field),
-            _first(field_path, dataset, -1, is_frame_field),
+            _first(field_path, dataset, 1, is_frame_field, floats=True),
+            _first(field_path, dataset, -1, is_frame_field, floats=True),
         ] + [
             _match(field_path, v)
-            for v in (float("-inf"), float("inf"), float("nan"))
+            for v in (float("-inf"), float("inf"), float("nan"), None)
         ]
 
         def _resolve_float(results):
-            min, max, ninf, inf, nan = results
+            min, max, ninf, inf, nan, none = results
 
             inf = bool(inf)
             nan = bool(nan)
             ninf = bool(ninf)
-
-            has_bounds = not inf and not ninf
+            none = bool(none)
 
             return FloatLightningResult(
-                path=path.path,
-                max=_parse_result(max, has_bounds),
-                min=_parse_result(min, has_bounds),
-                ninf=ninf,
                 inf=inf,
+                path=path.path,
+                max=_parse_result(max),
+                min=_parse_result(min),
                 nan=nan,
+                ninf=ninf,
+                none=none,
             )
 
         return collection, queries, _resolve_float
@@ -358,8 +369,12 @@ def _first(
     dataset: fo.Dataset,
     sort: t.Union[t.Literal[-1], t.Literal[1]],
     is_frame_field: bool,
+    floats=False,
 ):
     pipeline = [{"$sort": {path: sort}}]
+
+    if floats:
+        pipeline.extend(_handle_nonfinites(path, sort))
 
     if sort:
         pipeline.append({"$match": {path: {"$ne": None}}})
@@ -371,14 +386,30 @@ def _first(
     pipeline.append({"$limit": 1})
 
     unwound = _unwind(dataset, path, is_frame_field)
-
     if unwound:
         pipeline += unwound
+        if floats:
+            pipeline.extend(_handle_nonfinites(path, sort))
+
         if sort:
             pipeline.append({"$match": {path: {"$ne": None}}})
 
     return pipeline + [
         {"$group": {"_id": {"$min" if sort == 1 else "$max": f"${path}"}}}
+    ]
+
+
+def _handle_nonfinites(path: str, sort: t.Union[t.Literal[-1], t.Literal[1]]):
+    return [
+        {
+            "$match": {
+                path: (
+                    {"$gt": float("-inf")}
+                    if sort == 1
+                    else {"$lt": float("inf")}
+                )
+            }
+        }
     ]
 
 
@@ -406,15 +437,6 @@ def _match(path: str, value: t.Union[str, float, int, bool]):
     ]
 
 
-def _parse_result(data, check=True):
-    if check and data and data[0]:
-        value = data[0].get("_id", None)
-        if not isinstance(value, float) or not math.isnan(value):
-            return value
-
-    return None
-
-
 def _match_arrays(dataset: fo.Dataset, path: str, is_frame_field: bool):
     keys = path.split(".")
     path = None
@@ -427,11 +449,18 @@ def _match_arrays(dataset: fo.Dataset, path: str, is_frame_field: bool):
     for key in keys:
         path = ".".join([path, key]) if path else key
         field = dataset.get_field(path)
-        while isinstance(field, fof.ListField):
-            pipeline.append({"$match": {f"{path}.0": {"$exists": True}}})
-            field = field.field
+        if isinstance(field, fof.ListField):
+            # only once for label list fields, e.g. Detections
+            return [{"$match": {f"{path}.0": {"$exists": True}}}]
 
     return pipeline
+
+
+def _parse_result(data):
+    if data and data[0]:
+        return data[0].get("_id", None)
+
+    return None
 
 
 def _unwind(dataset: fo.Dataset, path: str, is_frame_field: bool):
