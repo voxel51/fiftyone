@@ -1946,7 +1946,7 @@ class AlertView(View):
 
     Args:
         severity (None): the severity of the alert displayed, one of
-            ``(info", "success", "warning", "error")``
+            ``("info", "success", "warning", "error")``
         componentsProps (None): an optional dict with the following keys:
 
             -   ``'label'`` (None): props to pass to the label subcomponents
@@ -2195,6 +2195,22 @@ class ButtonView(Button):
 
 class MarkdownView(View):
     """Renders a markdown string as HTML."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class StatusButtonView(View):
+    """Renders a status button.
+
+    Args:
+        severity (None): the severity of the alert displayed, one of
+            ``("info", "success", "warning", "error", "enabled", "disabled")``
+        on_click (None): an operator to execute when the button is clicked
+        params (None): the parameters to pass to the operator
+        disabled: whether the button is disabled
+        title: tooltip title for the button
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

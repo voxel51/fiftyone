@@ -45,6 +45,7 @@ export { default as ProgressView } from "./ProgressView";
 export { default as RadioView } from "./RadioView";
 export { default as RoundedTabs } from "./RoundedTabs";
 export { default as SliderView } from "./SliderView";
+export { default as StatusButtonView } from "./StatusButtonView";
 export { default as SwitchView } from "./SwitchView";
 export { default as TableView } from "./TableView";
 export { default as TabsView } from "./TabsView";
