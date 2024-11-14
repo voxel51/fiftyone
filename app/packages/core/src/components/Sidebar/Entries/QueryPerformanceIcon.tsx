@@ -48,20 +48,25 @@ const QueryPerformanceIcon = () => {
       title={
         <div>
           {showExpanded ? (
-            <Box>
+            <Box sx={{ padding: "8px 8px 8px 8px" }}>
               <SectionTitle>Query Performance is Enabled</SectionTitle>
               <Text>
                 Some fields are indexed for better query performance. You can
                 create or manage indexes from here.
               </Text>
-              <Box display="flex" alignItems="center">
+              <Box
+                display="flex"
+                alignItems="center"
+                paddingTop="8px"
+                gap="4px"
+              >
                 <Button
                   variant="contained"
                   sx={{
-                    marginLeft: "auto",
                     backgroundColor: theme.primary.main,
                     color: theme.text.primary,
                     boxShadow: 0,
+                    flexGrow: 1,
                   }}
                   onClick={() => {
                     window.open(QP_MODE, "_blank")?.focus();
@@ -75,7 +80,11 @@ const QueryPerformanceIcon = () => {
                   }}
                   variant="text"
                   color="secondary"
-                  style={{ marginLeft: "auto", color: theme.text.secondary }}
+                  sx={{
+                    marginLeft: "auto",
+                    color: theme.text.secondary,
+                    flexGrow: 1,
+                  }}
                 >
                   Got it
                 </Button>
