@@ -5,6 +5,7 @@
 import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import {
   DENSE_LABELS,
+  DETECTION,
   DETECTIONS,
   DYNAMIC_EMBEDDED_DOCUMENT,
   EMBEDDED_DOCUMENT,
@@ -110,18 +111,22 @@ const imputeOverlayFromPath = async (
 ) => {
   // handle all list types here
   if (cls === DETECTIONS) {
-    label?.detections?.forEach((detection) =>
-      imputeOverlayFromPath(
-        field,
-        detection,
-        coloring,
-        customizeColorSetting,
-        colorscale,
-        // buffers,
-        {},
-        cls
-      )
-    );
+    const allDetectionPromises = [];
+    for (const detection of label.detections) {
+      allDetectionPromises.push(
+        imputeOverlayFromPath(
+          field,
+          detection,
+          coloring,
+          customizeColorSetting,
+          colorscale,
+          // buffers,
+          {},
+          DETECTION
+        )
+      );
+    }
+    await Promise.all(allDetectionPromises);
     return;
   }
 
@@ -222,6 +227,7 @@ const processLabels = async (
           sources,
           cls
         );
+        const test = 2;
       }
 
       if (cls in DeserializerFactory) {
@@ -276,31 +282,49 @@ const processLabels = async (
       // note: doing this also means we can no longer manipulate
       // the mask, but transfering this bitmap to the main thread
       // and painting it on the main canvas is super efficient and optimized
-      if (label.mask) {
-        const [height, width] = label.mask.data.shape;
-
-        const imageData = new ImageData(
-          new Uint8ClampedArray(label.mask.image),
-          width,
-          height
-        );
-
-        bitmapPromises.push(
-          createImageBitmap(imageData).then((imageBitmap) => {
-            // GC old gold
-            label.mask.data = null;
-            label.mask.image = null;
-
-            label.mask.bitmap = imageBitmap;
-
-            bitmaps.push(imageBitmap);
-          })
-        );
-      }
+      imputeAndCollectBitmaps(label, cls, bitmapPromises);
     }
   }
 
   return Promise.all(bitmapPromises);
+  // return Promise.all(bitmapPromises);
+};
+
+const imputeAndCollectBitmaps = async (label, cls, bitmapPromises) => {
+  if (cls === DETECTIONS) {
+    label?.detections?.forEach((detection) =>
+      imputeAndCollectBitmaps(detection, DETECTION, bitmapPromises)
+    );
+    return;
+  }
+
+  // we are detection now
+  if (cls !== DETECTION) {
+    return;
+  }
+
+  if (label.id === "5f452471ef00e6374aac53c8") {
+    const a = 3;
+  }
+  if (label.id === "5f452471ef00e6374aac53c8" && label.mask) {
+    const [height, width] = label.mask.data.shape;
+
+    const imageData = new ImageData(
+      new Uint8ClampedArray(label.mask.image),
+      width,
+      height
+    );
+
+    bitmapPromises.push(
+      createImageBitmap(imageData).then((imageBitmap) => {
+        // GC old gold
+        label.mask.data = null;
+        label.mask.image = null;
+
+        label.mask.bitmap = imageBitmap;
+      })
+    );
+  }
 };
 
 /** GLOBALS */

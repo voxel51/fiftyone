@@ -201,6 +201,9 @@ export default class DetectionOverlay<
     //   h * state.canvasBBox[3]
     // );
     // ctx.globalAlpha = tmp;
+    if (!this.label.mask.bitmap) {
+      return;
+    }
 
     const [tlx, tly, w, h] = this.label.bounding_box;
     const [x, y] = t(state, tlx, tly);
