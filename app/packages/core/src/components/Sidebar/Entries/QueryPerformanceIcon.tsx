@@ -1,11 +1,11 @@
+import { useTheme } from "@fiftyone/components";
+import { QP_MODE } from "@fiftyone/core";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
+import { Bolt } from "@mui/icons-material";
+import { Box, Button, Tooltip } from "@mui/material";
 import React from "react";
 import { atom, useRecoilState } from "recoil";
-import { LightningBolt } from "./FilterablePathEntry/Icon";
-import { Tooltip, Button, Box } from "@mui/material";
-import { useTheme } from "@fiftyone/components";
 import styled from "styled-components";
-import { QP_MODE } from "@fiftyone/core";
 
 const SectionTitle = styled.div`
   font-size: 1rem;
@@ -99,7 +99,7 @@ const QueryPerformanceIcon = () => {
         },
       }}
     >
-      <LightningBolt style={{ color: lightningBoltColor }} />
+      <Bolt style={{ color: lightningBoltColor }} />
     </Tooltip>
   );
 };
