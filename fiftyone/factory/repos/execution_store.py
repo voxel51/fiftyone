@@ -10,6 +10,7 @@ from datetime import datetime
 
 from bson import ObjectId
 from pymongo.collection import Collection
+from typing import Any, Dict
 
 from fiftyone.operators.store.models import StoreDocument, KeyDocument
 
@@ -34,23 +35,42 @@ class ExecutionStoreRepo(object):
         self._collection = collection
         self._dataset_id = dataset_id
 
-    def create_store(self, store_name) -> StoreDocument:
+    def create_store(
+        self, store_name, metadata: Dict[str, Any] = None
+    ) -> StoreDocument:
         """Creates a store associated with the current context."""
         store_doc = StoreDocument(
             store_name=store_name,
             dataset_id=self._dataset_id,
+            value=metadata,
         )
         self._collection.insert_one(store_doc.to_mongo_dict())
         return store_doc
 
-    def has_store(self, store_name):
+    def get_store(self, store_name) -> StoreDocument:
+        """Gets a store associated with the current context."""
+        raw_store_doc = self._collection.find_one(
+            dict(
+                store_name=store_name,
+                key="__store__",
+                dataset_id=self._dataset_id,
+            )
+        )
+        if not raw_store_doc and self.has_store(store_name):
+            return StoreDocument(
+                store_name=store_name, dataset_id=self._dataset_id
+            )
+
+        store_doc = StoreDocument(**raw_store_doc) if raw_store_doc else None
+        return store_doc
+
+    def has_store(self, store_name) -> bool:
         """Checks whether a store with the given name exists in the current
         context.
         """
         result = self._collection.find_one(
             dict(
                 store_name=store_name,
-                key="__store__",
                 dataset_id=self._dataset_id,
             )
         )
@@ -66,9 +86,25 @@ class ExecutionStoreRepo(object):
 
     def count_stores(self) -> int:
         """Counts the stores associated with the current context."""
-        return self._collection.count_documents(
-            dict(key="__store__", dataset_id=self._dataset_id),
-        )
+        pipeline = [
+            {
+                "$match": {
+                    "dataset_id": self._dataset_id,
+                }
+            },
+            {
+                "$group": {
+                    "_id": {
+                        "store_name": "$store_name",
+                        "dataset_id": "$dataset_id",
+                    }
+                }
+            },
+            {"$count": "total_stores"},
+        ]
+
+        result = list(self._collection.aggregate(pipeline))
+        return result[0]["total_stores"] if result else 0
 
     def delete_store(self, store_name) -> int:
         """Deletes the specified store."""
@@ -98,9 +134,6 @@ class ExecutionStoreRepo(object):
             "expires_at": expiration if ttl else None,
             "dataset_id": self._dataset_id,
         }
-
-        if self._dataset_id is None:
-            on_insert_fields.pop("dataset_id")
 
         # Prepare the update operations
         update_fields = {
@@ -133,6 +166,13 @@ class ExecutionStoreRepo(object):
             key_doc.updated_at = now
 
         return key_doc
+
+    def has_key(self, store_name, key) -> bool:
+        """Determines whether a key exists in the specified store."""
+        result = self._collection.find_one(
+            dict(store_name=store_name, key=key, dataset_id=self._dataset_id)
+        )
+        return bool(result)
 
     def get_key(self, store_name, key) -> KeyDocument:
         """Gets a key from the specified store."""
@@ -198,20 +238,52 @@ class ExecutionStoreRepo(object):
         )
         return bool(result)
 
-    def list_stores_global(self) -> list[str]:
-        """Lists the stores in the execution store across all datasets and the
-        global context.
-        """
-        result = self._collection.find(
-            dict(key="__store__"), {"store_name": 1}
-        )
-        return [d["store_name"] for d in result]
+    def list_stores_global(self) -> list[StoreDocument]:
+        """Lists stores across all datasets and the global context."""
+        pipeline = [
+            {
+                "$group": {
+                    "_id": {
+                        "store_name": "$store_name",
+                        "dataset_id": "$dataset_id",
+                    }
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "store_name": "$_id.store_name",
+                    "dataset_id": "$_id.dataset_id",
+                }
+            },
+        ]
+
+        result = self._collection.aggregate(pipeline)
+        return [StoreDocument(**d) for d in result]
 
     def count_stores_global(self) -> int:
-        """Counts the stores in the execution store across all datasets and the
-        global context.
+        """Counts stores across all datasets and the global context."""
+        pipeline = [
+            {
+                "$group": {
+                    "_id": {
+                        "store_name": "$store_name",
+                        "dataset_id": "$dataset_id",
+                    }
+                }
+            },
+            {"$count": "total_stores"},
+        ]
+
+        result = list(self._collection.aggregate(pipeline))
+        return result[0]["total_stores"] if result else 0
+
+    def delete_store_global(self, store_name) -> int:
+        """Deletes the specified store across all datasets and the global
+        context.
         """
-        return self._collection.count_documents(dict(key="__store__"))
+        result = self._collection.delete_many(dict(store_name=store_name))
+        return result.deleted_count
 
 
 class MongoExecutionStoreRepo(ExecutionStoreRepo):

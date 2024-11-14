@@ -259,7 +259,10 @@ export const field = selectorFamily<Field | null, string>({
     (path) =>
     ({ get }) => {
       let keys = path.split(".");
-      if (keys[0] === "frames") {
+      if (
+        keys[0] === "frames" &&
+        Object.keys(get(fieldSchema({ space: State.SPACE.FRAME }))).length
+      ) {
         keys = keys.slice(1);
 
         let schema = get(fieldSchema({ space: State.SPACE.FRAME }));

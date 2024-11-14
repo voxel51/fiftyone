@@ -42,7 +42,7 @@ class EvaluationPanel(Panel):
         return str(ctx.dataset._doc.id)
 
     def get_store(self, ctx):
-        return ctx.create_store(STORE_NAME)
+        return ctx.store(STORE_NAME)
 
     def get_evaluation_id(self, dataset, eval_key):
         try:
