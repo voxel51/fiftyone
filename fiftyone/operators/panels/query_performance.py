@@ -391,7 +391,7 @@ class IndexFieldRemovalConfirmationOperator(Operator):
         else:
             message = f"Are you sure you want to delete the `{field_name}` field's index?"
 
-        inputs.view("confirmation", Warning(label=message))
+        inputs.view("confirmation", types.Warning(label=message))
         return Property(inputs)
 
     def execute(self, ctx):
@@ -423,7 +423,12 @@ class QueryPerformanceConfigConfirmationOperator(Operator):
         query_performance = ctx.query_performance
 
         radio_group = RadioGroup(
-            label="Query Performance Status",
+            label="Query Performance",
+            description=(
+                "Enabling Query Performance optimizes filters on indexed "
+                "fields. If disabled, the sidebar may not fully leverage "
+                "indexes when they exist"
+            ),
         )
 
         radio_group.add_choice("Enabled", label="Enable Query Performance")
@@ -435,17 +440,10 @@ class QueryPerformanceConfigConfirmationOperator(Operator):
             default="Enabled" if query_performance else "Disabled",
         )
 
-        message = (
-            "Enabling this setting speeds up loading times by prioritizing queries on indexed fields. "
-            "If disabled, indexed fields won't be prioritized, which may slow query performance."
-        )
-
-        inputs.md(message)
-
         return Property(
             inputs,
             view=PromptView(
-                caption="Query Performance Settings",
+                label="Query Performance Settings",
                 submit_button_label="Accept",
             ),
         )
@@ -461,11 +459,6 @@ class QueryPerformanceConfigConfirmationOperator(Operator):
         return {
             "query_performance": ctx.params.get("query_performance"),
         }
-
-    def resolve_output(self, ctx):
-        outputs = Object()
-        outputs.str("query_performance", label="Query Performance")
-        return Property(outputs)
 
 
 class QueryPerformancePanel(Panel):
