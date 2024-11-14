@@ -7,6 +7,7 @@ import { RESOLVE_PLACEMENTS_TTL } from "./constants";
 import {
   ExecutionContext,
   fetchRemotePlacements,
+  listLocalAndRemoteOperators,
   resolveLocalPlacements,
 } from "./operators";
 import {
@@ -148,4 +149,15 @@ export function useActivePanelEventsCount(id: string) {
   );
 
   return { count, increment, decrement };
+}
+
+export function useFirstExistingUri(uris: string[]) {
+  const availableOperators = useMemo(() => listLocalAndRemoteOperators(), []);
+  return useMemo(() => {
+    const existingUri = uris.find((uri) =>
+      availableOperators.allOperators.some((op) => op.uri === uri)
+    );
+    const exists = Boolean(existingUri);
+    return { firstExistingUri: existingUri, exists };
+  }, [availableOperators, uris]);
 }
