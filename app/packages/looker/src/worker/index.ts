@@ -17,10 +17,7 @@ import {
   getFetchFunction,
   setFetchFunction,
 } from "@fiftyone/utilities";
-import { decode as decodePng } from "fast-png";
-import { decode as decodeJpg } from "jpeg-js";
 import { CHUNK_SIZE } from "../constants";
-import { OverlayMask } from "../numpy";
 import {
   BaseConfig,
   Coloring,
@@ -31,8 +28,8 @@ import {
   LabelTagColor,
   Sample,
 } from "../state";
+import { decodeWithCanvas } from "./canvas-decoder";
 import { DeserializerFactory } from "./deserializer";
-import { indexedPngBufferToRgb } from "./indexed-png-decoder";
 import { PainterFactory } from "./painter";
 import { mapId } from "./shared";
 import { process3DLabels } from "./threed-label-processor";
@@ -144,6 +141,16 @@ const imputeOverlayFromPath = async (
   const overlayImageUrl = getSampleSrc(
     sources[`${field}.${overlayPathField}`] || label[overlayPathField]
   );
+  const urlTokens = overlayImageUrl.split("?");
+
+  let baseUrl = overlayImageUrl;
+
+  // remove query params if not local URL
+  if (!urlTokens.at(1)?.startsWith("filepath=")) {
+    baseUrl = overlayImageUrl.split("?")[0];
+  }
+
+  const fileExtension = baseUrl.split(".").pop();
 
   const overlayImageBuffer: ArrayBuffer = await getFetchFunction()(
     "GET",
@@ -152,40 +159,24 @@ const imputeOverlayFromPath = async (
     "arrayBuffer"
   );
 
-  let overlayData;
-
-  if (overlayImageUrl.endsWith(".jpg") || overlayImageUrl.endsWith(".jpeg")) {
-    overlayData = decodeJpg(overlayImageBuffer, { useTArray: true });
-  } else {
-    overlayData = decodePng(overlayImageBuffer);
-  }
-
-  if (overlayData.palette?.length) {
-    overlayData.data = indexedPngBufferToRgb(
-      overlayData.data,
-      overlayData.depth,
-      overlayData.palette
-    );
-    overlayData.channels = 3;
-  }
-
-  const width = overlayData.width;
-  const height = overlayData.height;
-
-  const numChannels =
-    overlayData.channels ?? overlayData.data.length / (width * height);
-
-  const overlayMask: OverlayMask = {
-    buffer: overlayData.data.buffer,
-    channels: numChannels,
-    arrayType: overlayData.data.constructor.name as OverlayMask["arrayType"],
-    shape: [height, width],
+  const mimeTypes = {
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    gif: "image/gif",
+    bmp: "image/bmp",
   };
+  const blobType =
+    mimeTypes[fileExtension.toLowerCase()] || "application/octet-stream";
+  const blob = new Blob([overlayImageBuffer], { type: blobType });
+
+  const overlayMask = await decodeWithCanvas(blob);
+  const [overlayHeight, overlayWidth] = overlayMask.shape;
 
   // set the `mask` property for this label
   label[overlayField] = {
     data: overlayMask,
-    image: new ArrayBuffer(width * height * 4),
+    image: new ArrayBuffer(overlayWidth * overlayHeight * 4),
   };
 
   // transfer buffers
