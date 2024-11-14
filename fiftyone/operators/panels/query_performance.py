@@ -580,7 +580,19 @@ class QueryPerformancePanel(Panel):
             ctx.ops.notify("You do not have edit permissions", variant="error")
 
     def qp_setting(self, ctx):
-        ctx.prompt("query_performance_config_confirmation")
+        ctx.prompt(
+            "query_performance_config_confirmation",
+            on_success=self.on_qp_setting_change,
+        )
+
+    def on_qp_setting_change(self, ctx):
+        is_enabled = (
+            ctx.params.get("original_params", {}).get(
+                "query_performance", "Disabled"
+            )
+            == "Enabled"
+        )
+        ctx.panel.state.query_performance_enabled = is_enabled
 
     def refresh(self, ctx):
         self._build_view(ctx)
