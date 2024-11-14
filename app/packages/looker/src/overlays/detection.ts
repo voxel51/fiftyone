@@ -4,16 +4,19 @@
 import { NONFINITES } from "@fiftyone/utilities";
 
 import { INFO_COLOR } from "../constants";
-import { OverlayMask } from "../numpy";
 import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
 import { distanceFromLineSegment } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { t } from "./util";
+import { OverlayMask } from "../numpy";
 
 export interface DetectionLabel extends RegularLabel {
   mask?: {
+    // legacy (mask)
     data: OverlayMask;
+    // legacy (mask)
     image: ArrayBuffer;
+    bitmap: ImageBitmap;
   };
   bounding_box: BoundingBox;
 
@@ -43,7 +46,8 @@ export default class DetectionOverlay<
       this.is3D = false;
     }
 
-    if (this.label.mask) {
+    if (false) {
+      // if (this.label.mask) {
       const [height, width] = this.label.mask.data.shape;
 
       if (!height || !width) {
@@ -184,10 +188,6 @@ export default class DetectionOverlay<
     // if (!this.canvas) {
     //   return;
     // }
-    if (!this.imageBitmap) {
-      // ImageBitmap is not ready yet
-      return;
-    }
 
     // const [tlx, tly, w, h] = this.label.bounding_box;
     // const [x, y] = t(state, tlx, tly);
@@ -211,14 +211,13 @@ export default class DetectionOverlay<
 
     // Draw the ImageBitmap instead of the canvas
     ctx.drawImage(
-      this.imageBitmap,
+      this.label.mask.bitmap,
       x,
       y,
       w * state.canvasBBox[2],
       h * state.canvasBBox[3]
     );
     ctx.globalAlpha = tmp;
-
   }
 
   private getLabelText(state: Readonly<State>): string {
