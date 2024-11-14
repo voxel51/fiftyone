@@ -13,12 +13,12 @@ import {
 import React, { useCallback } from "react";
 import { getColorByCode } from "../utils";
 
-const DEFAULT_MAX_INLINE = 1;
+const DEFAULT_MAX_INLINE = 2;
 
 export default function ActionsMenu(props: ActionsPropsType) {
   const { actions, maxInline = DEFAULT_MAX_INLINE, size } = props;
 
-  if (actions.length === maxInline) {
+  if (actions.length <= maxInline) {
     return (
       <Stack direction="row" spacing={0.5} justifyContent="flex-end">
         {actions.map((action) => (
