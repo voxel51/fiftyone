@@ -25,12 +25,13 @@ models**
 [![Docker Pulls](https://badgen.net/docker/pulls/voxel51/fiftyone?icon=docker&label=pulls)](https://hub.docker.com/r/voxel51/fiftyone/)
 [![Build](https://github.com/voxel51/fiftyone/workflows/Build/badge.svg?branch=develop&event=push)](https://github.com/voxel51/fiftyone/actions?query=workflow%3ABuild)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/fiftyone-community)
 [![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)](https://slack.voxel51.com)
 [![Medium](https://img.shields.io/badge/Medium-12100E?logo=medium&logoColor=white)](https://medium.com/voxel51)
 [![Mailing list](http://bit.ly/2Md9rxM)](https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk)
 [![Twitter](https://img.shields.io/twitter/follow/Voxel51?style=social)](https://twitter.com/voxel51)
 
-[![FiftyOne](https://voxel51.com/images/fiftyone_poster.png)](https://fiftyone.ai)
+[![FiftyOne](https://github.com/user-attachments/assets/0622e5a8-8aa9-462d-8008-90356d3c45ea)](https://fiftyone.ai)
 
 </p>
 </div>
@@ -52,6 +53,7 @@ failure modes, finding annotation mistakes, and much more!
 You can get involved by joining our Slack community, reading our blog on
 Medium, and following us on social media:
 
+[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/fiftyone-community)
 [![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)](https://slack.voxel51.com)
 [![Medium](https://img.shields.io/badge/Medium-12100E?logo=medium&logoColor=white)](https://medium.com/voxel51)
 [![Twitter](https://img.shields.io/badge/Twitter-1DA1F2?logo=twitter&logoColor=white)](https://twitter.com/voxel51)
@@ -80,9 +82,9 @@ Medium, and following us on social media:
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Prerequisites
 
-fiftyone requires Python, Git and other dependencies. To get started, select the guide for your operating system or environment:
+fiftyone requires Python, Git and other dependencies. To get started, select the guide for your operating system or environment, if you are an experienced developer you can avoid this section. If you are looking for scaling solution to be installed in Cloud Enterprise Systems, please take a look of fiftyone teams [here](https://voxel51.com/book-a-demo/)
 
-| [Windows](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [Linux](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [macOS](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [NodeRed,js](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [CentOS](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [Azure ML](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [Docker](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [Amazon SageMaker](https://github.com/voxel51/fiftyone/blob/develop/README.md) |
+| [Windows](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [Linux](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [macOS](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [NodeRed,js](https://github.com/voxel51/fiftyone/blob/develop/README.md) |  [Docker](https://github.com/voxel51/fiftyone/blob/develop/README.md) | 
 | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
@@ -91,7 +93,10 @@ fiftyone requires Python, Git and other dependencies. To get started, select the
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Installation
 
-You can install the latest stable version of FiftyOne via `pip`:
+
+<details>
+<summary>Install from PyPI</summary>
+Installing the library with pip is the easiest way to get started with fiftyone. You can install the latest stable version of FiftyOne via `pip`:
 
 ```shell
 pip install fiftyone
@@ -101,6 +106,14 @@ Consult the
 [installation guide](https://voxel51.com/docs/fiftyone/getting_started/install.html)
 for troubleshooting and other information about getting up-and-running with
 FiftyOne.
+
+</details>
+
+<details>
+<summary>Install from source</summary>
+To install from source,
+
+</details>
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 
