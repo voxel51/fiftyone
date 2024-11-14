@@ -559,6 +559,7 @@ async function executeOperatorAsGenerator(
       view: currentContext.view,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
+      query_performance: currentContext.queryPerformance,
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
     },
@@ -830,6 +831,7 @@ export async function resolveRemoteType(
       view: currentContext.view,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
+      query_performance: currentContext.queryPerformance,
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
     }
@@ -906,6 +908,7 @@ export async function resolveExecutionOptions(
       view: currentContext.view,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
+      query_performance: currentContext.queryPerformance,
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
     }
@@ -939,6 +942,7 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
       current_sample: currentContext.currentSample,
       view_name: currentContext.viewName,
       group_slice: currentContext.groupSlice,
+      query_performance: currentContext.queryPerformance,
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
     }
