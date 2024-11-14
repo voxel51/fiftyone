@@ -10,7 +10,53 @@ import fiftyone.operators.types as types
 from fiftyone import ViewField as F
 import numpy as np
 
+from .constants import (
+    ISSUE_TYPES,
+    DEFAULT_ISSUE_CONFIG,
+    DEFAULT_ISSUE_COUNTS,
+    FIELD_NAME,
+    TITLE,
+    STATUS,
+    STATUS_COLOR,
+    DEFAULT_COMPUTING,
+    SAMPLE_STORE,
+    IMAGES,
+    LAST_SCAN,
+)
+
+
+########## UNCOMMENT for OSS to WORK ###############################
+
+# is_in_teams_context = False
+# from fiftyone.operators import Panel, PanelConfig
+
+# from .check_quality_operators import (
+#     ComputeAspectRatio,
+#     ComputeBlurriness,
+#     ComputeBrightness,
+#     ComputeEntropy,
+#     ComputeExposure,
+#     ComputeHash,
+#     DeleteSamples,
+#     SaveView,
+#     TagSamples,
+# )
+
+# BRIGHTNESS_OPERATOR = "@voxel51/data_quality/compute_brightness"
+# BLURRINESS_OPERATOR = "@voxel51/data_quality/compute_blurriness"
+# ASPECT_RATIO_OPERATOR = "@voxel51/data_quality/compute_aspect_ratio"
+# ENTROPY_OPERATOR = "@voxel51/data_quality/compute_entropy"
+# HASH_OPERATOR = "@voxel51/data_quality/compute_hash"
+# NEAR_DUPLICATES_OPERATOR = "@voxel51/brain/compute_similarity"
+
+########## COMMENT ^ && UNCOMMENT for TEAMS to WORK ################
+
+is_in_teams_context = True
+from fiftyone.operators.panel import Panel, PanelConfig
+
 # pylint:disable=import-error,no-name-in-module
+from fiftyone.operators.builtins.operators.brain import ComputeSimilarity
+
 from fiftyone.operators.builtins.operators.data_quality import (
     ComputeAspectRatio,
     ComputeBlurriness,
@@ -23,29 +69,13 @@ from fiftyone.operators.builtins.operators.data_quality import (
     TagSamples,
 )
 
-# pylint:disable=import-error,no-name-in-module
-from fiftyone.operators.builtins.operators.brain import ComputeSimilarity
+BRIGHTNESS_OPERATOR = "@voxel51/operators/compute_brightness"
+BLURRINESS_OPERATOR = ("@voxel51/operators/compute_blurriness",)
+ASPECT_RATIO_OPERATOR = ("@voxel51/operators/compute_aspect_ratio",)
+ENTROPY_OPERATOR = ("@voxel51/operators/compute_entropy",)
+HASH_OPERATOR = "@voxel51/operators/compute_hash"
+NEAR_DUPLICATES_OPERATOR = "@voxel51/operators/compute_similarity"
 
-
-from .constants import (
-    ISSUE_TYPES,
-    DEFAULT_ISSUE_CONFIG,
-    DEFAULT_ISSUE_COUNTS,
-    FIELD_NAME,
-    TITLE,
-    STATUS,
-    STATUS_COLOR,
-    DEFAULT_COMPUTING,
-    SAMPLE_STORE,
-    IMAGES,
-)
-
-from fiftyone.operators.panel import Panel, PanelConfig
-
-########## UNCOMMENT for OSS to WORK ###############################
-# is_in_teams_context = False
-########## COMMENT ^ && UNCOMMENT for TEAMS to WORK ################
-is_in_teams_context = True
 ####################################################################
 
 ICON_PATH = "troubleshoot"
@@ -140,6 +170,8 @@ class DataQualityPanel(Panel):
             ctx.panel.state.issue_config = DEFAULT_ISSUE_CONFIG
             ctx.panel.state.issue_counts = DEFAULT_ISSUE_COUNTS
             ctx.panel.state.computing = DEFAULT_COMPUTING
+            ctx.panel.state.last_scan = LAST_SCAN
+
             results = SAMPLE_STORE["results"]
         else:
             print("initialize on load use store and set state")
@@ -152,6 +184,8 @@ class DataQualityPanel(Panel):
             ctx.panel.state.computing = content.get(
                 "computing", DEFAULT_COMPUTING
             )
+            ctx.panel.state.last_scan = content.get("last_scan", LAST_SCAN)
+
             results = content.get("results", {})
 
         # async checks
@@ -167,23 +201,62 @@ class DataQualityPanel(Panel):
             "near_duplicates": [0, False, False],
             "exact_duplicates": [0, False, False],
         }
-        for issue_type, result_object in results.items():
-            if (
-                result_object.get("counts", None) is not None
-                and result_object.get("edges", None) is not None
-            ):
-                self.check_for_new_samples(
-                    ctx, issue_type, FIELD_NAME[issue_type]
-                )
-            elif issue_type == "exact_duplicates":
-                if (
-                    result_object.get("dup_filehash", None) is not None
-                    and len(result_object.get("dup_filehash", [])) > 0
-                    and len(result_object.get("dup_sample_ids", [])) > 0
-                ):
-                    self.check_for_new_samples(
-                        ctx, issue_type, FIELD_NAME[issue_type]
-                    )
+
+        # Run check for new samples in the background
+        asyncio.run(
+            self.check_for_new_samples(
+                ctx,
+                "brightness",
+                FIELD_NAME["brightness"],
+                results["brightness"],
+                ctx.panel.state.last_scan["brightness"],
+            )
+        )
+        asyncio.run(
+            self.check_for_new_samples(
+                ctx,
+                "blurriness",
+                FIELD_NAME["blurriness"],
+                results["blurriness"],
+                ctx.panel.state.last_scan["blurriness"],
+            )
+        )
+        asyncio.run(
+            self.check_for_new_samples(
+                ctx,
+                "aspect_ratio",
+                FIELD_NAME["aspect_ratio"],
+                results["aspect_ratio"],
+                ctx.panel.state.last_scan["aspect_ratio"],
+            )
+        )
+        asyncio.run(
+            self.check_for_new_samples(
+                ctx,
+                "entropy",
+                FIELD_NAME["entropy"],
+                results["entropy"],
+                ctx.panel.state.last_scan["entropy"],
+            )
+        )
+        asyncio.run(
+            self.check_for_new_samples(
+                ctx,
+                "near_duplicates",
+                FIELD_NAME["near_duplicates"],
+                results["near_duplicates"],
+                ctx.panel.state.last_scan["near_duplicates"],
+            )
+        )
+        asyncio.run(
+            self.check_for_new_samples(
+                ctx,
+                "exact_duplicates",
+                FIELD_NAME["exact_duplicates"],
+                results["exact_duplicates"],
+                ctx.panel.state.last_scan["exact_duplicates"],
+            )
+        )
 
         print("on_load finishes", time.time())
 
@@ -203,7 +276,6 @@ class DataQualityPanel(Panel):
         key = self._get_store_key(ctx)
         content = store.get(key)
         if content is not None:  # set store on panel close
-            content["timestamp"] = datetime.now()
             content["computing"] = ctx.panel.state.computing
 
             store.set(key, content)
@@ -239,7 +311,6 @@ class DataQualityPanel(Panel):
 
         # when change to analysis screen, change view
         if ctx.params.get("next_screen", next_screen) == "analysis":
-
             if issue_type in [
                 "brightness",
                 "blurriness",
@@ -256,6 +327,14 @@ class DataQualityPanel(Panel):
                     ctx.panel.state.computing[issue_type][1],
                     ctx.panel.state.computing[issue_type][2],
                 ]
+            else:  # fallback due to inconsistent state sometimes being None
+                default_copy = DEFAULT_COMPUTING
+                default_copy[issue_type] = [
+                    False,
+                    default_copy[issue_type][1],
+                    default_copy[issue_type][2],
+                ]
+                ctx.panel.state.computing = default_copy
 
     def on_compute_click(
         self,
@@ -366,6 +445,10 @@ class DataQualityPanel(Panel):
         content = store.get(key)
         counts = content.get("counts", DEFAULT_ISSUE_COUNTS)
         current_counts = content.get("current_counts", DEFAULT_ISSUE_COUNTS)
+
+        # if not started, update the status here
+        if content["status"][quality_issue] == STATUS[0]:
+            content["status"][quality_issue] = STATUS[2]
 
         if (
             (
@@ -513,6 +596,7 @@ class DataQualityPanel(Panel):
                         ctx.ops.set_view(exact_dup_view)
                         ctx.ops.set_selected_samples(dup_sample_ids)
                         return True
+
             # Set view to entire dataset
             ctx.ops.clear_view()
             return True
@@ -679,6 +763,26 @@ class DataQualityPanel(Panel):
     #     # Change view based on new thresholds
     #     self.change_view(ctx, ctx.panel.state.issue_type)
 
+    def toggle_select(self, ctx):
+        ctx.ops.set_selected_samples(ctx.params["value"])
+
+    def toggle_select_from_grid(self, ctx):
+        # when ctx.selected changes from the grid, update the tree selection view
+        ctx.panel.state.set(
+            "exact_duplicates_analysis.exact_duplicates_analysis_content.exact_duplicate_selections",
+            ctx.selected,
+        )
+
+    def _get_tag_helper_text(self, ctx):
+        if len(ctx.selected) == 0:
+            return f"Tag {self._get_current_issue_count(ctx, ctx.panel.state.issue_type)} samples in current view:"
+        elif (
+            self._get_current_issue_count(ctx, ctx.panel.state.issue_type) == 0
+        ):
+            return f"Tag {len(ctx.selected)} samples currently selected:"
+        else:
+            return f"Tag {len(ctx.selected)} out of {self._get_current_issue_count(ctx, ctx.panel.state.issue_type)} samples currently selected:"
+
     def _get_issue_count(self, ctx, issue_type):
         """Get the status of the issue type (from execution store)"""
         store = self.get_store(ctx)
@@ -699,8 +803,8 @@ class DataQualityPanel(Panel):
         if content is None:
             return 0
         elif content["current_counts"][issue_type] is None:
-            return content["counts"][issue_type]
-        return content["current_counts"][issue_type]
+            return content["counts"][issue_type] or 0
+        return content["current_counts"][issue_type] or 0
 
     def _get_issue_status(self, ctx, issue_type):
         """Get the status of the issue type"""
@@ -788,9 +892,23 @@ class DataQualityPanel(Panel):
         else:
             return 0
 
-    def check_for_new_samples(self, ctx, issue_type, field_name):
+    async def check_for_new_samples(
+        self, ctx, issue_type, field_name, previous_results, last_scan_time
+    ):
         """Check if there are new samples in the dataset"""
-        print("checking for new samples")
+
+        # exit early if no new samples
+        if ctx.dataset._max("last_modified_at") > last_scan_time:
+            if issue_type != "exact_duplicates":
+                if not (
+                    previous_results.get("counts", None) is not None
+                    and previous_results.get("edges", None) is not None
+                ):
+                    return
+        else:
+            return
+
+        print(f"checking for new {issue_type} samples")
 
         if ctx.panel.state.new_samples[issue_type][0] == 0:
             new_samples_view = ctx.dataset.exists(field_name, bool=False)
@@ -864,7 +982,7 @@ class DataQualityPanel(Panel):
     def compute_brightness(self, ctx, params, skip_prompt):
 
         ctx.prompt(
-            "@voxel51/operators/compute_brightness",
+            BRIGHTNESS_OPERATOR,
             params=params,
             skip_prompt=skip_prompt,
             on_success=self._on_complete_brightness_issue_computation,  # scheduler we can grab state after
@@ -872,7 +990,7 @@ class DataQualityPanel(Panel):
 
     def compute_blurriness(self, ctx, params, skip_prompt):
         ctx.prompt(
-            "@voxel51/operators/compute_blurriness",
+            BLURRINESS_OPERATOR,
             params=params,
             skip_prompt=skip_prompt,
             on_success=self._on_complete_compute_blurriness,
@@ -880,7 +998,7 @@ class DataQualityPanel(Panel):
 
     def compute_aspect_ratio(self, ctx, params, skip_prompt):
         ctx.prompt(
-            "@voxel51/operators/compute_aspect_ratio",
+            ASPECT_RATIO_OPERATOR,
             params=params,
             skip_prompt=skip_prompt,
             on_success=self._on_complete_compute_aspect_ratio,
@@ -888,7 +1006,7 @@ class DataQualityPanel(Panel):
 
     def compute_entropy(self, ctx, params, skip_prompt):
         ctx.prompt(
-            "@voxel51/operators/compute_entropy",
+            ENTROPY_OPERATOR,
             params=params,
             skip_prompt=skip_prompt,
             on_success=self._on_complete_compute_entropy,
@@ -896,7 +1014,7 @@ class DataQualityPanel(Panel):
 
     def compute_exact_duplicates(self, ctx, params, skip_prompt):
         ctx.prompt(
-            "@voxel51/operators/compute_hash",
+            HASH_OPERATOR,
             params=params,
             skip_prompt=skip_prompt,
             on_success=self._on_complete_compute_exact_duplicates,
@@ -907,7 +1025,7 @@ class DataQualityPanel(Panel):
         params["uniqueness_field"] = "nearest_neighbor"
 
         ctx.prompt(
-            "@voxel51/operators/compute_similarity",
+            NEAR_DUPLICATES_OPERATOR,
             params={
                 "brain_key": "data_quality_panel_similarity",
                 "backend": "sklearn",
@@ -960,7 +1078,6 @@ class DataQualityPanel(Panel):
             dup_hash_sample_ids = [
                 (filehash, ids) for filehash, ids in filehash_to_ids.items()
             ]
-
             content["results"][field]["dup_filehash"] = dup_filehash
             content["results"][field]["dup_sample_ids"] = dup_hash_sample_ids
 
@@ -1014,16 +1131,28 @@ class DataQualityPanel(Panel):
             }
         # save threshold issue counts
 
-        field_name = FIELD_NAME[field]
-        view = ctx.dataset.match(
-            (F(field_name) >= ctx.panel.state.hist_lower_thresh)
-            & (F(field_name) <= ctx.panel.state.hist_upper_thresh)
-        )
-        num_issue_samples = len(view)
-        content["counts"][field] = num_issue_samples
+        if (
+            field != "exact_duplicates"
+        ):  # counts already calculated above for exact_duplicates
+            field_name = FIELD_NAME[field]
+            issue_config = ctx.panel.state.issue_config[field]
+            lower_threshold, upper_threshold = self.get_plot_defaults(
+                ctx, field, issue_config["detect_method"]
+            )
+            view = ctx.dataset.match(
+                (F(field_name) >= lower_threshold)
+                & (F(field_name) <= upper_threshold)
+            )
+            num_issue_samples = len(view)
+
+            content["counts"][field] = num_issue_samples
 
         # update issue_status
         content["status"][field] = STATUS[2]
+
+        # update last scan time
+        content["last_scan"][field] = datetime.now()
+
         # save the results, counts, and status to the store
         store.set(key, content)
 
@@ -1114,7 +1243,8 @@ class DataQualityPanel(Panel):
                     "padding": "0px",
                     "textAlign": "center",
                     "alignItems": "center",
-                    "height": "calc(100vh - 275px)",
+                    "height": "calc(100vh - 310px)",
+                    "min-height": "400px",
                 }
             ),
         )
@@ -1131,13 +1261,26 @@ class DataQualityPanel(Panel):
                     "sx": {
                         "display": "flex",
                         "flexDirection": "column",
-                        "height": "750px",
+                        "align-items": "center",
+                        "justify-content": "center",
                     }
-                }
+                },
+                "container": {
+                    "sx": {
+                        "height": "calc(100vh - 410px)",
+                        "display": "flex",
+                        "flexDirection": "column",
+                        "align-items": "center",
+                        "justify-content": "center",
+                    }
+                },
             },
         )
 
-        if ctx.panel.state.computing[issue_type][0]:
+        if (
+            ctx.panel.state.computing
+            and ctx.panel.state.computing[issue_type][0]
+        ):
             loader_schema = {
                 "variant": "spinner",
                 "color": "base",
@@ -1169,7 +1312,10 @@ class DataQualityPanel(Panel):
         )
         card_content.view("text_view_compute", view=text_view)
 
-        if ctx.panel.state.computing[issue_type][0]:
+        if (
+            ctx.panel.state.computing
+            and ctx.panel.state.computing[issue_type][0]
+        ):
             card_content.btn(
                 f"compute_button",
                 label=f"Scanning Dataset for {' '.join(issue_type.split('_')).title()}",
@@ -1177,7 +1323,12 @@ class DataQualityPanel(Panel):
                 disabled=True,
             )
         else:
-            if not ctx.panel.state.computing[issue_type][0]:
+            if (
+                ctx.panel.state.computing
+                and not ctx.panel.state.computing[issue_type][0]
+            ):
+                no_access = missing_min_access_required(ctx, "EDIT")
+
                 menu = card_content.menu(
                     "compute_button_menu",
                     variant="contained",
@@ -1189,6 +1340,7 @@ class DataQualityPanel(Panel):
                             }
                         }
                     },
+                    readOnly=no_access,
                 )
 
                 # Define a dropdown menu and add choices
@@ -1199,7 +1351,9 @@ class DataQualityPanel(Panel):
                             "addOnClickToMenuItems": True,
                         },
                     },
+                    tooltipTitle=(NOT_PERMITTED_TEXT if no_access else ""),
                 )
+
                 dropdown.add_choice(
                     "execute_now",
                     label="Execute Now",
@@ -1220,7 +1374,8 @@ class DataQualityPanel(Panel):
                 )
 
                 if (
-                    ctx.panel.state.computing[issue_type][1]
+                    ctx.panel.state.computing
+                    and ctx.panel.state.computing[issue_type][1]
                     == "delegate_execution"
                 ):
                     link_main = card_content.h_stack(
@@ -1256,20 +1411,24 @@ class DataQualityPanel(Panel):
                             },
                         ),
                     )
-                elif ctx.panel.state.computing[issue_type][1] == "execute_now":
+                elif (
+                    ctx.panel.state.computing
+                    and ctx.panel.state.computing[issue_type][1]
+                    == "execute_now"
+                ):
                     if (
                         FIELD_NAME[ctx.panel.state.issue_type]
                         in ctx.dataset.get_field_schema()
                     ):
                         schema = {
                             "modal": {
-                                "title": f"{' '.join(issue_type.split('_')).title()} Field Already Detected",
-                                "body": f'It looks like you already have the field "{ctx.panel.state.issue_type}" pre-existing on your dataset. Are you sure you want to run this scan? All existing data on this field will be overwritten.',
-                                "icon": "warning_amber",
+                                "title": f"{' '.join(issue_type.split('_')).title()} Field Detected",
+                                "body": f"It looks like the field `{ctx.panel.state.issue_type}` already exists on your dataset. We'll skip over any samples with this existing field and only scan new samples without this field for {' '.join(issue_type.split('_'))} issues. Would you like to scan them now?",
+                                "icon": "notification_important",
                                 "iconVariant": "filled",
                             },
                             "primaryButton": {
-                                "primaryText": f"Scan & Overwrite {' '.join(issue_type.split('_')).title()} Field",
+                                "primaryText": f"Scan For {' '.join(issue_type.split('_')).title()} & Skip Existing Samples with Field",
                                 "primaryColor": "primary",
                                 "params": {
                                     "issue_type": issue_type,
@@ -1309,7 +1468,10 @@ class DataQualityPanel(Panel):
                         )
 
         # computing notification card
-        if ctx.panel.state.computing[issue_type][0]:
+        if (
+            ctx.panel.state.computing
+            and ctx.panel.state.computing[issue_type][0]
+        ):
             main_computing_card = card_content.h_stack(
                 "main_computing_card",
                 container=types.PaperContainer(
@@ -1347,7 +1509,8 @@ class DataQualityPanel(Panel):
                 "right_sub_computing_card_bottom", gap="3px"
             )
             if (
-                ctx.panel.state.computing[issue_type][1]
+                ctx.panel.state.computing
+                and ctx.panel.state.computing[issue_type][1]
                 == "delegate_execution"
             ):
                 computing_card_title_text = "Scheduled scan"
@@ -1388,7 +1551,8 @@ class DataQualityPanel(Panel):
                 "computing_card_text_bottom", computing_card_text_bottom
             )
             if (
-                ctx.panel.state.computing[issue_type][1]
+                ctx.panel.state.computing
+                and ctx.panel.state.computing[issue_type][1]
                 == "delegate_execution"
             ):
                 computing_card_text_runs_link = types.LinkView(
@@ -1412,7 +1576,7 @@ class DataQualityPanel(Panel):
         id,
         container,
         container_justify_content="center",
-        height="calc(100vh - 210px)",
+        height="calc(100vh - 310px)",
         px=0,
         py=0,
         h_stack=False,
@@ -1428,9 +1592,9 @@ class DataQualityPanel(Panel):
                 "grid": {
                     "sx": {
                         "display": "flex",
-                        "flexDirection": (
-                            "column" if h_stack is False else "row"
-                        ),
+                        "flexDirection": "column"
+                        if h_stack is False
+                        else "row",
                         "alignItems": "center",
                     }
                 },
@@ -1460,7 +1624,7 @@ class DataQualityPanel(Panel):
             f"{issue_type}_analysis_content",
             card_main,
             container_justify_content="normal",
-            height="calc(100vh - 210px - 158px)",
+            height="calc(100vh - 310px - 158px)",
             px=2,
             py=2,
         )
@@ -1502,10 +1666,8 @@ class DataQualityPanel(Panel):
                 "grid": {"sx": {"display": "flex", "flexDirection": "column"}},
             },
         )
-        if len(ctx.selected) == 0:
-            tagging_text = f"Tag {self._get_current_issue_count(ctx, ctx.panel.state.issue_type)} samples in current view:"
-        else:
-            tagging_text = f"Tag {len(ctx.selected)} out of {self._get_current_issue_count(ctx, ctx.panel.state.issue_type)} samples currently selected:"
+
+        tagging_text = self._get_tag_helper_text(ctx)
 
         tagging_functionality_stack.view(
             f"tagging_cta",
@@ -1557,12 +1719,12 @@ class DataQualityPanel(Panel):
             and not ctx.panel.state.new_samples[issue_type][2]
         ):
             alert_icon = types.ImageView(
-                width="10px",
+                width="13px",
                 componentsProps={
                     "container": {
                         "sx": {
                             "position": "relative",
-                            "top": "-5px",
+                            "top": "-3px",
                         }
                     }
                 },
@@ -1571,7 +1733,7 @@ class DataQualityPanel(Panel):
             rescan_text_h_stack.view(
                 f"orange_alert_icon",
                 view=alert_icon,
-                default="https://i.imgur.com/huK65Ho.png",
+                default="https://i.imgur.com/eeYi9by.png",
             )
 
         rescan_text_h_stack.view(
@@ -1607,7 +1769,7 @@ class DataQualityPanel(Panel):
         wrapper_info = types.TextView(
             title=f"Data Quality helps you find and act on quality issues in your dataset.",
             variant="body2",
-            padding=0,
+            padding=1,
             bold=False,
             color="text.primary",
         )
@@ -1830,10 +1992,6 @@ class DataQualityPanel(Panel):
     def _render_header(self, panel, issue_type, ctx):
         review_warning = (
             ctx.panel.state.screen == "analysis"
-            and (
-                not ctx.panel.state.issue_counts
-                or self._get_issue_count(ctx, issue_type) > 0
-            )
             and self._get_issue_status(ctx, issue_type) == STATUS[2]
             and not missing_min_access_required(ctx, "EDIT")
         )
@@ -1985,16 +2143,6 @@ class DataQualityPanel(Panel):
             on_change=self.toggle_select,
         )
 
-    def toggle_select(self, ctx):
-        ctx.ops.set_selected_samples(ctx.params["value"])
-
-    def toggle_select_from_grid(self, ctx):
-        # when ctx.selected changes from the grid, update the tree selection view
-        ctx.panel.state.set(
-            "exact_duplicates_analysis.exact_duplicates_analysis_content.exact_duplicate_selections",
-            ctx.selected,
-        )
-
     def _get_histogram_screen(self, stack, ctx, field: str):
         """Adds a histogram and selection sliders to the panel"""
 
@@ -2133,10 +2281,7 @@ class DataQualityPanel(Panel):
 
     def _get_tagging_modal_screen(self, stack, ctx):
 
-        if len(ctx.selected) == 0:
-            selected_samples_string = f"Tag {self._get_current_issue_count(ctx, ctx.panel.state.issue_type)} samples in current view"
-        else:
-            selected_samples_string = f"Tag {len(ctx.selected)} out of {self._get_current_issue_count(ctx, ctx.panel.state.issue_type)} samples currently selected"
+        selected_samples_string = self._get_tag_helper_text(ctx)
 
         no_access = missing_min_access_required(ctx, "TAG")
 
@@ -2147,10 +2292,6 @@ class DataQualityPanel(Panel):
                 "body": 'Once tags are applied, you can filter your dataset using these tags via the sidebar. These tags will be visible under the "Sample Tags" section.',
                 "icon": "local_offer",
                 "iconVariant": "outlined",
-                "disabled": self._get_issue_status(
-                    ctx, ctx.panel.state.issue_type
-                )
-                == STATUS[3],
             },
             "primaryButton": {
                 "primaryText": "Apply Tags to Samples",
@@ -2171,7 +2312,15 @@ class DataQualityPanel(Panel):
             label="Add Tags",
             variant="outlined",
             icon="local_offer",
-            disabled=no_access,
+            disabled=(
+                no_access
+                or self._get_issue_status(ctx, ctx.panel.state.issue_type)
+                == STATUS[3]
+                or self._get_current_issue_count(
+                    ctx, ctx.panel.state.issue_type
+                )
+                == 0
+            ),
             title=NOT_PERMITTED_TEXT if no_access else "",
         )
 
@@ -2187,7 +2336,7 @@ class DataQualityPanel(Panel):
             "modal": {
                 "title": f"New Samples Detected",
                 "subtitle": "Rescan Available",
-                "body": f'We have detected {number_of_new_samples} new samples added to your dataset that have not yet gone through {" ".join(ctx.panel.state.issue_type.split("_"))} scanning. How would you like to scan these new samples for {" ".join(ctx.panel.state.issue_type.split("_"))} issues?',
+                "body": f'It looks like there are {number_of_new_samples} samples on your dataset that have not yet been scanned for {" ".join(ctx.panel.state.issue_type.split("_"))} issues. Would you like to scan them now?',
                 "icon": "search",
                 "iconVariant": "filled",
             },

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 ISSUE_TYPES = [
     "brightness",
@@ -36,6 +36,16 @@ DEFAULT_ISSUE_COUNTS = {
     "entropy": None,
     "near_duplicates": None,
     "exact_duplicates": None,
+}
+
+# set future dates for last scan as default
+LAST_SCAN = {
+    "brightness": datetime.now() + timedelta(days=1),
+    "blurriness": datetime.now() + timedelta(days=1),
+    "aspect_ratio": datetime.now() + timedelta(days=1),
+    "entropy": datetime.now() + timedelta(days=1),
+    "near_duplicates": datetime.now() + timedelta(days=1),
+    "exact_duplicates": datetime.now() + timedelta(days=1),
 }
 
 # TODO: allow user to be able to use other names for the fields
@@ -103,7 +113,7 @@ SAMPLE_STORE = {
     "current_counts": DEFAULT_ISSUE_COUNTS,
     "status": DEFAULT_ISSUE_STATUS,
     "computing": DEFAULT_COMPUTING,
-    "timestamp": datetime.now(),
+    "last_scan": LAST_SCAN,
     "results": {
         "brightness": {
             "counts": None,
@@ -126,8 +136,8 @@ SAMPLE_STORE = {
             "edges": None,
         },
         "exact_duplicates": {
-            "dup_filehash": None,
-            "dup_sample_ids": None,
+            "dup_filehash": [],
+            "dup_sample_ids": [],
         },
     },
 }
