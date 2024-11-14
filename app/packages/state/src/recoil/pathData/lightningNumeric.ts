@@ -16,15 +16,13 @@ export const lightningNumericResults = selectorFamily({
   get:
     (path: string) =>
     ({ get }) => {
-      const grouped = get(numericFields(path));
-      const index = grouped.findIndex((p) => p === path);
-      const results = get(lightningQuery(grouped.map((p) => ({ path: p }))));
-      const data = results[index];
+      const [data] = get(lightningQuery([{ path }]));
 
       if (data.__typename === "DateLightningResult") {
         return {
           max: data.dateMax,
           min: data.dateMin,
+          none: data.none,
         };
       }
 
@@ -32,6 +30,7 @@ export const lightningNumericResults = selectorFamily({
         return {
           max: data.datetimeMax,
           min: data.datetimeMin,
+          none: data.none,
         };
       }
 
@@ -39,6 +38,7 @@ export const lightningNumericResults = selectorFamily({
         return {
           max: data.intMax,
           min: data.intMin,
+          none: data.none,
         };
       }
 
@@ -78,6 +78,7 @@ export const lightningNonfinites = selectorFamily({
           inf: data.inf,
           nan: data.nan,
           ninf: data.ninf,
+          none: data.none,
         };
       }
 
