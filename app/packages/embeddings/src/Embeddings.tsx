@@ -1,6 +1,6 @@
 import { useRef, Fragment, useEffect } from "react";
 import { useExternalLink } from "@fiftyone/utilities";
-import { Loading, Selector, useTheme } from "@fiftyone/components";
+import { Selector, useTheme } from "@fiftyone/components";
 import { usePanelStatePartial, useSetPanelCloseEffect } from "@fiftyone/spaces";
 import {
   HighlightAlt,
@@ -23,15 +23,9 @@ import { useWarnings } from "./useWarnings";
 import { EmbeddingsPlot } from "./EmbeddingsPlot";
 import { usePlotSelection } from "./usePlotSelection";
 import { useResetPlotZoom } from "./useResetPlotZoom";
-import {
-  OperatorExecutionButton,
-  OperatorPlacements,
-  types,
-} from "@fiftyone/operators";
-import ComputeVisualizationButton from "./ComputeVisualizationButton";
+import { OperatorPlacements, types } from "@fiftyone/operators";
 import EmptyEmbeddings from "./EmptyEmbeddings";
 import useComputeVisualization from "./useComputeVisualization";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
@@ -77,14 +71,6 @@ export default function Embeddings({ containerHeight, dimensions }) {
       <EmbeddingsContainer ref={el} data-cy="embeddings-container">
         <Selectors>
           <div>
-            <OperatorExecutionButton
-              operatorUri="@voxel51/panel-examples/simple_op"
-              variant="contained"
-              color="primary"
-              endIcon={<ExpandMoreIcon />}
-            >
-              Execute
-            </OperatorExecutionButton>
             <Selector
               cy="embeddings"
               {...brainResultSelector.handlers}
