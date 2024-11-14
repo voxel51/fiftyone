@@ -38,6 +38,7 @@ const QueryPerformanceToast = ({
   const indexed = useRecoilValue(fos.pathHasIndexes(path));
   const [shown, setShown] = useState(false);
   const [disabled, setDisabled] = useRecoilState(hideQueryPerformanceToast);
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
   const element = document.getElementById("queryPerformance");
   const theme = useTheme();
   const frameFields = useRecoilValue(atoms.frameFields);
@@ -53,11 +54,15 @@ const QueryPerformanceToast = ({
     return () => window.removeEventListener("queryperformance", listen);
   }, []);
 
+  const onHandleClose = (event, reason) => {
+    setShown(false);
+  };
+
   if (!element) {
     throw new Error("no query performance element");
   }
 
-  if (!shown || disabled) {
+  if (!shown || disabled || !queryPerformance) {
     return null;
   }
 
@@ -68,6 +73,7 @@ const QueryPerformanceToast = ({
 
   return createPortal(
     <Toast
+      onHandleClose={onHandleClose}
       duration={SHOWN_FOR}
       layout={{
         bottom: "100px !important",

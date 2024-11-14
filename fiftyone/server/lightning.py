@@ -96,6 +96,7 @@ class StringLightningResult(LightningResult):
 INT_CLS = {
     fof.DateField: DateLightningResult,
     fof.DateTimeField: DateTimeLightningResult,
+    fof.FrameNumberField: IntLightningResult,
     fof.IntField: IntLightningResult,
 }
 

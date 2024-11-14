@@ -26,6 +26,7 @@ export interface CustomPanelProps {
   onChangeSelectedLabels?: string;
   onChangeExtendedSelection?: string;
   onChangeGroupSlice?: string;
+  onChangeQueryPerformance?: boolean;
   onChangeSpaces?: string;
   onChangeWorkspace?: string;
   dimensions: DimensionsType | null;
@@ -138,6 +139,12 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     panelId,
     ctx.groupSlice,
     props.onChangeGroupSlice
+  );
+  useCtxChangePanelEvent(
+    isLoaded,
+    panelId,
+    ctx.queryPerformance,
+    props.onChangeQueryPerformance
   );
   useCtxChangePanelEvent(isLoaded, panelId, ctx.spaces, props.onChangeSpaces);
   useCtxChangePanelEvent(

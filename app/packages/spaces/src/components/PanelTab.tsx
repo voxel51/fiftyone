@@ -56,8 +56,8 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
       {panel && !loading && <PanelIcon name={panelName as string} />}
       {panel && <Typography>{title || panel.label || panel.name}</Typography>}
       <PanelTabMeta
-        showBeta={panel?.panelOptions?.beta}
-        showNew={panel?.panelOptions?.isNew}
+        showBeta={panel?.panelOptions?.beta ?? false}
+        showNew={panel?.panelOptions?.isNew ?? false}
       />
       {panel && TabIndicator && (
         <TabIndicatorContainer>
@@ -90,7 +90,13 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
   );
 }
 
-function PanelTabMeta({ showBeta, showNew }) {
+function PanelTabMeta({
+  showBeta,
+  showNew,
+}: {
+  showBeta: boolean;
+  showNew: boolean;
+}) {
   return (
     <Grid container gap={1} sx={{ width: "auto", ml: "6px" }}>
       {showNew && (

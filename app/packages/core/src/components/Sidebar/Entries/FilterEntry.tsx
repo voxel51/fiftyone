@@ -11,7 +11,7 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-import { LightningBolt } from "./FilterablePathEntry/Icon";
+import QueryPerformanceIcon from "./QueryPerformanceIcon";
 import { FilterInputDiv } from "./utils";
 
 const Text = styled.div`
@@ -90,7 +90,7 @@ const Filter = () => {
         )}
       </Box>
 
-      <Box display="flex" alignItems="center">
+      <Box display="flex" alignItems="center" gap="4px">
         {isFieldVisibilityActive && (
           <Tooltip text="Clear field selection" placement="bottom-center">
             <Box
@@ -131,7 +131,7 @@ const Filter = () => {
             </Box>
           </Tooltip>
         )}
-        {queryPerformance && <LightningBolt style={{ color: "#f5b700" }} />}
+        {queryPerformance && <QueryPerformanceIcon />}
         <Tooltip
           text="Change field visibility"
           placement="bottom-center"

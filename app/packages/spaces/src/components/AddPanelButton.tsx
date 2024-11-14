@@ -89,15 +89,15 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
           <PanelCategories>
             {sortedCategories.map(({ label, panels }) => (
               <PanelCategory key={label} label={label}>
-                {panels.map((panel) => (
+                {panels.map((panel: PluginComponentRegistration) => (
                   <AddPanelItem
                     key={panel.name}
                     node={node}
                     name={panel.name}
                     label={panel.label}
                     spaceId={spaceId}
-                    showBeta={panel.panelOptions?.beta}
-                    showNew={panel.panelOptions?.isNew}
+                    showBeta={panel.panelOptions?.beta ?? false}
+                    showNew={panel.panelOptions?.isNew ?? false}
                     onClick={() => setOpen(false)}
                   />
                 ))}

@@ -94,7 +94,7 @@ const globalContextSelector = selector({
     const viewName = get(fos.viewName);
     const extendedSelection = get(fos.extendedSelection);
     const groupSlice = get(fos.groupSlice);
-    const queryPerformance = typeof get(fos.queryPerformance) === "number";
+    const queryPerformance = get(fos.queryPerformance);
     const spaces = get(fos.sessionSpaces);
     const workspaceName = spaces?._name;
 
@@ -250,8 +250,10 @@ const useOperatorPromptSubmitOptions = (
         promptView?.submit_button_label ||
         "Execute",
       id: "execute",
+      tag: "FOR TESTING",
       default: defaultToExecute,
-      description: "Run this operation now",
+      description:
+        "Run this operation synchronously. Only suitable for small datasets",
       onSelect() {
         setSelectedID("execute");
       },
@@ -268,7 +270,7 @@ const useOperatorPromptSubmitOptions = (
       label: "Schedule",
       id: "schedule",
       default: defaultToSchedule,
-      description: "Schedule this operation to run later",
+      description: "Run this operation on your compute cluster",
       onSelect() {
         setSelectedID("schedule");
       },
@@ -286,7 +288,7 @@ const useOperatorPromptSubmitOptions = (
     for (let orc of execDetails.executionOptions.availableOrchestrators) {
       options.push({
         label: "Schedule",
-        choiceLabel: `Schedule on "${orc.instanceID}"`,
+        choiceLabel: `Schedule on ${orc.instanceID}`,
         id: orc.id,
         description: `Run this operation on ${orc.instanceID}`,
         onSelect() {
@@ -301,6 +303,13 @@ const useOperatorPromptSubmitOptions = (
       });
     }
   }
+
+  // sort options so that the default is always the first in the list
+  options.sort((a, b) => {
+    if (a.default) return -1;
+    if (b.default) return 1;
+    return 0;
+  });
 
   const defaultID =
     options.find((option) => option.default)?.id || options[0]?.id || "execute";
@@ -945,8 +954,8 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         setResult(result.result);
         setError(result.error);
         setIsDelegated(result.delegated);
-        handlers.onSuccess?.(result);
-        callback?.(result);
+        handlers.onSuccess?.(result, { ctx });
+        callback?.(result, { ctx });
         if (result.error) {
           const isAbortError =
             result.error.name === "AbortError" ||
@@ -961,7 +970,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
           }
         }
       } catch (e) {
-        callback?.(new OperatorResult(operator, null, ctx.executor, e, false));
+        callback?.(new OperatorResult(operator, null, ctx.executor, e, false), {ctx});
         const isAbortError =
           e.name === "AbortError" || e instanceof DOMException;
         const msg = e.message || "Failed to execute an operation";

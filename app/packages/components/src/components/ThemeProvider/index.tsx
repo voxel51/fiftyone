@@ -266,6 +266,13 @@ let theme = extendMuiTheme({
         },
       },
     },
+    MuiTableCell: {
+      styleOverrides: {
+        root: {
+          borderBottom: `1px solid ${dynamicTheme("palette.divider")}`,
+        },
+      },
+    },
   },
 
   fontFamily: {

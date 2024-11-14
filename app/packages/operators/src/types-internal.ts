@@ -1,6 +1,7 @@
-import { OperatorResult } from "./operators";
+import { ExecutionContext, OperatorResult } from "./operators";
 
-export type ExecutionCallback = (result: OperatorResult) => void;
+export type ExecutionCallbackOptions = {ctx: ExecutionContext};
+export type ExecutionCallback = (result: OperatorResult, options: ExecutionCallbackOptions) => void;
 export type ExecutionErrorCallback = (error: Error) => void;
 
 export type OperatorExecutorOptions = {

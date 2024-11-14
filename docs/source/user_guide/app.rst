@@ -519,32 +519,26 @@ You can conveniently reset the sidebar groups to their default state by setting
     property, these fields will be dynamically assigned to default groups in
     the App at runtime.
 
-.. _app-lightning-mode:
+.. _app-query-performance-mode:
 
-Lightning mode
---------------
+Query Performance mode
+----------------------
 
-Lightning mode is a performant sidebar setting for larger datasets that can be
-enabled either by adding a `lightning_threshold` to your
+Query Performance mode is a performant sidebar setting for larger datasets that can be
+enabled either by adding a `default_query_performance` to your
 :ref:`App config <configuring-fiftyone-app>`, or for a particular dataset by
 clicking on the "Gear" icon above the sample grid in the App.
 
 .. note::
 
-    When lightning mode is enabled through the "Gear" icon in the App, the
+    When query performance mode is enabled through the "Gear" icon in the App, the
     setting is persisted in your browser for that dataset.
 
-The lightning threshold specifies a dataset/view size (sample count) above
-which filters can *only* be applied to fields that have been **indexed**. After
-applying filters that bring the current view size below the lightning
-threshold, all fields become available for filtering and additional information
-like value counts are presented.
-
-.. image:: /images/app/app-lightning-mode.gif
-    :alt: app-lightning-mode
+.. image:: /images/app/app-query-performance-mode.gif
+    :alt: app-query-performance-mode
     :align: center
 
-The above GIF shows lightning mode in action on the train split of the
+The above GIF shows query performance mode in action on the train split of the
 :ref:`BDD100K dataset <dataset-zoo-bdd100k>` with an index on the
 `metadata.size_bytes` field:
 
@@ -608,8 +602,7 @@ perform initial filters on:
     # Note: it is faster to declare indexes before adding samples
     dataset.add_samples(...)
 
-    # For illustration, so that any filter brings dataset out of lightning mode
-    fo.app_config.lightning_threshold = len(dataset)
+    fo.app_config.default_query_performance = True
 
     session = fo.launch_app(dataset)
 
@@ -619,7 +612,7 @@ perform initial filters on:
     fields on large video datasets.
 
 For :ref:`grouped datasets <groups>`, you should create two indexes for each
-field you wish to filter by in lightning mode: the field itself and a compound
+field you wish to filter by in query performance mode: the field itself and a compound
 index that includes the group slice name:
 
 .. code-block:: python
@@ -634,8 +627,7 @@ index that includes the group slice name:
     dataset.create_index("ground_truth.detections.label")
     dataset.create_index([("group.name", 1), ("ground_truth.detections.label", 1)])
 
-    # For illustration, so that any filter brings dataset out of lightning mode
-    fo.app_config.lightning_threshold = len(dataset)
+    fo.app_config.default_query_performance = True
 
     session = fo.launch_app(dataset)
 
@@ -652,8 +644,7 @@ a single
     dataset = foz.load_zoo_dataset("quickstart")
     dataset.create_index("$**")
 
-    # For illustration, so that any filter brings dataset out of lightning mode
-    fo.app_config.lightning_threshold = len(dataset)
+    fo.app_config.default_query_performance = True
 
     session = fo.launch_app(dataset)
 
@@ -690,8 +681,7 @@ fields is also necessary:
     dataset.create_index("$**")
     dataset.create_index("frames.$**")
 
-    # For illustration, so that any filter brings dataset out of lightning mode
-    fo.app_config.lightning_threshold = len(dataset)
+    fo.app_config.default_query_performance = True
 
     session = fo.launch_app(dataset)
 

@@ -1,12 +1,20 @@
+"""
+Model evaluation panel.
+
+| Copyright 2017-2024, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
+from collections import defaultdict
 import traceback
 
-import fiftyone.operators.types as types
-
 from fiftyone import ViewField as F
-from collections import defaultdict
+from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
 from fiftyone.operators.utils import is_new
-from fiftyone.operators.categories import Categories
+import fiftyone.operators.types as types
+
 
 STORE_NAME = "model_evaluation_panel_builtin"
 STATUS_LABELS = {
@@ -34,7 +42,7 @@ class EvaluationPanel(Panel):
         return str(ctx.dataset._doc.id)
 
     def get_store(self, ctx):
-        return ctx.create_store(STORE_NAME)
+        return ctx.store(STORE_NAME)
 
     def get_evaluation_id(self, dataset, eval_key):
         try:
