@@ -449,9 +449,9 @@ def _match_arrays(dataset: fo.Dataset, path: str, is_frame_field: bool):
     for key in keys:
         path = ".".join([path, key]) if path else key
         field = dataset.get_field(path)
-        while isinstance(field, fof.ListField):
-            pipeline.append({"$match": {f"{path}.0": {"$exists": True}}})
-            field = field.field
+        if isinstance(field, fof.ListField):
+            # only once for label list fields, e.g. Detections
+            return [{"$match": {f"{path}.0": {"$exists": True}}}]
 
     return pipeline
 
@@ -464,6 +464,7 @@ def _parse_result(data):
 
 
 def _unwind(dataset: fo.Dataset, path: str, is_frame_field: bool):
+    print("HELLO", path)
     keys = path.split(".")
     path = None
     pipeline = []
@@ -479,4 +480,5 @@ def _unwind(dataset: fo.Dataset, path: str, is_frame_field: bool):
             pipeline.append({"$unwind": f"${path}"})
             field = field.field
 
+    fo.pprint(pipeline)
     return pipeline
