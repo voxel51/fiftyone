@@ -18,7 +18,7 @@ TEST_COLLECTION_NAME = "execution_store_test_collection"
 
 @pytest.fixture
 def dataset():
-    return fo.Dataset(name="test_dataset")
+    return fo.Dataset()
 
 
 @pytest.fixture
