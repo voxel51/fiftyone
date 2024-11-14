@@ -93,6 +93,9 @@ fiftyone requires Python, Git and other dependencies. To get started, select the
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Installation
 
+We strongly recommend that you install FiftyOne in a
+[virtual environment](https://voxel51.com/docs/fiftyone/getting_started/virtualenv.html)
+to maintain a clean workspace.
 
 <details>
 <summary>Install from PyPI</summary>
@@ -111,7 +114,110 @@ FiftyOne.
 
 <details>
 <summary>Install from source</summary>
-To install from source,
+To install from source, you need to clone the repository and install the library using pip via editable mode.
+
+First, clone the repository:
+
+```shell
+git clone https://github.com/voxel51/fiftyone
+cd fiftyone
+```
+
+Then run the install script:
+
+```shell
+# Mac or Linux
+bash install.bash
+
+# Windows
+.\install.bat
+```
+
+**NOTE:** If you run into issues importing FiftyOne, you may need to add the
+path to the cloned repository to your `PYTHONPATH`:
+
+```shell
+export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
+```
+
+**NOTE:** The install script adds to your `nvm` settings in your `~/.bashrc` or
+`~/.bash_profile`, which is needed for installing and building the App
+
+**NOTE:** When you pull in new changes to the App, you will need to rebuild it,
+which you can do either by rerunning the install script or just running
+`yarn build` in the `./app` directory.
+
+### Upgrading your source installation
+
+To upgrade an existing source installation to the bleeding edge, simply pull
+the latest `develop` branch and rerun the install script:
+
+```shell
+git checkout develop
+git pull
+bash install.bash
+```
+
+### Developer installation
+
+If you would like to
+[contribute to FiftyOne](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md),
+you should perform a developer installation using the `-d` flag of the install
+script:
+
+```shell
+# Mac or Linux
+bash install.bash -d
+
+# Windows
+.\install.bat -d
+```
+
+Although not required, developers typically prefer to configure their FiftyOne
+installation to connect to a self-installed and managed instance of MongoDB,
+which you can do by following
+[these simple steps](https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection).
+
+### Source installs in Google Colab
+
+You can install from source in
+[Google Colab](https://colab.research.google.com) by running the following in a
+cell and then **restarting the runtime**:
+
+```shell
+%%shell
+
+git clone --depth 1 https://github.com/voxel51/fiftyone.git
+cd fiftyone
+
+# Mac or Linux
+bash install.bash
+
+# Windows
+.\install.bat
+```
+
+### Docker installs
+
+Refer to
+[these instructions](https://voxel51.com/docs/fiftyone/environments/index.html#docker)
+to see how to build and run Docker images containing source or release builds
+of FiftyOne.
+
+### Generating documentation
+
+See the
+[docs guide](https://github.com/voxel51/fiftyone/blob/develop/docs/README.md)
+for information on building and contributing to the documentation.
+
+### Uninstallation
+
+You can uninstall FiftyOne as follows:
+
+```shell
+pip uninstall fiftyone fiftyone-brain fiftyone-db
+```
+
 
 </details>
 
@@ -216,114 +322,6 @@ sudo apt install libcurl4 openssl
 
 # Fedora
 sudo dnf install libcurl openssl
-```
-
-### Installation
-
-We strongly recommend that you install FiftyOne in a
-[virtual environment](https://voxel51.com/docs/fiftyone/getting_started/virtualenv.html)
-to maintain a clean workspace.
-
-First, clone the repository:
-
-```shell
-git clone https://github.com/voxel51/fiftyone
-cd fiftyone
-```
-
-Then run the install script:
-
-```shell
-# Mac or Linux
-bash install.bash
-
-# Windows
-.\install.bat
-```
-
-**NOTE:** If you run into issues importing FiftyOne, you may need to add the
-path to the cloned repository to your `PYTHONPATH`:
-
-```shell
-export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
-```
-
-**NOTE:** The install script adds to your `nvm` settings in your `~/.bashrc` or
-`~/.bash_profile`, which is needed for installing and building the App
-
-**NOTE:** When you pull in new changes to the App, you will need to rebuild it,
-which you can do either by rerunning the install script or just running
-`yarn build` in the `./app` directory.
-
-### Upgrading your source installation
-
-To upgrade an existing source installation to the bleeding edge, simply pull
-the latest `develop` branch and rerun the install script:
-
-```shell
-git checkout develop
-git pull
-bash install.bash
-```
-
-### Developer installation
-
-If you would like to
-[contribute to FiftyOne](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md),
-you should perform a developer installation using the `-d` flag of the install
-script:
-
-```shell
-# Mac or Linux
-bash install.bash -d
-
-# Windows
-.\install.bat -d
-```
-
-Although not required, developers typically prefer to configure their FiftyOne
-installation to connect to a self-installed and managed instance of MongoDB,
-which you can do by following
-[these simple steps](https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection).
-
-### Source installs in Google Colab
-
-You can install from source in
-[Google Colab](https://colab.research.google.com) by running the following in a
-cell and then **restarting the runtime**:
-
-```shell
-%%shell
-
-git clone --depth 1 https://github.com/voxel51/fiftyone.git
-cd fiftyone
-
-# Mac or Linux
-bash install.bash
-
-# Windows
-.\install.bat
-```
-
-### Docker installs
-
-Refer to
-[these instructions](https://voxel51.com/docs/fiftyone/environments/index.html#docker)
-to see how to build and run Docker images containing source or release builds
-of FiftyOne.
-
-### Generating documentation
-
-See the
-[docs guide](https://github.com/voxel51/fiftyone/blob/develop/docs/README.md)
-for information on building and contributing to the documentation.
-
-### Uninstallation
-
-You can uninstall FiftyOne as follows:
-
-```shell
-pip uninstall fiftyone fiftyone-brain fiftyone-db
 ```
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
