@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   Button,
   ButtonGroup,
@@ -10,62 +10,91 @@ import {
 import SettingsIcon from "@mui/icons-material/Settings";
 import CircleIcon from "@mui/icons-material/FiberManualRecord";
 import { useTheme } from "../";
+import _ from "lodash";
 
 const ButtonStylesOverrides: ButtonProps["sx"] = {
   color: (theme) => theme.palette.text.secondary,
-  // background: (theme) => theme.palette.background.default,
   border: "1px solid",
   borderColor: (theme) => `${theme.palette.divider} !important`,
   textTransform: "none",
   fontSize: "1rem",
 };
 
+type Severity = "info" | "success" | "warning" | "error";
+
+const SEVERITY_COLORS = {
+  info: "info.main",
+  success: "success.main",
+  warning: "warning.main",
+  error: "error.main",
+  disabled: "text.disabled",
+  enabled: "custom.primaryMedium",
+};
+
+export type StatusButtonProps = {
+  label?: string;
+  disabled?: boolean;
+  onClick: () => void;
+  severity: Severity;
+  title?: string;
+};
+
 export default function StatusButton({
   label = "Disabled",
   disabled = false,
-  disabledReason = "Feature is disabled",
+  title,
   onClick,
-}) {
+  severity,
+}: StatusButtonProps) {
   const theme = useTheme();
+  const severityPath = SEVERITY_COLORS[severity];
+  const severityColor = _.get(theme, severityPath);
 
-  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+  const handleClick = () => {
     onClick();
   };
 
-  const tooltipTitle = disabled ? disabledReason : null;
-
   return (
-    <Tooltip title={tooltipTitle}>
+    <Tooltip title={title}>
       <ButtonGroup variant="outlined" sx={{ ...ButtonStylesOverrides }}>
-        {/* Non-interactive Label with Icon */}
         <Box
           display="flex"
           alignItems="center"
           justifyContent="center"
-          padding="8px 16px"
+          padding="0 8px 0 16px"
           sx={{
             borderRight: `1px solid ${theme.divider}`,
           }}
         >
           <CircleIcon
-            sx={{ width: "8px", color: theme.text.secondary, mr: 1 }}
+            sx={{ width: "12px", height: "12px", color: severityColor, mr: 1 }}
           />
           <Typography
             variant="body1"
             sx={{
-              color: theme.text.secondary,
+              color: severityColor,
               textTransform: "none",
+              mr: "8px",
             }}
           >
             {label}
           </Typography>
         </Box>
-
-        {/* Settings Button */}
         <Button
           disableRipple
+          disabled={disabled}
           onClick={handleClick}
-          sx={{ minWidth: 32, border: "none" }}
+          sx={{
+            minWidth: 32,
+            opacity: disabled ? 0.5 : 1,
+            outline: "none",
+            border: "none !important", // overrides disabled border
+            "&:hover": {
+              border: "none",
+              outline: "none",
+              background: theme.action.hover,
+            },
+          }}
         >
           <SettingsIcon sx={{ width: "20px", color: theme.secondary.main }} />
         </Button>

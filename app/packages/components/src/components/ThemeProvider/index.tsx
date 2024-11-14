@@ -180,6 +180,7 @@ let theme = extendMuiTheme({
           lightning: "#f5b700",
           toastBackgroundColor: "#333",
           primarySoft: "hsl(25, 100%, 80%)",
+          primaryMedium: "hsl(25, 100%, 71%)",
         },
         voxel: {
           500: "#FF6D04",
