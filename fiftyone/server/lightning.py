@@ -464,7 +464,6 @@ def _parse_result(data):
 
 
 def _unwind(dataset: fo.Dataset, path: str, is_frame_field: bool):
-    print("HELLO", path)
     keys = path.split(".")
     path = None
     pipeline = []
@@ -480,5 +479,4 @@ def _unwind(dataset: fo.Dataset, path: str, is_frame_field: bool):
             pipeline.append({"$unwind": f"${path}"})
             field = field.field
 
-    fo.pprint(pipeline)
     return pipeline

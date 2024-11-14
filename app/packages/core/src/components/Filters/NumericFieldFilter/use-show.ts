@@ -10,13 +10,17 @@ export default function useShow(
 ) {
   const queryPerformance = useRecoilValue(fos.queryPerformance);
   const hasBounds = useRecoilValue(
-    state.hasBounds({ path, modal, shouldCalculate: !queryPerformance })
+    state.hasBounds({
+      path,
+      modal,
+      shouldCalculate: !queryPerformance || modal,
+    })
   );
   const indexed = useRecoilValue(fos.pathHasIndexes(path));
   const frameField = useRecoilValue(fos.isFrameField(path));
 
   return {
-    show: !(!queryPerformance && named && !hasBounds),
+    show: hasBounds || (queryPerformance && !modal) || !named,
     showLoadButton: named && queryPerformance && !showRange && !modal,
     showQueryPerformanceIcon:
       named && queryPerformance && indexed && !frameField && !modal,
