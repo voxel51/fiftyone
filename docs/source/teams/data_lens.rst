@@ -328,7 +328,7 @@ leverage in your operator, including things like
 :ref:`providing secrets to your operator <operator-secrets>`.
 
 Using these inputs, we are expected to return a generator which yields
-:class:`DataLensSearchRequest <fiftyone.operators.data_lens.models.DataLensSearchResponse>`
+:class:`DataLensSearchResponse <fiftyone.operators.data_lens.models.DataLensSearchResponse>`
 objects. To start, we'll create some synthetic data to better understand the
 interaction between Data Lens and our operator. We'll look at a
 :ref:`more realistic example <data-lens-realistic-example>` later on.
@@ -446,7 +446,7 @@ Working with user-provided data
 Let's now look at how Data Lens users are able to interact with our operator.
 Data Lens is designed to enable users to quickly explore samples of interest,
 and a key component is providing users a way to control the behavior of our
-operator. We want to provide meaningful inputs that allow users to
+operator.
 
 To achieve this, we simply need to define the possible inputs to our operator
 in the
@@ -612,6 +612,7 @@ source code is listed below.
 
     class BigQueryHandler:
         def handle_request(
+            self,
             request: DataLensSearchRequest
         ) -> Generator[DataLensSearchResponse, None, None]:
             # Create our client
