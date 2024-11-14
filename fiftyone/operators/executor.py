@@ -1494,12 +1494,13 @@ class ExecutionOptions(object):
 
     @property
     def orchestrator_registration_enabled(self):
-        return (
+        legacy_orchestrator_mode_allowed = (
             os.environ.get(
-                "FIFTYONE_ENABLE_ORCHESTRATOR_REGISTRATION", "false"
+                "FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS", "false"
             ).lower()
             == "true"
         )
+        return not legacy_orchestrator_mode_allowed
 
     def update(self, available_orchestrators=None):
         self._available_orchestrators = available_orchestrators
