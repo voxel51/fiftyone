@@ -100,6 +100,7 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
 
         return types.Property(inputs, view=types.View(label=label))
 
+    """
     def resolve_execution_options(self, ctx):
         field_type = ctx.params.get("field_type", None)
         allow_delegated_execution = field_type == "SUMMARY"
@@ -108,6 +109,7 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
             allow_delegated_execution=allow_delegated_execution,
             default_choice_to_delegated=allow_delegated_execution,
         )
+    """
 
     def execute(self, ctx):
         path = ctx.params["path"]
@@ -385,22 +387,11 @@ class IndexFieldRemovalConfirmationOperator(Operator):
         field_type = ctx.params.get("field_type", "N/A")
 
         if field_type == "summary_field":
-            message = (
-                f"Are you sure you would like to delete Summary Field: {field_name}?"
-                f"\n\nThis action cannot be undone."
-            )
+            message = f"Are you sure you want to delete summary field `{field_name}`?"
         else:
-            message = (
-                f"Are you sure you would like to delete Indexed Field: {field_name}?"
-                f"\n\nThis action cannot be undone."
-            )
+            message = f"Are you sure you want to delete the `{field_name}` field's index?"
 
-        inputs.view(
-            "confirmation",
-            Notice(
-                label=message,
-            ),
-        )
+        inputs.view("confirmation", Warning(label=message))
         return Property(inputs)
 
     def execute(self, ctx):
@@ -461,11 +452,11 @@ class QueryPerformanceConfigConfirmationOperator(Operator):
 
     def execute(self, ctx):
         if ctx.params.get("query_performance") == "Enabled":
-            ctx.ops.notify("Enabling query performance mode")
             ctx.trigger("enable_query_performance")
+            ctx.ops.notify("Query performance enabled")
         else:
-            ctx.ops.notify("Disabling query performance mode")
             ctx.trigger("disable_query_performance")
+            ctx.ops.notify("Query performance disabled")
 
         return {
             "query_performance": ctx.params.get("query_performance"),
@@ -559,7 +550,6 @@ class QueryPerformancePanel(Panel):
 
     def on_load(self, ctx):
         self._build_view(ctx)
-        ctx.ops.track_event("query_performance_panel")
 
     def on_click_row(self, ctx):
         table_data = self._get_index_table_data(ctx)
@@ -576,14 +566,15 @@ class QueryPerformancePanel(Panel):
 
             if field_type == "Summary":
                 params["field_type"] = "summary_field"
-                ctx.ops.notify(f"Dropping summary field {field_name}")
             else:
                 default_indexes = set(_get_default_indexes(ctx))
                 if field_name in default_indexes:
-                    ctx.ops.notify(f"Cannot drop default index {field_name}.")
+                    ctx.ops.notify(
+                        f"Cannot drop default index `{field_name}`",
+                        variant="error",
+                    )
                     return
 
-                ctx.ops.notify(f"Dropping index {field_name}")
                 params["field_type"] = "index_field"
 
             ctx.prompt(
@@ -592,7 +583,7 @@ class QueryPerformancePanel(Panel):
                 params=params,
             )
         else:
-            ctx.ops.notify("You do not have permission to delete.")
+            ctx.ops.notify("You do not have edit permissions", variant="error")
 
     def qp_setting(self, ctx):
         ctx.prompt("query_performance_config_confirmation")
@@ -606,19 +597,17 @@ class QueryPerformancePanel(Panel):
 
     def create_index_or_summary_field(self, ctx):
         if _has_edit_permission(ctx):
-            ctx.ops.track_event(
-                "create_index_or_summary_field",
-                {"location": "query_performance_panel"},
-            )
             ctx.prompt(
                 "create_index_or_summary_field",
                 on_success=self.refresh,
             )
         else:
-            ctx.ops.notify("You do not have permission to create an index.")
+            ctx.ops.notify(
+                "You do not have permission to create an index",
+                variant="error",
+            )
 
     def update_summary_field(self, ctx):
-        ctx.ops.notify(f"Opening `update_summary_field` operator")
         ctx.prompt("update_summary_field", on_success=self.refresh)
 
     def render(self, ctx):
