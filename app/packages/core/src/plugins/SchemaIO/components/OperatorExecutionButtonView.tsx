@@ -1,6 +1,6 @@
 import React from "react";
 import { MuiIconFont } from "@fiftyone/components";
-import { OperatorExecutionButton, usePanelEvent } from "@fiftyone/operators";
+import { OperatorExecutionButton } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { isNullish } from "@fiftyone/utilities";
 import { Box, ButtonProps, Typography } from "@mui/material";
@@ -9,7 +9,7 @@ import { ViewPropsType } from "../utils/types";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import TooltipProvider from "./TooltipProvider";
 
-export default function ButtonView(props: ViewPropsType) {
+export default function OperatorExecutionButtonView(props: ViewPropsType) {
   const { schema, path, onClick } = props;
   const { view = {} } = schema;
   const {
@@ -24,9 +24,8 @@ export default function ButtonView(props: ViewPropsType) {
     disabled = false,
   } = view;
   const panelId = usePanelId();
-  const handleClick = usePanelEvent();
   const variant = getVariant(props);
-  const computedParams = { ...params, path };
+  const computedParams = { ...params, path, panel_id: panelId };
 
   const Icon = icon ? (
     <MuiIconFont
@@ -42,14 +41,17 @@ export default function ButtonView(props: ViewPropsType) {
       <TooltipProvider title={title} {...getComponentProps(props, "tooltip")}>
         <OperatorExecutionButton
           operatorUri={operator}
+          executionParams={computedParams}
           variant={variant}
+          onClick={(e) => onClick?.(e, computedParams, props)}
           color="primary"
           disabled={disabled}
           startIcon={icon_position === "left" ? Icon : undefined}
           endIcon={icon_position === "right" ? Icon : undefined}
           title={description}
+          {...getComponentProps(props, "button", getButtonProps(props))}
         >
-          {label}
+          <Typography>{label}</Typography>
         </OperatorExecutionButton>
       </TooltipProvider>
     </Box>
