@@ -14,7 +14,7 @@ export const booleanResults = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      if (get(queryPerformance)) {
+      if (get(queryPerformance) && !params.modal) {
         return get(lightningBooleanResults(params));
       }
 

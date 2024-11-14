@@ -1,5 +1,6 @@
 import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import Bolt from "@mui/icons-material/Bolt";
 import React from "react";
 import type { RecoilState } from "recoil";
 import { useRecoilValue } from "recoil";
@@ -11,8 +12,6 @@ import ResultComponent from "./Result";
 import useOnSelect from "./useOnSelect";
 import type { ResultsAtom } from "./useSelected";
 import useSelected from "./useSelected";
-import * as schemaAtoms from "@fiftyone/state/src/recoil/schema";
-import Bolt from "@mui/icons-material/Bolt";
 
 const StringFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
@@ -76,20 +75,19 @@ const StringFilter = ({
     path,
     resultsAtom
   );
-  const fieldType = useRecoilValue(schemaAtoms.filterFields(path));
-  const isGroup = fieldType.length > 1;
   const onSelect = useOnSelect(modal, path, selectedAtom);
   const skeleton =
-    useRecoilValue(isInKeypointsField(path)) && name === "keypoints";
+    useRecoilValue(isInKeypointsField(path)) && name === "points";
   const indexed = useRecoilValue(fos.pathHasIndexes(path));
   const theme = useTheme();
   const queryPerformance = useRecoilValue(fos.queryPerformance);
-  if (named && !queryPerformance && !results?.count) {
+  const frameField = useRecoilValue(fos.isFrameField(path));
+  if (named && (!queryPerformance || modal) && !results?.count) {
     return null;
   }
 
   const showQueryPerformanceIcon =
-    isGroup && queryPerformance && indexed && !modal;
+    named && queryPerformance && indexed && !modal && !frameField;
 
   return (
     <NamedStringFilterContainer
@@ -140,6 +138,7 @@ const StringFilter = ({
           path={path}
           results={results?.results || null}
           selectedAtom={selectedAtom}
+          skeleton={skeleton}
         />
       </StringFilterContainer>
     </NamedStringFilterContainer>
