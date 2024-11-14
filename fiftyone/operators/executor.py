@@ -1277,9 +1277,7 @@ class ExecutionOptions(object):
 
     @property
     def orchestrator_registration_enabled(self):
-        return bool(
-            os.environ.get("FIFTYONE_ENABLE_ORCHESTRATOR_REGISTRATION", False)
-        )
+        return False
 
     def update(self, available_orchestrators=None):
         self._available_orchestrators = available_orchestrators
