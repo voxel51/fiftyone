@@ -346,9 +346,9 @@ Generating search responses
 ---------------------------
 
 To adhere to the Data Lens interface, we need to yield
-:class:`DataLensSearchRequest <fiftyone.operators.data_lens.models.DataLensSearchResponse>`
+:class:`DataLensSearchResponse <fiftyone.operators.data_lens.models.DataLensSearchResponse>`
 objects from our operator. A
-:class:`DataLensSearchRequest <fiftyone.operators.data_lens.models.DataLensSearchResponse>`
+:class:`DataLensSearchResponse <fiftyone.operators.data_lens.models.DataLensSearchResponse>`
 is comprised of the following fields:
 
 -   `response.result_count`: a number indicating the number of samples being
