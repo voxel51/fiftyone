@@ -1068,6 +1068,19 @@ export class MarkdownView extends View {
   }
 }
 
+/**
+ * Operator class for rendering a status button.
+ */
+export class StatusButtonView extends View {
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "StatusButtonView";
+  }
+  static fromJSON(json) {
+    return new StatusButtonView(json);
+  }
+}
+
 export class MediaPlayerView extends View {
   constructor(options: ViewProps) {
     super(options);
@@ -1292,6 +1305,7 @@ const VIEWS = {
   MapView,
   ProgressView,
   MarkdownView,
+  StatusButtonView,
   MediaPlayerView,
   PromptView,
   FieldView,
