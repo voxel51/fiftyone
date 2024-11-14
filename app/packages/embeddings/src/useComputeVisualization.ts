@@ -6,10 +6,7 @@ const IS_OSS = true; // false in fiftyone-teams
 
 export default function useComputeVisualization() {
   const { firstExistingUri: computeVisUri, exists: hasComputeVisualization } =
-    useFirstExistingUri([
-      "@voxel51/brain/compute_visualization",
-      "@voxel51/operators/compute_visualization",
-    ]);
+    useFirstExistingUri(["@voxel51/operators/compute_visualization"]);
 
   const panelId = usePanelId();
   const triggerEvent = usePanelEvent();
