@@ -811,7 +811,7 @@ operator's input modal when executing it from within the App:
 
 .. note::
 
-    :ref:`FiftyOne Teams <fiftyone-teams>` users can also specify an optional
+    :ref:`FiftyOne Enterprise <fiftyone-teams>` users can also specify an optional
     delegation target for their delegated operations:
 
     .. code-block:: python
@@ -857,11 +857,11 @@ curation, and evaluation are performed.
 
     Want to run delegated operations at scale?
     `Contact us <https://voxel51.com/get-fiftyone-teams>`_ about
-    :ref:`FiftyOne Teams <fiftyone-teams>`, an open source-compatible
+    :ref:`FiftyOne Enterprise <fiftyone-teams>`, an open source-compatible
     enterprise deployment of FiftyOne with multiuser collaboration features,
     native cloud dataset support, and much more!
 
-    Think of FiftyOne Teams as the single source of truth on which you
+    Think of FiftyOne Enterprise as the single source of truth on which you
     co-develop your data and models together 📈
 
 .. _managing-delegated-operations:
@@ -974,9 +974,9 @@ development environment by following these steps:
 
     Want to run delegated operations at scale in production?
     `Contact us <https://voxel51.com/get-fiftyone-teams>`_ about
-    :ref:`FiftyOne Teams <fiftyone-teams>`, an open source-compatible
+    :ref:`FiftyOne Enterprise <fiftyone-teams>`, an open source-compatible
     enterprise deployment of FiftyOne with multiuser collaboration features,
     native cloud dataset support, and much more!
 
-    FiftyOne Teams as the single source of truth on which you
+    FiftyOne Enterprise as the single source of truth on which you
     co-develop your data and models together 📈

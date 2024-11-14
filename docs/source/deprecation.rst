@@ -32,6 +32,6 @@ Kubernetes 1.27
 *Support ended November 1, 2024*
 
 `Kubernetes 1.27 <https://kubernetes.io/releases/>`_
-transitioned to `end-of-life` effective July of 2024. FiftyOne Teams 
+transitioned to `end-of-life` effective July of 2024. FiftyOne Enterprise 
 releases after October 31, 2024 might no longer be compatible with
 Kubernetes 1.27 and older.

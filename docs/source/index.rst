@@ -477,7 +477,7 @@ us at support@voxel51.com.
    :hidden:
 
    Overview <self>
-   FiftyOne Teams 🚀 <teams/index>
+   FiftyOne Enterprise 🚀 <teams/index>
    Installation <getting_started/install>
    Environments <environments/index>
    Tutorials <tutorials/index>

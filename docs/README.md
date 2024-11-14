@@ -66,10 +66,10 @@ Check out the existing patterns in the source files and you'll catch on.
 For Voxel51 developers who are working with a source install of the FiftyOne
 Brain: the build script will automatically use your source install!
 
-### Teams SDK
+### Enterprise SDK
 
-Voxel51 developers can include Teams SDK-related components in their local docs
-build by including the `-t` flag:
+Voxel51 developers can include Enterprise SDK-related components in their local
+docs build by including the `-t` flag:
 
 ```shell
 bash docs/generate_docs.bash -t /path/to/fiftyone-teams
