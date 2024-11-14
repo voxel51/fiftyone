@@ -17,7 +17,6 @@ from fiftyone.operators.utils import is_new
 
 from ..types import (
     GridView,
-    ImageView,
     Notice,
     Object,
     PromptView,
@@ -558,6 +557,7 @@ class QueryPerformancePanel(Panel):
 
     def on_load(self, ctx):
         self._build_view(ctx)
+        ctx.panel.state.query_performance_enabled = ctx.query_performance
         ctx.ops.track_event("query_performance_panel")
 
     def on_click_row(self, ctx):
@@ -737,6 +737,24 @@ class QueryPerformancePanel(Panel):
                 label="Refresh",
                 on_click=self.on_refresh_button_click,
             )
+
+            severity = (
+                "enabled"
+                if ctx.panel.state.query_performance_enabled
+                else "disabled"
+            )
+            status_btn_label = (
+                "Enabled"
+                if ctx.panel.state.query_performance_enabled
+                else "Disabled"
+            )
+
+            status_btn = types.StatusButtonView(  # pylint: disable=E1101
+                on_click=self.qp_setting,
+                severity=severity,
+                title="Query Performance Status",
+            )
+            button_menu.view("status", label=status_btn_label, view=status_btn)
 
             button_menu.btn(
                 "setting_btn",
