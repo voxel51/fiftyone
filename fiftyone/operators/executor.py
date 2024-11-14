@@ -875,9 +875,9 @@ class ExecutionContext(object):
         else:
             self.log(f"Progress: {progress} - {label}")
 
-    # TODO resolve circular import so this can have a type
-    def create_store(self, store_name):
-        """Creates a new store with the specified name.
+    def store(self, store_name):
+        """
+        Create (if not previously created) and use a store with the specified name.
 
         Args:
             store_name: the name of the store
@@ -887,7 +887,8 @@ class ExecutionContext(object):
         """
         from fiftyone.operators.store import ExecutionStore
 
-        return ExecutionStore.create(store_name)
+        dataset_id = self.dataset._doc.id
+        return ExecutionStore.create(store_name, dataset_id)
 
     def serialize(self):
         """Serializes the execution context.

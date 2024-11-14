@@ -97,7 +97,6 @@ export const createRouter = <T extends OperationType>(
         }
 
         throw e;
-
       }
 
       requestAnimationFrame(() => {

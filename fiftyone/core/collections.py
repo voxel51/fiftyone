@@ -49,6 +49,7 @@ fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
+foos = fou.lazy_import("fiftyone.operators.store")
 
 
 logger = logging.getLogger(__name__)
@@ -10950,6 +10951,24 @@ class SampleCollection(object):
                 values_map[_id] = _val
 
         return [values_map.get(i, None) for i in ids]
+
+    def _has_stores(self):
+        dataset_id = self._root_dataset._doc.id
+        svc = foos.ExecutionStoreService(dataset_id=dataset_id)
+        return svc.count_stores() > 0
+
+    def _list_stores(self):
+        dataset_id = self._root_dataset._doc.id
+        svc = foos.ExecutionStoreService(dataset_id=dataset_id)
+        return svc.list_stores()
+
+    def _get_store(self, store_name):
+        dataset_id = self._root_dataset._doc.id
+        svc = foos.ExecutionStoreService(dataset_id=dataset_id)
+        if not svc.has_store(store_name):
+            raise ValueError(f"Dataset has no store '{store_name}'")
+
+        return foos.ExecutionStore(store_name, svc)
 
 
 def _iter_label_fields(sample_collection):

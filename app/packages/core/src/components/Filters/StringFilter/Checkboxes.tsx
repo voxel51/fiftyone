@@ -105,7 +105,9 @@ const useValues = ({
   const boolean = useRecoilValue(isBooleanField(path));
 
   const hasCheckboxResults =
-    (!queryPerformance && counts.size <= CHECKBOX_LIMIT && !objectId) ||
+    ((!queryPerformance || modal) &&
+      counts.size <= CHECKBOX_LIMIT &&
+      !objectId) ||
     skeleton ||
     boolean;
 

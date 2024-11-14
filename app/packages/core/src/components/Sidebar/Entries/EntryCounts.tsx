@@ -44,7 +44,8 @@ export const PathEntryCounts = ({ modal, path }: PathEntryCountsProps) => {
   const queryPerformance = useRecoilValue(fos.queryPerformance);
   const shown = useRecoilValue(showEntryCounts({ modal, path }));
 
-  return (!queryPerformance || hasFilters) && shown ? (
+  // empty path means we are showing grid sample count which is always allowed
+  return (!queryPerformance || hasFilters || path === "") && shown ? (
     <SuspenseEntryCounts
       countAtom={queryPerformance ? undefined : getAtom(false)}
       subcountAtom={getAtom(true)}

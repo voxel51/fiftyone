@@ -207,7 +207,7 @@ const queryPerformanceStore = atomFamily<boolean, string>({
   ],
 });
 
-export const queryPerformance = selector({
+export const queryPerformance = selector<boolean>({
   key: "queryPerformance",
   get: ({ get }) => {
     if (get(view).length) {
