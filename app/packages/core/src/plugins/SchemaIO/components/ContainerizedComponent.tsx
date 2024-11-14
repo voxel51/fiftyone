@@ -34,7 +34,7 @@ export default function ContainerizedComponent(props: ContainerizedComponent) {
       sxForOverlay.zIndex = 999;
     }
     return (
-      <Box sx={{ position: "relative", ...sxForOverlay }}>
+      <Box sx={{ position: "relative", height: "100%", ...sxForOverlay }}>
         {containerizedChildren}
       </Box>
     );

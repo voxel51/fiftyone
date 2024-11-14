@@ -79,7 +79,7 @@ export function CustomPanel(props: CustomPanelProps) {
         overflow: "auto",
       }}
     >
-      <Box ref={dimensions.widthRef}>
+      <Box ref={dimensions.widthRef} sx={{ height: "100%" }}>
         <DimensionRefresher dimensions={dimensions}>
           <OperatorIO
             id={panelId}
