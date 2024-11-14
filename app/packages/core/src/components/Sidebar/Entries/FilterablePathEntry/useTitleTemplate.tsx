@@ -97,7 +97,7 @@ const useTitleTemplate = ({
             <Hidden path={path} />
           </Suspense>
         )}
-        {!disabled && isFilterMode && (
+        {(modal || !disabled) && isFilterMode && (
           <PathEntryCounts key="count" modal={modal} path={expandedPath} />
         )}
         {!disabled && <Icon modal={modal} path={path} />}
