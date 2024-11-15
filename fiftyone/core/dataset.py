@@ -1694,6 +1694,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         group_by=None,
         read_only=True,
         create_index=True,
+        wait=True,
     ):
         """Populates a sample-level field that records the unique values or
         numeric ranges that appear in the specified field on each sample in
@@ -1756,6 +1757,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             read_only (True): whether to mark the summary field as read-only
             create_index (True): whether to create database index(es) for the
                 summary field
+            wait (True): whether to wait for index creation to complete before
+                returning
 
         Returns:
             the summary field name
@@ -1898,7 +1901,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if create_index:
             for _field_name in index_fields:
-                self.create_index(_field_name)
+                self.create_index(_field_name, wait=wait)
 
         field = self.get_field(field_name)
         field.info[_SUMMARY_FIELD_KEY]["last_modified_at"] = field.created_at
