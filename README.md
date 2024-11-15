@@ -131,11 +131,13 @@ Set FFMPEG's path (e.g., C:\ffmpeg\bin) to the PATH environmental variable on Wi
 
 ## 3. Create a Virtual Environment
 
-Press '''Win + R'''. type '''cmd''', and press '''Enter''' 
-
-```shell
-python -m venv fiftyone_env
-```
+- Press `Win + R`. type `cmd`, and press `Enter`. Alternatively, search **Command Prompt** in the Start Menu.
+- Navigate to your project. ` cd C:\path\to\your\project`
+- Create the environment `python -m venv fiftyone_env`
+- Activate the environment typing this in the command line window `fiftyone_env\Scripts\activate`
+- After activation, your command prompt should change and show the name of the virtual environment `(fiftyon_env) C:\path\to\your\project`
+- Now you are ready to install **Fiftyone** and all the requirements/packages/dependencies. Go to [Installation](#-installation) section in this Readme file.
+- Once you want to deactivate your environment, just type `deactivate`
 
 </details>
 
