@@ -17,7 +17,6 @@ from fiftyone.operators.utils import is_new
 
 from ..types import (
     GridView,
-    ImageView,
     Notice,
     Object,
     PromptView,
@@ -543,6 +542,7 @@ class QueryPerformancePanel(Panel):
 
     def on_load(self, ctx):
         self._build_view(ctx)
+        ctx.ops.track_event("query_performance_panel")
 
     def on_click_row(self, ctx):
         table_data = self._get_index_table_data(ctx)
@@ -579,7 +579,9 @@ class QueryPerformancePanel(Panel):
             ctx.ops.notify("You do not have edit permissions", variant="error")
 
     def qp_setting(self, ctx):
-        ctx.prompt("query_performance_config_confirmation")
+        ctx.prompt(
+            "query_performance_config_confirmation",
+        )
 
     def refresh(self, ctx):
         self._build_view(ctx)
@@ -744,12 +746,17 @@ class QueryPerformancePanel(Panel):
                 on_click=self.on_refresh_button_click,
             )
 
-            button_menu.btn(
-                "setting_btn",
-                label="Settings",
-                on_click=self.qp_setting,
-                icon="settings",
+            severity = "enabled" if ctx.query_performance else "disabled"
+            status_btn_label = (
+                "Enabled" if ctx.query_performance else "Disabled"
             )
+
+            status_btn = types.StatusButtonView(  # pylint: disable=E1101
+                on_click=self.qp_setting,
+                severity=severity,
+                title="Query Performance Status",
+            )
+            button_menu.view("status", label=status_btn_label, view=status_btn)
 
             if _has_edit_permission(ctx):
                 button_menu.btn(
