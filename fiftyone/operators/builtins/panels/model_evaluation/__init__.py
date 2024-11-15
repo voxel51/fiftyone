@@ -6,14 +6,15 @@ Model evaluation panel.
 |
 """
 
-from collections import defaultdict
+import os
 import traceback
+import fiftyone.operators.types as types
 
+from collections import defaultdict, Counter
 from fiftyone import ViewField as F
 from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
-from fiftyone.operators.utils import is_new
-import fiftyone.operators.types as types
+from fiftyone.core.plots.plotly import _to_log_colorscale
 
 
 STORE_NAME = "model_evaluation_panel_builtin"
@@ -24,6 +25,11 @@ STATUS_LABELS = {
 }
 EVALUATION_TYPES_WITH_CONFIDENCE = ["detection", "classification"]
 EVALUATION_TYPES_WITH_IOU = ["detection"]
+TRUTHY_VALUES = ["true", "True", "1", 1]
+ENABLE_CACHING = (
+    os.environ.get("FIFTYONE_DISABLE_EVALUATION_CACHING") not in TRUTHY_VALUES
+)
+CACHE_TTL = 30 * 24 * 60 * 60  # 30 days in seconds
 
 
 class EvaluationPanel(Panel):
@@ -35,7 +41,6 @@ class EvaluationPanel(Panel):
             icon="ssid_chart",
             category=Categories.ANALYZE,
             beta=True,
-            is_new=is_new("2024-11-07"),
         )
 
     def get_dataset_id(self, ctx):
@@ -231,10 +236,42 @@ class EvaluationPanel(Panel):
                 per_class_metrics[c]["support"] = c_report["support"]
         return per_class_metrics
 
-    def get_confusion_matrix(self, results):
-        matrix = results.confusion_matrix()
+    def get_confusion_matrix_colorscale(self, matrix):
+        maxval = matrix.max()
+        colorscale = _to_log_colorscale("oranges", maxval)
+        return colorscale
+
+    def get_confusion_matrices(self, results):
         classes = results.classes
-        return matrix, classes
+        freq = Counter(results.ytrue)
+        if results.missing in freq:
+            freq.pop(results.missing)
+        az_classes = sorted(classes)
+        za_classes = sorted(classes, reverse=True)
+        mc_classes = sorted(freq, key=freq.get, reverse=True)
+        lc_classes = sorted(freq, key=freq.get)
+        az_matrix = results.confusion_matrix(classes=az_classes)
+        za_matrix = results.confusion_matrix(classes=za_classes)
+        mc_matrix = results.confusion_matrix(classes=mc_classes)
+        lc_matrix = results.confusion_matrix(classes=lc_classes)
+        az_colorscale = self.get_confusion_matrix_colorscale(az_matrix)
+        za_colorscale = self.get_confusion_matrix_colorscale(za_matrix)
+        mc_colorscale = self.get_confusion_matrix_colorscale(mc_matrix)
+        lc_colorscale = self.get_confusion_matrix_colorscale(lc_matrix)
+        return {
+            "az_classes": az_classes,
+            "za_classes": za_classes,
+            "mc_classes": mc_classes,
+            "lc_classes": lc_classes,
+            "az_matrix": az_matrix.tolist(),
+            "za_matrix": za_matrix.tolist(),
+            "mc_matrix": mc_matrix.tolist(),
+            "lc_matrix": lc_matrix.tolist(),
+            "az_colorscale": az_colorscale,
+            "za_colorscale": za_colorscale,
+            "mc_colorscale": mc_colorscale,
+            "lc_colorscale": lc_colorscale,
+        }
 
     def load_evaluation(self, ctx):
         view_state = ctx.panel.get_state("view") or {}
@@ -243,7 +280,9 @@ class EvaluationPanel(Panel):
         eval_id = view_state.get("id")
         computed_eval_id = ctx.params.get("id", eval_id)
         store = self.get_store(ctx)
-        evaluation_data = store.get(computed_eval_id)
+        evaluation_data = (
+            store.get(computed_eval_id) if ENABLE_CACHING else None
+        )
         if evaluation_data is None:
             info = ctx.dataset.get_evaluation_info(computed_eval_key)
             results = ctx.dataset.load_evaluation_results(computed_eval_key)
@@ -256,21 +295,18 @@ class EvaluationPanel(Panel):
                 ctx
             )
             metrics["mAP"] = self.get_map(results)
-            matrix, labels = self.get_confusion_matrix(results)
             evaluation_data = {
                 "metrics": metrics,
                 "info": info.serialize(),
-                "confusion_matrix": {
-                    "matrix": matrix.tolist(),
-                    "labels": labels.tolist(),
-                },
+                "confusion_matrices": self.get_confusion_matrices(results),
                 "per_class_metrics": per_class_metrics,
             }
-            # Cache the evaluation data
-            try:
-                store.set(computed_eval_id, evaluation_data)
-            except Exception:
-                traceback.print_exc()
+            if ENABLE_CACHING:
+                # Cache the evaluation data
+                try:
+                    store.set(computed_eval_id, evaluation_data, ttl=CACHE_TTL)
+                except Exception:
+                    traceback.print_exc()
 
         ctx.panel.set_data(f"evaluation_{computed_eval_key}", evaluation_data)
 
@@ -278,26 +314,41 @@ class EvaluationPanel(Panel):
         # Used only for triggering re-renders when the view changes
         pass
 
+    def has_evaluation_results(self, dataset, eval_key):
+        try:
+            return bool(dataset._doc.evaluations[eval_key].results)
+        except Exception:
+            return False
+
     def load_pending_evaluations(self, ctx, skip_update=False):
+        pending_evaluations = []
+        eval_keys = ctx.dataset.list_evaluations()
         store = self.get_store(ctx)
         dataset_id = self.get_dataset_id(ctx)
-        pending_evaluations = store.get("pending_evaluations") or {}
-        pending = pending_evaluations.get(dataset_id, [])
-        if not skip_update:
-            eval_keys = ctx.dataset.list_evaluations()
-            updated_pending = []
-            update = False
-            for item in pending:
-                pending_eval_key = item.get("eval_key")
-                if pending_eval_key in eval_keys:
-                    update = True
-                else:
-                    updated_pending.append(item)
-            if update:
-                pending_evaluations[dataset_id] = updated_pending
-                store.set("pending_evaluations", pending_evaluations)
-                pending = updated_pending
-        ctx.panel.set_data("pending_evaluations", pending)
+        pending_evaluations_in_store = store.get("pending_evaluations") or {}
+        pending_evaluations_for_dataset_in_store = (
+            pending_evaluations_in_store.get(dataset_id, [])
+        )
+        updated_pending_evaluations_for_dataset_in_stored = []
+        update_store = False
+        for pending in pending_evaluations_for_dataset_in_store:
+            pending_eval_key = pending.get("eval_key")
+            if pending_eval_key in eval_keys:
+                update_store = True
+            else:
+                pending_evaluations.append(pending)
+                updated_pending_evaluations_for_dataset_in_stored.append(
+                    pending
+                )
+        for key in eval_keys:
+            if not self.has_evaluation_results(ctx.dataset, key):
+                pending_evaluations.append({"eval_key": key})
+        if update_store:
+            pending_evaluations_in_store[
+                dataset_id
+            ] = updated_pending_evaluations_for_dataset_in_stored
+            store.set("pending_evaluations", pending_evaluations)
+        ctx.panel.set_data("pending_evaluations", pending_evaluations)
 
     def on_evaluate_model_success(self, ctx):
         dataset_id = self.get_dataset_id(ctx)
@@ -320,7 +371,7 @@ class EvaluationPanel(Panel):
             pending_evaluations[dataset_id] = []
         pending_evaluations[dataset_id].append(pending)
         store.set("pending_evaluations", pending_evaluations)
-        self.load_pending_evaluations(ctx, True)
+        self.load_pending_evaluations(ctx)
 
     def on_evaluate_model(self, ctx):
         if not self.can_evaluate(ctx):
