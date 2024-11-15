@@ -151,27 +151,14 @@ const imputeOverlayFromPath = async (
     baseUrl = overlayImageUrl.split("?")[0];
   }
 
-  const fileExtension = baseUrl.split(".").pop();
-
-  const overlayImageBuffer: ArrayBuffer = await getFetchFunction()(
+  const overlayImageBuffer: Blob = await getFetchFunction()(
     "GET",
     overlayImageUrl,
     null,
-    "arrayBuffer"
+    "blob"
   );
 
-  const mimeTypes = {
-    png: "image/png",
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    gif: "image/gif",
-    bmp: "image/bmp",
-  };
-  const blobType =
-    mimeTypes[fileExtension.toLowerCase()] || "application/octet-stream";
-  const blob = new Blob([overlayImageBuffer], { type: blobType });
-
-  const overlayMask = await decodeWithCanvas(blob);
+  const overlayMask = await decodeWithCanvas(overlayImageBuffer);
   const [overlayHeight, overlayWidth] = overlayMask.shape;
 
   // set the `mask` property for this label
