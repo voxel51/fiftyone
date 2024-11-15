@@ -96,10 +96,38 @@ You will be in our rewarded list.
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Prerequisites
 
-**Fiftyone** requires Python (3.9 - 3.11), Git and other dependencies. To get started, select the guide for your operating system or environment, if you are an experienced developer you can avoid this section. If you are looking for scaling solution to be installed in Cloud Enterprise Systems, please take a look of fiftyone teams [here](https://voxel51.com/book-a-demo/)
+**Fiftyone** requires Python (3.9 - 3.11), Git and other dependencies. To get started, select the guide for your operating system or environment, if you are an experienced developer you can avoid this section. If you are looking for scaling solution to be installed in Cloud Enterprise Systems, please take a look of **Fiftyone Teams** [here](https://voxel51.com/book-a-demo/)
 
-| [Windows](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [Linux](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [macOS](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [NodeRed,js](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [Docker](https://github.com/voxel51/fiftyone/blob/develop/README.md) | 
-| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+<details>
+<summary>Windows</summary>
+
+<div id='-prerequisites_windows'/>
+
+</details>
+
+<details>
+<summary>Linux</summary>
+
+<div id='-prerequisites_linux'/>
+
+</details>
+
+<details>
+<summary>MacOS</summary>
+
+<div id='-prerequisites_macos'/>
+
+</details>
+
+<details>
+<summary>Docker</summary>
+
+<div id='-prerequisites_docker'/>
+
+</details>
+
+| [Windows](#-prerequisites_windows) | [Linux](#-prerequisites_linux) | [macOS](-prerequisites_macos) | [Docker](#-prerequisites_docker) | 
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | 
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 
