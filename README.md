@@ -103,6 +103,7 @@ You will be in our rewarded list.
 
 <div id='-prerequisites_windows'/>
 
+
 </details>
 
 <details>
@@ -126,8 +127,35 @@ You will be in our rewarded list.
 
 </details>
 
-| [Windows](#-prerequisites_windows) | [Linux](#-prerequisites_linux) | [macOS](-prerequisites_macos) | [Docker](#-prerequisites_docker) | 
+<div align="center">
+<p align="center">
+
+| [Windows](#-prerequisites_windows) | [Linux](#-prerequisites_linux) | [macOS](#-prerequisites_macos) | [Docker](#-prerequisites_docker) | 
 | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | 
+
+</p>
+</div>
+
+You will need:
+
+-   [Python](https://www.python.org) (3.9 - 3.11)
+-   [Node.js](https://nodejs.org) - on Linux, we recommend using
+    [nvm](https://github.com/nvm-sh/nvm) to install an up-to-date version.
+-   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can
+    [enable Yarn](https://yarnpkg.com/getting-started/install) via
+    `corepack enable`
+-   On Linux, you will need at least the `openssl` and `libcurl` packages. On
+    Debian-based distributions, you will need to install `libcurl4` or
+    `libcurl3` instead of `libcurl`, depending on the age of your distribution.
+    For example:
+
+```shell
+# Ubuntu
+sudo apt install libcurl4 openssl
+
+# Fedora
+sudo dnf install libcurl openssl
+```
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 
