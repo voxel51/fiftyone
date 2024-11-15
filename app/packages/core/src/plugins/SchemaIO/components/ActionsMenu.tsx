@@ -13,7 +13,7 @@ import {
 import React, { useCallback } from "react";
 import { getColorByCode } from "../utils";
 
-export const DEFAULT_MAX_INLINE = 1;
+const DEFAULT_MAX_INLINE = 1;
 
 export default function ActionsMenu(props: ActionsPropsType) {
   const { actions, maxInline = DEFAULT_MAX_INLINE, size } = props;
