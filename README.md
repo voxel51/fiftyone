@@ -25,7 +25,7 @@ models**
 [![Docker Pulls](https://badgen.net/docker/pulls/voxel51/fiftyone?icon=docker&label=pulls)](https://hub.docker.com/r/voxel51/fiftyone/)
 [![Build](https://github.com/voxel51/fiftyone/workflows/Build/badge.svg?branch=develop&event=push)](https://github.com/voxel51/fiftyone/actions?query=workflow%3ABuild)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/fiftyone-community)
+[![Discord](https://img.shields.io/badge/Discord-7289DA?)](https://discord.gg/fiftyone-community)
 [![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)](https://slack.voxel51.com)
 [![Medium](https://img.shields.io/badge/Medium-12100E?logo=medium&logoColor=white)](https://medium.com/voxel51)
 [![Mailing list](http://bit.ly/2Md9rxM)](https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk)
@@ -78,6 +78,25 @@ Medium, and following us on social media:
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 
+## 🚀 Accelerate Your Computer Vision Workflow with FiftyOne
+
+**FiftyOne** is the open-source tool that supercharges your computer vision and machine learning workflows by enabling you to visualize datasets, analyze models, and improve data quality more efficiently than ever before.
+
+### **Why FiftyOne?**
+
+**Visualize Complex Datasets:** Easily explore images, videos, and associated labels in a powerful visual interface.
+**Analyze and Improve Models:** Evaluate model performance, identify failure modes, and fine-tune your models.
+**Efficient Data Curation:** Quickly find and fix data issues, annotation errors, and edge cases.
+**Seamless Integration:** Works with popular deep learning libraries like TensorFlow, PyTorch, Keras, and more.
+**Open-Source and Extensible:** Customize and extend FiftyOne to fit your specific needs.
+
+### **Join Our Community**
+
+Connect with thousands of other machine learning engineers and researchers using FiftyOne:
+
+**[Slack Community](https://slack.voxel51.com):** Join discussions, ask questions, and share insights.
+**[Blog](https://medium.com/voxel51):** Stay updated with the latest news, tutorials, and best practices.
+**[Twitter](https://twitter.com/voxel51):** Follow us for updates and announcements.
 <div id='-prerequisites'/>
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Prerequisites
