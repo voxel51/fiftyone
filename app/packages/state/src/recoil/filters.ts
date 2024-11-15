@@ -4,11 +4,11 @@ import {
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
-import { DefaultValue, selectorFamily } from "recoil";
+import { DefaultValue, atom, selector, selectorFamily } from "recoil";
 import { getSessionRef, sessionAtom } from "../session";
-import { indexedPaths } from "./queryPerformance";
+import { indexedPaths, pathHasIndexes } from "./queryPerformance";
 import { expandPath, fields } from "./schema";
-import { hiddenLabelIds } from "./selectors";
+import { hiddenLabelIds, isFrameField } from "./selectors";
 import { sidebarExpandedStore } from "./sidebarExpanded";
 import { State } from "./types";
 
@@ -65,6 +65,9 @@ export const filter = selectorFamily<
   set:
     ({ path, modal }) =>
     ({ get, set }, filter) => {
+      if (!modal) {
+        set(lastAppliedPathFilter, path);
+      }
       const atom = modal ? modalFilters : filters;
       const newFilters = Object.assign({}, get(atom));
       const currentLightningPaths = get(indexedPaths(""));
@@ -136,4 +139,37 @@ export const fieldIsFiltered = selectorFamily<
         paths.some(({ name }) => f[`${expandedPath}.${name}`])
       );
     },
+});
+
+export const lastAppliedPathFilter = atom<string | null>({
+  key: "lastAppliedPathFilter",
+  default: null,
+});
+export const pathThatCanBeOptimized = selector({
+  key: "pathThatCanBeOptimized",
+  get: ({ get }) => {
+    // does not have index, or is a frame field, and is not _label_tags
+    const path = get(lastAppliedPathFilter);
+    if (!path) {
+      return null;
+    }
+    if (path === "_label_tags") {
+      return null;
+    }
+    const indexed = get(pathHasIndexes(path));
+    const frameField = get(isFrameField(path));
+    if (indexed && !frameField) {
+      return null;
+    }
+    const f = get(filters);
+    for (const key of Object.keys(f)) {
+      if (key === path) {
+        continue;
+      }
+      if (get(pathHasIndexes(path)) && !get(isFrameField(path))) {
+        return null;
+      }
+    }
+    return { path, isFrameField: frameField };
+  },
 });

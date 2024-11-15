@@ -1,4 +1,5 @@
-import { Toast } from "@fiftyone/components";
+import { useTrackEvent } from "@fiftyone/analytics";
+import { Toast, useTheme } from "@fiftyone/components";
 import { QP_MODE, QP_MODE_SUMMARY } from "@fiftyone/core";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { Box, Button, Typography } from "@mui/material";
@@ -6,10 +7,8 @@ import { Bolt } from "@mui/icons-material";
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { atom, useRecoilState, useRecoilValue } from "recoil";
-import { useTheme } from "@fiftyone/components";
 import * as atoms from "@fiftyone/state/src/recoil/atoms";
 import * as fos from "@fiftyone/state";
-import { useTrackEvent } from "@fiftyone/analytics";
 
 const SHOWN_FOR = 10000;
 
@@ -34,25 +33,22 @@ const QueryPerformanceToast = ({
   },
   text = "View Documentation",
 }) => {
-  const [path, setPath] = useState("");
-  const indexed = useRecoilValue(fos.pathHasIndexes(path));
+  const info = useRecoilValue(fos.pathThatCanBeOptimized);
   const [shown, setShown] = useState(false);
   const [disabled, setDisabled] = useRecoilState(hideQueryPerformanceToast);
   const queryPerformance = useRecoilValue(fos.queryPerformance);
   const element = document.getElementById("queryPerformance");
   const theme = useTheme();
-  const frameFields = useRecoilValue(atoms.frameFields);
   const trackEvent = useTrackEvent();
-
+  console.log(info);
   useEffect(() => {
     const listen = (event) => {
       onDispatch(event);
-      setPath(event.path);
       setShown(true);
     };
     window.addEventListener("queryperformance", listen);
     return () => window.removeEventListener("queryperformance", listen);
-  }, []);
+  }, [onDispatch]);
 
   const onHandleClose = (event, reason) => {
     setShown(false);
@@ -67,7 +63,7 @@ const QueryPerformanceToast = ({
   }
 
   // don't show the toast if the path is already indexed
-  if (path && indexed) {
+  if (!info) {
     return null;
   }
 
@@ -87,12 +83,10 @@ const QueryPerformanceToast = ({
             variant="contained"
             size="small"
             onClick={() => {
-              onClick(
-                frameFields.some((frame) =>
-                  path.includes(`frames.${frame.path}`)
-                )
-              );
-              trackEvent("query_performance_toast_clicked", { path: path });
+              onClick(info.isFrameField);
+              trackEvent("query_performance_toast_clicked", {
+                path: info.path,
+              });
               setShown(false);
             }}
             sx={{
