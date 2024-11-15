@@ -4,6 +4,7 @@ export { default as OperatorBrowser } from "./OperatorBrowser";
 export { default as OperatorCore } from "./OperatorCore";
 export { default as OperatorInvocationRequestExecutor } from "./OperatorInvocationRequestExecutor";
 export { default as OperatorIO } from "./OperatorIO";
+export { default as OperatorExecutionButton } from "./components/OperatorExecutionButton";
 export {
   OperatorPlacementWithErrorBoundary,
   default as OperatorPlacements,
