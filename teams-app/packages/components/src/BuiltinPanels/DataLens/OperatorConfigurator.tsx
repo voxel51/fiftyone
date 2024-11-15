@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Box, Typography } from "@mui/material";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { OperatorIO, types } from "@fiftyone/operators";
@@ -21,13 +21,18 @@ export const OperatorConfigurator = ({
   operator,
   formState,
   onStateChange,
+  onReadyChange,
 }: {
   operator: string;
   formState: FormState;
   onStateChange?: (state: FormState, isValid: boolean) => void;
+  onReadyChange?: (isReady: boolean) => void;
 }) => {
   const [operatorSchema, setOperatorSchema] = useState({});
   const { activeDataset } = useActiveDataset();
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => onReadyChange?.(!isLoading), [isLoading]);
 
   // JSON schema needs to be converted to the type expected by OperatorIO.
   const schema = useMemo(() => {
@@ -63,10 +68,13 @@ export const OperatorConfigurator = ({
     };
 
     setOperatorSchema({});
+    setIsLoading(true);
 
-    getFetchFunction()("POST", "/operators/resolve-type", requestBody).then(
-      (res: object) => setOperatorSchema(res)
-    );
+    getFetchFunction()("POST", "/operators/resolve-type", requestBody)
+      .then((res: object) => {
+        setOperatorSchema(res);
+      })
+      .finally(() => setIsLoading(false));
   }, [operator, setOperatorSchema]);
 
   // Callback which handles updates to the form state.
@@ -82,6 +90,8 @@ export const OperatorConfigurator = ({
   const ioComponent =
     operator && schema ? (
       <OperatorIO schema={schema} data={formState} onChange={updateFormState} />
+    ) : isLoading ? (
+      <Fragment />
     ) : (
       <Typography sx={{ textAlign: "center" }}>
         Unable to detect inputs for selected datasource.

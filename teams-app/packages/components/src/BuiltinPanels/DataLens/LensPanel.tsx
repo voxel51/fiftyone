@@ -109,6 +109,7 @@ export const LensPanel = ({
   // Preview state
   const [maxSamples, setMaxSamples] = useState(25);
   const [searchResponse, setSearchResponse] = useState<PreviewResponse>();
+  const [isOperatorConfigReady, setIsOperatorConfigReady] = useState(false);
   const [previewTime, setPreviewTime] = useState(0);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
@@ -306,7 +307,13 @@ export const LensPanel = ({
     <Box sx={{ mt: 4 }}>
       <Accordion expanded={panelState.isQueryExpanded}>
         <AccordionSummary
-          expandIcon={<ExpandMoreIcon />}
+          expandIcon={
+            isOperatorConfigReady ? (
+              <ExpandMoreIcon />
+            ) : (
+              <CircularProgress size="1.5rem" />
+            )
+          }
           onClick={() =>
             dispatchPanelUpdate({
               isQueryExpanded: !panelState.isQueryExpanded,
@@ -330,6 +337,7 @@ export const LensPanel = ({
             operator={activeConfig?.operator_uri}
             formState={formState}
             onStateChange={handleFormStateChange}
+            onReadyChange={setIsOperatorConfigReady}
           />
         </AccordionDetails>
       </Accordion>
