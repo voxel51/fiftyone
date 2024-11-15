@@ -40,15 +40,15 @@ models**
 
 ## 🚀 Accelerate Your Computer Vision Workflow with FiftyOne
 
-**[FiftyOne]**(https://fiftyone.ai) is the open-source tool that supercharges your computer vision and machine learning workflows by enabling you to visualize datasets, analyze models, and improve data quality more efficiently than ever before.
+**[FiftyOne](https://fiftyone.ai)** is the open-source tool that supercharges your computer vision and machine learning workflows by enabling you to visualize datasets, analyze models, and improve data quality more efficiently than ever before.
 
 ### **Why FiftyOne?**
 
-**[Visualize Complex Datasets:]**(https://docs.voxel51.com/tutorials/index.html) Easily explore images, videos, and associated labels in a powerful visual interface.
-**[Analyze and Improve Models:]**(https://docs.voxel51.com/tutorials/index.html) Evaluate model performance, identify failure modes, and fine-tune your models.
-**[Efficient Data Curation:]**(https://docs.voxel51.com/tutorials/index.html) Quickly find and fix data issues, annotation errors, and edge cases.
-**[Seamless Integration:]**(https://docs.voxel51.com/tutorials/index.html) Works with popular deep learning libraries like TensorFlow, PyTorch, Keras, and more.
-**[Open-Source and Extensible]**(https://docs.voxel51.com/tutorials/index.html) Customize and extend FiftyOne to fit your specific needs.
+**[Visualize Complex Datasets:](https://docs.voxel51.com/tutorials/index.html)** Easily explore images, videos, and associated labels in a powerful visual interface.
+**[Analyze and Improve Models:](https://docs.voxel51.com/tutorials/index.html)** Evaluate model performance, identify failure modes, and fine-tune your models.
+**[Efficient Data Curation:](https://docs.voxel51.com/tutorials/index.html)** Quickly find and fix data issues, annotation errors, and edge cases.
+**[Seamless Integration:](https://docs.voxel51.com/tutorials/index.html)** Works with popular deep learning libraries like TensorFlow, PyTorch, Keras, and more.
+**[Open-Source and Extensible](https://docs.voxel51.com/tutorials/index.html)** Customize and extend FiftyOne to fit your specific needs.
 
 ### **Join Our Community**
 
