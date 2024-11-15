@@ -775,13 +775,6 @@ class QueryPerformancePanel(Panel):
             )
             button_menu.view("status", label=status_btn_label, view=status_btn)
 
-            button_menu.btn(
-                "setting_btn",
-                label="Settings",
-                on_click=self.qp_setting,
-                icon="settings",
-            )
-
             if _has_edit_permission(ctx):
                 button_menu.btn(
                     "add_btn",
