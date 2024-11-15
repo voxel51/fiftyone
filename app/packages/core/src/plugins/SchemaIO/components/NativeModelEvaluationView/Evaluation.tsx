@@ -1,4 +1,5 @@
 import { Dialog } from "@fiftyone/components";
+import { view } from "@fiftyone/state";
 import {
   ArrowBack,
   ArrowDropDown,
@@ -19,12 +20,15 @@ import {
   Box,
   Button,
   Card,
+  Checkbox,
   CircularProgress,
+  FormControlLabel,
   IconButton,
   MenuItem,
   Select,
   Stack,
   styled,
+  SxProps,
   Table,
   TableBody,
   TableCell,
@@ -37,6 +41,7 @@ import {
   useTheme,
 } from "@mui/material";
 import React, { useEffect, useMemo, useState } from "react";
+import { useRecoilState } from "recoil";
 import EvaluationNotes from "./EvaluationNotes";
 import EvaluationPlot from "./EvaluationPlot";
 import Status from "./Status";
@@ -44,6 +49,7 @@ import { formatValue, getNumericDifference, useTriggerEvent } from "./utils";
 
 const KEY_COLOR = "#ff6d04";
 const COMPARE_KEY_COLOR = "#03a9f4";
+const DEFAULT_BAR_CONFIG = { sortBy: "az" };
 
 export default function Evaluation(props: EvaluationProps) {
   const {
@@ -64,20 +70,18 @@ export default function Evaluation(props: EvaluationProps) {
   const [expanded, setExpanded] = React.useState("summary");
   const [mode, setMode] = useState("chart");
   const [editNoteState, setEditNoteState] = useState({ open: false, note: "" });
-  const [barConfigState, setBarConfigState] = useState({
-    sortBy: "",
-    limit: 0,
-  });
-  const [barConfigDialogState, setBarConfigDialogState] = useState({
-    open: false,
-    sortBy: "best",
-    limit: 20,
-  });
+  const [classPerformanceConfig, setClassPerformanceConfig] =
+    useState<PLOT_CONFIG_TYPE>({});
+  const [classPerformanceDialogConfig, setClassPerformanceDialogConfig] =
+    useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
+  const [confusionMatrixConfig, setConfusionMatrixConfig] =
+    useState<PLOT_CONFIG_TYPE>({ log: true });
+  const [confusionMatrixDialogConfig, setConfusionMatrixDialogConfig] =
+    useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
   const [metricMode, setMetricMode] = useState("chart");
   const [classMode, setClassMode] = useState("chart");
   const [performanceClass, setPerformanceClass] = useState("precision");
   const [loadingCompare, setLoadingCompare] = useState(false);
-  const [viewState, setViewState] = useState({ type: "", view: {} });
   const evaluation = useMemo(() => {
     const evaluation = data?.[`evaluation_${name}`];
     return evaluation;
@@ -87,11 +91,14 @@ export default function Evaluation(props: EvaluationProps) {
     return evaluation;
   }, [data]);
   const confusionMatrix = useMemo(() => {
-    return evaluation?.confusion_matrix;
-  }, [evaluation]);
+    return getMatrix(evaluation?.confusion_matrices, confusionMatrixConfig);
+  }, [evaluation, confusionMatrixConfig]);
   const compareConfusionMatrix = useMemo(() => {
-    return compareEvaluation?.confusion_matrix;
-  }, [compareEvaluation]);
+    return getMatrix(
+      compareEvaluation?.confusion_matrices,
+      confusionMatrixConfig
+    );
+  }, [compareEvaluation, confusionMatrixConfig]);
   const compareKeys = useMemo(() => {
     const keys: string[] = [];
     const evaluations = data?.evaluations || [];
@@ -125,12 +132,16 @@ export default function Evaluation(props: EvaluationProps) {
   }, [compareEvaluation, compareKey]);
 
   const triggerEvent = useTriggerEvent();
+  const activeFilter = useActiveFilter(evaluation, compareEvaluation);
 
   const closeNoteDialog = () => {
     setEditNoteState((note) => ({ ...note, open: false }));
   };
-  const closeBarConfigDialog = () => {
-    setBarConfigDialogState((state) => ({ ...state, open: false }));
+  const closeClassPerformanceConfigDialog = () => {
+    setClassPerformanceDialogConfig((state) => ({ ...state, open: false }));
+  };
+  const closeConfusionMatrixConfigDialog = () => {
+    setConfusionMatrixDialogConfig((state) => ({ ...state, open: false }));
   };
 
   if (!evaluation) {
@@ -360,6 +371,12 @@ export default function Evaluation(props: EvaluationProps) {
       value: evaluationMetrics.tp,
       compareValue: compareEvaluationMetrics.tp,
       filterable: true,
+      active:
+        activeFilter?.value === "tp"
+          ? activeFilter.isCompare
+            ? "compare"
+            : "selected"
+          : false,
     },
     {
       id: "fp",
@@ -368,6 +385,12 @@ export default function Evaluation(props: EvaluationProps) {
       compareValue: compareEvaluationMetrics.fp,
       lesserIsBetter: true,
       filterable: true,
+      active:
+        activeFilter?.value === "fp"
+          ? activeFilter.isCompare
+            ? "compare"
+            : "selected"
+          : false,
     },
     {
       id: "fn",
@@ -376,6 +399,12 @@ export default function Evaluation(props: EvaluationProps) {
       compareValue: compareEvaluationMetrics.fn,
       lesserIsBetter: true,
       filterable: true,
+      active:
+        activeFilter?.value === "fn"
+          ? activeFilter.isCompare
+            ? "compare"
+            : "selected"
+          : false,
     },
   ];
 
@@ -400,8 +429,12 @@ export default function Evaluation(props: EvaluationProps) {
   const performanceClasses = Object.keys(perClassPerformance);
   const classPerformance = formatPerClassPerformance(
     perClassPerformance[performanceClass],
-    barConfigState
+    classPerformanceConfig
   );
+  const selectedPoints =
+    activeFilter?.type === "label"
+      ? [classPerformance.findIndex((c) => c.id === activeFilter.value)]
+      : undefined;
 
   return (
     <Stack spacing={2} sx={{ p: 2 }}>
@@ -596,6 +629,7 @@ export default function Evaluation(props: EvaluationProps) {
                       lesserIsBetter,
                       filterable,
                       id: rowId,
+                      active,
                     } = row;
                     const difference = getNumericDifference(
                       value,
@@ -608,10 +642,20 @@ export default function Evaluation(props: EvaluationProps) {
                       1
                     );
                     const positiveRatio = ratio > 0;
-                    const ratioColor = positiveRatio ? "#8BC18D" : "#FF6464";
+                    const zeroRatio = ratio === 0;
+                    const negativeRatio = ratio < 0;
+                    const ratioColor = positiveRatio
+                      ? "#8BC18D"
+                      : negativeRatio
+                      ? "#FF6464"
+                      : theme.palette.text.tertiary;
                     const showTrophy = lesserIsBetter
                       ? difference < 0
                       : difference > 0;
+                    const activeStyle: SxProps = {
+                      backgroundColor: theme.palette.voxel["500"],
+                      color: "#FFFFFF",
+                    };
 
                     return (
                       <TableRow key={rowId}>
@@ -635,13 +679,19 @@ export default function Evaluation(props: EvaluationProps) {
                               )}
                               {filterable && (
                                 <IconButton
-                                  sx={{ p: 0 }}
+                                  sx={{
+                                    p: 0.25,
+                                    borderRadius: 0.5,
+                                    ...(active === "selected"
+                                      ? activeStyle
+                                      : {}),
+                                  }}
                                   onClick={() => {
                                     loadView("field", { field: rowId });
                                   }}
                                   title="Load view"
                                 >
-                                  <GridView sx={{ fontSize: 16 }} />
+                                  <GridView sx={{ fontSize: 14 }} />
                                 </IconButton>
                               )}
                             </Stack>
@@ -661,7 +711,13 @@ export default function Evaluation(props: EvaluationProps) {
 
                                 {filterable && (
                                   <IconButton
-                                    sx={{ p: 0 }}
+                                    sx={{
+                                      p: 0.25,
+                                      borderRadius: 0.5,
+                                      ...(active === "compare"
+                                        ? activeStyle
+                                        : {}),
+                                    }}
                                     onClick={() => {
                                       loadView("field", {
                                         field: rowId,
@@ -686,12 +742,21 @@ export default function Evaluation(props: EvaluationProps) {
                                     direction="row"
                                     sx={{ alignItems: "center" }}
                                   >
-                                    {positiveRatio ? (
+                                    {positiveRatio && (
                                       <ArrowDropUp sx={{ color: ratioColor }} />
-                                    ) : (
+                                    )}
+                                    {negativeRatio && (
                                       <ArrowDropDown
                                         sx={{ color: ratioColor }}
                                       />
+                                    )}
+                                    {zeroRatio && (
+                                      <Typography
+                                        pr={1}
+                                        sx={{ color: ratioColor }}
+                                      >
+                                        —
+                                      </Typography>
                                     )}
                                     <Typography
                                       sx={{
@@ -854,6 +919,11 @@ export default function Evaluation(props: EvaluationProps) {
                 <Stack direction="row" sx={{ justifyContent: "space-between" }}>
                   <Typography color="secondary">
                     {CLASS_LABELS[performanceClass]} Per Class
+                    {getConfigLabel({
+                      config: classPerformanceConfig,
+                      type: "classPerformance",
+                      dashed: true,
+                    })}
                   </Typography>
                   <Stack
                     alignItems="flex-end"
@@ -895,7 +965,7 @@ export default function Evaluation(props: EvaluationProps) {
                     {classMode === "chart" && (
                       <IconButton
                         onClick={() => {
-                          setBarConfigDialogState((state) => ({
+                          setClassPerformanceDialogConfig((state) => ({
                             ...state,
                             open: true,
                           }));
@@ -919,7 +989,7 @@ export default function Evaluation(props: EvaluationProps) {
                           color: KEY_COLOR,
                         },
                         key: name,
-                        selectedpoints: viewState.view.selectedClasses,
+                        selectedpoints: selectedPoints,
                       },
                       {
                         histfunc: "sum",
@@ -933,29 +1003,14 @@ export default function Evaluation(props: EvaluationProps) {
                           color: COMPARE_KEY_COLOR,
                         },
                         key: compareKey,
-                        selectedpoints: viewState.view.selectedCompareClasses,
+                        selectedpoints: selectedPoints,
                       },
                     ]}
                     onClick={({ points }) => {
-                      const x = points[0]?.x;
-                      const key = points[0]?.data.key;
-                      const isCompare = key === compareKey;
-                      const index = points[0]?.pointIndices[0];
-                      const viewStateX = viewState.view.x;
-                      if (viewStateX === x) {
-                        setViewState({ type: "", view: {} });
-                        loadView("clear", {});
-                        return;
+                      if (selectedPoints?.[0] === points[0]?.pointIndices[0]) {
+                        return loadView("clear", {});
                       }
-                      setViewState({
-                        type: "class",
-                        view: {
-                          x,
-                          selectedClasses: isCompare ? [] : [index],
-                          selectedCompareClasses: isCompare ? [index] : [],
-                        },
-                      });
-                      loadView("class", { x });
+                      loadView("class", { x: points[0]?.x });
                     }}
                   />
                 )}
@@ -1039,6 +1094,23 @@ export default function Evaluation(props: EvaluationProps) {
               Confusion Matrices
             </AccordionSummary>
             <AccordionDetails>
+              <Stack direction="row" sx={{ justifyContent: "space-between" }}>
+                <Typography color="secondary">
+                  {getConfigLabel({ config: confusionMatrixConfig })}
+                </Typography>
+                <Box>
+                  <IconButton
+                    onClick={() => {
+                      setConfusionMatrixDialogConfig((state) => ({
+                        ...state,
+                        open: true,
+                      }));
+                    }}
+                  >
+                    <Settings />
+                  </IconButton>
+                </Box>
+              </Stack>
               <Stack direction={"row"} key={compareKey}>
                 <Stack sx={{ width: "100%" }}>
                   <Stack
@@ -1056,7 +1128,9 @@ export default function Evaluation(props: EvaluationProps) {
                         x: confusionMatrix?.labels,
                         y: confusionMatrix?.labels,
                         type: "heatmap",
-                        colorscale: "viridis",
+                        colorscale: confusionMatrixConfig.log
+                          ? confusionMatrix?.colorscale || "viridis"
+                          : "viridis",
                       },
                     ]}
                     onClick={({ points }) => {
@@ -1082,6 +1156,9 @@ export default function Evaluation(props: EvaluationProps) {
                           x: compareConfusionMatrix?.labels,
                           y: compareConfusionMatrix?.labels,
                           type: "heatmap",
+                          colorscale: confusionMatrixConfig.log
+                            ? compareConfusionMatrix?.colorscale || "viridis"
+                            : "viridis",
                         },
                       ]}
                     />
@@ -1163,7 +1240,7 @@ export default function Evaluation(props: EvaluationProps) {
           </Stack>
           <TextField
             multiline
-            rows={3}
+            rows={10}
             defaultValue={evaluationNotes}
             placeholder="Note (markdown) for the evaluation..."
             onChange={(e) => {
@@ -1194,9 +1271,9 @@ export default function Evaluation(props: EvaluationProps) {
         </Stack>
       </Dialog>
       <Dialog
-        open={barConfigDialogState.open}
+        open={Boolean(classPerformanceDialogConfig.open)}
         fullWidth
-        onClose={closeBarConfigDialog}
+        onClose={closeClassPerformanceConfigDialog}
         PaperProps={{
           sx: { background: (theme) => theme.palette.background.level2 },
         }}
@@ -1211,28 +1288,36 @@ export default function Evaluation(props: EvaluationProps) {
             <Select
               size="small"
               onChange={(e) => {
-                setBarConfigDialogState((state) => ({
+                setClassPerformanceDialogConfig((state) => ({
                   ...state,
                   sortBy: e.target.value as string,
                 }));
               }}
-              defaultValue={barConfigDialogState.sortBy}
+              defaultValue={classPerformanceDialogConfig.sortBy}
             >
-              <MenuItem value="best">Best Performing</MenuItem>
-              <MenuItem value="worst">Worst Performing</MenuItem>
+              {CLASS_PERFORMANCE_SORT_OPTIONS.map((option) => {
+                return (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                );
+              })}
             </Select>
           </Stack>
           <Stack spacing={1} pt={1}>
             <Typography color="secondary">Limit bars:</Typography>
             <TextField
-              defaultValue={barConfigDialogState.limit}
+              defaultValue={classPerformanceDialogConfig.limit}
               size="small"
               type="number"
               onChange={(e) => {
-                setBarConfigDialogState((state) => ({
-                  ...state,
-                  limit: parseInt(e.target.value),
-                }));
+                const newLimit = parseInt(e.target.value);
+                setClassPerformanceDialogConfig((state) => {
+                  return {
+                    ...state,
+                    limit: isNaN(newLimit) ? undefined : newLimit,
+                  };
+                });
               }}
             />
           </Stack>
@@ -1241,20 +1326,103 @@ export default function Evaluation(props: EvaluationProps) {
               variant="outlined"
               color="secondary"
               sx={{ width: "100%" }}
-              onClick={closeBarConfigDialog}
+              onClick={closeConfusionMatrixConfigDialog}
             >
               Cancel
             </Button>
             <Button
               variant="contained"
               sx={{ width: "100%" }}
-              disabled={
-                barConfigDialogState.sortBy === "" ||
-                barConfigDialogState.limit === 0
-              }
               onClick={() => {
-                setBarConfigState(barConfigDialogState);
-                closeBarConfigDialog();
+                setClassPerformanceConfig(classPerformanceDialogConfig);
+                closeClassPerformanceConfigDialog();
+              }}
+            >
+              Save
+            </Button>
+          </Stack>
+        </Stack>
+      </Dialog>
+      <Dialog
+        open={Boolean(confusionMatrixDialogConfig.open)}
+        fullWidth
+        onClose={closeConfusionMatrixConfigDialog}
+        PaperProps={{
+          sx: { background: (theme) => theme.palette.background.level2 },
+        }}
+      >
+        <Stack spacing={2} sx={{ p: 2 }}>
+          <Stack direction="row" spacing={1}>
+            <Settings />
+            <Typography>Display Options: Confusion Matrix</Typography>
+          </Stack>
+          <Stack spacing={1} pt={1}>
+            <Typography color="secondary">Sort by:</Typography>
+            <Select
+              size="small"
+              onChange={(e) => {
+                setConfusionMatrixDialogConfig((state) => ({
+                  ...state,
+                  sortBy: e.target.value as string,
+                }));
+              }}
+              defaultValue={confusionMatrixDialogConfig.sortBy}
+            >
+              {CONFUSION_MATRIX_SORT_OPTIONS.map((option) => {
+                return (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                );
+              })}
+            </Select>
+          </Stack>
+          <Stack spacing={1} pt={1}>
+            <Typography color="secondary">Limit classes:</Typography>
+            <TextField
+              defaultValue={confusionMatrixConfig.limit}
+              size="small"
+              type="number"
+              onChange={(e) => {
+                const newLimit = parseInt(e.target.value);
+                setConfusionMatrixDialogConfig((state) => {
+                  return {
+                    ...state,
+                    limit: isNaN(newLimit) ? undefined : newLimit,
+                  };
+                });
+              }}
+            />
+          </Stack>
+          <FormControlLabel
+            label="Use logarithmic colorscale"
+            control={
+              <Checkbox
+                defaultChecked={confusionMatrixConfig.log}
+                onChange={(e, checked) => {
+                  setConfusionMatrixDialogConfig((state) => ({
+                    ...state,
+                    log: checked,
+                  }));
+                }}
+              />
+            }
+          />
+          <Stack direction="row" spacing={1} pt={2}>
+            <Button
+              variant="outlined"
+              color="secondary"
+              sx={{ width: "100%" }}
+              onClick={closeConfusionMatrixConfigDialog}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              sx={{ width: "100%" }}
+              onClick={() => {
+                setConfusionMatrixConfig(confusionMatrixDialogConfig);
+                closeConfusionMatrixConfigDialog();
               }}
             >
               Save
@@ -1314,14 +1482,100 @@ const CLASSES = Object.keys(CLASS_LABELS);
 const EXCLUDED_CLASSES = ["macro avg", "micro avg", "weighted avg"];
 
 function formatPerClassPerformance(perClassPerformance, barConfig) {
-  if (!barConfig.sortBy || !barConfig.limit) return perClassPerformance;
+  const { limit, sortBy } = barConfig;
+  if (!sortBy && !limit) return perClassPerformance;
 
-  const sorted = perClassPerformance.sort((a, b) => {
-    if (barConfig.sortBy === "best") {
-      return b.value - a.value;
-    } else {
-      return a.value - b.value;
-    }
-  });
-  return sorted.slice(0, barConfig.limit);
+  let computedPerClassPerformance = perClassPerformance;
+  if (sortBy && sortBy !== DEFAULT_BAR_CONFIG.sortBy) {
+    computedPerClassPerformance = perClassPerformance.sort((a, b) => {
+      if (sortBy === "best") {
+        return b.value - a.value;
+      } else if (sortBy === "worst") {
+        return a.value - b.value;
+      } else {
+        return b.property.localeCompare(a.property);
+      }
+    });
+  }
+
+  if (typeof limit === "number") {
+    return computedPerClassPerformance.slice(0, limit);
+  }
+  return computedPerClassPerformance;
 }
+
+function getMatrix(matrices, config) {
+  if (!matrices) return;
+  const { sortBy = "az", limit } = config;
+  const parsedLimit = typeof limit === "number" ? limit : undefined;
+  const classes = matrices[`${sortBy}_classes`].slice(parsedLimit);
+  const matrix = matrices[`${sortBy}_matrix`].slice(parsedLimit);
+  const colorscale = matrices[`${sortBy}_colorscale`];
+  return { labels: classes, matrix, colorscale };
+}
+
+function getConfigLabel({ config, type, dashed }) {
+  const { sortBy } = config;
+  if (!sortBy) return "";
+  const sortByLabels =
+    type === "classPerformance"
+      ? CLASS_PERFORMANCE_SORT_OPTIONS
+      : CONFUSION_MATRIX_SORT_OPTIONS;
+  const sortByLabel = sortByLabels.find(
+    (option) => option.value === sortBy
+  )?.label;
+  return dashed ? ` - ${sortByLabel}` : sortByLabel;
+}
+
+function useActiveFilter(evaluation, compareEvaluation) {
+  const evalKey = evaluation?.info?.key;
+  const compareKey = compareEvaluation?.info?.key;
+  const [stages] = useRecoilState(view);
+  if (stages?.length === 1) {
+    const stage = stages[0];
+    const { _cls, kwargs } = stage;
+    if (_cls.endsWith("FilterLabels")) {
+      const [_, filter] = kwargs;
+      const filterEq = filter[1].$eq;
+      const [filterEqLeft, filterEqRight] = filterEq;
+      if (filterEqLeft === "$$this.label") {
+        return { type: "label", value: filterEqRight };
+      } else if (filterEqLeft === `$$this.${evalKey}`) {
+        return {
+          type: "metric",
+          value: filterEqRight,
+          isCompare: false,
+        };
+      } else if (filterEqLeft === `$$this.${compareKey}`) {
+        return {
+          type: "metric",
+          value: filterEqRight,
+          isCompare: true,
+        };
+      }
+    }
+  }
+}
+
+const CLASS_PERFORMANCE_SORT_OPTIONS = [
+  { value: "az", label: "Alphabetical (A-Z)" },
+  { value: "za", label: "Alphabetical (Z-A)" },
+  { value: "best", label: "Best performing" },
+  { value: "worst", label: "Worst performing" },
+];
+const CONFUSION_MATRIX_SORT_OPTIONS = [
+  { value: "az", label: "Alphabetical (A-Z)" },
+  { value: "za", label: "Alphabetical (Z-A)" },
+  { value: "mc", label: "Most common classes" },
+  { value: "lc", label: "Least common classes" },
+];
+
+type PLOT_CONFIG_TYPE = {
+  sortBy?: string;
+  limit?: number;
+  log?: boolean;
+};
+
+type PLOT_CONFIG_DIALOG_TYPE = PLOT_CONFIG_TYPE & {
+  open?: boolean;
+};

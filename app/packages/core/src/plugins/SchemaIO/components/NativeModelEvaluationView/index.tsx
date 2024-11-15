@@ -40,7 +40,8 @@ export default function NativeModelEvaluationView(props) {
     }, {});
   }, [computedEvaluations]);
   const { page = "overview", key, id, compareKey } = viewState;
-  const showEmptyOverview = computedEvaluations.length === 0;
+  const showEmptyOverview =
+    computedEvaluations.length === 0 && pending_evaluations.length === 0;
   const triggerEvent = useTriggerEvent();
 
   return (
