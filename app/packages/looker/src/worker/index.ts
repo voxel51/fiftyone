@@ -5,6 +5,7 @@
 import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import {
   DENSE_LABELS,
+  DETECTION,
   DETECTIONS,
   DYNAMIC_EMBEDDED_DOCUMENT,
   EMBEDDED_DOCUMENT,
@@ -110,8 +111,8 @@ const imputeOverlayFromPath = async (
 ) => {
   // handle all list types here
   if (cls === DETECTIONS) {
-    label?.detections?.forEach((detection) =>
-      imputeOverlayFromPath(
+    for (const detection of label.detections) {
+      await imputeOverlayFromPath(
         field,
         detection,
         coloring,
@@ -119,9 +120,9 @@ const imputeOverlayFromPath = async (
         colorscale,
         buffers,
         {},
-        cls
-      )
-    );
+        DETECTION
+      );
+    }
     return;
   }
 
