@@ -199,10 +199,9 @@ const processLabels = async (
   labelTagColors: ProcessSample["labelTagColors"],
   selectedLabelTags: ProcessSample["selectedLabelTags"],
   schema: Schema
-): Promise<ImageBitmap[]> => {
+): Promise<Promise<ImageBitmap[]>[]> => {
   const painterPromises = [];
-  const bitmaps: ImageBitmap[] = [];
-  const bitmapPromises = [];
+  const bitmapPromises: Promise<ImageBitmap[]>[] = [];
 
   for (const field in sample) {
     let labels = sample[field];
@@ -227,7 +226,6 @@ const processLabels = async (
           sources,
           cls
         );
-        const test = 2;
       }
 
       if (cls in DeserializerFactory) {
@@ -237,7 +235,7 @@ const processLabels = async (
 
       if ([EMBEDDED_DOCUMENT, DYNAMIC_EMBEDDED_DOCUMENT].includes(cls)) {
         // const moreBuffers =
-        const moreBitmaps = await processLabels(
+        const moreBitmapPromises = await processLabels(
           label,
           coloring,
           `${prefix ? prefix : ""}${field}.`,
@@ -248,7 +246,8 @@ const processLabels = async (
           selectedLabelTags,
           schema
         );
-        bitmaps.push(...moreBitmaps);
+        bitmapPromises.push(...moreBitmapPromises);
+        // bitmaps.push(...moreBitmaps);
         // buffers.push(...moreBuffers);
       }
 
@@ -282,18 +281,17 @@ const processLabels = async (
       // note: doing this also means we can no longer manipulate
       // the mask, but transfering this bitmap to the main thread
       // and painting it on the main canvas is super efficient and optimized
-      imputeAndCollectBitmaps(label, cls, bitmapPromises);
+      collectBitmapPromises(label, cls, bitmapPromises);
     }
   }
 
-  return Promise.all(bitmapPromises);
-  // return Promise.all(bitmapPromises);
+  return bitmapPromises;
 };
 
-const imputeAndCollectBitmaps = async (label, cls, bitmapPromises) => {
+const collectBitmapPromises = (label, cls, bitmapPromises) => {
   if (cls === DETECTIONS) {
     label?.detections?.forEach((detection) =>
-      imputeAndCollectBitmaps(detection, DETECTION, bitmapPromises)
+      collectBitmapPromises(detection, DETECTION, bitmapPromises)
     );
     return;
   }
@@ -303,10 +301,7 @@ const imputeAndCollectBitmaps = async (label, cls, bitmapPromises) => {
     return;
   }
 
-  if (label.id === "5f452471ef00e6374aac53c8") {
-    const a = 3;
-  }
-  if (label.id === "5f452471ef00e6374aac53c8" && label.mask) {
+  if (label.mask) {
     const [height, width] = label.mask.data.shape;
 
     const imageData = new ImageData(
@@ -316,12 +311,17 @@ const imputeAndCollectBitmaps = async (label, cls, bitmapPromises) => {
     );
 
     bitmapPromises.push(
-      createImageBitmap(imageData).then((imageBitmap) => {
-        // GC old gold
-        label.mask.data = null;
-        label.mask.image = null;
+      new Promise((resolve) => {
+        createImageBitmap(imageData).then((imageBitmap) => {
+          // GC old gold
+          console.log(">>>GC old gold for label", label.id ?? label._id);
+          label.mask.data = null;
+          label.mask.image = null;
 
-        label.mask.bitmap = imageBitmap;
+          label.mask.bitmap = imageBitmap;
+
+          resolve(imageBitmap);
+        });
       })
     );
   }
@@ -354,7 +354,7 @@ export interface ProcessSample {
 
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
-const processSample = ({
+const processSample = async ({
   sample,
   uuid,
   coloring,
@@ -368,14 +368,14 @@ const processSample = ({
   mapId(sample);
 
   let bufferPromises = [];
-  let imageBitmapPromises = [];
+  let imageBitmapPromises: Promise<ImageBitmap[]>[] = [];
 
   if (sample?._media_type === "point-cloud" || sample?._media_type === "3d") {
     process3DLabels(schema, sample);
   } else {
     // bufferPromises = [
-    imageBitmapPromises = [
-      processLabels(
+    imageBitmapPromises.push(
+      ...(await processLabels(
         sample,
         coloring,
         null,
@@ -385,8 +385,8 @@ const processSample = ({
         labelTagColors,
         selectedLabelTags,
         schema
-      ),
-    ];
+      ))
+    );
   }
 
   // todo: address frames
