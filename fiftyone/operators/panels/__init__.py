@@ -7,16 +7,18 @@ FiftyOne panels.
 """
 
 from .query_performance import (
-    QueryPerformancePanel,
     CreateIndexOrSummaryFieldOperator,
     IndexFieldRemovalConfirmationOperator,
     QueryPerformanceConfigConfirmationOperator,
+    QueryPerformancePanel,
+    SummaryFieldUpdateOperator,
 )
 
 QUERY_PERFORMANCE_OPERATORS = [
     CreateIndexOrSummaryFieldOperator(_builtin=True),
     IndexFieldRemovalConfirmationOperator(_builtin=True),
     QueryPerformanceConfigConfirmationOperator(_builtin=True),
+    SummaryFieldUpdateOperator(_builtin=True),
 ]
 
 # This enables Sphinx refs to directly use paths imported here

@@ -5,7 +5,7 @@ Query performance panel.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
+import humanize
 import eta.core.utils as etau
 
 import fiftyone as fo
@@ -23,7 +23,6 @@ from ..types import (
     Property,
     RadioGroup,
     TableView,
-    Button,
 )
 from ..operator import Operator, OperatorConfig
 from ..panel import Panel, PanelConfig
@@ -75,6 +74,43 @@ def _get_summary_fields(ctx):
         return ctx.dataset.list_summary_fields()
     else:
         return []
+
+
+def _calculate_time_delta(ctx, summary_field):
+    _SUMMARY_FIELD_KEY = "_summary_field"
+    dataset = ctx.dataset
+    summary_schema = dataset.get_field_schema(
+        flat=True, info_keys=_SUMMARY_FIELD_KEY
+    )
+
+    samples_last_modified_at = None
+    frames_last_modified_at = None
+    for path, field in summary_schema.items():
+        if path == summary_field:
+            summary_info = field.info[_SUMMARY_FIELD_KEY]
+            source_path = summary_info.get("path", None)
+            last_modified_at = summary_info.get("last_modified_at", None)
+
+            if source_path is None:
+                return "unknown"
+            elif last_modified_at is None:
+                return "unknown"
+            elif dataset._is_frame_field(source_path):
+                if frames_last_modified_at is None:
+                    frames_last_modified_at = dataset._max(
+                        "frames.last_modified_at"
+                    )
+                return humanize.naturaltime(
+                    frames_last_modified_at - last_modified_at
+                )
+            else:
+                if samples_last_modified_at is None:
+                    samples_last_modified_at = dataset._max("last_modified_at")
+
+                return humanize.naturaltime(
+                    samples_last_modified_at - last_modified_at
+                )
+    return "unknown"
 
 
 class CreateIndexOrSummaryFieldOperator(foo.Operator):
@@ -460,6 +496,53 @@ class QueryPerformanceConfigConfirmationOperator(Operator):
         }
 
 
+class SummaryFieldUpdateOperator(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="summary_field_update_operator",
+            label="Update Summary Field",
+            dynamic=True,
+            unlisted=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+        field_name = ctx.params.get("field_to_update", None)
+
+        if field_name:
+            fields = ctx.dataset.check_summary_fields()
+            if field_name in fields:
+                time_delta = _calculate_time_delta(ctx, field_name)
+                if time_delta == "unknown":
+                    message = "Your summary field might be outdated: the dataset has changed since the summary field was last updated."
+                else:
+                    time_delta = time_delta.replace(" ago", "")
+                    message = f"Your summary field might be outdated: the dataset has changed since the summary field was last updated ({time_delta})."
+
+                inputs.view("confirmation", types.Warning(label=message))
+            else:
+                message = "Your summary field seems up to date with your dataset. Do you still wish to update the summary field?"
+                inputs.view("confirmation", types.Notice(label=message))
+
+            return types.Property(
+                inputs,
+                view=types.PromptView(
+                    label=f"Update Summary Field: {field_name}",
+                    submit_button_label="Update Summary Field",
+                ),
+            )
+        else:
+            ctx.ops.notify("No field to update.", variant="error")
+
+    def execute(self, ctx):
+        field_name = ctx.params.get("field_to_update", None)
+
+        if field_name:
+            ctx.dataset.update_summary_field(field_name)
+            ctx.ops.notify(f"Summary field `{field_name}` was updated.")
+
+
 class QueryPerformancePanel(Panel):
     @property
     def config(self):
@@ -549,12 +632,16 @@ class QueryPerformancePanel(Panel):
         table_data["selected_rows"] = [int(ctx.params.get("row"))]
         ctx.panel.set_data("table", table_data)
 
+    def _get_clicked_row(self, ctx):
+        row = int(ctx.params.get("row"))
+        table_data = self._get_index_table_data(ctx)
+        return table_data["rows"][row]
+
     def on_click_delete(self, ctx):
         if _has_edit_permission(ctx):
-            row = int(ctx.params.get("row"))
-            table_data = self._get_index_table_data(ctx)
-            field_name = table_data["rows"][row][0]
-            field_type = table_data["rows"][row][2]
+            row_data = self._get_clicked_row(ctx)
+            field_name = row_data[0]
+            field_type = row_data[2]
             params = {"field_to_delete": field_name}
 
             if field_type == "Summary":
@@ -575,6 +662,15 @@ class QueryPerformancePanel(Panel):
                 on_success=self.refresh,
                 params=params,
             )
+        else:
+            ctx.ops.notify("You do not have edit permissions", variant="error")
+
+    def on_click_update(self, ctx):
+        if _has_edit_permission(ctx):
+            row_data = self._get_clicked_row(ctx)
+            field_name = row_data[0]
+            params = {"field_to_update": field_name}
+            ctx.prompt("summary_field_update_operator", params=params)
         else:
             ctx.ops.notify("You do not have edit permissions", variant="error")
 
@@ -601,9 +697,6 @@ class QueryPerformancePanel(Panel):
                 "You do not have permission to create an index",
                 variant="error",
             )
-
-    def update_summary_field(self, ctx):
-        ctx.prompt("update_summary_field", on_success=self.refresh)
 
     def render(self, ctx):
         panel = Object()
@@ -769,23 +862,23 @@ class QueryPerformancePanel(Panel):
                     },
                 )
 
-            if summary_fields:
-                button_menu.btn(
-                    "update_summary_field_btn",
-                    label="Refresh summary field",
-                    on_click=self.update_summary_field,
-                    variant="contained",
-                    componentsProps={
-                        "button": {"sx": {"whiteSpace": "nowrap"}}
-                    },
-                )
-
-            table = TableView()
+            table = TableView(max_inline_actions=2)
             table.add_column("Field", label="Field")
             table.add_column("Size", label="Size")
             table.add_column("Type", label="Type")
 
             if _has_edit_permission(ctx):
+                # Calculating row conditionality for the update button
+                if summary_fields:
+                    table.add_row_action(  # pylint: disable=E1101
+                        "update",
+                        self.on_click_update,
+                        icon="update",
+                        rows=[False] * len(all_indices)
+                        + [True] * len(summary_fields),
+                        color="secondary",
+                    )
+
                 # Calculating row conditionality for the delete button
                 rows = (
                     [False] * (len(all_indices) - len(droppable_index))
