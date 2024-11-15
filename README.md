@@ -31,6 +31,10 @@ models**
 [![Mailing list](http://bit.ly/2Md9rxM)](https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk)
 [![Twitter](https://img.shields.io/twitter/follow/Voxel51?style=social)](https://twitter.com/voxel51)
 
+# 👋 Introduction
+
+**[FiftyOne](https://fiftyone.ai)** is the open-source tool that supercharges your computer vision and machine learning workflows by enabling you to visualize datasets, analyze models, and improve data quality more efficiently than ever before.
+
 [![FiftyOne](https://github.com/user-attachments/assets/0622e5a8-8aa9-462d-8008-90356d3c45ea)](https://fiftyone.ai)
 
 </p>
@@ -38,11 +42,7 @@ models**
 
 ---
 
-## 🚀 Accelerate Your Computer Vision Workflow with FiftyOne
-
-**[FiftyOne](https://fiftyone.ai)** is the open-source tool that supercharges your computer vision and machine learning workflows by enabling you to visualize datasets, analyze models, and improve data quality more efficiently than ever before.
-
-### **Why FiftyOne?**
+### **Key Features**
 
 - **[Visualize Complex Datasets:](https://docs.voxel51.com/tutorials/index.html)** Easily explore images, videos, and associated labels in a powerful visual interface.
 - **[Analyze and Improve Models:](https://docs.voxel51.com/tutorials/index.html)** Evaluate model performance, identify failure modes, and fine-tune your models.
@@ -50,7 +50,7 @@ models**
 - **[Seamless Integration:](https://docs.voxel51.com/tutorials/index.html)** Works with popular deep learning libraries like TensorFlow, PyTorch, Keras, and more.
 - **[Open-Source and Extensible](https://docs.voxel51.com/tutorials/index.html)** Customize and extend FiftyOne to fit your specific needs.
 
-### **Join Our Community**
+### 🤝 **Join Our Community**
 
 Connect with thousands of other machine learning engineers and researchers using FiftyOne:
 
