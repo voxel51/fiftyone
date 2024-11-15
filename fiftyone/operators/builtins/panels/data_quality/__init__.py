@@ -1703,7 +1703,6 @@ class DataQualityPanel(Panel):
             f"rescan_functionality_stack",
             align_y="center",
             align_x="center",
-            width="100%",
             componentsProps={
                 "grid": {"sx": {"display": "flex", "flexDirection": "column"}},
             },
