@@ -289,7 +289,7 @@ export const LensPanel = ({
       <Select
         fullWidth
         variant="outlined"
-        value={activeConfig?.name}
+        value={activeConfig?.id}
         onChange={(e) => handleLensConfigChange(e.target.value)}
       >
         {lensConfigs.map((cfg) => (
