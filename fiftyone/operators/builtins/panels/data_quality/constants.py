@@ -1,5 +1,3 @@
-from datetime import datetime, timedelta
-
 ISSUE_TYPES = [
     "brightness",
     "blurriness",
@@ -40,12 +38,12 @@ DEFAULT_ISSUE_COUNTS = {
 
 # set future dates for last scan as default
 LAST_SCAN = {
-    "brightness": datetime.now() + timedelta(days=1),
-    "blurriness": datetime.now() + timedelta(days=1),
-    "aspect_ratio": datetime.now() + timedelta(days=1),
-    "entropy": datetime.now() + timedelta(days=1),
-    "near_duplicates": datetime.now() + timedelta(days=1),
-    "exact_duplicates": datetime.now() + timedelta(days=1),
+    "brightness": None,
+    "blurriness": None,
+    "aspect_ratio": None,
+    "entropy": None,
+    "near_duplicates": None,
+    "exact_duplicates": None,
 }
 
 # TODO: allow user to be able to use other names for the fields
