@@ -1,14 +1,23 @@
+"""
+Data quality panel.
+
+| Copyright 2017-2024, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
 import asyncio
+from collections import Counter
+from datetime import datetime
 import time
 import uuid
 
-from datetime import datetime
-from collections import Counter
+import numpy as np
 
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
+from fiftyone.operators.panel import Panel, PanelConfig
 from fiftyone import ViewField as F
-import numpy as np
 
 from .constants import (
     ISSUE_TYPES,
@@ -24,11 +33,7 @@ from .constants import (
     LAST_SCAN,
 )
 
-
 ########## UNCOMMENT for OSS to WORK ###############################
-
-# is_in_teams_context = False
-# from fiftyone.operators import Panel, PanelConfig
 
 # from .check_quality_operators import (
 #     ComputeAspectRatio,
@@ -51,9 +56,6 @@ from .constants import (
 
 ########## COMMENT ^ && UNCOMMENT for TEAMS to WORK ################
 
-is_in_teams_context = True
-from fiftyone.operators.panel import Panel, PanelConfig
-
 # pylint:disable=import-error,no-name-in-module
 from fiftyone.operators.builtins.operators.brain import ComputeSimilarity
 
@@ -70,20 +72,21 @@ from fiftyone.operators.builtins.operators.data_quality import (
 )
 
 BRIGHTNESS_OPERATOR = "@voxel51/operators/compute_brightness"
-BLURRINESS_OPERATOR = ("@voxel51/operators/compute_blurriness",)
-ASPECT_RATIO_OPERATOR = ("@voxel51/operators/compute_aspect_ratio",)
-ENTROPY_OPERATOR = ("@voxel51/operators/compute_entropy",)
+BLURRINESS_OPERATOR = "@voxel51/operators/compute_blurriness"
+ASPECT_RATIO_OPERATOR = "@voxel51/operators/compute_aspect_ratio"
+ENTROPY_OPERATOR = "@voxel51/operators/compute_entropy"
 HASH_OPERATOR = "@voxel51/operators/compute_hash"
 NEAR_DUPLICATES_OPERATOR = "@voxel51/operators/compute_similarity"
 
 ####################################################################
+
 
 ICON_PATH = "troubleshoot"
 NOT_PERMITTED_TEXT = "You do not have sufficient permission."
 
 
 def missing_min_access_required(ctx, min_required_dataset_access="EDIT"):
-    if not is_in_teams_context:
+    if ctx.user is None:
         return False
 
     user_dataset_access = ctx.user.dataset_permission
