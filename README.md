@@ -44,20 +44,20 @@ models**
 
 ### **Why FiftyOne?**
 
-**[Visualize Complex Datasets:](https://docs.voxel51.com/tutorials/index.html)** Easily explore images, videos, and associated labels in a powerful visual interface.
-**[Analyze and Improve Models:](https://docs.voxel51.com/tutorials/index.html)** Evaluate model performance, identify failure modes, and fine-tune your models.
-**[Efficient Data Curation:](https://docs.voxel51.com/tutorials/index.html)** Quickly find and fix data issues, annotation errors, and edge cases.
-**[Seamless Integration:](https://docs.voxel51.com/tutorials/index.html)** Works with popular deep learning libraries like TensorFlow, PyTorch, Keras, and more.
-**[Open-Source and Extensible](https://docs.voxel51.com/tutorials/index.html)** Customize and extend FiftyOne to fit your specific needs.
+- **[Visualize Complex Datasets:](https://docs.voxel51.com/tutorials/index.html)** Easily explore images, videos, and associated labels in a powerful visual interface.
+- **[Analyze and Improve Models:](https://docs.voxel51.com/tutorials/index.html)** Evaluate model performance, identify failure modes, and fine-tune your models.
+- **[Efficient Data Curation:](https://docs.voxel51.com/tutorials/index.html)** Quickly find and fix data issues, annotation errors, and edge cases.
+- **[Seamless Integration:](https://docs.voxel51.com/tutorials/index.html)** Works with popular deep learning libraries like TensorFlow, PyTorch, Keras, and more.
+- **[Open-Source and Extensible](https://docs.voxel51.com/tutorials/index.html)** Customize and extend FiftyOne to fit your specific needs.
 
 ### **Join Our Community**
 
 Connect with thousands of other machine learning engineers and researchers using FiftyOne:
 
-**[Discord](https://discord.gg/fiftyone-community):** Join oru Discord server to chat with the community.
-**[Slack Community](https://slack.voxel51.com):** Join discussions, ask questions, and share insights.
-**[Blog](https://medium.com/voxel51):** Stay updated with the latest news, tutorials, and best practices.
-**[Twitter](https://twitter.com/voxel51):** Follow us for updates and announcements.
+- **[Discord](https://discord.gg/fiftyone-community):** Join oru Discord server to chat with the community.
+- **[Slack Community](https://slack.voxel51.com):** Join discussions, ask questions, and share insights.
+- **[Blog](https://medium.com/voxel51):** Stay updated with the latest news, tutorials, and best practices.
+- **[Twitter](https://twitter.com/voxel51):** Follow us for updates and announcements.
 
 More channels: 
 
