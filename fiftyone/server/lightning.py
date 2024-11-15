@@ -394,8 +394,15 @@ def _first(
         if sort:
             pipeline.append({"$match": {path: {"$ne": None}}})
 
+        pipeline.append({"$sort": {path: sort}})
+
     return pipeline + [
-        {"$group": {"_id": {"$min" if sort == 1 else "$max": f"${path}"}}}
+        {
+            "$group": {
+                "_id": None,
+                "value": {"$min" if sort == 1 else "$max": f"${path}"},
+            }
+        }
     ]
 
 
@@ -458,7 +465,11 @@ def _match_arrays(dataset: fo.Dataset, path: str, is_frame_field: bool):
 
 def _parse_result(data):
     if data and data[0]:
-        return data[0].get("_id", None)
+        value = data[0]
+        if value.get("value") is not None:
+            return value["value"]
+
+        return value.get("_id", None)
 
     return None
 
@@ -468,13 +479,13 @@ def _unwind(dataset: fo.Dataset, path: str, is_frame_field: bool):
     path = None
     pipeline = []
 
+    prefix = ""
     if is_frame_field:
-        path = keys[0]
-        keys = keys[1:]
+        prefix = "frames."
 
     for key in keys:
         path = ".".join([path, key]) if path else key
-        field = dataset.get_field(path)
+        field = dataset.get_field(f"{prefix}{path}")
         while isinstance(field, fof.ListField):
             pipeline.append({"$unwind": f"${path}"})
             field = field.field
