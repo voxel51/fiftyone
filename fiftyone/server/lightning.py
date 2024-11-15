@@ -466,7 +466,7 @@ def _match_arrays(dataset: fo.Dataset, path: str, is_frame_field: bool):
 def _parse_result(data):
     if data and data[0]:
         value = data[0]
-        if value.get("value") is not None:
+        if value.get("value", None) is not None:
             return value["value"]
 
         return value.get("_id", None)
