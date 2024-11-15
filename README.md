@@ -66,7 +66,7 @@ Connect with us through your preferred channels:
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?logo=linkedin&logoColor=white)](https://www.linkedin.com/company/voxel51)
 [![Facebook](https://img.shields.io/badge/Facebook-1877F2?logo=facebook&logoColor=white)](https://www.facebook.com/voxel51)
 
-**Share your workflow improvements on social media and tag us @Voxel51 and #FiftyOne!**
+**Share your workflow improvements on social media and tag us @Voxel51 and #FiftyOne!**. You will be in our rewarded list.
 
 </p>
 </div>
