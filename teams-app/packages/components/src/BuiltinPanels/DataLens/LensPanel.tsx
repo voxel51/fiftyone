@@ -178,8 +178,8 @@ export const LensPanel = ({
   };
 
   // Callback which handles updates to the selected lens configuration.
-  const handleLensConfigChange = (name: string) => {
-    const config = lensConfigs.find((cfg) => cfg.name === name);
+  const handleLensConfigChange = (id: string) => {
+    const config = lensConfigs.find((cfg) => cfg.id === id);
     if (config) {
       setActiveConfig(config);
       handleFormStateChange({}, false);
