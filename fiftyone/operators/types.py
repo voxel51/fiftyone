@@ -1370,6 +1370,43 @@ class Button(View):
         )
 
 
+class OperatorExecutionButtonView(Button):
+    """Represents an operator execution button in a :class:`View`.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        operatorButtonView = types.OperatorExecutionButtonView(
+            icon="expand_more",
+            operator="execute_custom_operator",
+            params={"key": "value"},
+            label="Execute",
+            description="Executes the specified operator",
+        )
+
+        inputs = types.Object()
+        inputs.view("operator_btn", operatorButtonView)
+
+    Args:
+        icon (str): an icon for the button. Defaults to "expand_more" if not provided.
+        label (str): a label for the button.
+        description (str): a description for the button.
+        title (str): a tooltip title for the button.
+        operator (str): the name of the operator to execute when the button is clicked.
+        params (dict): the parameters to pass to the operator.
+        prompt (str): a prompt for the operation.
+        disabled (bool): whether the button is disabled.
+    """
+
+    def __init__(self, **kwargs):
+        if "operator" not in kwargs or not isinstance(kwargs["operator"], str):
+            raise ValueError(
+                "The 'operator' parameter of type str is required."
+            )
+        super().__init__(**kwargs)
+
+
 class OneOfView(View):
     """Displays one of the given :class:`View` instances.
 
@@ -1946,7 +1983,7 @@ class AlertView(View):
 
     Args:
         severity (None): the severity of the alert displayed, one of
-            ``(info", "success", "warning", "error")``
+            ``("info", "success", "warning", "error")``
         componentsProps (None): an optional dict with the following keys:
 
             -   ``'label'`` (None): props to pass to the label subcomponents
@@ -2195,6 +2232,22 @@ class ButtonView(Button):
 
 class MarkdownView(View):
     """Renders a markdown string as HTML."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class StatusButtonView(View):
+    """Renders a status button.
+
+    Args:
+        severity (None): the severity of the alert displayed, one of
+            ``("info", "success", "warning", "error", "enabled", "disabled")``
+        on_click (None): an operator to execute when the button is clicked
+        params (None): the parameters to pass to the operator
+        disabled: whether the button is disabled
+        title: tooltip title for the button
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
