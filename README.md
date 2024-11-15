@@ -54,14 +54,7 @@ models**
 
 ### 🤝 **Join Our Community**
 
-Connect with thousands of other machine learning engineers and researchers using FiftyOne:
-
-- **[Discord](https://discord.gg/fiftyone-community):** Join oru Discord server to chat with the community.
-- **[Slack Community](https://slack.voxel51.com):** Join discussions, ask questions, and share insights.
-- **[Blog](https://medium.com/voxel51):** Stay updated with the latest news, tutorials, and best practices.
-- **[Twitter](https://twitter.com/voxel51):** Follow us for updates and announcements.
-
-More channels: 
+Connect with us through your preferred channels:
 
 [![Discord](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/fiftyone-community)
 [![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)](https://slack.voxel51.com)
@@ -70,6 +63,7 @@ More channels:
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?logo=linkedin&logoColor=white)](https://www.linkedin.com/company/voxel51)
 [![Facebook](https://img.shields.io/badge/Facebook-1877F2?logo=facebook&logoColor=white)](https://www.facebook.com/voxel51)
 
+**Share your workflow improvements on social media and tag us @Voxel51 and #FiftyOne!**
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Table of Contents
 
