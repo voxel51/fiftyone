@@ -103,9 +103,9 @@ Connect with us through your preferred channels:
 
 <div id='-prerequisites_windows'/>
 
-## 1. Install Python and Git
+### 1. Install Python and Git
 
-### 1.1 Install Python
+#### 1.1 Install Python
 
 **Note:** ⚠️ The version of Python that is available in the Microsoft Store is **not recommended**. 
 
@@ -114,22 +114,22 @@ Double-click on the installer to run it, and follow the steps in the installer.
   - **Check the box to add Python to your PATH**, and to install py.
   - At the end of the installer, there is an option to **disable the PATH length limit**. It is recommended to click this.
 
-### 1.2 Install Git
+#### 1.2 Install Git
 
 Download Git from [this link](https://git-scm.com/download/win).
 Double-click on the installer to run it, and follow the steps in the installer.
 
-## 2. Install Microsoft Visual C++ Redistributable and FFMPEG (Optional)
+### 2. Install Microsoft Visual C++ Redistributable and FFMPEG (Optional)
 
 Download [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist).
 Double-click on the installer to run it, and follow the steps in the installer.
 
-### Install FFMPEG
+#### Install FFMPEG
 
 Download FFMPEG binary from [here](https://ffmpeg.org/download.html).
 Set FFMPEG's path (e.g., C:\ffmpeg\bin) to the PATH environmental variable on Windows.
 
-## 3. Create a Virtual Environment
+### 3. Create a Virtual Environment
 
 - Press `Win + R`. type `cmd`, and press `Enter`. Alternatively, search **Command Prompt** in the Start Menu.
 - Navigate to your project. ` cd C:\path\to\your\project`
