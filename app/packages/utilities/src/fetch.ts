@@ -30,7 +30,7 @@ class QueryPerformanceToast extends Event {
   }
 }
 
-const TIMEOUT = 5000;
+const TIMEOUT = 5100;
 
 export const getFetchFunction = () => {
   return fetchFunctionSingleton;
@@ -132,14 +132,6 @@ export const setFetchFunction = (
         })
       : fetch;
 
-    let timeoutId = undefined;
-    const filterPath = getFirstFilterPath(body);
-    if (filterPath) {
-      timeoutId = setTimeout(() => {
-        window.dispatchEvent(new QueryPerformanceToast(filterPath));
-      }, TIMEOUT);
-    }
-
     const response = await fetchCall(url, {
       method: method,
       cache: "no-cache",
@@ -149,10 +141,6 @@ export const setFetchFunction = (
       signal: controller.signal,
       referrerPolicy: "same-origin",
     });
-
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
 
     if (response.status >= 400) {
       const errorMetadata = {

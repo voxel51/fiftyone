@@ -4,7 +4,7 @@ import {
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
-import { DefaultValue, atom, selector, selectorFamily } from "recoil";
+import { DefaultValue, selectorFamily } from "recoil";
 import { getSessionRef, sessionAtom } from "../session";
 import { indexedPaths, pathHasIndexes } from "./queryPerformance";
 import { expandPath, fields } from "./schema";
@@ -65,13 +65,9 @@ export const filter = selectorFamily<
   set:
     ({ path, modal }) =>
     ({ get, set }, filter) => {
-      if (!modal) {
-        set(lastAppliedPathFilter, path);
-      }
       const atom = modal ? modalFilters : filters;
       const newFilters = Object.assign({}, get(atom));
       const currentLightningPaths = get(indexedPaths(""));
-
       if (!modal && currentLightningPaths.has(path)) {
         for (const p in newFilters) {
           if (!currentLightningPaths.has(p)) {
@@ -141,35 +137,28 @@ export const fieldIsFiltered = selectorFamily<
     },
 });
 
-export const lastAppliedPathFilter = atom<string | null>({
-  key: "lastAppliedPathFilter",
-  default: null,
-});
-export const pathThatCanBeOptimized = selector({
+export const pathCanBeOptimized = selectorFamily({
   key: "pathThatCanBeOptimized",
-  get: ({ get }) => {
-    // does not have index, or is a frame field, and is not _label_tags
-    const path = get(lastAppliedPathFilter);
-    if (!path) {
-      return null;
-    }
-    if (path === "_label_tags") {
-      return null;
-    }
-    const indexed = get(pathHasIndexes(path));
-    const frameField = get(isFrameField(path));
-    if (indexed && !frameField) {
-      return null;
-    }
-    const f = get(filters);
-    for (const key of Object.keys(f)) {
-      if (key === path) {
-        continue;
+  get:
+    (path: string) =>
+    ({ get }) => {
+      if (path === "_label_tags") {
+        return false;
       }
-      if (get(pathHasIndexes(path)) && !get(isFrameField(path))) {
-        return null;
+      const indexed = get(pathHasIndexes(path));
+      const frameField = get(isFrameField(path));
+      if (indexed && !frameField) {
+        return false;
       }
-    }
-    return { path, isFrameField: frameField };
-  },
+      const f = get(filters);
+      for (const key of Object.keys(f)) {
+        if (key === path) {
+          continue;
+        }
+        if (get(pathHasIndexes(path)) && !get(isFrameField(path))) {
+          return false;
+        }
+      }
+      return { isFrameField: frameField };
+    },
 });

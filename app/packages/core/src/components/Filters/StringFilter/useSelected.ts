@@ -32,7 +32,6 @@ export default function (
 
   return {
     results,
-
     useSearch:
       path === "_label_tags" && queryPerformance && !modal
         ? undefined
