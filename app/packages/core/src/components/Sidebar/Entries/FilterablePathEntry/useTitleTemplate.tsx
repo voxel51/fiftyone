@@ -78,7 +78,7 @@ const useTitleTemplate = ({
   path: string;
 }) => {
   return function useTitleTemplate({ hoverHandlers, hoverTarget, container }) {
-    const enabled = useRecoilValue(fos.isDisabledFilterPath(path)) || modal;
+    const enabled = !useRecoilValue(fos.isDisabledCheckboxPath(path));
     const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
     const expandedPath = useRecoilValue(fos.expandPath(path));
 
