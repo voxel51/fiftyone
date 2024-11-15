@@ -424,7 +424,7 @@ class Detection(_HasAttributesDict, _HasID, Label):
         return self.mask is not None or self.mask_path is not None
 
     def get_mask(self):
-        """Returns the segmentation mask for this instance.
+        """Returns the detection mask for this instance.
 
         Returns:
             a numpy array, or ``None``
@@ -442,7 +442,6 @@ class Detection(_HasAttributesDict, _HasID, Label):
         attribute.
 
         Args:
-            outpath: the path to write the map
             update (False): whether to clear this instance's :attr:`mask_path`
                 attribute after importing
         """
@@ -1102,7 +1101,6 @@ class Segmentation(_HasID, _HasMedia, Label):
         attribute.
 
         Args:
-            outpath: the path to write the map
             update (False): whether to clear this instance's :attr:`mask_path`
                 attribute after importing
         """
