@@ -31,14 +31,16 @@ models**
 [![Mailing list](http://bit.ly/2Md9rxM)](https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk)
 [![Twitter](https://img.shields.io/twitter/follow/Voxel51?style=social)](https://twitter.com/voxel51)
 
+
+</p>
+</div>
+
 # 👋 Introduction
 
 **[FiftyOne](https://fiftyone.ai)** is the open-source tool that supercharges your computer vision and machine learning workflows by enabling you to visualize datasets, analyze models, and improve data quality more efficiently than ever before.
 
 [![FiftyOne](https://github.com/user-attachments/assets/0622e5a8-8aa9-462d-8008-90356d3c45ea)](https://fiftyone.ai)
 
-</p>
-</div>
 
 ---
 
