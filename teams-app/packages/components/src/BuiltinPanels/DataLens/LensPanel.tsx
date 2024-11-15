@@ -208,7 +208,9 @@ export const LensPanel = ({
       // Enable import if any samples were returned
       setIsImportEnabled(response.result?.result_count > 0);
 
-      onError(response.error || response.result?.error);
+      if (response.error || response.result?.error) {
+        onError(response.error || response.result?.error);
+      }
     };
 
     setSearchResponse(null);

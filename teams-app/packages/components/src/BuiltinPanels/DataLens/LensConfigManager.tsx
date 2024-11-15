@@ -45,9 +45,11 @@ import { useActiveDataset } from "./hooks";
 export const LensConfigManager = ({
   configs,
   onConfigsChange,
+  onError,
 }: {
   configs: LensConfig[];
   onConfigsChange: (configs: LensConfig[]) => void;
+  onError?: (error: string) => void;
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [configId, setConfigId] = useState(null);
@@ -94,6 +96,8 @@ export const LensConfigManager = ({
 
         updatedConfigs.sort((a, b) => a.name.localeCompare(b.name));
         onConfigsChange(updatedConfigs);
+      } else {
+        onError?.(response.error || response.result?.error);
       }
 
       setIsLoading(false);
@@ -117,6 +121,8 @@ export const LensConfigManager = ({
         if (index >= 0) {
           onConfigsChange(configs.toSpliced(index, 1));
         }
+      } else {
+        onError?.(response.error || response.result?.error);
       }
 
       setIsLoading(false);
