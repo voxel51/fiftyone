@@ -103,6 +103,7 @@ You will be in our rewarded list.
 
 <div id='-prerequisites_windows'/>
 
+--------PENDING WINDOWS INSTALLATION------
 
 </details>
 
@@ -111,6 +112,21 @@ You will be in our rewarded list.
 
 <div id='-prerequisites_linux'/>
 
+--------PENDING LINUX INSTALLATION------
+
+- On Linux, you will need at least the `openssl` and `libcurl` packages. 
+- On Debian-based distributions, you will need to install `libcurl4` or`libcurl3` instead of `libcurl`, depending on the age of your distribution.
+
+  For example:
+
+```shell
+# Ubuntu
+sudo apt install libcurl4 openssl
+
+# Fedora
+sudo dnf install libcurl openssl
+```
+
 </details>
 
 <details>
@@ -118,12 +134,20 @@ You will be in our rewarded list.
 
 <div id='-prerequisites_macos'/>
 
+--------PENDING MACOS INSTALLATION------
+
 </details>
 
 <details>
 <summary>Docker</summary>
 
 <div id='-prerequisites_docker'/>
+
+Refer to
+[these instructions](https://voxel51.com/docs/fiftyone/environments/index.html#docker)
+to see how to build and run Docker images containing source or release builds
+of FiftyOne.
+
 
 </details>
 
@@ -136,7 +160,7 @@ You will be in our rewarded list.
 </p>
 </div>
 
-You will need:
+**Important Notes:** Remember, you will need...
 
 -   [Python](https://www.python.org) (3.9 - 3.11)
 -   [Node.js](https://nodejs.org) - on Linux, we recommend using
@@ -144,41 +168,8 @@ You will need:
 -   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can
     [enable Yarn](https://yarnpkg.com/getting-started/install) via
     `corepack enable`
--   On Linux, you will need at least the `openssl` and `libcurl` packages. On
-    Debian-based distributions, you will need to install `libcurl4` or
-    `libcurl3` instead of `libcurl`, depending on the age of your distribution.
-    For example:
-
-```shell
-# Ubuntu
-sudo apt install libcurl4 openssl
-
-# Fedora
-sudo dnf install libcurl openssl
-```
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
-
-You will need:
-
--   [Python](https://www.python.org) (3.9 - 3.11)
--   [Node.js](https://nodejs.org) - on Linux, we recommend using
-    [nvm](https://github.com/nvm-sh/nvm) to install an up-to-date version.
--   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can
-    [enable Yarn](https://yarnpkg.com/getting-started/install) via
-    `corepack enable`
--   On Linux, you will need at least the `openssl` and `libcurl` packages. On
-    Debian-based distributions, you will need to install `libcurl4` or
-    `libcurl3` instead of `libcurl`, depending on the age of your distribution.
-    For example:
-
-```shell
-# Ubuntu
-sudo apt install libcurl4 openssl
-
-# Fedora
-sudo dnf install libcurl openssl
-```
 
 <div id='-installation'/>
 
@@ -290,13 +281,6 @@ bash install.bash
 # Windows
 .\install.bat
 ```
-
-### Docker installs
-
-Refer to
-[these instructions](https://voxel51.com/docs/fiftyone/environments/index.html#docker)
-to see how to build and run Docker images containing source or release builds
-of FiftyOne.
 
 ### Generating documentation
 
