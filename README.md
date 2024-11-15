@@ -66,7 +66,9 @@ Connect with us through your preferred channels:
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?logo=linkedin&logoColor=white)](https://www.linkedin.com/company/voxel51)
 [![Facebook](https://img.shields.io/badge/Facebook-1877F2?logo=facebook&logoColor=white)](https://www.facebook.com/voxel51)
 
-**Share your workflow improvements on social media and tag us @Voxel51 and #FiftyOne!**. You will be in our rewarded list.
+**Share your workflow improvements on social media and tag us @Voxel51 and #FiftyOne!**. 
+
+You will be in our rewarded list.
 
 </p>
 </div>
@@ -94,20 +96,44 @@ Connect with us through your preferred channels:
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Prerequisites
 
-fiftyone requires Python, Git and other dependencies. To get started, select the guide for your operating system or environment, if you are an experienced developer you can avoid this section. If you are looking for scaling solution to be installed in Cloud Enterprise Systems, please take a look of fiftyone teams [here](https://voxel51.com/book-a-demo/)
+**Fiftyone** requires Python (3.9 - 3.11), Git and other dependencies. To get started, select the guide for your operating system or environment, if you are an experienced developer you can avoid this section. If you are looking for scaling solution to be installed in Cloud Enterprise Systems, please take a look of fiftyone teams [here](https://voxel51.com/book-a-demo/)
 
-| [Windows](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [Linux](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [macOS](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [NodeRed,js](https://github.com/voxel51/fiftyone/blob/develop/README.md) |  [Docker](https://github.com/voxel51/fiftyone/blob/develop/README.md) | 
+| [Windows](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [Linux](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [macOS](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [NodeRed,js](https://github.com/voxel51/fiftyone/blob/develop/README.md) | [Docker](https://github.com/voxel51/fiftyone/blob/develop/README.md) | 
 | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+
+You will need:
+
+-   [Python](https://www.python.org) (3.9 - 3.11)
+-   [Node.js](https://nodejs.org) - on Linux, we recommend using
+    [nvm](https://github.com/nvm-sh/nvm) to install an up-to-date version.
+-   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can
+    [enable Yarn](https://yarnpkg.com/getting-started/install) via
+    `corepack enable`
+-   On Linux, you will need at least the `openssl` and `libcurl` packages. On
+    Debian-based distributions, you will need to install `libcurl4` or
+    `libcurl3` instead of `libcurl`, depending on the age of your distribution.
+    For example:
+
+```shell
+# Ubuntu
+sudo apt install libcurl4 openssl
+
+# Fedora
+sudo dnf install libcurl openssl
+```
 
 <div id='-installation'/>
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Installation
 
+
+**Fiftyone** provides two ways for being installed. The first one is through PyPI, and the second is through a local installation. PyPI is the straight forward installation method if you are not looking for any changes in the source code, if you want to make changes to the source code, then a local installation is recommended.
+
 We strongly recommend that you install FiftyOne in a
 [virtual environment](https://voxel51.com/docs/fiftyone/getting_started/virtualenv.html)
-to maintain a clean workspace.
+to maintain a clean workspace. Refer to prerequisites if you want to learn how to create a new virtual environment in your machine.
 
 <details>
 <summary>Install from PyPI</summary>
@@ -313,28 +339,7 @@ The instructions below are for macOS and Linux systems. Windows users may need
 to make adjustments. If you are working in Google Colab,
 [skip to here](#source-installs-in-google-colab).
 
-### Prerequisites
 
-You will need:
-
--   [Python](https://www.python.org) (3.9 - 3.11)
--   [Node.js](https://nodejs.org) - on Linux, we recommend using
-    [nvm](https://github.com/nvm-sh/nvm) to install an up-to-date version.
--   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can
-    [enable Yarn](https://yarnpkg.com/getting-started/install) via
-    `corepack enable`
--   On Linux, you will need at least the `openssl` and `libcurl` packages. On
-    Debian-based distributions, you will need to install `libcurl4` or
-    `libcurl3` instead of `libcurl`, depending on the age of your distribution.
-    For example:
-
-```shell
-# Ubuntu
-sudo apt install libcurl4 openssl
-
-# Fedora
-sudo dnf install libcurl openssl
-```
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 <div id='-contributors'/>
