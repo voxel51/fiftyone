@@ -16,7 +16,7 @@ import {
   runsPageStatusQuery,
 } from "@fiftyone/teams-state";
 import {
-  ENABLE_ORCHESTRATOR_REGISTRATION_ENV_KEY,
+  FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS_ENV_KEY,
   OPERATOR_RUN_STATES,
 } from "@fiftyone/teams-state/src/constants";
 import { Stack, Typography } from "@mui/material";
@@ -40,8 +40,8 @@ function RunsListWithQuery(props) {
   const setAutoRefresh = useSetRecoilState(autoRefreshRunsStatus);
   const [hovered, setHovered] = useState("");
   const [_, setRefresher] = useRefresher(RUNS_STATUS_REFRESHER_ID);
-  const showOrchestrators = useBooleanEnv(
-    ENABLE_ORCHESTRATOR_REGISTRATION_ENV_KEY
+  const showOrchestrators = !useBooleanEnv(
+    FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS_ENV_KEY
   );
 
   const { nodes, pageTotal } = result.delegatedOperationsPage;

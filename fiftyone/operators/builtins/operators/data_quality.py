@@ -76,8 +76,6 @@ def _handle_execution(ctx, property_name):
     # update the flag that computation has been done
     print("Computation done for ", property_name)
 
-    ctx.ops.reload_dataset()
-
 
 def _handle_calling(
     uri, sample_collection, patches_field=None, delegate=False
@@ -260,8 +258,6 @@ class ComputeHash(foo.Operator):
         # ctx.ops.patch_panel_state({'temp': "dfgdfg"}, panel_id=ctx.panel_id)
 
         # ctx.panel.state.exact_dup_filehashs = dup_filehashes
-
-        # ctx.ops.reload_dataset()
 
 
 class DeleteSamples(foo.Operator):

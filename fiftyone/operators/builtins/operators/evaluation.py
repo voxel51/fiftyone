@@ -654,8 +654,6 @@ def _get_iscrowd(ctx, inputs, default=None):
     )
 
     if crowd_attrs:
-        default = crowd_attrs[0]
-
         crowd_attr_choices = types.AutocompleteView()
         for crowd_attr in crowd_attrs:
             crowd_attr_choices.add_choice(crowd_attr, label=crowd_attr)

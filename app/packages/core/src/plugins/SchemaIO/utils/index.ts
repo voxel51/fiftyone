@@ -112,6 +112,7 @@ const NON_EDITABLE_VIEWS = [
   "TableView",
   "TagsView",
   "TreeSelectionView",
+  "StatusButtonView",
 ];
 
 export function isCompositeView(schema: SchemaType) {

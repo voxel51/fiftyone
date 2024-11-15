@@ -1,6 +1,6 @@
 import { useRef, Fragment, useEffect } from "react";
 import { useExternalLink } from "@fiftyone/utilities";
-import { Loading, Selector, useTheme } from "@fiftyone/components";
+import { Selector, useTheme } from "@fiftyone/components";
 import { usePanelStatePartial, useSetPanelCloseEffect } from "@fiftyone/spaces";
 import {
   HighlightAlt,
@@ -24,7 +24,6 @@ import { EmbeddingsPlot } from "./EmbeddingsPlot";
 import { usePlotSelection } from "./usePlotSelection";
 import { useResetPlotZoom } from "./useResetPlotZoom";
 import { OperatorPlacements, types } from "@fiftyone/operators";
-import ComputeVisualizationButton from "./ComputeVisualizationButton";
 import EmptyEmbeddings from "./EmptyEmbeddings";
 import useComputeVisualization from "./useComputeVisualization";
 

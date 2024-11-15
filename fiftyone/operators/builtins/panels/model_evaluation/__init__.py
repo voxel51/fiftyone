@@ -27,6 +27,13 @@ EVALUATION_TYPES_WITH_IOU = ["detection"]
 EDIT_PERMISSIONS = ["MANAGE", "EDIT"]
 
 
+def _has_edit_permission(ctx):
+    if ctx.user is None:
+        return True
+
+    return ctx.user.dataset_permission in EDIT_PERMISSIONS
+
+
 class EvaluationPanel(Panel):
     @property
     def config(self):
@@ -51,7 +58,7 @@ class EvaluationPanel(Panel):
             return None
 
     def get_permissions(self, ctx):
-        can_edit = ctx.user.dataset_permission in EDIT_PERMISSIONS
+        can_edit = _has_edit_permission(ctx)
         return {
             "can_evaluate": can_edit,
             "can_edit_note": can_edit,
