@@ -7,7 +7,6 @@ import { Bolt } from "@mui/icons-material";
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { atom, useRecoilState, useRecoilValue } from "recoil";
-import * as atoms from "@fiftyone/state/src/recoil/atoms";
 import * as fos from "@fiftyone/state";
 
 const SHOWN_FOR = 10000;
@@ -40,7 +39,7 @@ const QueryPerformanceToast = ({
   const element = document.getElementById("queryPerformance");
   const theme = useTheme();
   const trackEvent = useTrackEvent();
-  console.log(info);
+
   useEffect(() => {
     const listen = (event) => {
       onDispatch(event);
