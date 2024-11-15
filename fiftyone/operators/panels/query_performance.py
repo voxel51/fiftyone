@@ -582,17 +582,7 @@ class QueryPerformancePanel(Panel):
     def qp_setting(self, ctx):
         ctx.prompt(
             "query_performance_config_confirmation",
-            on_success=self.on_qp_setting_change,
         )
-
-    def on_qp_setting_change(self, ctx):
-        is_enabled = (
-            ctx.params.get("original_params", {}).get(
-                "query_performance", "Disabled"
-            )
-            == "Enabled"
-        )
-        ctx.panel.state.query_performance_enabled = is_enabled
 
     def refresh(self, ctx):
         self._build_view(ctx)
@@ -757,15 +747,9 @@ class QueryPerformancePanel(Panel):
                 on_click=self.on_refresh_button_click,
             )
 
-            severity = (
-                "enabled"
-                if ctx.panel.state.query_performance_enabled
-                else "disabled"
-            )
+            severity = "enabled" if ctx.query_performance else "disabled"
             status_btn_label = (
-                "Enabled"
-                if ctx.panel.state.query_performance_enabled
-                else "Disabled"
+                "Enabled" if ctx.query_performance else "Disabled"
             )
 
             status_btn = types.StatusButtonView(  # pylint: disable=E1101
