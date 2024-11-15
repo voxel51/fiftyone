@@ -18,6 +18,7 @@ export type PreviewRequest = {
   search_params: object;
   operator_uri: string;
   request_type: RequestType;
+  batch_size: number;
   max_results: number;
 };
 
@@ -39,7 +40,7 @@ export type ImportRequest = {
   batch_size: number;
   dataset_name: string;
   request_type: RequestType;
-  max_samples?: number;
+  max_samples: number;
   tags?: string[];
 };
 

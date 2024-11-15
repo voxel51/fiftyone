@@ -247,8 +247,9 @@ class DatasourceConnectorOperator(foo.Operator):
         #   user-defined values.
         params.update({
             '_search_request': {
-                'search_params': source_params.get('search_params'),
-                'max_results': source_params.get('max_results', source_params.get('batch_size')),
+                'search_params': source_params.get('search_params', {}),
+                'batch_size': source_params.get('batch_size', 100),
+                'max_results': source_params.get('max_results', 100),
                 'pagination_token': source_params.get('pagination_token'),
             },
         })

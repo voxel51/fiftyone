@@ -193,6 +193,7 @@ export const LensPanel = ({
     const request: PreviewRequest = {
       search_params: { ...formState },
       operator_uri: activeConfig.operator_uri,
+      batch_size: maxSamples,
       max_results: maxSamples,
       request_type: "preview",
     };

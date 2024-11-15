@@ -21,6 +21,7 @@ class BaseResponse:
 class DataLensSearchRequest:
     """Request model representing a Data Lens search."""
     search_params: dict
+    batch_size: int
     max_results: int
     pagination_token: str = None
 
