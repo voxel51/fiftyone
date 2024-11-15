@@ -68,7 +68,7 @@ Connect with us through your preferred channels:
 
 **Share your workflow improvements on social media and tag us @Voxel51 and #FiftyOne!**. 
 
-You will be in our rewarded list.
+🎊 You will be in our rewarded list. 🎊
 
 </p>
 </div>
@@ -103,7 +103,39 @@ You will be in our rewarded list.
 
 <div id='-prerequisites_windows'/>
 
---------PENDING WINDOWS INSTALLATION------
+## 1. Install Python and Git
+
+### 1.1 Install Python
+
+**Note:** ⚠️ The version of Python that is available in the Microsoft Store is **not recommended**. 
+
+Download a Python installer from [python.org](https://www.python.org/downloads/). Choose Python **3.9**, **3.10**, or **3.11** and make sure to pick a **64-bit** version. For example, this [Python 3.10.11 installer](https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe).
+Double-click on the installer to run it, and follow the steps in the installer.
+  - **Check the box to add Python to your PATH**, and to install py.
+  - At the end of the installer, there is an option to **disable the PATH length limit**. It is recommended to click this.
+
+### 1.2 Install Git
+
+Download Git from [this link](https://git-scm.com/download/win).
+Double-click on the installer to run it, and follow the steps in the installer.
+
+## 2. Install Microsoft Visual C++ Redistributable and FFMPEG (Optional)
+
+Download [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist).
+Double-click on the installer to run it, and follow the steps in the installer.
+
+### Install FFMPEG
+
+Download FFMPEG binary from [here](https://ffmpeg.org/download.html).
+Set FFMPEG's path (e.g., C:\ffmpeg\bin) to the PATH environmental variable on Windows.
+
+## 3. Create a Virtual Environment
+
+Press '''Win + R'''. type '''cmd''', and press '''Enter''' 
+
+```shell
+python -m venv fiftyone_env
+```
 
 </details>
 
