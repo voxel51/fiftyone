@@ -1584,7 +1584,7 @@ class DataQualityPanel(Panel):
         id,
         container,
         container_justify_content="center",
-        height="calc(100vh - 310px)",
+        height="calc(100vh - 230px)",
         px=0,
         py=0,
         h_stack=False,
@@ -1632,9 +1632,9 @@ class DataQualityPanel(Panel):
             f"{issue_type}_analysis_content",
             card_main,
             container_justify_content="normal",
-            height="calc(100vh - 310px - 158px)",
-            px=2,
-            py=2,
+            height="calc(100vh - 230px - 158px)",
+            px=4,
+            py=1,
         )
         self._render_issue_card(card_content, issue_type, ctx)
 
@@ -1659,7 +1659,7 @@ class DataQualityPanel(Panel):
         functionality_stack = self.add_stack(
             f"functionality_stack_{issue_type}",
             card_main,
-            height="150px",
+            height="auto",
             h_stack=True,
             px=2,
         )
@@ -1713,11 +1713,9 @@ class DataQualityPanel(Panel):
             componentsProps={
                 "grid": {
                     "sx": {
-                        "display": "flex",
-                        "flexDirection": "row",
+                        "display": "inline-flex",
+                        "width": "auto",
                         "alignItems": "center",
-                        "justifyContent": "space-between",
-                        "flexGrow": 1,
                     }
                 }
             },
@@ -1727,12 +1725,13 @@ class DataQualityPanel(Panel):
             and not ctx.panel.state.new_samples[issue_type][2]
         ):
             alert_icon = types.ImageView(
-                width="13px",
+                width="12px",
                 componentsProps={
                     "container": {
                         "sx": {
                             "position": "relative",
-                            "top": "-3px",
+                            "top": "-4px",
+                            "alignItems": "center",
                         }
                     }
                 },
@@ -1894,7 +1893,7 @@ class DataQualityPanel(Panel):
             container=types.PaperContainer(
                 sx={
                     "boxShadow": "none",
-                    "padding": "none" if expanded else "1rem",
+                    "padding": "0 0 0 1rem" if expanded else "1rem",
                 }
             ),
         )
@@ -2237,8 +2236,9 @@ class DataQualityPanel(Panel):
             "selectdirection": "h",
             "showlegend": True,
             "legend": {
-                "x": 0,
-                "y": -0.2,
+                "x": 0.5,
+                "y": -0.4,
+                "xanchor": "center",
                 "orientation": "h",
                 "bgcolor": "rgba(0, 0, 0, 0)",  # Transparent background for the legend
             },
