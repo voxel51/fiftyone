@@ -542,7 +542,6 @@ class QueryPerformancePanel(Panel):
 
     def on_load(self, ctx):
         self._build_view(ctx)
-        ctx.panel.state.query_performance_enabled = ctx.query_performance
         ctx.ops.track_event("query_performance_panel")
 
     def on_click_row(self, ctx):
