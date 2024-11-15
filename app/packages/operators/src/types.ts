@@ -1242,6 +1242,20 @@ export class ToastView extends View {
 }
 
 /**
+ * Operator class for rendering a execution button.
+ */
+
+class OperatorExecutionButtonView extends View {
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "OperatorExecutionButtonView";
+  }
+  static fromJSON(json) {
+    return new OperatorExecutionButtonView(json);
+  }
+}
+
+/**
  * Places where you can have your operator placement rendered.
  */
 export enum Places {
