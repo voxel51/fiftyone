@@ -229,8 +229,8 @@ export const LensPanel = ({
     ImportRequest,
     "operator_uri" | "search_params" | "batch_size"
   > = useMemo(() => {
-    // Limit batches to ~2 MB. Figure out if this is a reasonable number.
-    const maxBatchMB = 2;
+    // Limit batches to ~10 MB. Figure out if this is a reasonable number.
+    const maxBatchMB = 10;
     const maxBatchBytes = maxBatchMB * (1 << 20);
     const importBatchSize = Math.max(
       1,

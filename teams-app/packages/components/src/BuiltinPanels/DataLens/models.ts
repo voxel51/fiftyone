@@ -40,7 +40,7 @@ export type ImportRequest = {
   batch_size: number;
   dataset_name: string;
   request_type: RequestType;
-  max_samples: number;
+  max_results: number;
   tags?: string[];
 };
 

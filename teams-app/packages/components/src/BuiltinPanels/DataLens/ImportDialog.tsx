@@ -76,7 +76,7 @@ export const ImportDialog = ({
       ...requestParams,
       request_type: "import",
       dataset_name: datasetName,
-      max_samples: importLimitType === "limit" ? maxImportSamples : 0,
+      max_results: importLimitType === "limit" ? maxImportSamples : 0,
       tags: sampleTags ?? [],
     };
   }, [

@@ -23,6 +23,8 @@ from fiftyone.operators.executor import ExecutionResult
 class DatasourceConnectorOperator(foo.Operator):
     """Operator which acts as the main entry point for Data Lens."""
 
+    _MAX_IMPORT_SIZE = 1_000_000_000 # 1B seems like a reasonable limit...
+
     @property
     def config(self):
         return foo.OperatorConfig(
@@ -98,9 +100,9 @@ class DatasourceConnectorOperator(foo.Operator):
             operator_result = self._execute_operator(import_request.operator_uri, ctx)
 
             max_samples = (
-                import_request.max_samples
-                if import_request.max_samples > 0
-                else 1_000_000_000 # 1B seems like a reasonable limit...
+                import_request.max_results
+                if import_request.max_results > 0
+                else self._MAX_IMPORT_SIZE
             )
             total_samples = 0
 
@@ -249,7 +251,9 @@ class DatasourceConnectorOperator(foo.Operator):
             '_search_request': {
                 'search_params': source_params.get('search_params', {}),
                 'batch_size': source_params.get('batch_size', 100),
-                'max_results': source_params.get('max_results', 100),
+                'max_results': source_params.get('max_results')
+                if source_params.get('max_results') > 0
+                else DatasourceConnectorOperator._MAX_IMPORT_SIZE,
                 'pagination_token': source_params.get('pagination_token'),
             },
         })
