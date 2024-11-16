@@ -1,13 +1,21 @@
 import { deserialize } from "../numpy";
 
+const extractSerializedMask = (
+  label: object,
+  maskProp: string
+): string | undefined => {
+  if (typeof label?.[maskProp] === "string") {
+    return label[maskProp];
+  } else if (typeof label?.[maskProp]?.$binary?.base64 === "string") {
+    return label[maskProp].$binary.base64;
+  }
+
+  return undefined;
+};
+
 export const DeserializerFactory = {
   Detection: (label, buffers) => {
-    let serializedMask: string;
-    if (typeof label?.mask === "string") {
-      serializedMask = label.mask;
-    } else if (typeof label?.mask?.$binary?.base64 === "string") {
-      serializedMask = label.mask.$binary.base64;
-    }
+    const serializedMask = extractSerializedMask(label, "mask");
 
     if (serializedMask) {
       const data = deserialize(serializedMask);
@@ -27,12 +35,7 @@ export const DeserializerFactory = {
     }
   },
   Heatmap: (label, buffers) => {
-    let serializedMask: string;
-    if (typeof label?.map === "string") {
-      serializedMask = label.map;
-    } else if (typeof label?.map?.$binary?.base64 === "string") {
-      serializedMask = label.map.$binary.base64;
-    }
+    const serializedMask = extractSerializedMask(label, "map");
 
     if (serializedMask) {
       const data = deserialize(serializedMask);
@@ -48,12 +51,7 @@ export const DeserializerFactory = {
     }
   },
   Segmentation: (label, buffers) => {
-    let serializedMask: string;
-    if (typeof label?.mask === "string") {
-      serializedMask = label.mask;
-    } else if (typeof label?.mask?.$binary?.base64 === "string") {
-      serializedMask = label.mask.$binary.base64;
-    }
+    const serializedMask = extractSerializedMask(label, "mask");
 
     if (serializedMask) {
       const data = deserialize(serializedMask);
