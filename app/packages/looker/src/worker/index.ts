@@ -199,16 +199,20 @@ const processLabels = async (
       }
 
       if (DENSE_LABELS.has(cls)) {
-        await imputeOverlayFromPath(
-          `${prefix || ""}${field}`,
-          label,
-          coloring,
-          customizeColorSetting,
-          colorscale,
-          buffers,
-          sources,
-          cls
-        );
+        try {
+          await imputeOverlayFromPath(
+            `${prefix || ""}${field}`,
+            label,
+            coloring,
+            customizeColorSetting,
+            colorscale,
+            buffers,
+            sources,
+            cls
+          );
+        } catch (e) {
+          console.error("Couldn't decode overlay image from disk: ", e);
+        }
       }
 
       if (cls in DeserializerFactory) {
