@@ -53,81 +53,96 @@ export default function PanelCTA(props: PanelCTAProps) {
           </Button>
         </Box>
       )}
-      <Card sx={{ position: "relative", height: "100%" }}>
-        <Stack
-          spacing={1}
-          sx={{
-            height: "100%",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {typeof Icon === "string" && (
-            <MuiIconFont
-              sx={{
-                fontSize: 64,
-                color: theme.palette.custom.primarySoft,
-                marginBottom: 2,
-              }}
-              {...(iconProps as IconProps)}
-              name={Icon}
-            />
-          )}
-          {Boolean(Icon) && typeof Icon !== "string" && Icon}
-          <TypographyOrNode variant="h6">{computedLabel}</TypographyOrNode>
-          <TypographyOrNode color="secondary">
-            {computedDescription}
-          </TypographyOrNode>
-          <TypographyOrNode sx={{ color: theme.palette.text.tertiary }}>
-            {computedCaption}
-          </TypographyOrNode>
-          {!IS_APP_MODE_FIFTYONE && (
-            <Box pt={1}>{Actions && <Actions {...props} />}</Box>
-          )}
-          {IS_APP_MODE_FIFTYONE && (
-            <Stack direction="row" spacing={2} pt={2}>
-              <MuiButton
-                variant="contained"
-                color="primary"
-                href={BOOK_A_DEMO_LINK}
-                target="_blank"
-              >
-                Book a demo
-              </MuiButton>
-              <MuiButton
-                variant="contained"
-                color="primary"
-                href={TRY_IN_BROWSER_LINK}
-                target="_blank"
-              >
-                Try in browser
-              </MuiButton>
-            </Stack>
-          )}
-          {docLink && (
+      <Card
+        sx={{
+          position: "relative",
+          height: "100%",
+          display: "flex",
+          justifyContent: "center",
+          minHeight: 320,
+        }}
+      >
+        <Stack sx={{ maxWidth: "85%" }}>
+          <Stack
+            spacing={1}
+            sx={{
+              height: "100%",
+              alignItems: "center",
+              justifyContent: "space-between",
+              py: 2,
+            }}
+          >
             <Stack
-              spacing={1}
               sx={{
-                position: "absolute",
-                bottom: "32px",
+                height: "100%",
                 alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              {docCaption && (
-                <Typography color="secondary">
-                  {docCaption || "Not ready to upgrade yet?"}
-                </Typography>
+              {typeof Icon === "string" && (
+                <MuiIconFont
+                  sx={{
+                    fontSize: 64,
+                    color: theme.palette.custom.primarySoft,
+                    marginBottom: 2,
+                  }}
+                  {...(iconProps as IconProps)}
+                  name={Icon}
+                />
               )}
-              <MuiButton
-                variant="outlined"
-                endIcon={<OpenInNew sx={{ fontSize: "16px!important" }} />}
-                href={docLink}
-                target="_blank"
-              >
-                View documentation
-              </MuiButton>
+              {Boolean(Icon) && typeof Icon !== "string" && Icon}
+              <TypographyOrNode variant="h6">{computedLabel}</TypographyOrNode>
+              <TypographyOrNode color="secondary">
+                {computedDescription}
+              </TypographyOrNode>
+              <TypographyOrNode sx={{ color: theme.palette.text.tertiary }}>
+                {computedCaption}
+              </TypographyOrNode>
+              {!IS_APP_MODE_FIFTYONE && (
+                <Box pt={1}>{Actions && <Actions {...props} />}</Box>
+              )}
+              {IS_APP_MODE_FIFTYONE && (
+                <Stack direction="row" spacing={2} pt={2}>
+                  <MuiButton
+                    variant="contained"
+                    color="primary"
+                    href={BOOK_A_DEMO_LINK}
+                    target="_blank"
+                  >
+                    Book a demo
+                  </MuiButton>
+                  <MuiButton
+                    variant="contained"
+                    color="primary"
+                    href={TRY_IN_BROWSER_LINK}
+                    target="_blank"
+                  >
+                    Try in browser
+                  </MuiButton>
+                </Stack>
+              )}
             </Stack>
-          )}
+            {docLink && (
+              <Stack
+                spacing={1}
+                sx={{ alignItems: "center", justifyContent: "center" }}
+              >
+                {docCaption && (
+                  <Typography color="secondary">
+                    {docCaption || "Not ready to upgrade yet?"}
+                  </Typography>
+                )}
+                <MuiButton
+                  variant="outlined"
+                  endIcon={<OpenInNew sx={{ fontSize: "16px!important" }} />}
+                  href={docLink}
+                  target="_blank"
+                >
+                  View documentation
+                </MuiButton>
+              </Stack>
+            )}
+          </Stack>
         </Stack>
       </Card>
     </Stack>
