@@ -488,13 +488,13 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
             dataset,
             dict(
                 float=-1.0,
-                float_list=[-1.0],
+                float_list=[0.0, -1.0],
                 inf=-1.0,
-                inf_list=[-1.0],
+                inf_list=[0.0, -1.0],
                 nan=-1.0,
-                nan_list=[-1.0],
+                nan_list=[0.0, -1.0],
                 ninf=-1.0,
-                ninf_list=[-1.0],
+                ninf_list=[0.0, -1.0],
             ),
             dict(
                 float=0.0,
@@ -508,13 +508,13 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
             ),
             dict(
                 float=1.0,
-                float_list=[1.0],
+                float_list=[0.0, 1.0],
                 inf=1.0,
                 inf_list=[1.0],
                 nan=1.0,
-                nan_list=[1.0],
+                nan_list=[0.0, 1.0],
                 ninf=1.0,
-                ninf_list=[1.0],
+                ninf_list=[0.0, 1.0],
             ),
         )
 
