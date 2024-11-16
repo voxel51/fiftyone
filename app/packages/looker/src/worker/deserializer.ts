@@ -2,8 +2,15 @@ import { deserialize } from "../numpy";
 
 export const DeserializerFactory = {
   Detection: (label, buffers) => {
+    let serializedMask: string;
     if (typeof label?.mask === "string") {
-      const data = deserialize(label.mask);
+      serializedMask = label.mask;
+    } else if (typeof label?.mask?.$binary?.base64 === "string") {
+      serializedMask = label.mask.$binary.base64;
+    }
+
+    if (serializedMask) {
+      const data = deserialize(serializedMask);
       const [height, width] = data.shape;
       label.mask = {
         data,
@@ -20,8 +27,15 @@ export const DeserializerFactory = {
     }
   },
   Heatmap: (label, buffers) => {
+    let serializedMask: string;
     if (typeof label?.map === "string") {
-      const data = deserialize(label.map);
+      serializedMask = label.map;
+    } else if (typeof label?.map?.$binary?.base64 === "string") {
+      serializedMask = label.map.$binary.base64;
+    }
+
+    if (serializedMask) {
+      const data = deserialize(serializedMask);
       const [height, width] = data.shape;
 
       label.map = {
@@ -34,8 +48,15 @@ export const DeserializerFactory = {
     }
   },
   Segmentation: (label, buffers) => {
+    let serializedMask: string;
     if (typeof label?.mask === "string") {
-      const data = deserialize(label.mask);
+      serializedMask = label.mask;
+    } else if (typeof label?.mask?.$binary?.base64 === "string") {
+      serializedMask = label.mask.$binary.base64;
+    }
+
+    if (serializedMask) {
+      const data = deserialize(serializedMask);
       const [height, width] = data.shape;
 
       label.mask = {
