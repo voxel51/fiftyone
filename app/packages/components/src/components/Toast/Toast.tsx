@@ -18,7 +18,10 @@ interface ToastProps {
     fontSize?: string;
     textAlign?: string;
   };
-  onHandleClose?: (event, reason) => void;
+  onHandleClose?: (
+    event: React.SyntheticEvent<any> | Event,
+    reason?: string
+  ) => void;
 }
 
 const toastStateAtom = atom({
@@ -32,13 +35,24 @@ const Toast: React.FC<ToastProps> = ({
   secondary,
   duration = 5000,
   layout = {},
-  onHandleClose = (event, reason) => {
-    if (reason === "clickaway") {
-      return;
-    }
-    setOpen(false);
-  },
+  onHandleClose,
 }) => {
+  const [open, setOpen] = useRecoilState(toastStateAtom);
+
+  const handleClose = (
+    event: React.SyntheticEvent<any> | Event,
+    reason?: string
+  ) => {
+    if (onHandleClose) {
+      onHandleClose(event, reason);
+    } else {
+      if (reason === "clickaway") {
+        return;
+      }
+      setOpen(false);
+    }
+  };
+
   const snackbarStyle = {
     height: layout?.height || 5,
     ...(layout?.top && {
@@ -59,12 +73,6 @@ const Toast: React.FC<ToastProps> = ({
         xl: layout.bottom,
       },
     }),
-  };
-
-  const [open, setOpen] = useRecoilState(toastStateAtom); // State management for toast visibility
-
-  const handleClose = (event, reason) => {
-    onHandleClose(event, reason);
   };
 
   const action = (
