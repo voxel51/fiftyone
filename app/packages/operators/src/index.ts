@@ -1,4 +1,5 @@
 export { OPERATOR_PROMPT_AREAS } from "./constants";
+export { useFirstExistingUri } from "./hooks";
 export { useOperators } from "./loader";
 export { default as OperatorBrowser } from "./OperatorBrowser";
 export { default as OperatorCore } from "./OperatorCore";

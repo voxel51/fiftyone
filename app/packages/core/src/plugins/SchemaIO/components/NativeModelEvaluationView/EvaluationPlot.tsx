@@ -50,12 +50,14 @@ export default function EvaluationPlot(props: EvaluationPlotProps) {
       scrollZoom: false,
       modeBarButtonsToRemove: [
         "autoScale2d",
+        "select2d",
         "lasso2d",
         "pan2d",
         "resetScale2d",
         "zoom2d",
         "zoomIn2d",
         "zoomOut2d",
+        "toImage",
       ],
     };
   }, []);
