@@ -6,12 +6,15 @@ FiftyOne Server cache utilities.
 |
 """
 
-from cachetools import cached, TLRUCache
-from datetime import datetime, timedelta
 import logging
 import typing as t
 import urllib.parse as urlparse
+from datetime import datetime, timedelta
 
+from cachetools import TLRUCache, cached
+
+import fiftyone as fo
+import fiftyone.core.cache as foc
 
 R = t.TypeVar("R")
 
@@ -80,3 +83,20 @@ def extract_ttu_from_url(
         expires_at = start_date + timedelta(seconds=expires_in)
     # Return the expiration time
     return expires_at
+
+
+get_cached_media_url = create_tlru_cache(
+    lambda path: foc.media_cache.get_url(path),
+    TLRUCache(
+        fo.config.signed_url_cache_size,
+        ttu=lambda _, val, now: extract_ttu_from_url(
+            val,
+            now,
+            (
+                timedelta(hours=fo.config.signed_url_expiration)
+                - timedelta(minutes=5)
+            ).total_seconds(),
+        ),
+        timer=datetime.now,
+    ),
+)

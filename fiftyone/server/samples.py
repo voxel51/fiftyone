@@ -12,7 +12,6 @@ import asyncio
 import strawberry as gql
 import typing as t
 
-
 from fiftyone.core.collections import SampleCollection
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
@@ -22,7 +21,10 @@ from fiftyone.server.filters import SampleFilter
 import fiftyone.server.metadata as fosm
 from fiftyone.server.paginator import Connection, Edge, PageInfo
 from fiftyone.server.scalars import BSON, JSON, BSONArray
-from fiftyone.server.utils import from_dict
+from fiftyone.server.utils import (
+    convert_frames_overlay_paths_to_cloud_urls,
+    from_dict,
+)
 import fiftyone.server.view as fosv
 
 
@@ -199,6 +201,10 @@ async def _create_sample_item(
 
     if cls == VideoSample:
         metadata = dict(**metadata, frame_number=sample.get("frame_number", 1))
+
+        # address frame overlays that might have cloud urls
+        if "frames" in sample:
+            convert_frames_overlay_paths_to_cloud_urls(sample["frames"])
 
     _id = sample["_id"]
 
