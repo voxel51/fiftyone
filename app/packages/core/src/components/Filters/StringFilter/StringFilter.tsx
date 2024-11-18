@@ -150,7 +150,6 @@ const StringFilter = ({
 const withQueryPerformanceTimeout = (modal: boolean, path: string) => {
   return ({ children }: React.PropsWithChildren) => {
     useQueryPerformanceTimeout(modal, path);
-
     return <>{children}</>;
   };
 };

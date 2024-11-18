@@ -44,7 +44,6 @@ function Selector<T>(props: SelectorProps<T>) {
     useSearch,
     component,
     toKey = (value) => String(value),
-
     inputStyle,
     inputClassName,
     containerStyle,

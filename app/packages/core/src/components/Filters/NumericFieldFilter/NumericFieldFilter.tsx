@@ -89,7 +89,6 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
 
 const Loading = ({ modal, path }: { modal: boolean; path: string }) => {
   useQueryPerformanceTimeout(modal, path);
-
   return <Box text="Loading" />;
 };
 
