@@ -10,7 +10,7 @@ import { indexedPaths } from "./queryPerformance";
 import { expandPath, fields } from "./schema";
 import { hiddenLabelIds } from "./selectors";
 import { sidebarExpandedStore } from "./sidebarExpanded";
-import { State } from "./types";
+import type { State } from "./types";
 
 export const modalFilters = sessionAtom({
   key: "modalFilters",
