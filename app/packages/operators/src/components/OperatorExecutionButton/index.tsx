@@ -21,6 +21,7 @@ export const OperatorExecutionButton = ({
   operatorUri,
   onSuccess,
   onError,
+  onClick,
   executionParams,
   onOptionSelected,
   disabled,
@@ -30,6 +31,7 @@ export const OperatorExecutionButton = ({
   operatorUri: string;
   onSuccess?: ExecutionCallback;
   onError?: ExecutionErrorCallback;
+  onClick?: () => void;
   executionParams?: object;
   onOptionSelected?: (option: OperatorExecutionOption) => void;
   disabled?: boolean;
@@ -38,6 +40,7 @@ export const OperatorExecutionButton = ({
   return (
     <OperatorExecutionTrigger
       operatorUri={operatorUri}
+      onClick={onClick}
       onSuccess={onSuccess}
       onError={onError}
       executionParams={executionParams}
