@@ -12,12 +12,12 @@ from starlette.requests import Request
 
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.json as foj
-import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 from fiftyone.core.utils import run_sync_task
 import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
+from fiftyone.server.utils import convert_frames_overlay_paths_to_cloud_urls
 import fiftyone.server.view as fosv
 
 
@@ -31,7 +31,6 @@ class Frames(HTTPEndpoint):
         dataset = data.get("dataset")
         stages = data.get("view")
         sample_id = data.get("sampleId")
-        group_slice = data.get("slice", None)
 
         view = await fosv.get_view(
             dataset, stages=stages, extended_stages=extended, awaitable=True
@@ -61,6 +60,9 @@ class Frames(HTTPEndpoint):
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
             view._pipeline(frames_only=True, support=support),
         ).to_list(end_frame - start_frame + 1)
+
+        # address frame overlays that might have cloud urls
+        convert_frames_overlay_paths_to_cloud_urls(frames)
 
         return JSONResponse(
             {
