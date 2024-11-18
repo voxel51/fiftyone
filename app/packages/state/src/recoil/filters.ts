@@ -6,11 +6,26 @@ import {
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 import { DefaultValue, selectorFamily } from "recoil";
 import { getSessionRef, sessionAtom } from "../session";
-import { indexedPaths, pathHasIndexes } from "./queryPerformance";
+import { pathHasIndexes, queryPerformance } from "./queryPerformance";
 import { expandPath, fields } from "./schema";
 import { hiddenLabelIds, isFrameField } from "./selectors";
-import { sidebarExpandedStore } from "./sidebarExpanded";
 import { State } from "./types";
+
+export const { getQueryPerformancePath, setQueryPerformancePath } = (() => {
+  let queryPerformancePath: { isFrameField: boolean; path: string } | null =
+    null;
+
+  return {
+    getQueryPerformancePath: () => queryPerformancePath,
+    setQueryPerformancePath: (path: string | null, isFrameField = false) => {
+      if (path) {
+        queryPerformancePath = { isFrameField, path };
+      } else {
+        queryPerformancePath = null;
+      }
+    },
+  };
+})();
 
 export const modalFilters = sessionAtom({
   key: "modalFilters",
@@ -37,6 +52,7 @@ export const filters = (() => {
       effects: [
         ({ onSet }) => {
           onSet((next) => {
+            setQueryPerformancePath(null);
             current = next;
           });
         },
@@ -67,32 +83,19 @@ export const filter = selectorFamily<
     ({ get, set }, filter) => {
       const atom = modal ? modalFilters : filters;
       const newFilters = Object.assign({}, get(atom));
-      const currentLightningPaths = get(indexedPaths(""));
-      if (!modal && currentLightningPaths.has(path)) {
-        for (const p in newFilters) {
-          if (!currentLightningPaths.has(p)) {
-            delete newFilters[p];
-          }
-        }
 
-        set(sidebarExpandedStore(false), (current) => {
-          const next = { ...current };
-
-          for (const parent in next) {
-            if (![...currentLightningPaths].some((p) => p.startsWith(parent))) {
-              delete next[parent];
-            }
-          }
-
-          return next;
-        });
-      }
+      const setQueryPerformance =
+        !modal && get(queryPerformance) && get(pathCanBeOptimized(path));
 
       if (filter === null || filter instanceof DefaultValue) {
         delete newFilters[path];
+        setQueryPerformance && setQueryPerformancePath(null);
       } else {
         newFilters[path] = filter;
+        setQueryPerformance &&
+          setQueryPerformancePath(path, setQueryPerformance.isFrameField);
       }
+
       set(atom, newFilters);
     },
 });
@@ -138,7 +141,7 @@ export const fieldIsFiltered = selectorFamily<
 });
 
 export const pathCanBeOptimized = selectorFamily({
-  key: "pathThatCanBeOptimized",
+  key: "pathCanBeOptimized",
   get:
     (path: string) =>
     ({ get }) => {

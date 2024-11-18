@@ -13,12 +13,6 @@ export default function useQueryPerformanceTimeout(
       return;
     }
 
-    /** TMP TESTING */
-    window.dispatchEvent(
-      new QueryPerformanceToastEvent(path, shouldOptimize.isFrameField)
-    );
-    /** TMP TESTING */
-
     const timeout = setTimeout(() => {
       window.dispatchEvent(
         new QueryPerformanceToastEvent(path, shouldOptimize.isFrameField)
