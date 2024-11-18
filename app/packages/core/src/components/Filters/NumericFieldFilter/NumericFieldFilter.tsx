@@ -4,6 +4,7 @@ import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { LightningBolt } from "../../Sidebar/Entries/FilterablePathEntry/Icon";
 import { Button } from "../../utils";
+import useQueryPerformanceTimeout from "../use-query-performance-timeout";
 import Box from "./Box";
 import RangeSlider from "./RangeSlider";
 import useShow from "./use-show";
@@ -63,7 +64,7 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
           )}
         />
       )}
-      <Suspense fallback={<Box text="Loading" />}>
+      <Suspense fallback={<Loading modal={modal} path={path} />}>
         {showLoadButton ? (
           <Box>
             <Button
@@ -84,6 +85,11 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
       </Suspense>
     </Container>
   );
+};
+
+const Loading = ({ modal, path }: { modal: boolean; path: string }) => {
+  useQueryPerformanceTimeout(modal, path);
+  return <Box text="Loading" />;
 };
 
 export default NumericFieldFilter;
