@@ -22,16 +22,6 @@ export interface FetchFunction {
   ): Promise<R>;
 }
 
-class QueryPerformanceToast extends Event {
-  path?: string;
-  constructor(path?: string) {
-    super("queryperformance");
-    this.path = path;
-  }
-}
-
-const TIMEOUT = 5100;
-
 export const getFetchFunction = () => {
   return fetchFunctionSingleton;
 };
