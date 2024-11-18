@@ -1,17 +1,34 @@
-import { Toast } from "@fiftyone/components";
+import { useTrackEvent } from "@fiftyone/analytics";
+import { Toast, useTheme } from "@fiftyone/components";
 import { QP_MODE, QP_MODE_SUMMARY } from "@fiftyone/core";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
-import { Box, Button, Typography } from "@mui/material";
 import { Bolt } from "@mui/icons-material";
+import { Box, Button, Typography } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { atom, useRecoilState, useRecoilValue } from "recoil";
-import { useTheme } from "@fiftyone/components";
-import * as atoms from "@fiftyone/state/src/recoil/atoms";
-import * as fos from "@fiftyone/state";
-import { useTrackEvent } from "@fiftyone/analytics";
+import { atom, useRecoilState } from "recoil";
 
 const SHOWN_FOR = 10000;
+
+export const QP_WAIT = 5151;
+
+declare global {
+  interface WindowEventMap
+    extends GlobalEventHandlersEventMap,
+      WindowEventHandlersEventMap {
+    queryperformance: QueryPerformanceToastEvent;
+  }
+}
+export class QueryPerformanceToastEvent extends Event {
+  isFrameField: boolean;
+  path: string;
+
+  constructor(path: string, isFrameField: boolean) {
+    super("queryperformance");
+    this.path = path;
+    this.isFrameField = isFrameField;
+  }
+}
 
 const hideQueryPerformanceToast = atom({
   key: "hideQueryPerformanceToast",
@@ -34,46 +51,35 @@ const QueryPerformanceToast = ({
   },
   text = "View Documentation",
 }) => {
-  const [path, setPath] = useState("");
-  const indexed = useRecoilValue(fos.pathHasIndexes(path));
-  const [shown, setShown] = useState(false);
+  const [data, setData] = useState<{
+    path: string;
+    isFrameField: boolean;
+  } | null>(null);
   const [disabled, setDisabled] = useRecoilState(hideQueryPerformanceToast);
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
   const element = document.getElementById("queryPerformance");
   const theme = useTheme();
-  const frameFields = useRecoilValue(atoms.frameFields);
   const trackEvent = useTrackEvent();
 
   useEffect(() => {
-    const listen = (event) => {
+    const listen = (event: QueryPerformanceToastEvent) => {
       onDispatch(event);
-      setPath(event.path);
-      setShown(true);
+      setData({ path: event.path, isFrameField: event.isFrameField });
     };
     window.addEventListener("queryperformance", listen);
     return () => window.removeEventListener("queryperformance", listen);
-  }, []);
-
-  const onHandleClose = (event, reason) => {
-    setShown(false);
-  };
+  }, [onDispatch]);
 
   if (!element) {
     throw new Error("no query performance element");
   }
 
-  if (!shown || disabled || !queryPerformance) {
-    return null;
-  }
-
-  // don't show the toast if the path is already indexed
-  if (path && indexed) {
+  if (!data || disabled) {
     return null;
   }
 
   return createPortal(
     <Toast
-      onHandleClose={onHandleClose}
+      onHandleClose={() => setData(null)}
       duration={SHOWN_FOR}
       layout={{
         bottom: "100px !important",
@@ -87,13 +93,11 @@ const QueryPerformanceToast = ({
             variant="contained"
             size="small"
             onClick={() => {
-              onClick(
-                frameFields.some((frame) =>
-                  path.includes(`frames.${frame.path}`)
-                )
-              );
-              trackEvent("query_performance_toast_clicked", { path: path });
-              setShown(false);
+              onClick(data.isFrameField);
+              trackEvent("query_performance_toast_clicked", {
+                path: data.path,
+              });
+              setData(null);
             }}
             sx={{
               marginLeft: "auto",
@@ -116,10 +120,13 @@ const QueryPerformanceToast = ({
               size="small"
               onClick={() => {
                 setDisabled(true);
-                trackEvent("query_performance_toast_dismissed", { path: path });
-                setShown(false);
+                trackEvent("query_performance_toast_dismissed", {
+                  path: data.path,
+                });
+                setData(null);
               }}
-              style={{ marginLeft: "auto", color: theme.text.secondary }} // Right align the button
+              // Right align the button
+              style={{ marginLeft: "auto", color: theme.text.secondary }}
             >
               Dismiss
             </Button>

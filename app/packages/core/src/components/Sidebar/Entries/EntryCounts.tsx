@@ -41,7 +41,7 @@ export const PathEntryCounts = ({ modal, path }: PathEntryCountsProps) => {
     [modal, path]
   );
   const hasFilters = useRecoilValue(fos.fieldIsFiltered({ modal, path }));
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const queryPerformance = useRecoilValue(fos.queryPerformance) && !modal;
   const shown = useRecoilValue(showEntryCounts({ modal, path }));
 
   // empty path means we are showing grid sample count which is always allowed

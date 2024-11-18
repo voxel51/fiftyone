@@ -273,7 +273,7 @@ export default class SegmentationOverlay<State extends BaseState>
   private getTarget(state: Readonly<State>): number {
     const index = this.getIndex(state);
 
-    if (index < 0) {
+    if (index < 0 || !this.targets || index >= this.targets.length) {
       return null;
     }
     return this.targets[index];

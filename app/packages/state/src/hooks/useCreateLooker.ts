@@ -127,7 +127,6 @@ export default <T extends AbstractLooker<BaseState>>(
         let config: ConstructorParameters<T>[1] = {
           enableTimeline,
           fieldSchema: {
-            ...fieldSchema,
             frames: {
               name: "frames",
               ftype: LIST_FIELD,
@@ -136,6 +135,7 @@ export default <T extends AbstractLooker<BaseState>>(
               fields: frameFieldSchema,
               dbField: null,
             },
+            ...fieldSchema,
           },
           sources: urls,
           frameNumber: create === FrameLooker ? frameNumber : undefined,
