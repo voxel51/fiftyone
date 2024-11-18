@@ -36,7 +36,7 @@ export const EmptyState = ({
           endIcon={<OpenInNewIcon />}
           variant="outlined"
           color="secondary"
-          href="https://docs.voxel51.com"
+          href="https://docs.voxel51.com/teams/data_lens.html"
           target="_blank"
         >
           Data Lens Docs
