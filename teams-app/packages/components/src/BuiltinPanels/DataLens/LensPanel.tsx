@@ -26,15 +26,15 @@ import { FormState, OperatorConfigurator } from "./OperatorConfigurator";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import {
   ImportRequest,
-  ImportResponse,
   LensConfig,
   OperatorResponse,
   PreviewRequest,
   PreviewResponse,
 } from "./models";
 import { Lens } from "./Lens";
-import { ImportDialog, ImportDialogData } from "./ImportDialog";
+import { ImportDialog } from "./ImportDialog";
 import { useDatasets } from "./hooks";
+import { OperatorResult } from "@fiftyone/operators/src/operators";
 
 // Internal state.
 type PanelState = {
@@ -109,6 +109,7 @@ export const LensPanel = ({
   // Preview state
   const [maxSamples, setMaxSamples] = useState(25);
   const [searchResponse, setSearchResponse] = useState<PreviewResponse>();
+  const [isOperatorConfigReady, setIsOperatorConfigReady] = useState(false);
   const [previewTime, setPreviewTime] = useState(0);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
@@ -178,8 +179,8 @@ export const LensPanel = ({
   };
 
   // Callback which handles updates to the selected lens configuration.
-  const handleLensConfigChange = (name: string) => {
-    const config = lensConfigs.find((cfg) => cfg.name === name);
+  const handleLensConfigChange = (id: string) => {
+    const config = lensConfigs.find((cfg) => cfg.id === id);
     if (config) {
       setActiveConfig(config);
       handleFormStateChange({}, false);
@@ -193,6 +194,7 @@ export const LensPanel = ({
     const request: PreviewRequest = {
       search_params: { ...formState },
       operator_uri: activeConfig.operator_uri,
+      batch_size: maxSamples,
       max_results: maxSamples,
       request_type: "preview",
     };
@@ -206,7 +208,9 @@ export const LensPanel = ({
       // Enable import if any samples were returned
       setIsImportEnabled(response.result?.result_count > 0);
 
-      onError(response.error || response.result?.error);
+      if (response.error || response.result?.error) {
+        onError(response.error || response.result?.error);
+      }
     };
 
     setSearchResponse(null);
@@ -221,46 +225,47 @@ export const LensPanel = ({
     await searchOperator.execute(request, { callback });
   };
 
-  // Callback which handles starting an import job.
-  const doImport = async (dialogData: ImportDialogData) => {
-    // Limit batches to ~2 MB. Figure out if this is a reasonable number.
-    const maxBatchMB = 2;
+  const importRequestParams: Pick<
+    ImportRequest,
+    "operator_uri" | "search_params" | "batch_size"
+  > = useMemo(() => {
+    // Limit batches to ~10 MB. Figure out if this is a reasonable number.
+    const maxBatchMB = 10;
     const maxBatchBytes = maxBatchMB * (1 << 20);
-    const batchSize = Math.max(
+    const importBatchSize = Math.max(
       1,
       Math.floor(maxBatchBytes / averageSampleSize)
     );
 
-    // Operator request parameters.
-    const request: ImportRequest = {
-      search_params: { ...formState },
+    return {
       operator_uri: activeConfig.operator_uri,
-      batch_size: batchSize,
-      request_type: "import",
-      dataset_name: dialogData.datasetName,
-      max_samples: dialogData.maxSamples,
-      tags: dialogData.tags,
+      search_params: { ...formState },
+      batch_size: importBatchSize,
     };
+  }, [activeConfig, averageSampleSize, formState]);
 
-    // Callback which handles the response from the operator.
-    const callback = (response: OperatorResponse<ImportResponse>) => {
-      setImportTime(new Date().getTime() - importStartTime.current);
-      setIsImportLoading(false);
-
-      onError(response.error || response.result?.error);
-    };
-
+  const onImportStart = (isDelegated: boolean, datasetName: string) => {
     setImportTime(0);
     setIsImportLoading(true);
-    setDestDatasetName(dialogData.datasetName);
-    setIsDelegatedImport(dialogData.isDelegated);
-
+    setDestDatasetName(datasetName);
+    setIsDelegatedImport(isDelegated);
     importStartTime.current = new Date().getTime();
 
-    await searchOperator.execute(request, {
-      callback,
-      requestDelegation: dialogData.isDelegated,
+    dispatchPanelUpdate({
+      isQueryExpanded: false,
+      isPreviewExpanded: false,
+      isImportShown: true,
+      isImportExpanded: true,
     });
+
+    setIsImportDialogOpen(false);
+  };
+
+  const onImportSuccess: (result: OperatorResult) => void = (
+    result: OperatorResult
+  ) => {
+    setImportTime(new Date().getTime() - importStartTime.current);
+    setIsImportLoading(false);
   };
 
   // Callback which opens the target dataset.
@@ -279,20 +284,6 @@ export const LensPanel = ({
     setDestDatasetName("");
   };
 
-  // Callback which updates state and initiates an import job.
-  const handleImportClick = (dialogData: ImportDialogData) => {
-    doImport(dialogData);
-
-    dispatchPanelUpdate({
-      isQueryExpanded: false,
-      isPreviewExpanded: false,
-      isImportShown: true,
-      isImportExpanded: true,
-    });
-
-    setIsImportDialogOpen(false);
-  };
-
   // LensConfig selection.
   const lensConfigContent = (
     <Box>
@@ -301,11 +292,11 @@ export const LensPanel = ({
       <Select
         fullWidth
         variant="outlined"
-        value={activeConfig?.name}
+        value={activeConfig?.id}
         onChange={(e) => handleLensConfigChange(e.target.value)}
       >
         {lensConfigs.map((cfg) => (
-          <MenuItem key={cfg.name} value={cfg.name}>
+          <MenuItem key={cfg.id} value={cfg.id}>
             {cfg.name}
           </MenuItem>
         ))}
@@ -318,7 +309,13 @@ export const LensPanel = ({
     <Box sx={{ mt: 4 }}>
       <Accordion expanded={panelState.isQueryExpanded}>
         <AccordionSummary
-          expandIcon={<ExpandMoreIcon />}
+          expandIcon={
+            isOperatorConfigReady ? (
+              <ExpandMoreIcon />
+            ) : (
+              <CircularProgress size="1.5rem" />
+            )
+          }
           onClick={() =>
             dispatchPanelUpdate({
               isQueryExpanded: !panelState.isQueryExpanded,
@@ -331,7 +328,7 @@ export const LensPanel = ({
             <Typography>&bull;</Typography>
             <Typography color="secondary">
               {Object.keys(formState)
-                .map((k) => (formState[k] ? 1 : 0))
+                .map((k) => (formState[k] || formState[k] === 0 ? 1 : 0))
                 .reduce((l, r) => l + r, 0)}{" "}
               filters applied
             </Typography>
@@ -342,6 +339,7 @@ export const LensPanel = ({
             operator={activeConfig?.operator_uri}
             formState={formState}
             onStateChange={handleFormStateChange}
+            onReadyChange={setIsOperatorConfigReady}
           />
         </AccordionDetails>
       </Accordion>
@@ -350,6 +348,9 @@ export const LensPanel = ({
 
   // Additional search controls.
   const getSearchControls = () => {
+    const isPreviewButtonEnabled =
+      isFormValid && !isPreviewLoading && maxSamples > 0;
+
     const numSamplesInput = (
       <FormControl>
         <TextField
@@ -395,7 +396,7 @@ export const LensPanel = ({
               variant="outlined"
               color="secondary"
               sx={{ height: "fit-content" }}
-              disabled={!isFormValid || isPreviewLoading}
+              disabled={!isPreviewButtonEnabled}
               onClick={doSearch}
             >
               Preview data
@@ -427,7 +428,7 @@ export const LensPanel = ({
             <Button
               variant="contained"
               sx={{ height: "fit-content" }}
-              disabled={!isFormValid || isPreviewLoading}
+              disabled={!isPreviewButtonEnabled}
               onClick={doSearch}
             >
               Preview data
@@ -633,10 +634,13 @@ export const LensPanel = ({
       {/*Placement of this dialog doesn't matter; just needs to be part of the DOM*/}
       <ImportDialog
         open={isImportDialogOpen}
-        onClose={() => setIsImportDialogOpen(false)}
         datasets={datasets}
+        onClose={() => setIsImportDialogOpen(false)}
         onCancel={() => setIsImportDialogOpen(false)}
-        onImport={handleImportClick}
+        requestParams={importRequestParams}
+        onStart={onImportStart}
+        onSuccess={onImportSuccess}
+        onError={(e) => onError?.(`${e}`)}
       />
     </Box>
   );

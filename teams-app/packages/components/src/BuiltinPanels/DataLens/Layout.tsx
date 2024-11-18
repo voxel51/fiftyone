@@ -60,7 +60,10 @@ export const Layout = ({
               ))}
             </Tabs>
 
-            <Link target="_blank" href="https://docs.voxel51.com">
+            <Link
+              target="_blank"
+              href="https://docs.voxel51.com/teams/data_lens.html"
+            >
               View Docs
             </Link>
           </Box>

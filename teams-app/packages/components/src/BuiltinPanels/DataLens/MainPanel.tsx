@@ -1,11 +1,11 @@
 import { Layout, TabConfig } from "./Layout";
-import React, { Fragment, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { EmptyState } from "./EmptyState";
 import { LensConfigManager } from "./LensConfigManager";
 import { LensPanel } from "./LensPanel";
 import { LensConfig } from "./models";
-import { Snackbar, Stack, Typography } from "@mui/material";
 import { useLensConfigs } from "./hooks";
+import Error from "./Error";
 
 type ExtendedTabConfig = TabConfig & {
   isVisible: boolean;
@@ -83,6 +83,7 @@ export const MainPanel = () => {
           <LensConfigManager
             configs={lensConfigs}
             onConfigsChange={handleLensConfigsUpdate}
+            onError={setErrorMessage}
           />
         ),
         isVisible: true,
@@ -90,27 +91,9 @@ export const MainPanel = () => {
     ]
   );
 
-  const errors = [lensConfigError, errorMessage].filter((s) => !!s);
-
-  const errorContent =
-    errors.length > 0 ? (
-      <Snackbar
-        open={errors.length > 0}
-        onClose={clearErrors}
-        message={
-          <Stack direction="column" spacing={2}>
-            {errors.map((err, idx) => (
-              <Typography key={idx} color="error">
-                {err}
-              </Typography>
-            ))}
-          </Stack>
-        }
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      />
-    ) : (
-      <Fragment />
-    );
+  const errors = useMemo(() => {
+    return [lensConfigError, errorMessage].filter((s) => !!s);
+  }, [lensConfigError, errorMessage]);
 
   return (
     <>
@@ -119,7 +102,7 @@ export const MainPanel = () => {
         active={activeTab}
         onTabClick={(tabId) => setActiveTab(tabId as TabId)}
       />
-      {errorContent}
+      <Error errors={errors} onClear={clearErrors} />
     </>
   );
 };
