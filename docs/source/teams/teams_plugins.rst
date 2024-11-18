@@ -354,7 +354,8 @@ ____________________
 
 :ref:`Delegated operations <delegated-operations>` are a powerful feature of
 FiftyOne's plugin framework that allows users to schedule tasks from within the
-App that are executed on a connected workflow orchestrator like Apache Airflow.
+App that are executed on a connected workflow orchestrator like the provided
+FiftyOne builtin orchestator.
 
 With FiftyOne Teams, your team can
 :ref:`upload and permission <teams-plugins-page>` custom operations that your
@@ -435,6 +436,11 @@ __________________________
 All delegated operations that have been scheduled by users of a FiftyOne Teams
 deployment will remain queued until a connected orchestrator picks them up and
 executes them.
+
+FiftyOne Teams offers a builtin orchestrator which is configured as part of your
+deployment. Three workers are provisioned by default, to get help scaling up
+or down contact your Voxel51 support team. If you'd like to configure an additional
+orchestrator, such as Airflow, continue reading below.
 
 .. note::
 

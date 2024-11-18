@@ -831,7 +831,7 @@ ____________________
 Delegated operations are a powerful feature of FiftyOne's plugin framework that
 allows you to schedule tasks from within the App that are executed on a
 connected workflow orchestrator like
-:ref:`Apache Airflow <delegated-operations-airflow>` or run just
+:ref:`FiftyOne Teams Builtin Orchestrator <delegated-operations-builtin>` or run just
 :ref:`run locally <delegated-operations-local>` in a separate process.
 
 For example, have model predictions on your dataset that you want to evaluate?
@@ -948,6 +948,30 @@ operation service via the
 
 This command starts a service that will continuously check for any queued
 delegated operations and execute them serially in its process.
+
+.. _delegated-operations-builtin:
+
+FiftyOne Teams Builtin Orchestrator
+-----------------------------------
+
+Delegated operations are designed to be ran in the background of the FiftyOne
+application. This allows users to build powerful plugins and operators that
+would typically take too long for a user to wait for them to complete within the app.
+
+We recognize that supporting Airflow or other workflow orchestrators can be an
+involved task for users which is why we offer a builtin orchestrator as part of
+all FiftyOne Teams deployments.
+
+.. note::
+
+    Want to take advantage of this functionality?
+    `Contact us <https://voxel51.com/get-fiftyone-teams>`_ about
+    :ref:`FiftyOne Teams <fiftyone-teams>`, an open source-compatible
+    enterprise deployment of FiftyOne with multiuser collaboration features,
+    native cloud dataset support, and much more!
+
+    FiftyOne Teams as the single source of truth on which you
+    co-develop your data and models together 📈
 
 .. _delegated-operations-airflow:
 

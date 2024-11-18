@@ -1129,7 +1129,7 @@ suitable for immediate execution.
 
 In such cases, :ref:`delegated operations <delegated-operations>` come to the
 rescue by allowing operators to schedule tasks that are executed on a connected
-workflow orchestrator like :ref:`Apache Airflow <delegated-operations-airflow>`
+workflow orchestrator like :ref:`FiftyOne Teams Builtin Orchestrator <delegated-operations-builtin>`
 or run just :ref:`run locally <delegated-operations-local>` in a separate
 process.
 
