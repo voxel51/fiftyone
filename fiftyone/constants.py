@@ -13,7 +13,7 @@ from packaging.version import Version
 
 from importlib.metadata import metadata
 
-
+# 
 CLIENT_TYPE = "fiftyone-teams"
 
 FIFTYONE_DIR = os.path.dirname(os.path.abspath(__file__))
