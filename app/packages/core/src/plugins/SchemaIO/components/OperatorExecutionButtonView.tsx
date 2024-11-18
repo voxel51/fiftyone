@@ -1,6 +1,6 @@
 import React from "react";
 import { MuiIconFont } from "@fiftyone/components";
-import { OperatorExecutionButton } from "@fiftyone/operators";
+import { OperatorExecutionButton, usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { isNullish } from "@fiftyone/utilities";
 import { Box, ButtonProps, Typography } from "@mui/material";
@@ -8,6 +8,12 @@ import { getColorByCode, getComponentProps, getDisabledColors } from "../utils";
 import { ViewPropsType } from "../utils/types";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import TooltipProvider from "./TooltipProvider";
+import { OperatorExecutionOption } from "@fiftyone/operators/src/state";
+import {
+  ExecutionCallback,
+  ExecutionErrorCallback,
+} from "@fiftyone/operators/src/types-internal";
+import { OperatorResult } from "@fiftyone/operators/src/operators";
 
 export default function OperatorExecutionButtonView(props: ViewPropsType) {
   const { schema, path } = props;
@@ -21,6 +27,9 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
     params = {},
     title,
     disabled = false,
+    on_error,
+    on_success,
+    on_option_selected,
   } = view;
   const panelId = usePanelId();
   const variant = getVariant(props);
@@ -35,11 +44,53 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
     <ExpandMoreIcon />
   );
 
+  const triggerEvent = usePanelEvent();
+
+  const handleOnSuccess: ExecutionCallback = (result, { ctx }) => {
+    if (on_success) {
+      triggerEvent(panelId, {
+        operator: on_success,
+        params: {
+          result,
+          original_params: ctx.params,
+        },
+      });
+    }
+  };
+  const handleOnError: ExecutionErrorCallback = (
+    result: OperatorResult,
+    { ctx }
+  ) => {
+    if (on_error) {
+      triggerEvent(panelId, {
+        operator: on_error,
+        params: {
+          error: result.error,
+          error_message: result.errorMessage,
+          original_params: ctx.params,
+        },
+      });
+    }
+  };
+  const handleOnOptionSelected = (option: OperatorExecutionOption) => {
+    if (on_option_selected) {
+      triggerEvent(panelId, {
+        operator: on_option_selected,
+        params: {
+          selected_option: option,
+        },
+      });
+    }
+  };
+
   return (
     <Box {...getComponentProps(props, "container")}>
       <TooltipProvider title={title} {...getComponentProps(props, "tooltip")}>
         <OperatorExecutionButton
           operatorUri={operator}
+          onSuccess={handleOnSuccess}
+          onError={handleOnError}
+          onOptionSelected={handleOnOptionSelected}
           executionParams={computedParams}
           variant={variant}
           disabled={disabled}

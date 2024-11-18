@@ -1377,26 +1377,31 @@ class OperatorExecutionButtonView(Button):
 
         import fiftyone.operators.types as types
 
-        operatorButtonView = types.OperatorExecutionButtonView(
-            icon="expand_more",
-            operator="execute_custom_operator",
-            params={"key": "value"},
-            label="Execute",
-            description="Executes the specified operator",
+        exec_button = types.OperatorExecutionButtonView(
+            label="Execute Simple Op",
+            variant="contained",
+            operator="@voxel51/panel-examples/simple_op",
+            on_success=self.on_success,
+            on_error=self.on_error,
+            on_option_selected=self.on_select,
+            params={"msg": "Hello World!"},
         )
 
         inputs = types.Object()
-        inputs.view("operator_btn", operatorButtonView)
+        inputs.view("operator_btn", view=exec_button)
 
     Args:
-        icon (str): an icon for the button. Defaults to "expand_more" if not provided.
-        label (str): a label for the button.
-        description (str): a description for the button.
-        title (str): a tooltip title for the button.
-        operator (str): the name of the operator to execute when the button is clicked.
-        params (dict): the parameters to pass to the operator.
-        prompt (str): a prompt for the operation.
-        disabled (bool): whether the button is disabled.
+        icon: an icon for the button. Defaults to "expand_more" if not provided.
+        label: a label for the button.
+        variant: the variant of the button. Can be "contained" or "outlined".
+        description: a description for the button.
+        title: a tooltip title for the button.
+        operator: the URI of the operator to execute when the button is clicked.
+        on_success: the URI of the operator to execute when the operator execution is successful.
+        on_error: the URI of the operator to execute when the operator execution fails.
+        on_option_selected: the URI of the operator to execute when an option is selected.
+        params: the parameters dict to pass to the operator.
+        disabled: whether the button is disabled.
     """
 
     def __init__(self, **kwargs):
