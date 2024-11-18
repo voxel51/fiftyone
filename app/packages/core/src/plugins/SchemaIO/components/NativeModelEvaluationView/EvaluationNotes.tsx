@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useLayoutEffect } from "react";
 
 const DEFAULT_NOTE =
   "No evaluation notes added yet. Click the edit button to add evaluation notes.";
-const MAX_NOTES_HEIGHT = 72;
+const MAX_NOTES_HEIGHT = 128;
 
 export default function EvaluationNotes(props: EvaluationNotesProps) {
   const { notes, variant = "overview" } = props;
@@ -35,11 +35,8 @@ export default function EvaluationNotes(props: EvaluationNotesProps) {
 
   if (!hasNotes && !showDefault) return null;
 
-  const color = hasNotes
-    ? variant === "overview"
-      ? "secondary"
-      : "primary"
-    : "tertiary";
+  const isOverview = variant === "overview";
+  const color = hasNotes ? (isOverview ? "secondary" : "primary") : "tertiary";
 
   return (
     <Box>
@@ -57,7 +54,7 @@ export default function EvaluationNotes(props: EvaluationNotesProps) {
           <Markdown>{notes || DEFAULT_NOTE}</Markdown>
         </Typography>
       </Box>
-      {isTruncated && (
+      {isTruncated && !isOverview && (
         <Box
           sx={{
             background: `linear-gradient(to bottom, hsla(200, 0%, ${
@@ -67,7 +64,7 @@ export default function EvaluationNotes(props: EvaluationNotesProps) {
             }) 100%)`,
             position: "relative",
             top: expanded ? 0 : "-12px",
-            p: "12px 4px 4px 4px",
+            p: 0.5,
           }}
         >
           <Button
