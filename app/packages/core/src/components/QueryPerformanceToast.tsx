@@ -10,7 +10,7 @@ import { atom, useRecoilState } from "recoil";
 
 const SHOWN_FOR = 10000;
 
-export const QP_WAIT = 5100;
+export const QP_WAIT = 5151;
 
 declare global {
   interface WindowEventMap
