@@ -6,8 +6,8 @@ import {
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   INT_FIELD,
-  KEYPOINT_FIELD,
   KEYPOINTS_FIELD,
+  KEYPOINT_FIELD,
   LABELS,
   LIST_FIELD,
   OBJECT_ID_FIELD,
@@ -125,16 +125,16 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
             );
 
             return keypointFilter(name, docType, (value: unknown) => {
-              const correctedValue = value[0] ? value[0] : value;
+              const correctedValue = value?.[0] ? value[0] : value;
               return filter(
-                correctedValue[name === "id" ? "id" : dbField || name]
+                correctedValue?.[name === "id" ? "id" : dbField || name]
               );
             });
           });
 
           f[path] = (value: unknown) => {
-            const correctedValue = value[0] ? value[0] : value;
-            if (hidden.has(value.id)) {
+            const correctedValue = value?.[0] ? value[0] : value;
+            if (hidden.has(value?.id)) {
               return false;
             }
 

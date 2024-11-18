@@ -2,6 +2,45 @@ import cv2
 from PIL import Image
 import numpy as np
 
+import fiftyone as fo
+import fiftyone.operators.types as types
+
+
+###
+# FiftyOne Utility Functions
+###
+
+
+def _handle_patch_inputs(ctx, inputs):
+    target_view = ctx.target_view()
+    patch_types = (fo.Detection, fo.Detections, fo.Polyline, fo.Polylines)
+    patches_fields = list(
+        target_view.get_field_schema(embedded_doc_type=patch_types).keys()
+    )
+
+    if patches_fields:
+        patches_field_choices = types.DropdownView()
+        for field in sorted(patches_fields):
+            patches_field_choices.add_choice(field, label=field)
+
+        inputs.str(
+            "patches_field",
+            default=None,
+            required=False,
+            label="Patches Field",
+            description=(
+                "An optional sample field defining image patches in each "
+                "sample to run the computation on. If omitted, the full images "
+                "will be used."
+            ),
+            view=patches_field_choices,
+        )
+
+
+###
+# General Utility Functions
+###
+
 
 def get_filepath(sample):
     return (

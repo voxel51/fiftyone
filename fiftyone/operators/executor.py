@@ -1091,9 +1091,9 @@ class ExecutionContext(contextlib.AbstractContextManager):
         else:
             self.log(f"Progress: {progress} - {label}")
 
-    # TODO resolve circular import so this can have a type
-    def create_store(self, store_name):
-        """Creates a new store with the specified name.
+    def store(self, store_name):
+        """
+        Create (if not previously created) and use a store with the specified name.
 
         Args:
             store_name: the name of the store
@@ -1103,7 +1103,8 @@ class ExecutionContext(contextlib.AbstractContextManager):
         """
         from fiftyone.operators.store import ExecutionStore
 
-        return ExecutionStore.create(store_name)
+        dataset_id = self.dataset._doc.id
+        return ExecutionStore.create(store_name, dataset_id)
 
     def serialize(self):
         """Serializes the execution context.
@@ -1493,12 +1494,13 @@ class ExecutionOptions(object):
 
     @property
     def orchestrator_registration_enabled(self):
-        return (
+        legacy_orchestrator_mode_allowed = (
             os.environ.get(
-                "FIFTYONE_ENABLE_ORCHESTRATOR_REGISTRATION", "false"
+                "FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS", "false"
             ).lower()
             == "true"
         )
+        return not legacy_orchestrator_mode_allowed
 
     def update(self, available_orchestrators=None):
         self._available_orchestrators = available_orchestrators

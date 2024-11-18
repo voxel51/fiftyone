@@ -1,11 +1,13 @@
 import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import Bolt from "@mui/icons-material/Bolt";
 import React from "react";
 import type { RecoilState } from "recoil";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { isInKeypointsField } from "../state";
+import useQueryPerformanceTimeout from "../use-query-performance-timeout";
 import Checkboxes from "./Checkboxes";
 import ResultComponent from "./Result";
 import useOnSelect from "./useOnSelect";
@@ -31,6 +33,7 @@ const NamedStringFilterHeader = styled.div`
   display: flex;
   justify-content: space-between;
   text-overflow: ellipsis;
+  align-items: center;
 `;
 
 interface Props {
@@ -75,12 +78,17 @@ const StringFilter = ({
   );
   const onSelect = useOnSelect(modal, path, selectedAtom);
   const skeleton =
-    useRecoilValue(isInKeypointsField(path)) && name === "keypoints";
+    useRecoilValue(isInKeypointsField(path)) && name === "points";
+  const indexed = useRecoilValue(fos.pathHasIndexes(path));
   const theme = useTheme();
   const queryPerformance = useRecoilValue(fos.queryPerformance);
-  if (named && !queryPerformance && !results?.count) {
+  const frameField = useRecoilValue(fos.isFrameField(path));
+  if (named && (!queryPerformance || modal) && !results?.count) {
     return null;
   }
+
+  const showQueryPerformanceIcon =
+    named && queryPerformance && indexed && !modal && !frameField;
 
   return (
     <NamedStringFilterContainer
@@ -95,6 +103,9 @@ const StringFilter = ({
           template={({ label, hoverTarget }) => (
             <NamedStringFilterHeader>
               <span ref={hoverTarget}>{label}</span>
+              {showQueryPerformanceIcon && (
+                <Bolt fontSize={"small"} sx={{ color: theme.action.active }} />
+              )}
             </NamedStringFilterHeader>
           )}
         />
@@ -118,6 +129,7 @@ const StringFilter = ({
             containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
             toKey={(value) => String(value.value)}
             id={path}
+            DuringSuspense={withQueryPerformanceTimeout(modal, path)}
           />
         )}
         <Checkboxes
@@ -128,10 +140,18 @@ const StringFilter = ({
           path={path}
           results={results?.results || null}
           selectedAtom={selectedAtom}
+          skeleton={skeleton}
         />
       </StringFilterContainer>
     </NamedStringFilterContainer>
   );
+};
+
+const withQueryPerformanceTimeout = (modal: boolean, path: string) => {
+  return ({ children }: React.PropsWithChildren) => {
+    useQueryPerformanceTimeout(modal, path);
+    return <>{children}</>;
+  };
 };
 
 export default StringFilter;

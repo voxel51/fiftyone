@@ -7,7 +7,7 @@ export const FLOAT_NONFINITES: Nonfinite[] = ["inf", "ninf", "nan"];
 export const hasBounds = selectorFamily({
   key: "hasBounds",
   get:
-    (params: { path: string; modal: boolean; shouldCalculate: boolean }) =>
+    (params: { path: string; modal: boolean; shouldCalculate?: boolean }) =>
     ({ get }) => {
       const shouldCalculate = params.shouldCalculate ?? true;
       return shouldCalculate

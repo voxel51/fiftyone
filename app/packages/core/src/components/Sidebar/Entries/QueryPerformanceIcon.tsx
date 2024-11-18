@@ -1,12 +1,12 @@
+import { useTheme } from "@fiftyone/components";
+import { SpaceNode, useSpaceNodes, useSpaces } from "@fiftyone/spaces";
+import * as fos from "@fiftyone/state";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
+import { Bolt } from "@mui/icons-material";
+import { Box, Button, Tooltip } from "@mui/material";
 import React from "react";
 import { atom, useRecoilState } from "recoil";
-import { LightningBolt } from "./FilterablePathEntry/Icon";
-import { Tooltip, Button, Box } from "@mui/material";
-import { useTheme } from "@fiftyone/components";
 import styled from "styled-components";
-import { useSpaces, useSpaceNodes, SpaceNode } from "@fiftyone/spaces";
-import * as fos from "@fiftyone/state";
 
 const SectionTitle = styled.div`
   font-size: 1rem;
@@ -41,6 +41,9 @@ const showExpandedTooltip = atom({
 const QueryPerformanceIcon = () => {
   const theme = useTheme();
   const [showExpanded, setShowExpanded] = useRecoilState(showExpandedTooltip);
+  const lightningBoltColor = showExpanded
+    ? theme.custom.lightning
+    : theme.text.secondary;
   const PANEL_NAME = "query_performance_panel";
   const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
   const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
@@ -50,20 +53,25 @@ const QueryPerformanceIcon = () => {
       title={
         <div>
           {showExpanded ? (
-            <Box>
+            <Box sx={{ padding: "8px 8px 8px 8px" }}>
               <SectionTitle>Query Performance is Enabled</SectionTitle>
               <Text>
                 Some fields are indexed for better query performance. You can
                 create or manage indexes from here.
               </Text>
-              <Box display="flex" alignItems="center">
+              <Box
+                display="flex"
+                alignItems="center"
+                paddingTop="8px"
+                gap="4px"
+              >
                 <Button
                   variant="contained"
                   sx={{
-                    marginLeft: "auto",
                     backgroundColor: theme.primary.main,
                     color: theme.text.primary,
                     boxShadow: 0,
+                    flexGrow: 1,
                   }}
                   onClick={() => {
                     let openedPanel = openedPanels.find(
@@ -85,7 +93,11 @@ const QueryPerformanceIcon = () => {
                   }}
                   variant="text"
                   color="secondary"
-                  style={{ marginLeft: "auto", color: theme.text.secondary }}
+                  sx={{
+                    marginLeft: "auto",
+                    color: theme.text.secondary,
+                    flexGrow: 1,
+                  }}
                 >
                   Got it
                 </Button>
@@ -109,7 +121,7 @@ const QueryPerformanceIcon = () => {
         },
       }}
     >
-      <LightningBolt style={{ color: "#f5b700" }} />
+      <Bolt style={{ color: lightningBoltColor }} />
     </Tooltip>
   );
 };

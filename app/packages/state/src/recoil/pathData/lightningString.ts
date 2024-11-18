@@ -1,9 +1,15 @@
+import type { SerializableParam } from "recoil";
 import { selectorFamily } from "recoil";
 import { lightningQuery } from "../queryPerformance";
 
 export const lightningStringResults = selectorFamily<
   string[],
-  { path: string; search?: string; exclude?: string[] }
+  {
+    path: string;
+    search?: string;
+    exclude?: string[];
+    filters: SerializableParam;
+  }
 >({
   key: "lightningStringResults",
   get:

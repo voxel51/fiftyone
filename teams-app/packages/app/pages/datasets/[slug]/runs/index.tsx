@@ -3,7 +3,7 @@ import { useBooleanEnv } from "@fiftyone/hooks/src/common/useEnv";
 import { Box, TableSkeleton } from "@fiftyone/teams-components";
 import { SidePanelLayout } from "@fiftyone/teams-components/src/layout";
 import { VIEW_DATASET } from "@fiftyone/teams-state";
-import { ENABLE_ORCHESTRATOR_REGISTRATION_ENV_KEY } from "@fiftyone/teams-state/src/constants";
+import { FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS_ENV_KEY } from "@fiftyone/teams-state/src/constants";
 import { Stack } from "@mui/material";
 import { Suspense } from "react";
 import DatasetNavigation from "../components/navigation";
@@ -14,8 +14,8 @@ import RunsFilterSortSearch from "./components/RunsFilterSortSearch";
 import RunsList from "./components/RunsList";
 
 function Runs() {
-  const showOrchestrators = useBooleanEnv(
-    ENABLE_ORCHESTRATOR_REGISTRATION_ENV_KEY
+  const showOrchestrators = !useBooleanEnv(
+    FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS_ENV_KEY
   );
 
   return (
