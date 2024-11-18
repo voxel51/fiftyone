@@ -1816,6 +1816,7 @@ class Action(View):
         name: the name of the action
         label (None): the label of the action
         icon (None): the icon of the action
+        tooltip (None): the tooltip of the action
         on_click: the operator to execute when the action is clicked
     """
 
@@ -1851,9 +1852,9 @@ class TableView(View):
         self.columns.append(column)
         return column
 
-    def add_row_action(self, name, on_click, label=None, icon=None, **kwargs):
+    def add_row_action(self, name, on_click, label=None, icon=None, tooltip=None, **kwargs):
         row_action = Action(
-            name=name, on_click=on_click, label=label, icon=icon, **kwargs
+            name=name, on_click=on_click, label=label, icon=icon, tooltip=tooltip, **kwargs
         )
         self.row_actions.append(row_action)
         return row_action
