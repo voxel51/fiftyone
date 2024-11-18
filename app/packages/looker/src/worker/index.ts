@@ -126,7 +126,9 @@ const imputeOverlayFromPath = async (
         )
       );
     }
-    await Promise.all(promises);
+    // if some paths fail to load, it's okay, we can still proceed
+    // hence we use `allSettled` instead of `all`
+    await Promise.allSettled(promises);
     return;
   }
 
