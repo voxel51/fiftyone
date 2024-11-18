@@ -328,7 +328,7 @@ export const LensPanel = ({
             <Typography>&bull;</Typography>
             <Typography color="secondary">
               {Object.keys(formState)
-                .map((k) => (formState[k] ? 1 : 0))
+                .map((k) => (formState[k] || formState[k] === 0 ? 1 : 0))
                 .reduce((l, r) => l + r, 0)}{" "}
               filters applied
             </Typography>

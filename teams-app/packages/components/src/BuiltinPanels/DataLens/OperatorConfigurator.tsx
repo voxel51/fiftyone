@@ -32,6 +32,7 @@ export const OperatorConfigurator = ({
   const { activeDataset } = useActiveDataset();
   const [isLoading, setIsLoading] = useState(false);
 
+  // Synchronize external ready state with internal loading state
   useEffect(() => onReadyChange?.(!isLoading), [isLoading]);
 
   // JSON schema needs to be converted to the type expected by OperatorIO.
@@ -79,10 +80,15 @@ export const OperatorConfigurator = ({
 
   // Callback which handles updates to the form state.
   const updateFormState = (newState: FormState) => {
-    const isValid = requiredFields.reduce(
-      (prev, current) => prev && !!newState[current],
+    const hasData = Object.keys(newState).reduce(
+      (acc, key) => acc || newState[key] || newState[key] === 0,
+      false
+    );
+    const hasRequiredData = requiredFields.reduce(
+      (acc, key) => acc && (newState[key] || newState[key] === 0),
       true
     );
+    const isValid = hasData && hasRequiredData;
 
     onStateChange?.(newState, isValid);
   };
