@@ -111,18 +111,22 @@ const imputeOverlayFromPath = async (
 ) => {
   // handle all list types here
   if (cls === DETECTIONS) {
+    const promises = [];
     for (const detection of label.detections) {
-      await imputeOverlayFromPath(
-        field,
-        detection,
-        coloring,
-        customizeColorSetting,
-        colorscale,
-        buffers,
-        {},
-        DETECTION
+      promises.push(
+        imputeOverlayFromPath(
+          field,
+          detection,
+          coloring,
+          customizeColorSetting,
+          colorscale,
+          buffers,
+          {},
+          DETECTION
+        )
       );
     }
+    await Promise.all(promises);
     return;
   }
 
