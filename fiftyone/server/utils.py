@@ -123,24 +123,26 @@ def meets_type(field: fof.Field, type_or_types):
 
 
 def convert_overlay_paths_to_cloud_urls(field):
+    """
+    Recursively converts local overlay paths in the given field to cloud URLs.
+
+
+    Args:
+        field (dict): The field containing overlay paths to convert.
+    """
     for _, field_value in field.items():
-        if type(field_value) is not dict or "_cls" not in field_value:
+        if not isinstance(field_value, dict) or "_cls" not in field_value:
             continue
 
-        cls = field_value.get("_cls", None)
+        cls = field_value["_cls"]
 
-        if (
-            cls != "Heatmap"
-            and cls != "Segmentation"
-            and cls != "Detection"
-            and cls != "Detections"
-        ):
+        if cls not in {"Heatmap", "Segmentation", "Detection", "Detections"}:
             continue
 
         if cls == "Detections":
             detections = field_value.get("detections", [])
             for detection in detections:
-                convert_overlay_paths_to_cloud_urls(detection)
+                convert_overlay_paths_to_cloud_urls({"_": detection})
             continue
 
         overlay_path_field = "mask_path"
@@ -157,6 +159,12 @@ def convert_overlay_paths_to_cloud_urls(field):
 
 
 def convert_frames_overlay_paths_to_cloud_urls(frames):
+    """
+    Converts local overlay paths in the given frames to cloud URLs.
+
+    Args:
+        frames (list): The frames to convert.
+    """
     for frame in frames:
         convert_overlay_paths_to_cloud_urls(frame)
 
