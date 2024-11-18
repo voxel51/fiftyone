@@ -40,6 +40,12 @@ class _NoDefault(object):
 no_default = _NoDefault()
 
 
+class _HasMedia(object):
+    """Mixin for :class:`Label` classes that contain a media field."""
+
+    _MEDIA_FIELD = None
+
+
 class Label(DynamicEmbeddedDocument):
     """Base class for labels.
 
@@ -388,7 +394,7 @@ class Classifications(_HasLabelList, Label):
     logits = fof.VectorField()
 
 
-class Detection(_HasAttributesDict, _HasID, Label):
+class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
     """An object detection.
 
     Args:
@@ -1052,12 +1058,6 @@ class Keypoints(_HasLabelList, Label):
     _LABEL_LIST_FIELD = "keypoints"
 
     keypoints = fof.ListField(fof.EmbeddedDocumentField(Keypoint))
-
-
-class _HasMedia(object):
-    """Mixin for :class:`Label` classes that contain a media field."""
-
-    _MEDIA_FIELD = None
 
 
 class Segmentation(_HasID, _HasMedia, Label):
