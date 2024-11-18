@@ -1400,9 +1400,12 @@ class OperatorExecutionButtonView(Button):
     """
 
     def __init__(self, **kwargs):
-        if "operator" not in kwargs or not isinstance(kwargs["operator"], str):
+        if "operator" not in kwargs or (
+            not isinstance(kwargs["operator"], str)
+            and not callable(kwargs["operator"])
+        ):
             raise ValueError(
-                "The 'operator' parameter of type str is required."
+                "The 'operator' parameter of type str or callable is required."
             )
         super().__init__(**kwargs)
 
