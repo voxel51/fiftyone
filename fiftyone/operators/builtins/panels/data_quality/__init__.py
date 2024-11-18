@@ -849,6 +849,8 @@ class DataQualityPanel(Panel):
 
         if status == STATUS[3]:
             ctx.panel.state.alert = "reviewed"
+        if status == STATUS[2]:
+            ctx.panel.state.alert = "in_review"
 
     def mark_as_reviewed(self, ctx):
         """Mark the issue as reviewed"""
@@ -2070,7 +2072,7 @@ class DataQualityPanel(Panel):
     def _render_toast(self, panel, toast_type, ctx):
 
         schema = {
-            "duration": 5000,
+            "duration": 1000,
             "layout": {
                 "vertical": "top",
                 "horizontal": "center",
@@ -2087,14 +2089,14 @@ class DataQualityPanel(Panel):
             elif toast_type == "reviewed":
                 schema[
                     "message"
-                ] = f"{ctx.panel.state.issue_type.title()} issues marked as reviewed!"
+                ] = f"{ctx.panel.state.issue_type.title()} issues marked as reviewed."
             else:
                 return  # exit if no alert
 
         toast = types.ToastView(**schema)
-        panel.obj(
-            f"toast_{uuid.uuid4().hex}", view=toast
-        )  # TODO figure out how to render toast consecutively
+        panel.obj(f"toast_{uuid.uuid4().hex}", view=toast)
+        # after every toastView render, reset the alert state to avoid repeated toasts with re-render calls
+        ctx.panel.state.alert = ""
 
     def _render_no_results(self, stack, issue_type):
 
