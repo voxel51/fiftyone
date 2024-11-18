@@ -529,8 +529,7 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
         Returns:
             a :class:`Segmentation`
         """
-        mask = self.get_mask()
-        if mask is None:
+        if self.get_mask() is None:
             raise ValueError(
                 "Only detections with their `mask` attributes populated can "
                 "be converted to segmentations"
