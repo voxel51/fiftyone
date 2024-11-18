@@ -9,6 +9,7 @@ import {
   Menu,
   MenuItem,
   Stack,
+  Tooltip
 } from "@mui/material";
 import React, { useCallback } from "react";
 import { getColorByCode } from "../utils";
@@ -73,7 +74,7 @@ function ActionsOverflowMenu(props: ActionsPropsType) {
 }
 
 function Action(props: ActionPropsType) {
-  const { label, name, onClick, icon, variant, mode, color, size } = props;
+  const { label, name, onClick, icon, variant, mode, color, size, tooltip } = props;
   const resolvedColor = color ? getColorByCode(color) : undefined;
 
   const Icon = icon ? (
@@ -87,7 +88,7 @@ function Action(props: ActionPropsType) {
     [onClick, props]
   );
 
-  return mode === "inline" ? (
+  const content = mode === "inline" ? (
     <Button
       variant={variant}
       startIcon={Icon}
@@ -101,6 +102,14 @@ function Action(props: ActionPropsType) {
       {Icon && <ListItemIcon>{Icon}</ListItemIcon>}
       <ListItemText sx={{ color: resolvedColor }}>{label || name}</ListItemText>
     </MenuItem>
+  );
+
+  return tooltip ? (
+    <Tooltip title={tooltip}>
+      <span>{content}</span> {/* Use <span> to wrap the child to avoid DOM issues */}
+    </Tooltip>
+  ) : (
+    content
   );
 }
 
@@ -121,4 +130,5 @@ type ActionPropsType = {
   mode: "inline" | "menu";
   color?: string;
   size?: SizeType;
+  tooltip: string | null;
 };
