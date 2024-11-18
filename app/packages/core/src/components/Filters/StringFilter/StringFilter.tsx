@@ -7,6 +7,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { isInKeypointsField } from "../state";
+import useQueryPerformanceTimeout from "../use-query-performance-timeout";
 import Checkboxes from "./Checkboxes";
 import ResultComponent from "./Result";
 import useOnSelect from "./useOnSelect";
@@ -128,6 +129,7 @@ const StringFilter = ({
             containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
             toKey={(value) => String(value.value)}
             id={path}
+            DuringSuspense={withQueryPerformanceTimeout(modal, path)}
           />
         )}
         <Checkboxes
@@ -143,6 +145,13 @@ const StringFilter = ({
       </StringFilterContainer>
     </NamedStringFilterContainer>
   );
+};
+
+const withQueryPerformanceTimeout = (modal: boolean, path: string) => {
+  return ({ children }: React.PropsWithChildren) => {
+    useQueryPerformanceTimeout(modal, path);
+    return <>{children}</>;
+  };
 };
 
 export default StringFilter;
