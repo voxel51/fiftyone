@@ -46,12 +46,15 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
 
   const triggerEvent = usePanelEvent();
 
-  const handleOnSuccess: ExecutionCallback = (result, { ctx }) => {
+  const handleOnSuccess: ExecutionCallback = (
+    operatorResult: OperatorResult,
+    { ctx }
+  ) => {
     if (on_success) {
       triggerEvent(panelId, {
         operator: on_success,
         params: {
-          result,
+          result: operatorResult.result,
           original_params: ctx.params,
         },
       });
