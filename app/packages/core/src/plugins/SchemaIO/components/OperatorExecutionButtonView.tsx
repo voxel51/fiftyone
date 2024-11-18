@@ -10,7 +10,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import TooltipProvider from "./TooltipProvider";
 
 export default function OperatorExecutionButtonView(props: ViewPropsType) {
-  const { schema, path, onClick } = props;
+  const { schema, path } = props;
   const { view = {} } = schema;
   const {
     description,
@@ -19,7 +19,6 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
     label,
     operator,
     params = {},
-    prompt,
     title,
     disabled = false,
   } = view;
@@ -43,8 +42,6 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
           operatorUri={operator}
           executionParams={computedParams}
           variant={variant}
-          onClick={(e) => onClick?.(e, computedParams, props)}
-          color="primary"
           disabled={disabled}
           startIcon={icon_position === "left" ? Icon : undefined}
           endIcon={icon_position === "right" ? Icon : undefined}
@@ -59,7 +56,8 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
 }
 
 function getButtonProps(props: ViewPropsType): ButtonProps {
-  const { label, variant, color, disabled } = props.schema.view;
+  const { label, color, disabled } = props.schema.view;
+  const variant = getVariant(props);
   const baseProps: ButtonProps = getCommonProps(props);
   if (isNullish(label)) {
     baseProps.sx["& .MuiButton-startIcon"] = { mr: 0, ml: 0 };
@@ -86,9 +84,10 @@ function getButtonProps(props: ViewPropsType): ButtonProps {
     baseProps.sx.borderColor = borderColor;
     baseProps.sx.borderBottomColor = borderColor;
   }
-  if (isNullish(variant)) {
+  if (isNullish(variant) || variant === "contained") {
     baseProps.variant = "contained";
-    baseProps.color = "tertiary";
+    baseProps.color = "primary";
+    baseProps.sx.color = (theme) => theme.palette.text.primary;
     baseProps.sx["&:hover"] = {
       backgroundColor: (theme) => theme.palette.tertiary.hover,
     };

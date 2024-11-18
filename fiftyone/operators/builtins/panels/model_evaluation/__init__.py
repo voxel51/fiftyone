@@ -38,7 +38,7 @@ class EvaluationPanel(Panel):
     @property
     def config(self):
         return PanelConfig(
-            name="evaluation_panel",
+            name=STORE_NAME,
             label="Model Evaluation",
             icon="ssid_chart",
             category=Categories.ANALYZE,

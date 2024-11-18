@@ -638,8 +638,11 @@ class ClearSampleField(foo.Operator):
 
     def execute(self, ctx):
         field_name = ctx.params["field_name"]
+        target = ctx.params.get("target", None)
 
-        ctx.dataset.clear_sample_field(field_name)
+        target_view = _get_target_view(ctx, target)
+
+        target_view.clear_sample_field(field_name)
         ctx.trigger("reload_dataset")
 
 
@@ -729,8 +732,11 @@ class ClearFrameField(foo.Operator):
 
     def execute(self, ctx):
         field_name = ctx.params["field_name"]
+        target = ctx.params.get("target", None)
 
-        ctx.dataset.clear_frame_field(field_name)
+        target_view = _get_target_view(ctx, target)
+
+        target_view.clear_frame_field(field_name)
         ctx.trigger("reload_dataset")
 
 
