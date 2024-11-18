@@ -348,6 +348,9 @@ export const LensPanel = ({
 
   // Additional search controls.
   const getSearchControls = () => {
+    const isPreviewButtonEnabled =
+      isFormValid && !isPreviewLoading && maxSamples > 0;
+
     const numSamplesInput = (
       <FormControl>
         <TextField
@@ -393,7 +396,7 @@ export const LensPanel = ({
               variant="outlined"
               color="secondary"
               sx={{ height: "fit-content" }}
-              disabled={!isFormValid || isPreviewLoading}
+              disabled={!isPreviewButtonEnabled}
               onClick={doSearch}
             >
               Preview data
@@ -425,7 +428,7 @@ export const LensPanel = ({
             <Button
               variant="contained"
               sx={{ height: "fit-content" }}
-              disabled={!isFormValid || isPreviewLoading}
+              disabled={!isPreviewButtonEnabled}
               onClick={doSearch}
             >
               Preview data

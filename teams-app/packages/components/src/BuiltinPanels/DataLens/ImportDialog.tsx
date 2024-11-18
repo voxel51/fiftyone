@@ -92,6 +92,9 @@ export const ImportDialog = ({
     onClose();
   };
 
+  const isImportButtonEnabled =
+    datasetName && (importLimitType === "all" || maxImportSamples > 0);
+
   return (
     <Dialog open={open} onClose={handleCloseClick}>
       <Box sx={{ m: 2, maxWidth: "400px" }}>
@@ -239,7 +242,7 @@ export const ImportDialog = ({
           <OperatorExecutionButton
             variant="contained"
             endIcon={<ExpandMoreIcon />}
-            disabled={!datasetName}
+            disabled={!isImportButtonEnabled}
             operatorUri={operatorUri}
             executionParams={importRequest}
             onSuccess={onSuccess}
