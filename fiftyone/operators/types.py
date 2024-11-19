@@ -1866,6 +1866,11 @@ class TableView(View):
         )
         self.row_actions.append(row_action)
         return row_action
+    
+    def add_tooltip(self, row, column, value, **kwargs):
+        tooltip = View(row=row, column=column, value=value, **kwargs)
+        self.tooltips.append(tooltip)
+        return tooltip
 
     def clone(self):
         clone = super().clone()

@@ -34,11 +34,13 @@ export default function TableView(props: ViewPropsType) {
     size = "small",
     variant = "filled",
     max_inline_actions = 1,
+    tooltips = []
   } = view;
   const { rows, selectedCells, selectedRows, selectedColumns } =
     getTableData(props);
   const dataMissing = rows.length === 0;
   const hasRowActions = row_actions.length > 0;
+  const hasTooltips = tooltips.length > 0;
   const panelId = usePanelId();
   const handleClick = usePanelEvent();
   const theme = useTheme();
