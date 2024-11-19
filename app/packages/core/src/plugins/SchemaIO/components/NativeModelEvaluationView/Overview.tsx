@@ -1,5 +1,12 @@
 import { LoadingDots } from "@fiftyone/components";
-import { Card, CardActionArea, Chip, Stack, Typography } from "@mui/material";
+import {
+  Card,
+  CardActionArea,
+  Chip,
+  Stack,
+  Typography,
+  useTheme,
+} from "@mui/material";
 import React from "react";
 import Evaluate from "./Evaluate";
 import EvaluationNotes from "./EvaluationNotes";
@@ -64,6 +71,8 @@ export default function Overview(props: OverviewProps) {
 
 function EvaluationCard(props: EvaluationCardProps) {
   const { pending, onSelect, eval_key, note, status, id } = props;
+  const theme = useTheme();
+
   return (
     <CardActionArea key={eval_key} disabled={pending}>
       <Card
@@ -77,7 +86,16 @@ function EvaluationCard(props: EvaluationCardProps) {
             {eval_key}
           </Typography>
           {pending && (
-            <Chip variant="filled" label={<LoadingDots text="Evaluating" />} />
+            <Chip
+              variant="filled"
+              size="small"
+              label={
+                <LoadingDots
+                  text="Evaluating"
+                  style={{ fontSize: "1rem", paddingLeft: 6, color: "#999999" }}
+                />
+              }
+            />
           )}
           {status && <Status status={status} />}
         </Stack>
