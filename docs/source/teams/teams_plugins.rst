@@ -441,6 +441,7 @@ FiftyOne Teams offers a builtin orchestrator which is configured as part of your
 deployment and has three instances by default. Contact your Voxel51 support team
 to scale your deployment accordingly or if you'd like to use an external orchestrator.
 
+.. _teams-managing-delegated-operations:
 
 Managing delegated operations
 _____________________________
