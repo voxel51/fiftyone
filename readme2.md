@@ -43,6 +43,14 @@ We created an open-source tool that supercharges your computer vision and machin
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> **installation** 💻
 
+As simple as:
+
+```shell
+pip install fiftyone
+```
+
+<details>
+<summary>More details here</summary>
 **Fiftyone** requires Python (3.9 - 3.11), Git and other dependencies, see the [prerequisites section](#-prerequisites) if needed. We provide two ways for being installed. The first one is through PyPI, and the second is through a local installation. PyPI is the straight forward installation method if you are not looking for any changes in the source code, if you want to make changes to the source code, then a local installation is recommended.
 
 We strongly recommend that you install FiftyOne in a
@@ -52,15 +60,12 @@ to maintain a clean workspace. Refer to prerequisites if you want to learn how t
 Install from PyPI
 Installing the library with pip is the easiest way to get started with fiftyone. You can install the latest stable version of FiftyOne via `pip`:
 
-```shell
-pip install fiftyone
-```
 
 Consult the
 [installation guide](https://voxel51.com/docs/fiftyone/getting_started/install.html)
 for troubleshooting and other information about getting up-and-running with
 FiftyOne.
-
+<details>
 
 <details>
 <summary>Install from source</summary>
