@@ -10,8 +10,11 @@ customizing the functionality of the tool to suit your specific needs.
 
 With plugins, you can add new functionality to the FiftyOne App, create
 integrations with other tools and APIs, render custom panels, and add custom
-actions to menus. You can even schedule long running tasks from within the App
-that execute on a connected workflow orchestration tool like Apache Airflow.
+actions to menus.
+
+With :ref:`FiftyOne Teams <teams-delegated-operations>`, you can even write
+plugins that allow users to execute long-running tasks from within the App that
+run on a connected compute cluster.
 
 Get started with plugins by installing some
 :ref:`popular plugins <plugins-getting-started>`, then try your hand at
