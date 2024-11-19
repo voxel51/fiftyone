@@ -1799,8 +1799,7 @@ News
 
 - Added support for :ref:`dataset versioning <dataset_versioning>`!
 - Added support for scheduling
-  :ref:`delegated operations <teams-delegated-operations>` via the App using a
-  connected orchestrator like Apache Airflow!
+  :ref:`delegated operations <teams-delegated-operations>` via the App
 
 App
 
