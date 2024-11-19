@@ -5,20 +5,41 @@ Data Lens
 
 .. default-role:: code
 
+Available in FiftyOne Teams v2.2.0+
+
 Data Lens is a feature built into the :ref:`FiftyOne Teams App <teams-app>`
 which allows you to use FiftyOne to explore and import samples from any data
 source. Whether your data resides in a database like PostgreSQL or a data lake
 like Google BigQuery, Data Lens provides a way to search your data sources,
 visualize sample data, and import into FiftyOne for further analysis.
 
+.. image:: /images/teams/data_lens_home.png
+    :alt: data-lens-home-tab
+    :align: center
+
 .. _data-lens-how-it-works:
 
 How it works
 ____________
 
-.. image:: /images/teams/data_lens_home.png
-    :alt: data-lens-home-tab
-    :align: center
+1. **Define your search experience**
+    Tailor the interactions with your data source to exactly what you need.
+    Data Lens provides a flexible framework which allows for extensive
+    customization, allowing you to hone in on the questions that are most
+    critical to your workflow. See
+    :ref:`Integrating with Data Lens <data-lens-integration>` to learn more.
+
+2. **Connect your data source**
+    Provide configuration to Data Lens to connect to your data source. Once
+    connected, you can start searching for samples directly from FiftyOne.
+    See :ref:`Connecting a data source <data-lens-connecting-a-data-source>`
+    to learn more.
+
+3. **Interact with your data**
+    View your samples using Data Lens' rich preview capabilities. Refine your
+    search criteria to find samples of interest, then import your samples
+    into a FiftyOne dataset for further analysis. See
+    :ref:`Exploring samples <data-lens-querying-data>` to learn more.
 
 .. _data-lens-connecting-a-data-source:
 
@@ -338,7 +359,7 @@ interaction between Data Lens and our operator. We'll look at a
     Why a generator? Generators provide a convenient approach for long-lived,
     lazy-fetching connections that are common in databases and data lakes.
     While Data Lens does support operators which do not execute as generators,
-    we recommend using a generator during the beta period of this feature.
+    we recommend using a generator for ease of integration.
 
 .. _data-lens-generating-responses:
 
