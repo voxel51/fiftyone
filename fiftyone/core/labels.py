@@ -5,6 +5,7 @@ Labels stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from functools import partial
 import itertools
 import warnings
@@ -529,7 +530,7 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
         Returns:
             a :class:`Segmentation`
         """
-        if self.get_mask() is None:
+        if not self.has_mask:
             raise ValueError(
                 "Only detections with their `mask` attributes populated can "
                 "be converted to segmentations"
@@ -648,7 +649,7 @@ class Detections(_HasLabelList, Label):
 
         # pylint: disable=not-an-iterable
         for detection in self.detections:
-            if detection.mask is None:
+            if not detection.has_mask:
                 msg = "Skipping detection(s) with no instance mask"
                 warnings.warn(msg)
                 continue
