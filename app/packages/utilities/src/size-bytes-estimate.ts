@@ -64,5 +64,6 @@ const sizer = (object: SizerTypes) => {
 };
 
 export default function sizeBytesEstimate(object: SizeTypes) {
-  return sizer(object);
+  // return value > 0;
+  return Math.max(sizer(object), 1);
 }
