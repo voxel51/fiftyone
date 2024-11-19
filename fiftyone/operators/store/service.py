@@ -63,7 +63,7 @@ class ExecutionStoreService(object):
         Returns:
             a :class:`fiftyone.store.models.StoreDocument`
         """
-        return self._repo.create_store(store_name, metadata)
+        return self._repo.create_store(store_name, metadata=metadata)
 
     def get_store(self, store_name: str) -> StoreDocument:
         """Gets the specified store for the current context.
