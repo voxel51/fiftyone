@@ -145,7 +145,15 @@ Set FFMPEG's path (e.g., C:\ffmpeg\bin) to the PATH environmental variable on Wi
 
 <div id='-prerequisites_linux'/>
 
---------PENDING LINUX INSTALLATION------
+### 1. Install Python and Git
+
+You may need to install some additional libraries on Ubuntu Linux. These steps work on a clean install of Ubuntu Desktop 20.04, and should also work on Ubuntu 22.04 and 20.10, and on Ubuntu Server.
+
+```shell
+sudo apt-get update
+sudo apt-get upgrade
+sudo apt-get install python3-venv build-essential python3-dev git-all libgl1-mesa-dev ffmpeg
+```
 
 - On Linux, you will need at least the `openssl` and `libcurl` packages. 
 - On Debian-based distributions, you will need to install `libcurl4` or`libcurl3` instead of `libcurl`, depending on the age of your distribution.
@@ -159,6 +167,14 @@ sudo apt install libcurl4 openssl
 # Fedora
 sudo dnf install libcurl openssl
 ```
+### 2. Create and activate the Virtual Environment
+
+```shell
+python3 -m venv fiftyone_env
+source fiftyone_env/bin/activate
+```
+
+Now you are ready to install **Fiftyone** and all the requirements/packages/dependencies. Go to [Installation](#-installation) section in this Readme file.
 
 </details>
 
@@ -167,7 +183,35 @@ sudo dnf install libcurl openssl
 
 <div id='-prerequisites_macos'/>
 
---------PENDING MACOS INSTALLATION------
+### 1. Install Xcode Command Line Tools
+
+```shell
+xcode-select --install
+```
+### 2.  Install Homebrew
+```shell
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+After you install it, follow the instructions from the Homebrew installation to set it up.
+
+### 3. Install Python and dependencies
+
+```shell
+brew install python@3.9
+brew install protobuf
+
+#optional but recommendeded
+brew install ffmpeg
+```
+### 2. Create and activate the Virtual Environment
+
+```shell
+python3 -m venv fiftyone_env
+source fiftyone_env/bin/activate
+```
+
+Now you are ready to install **Fiftyone** and all the requirements/packages/dependencies. Go to [Installation](#-installation) section in this Readme file.
+
 
 </details>
 
@@ -447,7 +491,7 @@ if you love it 😊):
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> FAQ & Additional Resources
 
-- [FAQ](https://github.com/voxel51/fiftyone/issues): Reqport you issue in our Github repo.
+- [FAQ](https://docs.voxel51.com/faq/index.html): Maybe you are facing a situation already solved, take a look of the frequently asked questions.
 - [fiftyone-team](https://github.com/voxel51/fiftyone-teams): Upgrade to FiftyOne Teams to enable multiple users to securely collaborate on the same datasets and models, either on-premises or in the cloud, all built on top of the open source FiftyOne workflows that you’re already relying on.
 - [VoxelGPT](https://github.com/voxel51/voxelgpt): VoxelGPT is an open source plugin for FiftyOne that translates your natural language prompts into actions that organize and explore your data.
 - [Plugins](https://voxel51.com/plugins/): Use FiftyOne Plugins to unlock infinite ways to extend and customize your AI workbench so you can save time, focus on building exceptional AI, and get to production faster.
