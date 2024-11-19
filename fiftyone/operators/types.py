@@ -1837,6 +1837,25 @@ class Action(View):
 
     def to_json(self):
         return {**super().to_json()}
+    
+class Tooltip(View):
+    """A tooltip (currently supported only in a :class:`TableView`).
+
+    Args:
+        value: the value of the tooltip
+        row: the row of the tooltip
+        column: the column of the tooltip
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def clone(self):
+        clone = Tooltip(**self._kwargs)
+        return clone
+
+    def to_json(self):
+        return {**super().to_json()}
 
 
 class TableView(View):
@@ -1851,6 +1870,7 @@ class TableView(View):
         super().__init__(**kwargs)
         self.columns = kwargs.get("columns", [])
         self.row_actions = kwargs.get("row_actions", [])
+        self.tooltips = kwargs.get("tooltips", [])
 
     def keys(self):
         return [column.key for column in self.columns]
@@ -1866,11 +1886,17 @@ class TableView(View):
         )
         self.row_actions.append(row_action)
         return row_action
+    
+    def add_tooltip(self, row, column, value, **kwargs):
+        tooltip = Tooltip(row=row, column=column, value=value, **kwargs)
+        self.tooltips.append(tooltip)
+        return tooltip
 
     def clone(self):
         clone = super().clone()
         clone.columns = [column.clone() for column in self.columns]
         clone.row_actions = [action.clone() for action in self.row_actions]
+        clone.tooltips = [tooltip.clone() for tooltip in self.tooltips]
         return clone
 
     def to_json(self):
@@ -1878,6 +1904,7 @@ class TableView(View):
             **super().to_json(),
             "columns": [column.to_json() for column in self.columns],
             "row_actions": [action.to_json() for action in self.row_actions],
+            "tooltips": [tooltip.to_json() for tooltip in self.tooltips],
         }
 
 
