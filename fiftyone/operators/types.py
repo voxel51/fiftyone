@@ -1837,6 +1837,25 @@ class Action(View):
 
     def to_json(self):
         return {**super().to_json()}
+    
+class Tooltip(View):
+    """A tooltip (currently supported only in a :class:`TableView`).
+
+    Args:
+        value: the value of the tooltip
+        row: the row of the tooltip
+        column: the column of the tooltip
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def clone(self):
+        clone = Tooltip(**self._kwargs)
+        return clone
+
+    def to_json(self):
+        return {**super().to_json()}
 
 
 class TableView(View):
@@ -1868,7 +1887,7 @@ class TableView(View):
         return row_action
     
     def add_tooltip(self, row, column, value, **kwargs):
-        tooltip = View(row=row, column=column, value=value, **kwargs)
+        tooltip = Tooltip(row=row, column=column, value=value, **kwargs)
         self.tooltips.append(tooltip)
         return tooltip
 
