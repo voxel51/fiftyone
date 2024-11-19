@@ -21,7 +21,7 @@ export default function ActionsMenu(props: ActionsPropsType) {
 
   if (actions.length <= maxInline) {
     return (
-      <Stack direction="row" spacing={0.5} justifyContent="flex-start">
+      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
         {actions.map((action) => (
           <Action {...action} key={action.name} mode="inline" size={size} />
         ))}
