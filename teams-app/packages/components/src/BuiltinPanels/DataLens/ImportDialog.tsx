@@ -1,6 +1,8 @@
 import {
   Box,
   Button,
+  Checkbox,
+  FormControlLabel,
   MenuItem,
   Select,
   TextField,
@@ -60,6 +62,7 @@ export const ImportDialog = ({
     useState<DestDatasetType>("existing");
   const [maxImportSamples, setMaxImportSamples] = useState(defaultMaxSamples);
   const [sampleTags, setSampleTags] = useState<string[]>([]);
+  const [dedupeSamples, setDedupeSamples] = useState(false);
 
   // Callback which handles updates to the import destination dataset type
   const handleDestDatasetTypeChange = (value?: DestDatasetType) => {
@@ -78,6 +81,7 @@ export const ImportDialog = ({
       dataset_name: datasetName,
       max_results: importLimitType === "limit" ? maxImportSamples : 0,
       tags: sampleTags ?? [],
+      dedupe_samples: dedupeSamples,
     };
   }, [
     requestParams,
@@ -85,6 +89,7 @@ export const ImportDialog = ({
     importLimitType,
     maxImportSamples,
     sampleTags,
+    dedupeSamples,
   ]);
 
   const handleCloseClick = () => {
@@ -154,6 +159,16 @@ export const ImportDialog = ({
               />
             )}
           </Box>
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={dedupeSamples}
+                onChange={(_, checked) => setDedupeSamples(checked)}
+              />
+            }
+            label="Skip existing samples"
+          />
         </Box>
 
         {/*Dataset selection*/}

@@ -23,7 +23,7 @@ from fiftyone.operators.executor import ExecutionResult
 class DatasourceConnectorOperator(foo.Operator):
     """Operator which acts as the main entry point for Data Lens."""
 
-    _MAX_IMPORT_SIZE = 1_000_000_000 # 1B seems like a reasonable limit...
+    _MAX_IMPORT_SIZE = 1_000_000_000  # 1B seems like a reasonable limit...
 
     @property
     def config(self):
@@ -119,6 +119,7 @@ class DatasourceConnectorOperator(foo.Operator):
                         last_response.query_result,
                         import_request.tags,
                         max_samples - total_samples,
+                        dedupe_samples=import_request.dedupe_samples,
                     )
 
                     if total_samples >= max_samples:
@@ -139,7 +140,8 @@ class DatasourceConnectorOperator(foo.Operator):
                         dataset,
                         last_response.query_result,
                         import_request.tags,
-                        max_samples - total_samples
+                        max_samples - total_samples,
+                        dedupe_samples=import_request.dedupe_samples,
                     )
 
                     if total_samples >= max_samples:
@@ -185,7 +187,8 @@ class DatasourceConnectorOperator(foo.Operator):
             dataset: fo.Dataset,
             samples_json: list[dict],
             tags: list[str],
-            max_samples: int
+            max_samples: int,
+            dedupe_samples: bool = False,
     ) -> int:
         samples = [fo.Sample.from_dict(s) for s in samples_json]
 
@@ -197,15 +200,21 @@ class DatasourceConnectorOperator(foo.Operator):
                     sample_tags.append(tag)
             sample.tags = sample_tags
 
-        # merge_samples will dedupe with samples already in the dataset, but will fail if there
-        #  are duplicate samples within the list being merged.
-        unique_samples = self._dedupe_samples(samples)
+        if dedupe_samples:
+            # merge_samples will dedupe with samples already in the dataset, but will fail if there
+            #  are duplicate samples within the list being merged.
+            unique_samples = self._dedupe_samples(samples)
 
-        dataset.merge_samples(
-            unique_samples[:max_samples], skip_existing=True, insert_new=True, progress=False
-        )
+            dataset.merge_samples(
+                unique_samples[:max_samples], skip_existing=True, insert_new=True, progress=False
+            )
 
-        return min(len(unique_samples), max_samples)
+            return min(len(unique_samples), max_samples)
+
+        else:
+            dataset.add_samples(samples[:max_samples])
+
+            return min(len(samples), max_samples)
 
     def _build_ctx(self, base_ctx: foo.ExecutionContext, overrides: dict = None) -> dict:
         return {

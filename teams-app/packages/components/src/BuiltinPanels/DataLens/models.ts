@@ -42,6 +42,7 @@ export type ImportRequest = {
   request_type: RequestType;
   max_results: number;
   tags?: string[];
+  dedupe_samples?: boolean;
 };
 
 /**
