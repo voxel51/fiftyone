@@ -141,8 +141,9 @@ export default function TableView(props: ViewPropsType) {
                 {hasRowActions && (
                   <TableCell
                     {...getComponentProps(props, "tableHeadCell", {
-                      sx: { ...headingCellBaseStyles, textAlign: "right" },
+                      sx: { ...headingCellBaseStyles, textAlign: "left" },
                     })}
+                    width={`${max_inline_actions * 5}%`}
                     onClick={() => {
                       handleCellClick(-1, -1);
                     }}
