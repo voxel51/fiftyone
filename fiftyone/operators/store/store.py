@@ -102,7 +102,7 @@ class ExecutionStore(object):
         """
         self._store_service.update_ttl(self.store_name, key, new_ttl)
 
-    def get_metadata(self, key: str) -> Optional[datetime]:
+    def get_metadata(self, key: str) -> Optional[dict]:
         """Retrieves the metadata for the given key.
 
         Args:
