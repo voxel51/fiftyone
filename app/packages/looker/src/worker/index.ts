@@ -5,6 +5,7 @@
 import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import {
   DENSE_LABELS,
+  DETECTION,
   DETECTIONS,
   DYNAMIC_EMBEDDED_DOCUMENT,
   EMBEDDED_DOCUMENT,
@@ -110,18 +111,24 @@ const imputeOverlayFromPath = async (
 ) => {
   // handle all list types here
   if (cls === DETECTIONS) {
-    label?.detections?.forEach((detection) =>
-      imputeOverlayFromPath(
-        field,
-        detection,
-        coloring,
-        customizeColorSetting,
-        colorscale,
-        buffers,
-        {},
-        cls
-      )
-    );
+    const promises = [];
+    for (const detection of label.detections) {
+      promises.push(
+        imputeOverlayFromPath(
+          field,
+          detection,
+          coloring,
+          customizeColorSetting,
+          colorscale,
+          buffers,
+          {},
+          DETECTION
+        )
+      );
+    }
+    // if some paths fail to load, it's okay, we can still proceed
+    // hence we use `allSettled` instead of `all`
+    await Promise.allSettled(promises);
     return;
   }
 
@@ -150,27 +157,14 @@ const imputeOverlayFromPath = async (
     baseUrl = overlayImageUrl.split("?")[0];
   }
 
-  const fileExtension = baseUrl.split(".").pop();
-
-  const overlayImageBuffer: ArrayBuffer = await getFetchFunction()(
+  const overlayImageBuffer: Blob = await getFetchFunction()(
     "GET",
     overlayImageUrl,
     null,
-    "arrayBuffer"
+    "blob"
   );
 
-  const mimeTypes = {
-    png: "image/png",
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    gif: "image/gif",
-    bmp: "image/bmp",
-  };
-  const blobType =
-    mimeTypes[fileExtension.toLowerCase()] || "application/octet-stream";
-  const blob = new Blob([overlayImageBuffer], { type: blobType });
-
-  const overlayMask = await decodeWithCanvas(blob);
+  const overlayMask = await decodeWithCanvas(overlayImageBuffer);
   const [overlayHeight, overlayWidth] = overlayMask.shape;
 
   // set the `mask` property for this label
@@ -211,16 +205,20 @@ const processLabels = async (
       }
 
       if (DENSE_LABELS.has(cls)) {
-        await imputeOverlayFromPath(
-          `${prefix || ""}${field}`,
-          label,
-          coloring,
-          customizeColorSetting,
-          colorscale,
-          buffers,
-          sources,
-          cls
-        );
+        try {
+          await imputeOverlayFromPath(
+            `${prefix || ""}${field}`,
+            label,
+            coloring,
+            customizeColorSetting,
+            colorscale,
+            buffers,
+            sources,
+            cls
+          );
+        } catch (e) {
+          console.error("Couldn't decode overlay image from disk: ", e);
+        }
       }
 
       if (cls in DeserializerFactory) {

@@ -596,7 +596,7 @@ def to_detected_object(detection, name=None, extra_attrs=True):
     bry = tly + h
     bounding_box = etag.BoundingBox.from_coords(tlx, tly, brx, bry)
 
-    mask = detection.mask
+    mask = detection.get_mask()
     confidence = detection.confidence
 
     attrs = _to_eta_attributes(detection, extra_attrs=extra_attrs)
