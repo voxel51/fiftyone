@@ -242,31 +242,38 @@ class EvaluationPanel(Panel):
         return colorscale
 
     def get_confusion_matrices(self, results):
-        classes = results.classes
+        default_classes = results.classes
         freq = Counter(results.ytrue)
         if results.missing in freq:
             freq.pop(results.missing)
-        az_classes = sorted(classes)
-        za_classes = sorted(classes, reverse=True)
+        az_classes = sorted(default_classes)
+        za_classes = sorted(default_classes, reverse=True)
         mc_classes = sorted(freq, key=freq.get, reverse=True)
         lc_classes = sorted(freq, key=freq.get)
+        default_matrix = results.confusion_matrix()
         az_matrix = results.confusion_matrix(classes=az_classes)
         za_matrix = results.confusion_matrix(classes=za_classes)
         mc_matrix = results.confusion_matrix(classes=mc_classes)
         lc_matrix = results.confusion_matrix(classes=lc_classes)
+        default_colorscale = self.get_confusion_matrix_colorscale(
+            default_matrix
+        )
         az_colorscale = self.get_confusion_matrix_colorscale(az_matrix)
         za_colorscale = self.get_confusion_matrix_colorscale(za_matrix)
         mc_colorscale = self.get_confusion_matrix_colorscale(mc_matrix)
         lc_colorscale = self.get_confusion_matrix_colorscale(lc_matrix)
         return {
+            "default_classes": default_classes.tolist(),
             "az_classes": az_classes,
             "za_classes": za_classes,
             "mc_classes": mc_classes,
             "lc_classes": lc_classes,
+            "default_matrix": default_matrix.tolist(),
             "az_matrix": az_matrix.tolist(),
             "za_matrix": za_matrix.tolist(),
             "mc_matrix": mc_matrix.tolist(),
             "lc_matrix": lc_matrix.tolist(),
+            "default_colorscale": default_colorscale,
             "az_colorscale": az_colorscale,
             "za_colorscale": za_colorscale,
             "mc_colorscale": mc_colorscale,
