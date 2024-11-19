@@ -8,9 +8,6 @@ on:
       - feat/*
       - main
       - release/v[0-9]+.[0-9]+.[0-9]+
-  push:
-    branches:
-      - afoley/fix-conditional-ci
 
 jobs:
   modified-files:
@@ -25,7 +22,6 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: base-filter
         with:
-          predicate-quantifier: 'some'
           filters: |
             app:
               - 'app/**'
