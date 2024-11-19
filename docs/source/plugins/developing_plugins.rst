@@ -3564,7 +3564,7 @@ Delegated execution
 ~~~~~~~~~~~~~~~~~~~
 
 Python operations may also be :ref:`delegated <operator-delegated-execution>`
-to an external orchestrator like Apache Airflow or a local process.
+for execution in the background.
 
 When an operation is delegated, the following happens:
 

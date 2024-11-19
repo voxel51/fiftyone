@@ -896,9 +896,9 @@ delegated operations and execute them serially in its process.
 FiftyOne Teams
 --------------
 
-:ref:`FiftyOne Teams <teams-delegated-operations>` deployments come out of
-the box with a connected compute cluster for executing delegated
-operations at scale.
+:ref:`FiftyOne Teams <teams-delegated-operations>` deployments come out of the
+box with a connected compute cluster for executing delegated operations at
+scale.
 
 This powerful feature allows users to install/build plugins that execute
 potentially long-running tasks in the background while users continue with

@@ -377,7 +377,7 @@ integrations with other tools and APIs, render custom panels, and add custom
 buttons to menus.
 
 With :ref:`FiftyOne Teams <teams-delegated-operations>`, you can even write
-plugins that allow users to execute long running tasks from within the App that
+plugins that allow users to execute long-running tasks from within the App that
 run on a connected compute cluster.
 
 .. custombutton::
