@@ -253,7 +253,7 @@ to learn how to get involved.
 <div align="center">
 <p align="center">
 
-## 🤝 **Join Our Community** 🤝
+### 🤝 **Join Our Community** 🤝
 
 Connect with us through your preferred channels:
     
