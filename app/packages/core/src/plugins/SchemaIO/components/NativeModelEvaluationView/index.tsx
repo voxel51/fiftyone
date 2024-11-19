@@ -1,12 +1,13 @@
+import { PanelCTA } from "@fiftyone/components";
+import { constants } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import React, { useCallback, useMemo } from "react";
-import EmptyOverview from "./EmptyOverview";
+import Evaluate from "./Evaluate";
 import Evaluation from "./Evaluation";
 import Overview from "./Overview";
 import { useTriggerEvent } from "./utils";
-import { PanelCTA } from "@fiftyone/components";
-import { constants } from "@fiftyone/utilities";
-import Evaluate from "./Evaluate";
+
+const TRY_LINK = "http://voxel51.com/try-evaluation";
 
 export default function NativeModelEvaluationView(props) {
   const { data = {}, schema, onChange, layout } = props;
@@ -90,7 +91,8 @@ export default function NativeModelEvaluationView(props) {
             demoLabel="Upgrade to FiftyOne Teams to Evaluate Models"
             description="Analyze and improve models collaboratively with your team"
             docLink="https://docs.voxel51.com/user_guide/evaluation.html"
-            docCaption="Not ready to upgrade yet? Learn how to create model evaluation via code."
+            docCaption="Learn how to create model evaluation via code."
+            demoDocCaption="Not ready to upgrade yet? Learn how to create model evaluation via code."
             icon="ssid_chart"
             Actions={() => {
               return (
@@ -106,6 +108,7 @@ export default function NativeModelEvaluationView(props) {
               setShowCTA(false);
             }}
             mode={showCTA ? "default" : "onboarding"}
+            tryLink={TRY_LINK}
           />
         ) : (
           <Overview
