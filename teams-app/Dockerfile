@@ -1,6 +1,6 @@
 FROM node:18 AS builder
 WORKDIR /opt
-# 
+
 ENV HOME="/opt"
 ENV NODE_ENV=production
 
