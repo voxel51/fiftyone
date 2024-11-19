@@ -423,11 +423,19 @@ class IndexFieldRemovalConfirmationOperator(Operator):
 
         if field_type == "summary_field":
             message = f"Are you sure you want to delete summary field `{field_name}`?"
+            label = f"Delete Summary Field: {field_name}"
         else:
             message = f"Are you sure you want to delete the `{field_name}` field's index?"
+            label = f"Delete Index: {field_name}"
 
         inputs.view("confirmation", types.Warning(label=message))
-        return Property(inputs)
+        return Property(
+            inputs,
+            view=types.PromptView(
+                label=label,
+                submit_button_label="Accept",
+            ),
+        )
 
     def execute(self, ctx):
         field_type = ctx.params.get("field_type", "N/A")
@@ -598,7 +606,7 @@ class QueryPerformancePanel(Panel):
                 rows.append(
                     {
                         "Field": name,
-                        "Size": "N/A",
+                        "Size": "-",
                         "Type": "Summary",
                     }
                 )
@@ -622,6 +630,7 @@ class QueryPerformancePanel(Panel):
 
     def on_refresh_button_click(self, ctx):
         self._build_view(ctx)
+        ctx.ops.notify("Query Performance panel refreshed")
 
     def on_load(self, ctx):
         self._build_view(ctx)
