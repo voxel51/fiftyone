@@ -26,6 +26,7 @@ from fiftyone.operators.message import GeneratedMessage, MessageType
 from fiftyone.operators.operations import Operations
 from fiftyone.operators.panel import PanelRef
 from fiftyone.operators.registry import OperatorRegistry
+from fiftyone.operators.store import ExecutionStore
 import fiftyone.operators.types as types
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
 import fiftyone.server.view as fosv
@@ -876,8 +877,9 @@ class ExecutionContext(object):
             self.log(f"Progress: {progress} - {label}")
 
     def store(self, store_name):
-        """
-        Create (if not previously created) and use a store with the specified name.
+        """Retrieves the execution store with the given name.
+
+        The store is automatically created if necessary.
 
         Args:
             store_name: the name of the store
@@ -885,8 +887,6 @@ class ExecutionContext(object):
         Returns:
             a :class:`fiftyone.operators.store.ExecutionStore`
         """
-        from fiftyone.operators.store import ExecutionStore
-
         dataset_id = self.dataset._doc.id
         return ExecutionStore.create(store_name, dataset_id)
 
