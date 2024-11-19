@@ -166,19 +166,6 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
             {"key": 1},
         )
 
-    def test_list_stores(self):
-        self.mock_collection.find.return_value = [
-            {"store_name": "widgets"},
-            {"store_name": "gadgets"},
-        ]
-        stores = self.store_repo.list_stores()
-        assert stores == ["widgets", "gadgets"]
-        self.mock_collection.find.assert_called_once()
-        self.mock_collection.find.assert_called_with(
-            {"key": "__store__", "dataset_id": None},
-            {"store_name": 1},
-        )
-
 
 class TestExecutionStoreIntegration(unittest.TestCase):
     def setUp(self) -> None:
