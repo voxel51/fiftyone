@@ -112,7 +112,7 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
 
 function PanelCategories({ children }) {
   return (
-    <Grid container gap={1} sx={{ p: 2 }}>
+    <Grid container gap={1} sx={{ p: 1 }}>
       {children}
     </Grid>
   );

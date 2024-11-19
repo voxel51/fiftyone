@@ -1904,7 +1904,6 @@ __metadata:
     "@xmldom/xmldom": "npm:^0.8.6"
     buffer: "npm:^6.0.3"
     copy-to-clipboard: "npm:^3.3.1"
-    fast-png: "npm:^6.1.0"
     immutable: "npm:^4.0.0-rc.12"
     lodash: "npm:^4.17.21"
     lru-cache: "npm:^11.0.1"
@@ -6436,13 +6435,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/pako@npm:^1.0.2":
-  version: 1.0.4
-  resolution: "@types/pako@npm:1.0.4"
-  checksum: 10/adb34e18bb7f03b8d26408471ab1c2fb135e237eec9a289e8006308a80655c3900673fca3207d1deebebdc8c2a502cf3670fe36ab4b5e3a85962cfa2a3b1e964
-  languageName: node
-  linkType: hard
-
 "@types/parse-json@npm:^4.0.0":
   version: 4.0.0
   resolution: "@types/parse-json@npm:4.0.0"
@@ -10696,17 +10688,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-png@npm:^6.1.0":
-  version: 6.1.0
-  resolution: "fast-png@npm:6.1.0"
-  dependencies:
-    "@types/pako": "npm:^1.0.2"
-    iobuffer: "npm:^5.0.4"
-    pako: "npm:^2.0.4"
-  checksum: 10/c3694250c22bd0bd1313360e6040ef62e9843f31ab659e2238acd0483bab6b1ac452d32ab25750b86f246e9bafea1f2c7095f1abf97a4e8439d7aabc42e1d90e
-  languageName: node
-  linkType: hard
-
 "fast-shallow-equal@npm:^1.0.0":
   version: 1.0.0
   resolution: "fast-shallow-equal@npm:1.0.0"
@@ -12191,13 +12172,6 @@ __metadata:
   dependencies:
     loose-envify: "npm:^1.0.0"
   checksum: 10/cc3182d793aad82a8d1f0af697b462939cb46066ec48bbf1707c150ad5fad6406137e91a262022c269702e01621f35ef60269f6c0d7fd178487959809acdfb14
-  languageName: node
-  linkType: hard
-
-"iobuffer@npm:^5.0.4":
-  version: 5.3.1
-  resolution: "iobuffer@npm:5.3.1"
-  checksum: 10/43ece680614ecb4f09023f0a93a1d7fa3d5e9d31a57213e4df396acf42446a199981f73db4a30c83f7738c3006c7d04048733ae84829914feaf3f7b40e380705
   languageName: node
   linkType: hard
 
@@ -15359,13 +15333,6 @@ __metadata:
   version: 2.2.0
   resolution: "p-try@npm:2.2.0"
   checksum: 10/f8a8e9a7693659383f06aec604ad5ead237c7a261c18048a6e1b5b85a5f8a067e469aa24f5bc009b991ea3b058a87f5065ef4176793a200d4917349881216cae
-  languageName: node
-  linkType: hard
-
-"pako@npm:^2.0.4":
-  version: 2.1.0
-  resolution: "pako@npm:2.1.0"
-  checksum: 10/38a04991d0ec4f4b92794a68b8c92bf7340692c5d980255c92148da96eb3e550df7a86a7128b5ac0c65ecddfe5ef3bbe9c6dab13e1bc315086e759b18f7c1401
   languageName: node
   linkType: hard
 

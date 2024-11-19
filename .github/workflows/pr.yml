@@ -12,7 +12,7 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-  
+
 jobs:
   modified-files:
     runs-on: ubuntu-latest
@@ -33,6 +33,7 @@ jobs:
               - 'e2e-pw/**'
             fiftyone:
               - 'fiftyone/**'
+              - 'package/**'
               - 'requirements/**'
               - 'tests/**'
               - 'requirements.txt'
@@ -40,11 +41,12 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: teams-app-filter
         with:
-          predicate-quantifier: 'every'
+          predicate-quantifier: "every"
           filters: |
             teams-app:
               - 'teams-app/**'
               - '!teams-app/Dockerfile'
+
   build:
     needs: modified-files
     if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' || needs.modified-files.outputs.teams-app-changes == 'true' }}
@@ -96,4 +98,5 @@ jobs:
       - run: sh -c ${{
           (needs.build.result == 'success' || needs.build.result == 'skipped') &&
           (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
-          (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+          (needs.test.result == 'success' || needs.test.result == 'skipped') &&
+          (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') }}

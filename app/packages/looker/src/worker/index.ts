@@ -5,6 +5,7 @@
 import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import {
   DENSE_LABELS,
+  DETECTION,
   DETECTIONS,
   DYNAMIC_EMBEDDED_DOCUMENT,
   EMBEDDED_DOCUMENT,
@@ -17,10 +18,7 @@ import {
   getFetchFunction,
   setFetchFunction,
 } from "@fiftyone/utilities";
-import { decode as decodePng } from "fast-png";
-import { decode as decodeJpg } from "jpeg-js";
 import { CHUNK_SIZE } from "../constants";
-import { OverlayMask } from "../numpy";
 import {
   BaseConfig,
   Coloring,
@@ -31,8 +29,8 @@ import {
   LabelTagColor,
   Sample,
 } from "../state";
+import { decodeWithCanvas } from "./canvas-decoder";
 import { DeserializerFactory } from "./deserializer";
-import { indexedPngBufferToRgb } from "./indexed-png-decoder";
 import { PainterFactory } from "./painter";
 import { mapId } from "./shared";
 import { process3DLabels } from "./threed-label-processor";
@@ -113,18 +111,24 @@ const imputeOverlayFromPath = async (
 ) => {
   // handle all list types here
   if (cls === DETECTIONS) {
-    label?.detections?.forEach((detection) =>
-      imputeOverlayFromPath(
-        field,
-        detection,
-        coloring,
-        customizeColorSetting,
-        colorscale,
-        buffers,
-        {},
-        cls
-      )
-    );
+    const promises = [];
+    for (const detection of label.detections) {
+      promises.push(
+        imputeOverlayFromPath(
+          field,
+          detection,
+          coloring,
+          customizeColorSetting,
+          colorscale,
+          buffers,
+          {},
+          DETECTION
+        )
+      );
+    }
+    // if some paths fail to load, it's okay, we can still proceed
+    // hence we use `allSettled` instead of `all`
+    await Promise.allSettled(promises);
     return;
   }
 
@@ -144,48 +148,29 @@ const imputeOverlayFromPath = async (
   const overlayImageUrl = getSampleSrc(
     sources[`${field}.${overlayPathField}`] || label[overlayPathField]
   );
+  const urlTokens = overlayImageUrl.split("?");
 
-  const overlayImageBuffer: ArrayBuffer = await getFetchFunction()(
+  let baseUrl = overlayImageUrl;
+
+  // remove query params if not local URL
+  if (!urlTokens.at(1)?.startsWith("filepath=")) {
+    baseUrl = overlayImageUrl.split("?")[0];
+  }
+
+  const overlayImageBuffer: Blob = await getFetchFunction()(
     "GET",
     overlayImageUrl,
     null,
-    "arrayBuffer"
+    "blob"
   );
 
-  let overlayData;
-
-  if (overlayImageUrl.endsWith(".jpg") || overlayImageUrl.endsWith(".jpeg")) {
-    overlayData = decodeJpg(overlayImageBuffer, { useTArray: true });
-  } else {
-    overlayData = decodePng(overlayImageBuffer);
-  }
-
-  if (overlayData.palette?.length) {
-    overlayData.data = indexedPngBufferToRgb(
-      overlayData.data,
-      overlayData.depth,
-      overlayData.palette
-    );
-    overlayData.channels = 3;
-  }
-
-  const width = overlayData.width;
-  const height = overlayData.height;
-
-  const numChannels =
-    overlayData.channels ?? overlayData.data.length / (width * height);
-
-  const overlayMask: OverlayMask = {
-    buffer: overlayData.data.buffer,
-    channels: numChannels,
-    arrayType: overlayData.data.constructor.name as OverlayMask["arrayType"],
-    shape: [height, width],
-  };
+  const overlayMask = await decodeWithCanvas(overlayImageBuffer);
+  const [overlayHeight, overlayWidth] = overlayMask.shape;
 
   // set the `mask` property for this label
   label[overlayField] = {
     data: overlayMask,
-    image: new ArrayBuffer(width * height * 4),
+    image: new ArrayBuffer(overlayWidth * overlayHeight * 4),
   };
 
   // transfer buffers
@@ -220,16 +205,20 @@ const processLabels = async (
       }
 
       if (DENSE_LABELS.has(cls)) {
-        await imputeOverlayFromPath(
-          `${prefix || ""}${field}`,
-          label,
-          coloring,
-          customizeColorSetting,
-          colorscale,
-          buffers,
-          sources,
-          cls
-        );
+        try {
+          await imputeOverlayFromPath(
+            `${prefix || ""}${field}`,
+            label,
+            coloring,
+            customizeColorSetting,
+            colorscale,
+            buffers,
+            sources,
+            cls
+          );
+        } catch (e) {
+          console.error("Couldn't decode overlay image from disk: ", e);
+        }
       }
 
       if (cls in DeserializerFactory) {

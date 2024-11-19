@@ -1027,21 +1027,18 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         setResult(result.result);
         setError(result.error);
         setIsDelegated(result.delegated);
-        handlers.onSuccess?.(result, { ctx });
-        callback?.(result, { ctx });
         if (result.error) {
-          const isAbortError =
-            result.error.name === "AbortError" ||
-            result.error instanceof DOMException;
-          if (!isAbortError) {
-            notify({
-              msg: result.errorMessage || `Operation failed: ${uri}`,
-              variant: "error",
-            });
-            console.error("Error executing operator", uri, result.errorMessage);
-            console.error(result.error);
-          }
+          handlers.onError?.(result, { ctx });
+          notify({
+            msg: result.errorMessage || `Operation failed: ${uri}`,
+            variant: "error",
+          });
+          console.error("Error executing operator", uri, result.errorMessage);
+          console.error(result.error);
+        } else {
+          handlers.onSuccess?.(result, { ctx });
         }
+        callback?.(result, { ctx });
       } catch (e) {
         callback?.(new OperatorResult(operator, null, ctx.executor, e, false), {
           ctx,

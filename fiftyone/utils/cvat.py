@@ -6567,7 +6567,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     }
                 )
             elif label_type in ("instance", "instances"):
-                if det.mask is None:
+                if det.has_mask is None:
                     continue
 
                 polygon = det.to_polyline()
