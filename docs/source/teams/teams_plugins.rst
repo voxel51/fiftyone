@@ -354,8 +354,7 @@ ____________________
 
 :ref:`Delegated operations <delegated-operations>` are a powerful feature of
 FiftyOne's plugin framework that allows users to schedule tasks from within the
-App that are executed on a connected workflow orchestrator like the provided
-FiftyOne builtin orchestator.
+App that are executed in the background on a connected compute cluster.
 
 With FiftyOne Teams, your team can
 :ref:`upload and permission <teams-plugins-page>` custom operations that your
@@ -430,29 +429,37 @@ and their status.
 
 .. _teams-delegated-orchestrator:
 
-Setting up an orchestrator
-__________________________
+Configuring your orchestrator(s)
+________________________________
 
-All delegated operations that have been scheduled by users of a FiftyOne Teams
-deployment will remain queued until a connected orchestrator picks them up and
-executes them.
+FiftyOne Teams offers a builtin orchestrator that is configured as part of your
+team's deployment with a default level of compute capacity.
 
-FiftyOne Teams offers a builtin orchestrator which is configured as part of your
-deployment and has three instances by default. Contact your Voxel51 support team
-to scale your deployment accordingly or if you'd like to use an external orchestrator.
+It is also possible to connect your FiftyOne Teams deployment to an externally
+managed workflow orchestration tool (`Airflow <https://airflow.apache.org>`_,
+`Flyte <https://flyte.org>`_,
+`Spark <https://www.databricks.com/product/spark>`_, etc).
+
+.. note::
+
+    Contact your Voxel51 support team to scale your deployment's compute
+    capacity or if you'd like to use an external orchestrator.
 
 .. _teams-managing-delegated-operations:
 
 Managing delegated operations
 _____________________________
 
-Every Teams dataset has a Runs page that allows users to monitor and explore
-delegated operations scheduled against that dataset.
+Every dataset in FiftyOne Teams has a Runs page that allows users with access
+to monitor and explore delegated operations scheduled against that dataset.
+
+All scheduled operations are maintained in a queue and will be automatically
+executed as resources are available on the targeted orchestrator.
 
 .. note::
 
-    The Runs page only tracks operations that are *delegated* to your Team's
-    orchestrator, not operations that are executed immediately in the App.
+    The Runs page only tracks operations that are **scheduled** for delegated
+    execution, not operations that are executed immediately in the App.
 
 .. _teams-runs-page:
 

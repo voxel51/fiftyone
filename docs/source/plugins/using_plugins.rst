@@ -829,10 +829,17 @@ Delegated operations
 ____________________
 
 Delegated operations are a powerful feature of FiftyOne's plugin framework that
-allows you to schedule tasks from within the App that are executed on a
-connected workflow orchestrator like
-:ref:`FiftyOne Teams Builtin Orchestrator <delegated-operations-builtin>` or run just
-:ref:`run locally <delegated-operations-local>` in a separate process.
+allows you to schedule potentially long-running tasks from within the App that
+are executed in the background while you continue to work.
+
+.. note::
+
+    :ref:`FiftyOne Teams <teams-delegated-operations>` deployments come out of
+    the box with a connected compute cluster for executing delegated operations
+    at scale.
+
+    In FiftyOne Open Source, you can use delegated operations at small scale
+    by :ref:`running them locally <delegated-orchestrator-open-source>`.
 
 For example, have model predictions on your dataset that you want to evaluate?
 The `@voxel51/evaluation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/evaluation/README.md>`_
@@ -856,6 +863,50 @@ curation, and evaluation are performed.
 .. note::
 
     Want to run delegated operations at scale?
+    `Contact us <https://voxel51.com/get-fiftyone-teams>`_ about
+    :ref:`FiftyOne Teams <fiftyone-teams>`, an open source-compatible
+    enterprise deployment of FiftyOne with multiuser collaboration features,
+    native cloud dataset support, and much more!
+
+    Think of FiftyOne Teams as the single source of truth on which you
+    co-develop your data and models together 📈
+
+.. _delegated-orchestrator:
+
+Setting up an orchestrator
+__________________________
+
+.. _delegated-orchestrator-open-source:
+
+FiftyOne Open Source
+--------------------
+
+FiftyOne Open Source users can run delegated operations via the
+:ref:`fiftyone delegated launch <cli-fiftyone-delegated-launch>` CLI command:
+
+.. code-block:: shell
+
+    fiftyone delegated launch
+
+This command starts a service that will continuously check for any queued
+delegated operations and execute them serially in its process.
+
+.. _delegated-orchestrator-teamas:
+
+FiftyOne Teams
+--------------
+
+:ref:`FiftyOne Teams <teams-delegated-operations>` deployments come out of
+the box with a connected compute cluster for executing delegated
+operations at scale.
+
+This powerful feature allows users to install/build plugins that execute
+potentially long-running tasks in the background while users continue with
+other work in the App.
+
+.. note::
+
+    Want to take advantage of this functionality?
     `Contact us <https://voxel51.com/get-fiftyone-teams>`_ about
     :ref:`FiftyOne Teams <fiftyone-teams>`, an open source-compatible
     enterprise deployment of FiftyOne with multiuser collaboration features,
@@ -927,48 +978,3 @@ cleanup delegated operations:
 
     # Print information about operations rather than actually deleting them
     fiftyone delegated cleanup --orphan --dry-run
-
-.. _delegated-orchestrator:
-
-Setting up an orchestrator
-__________________________
-
-.. _delegated-operations-local:
-
-Local execution
----------------
-
-The simplest way to execute delegated operations is to launch a delegated
-operation service via the
-:ref:`fiftyone delegated launch <cli-fiftyone-delegated-launch>` CLI command:
-
-.. code-block:: shell
-
-    fiftyone delegated launch
-
-This command starts a service that will continuously check for any queued
-delegated operations and execute them serially in its process.
-
-.. _delegated-operations-builtin:
-
-FiftyOne Teams Builtin Orchestrator
------------------------------------
-
-Delegated operations are designed to be ran in the background of the FiftyOne
-application. This allows users to build powerful plugins and operators that
-would typically take too long for a user to wait for them to complete within the app.
-
-We recognize that integrating and supporting other workflow orchestrators can be an
-involved task for users which is why we offer a builtin orchestrator as part of
-all FiftyOne Teams deployments.
-
-.. note::
-
-    Want to take advantage of this functionality?
-    `Contact us <https://voxel51.com/get-fiftyone-teams>`_ about
-    :ref:`FiftyOne Teams <fiftyone-teams>`, an open source-compatible
-    enterprise deployment of FiftyOne with multiuser collaboration features,
-    native cloud dataset support, and much more!
-
-    FiftyOne Teams as the single source of truth on which you
-    co-develop your data and models together 📈

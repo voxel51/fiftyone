@@ -1128,19 +1128,17 @@ computation, evaluation, and exports are computationally intensive and/or not
 suitable for immediate execution.
 
 In such cases, :ref:`delegated operations <delegated-operations>` come to the
-rescue by allowing operators to schedule tasks that are executed on a connected
-workflow orchestrator like :ref:`FiftyOne Teams Builtin Orchestrator <delegated-operations-builtin>`
-or run just :ref:`run locally <delegated-operations-local>` in a separate
-process.
+rescue by allowing users to schedule potentially long-running tasks that are
+executed in the background while you continue to use the App.
 
 .. note::
 
-    Even though delegated operations are run in a separate process or physical
-    location, they are provided with the same `ctx` that was hydrated by the
-    operator's :ref:`input form <operator-inputs>`.
+    :ref:`FiftyOne Teams <teams-delegated-operations>` deployments come out of
+    the box with a connected compute cluster for executing delegated operations
+    at scale.
 
-    Refer to :ref:`this section <delegated-operations>` for more information
-    about how delegated operations are executed.
+    In FiftyOne Open Source, you can use delegated operations at small scale
+    by :ref:`running them locally <delegated-orchestrator-open-source>`.
 
 There are a variety of options available for configuring whether a given
 operation should be delegated or executed immediately.
