@@ -15,7 +15,8 @@ from dacite.data import Data
 
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
-
+import fiftyone.core.storage as fos
+from fiftyone.server.cache import get_cached_media_url
 
 _cache = cachetools.TTLCache(maxsize=10, ttl=900)  # ttl in seconds
 _dacite_config = Config(check_types=False)
@@ -119,6 +120,53 @@ def meets_type(field: fof.Field, type_or_types):
         isinstance(field, fof.ListField)
         and isinstance(field.field, type_or_types)
     )
+
+
+def convert_overlay_paths_to_cloud_urls(field):
+    """
+    Recursively converts local overlay paths in the given field to cloud URLs.
+
+
+    Args:
+        field (dict): The field containing overlay paths to convert.
+    """
+    for _, field_value in field.items():
+        if not isinstance(field_value, dict) or "_cls" not in field_value:
+            continue
+
+        cls = field_value["_cls"]
+
+        if cls not in {"Heatmap", "Segmentation", "Detection", "Detections"}:
+            continue
+
+        if cls == "Detections":
+            detections = field_value.get("detections", [])
+            for detection in detections:
+                convert_overlay_paths_to_cloud_urls({"_": detection})
+            continue
+
+        overlay_path_field = "mask_path"
+
+        if "map_path" in field_value:
+            overlay_path_field = "map_path"
+
+        if overlay_path_field in field_value and not fos.is_local(
+            field_value[overlay_path_field]
+        ):
+            field_value[overlay_path_field] = get_cached_media_url(
+                field_value[overlay_path_field]
+            )
+
+
+def convert_frames_overlay_paths_to_cloud_urls(frames):
+    """
+    Converts local overlay paths in the given frames to cloud URLs.
+
+    Args:
+        frames (list): The frames to convert.
+    """
+    for frame in frames:
+        convert_overlay_paths_to_cloud_urls(frame)
 
 
 def _parse_changes(changes):
