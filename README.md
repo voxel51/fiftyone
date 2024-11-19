@@ -203,7 +203,7 @@ brew install protobuf
 #optional but recommendeded
 brew install ffmpeg
 ```
-### 2. Create and activate the Virtual Environment
+### 4. Create and activate the Virtual Environment
 
 ```shell
 python3 -m venv fiftyone_env
