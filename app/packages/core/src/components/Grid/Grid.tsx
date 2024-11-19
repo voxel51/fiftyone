@@ -12,6 +12,7 @@ import React, {
 } from "react";
 import { useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
+import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
 import { gridCrop, gridSpacing, pageParameters } from "./recoil";
 import useAt from "./useAt";
 import useEscape from "./useEscape";
@@ -121,7 +122,17 @@ function Grid() {
     }
 
     const element = document.getElementById(id);
+
+    const info = fos.getQueryPerformancePath();
+    const timeout = setTimeout(() => {
+      if (info) {
+        window.dispatchEvent(
+          new QueryPerformanceToastEvent(info.path, info.isFrameField)
+        );
+      }
+    }, QP_WAIT);
     const mount = () => {
+      clearTimeout(timeout);
       document.dispatchEvent(new CustomEvent("grid-mount"));
     };
 
@@ -130,6 +141,7 @@ function Grid() {
     spotlight.addEventListener("rowchange", set);
 
     return () => {
+      clearTimeout(timeout);
       freeVideos();
       spotlight.removeEventListener("load", mount);
       spotlight.removeEventListener("rowchange", set);

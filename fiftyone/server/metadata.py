@@ -38,7 +38,7 @@ import fiftyone.core.utils as fou
 from fiftyone.core.config import HTTPRetryConfig
 from fiftyone.utils.utils3d import OrthographicProjectionMetadata
 from fiftyone.utils.rerun import RrdFile
-from fiftyone.server.cache import create_tlru_cache
+from fiftyone.server.cache import create_tlru_cache, extract_ttu_from_url
 
 
 logger = logging.getLogger(__name__)
@@ -51,15 +51,19 @@ _ADDITIONAL_MEDIA_FIELDS = {
 }
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
-
 _get_url = create_tlru_cache(
     lambda path: foc.media_cache.get_url(path),
     TLRUCache(
         fo.config.signed_url_cache_size,
-        lambda _, __, now: now
-        + timedelta(hours=fo.config.signed_url_expiration)
-        - timedelta(minutes=5),
-        datetime.now,
+        ttu=lambda _, val, now: extract_ttu_from_url(
+            val,
+            now,
+            (
+                timedelta(hours=fo.config.signed_url_expiration)
+                - timedelta(minutes=5)
+            ).total_seconds(),
+        ),
+        timer=datetime.now,
     ),
 )
 _metadata_cache = LRUCache(

@@ -31,7 +31,7 @@ export default function Avatar(props: AvatarProps) {
   } = props;
   const theme = useTheme();
   const baseStyle = {
-    bgcolor: bgColor || stringToColor(title),
+    bgcolor: bgColor || stringToColor(title), // bgcolor is not a typo
     color: "#fff", // consistent color with gmail default avatars
     fontSize: "1.4rem",
     fontWeight: 500,

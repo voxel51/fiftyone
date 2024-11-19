@@ -38,3 +38,7 @@ export const KEYPOINTS_FIELD = "fiftyone.core.labels.Keypoints";
 export const KEYPOINTS_POINTS_FIELD = "fiftyone.core.fields.KeypointsField";
 export const REGRESSION_FIELD = "fiftyone.core.labels.Regression";
 export const GROUP = "fiftyone.core.groups.Group";
+export const BOOK_A_DEMO_LINK = "https://voxel51.com/book-a-demo/";
+export const TRY_IN_BROWSER_LINK = "https://voxel51.com/try-fiftyone/";
+export const APP_MODE = "fiftyone";
+export const IS_APP_MODE_FIFTYONE = APP_MODE === "fiftyone";

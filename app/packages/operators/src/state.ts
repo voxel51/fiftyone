@@ -235,13 +235,29 @@ function useExecutionOptions(operatorURI, ctx, isRemote) {
   return { isLoading, executionOptions, fetch };
 }
 
+/**
+ * Type representing an operator execution target.
+ */
+export type OperatorExecutionOption = {
+  label: string;
+  id: string;
+  description: string;
+  onClick: () => void;
+  isDelegated: boolean;
+  choiceLabel?: string;
+  tag?: string;
+  default?: boolean;
+  selected?: boolean;
+  onSelect?: () => void;
+};
+
 const useOperatorPromptSubmitOptions = (
   operatorURI,
   execDetails,
-  execute,
+  execute: (options?: OperatorExecutorOptions) => void,
   promptView?: OperatorPromptType["promptView"]
 ) => {
-  const options = [];
+  const options: OperatorExecutionOption[] = [];
   const persistUnderKey = `operator-prompt-${operatorURI}`;
   const availableOrchestrators =
     execDetails.executionOptions?.availableOrchestrators || [];
@@ -270,6 +286,7 @@ const useOperatorPromptSubmitOptions = (
       onClick() {
         execute();
       },
+      isDelegated: false,
     });
   }
   if (
@@ -287,6 +304,7 @@ const useOperatorPromptSubmitOptions = (
       onClick() {
         execute({ requestDelegation: true });
       },
+      isDelegated: true,
     });
   }
 
@@ -311,6 +329,7 @@ const useOperatorPromptSubmitOptions = (
             requestDelegation: true,
           });
         },
+        isDelegated: true,
       });
     }
   }
@@ -371,6 +390,32 @@ const useOperatorPromptSubmitOptions = (
     hasOptions: options.length > 0,
     isLoading: execDetails.isLoading,
     handleSubmit,
+  };
+};
+
+/**
+ * Hook which provides state management for operator option enumeration.
+ */
+export const useOperatorExecutionOptions = ({
+  operatorUri,
+  onExecute,
+}: {
+  operatorUri: string;
+  onExecute: (opts: OperatorExecutorOptions) => void;
+}): {
+  executionOptions: OperatorExecutionOption[];
+} => {
+  const ctx = useExecutionContext(operatorUri);
+  const { isRemote } = getLocalOrRemoteOperator(operatorUri);
+  const execDetails = useExecutionOptions(operatorUri, ctx, isRemote);
+  const submitOptions = useOperatorPromptSubmitOptions(
+    operatorUri,
+    execDetails,
+    onExecute
+  );
+
+  return {
+    executionOptions: submitOptions.options,
   };
 };
 
@@ -982,8 +1027,8 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         setResult(result.result);
         setError(result.error);
         setIsDelegated(result.delegated);
-        handlers.onSuccess?.(result);
-        callback?.(result);
+        handlers.onSuccess?.(result, { ctx });
+        callback?.(result, { ctx });
         if (result.error) {
           const isAbortError =
             result.error.name === "AbortError" ||
@@ -998,7 +1043,9 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
           }
         }
       } catch (e) {
-        callback?.(new OperatorResult(operator, null, ctx.executor, e, false));
+        callback?.(new OperatorResult(operator, null, ctx.executor, e, false), {
+          ctx,
+        });
         const isAbortError =
           e.name === "AbortError" || e instanceof DOMException;
         const msg = e.message || "Failed to execute an operation";

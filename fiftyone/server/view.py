@@ -308,12 +308,12 @@ def _add_labels_tags_counts(view):
             isinstance(field, fof.EmbeddedDocumentField)
             and issubclass(field.document_type, fol._HasLabelList)
         ):
-            if path.startswith(view._FRAMES_PREFIX):
+            if view._is_frame_field(path):
                 add_tags = _add_frame_labels_tags
             else:
                 add_tags = _add_labels_tags
         else:
-            if path.startswith(view._FRAMES_PREFIX):
+            if view._is_frame_field(path):
                 add_tags = _add_frame_label_tags
             else:
                 add_tags = _add_label_tags

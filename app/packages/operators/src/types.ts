@@ -1068,6 +1068,19 @@ export class MarkdownView extends View {
   }
 }
 
+/**
+ * Operator class for rendering a status button.
+ */
+export class StatusButtonView extends View {
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "StatusButtonView";
+  }
+  static fromJSON(json) {
+    return new StatusButtonView(json);
+  }
+}
+
 export class MediaPlayerView extends View {
   constructor(options: ViewProps) {
     super(options);
@@ -1229,6 +1242,20 @@ export class ToastView extends View {
 }
 
 /**
+ * Operator class for rendering a execution button.
+ */
+
+class OperatorExecutionButtonView extends View {
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "OperatorExecutionButtonView";
+  }
+  static fromJSON(json) {
+    return new OperatorExecutionButtonView(json);
+  }
+}
+
+/**
  * Places where you can have your operator placement rendered.
  */
 export enum Places {
@@ -1292,6 +1319,7 @@ const VIEWS = {
   MapView,
   ProgressView,
   MarkdownView,
+  StatusButtonView,
   MediaPlayerView,
   PromptView,
   FieldView,

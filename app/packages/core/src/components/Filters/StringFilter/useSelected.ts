@@ -20,6 +20,7 @@ export default function (
   const boolean = useRecoilValue(isBooleanField(path));
   const useSearch = useUseSearch({ modal, path });
   const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const id = useRecoilValue(fos.isObjectIdField(path));
   if (resultsLoadable.state === "hasError") throw resultsLoadable.contents;
   const results =
     resultsLoadable.state === "hasValue" ? resultsLoadable.contents : null;
@@ -27,13 +28,13 @@ export default function (
 
   const shown =
     (!modal && queryPerformance) ||
-    (resultsLoadable.state !== "loading" && length >= CHECKBOX_LIMIT);
+    (resultsLoadable.state !== "loading" && (length >= CHECKBOX_LIMIT || id));
+  const isFrameField = useRecoilValue(fos.isFrameField(path));
 
   return {
     results,
-
     useSearch:
-      path === "_label_tags" && queryPerformance && !modal
+      path === "_label_tags" && queryPerformance && !isFrameField && !modal
         ? undefined
         : useSearch,
     showSearch: Boolean(shown) && !boolean,
