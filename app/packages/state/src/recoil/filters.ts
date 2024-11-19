@@ -9,7 +9,7 @@ import { getSessionRef, sessionAtom } from "../session";
 import { pathHasIndexes, queryPerformance } from "./queryPerformance";
 import { expandPath, fields } from "./schema";
 import { hiddenLabelIds, isFrameField } from "./selectors";
-import { State } from "./types";
+import type { State } from "./types";
 
 export const { getQueryPerformancePath, setQueryPerformancePath } = (() => {
   let queryPerformancePath: { isFrameField: boolean; path: string } | null =

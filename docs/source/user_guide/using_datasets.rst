@@ -2556,25 +2556,41 @@ Instance segmentations
 ----------------------
 
 Object detections stored in |Detections| may also have instance segmentation
-masks, which should be stored in the
-:attr:`mask <fiftyone.core.labels.Detection.mask>` attribute of each
-|Detection|.
+masks.
 
-The mask must be a 2D numpy array containing either booleans or 0/1 integers
-encoding the extent of the instance mask within the
+These masks can be stored in one of two ways: either directly in the database
+via the :attr:`mask<fiftyone.core.labels.Detection.mask>` attribute, or on
+disk referenced by the
+:attr:`mask_path <fiftyone.core.labels.Detection.mask_path>` attribute.
+
+Masks stored directly in the database must be 2D numpy arrays
+containing either booleans or 0/1 integers that encode the extent of the
+instance mask within the
 :attr:`bounding_box <fiftyone.core.labels.Detection.bounding_box>` of the
-object. The array can be of any size; it is stretched as necessary to fill the
+object.
+
+For masks stored on disk, the
+:attr:`mask_path <fiftyone.core.labels.Detection.mask_path>` attribute should
+contain the file path to the mask image. We recommend storing masks as
+single-channel PNG images, where a pixel value of 0 indicates the
+background (rendered as transparent in the App), and any other 
+value indicates the object.
+
+Masks can be of any size; they are stretched as necessary to fill the
 object's bounding box when visualizing in the App.
 
 .. code-block:: python
     :linenos:
 
     import numpy as np
+    from PIL import Image
 
     import fiftyone as fo
 
     # Example instance mask
-    mask = (np.random.randn(32, 32) > 0)
+    mask = ((np.random.randn(32, 32) > 0) * 255).astype(np.uint8)
+    mask_path = "/path/to/mask.png"
+    Image.fromarray(mask).save(mask_path)
 
     sample = fo.Sample(filepath="/path/to/image.png")
 
@@ -2583,7 +2599,7 @@ object's bounding box when visualizing in the App.
             fo.Detection(
                 label="cat",
                 bounding_box=[0.480, 0.513, 0.397, 0.288],
-                mask=mask,
+                mask_path=mask_path,
                 confidence=0.96,
             ),
         ]
@@ -2608,13 +2624,7 @@ object's bounding box when visualizing in the App.
                     'attributes': {},
                     'label': 'cat',
                     'bounding_box': [0.48, 0.513, 0.397, 0.288],
-                    'mask': array([[False,  True, False, ...,  True,  True, False],
-                           [ True, False,  True, ..., False,  True,  True],
-                           [False,  True, False, ..., False,  True, False],
-                           ...,
-                           [ True,  True, False, ..., False, False,  True],
-                           [ True,  True,  True, ...,  True,  True, False],
-                           [False,  True,  True, ..., False,  True,  True]]),
+                    'mask_path': '/path/to/mask.png',
                     'confidence': 0.96,
                     'index': None,
                 }>,
@@ -2634,7 +2644,7 @@ by dynamically adding new fields to each |Detection| instance:
     detection = fo.Detection(
         label="cat",
         bounding_box=[0.5, 0.5, 0.4, 0.3],
-        mask=np.random.randn(32, 32) > 0,
+        mask_path="/path/to/mask.png",
         age=51,  # custom attribute
         mood="salty",  # custom attribute
     )
@@ -2649,13 +2659,7 @@ by dynamically adding new fields to each |Detection| instance:
         'tags': [],
         'label': 'cat',
         'bounding_box': [0.5, 0.5, 0.4, 0.3],
-        'mask': array([[False, False,  True, ...,  True,  True, False],
-               [ True,  True, False, ...,  True, False,  True],
-               [False, False,  True, ..., False, False, False],
-               ...,
-               [False, False,  True, ...,  True,  True, False],
-               [ True, False,  True, ...,  True, False,  True],
-               [False,  True, False, ...,  True,  True,  True]]),
+        'mask_path': '/path/to/mask.png',
         'confidence': None,
         'index': None,
         'age': 51,

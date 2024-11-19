@@ -20,6 +20,7 @@ from .executor import (
 )
 from .utils import ProgressHandler, is_new
 from .panel import Panel, PanelConfig
+from .store import ExecutionStore
 from .categories import Categories
 
 # This enables Sphinx refs to directly use paths imported here
