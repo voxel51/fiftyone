@@ -124,7 +124,7 @@ nbsphinx_prolog = """
             </a>
         </td>
         <td>
-            <a target="_blank" href="https://gitcdn.link/cdn/voxel51/fiftyone/%s/docs/source/{{ env.doc2path(env.docname, base=None) }}" download>
+            <a target="_blank" href="https://raw.githubusercontent.com/voxel51/fiftyone/%s/docs/source/{{ env.doc2path(env.docname, base=None) }}" download>
                 <img src="../_static/images/icons/cloud-icon-256px.png"> &nbsp; Download notebook
             </a>
         </td>
