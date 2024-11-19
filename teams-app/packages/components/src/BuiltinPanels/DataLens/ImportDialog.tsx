@@ -5,6 +5,7 @@ import {
   FormControlLabel,
   MenuItem,
   Select,
+  Stack,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
@@ -161,13 +162,22 @@ export const ImportDialog = ({
           </Box>
 
           <FormControlLabel
+            sx={{ mt: 1 }}
             control={
               <Checkbox
                 checked={dedupeSamples}
                 onChange={(_, checked) => setDedupeSamples(checked)}
               />
             }
-            label="Skip existing samples"
+            label={
+              <Stack direction="column" spacing={1}>
+                <Typography>Skip existing samples</Typography>
+                <Typography color="secondary" variant="body2">
+                  Check this box to skip importing examples whose filepath
+                  matches an existing dataset sample
+                </Typography>
+              </Stack>
+            }
           />
         </Box>
 
