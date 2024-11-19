@@ -65,7 +65,7 @@ Consult the
 [installation guide](https://voxel51.com/docs/fiftyone/getting_started/install.html)
 for troubleshooting and other information about getting up-and-running with
 FiftyOne.
-<details>
+</details>
 
 <details>
 <summary>Install from source</summary>
