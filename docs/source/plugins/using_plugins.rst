@@ -958,45 +958,13 @@ Delegated operations are designed to be ran in the background of the FiftyOne
 application. This allows users to build powerful plugins and operators that
 would typically take too long for a user to wait for them to complete within the app.
 
-We recognize that supporting Airflow or other workflow orchestrators can be an
+We recognize that integrating and supporting other workflow orchestrators can be an
 involved task for users which is why we offer a builtin orchestrator as part of
 all FiftyOne Teams deployments.
 
 .. note::
 
     Want to take advantage of this functionality?
-    `Contact us <https://voxel51.com/get-fiftyone-teams>`_ about
-    :ref:`FiftyOne Teams <fiftyone-teams>`, an open source-compatible
-    enterprise deployment of FiftyOne with multiuser collaboration features,
-    native cloud dataset support, and much more!
-
-    FiftyOne Teams as the single source of truth on which you
-    co-develop your data and models together 📈
-
-.. _delegated-operations-airflow:
-
-Apache Airflow
---------------
-
-Delegated operations are also designed to be executed by workflow orchestration
-tools like `Airflow <https://airflow.apache.org>`_.
-
-You can set up Airflow as an orchestrator to run delegated operations in a
-development environment by following these steps:
-
--   Install
-    `Apache Airflow <https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html>`_
--   Install a
-    `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/tree/main/orchestrators/airflow>`_
--   Ensure that your :ref:`plugins directory <plugins-directory>` is available,
-    either by installing them on the same machine or by making them available
-    via a shared filesystem
--   Configure your :ref:`MongoDB connection <configuring-mongodb-connection>`
--   You're all set. Schedule those operations!
-
-.. note::
-
-    Want to run delegated operations at scale in production?
     `Contact us <https://voxel51.com/get-fiftyone-teams>`_ about
     :ref:`FiftyOne Teams <fiftyone-teams>`, an open source-compatible
     enterprise deployment of FiftyOne with multiuser collaboration features,
