@@ -2814,6 +2814,7 @@ class TimerView(View):
         interval (None): the interval in milliseconds to wait before executing the operator
         on_timeout (None): the operator to execute when the timeout is reached
         on_interval (None): the operator to execute at the interval
+        params (None): the params passed to the on_interval or on_timeout operator
     """
 
     def __init__(self, **kwargs):

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { ViewPropsType } from "../utils/types";
@@ -8,6 +8,7 @@ export type TimerViewParams = {
   on_timeout?: string;
   interval?: number;
   timeout?: number;
+  params?: object;
 };
 
 class Timer {
@@ -47,7 +48,13 @@ class TimeoutTimer extends Timer {
 function useTimer(params: TimerViewParams) {
   const panelId = usePanelId();
   const triggerEvent = usePanelEvent();
-  const { on_interval, interval, timeout, on_timeout } = params;
+  const {
+    on_interval,
+    interval,
+    timeout,
+    on_timeout,
+    params: operator_params,
+  } = params;
   const ref = useRef<Timer | null>(null);
 
   useEffect(() => {
@@ -64,7 +71,7 @@ function useTimer(params: TimerViewParams) {
           if (on_interval) {
             triggerEvent(panelId, {
               operator: on_interval,
-              params: {},
+              params: operator_params || {},
               prompt: null,
             });
           }
@@ -73,7 +80,7 @@ function useTimer(params: TimerViewParams) {
           if (on_timeout) {
             triggerEvent(panelId, {
               operator: on_timeout,
-              params: {},
+              params: operator_params || {},
               prompt: null,
             });
           }
