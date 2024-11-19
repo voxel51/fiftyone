@@ -41,7 +41,6 @@ export default function TableView(props: ViewPropsType) {
     getTableData(props);
   const dataMissing = rows.length === 0;
   const hasRowActions = row_actions.length > 0;
-  const hasTooltips = tooltips.length > 0;
   const panelId = usePanelId();
   const handleClick = usePanelEvent();
   const theme = useTheme();
