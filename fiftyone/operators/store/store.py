@@ -6,6 +6,7 @@ Execution store class.
 |
 """
 
+from datetime import datetime
 from typing import Any, Optional
 
 from bson import ObjectId
@@ -101,19 +102,24 @@ class ExecutionStore(object):
         """
         self._store_service.update_ttl(self.store_name, key, new_ttl)
 
-    def get_ttl(self, key: str) -> Optional[int]:
-        """Retrieves the TTL for a specific key.
+    def get_metadata(self, key: str) -> Optional[datetime]:
+        """Retrieves the metadata for the given key.
 
         Args:
-            key: the key to get the TTL for
+            key: the key to check
 
         Returns:
-            the TTL in seconds, or None if the key does not have a TTL
+            a dict of metadata about the key
         """
         key_doc = self._store_service.get_key(self.store_name, key)
         if key_doc is None:
             return None
-        return key_doc.ttl
+
+        return dict(
+            created_at=key_doc.created_at,
+            updated_at=key_doc.updated_at,
+            expires_at=key_doc.expires_at,
+        )
 
     def list_keys(self) -> list[str]:
         """Lists all keys in the store.

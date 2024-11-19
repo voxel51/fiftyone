@@ -2432,73 +2432,88 @@ loaded only when the `brain_key` property is modified.
 
 .. _panel-execution-store
 
-Execution Store
+Execution store
 ---------------
 
 Panels can store data in the execution store, which is a key-value store that
 is persisted beyond the lifetime of the panel. This is useful for storing
-information that should persist across panel instances, such as cached data or
-user preferences. See the
-:class:`ExecutionStore <fiftyone.operators.store.ExecutionStore>` and
-:class:`ExecutionStoreService <fiftyone.operators.store.ExecutionStoreService>`
-classes for more information.
+information that should persist across panel instances and App sessions, such
+as cached data, long-lived panel state, or user preferences.
+
+You can create/retrieve execution stores scoped to the current ``ctx.dataset``
+via :meth:`ctx.store <fiftyone.operators.executor.ExecutionContext.store>`:
 
 .. code-block:: python
     :linenos:
 
-    from bson import ObjectId
-    from fiftyone.operators.store import ExecutionStore, ExecutionStoreService
-
-    STORE_NAME = "my_store_name"
-    GLOBAL_STORE_NAME = "my_global_store_name"
-    TTL_IN_SECONDS = 60
-
     def on_load(ctx):
-        # Create a store instance, scoped to the ctx.dataset
-        store = ctx.store(STORE_NAME)
+        # Retrieve a store scoped to the current `ctx.dataset`
+        # The store is automatically created if necessary
+        store = ctx.store("my_store")
 
-        # Load a value from the store
+        # Load a pre-existing value from the store
         user_choice = store.get("user_choice")
 
-        # Store data with a TTL to ensure it is evicted after TTL_IN_SECONDS
-        store.set("my_data", {"key": "value"}, ttl=TTL_IN_SECONDS)
-
-        # Retrieve the stored data to verify
-        my_data = store.get("my_data")
-        print(my_data) # => {"key": "value"}
+        # Store data with a TTL to ensure it is evicted after `ttl` seconds
+        store.set("my_key", {"foo": "bar"}, ttl=60)
 
         # List all keys in the store
-        keys = store.list_keys()
-        print(keys) # => ["my_data", "another_existing_key"]
+        print(store.list_keys())  # ["user_choice", "my_key"]
+
+        # Retrieve data from the store
+        print(store.get("my_key"))  # {"foo": "bar"}
+
+        # Retrieve metadata about a key
+        print(store.get_metadata("my_key"))
+        # {"created_at": ..., "updated_at": ..., "expires_at": ...}
 
         # Delete a key from the store
-        deleted = store.delete("my_data")
-        print(deleted) # => True
+        store.delete("my_key")
 
         # Clear all data in the store
         store.clear()
 
-        # Create a global store using the ExecutionStoreService
-        svc = ExecutionStoreService()
-
-        # Set a key-value pair in the global store
-        svc.set(GLOBAL_STORE_NAME, "my_key", {"foo": "bar"}, ttl=TTL_IN_SECONDS)
-
-        # Retrieve the key-value pair to verify
-        global_key_doc = svc.get(GLOBAL_STORE_NAME, "my_key")
-        print(global_key_doc.value) # => {"foo": "bar"}
-        print(global_key_doc.created) # => datetime.datetime
-        print(global_key_doc.expires) # => datetime.datetime
-        print(global_key_doc.ttl) # => 60
-
-        # Delete a key from the global store
-        deleted_count = svc.delete(GLOBAL_STORE_NAME, "my_key")
-
 .. note::
 
-    When using ``ctx.store`` in a panel, the store will be scoped to the
-    current ``ctx.dataset``. This means that the store will be deleted
-    when the dataset is deleted.
+    Did you know? Any execution stores associated with a dataset are
+    automatically  deleted when the dataset is deleted.
+
+For advanced use cases, it is also possible to create and use global stores
+that are available to all datasets via the
+:class:`ExecutionStore <fiftyone.operators.store.ExecutionStore>` class:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone.operators import ExecutionStore
+
+    # Retrieve a global store
+    # The store is automatically created if necessary
+    store = ExecutionStore.create("my_store")
+
+    # Store data with a TTL to ensure it is evicted after `ttl` seconds
+    store.set("my_key", {"foo": "bar"}, ttl=60)
+
+    # List all keys in the global store
+    print(store.list_keys())  # ["my_key"]
+
+    # Retrieve data from the global store
+    print(store.get("my_key"))  # {"foo": "bar"}
+
+    # Retrieve metadata about a key
+    print(store.get_metadata("my_key"))
+    # {"created_at": ..., "updated_at": ..., "expires_at": ...}
+
+    # Delete a key from the global store
+    store.delete("my_key")
+
+    # Clear all data in the global store
+    store.clear()
+
+.. warning::
+
+    Global stores have no automatic garbage collection, so take care when
+    creating and using global stores whose keys do not utilize TTLs.
 
 .. _panel-saved-workspaces
 

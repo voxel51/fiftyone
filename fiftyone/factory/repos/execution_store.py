@@ -78,33 +78,21 @@ class ExecutionStoreRepo(object):
 
     def list_stores(self) -> list[str]:
         """Lists the stores associated with the current context."""
-        result = self._collection.find(
-            dict(key="__store__", dataset_id=self._dataset_id),
-            {"store_name": 1},
-        )
-        return [d["store_name"] for d in result]
+        pipeline = [
+            {"$match": {"dataset_id": self._dataset_id}},
+            {"$group": {"_id": "$store_name"}},
+        ]
+        return [d["_id"] for d in self._collection.aggregate(pipeline)]
 
     def count_stores(self) -> int:
         """Counts the stores associated with the current context."""
         pipeline = [
-            {
-                "$match": {
-                    "dataset_id": self._dataset_id,
-                }
-            },
-            {
-                "$group": {
-                    "_id": {
-                        "store_name": "$store_name",
-                        "dataset_id": "$dataset_id",
-                    }
-                }
-            },
-            {"$count": "total_stores"},
+            {"$match": {"dataset_id": self._dataset_id}},
+            {"$group": {"_id": "$store_name", "count": {"$count": {}}}},
         ]
 
         result = list(self._collection.aggregate(pipeline))
-        return result[0]["total_stores"] if result else 0
+        return result[0]["count"] if result else 0
 
     def delete_store(self, store_name) -> int:
         """Deletes the specified store."""
@@ -233,9 +221,7 @@ class ExecutionStoreRepo(object):
         """Determines whether a store with the given name exists across all
         datasets and the global context.
         """
-        result = self._collection.find_one(
-            dict(store_name=store_name, key="__store__"), {}
-        )
+        result = self._collection.find_one(dict(store_name=store_name), {})
         return bool(result)
 
     def list_stores_global(self) -> list[StoreDocument]:
