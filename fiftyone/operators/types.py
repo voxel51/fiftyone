@@ -1860,9 +1860,16 @@ class TableView(View):
         self.columns.append(column)
         return column
 
-    def add_row_action(self, name, on_click, label=None, icon=None, tooltip=None, **kwargs):
+    def add_row_action(
+        self, name, on_click, label=None, icon=None, tooltip=None, **kwargs
+    ):
         row_action = Action(
-            name=name, on_click=on_click, label=label, icon=icon, tooltip=tooltip, **kwargs
+            name=name,
+            on_click=on_click,
+            label=label,
+            icon=icon,
+            tooltip=tooltip,
+            **kwargs,
         )
         self.row_actions.append(row_action)
         return row_action
@@ -2793,6 +2800,20 @@ class TimelineView(View):
         timeline_name (None): the name of the timeline
         total_frames (None): the total number of frames in the timeline
         loop (False): whether to loop the timeline
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class TimerView(View):
+    """Supports a timer for executing operators/events after a specified duration or invterval.
+
+    Args:
+        timeout (None): the duration in milliseconds to wait before executing the operator
+        interval (None): the interval in milliseconds to wait before executing the operator
+        on_timeout (None): the operator to execute when the timeout is reached
+        on_interval (None): the operator to execute at the interval
     """
 
     def __init__(self, **kwargs):
