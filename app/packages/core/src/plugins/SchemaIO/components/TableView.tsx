@@ -33,6 +33,7 @@ export default function TableView(props: ViewPropsType) {
     selected_color,
     size = "small",
     variant = "filled",
+    max_inline_actions = 1,
   } = view;
   const { rows, selectedCells, selectedRows, selectedColumns } =
     getTableData(props);
@@ -198,6 +199,7 @@ export default function TableView(props: ViewPropsType) {
                           <ActionsMenu
                             actions={getRowActions(rowIndex)}
                             size={size}
+                            maxInline={max_inline_actions}
                           />
                         )}
                       </TableCell>

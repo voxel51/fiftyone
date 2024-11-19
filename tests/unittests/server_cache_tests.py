@@ -1,46 +1,57 @@
-"""
-FiftyOne server cache tests.
+import unittest
+from datetime import datetime, timedelta
 
-| Copyright 2017-2024, Voxel51, Inc.
-| `voxel51.com <https://voxel51.com/>`_
-|
-"""
-
-from cachetools import TLRUCache
-from unittest import TestCase
-from unittest.mock import call, MagicMock
-
-from fiftyone.server.cache import create_tlru_cache
+from fiftyone.server.cache import extract_ttu_from_url
 
 
-ONE = call("one")
-TWO = call("two")
-CALLS = [ONE, TWO]
+class TestExtractTtuFromUrl(unittest.TestCase):
+    def setUp(self):
+        self.default_sec = 3600
+        self.now = datetime(2024, 10, 25, 12, 0, 0)
+        self.date_fmt = "%Y%m%dT%H%M%SZ"
 
+    def test_aws_gcp_url_expires(self):
+        url = "https://example.com/resource?X-Amz-Expires=1800&X-Amz-Date=20241025T113000Z"
+        expiration = extract_ttu_from_url(url, self.now, self.default_sec)
+        self.assertEqual(expiration, datetime(2024, 10, 25, 12, 0, 0))
 
-class ServerMetadataTests(TestCase):
-    def test_server_cache(self):
-        mock_callable = MagicMock()
-        mock_timer = MagicMock()
-        mock_ttu = MagicMock()
+    def test_azure_url_se(self):
+        url = "https://example.com/resource?se=20241025T121500Z"
+        expiration = extract_ttu_from_url(url, self.now, self.default_sec)
+        self.assertEqual(expiration, datetime(2024, 10, 25, 12, 15, 0))
 
-        mock_timer.return_value = 0
-        mock_ttu.return_value = 1
-        cache = create_tlru_cache(
-            mock_callable, TLRUCache(2, mock_ttu, mock_timer)
+    def test_url_missing_expires(self):
+        date_str = "20241025T121500Z"
+        url = "https://example.com/resource?X-Amz-Date=" + date_str
+        expiration = extract_ttu_from_url(url, self.now, self.default_sec)
+        self.assertEqual(
+            expiration,
+            (
+                datetime.strptime(date_str, self.date_fmt)
+                + timedelta(seconds=self.default_sec)
+            ),
         )
 
-        cache("one")
-        cache("two")
+    def test_invalid_expires_format(self):
+        url = "https://example.com/resource?X-Amz-Expires=abc"
+        expiration = extract_ttu_from_url(url, self.now, self.default_sec)
+        self.assertEqual(
+            expiration,
+            (self.now + timedelta(seconds=self.default_sec)),
+        )
 
-        mock_callable.assert_has_calls(CALLS)
+    def test_missing_params(self):
+        url = "https://example.com/resource"
+        expiration = extract_ttu_from_url(url, self.now, self.default_sec)
+        self.assertEqual(
+            expiration,
+            (self.now + timedelta(seconds=self.default_sec)),
+        )
 
-        cache("one")
-        mock_callable.assert_has_calls(CALLS)
-
-        mock_timer.return_value = 1
-        cache("one")
-        mock_callable.assert_has_calls(CALLS + [call("one")])
-
-        cache("two")
-        mock_callable.assert_has_calls(CALLS * 2)
+    def test_invalid_date_format(self):
+        url = "https://example.com/resource?X-Amz-Date=invalid_date"
+        expiration = extract_ttu_from_url(url, self.now, self.default_sec)
+        self.assertEqual(
+            expiration,
+            (self.now + timedelta(seconds=self.default_sec)),
+        )

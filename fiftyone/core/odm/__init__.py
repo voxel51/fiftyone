@@ -37,6 +37,7 @@ from .database import (
     drop_orphan_collections,
     drop_orphan_saved_views,
     drop_orphan_runs,
+    drop_orphan_stores,
     list_collections,
     get_collection_stats,
     stream_collection,

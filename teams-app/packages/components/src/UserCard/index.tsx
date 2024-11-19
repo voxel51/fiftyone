@@ -24,6 +24,10 @@ export default function UserCard({
   ...props
 }: UserCardProps) {
   const initial = getInitials(id ? name?.toLocaleUpperCase() : "");
+  if (!initial || initial.length == 0) {
+    // Non-existing/invited users default to gray avatar
+    props.bgColor = "gray";
+  }
   return (
     <Avatar
       src={src}

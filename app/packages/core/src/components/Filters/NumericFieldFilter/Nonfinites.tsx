@@ -45,7 +45,9 @@ const useNonfiniteSettings = (params: { modal: boolean; path: string }) => {
 const useNonfinites = (options: { modal: boolean; path: string }) => {
   const get = useNonfiniteSettings(options);
   const list = [get("none")];
-  const { ftype } = fos.useAssertedRecoilValue(fos.field(options.path));
+  const { ftype, subfield } = fos.useAssertedRecoilValue(
+    fos.field(options.path)
+  );
   const data = useRecoilValue(
     fos.nonfiniteData({
       extended: false,
@@ -53,7 +55,7 @@ const useNonfinites = (options: { modal: boolean; path: string }) => {
       modal: options.modal,
     })
   );
-  if (ftype === FLOAT_FIELD) {
+  if (ftype === FLOAT_FIELD || subfield === FLOAT_FIELD) {
     for (const key of state.FLOAT_NONFINITES) {
       list.push(get(key));
     }
@@ -78,16 +80,6 @@ function Nonfinites({ modal, path }: { modal: boolean; path: string }) {
   });
   const hasBounds = useRecoilValue(state.hasBounds({ modal, path }));
   const one = useRecoilValue(state.oneBound({ modal, path }));
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
-  const indexed = useRecoilValue(fos.pathHasIndexes(path));
-
-  if (queryPerformance && indexed && nonfinites.length) {
-    return (
-      <span style={{ color: "var(--fo-palette-danger-plainColor)" }}>
-        {nonfinites.map(({ key }) => key).join(", ")} present
-      </span>
-    );
-  }
 
   if (nonfinites.length === 1 && nonfinites[0].key === "none") {
     return null;

@@ -93,6 +93,7 @@ type BooleanAggregation implements Aggregation {
 type BooleanLightningResult implements LightningResult {
   path: String!
   false: Boolean!
+  none: Boolean!
   true: Boolean!
 }
 
@@ -282,12 +283,14 @@ type DateLightningResult implements LightningResult {
   path: String!
   max: date
   min: date
+  none: Boolean!
 }
 
 type DateTimeLightningResult implements LightningResult {
   path: String!
   max: datetime
   min: datetime
+  none: Boolean!
 }
 
 type DatetimeHistogramValuesResponse {
@@ -353,6 +356,7 @@ type FloatLightningResult implements LightningResult {
   min: Float
   nan: Boolean!
   ninf: Boolean!
+  none: Boolean!
 }
 
 type Group {
@@ -416,6 +420,7 @@ type IntLightningResult implements LightningResult {
   path: String!
   max: Float
   min: Float
+  none: Boolean!
 }
 
 type IntValueCount {
@@ -454,6 +459,7 @@ input LightningPathInput {
   exclude: [String!] = null
   first: Int = 200
   search: String = null
+  filters: BSON = null
 }
 
 interface LightningResult {

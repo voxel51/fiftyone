@@ -60,8 +60,9 @@ class TestBooleanLightningQueries(unittest.IsolatedAsyncioTestCase):
             query Query($input: LightningInput!) {
                 lightning(input: $input) {
                     ... on BooleanLightningResult {
-                        false
                         path
+                        false
+                        none
                         true
                     }
                 }
@@ -72,64 +73,104 @@ class TestBooleanLightningQueries(unittest.IsolatedAsyncioTestCase):
         self.assertListEqual(
             result.data["lightning"],
             [
-                {"false": True, "path": "bool", "true": True},
-                {"false": True, "path": "bool_list", "true": True},
-                {"false": True, "path": "classification.bool", "true": True},
+                {"path": "bool", "false": True, "none": False, "true": True},
                 {
+                    "path": "bool_list",
                     "false": True,
+                    "none": False,
+                    "true": True,
+                },
+                {
+                    "path": "classification.bool",
+                    "false": True,
+                    "none": False,
+                    "true": True,
+                },
+                {
                     "path": "classification.bool_list",
+                    "false": True,
+                    "none": False,
                     "true": True,
                 },
-                {"false": True, "path": "classification.none", "true": False},
                 {
+                    "path": "classification.none",
                     "false": True,
+                    "none": True,
+                    "true": False,
+                },
+                {
                     "path": "detections.detections.bool",
+                    "false": True,
+                    "none": False,
                     "true": True,
                 },
                 {
-                    "false": True,
                     "path": "detections.detections.bool_list",
+                    "false": True,
+                    "none": False,
                     "true": True,
                 },
                 {
-                    "false": True,
                     "path": "detections.detections.none",
+                    "false": True,
+                    "none": True,
                     "true": False,
                 },
-                {"false": True, "path": "frames.bool", "true": True},
-                {"false": True, "path": "frames.bool_list", "true": True},
                 {
+                    "path": "frames.bool",
                     "false": True,
+                    "none": False,
+                    "true": True,
+                },
+                {
+                    "path": "frames.bool_list",
+                    "false": True,
+                    "none": False,
+                    "true": True,
+                },
+                {
                     "path": "frames.classification.bool",
+                    "false": True,
+                    "none": False,
                     "true": True,
                 },
                 {
-                    "false": True,
                     "path": "frames.classification.bool_list",
+                    "false": True,
+                    "none": False,
                     "true": True,
                 },
                 {
-                    "false": True,
                     "path": "frames.classification.none",
+                    "false": True,
+                    "none": True,
                     "true": False,
                 },
                 {
-                    "false": True,
                     "path": "frames.detections.detections.bool",
+                    "false": True,
+                    "none": False,
                     "true": True,
                 },
                 {
-                    "false": True,
                     "path": "frames.detections.detections.bool_list",
+                    "false": True,
+                    "none": False,
                     "true": True,
                 },
                 {
-                    "false": True,
                     "path": "frames.detections.detections.none",
+                    "false": True,
+                    "none": True,
                     "true": False,
                 },
-                {"false": True, "path": "frames.none", "true": False},
-                {"false": True, "path": "none", "true": False},
+                {
+                    "path": "frames.none",
+                    "false": True,
+                    "none": True,
+                    "true": False,
+                },
+                {"path": "none", "false": True, "none": True, "true": False},
             ],
         )
 
@@ -155,9 +196,10 @@ class TestDateLightningQueries(unittest.IsolatedAsyncioTestCase):
             query Query($input: LightningInput!) {
                 lightning(input: $input) {
                     ... on DateLightningResult {
+                        path
                         max
                         min
-                        path
+                        none
                     }
                 }
             }
@@ -167,21 +209,29 @@ class TestDateLightningQueries(unittest.IsolatedAsyncioTestCase):
         self.assertListEqual(
             result.data["lightning"],
             [
-                {"max": 978307200000.0, "min": 946684800000.0, "path": "date"},
                 {
+                    "path": "date",
                     "max": 978307200000.0,
                     "min": 946684800000.0,
+                    "none": False,
+                },
+                {
                     "path": "date_list",
-                },
-                {
                     "max": 978307200000.0,
                     "min": 946684800000.0,
+                    "none": False,
+                },
+                {
                     "path": "frames.date",
-                },
-                {
                     "max": 978307200000.0,
                     "min": 946684800000.0,
+                    "none": False,
+                },
+                {
                     "path": "frames.date_list",
+                    "max": 978307200000.0,
+                    "min": 946684800000.0,
+                    "none": False,
                 },
             ],
         )
@@ -206,9 +256,10 @@ class TestDatetimeLightningQueries(unittest.IsolatedAsyncioTestCase):
             query Query($input: LightningInput!) {
                 lightning(input: $input) {
                     ... on DateTimeLightningResult {
+                        path
                         max
                         min
-                        path
+                        none
                     }
                 }
             }
@@ -219,65 +270,213 @@ class TestDatetimeLightningQueries(unittest.IsolatedAsyncioTestCase):
             result.data["lightning"],
             [
                 {
-                    "max": 978393599000.0,
-                    "min": 946691999000.0,
                     "path": "classification.datetime",
-                },
-                {
                     "max": 978393599000.0,
                     "min": 946691999000.0,
+                    "none": False,
+                },
+                {
                     "path": "classification.datetime_list",
-                },
-                {
                     "max": 978393599000.0,
                     "min": 946691999000.0,
+                    "none": False,
+                },
+                {
                     "path": "datetime",
-                },
-                {
                     "max": 978393599000.0,
                     "min": 946691999000.0,
+                    "none": False,
+                },
+                {
                     "path": "datetime_list",
-                },
-                {
                     "max": 978393599000.0,
                     "min": 946691999000.0,
+                    "none": False,
+                },
+                {
                     "path": "detections.detections.datetime",
-                },
-                {
                     "max": 978393599000.0,
                     "min": 946691999000.0,
+                    "none": False,
+                },
+                {
                     "path": "detections.detections.datetime_list",
-                },
-                {
                     "max": 978393599000.0,
                     "min": 946691999000.0,
+                    "none": False,
+                },
+                {
                     "path": "frames.classification.datetime",
-                },
-                {
                     "max": 978393599000.0,
                     "min": 946691999000.0,
+                    "none": False,
+                },
+                {
                     "path": "frames.classification.datetime_list",
-                },
-                {
                     "max": 978393599000.0,
                     "min": 946691999000.0,
+                    "none": False,
+                },
+                {
                     "path": "frames.datetime",
-                },
-                {
                     "max": 978393599000.0,
                     "min": 946691999000.0,
+                    "none": False,
+                },
+                {
                     "path": "frames.datetime_list",
-                },
-                {
                     "max": 978393599000.0,
                     "min": 946691999000.0,
+                    "none": False,
+                },
+                {
                     "path": "frames.detections.detections.datetime",
-                },
-                {
                     "max": 978393599000.0,
                     "min": 946691999000.0,
-                    "path": "frames.detections.detections.datetime_list",
+                    "none": False,
                 },
+                {
+                    "path": "frames.detections.detections.datetime_list",
+                    "max": 978393599000.0,
+                    "min": 946691999000.0,
+                    "none": False,
+                },
+            ],
+        )
+
+
+class TestIntLightningQueries(unittest.IsolatedAsyncioTestCase):
+    @drop_async_dataset
+    async def test_ints(self, dataset: fo.Dataset):
+        dataset.add_sample_field("frame_numbers", fo.FrameNumberField)
+        dataset.add_sample_field("frame_supports", fo.FrameSupportField)
+        dataset.add_sample_field("ints", fo.IntField)
+        keys = _add_samples(
+            dataset,
+            dict(ints=1, frame_numbers=1, frame_supports=[1, 1]),
+            dict(ints=2, frame_numbers=2, frame_supports=[2, 2]),
+        )
+
+        query = """
+            query Query($input: LightningInput!) {
+                lightning(input: $input) {
+                    ... on IntLightningResult {
+                        path
+                        max
+                        min
+                        none
+                    }
+                }
+            }
+        """
+
+        result = await _execute(
+            query,
+            dataset,
+            (fo.FrameNumberField, fo.FrameSupportField, fo.IntField),
+            keys,
+        )
+        self.assertListEqual(
+            result.data["lightning"],
+            [
+                {
+                    "path": "classification.frame_numbers",
+                    "max": 2.0,
+                    "min": 1.0,
+                    "none": False,
+                },
+                {
+                    "path": "classification.frame_supports",
+                    "max": 2.0,
+                    "min": 1.0,
+                    "none": False,
+                },
+                {
+                    "path": "classification.ints",
+                    "max": 2.0,
+                    "min": 1.0,
+                    "none": False,
+                },
+                {
+                    "path": "detections.detections.frame_numbers",
+                    "max": 2.0,
+                    "min": 1.0,
+                    "none": False,
+                },
+                {
+                    "path": "detections.detections.frame_supports",
+                    "max": 2.0,
+                    "min": 1.0,
+                    "none": False,
+                },
+                {
+                    "path": "detections.detections.ints",
+                    "max": 2.0,
+                    "min": 1.0,
+                    "none": False,
+                },
+                {
+                    "path": "frame_numbers",
+                    "max": 2.0,
+                    "min": 1.0,
+                    "none": False,
+                },
+                {
+                    "path": "frame_supports",
+                    "max": 2.0,
+                    "min": 1.0,
+                    "none": False,
+                },
+                {
+                    "path": "frames.classification.frame_numbers",
+                    "max": 2.0,
+                    "min": 1.0,
+                    "none": False,
+                },
+                {
+                    "path": "frames.classification.frame_supports",
+                    "max": 2.0,
+                    "min": 1.0,
+                    "none": False,
+                },
+                {
+                    "path": "frames.classification.ints",
+                    "max": 2.0,
+                    "min": 1.0,
+                    "none": False,
+                },
+                {
+                    "path": "frames.detections.detections.frame_numbers",
+                    "max": 2.0,
+                    "min": 1.0,
+                    "none": False,
+                },
+                {
+                    "path": "frames.detections.detections.frame_supports",
+                    "max": 2.0,
+                    "min": 1.0,
+                    "none": False,
+                },
+                {
+                    "path": "frames.detections.detections.ints",
+                    "max": 2.0,
+                    "min": 1.0,
+                    "none": False,
+                },
+                {
+                    "path": "frames.frame_numbers",
+                    "max": 2.0,
+                    "min": 1.0,
+                    "none": False,
+                },
+                {
+                    "path": "frames.frame_supports",
+                    "max": 2.0,
+                    "min": 1.0,
+                    "none": False,
+                },
+                {"path": "frames.ints", "max": 2.0, "min": 1.0, "none": False},
+                {"path": "ints", "max": 2.0, "min": 1.0, "none": False},
             ],
         )
 
@@ -289,17 +488,33 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
             dataset,
             dict(
                 float=-1.0,
-                float_list=[-1.0],
-                inf=float("-inf"),
-                inf_list=float("-inf"),
+                float_list=[0.0, -1.0],
+                inf=-1.0,
+                inf_list=[0.0, -1.0],
+                nan=-1.0,
+                nan_list=[0.0, -1.0],
+                ninf=-1.0,
+                ninf_list=[0.0, -1.0],
+            ),
+            dict(
+                float=0.0,
+                float_list=[0.0],
+                inf=float("inf"),
+                inf_list=[float("inf")],
                 nan=float("nan"),
                 nan_list=[float("nan")],
+                ninf=float("-inf"),
+                ninf_list=[float("-inf")],
             ),
             dict(
                 float=1.0,
-                float_list=[1.0],
-                inf=float("inf"),
-                inf_list=float("inf"),
+                float_list=[0.0, 1.0],
+                inf=1.0,
+                inf_list=[1.0],
+                nan=1.0,
+                nan_list=[0.0, 1.0],
+                ninf=1.0,
+                ninf_list=[0.0, 1.0],
             ),
         )
 
@@ -307,12 +522,13 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
             query Query($input: LightningInput!) {
                 lightning(input: $input) {
                     ... on FloatLightningResult {
+                        path
                         inf
                         max
                         min
-                        path
                         nan
                         ninf
+                        none
                     }
                 }
             }
@@ -323,292 +539,436 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
             result.data["lightning"],
             [
                 {
-                    "inf": False,
-                    "max": 1.0,
-                    "min": -1.0,
                     "path": "classification.float",
-                    "nan": False,
-                    "ninf": False,
-                },
-                {
                     "inf": False,
                     "max": 1.0,
                     "min": -1.0,
+                    "nan": False,
+                    "ninf": False,
+                    "none": False,
+                },
+                {
                     "path": "classification.float_list",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": False,
                     "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": True,
-                    "max": None,
-                    "min": None,
                     "path": "classification.inf",
+                    "inf": True,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": False,
-                    "ninf": True,
+                    "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": True,
-                    "max": None,
-                    "min": None,
                     "path": "classification.inf_list",
+                    "inf": True,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": False,
-                    "ninf": True,
+                    "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": False,
-                    "max": None,
-                    "min": None,
                     "path": "classification.nan",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": True,
                     "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": False,
-                    "max": None,
-                    "min": None,
                     "path": "classification.nan_list",
-                    "nan": True,
-                    "ninf": False,
-                },
-                {
                     "inf": False,
                     "max": 1.0,
                     "min": -1.0,
+                    "nan": True,
+                    "ninf": False,
+                    "none": False,
+                },
+                {
+                    "path": "classification.ninf",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
+                    "nan": False,
+                    "ninf": True,
+                    "none": False,
+                },
+                {
+                    "path": "classification.ninf_list",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
+                    "nan": False,
+                    "ninf": True,
+                    "none": False,
+                },
+                {
                     "path": "detections.detections.float",
-                    "nan": False,
-                    "ninf": False,
-                },
-                {
                     "inf": False,
                     "max": 1.0,
                     "min": -1.0,
+                    "nan": False,
+                    "ninf": False,
+                    "none": False,
+                },
+                {
                     "path": "detections.detections.float_list",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": False,
                     "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": True,
-                    "max": None,
-                    "min": None,
                     "path": "detections.detections.inf",
+                    "inf": True,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": False,
-                    "ninf": True,
+                    "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": True,
-                    "max": None,
-                    "min": None,
                     "path": "detections.detections.inf_list",
+                    "inf": True,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": False,
-                    "ninf": True,
+                    "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": False,
-                    "max": None,
-                    "min": None,
                     "path": "detections.detections.nan",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": True,
                     "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": False,
-                    "max": None,
-                    "min": None,
                     "path": "detections.detections.nan_list",
-                    "nan": True,
-                    "ninf": False,
-                },
-                {
                     "inf": False,
                     "max": 1.0,
                     "min": -1.0,
+                    "nan": True,
+                    "ninf": False,
+                    "none": False,
+                },
+                {
+                    "path": "detections.detections.ninf",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
+                    "nan": False,
+                    "ninf": True,
+                    "none": False,
+                },
+                {
+                    "path": "detections.detections.ninf_list",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
+                    "nan": False,
+                    "ninf": True,
+                    "none": False,
+                },
+                {
                     "path": "float",
-                    "nan": False,
-                    "ninf": False,
-                },
-                {
                     "inf": False,
                     "max": 1.0,
                     "min": -1.0,
+                    "nan": False,
+                    "ninf": False,
+                    "none": False,
+                },
+                {
                     "path": "float_list",
-                    "nan": False,
-                    "ninf": False,
-                },
-                {
                     "inf": False,
                     "max": 1.0,
                     "min": -1.0,
+                    "nan": False,
+                    "ninf": False,
+                    "none": False,
+                },
+                {
                     "path": "frames.classification.float",
-                    "nan": False,
-                    "ninf": False,
-                },
-                {
                     "inf": False,
                     "max": 1.0,
                     "min": -1.0,
+                    "nan": False,
+                    "ninf": False,
+                    "none": False,
+                },
+                {
                     "path": "frames.classification.float_list",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": False,
                     "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": True,
-                    "max": None,
-                    "min": None,
                     "path": "frames.classification.inf",
+                    "inf": True,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": False,
-                    "ninf": True,
+                    "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": True,
-                    "max": None,
-                    "min": None,
                     "path": "frames.classification.inf_list",
+                    "inf": True,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": False,
-                    "ninf": True,
+                    "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": False,
-                    "max": None,
-                    "min": None,
                     "path": "frames.classification.nan",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": True,
                     "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": False,
-                    "max": None,
-                    "min": None,
                     "path": "frames.classification.nan_list",
-                    "nan": True,
-                    "ninf": False,
-                },
-                {
                     "inf": False,
                     "max": 1.0,
                     "min": -1.0,
+                    "nan": True,
+                    "ninf": False,
+                    "none": False,
+                },
+                {
+                    "path": "frames.classification.ninf",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
+                    "nan": False,
+                    "ninf": True,
+                    "none": False,
+                },
+                {
+                    "path": "frames.classification.ninf_list",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
+                    "nan": False,
+                    "ninf": True,
+                    "none": False,
+                },
+                {
                     "path": "frames.detections.detections.float",
-                    "nan": False,
-                    "ninf": False,
-                },
-                {
                     "inf": False,
                     "max": 1.0,
                     "min": -1.0,
+                    "nan": False,
+                    "ninf": False,
+                    "none": False,
+                },
+                {
                     "path": "frames.detections.detections.float_list",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": False,
                     "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": True,
-                    "max": None,
-                    "min": None,
                     "path": "frames.detections.detections.inf",
+                    "inf": True,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": False,
-                    "ninf": True,
+                    "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": True,
-                    "max": None,
-                    "min": None,
                     "path": "frames.detections.detections.inf_list",
+                    "inf": True,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": False,
-                    "ninf": True,
+                    "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": False,
-                    "max": None,
-                    "min": None,
                     "path": "frames.detections.detections.nan",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": True,
                     "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": False,
-                    "max": None,
-                    "min": None,
                     "path": "frames.detections.detections.nan_list",
-                    "nan": True,
-                    "ninf": False,
-                },
-                {
                     "inf": False,
                     "max": 1.0,
                     "min": -1.0,
+                    "nan": True,
+                    "ninf": False,
+                    "none": False,
+                },
+                {
+                    "path": "frames.detections.detections.ninf",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
+                    "nan": False,
+                    "ninf": True,
+                    "none": False,
+                },
+                {
+                    "path": "frames.detections.detections.ninf_list",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
+                    "nan": False,
+                    "ninf": True,
+                    "none": False,
+                },
+                {
                     "path": "frames.float",
-                    "nan": False,
-                    "ninf": False,
-                },
-                {
                     "inf": False,
                     "max": 1.0,
                     "min": -1.0,
+                    "nan": False,
+                    "ninf": False,
+                    "none": False,
+                },
+                {
                     "path": "frames.float_list",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": False,
                     "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": True,
-                    "max": None,
-                    "min": None,
                     "path": "frames.inf",
+                    "inf": True,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": False,
-                    "ninf": True,
+                    "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": True,
-                    "max": None,
-                    "min": None,
                     "path": "frames.inf_list",
+                    "inf": True,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": False,
-                    "ninf": True,
+                    "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": False,
-                    "max": None,
-                    "min": None,
                     "path": "frames.nan",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": True,
                     "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": False,
-                    "max": None,
-                    "min": None,
                     "path": "frames.nan_list",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": True,
                     "ninf": False,
+                    "none": False,
                 },
                 {
-                    "inf": True,
-                    "max": None,
-                    "min": None,
+                    "path": "frames.ninf",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
+                    "nan": False,
+                    "ninf": True,
+                    "none": False,
+                },
+                {
+                    "path": "frames.ninf_list",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
+                    "nan": False,
+                    "ninf": True,
+                    "none": False,
+                },
+                {
                     "path": "inf",
-                    "nan": False,
-                    "ninf": True,
-                },
-                {
                     "inf": True,
-                    "max": None,
-                    "min": None,
+                    "max": 1.0,
+                    "min": -1.0,
+                    "nan": False,
+                    "ninf": False,
+                    "none": False,
+                },
+                {
                     "path": "inf_list",
+                    "inf": True,
+                    "max": 1.0,
+                    "min": -1.0,
+                    "nan": False,
+                    "ninf": False,
+                    "none": False,
+                },
+                {
+                    "path": "nan",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
+                    "nan": True,
+                    "ninf": False,
+                    "none": False,
+                },
+                {
+                    "path": "nan_list",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
+                    "nan": True,
+                    "ninf": False,
+                    "none": False,
+                },
+                {
+                    "path": "ninf",
+                    "inf": False,
+                    "max": 1.0,
+                    "min": -1.0,
                     "nan": False,
                     "ninf": True,
+                    "none": False,
                 },
                 {
+                    "path": "ninf_list",
                     "inf": False,
-                    "max": None,
-                    "min": None,
-                    "path": "nan",
-                    "nan": True,
-                    "ninf": False,
-                },
-                {
-                    "inf": False,
-                    "max": None,
-                    "min": None,
-                    "path": "nan_list",
-                    "nan": True,
-                    "ninf": False,
+                    "max": 1.0,
+                    "min": -1.0,
+                    "nan": False,
+                    "ninf": True,
+                    "none": False,
                 },
             ],
         )
@@ -624,7 +984,7 @@ class TestStringLightningQueries(unittest.IsolatedAsyncioTestCase):
                 str_list=["lower"],
                 none="none",
             ),
-            upper=dict(
+            dict(
                 str="upper",
                 str_list=["upper"],
                 none=None,
@@ -693,19 +1053,17 @@ class TestStringLightningQueries(unittest.IsolatedAsyncioTestCase):
         )
 
 
-def _add_samples(dataset: fo.Dataset, lower: t.Dict, upper: t.Dict):
-    one = _make_sample(
-        "one.mp4",
-        lower,
-    )
-    two = _make_sample(
-        "two.mp4",
-        upper,
-    )
-    dataset.add_samples([one, two])
+def _add_samples(dataset: fo.Dataset, *sample_data: t.List[t.Dict]):
+    samples = []
+    keys = set()
+    for idx, data in enumerate(sample_data):
+        samples.append(_make_sample(f"{idx}.mp4", data))
+        keys |= set(data.keys())
+
+    dataset.add_samples(samples)
     dataset.add_dynamic_sample_fields()
     dataset.add_dynamic_frame_fields()
-    return set(lower.keys()) | set(upper.keys())
+    return keys
 
 
 async def _execute(

@@ -17,16 +17,18 @@ export function useTriggerEvent() {
 }
 
 export function getNumericDifference(
-  a,
-  b,
+  value,
+  compareValue,
   percentage = false,
   fractionDigits?: number
 ) {
-  if (typeof a === "number" && typeof b === "number") {
+  if (typeof value === "number" && typeof compareValue === "number") {
+    const difference = value - compareValue;
     if (percentage) {
-      return formatValue(((a - b) / a) * 100, fractionDigits);
+      const percentageDifference = (difference / compareValue) * 100;
+      return formatValue(percentageDifference, fractionDigits);
     }
-    return formatValue(a - b, fractionDigits);
+    return formatValue(difference, fractionDigits);
   }
 }
 

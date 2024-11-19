@@ -32,7 +32,7 @@ describe("sizeBytesEstimate tests", () => {
     expect(sizeBytesEstimate("chars")).toBe(10);
   });
 
-  test("non-objects return 0", () => {
-    expect(sizeBytesEstimate(() => null)).toBe(0);
+  test("non-objects return non-zero", () => {
+    expect(sizeBytesEstimate(() => null)).toBe(1);
   });
 });

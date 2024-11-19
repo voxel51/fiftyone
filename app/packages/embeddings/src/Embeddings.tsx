@@ -1,32 +1,31 @@
-import { useRef, Fragment, useEffect } from "react";
-import { useExternalLink } from "@fiftyone/utilities";
-import { Loading, Selector, useTheme } from "@fiftyone/components";
+import { MuiButton, Selector, useTheme } from "@fiftyone/components";
+import { OperatorPlacements, types } from "@fiftyone/operators";
 import { usePanelStatePartial, useSetPanelCloseEffect } from "@fiftyone/spaces";
+import { constants, useExternalLink } from "@fiftyone/utilities";
 import {
-  HighlightAlt,
+  Add,
+  CenterFocusWeak,
   Close,
   Help,
+  HighlightAlt,
   OpenWith,
   Warning,
-  CenterFocusWeak,
-  Add,
 } from "@mui/icons-material";
-import { useBrainResultsSelector } from "./useBrainResult";
-import { useLabelSelector } from "./useLabelSelector";
+import { Fragment, useEffect, useRef, useState } from "react";
+import EmbeddingsCTA from "./EmbeddingsCTA";
+import { EmbeddingsPlot } from "./EmbeddingsPlot";
 import {
   EmbeddingsContainer,
-  Selectors,
   PlotOption,
+  Selectors,
 } from "./styled-components";
-import { Warnings } from "./Warnings";
-import { useWarnings } from "./useWarnings";
-import { EmbeddingsPlot } from "./EmbeddingsPlot";
+import { useBrainResultsSelector } from "./useBrainResult";
+import useComputeVisualization from "./useComputeVisualization";
+import { useLabelSelector } from "./useLabelSelector";
 import { usePlotSelection } from "./usePlotSelection";
 import { useResetPlotZoom } from "./useResetPlotZoom";
-import { OperatorPlacements, types } from "@fiftyone/operators";
-import ComputeVisualizationButton from "./ComputeVisualizationButton";
-import EmptyEmbeddings from "./EmptyEmbeddings";
-import useComputeVisualization from "./useComputeVisualization";
+import { useWarnings } from "./useWarnings";
+import { Warnings } from "./Warnings";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
@@ -46,6 +45,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
     "lasso",
     true
   );
+  const [showCTA, setShowCTA] = useState(false);
 
   const warnings = useWarnings();
   const setPanelCloseEffect = useSetPanelCloseEffect();
@@ -67,7 +67,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
     padding: "0.25rem",
   };
 
-  if (canSelect)
+  if (canSelect && !showCTA)
     return (
       <EmbeddingsContainer ref={el} data-cy="embeddings-container">
         <Selectors>
@@ -152,6 +152,19 @@ export default function Embeddings({ containerHeight, dimensions }) {
             )}
             <OperatorPlacements place={types.Places.EMBEDDINGS_ACTIONS} />
           </div>
+          <MuiButton
+            startIcon={<Add />}
+            onClick={() => {
+              if (constants.IS_APP_MODE_FIFTYONE) {
+                setShowCTA(true);
+              } else {
+                computeViz.prompt();
+              }
+            }}
+            variant="contained"
+          >
+            Compute Embeddings
+          </MuiButton>
         </Selectors>
         {showPlot && (
           <EmbeddingsPlot
@@ -166,6 +179,12 @@ export default function Embeddings({ containerHeight, dimensions }) {
         )}
       </EmbeddingsContainer>
     );
-
-  return <EmptyEmbeddings />;
+  return (
+    <EmbeddingsCTA
+      mode={canSelect ? "default" : "onboarding"}
+      onBack={() => {
+        setShowCTA(false);
+      }}
+    />
+  );
 }

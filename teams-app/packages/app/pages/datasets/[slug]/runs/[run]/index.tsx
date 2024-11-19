@@ -19,7 +19,7 @@ import {
 } from "@fiftyone/teams-state";
 import {
   AUTO_REFRESH_INTERVAL_IN_SECONDS,
-  ENABLE_ORCHESTRATOR_REGISTRATION_ENV_KEY,
+  FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS_ENV_KEY,
   FIFTYONE_TEAMS_PROXY_ENDPOINT,
   OPERATOR_RUN_STATES,
 } from "@fiftyone/teams-state/src/constants";
@@ -77,8 +77,8 @@ function Run(props) {
   const runErrorData = get(runResult, "error");
   const showProgress =
     status !== null && runState === OPERATOR_RUN_STATES.RUNNING;
-  const showOrchestrators = useBooleanEnv(
-    ENABLE_ORCHESTRATOR_REGISTRATION_ENV_KEY
+  const showOrchestrators = !useBooleanEnv(
+    FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS_ENV_KEY
   );
   const { inputs_schema, outputs_schema } = metadata || {};
 
@@ -170,16 +170,16 @@ function Run(props) {
                 {runState === RUNNING ? "Started" : capitalize(runState)}{" "}
                 <Timestamp timestamp={timestamp} />
               </Typography>
-              {runState !== QUEUED && (
-                <Typography color="text.tertiary">
-                  Queued{" "}
-                  <Timestamp timestamp={queuedAt} color="text.tertiary" />
-                </Typography>
-              )}
               {runState !== SCHEDULED && scheduledAt && (
                 <Typography color="text.tertiary">
                   Scheduled{" "}
                   <Timestamp timestamp={scheduledAt} color="text.tertiary" />
+                </Typography>
+              )}
+              {runState !== QUEUED && queuedAt && (
+                <Typography color="text.tertiary">
+                  Queued{" "}
+                  <Timestamp timestamp={queuedAt} color="text.tertiary" />
                 </Typography>
               )}
               {EXITED_STATES.includes(runState) && (

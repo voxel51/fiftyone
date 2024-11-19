@@ -26,6 +26,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
+from fiftyone.operators.store import ExecutionStoreService
 import fiftyone.utils.data as foud
 from fiftyone import ViewField as F
 
@@ -138,18 +139,35 @@ class DatasetTests(unittest.TestCase):
         self.assertListEqual(list_datasets(), dataset_names)
 
         name = dataset_names.pop(0)
-        datasets[name].delete()
+
+        dataset = datasets[name]
+        dataset_id = dataset._doc.id
+        svc = ExecutionStoreService(dataset_id=dataset_id)
+        store_name = "test_store"
+        svc.set_key(store_name, "foo", "bar")
+        keys = svc.list_keys(store_name)
+
+        self.assertListEqual(keys, ["foo"])
+
+        dataset.delete()
+
         self.assertListEqual(list_datasets(), dataset_names)
+        keys = svc.list_keys(store_name)
+
+        self.assertListEqual(keys, [])
         with self.assertRaises(ValueError):
-            len(datasets[name])
+            len(dataset)
 
         name = dataset_names.pop(0)
+
         fo.delete_dataset(name)
+
         self.assertListEqual(list_datasets(), dataset_names)
         with self.assertRaises(ValueError):
             len(datasets[name])
 
         new_dataset = fo.Dataset(name)
+
         self.assertEqual(len(new_dataset), 0)
 
     @drop_datasets
