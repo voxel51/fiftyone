@@ -9,6 +9,7 @@ import {
   Menu,
   MenuItem,
   Stack,
+  Tooltip,
 } from "@mui/material";
 import React, { useCallback } from "react";
 import { getColorByCode } from "../utils";
@@ -20,7 +21,7 @@ export default function ActionsMenu(props: ActionsPropsType) {
 
   if (actions.length <= maxInline) {
     return (
-      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+      <Stack direction="row" spacing={0.5} justifyContent="flex-start">
         {actions.map((action) => (
           <Action {...action} key={action.name} mode="inline" size={size} />
         ))}
@@ -73,7 +74,8 @@ function ActionsOverflowMenu(props: ActionsPropsType) {
 }
 
 function Action(props: ActionPropsType) {
-  const { label, name, onClick, icon, variant, mode, color, size } = props;
+  const { label, name, onClick, icon, variant, mode, color, size, tooltip } =
+    props;
   const resolvedColor = color ? getColorByCode(color) : undefined;
 
   const Icon = icon ? (
@@ -87,20 +89,32 @@ function Action(props: ActionPropsType) {
     [onClick, props]
   );
 
-  return mode === "inline" ? (
-    <Button
-      variant={variant}
-      startIcon={Icon}
-      onClick={handleClick}
-      sx={{ color: resolvedColor, padding: size === "small" ? 0 : undefined }}
-    >
-      {label}
-    </Button>
+  const content =
+    mode === "inline" ? (
+      <Button
+        variant={variant}
+        startIcon={Icon}
+        onClick={handleClick}
+        sx={{ color: resolvedColor, padding: size === "small" ? 0 : undefined }}
+      >
+        {label}
+      </Button>
+    ) : (
+      <MenuItem onClick={handleClick}>
+        {Icon && <ListItemIcon>{Icon}</ListItemIcon>}
+        <ListItemText sx={{ color: resolvedColor }}>
+          {label || name}
+        </ListItemText>
+      </MenuItem>
+    );
+
+  return tooltip ? (
+    <Tooltip title={tooltip}>
+      <span>{content}</span>{" "}
+      {/* Use <span> to wrap the child to avoid DOM issues */}
+    </Tooltip>
   ) : (
-    <MenuItem onClick={handleClick}>
-      {Icon && <ListItemIcon>{Icon}</ListItemIcon>}
-      <ListItemText sx={{ color: resolvedColor }}>{label || name}</ListItemText>
-    </MenuItem>
+    content
   );
 }
 
@@ -121,4 +135,5 @@ type ActionPropsType = {
   mode: "inline" | "menu";
   color?: string;
   size?: SizeType;
+  tooltip: string | null;
 };
