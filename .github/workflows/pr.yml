@@ -17,13 +17,14 @@ jobs:
   modified-files:
     runs-on: ubuntu-latest
     outputs:
-      app-changes: ${{ steps.filter.outputs.app }}
-      e2e-changes: ${{ steps.filter.outputs.e2e-pw }}
-      fiftyone-changes: ${{ steps.filter.outputs.fiftyone }}
+      app-changes: ${{ steps.base-filter.outputs.app }}
+      e2e-changes: ${{ steps.base-filter.outputs.e2e-pw }}
+      fiftyone-changes: ${{ steps.base-filter.outputs.fiftyone }}
+      teams-app-changes: ${{ steps.teams-app-filter.outputs.teams-app }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
-        id: filter
+        id: base-filter
         with:
           filters: |
             app:
@@ -37,20 +38,28 @@ jobs:
               - 'tests/**'
               - 'requirements.txt'
               - 'setup.py'
+      - uses: dorny/paths-filter@v3
+        id: teams-app-filter
+        with:
+          predicate-quantifier: "every"
+          filters: |
+            teams-app:
+              - 'teams-app/**'
+              - '!teams-app/Dockerfile'
 
   build:
     needs: modified-files
-    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' }}
+    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' || needs.modified-files.outputs.teams-app-changes == 'true' }}
     uses: ./.github/workflows/build.yml
 
   e2e:
     needs: modified-files
-    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.e2e-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' }}
+    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.e2e-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' || needs.modified-files.outputs.teams-app-changes == 'true' }}
     uses: ./.github/workflows/e2e.yml
 
   lint:
     needs: modified-files
-    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' }}
+    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' || needs.modified-files.outputs.teams-app-changes == 'true' }}
     uses: ./.github/workflows/lint-app.yml
 
   teams:
@@ -78,7 +87,7 @@ jobs:
 
   test:
     needs: modified-files
-    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' }}
+    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' || needs.modified-files.outputs.teams-app-changes == 'true' }}
     uses: ./.github/workflows/test.yml
 
   all-tests:
