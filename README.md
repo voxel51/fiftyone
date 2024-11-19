@@ -83,9 +83,8 @@ Connect with us through your preferred channels:
 - [Quickstart](#-quickstart)
 - [Documentation](#-documentation)
 - [Examples](#-examples)
-- [Contributing to fiftyone](#-contributing)
-- [Installing from source](#-fromsource)
 - [Troubleshooting](#-troubleshooting)
+- [Contributing to fiftyone](#-contributing)
 - [Contributors](#-contributors)
 - [Citation](#-citation)
 - [FAQ and additional resources](#-faq)
@@ -233,7 +232,9 @@ FiftyOne.
 
 <details>
 <summary>Install from source</summary>
-To install from source, you need to clone the repository and install the library using pip via editable mode.
+
+To install from source, you need to clone the repository and install the library using pip via editable mode. The instructions below are for macOS and Linux systems. Windows users may need
+to make adjustments. If you are working in Google Colab, [skip to here](#source-installs-in-google-colab).
 
 First, clone the repository:
 
@@ -391,6 +392,16 @@ FiftyOne.
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 
+<div id='-troubleshooting'/>
+
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Troubleshooting
+
+[This page](https://docs.voxel51.com/getting_started/troubleshooting.html) lists common issues encountered when installing FiftyOne and possible solutions. If you encounter an issue that this page doesn’t help you resolve, feel free to [open an issue on GitHub](https://github.com/voxel51/fiftyone/issues) or contact us on [Slack](https://slack.voxel51.com/) or [Discord](https://discord.gg/fiftyone-community).
+
+
+[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+
+
 <div id='-contributing'/>
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Contributing to FiftyOne
@@ -401,18 +412,6 @@ open source and community contributions are welcome!
 Check out the
 [contribution guide](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md)
 to learn how to get involved.
-
-
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
-
-<div id='-fromsource'/>
-
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Installing from source
-
-The instructions below are for macOS and Linux systems. Windows users may need
-to make adjustments. If you are working in Google Colab,
-[skip to here](#source-installs-in-google-colab).
-
 
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
