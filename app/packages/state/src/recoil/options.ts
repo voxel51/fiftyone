@@ -4,7 +4,7 @@ import {
   mediaFieldsFragment,
   mediaFieldsFragment$key,
 } from "@fiftyone/relay";
-import { atomFamily, DefaultValue, selector, selectorFamily } from "recoil";
+import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { datasetSampleCount } from "./dataset";
 import { fieldPaths } from "./schema";
@@ -74,7 +74,9 @@ export const dynamicGroupsViewMode = selectorFamily({
       const value = get(dynamicGroupsViewModeStore(modal));
 
       if (!value) {
-        return modal ? get(dynamicGroupsViewModeStore(false)) : "pagination";
+        return modal
+          ? get(dynamicGroupsViewModeStore(false)) ?? "pagination"
+          : "pagination";
       }
 
       return value;
