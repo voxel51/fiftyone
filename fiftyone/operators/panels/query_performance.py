@@ -853,7 +853,7 @@ class QueryPerformancePanel(Panel):
                 "Enabled" if ctx.query_performance else "Disabled"
             )
 
-            status_btn = types.StatusButtonView(  # pylint: disable=E1101
+            status_btn = types.StatusButtonView(
                 on_click=self.qp_setting,
                 severity=severity,
                 title="Query Performance Status",
@@ -879,30 +879,53 @@ class QueryPerformancePanel(Panel):
             if _has_edit_permission(ctx):
                 # Calculating row conditionality for the update button
                 if summary_fields:
-                    table.add_row_action(  # pylint: disable=E1101
-                        "update",
-                        self.on_click_update,
-                        icon="update",
-                        rows=[False] * len(all_indices)
-                        + [True] * len(summary_fields),
-                        color="secondary",
+                    self._add_summary_field_action(
+                        table, all_indices, summary_fields
                     )
 
                 # Calculating row conditionality for the delete button
-                rows = (
-                    [False] * (len(all_indices) - len(droppable_index))
-                    + [True] * len(droppable_index)
-                    + [True] * len(summary_fields)
-                )
-
-                table.add_row_action(  # pylint: disable=E1101
-                    "delete",
-                    self.on_click_delete,
-                    icon="delete",
-                    rows=rows,
-                    color="secondary",
+                self._add_delete_index(
+                    table, all_indices, droppable_index, summary_fields
                 )
 
             panel.list("table", Object(), view=table)
 
         return Property(panel, view=GridView(pad=3, gap=3))
+
+    def _add_summary_field_action(self, table, all_indices, summary_fields):
+        rows = [False] * len(all_indices) + [True] * len(summary_fields)
+        table.add_row_action(
+            "update",
+            self.on_click_update,
+            icon="update",
+            rows=rows,
+            color="secondary",
+            tooltip="Update summary field",
+        )
+
+    def _add_delete_index(
+        self, table, all_indices, droppable_index, summary_fields
+    ):
+        rows = (
+            [False] * (len(all_indices) - len(droppable_index))
+            + [True] * len(droppable_index)
+            + [False] * len(summary_fields)
+        )
+        table.add_row_action(
+            "delete",
+            self.on_click_delete,
+            icon="delete",
+            rows=rows,
+            color="secondary",
+            tooltip="Delete index",
+        )
+
+        rows = [False] * len(all_indices) + [True] * len(summary_fields)
+        table.add_row_action(
+            "delete",
+            self.on_click_delete,
+            icon="delete",
+            rows=rows,
+            color="secondary",
+            tooltip="Delete summary field",
+        )
