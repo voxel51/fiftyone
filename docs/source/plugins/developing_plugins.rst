@@ -2430,6 +2430,76 @@ loaded only when the `brain_key` property is modified.
     Panel data is never readable in Python; it is only implicitly used by
     the types you define when they are rendered clientside.
 
+.. _panel-execution-store
+
+Execution Store
+---------------
+
+Panels can store data in the execution store, which is a key-value store that
+is persisted beyond the lifetime of the panel. This is useful for storing
+information that should persist across panel instances, such as cached data or
+user preferences. See the
+:class:`ExecutionStore <fiftyone.operators.store.ExecutionStore>` and
+:class:`ExecutionStoreService <fiftyone.operators.store.ExecutionStoreService>`
+classes for more information.
+
+.. code-block:: python
+    :linenos:
+
+    from bson import ObjectId
+    from fiftyone.operators.store import ExecutionStore, ExecutionStoreService
+
+    STORE_NAME = "my_store_name"
+    GLOBAL_STORE_NAME = "my_global_store_name"
+    TTL_IN_SECONDS = 60
+
+    def on_load(ctx):
+        # Create a store instance, scoped to the ctx.dataset
+        store = ctx.store(STORE_NAME)
+
+        # Load a value from the store
+        user_choice = store.get("user_choice")
+
+        # Store data with a TTL to ensure it is evicted after TTL_IN_SECONDS
+        store.set("my_data", {"key": "value"}, ttl=TTL_IN_SECONDS)
+
+        # Retrieve the stored data to verify
+        my_data = store.get("my_data")
+        print(my_data) # => {"key": "value"}
+
+        # List all keys in the store
+        keys = store.list_keys()
+        print(keys) # => ["my_data", "another_existing_key"]
+
+        # Delete a key from the store
+        deleted = store.delete("my_data")
+        print(deleted) # => True
+
+        # Clear all data in the store
+        store.clear()
+
+        # Create a global store using the ExecutionStoreService
+        svc = ExecutionStoreService()
+
+        # Set a key-value pair in the global store
+        svc.set(GLOBAL_STORE_NAME, "my_key", {"foo": "bar"}, ttl=TTL_IN_SECONDS)
+
+        # Retrieve the key-value pair to verify
+        global_key_doc = svc.get(GLOBAL_STORE_NAME, "my_key")
+        print(global_key_doc.value) # => {"foo": "bar"}
+        print(global_key_doc.created) # => datetime.datetime
+        print(global_key_doc.expires) # => datetime.datetime
+        print(global_key_doc.ttl) # => 60
+
+        # Delete a key from the global store
+        deleted_count = svc.delete(GLOBAL_STORE_NAME, "my_key")
+
+.. note::
+
+    When using ``ctx.store`` in a panel, the store will be scoped to the
+    current ``ctx.dataset``. This means that the store will be deleted
+    when the dataset is deleted.
+
 .. _panel-saved-workspaces
 
 Saved workspaces
