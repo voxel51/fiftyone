@@ -171,6 +171,8 @@ pip uninstall fiftyone fiftyone-brain fiftyone-db
 
 </details>
 
+[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> **quickstart** 🚀
 
 Dive right into FiftyOne by opening a Python shell and running the snippet
@@ -315,7 +317,7 @@ if you love it 😊):
 
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+
 
 <div id='-prerequisites'/>
 
