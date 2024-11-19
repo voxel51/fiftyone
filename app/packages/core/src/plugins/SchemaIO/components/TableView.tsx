@@ -195,17 +195,17 @@ export default function TableView(props: ViewPropsType) {
                           }}
                           {...getComponentProps(props, "tableBodyCell")}
                         >
-                          {formatCellValue(item[key], props)}
+                          {tooltip ? (
+                            <Tooltip title={tooltip} arrow>
+                              <span>{formatCellValue(item[key], props)}</span> {/* Wrap content with Tooltip */}
+                            </Tooltip>
+                          ) : (
+                            formatCellValue(item[key], props) // No Tooltip for cells without tooltips
+                          )}
                         </TableCell>
                       );
-
-                      return tooltip ? (
-                        <Tooltip key={key} title={tooltip} arrow>
-                          {cell}
-                        </Tooltip>
-                      ) : (
-                        cell
-                      );
+                      
+                      return cell;
                     })}
 
                     {hasRowActions && (
