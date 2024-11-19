@@ -95,7 +95,11 @@ function Action(props: ActionPropsType) {
         variant={variant}
         startIcon={Icon}
         onClick={handleClick}
-        sx={{ color: resolvedColor, padding: size === "small" ? 0 : undefined }}
+        sx={{
+          color: resolvedColor,
+          padding: size === "small" ? 0 : undefined,
+          minWidth: size === "small" ? 40 : undefined,
+        }}
       >
         {label}
       </Button>
