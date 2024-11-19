@@ -217,7 +217,7 @@ Full documentation for FiftyOne is available at
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> **Key Features** 🔑
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> **key features** 🔑
 
 - **[Visualize Complex Datasets:](https://docs.voxel51.com/tutorials/index.html)** Easily explore images, videos, and associated labels in a powerful visual interface.
 - **[Analyze and Improve Models:](https://docs.voxel51.com/tutorials/index.html)** Evaluate model performance, identify failure modes, and fine-tune your models.
@@ -230,7 +230,7 @@ Full documentation for FiftyOne is available at
 
 
 
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Troubleshooting ⛓️‍💥
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> troubleshooting ⛓️‍💥
 
 [This page](https://docs.voxel51.com/getting_started/troubleshooting.html) lists common issues encountered when installing FiftyOne and possible solutions. If you encounter an issue that this page doesn’t help you resolve, feel free to [open an issue on GitHub](https://github.com/voxel51/fiftyone/issues) or contact us on [Slack](https://slack.voxel51.com/) or [Discord](https://discord.gg/fiftyone-community).
 
