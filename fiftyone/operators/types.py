@@ -1870,6 +1870,7 @@ class TableView(View):
         super().__init__(**kwargs)
         self.columns = kwargs.get("columns", [])
         self.row_actions = kwargs.get("row_actions", [])
+        self.tooltips = kwargs.get("tooltips", [])
 
     def keys(self):
         return [column.key for column in self.columns]
@@ -1895,6 +1896,7 @@ class TableView(View):
         clone = super().clone()
         clone.columns = [column.clone() for column in self.columns]
         clone.row_actions = [action.clone() for action in self.row_actions]
+        clone.tooltips = [tooltip.clone() for tooltip in self.tooltips]
         return clone
 
     def to_json(self):
@@ -1902,6 +1904,7 @@ class TableView(View):
             **super().to_json(),
             "columns": [column.to_json() for column in self.columns],
             "row_actions": [action.to_json() for action in self.row_actions],
+            "tooltips": [tooltip.to_json() for tooltip in self.tooltips],
         }
 
 
