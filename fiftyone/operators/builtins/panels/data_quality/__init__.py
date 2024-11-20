@@ -2208,20 +2208,17 @@ class DataQualityPanel(Panel):
                 "textAlign": "center",
             },
         }
-        if ctx.panel.state.issue_type not in ["tagging", "reviewed"]:
-            return
 
         message = None
         if ctx.panel.state.issue_type:
             if toast_type == "tagging":
                 message = f"Selected samples tagged with: {', '.join(ctx.panel.state.tags)}"
             elif toast_type == "reviewed":
-                schema[
-                    "message"
-                ] = f"{ctx.panel.state.issue_type.title()} issues marked as reviewed."
+                message = f"{ctx.panel.state.issue_type.title()} issues marked as reviewed."
             else:
                 return  # exit if no alert
 
+        schema["message"] = message
         toast = types.ToastView(**schema)
 
         panel.obj(f"toast_{uuid.uuid4().hex}", view=toast)
