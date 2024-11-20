@@ -390,9 +390,19 @@ Full documentation for FiftyOne is available at
 
 
 
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> troubleshooting ⛓️‍💥
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Fiftyone Teams 🏎️
+
+“Do you need to securely collaborate on datasets with millions of samples in the cloud and leverage built-in workflow automations? Check out [FiftyOne Teams](https://github.com/voxel51/fiftyone-teams).”
+
+[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+
+
+
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> faq & troubleshooting ⛓️‍💥
 
 [This page](https://docs.voxel51.com/getting_started/troubleshooting.html) lists common issues encountered when installing FiftyOne and possible solutions. If you encounter an issue that this page doesn’t help you resolve, feel free to [open an issue on GitHub](https://github.com/voxel51/fiftyone/issues) or contact us on [Slack](https://slack.voxel51.com/) or [Discord](https://discord.gg/fiftyone-community).
+
+[FAQ](https://docs.voxel51.com/faq/index.html): Maybe you are facing a situation already solved, take a look of the frequently asked questions.
 
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
@@ -450,7 +460,7 @@ Special thanks to these amazing people for contributing to FiftyOne! 🙌
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> faq & additional resources ⁉️
 
-- [FAQ](https://docs.voxel51.com/faq/index.html): Maybe you are facing a situation already solved, take a look of the frequently asked questions.
+
 - [fiftyone-team](https://github.com/voxel51/fiftyone-teams): Upgrade to FiftyOne Teams to enable multiple users to securely collaborate on the same datasets and models, either on-premises or in the cloud, all built on top of the open source FiftyOne workflows that you’re already relying on.
 - [VoxelGPT](https://github.com/voxel51/voxelgpt): VoxelGPT is an open source plugin for FiftyOne that translates your natural language prompts into actions that organize and explore your data.
 - [Plugins](https://voxel51.com/plugins/): Use FiftyOne Plugins to unlock infinite ways to extend and customize your AI workbench so you can save time, focus on building exceptional AI, and get to production faster.
