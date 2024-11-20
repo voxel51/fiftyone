@@ -62,6 +62,10 @@ function Grid() {
         looker?.destroy();
         lookerStore.delete(id.description);
       },
+      detach: (id) => {
+        const looker = lookerStore.get(id.description);
+        looker?.destroy();
+      },
       onItemClick: setSample,
       retainItems: true,
       rowAspectRatioThreshold: threshold,
