@@ -877,6 +877,14 @@ class QueryPerformancePanel(Panel):
             table.add_column("Size", label="Size")
             table.add_column("Type", label="Type")
 
+            # add tooltips for summary field size
+            for row in range(
+                len(all_indices), len(all_indices) + len(summary_fields)
+            ):
+                table.add_tooltip(  # pylint: disable=E1101
+                    row, 1, "Summary field size is not available"
+                )
+
             if _has_edit_permission(ctx):
                 # Calculating row conditionality for the update button
                 if summary_fields:
