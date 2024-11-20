@@ -39,12 +39,6 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
           if (this.timeoutId !== null) {
             window.clearTimeout(this.timeoutId);
           }
-          console.log(
-            ">>> retrying image load url",
-            this.src,
-            "attempt",
-            this.retryCount
-          );
           this.timeoutId = window.setTimeout(() => {
             this.retryCount += 1;
             const retrySrc = `${this.src}`;
