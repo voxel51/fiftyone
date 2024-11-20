@@ -30,6 +30,7 @@ import {
   Sample,
 } from "../state";
 import { decodeWithCanvas } from "./canvas-decoder";
+import { fetchWithLinearBackoff } from "./decorated-fetch";
 import { DeserializerFactory } from "./deserializer";
 import { PainterFactory } from "./painter";
 import { mapId } from "./shared";
@@ -155,14 +156,17 @@ const imputeOverlayFromPath = async (
     baseUrl = overlayImageUrl.split("?")[0];
   }
 
-  const overlayImageBuffer: Blob = await getFetchFunction()(
-    "GET",
-    overlayImageUrl,
-    null,
-    "blob"
-  );
+  let overlayImageBlob: Blob;
+  try {
+    const overlayImageFetchResponse = await fetchWithLinearBackoff(baseUrl);
+    overlayImageBlob = await overlayImageFetchResponse.blob();
+  } catch (e) {
+    console.error(e);
+    // skip decoding if fetch fails altogether
+    return;
+  }
 
-  const overlayMask = await decodeWithCanvas(overlayImageBuffer);
+  const overlayMask = await decodeWithCanvas(overlayImageBlob);
   const [overlayHeight, overlayWidth] = overlayMask.shape;
 
   // set the `mask` property for this label
