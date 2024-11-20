@@ -114,8 +114,7 @@ function Action(props: ActionPropsType) {
 
   return tooltip ? (
     <Tooltip title={tooltip}>
-      <span>{content}</span>{" "}
-      {/* Use <span> to wrap the child to avoid DOM issues */}
+      <span>{content}</span>
     </Tooltip>
   ) : (
     content
