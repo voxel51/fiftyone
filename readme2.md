@@ -174,7 +174,7 @@ pip uninstall fiftyone fiftyone-brain fiftyone-db
 <div id='-prerequisites'/>
 
 <details>
-<summary>prerequisites for beginners</summary>
+<summary>Prerequisites for beginners</summary>
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> prerequisites for beginners 🧸
 
@@ -458,7 +458,7 @@ Special thanks to these amazing people for contributing to FiftyOne! 🙌
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 <div id='-faq'/>
 
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> faq & additional resources ⁉️
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> additional resources 🚁
 
 
 - [fiftyone-team](https://github.com/voxel51/fiftyone-teams): Upgrade to FiftyOne Teams to enable multiple users to securely collaborate on the same datasets and models, either on-premises or in the cloud, all built on top of the open source FiftyOne workflows that you’re already relying on.
