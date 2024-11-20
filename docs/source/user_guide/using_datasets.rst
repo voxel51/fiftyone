@@ -425,23 +425,6 @@ that should be used by default whenever the dataset is loaded in the App:
     Did you know? You can also configure color schemes
     :ref:`directly in the App <app-color-schemes>`!
 
-.. _dataset-app-config-sidebar-mode:
-
-Sidebar mode
-~~~~~~~~~~~~
-
-You can configure the default loading behavior of the
-:ref:`filters sidebar <app-sidebar-mode>`:
-
-.. code-block:: python
-    :linenos:
-
-    # Set the default sidebar mode to "best"
-    dataset.app_config.sidebar_mode = "best"
-    dataset.save()  # must save after edits
-
-    session.refresh()
-
 .. _dataset-app-config-sidebar-groups:
 
 Sidebar groups
