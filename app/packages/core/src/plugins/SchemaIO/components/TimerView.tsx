@@ -15,12 +15,7 @@ class Timer {
   protected _ref: NodeJS.Timeout | null = null;
 
   start() {}
-  stop() {
-    if (this._ref) {
-      clearTimeout(this._ref);
-      this._ref = null;
-    }
-  }
+  stop() {}
 }
 
 class IntervalTimer extends Timer {
@@ -32,6 +27,12 @@ class IntervalTimer extends Timer {
     this.stop();
     this._ref = setInterval(() => this.onInterval(), this.interval);
   }
+  stop() {
+    if (this._ref) {
+      clearInterval(this._ref);
+      this._ref = null;
+    }
+  }
 }
 
 class TimeoutTimer extends Timer {
@@ -42,6 +43,12 @@ class TimeoutTimer extends Timer {
   start() {
     this.stop();
     this._ref = setTimeout(() => this.onTimeout(), this.timeout);
+  }
+  stop(): void {
+    if (this._ref) {
+      clearTimeout(this._ref);
+      this._ref = null;
+    }
   }
 }
 
