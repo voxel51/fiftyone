@@ -665,6 +665,16 @@ class Operations(object):
         """
         return self._ctx.trigger("set_group_slice", {"slice": slice})
 
+    def set_expanded(self, id=None, group_id=None):
+        """Open a modal for the specified sample or group in the App.
+
+        Args:
+            id (None): the ID of the sample or group to view in the modal
+        """
+        return self._ctx.trigger(
+            "set_expanded", {"id": id, "group_id": group_id}
+        )
+
 
 def _serialize_view(view):
     return json.loads(json_util.dumps(view._serialize()))

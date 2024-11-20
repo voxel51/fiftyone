@@ -1361,6 +1361,35 @@ export class EnableQueryPerformance extends Operator {
   }
 }
 
+class SetExpanded extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_expanded",
+      label: "Set expanded",
+      unlisted: true,
+    });
+  }
+  async resolveInput(): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.str("id", { label: "Sample ID" });
+    inputs.str("group_id", { label: "Group ID" });
+
+    return new types.Property(inputs);
+  }
+  useHooks(): object {
+    return {
+      setExpanded: fos.useSetExpandedSample(),
+    };
+  }
+  async execute({ hooks, params }: ExecutionContext) {
+    hooks.setExpanded({
+      id: params.id,
+      groupId: params.group_id,
+    });
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -1412,6 +1441,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(SetFrameNumber);
     _registerBuiltInOperator(DisableQueryPerformance);
     _registerBuiltInOperator(EnableQueryPerformance);
+    _registerBuiltInOperator(SetExpanded);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);
