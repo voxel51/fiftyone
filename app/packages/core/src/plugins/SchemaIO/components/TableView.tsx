@@ -35,7 +35,7 @@ export default function TableView(props: ViewPropsType) {
     size = "small",
     variant = "filled",
     max_inline_actions = 1,
-    tooltips = []
+    tooltips = [],
   } = view;
   const { rows, selectedCells, selectedRows, selectedColumns } =
     getTableData(props);
@@ -47,23 +47,26 @@ export default function TableView(props: ViewPropsType) {
   const selectedCellColor =
     selected_color || theme.palette.background.activeCell;
 
-  const getRowActions = useCallback((row) => {
-    const computedRowActions = [] as any;
-    for (const action of row_actions) {
-      if (action.rows?.[row] !== false) {
-        computedRowActions.push({
-          ...action,
-          onClick: (action, e) => {
-            handleClick(panelId, {
-              operator: action.on_click,
-              params: { path, event: action.name, row },
-            });
-          },
-        });
+  const getRowActions = useCallback(
+    (row) => {
+      const computedRowActions = [] as any;
+      for (const action of row_actions) {
+        if (action.rows?.[row] !== false) {
+          computedRowActions.push({
+            ...action,
+            onClick: (action, e) => {
+              handleClick(panelId, {
+                operator: action.on_click,
+                params: { path, event: action.name, row },
+              });
+            },
+          });
+        }
       }
-    }
-    return computedRowActions;
-  }, []);
+      return computedRowActions;
+    },
+    [row_actions, handleClick, panelId, path]
+  );
 
   const getTooltips = useCallback((tooltipList) => {
     const tooltipDict = {};
@@ -181,14 +184,16 @@ export default function TableView(props: ViewPropsType) {
                         selectedCells.has(coordinate) ||
                         isRowSelected ||
                         selectedColumns.has(columnIndex);
-                      
-                      const tooltip = tooltipMap[coordinate]; // Check if there's a tooltip for the cell
 
+                      const tooltip = tooltipMap[coordinate]; // Check if there's a tooltip for the cell
+                      const content = formatCellValue(item[key], props);
                       const cell = (
                         <TableCell
                           key={key}
                           sx={{
-                            background: isSelected ? selectedCellColor : "unset",
+                            background: isSelected
+                              ? selectedCellColor
+                              : "unset",
                           }}
                           onClick={() => {
                             handleCellClick(rowIndex, columnIndex);
@@ -197,14 +202,14 @@ export default function TableView(props: ViewPropsType) {
                         >
                           {tooltip ? (
                             <Tooltip title={tooltip} arrow>
-                              <span>{formatCellValue(item[key], props)}</span> {/* Wrap content with Tooltip */}
+                              <span> {content} </span>
                             </Tooltip>
                           ) : (
-                            formatCellValue(item[key], props) // No Tooltip for cells without tooltips
+                            content
                           )}
                         </TableCell>
                       );
-                      
+
                       return cell;
                     })}
 
