@@ -39,9 +39,7 @@ models**
 
 We created an open-source tool that supercharges your computer vision and machine learning workflows by enabling you to visualize datasets, analyze models, and improve data quality more efficiently than ever before. Embark with us in this adventure 🤝. **[FiftyOne](https://fiftyone.ai)**.
 
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
-
-![image](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
+![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> **installation** 💻
@@ -334,7 +332,7 @@ of FiftyOne.
     
 </details>
 
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> **quickstart** 🚀
 
@@ -363,7 +361,7 @@ Note that if you are running the above code in a script, you must include
 for more information.
 
 
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> **key features** 🔑
 
@@ -386,7 +384,7 @@ for more information.
 </p>
 </div>
 
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 
 <div id='-documentation'/>
 
@@ -403,7 +401,7 @@ Full documentation for FiftyOne is available at
 -   [API Reference](https://voxel51.com/docs/fiftyone/api/fiftyone.html)
 
 
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 
 <div id='-teams'/>
 
@@ -411,7 +409,7 @@ Full documentation for FiftyOne is available at
 
 Do you need to securely collaborate on datasets with millions of samples in the cloud and leverage built-in workflow automations? Check out [FiftyOne Teams](https://github.com/voxel51/fiftyone-teams).
 
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 
 
 
@@ -422,7 +420,7 @@ Do you need to securely collaborate on datasets with millions of samples in the 
 [FAQ](https://docs.voxel51.com/faq/index.html): Maybe you are facing a situation already solved, take a look of the frequently asked questions.
 
 
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 
 
 <div id='-contributing'/>
@@ -459,7 +457,8 @@ Connect with us through your preferred channels:
 </div>
 
 
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
+
 <div id='-contributors'/>
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> contributors 🤓
@@ -470,7 +469,7 @@ Special thanks to these amazing people for contributing to FiftyOne! 🙌
   <img src="https://contrib.rocks/image?repo=voxel51/fiftyone" />
 </a>
 
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 <div id='-citation'/>
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> citation 📖
