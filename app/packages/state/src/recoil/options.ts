@@ -67,7 +67,7 @@ export const dynamicGroupsViewModeStore = atomFamily<
 });
 
 export const dynamicGroupsViewMode = selectorFamily({
-  key: "dynamicGroupsViewModeStore",
+  key: "dynamicGroupsViewMode",
   get:
     (modal: boolean) =>
     ({ get }) => {
