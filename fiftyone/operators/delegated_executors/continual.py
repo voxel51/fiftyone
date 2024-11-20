@@ -63,6 +63,8 @@ class ContinualExecutor:
         )
         for queued_op in queued_ops:
             run_link = self.create_run_link(str(queued_op.id))
+            if self.file_handler is not None:
+                self.file_handler.doRollover()
             results = self.do_svc.execute_operation(
                 queued_op, log=True, run_link=run_link
             )
@@ -103,7 +105,7 @@ class ContinualExecutor:
         self.running = False
 
     def configure_logging(self):
-        if self.run_link_path is not None:
+        if self.run_link_path:
             self.temp_dir = fos.make_temp_dir(ensure_writeable=True)
             self.log_path = fos.join(
                 self.temp_dir, "fiftyone_delegated_executor.log"
@@ -126,7 +128,6 @@ class ContinualExecutor:
                     run_link,
                     e,
                 )
-            self.file_handler.doRollover()
             if not self.running:
                 self.file_handler.close()
                 fos.delete_dir(self.temp_dir)
