@@ -499,6 +499,12 @@ perform initial filters on:
     :ref:`summary fields <summary-fields>` to efficiently query frame-level
     fields on large video datasets
 
+.. note::
+
+    Frame filtering for the grid can be completely disabled via the 
+    `disable_frame_filtering` setting in
+    :ref:`App config <configuring-fiftyone-app>`.
+
 For :ref:`grouped datasets <groups>`, you should create two indexes for each
 field you wish to filter by in query performance mode: the field itself and a
 compound index that includes the group slice name:

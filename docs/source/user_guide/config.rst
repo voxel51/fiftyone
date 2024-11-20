@@ -669,13 +669,13 @@ The FiftyOne App can be configured in the ways described below:
 |                            |                                         |               | :ref:`this section <heatmaps>` for more details.                                           |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `default_query_performance`| `FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE`| `True`        | Default if a user hasn't selected a query performance mode in their current session. See   |
-|                            |                                         |               | :ref:`this section <app-query-performance-mode>` for more details.                         |
+|                            |                                         |               | :ref:`this section <app-optimizing-query-performance>` for more details.                   |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `disable_frame_filtering`  | `FIFTYONE_APP_DISABLE_FRAME_FILTERING`  | `False`       | Whether to disable frame filtering for video datasets in the App's grid view. See          |
-|                            |                                         |               | :ref:`this section <app-query-performance-mode>` for more details.                         |
+|                            |                                         |               | :ref:`this section <app-optimizing-query-performance>` for more details.                   |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `enable_query_performance` | `FIFTYONE_APP_ENABLE_QUERY_PERFORMANCE` | `True`        | Whether to show the query performance toggle in the UI for users to select. See            |
-|                            |                                         |               | :ref:`this section <app-query-performance-mode>` for more details.                         |
+|                            |                                         |               | :ref:`this section <app-optimizing-query-performance>` for more details.                   |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `grid_zoom`                | `FIFTYONE_APP_GRID_ZOOM`                | `5`           | The zoom level of the App's sample grid. Larger values result in larger samples (and thus  |
 |                            |                                         |               | fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                        |
