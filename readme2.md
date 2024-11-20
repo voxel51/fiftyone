@@ -393,12 +393,16 @@ for more information.
 Full documentation for FiftyOne is available at
 [fiftyone.ai](https://fiftyone.ai). In particular, see these resources:
 
--   [Tutorials](https://voxel51.com/docs/fiftyone/tutorials/index.html)
--   [Recipes](https://voxel51.com/docs/fiftyone/recipes/index.html)
--   [Examples](https://github.com/voxel51/fiftyone-examples)
--   [User Guide](https://voxel51.com/docs/fiftyone/user_guide/index.html)
--   [CLI Documentation](https://voxel51.com/docs/fiftyone/cli/index.html)
--   [API Reference](https://voxel51.com/docs/fiftyone/api/fiftyone.html)
+
+| [Tutorials](https://voxel51.com/docs/fiftyone/tutorials/index.html) | [Recipes](https://voxel51.com/docs/fiftyone/recipes/index.html) | [Examples](https://github.com/voxel51/fiftyone-examples) | [User Guide](https://voxel51.com/docs/fiftyone/user_guide/index.html) | [CLI Documentation](https://voxel51.com/docs/fiftyone/cli/index.html) |  [API Reference](https://voxel51.com/docs/fiftyone/api/fiftyone.html) 
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | 
+
+-   
+-   
+-   
+-   
+-   
+-  
 
 
 ![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
