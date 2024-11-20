@@ -204,7 +204,6 @@ export default function TableView(props: ViewPropsType) {
                             <Tooltip title={tooltip} arrow>
                               <span> {content} </span>
                             </Tooltip>
-
                           ) : (
                             content
                           )}
