@@ -397,15 +397,23 @@ only those samples and/or labels that match the filter.
 
 .. _app-indexed-filtering:
 
-Leveraging indexes while filtering
-----------------------------------
+Query performance
+-----------------
 
-By default, most sidebar filters require full collection scans to retrieve the
-relevant results.
+By default, the sidebar filters are optimized to utilize indexes when no view
+is present. Filters that are optimized with an index are highlighted with the
+lightning bolt icon.
 
-However, you can optimize any sidebar filter(s) of interest by using
-:meth:`create_index() <fiftyone.core.collections.SampleCollection.create_index>`
-to index the field or embedded field that you wish to filter by:
+When a view is present and indexes are no longer applicable, granular filter
+widgets are shown include comphrensive counts. Granular filters can be enabled
+by the default for the dataset via the settings gear, as well.
+
+.. image:: /images/app/app-granular.gif
+   :alt: app-granular
+   :align: center
+
+To optimize any sidebar filter(s) of interest, create an appropriate index with
+:meth:`create_index() <fiftyone.core.collections.SampleCollection.create_index>`.
 
 .. code-block:: python
     :linenos:
@@ -425,6 +433,11 @@ You can use
 to view the existing indexes on a dataset, and you can use
 :meth:`drop_index() <fiftyone.core.collections.SampleCollection.drop_index>`
 to delete indexes that you no longer need.
+
+.. note::
+    Did you know? Managing indexes directly in the App is also possible via the
+    `Indexes <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/indexes>`_
+    plugin.
 
 .. note::
 
