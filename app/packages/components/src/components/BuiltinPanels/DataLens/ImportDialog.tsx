@@ -12,11 +12,10 @@ import {
   Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { Dialog } from "@fiftyone/components";
+import { Dialog, TagsInput } from "@fiftyone/components";
 import React, { useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { datasetName as fosDatasetName } from "@fiftyone/state";
-import { TagsInput } from "@fiftyone/teams-components";
 import { OperatorExecutionButton } from "@fiftyone/operators";
 import { ImportRequest } from "./models";
 import { OperatorResult } from "@fiftyone/operators/src/operators";
