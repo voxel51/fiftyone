@@ -49,7 +49,7 @@ import { formatValue, getNumericDifference, useTriggerEvent } from "./utils";
 
 const KEY_COLOR = "#ff6d04";
 const COMPARE_KEY_COLOR = "#03a9f4";
-const DEFAULT_BAR_CONFIG = { sortBy: "az" };
+const DEFAULT_BAR_CONFIG = { sortBy: "default" };
 
 export default function Evaluation(props: EvaluationProps) {
   const {
@@ -164,11 +164,15 @@ export default function Evaluation(props: EvaluationProps) {
   const evaluationTimestamp = evaluationInfo.timestamp;
   const evaluationConfig = evaluationInfo.config;
   const evaluationMetrics = evaluation.metrics;
+  const evaluationType = evaluationConfig.type;
   const compareEvaluationInfo = compareEvaluation?.info || {};
   const compareEvaluationKey = compareEvaluationInfo?.key;
   const compareEvaluationTimestamp = compareEvaluationInfo?.timestamp;
   const compareEvaluationConfig = compareEvaluationInfo?.config || {};
   const compareEvaluationMetrics = compareEvaluation?.metrics || {};
+  const compareEvaluationType = compareEvaluationConfig.type;
+  const isObjectDetection = evaluationType === "detection";
+  const isSegmentation = evaluationType === "segmentation";
   const infoRows = [
     {
       id: "evaluation_key",
@@ -179,8 +183,8 @@ export default function Evaluation(props: EvaluationProps) {
     {
       id: "type",
       property: "Type",
-      value: evaluationConfig.type,
-      compareValue: compareEvaluationConfig.type,
+      value: evaluationType,
+      compareValue: compareEvaluationType,
     },
     {
       id: "method",
@@ -322,6 +326,7 @@ export default function Evaluation(props: EvaluationProps) {
       property: "Average Confidence",
       value: evaluationMetrics.average_confidence,
       compareValue: compareEvaluationMetrics.average_confidence,
+      hide: isSegmentation,
     },
     {
       id: "support",
@@ -340,6 +345,7 @@ export default function Evaluation(props: EvaluationProps) {
       property: "IoU Threshold",
       value: evaluationConfig.iou,
       compareValue: compareEvaluationConfig.iou,
+      hide: !isObjectDetection,
     },
     {
       id: "precision",
@@ -364,6 +370,7 @@ export default function Evaluation(props: EvaluationProps) {
       property: "mAP",
       value: evaluationMetrics.mAP,
       compareValue: compareEvaluationMetrics.mAP,
+      hide: !isObjectDetection,
     },
     {
       id: "tp",
@@ -377,6 +384,7 @@ export default function Evaluation(props: EvaluationProps) {
             ? "compare"
             : "selected"
           : false,
+      hide: !isObjectDetection,
     },
     {
       id: "fp",
@@ -391,6 +399,7 @@ export default function Evaluation(props: EvaluationProps) {
             ? "compare"
             : "selected"
           : false,
+      hide: !isObjectDetection,
     },
     {
       id: "fn",
@@ -405,6 +414,7 @@ export default function Evaluation(props: EvaluationProps) {
             ? "compare"
             : "selected"
           : false,
+      hide: !isObjectDetection,
     },
   ];
 
@@ -630,7 +640,9 @@ export default function Evaluation(props: EvaluationProps) {
                       filterable,
                       id: rowId,
                       active,
+                      hide,
                     } = row;
+                    if (hide) return null;
                     const difference = getNumericDifference(
                       value,
                       compareValue
@@ -670,7 +682,13 @@ export default function Evaluation(props: EvaluationProps) {
                               alignItems: "center",
                             }}
                           >
-                            <Typography>{formatValue(value)}</Typography>
+                            <Typography>
+                              {value ? (
+                                formatValue(value)
+                              ) : (
+                                <Typography color="text.tertiary">—</Typography>
+                              )}
+                            </Typography>
                             <Stack direction="row" spacing={1}>
                               {showTrophy && (
                                 <Typography sx={{ fontSize: 12 }}>
@@ -706,7 +724,13 @@ export default function Evaluation(props: EvaluationProps) {
                                 sx={{ justifyContent: "space-between" }}
                               >
                                 <Typography>
-                                  {formatValue(compareValue)}
+                                  {compareValue ? (
+                                    formatValue(compareValue)
+                                  ) : (
+                                    <Typography color="text.tertiary">
+                                      —
+                                    </Typography>
+                                  )}
                                 </Typography>
 
                                 {filterable && (
@@ -1516,7 +1540,7 @@ function getMatrix(matrices, config) {
 
 function getConfigLabel({ config, type, dashed }) {
   const { sortBy } = config;
-  if (!sortBy) return "";
+  if (!sortBy || sortBy === DEFAULT_BAR_CONFIG.sortBy) return "";
   const sortByLabels =
     type === "classPerformance"
       ? CLASS_PERFORMANCE_SORT_OPTIONS
@@ -1558,12 +1582,14 @@ function useActiveFilter(evaluation, compareEvaluation) {
 }
 
 const CLASS_PERFORMANCE_SORT_OPTIONS = [
+  { value: "default", label: "Default" },
   { value: "az", label: "Alphabetical (A-Z)" },
   { value: "za", label: "Alphabetical (Z-A)" },
   { value: "best", label: "Best performing" },
   { value: "worst", label: "Worst performing" },
 ];
 const CONFUSION_MATRIX_SORT_OPTIONS = [
+  { value: "default", label: "Default" },
   { value: "az", label: "Alphabetical (A-Z)" },
   { value: "za", label: "Alphabetical (Z-A)" },
   { value: "mc", label: "Most common classes" },

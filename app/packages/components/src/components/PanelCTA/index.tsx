@@ -33,6 +33,8 @@ export default function PanelCTA(props: PanelCTAProps) {
     mode,
     name,
     onBack,
+    tryLink,
+    demoDocCaption,
   } = props;
   const theme = useTheme();
   const isDefault = mode === "default";
@@ -43,6 +45,9 @@ export default function PanelCTA(props: PanelCTAProps) {
   const computedCaption = IS_APP_MODE_FIFTYONE
     ? demoCaption || caption
     : caption;
+  const computedDocCaption = IS_APP_MODE_FIFTYONE
+    ? demoDocCaption || docCaption
+    : docCaption;
 
   return (
     <Stack spacing={1} sx={{ height: "100%", p: 2 }}>
@@ -114,7 +119,7 @@ export default function PanelCTA(props: PanelCTAProps) {
                   <MuiButton
                     variant="contained"
                     color="primary"
-                    href={TRY_IN_BROWSER_LINK}
+                    href={tryLink || TRY_IN_BROWSER_LINK}
                     target="_blank"
                   >
                     Try in browser
@@ -127,9 +132,9 @@ export default function PanelCTA(props: PanelCTAProps) {
                 spacing={1}
                 sx={{ alignItems: "center", justifyContent: "center" }}
               >
-                {docCaption && (
+                {computedDocCaption && (
                   <Typography color="secondary">
-                    {docCaption || "Not ready to upgrade yet?"}
+                    {computedDocCaption}
                   </Typography>
                 )}
                 <MuiButton
@@ -179,4 +184,6 @@ export type PanelCTAProps = {
   demoLabel?: string;
   demoDescription?: string;
   demoCaption?: string;
+  demoDocCaption?: string;
+  tryLink?: string;
 };
