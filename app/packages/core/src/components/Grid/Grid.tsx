@@ -64,7 +64,7 @@ function Grid() {
       },
       detach: (id) => {
         const looker = lookerStore.get(id.description);
-        looker?.destroy();
+        looker?.detach();
       },
       onItemClick: setSample,
       retainItems: true,
