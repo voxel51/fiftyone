@@ -904,7 +904,7 @@ class QueryPerformancePanel(Panel):
     def _add_summary_field_action(self, table, all_indices, summary_fields):
         rows = [False] * len(all_indices) + [True] * len(summary_fields)
         table.add_row_action(
-            "update",
+            "update_summary_field",
             self.on_click_update,
             icon="update",
             rows=rows,
@@ -921,7 +921,7 @@ class QueryPerformancePanel(Panel):
             + [False] * len(summary_fields)
         )
         table.add_row_action(
-            "delete",
+            "delete_index",
             self.on_click_delete,
             icon="delete",
             rows=rows,
@@ -931,7 +931,7 @@ class QueryPerformancePanel(Panel):
 
         rows = [False] * len(all_indices) + [True] * len(summary_fields)
         table.add_row_action(
-            "delete",
+            "delete_summary_field",
             self.on_click_delete,
             icon="delete",
             rows=rows,
