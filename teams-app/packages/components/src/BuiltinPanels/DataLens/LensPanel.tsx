@@ -580,7 +580,7 @@ export const LensPanel = ({
             }
           >
             {isImportLoading ? (
-              <Typography>Importing data</Typography>
+              <Typography variant="h6">Importing data</Typography>
             ) : (
               <Stack direction="row" alignItems="center" spacing={2}>
                 <Typography variant="h6">
