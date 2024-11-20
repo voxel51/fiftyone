@@ -629,8 +629,7 @@ class QueryPerformancePanel(Panel):
         ctx.panel.set_data("table", self._get_index_table_data(ctx))
 
     def on_refresh_button_click(self, ctx):
-        self._build_view(ctx)
-        ctx.trigger("reload_dataset")
+        self.refresh(ctx)
         ctx.ops.notify("Query Performance panel refreshed")
 
     def on_load(self, ctx):
@@ -691,6 +690,7 @@ class QueryPerformancePanel(Panel):
 
     def refresh(self, ctx):
         self._build_view(ctx)
+        ctx.trigger("reload_dataset")
 
     def reload(self, ctx):
         self._build_view(ctx)
