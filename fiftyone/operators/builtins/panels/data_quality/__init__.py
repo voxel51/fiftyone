@@ -2198,7 +2198,7 @@ class DataQualityPanel(Panel):
 
     def _render_toast(self, panel, toast_type, ctx):
 
-        schema = {
+        view = {
             "duration": 1000,
             "layout": {
                 "vertical": "top",
@@ -2208,21 +2208,18 @@ class DataQualityPanel(Panel):
                 "textAlign": "center",
             },
         }
-        if ctx.panel.state.issue_type not in ["tagging", "reviewed"]:
-            return
 
         message = None
         if ctx.panel.state.issue_type:
             if toast_type == "tagging":
                 message = f"Selected samples tagged with: {', '.join(ctx.panel.state.tags)}"
             elif toast_type == "reviewed":
-                schema[
-                    "message"
-                ] = f"{ctx.panel.state.issue_type.title()} issues marked as reviewed."
+                message = f"{ctx.panel.state.issue_type.title()} issues marked as reviewed."
             else:
                 return  # exit if no alert
 
-        toast = types.ToastView(**schema)
+        view["message"] = message
+        toast = types.ToastView(**view)
 
         panel.obj(f"toast_{uuid.uuid4().hex}", view=toast)
         # need to clear the alert status after it's been shown
