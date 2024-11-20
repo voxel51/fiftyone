@@ -392,7 +392,7 @@ Full documentation for FiftyOne is available at
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Fiftyone Teams 🏎️
 
-“Do you need to securely collaborate on datasets with millions of samples in the cloud and leverage built-in workflow automations? Check out [FiftyOne Teams](https://github.com/voxel51/fiftyone-teams).”
+Do you need to securely collaborate on datasets with millions of samples in the cloud and leverage built-in workflow automations? Check out [FiftyOne Teams](https://github.com/voxel51/fiftyone-teams).
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 
