@@ -183,7 +183,7 @@ export default function TableView(props: ViewPropsType) {
                         selectedColumns.has(columnIndex);
                       
                       const tooltip = tooltipMap[coordinate]; // Check if there's a tooltip for the cell
-
+                      const content = formatCellValue(item[key], props);
                       const cell = (
                         <TableCell
                           key={key}
@@ -197,11 +197,9 @@ export default function TableView(props: ViewPropsType) {
                         >
                           {tooltip ? (
                             <Tooltip title={tooltip} arrow>
-                              <span>{formatCellValue(item[key], props)}</span> {/* Wrap content with Tooltip */}
+                              <span> {content} </span>
                             </Tooltip>
-                          ) : (
-                            formatCellValue(item[key], props) // No Tooltip for cells without tooltips
-                          )}
+                          ) : (content)}
                         </TableCell>
                       );
                       
