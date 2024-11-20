@@ -364,11 +364,33 @@ for more information.
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> **key features** 🔑
 
-- **[Visualize Complex Datasets:](https://docs.voxel51.com/tutorials/index.html)** Easily explore images, videos, and associated labels in a powerful visual interface.
-- **[Analyze and Improve Models:](https://docs.voxel51.com/tutorials/index.html)** Evaluate model performance, identify failure modes, and fine-tune your models.
-- **[Efficient Data Curation:](https://docs.voxel51.com/tutorials/index.html)** Quickly find and fix data issues, annotation errors, and edge cases.
-- **[Seamless Integration:](https://docs.voxel51.com/tutorials/index.html)** Works with popular deep learning libraries like TensorFlow, PyTorch, Keras, and more.
-- **[Open-Source and Extensible](https://docs.voxel51.com/tutorials/index.html)** Customize and extend FiftyOne to fit your specific needs.
+- **[Visualize Complex Datasets:](https://docs.voxel51.com/user_guide/app.html)** Easily explore images, videos, and associated labels in a powerful visual interface.
+- **[Explore Embeddings:](https://docs.voxel51.com/user_guide/app.html#embeddings-panel)** Select points of interest and view the corresponding samples/labels.
+- **[Analyze and Improve Models:](https://docs.voxel51.com/user_guide/evaluation.html)** Evaluate model performance, identify failure modes, and fine-tune your models.
+- **[Advanced Data Curation:](https://docs.voxel51.com/brain.html)** Quickly find and fix data issues, annotation errors, and edge cases.
+- **[Rich Integration:](https://docs.voxel51.com/integrations/index.html)** Works with popular deep learning libraries like TensorFlow, PyTorch, Keras, and more.
+- **[Open and Extensible](https://docs.voxel51.com/plugins/index.html)** Customize and extend FiftyOne to fit your specific needs.
+
+<div align="center">
+<p align="center">
+
+
+### <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> additional resources 🚁
+
+| [fiftyone-team](#-teams) | [VoxelGPT](https://github.com/voxel51/voxelgpt) | [Plugins](https://voxel51.com/plugins/)| [Vector Search](https://voxel51.com/blog/the-computer-vision-interface-for-vector-search/) | [Dataset Zoo](https://docs.voxel51.com/dataset_zoo/index.html) | [Model Zoo](https://docs.voxel51.com/model_zoo/index.html) |[Fiftyone Brain](https://docs.voxel51.com/brain.html)
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | 
+
+- : Upgrade to FiftyOne Teams to enable multiple users to securely collaborate on the same datasets and models, either on-premises or in the cloud, all built on top of the open source FiftyOne workflows that you’re already relying on.
+- : VoxelGPT is an open source plugin for FiftyOne that translates your natural language prompts into actions that organize and explore your data.
+- : Use FiftyOne Plugins to unlock infinite ways to extend and customize your AI workbench so you can save time, focus on building exceptional AI, and get to production faster.
+- : Vector search engines solve this problem by transforming complex data into entities called embedding vectors.
+-  The FiftyOne Dataset Zoo provides a powerful interface for downloading datasets and loading them into FiftyOne.
+-  The FiftyOne Model Zoo provides a powerful interface for downloading models and applying them to your FiftyOne datasets.
+-  The FiftyOne Brain provides powerful machine learning techniques that are designed to transform how you curate your data from an art into a measurable science.
+
+
+</p>
+</div>
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 
@@ -389,7 +411,7 @@ Full documentation for FiftyOne is available at
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 
-
+<div id='-teams'/>
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Fiftyone Teams 🏎️
 
@@ -453,23 +475,6 @@ Special thanks to these amazing people for contributing to FiftyOne! 🙌
 <a href="https://github.com/voxel51/fiftyone/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=voxel51/fiftyone" />
 </a>
-
-
-
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
-<div id='-faq'/>
-
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> additional resources 🚁
-
-
-- [fiftyone-team](https://github.com/voxel51/fiftyone-teams): Upgrade to FiftyOne Teams to enable multiple users to securely collaborate on the same datasets and models, either on-premises or in the cloud, all built on top of the open source FiftyOne workflows that you’re already relying on.
-- [VoxelGPT](https://github.com/voxel51/voxelgpt): VoxelGPT is an open source plugin for FiftyOne that translates your natural language prompts into actions that organize and explore your data.
-- [Plugins](https://voxel51.com/plugins/): Use FiftyOne Plugins to unlock infinite ways to extend and customize your AI workbench so you can save time, focus on building exceptional AI, and get to production faster.
-- [Vector Search](https://voxel51.com/blog/the-computer-vision-interface-for-vector-search/): Vector search engines solve this problem by transforming complex data into entities called embedding vectors.
-- [Dataset Zoo](https://docs.voxel51.com/dataset_zoo/index.html): The FiftyOne Dataset Zoo provides a powerful interface for downloading datasets and loading them into FiftyOne.
-- [Model Zoo](https://docs.voxel51.com/model_zoo/index.html): The FiftyOne Model Zoo provides a powerful interface for downloading models and applying them to your FiftyOne datasets.
-- [Fiftyone Brain](https://docs.voxel51.com/brain.html): The FiftyOne Brain provides powerful machine learning techniques that are designed to transform how you curate your data from an art into a measurable science.
-
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 <div id='-citation'/>
