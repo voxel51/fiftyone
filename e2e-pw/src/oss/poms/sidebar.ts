@@ -42,6 +42,10 @@ export class SidebarPom {
     return this.sidebar.getByTestId(`${filterType}-filter-${fieldName}`);
   }
 
+  queryPerformance(fieldName: string) {
+    return this.fieldContainer(fieldName).getByTestId("query-performance");
+  }
+
   sidebarEntryDraggableArea(fieldName: string) {
     return this.sidebar
       .getByTestId(`sidebar-entry-draggable-${fieldName}`)
@@ -177,6 +181,14 @@ class SidebarAsserter {
     for (let i = 0; i < fieldNames.length; i++) {
       await this.assertCheckboxDisabled(fieldNames[i]);
     }
+  }
+
+  async assertFieldHasQueryPerformance(fieldName: string) {
+    await expect(this.sb.queryPerformance(fieldName)).toBeVisible();
+  }
+
+  async assertFieldMissingQueryPerformance(fieldName: string) {
+    await expect(this.assertFieldHasQueryPerformance(fieldName)).toBe(false);
   }
 
   async assertFieldInSidebar(fieldName: string) {

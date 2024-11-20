@@ -18,7 +18,7 @@ test.describe("query performance sidebar", () => {
   test.beforeAll(async ({ fiftyoneLoader }) => {
     await fiftyoneLoader.executePythonCode(`
 import fiftyone as fo
-    
+
 dataset = fo.Dataset("${datasetName}")
 dataset.add_samples([fo.Sample(filepath=f"{i}.png") for i in range(0, 4)])
 dataset.persistent = True
@@ -26,6 +26,10 @@ dataset.persistent = True
 # NOT REAL VALUES
 
 first = dataset.first()
+
+first["bool"] = False
+first["bool_list"] = False
+
 first["inf"] = float("inf")
 first["inf_list"] = [float("inf")]
 first["inf_label_list"] = fo.Classifications(
@@ -46,11 +50,18 @@ first["ninf_label_list"] = fo.Classifications(
     ]
 )
 
+
+first["str"] = "0"
+first["str_list"] = ["0"]
+
 first.save()
 
 # REAL VALUES MAX
 
 second = dataset.skip(1).first()
+
+second["bool"] = False
+second["bool_list"] = False
 
 second["inf"] = 1.0
 second["inf_list"] = [1.0]
@@ -70,11 +81,17 @@ second["ninf_label_list"] = fo.Classifications(
     classifications=[fo.Classification(label="label", confidence=float(1.0))]
 )
 
+second["str"] = "1"
+second["str_list"] = ["1"]
+
 second.save()
 
 # REAL VALUES MIN
 
 third = dataset.skip(2).first()
+
+third["bool"] = True
+third["bool_list"] = True
 
 third["inf"] = -1.0
 third["inf_list"] = [-1.0]
@@ -94,11 +111,17 @@ third["ninf_label_list"] = fo.Classifications(
     classifications=[fo.Classification(label="label", confidence=-1.0)]
 )
 
+third["str"] = "2"
+third["str_list"] = ["2"]
+
 third.save()
 
 # NONE VALUES
 
 fourth = dataset.skip(3).first()
+
+fourth["bool"] = None
+fourth["bool_list"] = None
 
 fourth["inf"] = None
 fourth["inf_list"] = None
@@ -118,9 +141,19 @@ fourth["ninf_label_list"] = fo.Classifications(
     classifications=[fo.Classification(label="label", confidence=None)]
 )
 
+fourth["str"] = None
+fourth["str_list"] = None
+
+dataset.create_index("$**")
+
 fourth.save()
         `);
 
-    test("none counts", async ({}) => {});
+    test.beforeEach(async ({ page, fiftyoneLoader }) => {
+      await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    });
+    test("assert query performance icons", async ({ sidebar }) => {
+      sidebar.asserter.assertFieldHasQueryPerformance("sample tags");
+    });
   });
 });
