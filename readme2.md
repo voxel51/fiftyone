@@ -443,22 +443,7 @@ Special thanks to these amazing people for contributing to FiftyOne! 🙌
   <img src="https://contrib.rocks/image?repo=voxel51/fiftyone" />
 </a>
 
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
-<div id='-citation'/>
 
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> citation 📖
-
-If you use FiftyOne in your research, feel free to cite the project (but only
-if you love it 😊):
-
-```bibtex
-@article{moore2020fiftyone,
-  title={FiftyOne},
-  author={Moore, B. E. and Corso, J. J.},
-  journal={GitHub. Note: https://github.com/voxel51/fiftyone},
-  year={2020}
-}
-```
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 <div id='-faq'/>
@@ -476,12 +461,21 @@ if you love it 😊):
 
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+<div id='-citation'/>
 
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> citation 📖
 
+If you use FiftyOne in your research, feel free to cite the project (but only
+if you love it 😊):
 
-
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
-
+```bibtex
+@article{moore2020fiftyone,
+  title={FiftyOne},
+  author={Moore, B. E. and Corso, J. J.},
+  journal={GitHub. Note: https://github.com/voxel51/fiftyone},
+  year={2020}
+}
+```
 
 
 
