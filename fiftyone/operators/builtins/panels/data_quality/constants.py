@@ -38,12 +38,12 @@ DEFAULT_ISSUE_COUNTS = {
 
 # set future dates for last scan as default
 LAST_SCAN = {
-    "brightness": None,
-    "blurriness": None,
-    "aspect_ratio": None,
-    "entropy": None,
-    "near_duplicates": None,
-    "exact_duplicates": None,
+    "brightness": {"timestamp": None, "dataset_size": None},
+    "blurriness": {"timestamp": None, "dataset_size": None},
+    "aspect_ratio": {"timestamp": None, "dataset_size": None},
+    "entropy": {"timestamp": None, "dataset_size": None},
+    "near_duplicates": {"timestamp": None, "dataset_size": None},
+    "exact_duplicates": {"timestamp": None, "dataset_size": None},
 }
 
 # TODO: allow user to be able to use other names for the fields
@@ -67,21 +67,21 @@ TITLE = {
 
 STATUS = {
     0: "Not Started",
-    # 1: "In Progress", when the issue is being computed
+    1: "Computing",
     2: "In Review",
     3: "Reviewed",
 }
 
 STATUS_COLOR = {
-    0: "#777777",
-    # 1: "info",
+    0: "default",
+    1: "#CBC3E3",
     2: "primary",
     3: "success",
 }
 
 BADGE_STATUS = {
     STATUS[0]: [[STATUS[0], STATUS_COLOR[0]]],
-    # STATUS[1]: [[STATUS[1], STATUS_COLOR[1]]],
+    STATUS[1]: [[STATUS[1], STATUS_COLOR[1]]],
     STATUS[2]: [[STATUS[2], STATUS_COLOR[2]]],
     STATUS[3]: [[STATUS[3], STATUS_COLOR[3]]],
 }
@@ -96,13 +96,42 @@ DEFAULT_ISSUE_STATUS = {
 }
 
 DEFAULT_COMPUTING = {
-    # [is_computing, "execute_now" | "delegate_execution", delegation_run_id]
-    "brightness": [False, "", ""],
-    "blurriness": [False, "", ""],
-    "aspect_ratio": [False, "", ""],
-    "entropy": [False, "", ""],
-    "near_duplicates": [False, "", ""],
-    "exact_duplicates": [False, "", ""],
+    "brightness": {
+        "is_computing": False,
+        "execution_type": "",
+        "delegation_run_id": "",
+        "delegation_status": "",
+    },
+    "blurriness": {
+        "is_computing": False,
+        "execution_type": "",
+        "delegation_run_id": "",
+        "delegation_status": "",
+    },
+    "aspect_ratio": {
+        "is_computing": False,
+        "execution_type": "",
+        "delegation_run_id": "",
+        "delegation_status": "",
+    },
+    "entropy": {
+        "is_computing": False,
+        "execution_type": "",
+        "delegation_run_id": "",
+        "delegation_status": "",
+    },
+    "near_duplicates": {
+        "is_computing": False,
+        "execution_type": "",
+        "delegation_run_id": "",
+        "delegation_status": "",
+    },
+    "exact_duplicates": {
+        "is_computing": False,
+        "execution_type": "",
+        "delegation_run_id": "",
+        "delegation_status": "",
+    },
 }
 
 SAMPLE_STORE = {
@@ -147,5 +176,5 @@ IMAGES = {
     "entropy": "https://i.imgur.com/K9iV3jR.png",
     "near_duplicates": "https://i.imgur.com/46UclZG.png",
     "exact_duplicates": "https://i.imgur.com/3MDGmZS.png",
-    "unsupported_dataset": "https://i.imgur.com/w9B9hES.png",
+    "unsupported_dataset": "https://i.imgur.com/oPCmLz4.png",
 }

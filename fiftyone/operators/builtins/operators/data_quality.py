@@ -74,7 +74,7 @@ def _handle_execution(ctx, property_name):
         property_name, ctx.dataset, view=view, patches_field=patches_field
     )
     # update the flag that computation has been done
-    print("Computation done for ", property_name)
+    print(f"Computation done for {property_name}")
 
 
 def _handle_calling(
@@ -101,10 +101,9 @@ class ComputeBrightness(foo.Operator):
             name="compute_brightness",
             label="Data Quality Panel Brightness",
             dynamic=True,
+            allow_delegated_execution=True,
+            # default_choice_to_delegated=True,
         )
-
-    def resolve_delegation(self, ctx):
-        return ctx.params.get("delegate", False)
 
     def resolve_input(self, ctx):
         return _handle_inputs(ctx, "brightness")
@@ -128,10 +127,9 @@ class ComputeEntropy(foo.Operator):
             name="compute_entropy",
             label="Data Quality Panel Entropy",
             dynamic=True,
+            allow_delegated_execution=True,
+            # default_choice_to_delegated=True,
         )
-
-    def resolve_delegation(self, ctx):
-        return ctx.params.get("delegate", False)
 
     def resolve_input(self, ctx):
         return _handle_inputs(ctx, "entropy")
@@ -155,10 +153,9 @@ class ComputeAspectRatio(foo.Operator):
             name="compute_aspect_ratio",
             label="Data Quality Panel Aspect Ratio",
             dynamic=True,
+            allow_delegated_execution=True,
+            # default_choice_to_delegated=True,
         )
-
-    def resolve_delegation(self, ctx):
-        return ctx.params.get("delegate", False)
 
     def resolve_input(self, ctx):
         return _handle_inputs(ctx, "aspect_ratio")
@@ -182,10 +179,9 @@ class ComputeExposure(foo.Operator):
             name="compute_exposure",
             label="Data Quality Panel Exposure",
             dynamic=True,
+            allow_delegated_execution=True,
+            # default_choice_to_delegated=True,
         )
-
-    def resolve_delegation(self, ctx):
-        return ctx.params.get("delegate", False)
 
     def resolve_input(self, ctx):
         return _handle_inputs(ctx, "exposure")
@@ -209,10 +205,9 @@ class ComputeBlurriness(foo.Operator):
             name="compute_blurriness",
             label="Data Quality Panel Blur",
             dynamic=True,
+            allow_delegated_execution=True,
+            # default_choice_to_delegated=True,
         )
-
-    def resolve_delegation(self, ctx):
-        return ctx.params.get("delegate", False)
 
     def resolve_input(self, ctx):
         return _handle_inputs(ctx, "blurriness")
@@ -237,7 +232,7 @@ class ComputeHash(foo.Operator):
             label="Data Quality Hashing",
             dynamic=True,
             allow_delegated_execution=True,
-            default_choice_to_delegated=True,
+            # default_choice_to_delegated=True,
         )
 
     def resolve_input(self, ctx):
