@@ -5,12 +5,14 @@ Data Lens
 
 .. default-role:: code
 
-Available in FiftyOne Teams v2.2.0+
+**Available in FiftyOne Teams v2.2+**
 
 Data Lens is a feature built into the :ref:`FiftyOne Teams App <teams-app>`
-which allows you to use FiftyOne to explore and import samples from any data
-source. Whether your data resides in a database like PostgreSQL or a data lake
-like Google BigQuery, Data Lens provides a way to search your data sources,
+which allows you to use FiftyOne to explore and import samples from external
+data sources.
+
+Whether your data resides in a database like PostgreSQL or a data lake like
+Google BigQuery, Data Lens provides a way to search your data sources,
 visualize sample data, and import into FiftyOne for further analysis.
 
 .. image:: /images/teams/data_lens_home.png
@@ -140,39 +142,33 @@ button to open the import dialog.
     :align: center
 
 Imports can be limited to a specific number of samples, or you can import all
-samples matching your query parameters.
+samples matching your query parameters. You can also choose whether to add
+new samples for all examples from your data lake, or whether to skip existing
+samples with the same `filepath`.
 
-After configuring the size of your import, select a destination dataset for the
-samples. This can be an existing dataset, or you can choose to create a new
-dataset.
+After configuring the size/behavior of your import, select a destination
+dataset for the samples. This can be an existing dataset, or you can choose to
+create a new dataset.
 
-.. note::
-
-    During import, Data Lens will attempt to de-duplicate samples based on
-    their `filepath` attribute. This behavior is the same when importing into
-    either existing or new datasets.
-
-You can optionally add tags to the imported samples. These tags will be
-added to the `sample.tags` field automatically by the Data Lens framework. If
-your samples already have tags, these tags will be appended.
+You can optionally specify tags to append to the `tags` field of each imported
+sample.
 
 When you click import, you will have the option to either execute immediately
-or to schedule this import for asynchronous execution. For most cases, it is
-recommended to schedule the import, as this will result in more consistent
-and performant execution. Immediate execution should only be used for very
-small sample sizes.
+or to schedule this import for asynchronous execution.
 
-.. image:: /images/teams/data_lens_import_options.png
-    :alt: data-lens-import-options
-    :align: center
+If you are importing a small number of samples, then immediate execution may
+be appropriate. However, for most cases it is recommended to schedule the
+import, as this will result in more consistent and performant execution.
 
 .. note::
 
     Scheduled imports use the
-    :ref:`delegated operations <delegated-operations>` framework to execute.
-    Your FiftyOne delegated operations configuration may affect the import
-    options that are available to you. Speak with your system administrator
-    if you have any questions.
+    :ref:`delegated operations <teams-delegated-operations>` framework to
+    execute asynchronously on your connected compute cluster!
+
+.. image:: /images/teams/data_lens_import_options.png
+    :alt: data-lens-import-options
+    :align: center
 
 After selecting your execution preference, you will be able to monitor the
 status of your import through the information provided by the import panel.
@@ -186,7 +182,7 @@ open your destination dataset containing your imported samples.
     :align: center
 
 In the case of scheduled execution, you will be presented with an option to
-visit the Runs page.
+visit the :ref:`Runs page <teams-runs-page>`.
 
 .. image:: /images/teams/data_lens_scheduled_import.png
     :alt: data-lens-scheduled-import
@@ -230,7 +226,7 @@ Setting up your operator
 To assist with Data Lens integration, we can use the
 :class:`DataLensOperator <fiftyone.operators.data_lens.operator.DataLensOperator>`
 base class provided with the Teams SDK. This base class handles the
-implementation for the operator's `execute` method, and defines a single
+implementation for the operator's `execute()` method, and defines a single
 abstract method that we'll implement.
 
 .. code-block:: python
@@ -277,7 +273,7 @@ Let's take a look at what we have so far.
 Our operator extends the
 :class:`DataLensOperator <fiftyone.operators.data_lens.operator.DataLensOperator>`
 provided by the Teams SDK. This base class defines the abstract
-:meth:`handle_lens_search_request <fiftyone.operators.data_lens.operator.DataLensOperator.handle_lens_search_request>`
+:meth:`handle_lens_search_request() <fiftyone.operators.data_lens.operator.DataLensOperator.handle_lens_search_request>`
 method, which we will need to implement.
 
 .. code-block:: python
@@ -294,17 +290,16 @@ method, which we will need to implement.
             label="My custom Data Lens operator",
 
             # Setting unlisted to True prevents your operator from appearing
-            # in lists of general-purpose operators (such as OpenDataset).
-            # While not required, we recommend setting unlisted=True for
-            # Data Lens operators.
+            # in lists of general-purpose operators, as this operator is not
+            # intended to be directly executed.
             unlisted=True,
 
-            # For compatibility with the  DataLensOperator base class, we
+            # For compatibility with the DataLensOperator base class, we
             # instruct FiftyOne to execute our operator as a generator.
             execute_as_generator=True,
         )
 
-The :meth:`config(self) <fiftyone.operators.operator.Operator.config>` property
+The :meth:`config <fiftyone.operators.operator.Operator.config>` property
 is part of the standard :ref:`operator interface <operator-interface>` and
 provides configuration options for your operator.
 
@@ -312,15 +307,15 @@ provides configuration options for your operator.
     :linenos:
 
     def handle_lens_search_request(
-            self,
-            request: DataLensSearchRequest,
-            ctx: foo.ExecutionContext
-        ) -> Generator[DataLensSearchResponse, None, None]
-            pass
+        self,
+        request: DataLensSearchRequest,
+        ctx: foo.ExecutionContext
+    ) -> Generator[DataLensSearchResponse, None, None]
+        pass
 
 The
-:meth:`handle_lens_search_request <fiftyone.operators.data_lens.operator.DataLensOperator.handle_lens_search_request>`
-method provides us with two arguments (aside from `self`) - a
+:meth:`handle_lens_search_request() <fiftyone.operators.data_lens.operator.DataLensOperator.handle_lens_search_request>`
+method provides us with two arguments: a
 :class:`DataLensSearchRequest <fiftyone.operators.data_lens.models.DataLensSearchRequest>`
 instance, and the current operator execution context.
 
@@ -335,7 +330,7 @@ the following properties:
 -   `request.batch_size`: a number indicating the maximum number of samples to
     return in a single batch.
 -   `request.max_results`: a number indicating the maximum number of
-    samples to return in total (the sum of all batches).
+    samples to return across all batches.
 
 .. note::
 
@@ -346,13 +341,13 @@ the following properties:
 The `ctx` argument provides access to a
 :ref:`range of useful capabilities <operator-execution-context>` which you can
 leverage in your operator, including things like
-:ref:`providing secrets to your operator <operator-secrets>`.
+:ref:`providing secrets to your operator <teams-secrets>`.
 
 Using these inputs, we are expected to return a generator which yields
 :class:`DataLensSearchResponse <fiftyone.operators.data_lens.models.DataLensSearchResponse>`
 objects. To start, we'll create some synthetic data to better understand the
 interaction between Data Lens and our operator. We'll look at a
-:ref:`more realistic example <data-lens-realistic-example>` later on.
+:ref:`more realistic example <data-lens-bigquery>` later on.
 
 .. note::
 
@@ -381,8 +376,9 @@ is comprised of the following fields:
 .. note::
 
     Data Lens expects sample data to adhere to the
-    :class:`fo.Sample <fiftyone.core.sample.Sample>` format. It is highly recommended that
-    you use the FiftyOne SDK to create your sample data.
+    :class:`Sample <fiftyone.core.sample.Sample>` format, which is easy to
+    achieve by using the FiftyOne SDK to create your sample data, as shown
+    below.
 
 To see how Data Lens works, let's yield a response with a single synthetic
 sample.
@@ -410,11 +406,12 @@ sample.
             query_result=samples
         )
 
-Let's see what this looks like in Data Lens. After adding the operator as a
-data source, we can navigate to the "Query data" tab to interact with the
-operator. When we click the preview button, the Data Lens framework invokes
-our operator to retrieve sample data. Our operator yields a single sample, and
-we see that sample shown in the preview.
+Let's see what this looks like in Data Lens.
+
+After adding the operator as a data source, we can navigate to the "Query data"
+tab to interact with the operator. When we click the preview button, the Data
+Lens framework invokes our operator to retrieve sample data. Our operator
+yields a single sample, and we see that sample shown in the preview.
 
 .. image:: /images/teams/data_lens_synthetic_sample.png
     :alt: data-lens-synthetic-sample
@@ -568,7 +565,7 @@ There are a couple things to note about the changes we made here.
     This example is meant to illustrate how users can interact with our
     operator. For a more realistic view into how inputs can tailor our search
     experience, see our example
-    :ref:`integration with BigQuery <data-lens-realistic-example>`.
+    :ref:`integration with BigQuery <data-lens-bigquery>`.
 
 .. _data-lens-preview-vs-import:
 
@@ -581,14 +578,20 @@ import functionality. The `request.batch_size` and `request.max_results`
 parameters can be used to optimize your data retrieval, but preview and import
 should otherwise be treated as functionally equivalent.
 
-.. _data-lens-realistic-example:
+.. _data-lens-example-connectors:
 
-Example: Integrating with Google BigQuery
-_________________________________________
+Example data source connectors
+______________________________
 
-To give a more realistic example of a Data Lens operator, let's take a look at
-how we might integrate with a dataset in Google BigQuery. The full, functional
-source code is listed below.
+This section provides example Data Lens connectors for various popular data
+sources.
+
+.. _data-lens-bigquery:
+
+Google BigQuery
+---------------
+
+Here's a fully-functional Data Lens connector for BigQuery:
 
 .. code-block:: python
     :linenos:
@@ -600,6 +603,7 @@ source code is listed below.
         DataLensSearchRequest,
         DataLensSearchResponse
     )
+
     from google.cloud import bigquery
 
 
@@ -622,9 +626,9 @@ source code is listed below.
             return types.Property(inputs)
 
         def handle_lens_search_request(
-                self,
-                request: DataLensSearchRequest,
-                ctx: foo.ExecutionContext,
+            self,
+            request: DataLensSearchRequest,
+            ctx: foo.ExecutionContext,
         ) -> Generator[DataLensSearchResponse, None, None]:
             handler = BigQueryHandler()
             for batch in handler.handle_request(request):
@@ -666,11 +670,11 @@ source code is listed below.
 
                 # Wait for results
                 rows = query_job.result(
-                        # BigQuery will handle pagination automatically, but
-                        # we can optimize its behavior by synchronizing with
-                        # the parameters provided by Data Lens
-                        page_size=request.batch_size,
-                        max_results=request.max_results
+                    # BigQuery will handle pagination automatically, but
+                    # we can optimize its behavior by synchronizing with
+                    # the parameters provided by Data Lens
+                    page_size=request.batch_size,
+                    max_results=request.max_results
                 )
 
                 samples = []
@@ -709,6 +713,15 @@ Let's take a look at a few parts in detail.
 .. code-block:: python
     :linenos:
 
+    # Create our client
+    client = bigquery.Client()
+
+In practice, you'll likely need to use :ref:`secrets <teams-secrets>` to
+securely provide credentials to connect to your BigQuery.
+
+.. code-block:: python
+    :linenos:
+
     # Retrieve our Data Lens search parameters
     detection_label = request.search_params.get("detection_label", "")
 
@@ -730,11 +743,11 @@ match our use case.
 
     # Wait for results
     rows = query_job.result(
-            # BigQuery will handle pagination automatically, but
-            # we can optimize its behavior by synchronizing with
-            # the parameters provided by Data Lens
-            page_size=request.batch_size,
-            max_results=request.max_results
+        # BigQuery will handle pagination automatically, but
+        # we can optimize its behavior by synchronizing with
+        # the parameters provided by Data Lens
+        page_size=request.batch_size,
+        max_results=request.max_results
     )
 
 Here we're using `request.batch_size` and `request.max_results` to help
@@ -749,11 +762,9 @@ improving both query performance and operational cost.
     # Transform sample data from BigQuery format to FiftyOne
     samples.append(self.convert_to_sample(row))
 
-Here we are converting our sample data from its storage format to a
-:class:`FiftyOne Sample <fiftyone.core.sample.Sample>`. This is where we will add features
-to our samples, such as :class:`labels <fiftyone.core.labels.Label>` or
-:class:`detections <fiftyone.core.labels.Detections>` by leveraging the
-FiftyOne SDK.
+Here we are converting our sample data from its storage format to a FiftyOne
+:class:`Sample <fiftyone.core.sample.Sample>`. This is where we'll add features
+to our samples, such as :ref:`labels <using-labels>`.
 
 As we can see from this example, we can make our Data Lens search experience
 as powerful as it needs to be. We can leverage internal libraries and services,
