@@ -188,7 +188,7 @@ class SidebarAsserter {
   }
 
   async assertFieldMissingQueryPerformance(fieldName: string) {
-    await expect(this.assertFieldHasQueryPerformance(fieldName)).toBe(false);
+    await expect(this.sb.queryPerformance(fieldName)).toBeHidden();
   }
 
   async assertFieldInSidebar(fieldName: string) {

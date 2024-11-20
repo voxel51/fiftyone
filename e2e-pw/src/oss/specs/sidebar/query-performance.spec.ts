@@ -173,5 +173,21 @@ test.describe("query performance sidebar", () => {
     ]) {
       await sidebar.asserter.assertFieldHasQueryPerformance(i);
     }
+
+    for (const i of [
+      "_label_tags",
+      "metadata.size_bytes",
+      "metadata.width",
+      "metadata.height",
+      "metadata.num_channels",
+      "inf",
+      "inf_list",
+      "nan",
+      "nan_list",
+      "ninf",
+      "ninf_list",
+    ]) {
+      await sidebar.asserter.assertFieldMissingQueryPerformance(i);
+    }
   });
 });
