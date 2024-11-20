@@ -1662,9 +1662,9 @@ interested in finding videos that contain specific classes of interest, eg
 
 One approach is to directly query the frame-level field (`frames.detections`
 in this case) in the App's sidebar. However, when the dataset is large, such
-queries are inefficient, as they cannot
-:ref:`leverage indexes <app-indexed-filtering>` and thus require full
-collection scans over all frames to retrieve the relevant samples.
+queries are inefficient, as they cannot unlock
+:ref:`query performance <app-optimizing-query-performance>` and thus require
+full collection scans over all frames to retrieve the relevant samples.
 
 A more efficient approach is to first use
 :meth:`create_summary_field() <fiftyone.core.dataset.Dataset.create_summary_field>`
@@ -1765,9 +1765,9 @@ As the above examples illustrate, summary fields allow you to encode various
 types of information at the sample-level that you can directly query to find
 samples that contain specific values.
 
-Moreover, summary fields are :ref:`indexed <app-indexed-filtering>` by default
-and the App can natively leverage these indexes to provide performant
-filtering:
+Moreover, summary fields are :ref:`indexed <app-optimizing-query-performance>`
+by default and the App can natively leverage these indexes to provide
+performant filtering:
 
 .. image:: /images/datasets/quickstart-video-summary-fields.gif
    :alt: quickstart-video-summary-fields
