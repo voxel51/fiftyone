@@ -2735,11 +2735,9 @@ def _make_client(
 
 
 def _refresh_managed_credentials_if_necessary():
-    if creds_manager is None:
-        return
-
-    if creds_manager.is_expired:
-        init_storage()
+    if creds_manager is None or creds_manager.is_expired:
+        if fi.has_encryption_key():
+            init_storage()
 
 
 def _get_buckets_with_managed_credentials(fs):
