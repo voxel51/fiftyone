@@ -3,7 +3,7 @@
  */
 
 import { getColor } from "@fiftyone/utilities";
-import { ARRAY_TYPES, OverlayMask, TypedArray } from "../numpy";
+import { ARRAY_TYPES, TypedArray } from "../numpy";
 import { BaseState, Coordinates, MaskTargets } from "../state";
 import {
   BaseLabel,
@@ -17,8 +17,7 @@ import { isRgbMaskTargets, strokeCanvasRect, t } from "./util";
 
 interface SegmentationLabel extends BaseLabel {
   mask?: {
-    data: OverlayMask;
-    image: ArrayBuffer;
+    bitmap?: ImageBitmap;
   };
 }
 

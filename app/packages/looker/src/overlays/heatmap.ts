@@ -7,7 +7,7 @@ import {
   getRGBA,
   getRGBAColor,
 } from "@fiftyone/utilities";
-import { ARRAY_TYPES, OverlayMask, TypedArray } from "../numpy";
+import { ARRAY_TYPES, TypedArray } from "../numpy";
 import { BaseState, Coordinates } from "../state";
 import { isFloatArray } from "../util";
 import { clampedIndex } from "../worker/painter";
@@ -22,8 +22,7 @@ import {
 import { strokeCanvasRect, t } from "./util";
 
 interface HeatMap {
-  data: OverlayMask;
-  image: ArrayBuffer;
+  bitmap?: ImageBitmap;
 }
 
 interface HeatmapLabel extends BaseLabel {

@@ -12,8 +12,7 @@ import { t } from "./util";
 
 export interface DetectionLabel extends RegularLabel {
   mask?: {
-    data: OverlayMask;
-    image: ArrayBuffer;
+    bitmap?: ImageBitmap;
   };
   bounding_box: BoundingBox;
 
