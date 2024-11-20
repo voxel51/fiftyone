@@ -28,10 +28,12 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
 
         update({
           loaded: true,
+          error: false,
           dimensions: [this.element.naturalWidth, this.element.naturalHeight],
         });
       },
       error: ({ update }) => {
+        update({ error: true, dimensions: [512, 512], loaded: true });
         // sometimes image loading fails because of insufficient resources
         // we'll want to try again in those cases
         if (this.retryCount < MAX_IMAGE_LOAD_RETRIES) {
@@ -45,9 +47,6 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
             this.element.setAttribute("src", retrySrc);
             // linear backoff
           }, 1000 * this.retryCount);
-        } else {
-          // max retries reached; finally set error to true
-          update({ error: true, dimensions: [512, 512], loaded: true });
         }
       },
     };
