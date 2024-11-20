@@ -359,6 +359,17 @@ Note that if you are running the above code in a script, you must include
 [this page](https://voxel51.com/docs/fiftyone/user_guide/app.html#creating-a-session)
 for more information.
 
+
+[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> **key features** 🔑
+
+- **[Visualize Complex Datasets:](https://docs.voxel51.com/tutorials/index.html)** Easily explore images, videos, and associated labels in a powerful visual interface.
+- **[Analyze and Improve Models:](https://docs.voxel51.com/tutorials/index.html)** Evaluate model performance, identify failure modes, and fine-tune your models.
+- **[Efficient Data Curation:](https://docs.voxel51.com/tutorials/index.html)** Quickly find and fix data issues, annotation errors, and edge cases.
+- **[Seamless Integration:](https://docs.voxel51.com/tutorials/index.html)** Works with popular deep learning libraries like TensorFlow, PyTorch, Keras, and more.
+- **[Open-Source and Extensible](https://docs.voxel51.com/tutorials/index.html)** Customize and extend FiftyOne to fit your specific needs.
+
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 
 <div id='-documentation'/>
@@ -374,16 +385,6 @@ Full documentation for FiftyOne is available at
 -   [User Guide](https://voxel51.com/docs/fiftyone/user_guide/index.html)
 -   [CLI Documentation](https://voxel51.com/docs/fiftyone/cli/index.html)
 -   [API Reference](https://voxel51.com/docs/fiftyone/api/fiftyone.html)
-
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
-
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> **key features** 🔑
-
-- **[Visualize Complex Datasets:](https://docs.voxel51.com/tutorials/index.html)** Easily explore images, videos, and associated labels in a powerful visual interface.
-- **[Analyze and Improve Models:](https://docs.voxel51.com/tutorials/index.html)** Evaluate model performance, identify failure modes, and fine-tune your models.
-- **[Efficient Data Curation:](https://docs.voxel51.com/tutorials/index.html)** Quickly find and fix data issues, annotation errors, and edge cases.
-- **[Seamless Integration:](https://docs.voxel51.com/tutorials/index.html)** Works with popular deep learning libraries like TensorFlow, PyTorch, Keras, and more.
-- **[Open-Source and Extensible](https://docs.voxel51.com/tutorials/index.html)** Customize and extend FiftyOne to fit your specific needs.
 
 
 [![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
