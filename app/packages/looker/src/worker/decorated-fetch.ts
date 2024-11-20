@@ -21,5 +21,5 @@ export const fetchWithLinearBackoff = async (
       }
     }
   }
-  return new Promise<Response>(() => {});
+  return null;
 };

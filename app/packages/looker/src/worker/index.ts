@@ -109,7 +109,7 @@ const imputeOverlayFromPath = async (
   buffers: ArrayBuffer[],
   sources: { [path: string]: string },
   cls: string,
-  maskPathDecodingPromises?: Promise<void>[]
+  maskPathDecodingPromises: Promise<void>[] = []
 ) => {
   // handle all list types here
   if (cls === DETECTIONS) {
