@@ -386,6 +386,10 @@ export const useSpotlight = ({
         }
       },
       spacing: 20,
+      destroy: (id: ID) => {
+        lookerStore.get(id)?.destroy();
+        lookerStore.delete(id);
+      },
     });
   }, [lookerStore, sampleStore, createLooker, samples, resizing, zoom]);
 };
