@@ -400,9 +400,9 @@ only those samples and/or labels that match the filter.
 Optimizing query performance
 ----------------------------
 
-By default, the sidebar filters are optimized to utilize indexes when no view
-is present. Filters that are optimized with an index are highlighted with the
-lightning bolt icon. Query performance can be disabled by default via
+By default, the sidebar filters are optimized to use indexes when no view is
+present. Filters that do have an index are highlighted with the lightning bolt
+icon. Query performance can be disabled by default via
 `default_query_performance` in your
 :ref:`App config <configuring-fiftyone-app>`.
 
@@ -427,7 +427,7 @@ toggled for a dataset via the settings "Gear" or the the
 
 The above GIF shows query performance mode in action on the train split of the
 :ref:`BDD100K dataset <dataset-zoo-bdd100k>` with an index on the
-`metadata.size_bytes` field:
+`detections.detections.label` field:
 
 .. code-block:: python
     :linenos:
@@ -444,7 +444,7 @@ The above GIF shows query performance mode in action on the train split of the
         source_dir=source_dir,
     )
 
-    dataset.create_index("metadata.size_bytes")
+    dataset.create_index("detections.detections.label")
 
     session = fo.launch_app(dataset)
 
