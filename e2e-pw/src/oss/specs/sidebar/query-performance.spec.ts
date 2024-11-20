@@ -6,11 +6,11 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 const datasetName = getUniqueDatasetNameWithPrefix("query-performance");
 
 const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
-  sidebar: async ({ page }, use) => {
-    await use(new SidebarPom(page));
-  },
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
+  },
+  sidebar: async ({ page }, use) => {
+    await use(new SidebarPom(page));
   },
 });
 
@@ -153,10 +153,14 @@ test.describe("query performance sidebar", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
-  test("assert query performance icons", async ({ sidebar, grid }) => {
+  test("assert query performance icons", async ({
+    eventUtils,
+    grid,
+    sidebar,
+  }) => {
     await grid.actionsRow.toggleDisplayOptions();
     await grid.actionsRow.displayActions.setQueryPerformance("enabled");
-    for (const i of [
+    for (const field of [
       "tags",
       "metadata.mime_type",
       "inf_label_list",
@@ -171,10 +175,10 @@ test.describe("query performance sidebar", () => {
       "str",
       "str_list",
     ]) {
-      await sidebar.asserter.assertFieldHasQueryPerformance(i);
+      await sidebar.asserter.assertFieldHasQueryPerformance(field);
     }
 
-    for (const i of [
+    for (const field of [
       "_label_tags",
       "metadata.size_bytes",
       "metadata.width",
@@ -187,7 +191,56 @@ test.describe("query performance sidebar", () => {
       "ninf",
       "ninf_list",
     ]) {
-      await sidebar.asserter.assertFieldMissingQueryPerformance(i);
+      await sidebar.asserter.assertFieldMissingQueryPerformance(field);
+    }
+
+    let animation = eventUtils.getEventReceivedPromiseForPredicate(
+      "animation-onRest",
+      () => true
+    );
+    await sidebar.clickFieldDropdown("inf_label_list");
+    await animation;
+
+    animation = eventUtils.getEventReceivedPromiseForPredicate(
+      "animation-onRest",
+      () => true
+    );
+    await sidebar.clickFieldDropdown("nan_label_list");
+    await animation;
+
+    animation = eventUtils.getEventReceivedPromiseForPredicate(
+      "animation-onRest",
+      () => true
+    );
+    await sidebar.clickFieldDropdown("ninf_label_list");
+    await animation;
+
+    const subfieldsIndexed = ["id", "label", "tags"];
+    for (const field of [
+      "inf_label_list",
+      "nan_label_list",
+      "ninf_label_list",
+    ]) {
+      for (const subfield of subfieldsIndexed) {
+        await sidebar.asserter.assertSubfieldHasQueryPerformance(
+          `${field}.classifications.${subfield}`,
+          "categorical"
+        );
+      }
+    }
+
+    const subfieldsUnindexed = ["confidence"];
+    for (const field of [
+      "inf_label_list",
+      "nan_label_list",
+      "ninf_label_list",
+    ]) {
+      for (const subfield of subfieldsUnindexed) {
+        await sidebar.asserter.assertSubfieldMissingQueryPerformance(
+          `${field}.classifications.${subfield}`,
+          "categorical"
+        );
+      }
     }
   });
 });

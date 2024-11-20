@@ -6,7 +6,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Arrow from "./Arrow";
 
-export const LightningIcon = styled(Bolt)`
+const LightningIcon = styled(Bolt)`
   color: ${({ theme }) => theme.text.secondary};
 `;
 
