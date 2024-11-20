@@ -408,7 +408,7 @@ icon. Query performance can be disabled by default via
 
 When a view is present and indexes are no longer applicable, granular filter
 widgets are shown that include comphrensive counts. Granular filters can be
-toggled for a dataset via the settings "Gear" or the the
+toggled for a dataset via the settings "Gear" or
 `enable_query_performance` and `disabled_query_performance` operators.
 
 .. image:: /images/app/app-granular.gif
@@ -497,7 +497,7 @@ perform initial filters on:
 
     Frame fields are not directly optimizable. Use
     :ref:`summary fields <summary-fields>` to efficiently query frame-level
-    fields on large video datasets
+    information on large video datasets
 
 .. note::
 
