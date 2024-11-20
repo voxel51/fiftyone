@@ -110,12 +110,27 @@ The summary field is also enhanced with relevant indexes to improve its performa
 summary field by clicking the `Drop Index/Field` action in the table. Users can also choose to remove the individual
 indexes associated with the summary field.
 
-Create Summary Field
+.. warning::
+For dataset with a large number of samples, creating a summary field can take a long time to complete.
+
+Update Summary Field
 --------------------
 
+Summary fields can be updated by clicking the `Refresh Summary Field` action in the table. This will update the summary
+field with the latest data in the dataset. This is useful when the dataset has been updated with new data and the summary
+field needs to be updated to reflect the changes.
+
 .. warning::
-For dataset with a large number of samples, creating, updating and deleting a summary field can take a long time to
-complete.
+For dataset with a large number of samples, updating a summary field can take a long time to complete.
 
-For more information on summary fields, see :ref:`_summary-fields`.
+Delete Index and Field
+----------------------
 
+Index and summary fields can be deleted by clicking the `Drop Index` or `Drop Summary Field` action in the table. This
+will remove the index or summary field from the dataset.
+
+.. warning::
+Deleting an index or summary field will remove the performance improvement associated with the index or summary field.
+
+.. warning::
+For dataset with a large number of samples, deleting a summary field can take a long time to complete.
