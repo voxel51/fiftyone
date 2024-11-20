@@ -31,6 +31,7 @@ export default function EvaluationPlot(props: EvaluationPlotProps) {
         color: theme.text.secondary,
         gridcolor: theme.primary.softBorder,
         automargin: true, // Enable automatic margin adjustment
+        scaleanchor: "x",
       },
       autosize: true,
       margin: { t: 20, l: 50, b: 50, r: 20, pad: 0 },
@@ -50,12 +51,14 @@ export default function EvaluationPlot(props: EvaluationPlotProps) {
       scrollZoom: false,
       modeBarButtonsToRemove: [
         "autoScale2d",
+        "select2d",
         "lasso2d",
         "pan2d",
         "resetScale2d",
         "zoom2d",
         "zoomIn2d",
         "zoomOut2d",
+        "toImage",
       ],
     };
   }, []);

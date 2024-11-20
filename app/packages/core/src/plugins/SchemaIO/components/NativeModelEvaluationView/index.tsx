@@ -1,9 +1,13 @@
+import { PanelCTA } from "@fiftyone/components";
+import { constants } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
-import React, { useMemo } from "react";
-import EmptyOverview from "./EmptyOverview";
+import React, { useCallback, useMemo } from "react";
+import Evaluate from "./Evaluate";
 import Evaluation from "./Evaluation";
 import Overview from "./Overview";
 import { useTriggerEvent } from "./utils";
+
+const TRY_LINK = "http://voxel51.com/try-evaluation";
 
 export default function NativeModelEvaluationView(props) {
   const { data = {}, schema, onChange, layout } = props;
@@ -40,11 +44,20 @@ export default function NativeModelEvaluationView(props) {
     }, {});
   }, [computedEvaluations]);
   const { page = "overview", key, id, compareKey } = viewState;
-  const showEmptyOverview = computedEvaluations.length === 0;
+  const showEmptyOverview =
+    computedEvaluations.length === 0 && pending_evaluations.length === 0;
   const triggerEvent = useTriggerEvent();
+  const [showCTA, setShowCTA] = React.useState(false);
+  const onEvaluate = useCallback(() => {
+    if (constants.IS_APP_MODE_FIFTYONE) {
+      setShowCTA(true);
+    } else {
+      triggerEvent(on_evaluate_model);
+    }
+  }, [triggerEvent, on_evaluate_model]);
 
   return (
-    <Box>
+    <Box sx={{ height: "100%" }}>
       {page === "evaluation" && (
         <Evaluation
           name={key}
@@ -72,13 +85,30 @@ export default function NativeModelEvaluationView(props) {
         />
       )}
       {page === "overview" &&
-        (showEmptyOverview ? (
-          <EmptyOverview
-            height={layout?.height as number}
-            onEvaluate={() => {
-              triggerEvent(on_evaluate_model);
+        (showEmptyOverview || showCTA ? (
+          <PanelCTA
+            label="Create you first model evaluation"
+            demoLabel="Upgrade to FiftyOne Teams to Evaluate Models"
+            description="Analyze and improve models collaboratively with your team"
+            docLink="https://docs.voxel51.com/user_guide/evaluation.html"
+            docCaption="Learn how to create model evaluation via code."
+            demoDocCaption="Not ready to upgrade yet? Learn how to create model evaluation via code."
+            icon="ssid_chart"
+            Actions={() => {
+              return (
+                <Evaluate
+                  onEvaluate={onEvaluate}
+                  permissions={permissions}
+                  variant="empty"
+                />
+              );
             }}
-            permissions={permissions}
+            name="Model Evaluation"
+            onBack={() => {
+              setShowCTA(false);
+            }}
+            mode={showCTA ? "default" : "onboarding"}
+            tryLink={TRY_LINK}
           />
         ) : (
           <Overview
@@ -87,9 +117,7 @@ export default function NativeModelEvaluationView(props) {
               triggerEvent(on_change_view);
               triggerEvent(load_evaluation_view);
             }}
-            onEvaluate={() => {
-              triggerEvent(on_evaluate_model);
-            }}
+            onEvaluate={onEvaluate}
             evaluations={computedEvaluations}
             statuses={statuses}
             notes={notes}

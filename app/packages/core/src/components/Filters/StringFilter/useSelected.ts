@@ -33,7 +33,6 @@ export default function (
 
   return {
     results,
-
     useSearch:
       path === "_label_tags" && queryPerformance && !isFrameField && !modal
         ? undefined

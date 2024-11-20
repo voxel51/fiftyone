@@ -1128,19 +1128,17 @@ computation, evaluation, and exports are computationally intensive and/or not
 suitable for immediate execution.
 
 In such cases, :ref:`delegated operations <delegated-operations>` come to the
-rescue by allowing operators to schedule tasks that are executed on a connected
-workflow orchestrator like :ref:`Apache Airflow <delegated-operations-airflow>`
-or run just :ref:`run locally <delegated-operations-local>` in a separate
-process.
+rescue by allowing users to schedule potentially long-running tasks that are
+executed in the background while you continue to use the App.
 
 .. note::
 
-    Even though delegated operations are run in a separate process or physical
-    location, they are provided with the same `ctx` that was hydrated by the
-    operator's :ref:`input form <operator-inputs>`.
+    :ref:`FiftyOne Teams <teams-delegated-operations>` deployments come out of
+    the box with a connected compute cluster for executing delegated operations
+    at scale.
 
-    Refer to :ref:`this section <delegated-operations>` for more information
-    about how delegated operations are executed.
+    In FiftyOne Open Source, you can use delegated operations at small scale
+    by :ref:`running them locally <delegated-orchestrator-open-source>`.
 
 There are a variety of options available for configuring whether a given
 operation should be delegated or executed immediately.
@@ -2430,6 +2428,91 @@ loaded only when the `brain_key` property is modified.
     Panel data is never readable in Python; it is only implicitly used by
     the types you define when they are rendered clientside.
 
+.. _panel-execution-store
+
+Execution store
+---------------
+
+Panels can store data in the execution store, which is a key-value store that
+is persisted beyond the lifetime of the panel. This is useful for storing
+information that should persist across panel instances and App sessions, such
+as cached data, long-lived panel state, or user preferences.
+
+You can create/retrieve execution stores scoped to the current ``ctx.dataset``
+via :meth:`ctx.store <fiftyone.operators.executor.ExecutionContext.store>`:
+
+.. code-block:: python
+    :linenos:
+
+    def on_load(ctx):
+        # Retrieve a store scoped to the current `ctx.dataset`
+        # The store is automatically created if necessary
+        store = ctx.store("my_store")
+
+        # Load a pre-existing value from the store
+        user_choice = store.get("user_choice")
+
+        # Store data with a TTL to ensure it is evicted after `ttl` seconds
+        store.set("my_key", {"foo": "bar"}, ttl=60)
+
+        # List all keys in the store
+        print(store.list_keys())  # ["user_choice", "my_key"]
+
+        # Retrieve data from the store
+        print(store.get("my_key"))  # {"foo": "bar"}
+
+        # Retrieve metadata about a key
+        print(store.get_metadata("my_key"))
+        # {"created_at": ..., "updated_at": ..., "expires_at": ...}
+
+        # Delete a key from the store
+        store.delete("my_key")
+
+        # Clear all data in the store
+        store.clear()
+
+.. note::
+
+    Did you know? Any execution stores associated with a dataset are
+    automatically  deleted when the dataset is deleted.
+
+For advanced use cases, it is also possible to create and use global stores
+that are available to all datasets via the
+:class:`ExecutionStore <fiftyone.operators.store.ExecutionStore>` class:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone.operators import ExecutionStore
+
+    # Retrieve a global store
+    # The store is automatically created if necessary
+    store = ExecutionStore.create("my_store")
+
+    # Store data with a TTL to ensure it is evicted after `ttl` seconds
+    store.set("my_key", {"foo": "bar"}, ttl=60)
+
+    # List all keys in the global store
+    print(store.list_keys())  # ["my_key"]
+
+    # Retrieve data from the global store
+    print(store.get("my_key"))  # {"foo": "bar"}
+
+    # Retrieve metadata about a key
+    print(store.get_metadata("my_key"))
+    # {"created_at": ..., "updated_at": ..., "expires_at": ...}
+
+    # Delete a key from the global store
+    store.delete("my_key")
+
+    # Clear all data in the global store
+    store.clear()
+
+.. warning::
+
+    Global stores have no automatic garbage collection, so take care when
+    creating and using global stores whose keys do not utilize TTLs.
+
 .. _panel-saved-workspaces
 
 Saved workspaces
@@ -3566,7 +3649,7 @@ Delegated execution
 ~~~~~~~~~~~~~~~~~~~
 
 Python operations may also be :ref:`delegated <operator-delegated-execution>`
-to an external orchestrator like Apache Airflow or a local process.
+for execution in the background.
 
 When an operation is delegated, the following happens:
 

@@ -584,7 +584,7 @@ export const hasSelectedSamples = selector<boolean>({
   },
 });
 
-const frameFieldsList = selector({
+export const frameFieldsList = selector({
   key: "frameFieldsList",
   get: ({ get }) => {
     const fields = get(atoms.frameFields);

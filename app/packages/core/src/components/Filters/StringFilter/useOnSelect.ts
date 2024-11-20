@@ -26,6 +26,7 @@ export default function (
         }
         selected.add(value);
         set(selectedAtom, [...selected].sort());
+
         return "";
       },
     [modal, path, selectedAtom]

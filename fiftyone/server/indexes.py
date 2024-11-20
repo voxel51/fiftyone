@@ -5,6 +5,7 @@ FiftyOne Server indexes.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from enum import Enum
 import typing as t
 
@@ -58,6 +59,9 @@ def from_dict(d: t.Dict[str, t.Dict[str, t.Any]]):
 def _from_dict(d: t.Dict[str, t.Dict[str, t.Any]]):
     indexes: t.List[Index] = []
     for name, index in d.items():
+        if index.get("in_progress", False):
+            continue
+
         key = [_index_key_from_dict(*field) for field in index["key"]]
         if None in key:
             continue
