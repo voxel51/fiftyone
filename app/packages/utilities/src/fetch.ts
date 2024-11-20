@@ -18,7 +18,7 @@ export interface FetchFunction {
     body?: A,
     result?: "json" | "blob" | "text" | "arrayBuffer" | "json-stream",
     retries?: number,
-    retryCodes?: number[] | "arrayBuffer"
+    retryCodes?: number[]
   ): Promise<R>;
 }
 
@@ -110,7 +110,7 @@ export const setFetchFunction = (
     const fetchCall = retries
       ? fetchRetry(fetch, {
           retries,
-          retryDelay: 0,
+          retryDelay: 500,
           retryOn: (attempt, error, response) => {
             if (
               (error !== null || retryCodes.includes(response.status)) &&
