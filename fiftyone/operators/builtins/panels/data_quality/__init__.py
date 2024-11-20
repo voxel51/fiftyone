@@ -2198,7 +2198,7 @@ class DataQualityPanel(Panel):
 
     def _render_toast(self, panel, toast_type, ctx):
 
-        schema = {
+        view = {
             "duration": 1000,
             "layout": {
                 "vertical": "top",
@@ -2218,8 +2218,8 @@ class DataQualityPanel(Panel):
             else:
                 return  # exit if no alert
 
-        schema["message"] = message
-        toast = types.ToastView(**schema)
+        view["message"] = message
+        toast = types.ToastView(**view)
 
         panel.obj(f"toast_{uuid.uuid4().hex}", view=toast)
         # need to clear the alert status after it's been shown
