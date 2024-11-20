@@ -28,7 +28,7 @@ test.describe("query performance sidebar", () => {
       first = dataset.first()
 
       first["bool"] = False
-      first["bool_list"] = False
+      first["bool_list"] = [False]
 
       first["inf"] = float("inf")
       first["inf_list"] = [float("inf")]
@@ -61,7 +61,7 @@ test.describe("query performance sidebar", () => {
       second = dataset.skip(1).first()
 
       second["bool"] = False
-      second["bool_list"] = False
+      second["bool_list"] = [False]
 
       second["inf"] = 1.0
       second["inf_list"] = [1.0]
@@ -91,7 +91,7 @@ test.describe("query performance sidebar", () => {
       third = dataset.skip(2).first()
 
       third["bool"] = True
-      third["bool_list"] = True
+      third["bool_list"] = [True]
 
       third["inf"] = -1.0
       third["inf_list"] = [-1.0]
