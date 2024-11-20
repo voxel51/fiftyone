@@ -575,9 +575,8 @@ datasets:
 
 .. note::
 
-    Did you know? You can manage dataset indexes via the App by installing the
-    `@voxel51/indexes <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/indexes>`_
-    plugin!
+    Did you know? Teams customer can manage dataset indexes via the App by with the builtin Query Performance panel!
+    See :ref:`this page <query-performance>` for more information.
 
 In general, we recommend indexing *only* the specific fields that you wish to
 perform initial filters on:
