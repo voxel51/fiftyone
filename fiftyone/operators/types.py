@@ -2807,7 +2807,7 @@ class TimelineView(View):
 
 
 class TimerView(View):
-    """Supports a timer for executing operators/events after a specified duration or invterval.
+    """Supports a timer for executing operators/events after a specified duration or interval.
 
     Args:
         timeout (None): the duration in milliseconds to wait before executing the operator

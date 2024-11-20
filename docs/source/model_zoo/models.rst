@@ -38,43 +38,43 @@ for using the Model Zoo.
     :header: alexnet-imagenet-torch
     :description: AlexNet model architecture from "One weird trick for parallelizing convolutional neural networks" trained on ImageNet
     :link: models.html#alexnet-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Alexnet
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: centernet-hg104-1024-coco-tf2
     :description: CenterNet model from "Objects as Points" with the Hourglass-104 backbone trained on COCO resized to 1024x1024
     :link: models.html#centernet-hg104-1024-coco-tf2
-    :tags: Detection,Coco,TensorFlow-2,Centernet
+    :tags: Detection,Coco,TensorFlow-2
 
 .. customcarditem::
     :header: centernet-hg104-512-coco-tf2
     :description: CenterNet model from "Objects as Points" with the Hourglass-104 backbone trained on COCO resized to 512x512
     :link: models.html#centernet-hg104-512-coco-tf2
-    :tags: Detection,Coco,TensorFlow-2,Centernet
+    :tags: Detection,Coco,TensorFlow-2
 
 .. customcarditem::
     :header: centernet-mobilenet-v2-fpn-512-coco-tf2
     :description: CenterNet model from "Objects as Points" with the MobileNetV2 backbone trained on COCO resized to 512x512
     :link: models.html#centernet-mobilenet-v2-fpn-512-coco-tf2
-    :tags: Detection,Coco,TensorFlow-2,Centernet,Mobilenet
+    :tags: Detection,Coco,TensorFlow-2
 
 .. customcarditem::
     :header: centernet-resnet101-v1-fpn-512-coco-tf2
     :description: CenterNet model from "Objects as Points" with the ResNet-101v1 backbone + FPN trained on COCO resized to 512x512
     :link: models.html#centernet-resnet101-v1-fpn-512-coco-tf2
-    :tags: Detection,Coco,TensorFlow-2,Centernet,Resnet
+    :tags: Detection,Coco,TensorFlow-2
 
 .. customcarditem::
     :header: centernet-resnet50-v1-fpn-512-coco-tf2
     :description: CenterNet model from "Objects as Points" with the ResNet-50-v1 backbone + FPN trained on COCO resized to 512x512
     :link: models.html#centernet-resnet50-v1-fpn-512-coco-tf2
-    :tags: Detection,Coco,TensorFlow-2,Centernet,Resnet
+    :tags: Detection,Coco,TensorFlow-2
 
 .. customcarditem::
     :header: centernet-resnet50-v2-512-coco-tf2
     :description: CenterNet model from "Objects as Points" with the ResNet-50v2 backbone trained on COCO resized to 512x512
     :link: models.html#centernet-resnet50-v2-512-coco-tf2
-    :tags: Detection,Coco,TensorFlow-2,Centernet,Resnet
+    :tags: Detection,Coco,TensorFlow-2
 
 .. customcarditem::
     :header: classification-transformer-torch
@@ -92,49 +92,49 @@ for using the Model Zoo.
     :header: deeplabv3-cityscapes-tf
     :description: DeepLabv3+ semantic segmentation model from "Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation" with Xception backbone trained on the Cityscapes dataset
     :link: models.html#deeplabv3-cityscapes-tf
-    :tags: Segmentation,Cityscapes,TensorFlow,Deeplabv3
+    :tags: Segmentation,Cityscapes,TensorFlow
 
 .. customcarditem::
     :header: deeplabv3-mnv2-cityscapes-tf
     :description: DeepLabv3+ semantic segmentation model from "Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation" with MobileNetV2 backbone trained on the Cityscapes dataset
     :link: models.html#deeplabv3-mnv2-cityscapes-tf
-    :tags: Segmentation,Cityscapes,TensorFlow,Deeplabv3
+    :tags: Segmentation,Cityscapes,TensorFlow
 
 .. customcarditem::
     :header: deeplabv3-resnet101-coco-torch
     :description: DeepLabV3 model from "Rethinking Atrous Convolution for Semantic Image Segmentation" with ResNet-101 backbone trained on COCO
     :link: models.html#deeplabv3-resnet101-coco-torch
-    :tags: Segmentation,Coco,PyTorch,Resnet,Deeplabv3
+    :tags: Segmentation,Coco,PyTorch
 
 .. customcarditem::
     :header: deeplabv3-resnet50-coco-torch
     :description: DeepLabV3 model from "Rethinking Atrous Convolution for Semantic Image Segmentation" with ResNet-50 backbone trained on COCO
     :link: models.html#deeplabv3-resnet50-coco-torch
-    :tags: Segmentation,Coco,PyTorch,Resnet,Deeplabv3
+    :tags: Segmentation,Coco,PyTorch
 
 .. customcarditem::
     :header: densenet121-imagenet-torch
     :description: Densenet-121 model from "Densely Connected Convolutional Networks" trained on ImageNet
     :link: models.html#densenet121-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Densenet
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: densenet161-imagenet-torch
     :description: Densenet-161 model from "Densely Connected Convolutional Networks" trained on ImageNet
     :link: models.html#densenet161-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Densenet
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: densenet169-imagenet-torch
     :description: Densenet-169 model from "Densely Connected Convolutional Networks" trained on ImageNet
     :link: models.html#densenet169-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Densenet
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: densenet201-imagenet-torch
     :description: Densenet-201 model from "Densely Connected Convolutional Networks" trained on ImageNet
     :link: models.html#densenet201-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Densenet
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: depth-estimation-transformer-torch
@@ -152,277 +152,271 @@ for using the Model Zoo.
     :header: dinov2-vitb14-torch
     :description: DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-B/14 distilled
     :link: models.html#dinov2-vitb14-torch
-    :tags: Embeddings,PyTorch,Dinov2
+    :tags: Embeddings,PyTorch
 
 .. customcarditem::
     :header: dinov2-vitg14-torch
     :description: DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-g/14
     :link: models.html#dinov2-vitg14-torch
-    :tags: Embeddings,PyTorch,Dinov2
+    :tags: Embeddings,PyTorch
 
 .. customcarditem::
     :header: dinov2-vitl14-torch
     :description: DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-L/14 distilled
     :link: models.html#dinov2-vitl14-torch
-    :tags: Embeddings,PyTorch,Dinov2
+    :tags: Embeddings,PyTorch
 
 .. customcarditem::
     :header: dinov2-vits14-torch
     :description: DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-S/14 distilled
     :link: models.html#dinov2-vits14-torch
-    :tags: Embeddings,PyTorch,Dinov2
+    :tags: Embeddings,PyTorch
 
 .. customcarditem::
     :header: efficientdet-d0-512-coco-tf2
     :description: EfficientDet-D0 model from "EfficientDet: Scalable and Efficient Object Detection" trained on COCO resized to 512x512
     :link: models.html#efficientdet-d0-512-coco-tf2
-    :tags: Detection,Coco,TensorFlow-2,Efficientdet
+    :tags: Detection,Coco,TensorFlow-2
 
 .. customcarditem::
     :header: efficientdet-d0-coco-tf1
     :description: EfficientDet-D0 model from "EfficientDet: Scalable and Efficient Object Detection" trained on COCO
     :link: models.html#efficientdet-d0-coco-tf1
-    :tags: Detection,Coco,TensorFlow-1,Efficientdet
+    :tags: Detection,Coco,TensorFlow-1
 
 .. customcarditem::
     :header: efficientdet-d1-640-coco-tf2
     :description: EfficientDet-D1 model from "EfficientDet: Scalable and Efficient Object Detection" trained on COCO resized to 640x640
     :link: models.html#efficientdet-d1-640-coco-tf2
-    :tags: Detection,Coco,TensorFlow-2,Efficientdet
+    :tags: Detection,Coco,TensorFlow-2
 
 .. customcarditem::
     :header: efficientdet-d1-coco-tf1
     :description: EfficientDet-D1 model from "EfficientDet: Scalable and Efficient Object Detection" trained on COCO
     :link: models.html#efficientdet-d1-coco-tf1
-    :tags: Detection,Coco,TensorFlow-1,Efficientdet
+    :tags: Detection,Coco,TensorFlow-1
 
 .. customcarditem::
     :header: efficientdet-d2-768-coco-tf2
     :description: EfficientDet-D2 model from "EfficientDet: Scalable and Efficient Object Detection" trained on COCO resized to 768x768
     :link: models.html#efficientdet-d2-768-coco-tf2
-    :tags: Detection,Coco,TensorFlow-2,Efficientdet
+    :tags: Detection,Coco,TensorFlow-2
 
 .. customcarditem::
     :header: efficientdet-d2-coco-tf1
     :description: EfficientDet-D2 model from "EfficientDet: Scalable and Efficient Object Detection" trained on COCO
     :link: models.html#efficientdet-d2-coco-tf1
-    :tags: Detection,Coco,TensorFlow-1,Efficientdet
+    :tags: Detection,Coco,TensorFlow-1
 
 .. customcarditem::
     :header: efficientdet-d3-896-coco-tf2
     :description: EfficientDet-D3 model from "EfficientDet: Scalable and Efficient Object Detection" trained on COCO resized to 896x896
     :link: models.html#efficientdet-d3-896-coco-tf2
-    :tags: Detection,Coco,TensorFlow-2,Efficientdet
+    :tags: Detection,Coco,TensorFlow-2
 
 .. customcarditem::
     :header: efficientdet-d3-coco-tf1
     :description: EfficientDet-D3 model from "EfficientDet: Scalable and Efficient Object Detection" trained on COCO
     :link: models.html#efficientdet-d3-coco-tf1
-    :tags: Detection,Coco,TensorFlow-1,Efficientdet
+    :tags: Detection,Coco,TensorFlow-1
 
 .. customcarditem::
     :header: efficientdet-d4-1024-coco-tf2
     :description: EfficientDet-D4 model from "EfficientDet: Scalable and Efficient Object Detection" trained on COCO resized to 1024x1024
     :link: models.html#efficientdet-d4-1024-coco-tf2
-    :tags: Detection,Coco,TensorFlow-2,Efficientdet
+    :tags: Detection,Coco,TensorFlow-2
 
 .. customcarditem::
     :header: efficientdet-d4-coco-tf1
     :description: EfficientDet-D4 model from "EfficientDet: Scalable and Efficient Object Detection" trained on COCO
     :link: models.html#efficientdet-d4-coco-tf1
-    :tags: Detection,Coco,TensorFlow-1,Efficientdet
+    :tags: Detection,Coco,TensorFlow-1
 
 .. customcarditem::
     :header: efficientdet-d5-1280-coco-tf2
     :description: EfficientDet-D5 model from "EfficientDet: Scalable and Efficient Object Detection" trained on COCO resized to 1280x1280
     :link: models.html#efficientdet-d5-1280-coco-tf2
-    :tags: Detection,Coco,TensorFlow-2,Efficientdet
+    :tags: Detection,Coco,TensorFlow-2
 
 .. customcarditem::
     :header: efficientdet-d5-coco-tf1
     :description: EfficientDet-D5 model from "EfficientDet: Scalable and Efficient Object Detection" trained on COCO
     :link: models.html#efficientdet-d5-coco-tf1
-    :tags: Detection,Coco,TensorFlow-1,Efficientdet
+    :tags: Detection,Coco,TensorFlow-1
 
 .. customcarditem::
     :header: efficientdet-d6-1280-coco-tf2
     :description: EfficientDet-D6 model from "EfficientDet: Scalable and Efficient Object Detection" trained on COCO resized to 1280x1280
     :link: models.html#efficientdet-d6-1280-coco-tf2
-    :tags: Detection,Coco,TensorFlow-2,Efficientdet
+    :tags: Detection,Coco,TensorFlow-2
 
 .. customcarditem::
     :header: efficientdet-d6-coco-tf1
     :description: EfficientDet-D6 model from "EfficientDet: Scalable and Efficient Object Detection" trained on COCO
     :link: models.html#efficientdet-d6-coco-tf1
-    :tags: Detection,Coco,TensorFlow-1,Efficientdet
+    :tags: Detection,Coco,TensorFlow-1
 
 .. customcarditem::
     :header: efficientdet-d7-1536-coco-tf2
     :description: EfficientDet-D7 model from "EfficientDet: Scalable and Efficient Object Detection" trained on COCO resized to 1536x1536
     :link: models.html#efficientdet-d7-1536-coco-tf2
-    :tags: Detection,Coco,TensorFlow-2,Efficientdet
+    :tags: Detection,Coco,TensorFlow-2
 
 .. customcarditem::
     :header: faster-rcnn-inception-resnet-atrous-v2-coco-tf
     :description: Faster R-CNN model from "Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks" atrous version with Inception backbone trained on COCO
     :link: models.html#faster-rcnn-inception-resnet-atrous-v2-coco-tf
-    :tags: Detection,Coco,TensorFlow,Faster-rcnn,Inception,Resnet
+    :tags: Detection,Coco,TensorFlow
 
 .. customcarditem::
     :header: faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf
     :description: Faster R-CNN model from "Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks" atrous version with low-proposals and Inception backbone trained on COCO
     :link: models.html#faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf
-    :tags: Detection,Coco,TensorFlow,Faster-rcnn,Inception,Resnet
+    :tags: Detection,Coco,TensorFlow
 
 .. customcarditem::
     :header: faster-rcnn-inception-v2-coco-tf
     :description: Faster R-CNN model from "Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks" with Inception v2 backbone trained on COCO
     :link: models.html#faster-rcnn-inception-v2-coco-tf
-    :tags: Detection,Coco,TensorFlow,Faster-rcnn,Inception
+    :tags: Detection,Coco,TensorFlow
 
 .. customcarditem::
     :header: faster-rcnn-nas-coco-tf
     :description: Faster R-CNN model from "Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks" with NAS-net backbone trained on COCO
     :link: models.html#faster-rcnn-nas-coco-tf
-    :tags: Detection,Coco,TensorFlow,Faster-rcnn
+    :tags: Detection,Coco,TensorFlow
 
 .. customcarditem::
     :header: faster-rcnn-nas-lowproposals-coco-tf
     :description: Faster R-CNN model from "Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks" with low-proposals and NAS-net backbone trained on COCO
     :link: models.html#faster-rcnn-nas-lowproposals-coco-tf
-    :tags: Detection,Coco,TensorFlow,Faster-rcnn
+    :tags: Detection,Coco,TensorFlow
 
 .. customcarditem::
     :header: faster-rcnn-resnet101-coco-tf
     :description: Faster R-CNN model from "Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks" with ResNet-101 backbone trained on COCO
     :link: models.html#faster-rcnn-resnet101-coco-tf
-    :tags: Detection,Coco,TensorFlow,Faster-rcnn,Resnet
+    :tags: Detection,Coco,TensorFlow
 
 .. customcarditem::
     :header: faster-rcnn-resnet101-lowproposals-coco-tf
     :description: Faster R-CNN model from "Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks" with low-proposals and ResNet-101 backbone trained on COCO
     :link: models.html#faster-rcnn-resnet101-lowproposals-coco-tf
-    :tags: Detection,Coco,TensorFlow,Faster-rcnn,Resnet
+    :tags: Detection,Coco,TensorFlow
 
 .. customcarditem::
     :header: faster-rcnn-resnet50-coco-tf
     :description: Faster R-CNN model from "Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks" with ResNet-50 backbone trained on COCO
     :link: models.html#faster-rcnn-resnet50-coco-tf
-    :tags: Detection,Coco,TensorFlow,Faster-rcnn,Resnet
+    :tags: Detection,Coco,TensorFlow
 
 .. customcarditem::
     :header: faster-rcnn-resnet50-fpn-coco-torch
     :description: Faster R-CNN model from "Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks" with ResNet-50 FPN backbone trained on COCO
     :link: models.html#faster-rcnn-resnet50-fpn-coco-torch
-    :tags: Detection,Coco,PyTorch,Faster-rcnn,Resnet
+    :tags: Detection,Coco,PyTorch
 
 .. customcarditem::
     :header: faster-rcnn-resnet50-lowproposals-coco-tf
     :description: Faster R-CNN model from "Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks" with low-proposals and ResNet-50 backbone trained on COCO
     :link: models.html#faster-rcnn-resnet50-lowproposals-coco-tf
-    :tags: Detection,Coco,TensorFlow,Faster-rcnn,Resnet
+    :tags: Detection,Coco,TensorFlow
 
 .. customcarditem::
     :header: fcn-resnet101-coco-torch
     :description: FCN model from "Fully Convolutional Networks for Semantic Segmentation" with ResNet-101 backbone trained on COCO
     :link: models.html#fcn-resnet101-coco-torch
-    :tags: Segmentation,Coco,PyTorch,Fcn,Resnet
+    :tags: Segmentation,Coco,PyTorch
 
 .. customcarditem::
     :header: fcn-resnet50-coco-torch
     :description: FCN model from "Fully Convolutional Networks for Semantic Segmentation" with ResNet-50 backbone trained on COCO
     :link: models.html#fcn-resnet50-coco-torch
-    :tags: Segmentation,Coco,PyTorch,Fcn,Resnet
+    :tags: Segmentation,Coco,PyTorch
 
 .. customcarditem::
     :header: googlenet-imagenet-torch
     :description: GoogLeNet (Inception v1) model from "Going Deeper with Convolutions" trained on ImageNet
     :link: models.html#googlenet-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Googlenet
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: inception-resnet-v2-imagenet-tf1
     :description: Inception v2 model from "Rethinking the Inception Architecture for Computer Vision" trained on ImageNet
     :link: models.html#inception-resnet-v2-imagenet-tf1
-    :tags: Classification,Embeddings,Logits,Imagenet,TensorFlow-1,Inception,Resnet
+    :tags: Classification,Embeddings,Logits,Imagenet,TensorFlow-1
 
 .. customcarditem::
     :header: inception-v3-imagenet-torch
     :description: Inception v3 model from "Rethinking the Inception Architecture for Computer Vision" trained on ImageNet
     :link: models.html#inception-v3-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Inception
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: inception-v4-imagenet-tf1
     :description: Inception v4 model from "Inception-v4, Inception-ResNet and the Impact of Residual Connections on Learning" trained on ImageNet
     :link: models.html#inception-v4-imagenet-tf1
-    :tags: Classification,Embeddings,Logits,Imagenet,TensorFlow-1,Inception
+    :tags: Classification,Embeddings,Logits,Imagenet,TensorFlow-1
 
 .. customcarditem::
     :header: keypoint-rcnn-resnet50-fpn-coco-torch
     :description: Keypoint R-CNN model from "Mask R-CNN" with ResNet-50 FPN backbone trained on COCO
     :link: models.html#keypoint-rcnn-resnet50-fpn-coco-torch
-    :tags: Keypoints,Coco,PyTorch,Keypoint-rcnn,Resnet
+    :tags: Keypoints,Coco,PyTorch
 
 .. customcarditem::
     :header: mask-rcnn-inception-resnet-v2-atrous-coco-tf
     :description: Mask R-CNN model from "Mask R-CNN" atrous version with Inception backbone trained on COCO
     :link: models.html#mask-rcnn-inception-resnet-v2-atrous-coco-tf
-    :tags: Instances,Coco,TensorFlow,Mask-rcnn,Inception,Resnet
+    :tags: Instances,Coco,TensorFlow
 
 .. customcarditem::
     :header: mask-rcnn-inception-v2-coco-tf
     :description: Mask R-CNN model from "Mask R-CNN" with Inception backbone trained on COCO
     :link: models.html#mask-rcnn-inception-v2-coco-tf
-    :tags: Instances,Coco,TensorFlow,Mask-rcnn,Inception
+    :tags: Instances,Coco,TensorFlow
 
 .. customcarditem::
     :header: mask-rcnn-resnet101-atrous-coco-tf
     :description: Mask R-CNN model from "Mask R-CNN" atrous version with ResNet-101 backbone trained on COCO
     :link: models.html#mask-rcnn-resnet101-atrous-coco-tf
-    :tags: Instances,Coco,TensorFlow,Mask-rcnn,Resnet
+    :tags: Instances,Coco,TensorFlow
 
 .. customcarditem::
     :header: mask-rcnn-resnet50-atrous-coco-tf
     :description: Mask R-CNN model from "Mask R-CNN" atrous version with ResNet-50 backbone trained on COCO
     :link: models.html#mask-rcnn-resnet50-atrous-coco-tf
-    :tags: Instances,Coco,TensorFlow,Mask-rcnn,Resnet
+    :tags: Instances,Coco,TensorFlow
 
 .. customcarditem::
     :header: mask-rcnn-resnet50-fpn-coco-torch
     :description: Mask R-CNN model from "Mask R-CNN" with ResNet-50 FPN backbone trained on COCO
     :link: models.html#mask-rcnn-resnet50-fpn-coco-torch
-    :tags: Instances,Coco,PyTorch,Mask-rcnn,Resnet
-
-.. customcarditem::
-    :header: med-sam-2-video-torch
-    :description: Fine-tuned SAM2-hiera-tiny model from "Medical SAM 2 - Segment Medical Images as Video via Segment Anything Model 2"
-    :link: models.html#med-sam-2-video-torch
-    :tags: Segment-anything,PyTorch,Zero-shot,Video,Med-sam
+    :tags: Instances,Coco,PyTorch
 
 .. customcarditem::
     :header: mnasnet0.5-imagenet-torch
     :description: MNASNet model from from "MnasNet: Platform-Aware Neural Architecture Search for Mobile" with depth multiplier of 0.5 trained on ImageNet
-    :link: models.html#mnasnet0-5-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Mnasnet
+    :link: models.html#mnasnet0.5-imagenet-torch
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: mnasnet1.0-imagenet-torch
     :description: MNASNet model from "MnasNet: Platform-Aware Neural Architecture Search for Mobile" with depth multiplier of 1.0 trained on ImageNet
-    :link: models.html#mnasnet1-0-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Mnasnet
+    :link: models.html#mnasnet1.0-imagenet-torch
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: mobilenet-v2-imagenet-tf1
     :description: MobileNetV2 model from "MobileNetV2: Inverted Residuals and Linear Bottlenecks" trained on ImageNet
     :link: models.html#mobilenet-v2-imagenet-tf1
-    :tags: Classification,Embeddings,Logits,Imagenet,TensorFlow-1,Mobilenet
+    :tags: Classification,Embeddings,Logits,Imagenet,TensorFlow-1
 
 .. customcarditem::
     :header: mobilenet-v2-imagenet-torch
     :description: MobileNetV2 model from "MobileNetV2: Inverted Residuals and Linear Bottlenecks" trained on ImageNet
     :link: models.html#mobilenet-v2-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Mobilenet
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: open-clip-torch
@@ -434,79 +428,79 @@ for using the Model Zoo.
     :header: resnet-v1-50-imagenet-tf1
     :description: ResNet-50 v1 model from "Deep Residual Learning for Image Recognition" trained on ImageNet
     :link: models.html#resnet-v1-50-imagenet-tf1
-    :tags: Classification,Embeddings,Logits,Imagenet,TensorFlow-1,Resnet
+    :tags: Classification,Embeddings,Logits,Imagenet,TensorFlow-1
 
 .. customcarditem::
     :header: resnet-v2-50-imagenet-tf1
     :description: ResNet-50 v2 model from "Deep Residual Learning for Image Recognition" trained on ImageNet
     :link: models.html#resnet-v2-50-imagenet-tf1
-    :tags: Classification,Embeddings,Logits,Imagenet,TensorFlow-1,Resnet
+    :tags: Classification,Embeddings,Logits,Imagenet,TensorFlow-1
 
 .. customcarditem::
     :header: resnet101-imagenet-torch
     :description: ResNet-101 model from "Deep Residual Learning for Image Recognition" trained on ImageNet
     :link: models.html#resnet101-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Resnet
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: resnet152-imagenet-torch
     :description: ResNet-152 model from "Deep Residual Learning for Image Recognition" trained on ImageNet
     :link: models.html#resnet152-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Resnet
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: resnet18-imagenet-torch
     :description: ResNet-18 model from "Deep Residual Learning for Image Recognition" trained on ImageNet
     :link: models.html#resnet18-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Resnet
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: resnet34-imagenet-torch
     :description: ResNet-34 model from "Deep Residual Learning for Image Recognition" trained on ImageNet
     :link: models.html#resnet34-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Resnet
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: resnet50-imagenet-torch
     :description: ResNet-50 model from "Deep Residual Learning for Image Recognition" trained on ImageNet
     :link: models.html#resnet50-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Resnet
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: resnext101-32x8d-imagenet-torch
     :description: ResNeXt-101 32x8d model from "Aggregated Residual Transformations for Deep Neural Networks" trained on ImageNet
     :link: models.html#resnext101-32x8d-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Resnext
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: resnext50-32x4d-imagenet-torch
     :description: ResNeXt-50 32x4d model from "Aggregated Residual Transformations for Deep Neural Networks" trained on ImageNet
     :link: models.html#resnext50-32x4d-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Resnext
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: retinanet-resnet50-fpn-coco-torch
     :description: RetinaNet model from "Focal Loss for Dense Object Detection" with ResNet-50 FPN backbone trained on COCO
     :link: models.html#retinanet-resnet50-fpn-coco-torch
-    :tags: Detection,Coco,PyTorch,Retinanet,Resnet
+    :tags: Detection,Coco,PyTorch
 
 .. customcarditem::
     :header: rfcn-resnet101-coco-tf
     :description: R-FCN object detection model from "R-FCN: Object Detection via Region-based Fully Convolutional Networks" with ResNet-101 backbone trained on COCO
     :link: models.html#rfcn-resnet101-coco-tf
-    :tags: Detection,Coco,TensorFlow,Rfcn,Resnet
+    :tags: Detection,Coco,TensorFlow
 
 .. customcarditem::
     :header: rtdetr-l-coco-torch
     :description: RT-DETR-l model trained on COCO
     :link: models.html#rtdetr-l-coco-torch
-    :tags: Detection,Coco,PyTorch,Transformer,Rtdetr
+    :tags: Detection,Coco,PyTorch,Transformer
 
 .. customcarditem::
     :header: rtdetr-x-coco-torch
     :description: RT-DETR-x model trained on COCO
     :link: models.html#rtdetr-x-coco-torch
-    :tags: Detection,Coco,PyTorch,Transformer,Rtdetr
+    :tags: Detection,Coco,PyTorch,Transformer
 
 .. customcarditem::
     :header: segment-anything-2-hiera-base-plus-image-torch
@@ -557,54 +551,6 @@ for using the Model Zoo.
     :tags: Segment-anything,PyTorch,Zero-shot,Video
 
 .. customcarditem::
-    :header: segment-anything-2.1-hiera-base-plus-image-torch
-    :description: Segment Anything Model 2 (SAM2) from "SAM2: Segment Anything in Images and Videos"
-    :link: models.html#segment-anything-2-1-hiera-base-plus-image-torch
-    :tags: Segment-anything,PyTorch,Zero-shot
-
-.. customcarditem::
-    :header: segment-anything-2.1-hiera-base-plus-video-torch
-    :description: Segment Anything Model 2 (SAM2) from "SAM2: Segment Anything in Images and Videos"
-    :link: models.html#segment-anything-2-1-hiera-base-plus-video-torch
-    :tags: Segment-anything,PyTorch,Zero-shot,Video
-
-.. customcarditem::
-    :header: segment-anything-2.1-hiera-large-image-torch
-    :description: Segment Anything Model 2 (SAM2) from "SAM2: Segment Anything in Images and Videos"
-    :link: models.html#segment-anything-2-1-hiera-large-image-torch
-    :tags: Segment-anything,PyTorch,Zero-shot
-
-.. customcarditem::
-    :header: segment-anything-2.1-hiera-large-video-torch
-    :description: Segment Anything Model 2 (SAM2) from "SAM2: Segment Anything in Images and Videos"
-    :link: models.html#segment-anything-2-1-hiera-large-video-torch
-    :tags: Segment-anything,PyTorch,Zero-shot,Video
-
-.. customcarditem::
-    :header: segment-anything-2.1-hiera-small-image-torch
-    :description: Segment Anything Model 2 (SAM2) from "SAM2: Segment Anything in Images and Videos"
-    :link: models.html#segment-anything-2-1-hiera-small-image-torch
-    :tags: Segment-anything,PyTorch,Zero-shot
-
-.. customcarditem::
-    :header: segment-anything-2.1-hiera-small-video-torch
-    :description: Segment Anything Model 2 (SAM2) from "SAM2: Segment Anything in Images and Videos"
-    :link: models.html#segment-anything-2-1-hiera-small-video-torch
-    :tags: Segment-anything,PyTorch,Zero-shot,Video
-
-.. customcarditem::
-    :header: segment-anything-2.1-hiera-tiny-image-torch
-    :description: Segment Anything Model 2 (SAM2) from "SAM2: Segment Anything in Images and Videos"
-    :link: models.html#segment-anything-2-1-hiera-tiny-image-torch
-    :tags: Segment-anything,PyTorch,Zero-shot
-
-.. customcarditem::
-    :header: segment-anything-2.1-hiera-tiny-video-torch
-    :description: Segment Anything Model 2 (SAM2) from "SAM2: Segment Anything in Images and Videos"
-    :link: models.html#segment-anything-2-1-hiera-tiny-video-torch
-    :tags: Segment-anything,PyTorch,Zero-shot,Video
-
-.. customcarditem::
     :header: segment-anything-vitb-torch
     :description: Segment Anything Model (SAM) from "Segment Anything" with ViT-B/16 backbone trained on SA-1B
     :link: models.html#segment-anything-vitb-torch
@@ -631,200 +577,140 @@ for using the Model Zoo.
 .. customcarditem::
     :header: shufflenetv2-0.5x-imagenet-torch
     :description: ShuffleNetV2 model from "ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" with 0.5x output channels trained on ImageNet
-    :link: models.html#shufflenetv2-0-5x-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Shufflenet
+    :link: models.html#shufflenetv2-0.5x-imagenet-torch
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: shufflenetv2-1.0x-imagenet-torch
     :description: ShuffleNetV2 model from "ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" with 1.0x output channels trained on ImageNet
-    :link: models.html#shufflenetv2-1-0x-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Shufflenet
+    :link: models.html#shufflenetv2-1.0x-imagenet-torch
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: squeezenet-1.1-imagenet-torch
     :description: SqueezeNet 1.1 model from "the official SqueezeNet repo" trained on ImageNet
-    :link: models.html#squeezenet-1-1-imagenet-torch
-    :tags: Classification,Imagenet,PyTorch,Squeezenet
+    :link: models.html#squeezenet-1.1-imagenet-torch
+    :tags: Classification,Imagenet,PyTorch
 
 .. customcarditem::
     :header: squeezenet-imagenet-torch
     :description: SqueezeNet model from "SqueezeNet: AlexNet-level accuracy with 50x fewer parameters and" trained on ImageNet
     :link: models.html#squeezenet-imagenet-torch
-    :tags: Classification,Imagenet,PyTorch,Squeezenet
+    :tags: Classification,Imagenet,PyTorch
 
 .. customcarditem::
     :header: ssd-inception-v2-coco-tf
     :description: Inception Single Shot Detector model from "SSD: Single Shot MultiBox Detector" trained on COCO
     :link: models.html#ssd-inception-v2-coco-tf
-    :tags: Detection,Coco,TensorFlow,Ssd,Inception
+    :tags: Detection,Coco,TensorFlow
 
 .. customcarditem::
     :header: ssd-mobilenet-v1-coco-tf
     :description: Single Shot Detector model from "SSD: Single Shot MultiBox Detector" with MobileNetV1 backbone trained on COCO
     :link: models.html#ssd-mobilenet-v1-coco-tf
-    :tags: Detection,Coco,TensorFlow,Ssd,Mobilenet
+    :tags: Detection,Coco,TensorFlow
 
 .. customcarditem::
     :header: ssd-mobilenet-v1-fpn-640-coco17
     :description: MobileNetV1 model from "MobileNetV2: Inverted Residuals and Linear Bottlenecks" resized to 640x640
     :link: models.html#ssd-mobilenet-v1-fpn-640-coco17
-    :tags: Detection,Coco,TensorFlow-2,Ssd,Mobilenet
+    :tags: Detection,Coco,TensorFlow-2
 
 .. customcarditem::
     :header: ssd-mobilenet-v1-fpn-coco-tf
     :description: FPN Single Shot Detector model from "SSD: Single Shot MultiBox Detector" with MobileNetV1 backbone trained on COCO
     :link: models.html#ssd-mobilenet-v1-fpn-coco-tf
-    :tags: Detection,Coco,TensorFlow,Ssd,Mobilenet
+    :tags: Detection,Coco,TensorFlow
 
 .. customcarditem::
     :header: ssd-mobilenet-v2-320-coco17
     :description: MobileNetV2 model from "MobileNetV2: Inverted Residuals and Linear Bottlenecks" resized to 320x320
     :link: models.html#ssd-mobilenet-v2-320-coco17
-    :tags: Detection,Coco,TensorFlow-2,Ssd,Mobilenet
+    :tags: Detection,Coco,TensorFlow-2
 
 .. customcarditem::
     :header: ssd-resnet50-fpn-coco-tf
     :description: FPN Single Shot Detector model from "SSD: Single Shot MultiBox Detector" with ResNet-50 backbone trained on COCO
     :link: models.html#ssd-resnet50-fpn-coco-tf
-    :tags: Detection,Coco,TensorFlow,Ssd,Resnet
+    :tags: Detection,Coco,TensorFlow
 
 .. customcarditem::
     :header: vgg11-bn-imagenet-torch
     :description: VGG-11 model from "Very Deep Convolutional Networks for Large-Scale Image Recognition" with batch normalization trained on ImageNet
     :link: models.html#vgg11-bn-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Vgg
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: vgg11-imagenet-torch
     :description: VGG-11 model from "Very Deep Convolutional Networks for Large-Scale Image Recognition" trained on ImageNet
     :link: models.html#vgg11-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Vgg
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: vgg13-bn-imagenet-torch
     :description: VGG-13 model from "Very Deep Convolutional Networks for Large-Scale Image Recognition" with batch normalization trained on ImageNet
     :link: models.html#vgg13-bn-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Vgg
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: vgg13-imagenet-torch
     :description: VGG-13 model from "Very Deep Convolutional Networks for Large-Scale Image Recognition" trained on ImageNet
     :link: models.html#vgg13-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Vgg
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: vgg16-bn-imagenet-torch
     :description: VGG-16 model from "Very Deep Convolutional Networks for Large-Scale Image Recognition" with batch normalization trained on ImageNet
     :link: models.html#vgg16-bn-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Vgg
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: vgg16-imagenet-tf1
     :description: VGG-16 model from "Very Deep Convolutional Networks for Large-Scale Image Recognition" trained on ImageNet
     :link: models.html#vgg16-imagenet-tf1
-    :tags: Classification,Embeddings,Logits,Imagenet,TensorFlow-1,Vgg
+    :tags: Classification,Embeddings,Logits,Imagenet,TensorFlow-1
 
 .. customcarditem::
     :header: vgg16-imagenet-torch
     :description: VGG-16 model from "Very Deep Convolutional Networks for Large-Scale Image Recognition" trained on ImageNet
     :link: models.html#vgg16-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Vgg
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: vgg19-bn-imagenet-torch
     :description: VGG-19 model from "Very Deep Convolutional Networks for Large-Scale Image Recognition" with batch normalization trained on ImageNet
     :link: models.html#vgg19-bn-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Vgg
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: vgg19-imagenet-torch
     :description: VGG-19 model from "Very Deep Convolutional Networks for Large-Scale Image Recognition" trained on ImageNet
     :link: models.html#vgg19-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Vgg
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: wide-resnet101-2-imagenet-torch
     :description: Wide ResNet-101-2 model from "Wide Residual Networks" trained on ImageNet
     :link: models.html#wide-resnet101-2-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Wide-resnet
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: wide-resnet50-2-imagenet-torch
     :description: Wide ResNet-50-2 model from "Wide Residual Networks" trained on ImageNet
     :link: models.html#wide-resnet50-2-imagenet-torch
-    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch,Wide-resnet
+    :tags: Classification,Embeddings,Logits,Imagenet,PyTorch
 
 .. customcarditem::
     :header: yolo-nas-torch
     :description: YOLO-NAS is an open-source training library for advanced computer vision models. It specializes in accuracy and efficiency, supporting tasks like object detection
     :link: models.html#yolo-nas-torch
-    :tags: Detection,PyTorch,Yolo
+    :tags: Classification,PyTorch,Yolo
 
 .. customcarditem::
     :header: yolo-v2-coco-tf1
     :description: YOLOv2 model from "YOLO9000: Better, Faster, Stronger" trained on COCO
     :link: models.html#yolo-v2-coco-tf1
-    :tags: Detection,Coco,TensorFlow-1,Yolo
-
-.. customcarditem::
-    :header: yolo11l-coco-torch
-    :description: YOLO11-L model trained on COCO
-    :link: models.html#yolo11l-coco-torch
-    :tags: Detection,Coco,PyTorch,Yolo
-
-.. customcarditem::
-    :header: yolo11l-seg-coco-torch
-    :description: YOLO11-L Segmentation model trained on COCO
-    :link: models.html#yolo11l-seg-coco-torch
-    :tags: Segmentation,Coco,PyTorch,Yolo
-
-.. customcarditem::
-    :header: yolo11m-coco-torch
-    :description: YOLO11-M model trained on COCO
-    :link: models.html#yolo11m-coco-torch
-    :tags: Detection,Coco,PyTorch,Yolo
-
-.. customcarditem::
-    :header: yolo11m-seg-coco-torch
-    :description: YOLO11-M Segmentation model trained on COCO
-    :link: models.html#yolo11m-seg-coco-torch
-    :tags: Segmentation,Coco,PyTorch,Yolo
-
-.. customcarditem::
-    :header: yolo11n-coco-torch
-    :description: YOLO11-N model trained on COCO
-    :link: models.html#yolo11n-coco-torch
-    :tags: Detection,Coco,PyTorch,Yolo
-
-.. customcarditem::
-    :header: yolo11n-seg-coco-torch
-    :description: YOLO11-N Segmentation model trained on COCO
-    :link: models.html#yolo11n-seg-coco-torch
-    :tags: Segmentation,Coco,PyTorch,Yolo
-
-.. customcarditem::
-    :header: yolo11s-coco-torch
-    :description: YOLO11-S model trained on COCO
-    :link: models.html#yolo11s-coco-torch
-    :tags: Detection,Coco,PyTorch,Yolo
-
-.. customcarditem::
-    :header: yolo11s-seg-coco-torch
-    :description: YOLO11-S Segmentation model trained on COCO
-    :link: models.html#yolo11s-seg-coco-torch
-    :tags: Segmentation,Coco,PyTorch,Yolo
-
-.. customcarditem::
-    :header: yolo11x-coco-torch
-    :description: YOLO11-X model trained on COCO
-    :link: models.html#yolo11x-coco-torch
-    :tags: Detection,Coco,PyTorch,Yolo
-
-.. customcarditem::
-    :header: yolo11x-seg-coco-torch
-    :description: YOLO11-X Segmentation model trained on COCO
-    :link: models.html#yolo11x-seg-coco-torch
-    :tags: Segmentation,Coco,PyTorch,Yolo
+    :tags: Detection,Coco,TensorFlow-1
 
 .. customcarditem::
     :header: yolov10l-coco-torch
@@ -1095,7 +981,7 @@ AlexNet model architecture from `One weird trick for parallelizing convolutional
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 233.10 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, alexnet``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -1258,7 +1144,7 @@ DeepLabV3 model from `Rethinking Atrous Convolution for Semantic Image Segmentat
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 233.22 MB
 -   Exposes embeddings? no
--   Tags: ``segmentation, coco, torch, resnet, deeplabv3``
+-   Tags: ``segmentation, coco, torch``
 
 **Requirements**
 
@@ -1309,7 +1195,7 @@ DeepLabV3 model from `Rethinking Atrous Convolution for Semantic Image Segmentat
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 160.51 MB
 -   Exposes embeddings? no
--   Tags: ``segmentation, coco, torch, resnet, deeplabv3``
+-   Tags: ``segmentation, coco, torch``
 
 **Requirements**
 
@@ -1360,7 +1246,7 @@ Densenet-121 model from `Densely Connected Convolutional Networks <https://arxiv
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 30.84 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, densenet``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -1410,7 +1296,7 @@ Densenet-161 model from `Densely Connected Convolutional Networks <https://arxiv
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 110.37 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, densenet``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -1460,7 +1346,7 @@ Densenet-169 model from `Densely Connected Convolutional Networks <https://arxiv
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 54.71 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, densenet``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -1510,7 +1396,7 @@ Densenet-201 model from `Densely Connected Convolutional Networks <https://arxiv
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 77.37 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, densenet``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -1660,7 +1546,7 @@ DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-B/14 dis
 -   Model source: https://github.com/facebookresearch/dinov2
 -   Model size: 330.33 MB
 -   Exposes embeddings? yes
--   Tags: ``embeddings, torch, dinov2``
+-   Tags: ``embeddings, torch``
 
 **Requirements**
 
@@ -1709,7 +1595,7 @@ DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-g/14.
 -   Model source: https://github.com/facebookresearch/dinov2
 -   Model size: 4.23 GB
 -   Exposes embeddings? yes
--   Tags: ``embeddings, torch, dinov2``
+-   Tags: ``embeddings, torch``
 
 **Requirements**
 
@@ -1758,7 +1644,7 @@ DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-L/14 dis
 -   Model source: https://github.com/facebookresearch/dinov2
 -   Model size: 1.13 GB
 -   Exposes embeddings? yes
--   Tags: ``embeddings, torch, dinov2``
+-   Tags: ``embeddings, torch``
 
 **Requirements**
 
@@ -1807,7 +1693,7 @@ DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-S/14 dis
 -   Model source: https://github.com/facebookresearch/dinov2
 -   Model size: 84.19 MB
 -   Exposes embeddings? yes
--   Tags: ``embeddings, torch, dinov2``
+-   Tags: ``embeddings, torch``
 
 **Requirements**
 
@@ -1856,7 +1742,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 159.74 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, torch, faster-rcnn, resnet``
+-   Tags: ``detection, coco, torch``
 
 **Requirements**
 
@@ -1907,7 +1793,7 @@ FCN model from `Fully Convolutional Networks for Semantic Segmentation <https://
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 207.71 MB
 -   Exposes embeddings? no
--   Tags: ``segmentation, coco, torch, fcn, resnet``
+-   Tags: ``segmentation, coco, torch``
 
 **Requirements**
 
@@ -1958,7 +1844,7 @@ FCN model from `Fully Convolutional Networks for Semantic Segmentation <https://
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 135.01 MB
 -   Exposes embeddings? no
--   Tags: ``segmentation, coco, torch, fcn, resnet``
+-   Tags: ``segmentation, coco, torch``
 
 **Requirements**
 
@@ -2009,7 +1895,7 @@ GoogLeNet (Inception v1) model from `Going Deeper with Convolutions <https://arx
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 49.73 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, googlenet``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -2059,7 +1945,7 @@ Inception v3 model from `Rethinking the Inception Architecture for Computer Visi
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 103.81 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, inception``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -2109,7 +1995,7 @@ Keypoint R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with 
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 226.05 MB
 -   Exposes embeddings? no
--   Tags: ``keypoints, coco, torch, keypoint-rcnn, resnet``
+-   Tags: ``keypoints, coco, torch``
 
 **Requirements**
 
@@ -2160,7 +2046,7 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with ResN
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 169.84 MB
 -   Exposes embeddings? no
--   Tags: ``instances, coco, torch, mask-rcnn, resnet``
+-   Tags: ``instances, coco, torch``
 
 **Requirements**
 
@@ -2198,67 +2084,6 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with ResN
 
 
 
-.. _model-zoo-med-sam-2-video-torch:
-
-med-sam-2-video-torch
-_____________________
-
-Fine-tuned SAM2-hiera-tiny model from `Medical SAM 2 - Segment Medical Images as Video via Segment Anything Model 2 <https://arxiv.org/abs/2408.00874>`_.
-
-**Details**
-
--   Model name: ``med-sam-2-video-torch``
--   Model source: https://github.com/MedicineToken/Medical-SAM2
--   Model size: 148.68 MB
--   Exposes embeddings? no
--   Tags: ``segment-anything, torch, zero-shot, video, med-SAM``
-
-**Requirements**
-
--   Packages: ``torch, torchvision``
-
--   CPU support
-
-    -   yes
-
--   GPU support
-
-    -   yes
-
-**Example usage**
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-    from fiftyone import ViewField as F
-    from fiftyone.utils.huggingface import load_from_hub
-
-    dataset = load_from_hub("Voxel51/BTCV-CT-as-video-MedSAM2-dataset")[:2]
-
-    # Retaining detections from a single frame in the middle
-    # Note that SAM2 only propagates segmentation masks forward in a video
-    (
-        dataset
-        .match_frames(F("frame_number") != 100)
-        .set_field("frames.gt_detections", None)
-        .save()
-    )
-
-    model = foz.load_zoo_model("med-sam-2-video-torch")
-
-    # Segment inside boxes and propagate to all frames
-    dataset.apply_model(
-        model,
-        label_field="pred_segmentations",
-        prompt_field="frames.gt_detections",
-    )
-
-    session = fo.launch_app(dataset)
-
-
-
 .. _model-zoo-mnasnet0.5-imagenet-torch:
 
 mnasnet0.5-imagenet-torch
@@ -2272,7 +2097,7 @@ MNASNet model from from `MnasNet: Platform-Aware Neural Architecture Search for 
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 8.59 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, mnasnet``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -2322,7 +2147,7 @@ MNASNet model from `MnasNet: Platform-Aware Neural Architecture Search for Mobil
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 16.92 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, mnasnet``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -2372,7 +2197,7 @@ MobileNetV2 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 13.55 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, mobilenet``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -2484,7 +2309,7 @@ ResNet-101 model from `Deep Residual Learning for Image Recognition <https://arx
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 170.45 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, resnet``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -2534,7 +2359,7 @@ ResNet-152 model from `Deep Residual Learning for Image Recognition <https://arx
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 230.34 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, resnet``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -2584,7 +2409,7 @@ ResNet-18 model from `Deep Residual Learning for Image Recognition <https://arxi
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 44.66 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, resnet``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -2634,7 +2459,7 @@ ResNet-34 model from `Deep Residual Learning for Image Recognition <https://arxi
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 83.26 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, resnet``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -2684,7 +2509,7 @@ ResNet-50 model from `Deep Residual Learning for Image Recognition <https://arxi
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 97.75 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, resnet``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -2734,7 +2559,7 @@ ResNeXt-101 32x8d model from `Aggregated Residual Transformations for Deep Neura
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 339.59 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, resnext``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -2784,7 +2609,7 @@ ResNeXt-50 32x4d model from `Aggregated Residual Transformations for Deep Neural
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 95.79 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, resnext``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -2834,7 +2659,7 @@ RetinaNet model from `Focal Loss for Dense Object Detection <https://arxiv.org/a
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 130.27 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, torch, retinanet, resnet``
+-   Tags: ``detection, coco, torch``
 
 **Requirements**
 
@@ -2885,7 +2710,7 @@ RT-DETR-l model trained on COCO.
 -   Model source: https://docs.ultralytics.com/models/rtdetr/
 -   Model size: 63.43 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, torch, transformer, rtdetr``
+-   Tags: ``detection, coco, torch, transformer``
 
 **Requirements**
 
@@ -2936,7 +2761,7 @@ RT-DETR-x model trained on COCO.
 -   Model source: https://docs.ultralytics.com/models/rtdetr/
 -   Model size: 129.47 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, torch, transformer, rtdetr``
+-   Tags: ``detection, coco, torch, transformer``
 
 **Requirements**
 
@@ -3446,478 +3271,6 @@ Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Video
 
 
 
-.. _model-zoo-segment-anything-2.1-hiera-base-plus-image-torch:
-
-segment-anything-2.1-hiera-base-plus-image-torch
-________________________________________________
-
-Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_.
-
-**Details**
-
--   Model name: ``segment-anything-2.1-hiera-base-plus-image-torch``
--   Model source: https://ai.meta.com/sam2/
--   Model size: 148.68 MB
--   Exposes embeddings? no
--   Tags: ``segment-anything, torch, zero-shot``
-
-**Requirements**
-
--   Packages: ``torch, torchvision``
-
--   CPU support
-
-    -   yes
-
--   GPU support
-
-    -   yes
-
-**Example usage**
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset(
-        "coco-2017",
-        split="validation",
-        dataset_name=fo.get_default_dataset_name(),
-        max_samples=50,
-        shuffle=True,
-    )
-
-    model = foz.load_zoo_model("segment-anything-2.1-hiera-base-plus-image-torch")
-
-    # Segment inside boxes
-    dataset.apply_model(
-        model,
-        label_field="segmentations",
-        prompt_field="ground_truth",  # can contain Detections or Keypoints
-    )
-
-    # Full automatic segmentations
-    dataset.apply_model(model, label_field="auto")
-
-    session = fo.launch_app(dataset)
-
-
-
-.. _model-zoo-segment-anything-2.1-hiera-base-plus-video-torch:
-
-segment-anything-2.1-hiera-base-plus-video-torch
-________________________________________________
-
-Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_.
-
-**Details**
-
--   Model name: ``segment-anything-2.1-hiera-base-plus-video-torch``
--   Model source: https://ai.meta.com/sam2/
--   Model size: 148.68 MB
--   Exposes embeddings? no
--   Tags: ``segment-anything, torch, zero-shot, video``
-
-**Requirements**
-
--   Packages: ``torch, torchvision``
-
--   CPU support
-
-    -   yes
-
--   GPU support
-
-    -   yes
-
-**Example usage**
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-    from fiftyone import ViewField as F
-
-    dataset = foz.load_zoo_dataset("quickstart-video", max_samples=2)
-
-    # Only retain detections in the first frame
-    (
-        dataset
-        .match_frames(F("frame_number") > 1)
-        .set_field("frames.detections", None)
-        .save()
-    )
-
-    model = foz.load_zoo_model("segment-anything-2.1-hiera-base-plus-video-torch")
-
-    # Segment inside boxes and propagate to all frames
-    dataset.apply_model(
-        model,
-        label_field="segmentations",
-        prompt_field="frames.detections",  # can contain Detections or Keypoints
-    )
-
-    session = fo.launch_app(dataset)
-
-
-
-.. _model-zoo-segment-anything-2.1-hiera-large-image-torch:
-
-segment-anything-2.1-hiera-large-image-torch
-____________________________________________
-
-Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_.
-
-**Details**
-
--   Model name: ``segment-anything-2.1-hiera-large-image-torch``
--   Model source: https://ai.meta.com/sam2/
--   Model size: 148.68 MB
--   Exposes embeddings? no
--   Tags: ``segment-anything, torch, zero-shot``
-
-**Requirements**
-
--   Packages: ``torch, torchvision``
-
--   CPU support
-
-    -   yes
-
--   GPU support
-
-    -   yes
-
-**Example usage**
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset(
-        "coco-2017",
-        split="validation",
-        dataset_name=fo.get_default_dataset_name(),
-        max_samples=50,
-        shuffle=True,
-    )
-
-    model = foz.load_zoo_model("segment-anything-2.1-hiera-large-image-torch")
-
-    # Segment inside boxes
-    dataset.apply_model(
-        model,
-        label_field="segmentations",
-        prompt_field="ground_truth",  # can contain Detections or Keypoints
-    )
-
-    # Full automatic segmentations
-    dataset.apply_model(model, label_field="auto")
-
-    session = fo.launch_app(dataset)
-
-
-
-.. _model-zoo-segment-anything-2.1-hiera-large-video-torch:
-
-segment-anything-2.1-hiera-large-video-torch
-____________________________________________
-
-Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_.
-
-**Details**
-
--   Model name: ``segment-anything-2.1-hiera-large-video-torch``
--   Model source: https://ai.meta.com/sam2/
--   Model size: 148.68 MB
--   Exposes embeddings? no
--   Tags: ``segment-anything, torch, zero-shot, video``
-
-**Requirements**
-
--   Packages: ``torch, torchvision``
-
--   CPU support
-
-    -   yes
-
--   GPU support
-
-    -   yes
-
-**Example usage**
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-    from fiftyone import ViewField as F
-
-    dataset = foz.load_zoo_dataset("quickstart-video", max_samples=2)
-
-    # Only retain detections in the first frame
-    (
-        dataset
-        .match_frames(F("frame_number") > 1)
-        .set_field("frames.detections", None)
-        .save()
-    )
-
-    model = foz.load_zoo_model("segment-anything-2.1-hiera-large-video-torch")
-
-    # Segment inside boxes and propagate to all frames
-    dataset.apply_model(
-        model,
-        label_field="segmentations",
-        prompt_field="frames.detections",  # can contain Detections or Keypoints
-    )
-
-    session = fo.launch_app(dataset)
-
-
-
-.. _model-zoo-segment-anything-2.1-hiera-small-image-torch:
-
-segment-anything-2.1-hiera-small-image-torch
-____________________________________________
-
-Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_.
-
-**Details**
-
--   Model name: ``segment-anything-2.1-hiera-small-image-torch``
--   Model source: https://ai.meta.com/sam2/
--   Model size: 148.68 MB
--   Exposes embeddings? no
--   Tags: ``segment-anything, torch, zero-shot``
-
-**Requirements**
-
--   Packages: ``torch, torchvision``
-
--   CPU support
-
-    -   yes
-
--   GPU support
-
-    -   yes
-
-**Example usage**
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset(
-        "coco-2017",
-        split="validation",
-        dataset_name=fo.get_default_dataset_name(),
-        max_samples=50,
-        shuffle=True,
-    )
-
-    model = foz.load_zoo_model("segment-anything-2.1-hiera-small-image-torch")
-
-    # Segment inside boxes
-    dataset.apply_model(
-        model,
-        label_field="segmentations",
-        prompt_field="ground_truth",  # can contain Detections or Keypoints
-    )
-
-    # Full automatic segmentations
-    dataset.apply_model(model, label_field="auto")
-
-    session = fo.launch_app(dataset)
-
-
-
-.. _model-zoo-segment-anything-2.1-hiera-small-video-torch:
-
-segment-anything-2.1-hiera-small-video-torch
-____________________________________________
-
-Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_.
-
-**Details**
-
--   Model name: ``segment-anything-2.1-hiera-small-video-torch``
--   Model source: https://ai.meta.com/sam2/
--   Model size: 148.68 MB
--   Exposes embeddings? no
--   Tags: ``segment-anything, torch, zero-shot, video``
-
-**Requirements**
-
--   Packages: ``torch, torchvision``
-
--   CPU support
-
-    -   yes
-
--   GPU support
-
-    -   yes
-
-**Example usage**
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-    from fiftyone import ViewField as F
-
-    dataset = foz.load_zoo_dataset("quickstart-video", max_samples=2)
-
-    # Only retain detections in the first frame
-    (
-        dataset
-        .match_frames(F("frame_number") > 1)
-        .set_field("frames.detections", None)
-        .save()
-    )
-
-    model = foz.load_zoo_model("segment-anything-2.1-hiera-small-video-torch")
-
-    # Segment inside boxes and propagate to all frames
-    dataset.apply_model(
-        model,
-        label_field="segmentations",
-        prompt_field="frames.detections",  # can contain Detections or Keypoints
-    )
-
-    session = fo.launch_app(dataset)
-
-
-
-.. _model-zoo-segment-anything-2.1-hiera-tiny-image-torch:
-
-segment-anything-2.1-hiera-tiny-image-torch
-___________________________________________
-
-Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_.
-
-**Details**
-
--   Model name: ``segment-anything-2.1-hiera-tiny-image-torch``
--   Model source: https://ai.meta.com/sam2/
--   Model size: 148.68 MB
--   Exposes embeddings? no
--   Tags: ``segment-anything, torch, zero-shot``
-
-**Requirements**
-
--   Packages: ``torch, torchvision``
-
--   CPU support
-
-    -   yes
-
--   GPU support
-
-    -   yes
-
-**Example usage**
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset(
-        "coco-2017",
-        split="validation",
-        dataset_name=fo.get_default_dataset_name(),
-        max_samples=50,
-        shuffle=True,
-    )
-
-    model = foz.load_zoo_model("segment-anything-2.1-hiera-tiny-image-torch")
-
-    # Segment inside boxes
-    dataset.apply_model(
-        model,
-        label_field="segmentations",
-        prompt_field="ground_truth",  # can contain Detections or Keypoints
-    )
-
-    # Full automatic segmentations
-    dataset.apply_model(model, label_field="auto")
-
-    session = fo.launch_app(dataset)
-
-
-
-.. _model-zoo-segment-anything-2.1-hiera-tiny-video-torch:
-
-segment-anything-2.1-hiera-tiny-video-torch
-___________________________________________
-
-Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_.
-
-**Details**
-
--   Model name: ``segment-anything-2.1-hiera-tiny-video-torch``
--   Model source: https://ai.meta.com/sam2/
--   Model size: 148.68 MB
--   Exposes embeddings? no
--   Tags: ``segment-anything, torch, zero-shot, video``
-
-**Requirements**
-
--   Packages: ``torch, torchvision``
-
--   CPU support
-
-    -   yes
-
--   GPU support
-
-    -   yes
-
-**Example usage**
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-    from fiftyone import ViewField as F
-
-    dataset = foz.load_zoo_dataset("quickstart-video", max_samples=2)
-
-    # Only retain detections in the first frame
-    (
-        dataset
-        .match_frames(F("frame_number") > 1)
-        .set_field("frames.detections", None)
-        .save()
-    )
-
-    model = foz.load_zoo_model("segment-anything-2.1-hiera-tiny-video-torch")
-
-    # Segment inside boxes and propagate to all frames
-    dataset.apply_model(
-        model,
-        label_field="segmentations",
-        prompt_field="frames.detections",  # can contain Detections or Keypoints
-    )
-
-    session = fo.launch_app(dataset)
-
-
-
 .. _model-zoo-segment-anything-vitb-torch:
 
 segment-anything-vitb-torch
@@ -4158,7 +3511,7 @@ ShuffleNetV2 model from `ShuffleNet V2: Practical Guidelines for Efficient CNN A
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 5.28 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, shufflenet``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -4208,7 +3561,7 @@ ShuffleNetV2 model from `ShuffleNet V2: Practical Guidelines for Efficient CNN A
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 8.79 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, shufflenet``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -4258,7 +3611,7 @@ SqueezeNet 1.1 model from `the official SqueezeNet repo <https://github.com/forr
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 4.74 MB
 -   Exposes embeddings? no
--   Tags: ``classification, imagenet, torch, squeezenet``
+-   Tags: ``classification, imagenet, torch``
 
 **Requirements**
 
@@ -4308,7 +3661,7 @@ SqueezeNet model from `SqueezeNet: AlexNet-level accuracy with 50x fewer paramet
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 4.79 MB
 -   Exposes embeddings? no
--   Tags: ``classification, imagenet, torch, squeezenet``
+-   Tags: ``classification, imagenet, torch``
 
 **Requirements**
 
@@ -4358,7 +3711,7 @@ VGG-11 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 506.88 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, vgg``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -4408,7 +3761,7 @@ VGG-11 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 506.84 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, vgg``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -4458,7 +3811,7 @@ VGG-13 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 507.59 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, vgg``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -4508,7 +3861,7 @@ VGG-13 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 507.54 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, vgg``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -4558,7 +3911,7 @@ VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 527.87 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, vgg``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -4608,7 +3961,7 @@ VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 527.80 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, vgg``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -4658,7 +4011,7 @@ VGG-19 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 548.14 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, vgg``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -4708,7 +4061,7 @@ VGG-19 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 548.05 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, vgg``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -4758,7 +4111,7 @@ Wide ResNet-101-2 model from `Wide Residual Networks <https://arxiv.org/abs/1605
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 242.90 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, wide-resnet``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -4808,7 +4161,7 @@ Wide ResNet-50-2 model from `Wide Residual Networks <https://arxiv.org/abs/1605.
 -   Model source: https://pytorch.org/vision/main/models.html
 -   Model size: 131.82 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, torch, wide-resnet``
+-   Tags: ``classification, embeddings, logits, imagenet, torch``
 
 **Requirements**
 
@@ -4857,7 +4210,7 @@ YOLO-NAS is an open-source training library for advanced computer vision models.
 -   Model name: ``yolo-nas-torch``
 -   Model source: https://github.com/Deci-AI/super-gradients
 -   Exposes embeddings? no
--   Tags: ``detection, torch, yolo``
+-   Tags: ``classification, torch, yolo``
 
 **Requirements**
 
@@ -4888,516 +4241,6 @@ YOLO-NAS is an open-source training library for advanced computer vision models.
     )
 
     model = foz.load_zoo_model("yolo-nas-torch")
-
-    dataset.apply_model(model, label_field="predictions")
-
-    session = fo.launch_app(dataset)
-
-
-
-.. _model-zoo-yolo11l-coco-torch:
-
-yolo11l-coco-torch
-__________________
-
-YOLO11-L model trained on COCO.
-
-**Details**
-
--   Model name: ``yolo11l-coco-torch``
--   Model source: https://docs.ultralytics.com/models/yolov11/
--   Model size: 49.01 MB
--   Exposes embeddings? no
--   Tags: ``detection, coco, torch, yolo``
-
-**Requirements**
-
--   Packages: ``torch>=1.7.0, torchvision>=0.8.1, ultralytics>=8.3.0``
-
--   CPU support
-
-    -   yes
-
--   GPU support
-
-    -   yes
-
-**Example usage**
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset(
-        "coco-2017",
-        split="validation",
-        dataset_name=fo.get_default_dataset_name(),
-        max_samples=50,
-        shuffle=True,
-    )
-
-    model = foz.load_zoo_model("yolo11l-coco-torch")
-
-    dataset.apply_model(model, label_field="predictions")
-
-    session = fo.launch_app(dataset)
-
-
-
-.. _model-zoo-yolo11l-seg-coco-torch:
-
-yolo11l-seg-coco-torch
-______________________
-
-YOLO11-L Segmentation model trained on COCO.
-
-**Details**
-
--   Model name: ``yolo11l-seg-coco-torch``
--   Model source: https://docs.ultralytics.com/models/yolo11/#__tabbed_1_2
--   Model size: 53.50 MB
--   Exposes embeddings? no
--   Tags: ``segmentation, coco, torch, yolo``
-
-**Requirements**
-
--   Packages: ``torch>=1.7.0, torchvision>=0.8.1, ultralytics>=8.3.0``
-
--   CPU support
-
-    -   yes
-
--   GPU support
-
-    -   yes
-
-**Example usage**
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset(
-        "coco-2017",
-        split="validation",
-        dataset_name=fo.get_default_dataset_name(),
-        max_samples=50,
-        shuffle=True,
-    )
-
-    model = foz.load_zoo_model("yolo11l-seg-coco-torch")
-
-    dataset.apply_model(model, label_field="predictions")
-
-    session = fo.launch_app(dataset)
-
-
-
-.. _model-zoo-yolo11m-coco-torch:
-
-yolo11m-coco-torch
-__________________
-
-YOLO11-M model trained on COCO.
-
-**Details**
-
--   Model name: ``yolo11m-coco-torch``
--   Model source: https://docs.ultralytics.com/models/yolov11/
--   Model size: 38.80 MB
--   Exposes embeddings? no
--   Tags: ``detection, coco, torch, yolo``
-
-**Requirements**
-
--   Packages: ``torch>=1.7.0, torchvision>=0.8.1, ultralytics>=8.3.0``
-
--   CPU support
-
-    -   yes
-
--   GPU support
-
-    -   yes
-
-**Example usage**
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset(
-        "coco-2017",
-        split="validation",
-        dataset_name=fo.get_default_dataset_name(),
-        max_samples=50,
-        shuffle=True,
-    )
-
-    model = foz.load_zoo_model("yolo11m-coco-torch")
-
-    dataset.apply_model(model, label_field="predictions")
-
-    session = fo.launch_app(dataset)
-
-
-
-.. _model-zoo-yolo11m-seg-coco-torch:
-
-yolo11m-seg-coco-torch
-______________________
-
-YOLO11-M Segmentation model trained on COCO.
-
-**Details**
-
--   Model name: ``yolo11m-seg-coco-torch``
--   Model source: https://docs.ultralytics.com/models/yolo11/#__tabbed_1_2
--   Model size: 43.30 MB
--   Exposes embeddings? no
--   Tags: ``segmentation, coco, torch, yolo``
-
-**Requirements**
-
--   Packages: ``torch>=1.7.0, torchvision>=0.8.1, ultralytics>=8.3.0``
-
--   CPU support
-
-    -   yes
-
--   GPU support
-
-    -   yes
-
-**Example usage**
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset(
-        "coco-2017",
-        split="validation",
-        dataset_name=fo.get_default_dataset_name(),
-        max_samples=50,
-        shuffle=True,
-    )
-
-    model = foz.load_zoo_model("yolo11m-seg-coco-torch")
-
-    dataset.apply_model(model, label_field="predictions")
-
-    session = fo.launch_app(dataset)
-
-
-
-.. _model-zoo-yolo11n-coco-torch:
-
-yolo11n-coco-torch
-__________________
-
-YOLO11-N model trained on COCO.
-
-**Details**
-
--   Model name: ``yolo11n-coco-torch``
--   Model source: https://docs.ultralytics.com/models/yolov11/
--   Model size: 5.35 MB
--   Exposes embeddings? no
--   Tags: ``detection, coco, torch, yolo``
-
-**Requirements**
-
--   Packages: ``torch>=1.7.0, torchvision>=0.8.1, ultralytics>=8.3.0``
-
--   CPU support
-
-    -   yes
-
--   GPU support
-
-    -   yes
-
-**Example usage**
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset(
-        "coco-2017",
-        split="validation",
-        dataset_name=fo.get_default_dataset_name(),
-        max_samples=50,
-        shuffle=True,
-    )
-
-    model = foz.load_zoo_model("yolo11n-coco-torch")
-
-    dataset.apply_model(model, label_field="predictions")
-
-    session = fo.launch_app(dataset)
-
-
-
-.. _model-zoo-yolo11n-seg-coco-torch:
-
-yolo11n-seg-coco-torch
-______________________
-
-YOLO11-N Segmentation model trained on COCO.
-
-**Details**
-
--   Model name: ``yolo11n-seg-coco-torch``
--   Model source: https://docs.ultralytics.com/models/yolo11/#__tabbed_1_2
--   Model size: 5.90 MB
--   Exposes embeddings? no
--   Tags: ``segmentation, coco, torch, yolo``
-
-**Requirements**
-
--   Packages: ``torch>=1.7.0, torchvision>=0.8.1, ultralytics>=8.3.0``
-
--   CPU support
-
-    -   yes
-
--   GPU support
-
-    -   yes
-
-**Example usage**
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset(
-        "coco-2017",
-        split="validation",
-        dataset_name=fo.get_default_dataset_name(),
-        max_samples=50,
-        shuffle=True,
-    )
-
-    model = foz.load_zoo_model("yolo11n-seg-coco-torch")
-
-    dataset.apply_model(model, label_field="predictions")
-
-    session = fo.launch_app(dataset)
-
-
-
-.. _model-zoo-yolo11s-coco-torch:
-
-yolo11s-coco-torch
-__________________
-
-YOLO11-S model trained on COCO.
-
-**Details**
-
--   Model name: ``yolo11s-coco-torch``
--   Model source: https://docs.ultralytics.com/models/yolov11/
--   Model size: 18.42 MB
--   Exposes embeddings? no
--   Tags: ``detection, coco, torch, yolo``
-
-**Requirements**
-
--   Packages: ``torch>=1.7.0, torchvision>=0.8.1, ultralytics>=8.3.0``
-
--   CPU support
-
-    -   yes
-
--   GPU support
-
-    -   yes
-
-**Example usage**
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset(
-        "coco-2017",
-        split="validation",
-        dataset_name=fo.get_default_dataset_name(),
-        max_samples=50,
-        shuffle=True,
-    )
-
-    model = foz.load_zoo_model("yolo11s-coco-torch")
-
-    dataset.apply_model(model, label_field="predictions")
-
-    session = fo.launch_app(dataset)
-
-
-
-.. _model-zoo-yolo11s-seg-coco-torch:
-
-yolo11s-seg-coco-torch
-______________________
-
-YOLO11-S Segmentation model trained on COCO.
-
-**Details**
-
--   Model name: ``yolo11s-seg-coco-torch``
--   Model source: https://docs.ultralytics.com/models/yolo11/#__tabbed_1_2
--   Model size: 19.71 MB
--   Exposes embeddings? no
--   Tags: ``segmentation, coco, torch, yolo``
-
-**Requirements**
-
--   Packages: ``torch>=1.7.0, torchvision>=0.8.1, ultralytics>=8.3.0``
-
--   CPU support
-
-    -   yes
-
--   GPU support
-
-    -   yes
-
-**Example usage**
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset(
-        "coco-2017",
-        split="validation",
-        dataset_name=fo.get_default_dataset_name(),
-        max_samples=50,
-        shuffle=True,
-    )
-
-    model = foz.load_zoo_model("yolo11s-seg-coco-torch")
-
-    dataset.apply_model(model, label_field="predictions")
-
-    session = fo.launch_app(dataset)
-
-
-
-.. _model-zoo-yolo11x-coco-torch:
-
-yolo11x-coco-torch
-__________________
-
-YOLO11-X model trained on COCO.
-
-**Details**
-
--   Model name: ``yolo11x-coco-torch``
--   Model source: https://docs.ultralytics.com/models/yolov11/
--   Model size: 109.33 MB
--   Exposes embeddings? no
--   Tags: ``detection, coco, torch, yolo``
-
-**Requirements**
-
--   Packages: ``torch>=1.7.0, torchvision>=0.8.1, ultralytics>=8.3.0``
-
--   CPU support
-
-    -   yes
-
--   GPU support
-
-    -   yes
-
-**Example usage**
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset(
-        "coco-2017",
-        split="validation",
-        dataset_name=fo.get_default_dataset_name(),
-        max_samples=50,
-        shuffle=True,
-    )
-
-    model = foz.load_zoo_model("yolo11x-coco-torch")
-
-    dataset.apply_model(model, label_field="predictions")
-
-    session = fo.launch_app(dataset)
-
-
-
-.. _model-zoo-yolo11x-seg-coco-torch:
-
-yolo11x-seg-coco-torch
-______________________
-
-YOLO11-X Segmentation model trained on COCO.
-
-**Details**
-
--   Model name: ``yolo11x-seg-coco-torch``
--   Model source: https://docs.ultralytics.com/models/yolo11/#__tabbed_1_2
--   Model size: 119.30 MB
--   Exposes embeddings? no
--   Tags: ``segmentation, coco, torch, yolo``
-
-**Requirements**
-
--   Packages: ``torch>=1.7.0, torchvision>=0.8.1, ultralytics>=8.3.0``
-
--   CPU support
-
-    -   yes
-
--   GPU support
-
-    -   yes
-
-**Example usage**
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset(
-        "coco-2017",
-        split="validation",
-        dataset_name=fo.get_default_dataset_name(),
-        max_samples=50,
-        shuffle=True,
-    )
-
-    model = foz.load_zoo_model("yolo11x-seg-coco-torch")
 
     dataset.apply_model(model, label_field="predictions")
 
@@ -7461,7 +6304,7 @@ CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ wit
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md
 -   Model size: 1.33 GB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf2, centernet``
+-   Tags: ``detection, coco, tf2``
 
 **Requirements**
 
@@ -7512,7 +6355,7 @@ CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ wit
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md
 -   Model size: 1.49 GB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf2, centernet``
+-   Tags: ``detection, coco, tf2``
 
 **Requirements**
 
@@ -7563,7 +6406,7 @@ CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ wit
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md
 -   Model size: 41.98 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf2, centernet, mobilenet``
+-   Tags: ``detection, coco, tf2``
 
 **Requirements**
 
@@ -7614,7 +6457,7 @@ CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ wit
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md
 -   Model size: 329.96 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf2, centernet, resnet``
+-   Tags: ``detection, coco, tf2``
 
 **Requirements**
 
@@ -7665,7 +6508,7 @@ CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ wit
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md
 -   Model size: 194.61 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf2, centernet, resnet``
+-   Tags: ``detection, coco, tf2``
 
 **Requirements**
 
@@ -7716,7 +6559,7 @@ CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ wit
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md
 -   Model size: 226.95 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf2, centernet, resnet``
+-   Tags: ``detection, coco, tf2``
 
 **Requirements**
 
@@ -7767,7 +6610,7 @@ DeepLabv3+ semantic segmentation model from `Encoder-Decoder with Atrous Separab
 -   Model source: https://github.com/tensorflow/models/blob/master/research/deeplab/g3doc/model_zoo.md
 -   Model size: 158.04 MB
 -   Exposes embeddings? no
--   Tags: ``segmentation, cityscapes, tf, deeplabv3``
+-   Tags: ``segmentation, cityscapes, tf``
 
 **Requirements**
 
@@ -7818,7 +6661,7 @@ DeepLabv3+ semantic segmentation model from `Encoder-Decoder with Atrous Separab
 -   Model source: https://github.com/tensorflow/models/blob/master/research/deeplab/g3doc/model_zoo.md
 -   Model size: 8.37 MB
 -   Exposes embeddings? no
--   Tags: ``segmentation, cityscapes, tf, deeplabv3``
+-   Tags: ``segmentation, cityscapes, tf``
 
 **Requirements**
 
@@ -7869,7 +6712,7 @@ EfficientDet-D0 model from `EfficientDet: Scalable and Efficient Object Detectio
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md
 -   Model size: 29.31 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf2, efficientdet``
+-   Tags: ``detection, coco, tf2``
 
 **Requirements**
 
@@ -7920,7 +6763,7 @@ EfficientDet-D0 model from `EfficientDet: Scalable and Efficient Object Detectio
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
 -   Model size: 38.20 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1, efficientdet``
+-   Tags: ``detection, coco, tf1``
 
 **Requirements**
 
@@ -7971,7 +6814,7 @@ EfficientDet-D1 model from `EfficientDet: Scalable and Efficient Object Detectio
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md
 -   Model size: 49.44 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf2, efficientdet``
+-   Tags: ``detection, coco, tf2``
 
 **Requirements**
 
@@ -8022,7 +6865,7 @@ EfficientDet-D1 model from `EfficientDet: Scalable and Efficient Object Detectio
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
 -   Model size: 61.64 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1, efficientdet``
+-   Tags: ``detection, coco, tf1``
 
 **Requirements**
 
@@ -8073,7 +6916,7 @@ EfficientDet-D2 model from `EfficientDet: Scalable and Efficient Object Detectio
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md
 -   Model size: 60.01 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf2, efficientdet``
+-   Tags: ``detection, coco, tf2``
 
 **Requirements**
 
@@ -8124,7 +6967,7 @@ EfficientDet-D2 model from `EfficientDet: Scalable and Efficient Object Detectio
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
 -   Model size: 74.00 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1, efficientdet``
+-   Tags: ``detection, coco, tf1``
 
 **Requirements**
 
@@ -8175,7 +7018,7 @@ EfficientDet-D3 model from `EfficientDet: Scalable and Efficient Object Detectio
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md
 -   Model size: 88.56 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf2, efficientdet``
+-   Tags: ``detection, coco, tf2``
 
 **Requirements**
 
@@ -8226,7 +7069,7 @@ EfficientDet-D3 model from `EfficientDet: Scalable and Efficient Object Detectio
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
 -   Model size: 106.44 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1, efficientdet``
+-   Tags: ``detection, coco, tf1``
 
 **Requirements**
 
@@ -8277,7 +7120,7 @@ EfficientDet-D4 model from `EfficientDet: Scalable and Efficient Object Detectio
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md
 -   Model size: 151.15 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf2, efficientdet``
+-   Tags: ``detection, coco, tf2``
 
 **Requirements**
 
@@ -8328,7 +7171,7 @@ EfficientDet-D4 model from `EfficientDet: Scalable and Efficient Object Detectio
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
 -   Model size: 175.33 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1, efficientdet``
+-   Tags: ``detection, coco, tf1``
 
 **Requirements**
 
@@ -8379,7 +7222,7 @@ EfficientDet-D5 model from `EfficientDet: Scalable and Efficient Object Detectio
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md
 -   Model size: 244.41 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf2, efficientdet``
+-   Tags: ``detection, coco, tf2``
 
 **Requirements**
 
@@ -8430,7 +7273,7 @@ EfficientDet-D5 model from `EfficientDet: Scalable and Efficient Object Detectio
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
 -   Model size: 275.81 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1, efficientdet``
+-   Tags: ``detection, coco, tf1``
 
 **Requirements**
 
@@ -8481,7 +7324,7 @@ EfficientDet-D6 model from `EfficientDet: Scalable and Efficient Object Detectio
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md
 -   Model size: 375.63 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf2, efficientdet``
+-   Tags: ``detection, coco, tf2``
 
 **Requirements**
 
@@ -8532,7 +7375,7 @@ EfficientDet-D6 model from `EfficientDet: Scalable and Efficient Object Detectio
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
 -   Model size: 416.43 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1, efficientdet``
+-   Tags: ``detection, coco, tf1``
 
 **Requirements**
 
@@ -8583,7 +7426,7 @@ EfficientDet-D7 model from `EfficientDet: Scalable and Efficient Object Detectio
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md
 -   Model size: 376.20 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf2, efficientdet``
+-   Tags: ``detection, coco, tf2``
 
 **Requirements**
 
@@ -8634,7 +7477,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 234.46 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf, faster-rcnn, inception, resnet``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
@@ -8685,7 +7528,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 234.46 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf, faster-rcnn, inception, resnet``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
@@ -8736,7 +7579,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 52.97 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf, faster-rcnn, inception``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
@@ -8787,7 +7630,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 404.95 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf, faster-rcnn``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
@@ -8838,7 +7681,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 404.88 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf, faster-rcnn``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
@@ -8889,7 +7732,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 186.41 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf, faster-rcnn, resnet``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
@@ -8940,7 +7783,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 186.41 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf, faster-rcnn, resnet``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
@@ -8991,7 +7834,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 113.57 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf, faster-rcnn, resnet``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
@@ -9042,7 +7885,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 113.57 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf, faster-rcnn, resnet``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
@@ -9093,7 +7936,7 @@ Inception v2 model from `Rethinking the Inception Architecture for Computer Visi
 -   Model source: https://github.com/tensorflow/models/tree/archive/research/slim#pre-trained-models
 -   Model size: 213.81 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, tf1, inception, resnet``
+-   Tags: ``classification, embeddings, logits, imagenet, tf1``
 
 **Requirements**
 
@@ -9143,7 +7986,7 @@ Inception v4 model from `Inception-v4, Inception-ResNet and the Impact of Residu
 -   Model source: https://github.com/tensorflow/models/tree/archive/research/slim#pre-trained-models
 -   Model size: 163.31 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, tf1, inception``
+-   Tags: ``classification, embeddings, logits, imagenet, tf1``
 
 **Requirements**
 
@@ -9193,7 +8036,7 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous ve
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 254.51 MB
 -   Exposes embeddings? no
--   Tags: ``instances, coco, tf, mask-rcnn, inception, resnet``
+-   Tags: ``instances, coco, tf``
 
 **Requirements**
 
@@ -9244,7 +8087,7 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with Ince
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 64.03 MB
 -   Exposes embeddings? no
--   Tags: ``instances, coco, tf, mask-rcnn, inception``
+-   Tags: ``instances, coco, tf``
 
 **Requirements**
 
@@ -9295,7 +8138,7 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous ve
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 211.56 MB
 -   Exposes embeddings? no
--   Tags: ``instances, coco, tf, mask-rcnn, resnet``
+-   Tags: ``instances, coco, tf``
 
 **Requirements**
 
@@ -9346,7 +8189,7 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous ve
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 138.29 MB
 -   Exposes embeddings? no
--   Tags: ``instances, coco, tf, mask-rcnn, resnet``
+-   Tags: ``instances, coco, tf``
 
 **Requirements**
 
@@ -9397,7 +8240,7 @@ MobileNetV2 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <
 -   Model source: None
 -   Model size: 13.64 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, tf1, mobilenet``
+-   Tags: ``classification, embeddings, logits, imagenet, tf1``
 
 **Requirements**
 
@@ -9447,7 +8290,7 @@ ResNet-50 v1 model from `Deep Residual Learning for Image Recognition <https://a
 -   Model source: https://github.com/tensorflow/models/tree/archive/research/slim#pre-trained-models
 -   Model size: 97.84 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, tf1, resnet``
+-   Tags: ``classification, embeddings, logits, imagenet, tf1``
 
 **Requirements**
 
@@ -9497,7 +8340,7 @@ ResNet-50 v2 model from `Deep Residual Learning for Image Recognition <https://a
 -   Model source: https://github.com/tensorflow/models/tree/archive/research/slim#pre-trained-models
 -   Model size: 97.86 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, tf1, resnet``
+-   Tags: ``classification, embeddings, logits, imagenet, tf1``
 
 **Requirements**
 
@@ -9547,7 +8390,7 @@ R-FCN object detection model from `R-FCN: Object Detection via Region-based Full
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 208.16 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf, rfcn, resnet``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
@@ -9598,7 +8441,7 @@ Inception Single Shot Detector model from `SSD: Single Shot MultiBox Detector <h
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 97.50 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf, ssd, inception``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
@@ -9649,7 +8492,7 @@ Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arx
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 27.83 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf, ssd, mobilenet``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
@@ -9700,7 +8543,7 @@ MobileNetV1 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md
 -   Model size: 43.91 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf2, ssd, mobilenet``
+-   Tags: ``detection, coco, tf2``
 
 **Requirements**
 
@@ -9751,7 +8594,7 @@ FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https:/
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 48.97 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf, ssd, mobilenet``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
@@ -9802,7 +8645,7 @@ MobileNetV2 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md
 -   Model size: 43.91 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf2, ssd, mobilenet``
+-   Tags: ``detection, coco, tf2``
 
 **Requirements**
 
@@ -9853,7 +8696,7 @@ FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https:/
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 128.07 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf, ssd, resnet``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
@@ -9904,7 +8747,7 @@ VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
 -   Model source: https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md
 -   Model size: 527.80 MB
 -   Exposes embeddings? yes
--   Tags: ``classification, embeddings, logits, imagenet, tf1, vgg``
+-   Tags: ``classification, embeddings, logits, imagenet, tf1``
 
 **Requirements**
 
@@ -9954,7 +8797,7 @@ YOLOv2 model from `YOLO9000: Better, Faster, Stronger <https://arxiv.org/abs/161
 -   Model source: https://github.com/thtrieu/darkflow
 -   Model size: 194.49 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1, yolo``
+-   Tags: ``detection, coco, tf1``
 
 **Requirements**
 
