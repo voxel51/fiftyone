@@ -15,12 +15,29 @@ class TableViewTests(unittest.TestCase):
 
         mock_on_click = lambda: None
 
-        table.add_row_action("action1", on_click=mock_on_click, icon="icon1", color="primary", tooltip="Action 1")
-        table.add_row_action("action2", on_click=mock_on_click, icon="icon2", color="secondary", tooltip="Action 2")
+        table.add_row_action(
+            "action1",
+            on_click=mock_on_click,
+            icon="icon1",
+            color="primary",
+            tooltip="Action 1",
+        )
+        table.add_row_action(
+            "action2",
+            on_click=mock_on_click,
+            icon="icon2",
+            color="secondary",
+            tooltip="Action 2",
+        )
 
         with self.assertRaises(ValueError):
-            table.add_row_action("action1", on_click=mock_on_click, icon="icon3", color="primary",
-                                 tooltip="Action 3")
+            table.add_row_action(
+                "action1",
+                on_click=mock_on_click,
+                icon="icon3",
+                color="primary",
+                tooltip="Action 3",
+            )
 
         table.add_tooltip(1, 1, "Tooltip 1")
         table.add_tooltip(1, 2, "Tooltip 2")
