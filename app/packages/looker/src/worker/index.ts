@@ -94,15 +94,14 @@ const painterFactory = PainterFactory(requestColor);
 const ALL_VALID_LABELS = new Set(VALID_LABEL_TYPES);
 
 /**
- * 1. Start deserializing on-disk masks. Accumulate promises.
+ * This function processes labels in a recursive manner. It follows the following steps:
+ * 1. Deserialize masks. Accumulate promises.
  * 2. Await mask path decoding to finish.
  * 3. Start painting overlays. Accumulate promises.
  * 4. Await overlay painting to finish.
  * 5. Start bitmap generation. Accumulate promises.
  * 6. Await bitmap generation to finish.
- * 7. Transfer bitmaps back to the main thread.
- *
- * Note that on-disk masks support async deserialization, which means they are more performant.
+ * 7. Transfer bitmaps and mask targets array buffers back to the main thread.
  */
 const processLabels = async (
   sample: ProcessSample["sample"],
