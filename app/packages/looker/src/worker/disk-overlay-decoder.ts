@@ -1,4 +1,4 @@
-import { getSampleSrc } from "@fiftyone/state";
+import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import { DETECTION, DETECTIONS, HEATMAP } from "@fiftyone/utilities";
 import { Coloring, CustomizeColor } from "..";
 import { OverlayMask } from "../numpy";
