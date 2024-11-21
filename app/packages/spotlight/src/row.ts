@@ -120,7 +120,7 @@ export default class Row<K, V> {
   }
 
   destroy(destroyItems = false) {
-    destroyItems && this.#destroyItems();
+    this.#destroyItems(destroyItems);
     this.#aborter.abort();
   }
 
@@ -231,8 +231,8 @@ export default class Row<K, V> {
     return set.size === ONE ? this.#row[ZERO].item.aspectRatio : null;
   }
 
-  #destroyItems() {
-    const destroy = this.#config.destroy;
+  #destroyItems(destroyItems = false) {
+    const destroy = destroyItems ? this.#config.destroy : this.#config.detach;
     if (!destroy) {
       return;
     }

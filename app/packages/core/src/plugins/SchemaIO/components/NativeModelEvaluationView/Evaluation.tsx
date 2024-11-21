@@ -1350,7 +1350,7 @@ export default function Evaluation(props: EvaluationProps) {
               variant="outlined"
               color="secondary"
               sx={{ width: "100%" }}
-              onClick={closeConfusionMatrixConfigDialog}
+              onClick={closeClassPerformanceConfigDialog}
             >
               Cancel
             </Button>
