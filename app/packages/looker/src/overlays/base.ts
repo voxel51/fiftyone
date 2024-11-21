@@ -39,6 +39,10 @@ export interface SelectData {
   frameNumber?: number;
 }
 
+export type LabelMask = {
+  bitmap?: ImageBitmap;
+};
+
 export interface RegularLabel extends BaseLabel {
   _id?: string;
   label?: string;

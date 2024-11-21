@@ -15,6 +15,7 @@ import { clampedIndex } from "../worker/painter";
 import {
   BaseLabel,
   CONTAINS,
+  LabelMask,
   Overlay,
   PointInfo,
   SelectData,
@@ -22,12 +23,8 @@ import {
 } from "./base";
 import { strokeCanvasRect, t } from "./util";
 
-interface HeatMap {
-  bitmap?: ImageBitmap;
-}
-
 interface HeatmapLabel extends BaseLabel {
-  map?: HeatMap;
+  map?: LabelMask;
   range?: [number, number];
 }
 

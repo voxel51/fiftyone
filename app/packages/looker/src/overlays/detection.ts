@@ -6,13 +6,17 @@ import { NONFINITES } from "@fiftyone/utilities";
 import { INFO_COLOR } from "../constants";
 import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
 import { distanceFromLineSegment } from "../util";
-import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
+import {
+  CONTAINS,
+  CoordinateOverlay,
+  LabelMask,
+  PointInfo,
+  RegularLabel,
+} from "./base";
 import { t } from "./util";
 
 export interface DetectionLabel extends RegularLabel {
-  mask?: {
-    bitmap?: ImageBitmap;
-  };
+  mask?: LabelMask;
   bounding_box: BoundingBox;
 
   // valid for 3D bounding boxes

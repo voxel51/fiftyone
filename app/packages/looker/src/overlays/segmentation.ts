@@ -8,6 +8,7 @@ import { BaseState, Coordinates, MaskTargets } from "../state";
 import {
   BaseLabel,
   CONTAINS,
+  LabelMask,
   Overlay,
   PointInfo,
   SelectData,
@@ -16,9 +17,7 @@ import {
 import { isRgbMaskTargets, strokeCanvasRect, t } from "./util";
 
 interface SegmentationLabel extends BaseLabel {
-  mask?: {
-    bitmap?: ImageBitmap;
-  };
+  mask?: LabelMask;
 }
 
 interface SegmentationInfo extends BaseLabel {
