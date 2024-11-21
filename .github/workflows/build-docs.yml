@@ -51,7 +51,7 @@ jobs:
         with:
           repository: voxel51/fiftyone-teams
           path: fiftyone-teams
-          token: ${{ secrets.TEAMS_GITHUB_PAT }}
+          token: ${{ secrets.RO_FOT_FG_PAT }}
           ref: main
       - name: Set up Python 3.9
         uses: actions/setup-python@v5
