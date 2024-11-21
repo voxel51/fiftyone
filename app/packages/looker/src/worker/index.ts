@@ -114,12 +114,13 @@ const processLabels = async (
   labelTagColors: ProcessSample["labelTagColors"],
   selectedLabelTags: ProcessSample["selectedLabelTags"],
   schema: Schema
-): Promise<Promise<ImageBitmap[]>[]> => {
-  const maskPathDecodingPromises = [];
-  const painterPromises = [];
-  const bitmapPromises = [];
+): Promise<[Promise<ImageBitmap[]>[], ArrayBuffer[]]> => {
+  const maskPathDecodingPromises: Promise<void>[] = [];
+  const painterPromises: Promise<void>[] = [];
+  const bitmapPromises: Promise<ImageBitmap[]>[] = [];
+  const maskTargetsBuffers: ArrayBuffer[] = [];
 
-  // mask deserialization / mask_path decoding loop
+  // mask deserialization / on-disk overlay decoding loop
   for (const field in sample) {
     let labels = sample[field];
     if (!Array.isArray(labels)) {
@@ -142,28 +143,31 @@ const processLabels = async (
             colorscale,
             sources,
             cls,
-            maskPathDecodingPromises
+            maskPathDecodingPromises,
+            maskTargetsBuffers
           )
         );
       }
 
       if (cls in DeserializerFactory) {
-        DeserializerFactory[cls](label);
+        DeserializerFactory[cls](label, maskTargetsBuffers);
       }
 
       if ([EMBEDDED_DOCUMENT, DYNAMIC_EMBEDDED_DOCUMENT].includes(cls)) {
-        const moreBitmapPromises = await processLabels(
-          label,
-          coloring,
-          `${prefix ? prefix : ""}${field}.`,
-          sources,
-          customizeColorSetting,
-          colorscale,
-          labelTagColors,
-          selectedLabelTags,
-          schema
-        );
+        const [moreBitmapPromises, moreMaskTargetsBuffers] =
+          await processLabels(
+            label,
+            coloring,
+            `${prefix ? prefix : ""}${field}.`,
+            sources,
+            customizeColorSetting,
+            colorscale,
+            labelTagColors,
+            selectedLabelTags,
+            schema
+          );
         bitmapPromises.push(...moreBitmapPromises);
+        maskTargetsBuffers.push(...moreMaskTargetsBuffers);
       }
 
       if (ALL_VALID_LABELS.has(cls)) {
@@ -227,7 +231,7 @@ const processLabels = async (
     }
   }
 
-  return bitmapPromises;
+  return [bitmapPromises, maskTargetsBuffers];
 };
 
 const collectBitmapPromises = (label, cls, bitmapPromises) => {
@@ -250,16 +254,14 @@ const collectBitmapPromises = (label, cls, bitmapPromises) => {
       height
     );
 
-    // release buffers (will be garbage collected)
-    // we created ImageData and don't need the raw data anymore
-    label[overlayField].data = null;
+    // set raw image to null - will be garbage collected
+    // we don't need it anymore since we copied to ImageData
     label[overlayField].image = null;
 
     bitmapPromises.push(
       new Promise((resolve) => {
         createImageBitmap(imageData).then((imageBitmap) => {
           label[overlayField].bitmap = imageBitmap;
-
           resolve(imageBitmap);
         });
       })
@@ -307,24 +309,25 @@ const processSample = async ({
 }: ProcessSample) => {
   mapId(sample);
 
-  let imageBitmapPromises: Promise<ImageBitmap[]>[] = [];
+  const imageBitmapPromises: Promise<ImageBitmap[]>[] = [];
+  const maskTargetsBuffers: ArrayBuffer[] = [];
 
   if (sample?._media_type === "point-cloud" || sample?._media_type === "3d") {
     process3DLabels(schema, sample);
   } else {
-    imageBitmapPromises.push(
-      ...(await processLabels(
-        sample,
-        coloring,
-        null,
-        sources,
-        customizeColorSetting,
-        colorscale,
-        labelTagColors,
-        selectedLabelTags,
-        schema
-      ))
+    const [bitmapPromises, moreMaskTargetsBuffers] = await processLabels(
+      sample,
+      coloring,
+      null,
+      sources,
+      customizeColorSetting,
+      colorscale,
+      labelTagColors,
+      selectedLabelTags,
+      schema
     );
+    imageBitmapPromises.push(...bitmapPromises);
+    maskTargetsBuffers.push(...moreMaskTargetsBuffers);
   }
 
   // todo: address frames
@@ -362,7 +365,7 @@ const processSample = async ({
         selectedLabelTags,
       },
       // @ts-ignore
-      bitmaps.flat()
+      bitmaps.flat().concat(maskTargetsBuffers.flat())
     );
   });
 };

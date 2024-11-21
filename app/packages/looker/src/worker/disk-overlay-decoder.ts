@@ -24,7 +24,8 @@ export const decodeOverlayOnDisk = async (
   colorscale: Colorscale,
   sources: { [path: string]: string },
   cls: string,
-  maskPathDecodingPromises: Promise<void>[] = []
+  maskPathDecodingPromises: Promise<void>[] = [],
+  maskTargetsBuffers: ArrayBuffer[] = []
 ) => {
   // handle all list types here
   if (cls === DETECTIONS) {
@@ -88,4 +89,8 @@ export const decodeOverlayOnDisk = async (
     data: overlayMask,
     image: new ArrayBuffer(overlayWidth * overlayHeight * 4),
   } as IntermediateMask;
+
+  // no need to transfer image's buffer
+  //since we'll be constructing ImageBitmap and transfering that
+  maskTargetsBuffers.push(overlayMask.buffer);
 };

@@ -3,6 +3,7 @@
  */
 
 import { getCls, sizeBytesEstimate } from "@fiftyone/utilities";
+import { OverlayMask } from "../numpy";
 import type { BaseState, Coordinates, NONFINITE } from "../state";
 import { getLabelColor, shouldShowLabelTag } from "./util";
 
@@ -41,6 +42,7 @@ export interface SelectData {
 
 export type LabelMask = {
   bitmap?: ImageBitmap;
+  data?: OverlayMask;
 };
 
 export interface RegularLabel extends BaseLabel {

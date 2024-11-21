@@ -42,8 +42,6 @@ export default class HeatmapOverlay<State extends BaseState>
   private label: HeatmapLabel;
   private targets?: TypedArray;
   private readonly range: [number, number];
-  private canvas: HTMLCanvasElement;
-  private imageData: ImageData;
 
   constructor(field: string, label: HeatmapLabel) {
     this.field = field;
@@ -65,25 +63,6 @@ export default class HeatmapOverlay<State extends BaseState>
     if (!width || !height) {
       return;
     }
-
-    this.canvas = document.createElement("canvas");
-    this.canvas.width = width;
-    this.canvas.height = height;
-
-    this.imageData = new ImageData(
-      new Uint8ClampedArray(this.label.map.image),
-      width,
-      height
-    );
-    const maskCtx = this.canvas.getContext("2d");
-    maskCtx.imageSmoothingEnabled = false;
-    maskCtx.clearRect(
-      0,
-      0,
-      this.label.map.data.shape[1],
-      this.label.map.data.shape[0]
-    );
-    maskCtx.putImageData(this.imageData, 0, 0);
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
@@ -98,22 +77,23 @@ export default class HeatmapOverlay<State extends BaseState>
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    if (this.imageData) {
-      const maskCtx = this.canvas.getContext("2d");
-      maskCtx.imageSmoothingEnabled = false;
-      maskCtx.clearRect(
-        0,
-        0,
-        this.label.map.data.shape[1],
-        this.label.map.data.shape[0]
-      );
-      maskCtx.putImageData(this.imageData, 0, 0);
+    if (this.label.map.bitmap) {
+      // const maskCtx = this.canvas.getContext("2d");
+      // maskCtx.imageSmoothingEnabled = false;
+      // maskCtx.clearRect(
+      //   0,
+      //   0,
+      //   this.label.map.data.shape[1],
+      //   this.label.map.data.shape[0]
+      // );
+      // maskCtx.putImageData(this.imageData, 0, 0);
 
       const [tlx, tly] = t(state, 0, 0);
       const [brx, bry] = t(state, 1, 1);
       const tmp = ctx.globalAlpha;
       ctx.globalAlpha = state.options.alpha;
-      ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
+      // ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
+      ctx.drawImage(this.label.map.bitmap, tlx, tly, brx - tlx, bry - tly);
       ctx.globalAlpha = tmp;
     }
 
