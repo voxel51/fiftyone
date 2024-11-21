@@ -9,6 +9,7 @@ import humanize
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.media as fom
 from fiftyone.management.dataset import DatasetPermission
 import fiftyone.operators as foo
 from fiftyone.operators.categories import Categories
@@ -152,6 +153,13 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
 
         if field_type == "INDEX":
             unique = ctx.params.get("unique", False)
+            group_index = ctx.params.get("group_index", False)
+
+            if ctx.dataset.media_type == fom.GROUP:
+                group_path = ctx.dataset.group_field + ".name"
+                index_spec = [(group_path, 1), (path, 1)]
+
+                ctx.dataset.create_index(index_spec, unique=unique, wait=False)
 
             ctx.dataset.create_index(path, unique=unique, wait=False)
         else:
@@ -304,6 +312,19 @@ def _create_index_or_summary_field_inputs(ctx, inputs):
             label="Unique",
             description="Whether to add a uniqueness constraint to the index",
         )
+
+        if ctx.dataset.media_type == fom.GROUP:
+            inputs.bool(
+                "group_index",
+                default=True,
+                required=False,
+                label="Group index",
+                description=(
+                    "Whether to also add a compound group index. This "
+                    "optimizes sidebar queries when viewing specific group "
+                    "slice(s)"
+                ),
+            )
 
         return field_type
 
