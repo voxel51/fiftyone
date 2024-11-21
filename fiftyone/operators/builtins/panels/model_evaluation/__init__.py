@@ -363,7 +363,7 @@ class EvaluationPanel(Panel):
             pending_evaluations_in_store[
                 dataset_id
             ] = updated_pending_evaluations_for_dataset_in_stored
-            store.set("pending_evaluations", pending_evaluations)
+            store.set("pending_evaluations", pending_evaluations_in_store)
         ctx.panel.set_data("pending_evaluations", pending_evaluations)
 
     def on_evaluate_model_success(self, ctx):
