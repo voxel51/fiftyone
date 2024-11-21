@@ -14,7 +14,7 @@ const extractSerializedMask = (
 };
 
 export const DeserializerFactory = {
-  Detection: (label) => {
+  Detection: (label, buffers) => {
     const serializedMask = extractSerializedMask(label, "mask");
 
     if (serializedMask) {
@@ -24,15 +24,16 @@ export const DeserializerFactory = {
         data,
         image: new ArrayBuffer(width * height * 4),
       };
+      buffers.push(data.buffer);
     }
   },
-  Detections: (labels) => {
+  Detections: (labels, buffers) => {
     const list = labels?.detections || [];
     for (const label of list) {
-      DeserializerFactory.Detection(label);
+      DeserializerFactory.Detection(label, buffers);
     }
   },
-  Heatmap: (label) => {
+  Heatmap: (label, buffers) => {
     const serializedMask = extractSerializedMask(label, "map");
 
     if (serializedMask) {
@@ -43,9 +44,11 @@ export const DeserializerFactory = {
         data,
         image: new ArrayBuffer(width * height * 4),
       };
+
+      buffers.push(data.buffer);
     }
   },
-  Segmentation: (label) => {
+  Segmentation: (label, buffers) => {
     const serializedMask = extractSerializedMask(label, "mask");
 
     if (serializedMask) {
@@ -56,6 +59,8 @@ export const DeserializerFactory = {
         data,
         image: new ArrayBuffer(width * height * 4),
       };
+
+      buffers.push(data.buffer);
     }
   },
 };
