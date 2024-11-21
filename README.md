@@ -35,65 +35,149 @@ models**
 </p>
 </div>
 
-# 👋 Introduction
+# 👋 hey there!
 
-**[FiftyOne](https://fiftyone.ai)** is the open-source tool that supercharges your computer vision and machine learning workflows by enabling you to visualize datasets, analyze models, and improve data quality more efficiently than ever before.
+We created an open-source tool that supercharges your computer vision and machine learning workflows by enabling you to visualize datasets, analyze models, and improve data quality more efficiently than ever before. Embark with us in this adventure 🤝. **[FiftyOne](https://fiftyone.ai)**.
 
-[![FiftyOne](https://github.com/user-attachments/assets/0622e5a8-8aa9-462d-8008-90356d3c45ea)](https://fiftyone.ai)
+![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 
 
----
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> **installation** 💻
 
-### **Key Features**
+As simple as:
 
-- **[Visualize Complex Datasets:](https://docs.voxel51.com/tutorials/index.html)** Easily explore images, videos, and associated labels in a powerful visual interface.
-- **[Analyze and Improve Models:](https://docs.voxel51.com/tutorials/index.html)** Evaluate model performance, identify failure modes, and fine-tune your models.
-- **[Efficient Data Curation:](https://docs.voxel51.com/tutorials/index.html)** Quickly find and fix data issues, annotation errors, and edge cases.
-- **[Seamless Integration:](https://docs.voxel51.com/tutorials/index.html)** Works with popular deep learning libraries like TensorFlow, PyTorch, Keras, and more.
-- **[Open-Source and Extensible](https://docs.voxel51.com/tutorials/index.html)** Customize and extend FiftyOne to fit your specific needs.
+```shell
+pip install fiftyone
+```
 
-### 🤝 **Join Our Community**
+<details>
+<summary>More details here</summary>
+**Fiftyone** requires Python (3.9 - 3.11), Git and other dependencies, see the [prerequisites section](#-prerequisites) if needed. We provide two ways for being installed. The first one is through PyPI, and the second is through a local installation. PyPI is the straight forward installation method if you are not looking for any changes in the source code, if you want to make changes to the source code, then a local installation is recommended.
 
-Connect with us through your preferred channels:
+We strongly recommend that you install FiftyOne in a
+[virtual environment](https://voxel51.com/docs/fiftyone/getting_started/virtualenv.html)
+to maintain a clean workspace. Refer to prerequisites if you want to learn how to create a new virtual environment in your machine.
 
-<div align="center">
-<p align="center">
-    
-[![Discord](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/fiftyone-community)
-[![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)](https://slack.voxel51.com)
-[![Medium](https://img.shields.io/badge/Medium-12100E?logo=medium&logoColor=white)](https://medium.com/voxel51)
-[![Twitter](https://img.shields.io/badge/Twitter-1DA1F2?logo=twitter&logoColor=white)](https://twitter.com/voxel51)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?logo=linkedin&logoColor=white)](https://www.linkedin.com/company/voxel51)
-[![Facebook](https://img.shields.io/badge/Facebook-1877F2?logo=facebook&logoColor=white)](https://www.facebook.com/voxel51)
+Install from PyPI
+Installing the library with pip is the easiest way to get started with fiftyone. You can install the latest stable version of FiftyOne via `pip`:
 
-**Share your workflow improvements on social media and tag us @Voxel51 and #FiftyOne!**. 
 
-🎊 You will be in our rewarded list. 🎊
+Consult the
+[installation guide](https://voxel51.com/docs/fiftyone/getting_started/install.html)
+for troubleshooting and other information about getting up-and-running with
+FiftyOne.
+</details>
 
-</p>
-</div>
+<details>
+<summary>Install from source</summary>
 
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+To install from source, you need to clone the repository and install the library using pip via editable mode. The instructions below are for macOS and Linux systems. Windows users may need
+to make adjustments. If you are working in Google Colab, [skip to here](#source-installs-in-google-colab).
 
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Table of Contents
+First, clone the repository:
 
-- [Table of Contents](#table-of-contents)
-- [Prerequisites](#-prerequisites)
-- [Installation](#-installation)
-- [Quickstart](#-quickstart)
-- [Documentation](#-documentation)
-- [Examples](#-examples)
-- [Troubleshooting](#-troubleshooting)
-- [Contributing to fiftyone](#-contributing)
-- [Contributors](#-contributors)
-- [Citation](#-citation)
-- [FAQ and additional resources](#-faq)
+```shell
+git clone https://github.com/voxel51/fiftyone
+cd fiftyone
+```
 
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+Then run the install script:
+
+```shell
+# Mac or Linux
+bash install.bash
+
+# Windows
+.\install.bat
+```
+
+**NOTE:** If you run into issues importing FiftyOne, you may need to add the
+path to the cloned repository to your `PYTHONPATH`:
+
+```shell
+export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
+```
+
+**NOTE:** The install script adds to your `nvm` settings in your `~/.bashrc` or
+`~/.bash_profile`, which is needed for installing and building the App
+
+**NOTE:** When you pull in new changes to the App, you will need to rebuild it,
+which you can do either by rerunning the install script or just running
+`yarn build` in the `./app` directory.
+
+### Upgrading your source installation
+
+To upgrade an existing source installation to the bleeding edge, simply pull
+the latest `develop` branch and rerun the install script:
+
+```shell
+git checkout develop
+git pull
+bash install.bash
+```
+
+### Developer installation
+
+If you would like to
+[contribute to FiftyOne](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md),
+you should perform a developer installation using the `-d` flag of the install
+script:
+
+```shell
+# Mac or Linux
+bash install.bash -d
+
+# Windows
+.\install.bat -d
+```
+
+Although not required, developers typically prefer to configure their FiftyOne
+installation to connect to a self-installed and managed instance of MongoDB,
+which you can do by following
+[these simple steps](https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection).
+
+### Source installs in Google Colab
+
+You can install from source in
+[Google Colab](https://colab.research.google.com) by running the following in a
+cell and then **restarting the runtime**:
+
+```shell
+%%shell
+
+git clone --depth 1 https://github.com/voxel51/fiftyone.git
+cd fiftyone
+
+# Mac or Linux
+bash install.bash
+
+# Windows
+.\install.bat
+```
+
+### Generating documentation
+
+See the
+[docs guide](https://github.com/voxel51/fiftyone/blob/develop/docs/README.md)
+for information on building and contributing to the documentation.
+
+### Uninstallation
+
+You can uninstall FiftyOne as follows:
+
+```shell
+pip uninstall fiftyone fiftyone-brain fiftyone-db
+```
+
+
+</details>
 
 <div id='-prerequisites'/>
 
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Prerequisites
+<details>
+<summary>Prerequisites for beginners</summary>
+
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> prerequisites for beginners 🧸
 
 **Fiftyone** requires Python (3.9 - 3.11), Git and other dependencies. To get started, select the guide for your operating system or environment, if you are an experienced developer you can avoid this section. If you are looking for scaling solution to be installed in Cloud Enterprise Systems, please take a look of **Fiftyone Teams** [here](https://voxel51.com/book-a-demo/)
 
@@ -245,144 +329,12 @@ of FiftyOne.
 -   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can
     [enable Yarn](https://yarnpkg.com/getting-started/install) via
     `corepack enable`
-
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
-
-<div id='-installation'/>
-
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Installation
-
-
-**Fiftyone** provides two ways for being installed. The first one is through PyPI, and the second is through a local installation. PyPI is the straight forward installation method if you are not looking for any changes in the source code, if you want to make changes to the source code, then a local installation is recommended.
-
-We strongly recommend that you install FiftyOne in a
-[virtual environment](https://voxel51.com/docs/fiftyone/getting_started/virtualenv.html)
-to maintain a clean workspace. Refer to prerequisites if you want to learn how to create a new virtual environment in your machine.
-
-<details>
-<summary>Install from PyPI</summary>
-Installing the library with pip is the easiest way to get started with fiftyone. You can install the latest stable version of FiftyOne via `pip`:
-
-```shell
-pip install fiftyone
-```
-
-Consult the
-[installation guide](https://voxel51.com/docs/fiftyone/getting_started/install.html)
-for troubleshooting and other information about getting up-and-running with
-FiftyOne.
-
+    
 </details>
 
-<details>
-<summary>Install from source</summary>
+![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 
-To install from source, you need to clone the repository and install the library using pip via editable mode. The instructions below are for macOS and Linux systems. Windows users may need
-to make adjustments. If you are working in Google Colab, [skip to here](#source-installs-in-google-colab).
-
-First, clone the repository:
-
-```shell
-git clone https://github.com/voxel51/fiftyone
-cd fiftyone
-```
-
-Then run the install script:
-
-```shell
-# Mac or Linux
-bash install.bash
-
-# Windows
-.\install.bat
-```
-
-**NOTE:** If you run into issues importing FiftyOne, you may need to add the
-path to the cloned repository to your `PYTHONPATH`:
-
-```shell
-export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
-```
-
-**NOTE:** The install script adds to your `nvm` settings in your `~/.bashrc` or
-`~/.bash_profile`, which is needed for installing and building the App
-
-**NOTE:** When you pull in new changes to the App, you will need to rebuild it,
-which you can do either by rerunning the install script or just running
-`yarn build` in the `./app` directory.
-
-### Upgrading your source installation
-
-To upgrade an existing source installation to the bleeding edge, simply pull
-the latest `develop` branch and rerun the install script:
-
-```shell
-git checkout develop
-git pull
-bash install.bash
-```
-
-### Developer installation
-
-If you would like to
-[contribute to FiftyOne](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md),
-you should perform a developer installation using the `-d` flag of the install
-script:
-
-```shell
-# Mac or Linux
-bash install.bash -d
-
-# Windows
-.\install.bat -d
-```
-
-Although not required, developers typically prefer to configure their FiftyOne
-installation to connect to a self-installed and managed instance of MongoDB,
-which you can do by following
-[these simple steps](https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection).
-
-### Source installs in Google Colab
-
-You can install from source in
-[Google Colab](https://colab.research.google.com) by running the following in a
-cell and then **restarting the runtime**:
-
-```shell
-%%shell
-
-git clone --depth 1 https://github.com/voxel51/fiftyone.git
-cd fiftyone
-
-# Mac or Linux
-bash install.bash
-
-# Windows
-.\install.bat
-```
-
-### Generating documentation
-
-See the
-[docs guide](https://github.com/voxel51/fiftyone/blob/develop/docs/README.md)
-for information on building and contributing to the documentation.
-
-### Uninstallation
-
-You can uninstall FiftyOne as follows:
-
-```shell
-pip uninstall fiftyone fiftyone-brain fiftyone-db
-```
-
-
-</details>
-
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
-
-<div id='-quickstart'/>
-
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Quickstart
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> **quickstart** 🚀
 
 Dive right into FiftyOne by opening a Python shell and running the snippet
 below, which downloads a
@@ -408,47 +360,73 @@ Note that if you are running the above code in a script, you must include
 [this page](https://voxel51.com/docs/fiftyone/user_guide/app.html#creating-a-session)
 for more information.
 
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+
+![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
+
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> **key features** 🔑
+
+- **[Visualize Complex Datasets:](https://docs.voxel51.com/user_guide/app.html)** Easily explore images, videos, and associated labels in a powerful visual interface.
+- **[Explore Embeddings:](https://docs.voxel51.com/user_guide/app.html#embeddings-panel)** Select points of interest and view the corresponding samples/labels.
+- **[Analyze and Improve Models:](https://docs.voxel51.com/user_guide/evaluation.html)** Evaluate model performance, identify failure modes, and fine-tune your models.
+- **[Advanced Data Curation:](https://docs.voxel51.com/brain.html)** Quickly find and fix data issues, annotation errors, and edge cases.
+- **[Rich Integration:](https://docs.voxel51.com/integrations/index.html)** Works with popular deep learning libraries like TensorFlow, PyTorch, Keras, and more.
+- **[Open and Extensible](https://docs.voxel51.com/plugins/index.html)** Customize and extend FiftyOne to fit your specific needs.
+
+<div align="center">
+<p align="center">
+
+
+### <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> additional resources 🚁
+
+| [fiftyone-teams](#-teams) | [VoxelGPT](https://github.com/voxel51/voxelgpt) | [Plugins](https://voxel51.com/plugins/)| [Vector Search](https://voxel51.com/blog/the-computer-vision-interface-for-vector-search/) | [Dataset Zoo](https://docs.voxel51.com/dataset_zoo/index.html) | [Model Zoo](https://docs.voxel51.com/model_zoo/index.html) |[Fiftyone Brain](https://docs.voxel51.com/brain.html)
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+
+</p>
+</div>
+
+![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 
 <div id='-documentation'/>
 
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Documentation
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> documentation 🪪
 
 Full documentation for FiftyOne is available at
 [fiftyone.ai](https://fiftyone.ai). In particular, see these resources:
 
--   [Tutorials](https://voxel51.com/docs/fiftyone/tutorials/index.html)
--   [Recipes](https://voxel51.com/docs/fiftyone/recipes/index.html)
--   [User Guide](https://voxel51.com/docs/fiftyone/user_guide/index.html)
--   [CLI Documentation](https://voxel51.com/docs/fiftyone/cli/index.html)
--   [API Reference](https://voxel51.com/docs/fiftyone/api/fiftyone.html)
+<div align="center">
+<p align="center">
+
+| [Tutorials](https://voxel51.com/docs/fiftyone/tutorials/index.html) | [Recipes](https://voxel51.com/docs/fiftyone/recipes/index.html) | [Examples](https://github.com/voxel51/fiftyone-examples) | [User Guide](https://voxel51.com/docs/fiftyone/user_guide/index.html) | [CLI Documentation](https://voxel51.com/docs/fiftyone/cli/index.html) |  [API Reference](https://voxel51.com/docs/fiftyone/api/fiftyone.html) 
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | 
+</p>
+</div>
+
+![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
+
+<div id='-teams'/>
+
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Fiftyone Teams 🏎️
+
+Do you need to securely collaborate on datasets with millions of samples in the cloud and leverage built-in workflow automations? Check out [FiftyOne Teams](https://github.com/voxel51/fiftyone-teams).
+
+![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 
 
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
 
-<div id='-examples'/>
-
-## Examples
-
-Check out the [fiftyone-examples](https://github.com/voxel51/fiftyone-examples)
-repository for open source and community-contributed examples of using
-FiftyOne.
-
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
-
-<div id='-troubleshooting'/>
-
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Troubleshooting
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> faq & troubleshooting ⛓️‍💥
 
 [This page](https://docs.voxel51.com/getting_started/troubleshooting.html) lists common issues encountered when installing FiftyOne and possible solutions. If you encounter an issue that this page doesn’t help you resolve, feel free to [open an issue on GitHub](https://github.com/voxel51/fiftyone/issues) or contact us on [Slack](https://slack.voxel51.com/) or [Discord](https://discord.gg/fiftyone-community).
 
+[FAQ](https://docs.voxel51.com/faq/index.html): Maybe you are facing a situation already solved, take a look of the frequently asked questions.
 
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+
+![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 
 
 <div id='-contributing'/>
 
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Contributing to FiftyOne
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> contributing to FiftyOne 🧡
+
 
 FiftyOne and [FiftyOne Brain](https://github.com/voxel51/fiftyone-brain) are
 open source and community contributions are welcome!
@@ -457,11 +435,33 @@ Check out the
 [contribution guide](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md)
 to learn how to get involved.
 
+<div align="center">
+<p align="center">
 
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+### 🤝 **Join Our Community** 🤝
+
+Connect with us through your preferred channels:
+    
+[![Discord](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/fiftyone-community)
+[![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)](https://slack.voxel51.com)
+[![Medium](https://img.shields.io/badge/Medium-12100E?logo=medium&logoColor=white)](https://medium.com/voxel51)
+[![Twitter](https://img.shields.io/badge/Twitter-1DA1F2?logo=twitter&logoColor=white)](https://twitter.com/voxel51)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?logo=linkedin&logoColor=white)](https://www.linkedin.com/company/voxel51)
+[![Facebook](https://img.shields.io/badge/Facebook-1877F2?logo=facebook&logoColor=white)](https://www.facebook.com/voxel51)
+
+**Share your workflow improvements on social media and tag us @Voxel51 and #FiftyOne!**. 
+
+🎊 You will be in our rewarded list. 🎊
+
+</p>
+</div>
+
+
+![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
+
 <div id='-contributors'/>
 
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Contributors
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> contributors 🤓
 
 Special thanks to these amazing people for contributing to FiftyOne! 🙌
 
@@ -469,10 +469,10 @@ Special thanks to these amazing people for contributing to FiftyOne! 🙌
   <img src="https://contrib.rocks/image?repo=voxel51/fiftyone" />
 </a>
 
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
+![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 <div id='-citation'/>
 
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> Citation
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> citation 📖
 
 If you use FiftyOne in your research, feel free to cite the project (but only
 if you love it 😊):
@@ -486,16 +486,5 @@ if you love it 😊):
 }
 ```
 
-[![-----------------------------------------------------](https://github.com/user-attachments/assets/a8cf754d-fa86-4b29-9c3e-4ad64cf5c3dd)]()
-<div id='-faq'/>
 
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> FAQ & Additional Resources
 
-- [FAQ](https://docs.voxel51.com/faq/index.html): Maybe you are facing a situation already solved, take a look of the frequently asked questions.
-- [fiftyone-team](https://github.com/voxel51/fiftyone-teams): Upgrade to FiftyOne Teams to enable multiple users to securely collaborate on the same datasets and models, either on-premises or in the cloud, all built on top of the open source FiftyOne workflows that you’re already relying on.
-- [VoxelGPT](https://github.com/voxel51/voxelgpt): VoxelGPT is an open source plugin for FiftyOne that translates your natural language prompts into actions that organize and explore your data.
-- [Plugins](https://voxel51.com/plugins/): Use FiftyOne Plugins to unlock infinite ways to extend and customize your AI workbench so you can save time, focus on building exceptional AI, and get to production faster.
-- [Vector Search](https://voxel51.com/blog/the-computer-vision-interface-for-vector-search/): Vector search engines solve this problem by transforming complex data into entities called embedding vectors.
-- [Dataset Zoo](https://docs.voxel51.com/dataset_zoo/index.html): The FiftyOne Dataset Zoo provides a powerful interface for downloading datasets and loading them into FiftyOne.
-- [Model Zoo](https://docs.voxel51.com/model_zoo/index.html): The FiftyOne Model Zoo provides a powerful interface for downloading models and applying them to your FiftyOne datasets.
-- [Fiftyone Brain](https://docs.voxel51.com/brain.html): The FiftyOne Brain provides powerful machine learning techniques that are designed to transform how you curate your data from an art into a measurable science.
