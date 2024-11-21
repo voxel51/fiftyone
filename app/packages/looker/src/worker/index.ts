@@ -106,7 +106,6 @@ const imputeOverlayFromPath = async (
   coloring: Coloring,
   customizeColorSetting: CustomizeColor[],
   colorscale: Colorscale,
-  buffers: ArrayBuffer[],
   sources: { [path: string]: string },
   cls: string,
   maskPathDecodingPromises: Promise<void>[] = []
@@ -122,7 +121,6 @@ const imputeOverlayFromPath = async (
           coloring,
           customizeColorSetting,
           colorscale,
-          buffers,
           {},
           DETECTION
         )
@@ -170,16 +168,26 @@ const imputeOverlayFromPath = async (
   const [overlayHeight, overlayWidth] = overlayMask.shape;
 
   // set the `mask` property for this label
+  // we need to do this because we need raw image pixel data
+  // to iterate through and paint it with the color
+  // defined by the user for this particular label
   label[overlayField] = {
     data: overlayMask,
     image: new ArrayBuffer(overlayWidth * overlayHeight * 4),
   };
-
-  // transfer buffers
-  buffers.push(overlayMask.buffer);
-  buffers.push(label[overlayField].image);
 };
 
+/**
+ * 1. Start deserializing on-disk masks. Accumulate promises.
+ * 2. Await mask path decoding to finish.
+ * 3. Start painting overlays. Accumulate promises.
+ * 4. Await overlay painting to finish.
+ * 5. Start bitmap generation. Accumulate promises.
+ * 6. Await bitmap generation to finish.
+ * 7. Transfer bitmaps back to the main thread.
+ *
+ * Note that on-disk masks support async deserialization, which means they are more performant.
+ */
 const processLabels = async (
   sample: ProcessSample["sample"],
   coloring: ProcessSample["coloring"],
@@ -190,11 +198,10 @@ const processLabels = async (
   labelTagColors: ProcessSample["labelTagColors"],
   selectedLabelTags: ProcessSample["selectedLabelTags"],
   schema: Schema
-): Promise<ArrayBuffer[]> => {
-  const buffers: ArrayBuffer[] = [];
-  const painterPromises = [];
-
+): Promise<Promise<ImageBitmap[]>[]> => {
   const maskPathDecodingPromises = [];
+  const painterPromises = [];
+  const bitmapPromises = [];
 
   // mask deserialization / mask_path decoding loop
   for (const field in sample) {
@@ -217,7 +224,6 @@ const processLabels = async (
             coloring,
             customizeColorSetting,
             colorscale,
-            buffers,
             sources,
             cls,
             maskPathDecodingPromises
@@ -226,11 +232,11 @@ const processLabels = async (
       }
 
       if (cls in DeserializerFactory) {
-        DeserializerFactory[cls](label, buffers);
+        DeserializerFactory[cls](label);
       }
 
       if ([EMBEDDED_DOCUMENT, DYNAMIC_EMBEDDED_DOCUMENT].includes(cls)) {
-        const moreBuffers = await processLabels(
+        const moreBitmapPromises = await processLabels(
           label,
           coloring,
           `${prefix ? prefix : ""}${field}.`,
@@ -241,7 +247,7 @@ const processLabels = async (
           selectedLabelTags,
           schema
         );
-        buffers.push(...moreBuffers);
+        bitmapPromises.push(...moreBitmapPromises);
       }
 
       if (ALL_VALID_LABELS.has(cls)) {
@@ -286,7 +292,64 @@ const processLabels = async (
     }
   }
 
-  return Promise.all(painterPromises).then(() => buffers);
+  await Promise.allSettled(painterPromises);
+
+  // bitmap generation loop
+  for (const field in sample) {
+    let labels = sample[field];
+    if (!Array.isArray(labels)) {
+      labels = [labels];
+    }
+    const cls = getCls(`${prefix ? prefix : ""}${field}`, schema);
+
+    for (const label of labels) {
+      if (!label) {
+        continue;
+      }
+
+      collectBitmapPromises(label, cls, bitmapPromises);
+    }
+  }
+
+  return bitmapPromises;
+};
+
+const collectBitmapPromises = (label, cls, bitmapPromises) => {
+  if (cls === DETECTIONS) {
+    label?.detections?.forEach((detection) =>
+      collectBitmapPromises(detection, DETECTION, bitmapPromises)
+    );
+    return;
+  }
+
+  // we are detection now
+  if (cls !== DETECTION) {
+    return;
+  }
+
+  if (label.mask) {
+    const [height, width] = label.mask.data.shape;
+
+    const imageData = new ImageData(
+      new Uint8ClampedArray(label.mask.image),
+      width,
+      height
+    );
+
+    bitmapPromises.push(
+      new Promise((resolve) => {
+        createImageBitmap(imageData).then((imageBitmap) => {
+          // release buffers (will be garbage collected)
+          label.mask.data = null;
+          label.mask.image = null;
+
+          label.mask.bitmap = imageBitmap;
+
+          resolve(imageBitmap);
+        });
+      })
+    );
+  }
 };
 
 /** GLOBALS */
@@ -316,7 +379,7 @@ export interface ProcessSample {
 
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
-const processSample = ({
+const processSample = async ({
   sample,
   uuid,
   coloring,
@@ -329,13 +392,13 @@ const processSample = ({
 }: ProcessSample) => {
   mapId(sample);
 
-  let bufferPromises = [];
+  let imageBitmapPromises: Promise<ImageBitmap[]>[] = [];
 
   if (sample?._media_type === "point-cloud" || sample?._media_type === "3d") {
     process3DLabels(schema, sample);
   } else {
-    bufferPromises = [
-      processLabels(
+    imageBitmapPromises.push(
+      ...(await processLabels(
         sample,
         coloring,
         null,
@@ -345,32 +408,33 @@ const processSample = ({
         labelTagColors,
         selectedLabelTags,
         schema
-      ),
-    ];
+      ))
+    );
   }
 
-  if (sample.frames && sample.frames.length) {
-    bufferPromises = [
-      ...bufferPromises,
-      ...sample.frames
-        .map((frame) =>
-          processLabels(
-            frame,
-            coloring,
-            "frames.",
-            sources,
-            customizeColorSetting,
-            colorscale,
-            labelTagColors,
-            selectedLabelTags,
-            schema
-          )
-        )
-        .flat(),
-    ];
-  }
+  // todo: address frames
+  // if (sample.frames && sample.frames.length) {
+  //   bufferPromises = [
+  //     ...bufferPromises,
+  //     ...sample.frames
+  //       .map((frame) =>
+  //         processLabels(
+  //           frame,
+  //           coloring,
+  //           "frames.",
+  //           sources,
+  //           customizeColorSetting,
+  //           colorscale,
+  //           labelTagColors,
+  //           selectedLabelTags,
+  //           schema
+  //         )
+  //       )
+  //       .flat(),
+  //   ];
+  // }
 
-  Promise.all(bufferPromises).then((buffers) => {
+  Promise.all(imageBitmapPromises).then((bitmaps) => {
     postMessage(
       {
         method: "processSample",
@@ -383,7 +447,7 @@ const processSample = ({
         selectedLabelTags,
       },
       // @ts-ignore
-      buffers.flat()
+      bitmaps.flat()
     );
   });
 };
