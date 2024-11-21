@@ -38,9 +38,10 @@ clicks on the `Got it` button the tooltip will be permanently dismissed.
     :alt: query-performance-tooltip
     :align: center
 
-Admins can change the default setting for all users in the Teams App by setting
-`FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE` to `false`. Admins can also completely disable
-query performance for all users by setting the `FIFTYONE_APP_ENABLE_QUERY_PERFORMANCE` to `false`.
+Admin Configuration:
+
+- ``FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE``: Set to ``false`` to change the default setting for all users
+- ``FIFTYONE_APP_ENABLE_QUERY_PERFORMANCE``: Set to ``false`` to completely disable the feature for all users
 
 Query Performance Toast
 -----------------------
@@ -64,13 +65,21 @@ toast notification will also close automatically after a few seconds.
 Query Performance Panel
 _______________________
 
-The Query Performance panel is accessible in the panel menu. Users can also open the Query Performance
-panel by clicking the `Create Index` button. Every dataset has a few default indexes that are created
-when the dataset is created. If the dataset has non-default indexes, such as those manually created
-through SDK client, Mongo client, or from the panel, the Query Performance panel will show the table
-with a list of all indexes, their size and the action options. The action options are `Drop Index`,
-"Drop Summary Field", and `Refresh Summary Field`, which are only available for summary fields.
+The Query Performance panel can be accessed through:
 
+- The panel menu
+- The "Create Index" button
+
+Each dataset includes default indexes created at initialization. The panel displays a table showing:
+
+- All indexes (default and custom)
+- Index sizes
+- Available actions:
+  - ``Drop Index``
+  - ``Drop Summary Field``
+  - ``Refresh Summary Field`` (only for summary fields)
+
+Custom indexes can be created via the panel, SDK client, or MongoDB client.
 .. image:: /images/teams/qp_tableview.png
     :alt: query-performance-tableview
     :align: center
@@ -110,27 +119,29 @@ The summary field is also enhanced with relevant indexes to improve its performa
 summary field by clicking the `Drop Index/Field` action in the table. Users can also choose to remove the individual
 indexes associated with the summary field.
 
+Performance Considerations
+--------------------------
+
 .. warning::
-For dataset with a large number of samples, creating a summary field can take a long time to complete.
+
+   For large datasets, the following operations may take significant time to complete:
+   
+   - Creating summary fields
+   - Updating summary fields
+   - Deleting summary fields
+   
+   Additionally:
+   
+   - Deleting an index or summary field will remove its performance benefits
+   - These operations cannot be cancelled once started
+   - Plan these operations during low-usage periods
 
 Update Summary Field
 --------------------
 
-Summary fields can be updated by clicking the `Refresh Summary Field` action in the table. This will update the summary
-field with the latest data in the dataset. This is useful when the dataset has been updated with new data and the summary
-field needs to be updated to reflect the changes.
-
-.. warning::
-For dataset with a large number of samples, updating a summary field can take a long time to complete.
+Summary fields can be updated via the ``Refresh Summary Field`` action to reflect recent dataset changes.
 
 Delete Index and Field
 ----------------------
 
-Index and summary fields can be deleted by clicking the `Drop Index` or `Drop Summary Field` action in the table. This
-will remove the index or summary field from the dataset.
-
-.. warning::
-Deleting an index or summary field will remove the performance improvement associated with the index or summary field.
-
-.. warning::
-For dataset with a large number of samples, deleting a summary field can take a long time to complete.
+Use ``Drop Index`` or ``Drop Summary Field`` actions to remove indexes or summary fields from the dataset.
