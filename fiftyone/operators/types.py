@@ -252,6 +252,7 @@ class Object(BaseType):
         name,
         label,
         icon=None,
+        icon_variant=None,
         variant=None,
         disabled=False,
         on_click=None,
@@ -296,6 +297,7 @@ class Object(BaseType):
         btn = Button(
             href=href,
             icon=icon,
+            icon_variant=icon_variant,
             icon_position=icon_position,
             disabled=disabled,
             label=label,
@@ -1828,16 +1830,18 @@ class Action(View):
         on_click: the operator to execute when the action is clicked
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, name, **kwargs):
         super().__init__(**kwargs)
+        self.name = name
 
     def clone(self):
-        clone = Action(**self._kwargs)
+        clone = Action(self.name, **self._kwargs)
         return clone
 
     def to_json(self):
-        return {**super().to_json()}
-    
+        return {**super().to_json(), "name": self.name}
+
+
 class Tooltip(View):
     """A tooltip (currently supported only in a :class:`TableView`).
 
@@ -1847,15 +1851,17 @@ class Tooltip(View):
         column: the column of the tooltip
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, row, column, **kwargs):
         super().__init__(**kwargs)
+        self.row = row
+        self.column = column
 
     def clone(self):
-        clone = Tooltip(**self._kwargs)
+        clone = Tooltip(self.row, self. column, **self._kwargs)
         return clone
 
     def to_json(self):
-        return {**super().to_json()}
+        return {**super().to_json(), "row": self.row, "column": self.column}
 
 
 class TableView(View):
@@ -1876,6 +1882,10 @@ class TableView(View):
         return [column.key for column in self.columns]
 
     def add_column(self, key, **kwargs):
+        for column in self.columns:
+            if column.key == key:
+                raise ValueError(f"Column with key '{key}' already exists")
+
         column = Column(key, **kwargs)
         self.columns.append(column)
         return column
@@ -1883,6 +1893,10 @@ class TableView(View):
     def add_row_action(
         self, name, on_click, label=None, icon=None, tooltip=None, **kwargs
     ):
+        for action in self.row_actions:
+            if action.name == name:
+                raise ValueError(f"Action with name '{name}' already exists")
+
         row_action = Action(
             name=name,
             on_click=on_click,
@@ -1895,6 +1909,10 @@ class TableView(View):
         return row_action
     
     def add_tooltip(self, row, column, value, **kwargs):
+        for tooltip in self.tooltips:
+            if tooltip.row == row and tooltip.column == column:
+                raise ValueError(f"Tooltip for row '{row}' and column '{column}' already exists")
+
         tooltip = Tooltip(row=row, column=column, value=value, **kwargs)
         self.tooltips.append(tooltip)
         return tooltip
@@ -2293,6 +2311,7 @@ class StatusButtonView(View):
     """
 
     def __init__(self, **kwargs):
+        print("Status Button View is new")
         super().__init__(**kwargs)
 
 
