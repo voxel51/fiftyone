@@ -51,8 +51,7 @@ const QueryPerformanceIcon = () => {
             <Box sx={{ padding: "8px 8px 8px 8px" }}>
               <SectionTitle>Query Performance is Enabled</SectionTitle>
               <Text>
-                Some fields are indexed for better query performance. You can
-                create or manage indexes from here.
+                Fields that are indexed will have better query performance.
               </Text>
               <Box
                 display="flex"
