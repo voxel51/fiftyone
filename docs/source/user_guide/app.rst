@@ -575,7 +575,7 @@ datasets:
 
 .. note::
 
-    Did you know? Teams customer can manage dataset indexes via the App by with the builtin Query Performance panel!
+    Did you know? Teams customers can manage dataset indexes via the App with the builtin Query Performance panel!
     See :ref:`this page <query-performance>` for more information.
 
 In general, we recommend indexing *only* the specific fields that you wish to
