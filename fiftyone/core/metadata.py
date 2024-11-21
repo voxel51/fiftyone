@@ -79,7 +79,7 @@ class Metadata(DynamicEmbeddedDocument):
         requests.exceptions.RequestException,
         factor=HTTPRetryConfig.FACTOR,
         max_tries=HTTPRetryConfig.MAX_TRIES,
-        giveup=lambda e: e.response.status_code
+        giveup=lambda e: getattr(e.response, "status_code", None)
         not in HTTPRetryConfig.RETRY_CODES,
         logger=None,
     )
@@ -156,7 +156,7 @@ class ImageMetadata(Metadata):
         requests.exceptions.RequestException,
         factor=HTTPRetryConfig.FACTOR,
         max_tries=HTTPRetryConfig.MAX_TRIES,
-        giveup=lambda e: e.response.status_code
+        giveup=lambda e: getattr(e.response, "status_code", None)
         not in HTTPRetryConfig.RETRY_CODES,
         logger=None,
     )
@@ -259,7 +259,7 @@ class VideoMetadata(Metadata):
         requests.exceptions.RequestException,
         factor=HTTPRetryConfig.FACTOR,
         max_tries=HTTPRetryConfig.MAX_TRIES,
-        giveup=lambda e: e.response.status_code
+        giveup=lambda e: getattr(e.response, "status_code", None)
         not in HTTPRetryConfig.RETRY_CODES,
         logger=None,
     )
@@ -349,7 +349,7 @@ class SceneMetadata(Metadata):
         requests.exceptions.RequestException,
         factor=HTTPRetryConfig.FACTOR,
         max_tries=HTTPRetryConfig.MAX_TRIES,
-        giveup=lambda e: e.response.status_code
+        giveup=lambda e: getattr(e.response, "status_code", None)
         not in HTTPRetryConfig.RETRY_CODES,
         logger=None,
     )
