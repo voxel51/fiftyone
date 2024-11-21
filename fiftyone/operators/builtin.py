@@ -1083,11 +1083,31 @@ class CreateIndex(foo.Operator):
             description="Whether to add a uniqueness constraint to the index",
         )
 
+        if ctx.dataset.media_type == fom.GROUP:
+            inputs.bool(
+                "group_index",
+                default=True,
+                required=False,
+                label="Group index",
+                description=(
+                    "Whether to also add a compound group index. This "
+                    "optimizes sidebar queries when viewing specific group "
+                    "slice(s)"
+                ),
+            )
+
         return types.Property(inputs, view=types.View(label="Create index"))
 
     def execute(self, ctx):
         field_name = ctx.params["field_name"]
         unique = ctx.params.get("unique", False)
+        group_index = ctx.params.get("group_index", False)
+
+        if ctx.dataset.media_type == fom.GROUP and group_index:
+            group_path = ctx.dataset.group_field + ".name"
+            index_spec = [(group_path, 1), (field_name, 1)]
+
+            ctx.dataset.create_index(index_spec, unique=unique, wait=False)
 
         ctx.dataset.create_index(field_name, unique=unique, wait=False)
 
