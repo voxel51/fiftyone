@@ -1361,12 +1361,12 @@ export class EnableQueryPerformance extends Operator {
   }
 }
 
-class SetExpanded extends Operator {
+class OpenSample extends Operator {
   _builtIn = true;
   get config(): OperatorConfig {
     return new OperatorConfig({
-      name: "set_expanded",
-      label: "Set expanded",
+      name: "open_sample",
+      label: "Open Sample",
       unlisted: true,
     });
   }
@@ -1385,8 +1385,27 @@ class SetExpanded extends Operator {
   async execute({ hooks, params }: ExecutionContext) {
     hooks.setExpanded({
       id: params.id,
-      groupId: params.group_id,
+      group_id: params.group_id,
     });
+  }
+}
+
+class CloseSample extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "close_sample",
+      label: "Close Sample",
+      unlisted: true,
+    });
+  }
+  useHooks(): object {
+    return {
+      close: fos.useClearModal(),
+    };
+  }
+  async execute({ hooks, params }: ExecutionContext) {
+    hooks.close();
   }
 }
 
@@ -1441,7 +1460,8 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(SetFrameNumber);
     _registerBuiltInOperator(DisableQueryPerformance);
     _registerBuiltInOperator(EnableQueryPerformance);
-    _registerBuiltInOperator(SetExpanded);
+    _registerBuiltInOperator(OpenSample);
+    _registerBuiltInOperator(CloseSample);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);
