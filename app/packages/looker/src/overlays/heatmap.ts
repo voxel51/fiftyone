@@ -6,6 +6,7 @@ import {
   getColor,
   getRGBA,
   getRGBAColor,
+  sizeBytesEstimate,
 } from "@fiftyone/utilities";
 import { ARRAY_TYPES, TypedArray } from "../numpy";
 import { BaseState, Coordinates } from "../state";
@@ -233,6 +234,10 @@ export default class HeatmapOverlay<State extends BaseState>
     }
 
     return this.targets[index];
+  }
+
+  getSizeBytes(): number {
+    return sizeBytesEstimate(this.label);
   }
 }
 

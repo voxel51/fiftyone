@@ -2,7 +2,7 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { getColor } from "@fiftyone/utilities";
+import { getColor, sizeBytesEstimate } from "@fiftyone/utilities";
 import { ARRAY_TYPES, TypedArray } from "../numpy";
 import { BaseState, Coordinates, MaskTargets } from "../state";
 import {
@@ -276,6 +276,10 @@ export default class SegmentationOverlay<State extends BaseState>
       return null;
     }
     return this.targets[index];
+  }
+
+  getSizeBytes(): number {
+    return sizeBytesEstimate(this.label);
   }
 }
 

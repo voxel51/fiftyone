@@ -4,7 +4,6 @@
 import { NONFINITES } from "@fiftyone/utilities";
 
 import { INFO_COLOR } from "../constants";
-import { OverlayMask } from "../numpy";
 import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
 import { distanceFromLineSegment } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
