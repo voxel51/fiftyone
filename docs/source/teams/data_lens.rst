@@ -142,9 +142,17 @@ button to open the import dialog.
     :align: center
 
 Imports can be limited to a specific number of samples, or you can import all
-samples matching your query parameters. You can also choose whether to add
-new samples for all examples from your data lake, or whether to skip existing
-samples with the same `filepath`.
+samples matching your query parameters.
+
+The "Skip existing samples" checkbox allows you to configure the behavior for
+merging samples into a dataset. If checked, samples with a `filepath` which is
+already present in the dataset will be skipped. If left unchecked, all samples
+will be added to the dataset.
+
+.. note::
+
+    If you elect to skip existing samples, this will also deduplicate samples
+    within the data being imported.
 
 After configuring the size/behavior of your import, select a destination
 dataset for the samples. This can be an existing dataset, or you can choose to
@@ -156,6 +164,10 @@ sample.
 When you click import, you will have the option to either execute immediately
 or to schedule this import for asynchronous execution.
 
+.. image:: /images/teams/data_lens_import_options.png
+    :alt: data-lens-import-options
+    :align: center
+
 If you are importing a small number of samples, then immediate execution may
 be appropriate. However, for most cases it is recommended to schedule the
 import, as this will result in more consistent and performant execution.
@@ -165,10 +177,6 @@ import, as this will result in more consistent and performant execution.
     Scheduled imports use the
     :ref:`delegated operations <teams-delegated-operations>` framework to
     execute asynchronously on your connected compute cluster!
-
-.. image:: /images/teams/data_lens_import_options.png
-    :alt: data-lens-import-options
-    :align: center
 
 After selecting your execution preference, you will be able to monitor the
 status of your import through the information provided by the import panel.
@@ -480,7 +488,7 @@ method.
         inputs = types.Object()
 
         # Add a string field named "sample_text"
-        inputs.str("sample_text", label="Sample text")
+        inputs.str("sample_text", label="Sample text", description="Text to render in samples")
 
         return types.Property(inputs)
 
@@ -514,10 +522,10 @@ logic to integrate `sample_text` into our operator.
         samples = []
 
         # Create a sample for each character in our input text
-        for i in range(len(sample_text)):
+        for char in sample_text:
             samples.append(
                 fo.Sample(
-                    filepath=f"https://placehold.co/150x150?text={sample_text[i]}"
+                    filepath=f"https://placehold.co/150x150?text={char}"
                 ).to_dict()
             )
 
@@ -621,7 +629,12 @@ Here's a fully-functional Data Lens connector for BigQuery:
             inputs = types.Object()
 
             # We'll enable searching on detection labels
-            inputs.str("detection_label", label="Detection label", required=True)
+            inputs.str(
+                "detection_label",
+                label="Detection label",
+                description="Enter a label to find samples with a matching detection",
+                required=True,
+            )
 
             return types.Property(inputs)
 
@@ -631,16 +644,19 @@ Here's a fully-functional Data Lens connector for BigQuery:
             ctx: foo.ExecutionContext,
         ) -> Generator[DataLensSearchResponse, None, None]:
             handler = BigQueryHandler()
-            for batch in handler.handle_request(request):
+            for batch in handler.handle_request(request, ctx):
                 yield batch
 
 
     class BigQueryHandler:
         def handle_request(
             self,
-            request: DataLensSearchRequest
+            request: DataLensSearchRequest,
+            ctx: foo.ExecutionContext,
         ) -> Generator[DataLensSearchResponse, None, None]:
-            # Create our client
+            # Create our client.
+            # If needed, we can use secrets from `ctx.secrets` to provide credentials
+            #  or other secure configuration required to interact with our data source.
             client = bigquery.Client()
 
             try:
@@ -717,7 +733,7 @@ Let's take a look at a few parts in detail.
     client = bigquery.Client()
 
 In practice, you'll likely need to use :ref:`secrets <teams-secrets>` to
-securely provide credentials to connect to your BigQuery.
+securely provide credentials to connect to your data source.
 
 .. code-block:: python
     :linenos:
