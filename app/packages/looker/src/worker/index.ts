@@ -30,7 +30,7 @@ import {
 import { DeserializerFactory } from "./deserializer";
 import { decodeOverlayOnDisk } from "./disk-overlay-decoder";
 import { PainterFactory } from "./painter";
-import { mapId } from "./shared";
+import { getOverlayFieldFromCls, mapId } from "./shared";
 import { process3DLabels } from "./threed-label-processor";
 
 interface ResolveColor {
@@ -238,28 +238,27 @@ const collectBitmapPromises = (label, cls, bitmapPromises) => {
     return;
   }
 
-  // we are detection now
-  if (cls !== DETECTION) {
-    return;
-  }
+  const overlayFields = getOverlayFieldFromCls(cls);
+  const overlayField = overlayFields.canonical;
 
-  if (label.mask) {
-    const [height, width] = label.mask.data.shape;
+  if (label[overlayField]) {
+    const [height, width] = label[overlayField].data.shape;
 
     const imageData = new ImageData(
-      new Uint8ClampedArray(label.mask.image),
+      new Uint8ClampedArray(label[overlayField].image),
       width,
       height
     );
 
+    // release buffers (will be garbage collected)
+    // we created ImageData and don't need the raw data anymore
+    label[overlayField].data = null;
+    label[overlayField].image = null;
+
     bitmapPromises.push(
       new Promise((resolve) => {
         createImageBitmap(imageData).then((imageBitmap) => {
-          // release buffers (will be garbage collected)
-          label.mask.data = null;
-          label.mask.image = null;
-
-          label.mask.bitmap = imageBitmap;
+          label[overlayField].bitmap = imageBitmap;
 
           resolve(imageBitmap);
         });

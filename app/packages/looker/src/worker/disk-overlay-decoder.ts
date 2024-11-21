@@ -1,10 +1,11 @@
 import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
-import { DETECTION, DETECTIONS, HEATMAP } from "@fiftyone/utilities";
+import { DETECTION, DETECTIONS } from "@fiftyone/utilities";
 import { Coloring, CustomizeColor } from "..";
 import { OverlayMask } from "../numpy";
 import { Colorscale } from "../state";
 import { decodeWithCanvas } from "./canvas-decoder";
 import { fetchWithLinearBackoff } from "./decorated-fetch";
+import { getOverlayFieldFromCls } from "./shared";
 
 export type IntermediateMask = {
   data: OverlayMask;
@@ -44,9 +45,9 @@ export const decodeOverlayOnDisk = async (
     maskPathDecodingPromises.push(...promises);
   }
 
-  // overlay path is in `map_path` property for heatmap, or else, it's in `mask_path` property (for segmentation or detection)
-  const overlayPathField = cls === HEATMAP ? "map_path" : "mask_path";
-  const overlayField = overlayPathField === "map_path" ? "map" : "mask";
+  const overlayFields = getOverlayFieldFromCls(cls);
+  const overlayPathField = overlayFields.disk;
+  const overlayField = overlayFields.canonical;
 
   if (Boolean(label[overlayField]) || !Object.hasOwn(label, overlayPathField)) {
     // nothing to be done
