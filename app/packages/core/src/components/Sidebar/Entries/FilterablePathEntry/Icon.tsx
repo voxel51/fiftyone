@@ -6,14 +6,17 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Arrow from "./Arrow";
 
-export const LightningIcon = styled(Bolt)`
+const LightningIcon = styled(Bolt)`
   color: ${({ theme }) => theme.text.secondary};
 `;
 
 export const LightningBolt: React.FC = (_) => {
   return (
     <Tooltip placement="top-center" text={"Indexed"}>
-      <LightningIcon style={{ height: 16, marginRight: 2, width: 16 }} />
+      <LightningIcon
+        data-cy={"query-performance"}
+        style={{ height: 16, marginRight: 2, width: 16 }}
+      />
     </Tooltip>
   );
 };
