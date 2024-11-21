@@ -150,6 +150,7 @@ pages on this site apply to Teams deployments as well.
     FiftyOne Teams App <teams_app>
     Data Lens __SUB_NEW__ <data_lens>
     Plugins <teams_plugins>
+    Query Performance <query_performance>
     Secrets <secrets>
     Management SDK <management_sdk>
     Migrations <migrations>
