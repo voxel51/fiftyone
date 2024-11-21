@@ -25,10 +25,9 @@ export interface DetectionLabel extends RegularLabel {
 export default class DetectionOverlay<
   State extends BaseState
 > extends CoordinateOverlay<State, DetectionLabel> {
-  private imageData: ImageData;
   private is3D: boolean;
   private labelBoundingBox: BoundingBox;
-  private canvas: HTMLCanvasElement;
+  private imageBitmap: ImageBitmap | null = null;
 
   constructor(field, label) {
     super(field, label);
@@ -37,32 +36,6 @@ export default class DetectionOverlay<
       this.is3D = true;
     } else {
       this.is3D = false;
-    }
-
-    if (this.label.mask) {
-      const [height, width] = this.label.mask.data.shape;
-
-      if (!height || !width) {
-        return;
-      }
-
-      this.canvas = document.createElement("canvas");
-      this.canvas.width = width;
-      this.canvas.height = height;
-      this.imageData = new ImageData(
-        new Uint8ClampedArray(this.label.mask.image),
-        width,
-        height
-      );
-      const maskCtx = this.canvas.getContext("2d");
-      maskCtx.imageSmoothingEnabled = false;
-      maskCtx.clearRect(
-        0,
-        0,
-        this.label.mask.data.shape[1],
-        this.label.mask.data.shape[0]
-      );
-      maskCtx.putImageData(this.imageData, 0, 0);
     }
   }
 
@@ -167,7 +140,7 @@ export default class DetectionOverlay<
   }
 
   private drawMask(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
-    if (!this.canvas) {
+    if (!this.label.mask?.bitmap) {
       return;
     }
 
@@ -175,8 +148,9 @@ export default class DetectionOverlay<
     const [x, y] = t(state, tlx, tly);
     const tmp = ctx.globalAlpha;
     ctx.globalAlpha = state.options.alpha;
+    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(
-      this.canvas,
+      this.label.mask.bitmap,
       x,
       y,
       w * state.canvasBBox[2],
