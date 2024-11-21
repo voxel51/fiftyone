@@ -1239,6 +1239,7 @@ class DataQualityPanel(Panel):
         content["last_scan"][field]["timestamp"] = datetime.now()
         content["last_scan"][field]["dataset_size"] = ctx.dataset.count()
 
+        print("saving store", content)
         # save the results, counts, and status to the store
         store.set(key, content)
 
@@ -1287,6 +1288,7 @@ class DataQualityPanel(Panel):
         return latest_key
 
     def cancel_compute(self, ctx):
+        print("cancel_compute called")
         if (
             ctx.panel.state.computing[ctx.panel.state.issue_type][
                 "execution_type"
@@ -1306,21 +1308,23 @@ class DataQualityPanel(Panel):
         }
 
     def check_delegation_status(self, ctx):
+        print(f"check_delegation_status called {ctx.params}")
         issue_type = ctx.params.get("issue_type")
         run_id = ctx.params.get("run_id")
 
         # grab delegation status from run_id
         dos = DelegatedOperationService()
-        delegated_state = dos.get(run_id).status
+        delegated_state = dos.get(run_id).run_state
+        print(f"check_delegation_status state is {delegated_state}")
+
         if delegated_state is not None:
-            current_status = delegated_state.label
             ctx.panel.state.computing[ctx.panel.state.issue_type] = {
                 "is_computing": False,
                 "execution_type": "",
                 "delegation_run_id": run_id,
-                "delegation_status": current_status.lower(),
+                "delegation_status": delegated_state.lower(),
             }
-            if current_status == "COMPLETED":
+            if delegated_state == "completed":
                 self._process_issue_computation(
                     ctx, issue_type, recompute=True
                 )  # compute histogram
@@ -2213,12 +2217,13 @@ class DataQualityPanel(Panel):
         if ctx.panel.state.issue_type:
             if toast_type == "tagging":
                 message = f"Selected samples tagged with: {', '.join(ctx.panel.state.tags)}"
+                view["message"] = message
             elif toast_type == "reviewed":
                 message = f"{ctx.panel.state.issue_type.title()} issues marked as reviewed."
+                view["message"] = message
             else:
                 return  # exit if no alert
 
-        view["message"] = message
         toast = types.ToastView(**view)
 
         panel.obj(f"toast_{uuid.uuid4().hex}", view=toast)
