@@ -1663,7 +1663,7 @@ class DataQualityPanel(Panel):
             ):
                 computing_card_text_runs_link = types.LinkView(
                     label="Runs",
-                    default=f"/{ctx.dataset.name}/runs/{ctx.panel.state.computing[ctx.panel.state.issue_type]['delegation_run_id']}",
+                    href=f"/datasets/{ctx.dataset.slug}/runs/{ctx.panel.state.computing[ctx.panel.state.issue_type]['delegation_run_id']}",
                     componentsProps={
                         "link": {
                             "sx": {
@@ -1698,9 +1698,9 @@ class DataQualityPanel(Panel):
                 "grid": {
                     "sx": {
                         "display": "flex",
-                        "flexDirection": "column"
-                        if h_stack is False
-                        else "row",
+                        "flexDirection": (
+                            "column" if h_stack is False else "row"
+                        ),
                         "alignItems": "center",
                     }
                 },
