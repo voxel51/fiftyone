@@ -1,9 +1,15 @@
 import { getSampleSrc } from "@fiftyone/state";
 import { DETECTION, DETECTIONS, HEATMAP } from "@fiftyone/utilities";
 import { Coloring, CustomizeColor } from "..";
+import { OverlayMask } from "../numpy";
 import { Colorscale } from "../state";
 import { decodeWithCanvas } from "./canvas-decoder";
 import { fetchWithLinearBackoff } from "./decorated-fetch";
+
+export type IntermediateMask = {
+  data: OverlayMask;
+  image: ArrayBuffer;
+};
 
 /**
  * Some label types (example: segmentation, heatmap) can have their overlay data stored on-disk,
@@ -42,10 +48,7 @@ export const decodeOverlayOnDisk = async (
   const overlayPathField = cls === HEATMAP ? "map_path" : "mask_path";
   const overlayField = overlayPathField === "map_path" ? "map" : "mask";
 
-  if (
-    Object.hasOwn(label, overlayField) ||
-    !Object.hasOwn(label, overlayPathField)
-  ) {
+  if (Boolean(label[overlayField]) || !Object.hasOwn(label, overlayPathField)) {
     // nothing to be done
     return;
   }
@@ -83,5 +86,5 @@ export const decodeOverlayOnDisk = async (
   label[overlayField] = {
     data: overlayMask,
     image: new ArrayBuffer(overlayWidth * overlayHeight * 4),
-  };
+  } as IntermediateMask;
 };
