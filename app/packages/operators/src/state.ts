@@ -524,13 +524,15 @@ export const useOperatorPrompt = () => {
     ({ get, set }) =>
       (fieldName, value) => {
         const state = get(promptingOperatorState);
-        set(promptingOperatorState, {
-          ...state,
-          params: {
-            ...state.params,
-            [fieldName]: value,
-          },
-        });
+        if (state) {
+          set(promptingOperatorState, {
+            ...state,
+            params: {
+              ...state?.params,
+              [fieldName]: value,
+            },
+          });
+        }
       }
   );
   const execute = useCallback(
