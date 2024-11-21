@@ -13,6 +13,7 @@ import Nav from "../../components/Nav";
 import type { Route } from "../../routing";
 import style from "../index.module.css";
 import type { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
+import BuiltinPanels from "@fiftyone/components/src/components/BuiltinPanels";
 
 const DatasetPageQueryNode = graphql`
   query DatasetPageQuery(
@@ -111,6 +112,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
           <datasetQueryContext.Provider value={data}>
             <OperatorCore />
             <Dataset />
+            <BuiltinPanels />
           </datasetQueryContext.Provider>
         )}
       </div>

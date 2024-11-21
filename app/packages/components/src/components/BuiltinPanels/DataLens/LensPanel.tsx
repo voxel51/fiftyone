@@ -266,6 +266,9 @@ export const LensPanel = ({
   ) => {
     setImportTime(new Date().getTime() - importStartTime.current);
     setIsImportLoading(false);
+    if (result?.result?.error) {
+      onError?.(result.result.error);
+    }
   };
 
   // Callback which opens the target dataset.

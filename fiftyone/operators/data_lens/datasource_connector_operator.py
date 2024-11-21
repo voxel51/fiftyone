@@ -5,6 +5,7 @@ FiftyOne Data Lens datasource connector.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import traceback
 import uuid
 from dataclasses import asdict
 
@@ -54,10 +55,10 @@ class DatasourceConnectorOperator(foo.Operator):
                     f'unsupported query type "{request.request_type}"'
                 )
 
-        except Exception as e:
+        except Exception:
             return asdict(
                 BaseResponse(
-                    error=str(e),
+                    error=traceback.format_exc(),
                 )
             )
 
@@ -101,9 +102,9 @@ class DatasourceConnectorOperator(foo.Operator):
                 field_schema=field_schema,
             )
 
-        except Exception as e:
+        except Exception:
             return PreviewResponse(
-                error=str(e),
+                error=traceback.format_exc(),
             )
 
     def _handle_import(self, ctx: foo.ExecutionContext) -> ImportResponse:
@@ -187,9 +188,9 @@ class DatasourceConnectorOperator(foo.Operator):
 
             return ImportResponse()
 
-        except Exception as e:
+        except Exception:
             return ImportResponse(
-                error=str(e),
+                error=traceback.format_exc(),
             )
 
     def _execute_operator(

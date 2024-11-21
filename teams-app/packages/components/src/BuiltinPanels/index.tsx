@@ -1,5 +1,4 @@
 import dynamic from "next/dynamic";
-import { Fragment } from "react";
 
 /**
  * Built-in panels use the `@fiftyone/plugins` package, which cannot be loaded
@@ -7,9 +6,7 @@ import { Fragment } from "react";
  */
 const BuiltinPanels = dynamic(
   async () => {
-    await import("./DataLens");
-
-    return Fragment;
+    return import("@fiftyone/components/src/components/BuiltinPanels");
   },
   { ssr: false }
 );
