@@ -10,6 +10,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
   useTheme,
 } from "@mui/material";
 import { isPlainObject } from "lodash";
@@ -34,6 +35,7 @@ export default function TableView(props: ViewPropsType) {
     size = "small",
     variant = "filled",
     max_inline_actions = 1,
+    tooltips = []
   } = view;
   const { rows, selectedCells, selectedRows, selectedColumns } =
     getTableData(props);
@@ -61,6 +63,14 @@ export default function TableView(props: ViewPropsType) {
       }
     }
     return computedRowActions;
+  }, []);
+
+  const getTooltips = useCallback((tooltipList) => {
+    const tooltipDict = {};
+    for (const { value, row, column } of tooltipList) {
+      tooltipDict[`${row},${column}`] = value; // Create a key from row and column
+    }
+    return tooltipDict;
   }, []);
 
   const handleCellClick = useCallback(
@@ -93,6 +103,7 @@ export default function TableView(props: ViewPropsType) {
     color: theme.palette.text.secondary,
   };
   const filled = variant === "filled";
+  const tooltipMap = getTooltips(tooltips);
 
   return (
     <Box {...getComponentProps(props, "container")}>
@@ -170,23 +181,31 @@ export default function TableView(props: ViewPropsType) {
                         selectedCells.has(coordinate) ||
                         isRowSelected ||
                         selectedColumns.has(columnIndex);
-                      return (
+                      
+                      const tooltip = tooltipMap[coordinate]; // Check if there's a tooltip for the cell
+                      const content = formatCellValue(item[key], props);
+                      const cell = (
                         <TableCell
                           key={key}
                           sx={{
-                            background: isSelected
-                              ? selectedCellColor
-                              : "unset",
+                            background: isSelected ? selectedCellColor : "unset",
                           }}
                           onClick={() => {
                             handleCellClick(rowIndex, columnIndex);
                           }}
                           {...getComponentProps(props, "tableBodyCell")}
                         >
-                          {formatCellValue(item[key], props)}
+                          {tooltip ? (
+                            <Tooltip title={tooltip} arrow>
+                              <span> {content} </span>
+                            </Tooltip>
+                          ) : (content)}
                         </TableCell>
                       );
+                      
+                      return cell;
                     })}
+
                     {hasRowActions && (
                       <TableCell
                         align="right"

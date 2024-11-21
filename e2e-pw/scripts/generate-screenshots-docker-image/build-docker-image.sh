@@ -15,7 +15,7 @@ SCRIPTS_DIR="$(dirname "$SCREENSHOT_SCRIPTS_DIR")"
 E2E_ROOT_DIR="$(dirname "$SCRIPTS_DIR")"
 FIFTYONE_ROOT_DIR="$(dirname "$E2E_ROOT_DIR")"
 
-echo "Fiftyone root dir: $FIFTYONE_ROOT_DIR"
+echo "FiftyOne root dir: $FIFTYONE_ROOT_DIR"
 
 # copy fiftyone directory into .build
 echo "Copying fiftyone directory into .build..."
