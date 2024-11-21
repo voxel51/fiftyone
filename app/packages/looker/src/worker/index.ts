@@ -330,27 +330,23 @@ const processSample = async ({
     maskTargetsBuffers.push(...moreMaskTargetsBuffers);
   }
 
-  // todo: address frames
-  // if (sample.frames && sample.frames.length) {
-  //   bufferPromises = [
-  //     ...bufferPromises,
-  //     ...sample.frames
-  //       .map((frame) =>
-  //         processLabels(
-  //           frame,
-  //           coloring,
-  //           "frames.",
-  //           sources,
-  //           customizeColorSetting,
-  //           colorscale,
-  //           labelTagColors,
-  //           selectedLabelTags,
-  //           schema
-  //         )
-  //       )
-  //       .flat(),
-  //   ];
-  // }
+  if (sample.frames && sample.frames.length) {
+    for (const frame of sample.frames) {
+      const [moreBitmapPromises, moreMaskTargetsBuffers] = await processLabels(
+        frame,
+        coloring,
+        "frames.",
+        sources,
+        customizeColorSetting,
+        colorscale,
+        labelTagColors,
+        selectedLabelTags,
+        schema
+      );
+      imageBitmapPromises.push(...moreBitmapPromises);
+      maskTargetsBuffers.push(...moreMaskTargetsBuffers);
+    }
+  }
 
   Promise.all(imageBitmapPromises).then((bitmaps) => {
     postMessage(

@@ -78,21 +78,10 @@ export default class HeatmapOverlay<State extends BaseState>
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
     if (this.label.map.bitmap) {
-      // const maskCtx = this.canvas.getContext("2d");
-      // maskCtx.imageSmoothingEnabled = false;
-      // maskCtx.clearRect(
-      //   0,
-      //   0,
-      //   this.label.map.data.shape[1],
-      //   this.label.map.data.shape[0]
-      // );
-      // maskCtx.putImageData(this.imageData, 0, 0);
-
       const [tlx, tly] = t(state, 0, 0);
       const [brx, bry] = t(state, 1, 1);
       const tmp = ctx.globalAlpha;
       ctx.globalAlpha = state.options.alpha;
-      // ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
       ctx.drawImage(this.label.map.bitmap, tlx, tly, brx - tlx, bry - tly);
       ctx.globalAlpha = tmp;
     }
