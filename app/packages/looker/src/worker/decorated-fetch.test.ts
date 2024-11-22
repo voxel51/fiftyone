@@ -42,14 +42,25 @@ describe("fetchWithLinearBackoff", () => {
   });
 
   it("should throw an error when response is not ok", async () => {
+    const mockResponse = new Response("Not Found", { status: 500 });
+    global.fetch = vi.fn().mockResolvedValue(mockResponse);
+
+    await expect(
+      fetchWithLinearBackoff("http://fiftyone.ai", 5, 10)
+    ).rejects.toThrow("HTTP error: 500");
+
+    expect(global.fetch).toHaveBeenCalledTimes(5);
+  });
+
+  it("should throw an error when response is a 4xx, like 404", async () => {
     const mockResponse = new Response("Not Found", { status: 404 });
     global.fetch = vi.fn().mockResolvedValue(mockResponse);
 
     await expect(
       fetchWithLinearBackoff("http://fiftyone.ai", 5, 10)
-    ).rejects.toThrow("HTTP error: 404");
+    ).rejects.toThrow("Non-retryable HTTP error: 404");
 
-    expect(global.fetch).toHaveBeenCalledTimes(5);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
   it("should apply linear backoff between retries", async () => {
