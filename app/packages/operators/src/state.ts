@@ -21,7 +21,6 @@ import {
 } from "recoil";
 import {
   BROWSER_CONTROL_KEYS,
-  IS_OSS,
   RESOLVE_INPUT_VALIDATION_TTL,
   RESOLVE_TYPE_TTL,
 } from "./constants";
@@ -259,7 +258,7 @@ const useOperatorPromptSubmitOptions = (
   const persistUnderKey = `operator-prompt-${operatorURI}`;
   const availableOrchestrators =
     execDetails.executionOptions?.availableOrchestrators || [];
-  const hasAvailableOrchestators = availableOrchestrators.length > 0;
+  const hasAvailableOrchestrators = availableOrchestrators.length > 0;
   const executionOptions = execDetails.executionOptions || {};
   const defaultToExecute = executionOptions.allowDelegatedExecution
     ? !executionOptions.defaultChoiceToDelegated
@@ -308,7 +307,7 @@ const useOperatorPromptSubmitOptions = (
 
   if (
     executionOptions.allowDelegatedExecution &&
-    hasAvailableOrchestators &&
+    hasAvailableOrchestrators &&
     executionOptions.orchestratorRegistrationEnabled
   ) {
     for (let orc of execDetails.executionOptions.availableOrchestrators) {
@@ -332,7 +331,8 @@ const useOperatorPromptSubmitOptions = (
   } else if (
     executionOptions.allowDelegatedExecution &&
     executionOptions.allowImmediateExecution &&
-    IS_OSS
+    executionOptions.orchestratorRegistrationEnabled &&
+    !hasAvailableOrchestrators
   ) {
     const markdownDesc = React.createElement(
       Markdown,
@@ -391,7 +391,7 @@ const useOperatorPromptSubmitOptions = (
   if (selectedOption) selectedOption.selected = true;
   const showWarning =
     executionOptions.orchestratorRegistrationEnabled &&
-    !hasAvailableOrchestators &&
+    !hasAvailableOrchestrators &&
     !executionOptions.allowImmediateExecution;
   const warningStr =
     "This operation requires [delegated execution](https://docs.voxel51.com/plugins/using_plugins.html#delegated-operations)";
