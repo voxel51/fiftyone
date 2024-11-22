@@ -369,7 +369,7 @@ const useOperatorPromptSubmitOptions = (
     !hasAvailableOrchestators &&
     !executionOptions.allowImmediateExecution;
   const warningMessage =
-    "This operation requires [delegated execution](https://docs.voxel51.com/plugins/using_plugins.html#delegated-operations). Contact us about upgrading to [FiftyOne Teams](https://docs.voxel51.com/teams/index.html)";
+    "This operation requires [delegated execution](https://docs.voxel51.com/plugins/using_plugins.html#delegated-operations)";
 
   return {
     showWarning,
