@@ -31,7 +31,6 @@ export default class DetectionOverlay<
 > extends CoordinateOverlay<State, DetectionLabel> {
   private is3D: boolean;
   private labelBoundingBox: BoundingBox;
-  private imageBitmap: ImageBitmap | null = null;
 
   constructor(field, label) {
     super(field, label);
@@ -260,6 +259,13 @@ export default class DetectionOverlay<
     const ow = state.strokeWidth / state.canvasBBox[2];
     const oh = state.strokeWidth / state.canvasBBox[3];
     return [(bx - ow) * w, (by - oh) * h, (bw + ow * 2) * w, (bh + oh * 2) * h];
+  }
+
+  public cleanup(): void {
+    if (this.label.mask?.bitmap) {
+      this.label.mask?.bitmap.close();
+      console.log(">>>cleanup");
+    }
   }
 }
 

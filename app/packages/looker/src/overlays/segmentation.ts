@@ -260,6 +260,12 @@ export default class SegmentationOverlay<State extends BaseState>
   getSizeBytes(): number {
     return sizeBytesEstimate(this.label);
   }
+
+  public cleanup(): void {
+    if (this.label.mask?.bitmap) {
+      this.label.mask?.bitmap.close();
+    }
+  }
 }
 
 export const getSegmentationPoints = (

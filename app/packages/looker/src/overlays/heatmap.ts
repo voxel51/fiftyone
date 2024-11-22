@@ -205,6 +205,12 @@ export default class HeatmapOverlay<State extends BaseState>
   getSizeBytes(): number {
     return sizeBytesEstimate(this.label);
   }
+
+  public cleanup(): void {
+    if (this.label.map?.bitmap) {
+      this.label.map?.bitmap.close();
+    }
+  }
 }
 
 export const getHeatmapPoints = (labels: HeatmapLabel[]): Coordinates[] => {

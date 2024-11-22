@@ -73,6 +73,7 @@ export interface Overlay<State extends Partial<BaseState>> {
   getPoints(state: Readonly<State>): Coordinates[];
   getSelectData(state: Readonly<State>): SelectData;
   getSizeBytes(): number;
+  cleanup?(): void;
 }
 
 export abstract class CoordinateOverlay<
