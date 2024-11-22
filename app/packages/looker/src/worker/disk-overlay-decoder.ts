@@ -39,7 +39,9 @@ export const decodeOverlayOnDisk = async (
           customizeColorSetting,
           colorscale,
           {},
-          DETECTION
+          DETECTION,
+          maskPathDecodingPromises,
+          maskTargetsBuffers
         )
       );
     }
