@@ -54,7 +54,6 @@ class DelegatedOperationService(object):
                 - inputs_schema: the schema of the operator's inputs
                 - outputs_schema: the schema of the operator's outputs
 
-
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """

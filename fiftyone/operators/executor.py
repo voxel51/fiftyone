@@ -383,13 +383,16 @@ async def resolve_type(registry, operator_uri, request_params):
 
 
 async def resolve_type_with_context(operator, context):
-    """Resolves the "inputs" or "outputs" schema of an operator with the given context.
+    """Resolves the "inputs" or "outputs" schema of an operator with the given
+    context.
+
     Args:
         operator: the :class:`fiftyone.operators.Operator`
         context: the :class:`ExecutionContext` of an operator
+
     Returns:
-        the schema of "inputs" or "outputs" :class:`fiftyone.operators.types.Property` of
-        an operator, or None
+        the "inputs" or "outputs" schema
+        :class:`fiftyone.operators.types.Property` of an operator, or None
     """
     try:
         return operator.resolve_type(
