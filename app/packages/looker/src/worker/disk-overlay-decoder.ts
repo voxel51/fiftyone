@@ -83,7 +83,15 @@ export const decodeOverlayOnDisk = async (
     return;
   }
 
-  const overlayMask = await decodeWithCanvas(overlayImageBlob);
+  let overlayMask: OverlayMask;
+
+  try {
+    overlayMask = await decodeWithCanvas(overlayImageBlob);
+  } catch (e) {
+    console.error(e);
+    return;
+  }
+
   const [overlayHeight, overlayWidth] = overlayMask.shape;
 
   // set the `mask` property for this label
