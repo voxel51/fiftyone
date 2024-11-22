@@ -287,7 +287,7 @@ const useOperatorPromptSubmitOptions = (
       label: "Schedule",
       id: "schedule",
       default: defaultToSchedule,
-      description: "Run this operation on your compute cluster",
+      description: "Run this operation in the background",
       onSelect() {
         setSelectedID("schedule");
       },
@@ -369,7 +369,7 @@ const useOperatorPromptSubmitOptions = (
     !hasAvailableOrchestators &&
     !executionOptions.allowImmediateExecution;
   const warningMessage =
-    "There are no available orchestrators to schedule this operation. Please contact your administrator to add an orchestrator.";
+    "This operation requires [delegated execution](https://docs.voxel51.com/plugins/using_plugins.html#delegated-operations). Contact us about upgrading to [FiftyOne Teams](https://docs.voxel51.com/teams/index.html)";
 
   return {
     showWarning,

@@ -1277,7 +1277,7 @@ class ExecutionOptions(object):
 
     @property
     def orchestrator_registration_enabled(self):
-        return False
+        return not fo.config.allow_legacy_orchestrators
 
     def update(self, available_orchestrators=None):
         self._available_orchestrators = available_orchestrators

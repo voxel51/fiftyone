@@ -891,6 +891,14 @@ FiftyOne Open Source users can run delegated operations via the
 This command starts a service that will continuously check for any queued
 delegated operations and execute them serially in its process.
 
+You must also ensure that the
+:ref:`allow_legacy_orchestrators <configuring-fiftyone>` config flag is set
+in the environment where you run the App, e.g. by setting:
+
+.. code-block:: shell
+
+    export FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS=true
+
 .. _delegated-orchestrator-teamas:
 
 FiftyOne Teams
