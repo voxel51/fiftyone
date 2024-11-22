@@ -519,7 +519,7 @@ class DelegatedOperationService(object):
             ctx.request_params["target"] = "outputs"
             ctx.request_params["results"] = result
 
-            outputs = resolve_type_with_context(operator, ctx)
+            outputs = await resolve_type_with_context(operator, ctx)
             if outputs is not None:
                 outputs_schema = outputs.to_json()
         except (AttributeError, Exception):

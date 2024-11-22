@@ -379,10 +379,10 @@ async def resolve_type(registry, operator_uri, request_params):
     )
     await ctx.resolve_secret_values(operator._plugin_secrets)
 
-    return resolve_type_with_context(operator, ctx)
+    return await resolve_type_with_context(operator, ctx)
 
 
-def resolve_type_with_context(operator, context):
+async def resolve_type_with_context(operator, context):
     """Resolves the "inputs" or "outputs" schema of an operator with the given context.
     Args:
         operator: the :class:`fiftyone.operators.Operator`
