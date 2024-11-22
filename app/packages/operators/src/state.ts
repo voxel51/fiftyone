@@ -342,6 +342,7 @@ const useOperatorPromptSubmitOptions = (
     options.push({
       label: "Schedule",
       choiceLabel: `Schedule`,
+      tag: "NOT AVAILABLE",
       id: "disabled-schedule",
       description: markdownDesc,
       isDelegated: true,

@@ -11,6 +11,7 @@ import {
   ListItemText,
   Tooltip,
   ButtonProps,
+  Box,
 } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { onEnter } from "./utils";
@@ -144,9 +145,19 @@ export default function SplitButton({
                             <PrimaryWithTag
                               label={option.choiceLabel || option.label}
                               tag={option.tag}
+                              disabled={option.disabled || !option.onClick}
                             />
                           }
-                          secondary={option.description}
+                          secondary={
+                            <Box
+                              sx={{
+                                fontSize: "11px",
+                                "& *": { fontSize: "inherit" },
+                              }}
+                            >
+                              {option.description}
+                            </Box>
+                          }
                         />
                       </MenuItem>
                     ))}
@@ -161,13 +172,13 @@ export default function SplitButton({
   );
 }
 
-function PrimaryWithTag({ label, tag }) {
+function PrimaryWithTag({ label, tag, disabled }) {
   const theme = useTheme();
   const tagEl = tag ? (
     <span
       style={{
         fontSize: "11px",
-        color: theme.custom.primarySoft,
+        color: disabled ? theme.text.secondary : theme.custom.primarySoft,
         marginLeft: "5px",
       }}
     >
