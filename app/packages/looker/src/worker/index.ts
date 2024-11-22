@@ -30,6 +30,7 @@ import {
   Sample,
 } from "../state";
 import { decodeWithCanvas } from "./canvas-decoder";
+import { fetchWithLinearBackoff } from "./decorated-fetch";
 import { DeserializerFactory } from "./deserializer";
 import { PainterFactory } from "./painter";
 import { mapId } from "./shared";
@@ -107,11 +108,12 @@ const imputeOverlayFromPath = async (
   colorscale: Colorscale,
   buffers: ArrayBuffer[],
   sources: { [path: string]: string },
-  cls: string
+  cls: string,
+  maskPathDecodingPromises: Promise<void>[] = []
 ) => {
   // handle all list types here
   if (cls === DETECTIONS) {
-    const promises = [];
+    const promises: Promise<void>[] = [];
     for (const detection of label.detections) {
       promises.push(
         imputeOverlayFromPath(
@@ -126,10 +128,7 @@ const imputeOverlayFromPath = async (
         )
       );
     }
-    // if some paths fail to load, it's okay, we can still proceed
-    // hence we use `allSettled` instead of `all`
-    await Promise.allSettled(promises);
-    return;
+    maskPathDecodingPromises.push(...promises);
   }
 
   // overlay path is in `map_path` property for heatmap, or else, it's in `mask_path` property (for segmentation or detection)
@@ -157,14 +156,17 @@ const imputeOverlayFromPath = async (
     baseUrl = overlayImageUrl.split("?")[0];
   }
 
-  const overlayImageBuffer: Blob = await getFetchFunction()(
-    "GET",
-    overlayImageUrl,
-    null,
-    "blob"
-  );
+  let overlayImageBlob: Blob;
+  try {
+    const overlayImageFetchResponse = await fetchWithLinearBackoff(baseUrl);
+    overlayImageBlob = await overlayImageFetchResponse.blob();
+  } catch (e) {
+    console.error(e);
+    // skip decoding if fetch fails altogether
+    return;
+  }
 
-  const overlayMask = await decodeWithCanvas(overlayImageBuffer);
+  const overlayMask = await decodeWithCanvas(overlayImageBlob);
   const [overlayHeight, overlayWidth] = overlayMask.shape;
 
   // set the `mask` property for this label
@@ -190,8 +192,11 @@ const processLabels = async (
   schema: Schema
 ): Promise<ArrayBuffer[]> => {
   const buffers: ArrayBuffer[] = [];
-  const promises = [];
+  const painterPromises = [];
 
+  const maskPathDecodingPromises = [];
+
+  // mask deserialization / mask_path decoding loop
   for (const field in sample) {
     let labels = sample[field];
     if (!Array.isArray(labels)) {
@@ -205,8 +210,8 @@ const processLabels = async (
       }
 
       if (DENSE_LABELS.has(cls)) {
-        try {
-          await imputeOverlayFromPath(
+        maskPathDecodingPromises.push(
+          imputeOverlayFromPath(
             `${prefix || ""}${field}`,
             label,
             coloring,
@@ -214,11 +219,10 @@ const processLabels = async (
             colorscale,
             buffers,
             sources,
-            cls
-          );
-        } catch (e) {
-          console.error("Couldn't decode overlay image from disk: ", e);
-        }
+            cls,
+            maskPathDecodingPromises
+          )
+        );
       }
 
       if (cls in DeserializerFactory) {
@@ -249,9 +253,25 @@ const processLabels = async (
           mapId(label);
         }
       }
+    }
+  }
 
+  await Promise.allSettled(maskPathDecodingPromises);
+
+  // overlay painting loop
+  for (const field in sample) {
+    let labels = sample[field];
+    if (!Array.isArray(labels)) {
+      labels = [labels];
+    }
+    const cls = getCls(`${prefix ? prefix : ""}${field}`, schema);
+
+    for (const label of labels) {
+      if (!label) {
+        continue;
+      }
       if (painterFactory[cls]) {
-        promises.push(
+        painterPromises.push(
           painterFactory[cls](
             prefix ? prefix + field : field,
             label,
@@ -266,7 +286,7 @@ const processLabels = async (
     }
   }
 
-  return Promise.all(promises).then(() => buffers);
+  return Promise.all(painterPromises).then(() => buffers);
 };
 
 /** GLOBALS */
