@@ -1,10 +1,19 @@
 import { fetchWithLinearBackoff } from "./decorated-fetch";
 
+interface QueueItem {
+  request: {
+    url: string;
+    options?: RequestInit;
+  };
+  resolve: (value: Response | PromiseLike<Response>) => void;
+  reject: (reason?: any) => void;
+}
+
 // note: arbitrary number that seems to work well
 const MAX_CONCURRENT_REQUESTS = 100;
 
 let activeRequests = 0;
-const requestQueue = [];
+const requestQueue: QueueItem[] = [];
 
 export const enqueueFetch = (request: {
   url: string;
@@ -33,6 +42,5 @@ const processFetchQueue = () => {
     .catch((error) => {
       activeRequests--;
       reject(error);
-      processFetchQueue();
     });
 };
