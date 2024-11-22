@@ -2,7 +2,6 @@ import type { CallbackInterface, RecoilState } from "recoil";
 
 import { useRelayEnvironment } from "react-relay";
 import { useRecoilCallback } from "recoil";
-import { dynamicGroupsViewMode } from "../recoil";
 import * as atoms from "../recoil/atoms";
 import * as filterAtoms from "../recoil/filters";
 import * as groupAtoms from "../recoil/groups";
@@ -44,8 +43,6 @@ export default () => {
             selectors.appConfigOption({ key, modal: false }),
           ];
         }),
-
-        [dynamicGroupsViewMode(true), dynamicGroupsViewMode(false)],
 
         [atoms.cropToContent(true), atoms.cropToContent(false)],
         [atoms.sortFilterResults(true), atoms.sortFilterResults(false)],
