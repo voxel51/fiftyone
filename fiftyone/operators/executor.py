@@ -332,6 +332,7 @@ async def prepare_operator_executor(
     request_token=None,  # teams-only
     api_key=None,  # teams-only
     user=None,  # teams-only
+    allow_null_user=False,  # teams-only
 ):
     registry = OperatorRegistry()
     if registry.operator_exists(operator_uri) is False:
@@ -340,9 +341,12 @@ async def prepare_operator_executor(
     operator = registry.get_operator(operator_uri)
     executor = Executor()
     dataset = request_params.get("dataset_name", None)
-    user = await resolve_operation_user(
-        id=user, dataset=dataset, token=request_token, api_key=api_key
-    )
+
+    if not (user is None and allow_null_user):
+        user = await resolve_operation_user(
+            id=user, dataset=dataset, token=request_token, api_key=api_key
+        )
+
     execution_context_user = (
         ExecutionContextUser.from_dict(user) if user else None
     )
@@ -425,6 +429,7 @@ async def resolve_type(
     request_params,
     request_token=None,  # teams-only
     user=None,  # teams-only
+    ctx=None,  # teams-only
 ):
     """Resolves the inputs property type of the operator with the given name.
 
@@ -442,21 +447,22 @@ async def resolve_type(
 
     operator = registry.get_operator(operator_uri)
     dataset = request_params.get("dataset_name", None)
-    user = await resolve_operation_user(
-        id=user, dataset=dataset, token=request_token
-    )
-    execution_context_user = (
-        ExecutionContextUser.from_dict(user) if user else None
-    )
-    ctx = ExecutionContext(
-        request_params,
-        operator_uri=operator_uri,
-        required_secrets=operator._plugin_secrets,
-        user=execution_context_user,  # teams-only
-    )
-    await ctx.resolve_secret_values(
-        operator._plugin_secrets, request_token=request_token
-    )
+    if not ctx:
+        user = await resolve_operation_user(
+            id=user, dataset=dataset, token=request_token
+        )
+        execution_context_user = (
+            ExecutionContextUser.from_dict(user) if user else None
+        )
+        ctx = ExecutionContext(
+            request_params,
+            operator_uri=operator_uri,
+            required_secrets=operator._plugin_secrets,
+            user=execution_context_user,  # teams-only
+        )
+        await ctx.resolve_secret_values(
+            operator._plugin_secrets, request_token=request_token
+        )
     try:
         # User code
         with ctx:
@@ -467,13 +473,14 @@ async def resolve_type(
         return ExecutionResult(error=traceback.format_exc())
 
 
-async def resolve_type_with_context(request_params, target=None):
+async def resolve_type_with_context(request_params, target=None, ctx=None):
     """Resolves the "inputs" or "outputs" schema of an operator with the given
     context.
 
     Args:
         request_params: a dictionary of request parameters
         target (None): the target schema ("inputs" or "outputs")
+        ctx (None): :class:`ExecutionContext`
 
     Returns:
         the schema of "inputs" or "outputs"
@@ -483,7 +490,9 @@ async def resolve_type_with_context(request_params, target=None):
     computed_request_params = {**request_params, "target": computed_target}
     operator_uri = request_params.get("operator_uri", None)
     registry = OperatorRegistry()
-    return await resolve_type(registry, operator_uri, computed_request_params)
+    return await resolve_type(
+        registry, operator_uri, computed_request_params, ctx=ctx
+    )
 
 
 async def resolve_execution_options(
