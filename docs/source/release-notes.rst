@@ -2225,9 +2225,9 @@ FiftyOne 0.21.1
 
 App
 
-- Sidebar filters can now :ref:`leverage indexes <app-indexed-filtering>` for
-  improved performance!
-  `#3137 <https://github.com/voxel51/fiftyone/pull/3137>`_
+- Sidebar filters can now
+  :ref:`leverage indexes <app-optimizing-query-performance>` for improved
+  performance! `#3137 <https://github.com/voxel51/fiftyone/pull/3137>`_
 - Optimized the App grid's loading performance, especially for datasets with
   large samples `#3137 <https://github.com/voxel51/fiftyone/pull/3137>`_
 - Improved the usability of the

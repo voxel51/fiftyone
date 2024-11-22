@@ -2,7 +2,6 @@ import { InfoIcon, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { coloring } from "@fiftyone/state";
 import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
-import Bolt from "@mui/icons-material/Bolt";
 import PaletteIcon from "@mui/icons-material/Palette";
 import React, {
   MutableRefObject,
@@ -20,7 +19,6 @@ import {
 } from "recoil";
 import styled from "styled-components";
 import { ExternalLink } from "../../utils/generic";
-import { QP_MODE } from "../../utils/links";
 import { activeColorEntry } from "../ColorModal/state";
 
 const selectedFieldInfo = atom<string | null>({
@@ -320,40 +318,6 @@ function FieldInfoExpanded({
     document.body
   );
 }
-
-const QueryPerformance: React.FunctionComponent<{
-  color: string;
-  path: string;
-}> = ({ color, path }) => {
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
-  const indexed = useRecoilValue(fos.pathHasIndexes(path));
-  const theme = useTheme();
-  if (!queryPerformance || !indexed) {
-    return null;
-  }
-
-  return (
-    <FieldInfoTableContainer color={color}>
-      <tbody>
-        <tr>
-          <td>
-            <Bolt sx={{ color }} fontSize={"small"} />
-          </td>
-          <td>
-            <ContentValue>
-              <ExternalLink
-                style={{ color: theme.text.primary }}
-                href={QP_MODE}
-              >
-                Lightning indexed
-              </ExternalLink>
-            </ContentValue>
-          </td>
-        </tr>
-      </tbody>
-    </FieldInfoTableContainer>
-  );
-};
 
 type CustomizeColorProp = {
   color: string;
