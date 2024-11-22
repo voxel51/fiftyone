@@ -92,14 +92,18 @@ export default function Embeddings({ containerHeight, dimensions }) {
                 containerStyle={selectorStyle}
               />
             )}
-            {computeViz.isAvailable && (
-              <PlotOption
-                to={() => computeViz.prompt()}
-                title={"Compute visualization"}
-              >
-                <Add />
-              </PlotOption>
-            )}
+            <PlotOption
+              to={() => {
+                if (constants.IS_APP_MODE_FIFTYONE) {
+                  setShowCTA(true);
+                } else {
+                  computeViz.prompt();
+                }
+              }}
+              title={"Compute visualization"}
+            >
+              <Add />
+            </PlotOption>
             {!plotSelection.selectionIsExternal && (
               <PlotOption
                 to={plotSelection.clearSelection}
@@ -152,19 +156,6 @@ export default function Embeddings({ containerHeight, dimensions }) {
             )}
             <OperatorPlacements place={types.Places.EMBEDDINGS_ACTIONS} />
           </div>
-          <MuiButton
-            startIcon={<Add />}
-            onClick={() => {
-              if (constants.IS_APP_MODE_FIFTYONE) {
-                setShowCTA(true);
-              } else {
-                computeViz.prompt();
-              }
-            }}
-            variant="contained"
-          >
-            Compute Embeddings
-          </MuiButton>
         </Selectors>
         {showPlot && (
           <EmbeddingsPlot

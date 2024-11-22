@@ -158,7 +158,11 @@ function TypographyOrNode(props: TypographyProps) {
   const { children, ...otherProps } = props;
 
   if (typeof children === "string") {
-    return <Typography {...otherProps}>{children}</Typography>;
+    return (
+      <Typography sx={{ textAlign: "center" }} {...otherProps}>
+        {children}
+      </Typography>
+    );
   }
 
   if (React.isValidElement(children)) {
