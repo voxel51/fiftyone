@@ -93,10 +93,10 @@ pages on this site apply to Teams deployments as well.
     :button_link: teams_app.html
 
 .. customcalloutitem::
-    :header: Management SDK
-    :description: Learn how to programmatically manage your deployment with the Management SDK.
-    :button_text: Manage your Teams deployment
-    :button_link: management_sdk.html
+    :header: Data Lens
+    :description: Use FiftyOne Teams to explore and import samples from external data sources.
+    :button_text: Connect your data lake
+    :button_link: data_lens.html
 
 .. customcalloutitem::
     :header: Plugins
@@ -109,6 +109,12 @@ pages on this site apply to Teams deployments as well.
     :description: Safely store and access secrets in your Teams deployment.
     :button_text: Learn more about secrets
     :button_link: secrets.html
+
+.. customcalloutitem::
+    :header: Management SDK
+    :description: Learn how to programmatically manage your deployment with the Management SDK.
+    :button_text: Manage your Teams deployment
+    :button_link: management_sdk.html
 
 .. customcalloutitem::
     :header: Migrations
@@ -142,8 +148,10 @@ pages on this site apply to Teams deployments as well.
     Roles and permissions <roles_and_permissions>
     Dataset Versioning <dataset_versioning>
     FiftyOne Teams App <teams_app>
-    Management SDK <management_sdk>
+    Data Lens __SUB_NEW__ <data_lens>
     Plugins <teams_plugins>
+    Query Performance <query_performance>
     Secrets <secrets>
+    Management SDK <management_sdk>
     Migrations <migrations>
     Pluggable Auth <pluggable_auth>
