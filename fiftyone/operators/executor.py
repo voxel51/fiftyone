@@ -258,6 +258,7 @@ async def execute_or_delegate_operator(
         try:
             from .delegated import DelegatedOperationService
 
+            ctx.request_params["delegated"] = True
             metadata = {"inputs_schema": None, "outputs_schema": None}
 
             try:
@@ -694,12 +695,12 @@ class ExecutionContext(object):
 
     @property
     def delegated(self):
-        """Whether delegated execution has been forced for the operation."""
+        """Whether the operation was delegated."""
         return self.request_params.get("delegated", False)
 
     @property
     def requesting_delegated_execution(self):
-        """Whether delegated execution has been requested for the operation."""
+        """Whether delegated execution was requested for the operation."""
         return self.request_params.get("request_delegation", False)
 
     @property
@@ -1277,7 +1278,7 @@ class ExecutionOptions(object):
 
     @property
     def orchestrator_registration_enabled(self):
-        return False
+        return not fo.config.allow_legacy_orchestrators
 
     def update(self, available_orchestrators=None):
         self._available_orchestrators = available_orchestrators
