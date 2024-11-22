@@ -7,6 +7,7 @@ FiftyOne Server cache utilities.
 """
 
 import logging
+import re
 import typing as t
 import urllib.parse as urlparse
 from datetime import datetime, timedelta
@@ -53,6 +54,7 @@ def extract_ttu_from_url(
         an expiration datetime
     """
     date_fmt = "%Y%m%dT%H%M%SZ"
+    parse_date = lambda dt: datetime.strptime(re.sub("-|:", "", dt), date_fmt)
 
     start_date = now
     expires_in = default_sec
@@ -68,11 +70,11 @@ def extract_ttu_from_url(
             elif "date" in key.lower():
                 # AWS and GCP URIs have an 'X-<svc>-Date' parameter
                 # representing the start time in ISO-8601 format
-                start_date = datetime.strptime(value[0], date_fmt)
+                start_date = parse_date(value[0])
             elif "se" == key.lower():
                 # Azure URIs have a 'se' (signedExpiry) parameter representing
                 # the expiration date in ISO-8601 format
-                expires_at = datetime.strptime(value[0], date_fmt)
+                expires_at = parse_date(value[0])
                 break
     except Exception as e:
         # If we fail to parse the expiration time, just fall back to the
@@ -81,6 +83,7 @@ def extract_ttu_from_url(
         ...
     if not expires_at:
         expires_at = start_date + timedelta(seconds=expires_in)
+
     # Return the expiration time
     return expires_at
 
