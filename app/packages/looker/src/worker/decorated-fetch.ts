@@ -12,12 +12,13 @@ class NonRetryableError extends Error {
 
 export const fetchWithLinearBackoff = async (
   url: string,
+  opts: RequestInit = {},
   retries = DEFAULT_MAX_RETRIES,
   delay = DEFAULT_BASE_DELAY
 ) => {
   for (let i = 0; i < retries; i++) {
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, opts);
       if (response.ok) {
         return response;
       } else {
