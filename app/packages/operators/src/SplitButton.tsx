@@ -128,6 +128,9 @@ export default function SplitButton({
                         key={option.id}
                         disabled={option.disabled}
                         selected={option.selected}
+                        sx={{
+                          cursor: option.onClick ? "pointer" : "default",
+                        }}
                         onClick={() => handleSelect(option)}
                       >
                         <ListItemText

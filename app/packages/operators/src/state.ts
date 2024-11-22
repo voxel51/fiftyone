@@ -1,7 +1,13 @@
 import { useAnalyticsInfo } from "@fiftyone/analytics";
 import * as fos from "@fiftyone/state";
 import { debounce } from "lodash";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   atom,
   selector,
@@ -15,6 +21,7 @@ import {
 } from "recoil";
 import {
   BROWSER_CONTROL_KEYS,
+  IS_OSS,
   RESOLVE_INPUT_VALIDATION_TTL,
   RESOLVE_TYPE_TTL,
 } from "./constants";
@@ -32,6 +39,7 @@ import {
 import { OperatorPromptType, Places } from "./types";
 import { OperatorExecutorOptions } from "./types-internal";
 import { ValidationContext } from "./validation";
+import { Markdown } from "@fiftyone/components";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -231,8 +239,8 @@ function useExecutionOptions(operatorURI, ctx, isRemote) {
 export type OperatorExecutionOption = {
   label: string;
   id: string;
-  description: string;
-  onClick: () => void;
+  description: string | React.ReactNode;
+  onClick?: () => void;
   isDelegated: boolean;
   choiceLabel?: string;
   tag?: string;
@@ -321,6 +329,23 @@ const useOperatorPromptSubmitOptions = (
         isDelegated: true,
       });
     }
+  } else if (
+    executionOptions.allowDelegatedExecution &&
+    executionOptions.allowImmediateExecution &&
+    IS_OSS
+  ) {
+    const markdownDesc = React.createElement(
+      Markdown,
+      null,
+      "[Learn how](https://docs.voxel51.com/plugins/using_plugins.html#delegated-operations) to run this operation in the background"
+    );
+    options.push({
+      label: "Schedule",
+      choiceLabel: `Schedule`,
+      id: "disabled-schedule",
+      description: markdownDesc,
+      isDelegated: true,
+    });
   }
 
   // sort options so that the default is always the first in the list
@@ -368,8 +393,9 @@ const useOperatorPromptSubmitOptions = (
     executionOptions.orchestratorRegistrationEnabled &&
     !hasAvailableOrchestators &&
     !executionOptions.allowImmediateExecution;
-  const warningMessage =
+  const warningStr =
     "This operation requires [delegated execution](https://docs.voxel51.com/plugins/using_plugins.html#delegated-operations)";
+  const warningMessage = React.createElement(Markdown, null, warningStr);
 
   return {
     showWarning,

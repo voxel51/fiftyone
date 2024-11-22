@@ -16,3 +16,4 @@ export enum QueueItemStatus {
 }
 export const PANEL_STATE_CHANGE_DEBOUNCE = 500;
 export const PANEL_STATE_PATH_CHANGE_DEBOUNCE = 250;
+export const IS_OSS = true; // false in fiftyone-teams
