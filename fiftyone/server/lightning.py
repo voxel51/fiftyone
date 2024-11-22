@@ -319,7 +319,10 @@ async def _do_async_query(
         if query.has_list and not query.filters:
             return await _do_distinct_query(collection, query, filter)
 
-        return await _do_distinct_pipeline(dataset, collection, filter)
+        return await _do_distinct_pipeline(dataset, collection, query, filter)
+
+    if filter:
+        query.insert(0, {"$match": filter})
 
     return [i async for i in collection.aggregate(query)]
 
@@ -363,11 +366,11 @@ async def _do_distinct_pipeline(
     filter: t.Optional[t.Mapping[str, str]],
 ):
     pipeline = []
-    if query.filters:
-        pipeline += get_view(dataset, filters=query.filters)._pipeline()
-
     if filter:
         pipeline.append({"$match": filter})
+
+    if query.filters:
+        pipeline += get_view(dataset, filters=query.filters)._pipeline()
 
     pipeline.append({"$sort": {query.path: 1}})
 

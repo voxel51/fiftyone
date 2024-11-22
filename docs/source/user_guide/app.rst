@@ -489,8 +489,6 @@ perform initial filters on:
     # Note: it is faster to declare indexes before adding samples
     dataset.add_samples(...)
 
-    fo.app_config.default_query_performance = True
-
     session = fo.launch_app(dataset)
 
 .. note::
@@ -521,8 +519,6 @@ compound index that includes the group slice name:
     dataset.create_index("ground_truth.detections.label")
     dataset.create_index([("group.name", 1), ("ground_truth.detections.label", 1)])
 
-    fo.app_config.default_query_performance = True
-
     session = fo.launch_app(dataset)
 
 For datasets with a small number of fields, you can index all fields by adding
@@ -537,8 +533,6 @@ a single
 
     dataset = foz.load_zoo_dataset("quickstart")
     dataset.create_index("$**")
-
-    fo.app_config.default_query_performance = True
 
     session = fo.launch_app(dataset)
 
