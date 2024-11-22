@@ -85,8 +85,6 @@ const indexesByPath = selector({
 
     const { sampleIndexes: samples, frameIndexes: frames } = get(indexes);
 
-    console.log(samples);
-
     const schema = gatherPaths(State.SPACE.SAMPLE);
     const frameSchema = gatherPaths(State.SPACE.FRAME).map((p) =>
       p.slice("frames.".length)
