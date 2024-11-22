@@ -4,7 +4,7 @@ import { Coloring, CustomizeColor } from "..";
 import { OverlayMask } from "../numpy";
 import { Colorscale } from "../state";
 import { decodeWithCanvas } from "./canvas-decoder";
-import { fetchWithLinearBackoff } from "./decorated-fetch";
+import { enqueueFetch } from "./pooled-fetch";
 import { getOverlayFieldFromCls } from "./shared";
 
 export type IntermediateMask = {
@@ -70,7 +70,10 @@ export const decodeOverlayOnDisk = async (
 
   let overlayImageBlob: Blob;
   try {
-    const overlayImageFetchResponse = await fetchWithLinearBackoff(baseUrl);
+    const overlayImageFetchResponse = await enqueueFetch({
+      url: baseUrl,
+      options: { priority: "low" },
+    });
     overlayImageBlob = await overlayImageFetchResponse.blob();
   } catch (e) {
     console.error(e);
