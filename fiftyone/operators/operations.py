@@ -666,18 +666,18 @@ class Operations(object):
         return self._ctx.trigger("set_group_slice", {"slice": slice})
 
     def open_sample(self, id=None, group_id=None):
-        """Open a modal for the specified sample or group in the App.
+        """Opens the specified sample or group in the App's sample modal.
 
         Args:
-            id (None): the ID of the sample or group to view in the modal
-            group_id (None): the ID of the group to view in the modal
+            id (None): a sample ID to open in the modal
+            group_id (None): a group ID to open in the modal
         """
         return self._ctx.trigger(
             "open_sample", {"id": id, "group_id": group_id}
         )
 
     def close_sample(self):
-        """Close the modal for the sample or group in the App."""
+        """Closes the App's sample modal."""
         return self._ctx.trigger("close_sample")
 
 
