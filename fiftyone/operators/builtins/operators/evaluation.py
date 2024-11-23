@@ -70,7 +70,7 @@ class EvaluateModel(foo.Operator):
 
 class EvaluateModelAsync(foo.Operator):
     def __init__(self, _builtin=False):
-        super().__init__(_builtin)
+        super().__init__(_builtin=_builtin)
         self.em = EvaluateModel()
 
     @property
@@ -89,10 +89,9 @@ class EvaluateModelAsync(foo.Operator):
         return self.em.resolve_input(ctx)
 
     def execute(self, ctx):
-        delegate = ctx.params.get("delegate", False)
         eval_key = ctx.params.get("eval_key", None)
 
-        if delegate:
+        if ctx.delegated:
             return self.em.execute(ctx)
 
         ctx.trigger("@voxel51/operators/evaluate_model", params=ctx.params)
