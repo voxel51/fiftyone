@@ -9,7 +9,6 @@ FiftyOne Server lightning queries
 from bson import ObjectId
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
-import math
 import typing as t
 
 import asyncio
@@ -46,6 +45,7 @@ class LightningPathInput:
 class LightningInput:
     dataset: str
     paths: t.List[LightningPathInput]
+    slice: t.Optional[str] = None
 
 
 @gql.interface
@@ -138,7 +138,13 @@ async def lightning_resolver(
         for collection, sublist in zip(collections, queries)
         for item in sublist
     ]
-    result = await _do_async_pooled_queries(dataset, flattened)
+
+    filter = (
+        {f"{dataset.group_field}.name": input.slice}
+        if dataset.group_field and input.slice
+        else None
+    )
+    result = await _do_async_pooled_queries(dataset, flattened, filter)
 
     results = []
     offset = 0
@@ -293,10 +299,11 @@ async def _do_async_pooled_queries(
     queries: t.List[
         t.Tuple[AsyncIOMotorCollection, t.Union[DistinctQuery, t.List[t.Dict]]]
     ],
+    filter: t.Optional[t.Mapping[str, str]],
 ):
     return await asyncio.gather(
         *[
-            _do_async_query(dataset, collection, query)
+            _do_async_query(dataset, collection, query, filter)
             for collection, query in queries
         ]
     )
@@ -306,25 +313,31 @@ async def _do_async_query(
     dataset: fo.Dataset,
     collection: AsyncIOMotorCollection,
     query: t.Union[DistinctQuery, t.List[t.Dict]],
+    filter: t.Optional[t.Mapping[str, str]],
 ):
     if isinstance(query, DistinctQuery):
         if query.has_list and not query.filters:
-            return await _do_distinct_query(collection, query)
+            return await _do_distinct_query(collection, query, filter)
 
-        return await _do_distinct_pipeline(dataset, collection, query)
+        return await _do_distinct_pipeline(dataset, collection, query, filter)
+
+    if filter:
+        query.insert(0, {"$match": filter})
 
     return [i async for i in collection.aggregate(query)]
 
 
 async def _do_distinct_query(
-    collection: AsyncIOMotorCollection, query: DistinctQuery
+    collection: AsyncIOMotorCollection,
+    query: DistinctQuery,
+    filter: t.Optional[t.Mapping[str, str]],
 ):
     match = None
     if query.search:
         match = query.search
 
     try:
-        result = await collection.distinct(query.path)
+        result = await collection.distinct(query.path, filter)
     except:
         # too many results
         return None
@@ -350,12 +363,16 @@ async def _do_distinct_pipeline(
     dataset: fo.Dataset,
     collection: AsyncIOMotorCollection,
     query: DistinctQuery,
+    filter: t.Optional[t.Mapping[str, str]],
 ):
     pipeline = []
+    if filter:
+        pipeline.append({"$match": filter})
+
     if query.filters:
         pipeline += get_view(dataset, filters=query.filters)._pipeline()
 
-    pipeline += [{"$sort": {query.path: 1}}]
+    pipeline.append({"$sort": {query.path: 1}})
 
     if query.search:
         if query.is_object_id_field:
