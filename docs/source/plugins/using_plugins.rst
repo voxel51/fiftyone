@@ -594,8 +594,8 @@ operator can be invoked like so:
     dataset = foz.load_zoo_dataset("quickstart")
     compute_metadata = foo.get_operator("@voxel51/utils/compute_metadata")
 
-    # Schedule a delegated operation to (re)compute metadata
-    compute_metadata(dataset, overwrite=True, delegate=True)
+    # (Re)compute the dataset's metadata
+    compute_metadata(dataset, overwrite=True)
 
 .. note::
 
@@ -614,13 +614,11 @@ follows:
             sample_collection,
             overwrite=False,
             num_workers=None,
-            delegate=False,
         ):
             ctx = dict(view=sample_collection.view())
             params = dict(
                 overwrite=overwrite,
                 num_workers=num_workers,
-                delegate=delegate,
             )
             return foo.execute_operator(self.uri, ctx, params=params)
 
@@ -654,6 +652,151 @@ data, you can access it via the ``result`` property of the returned
 
         result = await op(...)
         print(result.result) # {...}
+
+Requesting delegation
+~~~~~~~~~~~~~~~~~~~~~
+
+Operators that support :ref:`delegated execution <delegated-operations>` can
+support this via the `__call__()` syntax by passing the
+`request_delegation=True` flag to
+:func:`execute_operator() <fiftyone.operators.execute_operator>`.
+
+In fact, the
+`@voxel51/utils/compute_metadata <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/utils>`_
+operator does just that:
+
+.. code-block:: python
+    :linenos:
+
+    class ComputeMetadata(foo.Operator):
+        def __call__(
+            self,
+            sample_collection,
+            overwrite=False,
+            num_workers=None,
+            delegate=False,
+        ):
+            ctx = dict(view=sample_collection.view())
+            params = dict(
+                overwrite=overwrite,
+                num_workers=num_workers,
+            )
+            return foo.execute_operator(
+                self.uri,
+                ctx,
+                params=params,
+                request_delegation=delegate,
+            )
+
+        def resolve_execution_options(self, ctx):
+            return foo.ExecutionOptions(
+                allow_delegated_execution=True,
+                allow_immediate_execution=True,
+            )
+
+which means that it can be invoked like so:
+
+.. code-block:: python
+    :linenos:
+
+    compute_metadata = foo.get_operator("@voxel51/utils/compute_metadata")
+
+    # Schedule a delegated operation to (re)compute metadata
+    compute_metadata(dataset, overwrite=True, delegate=True)
+
+.. _direct-operator-execution:
+
+Direct execution
+----------------
+
+You can programmatically execute any operator by directly calling
+:func:`execute_operator() <fiftyone.operators.execute_operator>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.operators as foo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    ctx = {
+        "view": dataset.take(10),
+        "params": dict(
+            export_type="LABELS_ONLY",
+            dataset_type="COCO",
+            labels_path=dict(absolute_path="/tmp/coco/labels.json"),
+            label_field="ground_truth",
+        )
+    }
+
+    foo.execute_operator("@voxel51/io/export_samples", ctx)
+
+.. note::
+
+    In general, to use
+    :func:`execute_operator() <fiftyone.operators.execute_operator>` you must
+    inspect the operator's
+    :meth:`execute() <fiftyone.operators.operator.Operator.execute>`
+    implementation to understand what parameters are required.
+
+For operators whose
+:meth:`execute() <fiftyone.operators.operator.Operator.execute>` method returns
+data, you can access it via the ``result`` property of the returned
+:class:`ExecutionResult <fiftyone.operators.executor.ExecutionResult>` object:
+
+.. code-block:: python
+    :linenos:
+
+    result = foo.execute_operator("@an-operator/with-results", ctx)
+    print(result.result)  # {...}
+
+.. note::
+
+    When working in notebook contexts, executing operators returns an
+    ``asyncio.Task`` that you can ``await`` to retrieve the
+    :class:`ExecutionResult <fiftyone.operators.executor.ExecutionResult>`:
+
+    .. code-block:: python
+
+        result = await foo.execute_operator("@an-operator/with-results", ctx)
+        print(result.result)  # {...}
+
+Requesting delegation
+~~~~~~~~~~~~~~~~~~~~~
+
+If an operation supports both immediate and
+:ref:`delegated execution <delegated-operations>` as specified either by its
+:ref:`configuration <operator-delegation-configuration>` or
+:ref:`execution options <operator-execution-options>`, you can request
+delegated execution by passing the `request_delegation=True` flag to
+:func:`execute_operator() <fiftyone.operators.execute_operator>`:
+
+.. code-block:: python
+    :linenos:
+
+    foo.execute_operator(operator_uri, ctx=ctx, request_delegation=True)
+
+This has the same effect as choosing `Schedule` from the dropdown in the
+operator's input modal when executing it from within the App:
+
+.. image:: /images/plugins/operators/operator-execute-button.png
+    :align: center
+
+.. note::
+
+    :ref:`FiftyOne Teams <fiftyone-teams>` users can also specify an optional
+    delegation target for their delegated operations:
+
+    .. code-block:: python
+
+        foo.execute_operator(
+            operator_uri,
+            ctx=ctx,
+            request_delegation=True,
+            delegation_target="overnight",
+        )
 
 .. _delegating-function-calls:
 
@@ -713,115 +856,6 @@ above forms:
         name="patches",
         persistent=True,
     )
-
-.. _direct-operator-execution:
-
-Direct execution
-----------------
-
-You can also programmatically execute any operator by directly calling
-:func:`execute_operator() <fiftyone.operators.execute_operator>`:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.operators as foo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-
-    ctx = {
-        "view": dataset.take(10),
-        "params": dict(
-            export_type="LABELS_ONLY",
-            dataset_type="COCO",
-            labels_path=dict(absolute_path="/tmp/coco/labels.json"),
-            label_field="ground_truth",
-            delegate=False,  # False: execute immediately, True: delegate
-        )
-    }
-
-    foo.execute_operator("@voxel51/io/export_samples", ctx)
-
-In the above example, the `delegate=True/False` parameter controls whether
-execution happens immediately or is
-:ref:`delegated <operator-delegated-execution>` because the operator implements
-its
-:meth:`resolve_delegation() <fiftyone.operators.operator.Operator.resolve_delegation>`
-as follows:
-
-.. code-block:: python
-    :linenos:
-
-    def resolve_delegation(self, ctx):
-        return ctx.params.get("delegate", False)
-
-.. note::
-
-    In general, to use
-    :func:`execute_operator() <fiftyone.operators.execute_operator>` you must
-    inspect the operator's
-    :meth:`execute() <fiftyone.operators.operator.Operator.execute>`
-    implementation to understand what parameters are required.
-
-For operators whose
-:meth:`execute() <fiftyone.operators.operator.Operator.execute>` method returns
-data, you can access it via the ``result`` property of the returned
-:class:`ExecutionResult <fiftyone.operators.executor.ExecutionResult>` object:
-
-.. code-block:: python
-    :linenos:
-
-    result = foo.execute_operator("@an-operator/with-results", ctx)
-    print(result.result)  # {...}
-
-.. note::
-
-    When working in notebook contexts, executing operators returns an
-    ``asyncio.Task`` that you can ``await`` to retrieve the
-    :class:`ExecutionResult <fiftyone.operators.executor.ExecutionResult>`:
-
-    .. code-block:: python
-
-        result = await foo.execute_operator("@an-operator/with-results", ctx)
-        print(result.result)  # {...}
-
-.. _requesting-operator-delegation:
-
-Requesting delegation
----------------------
-
-If an operation supports both immediate and delegated execution as specified
-either by its :ref:`configuration <operator-delegation-configuration>` or
-:ref:`execution options <operator-execution-options>`, you can request
-delegated execution by passing the `request_delegation=True` flag to
-:func:`execute_operator() <fiftyone.operators.execute_operator>`:
-
-.. code-block:: python
-    :linenos:
-
-    foo.execute_operator(operator_uri, ctx=ctx, request_delegation=True)
-
-This has the same effect as choosing `Schedule` from the dropdown in the
-operator's input modal when executing it from within the App:
-
-.. image:: /images/plugins/operators/operator-execute-button.png
-    :align: center
-
-.. note::
-
-    :ref:`FiftyOne Teams <fiftyone-teams>` users can also specify an optional
-    delegation target for their delegated operations:
-
-    .. code-block:: python
-
-        foo.execute_operator(
-            operator_uri,
-            ctx=ctx,
-            request_delegation=True,
-            delegation_target="overnight",
-        )
 
 .. _delegated-operations:
 
@@ -893,7 +927,7 @@ delegated operations and execute them serially in its process.
 
 You must also ensure that the
 :ref:`allow_legacy_orchestrators <configuring-fiftyone>` config flag is set
-in the environment where you run the App, e.g. by setting:
+in the environment where you run the App/SDK, e.g. by setting:
 
 .. code-block:: shell
 
