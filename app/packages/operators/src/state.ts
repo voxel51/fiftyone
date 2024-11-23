@@ -304,7 +304,7 @@ const useOperatorPromptSubmitOptions = (
       label: "Schedule",
       id: "schedule",
       default: defaultToSchedule,
-      description: "Run this operation in the background",
+      description: "Run this operation on your compute cluster",
       onSelect() {
         setSelectedID("schedule");
       },
