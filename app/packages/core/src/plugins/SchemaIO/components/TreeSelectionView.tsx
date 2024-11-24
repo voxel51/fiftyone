@@ -39,12 +39,7 @@ export default function TreeSelectionView(props: ViewPropsType) {
   const { view = {} } = schema;
 
   if (data == undefined) {
-    const sampleIds = view?.data.flatMap(([parentId, children]) => {
-      return children.map((childId) =>
-        typeof childId === "string" ? childId : childId[0]
-      );
-    });
-    onChange(path, sampleIds);
+    onChange(path, []);
   }
 
   const structure = view?.data || [];
@@ -78,7 +73,7 @@ export default function TreeSelectionView(props: ViewPropsType) {
   const initialCollapsedState: CollapsedState = React.useMemo(() => {
     const state: CollapsedState = {};
     structure.forEach(([parentId]) => {
-      state[parentId] = false; // start as expanded
+      state[parentId] = true; // start as expanded
     });
     return state;
   }, [structure]);
@@ -87,7 +82,7 @@ export default function TreeSelectionView(props: ViewPropsType) {
     initialCollapsedState
   );
 
-  const [allCollapsed, setAllCollapsed] = React.useState(false);
+  const [allCollapsed, setAllCollapsed] = React.useState(true);
 
   const handleExpandCollapseAll = () => {
     setCollapsedState((prevState) => {
@@ -208,17 +203,6 @@ export default function TreeSelectionView(props: ViewPropsType) {
     const idx = structure.findIndex(([id]) => id === groupId);
     return idx === -1 ? 0 : idx + 1;
   };
-
-  // On init, all samples are selected by default
-  useEffect(() => {
-    const sampleIds = view?.data.flatMap(([parentId, children]) => {
-      return children.map((childId) =>
-        typeof childId === "string" ? childId : childId[0]
-      );
-    });
-    onChange(path, sampleIds);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // this only runs when data and checkboxstate are different
   // meaning the user selected samples from the grid
