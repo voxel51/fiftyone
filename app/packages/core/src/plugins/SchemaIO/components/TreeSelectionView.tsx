@@ -73,7 +73,7 @@ export default function TreeSelectionView(props: ViewPropsType) {
   const initialCollapsedState: CollapsedState = React.useMemo(() => {
     const state: CollapsedState = {};
     structure.forEach(([parentId]) => {
-      state[parentId] = true; // start as expanded
+      state[parentId] = true; // start as folded
     });
     return state;
   }, [structure]);
@@ -92,7 +92,7 @@ export default function TreeSelectionView(props: ViewPropsType) {
       });
       return newState;
     });
-    setAllCollapsed(!allCollapsed); // Toggle the expand/collapse state
+    setAllCollapsed(!allCollapsed);
   };
 
   const handleCheckboxChange = (id: string, isChecked: boolean) => {
@@ -178,7 +178,7 @@ export default function TreeSelectionView(props: ViewPropsType) {
         const isSample =
           !structure.some(([parentId]) => parentId === key) &&
           key !== "selectAll";
-        return isSample && updatedState[key].checked; // Only checked samples
+        return isSample && updatedState[key].checked;
       });
 
       // We update the actual output value (ctx.params.value \ data) here.
@@ -188,7 +188,6 @@ export default function TreeSelectionView(props: ViewPropsType) {
     });
   };
 
-  // Function to handle expand/collapse toggle
   const handleToggleCollapse = (id: string) => {
     setCollapsedState((prevState) => ({
       ...prevState,
