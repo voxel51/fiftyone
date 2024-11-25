@@ -76,7 +76,7 @@ workflow:
 
 * :ref:`Leaky Splits <brain-image-leaky-splits>`:
   Often when sourcing data en masse, duplicates and near duplicates can slip
-  through the cracks. The FiftyOne Brain offers a *leaky-splits check* that
+  through the cracks. The FiftyOne Brain offers a *leaky-splits analysis* that
   can be used to find potential leaks between dataset splits. These splits can
   be misleading when evaluating a model, giving an overly optimistic measure
   for the quality of training. 
@@ -1775,7 +1775,7 @@ ____________
 Despite our best efforts, duplicates and other forms of non-IID samples
 show up in our data. When these samples end up in different splits, this
 can have consequences when evaluating a model. It can often be easy to
-overestimate model capability due to this issue. FiftyOne Brain offers a way
+overestimate model capability due to this issue. The FiftyOne Brain offers a way
 of identifying such cases in dataset splits.
 
 The leaks of a |Dataset| or |DatasetView| can be computed directly without the need
