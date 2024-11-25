@@ -170,11 +170,11 @@ SAMPLE_STORE = {
 }
 
 IMAGES = {
-    "brightness": "https://i.imgur.com/6aLFlZw.png",
-    "blurriness": "https://i.imgur.com/8Tb3ind.png",
-    "aspect_ratio": "https://i.imgur.com/BftM2H3.png",
-    "entropy": "https://i.imgur.com/K9iV3jR.png",
-    "near_duplicates": "https://i.imgur.com/46UclZG.png",
-    "exact_duplicates": "https://i.imgur.com/3MDGmZS.png",
-    "unsupported_dataset": "https://i.imgur.com/oPCmLz4.png",
+    "brightness": "/panels/brightness.png",
+    "blurriness": "/panels/blurriness.png",
+    "aspect_ratio": "/panels/aspect_ratio.png",
+    "entropy": "/panels/entropy.png",
+    "near_duplicates": "/panels/near_dup.png",
+    "exact_duplicates": "/panels/exact_dup.png",
+    "unsupported_dataset": "/panels/unsupported.png",
 }
