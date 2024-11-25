@@ -59,8 +59,12 @@ export const mergeGroups = (
   sink: State.SidebarGroup[],
   source: State.SidebarGroup[]
 ) => {
-  const mapping = Object.fromEntries(sink.map((g) => [g.name, g]));
-  const configMapping = Object.fromEntries(source.map((g) => [g.name, g]));
+  // make copies, assume readonly
+  const mapping = Object.fromEntries(sink.map((g) => [g.name, { ...g }]));
+  const configMapping = Object.fromEntries(
+    source.map((g) => [g.name, { ...g }])
+  );
+
   const sinkKeys = sink.map(({ name }) => name);
   const sourceKeys = source.map(({ name }) => name);
 
@@ -76,8 +80,9 @@ export const mergeGroups = (
       continue;
     }
 
-    mapping[name].paths = mapping[name].paths ?? [];
-    merge(mapping[name].paths, source[i].paths);
+    // make copies, assume readonly
+    mapping[name].paths = [...(mapping[name].paths ?? [])];
+    merge(mapping[name].paths, [...source[i].paths]);
   }
 
   return resolved;
