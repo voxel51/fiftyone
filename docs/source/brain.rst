@@ -1811,10 +1811,13 @@ of tags, a field, or views.
 
 **Output**: An index that will allow you to look through your leaks and
 provides some useful actions once they are discovered such as automatically
-cleaning the dataset with `view_without_leaks` or tagging them for the future
-with `tag_leaks`. Besides this, a view with all leaks is returned. This is
-not only visually appealing and fun to look at, but can also give you an
-insight into the source of the leaks in your dataset.
+cleaning the dataset with
+:meth:`no_leaks_view() <fiftyone.brain.internal.core.leaky_splits.LeakySplitsIndex.no_leaks_view>`
+or tagging them for the future with
+:meth:`tag_leaks() <fiftyone.brain.internal.core.leaky_splits.LeakySplitsIndex.tag_leaks>`.
+Besides this, a view with all leaks is returned. This is not only visually
+appealing and fun to look at, but can also give you an insight into the
+source of the leaks in your dataset.
 
 **What to expect**: Leakyness find leaks by embedding samples with a powerful
 model and finding very close samples in different splits in this space. Large,
