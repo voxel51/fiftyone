@@ -247,6 +247,11 @@ const collectBitmapPromises = (label, cls, bitmapPromises) => {
   if (label[overlayField]) {
     const [height, width] = label[overlayField].data.shape;
 
+    if (!height || !width) {
+      label[overlayField].image = null;
+      return;
+    }
+
     const imageData = new ImageData(
       new Uint8ClampedArray(label[overlayField].image),
       width,
