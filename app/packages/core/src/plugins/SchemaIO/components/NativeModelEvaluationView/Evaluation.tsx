@@ -1532,8 +1532,8 @@ function getMatrix(matrices, config) {
   if (!matrices) return;
   const { sortBy = "az", limit } = config;
   const parsedLimit = typeof limit === "number" ? limit : undefined;
-  const classes = matrices[`${sortBy}_classes`].slice(parsedLimit);
-  const matrix = matrices[`${sortBy}_matrix`].slice(parsedLimit);
+  const classes = matrices[`${sortBy}_classes`].slice(0, parsedLimit);
+  const matrix = matrices[`${sortBy}_matrix`].slice(0, parsedLimit);
   const colorscale = matrices[`${sortBy}_colorscale`];
   return { labels: classes, matrix, colorscale };
 }
