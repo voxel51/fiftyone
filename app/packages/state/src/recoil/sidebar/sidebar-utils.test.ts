@@ -3,9 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("recoil");
 vi.mock("recoil-relay");
 
-import { mergeGroups } from "./sidebar-utils";
+import { merge, mergeGroups } from "./sidebar-utils";
 
 describe("test sidebar groups resolution", () => {
+  it("test list merge", () => {
+    expect(merge([], ["one", "two"])).toStrictEqual(["one", "two"]);
+  });
+
   it("merges current and config groups", () => {
     expect(
       mergeGroups(

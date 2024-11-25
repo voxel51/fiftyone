@@ -70,6 +70,7 @@ import {
   unsupportedMatcher,
 } from "../utils";
 import * as viewAtoms from "../view";
+import { mergeGroups } from "./sidebar-utils";
 
 export enum EntryKind {
   EMPTY = "EMPTY",

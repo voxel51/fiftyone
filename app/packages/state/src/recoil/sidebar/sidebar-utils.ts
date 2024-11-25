@@ -34,19 +34,25 @@ const insertFromNeighbor = (sink: string[], source: string[], key: string) => {
   return;
 };
 
-const merge = (sink: string[], source: string[]) => {
+export const merge = (sink: string[], source: string[]) => {
   const missing = new Set(source.filter((key) => !sink.includes(key)));
 
   while (missing.size) {
-    const force = ![...missing].some((name) => hasNeighbor(sink, source, name));
+    const force = [...missing].every(
+      (name) => !hasNeighbor(sink, source, name)
+    );
     for (const name of missing) {
       if (!force && !hasNeighbor(sink, source, name)) {
         continue;
       }
+
       insertFromNeighbor(sink, source, name);
+
       missing.delete(name);
     }
   }
+
+  return sink;
 };
 
 export const mergeGroups = (
@@ -70,7 +76,8 @@ export const mergeGroups = (
       continue;
     }
 
-    merge(mapping[name].paths || [], source[i].paths);
+    mapping[name].paths = mapping[name].paths ?? [];
+    merge(mapping[name].paths, source[i].paths);
   }
 
   return resolved;
