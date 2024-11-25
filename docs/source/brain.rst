@@ -1778,7 +1778,7 @@ can have consequences when evaluating a model. It can often be easy to
 overestimate model capability due to this issue. FiftyOne Brain offers a way
 of identifying such cases in dataset splits.
 
-The leaks of a |Dataset| can be computed directly without the need
+The leaks of a |Dataset| or |DatasetView| can be computed directly without the need
 for the predictions of a pre-trained model via the
 :meth:`compute_leaky_splits() <fiftyone.brain.compute_leaky_splits>`
 method:
