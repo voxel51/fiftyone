@@ -1155,6 +1155,12 @@ export default function Evaluation(props: EvaluationProps) {
                         colorscale: confusionMatrixConfig.log
                           ? confusionMatrix?.colorscale || "viridis"
                           : "viridis",
+                        hovertemplate:
+                          [
+                            "<b>count: %{z:d}</b>",
+                            `ground_truth: %{y}`,
+                            `predictions: %{x}`,
+                          ].join(" <br>") + "<extra></extra>",
                       },
                     ]}
                     onClick={({ points }) => {
@@ -1183,6 +1189,12 @@ export default function Evaluation(props: EvaluationProps) {
                           colorscale: confusionMatrixConfig.log
                             ? compareConfusionMatrix?.colorscale || "viridis"
                             : "viridis",
+                          hovertemplate:
+                            [
+                              "<b>count: %{z:d}</b>",
+                              `ground_truth: %{y}`,
+                              `predictions: %{x}`,
+                            ].join(" <br>") + "<extra></extra>",
                         },
                       ]}
                     />
