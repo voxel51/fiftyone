@@ -1781,7 +1781,7 @@ to identify such cases in dataset splits.
 The leaks of a |Dataset| or |DatasetView| can be computed directly without the need
 for the predictions of a pre-trained model via the
 :meth:`compute_leaky_splits() <fiftyone.brain.compute_leaky_splits>`
-method:
+method:.
 
 .. code-block:: python
     :linenos:
@@ -1805,6 +1805,57 @@ method:
         'test' : some_other_view
     }
     index, leaks = fob.compute_leaky_splits(dataset, split_views=split_views)
+
+Here is a sample snippet to run this on the `COCO <https://cocodataset.org/#home>`_.
+Try it for yourself and see what you may find.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.random as four
+    from fiftyone.brain import compute_leaky_splits
+
+    coco = foz.load_zoo_dataset("coco-2017", split="test")
+    coco.untag_samples(coco.distinct("tags"))
+    
+    four.random_split(coco, {"train": 0.7, "test": 0.3})
+    index, leaks = compute_leaky_splits(coco, split_tags=['train', 'test'])
+
+    session = fo.Session(leaks)
+
+Once you have these leaks, it is wise to look through them. You may gain some insight
+into the source of the leaks.
+
+.. code-block:: python
+    :linenos:
+
+    session = fo.Session(leaks)
+
+Before evaluating your model on your test set, consider getting a version of it
+with the leaks removed. This can be easily done with the built in method
+:meth:`no_leaks_view() <fiftyone.brain.internal.core.leaky_splits.LeakySplitsIndex.no_leaks_view>`.
+
+.. code-block:: python
+    :linenos:
+
+    # if you already have it
+    test_set = some_view
+
+    # can also be found with the variable `split_views` from the index
+    # make sure to put in the right string based on the field/tag/key in view dict
+    # passed when building the index
+    test_set = index.split_views['test']
+
+    test_set_no_leaks = index.no_leaks_view(test_set) # return a view with leaks removed
+    session = fo.Session(leaks)
+
+    # do evaluations on test_set_no_leaks rather than test_set
+
+Performance on the clean test set will can be closer to the performance of the
+model in the wild. If you found some leaks in your dataset, consider comparing
+performance on the base test set against the clean test set.
 
 **Input**: A |Dataset| or |DatasetView|, and a definition of splits through one
 of tags, a field, or views.
