@@ -5,6 +5,7 @@ FiftyOne operators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from .operator import Operator, OperatorConfig
 from .registry import (
     OperatorRegistry,

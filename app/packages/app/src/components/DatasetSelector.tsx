@@ -1,6 +1,11 @@
-import { Selector, type UseSearch } from "@fiftyone/components";
-import { datasetName, useSetDataset } from "@fiftyone/state";
-import React from "react";
+import { Selector, UseSearch } from "@fiftyone/components";
+import {
+  datasetHeadName,
+  datasetName,
+  datasetSnapshotName,
+  useSetDataset,
+} from "@fiftyone/state";
+import { default as React, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 
 const DatasetLink: React.FC<{ value: string; className?: string }> = ({
@@ -18,7 +23,15 @@ const DatasetSelector: React.FC<{
   useSearch: UseSearch<string>;
 }> = ({ useSearch }) => {
   const setDataset = useSetDataset();
-  const dataset = useRecoilValue(datasetName) as string;
+  const dataset = useRecoilValue(datasetName);
+  const datasetHead = useRecoilValue(datasetHeadName);
+  const datasetSnapshot = useRecoilValue(datasetSnapshotName);
+
+  const nameWithSnapshot = useMemo(() => {
+    if (datasetHead && datasetSnapshot) {
+      return `${datasetHead} (${datasetSnapshot})`;
+    }
+  }, [datasetHead, datasetSnapshot]);
 
   return (
     <Selector<string>
@@ -33,7 +46,7 @@ const DatasetSelector: React.FC<{
       }}
       overflow={true}
       useSearch={useSearch}
-      value={dataset}
+      value={nameWithSnapshot || dataset || ""}
     />
   );
 };

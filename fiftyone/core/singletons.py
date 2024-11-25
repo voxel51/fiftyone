@@ -9,6 +9,8 @@ FiftyOne singleton implementations.
 from collections import defaultdict
 import weakref
 
+import fiftyone.internal.context_vars as ficv
+
 
 class DatasetSingleton(type):
     """Singleton metaclass for :class:`fiftyone.core.dataset.Dataset`.
@@ -24,7 +26,16 @@ class DatasetSingleton(type):
         cls._instances = weakref.WeakValueDictionary()
         return cls
 
+    def _make_instance(cls, name, _create, *args, **kwargs):
+        instance = cls.__new__(cls)
+        instance.__init__(name=name, _create=_create, *args, **kwargs)
+        return instance
+
     def __call__(cls, name=None, _create=True, *args, **kwargs):
+        skip_cache = ficv.no_singleton_cache.get()
+        if skip_cache:
+            return cls._make_instance(name, _create, *args, **kwargs)
+
         instance = cls._instances.pop(name, None)
 
         if (
@@ -33,8 +44,7 @@ class DatasetSingleton(type):
             or instance.deleted
             or instance.name is None
         ):
-            instance = cls.__new__(cls)
-            instance.__init__(name=name, _create=_create, *args, **kwargs)
+            instance = cls._make_instance(name, _create, *args, **kwargs)
             name = instance.name  # `__init__` may have changed `name`
         else:
             try:
@@ -110,7 +120,8 @@ class SampleSingleton(DocumentSingleton):
         return cls
 
     def _register_instance(cls, obj):
-        cls._instances[obj._doc.collection_name][obj.id] = obj
+        if not ficv.no_singleton_cache.get():
+            cls._instances[obj._doc.collection_name][obj.id] = obj
 
     def _get_instance(cls, doc):
         try:
@@ -255,9 +266,10 @@ class FrameSingleton(DocumentSingleton):
         return cls
 
     def _register_instance(cls, obj):
-        cls._instances[obj._doc.collection_name][obj.sample_id][
-            obj.frame_number
-        ] = obj
+        if not ficv.no_singleton_cache.get():
+            cls._instances[obj._doc.collection_name][obj.sample_id][
+                obj.frame_number
+            ] = obj
 
     def _get_instance(cls, doc):
         try:

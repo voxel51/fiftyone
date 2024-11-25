@@ -25,11 +25,19 @@ STATUS_LABELS = {
 }
 EVALUATION_TYPES_WITH_CONFIDENCE = ["detection", "classification"]
 EVALUATION_TYPES_WITH_IOU = ["detection"]
+EDIT_PERMISSIONS = ["MANAGE", "EDIT"]
 TRUTHY_VALUES = ["true", "True", "1", 1]
 ENABLE_CACHING = (
     os.environ.get("FIFTYONE_DISABLE_EVALUATION_CACHING") not in TRUTHY_VALUES
 )
 CACHE_TTL = 30 * 24 * 60 * 60  # 30 days in seconds
+
+
+def _has_edit_permission(ctx):
+    if ctx.user is None:
+        return True
+
+    return ctx.user.dataset_permission in EDIT_PERMISSIONS
 
 
 class EvaluationPanel(Panel):
@@ -56,10 +64,11 @@ class EvaluationPanel(Panel):
             return None
 
     def get_permissions(self, ctx):
+        can_edit = _has_edit_permission(ctx)
         return {
-            "can_evaluate": True,
-            "can_edit_note": True,
-            "can_edit_status": True,
+            "can_evaluate": can_edit,
+            "can_edit_note": can_edit,
+            "can_edit_status": can_edit,
         }
 
     def can_evaluate(self, ctx):

@@ -4,12 +4,13 @@ import {
   Header,
   IconButton,
   SlackLink,
+  Tooltip,
   iconContainer,
 } from "@fiftyone/components";
 import { ViewBar } from "@fiftyone/core";
 import * as fos from "@fiftyone/state";
 import { useRefresh } from "@fiftyone/state";
-import { DarkMode, LightMode } from "@mui/icons-material";
+import { DarkMode, LightMode, Lock } from "@mui/icons-material";
 import { useColorScheme } from "@mui/material";
 import React, { Suspense, useMemo } from "react";
 import { useFragment, usePaginationFragment } from "react-relay";
@@ -18,9 +19,8 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import { graphql } from "relay-runtime";
 import Analytics from "./Analytics";
 import DatasetSelector from "./DatasetSelector";
-import Teams from "./Teams";
-import type { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
-import type { NavFragment$key } from "./__generated__/NavFragment.graphql";
+import { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
+import { NavFragment$key } from "./__generated__/NavFragment.graphql";
 
 const getUseSearch = (fragment: NavDatasets$key) => {
   return (search: string) => {
@@ -81,14 +81,38 @@ const Nav: React.FC<
   const refresh = useRefresh();
   const { mode, setMode } = useColorScheme();
   const setTheme = useSetRecoilState(fos.theme);
+  const datasetHead = useRecoilValue(fos.datasetHeadName);
+  const datasetSnapshot = useRecoilValue(fos.datasetSnapshotName);
 
   return (
     <>
       <Header
-        title={"FiftyOne"}
+        title={"FiftyOne Teams"}
         onRefresh={refresh}
         navChildren={<DatasetSelector useSearch={useSearch} />}
       >
+        {datasetHead && datasetSnapshot && (
+          <div
+            style={{
+              alignItems: "center",
+              display: "flex",
+              height: "100%",
+              marginRight: "1rem",
+            }}
+          >
+            <Tooltip
+              text={
+                `You are viewing the snapshot "${datasetSnapshot}" of the` +
+                ` dataset "${datasetHead}" (Read-only mode)`
+              }
+              placement="bottom-center"
+            >
+              <Lock
+                sx={{ color: (theme) => theme.palette.primary.main, mt: 1 }}
+              />
+            </Tooltip>
+          </div>
+        )}
         {hasDataset && (
           <Suspense fallback={<div style={{ flex: 1 }} />}>
             <ViewBar />
@@ -96,7 +120,6 @@ const Nav: React.FC<
         )}
         {!hasDataset && <div style={{ flex: 1 }} />}
         <div className={iconContainer}>
-          <Teams />
           <IconButton
             title={mode === "dark" ? "Light mode" : "Dark mode"}
             onClick={() => {

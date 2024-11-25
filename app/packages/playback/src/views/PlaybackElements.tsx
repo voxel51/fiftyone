@@ -6,10 +6,10 @@ import styled from "styled-components";
 import { PlayheadState, TimelineName } from "../lib/state";
 import { convertFrameNumberToPercentage } from "../lib/use-timeline-viz-utils";
 import { getGradientStringForSeekbar } from "../lib/utils";
-import BufferingIcon from "./svgs/buffering.svg?react";
-import PauseIcon from "./svgs/pause.svg?react";
-import PlayIcon from "./svgs/play.svg?react";
-import SpeedIcon from "./svgs/speed.svg?react";
+import bufferingIcon from "./svgs/buffering.svg";
+import pauseIcon from "./svgs/pause.svg";
+import playIcon from "./svgs/play.svg";
+import speedIcon from "./svgs/speed.svg";
 interface PlayheadProps {
   status: PlayheadState;
   timelineName: TimelineName;
@@ -40,9 +40,9 @@ export const Playhead = React.forwardRef<
       className={`${className ?? ""} ${controlsStyles.lookerClickable}`}
       data-playhead-state={status}
     >
-      {status === "playing" && <PauseIcon onClick={pause} />}
-      {status === "paused" && <PlayIcon onClick={play} />}
-      {status !== "playing" && status !== "paused" && <BufferingIcon />}
+      {status === "playing" && <img src={pauseIcon} onClick={pause} />}
+      {status === "paused" && <img src={playIcon} onClick={play} />}
+      {status !== "playing" && status !== "paused" && <img src={bufferingIcon} />}
     </TimelineElementContainer>
   );
 });
@@ -189,7 +189,8 @@ export const Speed = React.forwardRef<
       }}
       title={`${speed}x (click to reset)`}
     >
-      <SpeedIcon
+      <img
+        src={speedIcon}
         className={controlsStyles.lookerClickable}
         onClick={resetSpeed}
       />

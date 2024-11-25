@@ -27,8 +27,8 @@ export function getFileSystemsFromList(
 ) {
   const azure = fileSystems.find((fs) => fs.name.toLowerCase() === "azure");
   const s3 = fileSystems.find((fs) => fs.name.toLowerCase() === "s3");
-  const gcp = fileSystems.find((fs) => fs.name.toLowerCase() === "gcp");
+  const gcs = fileSystems.find((fs) => fs.name.toLowerCase() === "gcs");
   const minio = fileSystems.find((fs) => fs.name.toLowerCase() === "minio");
   const local = fileSystems.find((fs) => fs.name.toLowerCase() === "local");
-  return { azure, s3, gcp, minio, local };
+  return { azure, s3, gcs, minio, local };
 }

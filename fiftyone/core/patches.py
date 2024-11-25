@@ -22,6 +22,8 @@ import fiftyone.core.sample as fos
 import fiftyone.core.validation as fova
 import fiftyone.core.view as fov
 
+from fiftyone.internal.dataset_permissions import requires_can_edit
+
 
 _PATCHES_TYPES = (fol.Detections, fol.Polylines, fol.Keypoints)
 _NO_MATCH_ID = ""
@@ -35,6 +37,14 @@ class _PatchView(fos.SampleView):
     @property
     def _frame_id(self):
         return ObjectId(self._doc.frame_id)
+
+    @property
+    def _readonly(self):
+        return self._collection._readonly
+
+    @property
+    def _permission(self):
+        return self._collection._permission
 
     def _save(self, deferred=False):
         sample_ops, frame_ops = super()._save(deferred=deferred)
@@ -137,6 +147,14 @@ class _PatchesView(fov.DatasetView):
         return self._patches_dataset
 
     @property
+    def _readonly(self):
+        return self._source_collection._readonly
+
+    @property
+    def _permission(self):
+        return self._source_collection._permission
+
+    @property
     def _root_dataset(self):
         return self._source_collection._root_dataset
 
@@ -232,6 +250,7 @@ class _PatchesView(fov.DatasetView):
 
         return zip(*id_map.items())
 
+    @requires_can_edit(data_obj_param="self._source_collection")
     def set_values(self, field_name, *args, **kwargs):
         field = field_name.split(".", 1)[0]
         must_sync = field in self._label_fields
@@ -248,6 +267,7 @@ class _PatchesView(fov.DatasetView):
         self._sync_source_field(field, ids=ids)
         self._sync_source_field_schema(field_name)
 
+    @requires_can_edit(data_obj_param="self._source_collection")
     def set_label_values(self, field_name, *args, **kwargs):
         field = field_name.split(".", 1)[0]
         must_sync = field in self._label_fields
@@ -263,6 +283,7 @@ class _PatchesView(fov.DatasetView):
                 _field_name, *args, **kwargs
             )
 
+    @requires_can_edit(data_obj_param="self._source_collection")
     def save(self, fields=None):
         """Saves the patches in this view to the underlying dataset.
 
@@ -294,6 +315,7 @@ class _PatchesView(fov.DatasetView):
 
         self._sync_source(fields=fields)
 
+    @requires_can_edit(data_obj_param="self._source_collection")
     def keep(self):
         """Deletes all patches that are **not** in this view from the
         underlying dataset.
@@ -311,6 +333,7 @@ class _PatchesView(fov.DatasetView):
 
         super().keep()
 
+    @requires_can_edit(data_obj_param="self._source_collection")
     def keep_fields(self):
         """Deletes all patch field(s) that have been excluded from this view
         from the underlying dataset.

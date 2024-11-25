@@ -31,7 +31,7 @@ class PluginSecretsResolver:
     ) -> None:
         self._registered_secrets[operator_uri] = required_secrets
 
-    def client(self) -> fois.ISecretProvider:
+    def client(self):
         if not self._instance:
             self._instance = self.__new__(self.__class__)
         return self._instance.client
@@ -96,6 +96,7 @@ class PluginSecretsResolver:
 
 
 def _get_secrets_client():
+    # pylint: disable=abstract-class-instantiated
     try:
         client = getattr(fois, "SecretsManager")
     except:  # pylint: disable=bare-except

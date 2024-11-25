@@ -1,0 +1,96 @@
+version: '3.8'
+services:
+  mongodb:
+    image: mongo:6-jammy
+    container_name: e2e-mongo
+    command: ['--quiet', '--port', '${MONGO_PORT}', '--bind_ip_all']
+    restart: always
+    ports:
+      - ${MONGO_PORT}:${MONGO_PORT}
+  teams-api:
+    image: us-central1-docker.pkg.dev/computer-vision-team/dev-docker/fiftyone-teams-api:${IMAGE_TAG}
+    build:
+      context: ../../../../../api
+      args:
+        GCLOUD_TOKEN: ${GCLOUD_TOKEN}
+    container_name: e2e-teams-api
+    environment:
+      FIFTYONE_TEAMS_CLIENT_ID: ${FIFTYONE_TEAMS_CLIENT_ID}
+      FIFTYONE_TEAMS_DOMAIN: ${FIFTYONE_TEAMS_DOMAIN}
+      FIFTYONE_TEAMS_AUDIENCE: ${FIFTYONE_TEAMS_AUDIENCE}
+      FIFTYONE_TEAMS_ORGANIZATION: ${FIFTYONE_TEAMS_ORGANIZATION}
+      AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID}
+      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE}
+      AUTH0_DOMAIN: ${AUTH0_DOMAIN}
+      AUTH0_API_CLIENT_ID: ${AUTH0_API_CLIENT_ID}
+      AUTH0_API_CLIENT_SECRET: ${AUTH0_API_CLIENT_SECRET}
+      FIFTYONE_DATABASE_NAME: ${FIFTYONE_DATABASE_NAME}
+      FIFTYONE_DATABASE_URI: ${FIFTYONE_DATABASE_URI}
+      FIFTYONE_ENCRYPTION_KEY: ${FIFTYONE_ENCRYPTION_KEY}
+      FIFTYONE_ENV: ${FIFTYONE_ENV}
+      FIFTYONE_INTERNAL_SERVICE: true
+      GRAPHQL_DEFAULT_LIMIT: ${GRAPHQL_DEFAULT_LIMIT}
+      LOGGING_LEVEL: ${API_LOGGING_LEVEL:-INFO}
+      MONGO_DEFAULT_DB: ${FIFTYONE_DATABASE_NAME}
+      API_BIND_PORT: ${API_BIND_PORT}
+    ports:
+      - ${API_BIND_PORT}:${API_BIND_PORT}
+    restart: always
+  teams-app:
+    image: us-central1-docker.pkg.dev/computer-vision-team/dev-docker/fiftyone-teams-app:${IMAGE_TAG}
+    container_name: e2e-teams-app
+    build: ../../../../../fiftyone-teams/docker
+    volumes:
+      - /tmp/fiftyone/e2e:/tmp/fiftyone/e2e
+    environment:
+      FIFTYONE_TEAMS_CLIENT_ID: ${FIFTYONE_TEAMS_CLIENT_ID}
+      FIFTYONE_TEAMS_DOMAIN: ${FIFTYONE_TEAMS_DOMAIN}
+      FIFTYONE_DATASET_ZOO_DIR: ${FIFTYONE_DATASET_ZOO_DIR}
+      FIFTYONE_TEAMS_AUDIENCE: ${FIFTYONE_TEAMS_AUDIENCE}
+      FIFTYONE_TEAMS_ORGANIZATION: ${FIFTYONE_TEAMS_ORGANIZATION}
+      API_URL: ${API_URL}
+      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE}
+      AUTH0_BASE_URL: ${AUTH0_BASE_URL}
+      AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID}
+      AUTH0_CLIENT_SECRET: ${AUTH0_CLIENT_SECRET}
+      AUTH0_ISSUER_BASE_URL: ${AUTH0_ISSUER_BASE_URL}
+      AUTH0_ORGANIZATION: ${AUTH0_ORGANIZATION}
+      AUTH0_SECRET: ${AUTH0_SECRET}
+      APP_USE_HTTPS: ${APP_USE_HTTPS:-true}
+      APP_BIND_PORT: ${APP_BIND_PORT}
+      FIFTYONE_APP_TEAMS_SDK_RECOMMENDED_VERSION: 0.13.2
+      FIFTYONE_SERVER_ADDRESS: ''
+      FIFTYONE_SERVER_PATH_PREFIX: /api/proxy/fiftyone-teams
+      FIFTYONE_TEAMS_PROXY_URL: ${FIFTYONE_TEAMS_PROXY_URL}
+      NODE_ENV: production
+      RECOIL_DUPLICATE_ATOM_KEY_CHECKING_ENABLED: false
+    restart: always
+    ports:
+      - ${APP_BIND_PORT}:${APP_BIND_PORT}
+  fiftyone-app:
+    image: us-central1-docker.pkg.dev/computer-vision-team/dev-docker/fiftyone-app:${IMAGE_TAG}
+    container_name: e2e-teams-fiftyone-app
+    volumes:
+      - /tmp/fiftyone/e2e:/tmp/fiftyone/e2e
+      - ${FIFTYONE_DATASET_ZOO_DIR}:${FIFTYONE_DATASET_ZOO_DIR}
+    build:
+      context: ../../../../../app
+    environment:
+      API_URL: http://teams-api:${API_BIND_PORT}
+      FIFTYONE_DATASET_ZOO_DIR: ${FIFTYONE_DATASET_ZOO_DIR}
+      FIFTYONE_DATABASE_ADMIN: true
+      FIFTYONE_DATABASE_NAME: ${FIFTYONE_DATABASE_NAME}
+      FIFTYONE_DATABASE_URI: ${FIFTYONE_DATABASE_URI}
+      FIFTYONE_DEFAULT_APP_ADDRESS: 0.0.0.0
+      FIFTYONE_DEFAULT_APP_PORT: 5151
+      FIFTYONE_ENCRYPTION_KEY: ${FIFTYONE_ENCRYPTION_KEY}
+      FIFTYONE_INTERNAL_SERVICE: true
+      FIFTYONE_MEDIA_CACHE_IMAGES: false
+      FIFTYONE_MEDIA_CACHE_SIZE_BYTES: -1
+      FIFTYONE_TEAMS_AUDIENCE: ${AUTH0_AUDIENCE}
+      FIFTYONE_TEAMS_CLIENT_ID: ${AUTH0_CLIENT_ID}
+      FIFTYONE_TEAMS_DOMAIN: ${AUTH0_DOMAIN}
+      FIFTYONE_TEAMS_ORGANIZATION: ${AUTH0_ORGANIZATION}
+    ports:
+      - ${FIFTYONE_DEFAULT_APP_ADDRESS}:${FIFTYONE_DEFAULT_APP_PORT}:5151
+    restart: always

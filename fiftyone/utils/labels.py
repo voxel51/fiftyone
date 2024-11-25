@@ -5,9 +5,10 @@ Label utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import eta.core.utils as etau
+import contextlib
 
 import fiftyone.core.labels as fol
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.iou as foui
@@ -78,66 +79,76 @@ def objects_to_segmentations(
         sample_collection.compute_metadata()
 
     samples = sample_collection.select_fields(in_field)
-    in_field, processing_frames = samples._handle_frame_field(in_field)
-    out_field, _ = samples._handle_frame_field(out_field)
 
-    if overwrite and output_dir is not None:
-        etau.delete_dir(output_dir)
+    with contextlib.ExitStack() as context:
+        if output_dir is not None:
+            if overwrite:
+                fos.delete_dir(output_dir)
 
-    if output_dir is not None:
-        filename_maker = fou.UniqueFilenameMaker(
-            output_dir=output_dir, rel_dir=rel_dir, idempotent=False
-        )
-
-    for sample in samples.iter_samples(autosave=True, progress=progress):
-        if processing_frames:
-            images = sample.frames.values()
-        else:
-            images = [sample]
-
-        if mask_size is not None:
-            frame_size = mask_size
-        elif processing_frames:
-            frame_size = (
-                sample.metadata.frame_width,
-                sample.metadata.frame_height,
+            local_dir = context.enter_context(fos.LocalDir(output_dir, "w"))
+            filename_maker = fou.UniqueFilenameMaker(
+                output_dir=output_dir,
+                rel_dir=rel_dir,
+                alt_dir=local_dir,
+                idempotent=False,
             )
-        else:
-            frame_size = (sample.metadata.width, sample.metadata.height)
 
-        for image in images:
-            label = image[in_field]
-            if label is None:
-                continue
+        in_field, processing_frames = samples._handle_frame_field(in_field)
+        out_field, _ = samples._handle_frame_field(out_field)
 
-            segmentation = None
+        for sample in samples.iter_samples(autosave=True, progress=progress):
+            if processing_frames:
+                images = sample.frames.values()
+            else:
+                images = [sample]
 
-            if isinstance(label, fol.Polyline):
-                label = fol.Polylines(polylines=[label])
-
-            if isinstance(label, fol.Detection):
-                label = fol.Detections(detections=[label])
-
-            if isinstance(label, fol.Polylines):
-                segmentation = label.to_segmentation(
-                    frame_size=frame_size,
-                    mask_targets=mask_targets,
-                    thickness=thickness,
+            if mask_size is not None:
+                frame_size = mask_size
+            elif processing_frames:
+                frame_size = (
+                    sample.metadata.frame_width,
+                    sample.metadata.frame_height,
                 )
+            else:
+                frame_size = (sample.metadata.width, sample.metadata.height)
 
-            if isinstance(label, fol.Detections):
-                segmentation = label.to_segmentation(
-                    frame_size=frame_size,
-                    mask_targets=mask_targets,
-                )
+            for image in images:
+                label = image[in_field]
+                if label is None:
+                    continue
 
-            if output_dir is not None:
-                mask_path = filename_maker.get_output_path(
-                    image.filepath, output_ext=".png"
-                )
-                segmentation.export_mask(mask_path, update=True)
+                segmentation = None
 
-            image[out_field] = segmentation
+                if isinstance(label, fol.Polyline):
+                    label = fol.Polylines(polylines=[label])
+
+                if isinstance(label, fol.Detection):
+                    label = fol.Detections(detections=[label])
+
+                if isinstance(label, fol.Polylines):
+                    segmentation = label.to_segmentation(
+                        frame_size=frame_size,
+                        mask_targets=mask_targets,
+                        thickness=thickness,
+                    )
+
+                if isinstance(label, fol.Detections):
+                    segmentation = label.to_segmentation(
+                        frame_size=frame_size,
+                        mask_targets=mask_targets,
+                    )
+
+                if output_dir is not None:
+                    mask_path = filename_maker.get_output_path(
+                        image.filepath, output_ext=".png"
+                    )
+                    local_path = filename_maker.get_alt_path(mask_path)
+
+                    segmentation.export_mask(local_path)
+                    segmentation.mask = None
+                    segmentation.mask_path = mask_path
+
+                image[out_field] = segmentation
 
     if save_mask_targets and mask_targets is not None:
         if not sample_collection.default_mask_targets:
@@ -190,33 +201,44 @@ def export_segmentations(
     in_field, processing_frames = samples._handle_frame_field(in_field)
 
     if overwrite:
-        etau.delete_dir(output_dir)
+        fos.delete_dir(output_dir)
 
-    filename_maker = fou.UniqueFilenameMaker(
-        output_dir=output_dir, rel_dir=rel_dir, idempotent=False
-    )
+    with fos.LocalDir(output_dir, "w") as local_dir:
+        filename_maker = fou.UniqueFilenameMaker(
+            output_dir=output_dir,
+            rel_dir=rel_dir,
+            alt_dir=local_dir,
+            idempotent=False,
+        )
 
-    for sample in samples.iter_samples(autosave=True, progress=progress):
-        if processing_frames:
-            images = sample.frames.values()
-        else:
-            images = [sample]
-
-        for image in images:
-            label = image[in_field]
-            if label is None:
-                continue
-
-            outpath = filename_maker.get_output_path(
-                image.filepath, output_ext=".png"
-            )
-
-            if isinstance(label, fol.Heatmap):
-                if label.map is not None:
-                    label.export_map(outpath, update=update)
+        for sample in samples.iter_samples(autosave=True, progress=progress):
+            if processing_frames:
+                images = sample.frames.values()
             else:
-                if label.mask is not None:
-                    label.export_mask(outpath, update=update)
+                images = [sample]
+
+            for image in images:
+                label = image[in_field]
+                if label is None:
+                    continue
+
+                outpath = filename_maker.get_output_path(
+                    image.filepath, output_ext=".png"
+                )
+                local_path = filename_maker.get_alt_path(outpath)
+
+                if isinstance(label, fol.Heatmap):
+                    if label.map is not None:
+                        label.export_map(local_path)
+                        if update:
+                            label.map_path = outpath
+                            label.map = None
+                else:
+                    if label.mask is not None:
+                        label.export_mask(local_path)
+                        if update:
+                            label.mask_path = outpath
+                            label.mask = None
 
 
 def import_segmentations(
@@ -249,31 +271,39 @@ def import_segmentations(
     )
 
     samples = sample_collection.select_fields(in_field)
-    in_field, processing_frames = samples._handle_frame_field(in_field)
 
-    for sample in samples.iter_samples(autosave=True, progress=progress):
-        if processing_frames:
-            images = sample.frames.values()
-        else:
-            images = [sample]
+    with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(media_fields=in_field, progress=progress)
+        )
 
-        for image in images:
-            label = image[in_field]
-            if label is None:
-                continue
+        df = context.enter_context(fos.DeleteFiles())
 
-            if isinstance(label, fol.Heatmap):
-                if label.map_path is not None:
-                    del_path = label.map_path if delete_images else None
-                    label.import_map(update=update)
-                    if del_path:
-                        etau.delete_file(del_path)
+        in_field, processing_frames = samples._handle_frame_field(in_field)
+
+        for sample in samples.iter_samples(autosave=True, progress=progress):
+            if processing_frames:
+                images = sample.frames.values()
             else:
-                if label.mask_path is not None:
-                    del_path = label.mask_path if delete_images else None
-                    label.import_mask(update=update)
-                    if del_path:
-                        etau.delete_file(del_path)
+                images = [sample]
+
+            for image in images:
+                label = image[in_field]
+                if label is None:
+                    continue
+
+                if isinstance(label, fol.Heatmap):
+                    if label.map_path is not None:
+                        del_path = label.map_path if delete_images else None
+                        label.import_map(update=update)
+                        if del_path:
+                            df.delete(del_path)
+                else:
+                    if label.mask_path is not None:
+                        del_path = label.mask_path if delete_images else None
+                        label.import_mask(update=update)
+                        if del_path:
+                            df.delete(del_path)
 
 
 def transform_segmentations(
@@ -329,35 +359,64 @@ def transform_segmentations(
     )
 
     samples = sample_collection.select_fields(in_field)
-    in_field, processing_frames = samples._handle_frame_field(in_field)
 
-    if output_dir is not None:
-        if overwrite:
-            etau.delete_dir(output_dir)
-
-        filename_maker = fou.UniqueFilenameMaker(
-            output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+    with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(media_fields=in_field, progress=progress)
         )
 
-    for sample in samples.iter_samples(autosave=True, progress=progress):
-        if processing_frames:
-            images = sample.frames.values()
+        if output_dir is not None:
+            if overwrite:
+                fos.delete_dir(output_dir)
+
+            local_dir = context.enter_context(fos.LocalDir(output_dir, "w"))
+            filename_maker = fou.UniqueFilenameMaker(
+                output_dir=output_dir,
+                rel_dir=rel_dir,
+                alt_dir=local_dir,
+                idempotent=False,
+            )
         else:
-            images = [sample]
+            mask_field = in_field + ".mask_path"
+            mask_paths = sample_collection.values(mask_field, unwind=True)
+            local_paths = sample_collection.get_local_paths(
+                in_field, download=False
+            )
+            local_map = dict(zip(mask_paths, local_paths))
 
-        for image in images:
-            label = image[in_field]
-            if label is None:
-                continue
+            writer = context.enter_context(fos.FileWriter())
 
-            if output_dir is not None:
-                outpath = filename_maker.get_output_path(
-                    image.filepath, output_ext=".png"
-                )
+        in_field, processing_frames = samples._handle_frame_field(in_field)
+
+        for sample in samples.iter_samples(autosave=True, progress=progress):
+            if processing_frames:
+                images = sample.frames.values()
             else:
-                outpath = None
+                images = [sample]
 
-            label.transform_mask(targets_map, outpath=outpath, update=update)
+            for image in images:
+                label = image[in_field]
+                if label is None:
+                    continue
+
+                if output_dir is not None:
+                    mask_path = filename_maker.get_output_path(
+                        image.filepath, output_ext=".png"
+                    )
+                    local_path = filename_maker.get_alt_path(mask_path)
+                else:
+                    mask_path = label.mask_path
+                    local_path = local_map[mask_path]
+                    writer.register_local_path(mask_path, local_path)
+
+                _mask = label.transform_mask(targets_map, outpath=local_path)
+
+                if update:
+                    if mask_path is not None:
+                        label.mask = None
+                        label.mask_path = mask_path
+                    else:
+                        label.mask = _mask
 
     if update_mask_targets:
         mask_targets = sample_collection.mask_targets.get(in_field, None)
@@ -435,23 +494,29 @@ def segmentations_to_detections(
     )
 
     samples = sample_collection.select_fields(in_field)
-    in_field, processing_frames = samples._handle_frame_field(in_field)
-    out_field, _ = samples._handle_frame_field(out_field)
 
-    for sample in samples.iter_samples(autosave=True, progress=progress):
-        if processing_frames:
-            images = sample.frames.values()
-        else:
-            images = [sample]
+    with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(media_fields=in_field, progress=progress)
+        )
 
-        for image in images:
-            label = image[in_field]
-            if label is None:
-                continue
+        in_field, processing_frames = samples._handle_frame_field(in_field)
+        out_field, _ = samples._handle_frame_field(out_field)
 
-            image[out_field] = label.to_detections(
-                mask_targets=mask_targets, mask_types=mask_types
-            )
+        for sample in samples.iter_samples(autosave=True, progress=progress):
+            if processing_frames:
+                images = sample.frames.values()
+            else:
+                images = [sample]
+
+            for image in images:
+                label = image[in_field]
+                if label is None:
+                    continue
+
+                image[out_field] = label.to_detections(
+                    mask_targets=mask_targets, mask_types=mask_types
+                )
 
 
 def instances_to_polylines(
@@ -564,25 +629,31 @@ def segmentations_to_polylines(
     )
 
     samples = sample_collection.select_fields(in_field)
-    in_field, processing_frames = samples._handle_frame_field(in_field)
-    out_field, _ = samples._handle_frame_field(out_field)
 
-    for sample in samples.iter_samples(autosave=True, progress=progress):
-        if processing_frames:
-            images = sample.frames.values()
-        else:
-            images = [sample]
+    with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(media_fields=in_field, progress=progress)
+        )
 
-        for image in images:
-            label = image[in_field]
-            if label is None:
-                continue
+        in_field, processing_frames = samples._handle_frame_field(in_field)
+        out_field, _ = samples._handle_frame_field(out_field)
 
-            image[out_field] = label.to_polylines(
-                mask_targets=mask_targets,
-                mask_types=mask_types,
-                tolerance=tolerance,
-            )
+        for sample in samples.iter_samples(autosave=True, progress=progress):
+            if processing_frames:
+                images = sample.frames.values()
+            else:
+                images = [sample]
+
+            for image in images:
+                label = image[in_field]
+                if label is None:
+                    continue
+
+                image[out_field] = label.to_polylines(
+                    mask_targets=mask_targets,
+                    mask_types=mask_types,
+                    tolerance=tolerance,
+                )
 
 
 def classification_to_detections(

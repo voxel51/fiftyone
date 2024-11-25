@@ -1,0 +1,5 @@
+export type { UserAttrFrag$data as UserAttrFrag$dataT } from './UserAttrFrag.graphql'
+export type { UserAttrFrag$key as UserAttrFrag$keyT } from './UserAttrFrag.graphql'
+export type { UserQuery$variables as UserQuery$variablesT } from './UserQuery.graphql'
+export type { UserQuery$data as UserQuery$dataT } from './UserQuery.graphql'
+export type { UserQuery as UserQueryT } from './UserQuery.graphql'

@@ -12,6 +12,7 @@ __pycache__
 **/*.ipynb_checkpoints
 .idea
 *.swp
+*.whl
 
 *~
 
@@ -24,8 +25,11 @@ dist/
 /docs/build/
 /docs/source/api/
 
+/docker/README.pdf
 /bin
 /lib
 coverage.xml
 .coverage.*
 pyvenv.cfg
+
+__models__

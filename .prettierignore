@@ -4,3 +4,7 @@ app/packages/spotlight
 voxel51-website.js
 **/__generated__
 **/dist
+node_modules
+next
+static
+.next

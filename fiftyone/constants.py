@@ -14,7 +14,7 @@ from packaging.version import Version
 from importlib.metadata import metadata
 
 
-CLIENT_TYPE = "fiftyone"
+CLIENT_TYPE = "fiftyone-teams"
 
 FIFTYONE_DIR = os.path.dirname(os.path.abspath(__file__))
 FIFTYONE_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".fiftyone")
@@ -26,13 +26,16 @@ FIFTYONE_EVALUATION_CONFIG_PATH = os.path.join(
     FIFTYONE_CONFIG_DIR, "evaluation_config.json"
 )
 FIFTYONE_APP_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "app_config.json")
+FIFTYONE_MEDIA_CACHE_CONFIG_PATH = os.path.join(
+    FIFTYONE_CONFIG_DIR, "media_cache_config.json"
+)
 BASE_DIR = os.path.dirname(FIFTYONE_DIR)
 TEAMS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var", "teams.json")
 WELCOME_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var", "welcome.json")
 RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 
 #
-# The compatible versions for this client
+# The compatible OSS versions for this client
 #
 # RULES: Datasets from all compatible versions must be...
 #   - Loadable by this client without error
@@ -47,13 +50,14 @@ COMPATIBLE_VERSIONS = ">=0.19,<1.2"
 # Package metadata
 _META = metadata("fiftyone")
 NAME = _META["name"]
-VERSION = _META["version"]
+VERSION = "1.1.0"  # open source compatibility version
+TEAMS_VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
 AUTHOR = _META["author"]
 AUTHOR_EMAIL = _META["author-email"]
 URL = _META.get("home-page", "https://github.com/voxel51/fiftyone")
 LICENSE = _META.get("license", "Apache")
-VERSION_LONG = "FiftyOne v%s, %s" % (VERSION, AUTHOR)
+VERSION_LONG = "FiftyOne Teams v%s, %s" % (TEAMS_VERSION, AUTHOR)
 COPYRIGHT = "2017-%d, %s" % (datetime.now().year, AUTHOR)
 
 DEV_INSTALL = os.path.isdir(
@@ -61,7 +65,7 @@ DEV_INSTALL = os.path.isdir(
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".git")
     )
 )
-RC_INSTALL = "rc" in VERSION
+RC_INSTALL = "rc" in TEAMS_VERSION
 
 # App configuration
 DEFAULT_APP_COLOR_POOL = [
@@ -100,7 +104,6 @@ MIGRATIONS_HEAD_PATH = os.path.join(MIGRATIONS_PATH, "head.json")
 MIGRATIONS_REVISIONS_DIR = os.path.join(
     FIFTYONE_DIR, "migrations", "revisions"
 )
-
 MIN_MONGODB_VERSION = Version("4.4")
 DATABASE_APPNAME = "fiftyone"
 
