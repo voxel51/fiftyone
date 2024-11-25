@@ -34,17 +34,17 @@ import {
   useRecoilStateLoadable,
   useRecoilValueLoadable,
 } from "recoil";
-import { collapseFields, getCurrentEnvironment } from "../utils";
-import * as atoms from "./atoms";
-import { getBrowserStorageEffectForKey } from "./customEffects";
+import { collapseFields, getCurrentEnvironment } from "../../utils";
+import * as atoms from "../atoms";
+import { getBrowserStorageEffectForKey } from "../customEffects";
 import {
   active3dSlices,
   active3dSlicesToSampleMap,
   activeModalSidebarSample,
   pinned3DSampleSlice,
-} from "./groups";
-import { isLargeVideo } from "./options";
-import { cumulativeValues, values } from "./pathData";
+} from "../groups";
+import { isLargeVideo } from "../options";
+import { cumulativeValues, values } from "../pathData";
 import {
   buildSchema,
   field,
@@ -53,23 +53,23 @@ import {
   filterPaths,
   isOfDocumentFieldList,
   pathIsShown,
-} from "./schema";
-import { isFieldVisibilityActive } from "./schemaSettings.atoms";
+} from "../schema";
+import { isFieldVisibilityActive } from "../schemaSettings.atoms";
 import {
   datasetName,
   disableFrameFiltering,
   isVideoDataset,
   stateSubscription,
-} from "./selectors";
-import { State } from "./types";
+} from "../selectors";
+import { State } from "../types";
 import {
   fieldsMatcher,
   groupFilter,
   labelsMatcher,
   primitivesMatcher,
   unsupportedMatcher,
-} from "./utils";
-import * as viewAtoms from "./view";
+} from "../utils";
+import * as viewAtoms from "../view";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -195,47 +195,6 @@ const DEFAULT_VIDEO_GROUPS: State.SidebarGroup[] = [
 ];
 
 const NONE = [null, undefined];
-
-const insertFromNeighbor = (sink: string[], source: string[], key: string) => {
-  if (sink.includes(key)) {
-    return;
-  }
-  const sourceIndex = source.indexOf(key);
-  const neighbor = source[sourceIndex - 1];
-  const neighborIndex = sink.indexOf(neighbor);
-
-  !neighbor ? sink.push(key) : sink.splice(neighborIndex + 1, 0, key);
-};
-
-const mergeGroups = (
-  sink: State.SidebarGroup[],
-  source: State.SidebarGroup[]
-) => {
-  const mapping = Object.fromEntries(sink.map((g) => [g.name, g]));
-  const configMapping = Object.fromEntries(source.map((g) => [g.name, g]));
-  const sinkKeys = sink.map(({ name }) => name);
-  const sourceKeys = source.map(({ name }) => name);
-  for (const key of sourceKeys) {
-    insertFromNeighbor(sinkKeys, sourceKeys, key);
-  }
-
-  const resolved = sink.map((g) => mapping[g] ?? configMapping[g]);
-  for (const g in sink) {
-    const i = source.indexOf(g);
-
-    if (i < 0) {
-      continue;
-    }
-
-    const gPaths = source[i].paths;
-
-    for (const p in gPaths) {
-      insertFromNeighbor(mapping[g].paths, gPaths, p);
-    }
-  }
-
-  return resolved;
-};
 
 export const resolveGroups = (
   sampleFields: StrictField[],
