@@ -1818,7 +1818,7 @@ or tagging them for the future with
 Besides this, a view with all leaks is returned. Visualization of this view
 can give you an insight into the source of the leaks in your dataset.
 
-**What to expect**: Leakyness find leaks by embedding samples with a powerful
+**What to expect**: Leakiness find leaks by embedding samples with a powerful
 model and finding very close samples in different splits in this space. Large,
 powerful models that were *not* trained on a dataset can provide insight into
 visiual and semantic similarity between images, without creating further leaks
