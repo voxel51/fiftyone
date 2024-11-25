@@ -735,7 +735,7 @@ class QueryPerformancePanel(Panel):
         summary_fields = _get_summary_fields(ctx)
 
         if not (droppable_index or summary_fields):
-            lightning_path = "https://i.imgur.com/1NdrvHl.png"
+            lightning_path = "/panels/lightning_path.png"
 
             card_main = panel.v_stack(
                 "homepage_card",
