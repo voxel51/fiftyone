@@ -1776,7 +1776,7 @@ Despite our best efforts, duplicates and other forms of non-IID samples
 show up in our data. When these samples end up in different splits, this
 can have consequences when evaluating a model. It can often be easy to
 overestimate model capability due to this issue. The FiftyOne Brain offers a way
-of identifying such cases in dataset splits.
+to identify such cases in dataset splits.
 
 The leaks of a |Dataset| or |DatasetView| can be computed directly without the need
 for the predictions of a pre-trained model via the
