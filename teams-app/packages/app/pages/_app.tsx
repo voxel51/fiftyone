@@ -106,11 +106,11 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
   const router = useRouter();
   const [loading, setLoading] = useRecoilState(loadingState);
 
-  const isServiceWorkerEnabled =
-    useEnv(FIFTYONE_APP_SERVICE_WORKER_ENABLED) === "true" ||
-    localStorage?.getItem(FIFTYONE_APP_SERVICE_WORKER_ENABLED) === "true";
+  const isServiceWorkerEnabled = "true";
+  // useEnv(FIFTYONE_APP_SERVICE_WORKER_ENABLED) === "true" ||
+  // localStorage?.getItem(FIFTYONE_APP_SERVICE_WORKER_ENABLED) === "true";
 
-  const serviceWorkerHeaderKey = useEnv(APP_SERVICE_WORKER_TOKEN_HEADER_KEY);
+  const serviceWorkerHeaderKey = "authorization"; //useEnv(APP_SERVICE_WORKER_TOKEN_HEADER_KEY);
 
   const doNotTrackLocalStorage =
     localStorage?.getItem(FIFTYONE_DO_NOT_TRACK_LS) === "true";
@@ -147,12 +147,10 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
       doNotTrack,
     });
     if (isServiceWorkerEnabled) {
-      window.LOOKER_CROSS_ORIGIN_MEDIA = true;
+      // window.LOOKER_CROSS_ORIGIN_MEDIA = true;
       registerServiceWorker(asPath, token, serviceWorkerHeaderKey).then(() => {
         setIsServiceWorkerReady(true);
       });
-    } else {
-      window.LOOKER_CROSS_ORIGIN_MEDIA = false;
     }
   }, [isServiceWorkerEnabled, asPath, token, serviceWorkerHeaderKey]);
 

@@ -1,3 +1,11 @@
+export type CustomAuthMessage = {
+  accessToken: string;
+  audience: string;
+  authHeader?: string;
+  authPrefix?: string;
+  headerOverrides?: Record<string, string>;
+};
+
 const match = RegExp("/datasets/.*/samples");
 
 // All pages except the embedded dataset/samples page
@@ -38,4 +46,24 @@ export const registerServiceWorker = async (
     }
   }
   return null;
+};
+
+export const sendMessageToServiceWorker = async (
+  message: CustomAuthMessage
+) => {
+  if (navigator.serviceWorker?.ready) {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      if (registration.active) {
+        console.log("Posting message to service worker:", message);
+        registration.active.postMessage(message);
+      } else {
+        console.warn("No active service worker available");
+      }
+    } catch (error) {
+      console.error("Error posting message to service worker:", error);
+    }
+  } else {
+    console.warn("Service worker not ready or not supported");
+  }
 };

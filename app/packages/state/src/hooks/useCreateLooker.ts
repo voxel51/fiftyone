@@ -1,8 +1,8 @@
 import {
   AbstractLooker,
   FrameLooker,
-  ImaVidLooker,
   ImageLooker,
+  ImaVidLooker,
   Sample,
   ThreeDLooker,
   VideoLooker,
@@ -12,10 +12,10 @@ import { ImaVidFramesControllerStore } from "@fiftyone/looker/src/lookers/imavid
 import type { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
 import {
   EMBEDDED_DOCUMENT_FIELD,
-  LIST_FIELD,
   getFieldInfo,
   getMimeType,
   isNullish,
+  LIST_FIELD,
   Schema,
 } from "@fiftyone/utilities";
 import { get } from "lodash";
@@ -268,6 +268,8 @@ export default <T extends AbstractLooker<BaseState>>(
           },
           { signal: abortControllerRef.current.signal }
         );
+
+        // add event listener for message event
 
         return looker;
       },

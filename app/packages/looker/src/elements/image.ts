@@ -9,6 +9,7 @@ import { BaseElement } from "./base";
 export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
   // Teams only
   private allowAnonymousOrigin: boolean;
+  private customCredentialsAudience: string | null = null;
 
   private src = "";
   private imageSource: HTMLImageElement;
@@ -16,6 +17,12 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
   constructor() {
     super();
     this.allowAnonymousOrigin = window.LOOKER_CROSS_ORIGIN_MEDIA;
+    const customCredentialsAudience = sessionStorage.getItem(
+      "customCredentialsAudience"
+    );
+    if (customCredentialsAudience) {
+      this.customCredentialsAudience = customCredentialsAudience;
+    }
   }
 
   getEvents(): Events<ImageState> {
@@ -46,7 +53,17 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
   renderSelf({ config: { src } }: Readonly<ImageState>) {
     if (this.src !== src) {
       this.src = src;
-
+      console.log(
+        'sessionStorage.getItem("customCredentialsAudience")=',
+        sessionStorage.getItem("customCredentialsAudience")
+      );
+      if (
+        sessionStorage.getItem("customCredentialsAudience") &&
+        src.includes(sessionStorage.getItem("customCredentialsAudience"))
+      ) {
+        console.log("setting crossOrigin=Anonymous");
+        this.element.setAttribute("crossOrigin", "Anonymous");
+      }
       this.element.setAttribute("src", src);
     }
 
