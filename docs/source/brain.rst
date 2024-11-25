@@ -1840,7 +1840,7 @@ handle the rest.
 
 **Thresholds**: The leaky-splits module uses a threshold to decide what samples
 are 'too close' and mark them as potential leaks. This threshold can be changed
-either by passing a value to the `threshold` argument of the `compute_leaky_splits`
+either by passing a value to the `threshold` argument of the `compute_leaky_splits()`
 method, or by using the
 :meth:`set_threshold() <fiftyone.brain.internal.core.leaky_splits.SimilarityIndex.set_threshold>`
 method. The best value for your use-case may vary depending on your dataset, as well
