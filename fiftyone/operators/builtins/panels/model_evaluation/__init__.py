@@ -248,7 +248,6 @@ class EvaluationPanel(Panel):
 
     def get_confusion_matrices(self, results):
         default_classes = results.classes.tolist()
-        other_label = "(other)"
         freq = Counter(results.ytrue)
         if results.missing in freq:
             freq.pop(results.missing)
@@ -257,27 +256,32 @@ class EvaluationPanel(Panel):
         mc_classes = sorted(freq, key=freq.get, reverse=True)
         lc_classes = sorted(freq, key=freq.get)
         default_matrix, _default_classes, _ = results._confusion_matrix(
-            other_label=other_label,
+            include_other=False,
+            include_missing=True,
             tabulate_ids=False,
         )
         az_matrix, _az_classes, _ = results._confusion_matrix(
             classes=az_classes,
-            other_label=other_label,
+            include_other=False,
+            include_missing=True,
             tabulate_ids=False,
         )
         za_matrix, _za_classes, _ = results._confusion_matrix(
             classes=za_classes,
-            other_label=other_label,
+            include_other=False,
+            include_missing=True,
             tabulate_ids=False,
         )
         mc_matrix, _mc_classes, _ = results._confusion_matrix(
             classes=mc_classes,
-            other_label=other_label,
+            include_other=False,
+            include_missing=True,
             tabulate_ids=False,
         )
         lc_matrix, _lc_classes, _ = results._confusion_matrix(
             classes=lc_classes,
-            other_label=other_label,
+            include_other=False,
+            include_missing=True,
             tabulate_ids=False,
         )
         default_colorscale = self.get_confusion_matrix_colorscale(
