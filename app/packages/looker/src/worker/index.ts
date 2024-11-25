@@ -188,8 +188,6 @@ const processLabels = async (
   await Promise.allSettled(maskPathDecodingPromises);
 
   // overlay painting loop
-  if (sample.id.endsWith("50a4")) console.log(">>>Painting overlays for hen");
-
   for (const field in sample) {
     let labels = sample[field];
 
@@ -208,7 +206,6 @@ const processLabels = async (
         continue;
       }
       if (painterFactory[cls]) {
-        if (sample.id.endsWith("50a4")) debugger;
         painterPromises.push(
           painterFactory[cls](
             prefix ? prefix + field : field,
