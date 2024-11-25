@@ -3209,8 +3209,8 @@ class DelegatedLaunchCommand(Command):
 
     @staticmethod
     def setup(parser):
-        # Default is local which is unsupported in Teams. This is so that
-        #   caller must be intentional about wanting "remote" mode.
+        # We leave the default as `local` in Teams so that the caller must be
+        # intentional about specifying `remote` or `-f`
         parser.add_argument(
             "-t",
             "--type",
@@ -3220,22 +3220,28 @@ class DelegatedLaunchCommand(Command):
         )
 
         parser.add_argument(
-            "--interval",
             "-i",
+            "--interval",
             type=int,
             default=10,
-            help="Interval in seconds to check for new operations",
+            help="interval in seconds to check for new operations",
         )
 
         parser.add_argument(
-            "--no-validate", action="store_false", dest="validate"
+            "-f",
+            "--no-validate",
+            action="store_false",
+            dest="validate",
+            help="whether to skip parameter validation",
         )
 
     @staticmethod
     def execute(parser, args):
-        # "local" not supported in Teams
+        # Note that `local` is not supported in Teams unless the caller forces
+        # no validation, because we don't want users accidentally running jobs
+        # scheduled by other teammates on a shared deployment
         supported_types = {"remote"}
-        if args.type not in supported_types:
+        if args.validate and args.type not in supported_types:
             raise ValueError(
                 "Unsupported service type '%s'. Supported values are %s"
                 % (args.type, supported_types)

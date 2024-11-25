@@ -128,6 +128,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_OPERATOR_TIMEOUT",
             default=600,  # 600 seconds (10 minutes)
         )
+        self.allow_legacy_orchestrators = self.parse_bool(
+            d,
+            "allow_legacy_orchestrators",
+            env_var="FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS",
+            default=False,
+        )
         self.dataset_zoo_manifest_paths = self.parse_path_array(
             d,
             "dataset_zoo_manifest_paths",

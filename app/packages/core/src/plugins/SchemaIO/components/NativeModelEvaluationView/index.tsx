@@ -87,12 +87,12 @@ export default function NativeModelEvaluationView(props) {
       {page === "overview" &&
         (showEmptyOverview || showCTA ? (
           <PanelCTA
-            label="Create you first model evaluation"
+            label="Create your first model evaluation"
             demoLabel="Upgrade to FiftyOne Teams to Evaluate Models"
             description="Analyze and improve models collaboratively with your team"
             docLink="https://docs.voxel51.com/user_guide/evaluation.html"
-            docCaption="Learn how to create model evaluation via code."
-            demoDocCaption="Not ready to upgrade yet? Learn how to create model evaluation via code."
+            docCaption="Learn how to evaluate models via code."
+            demoDocCaption="Not ready to upgrade yet? Learn how to evaluate models via code."
             icon="ssid_chart"
             Actions={() => {
               return (

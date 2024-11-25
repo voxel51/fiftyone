@@ -279,6 +279,7 @@ async def execute_or_delegate_operator(
         try:
             from .delegated import DelegatedOperationService
 
+            ctx.request_params["delegated"] = True
             metadata = {"inputs_schema": None, "outputs_schema": None}
 
             try:
@@ -447,52 +448,44 @@ async def resolve_type(
 
     operator = registry.get_operator(operator_uri)
     dataset = request_params.get("dataset_name", None)
-    if not ctx:
-        user = await resolve_operation_user(
-            id=user, dataset=dataset, token=request_token
-        )
-        execution_context_user = (
-            ExecutionContextUser.from_dict(user) if user else None
-        )
-        ctx = ExecutionContext(
-            request_params,
-            operator_uri=operator_uri,
-            required_secrets=operator._plugin_secrets,
-            user=execution_context_user,  # teams-only
-        )
-        await ctx.resolve_secret_values(
-            operator._plugin_secrets, request_token=request_token
-        )
-    try:
-        # User code
-        with ctx:
-            return operator.resolve_type(
-                ctx, request_params.get("target", "inputs")
-            )
-    except Exception as e:
-        return ExecutionResult(error=traceback.format_exc())
+    user = await resolve_operation_user(
+        id=user, dataset=dataset, token=request_token
+    )
+    execution_context_user = (
+        ExecutionContextUser.from_dict(user) if user else None
+    )
+    ctx = ExecutionContext(
+        request_params,
+        operator_uri=operator_uri,
+        required_secrets=operator._plugin_secrets,
+        user=execution_context_user,  # teams-only
+    )
+    await ctx.resolve_secret_values(
+        operator._plugin_secrets, request_token=request_token
+    )
+    return await resolve_type_with_context(operator, ctx)
 
 
-async def resolve_type_with_context(request_params, target=None, ctx=None):
+async def resolve_type_with_context(operator, context):
     """Resolves the "inputs" or "outputs" schema of an operator with the given
     context.
 
     Args:
-        request_params: a dictionary of request parameters
-        target (None): the target schema ("inputs" or "outputs")
-        ctx (None): :class:`ExecutionContext`
+        operator: the :class:`fiftyone.operators.Operator`
+        context: the :class:`ExecutionContext` of an operator
 
     Returns:
-        the schema of "inputs" or "outputs"
+        the "inputs" or "outputs" schema
         :class:`fiftyone.operators.types.Property` of an operator, or None
     """
-    computed_target = target or request_params.get("target", None)
-    computed_request_params = {**request_params, "target": computed_target}
-    operator_uri = request_params.get("operator_uri", None)
-    registry = OperatorRegistry()
-    return await resolve_type(
-        registry, operator_uri, computed_request_params, ctx=ctx
-    )
+    try:
+        # User code
+        with context:
+            return operator.resolve_type(
+                context, context.request_params.get("target", "inputs")
+            )
+    except Exception as e:
+        return ExecutionResult(error=traceback.format_exc())
 
 
 async def resolve_execution_options(
@@ -919,12 +912,12 @@ class ExecutionContext(contextlib.AbstractContextManager):
 
     @property
     def delegated(self):
-        """Whether delegated execution has been forced for the operation."""
+        """Whether the operation was delegated."""
         return self.request_params.get("delegated", False)
 
     @property
     def requesting_delegated_execution(self):
-        """Whether delegated execution has been requested for the operation."""
+        """Whether delegated execution was requested for the operation."""
         return self.request_params.get("request_delegation", False)
 
     @property
@@ -1503,13 +1496,7 @@ class ExecutionOptions(object):
 
     @property
     def orchestrator_registration_enabled(self):
-        legacy_orchestrator_mode_allowed = (
-            os.environ.get(
-                "FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS", "false"
-            ).lower()
-            == "true"
-        )
-        return not legacy_orchestrator_mode_allowed
+        return not fo.config.allow_legacy_orchestrators
 
     def update(self, available_orchestrators=None):
         self._available_orchestrators = available_orchestrators
