@@ -1071,13 +1071,11 @@ class DataQualityPanel(Panel):
                     store.set(key, content)
                 else:  # adding just in case, but shouldn't get here because result shouldn't exist on immediate execution
                     print(f"computation_handler:run_id:unavailable")
-                    self.scan_dataset(ctx)
+                    self.scan_dataset(ctx, issue_type)
             else:  # immediate execution was chosen
-                self.scan_dataset(ctx)
+                self.scan_dataset(ctx, issue_type)
 
-    def scan_dataset(self, ctx):
-        scan_type = ctx.panel.state.issue_type
-
+    def scan_dataset(self, ctx, scan_type):
         if scan_type == "brightness":
             issue_method = self._on_complete_compute_brightness
         elif scan_type == "blurriness":
