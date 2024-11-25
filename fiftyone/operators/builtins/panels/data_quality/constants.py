@@ -178,4 +178,6 @@ IMAGES = {
     "exact_duplicates": "/panels/exact_dup.png",
     "unsupported_dataset": "/panels/unsupported.png",
     "vertical_line": "/panels/vertical_line.png",
+    "alert": "/panels/alert.png",
+    "alert_in_circle": "/panels/alert_in_circle.png",
 }
