@@ -31,6 +31,7 @@ export default function EvaluationPlot(props: EvaluationPlotProps) {
         color: theme.text.secondary,
         gridcolor: theme.primary.softBorder,
         automargin: true, // Enable automatic margin adjustment
+        autorange: "reversed",
       },
       autosize: true,
       margin: { t: 20, l: 50, b: 50, r: 20, pad: 0 },
