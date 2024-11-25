@@ -328,12 +328,10 @@ class Object(BaseType):
 
             import fiftyone.operators.types as types
 
-            ctx.panel.state.my_img = "https://i.imgur.com/TGEZj1Rl.jpg"
-
             panel = types.Object()
             panel.img(
                 "my_img",
-                href="https://voxel51.com",
+                href="https://path/to/my/image",
                 on_click=self.do_something,
                 prompt=False,
                 params={"foo": "bar"},
@@ -345,7 +343,7 @@ class Object(BaseType):
 
         Args:
             name: the name of the property from state
-            href (None): the URL to navigate to when the button is clicked
+            href (None): the URL of the image
             on_click (None): the name of the operator to execute when the button is clicked
             prompt (False): whether to prompt the user before executing the operator
             params (None): the parameters to pass to the operator
