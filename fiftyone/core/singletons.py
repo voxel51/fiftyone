@@ -39,7 +39,7 @@ class DatasetSingleton(type):
         else:
             try:
                 instance._update_last_loaded_at(
-                    force=kwargs.get("force_load", False)
+                    force=kwargs.get("_force_load", False)
                 )
             except ValueError:
                 instance._deleted = True

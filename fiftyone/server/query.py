@@ -585,7 +585,7 @@ async def serialize_dataset(
         if not fod.dataset_exists(dataset_name):
             return None
 
-        dataset = fo.Dataset(dataset_name, _create=False, force_load=True)
+        dataset = fo.Dataset(dataset_name, _create=False, _force_load=True)
         dataset.reload()
         view_name = None
         try:
