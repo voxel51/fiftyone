@@ -1486,7 +1486,7 @@ class DataQualityPanel(Panel):
             card_content.view(
                 f"warning_alert",
                 view=alert_icon,
-                default="https://i.imgur.com/tS1GnCQ.png",
+                default=IMAGES["alert"],
             )
         else:
             image_icon = types.ImageView(
@@ -1632,7 +1632,7 @@ class DataQualityPanel(Panel):
             left_computing_card.view(
                 f"branded_vertical_divider",
                 view=branded_vertical_divider,
-                default="https://i.imgur.com/nmrgbip.png",
+                default=IMAGES["vertical_line"],
             )
             right_computing_card = main_computing_card.v_stack(
                 "right_computing_card"
@@ -1866,7 +1866,7 @@ class DataQualityPanel(Panel):
             rescan_text_h_stack.view(
                 f"orange_alert_icon",
                 view=alert_icon,
-                default="https://i.imgur.com/eeYi9by.png",
+                default=IMAGES["alert_in_circle"],
             )
 
         rescan_text_h_stack.view(
