@@ -2382,7 +2382,7 @@ loaded only when the `brain_key` property is modified.
     Panel data is never readable in Python; it is only implicitly used by
     the types you define when they are rendered clientside.
 
-.. _panel-execution-store
+.. _panel-execution-store:
 
 Execution store
 ---------------

@@ -487,8 +487,8 @@ us at support@voxel51.com.
    Recipes <recipes/index>
    Cheat Sheets <cheat_sheets/index>
    User Guide <user_guide/index>
-   Dataset Zoo __SUB_NEW__ <dataset_zoo/index>
-   Model Zoo __SUB_NEW__ <model_zoo/index>
+   Dataset Zoo <dataset_zoo/index>
+   Model Zoo <model_zoo/index>
    FiftyOne Brain <brain>
    Integrations <integrations/index>
    Plugins <plugins/index>

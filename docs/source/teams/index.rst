@@ -93,10 +93,28 @@ pages on this site apply to Teams deployments as well.
     :button_link: teams_app.html
 
 .. customcalloutitem::
-    :header: Data Lens
+    :header: Data Lens  __SUB_NEW__
     :description: Use FiftyOne Teams to explore and import samples from external data sources.
     :button_text: Connect your data lake
     :button_link: data_lens.html
+
+.. customcalloutitem::
+    :header: Data Quality  __SUB_NEW__
+    :description: Automatically scan your data for quality issues and take action to resolve them.
+    :button_text: Find quality issues
+    :button_link: data_quality.html
+
+.. customcalloutitem::
+    :header: Model Evaluation  __SUB_NEW__
+    :description: Evaluate your models and interactively and visually analyze their performance.
+    :button_text: Evaluate models
+    :button_link: ../user_guide/evaluation.html
+
+.. customcalloutitem::
+    :header: Query Performance  __SUB_NEW__
+    :description: Configure your massive datasets to support fast queries at scale.
+    :button_text: Fast queries at scale
+    :button_link: query_performance.html
 
 .. customcalloutitem::
     :header: Plugins
@@ -149,8 +167,9 @@ pages on this site apply to Teams deployments as well.
     Dataset Versioning <dataset_versioning>
     FiftyOne Teams App <teams_app>
     Data Lens __SUB_NEW__ <data_lens>
+    Data Quality __SUB_NEW__ <data_quality>
+    Query Performance __SUB_NEW__ <query_performance>
     Plugins <teams_plugins>
-    Query Performance <query_performance>
     Secrets <secrets>
     Management SDK <management_sdk>
     Migrations <migrations>
