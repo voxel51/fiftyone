@@ -992,9 +992,8 @@ contains the following properties:
     instance that you can use to read and write the :ref:`state <panel-state>`
     and :ref:`data <panel-data>` of the current panel, if the operator was
     invoked from a panel
--   `ctx.delegated` - whether delegated execution has been forced for the
-    operation
--   `ctx.requesting_delegated_execution` - whether delegated execution has been
+-   `ctx.delegated` - whether the operation was delegated
+-   `ctx.requesting_delegated_execution` - whether delegated execution was
     requested for the operation
 -   `ctx.delegation_target` - the orchestrator to which the operation should be
     delegated, if applicable
@@ -1247,46 +1246,6 @@ of the current view:
     :meth:`resolve_execution_options() <fiftyone.operators.operator.Operator.resolve_execution_options>`
     to specify the available execution options as described in the previous
     section.
-
-Alternatively, you could simply ask the user to decide:
-
-.. code-block:: python
-    :linenos:
-
-    def resolve_input(self, ctx):
-        delegate = ctx.params.get("delegate", None)
-
-        if delegate:
-            description = "Uncheck this box to execute the operation immediately"
-        else:
-            description = "Check this box to delegate execution of this task"
-
-        inputs.bool(
-            "delegate",
-            label="Delegate execution?",
-            description=description,
-            view=types.CheckboxView(),
-        )
-
-        if delegate:
-            inputs.view(
-                "notice",
-                types.Notice(
-                    label=(
-                        "You've chosen delegated execution. Note that you must "
-                        "have a delegated operation service running in order for "
-                        "this task to be processed. See "
-                        "https://docs.voxel51.com/plugins/index.html#operators "
-                        "for more information"
-                    )
-                ),
-            )
-
-    def resolve_delegation(self, ctx):
-        return ctx.params.get("delegate", None)
-
-.. image:: /images/plugins/operators/operator-user-delegation.png
-    :align: center
 
 .. _operator-reporting-progress:
 
