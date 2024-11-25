@@ -127,6 +127,10 @@ const processLabels = async (
     }
     const cls = getCls(`${prefix ? prefix : ""}${field}`, schema);
 
+    if (!cls) {
+      continue;
+    }
+
     for (const label of labels) {
       if (!label) {
         continue;
@@ -186,10 +190,16 @@ const processLabels = async (
   // overlay painting loop
   for (const field in sample) {
     let labels = sample[field];
+
     if (!Array.isArray(labels)) {
       labels = [labels];
     }
+
     const cls = getCls(`${prefix ? prefix : ""}${field}`, schema);
+
+    if (!cls) {
+      continue;
+    }
 
     for (const label of labels) {
       if (!label) {
@@ -216,10 +226,16 @@ const processLabels = async (
   // bitmap generation loop
   for (const field in sample) {
     let labels = sample[field];
+
     if (!Array.isArray(labels)) {
       labels = [labels];
     }
+
     const cls = getCls(`${prefix ? prefix : ""}${field}`, schema);
+
+    if (!cls) {
+      continue;
+    }
 
     for (const label of labels) {
       if (!label) {
@@ -314,7 +330,7 @@ const processSample = async ({
   mapId(sample);
 
   const imageBitmapPromises: Promise<ImageBitmap[]>[] = [];
-  const maskTargetsBuffers: ArrayBuffer[] = [];
+  let maskTargetsBuffers: ArrayBuffer[] = [];
 
   if (sample?._media_type === "point-cloud" || sample?._media_type === "3d") {
     process3DLabels(schema, sample);
@@ -330,29 +346,51 @@ const processSample = async ({
       selectedLabelTags,
       schema
     );
-    imageBitmapPromises.push(...bitmapPromises);
-    maskTargetsBuffers.push(...moreMaskTargetsBuffers);
-  }
 
-  if (sample.frames && sample.frames.length) {
-    for (const frame of sample.frames) {
-      const [moreBitmapPromises, moreMaskTargetsBuffers] = await processLabels(
-        frame,
-        coloring,
-        "frames.",
-        sources,
-        customizeColorSetting,
-        colorscale,
-        labelTagColors,
-        selectedLabelTags,
-        schema
-      );
-      imageBitmapPromises.push(...moreBitmapPromises);
+    if (bitmapPromises.length !== 0) {
+      imageBitmapPromises.push(...bitmapPromises);
+    }
+
+    if (moreMaskTargetsBuffers.length !== 0) {
       maskTargetsBuffers.push(...moreMaskTargetsBuffers);
     }
   }
 
+  // this usually only applies to thumbnail frame
+  // other frames are processed in the stream (see `getSendChunk`)
+  if (sample.frames?.length) {
+    const allFramePromises: ReturnType<typeof processLabels>[] = [];
+    for (const frame of sample.frames) {
+      allFramePromises.push(
+        processLabels(
+          frame,
+          coloring,
+          "frames.",
+          sources,
+          customizeColorSetting,
+          colorscale,
+          labelTagColors,
+          selectedLabelTags,
+          schema
+        )
+      );
+    }
+    const framePromisesResolved = await Promise.all(allFramePromises);
+    for (const [bitmapPromises, buffers] of framePromisesResolved) {
+      if (bitmapPromises.length !== 0) {
+        imageBitmapPromises.push(...bitmapPromises);
+      }
+
+      if (buffers.length !== 0) {
+        maskTargetsBuffers.push(...buffers);
+      }
+    }
+  }
+
   Promise.all(imageBitmapPromises).then((bitmaps) => {
+    const flatBitmaps = bitmaps.flat() ?? [];
+    const flatMaskTargetsBuffers = maskTargetsBuffers.flat() ?? [];
+    const transferables = [...flatBitmaps, ...flatMaskTargetsBuffers];
     postMessage(
       {
         method: "processSample",
@@ -365,7 +403,7 @@ const processSample = async ({
         selectedLabelTags,
       },
       // @ts-ignore
-      bitmaps.flat().concat(maskTargetsBuffers.flat())
+      transferables
     );
   });
 };
@@ -501,7 +539,8 @@ const getSendChunk =
             value.schema
           )
         )
-      ).then((buffers) => {
+      ).then(([bitmaps, buffers]) => {
+        const transferables = [...bitmaps.flat(), ...buffers.flat()];
         postMessage(
           {
             method: "frameChunk",
@@ -510,7 +549,7 @@ const getSendChunk =
             uuid,
           },
           // @ts-ignore
-          buffers.flat()
+          transferables
         );
       });
     }
