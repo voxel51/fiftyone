@@ -177,4 +177,5 @@ IMAGES = {
     "near_duplicates": "/panels/near_dup.png",
     "exact_duplicates": "/panels/exact_dup.png",
     "unsupported_dataset": "/panels/unsupported.png",
+    "vertical_line": "/panels/vertical_line.png",
 }

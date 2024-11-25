@@ -1632,7 +1632,7 @@ class DataQualityPanel(Panel):
             left_computing_card.view(
                 f"branded_vertical_divider",
                 view=branded_vertical_divider,
-                default="https://i.imgur.com/nmrgbip.png",
+                default=IMAGES["vertical_line"],
             )
             right_computing_card = main_computing_card.v_stack(
                 "right_computing_card"
