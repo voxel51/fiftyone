@@ -1,29 +1,23 @@
-import { getSampleSrc } from "@fiftyone/state";
+import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import { DETECTIONS, HEATMAP } from "@fiftyone/utilities";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Coloring, CustomizeColor } from "..";
 import { LabelMask } from "../overlays/base";
 import type { Colorscale } from "../state";
 import { decodeWithCanvas } from "./canvas-decoder";
-import { fetchWithLinearBackoff } from "./decorated-fetch";
 import { decodeOverlayOnDisk, IntermediateMask } from "./disk-overlay-decoder";
+import { enqueueFetch } from "./pooled-fetch";
 
-vi.mock("@fiftyone/state", () => ({
+vi.mock("@fiftyone/state/src/recoil/utils", () => ({
   getSampleSrc: vi.fn(),
 }));
 
-vi.mock("@fiftyone/utilities", () => ({
-  DETECTION: "Detection",
-  DETECTIONS: "Detections",
-  HEATMAP: "Heatmap",
+vi.mock("./pooled-fetch", () => ({
+  enqueueFetch: vi.fn(),
 }));
 
 vi.mock("./canvas-decoder", () => ({
   decodeWithCanvas: vi.fn(),
-}));
-
-vi.mock("./decorated-fetch", () => ({
-  fetchWithLinearBackoff: vi.fn(),
 }));
 
 const COLORING = {} as Coloring;
@@ -56,7 +50,7 @@ describe("decodeOverlayOnDisk", () => {
     );
 
     expect(label.mask).toBeDefined();
-    expect(fetchWithLinearBackoff).not.toHaveBeenCalled();
+    expect(enqueueFetch).not.toHaveBeenCalled();
   });
 
   it("should fetch and decode overlay when label has overlay path field", async () => {
@@ -70,7 +64,7 @@ describe("decodeOverlayOnDisk", () => {
     const overlayMask = { shape: [100, 200] };
 
     vi.mocked(getSampleSrc).mockReturnValue(sampleSrcUrl);
-    vi.mocked(fetchWithLinearBackoff).mockResolvedValue({
+    vi.mocked(enqueueFetch).mockResolvedValue({
       blob: () => Promise.resolve(mockBlob),
     } as Response);
     vi.mocked(decodeWithCanvas).mockResolvedValue(overlayMask);
@@ -87,7 +81,10 @@ describe("decodeOverlayOnDisk", () => {
     );
 
     expect(getSampleSrc).toHaveBeenCalledWith("/path/to/mask");
-    expect(fetchWithLinearBackoff).toHaveBeenCalledWith(sampleSrcUrl);
+    expect(enqueueFetch).toHaveBeenCalledWith({
+      url: sampleSrcUrl,
+      options: { priority: "low" },
+    });
     expect(decodeWithCanvas).toHaveBeenCalledWith(mockBlob);
     expect(label.mask).toBeDefined();
     expect(label.mask.data).toBe(overlayMask);
@@ -106,9 +103,6 @@ describe("decodeOverlayOnDisk", () => {
     const overlayMask = { shape: [100, 200] };
 
     vi.mocked(getSampleSrc).mockReturnValue(sampleSrcUrl);
-    vi.mocked(fetchWithLinearBackoff).mockResolvedValue({
-      blob: () => Promise.resolve(mockBlob),
-    } as Response);
     vi.mocked(decodeWithCanvas).mockResolvedValue(overlayMask);
 
     await decodeOverlayOnDisk(
@@ -123,7 +117,10 @@ describe("decodeOverlayOnDisk", () => {
     );
 
     expect(getSampleSrc).toHaveBeenCalledWith("/path/to/map");
-    expect(fetchWithLinearBackoff).toHaveBeenCalledWith(sampleSrcUrl);
+    expect(enqueueFetch).toHaveBeenCalledWith({
+      url: sampleSrcUrl,
+      options: { priority: "low" },
+    });
     expect(decodeWithCanvas).toHaveBeenCalledWith(mockBlob);
     expect(label.map).toBeDefined();
     expect(label.map.data).toBe(overlayMask);
@@ -144,21 +141,12 @@ describe("decodeOverlayOnDisk", () => {
 
     const sampleSrcUrl1 = "http://example.com/path/to/mask1";
     const sampleSrcUrl2 = "http://example.com/path/to/mask2";
-    const mockBlob1 = new Blob(["mock data 1"], { type: "image/png" });
-    const mockBlob2 = new Blob(["mock data 2"], { type: "image/png" });
     const overlayMask1 = { shape: [50, 50] };
     const overlayMask2 = { shape: [60, 60] };
 
     vi.mocked(getSampleSrc)
       .mockReturnValueOnce(sampleSrcUrl1)
       .mockReturnValueOnce(sampleSrcUrl2);
-    vi.mocked(fetchWithLinearBackoff)
-      .mockResolvedValueOnce({
-        blob: () => Promise.resolve(mockBlob1),
-      } as Response)
-      .mockResolvedValueOnce({
-        blob: () => Promise.resolve(mockBlob2),
-      } as Response);
     vi.mocked(decodeWithCanvas)
       .mockResolvedValueOnce(overlayMask1)
       .mockResolvedValueOnce(overlayMask2);
@@ -193,9 +181,7 @@ describe("decodeOverlayOnDisk", () => {
     const sampleSrcUrl = "http://example.com/path/to/mask";
 
     vi.mocked(getSampleSrc).mockReturnValue(sampleSrcUrl);
-    vi.mocked(fetchWithLinearBackoff).mockRejectedValue(
-      new Error("Fetch failed")
-    );
+    vi.mocked(enqueueFetch).mockRejectedValue(new Error("Fetch failed"));
 
     await decodeOverlayOnDisk(
       field,
@@ -209,7 +195,10 @@ describe("decodeOverlayOnDisk", () => {
     );
 
     expect(getSampleSrc).toHaveBeenCalledWith("/path/to/mask");
-    expect(fetchWithLinearBackoff).toHaveBeenCalledWith(sampleSrcUrl);
+    expect(enqueueFetch).toHaveBeenCalledWith({
+      url: sampleSrcUrl,
+      options: { priority: "low" },
+    });
     expect(decodeWithCanvas).not.toHaveBeenCalled();
     expect(label.mask).toBeNull();
   });
