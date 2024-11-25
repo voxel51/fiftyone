@@ -196,6 +196,47 @@ const DEFAULT_VIDEO_GROUPS: State.SidebarGroup[] = [
 
 const NONE = [null, undefined];
 
+const insertFromNeighbor = (sink: string[], source: string[], key: string) => {
+  if (sink.includes(key)) {
+    return;
+  }
+  const sourceIndex = source.indexOf(key);
+  const neighbor = source[sourceIndex - 1];
+  const neighborIndex = sink.indexOf(neighbor);
+
+  !neighbor ? sink.push(key) : sink.splice(neighborIndex + 1, 0, key);
+};
+
+const mergeGroups = (
+  sink: State.SidebarGroup[],
+  source: State.SidebarGroup[]
+) => {
+  const mapping = Object.fromEntries(sink.map((g) => [g.name, g]));
+  const configMapping = Object.fromEntries(source.map((g) => [g.name, g]));
+  const sinkKeys = sink.map(({ name }) => name);
+  const sourceKeys = source.map(({ name }) => name);
+  for (const key of sourceKeys) {
+    insertFromNeighbor(sinkKeys, sourceKeys, key);
+  }
+
+  const resolved = sink.map((g) => mapping[g] ?? configMapping[g]);
+  for (const g in sink) {
+    const i = source.indexOf(g);
+
+    if (i < 0) {
+      continue;
+    }
+
+    const gPaths = source[i].paths;
+
+    for (const p in gPaths) {
+      insertFromNeighbor(mapping[g].paths, gPaths, p);
+    }
+  }
+
+  return resolved;
+};
+
 export const resolveGroups = (
   sampleFields: StrictField[],
   frameFields: StrictField[],
@@ -209,6 +250,10 @@ export const resolveGroups = (
     : frameFields.length
     ? DEFAULT_VIDEO_GROUPS
     : DEFAULT_IMAGE_GROUPS;
+
+  if (currentGroups.length && configGroups.length) {
+    groups = mergeGroups(groups, configGroups);
+  }
 
   const expanded = configGroups.reduce((map, { name, expanded }) => {
     map[name] = expanded;
