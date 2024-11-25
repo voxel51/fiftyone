@@ -1158,8 +1158,8 @@ export default function Evaluation(props: EvaluationProps) {
                         hovertemplate:
                           [
                             "<b>count: %{z:d}</b>",
-                            `ground_truth: %{y}`,
-                            `predictions: %{x}`,
+                            `${evaluation?.info?.config?.gt_field}: %{y}`,
+                            `${evaluation?.info?.config?.pred_field}: %{x}`,
                           ].join(" <br>") + "<extra></extra>",
                       },
                     ]}
