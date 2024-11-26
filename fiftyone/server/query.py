@@ -587,11 +587,7 @@ async def serialize_dataset(
         if not fod.dataset_exists(dataset_name):
             return None
 
-        dataset = fod.load_dataset(dataset_name)
-
-        if update_last_loaded_at:
-            dataset._update_last_loaded_at(force=True)
-
+        dataset = fo.Dataset(dataset_name, _create=False, _force_load=True)
         dataset.reload()
         view_name = None
         try:
