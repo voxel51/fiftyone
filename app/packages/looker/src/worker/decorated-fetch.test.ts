@@ -35,7 +35,14 @@ describe("fetchWithLinearBackoff", () => {
     global.fetch = vi.fn().mockRejectedValue(new Error("Network Error"));
 
     await expect(
-      fetchWithLinearBackoff("http://fiftyone.ai", {}, 3, 10)
+      fetchWithLinearBackoff(
+        "http://fiftyone.ai",
+        {},
+        {
+          retries: 3,
+          delay: 10,
+        }
+      )
     ).rejects.toThrowError(new RegExp("Max retries for fetch reached"));
 
     expect(global.fetch).toHaveBeenCalledTimes(3);
@@ -46,7 +53,14 @@ describe("fetchWithLinearBackoff", () => {
     global.fetch = vi.fn().mockResolvedValue(mockResponse);
 
     await expect(
-      fetchWithLinearBackoff("http://fiftyone.ai", {}, 5, 10)
+      fetchWithLinearBackoff(
+        "http://fiftyone.ai",
+        {},
+        {
+          retries: 5,
+          delay: 10,
+        }
+      )
     ).rejects.toThrow("HTTP error: 500");
 
     expect(global.fetch).toHaveBeenCalledTimes(5);
@@ -57,7 +71,14 @@ describe("fetchWithLinearBackoff", () => {
     global.fetch = vi.fn().mockResolvedValue(mockResponse);
 
     await expect(
-      fetchWithLinearBackoff("http://fiftyone.ai", {}, 5, 10)
+      fetchWithLinearBackoff(
+        "http://fiftyone.ai",
+        {},
+        {
+          retries: 5,
+          delay: 10,
+        }
+      )
     ).rejects.toThrow("Non-retryable HTTP error: 404");
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -76,8 +97,7 @@ describe("fetchWithLinearBackoff", () => {
     const fetchPromise = fetchWithLinearBackoff(
       "http://fiftyone.ai",
       {},
-      5,
-      10
+      { retries: 5, delay: 10 }
     );
 
     // advance timers to simulate delays
