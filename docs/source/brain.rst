@@ -1781,7 +1781,10 @@ to identify such cases in dataset splits.
 The leaks of a |Dataset| or |DatasetView| can be computed directly without the need
 for the predictions of a pre-trained model via the
 :meth:`compute_leaky_splits() <fiftyone.brain.compute_leaky_splits>`
-method:.
+method:. The splits of a dataset can be defined in three ways. Through tags, by
+tagging samples with their corresponding split. Through a field, by giving each
+split a unique value in that field. And finally through views, by having views
+corresponding to each split.
 
 .. code-block:: python
     :linenos:
@@ -1806,7 +1809,7 @@ method:.
     }
     index, leaks = fob.compute_leaky_splits(dataset, split_views=split_views)
 
-Here is a sample snippet to run this on the `COCO <https://cocodataset.org/#home>`_.
+Here is a sample snippet to run this on the `COCO <https://cocodataset.org/#home>`_ dataset.
 Try it for yourself and see what you may find.
 
 .. code-block:: python
@@ -1817,13 +1820,15 @@ Try it for yourself and see what you may find.
     import fiftyone.utils.random as four
     from fiftyone.brain import compute_leaky_splits
 
-    coco = foz.load_zoo_dataset("coco-2017", split="test")
-    coco.untag_samples(coco.distinct("tags"))
+    # load coco
+    dataset = foz.load_zoo_dataset("coco-2017", split="test")
     
-    four.random_split(coco, {"train": 0.7, "test": 0.3})
-    index, leaks = compute_leaky_splits(coco, split_tags=['train', 'test'])
+    # set up splits via tags
+    dataset.untag_samples(dataset.distinct("tags"))
+    four.random_split(dataset, {"train": 0.7, "test": 0.3})
 
-    session = fo.Session(leaks)
+    # compute leaks
+    index, leaks = compute_leaky_splits(dataset, split_tags=['train', 'test'])
 
 Once you have these leaks, it is wise to look through them. You may gain some insight
 into the source of the leaks.
@@ -1831,7 +1836,7 @@ into the source of the leaks.
 .. code-block:: python
     :linenos:
 
-    session = fo.Session(leaks)
+    session = fo.launch_app(leaks)
 
 Before evaluating your model on your test set, consider getting a version of it
 with the leaks removed. This can be easily done with the built in method
@@ -1849,7 +1854,7 @@ with the leaks removed. This can be easily done with the built in method
     test_set = index.split_views['test']
 
     test_set_no_leaks = index.no_leaks_view(test_set) # return a view with leaks removed
-    session = fo.Session(leaks)
+    session.view = test_set_no_leaks
 
     # do evaluations on test_set_no_leaks rather than test_set
 
