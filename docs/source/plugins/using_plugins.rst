@@ -669,6 +669,12 @@ operator does just that:
     :linenos:
 
     class ComputeMetadata(foo.Operator):
+        return foo.OperatorConfig(
+            ...
+            allow_immediate_execution=True,
+            allow_delegated_execution=True,
+        )
+
         def __call__(
             self,
             sample_collection,
@@ -686,12 +692,6 @@ operator does just that:
                 ctx,
                 params=params,
                 request_delegation=delegate,
-            )
-
-        def resolve_execution_options(self, ctx):
-            return foo.ExecutionOptions(
-                allow_delegated_execution=True,
-                allow_immediate_execution=True,
             )
 
 which means that it can be invoked like so:
@@ -767,8 +767,7 @@ Requesting delegation
 ~~~~~~~~~~~~~~~~~~~~~
 
 If an operation supports both immediate and
-:ref:`delegated execution <delegated-operations>` as specified either by its
-:ref:`configuration <operator-delegation-configuration>` or
+:ref:`delegated execution <delegated-operations>` as specified by its
 :ref:`execution options <operator-execution-options>`, you can request
 delegated execution by passing the `request_delegation=True` flag to
 :func:`execute_operator() <fiftyone.operators.execute_operator>`:
