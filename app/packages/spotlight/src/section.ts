@@ -181,14 +181,15 @@ export default class Section<K, V> {
           break;
         }
 
-        if (this.#dirty.has(row) && !zooming && updater) {
-          row.updateItems(updater);
+        const dirty = this.#dirty.has(row);
+        if (dirty && !zooming) {
+          updater && row.updateItems(updater);
           this.#dirty.delete(row);
         }
 
         row.show(
           this.#container,
-          this.#dirty.has(row) && zooming,
+          dirty && zooming,
           this.#direction === DIRECTION.FORWARD ? TOP : BOTTOM,
           zooming,
           config
