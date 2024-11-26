@@ -523,9 +523,9 @@ const createReader = ({
 
 const getSendChunk =
   (uuid: string) =>
-  ({ value }: { done: boolean; value?: FrameChunkResponse }) => {
+  async ({ value }: { done: boolean; value?: FrameChunkResponse }) => {
     if (value) {
-      Promise.all(
+      const allLabelsPromiseResults = await Promise.allSettled(
         value.frames.map((frame) =>
           processLabels(
             frame,
@@ -539,19 +539,35 @@ const getSendChunk =
             value.schema
           )
         )
-      ).then(([bitmaps, buffers]) => {
-        const transferables = [...bitmaps.flat(), ...buffers.flat()];
-        postMessage(
-          {
-            method: "frameChunk",
-            frames: value.frames,
-            range: value.range,
-            uuid,
-          },
-          // @ts-ignore
-          transferables
-        );
-      });
+      );
+
+      const allLabelsResults = allLabelsPromiseResults
+        .filter((result) => result.status === "fulfilled")
+        .map((result) => result.value);
+
+      const allBuffers = allLabelsResults.map((result) => result[1]).flat();
+
+      const allBitmapsPromises = allLabelsResults
+        .map((result) => result[0])
+        .flat();
+
+      const bitmapPromiseResults = (
+        await Promise.allSettled(allBitmapsPromises)
+      )
+        .map((result) => (result.status === "fulfilled" ? result.value : []))
+        .flat();
+
+      const transferables = [...bitmapPromiseResults, ...allBuffers];
+      postMessage(
+        {
+          method: "frameChunk",
+          frames: value.frames,
+          range: value.range,
+          uuid,
+        },
+        // @ts-ignore
+        transferables
+      );
     }
   };
 
