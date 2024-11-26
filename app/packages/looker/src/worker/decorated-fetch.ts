@@ -3,6 +3,10 @@ const DEFAULT_BASE_DELAY = 200;
 // list of HTTP status codes that are client errors (4xx) and should not be retried
 const NON_RETRYABLE_STATUS_CODES = [400, 401, 403, 404, 405, 422];
 
+export interface RetryOptions {
+  retries: number;
+  delay: number;
+}
 class NonRetryableError extends Error {
   constructor(message: string) {
     super(message);
@@ -13,10 +17,12 @@ class NonRetryableError extends Error {
 export const fetchWithLinearBackoff = async (
   url: string,
   opts: RequestInit = {},
-  retries = DEFAULT_MAX_RETRIES,
-  delay = DEFAULT_BASE_DELAY
+  retry: RetryOptions = {
+    retries: DEFAULT_MAX_RETRIES,
+    delay: DEFAULT_BASE_DELAY,
+  }
 ) => {
-  for (let i = 0; i < retries; i++) {
+  for (let i = 0; i < retry.retries; i++) {
     try {
       const response = await fetch(url, opts);
       if (response.ok) {
@@ -36,8 +42,10 @@ export const fetchWithLinearBackoff = async (
         // immediately throw
         throw e;
       }
-      if (i < retries - 1) {
-        await new Promise((resolve) => setTimeout(resolve, delay * (i + 1)));
+      if (i < retry.retries - 1) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, retry.delay * (i + 1))
+        );
       } else {
         // max retries reached
         throw new Error(
