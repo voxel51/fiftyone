@@ -8,9 +8,9 @@ import useSessionRefresher from "./useSessionRefresher";
 export default function useInitializeApp(props) {
   const { pageProps } = props;
   const initializeTheme = useInitializeTheme();
+  useSessionRefresher();
   const [ready, setReady] = useState(false);
   const setAppEnvs = useSetRecoilState(appEnvs);
-  useSessionRefresher();
 
   const { envs = {} } = pageProps;
 

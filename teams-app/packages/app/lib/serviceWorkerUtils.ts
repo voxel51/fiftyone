@@ -22,27 +22,18 @@ export const deregisterAllServiceWorkers = () => {
 };
 
 // register, install, activate, and run the service worker for a certain path
-export const registerServiceWorker = async (
-  path: string,
-  token?: string,
-  serviceWorkerHeaderKey?: string
-) => {
+export const registerServiceWorker = async (path: string) => {
   const isSWAvailable = "serviceWorker" in navigator;
   if (isSWAvailable && match.test(path)) {
-    if (token) {
-      const registration = await navigator.serviceWorker.register(
-        `/service-worker.js?token=${
-          token ? encodeURIComponent(token) : ""
-        }&tokenKey=${encodeURIComponent(serviceWorkerHeaderKey || "jwt")}`
-      );
-      // update to latest
-      return registration.update();
-    } else {
-      deregisterAllServiceWorkers();
-    }
+    const registration = await navigator.serviceWorker.register(
+      `/service-worker.js`
+    );
+    sessionStorage.setItem("serviceWorkerStatus", "registered");
+    // update to latest
+    return registration.update();
   } else {
     if (!match.test(path) && isSWAvailable) {
-      deregisterAllServiceWorkers();
+      sessionStorage.setItem("serviceWorkerStatus", "inactive");
     }
   }
   return null;

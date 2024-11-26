@@ -21,9 +21,7 @@ import {
   FIFTYONE_APP_ANONYMOUS_ANALYTICS_ENABLED,
   FIFTYONE_APP_DEMO_MODE,
   FIFTYONE_APP_SEGMENT_WRITE_KEY,
-  FIFTYONE_APP_SERVICE_WORKER_ENABLED,
   FIFTYONE_DO_NOT_TRACK_LS,
-  APP_SERVICE_WORKER_TOKEN_HEADER_KEY,
 } from "@fiftyone/teams-state/src/constants";
 import { registerServiceWorker } from "lib/serviceWorkerUtils";
 import { AppProps } from "next/app";
@@ -102,15 +100,12 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
   const [user] = useCurrentUser();
   const org = useCurrentOrganization();
 
-  const { asPath } = useRouter();
   const router = useRouter();
+  const asPath = router.asPath;
   const [loading, setLoading] = useRecoilState(loadingState);
 
-  const isServiceWorkerEnabled = "true";
-  // useEnv(FIFTYONE_APP_SERVICE_WORKER_ENABLED) === "true" ||
-  // localStorage?.getItem(FIFTYONE_APP_SERVICE_WORKER_ENABLED) === "true";
-
-  const serviceWorkerHeaderKey = "authorization"; //useEnv(APP_SERVICE_WORKER_TOKEN_HEADER_KEY);
+  const isServiceWorkerEnabled =
+    sessionStorage?.getItem("serviceWorkerStatus") !== "disabled";
 
   const doNotTrackLocalStorage =
     localStorage?.getItem(FIFTYONE_DO_NOT_TRACK_LS) === "true";
@@ -148,11 +143,11 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
     });
     if (isServiceWorkerEnabled) {
       // window.LOOKER_CROSS_ORIGIN_MEDIA = true;
-      registerServiceWorker(asPath, token, serviceWorkerHeaderKey).then(() => {
+      registerServiceWorker(asPath).then(() => {
         setIsServiceWorkerReady(true);
       });
     }
-  }, [isServiceWorkerEnabled, asPath, token, serviceWorkerHeaderKey]);
+  }, [isServiceWorkerEnabled, asPath, token]);
 
   useEffect(() => {
     router.events.on("routeChangeStart", () => {

@@ -78,9 +78,9 @@ const fetchEvent = () => {
     try {
       const request = event.request;
       const requestUrl = event.request.url;
-      const isImageOrVideoRequest =
-        event.request.destination === "image" ||
-        event.request.destination === "video";
+      const isImageOrVideoRequest = supportedDestinations.includes(
+        event.request.destination
+      );
 
       const { token, audience, authHeader, authPrefix } = authHeaderProps;
       const urlMatchesAudience =
@@ -119,16 +119,18 @@ const fetchEvent = () => {
           referrer: request.referrer,
           headers: modifiedHeaders,
         });
+
         console.log("fetchEvent modifiedRequest", modifiedRequest);
 
         event.respondWith(fetch(modifiedRequest));
       } else {
         // Allow the request to continue as normal
+        console.log("unmodified request url:", requestUrl);
         event.respondWith(fetch(event.request));
       }
     } catch (error) {
       console.error("failed to fetch: ", error);
-      e.respondWith(
+      event.respondWith(
         new Response(JSON.stringify({ message: error.message }), {
           status: 500,
           headers: { "Content-Type": "application/json" },
