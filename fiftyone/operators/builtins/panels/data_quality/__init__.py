@@ -407,7 +407,7 @@ class DataQualityPanel(Panel):
             computing_copy[issue_type] = {
                 "is_computing": True,
                 "execution_type": "execute",
-                "delegation_run_id": run_id,
+                "delegation_run_id": "",
                 "delegation_status": "",
             }
             ctx.panel.state.set("computing", computing_copy)
@@ -420,7 +420,7 @@ class DataQualityPanel(Panel):
             computing_copy[issue_type] = {
                 "is_computing": True,
                 "execution_type": "delegate_execution",
-                "delegation_run_id": "",
+                "delegation_run_id": str(run_id),
                 "delegation_status": "",
             }
             ctx.panel.state.set("computing", computing_copy)
