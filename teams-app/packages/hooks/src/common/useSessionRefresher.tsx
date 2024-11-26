@@ -14,6 +14,7 @@ export default function useSessionRefresher() {
   const sessionTimerRef = useRef<NodeJS.Timeout>();
   const sessionExpRef = useRef<number | null>(null);
   const customCredsRef = useRef<CustomAuthMessage | null>(null);
+  const serviceWorkerStatus = sessionStorage?.getItem("serviceWorkerStatus");
 
   const clearSessionTimer = useCallback(() => {
     if (sessionTimerRef.current) {
@@ -27,10 +28,7 @@ export default function useSessionRefresher() {
       typeof sessionExp === "number" &&
       sessionExp - Date.now() > EARLY_REFRESH_WINDOW
     ) {
-      if (
-        sessionStorage?.getItem("serviceWorkerStatus") !== "ready" &&
-        customCredsRef.current
-      ) {
+      if (serviceWorkerStatus !== "disabled" && customCredsRef.current) {
         console.log("Service worker is active but not ready. Sending token");
         await sendMessageToServiceWorker(customCredsRef.current);
         sessionStorage.setItem(
@@ -88,9 +86,9 @@ export default function useSessionRefresher() {
     return clearSessionTimer;
   }, [clearSessionTimer, getLatestSession]);
 
-  useLayoutEffect(() => {
-    return initSessionRefresher(); // Ensures clearSessionTimer is called on unmount
-  }, [initSessionRefresher]);
+  useEffect(() => {
+    return initSessionRefresher();
+  }, [initSessionRefresher, serviceWorkerStatus]);
 
   return null;
 }
