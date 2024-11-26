@@ -1,4 +1,5 @@
 import { useTheme } from "@fiftyone/components";
+import { merge } from "lodash";
 import React, { useMemo } from "react";
 import Plot, { PlotParams } from "react-plotly.js";
 
@@ -31,7 +32,6 @@ export default function EvaluationPlot(props: EvaluationPlotProps) {
         color: theme.text.secondary,
         gridcolor: theme.primary.softBorder,
         automargin: true, // Enable automatic margin adjustment
-        autorange: "reversed",
       },
       autosize: true,
       margin: { t: 20, l: 50, b: 50, r: 20, pad: 0 },
@@ -45,6 +45,11 @@ export default function EvaluationPlot(props: EvaluationPlotProps) {
       },
     };
   }, [theme]);
+
+  const mergedLayout = useMemo(() => {
+    return merge({}, layoutDefaults, layout);
+  }, [layoutDefaults, layout]);
+
   const configDefaults: PlotConfig = useMemo(() => {
     return {
       displaylogo: false,
@@ -66,7 +71,7 @@ export default function EvaluationPlot(props: EvaluationPlotProps) {
   return (
     <Plot
       config={configDefaults}
-      layout={{ ...layoutDefaults, ...layout }}
+      layout={mergedLayout}
       style={{ height: "100%", width: "100%", zIndex: 1, ...style }}
       data={data}
       {...otherProps}
