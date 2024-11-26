@@ -1872,7 +1872,7 @@ can give you an insight into the source of the leaks in your dataset.
 **What to expect**: Leakiness find leaks by embedding samples with a powerful
 model and finding very close samples in different splits in this space. Large,
 powerful models that were *not* trained on a dataset can provide insight into
-visiual and semantic similarity between images, without creating further leaks
+visual and semantic similarity between images, without creating further leaks
 in the process.
 
 **Similarity**: At its core, the leaky-splits module is a wrapper for the brain's
