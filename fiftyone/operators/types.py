@@ -327,11 +327,12 @@ class Object(BaseType):
         Examples::
 
             import fiftyone.operators.types as types
+            ctx.panel.state.my_img = "/path/to/my/image.jpg"
 
             panel = types.Object()
             panel.img(
-                "my_img",
-                href="https://path/to/my/image",
+                "my_img", # uses the value in ctx.panel.state.my_img
+                href="https://path/to/navigate/to",
                 on_click=self.do_something,
                 prompt=False,
                 params={"foo": "bar"},
@@ -342,8 +343,8 @@ class Object(BaseType):
             )
 
         Args:
-            name: the name of the property from state
-            href (None): the URL of the image
+            name: the name of the state variable to use as the image source
+            href (None): the url to navigate to when the image is clicked
             on_click (None): the name of the operator to execute when the button is clicked
             prompt (False): whether to prompt the user before executing the operator
             params (None): the parameters to pass to the operator
@@ -2009,7 +2010,7 @@ class ImageView(View):
         height (None): the height of the image
         width (None): the width of the image
         alt (None): the alt text of the image
-        href (None): the href of the image
+        href (None): the url to navigate to when the image is clicked
         operator (None): the name of the callable operator to execute when the image is clicked
         prompt (False): whether to prompt the user before executing the operator
         params (None): the parameters to pass to the operator
