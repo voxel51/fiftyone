@@ -45,8 +45,8 @@ export default class Section<K, V> {
   readonly #width: number;
 
   #direction: DIRECTION;
-  #dirty: Set<Row<K, V>> = new Set();
   #end: Edge<K, V>;
+  #itemIds = new Set<string>();
   #nextMap: WeakMap<ID, ID> = new WeakMap();
   #previousMap: WeakMap<ID, ID> = new WeakMap();
   #shown: Set<Row<K, V>> = new Set();
@@ -129,7 +129,6 @@ export default class Section<K, V> {
     target,
     threshold,
     top,
-    updater,
     zooming,
   }: {
     config: SpotlightConfig<K, V>;
@@ -181,15 +180,8 @@ export default class Section<K, V> {
           break;
         }
 
-        const dirty = this.#dirty.has(row);
-        if (dirty && !zooming) {
-          updater && row.updateItems(updater);
-          this.#dirty.delete(row);
-        }
-
         row.show(
           this.#container,
-          dirty && zooming,
           this.#direction === DIRECTION.FORWARD ? TOP : BOTTOM,
           zooming,
           config
@@ -226,7 +218,7 @@ export default class Section<K, V> {
 
   updateItems(updater: (id: ID) => void) {
     for (const row of this.#shown) row.updateItems(updater);
-    for (const row of this.#rows) !this.#shown.has(row) && this.#dirty.add(row);
+    for (const row of this.#rows) !this.#shown.has(row);
   }
 
   async first(
@@ -309,7 +301,9 @@ export default class Section<K, V> {
 
     renderer(() => {
       const { rows, remainder } = this.#tile(
-        [...end.remainder, ...data.items],
+        [...end.remainder, ...data.items].filter(
+          (i) => !this.#itemIds.has(i.id.description)
+        ),
         this.#height,
         data.next === null,
         data.focus,
@@ -351,6 +345,7 @@ export default class Section<K, V> {
         edge: newEnd,
         width: this.#width,
       });
+
       this.#end = this.#start;
       this.#start = newEnd;
 
@@ -451,6 +446,10 @@ export default class Section<K, V> {
 
       if (this.#direction === DIRECTION.BACKWARD) {
         rowItems.reverse();
+      }
+
+      for (const i of rowItems) {
+        this.#itemIds.add(i.id.description);
       }
 
       const row = new Row({
