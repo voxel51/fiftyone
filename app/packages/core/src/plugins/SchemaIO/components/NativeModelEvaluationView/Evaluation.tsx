@@ -1172,6 +1172,11 @@ export default function Evaluation(props: EvaluationProps) {
                       const firstPoint = points[0];
                       loadView("matrix", { x: firstPoint.x, y: firstPoint.y });
                     }}
+                    layout={{
+                      yaxis: {
+                        autorange: "reversed",
+                      },
+                    }}
                   />
                 </Stack>
                 {compareKey && (
@@ -1207,6 +1212,11 @@ export default function Evaluation(props: EvaluationProps) {
                             ].join(" <br>") + "<extra></extra>",
                         },
                       ]}
+                      layout={{
+                        yaxis: {
+                          autorange: "reversed",
+                        },
+                      }}
                     />
                   </Stack>
                 )}

@@ -282,12 +282,13 @@ async def execute_or_delegate_operator(
             ctx.request_params["delegated"] = True
             metadata = {"inputs_schema": None, "outputs_schema": None}
 
-            try:
-                metadata["inputs_schema"] = inputs.to_json()
-            except Exception as e:
-                logger.warning(
-                    f"Failed to resolve inputs schema for the operation: {str(e)}"
-                )
+            if inputs is not None:
+                try:
+                    metadata["inputs_schema"] = inputs.to_json()
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to resolve inputs schema for the operation: {str(e)}"
+                    )
 
             op = DelegatedOperationService().queue_operation(
                 operator=operator.uri,

@@ -89,11 +89,12 @@ class EvaluationPanel(Panel):
         view_state = ctx.panel.get_state("view") or {}
         evaluations = []
         for key in ctx.dataset.list_evaluations():
-            evaluation = {
-                "key": key,
-                "id": self.get_evaluation_id(ctx.dataset, key),
-            }
-            evaluations.append(evaluation)
+            if self.has_evaluation_results(ctx.dataset, key):
+                evaluation = {
+                    "key": key,
+                    "id": self.get_evaluation_id(ctx.dataset, key),
+                }
+                evaluations.append(evaluation)
         ctx.panel.set_state("evaluations", evaluations)
         initialized = view_state.get("init", False)
         if not initialized:
@@ -102,8 +103,6 @@ class EvaluationPanel(Panel):
         ctx.panel.set_data("notes", notes)
         ctx.panel.set_data("permissions", permissions)
         self.load_pending_evaluations(ctx)
-        # keys = ctx.dataset.list_evaluations()
-        # ctx.panel.set_state("keys", keys)
 
     def get_avg_confidence(self, per_class_metrics):
         count = 0
