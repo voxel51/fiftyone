@@ -292,6 +292,27 @@ class DatabaseService(MultiClientService):
         return mongod
 
 
+class MediaCacheService(MultiClientService):
+    """Garbage collection service for the FiftyOne media cache."""
+
+    service_name = "media-cache"
+    allow_headless = True
+
+    @property
+    def _service_args(self):
+        # Include `cache_dir` here so that users can have one cache service
+        # per cache directory running simultaenously
+        cache_dir = focn.load_media_cache_config().cache_dir
+        return super()._service_args + ["--cache-dir", cache_dir]
+
+    @property
+    def command(self):
+        cache_service_path = os.path.join(
+            foc.FIFTYONE_DIR, "service", "cache.py"
+        )
+        return [sys.executable, cache_service_path]
+
+
 class ServerService(Service):
     """Service that controls the FiftyOne web server."""
 
@@ -325,6 +346,7 @@ class ServerService(Service):
             super().start()
             self._wait_for_child_port(port=port)
         else:
+            self._disabled = True
             logger.info(
                 "Connected to FiftyOne on port %i at %s.\nIf you are not "
                 "connecting to a remote session, you may need to start a new "
@@ -332,11 +354,11 @@ class ServerService(Service):
                 port,
                 address,
             )
-            if server_version != foc.VERSION:
+            if server_version != foc.TEAMS_VERSION:
                 logger.warning(
                     "Server version (%s) does not match client version (%s)",
                     server_version,
-                    foc.VERSION,
+                    foc.TEAMS_VERSION,
                 )
 
     @property

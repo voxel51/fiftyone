@@ -2,7 +2,7 @@ import { useFirstExistingUri, usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { useCallback } from "react";
 
-const IS_OSS = true; // false in fiftyone-teams
+const IS_OSS = false; // false in fiftyone-teams
 
 export default function useComputeVisualization() {
   const { firstExistingUri: computeVisUri, exists: hasComputeVisualization } =

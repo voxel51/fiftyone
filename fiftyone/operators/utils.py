@@ -6,10 +6,11 @@ FiftyOne operator utilities.
 |
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 
-from .operator import Operator
+import fiftyone as fo
+import fiftyone.operators.types as types
 
 
 class ProgressHandler(logging.Handler):

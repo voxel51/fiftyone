@@ -18,6 +18,8 @@ import fiftyone.core.odm as foo
 from fiftyone.core.singletons import FrameSingleton
 import fiftyone.core.utils as fou
 
+from fiftyone.internal.dataset_permissions import requires_can_edit
+
 fov = fou.lazy_import("fiftyone.core.view")
 
 
@@ -62,6 +64,8 @@ class Frames(object):
         self._replacements = {}
         self._delete_frames = set()
         self._delete_all = False
+        self._readonly = sample._readonly
+        self._permission = sample._permission
 
     def __str__(self):
         return "<%s: %s>" % (self.__class__.__name__, fou.pformat(dict(self)))
@@ -253,6 +257,7 @@ class Frames(object):
         for frame in self._iter_frames():
             yield frame
 
+    @requires_can_edit
     def add_frame(
         self,
         frame_number,
@@ -318,6 +323,7 @@ class Frames(object):
 
         self._set_replacement(frame)
 
+    @requires_can_edit
     def delete_frame(self, frame_number):
         """Deletes the given frame number from this instance.
 
@@ -331,6 +337,7 @@ class Frames(object):
 
         self._delete_frames.add(frame_number)
 
+    @requires_can_edit
     def update(
         self,
         frames,
@@ -372,6 +379,7 @@ class Frames(object):
                     dynamic=dynamic,
                 )
 
+    @requires_can_edit
     def merge(
         self,
         frames,
@@ -467,6 +475,7 @@ class Frames(object):
                     dynamic=dynamic,
                 )
 
+    @requires_can_edit
     def clear(self):
         """Removes all frames from this sample."""
         self._replacements.clear()
@@ -477,6 +486,7 @@ class Frames(object):
         self._delete_all = True
         self._delete_frames.clear()
 
+    @requires_can_edit
     def save(self):
         """Saves all frames for the sample to the database."""
         self._save()
@@ -862,6 +872,7 @@ class FramesView(Frames):
     def field_names(self):
         return list(self._view.get_frame_field_schema().keys())
 
+    @requires_can_edit
     def add_frame(
         self,
         frame_number,
@@ -999,6 +1010,7 @@ class FramesView(Frames):
             filtered_fields=self._filtered_fields,
         )
 
+    @requires_can_edit
     def save(self):
         super().save()
         self._reload_parents()
@@ -1049,6 +1061,7 @@ class Frame(Document, metaclass=FrameSingleton):
         _id = self._doc._sample_id
         return ObjectId(_id) if _id is not None else None
 
+    @requires_can_edit
     def save(self):
         """Saves the frame to the database."""
         if not self._in_db:

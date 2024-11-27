@@ -64,6 +64,8 @@ type AppConfig {
   useFrameNumber: Boolean!
   spaces: JSON
   disableFrameFiltering: Boolean!
+  defaultQueryPerformance: Boolean
+  enableQueryPerformance: Boolean
   mediaFallback: Boolean!
 }
 
@@ -241,8 +243,10 @@ type Dataset {
   estimatedSampleCount: Int!
   frameIndexes: [Index!]
   sampleIndexes: [Index!]
+  headName: String
+  snapshotName: String
   stages(slug: String = null, view: BSONArray = null): BSONArray
-  workspace(slug: String): Workspace
+  workspace(slug: String = null): Workspace
 }
 
 type DatasetAppConfig {

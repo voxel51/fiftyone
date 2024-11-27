@@ -1,5 +1,6 @@
 import { useTheme } from "@fiftyone/components";
-import { QP_MODE } from "@fiftyone/core";
+import { SpaceNode, useSpaceNodes, useSpaces } from "@fiftyone/spaces";
+import * as fos from "@fiftyone/state";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { Bolt } from "@mui/icons-material";
 import { Box, Button, Tooltip } from "@mui/material";
@@ -43,6 +44,10 @@ const QueryPerformanceIcon = () => {
   const lightningBoltColor = showExpanded
     ? theme.custom.lightning
     : theme.text.secondary;
+  const PANEL_NAME = "query_performance_panel";
+  const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
+  const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
+  const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
   return (
     <Tooltip
       title={
@@ -51,7 +56,8 @@ const QueryPerformanceIcon = () => {
             <Box sx={{ padding: "8px 8px 8px 8px" }}>
               <SectionTitle>Query Performance is Enabled</SectionTitle>
               <Text>
-                Fields that are indexed will have better query performance.
+                Fields that are indexed will have better query performance. You
+                can create or manage indexes from here.
               </Text>
               <Box
                 display="flex"
@@ -68,10 +74,18 @@ const QueryPerformanceIcon = () => {
                     flexGrow: 1,
                   }}
                   onClick={() => {
-                    window.open(QP_MODE, "_blank")?.focus();
+                    let openedPanel = openedPanels.find(
+                      ({ type }) => type === PANEL_NAME
+                    );
+                    if (!openedPanel) {
+                      openedPanel = new SpaceNode();
+                      openedPanel.type = PANEL_NAME;
+                      spaces.addNodeAfter(spaces.root, openedPanel, true);
+                    }
+                    spaces.setNodeActive(openedPanel);
                   }}
                 >
-                  View Documentation
+                  Manage Indexes
                 </Button>
                 <Button
                   onClick={() => {

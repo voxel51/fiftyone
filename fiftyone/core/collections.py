@@ -28,6 +28,7 @@ import eta.core.utils as etau
 import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
+import fiftyone.core.cache as foc
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
@@ -43,12 +44,19 @@ import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 
+from fiftyone.internal.dataset_permissions import (
+    requires_can_edit,
+    requires_can_tag,
+)
+
+fo = fou.lazy_import("fiftyone")
 fod = fou.lazy_import("fiftyone.core.dataset")
 fos = fou.lazy_import("fiftyone.core.stages")
 fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
+fou3d = fou.lazy_import("fiftyone.utils.utils3d")
 foos = fou.lazy_import("fiftyone.operators.store")
 
 
@@ -75,6 +83,261 @@ view_stage = _make_registrar()
 aggregation = _make_registrar()
 
 
+class DownloadContext(object):
+    """Context that can be used to pre-download media in batches while iterating
+    over a collection.
+
+    By default, all media will be downloaded when the context is entered, but
+    you can configure a batching strategy via the `batch_size` or
+    `target_size_bytes` parameters.
+
+    If no ``batch_size`` or ``target_size_bytes`` is provided, media are
+    downloaded in batches of ``fo.media_cache_config.download_size_bytes``.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        batch_size (None): a sample batch size to use for each download
+        target_size_bytes (None): a target content size, in bytes, for each
+            download batch. If negative, all media is downloaded in one batch
+        media_fields (None): a field or iterable of fields containing media to
+            download. By default, all media fields in the collection's
+            :meth:`app_config` are used
+        group_slices (None): an optional subset of group slices to download
+            media for. Only applicable when the collection contains groups
+        include_assets (True): whether to include 3D scene assets
+        update (False): whether to re-download media whose checksums no longer
+            match
+        skip_failures (True): whether to gracefully continue without raising an
+            error if a remote file cannot be downloaded
+        clear (False): whether to clear the media from the cache when the
+            context exits
+        progress (None): whether to render a progress bar tracking the progress
+            of any downloads (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
+    """
+
+    def __init__(
+        self,
+        sample_collection,
+        batch_size=None,
+        target_size_bytes=None,
+        media_fields=None,
+        group_slices=None,
+        include_assets=True,
+        update=False,
+        skip_failures=True,
+        clear=False,
+        progress=None,
+        **kwargs,
+    ):
+        if batch_size is None and target_size_bytes is None:
+            target_size_bytes = fo.media_cache_config.download_size_bytes
+
+        if target_size_bytes is not None and target_size_bytes < 0:
+            target_size_bytes = None
+
+        self.sample_collection = sample_collection
+        self.batch_size = batch_size
+        self.target_size_bytes = target_size_bytes
+        self.media_fields = media_fields
+        self.group_slices = group_slices
+        self.include_assets = include_assets
+        self.update = update
+        self.skip_failures = skip_failures
+        self.clear = clear
+        self.progress = progress
+
+        self._filepaths = None
+        self._offset = None
+        self._batch_sizes = None
+        self._iter_batch_sizes = None
+        self._last_batch_size = None
+        self._curr_count = None
+
+    def __enter__(self):
+        self.sample_collection._download_context = self
+
+        media_fields = _resolve_media_fields(
+            self.sample_collection, self.media_fields
+        )
+        if not media_fields:
+            return self
+
+        self._filepaths = self.sample_collection._get_media_paths(
+            media_fields=media_fields,
+            group_slices=self.group_slices,
+            include_assets=self.include_assets,
+            flat=False,
+        )
+        if not self._filepaths:
+            return self
+
+        if self.batch_size is None and self.target_size_bytes is None:
+            self._download_batch(None)  # download everything now
+            return self
+
+        if self.target_size_bytes is not None:
+            sizes = _get_sizes(
+                self.sample_collection, media_fields, self._filepaths
+            )
+            batch_sizes = _partition_by_size(sizes, self.target_size_bytes)
+        else:
+            batch_sizes = itertools.repeat(self.batch_size)
+
+        self._offset = 0
+        self._batch_sizes = batch_sizes
+        self._iter_batch_sizes = iter(batch_sizes)
+        self._last_batch_size = 0
+        self._curr_count = 0
+
+        return self
+
+    def __exit__(self, *args):
+        try:
+            delattr(self.sample_collection, "_download_context")
+        except:
+            pass
+
+        if self.clear:
+            self._clear_media()
+
+    def next(self):
+        if self._batch_sizes is None:
+            return
+
+        if self._curr_count >= self._last_batch_size:
+            batch_size = next(self._iter_batch_sizes)
+            self._download_batch(batch_size)
+            self._last_batch_size = batch_size
+            self._curr_count = 0
+
+        self._curr_count += 1
+        self._offset += 1
+
+    def _download_batch(self, batch_size):
+        i = self._offset or 0
+        j = i + batch_size if batch_size is not None else None
+        filepaths = [
+            f
+            for f in itertools.chain.from_iterable(self._filepaths[i:j])
+            if f is not None
+        ]
+
+        if not filepaths:
+            return
+
+        if self.update:
+            foc.media_cache.update(
+                filepaths=filepaths,
+                skip_failures=self.skip_failures,
+                progress=self.progress,
+            )
+        else:
+            foc.media_cache.get_local_paths(
+                filepaths,
+                download=True,
+                skip_failures=self.skip_failures,
+                progress=self.progress,
+            )
+
+    def _clear_media(self):
+        filepaths = itertools.chain.from_iterable(self._filepaths)
+        foc.media_cache.clear(filepaths=filepaths)
+
+
+def _resolve_media_fields(sample_collection, media_fields):
+    if media_fields is None:
+        media_fields = list(sample_collection._get_media_fields().keys())
+    elif etau.is_container(media_fields):
+        media_fields = list(media_fields)
+    else:
+        media_fields = [media_fields]
+
+    # Omit media fields that contain no values
+    resolved_fields = []
+    for field in media_fields:
+        if field != "filepath":
+            field = sample_collection._resolve_media_field(field)
+            if not sample_collection.exists(field).limit(1):
+                continue
+
+        resolved_fields.append(field)
+
+    return resolved_fields
+
+
+def _get_sizes(sample_collection, media_fields, filepaths):
+    if sample_collection.media_type == fom.GROUP:
+        sample_collection = sample_collection.select_group_slices(
+            _allow_mixed=True
+        )
+    elif media_fields == ["filepath"] and not sample_collection.exists(
+        "metadata.size_bytes", bool=False
+    ):
+        # All sizes are already available, so just return them now
+        return sample_collection.values("metadata.size_bytes")
+
+    file_sizes = {}
+
+    if "filepath" in media_fields:
+        # Record all file sizes available from metadata field
+        view = sample_collection.exists("metadata.size_bytes")
+        file_sizes.update(
+            zip(*view.values(["filepath", "metadata.size_bytes"]))
+        )
+
+        metadata_paths = set()
+        for sample_paths in filepaths:
+            for path in sample_paths:
+                if path not in file_sizes:
+                    metadata_paths.add(path)
+    else:
+        metadata_paths = set(itertools.chain.from_iterable(filepaths))
+
+    metadata_paths.discard(None)
+
+    # Compute any missing metadata
+    if metadata_paths:
+        metadatas = fomt.get_metadata(metadata_paths, media_type=fom.MIXED)
+        for filepath, metadata in metadatas.items():
+            if metadata is not None and metadata.size_bytes is not None:
+                file_sizes[filepath] = metadata.size_bytes
+
+    avg_file_size = sum(file_sizes.values()) / max(len(file_sizes), 1)
+
+    sizes = []
+    for sample_paths in filepaths:
+        size = sum(file_sizes.get(p, avg_file_size) for p in sample_paths)
+        sizes.append(size)
+
+    return sizes
+
+
+def _partition_by_size(sizes, target_size):
+    batch_sizes = []
+
+    curr_count = 0
+    curr_size = 0
+    for size in sizes:
+        if curr_size + size > target_size:
+            if curr_count == 0:
+                batch_sizes.append(1)
+            else:
+                batch_sizes.append(curr_count)
+                curr_count = 1
+                curr_size = size
+        else:
+            curr_count += 1
+            curr_size += size
+
+    if curr_count > 0:
+        batch_sizes.append(curr_count)
+
+    return batch_sizes
+
+
 class SaveContext(object):
     """Context that saves samples from a collection according to a configurable
     batching strategy.
@@ -99,6 +362,7 @@ class SaveContext(object):
             By default, ``fo.config.default_batcher`` is used
     """
 
+    @requires_can_edit(data_obj_param="sample_collection")
     def __init__(
         self,
         sample_collection,
@@ -218,7 +482,7 @@ class SampleCollection(object):
     :class:`fiftyone.core.dataset.Dataset`.
     """
 
-    __slots__ = ("__weakref__",)
+    __slots__ = ("__weakref__", "_download_context")
 
     _FRAMES_PREFIX = "frames."
     _GROUPS_PREFIX = "groups."
@@ -268,6 +532,16 @@ class SampleCollection(object):
         such as patches views.
         """
         raise NotImplementedError("Subclass must implement _root_dataset")
+
+    @property
+    def _readonly(self):
+        """Whether this collection is read-only."""
+        return self._dataset._readonly
+
+    @property
+    def _permission(self):
+        """Permission concern to be enforced for this collection"""
+        return self._dataset._permission
 
     @property
     def _is_generated(self):
@@ -326,6 +600,28 @@ class SampleCollection(object):
     def name(self):
         """The name of the collection."""
         raise NotImplementedError("Subclass must implement name")
+
+    @property
+    def head_name(self):
+        """The name of the HEAD dataset from which this collection is
+        derived.
+
+        This is typically the same as the backing dataset's ``name``
+        property, but may differ in some cases like if :meth:`is_snapshot`.
+        """
+        raise NotImplementedError("Subclass must implement head_name")
+
+    @property
+    def snapshot_name(self):
+        """The name of the dataset snapshot backing this collection,
+        or ``None`` if it's not a snapshot.
+        """
+        raise NotImplementedError("Subclass must implement snapshot_name")
+
+    @property
+    def is_snapshot(self):
+        """Whether this collection is backed by a dataset snapshot."""
+        return self.snapshot_name is not None
 
     @property
     def media_type(self):
@@ -1136,6 +1432,94 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement get_group()")
 
+    def download_context(
+        self,
+        batch_size=None,
+        target_size_bytes=None,
+        media_fields=None,
+        group_slices=None,
+        include_assets=True,
+        update=False,
+        skip_failures=True,
+        clear=False,
+        progress=None,
+    ):
+        """Returns a context that can be used to pre-download media in batches
+        when iterating over samples in this collection.
+
+        This method is only useful for collections that contain remote media.
+
+        By default, all media will be downloaded when the context is entered,
+        but you can configure a batching strategy via the `batch_size` or
+        `target_size_bytes` parameters.
+
+        If no ``batch_size`` or ``target_size_bytes`` is provided, media are
+        downloaded in batches of ``fo.media_cache_config.download_size_bytes``.
+
+        Examples::
+
+            import time
+            import fiftyone as fo
+
+            dataset = fo.load_dataset("a-cloud-backed-dataset")
+
+            # Download media using the default batching strategy
+            with dataset.download_context():
+                for sample in dataset.iter_samples(progress=True):
+                    assert fo.media_cache.is_local_or_cached(sample.filepath)
+                    time.sleep(0.01)
+
+            # Download media in batches of 100 samples
+            with dataset.download_context(batch_size=100):
+                for sample in dataset.iter_samples(progress=True):
+                    assert fo.media_cache.is_local_or_cached(sample.filepath)
+                    time.sleep(0.01)
+
+            # Download media in batches of 50MB
+            with dataset.download_context(target_size_bytes=50 * 1024**2):
+                for sample in dataset.iter_samples(progress=True):
+                    assert fo.media_cache.is_local_or_cached(sample.filepath)
+                    time.sleep(0.01)
+
+        Args:
+            batch_size (None): a sample batch size to use for each download
+            target_size_bytes (None): a target content size, in bytes, for each
+                download batch. If negative, all media is downloaded in one
+                batch
+            media_fields (None): a field or iterable of fields containing media
+                to download. By default, all media fields in the collection's
+                :meth:`app_config` are used
+            group_slices (None): an optional subset of group slices to download
+                media for. Only applicable when the collection contains groups
+            include_assets (True): whether to include 3D scene assets
+            update (False): whether to re-download media whose checksums no
+                longer match
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
+            clear (False): whether to clear the media from the cache when the
+                context exits
+            progress (None): whether to render a progress bar tracking the
+                progress of any downloads (True/False), use the default value
+                ``fiftyone.config.show_progress_bars`` (None), or a progress
+                callback function to invoke instead
+
+        Returns:
+            a :class:`DownloadContext`
+        """
+        return DownloadContext(
+            self,
+            batch_size=batch_size,
+            target_size_bytes=target_size_bytes,
+            media_fields=media_fields,
+            group_slices=group_slices,
+            include_assets=include_assets,
+            update=update,
+            skip_failures=skip_failures,
+            clear=clear,
+            progress=progress,
+        )
+
+    @requires_can_edit
     def save_context(self, batch_size=None, batching_strategy=None):
         """Returns a context that can be used to save samples from this
         collection according to a configurable batching strategy.
@@ -1848,6 +2232,7 @@ class SampleCollection(object):
                 "%s has no %s '%s'" % (self.__class__.__name__, ftype, _path)
             )
 
+    @requires_can_tag
     def tag_samples(self, tags):
         """Adds the tag(s) to all samples in this collection, if necessary.
 
@@ -1883,6 +2268,7 @@ class SampleCollection(object):
             else:
                 raise e
 
+    @requires_can_tag
     def untag_samples(self, tags):
         """Removes the tag(s) from all samples in this collection, if
         necessary.
@@ -1925,6 +2311,7 @@ class SampleCollection(object):
         """
         return self.count_values("tags")
 
+    @requires_can_tag
     def tag_labels(self, tags, label_fields=None):
         """Adds the tag(s) to all labels in the specified label field(s) of
         this collection, if necessary.
@@ -1988,6 +2375,7 @@ class SampleCollection(object):
             else:
                 raise e
 
+    @requires_can_tag
     def untag_labels(self, tags, label_fields=None):
         """Removes the tag from all labels in the specified label field(s) of
         this collection, if necessary.
@@ -2215,6 +2603,7 @@ class SampleCollection(object):
 
         return dict(counts)
 
+    @requires_can_edit
     def split_labels(self, in_field, out_field, filter=None):
         """Splits the labels from the given input field into the given output
         field of the collection.
@@ -2243,6 +2632,7 @@ class SampleCollection(object):
 
         move_view.merge_labels(in_field, out_field)
 
+    @requires_can_edit
     def merge_labels(self, in_field, out_field):
         """Merges the labels from the given input field into the given output
         field of the collection.
@@ -2282,6 +2672,7 @@ class SampleCollection(object):
         else:
             dataset.delete_labels(ids=del_ids, fields=in_field)
 
+    @requires_can_edit
     def set_values(
         self,
         field_name,
@@ -2597,6 +2988,7 @@ class SampleCollection(object):
                 self._dataset._doc.media_type = fom.GROUP
                 self._dataset.save()
 
+    @requires_can_edit
     def set_label_values(
         self,
         field_name,
@@ -3212,6 +3604,7 @@ class SampleCollection(object):
     def _delete_labels(self, ids, fields=None):
         self._dataset.delete_labels(ids=ids, fields=fields)
 
+    # This method may mutate data, which is enforced by subcalls internally
     def compute_metadata(
         self,
         overwrite=False,
@@ -3245,6 +3638,277 @@ class SampleCollection(object):
             progress=progress,
         )
 
+    def download_media(
+        self,
+        media_fields=None,
+        group_slices=None,
+        include_assets=True,
+        update=False,
+        skip_failures=True,
+        progress=None,
+    ):
+        """Downloads the source media files for all samples in the collection.
+
+        This method is only useful for collections that contain remote media.
+
+        Any existing files are not re-downloaded, unless ``update == True`` and
+        their checksums no longer match.
+
+        Args:
+            media_fields (None): a field or iterable of fields containing media
+                to download. By default, all media fields in the collection's
+                :meth:`app_config` are used
+            group_slices (None): an optional subset of group slices for which
+                to download media. Only applicable when the collection contains
+                groups
+            include_assets (True): whether to include 3D scene assets
+            update (False): whether to re-download media whose checksums no
+                longer match
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
+            progress (None): whether to render a progress bar tracking the
+                progress of any downloads (True/False), use the default value
+                ``fiftyone.config.show_progress_bars`` (None), or a progress
+                callback function to invoke instead
+        """
+        filepaths = self._get_media_paths(
+            media_fields=media_fields,
+            group_slices=group_slices,
+            include_assets=include_assets,
+        )
+
+        if update:
+            foc.media_cache.update(
+                filepaths=filepaths,
+                skip_failures=skip_failures,
+                progress=progress,
+            )
+        else:
+            foc.media_cache.get_local_paths(
+                filepaths,
+                download=True,
+                skip_failures=skip_failures,
+                progress=progress,
+            )
+
+    def download_scenes(self, update=False, skip_failures=True, progress=None):
+        """Downloads all ``.fo3d`` files for the samples in the collection.
+
+        This method is only useful for collections that contain remote media.
+
+        Any existing files are not re-downloaded, unless ``update == True`` and
+        their checksums no longer match.
+
+        Args:
+            update (False): whether to re-download files whose checksums no
+                longer match
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
+            progress (None): whether to render a progress bar tracking the
+                progress of any downloads (True/False), use the default value
+                ``fiftyone.config.show_progress_bars`` (None), or a progress
+                callback function to invoke instead
+        """
+        if not self._contains_media_type(fom.THREE_D, any_slice=True):
+            return
+
+        if self.media_type == fom.GROUP:
+            group_slices = [
+                k
+                for k, v in self.group_media_types.items()
+                if v == fom.THREE_D
+            ]
+        else:
+            group_slices = None
+
+        self.download_media(
+            media_fields=["filepath"],
+            group_slices=group_slices,
+            include_assets=False,
+            update=update,
+            skip_failures=skip_failures,
+            progress=progress,
+        )
+
+    def get_local_paths(
+        self,
+        media_field="filepath",
+        include_assets=True,
+        download=True,
+        skip_failures=True,
+        progress=None,
+    ):
+        """Returns a list of local paths to the media files in this collection.
+
+        This method is only useful for collections that contain remote media.
+
+        Args:
+            media_field ("filepath"): the field containing the media paths
+            include_assets (True): whether to include 3D scene assets
+            download (True): whether to download any non-cached media files
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
+            progress (None): whether to render a progress bar tracking the
+                progress of any downloads (True/False), use the default value
+                ``fiftyone.config.show_progress_bars`` (None), or a progress
+                callback function to invoke instead
+
+        Returns:
+            a list of local filepaths
+        """
+        filepaths = self._get_media_paths(
+            media_fields=[media_field],
+            include_assets=include_assets,
+        )
+        return foc.media_cache.get_local_paths(
+            filepaths,
+            download=download,
+            skip_failures=skip_failures,
+            progress=progress,
+        )
+
+    def clear_media(
+        self,
+        media_fields=None,
+        group_slices=None,
+        include_assets=True,
+    ):
+        """Deletes any local copies of media files in this collection from the
+        media cache.
+
+        This method is only useful for collections that contain remote media.
+
+        Args:
+            media_fields (None): a field or iterable of fields containing media
+                paths to clear from the cache. By default, all media fields
+                in the collection's :meth:`app_config` are cleared
+            group_slices (None): an optional subset of group slices for which
+                to clear media. Only applicable when the collection contains
+                groups
+            include_assets (True): whether to include 3D scene assets
+        """
+        filepaths = self._get_media_paths(
+            media_fields=media_fields,
+            group_slices=group_slices,
+            include_assets=include_assets,
+        )
+        foc.media_cache.clear(filepaths=filepaths)
+
+    def cache_stats(
+        self,
+        media_fields=None,
+        group_slices=None,
+        include_assets=True,
+    ):
+        """Returns a dictionary of stats about the cached media files in this
+        collection.
+
+        This method is only useful for collections that contain remote media.
+
+        Args:
+            media_fields (None): a field or iterable of fields containing media
+                paths. By default, all media fields in the collection's
+                :meth:`app_config` are included
+            group_slices (None): an optional subset of group slices to include.
+                Only applicable when the collection contains groups
+            include_assets (True): whether to include 3D scene assets
+
+        Returns:
+            a stats dict
+        """
+        filepaths = self._get_media_paths(
+            media_fields=media_fields,
+            group_slices=group_slices,
+            include_assets=include_assets,
+        )
+        return foc.media_cache.stats(filepaths=filepaths)
+
+    def _get_media_paths(
+        self,
+        media_fields=None,
+        group_slices=None,
+        include_assets=True,
+        flat=True,
+    ):
+        if media_fields is None:
+            media_fields = list(self._get_media_fields().keys())
+        elif etau.is_container(media_fields):
+            media_fields = list(media_fields)
+        else:
+            media_fields = [media_fields]
+
+        media_fields = [self._resolve_media_field(f) for f in media_fields]
+
+        if flat:
+            # Generate flat list of all media paths
+            if self.media_type == fom.GROUP:
+                view = self.select_group_slices(
+                    slices=group_slices, _allow_mixed=True
+                )
+            else:
+                view = self
+
+            filepaths = view.values(media_fields, unwind=True)
+
+            if len(media_fields) > 1:
+                filepaths = list(itertools.chain.from_iterable(filepaths))
+            else:
+                filepaths = filepaths[0]
+        else:
+            # Generate lists of lists of media paths, one per sample
+            filepaths = []
+
+            if self.media_type == fom.GROUP:
+                id_field = self.group_field + ".id"
+                view = self.select_group_slices(
+                    slices=group_slices, _allow_mixed=True
+                )
+                group_ids, *paths = view.values([id_field] + media_fields)
+                paths_map = defaultdict(list)
+                for _id, _paths in zip(group_ids, zip(*paths)):
+                    paths_map[_id].extend(_merge_paths(_paths))
+
+                # Intentionally only includes paths for groups in active slice
+                for _id in self.values(id_field):
+                    filepaths.append(paths_map[_id])
+            else:
+                for p in zip(*self.values(media_fields)):
+                    filepaths.append(_merge_paths(p))
+
+        if (
+            include_assets
+            and "filepath" in media_fields
+            and self._contains_media_type(fom.THREE_D, any_slice=True)
+        ):
+            self._inject_fo3d_asset_paths(filepaths, flat=flat)
+
+        return filepaths
+
+    def _inject_fo3d_asset_paths(self, filepaths, flat=True):
+        if flat:
+            _filepaths = filepaths
+        else:
+            _filepaths = itertools.chain.from_iterable(filepaths)
+
+        scene_paths = [p for p in _filepaths if p.endswith(".fo3d")]
+        asset_map = fou3d.get_scene_asset_paths(
+            scene_paths, abs_paths=True, skip_failures=True
+        )
+
+        if flat:
+            asset_paths = itertools.chain.from_iterable(asset_map.values())
+            filepaths.extend(set(asset_paths))
+        else:
+            for sample_paths in filepaths:
+                asset_paths = set()
+                for path in sample_paths:
+                    _asset_paths = asset_map.get(path, None)
+                    if _asset_paths is not None:
+                        asset_paths.update(_asset_paths)
+
+                sample_paths.extend(asset_paths)
+
+    @requires_can_edit
     def apply_model(
         self,
         model,
@@ -3320,6 +3984,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
+    @requires_can_edit(condition_param="embeddings_field")
     def compute_embeddings(
         self,
         model,
@@ -3398,6 +4063,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
+    @requires_can_edit(condition_param="embeddings_field")
     def compute_patch_embeddings(
         self,
         model,
@@ -3499,6 +4165,7 @@ class SampleCollection(object):
             progress=progress,
         )
 
+    @requires_can_edit
     def evaluate_regressions(
         self,
         pred_field,
@@ -3566,6 +4233,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
+    @requires_can_edit
     def evaluate_classifications(
         self,
         pred_field,
@@ -3644,6 +4312,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
+    @requires_can_edit
     def evaluate_detections(
         self,
         pred_field,
@@ -3777,6 +4446,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
+    @requires_can_edit
     def evaluate_segmentations(
         self,
         pred_field,
@@ -3898,6 +4568,7 @@ class SampleCollection(object):
             self, type=type, method=method, **kwargs
         )
 
+    @requires_can_edit
     def rename_evaluation(self, eval_key, new_eval_key):
         """Replaces the key for the given evaluation with a new key.
 
@@ -3955,6 +4626,7 @@ class SampleCollection(object):
             self, eval_key, select_fields=select_fields
         )
 
+    @requires_can_edit
     def delete_evaluation(self, eval_key):
         """Deletes the evaluation results associated with the given evaluation
         key from this collection.
@@ -3964,6 +4636,7 @@ class SampleCollection(object):
         """
         foev.EvaluationMethod.delete_run(self, eval_key)
 
+    @requires_can_edit
     def delete_evaluations(self):
         """Deletes all evaluation results from this collection."""
         foev.EvaluationMethod.delete_runs(self)
@@ -4006,6 +4679,7 @@ class SampleCollection(object):
             self, type=type, method=method, **kwargs
         )
 
+    @requires_can_edit
     def rename_brain_run(self, brain_key, new_brain_key):
         """Replaces the key for the given brain run with a new key.
 
@@ -4065,6 +4739,7 @@ class SampleCollection(object):
             self, brain_key, select_fields=select_fields
         )
 
+    @requires_can_edit
     def delete_brain_run(self, brain_key):
         """Deletes the brain method run with the given key from this
         collection.
@@ -4074,6 +4749,7 @@ class SampleCollection(object):
         """
         fob.BrainMethod.delete_run(self, brain_key)
 
+    @requires_can_edit
     def delete_brain_runs(self):
         """Deletes all brain method runs from this collection."""
         fob.BrainMethod.delete_runs(self)
@@ -4116,6 +4792,7 @@ class SampleCollection(object):
         """
         return fors.RunConfig(**kwargs)
 
+    @requires_can_edit
     def register_run(
         self,
         run_key,
@@ -4160,6 +4837,7 @@ class SampleCollection(object):
                 self, run_key, results, overwrite=overwrite, cache=cache
             )
 
+    @requires_can_edit
     def rename_run(self, run_key, new_run_key):
         """Replaces the key for the given run with a new key.
 
@@ -4181,6 +4859,7 @@ class SampleCollection(object):
         """
         return fors.Run.get_run_info(self, run_key)
 
+    @requires_can_edit
     def update_run_config(self, run_key, config):
         """Updates the run config for the run with the given key.
 
@@ -4209,6 +4888,7 @@ class SampleCollection(object):
         info = fors.Run.get_run_info(self, run_key)
         return fors.RunResults(self, info.config, run_key, **kwargs)
 
+    @requires_can_edit
     def save_run_results(self, run_key, results, overwrite=True, cache=True):
         """Saves run results for the run with the given key.
 
@@ -4263,6 +4943,7 @@ class SampleCollection(object):
             self, run_key, select_fields=select_fields
         )
 
+    @requires_can_edit
     def delete_run(self, run_key):
         """Deletes the run with the given key from this collection.
 
@@ -4271,6 +4952,7 @@ class SampleCollection(object):
         """
         fors.Run.delete_run(self, run_key)
 
+    @requires_can_edit
     def delete_runs(self):
         """Deletes all runs from this collection."""
         fors.Run.delete_runs(self)
@@ -6788,6 +7470,7 @@ class SampleCollection(object):
             )
         )
 
+    # This populates a temporary field, which doesn't count as mutation
     @view_stage
     def shuffle(self, seed=None):
         """Randomly shuffles the samples in the collection.
@@ -6881,6 +7564,8 @@ class SampleCollection(object):
         """
         return self._add_view_stage(fos.Skip(skip))
 
+    # This may create indexes and populate temporary fields, neither of which
+    # count as mutations
     @view_stage
     def sort_by(self, field_or_expr, reverse=False, create_index=True):
         """Sorts the samples in the collection by the given field(s) or
@@ -6961,6 +7646,7 @@ class SampleCollection(object):
             )
         )
 
+    @requires_can_edit(condition_param="dist_field")
     @view_stage
     def sort_by_similarity(
         self, query, k=None, reverse=False, dist_field=None, brain_key=None
@@ -7043,6 +7729,7 @@ class SampleCollection(object):
             )
         )
 
+    # This populates a temporary field, which doesn't count as mutation
     @view_stage
     def take(self, size, seed=None):
         """Randomly samples the given number of samples from the collection.
@@ -7217,6 +7904,7 @@ class SampleCollection(object):
             fos.ToEvaluationPatches(eval_key, **kwargs)
         )
 
+    # This may populate temporary fields, which doesn't count as mutation
     @view_stage
     def to_clips(self, field_or_expr, **kwargs):
         """Creates a view that contains one sample per clip defined by the
@@ -7311,6 +7999,7 @@ class SampleCollection(object):
         """
         return self._add_view_stage(fos.ToClips(field_or_expr, **kwargs))
 
+    # This may populate temporary fields, which doesn't count as mutation
     @view_stage
     def to_trajectories(self, field, **kwargs):
         """Creates a view that contains one clip for each unique object
@@ -7362,6 +8051,7 @@ class SampleCollection(object):
         """
         return self._add_view_stage(fos.ToTrajectories(field, **kwargs))
 
+    @requires_can_edit(condition_param="sample_frames")
     @view_stage
     def to_frames(self, **kwargs):
         """Creates a view that contains one sample per frame in the video
@@ -8883,9 +9573,9 @@ class SampleCollection(object):
         Returns:
             the list of paths to the rendered media
         """
-        if os.path.isdir(output_dir):
+        if fost.isdir(output_dir):
             if overwrite:
-                etau.delete_dir(output_dir)
+                fost.delete_dir(output_dir)
             else:
                 logger.warning(
                     "Directory '%s' already exists; outputs will be merged "
@@ -9120,33 +9810,49 @@ class SampleCollection(object):
                 :class:`fiftyone.utils.patches.ImagePatchesExtractor`
         """
         archive_path = None
+        local_archive_path = None
+        tmp_dir = None
 
-        # If the user requested an archive, first populate a directory
-        if export_dir is not None and etau.is_archive(export_dir):
-            archive_path = export_dir
-            export_dir, _ = etau.split_archive(archive_path)
+        try:
+            # If the user requested an archive, first populate a directory
+            if export_dir is not None and etau.is_archive(export_dir):
+                archive_path = export_dir
+                export_dir, ext = etau.split_archive(archive_path)
 
-        # Perform the export
-        _export(
-            self,
-            export_dir=export_dir,
-            dataset_type=dataset_type,
-            data_path=data_path,
-            labels_path=labels_path,
-            export_media=export_media,
-            rel_dir=rel_dir,
-            dataset_exporter=dataset_exporter,
-            label_field=label_field,
-            frame_labels_field=frame_labels_field,
-            overwrite=overwrite,
-            progress=progress,
-            **kwargs,
-        )
+                if not fost.is_local(export_dir):
+                    tmp_dir = fost.make_temp_dir()
+                    archive_name = os.path.basename(export_dir)
+                    export_dir = fost.join(tmp_dir, archive_name)
+                    local_archive_path = export_dir + ext
 
-        # Make archive, if requested
-        if archive_path is not None:
-            etau.make_archive(export_dir, archive_path, cleanup=True)
+            # Perform the export
+            _export(
+                self,
+                export_dir=export_dir,
+                dataset_type=dataset_type,
+                data_path=data_path,
+                labels_path=labels_path,
+                export_media=export_media,
+                rel_dir=rel_dir,
+                dataset_exporter=dataset_exporter,
+                label_field=label_field,
+                frame_labels_field=frame_labels_field,
+                overwrite=overwrite,
+                progress=progress,
+                **kwargs,
+            )
 
+            # Make archive, if requested
+            if local_archive_path is not None:
+                fost.make_archive(export_dir, local_archive_path)
+                fost.copy_file(local_archive_path, archive_path)
+            elif archive_path is not None:
+                fost.make_archive(export_dir, archive_path, cleanup=True)
+        finally:
+            if tmp_dir is not None:
+                etau.delete_dir(tmp_dir)
+
+    @requires_can_edit
     def annotate(
         self,
         anno_key,
@@ -9336,6 +10042,7 @@ class SampleCollection(object):
             self, type=type, method=method, **kwargs
         )
 
+    @requires_can_edit
     def rename_annotation_run(self, anno_key, new_anno_key):
         """Replaces the key for the given annotation run with a new key.
 
@@ -9401,6 +10108,7 @@ class SampleCollection(object):
             self, anno_key, select_fields=select_fields
         )
 
+    @requires_can_edit
     def load_annotations(
         self,
         anno_key,
@@ -9456,6 +10164,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
+    @requires_can_edit
     def delete_annotation_run(self, anno_key):
         """Deletes the annotation run with the given key from this collection.
 
@@ -9472,6 +10181,7 @@ class SampleCollection(object):
         """
         foan.AnnotationMethod.delete_run(self, anno_key)
 
+    @requires_can_edit
     def delete_annotation_runs(self):
         """Deletes all annotation runs from this collection.
 
@@ -9559,6 +10269,9 @@ class SampleCollection(object):
 
         return index_info
 
+    # Indexes don't count as mutation because they only exist in-memory
+    #   But non-editors shouldn't be allowed to create.
+    @requires_can_edit(enforce_readonly=False)
     def create_index(self, field_or_spec, unique=False, wait=True, **kwargs):
         """Creates an index on the given field or with the given specification,
         if necessary.
@@ -9693,6 +10406,9 @@ class SampleCollection(object):
 
         return name
 
+    # Indexes don't count as mutation because they only exist in-memory.
+    #   But non-editors shouldn't be allowed to drop.
+    @requires_can_edit(enforce_readonly=False)
     def drop_index(self, field_or_name):
         """Drops the index for the given field or name, if necessary.
 
@@ -9835,7 +10551,7 @@ class SampleCollection(object):
             a JSON dict
         """
         if rel_dir is not None:
-            rel_dir = fost.normalize_path(rel_dir) + os.path.sep
+            rel_dir = fost.normalize_path(rel_dir) + fost.sep(rel_dir)
 
         contains_videos = self._contains_videos(any_slice=True)
         write_frame_labels = (
@@ -9885,23 +10601,27 @@ class SampleCollection(object):
 
         # Serialize samples
         samples = []
-        for sample in view.iter_samples(progress=progress):
-            sd = sample.to_dict(
-                include_frames=include_frames,
-                include_private=include_private,
-            )
+        with fost.FileWriter() as writer:
+            for sample in self.iter_samples(progress=progress):
+                sd = sample.to_dict(
+                    include_frames=include_frames,
+                    include_private=include_private,
+                )
 
-            if write_frame_labels and sample.media_type == fom.VIDEO:
-                frames = {"frames": sd.pop("frames", {})}
-                filename = sample.id + ".json"
-                sd["frames"] = filename
-                frames_path = os.path.join(frame_labels_dir, filename)
-                etas.write_json(frames, frames_path, pretty_print=pretty_print)
+                if write_frame_labels and sample.media_type == fom.VIDEO:
+                    frames = {"frames": sd.pop("frames", {})}
+                    filename = sample.id + ".json"
+                    sd["frames"] = filename
+                    frames_path = fost.join(frame_labels_dir, filename)
+                    local_path = writer.get_local_path(frames_path)
+                    etas.write_json(
+                        frames, local_path, pretty_print=pretty_print
+                    )
 
-            if rel_dir and sd["filepath"].startswith(rel_dir):
-                sd["filepath"] = sd["filepath"][len(rel_dir) :]
+                if rel_dir and sd["filepath"].startswith(rel_dir):
+                    sd["filepath"] = sd["filepath"][len(rel_dir) :]
 
-            samples.append(sd)
+                samples.append(sd)
 
         d["samples"] = samples
 
@@ -9991,7 +10711,7 @@ class SampleCollection(object):
             frame_labels_dir=frame_labels_dir,
             pretty_print=pretty_print,
         )
-        etas.write_json(d, json_path, pretty_print=pretty_print)
+        fost.write_json(d, json_path, pretty_print=pretty_print)
 
     def _add_view_stage(self, stage):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
@@ -11916,9 +12636,9 @@ def _handle_existing_dirs(
         except:
             pass
 
-    if export_dir is not None and os.path.isdir(export_dir):
+    if export_dir is not None and fost.isdir(export_dir):
         if overwrite:
-            etau.delete_dir(export_dir)
+            fost.delete_dir(export_dir)
         else:
             logger.warning(
                 "Directory '%s' already exists; export will be merged with "
@@ -11929,42 +12649,46 @@ def _handle_existing_dirs(
     # When `export_media=False`, `data_path` is used as a relative directory
     # for filename purposes, not a sink for writing data
     if data_path is not None and export_media != False:
-        if os.path.isabs(data_path) or export_dir is None:
+        if fost.isabs(data_path) or export_dir is None:
             _data_path = data_path
         else:
-            _data_path = os.path.join(export_dir, data_path)
+            _data_path = fost.join(export_dir, data_path)
 
-        if os.path.isdir(_data_path):
+        if fost.isdir(_data_path):
             if overwrite:
-                etau.delete_dir(_data_path)
+                fost.delete_dir(_data_path)
             else:
                 logger.warning(
                     "Directory '%s' already exists; export will be merged "
                     "with existing files",
                     _data_path,
                 )
-        elif os.path.isfile(_data_path):
-            if overwrite:
-                etau.delete_file(_data_path)
+        elif overwrite:
+            try:
+                fost.delete_file(_data_path)
+            except:
+                pass
 
     if labels_path is not None:
-        if os.path.isabs(labels_path) or export_dir is None:
+        if fost.isabs(labels_path) or export_dir is None:
             _labels_path = labels_path
         else:
-            _labels_path = os.path.join(export_dir, labels_path)
+            _labels_path = fost.join(export_dir, labels_path)
 
-        if os.path.isdir(_labels_path):
+        if fost.isdir(_labels_path):
             if overwrite:
-                etau.delete_dir(_labels_path)
+                fost.delete_dir(_labels_path)
             else:
                 logger.warning(
                     "Directory '%s' already exists; export will be merged "
                     "with existing files",
                     _labels_path,
                 )
-        elif os.path.isfile(_labels_path):
-            if overwrite:
-                etau.delete_file(_labels_path)
+        elif overwrite:
+            try:
+                fost.delete_file(_labels_path)
+            except:
+                pass
 
 
 def _add_db_fields_to_schema(schema):
@@ -11974,3 +12698,14 @@ def _add_db_fields_to_schema(schema):
             additions[field.db_field] = field
 
     schema.update(additions)
+
+
+def _merge_paths(values):
+    flat = []
+    for v in values:
+        if isinstance(v, str):
+            flat.append(v)
+        elif v is not None:
+            flat.extend(v)
+
+    return flat

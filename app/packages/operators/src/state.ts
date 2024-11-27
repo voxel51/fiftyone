@@ -23,6 +23,7 @@ import {
   BROWSER_CONTROL_KEYS,
   RESOLVE_INPUT_VALIDATION_TTL,
   RESOLVE_TYPE_TTL,
+  LAST_USED_ORCHESTRATOR,
 } from "./constants";
 import {
   ExecutionContext,
@@ -105,6 +106,9 @@ const globalContextSelector = selector({
     const spaces = get(fos.sessionSpaces);
     const workspaceName = spaces?._name;
 
+    // Teams only
+    const datasetHeadName = get(fos.datasetHeadName);
+
     return {
       datasetName,
       view,
@@ -113,6 +117,8 @@ const globalContextSelector = selector({
       selectedSamples,
       selectedLabels,
       viewName,
+      // Teams only
+      datasetHeadName,
       extendedSelection,
       groupSlice,
       queryPerformance,
@@ -156,6 +162,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     params,
     selectedLabels,
     viewName,
+    // Teams only
+    datasetHeadName,
     extendedSelection,
     groupSlice,
     queryPerformance,
@@ -175,6 +183,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         selectedLabels,
         currentSample,
         viewName,
+        // Teams only
+        datasetHeadName,
         extendedSelection,
         analyticsInfo,
         groupSlice,
@@ -294,7 +304,7 @@ const useOperatorPromptSubmitOptions = (
       label: "Schedule",
       id: "schedule",
       default: defaultToSchedule,
-      description: "Run this operation in the background",
+      description: "Run this operation on your compute cluster",
       onSelect() {
         setSelectedID("schedule");
       },
@@ -320,6 +330,7 @@ const useOperatorPromptSubmitOptions = (
           setSelectedID(orc.id);
         },
         onClick() {
+          localStorage.setItem(LAST_USED_ORCHESTRATOR, orc.instanceID);
           execute({
             delegationTarget: orc.instanceID,
             requestDelegation: true,
@@ -606,7 +617,11 @@ export const useOperatorPrompt = () => {
     if (executor.hasExecuted && !executor.needsOutput && !executorError) {
       close();
       if (executor.isDelegated) {
-        notify({ msg: "Operation successfully scheduled", variant: "success" });
+        notify({
+          msg: "Operation successfully scheduled",
+          link: "runs",
+          variant: "success",
+        });
       }
     }
   }, [

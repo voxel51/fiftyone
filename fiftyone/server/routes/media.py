@@ -21,6 +21,8 @@ from starlette.responses import (
     guess_type,
 )
 
+from fiftyone.core.cache import media_cache
+
 
 async def ranged(
     file: AsyncBufferedReader,
@@ -58,6 +60,11 @@ class Media(HTTPEndpoint):
         self, request: Request
     ) -> t.Union[FileResponse, StreamingResponse]:
         path = request.query_params["filepath"]
+        if media_cache.is_local(path) and os.name != "nt":
+            path = os.path.join("/", path)
+
+        if media_cache.is_local_or_cached(path):
+            path = media_cache.get_local_path(path)
 
         response: t.Union[FileResponse, StreamingResponse]
 

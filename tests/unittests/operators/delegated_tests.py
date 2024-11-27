@@ -28,6 +28,7 @@ from fiftyone.operators.executor import (
     ExecutionContext,
     ExecutionResult,
     ExecutionRunState,
+    ExecutionContextUser,
 )
 from fiftyone.factory.repos import delegated_operation
 from fiftyone.operators.operator import Operator, OperatorConfig
@@ -161,6 +162,15 @@ class MockProgressiveOperatorWithOutputs(MockGeneratorOperator):
 
 
 @patch(
+    "fiftyone.operators.executor.resolve_operation_user",
+    return_value=None,
+)
+@patch.object(
+    delegated_operation,
+    "is_remote_service",
+    return_value=False,
+)
+@patch(
     "fiftyone.operators.registry.OperatorRegistry.operator_exists",
     return_value=True,
 )
@@ -168,10 +178,15 @@ class MockProgressiveOperatorWithOutputs(MockGeneratorOperator):
     "fiftyone.operators.registry.OperatorRegistry.get_operator",
     return_value=MockOperator(),
 )
-class DelegatedOperationServiceTests(unittest.TestCase):
+class DelegatedOperationServiceTests(unittest.IsolatedAsyncioTestCase):
     _should_fail = False
 
-    def setUp(self):
+    @patch.object(
+        delegated_operation,
+        "is_remote_service",
+        return_value=False,
+    )
+    def setUp(self, mock_is_remote_service):
         self.docs_to_delete = []
         self.svc = DelegatedOperationService()
 
@@ -194,7 +209,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         "fiftyone.core.odm.utils.load_dataset",
     )
     def test_delegate_operation(
-        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+        self,
+        mock_load_dataset,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
     ):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -229,7 +249,13 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc2.run_state, ExecutionRunState.QUEUED)
         self.assertEqual(doc2.metadata, doc2_metadata)
 
-    def test_list_operations(self, mock_get_operator, mock_operator_exists):
+    def test_list_operations(
+        self,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
+    ):
         dataset_name = f"test_dataset_{ObjectId()}"
         dataset = Dataset(dataset_name, _create=True, persistent=True)
         dataset.save()
@@ -406,7 +432,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         "fiftyone.core.odm.utils.load_dataset",
     )
     def test_set_run_states(
-        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+        self,
+        mock_load_dataset,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
     ):
         mock_inputs = MockInputs()
         mock_load_dataset.return_value = MockDataset()
@@ -454,7 +485,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         "fiftyone.core.odm.utils.load_dataset",
     )
     def test_sets_progress(
-        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+        self,
+        mock_load_dataset,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
     ):
         mock_load_dataset.return_value = MockDataset()
         mock_get_operator.return_value = MockOperator(sets_progress=True)
@@ -488,7 +524,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         "fiftyone.core.odm.utils.load_dataset",
     )
     def test_full_run_success(
-        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+        self,
+        mock_load_dataset,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
     ):
         mock_load_dataset.return_value = MockDataset()
         doc = self.svc.queue_operation(
@@ -525,7 +566,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         "fiftyone.core.odm.utils.load_dataset",
     )
     def test_generator_run_success(
-        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+        self,
+        mock_load_dataset,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
     ):
         mock_load_dataset.return_value = MockDataset()
         mock_get_operator.return_value = MockGeneratorOperator()
@@ -560,7 +606,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         "fiftyone.core.odm.utils.load_dataset",
     )
     def test_generator_sets_progress(
-        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+        self,
+        mock_load_dataset,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
     ):
         mock_load_dataset.return_value = MockDataset()
         mock_get_operator.return_value = MockGeneratorOperator(
@@ -593,7 +644,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         "fiftyone.core.odm.utils.load_dataset",
     )
     def test_updates_progress(
-        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+        self,
+        mock_load_dataset,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
     ):
         mock_inputs = MockInputs()
         mock_outputs = MockOutputs()
@@ -637,7 +693,11 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
 
     def test_queued_state_required_to_execute(
-        self, mock_get_operator, mock_operator_exists
+        self,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
     ):
         mock_inputs = MockInputs()
         operator = mock.MagicMock()
@@ -663,7 +723,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         "fiftyone.core.odm.utils.load_dataset",
     )
     def test_full_run_fail(
-        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+        self,
+        mock_load_dataset,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
     ):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -704,7 +769,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         "fiftyone.core.odm.utils.load_dataset",
     )
     def test_rerun_failed(
-        self, mock_load_dataset, get_op_mock, op_exists_mock
+        self,
+        mock_load_dataset,
+        get_op_mock,
+        op_exists_mock,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
     ):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -759,7 +829,13 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.get(doc_id=rerun_doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
 
-    def test_rerun_with_renamed_dataset(self, get_op_mock, op_exists_mock):
+    def test_rerun_with_renamed_dataset(
+        self,
+        get_op_mock,
+        op_exists_mock,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
+    ):
         # setup
         uid = str(ObjectId())
         dataset_name = f"test_dataset_{uid}"
@@ -839,7 +915,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         "fiftyone.core.odm.utils.load_dataset",
     )
     def test_execute_with_already_processing_op(
-        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+        self,
+        mock_load_dataset,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
     ):
         mock_load_dataset.return_value = MockDataset()
         doc = self.svc.queue_operation(
@@ -857,7 +938,13 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(changed_doc.status, doc.status)
         self.assertIsNone(result)
 
-    def test_execute_with_renamed_dataset(self, get_op_mock, op_exists_mock):
+    def test_execute_with_renamed_dataset(
+        self,
+        get_op_mock,
+        op_exists_mock,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
+    ):
         # setup
         uid = str(ObjectId())
         dataset_name = f"test_dataset_{uid}"
@@ -905,17 +992,26 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         finally:
             dataset.delete()
 
-    def test_paging_sorting(self, mock_get_operator, mock_operator_exists):
+    def test_paging_sorting(
+        self,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
+    ):
         dataset_name = f"test_dataset_{ObjectId()}"
         dataset = Dataset(dataset_name, _create=True, persistent=True)
         dataset.save()
         dataset_id = dataset._doc.id
+
+        user = f"test_user_{ObjectId()}"
 
         # create 100 docs, 25 of each state & for each user
         queued = []
         running = []
         completed = []
         failed = []
+
         for i in range(4):
             operator = f"@voxelfiftyone/operator/test_{i}"
             for j in range(25):
@@ -927,7 +1023,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                             "foo": "bar",
                             "dataset_name": dataset_name,
                             "dataset_id:": str(dataset_id),
-                        }
+                        },
+                        user=ExecutionContextUser(id=f"{user}_{i}"),
                     ),
                 )
                 time.sleep(
@@ -993,6 +1090,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(docs[0].id, queued[0].id)
 
         docs = self.svc.list_operations(
+            run_by=f"{user}_0",
             operator=f"@voxelfiftyone/operator/test_0",
             paging=DelegatedOperationPagingParams(skip=0, limit=100),
         )
@@ -1001,6 +1099,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(states, [ExecutionRunState.QUEUED] * 25)
 
         docs = self.svc.list_operations(
+            run_by=f"{user}_1",
             operator=f"@voxelfiftyone/operator/test_1",
             paging=DelegatedOperationPagingParams(skip=0, limit=100),
         )
@@ -1009,6 +1108,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(states, [ExecutionRunState.RUNNING] * 25)
 
         docs = self.svc.list_operations(
+            run_by=f"{user}_2",
             operator=f"@voxelfiftyone/operator/test_2",
             paging=DelegatedOperationPagingParams(skip=0, limit=100),
         )
@@ -1017,6 +1117,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(states, [ExecutionRunState.COMPLETED] * 25)
 
         docs = self.svc.list_operations(
+            run_by=f"{user}_3",
             operator=f"@voxelfiftyone/operator/test_3",
             paging=DelegatedOperationPagingParams(skip=0, limit=100),
         )
@@ -1052,7 +1153,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         "fiftyone.core.odm.utils.load_dataset",
     )
     def test_gets_dataset_id_from_name(
-        self, mock_load_dataset, mock_get_operator, *args
+        self,
+        mock_load_dataset,
+        mock_get_operator,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
+        *args,
     ):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -1076,7 +1182,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         "fiftyone.core.odm.utils.load_dataset",
     )
     def test_deletes_by_dataset_id(
-        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+        self,
+        mock_load_dataset,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
     ):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -1131,7 +1242,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         "fiftyone.core.odm.utils.load_dataset",
     )
     def test_search(
-        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+        self,
+        mock_load_dataset,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
     ):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -1232,7 +1348,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         "fiftyone.core.odm.utils.load_dataset",
     )
     def test_count(
-        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+        self,
+        mock_load_dataset,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
     ):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -1253,7 +1374,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                         request_params={
                             "foo": "bar",
                             "dataset_name": dataset_name,
-                        }
+                        },
+                        operator_uri=operator,
                     ),
                 )
                 time.sleep(
@@ -1283,7 +1405,12 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         "fiftyone.core.odm.utils.load_dataset",
     )
     def test_rename_operation(
-        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+        self,
+        mock_load_dataset,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
     ):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -1311,9 +1438,13 @@ class DelegatedOperationServiceTests(unittest.TestCase):
     @patch(
         "fiftyone.core.odm.utils.load_dataset",
     )
-    @pytest.mark.asyncio
     async def test_set_completed_in_async_context(
-        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+        self,
+        mock_load_dataset,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
     ):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -1335,14 +1466,14 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.set_completed(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
 
-    @patch.object(
-        delegated_operation,
-        "is_remote_service",
-        return_value=True,
-    )
     def test_queue_op_remote_service(
-        self, mock_is_remote_service, mock_get_operator, mock_operator_exists
+        self,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
     ):
+        mock_is_remote_service.return_value = True
         db = delegated_operation.MongoDelegatedOperationRepo()
         dos = DelegatedOperationService(repo=db)
         ctx = ExecutionContext()

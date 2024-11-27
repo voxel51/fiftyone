@@ -6,9 +6,15 @@ Unit tests for operators utilities.
 |
 """
 
+import os
 import unittest
+import pytest
 
-from fiftyone.operators.utils import is_method_overridden
+from unittest.mock import patch
+
+from fiftyone.operators.utils import (
+    is_method_overridden,
+)
 
 
 class MockOperator:
@@ -41,7 +47,7 @@ class MockOperatorFour(MockOperator):
     pass
 
 
-class TestOperatorUtilities(unittest.TestCase):
+class TestOperatorUtilities(unittest.IsolatedAsyncioTestCase):
     def test_is_method_overridden(self):
 
         op_one = MockOperatorOne()

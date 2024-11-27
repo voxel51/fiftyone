@@ -1,5 +1,9 @@
 import type { ModalSample } from "@fiftyone/state";
-import { PathType, determinePathType } from "@fiftyone/utilities";
+import {
+  PathType,
+  determinePathType,
+  resolveParent,
+} from "@fiftyone/utilities";
 import { folder } from "leva";
 import {
   DoubleSide,
@@ -124,9 +128,38 @@ export const getMediaPathForFo3dSample = (
   return mediaPath;
 };
 
-export const getFo3dRoot = (fo3dPath: string) => {
+export const getFo3dRoot = (fo3dUrl: string) => {
+  // for some reason we are seeing :/ in some URLs instead of :// so this is a hotfix
+  fo3dUrl = fo3dUrl.replace(/:\/(?!\/)/g, "://");
+  let filepath = fo3dUrl;
+  const decodedUrl = decodeURIComponent(fo3dUrl);
+
+  // extract the filepath from the URL
+  const filepathMatch = decodedUrl.match(/filepath=([^&]+)/);
+  if (!filepathMatch) {
+    try {
+      // might be a URL, if not, following will throw
+      new URL(decodedUrl);
+      const parent = resolveParent(fo3dUrl);
+      if (parent.endsWith("/")) {
+        return parent;
+      }
+      return parent + "/";
+    } catch {
+      // assume url is filepath, do nothing
+    }
+  } else {
+    filepath = filepathMatch[1];
+  }
+
+  // remove the query string if present
+  const queryStringIndex = filepath.indexOf("?");
+  if (queryStringIndex !== -1) {
+    filepath = filepath.substring(0, queryStringIndex);
+  }
+
   // remove filename and the last slash to get the root
-  const root = fo3dPath.replace(/(\/[^/]*\.fo3d$|\\[^\\]*\.fo3d$)/, "/");
+  const root = filepath.replace(/(\/[^/]*\.fo3d$|\\[^\\]*\.fo3d$)/, "/");
 
   return root;
 };

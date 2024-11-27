@@ -6,6 +6,7 @@ FiftyOne operator server.
 |
 """
 
+import os
 import types
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
@@ -22,38 +23,74 @@ from .executor import (
 )
 from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry
+from fiftyone.utils.decorators import route_requires_auth
+from .registry import OperatorRegistry
+from fiftyone.plugins.permissions import get_token_from_request
 from .utils import is_method_overridden
 from .operator import Operator
 
 
-def get_operators(registry: PermissionedOperatorRegistry):
-    operators = registry.list_operators(True, "operator")
-    panels = registry.list_operators(True, "panel")
-    return operators + panels
+async def _get_operator_registry_for_route(
+    RouteClass, request: Request, dataset_ids=None, is_list=False
+):
+    SKIP_OPERATOR_PERMISSION_CHECK = (
+        os.getenv("SKIP_OPERATOR_PERMISSION_CHECK", "false").lower() == "true"
+    )
+    requires_authentication = (
+        route_requires_auth(RouteClass) and not SKIP_OPERATOR_PERMISSION_CHECK
+    )
+    if requires_authentication:
+        if is_list:
+            registry = await PermissionedOperatorRegistry.from_list_request(
+                request, dataset_ids
+            )
+        else:
+            registry = await PermissionedOperatorRegistry.from_exec_request(
+                request, dataset_ids
+            )
+    else:
+        registry = OperatorRegistry()
+    return registry
+
+
+def resolve_dataset_name(request_params: dict):
+    head_name = request_params.get("dataset_head_name", None)
+
+    if head_name:
+        return head_name
+
+    return request_params.get("dataset_name", None)
 
 
 class ListOperators(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
-        dataset_name = data.get("dataset_name", None)
+        dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
-        registry = await PermissionedOperatorRegistry.from_list_request(
-            request, dataset_ids=dataset_ids
+        registry = await _get_operator_registry_for_route(
+            self.__class__, request, is_list=True, dataset_ids=dataset_ids
         )
+        role_scoped_registry = await _get_operator_registry_for_route(
+            self.__class__, request, is_list=True
+        )
+
         operators_as_json = []
-        for operator in get_operators(registry):
-            serialized_op = operator.to_json()
-            config = serialized_op["config"]
-            skip_input = not is_method_overridden(
-                Operator, operator, "resolve_input"
-            )
-            skip_output = not is_method_overridden(
-                Operator, operator, "resolve_output"
-            )
-            config["skip_input"] = skip_input
-            config["skip_output"] = skip_output
-            config["can_execute"] = registry.can_execute(serialized_op["uri"])
-            operators_as_json.append(serialized_op)
+        for operator in role_scoped_registry.list_operators():
+            if role_scoped_registry.can_execute(operator.uri):
+                serialized_op = operator.to_json()
+                config = serialized_op["config"]
+                skip_input = not is_method_overridden(
+                    Operator, operator, "resolve_input"
+                )
+                skip_output = not is_method_overridden(
+                    Operator, operator, "resolve_output"
+                )
+                config["skip_input"] = skip_input
+                config["skip_output"] = skip_output
+                config["can_execute"] = registry.can_execute(
+                    serialized_op["uri"]
+                )
+                operators_as_json.append(serialized_op)
 
         return {
             "operators": operators_as_json,
@@ -64,14 +101,27 @@ class ListOperators(HTTPEndpoint):
 class ResolvePlacements(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
-        dataset_name = data.get("dataset_name", None)
+        dataset_name = resolve_dataset_name(data)
+        if dataset_name is None:
+            raise ValueError("Dataset name must be provided")
+
         dataset_ids = [dataset_name]
-        registry = await PermissionedOperatorRegistry.from_exec_request(
-            request, dataset_ids=dataset_ids
+        registry = await _get_operator_registry_for_route(
+            ResolvePlacements, request, dataset_ids=dataset_ids
         )
         placements = []
-        for operator in get_operators(registry):
-            placement = resolve_placement(operator, data)
+
+        # request token is teams-only
+        request_token = get_token_from_request(request)
+
+        for operator in registry.list_operators():
+            # teams-only
+            if not registry.can_execute(operator.uri):
+                continue
+
+            placement = await resolve_placement(
+                operator, data, request_token=request_token
+            )
             if placement is not None:
                 placements.append(
                     {
@@ -86,14 +136,14 @@ class ResolvePlacements(HTTPEndpoint):
 class ExecuteOperator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        dataset_name = data.get("dataset_name", None)
+        dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
 
-        registry = await PermissionedOperatorRegistry.from_exec_request(
-            request, dataset_ids=dataset_ids
+        registry = await _get_operator_registry_for_route(
+            self.__class__, request, dataset_ids=dataset_ids
         )
         if registry.can_execute(operator_uri) is False:
             return create_permission_error(operator_uri)
@@ -106,7 +156,14 @@ class ExecuteOperator(HTTPEndpoint):
             }
             raise HTTPException(status_code=404, detail=error_detail)
 
-        result = await execute_or_delegate_operator(operator_uri, data)
+        # request token is teams-only
+        request_token = get_token_from_request(request)
+
+        result = await execute_or_delegate_operator(
+            operator_uri,
+            data,
+            request_token=request_token,
+        )
         return result.to_json()
 
 
@@ -135,14 +192,14 @@ def create_permission_error(uri):
 class ExecuteOperatorAsGenerator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        dataset_name = data.get("dataset_name", None)
+        dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
 
-        registry = await PermissionedOperatorRegistry.from_exec_request(
-            request, dataset_ids=dataset_ids
+        registry = await _get_operator_registry_for_route(
+            self.__class__, request, dataset_ids=dataset_ids
         )
         if registry.can_execute(operator_uri) is False:
             return create_permission_error(operator_uri)
@@ -154,9 +211,12 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
                 "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=error_detail)
-
+        # request token is teams-only
+        request_token = get_token_from_request(request)
         execution_result = await execute_or_delegate_operator(
-            operator_uri, data
+            operator_uri,
+            data,
+            request_token=request_token,
         )
         if execution_result.is_generator:
             result = execution_result.result
@@ -180,14 +240,14 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
 class ResolveType(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        dataset_name = data.get("dataset_name", None)
+        dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
 
-        registry = await PermissionedOperatorRegistry.from_exec_request(
-            request, dataset_ids=dataset_ids
+        registry = await _get_operator_registry_for_route(
+            self.__class__, request, dataset_ids=dataset_ids
         )
         if registry.can_execute(operator_uri) is False:
             return create_permission_error(operator_uri)
@@ -199,21 +259,26 @@ class ResolveType(HTTPEndpoint):
             }
             raise HTTPException(status_code=404, detail=error_detail)
 
-        result = await resolve_type(registry, operator_uri, data)
+        # request token is teams-only
+        request_token = get_token_from_request(request)
+
+        result = await resolve_type(
+            registry, operator_uri, data, request_token=request_token
+        )
         return result.to_json() if result else {}
 
 
 class ResolveExecutionOptions(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        dataset_name = data.get("dataset_name", None)
+        dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
 
-        registry = await PermissionedOperatorRegistry.from_exec_request(
-            request, dataset_ids=dataset_ids
+        registry = await _get_operator_registry_for_route(
+            self.__class__, request, dataset_ids=dataset_ids
         )
         if registry.can_execute(operator_uri) is False:
             return create_permission_error(operator_uri)
@@ -225,7 +290,12 @@ class ResolveExecutionOptions(HTTPEndpoint):
             }
             raise HTTPException(status_code=404, detail=error_detail)
 
-        result = await resolve_execution_options(registry, operator_uri, data)
+        # request token is teams-only
+        request_token = get_token_from_request(request)
+
+        result = await resolve_execution_options(
+            registry, operator_uri, data, request_token=request_token
+        )
         return result.to_dict() if result else {}
 
 

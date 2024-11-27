@@ -1,6 +1,7 @@
 -r common.txt
 -r docs.txt
 -r extras.txt
+-r teams.txt
 -r test.txt
 
 ipython==8.12.3

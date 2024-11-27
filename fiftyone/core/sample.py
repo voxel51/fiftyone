@@ -9,6 +9,7 @@ import os
 
 from bson import ObjectId
 
+import fiftyone.core.cache as foc
 from fiftyone.core.document import Document, DocumentView
 import fiftyone.core.frame as fofr
 import fiftyone.core.frame_utils as fofu
@@ -17,6 +18,7 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
+from fiftyone.internal.dataset_permissions import requires_can_edit
 from fiftyone.core.singletons import SampleSingleton
 
 
@@ -92,12 +94,75 @@ class _SampleMixin(object):
         """The media type of the sample."""
         return self._media_type
 
+    @property
+    def local_path(self):
+        """The local path to the sample's media.
+
+        Accessing this property will cause remote files to be downloaded to
+        FiftyOne's local media cache, if necessary.
+        """
+        return self.get_local_path()
+
+    @property
+    def is_local(self):
+        """Determines whether the sample's media is local.
+
+        Returns:
+            True/False
+        """
+        return foc.media_cache.is_local(self.filepath)
+
+    @property
+    def is_local_or_cached(self):
+        """Determines whether the sample's media is either local or a remote
+        file that is currently in FiftyOne's local media cache.
+
+        If this method returns True, calling :meth:`local_path` will not cause
+        a media download.
+
+        Returns:
+            True/False
+        """
+        return foc.media_cache.is_local_or_cached(self.filepath)
+
+    def get_local_path(
+        self,
+        media_field="filepath",
+        download=True,
+        skip_failures=True,
+    ):
+        """Returns the local path to the sample's media.
+
+        This method is only useful for samples backed by remote media.
+
+        Args:
+            media_field ("filepath"): the media field to use
+            download (True): whether to download the remote file to FiftyOne's
+                local media cache, if necessary
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
+
+        Returns:
+            the local filepath
+        """
+        value = self[media_field]
+
+        if hasattr(value, "get_local_path"):
+            return value.get_local_path(
+                download=download, skip_failures=skip_failures
+            )
+
+        return foc.media_cache.get_local_path(
+            value, download=download, skip_failures=skip_failures
+        )
+
     def get_field(self, field_name):
         if field_name == "frames" and self.media_type == fomm.VIDEO:
             return self._frames
 
         return super().get_field(field_name)
 
+    @requires_can_edit
     def set_field(
         self,
         field_name,
@@ -125,6 +190,7 @@ class _SampleMixin(object):
             dynamic=dynamic,
         )
 
+    @requires_can_edit
     def clear_field(self, field_name):
         if field_name == "frames" and self.media_type == fomm.VIDEO:
             self.frames.clear()
@@ -132,6 +198,7 @@ class _SampleMixin(object):
 
         super().clear_field(field_name)
 
+    # This method may mutate data, which is enforced by subcalls internally
     def compute_metadata(self, overwrite=False, skip_failures=False):
         """Populates the ``metadata`` field of the sample.
 
@@ -144,6 +211,7 @@ class _SampleMixin(object):
             self, overwrite=overwrite, skip_failures=skip_failures
         )
 
+    @requires_can_edit
     def add_labels(
         self,
         labels,
@@ -286,6 +354,7 @@ class _SampleMixin(object):
                 dynamic=dynamic,
             )
 
+    @requires_can_edit
     def merge(
         self,
         sample,
@@ -539,6 +608,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
 
         super().reload(hard=hard)
 
+    @requires_can_edit
     def save(self):
         """Saves the sample to the database."""
         super().save()
@@ -727,6 +797,7 @@ class SampleView(_SampleMixin, DocumentView):
 
         return d
 
+    @requires_can_edit
     def save(self):
         """Saves the sample view to the database.
 

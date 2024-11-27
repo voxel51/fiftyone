@@ -6,6 +6,7 @@ Utilities for working with annotations in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import contextlib
 from copy import copy, deepcopy
 import logging
 import os
@@ -19,16 +20,16 @@ import numpy as np
 from PIL import Image
 
 import eta.core.image as etai
-import eta.core.serial as etas
 import eta.core.utils as etau
-import eta.core.web as etaw
 
+import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
-import fiftyone.core.sample as fos
+from fiftyone.core.sample import Sample
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.annotations as foua
@@ -73,6 +74,12 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
             level of the editor (False) or whether to show the label field at
             the top level and annotate the class as a required attribute of
             each object (True)
+        upload_media (True): whether to download cloud media to your local
+            cache and upload it to Labelbox (True) or to just pass the cloud
+            paths directly (False)
+        iam_integration_name ("DEFAULT"): the name of the IAM integration to
+            associate with the created Labelbox dataset (or "DEFAULT" for the
+            default integration or "NONE" for no integration)
         export_version ("v2"): the Labelbox export format and API version to
             use. Supported values are ``("v1", "v2")``
     """
@@ -87,6 +94,8 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         project_name=None,
         members=None,
         classes_as_attrs=True,
+        upload_media=True,
+        iam_integration_name="DEFAULT",
         export_version=LabelboxExportVersion.V2,
         **kwargs,
     ):
@@ -96,6 +105,8 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         self.project_name = project_name
         self.members = members
         self.classes_as_attrs = classes_as_attrs
+        self.upload_media = upload_media
+        self.iam_integration_name = iam_integration_name
         self.export_version = export_version
 
         # store privately so these aren't serialized
@@ -343,6 +354,26 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             project_id,
         )
 
+    def get_iam_integration_by_name(self, integration_name):
+        """Returns a handle to the Labelbox IAM integration with the given name.
+
+        Args:
+            integration_name: the name of the IAM integration
+
+        Returns:
+            a ``labelbox.schema.iam_integration.IAMIntegration`` object
+        """
+        organization = self._client.get_organization()
+        iam_integrations = organization.get_iam_integrations()
+        for integration in iam_integrations:
+            if integration.name == integration_name:
+                return integration
+
+        raise ValueError(
+            f"Could not find IAM integration with name {integration_name} "
+            f"in Labelbox"
+        )
+
     def get_project_users(self, project=None, project_id=None):
         """Returns a list of users that are assigned to the given project.
 
@@ -537,6 +568,40 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         webbrowser.open(url, new=2)
 
+    def _convert_s3_path(self, path):
+        client = fos.get_client(path=path)
+        region = client._session.region_name
+
+        _, path = fos.split_prefix(path)
+        bucket, key = path.split("/", 1)
+        return "https://%s.s3.%s.amazonaws.com/%s" % (bucket, region, key)
+
+    def _convert_cloud_paths(self, paths):
+        converted_paths = []
+        paths_to_download = []
+        unsupported_fs = set()
+        for path in paths:
+            fs = fos.get_file_system(path)
+            if fs == fos.FileSystem.S3:
+                path = self._convert_s3_path(path)
+            elif fs != fos.FileSystem.LOCAL:
+                paths_to_download.append(path)
+                path = fo.media_cache.get_local_path(path, download=False)
+                unsupported_fs.add(fs)
+
+            converted_paths.append(path)
+
+        if paths_to_download:
+            _ = fo.media_cache.get_local_paths(paths_to_download)
+            logger.warning(
+                "Only S3 media can be uploaded directly with "
+                "upload_media=False, but found %s media as well. These files "
+                "will be downloaded to the local media cache and uploaded"
+                % unsupported_fs
+            )
+
+        return converted_paths
+
     def _skip_existing_global_keys(self, media_paths, sample_ids):
         lb_logger = logging.getLogger("labelbox.client")
         lb_logger_level = lb_logger.level
@@ -561,7 +626,14 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         return new_media_paths, new_sample_ids
 
-    def upload_data(self, samples, dataset_name, media_field="filepath"):
+    def upload_data(
+        self,
+        samples,
+        dataset_name,
+        media_field="filepath",
+        upload_media=True,
+        iam_integration_name="DEFAULT",
+    ):
         """Uploads the media for the given samples to Labelbox.
 
         This method uses ``labelbox.schema.dataset.Dataset.create_data_rows()``
@@ -575,8 +647,20 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 needs to be uploaded
             media_field ("filepath"): string field name containing the paths to
                 media files on disk to upload
+            upload_media (True): whether to download cloud media to your local
+                cache and upload it to Labelbox (True) or to just pass the
+                cloud paths directly (False)
+            iam_integration_name ("DEFAULT"): the name of the IAM integration
+                to associate with the created Labelbox dataset (or "DEFAULT"
+                for the default integration or "NONE" for no integration)
         """
         media_paths, sample_ids = samples.values([media_field, "id"])
+        if upload_media:
+            # Ensure all media exists locally, this downloads cloud media
+            media_paths = fo.media_cache.get_local_paths(media_paths)
+        else:
+            media_paths = self._convert_cloud_paths(media_paths)
+
         media_paths, sample_ids = self._skip_existing_global_keys(
             media_paths, sample_ids
         )
@@ -585,7 +669,11 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         with fou.ProgressBar(iters_str="samples") as pb:
             for media_path, sample_id in pb(zip(media_paths, sample_ids)):
-                item_url = self._client.upload_file(media_path)
+                if fos.is_local(media_path):
+                    item_url = self._client.upload_file(media_path)
+                else:
+                    item_url = media_path
+
                 upload_info.append(
                     {
                         lb.DataRow.row_data: item_url,
@@ -594,7 +682,19 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 )
 
         if upload_info:
-            lb_dataset = self._client.create_dataset(name=dataset_name)
+            # Set IAM integration
+            if iam_integration_name == "DEFAULT":
+                iam_integration = "DEFAULT"
+            elif iam_integration_name == "NONE":
+                iam_integration = None
+            else:
+                iam_integration = self.get_iam_integration_by_name(
+                    iam_integration_name
+                )
+
+            lb_dataset = self._client.create_dataset(
+                name=dataset_name, iam_integration=iam_integration
+            )
             task = lb_dataset.create_data_rows(upload_info)
             task.wait_till_done()
             if task.errors:
@@ -617,9 +717,11 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         config = backend.config
         label_schema = config.label_schema
         media_field = config.media_field
+        upload_media = config.upload_media
         project_name = config.project_name
         members = config.members
         classes_as_attrs = config.classes_as_attrs
+        iam_integration_name = config.iam_integration_name
         is_video = samples.media_type == fomm.VIDEO
 
         for label_field, label_info in label_schema.items():
@@ -634,7 +736,13 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             _dataset_name = samples._root_dataset.name.replace(" ", "_")
             project_name = "FiftyOne_%s" % _dataset_name
 
-        self.upload_data(samples, project_name, media_field=media_field)
+        self.upload_data(
+            samples,
+            project_name,
+            media_field=media_field,
+            upload_media=upload_media,
+            iam_integration_name=iam_integration_name,
+        )
         global_keys = samples.values("id")
 
         project = self._setup_project(
@@ -1080,7 +1188,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         url = label_dict["frames"]
         headers = {"Authorization": "Bearer %s" % self._api_key}
         response = requests.get(url, headers=headers)
-        return etas.load_ndjson(response.text)
+        return fos.load_ndjson(response.text)
 
     def _download_project_labels(self, project_id=None, project=None):
         if project is None:
@@ -1652,7 +1760,7 @@ def import_from_labelbox(
         label_key = lambda k: k
 
     # Load labels
-    d_list = etas.read_json(json_path)
+    d_list = fos.read_json(json_path)
 
     new_samples = []
 
@@ -1672,8 +1780,8 @@ def import_from_labelbox(
                 # pool?
                 image_url = d["Labeled Data"]
                 filepath = filename_maker.get_output_path(image_url)
-                etaw.download_file(image_url, path=filepath, quiet=True)
-                sample = fos.Sample(filepath=filepath)
+                fos.copy_file(image_url, filepath)
+                sample = Sample(filepath=filepath)
             else:
                 logger.info(
                     "Skipping labels for unknown Labelbox ID '%s'; provide a "
@@ -1832,11 +1940,28 @@ def export_to_labelbox(
 
     sample_collection.compute_metadata()
 
-    etau.ensure_empty_file(ndjson_path)
+    if label_fields:
+        media_fields = sample_collection._get_media_fields(
+            whitelist=label_fields
+        )
+        media_fields = list(media_fields.keys())
+    else:
+        media_fields = None
+
     converter = _FiftyOneToLabelboxExportConverterV1()
 
     # Export the labels
-    with fou.ProgressBar(progress=progress) as pb:
+    annos = []
+    with contextlib.ExitStack() as context:
+        if media_fields:
+            context.enter_context(
+                sample_collection.download_context(
+                    media_fields=media_fields, progress=progress
+                )
+            )
+
+        pb = context.enter_context(fou.ProgressBar(progress=progress))
+
         for sample in pb(sample_collection):
             labelbox_id = sample[labelbox_id_field]
             if labelbox_id is None:
@@ -1859,10 +1984,10 @@ def export_to_labelbox(
             # Export sample-level labels
             if label_fields:
                 labels_dict = _get_labels(sample, label_fields)
-                annos = converter._to_labelbox_image_labels(
+                sample_annos = converter._to_labelbox_image_labels(
                     labels_dict, frame_size, labelbox_id
                 )
-                etas.write_ndjson(annos, ndjson_path, append=True)
+                annos.extend(sample_annos)
 
             # Export frame-level labels
             if is_video and frame_label_fields:
@@ -1871,15 +1996,17 @@ def export_to_labelbox(
                     frames, frame_size, labelbox_id
                 )
 
-                video_labels_path = os.path.join(
+                video_labels_path = fos.join(
                     video_labels_dir, labelbox_id + ".json"
                 )
-                etas.write_ndjson(video_annos, video_labels_path)
+                fos.write_ndjson(video_annos, video_labels_path)
 
-                anno = _make_video_anno(
+                video_anno = _make_video_anno(
                     video_labels_path, data_row_id=labelbox_id
                 )
-                etas.write_ndjson([anno], ndjson_path, append=True)
+                annos.append(video_anno)
+
+    fos.write_ndjson(annos, ndjson_path)
 
 
 def download_labels_from_labelbox(
@@ -1923,7 +2050,7 @@ def download_labels_from_labelbox(
     export_json = export_task.result
 
     if outpath:
-        etas.write_json(export_json, outpath)
+        fos.write_json(export_json, outpath)
         return None
 
     return export_json
@@ -1933,11 +2060,10 @@ def _download_labels_from_labelbox_v1(labelbox_project, outpath=None):
     export_url = labelbox_project.export_labels()
 
     if outpath:
-        etaw.download_file(export_url, path=outpath)
+        fos.copy_file(export_url, outpath)
         return None
 
-    labels_bytes = etaw.download_file(export_url)
-    return etas.load_json(labels_bytes)
+    return fos.read_json(export_url)
 
 
 def upload_media_to_labelbox(
@@ -2002,7 +2128,7 @@ def upload_labels_to_labelbox(
     Args:
         labelbox_project: a ``labelbox.schema.project.Project``
         annos_or_ndjson_path: a list of annotation dicts or the path to an
-            NDJSON file on disk containing annotations
+            NDJSON file containing annotations
         batch_size (None): an optional batch size to use when uploading the
             annotations. By default, ``annos_or_ndjson_path`` is passed
             directly to ``labelbox_project.upload_annotations()``
@@ -2012,7 +2138,7 @@ def upload_labels_to_labelbox(
         return labelbox_project.upload_annotations(name, annos_or_ndjson_path)
 
     if etau.is_str(annos_or_ndjson_path):
-        annos = etas.read_ndjson(annos_or_ndjson_path)
+        annos = fos.read_ndjson(annos_or_ndjson_path)
     else:
         annos = annos_or_ndjson_path
 
@@ -2047,7 +2173,7 @@ def convert_labelbox_export_to_import(inpath, outpath=None, video_outdir=None):
     if outpath is None:
         outpath = inpath
 
-    din_list = etas.read_ndjson(inpath)
+    din_list = fos.read_ndjson(inpath)
 
     dout_map = {}
 
@@ -2061,7 +2187,7 @@ def convert_labelbox_export_to_import(inpath, outpath=None, video_outdir=None):
 
             # Convert frame labels
             if video_outdir is not None:
-                frames_outpath = os.path.join(
+                frames_outpath = fos.join(
                     video_outdir, os.path.basename(frames_inpath)
                 )
             else:
@@ -2088,11 +2214,11 @@ def convert_labelbox_export_to_import(inpath, outpath=None, video_outdir=None):
         _ingest_label(din, dout_map[uuid]["Label"])
 
     dout = list(dout_map.values())
-    etas.write_json(dout, outpath)
+    fos.write_json(dout, outpath)
 
 
 def _convert_labelbox_frames_export_to_import(inpath, outpath):
-    din_list = etas.read_ndjson(inpath)
+    din_list = fos.read_ndjson(inpath)
 
     dout_map = {}
 
@@ -2111,7 +2237,7 @@ def _convert_labelbox_frames_export_to_import(inpath, outpath):
         _ingest_label(din, dout_map[frame_number])
 
     dout = [dout_map[fn] for fn in sorted(dout_map.keys())]
-    etas.write_ndjson(dout, outpath)
+    fos.write_ndjson(dout, outpath)
 
 
 def _ingest_label(din, d_label):
@@ -2412,7 +2538,7 @@ class _LabelboxExportToFiftyOneConverterV1(object):
     @classmethod
     def _parse_video_labels(cls, video_label_d, frame_size):
         url_or_filepath = video_label_d["frames"]
-        label_d_list = _download_or_load_ndjson(url_or_filepath)
+        label_d_list = fos.read_ndjson(url_or_filepath)
 
         frames = {}
         for label_d in label_d_list:
@@ -2738,7 +2864,7 @@ class _LabelboxExportToFiftyOneConverterV1(object):
 
     @classmethod
     def _parse_mask(cls, instance_uri, headers=None):
-        img_bytes = etaw.download_file(instance_uri, quiet=True)
+        img_bytes = fos.read_file(instance_uri, "rb")
         return etai.decode(img_bytes)
 
 
@@ -2893,14 +3019,6 @@ def _make_video_anno(labels_path, data_row_id=None):
         anno["dataRow"] = {"id": data_row_id}
 
     return anno
-
-
-def _download_or_load_ndjson(url_or_filepath):
-    if url_or_filepath.startswith("http"):
-        ndjson_bytes = etaw.download_file(url_or_filepath, quiet=True)
-        return etas.load_ndjson(ndjson_bytes)
-
-    return etas.read_ndjson(url_or_filepath)
 
 
 def _parse_attribute(value):

@@ -1276,7 +1276,7 @@ def _log_welcome_message_if_allowed():
     if focn.VERSION == last_version:
         return
 
-    logger.info(_WELCOME_MESSAGE.format(focn.VERSION))
+    logger.info(_WELCOME_MESSAGE.format(focn.TEAMS_VERSION))
 
     try:
         etas.write_json({"version": focn.VERSION}, focn.WELCOME_PATH)

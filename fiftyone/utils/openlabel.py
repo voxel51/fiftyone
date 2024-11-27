@@ -12,8 +12,9 @@ import enum
 import logging
 import os
 
-import eta.core.serial as etas
+import eta.core.image as etai
 import eta.core.utils as etau
+import eta.core.video as etav
 
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
@@ -153,7 +154,7 @@ class OpenLABELImageDatasetImporter(
     def __next__(self):
         file_id = next(self._iter_file_ids)
 
-        if os.path.isfile(file_id):
+        if fos.isfile(file_id):
             sample_path = file_id
         elif _remove_ext(file_id) in self._image_paths_map:
             sample_path = self._image_paths_map[_remove_ext(file_id)]
@@ -221,25 +222,25 @@ class OpenLABELImageDatasetImporter(
             labels_path = fos.normpath(self.labels_path)
 
             base_dir = None
-            if os.path.isfile(labels_path):
+            if fos.isfile(labels_path):
                 label_paths = [labels_path]
-            elif os.path.isdir(labels_path):
+            elif fos.isdir(labels_path):
                 base_dir = labels_path
-            elif os.path.basename(
-                labels_path
-            ) == "labels.json" and os.path.isdir(_remove_ext(labels_path)):
+            elif os.path.basename(labels_path) == "labels.json" and fos.isdir(
+                _remove_ext(labels_path)
+            ):
                 base_dir = _remove_ext(labels_path)
             else:
                 label_paths = []
 
             if base_dir is not None:
-                label_paths = etau.list_files(base_dir, recursive=True)
+                label_paths = fos.list_files(base_dir, recursive=True)
                 label_paths = [l for l in label_paths if l.endswith(".json")]
 
             for label_path in label_paths:
                 file_ids.extend(annotations.parse_labels(base_dir, label_path))
 
-        file_ids = _validate_file_ids(file_ids, image_paths_map)
+        file_ids = _validate_file_ids(file_ids, image_paths_map, _ensure_image)
 
         self._info = {}
         self._image_paths_map = image_paths_map
@@ -371,7 +372,7 @@ class OpenLABELVideoDatasetImporter(
     def __next__(self):
         file_id = next(self._iter_file_ids)
 
-        if os.path.isfile(file_id):
+        if fos.isfile(file_id):
             sample_path = file_id
         elif _remove_ext(file_id) in self._video_paths_map:
             sample_path = self._video_paths_map[_remove_ext(file_id)]
@@ -438,25 +439,25 @@ class OpenLABELVideoDatasetImporter(
             labels_path = fos.normpath(self.labels_path)
 
             base_dir = None
-            if os.path.isfile(labels_path):
+            if fos.isfile(labels_path):
                 label_paths = [labels_path]
-            elif os.path.isdir(labels_path):
+            elif fos.isdir(labels_path):
                 base_dir = labels_path
-            elif os.path.basename(
-                labels_path
-            ) == "labels.json" and os.path.isdir(_remove_ext(labels_path)):
+            elif os.path.basename(labels_path) == "labels.json" and fos.isdir(
+                _remove_ext(labels_path)
+            ):
                 base_dir = _remove_ext(labels_path)
             else:
                 label_paths = []
 
             if base_dir is not None:
-                label_paths = etau.list_files(base_dir, recursive=True)
+                label_paths = fos.list_files(base_dir, recursive=True)
                 label_paths = [l for l in label_paths if l.endswith(".json")]
 
             for label_path in label_paths:
                 file_ids.extend(annotations.parse_labels(base_dir, label_path))
 
-        file_ids = _validate_file_ids(file_ids, video_paths_map)
+        file_ids = _validate_file_ids(file_ids, video_paths_map, _ensure_video)
 
         self._info = {}
         self._video_paths_map = video_paths_map
@@ -488,10 +489,10 @@ class OpenLABELAnnotations(object):
             a list of potential file_ids that the parsed labels correspond to
         """
         abs_path = labels_path
-        if not os.path.isabs(abs_path):
-            abs_path = os.path.join(base_dir, labels_path)
+        if not fos.isabs(abs_path):
+            abs_path = fos.join(base_dir, labels_path)
 
-        labels = etas.load_json(abs_path).get("openlabel", {})
+        labels = fos.read_json(abs_path).get("openlabel", {})
         label_file_id = _remove_ext(labels_path)
         potential_file_ids = [label_file_id]
 
@@ -1966,19 +1967,25 @@ class OpenLABELObject(AttributeParser):
         return attributes
 
 
-def _validate_file_ids(potential_file_ids, sample_paths_map):
+def _validate_file_ids(potential_file_ids, sample_paths_map, mime_type_fcn):
     file_ids = []
     potential_file_ids = set(potential_file_ids)
+
     if None in potential_file_ids:
         potential_file_ids.remove(None)
 
     for file_id in potential_file_ids:
-        is_file = os.path.exists(file_id)
+        if fos.get_file_system(file_id) == fos.FileSystem.HTTP:
+            if not os.path.splitext(file_id)[1] or not mime_type_fcn(file_id):
+                continue
+
+        is_file = fos.exists(file_id)
+        is_media = is_file and mime_type_fcn(file_id)
         has_file_id = _remove_ext(file_id) in sample_paths_map
         has_basename = (
             _remove_ext(os.path.basename(file_id)) in sample_paths_map
         )
-        if is_file or has_file_id or has_basename:
+        if is_media or has_file_id or has_basename:
             file_ids.append(file_id)
 
     return file_ids
@@ -2024,6 +2031,20 @@ def _pairwise(x):
 
 def _remove_ext(p):
     return os.path.splitext(p)[0]
+
+
+def _ensure_video(path):
+    if etav.is_video_mime_type(path):
+        return True
+
+    return False
+
+
+def _ensure_image(path):
+    if etai.is_image_mime_type(path):
+        return True
+
+    return False
 
 
 def _merge_frame_labels(sample_labels, frame_labels, seg_type):

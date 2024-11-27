@@ -10,8 +10,10 @@ import asyncio
 import logging
 import traceback
 
+import fiftyone.core.odm as foo
 from fiftyone.factory.repo_factory import RepositoryFactory
 from fiftyone.factory import DelegatedOperationPagingParams
+from fiftyone.internal.encrypted_datastore import get_scoped_key_store
 from fiftyone.operators.executor import (
     prepare_operator_executor,
     do_execute_operator,
@@ -345,6 +347,7 @@ class DelegatedOperationService(object):
         dataset_id=None,
         run_state=None,
         delegation_target=None,
+        run_by=None,
         paging=None,
         search=None,
         **kwargs,
@@ -375,6 +378,7 @@ class DelegatedOperationService(object):
             dataset_id=dataset_id,
             run_state=run_state,
             delegation_target=delegation_target,
+            run_by=run_by,
             paging=paging,
             search=search,
             **kwargs,
@@ -487,10 +491,20 @@ class DelegatedOperationService(object):
                 )
         return result
 
+    def _get_scoped_key(self, doc):
+        scoped_key_id = doc.scoped_access_key
+        scoped_key = None
+        if scoped_key_id:
+            scoped_key = get_scoped_key_store().get(scoped_key_id)
+        return scoped_key
+
     async def _execute_operator(self, doc):
         operator_uri = doc.operator
         context = doc.context
         context.request_params["run_doc"] = doc.id
+        user = context.user
+
+        scoped_key = self._get_scoped_key(doc)
 
         if not context.request_params.get("dataset_id", None):
             # Pass the dataset_id so that the execution context can load the
@@ -503,6 +517,9 @@ class DelegatedOperationService(object):
             request_params=context.request_params,
             delegated_operation_id=doc.id,
             set_progress=self.set_progress,
+            user=user.id if user else None,
+            api_key=scoped_key,
+            allow_null_user=True,
         )
 
         if isinstance(prepared, ExecutionResult):

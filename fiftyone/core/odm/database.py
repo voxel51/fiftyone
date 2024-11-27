@@ -7,15 +7,16 @@ Database utilities.
 """
 import atexit
 import dataclasses
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from multiprocessing.pool import ThreadPool
 import os
+import tempfile
 
 import asyncio
 from bson import json_util, ObjectId
 from bson.codec_options import CodecOptions
-from mongoengine import connect
+import mongoengine
 import motor.motor_asyncio as mtr
 
 from packaging.version import Version
@@ -30,7 +31,11 @@ import fiftyone.constants as foc
 import fiftyone.migrations as fom
 from fiftyone.core.config import FiftyOneConfigError
 import fiftyone.core.service as fos
+import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
+from fiftyone.internal.util import is_internal_service
+
+from fiftyone.api import pymongo as fomongo, motor as fomotor
 
 foa = fou.lazy_import("fiftyone.core.annotation")
 fob = fou.lazy_import("fiftyone.core.brain")
@@ -41,9 +46,14 @@ fors = fou.lazy_import("fiftyone.core.runs")
 
 logger = logging.getLogger(__name__)
 
+_async_mongo_client_cls = mtr.AsyncIOMotorClient
+_mongo_client_cls = pymongo.MongoClient
+
+
 _client = None
 _async_client = None
 _connection_kwargs = {}
+_database_name = None
 _db_service = None
 
 
@@ -160,9 +170,11 @@ def _handle_multiple_config_docs(conn, config_docs):
 def establish_db_conn(config):
     """Establishes the database connection.
 
-    If ``fiftyone.config.database_uri`` is defined, then we connect to that
-    URI. Otherwise, a :class:`fiftyone.core.service.DatabaseService` is
-    created.
+    The order of precedence is:
+
+    1.  If ``fiftyone.config.api_uri`` is defined, connect to that
+    2.  If ``fiftyone.config.database_uri`` is defined, connect to that
+    3.  Otherwise, a :class:`fiftyone.core.service.DatabaseService` is created
 
     Args:
         config: a :class:`fiftyone.core.config.FiftyOneConfig`
@@ -180,39 +192,73 @@ def establish_db_conn(config):
     global _client
     global _db_service
     global _connection_kwargs
+    global _database_name
 
-    established_port = os.environ.get("FIFTYONE_PRIVATE_DATABASE_PORT", None)
-    if established_port is not None:
-        _connection_kwargs["port"] = int(established_port)
-    if config.database_uri is not None:
-        _connection_kwargs["host"] = config.database_uri
-    elif _db_service is None:
-        if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
-            return
-
-        try:
-            _db_service = fos.DatabaseService()
-            port = _db_service.port
-            _connection_kwargs["port"] = port
-            os.environ["FIFTYONE_PRIVATE_DATABASE_PORT"] = str(port)
-
-        except fos.ServiceExecutableNotFound:
-            raise FiftyOneConfigError(
-                "MongoDB could not be installed on your system. Please "
-                "define a `database_uri` in your "
-                "`fiftyone.core.config.FiftyOneConfig` to connect to your"
-                "own MongoDB instance or cluster "
+    _connection_kwargs["appname"] = foc.DATABASE_APPNAME
+    if config.api_uri is not None:
+        if not config.api_key:
+            raise ConnectionError(
+                "No API key found. Refer to "
+                "https://docs.voxel51.com/teams/api_connection.html to see "
+                "how to provide one"
             )
 
-    _client = pymongo.MongoClient(
-        **_connection_kwargs, appname=foc.DATABASE_APPNAME
-    )
+        _connection_kwargs = {
+            "__teams_api_uri": config.api_uri,
+            "__teams_api_key": config.api_key,
+            "__teams_disable_websocket_info_logs": config.disable_websocket_info_logs,
+        }
+
+        global _async_mongo_client_cls
+        global _mongo_client_cls
+
+        _async_mongo_client_cls = fomotor.AsyncIOMotorClient
+        _mongo_client_cls = fomongo.MongoClient
+
+        mongoengine.connection.MongoClient = fomongo.MongoClient
+    else:
+        established_port = os.environ.get(
+            "FIFTYONE_PRIVATE_DATABASE_PORT", None
+        )
+        if established_port is not None:
+            _connection_kwargs["port"] = int(established_port)
+        if config.database_uri is not None:
+            _connection_kwargs["host"] = config.database_uri
+        elif _db_service is None:
+            if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
+                return
+
+            try:
+                _db_service = fos.DatabaseService()
+                port = _db_service.port
+                _connection_kwargs["port"] = port
+                os.environ["FIFTYONE_PRIVATE_DATABASE_PORT"] = str(port)
+
+            except fos.ServiceExecutableNotFound:
+                raise FiftyOneConfigError(
+                    "MongoDB could not be installed on your system. Please "
+                    "define a `database_uri` in your "
+                    "`fiftyone.core.config.FiftyOneConfig` to connect to your"
+                    "own MongoDB instance or cluster"
+                )
+
+    _client = _mongo_client_cls(**_connection_kwargs)
+    if _mongo_client_cls is fomongo.MongoClient:
+        default_db = _client.get_default_database()
+        _database_name = default_db.name
+    else:
+        _database_name = config.database_name
+
     _validate_db_version(config, _client)
 
-    # Register cleanup method
-    atexit.register(_delete_non_persistent_datasets_if_allowed)
+    if is_internal_service():
+        atexit.register(_at_exit_internal)
+    elif config.api_uri is None and (
+        config.database_uri is None or "localhost" in config.database_uri
+    ):
+        atexit.register(_at_exit_user)
 
-    connect(config.database_name, **_connection_kwargs)
+    mongoengine.connect(_database_name, **_connection_kwargs)
 
     db_config = get_db_config()
     if db_config.type != foc.CLIENT_TYPE:
@@ -228,7 +274,9 @@ def establish_db_conn(config):
 def _connect():
     global _client
     if _client is None:
+        global _mongo_client_cls
         global _connection_kwargs
+        global _database_name
 
         establish_db_conn(fo.config)
 
@@ -241,9 +289,8 @@ def _async_connect(use_global=False):
     global _async_client
     if not use_global or _async_client is None:
         global _connection_kwargs
-        client = mtr.AsyncIOMotorClient(
-            **_connection_kwargs, appname=foc.DATABASE_APPNAME
-        )
+        global _async_mongo_client_cls
+        client = _async_mongo_client_cls(**_connection_kwargs)
 
         if use_global:
             _async_client = client
@@ -253,7 +300,15 @@ def _async_connect(use_global=False):
     return client
 
 
-def _delete_non_persistent_datasets_if_allowed():
+def _at_exit_internal():
+    _delete_non_persistent_datasets_if_allowed(min_age=timedelta(hours=24))
+
+
+def _at_exit_user():
+    _delete_non_persistent_datasets_if_allowed()
+
+
+def _delete_non_persistent_datasets_if_allowed(**kwargs):
     """Deletes all non-persistent datasets if and only if we are the only
     client currently connected to the database.
     """
@@ -286,7 +341,7 @@ def _delete_non_persistent_datasets_if_allowed():
 
     try:
         if num_connections <= 1:
-            fod.delete_non_persistent_datasets()
+            fod._delete_non_persistent_datasets(**kwargs)
     except:
         logger.exception("Skipping automatic non-persistent dataset cleanup")
 
@@ -349,6 +404,10 @@ def aggregate(collection, pipelines):
     return _do_pooled_aggregate(collection, pipelines)
 
 
+async def _do_aggregate(collection, pipeline):
+    return [i for i in collection.aggregate(pipeline, allowDiskUse=True)]
+
+
 def _do_pooled_aggregate(collection, pipelines):
     # @todo: MongoDB 5.0 supports snapshots which can be used to make the
     # results consistent, i.e. read from the same point in time
@@ -385,6 +444,16 @@ def get_db_client():
     return _client
 
 
+def has_db():
+    """Determines whether the database exists.
+
+    Returns:
+        True/False
+    """
+    _connect()
+    return _database_name in _client.list_database_names()
+
+
 def get_db_conn():
     """Returns a connection to the database.
 
@@ -392,7 +461,7 @@ def get_db_conn():
         a ``pymongo.database.Database``
     """
     _connect()
-    db = _client[fo.config.database_name]
+    db = _client[_database_name]
     return _apply_options(db)
 
 
@@ -414,7 +483,7 @@ def get_async_db_conn(use_global=False):
     Returns:
         a ``motor.motor_asyncio.AsyncIOMotorDatabase``
     """
-    db = get_async_db_client(use_global=use_global)[fo.config.database_name]
+    db = get_async_db_client(use_global=use_global)[_database_name]
     return _apply_options(db)
 
 
@@ -437,7 +506,7 @@ def _apply_options(db):
 def drop_database():
     """Drops the database."""
     _connect()
-    _client.drop_database(fo.config.database_name)
+    _client.drop_database(_database_name)
 
 
 def sync_database():
@@ -649,13 +718,13 @@ def count_documents(coll, pipeline):
 
 
 def export_document(doc, json_path):
-    """Exports the document to disk in JSON format.
+    """Exports the document in JSON format.
 
     Args:
         doc: a BSON document dict
         json_path: the path to write the JSON file
     """
-    etau.write_file(json_util.dumps(doc), json_path)
+    fost.write_file(json_util.dumps(doc), json_path)
 
 
 def export_collection(
@@ -666,7 +735,7 @@ def export_collection(
     num_docs=None,
     progress=None,
 ):
-    """Exports the collection to disk in JSON format.
+    """Exports the collection in JSON format.
 
     Args:
         docs: an iterable containing the documents to export
@@ -699,9 +768,9 @@ def export_collection(
 
 
 def _export_collection_single(docs, json_path, key, num_docs, progress=None):
-    etau.ensure_basedir(json_path)
+    fost.ensure_basedir(json_path)
 
-    with open(json_path, "w") as f:
+    with fost.open_file(json_path, "w") as f:
         f.write('{"%s": [' % key)
         with fou.ProgressBar(
             total=num_docs, iters_str="docs", progress=progress
@@ -715,19 +784,20 @@ def _export_collection_single(docs, json_path, key, num_docs, progress=None):
 
 
 def _export_collection_multi(docs, json_dir, patt, num_docs, progress=None):
-    etau.ensure_dir(json_dir)
+    fost.ensure_dir(json_dir)
 
-    json_patt = os.path.join(json_dir, patt)
-    with fou.ProgressBar(
-        total=num_docs, iters_str="docs", progress=progress
-    ) as pb:
-        for idx, doc in pb(enumerate(docs, 1)):
-            json_path = json_patt.format(idx=idx, id=str(doc["_id"]))
-            export_document(doc, json_path)
+    with fost.LocalDir(json_dir, "w") as local_dir:
+        json_patt = os.path.join(local_dir, patt)
+        with fou.ProgressBar(
+            total=num_docs, iters_str="docs", progress=progress
+        ) as pb:
+            for idx, doc in pb(enumerate(docs, 1)):
+                json_path = json_patt.format(idx=idx, id=str(doc["_id"]))
+                export_document(doc, json_path)
 
 
 def import_document(json_path):
-    """Imports a document from JSON on disk.
+    """Imports a document from JSON.
 
     Args:
         json_path: the path to the document
@@ -735,12 +805,12 @@ def import_document(json_path):
     Returns:
         a BSON document dict
     """
-    with open(json_path, "r") as f:
+    with fost.open_file(json_path, "r") as f:
         return json_util.loads(f.read())
 
 
 def import_collection(json_dir_or_path, key="documents"):
-    """Imports the collection from JSON on disk.
+    """Imports the collection from JSON.
 
     Args:
         json_dir_or_path: the path to a JSON file on disk, or a directory
@@ -761,7 +831,7 @@ def import_collection(json_dir_or_path, key="documents"):
 
 
 def _import_collection_single(json_path, key):
-    with open(json_path, "r") as f:
+    with fost.open_file(json_path, "r") as f:
         docs = json_util.loads(f.read()).get(key, [])
 
     num_docs = len(docs)
@@ -770,12 +840,23 @@ def _import_collection_single(json_path, key):
 
 
 def _import_collection_multi(json_dir):
-    json_paths = [
-        p
-        for p in etau.list_files(json_dir, abs_paths=True)
-        if p.endswith(".json")
-    ]
-    docs = map(import_document, json_paths)
+    # @todo refactor to enable automatic cleanup when importing cloud dirs
+    context = fost.LocalDir(json_dir, "r", basedir=tempfile.gettempdir())
+    with context as local_dir:
+        if context._tmpdir is not None:
+            logger.warning(
+                "Temporary directory '%s' will not be automatically deleted",
+                context._tmpdir,
+            )
+            context._tmpdir = None
+
+        json_paths = [
+            p
+            for p in fost.list_files(local_dir, abs_paths=True)
+            if p.endswith(".json")
+        ]
+
+        docs = map(import_document, json_paths)
 
     return docs, len(json_paths)
 
@@ -1425,6 +1506,16 @@ def delete_evaluations(name, dry_run=False):
         "evaluation",
         dry_run=dry_run,
     )
+
+
+def get_cloud_credentials():
+    """Retrieves a list of all cloud credentials stored in mongo.
+
+    Returns:
+        a list of cloud credentials
+    """
+    conn = get_db_conn()
+    return list(conn["cloud.creds"].find({}))
 
 
 def delete_run(name, run_key, dry_run=False):

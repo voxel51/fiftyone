@@ -6,10 +6,11 @@ FiftyOne Server samples pagination
 |
 """
 
+import aiohttp
+
 import asyncio
 import strawberry as gql
 import typing as t
-
 
 from fiftyone.core.collections import SampleCollection
 import fiftyone.core.media as fom
@@ -20,7 +21,10 @@ from fiftyone.server.filters import SampleFilter
 import fiftyone.server.metadata as fosm
 from fiftyone.server.paginator import Connection, Edge, PageInfo
 from fiftyone.server.scalars import BSON, JSON, BSONArray
-from fiftyone.server.utils import from_dict
+from fiftyone.server.utils import (
+    convert_frames_overlay_paths_to_cloud_urls,
+    from_dict,
+)
 import fiftyone.server.view as fosv
 
 
@@ -135,14 +139,20 @@ async def paginate_samples(
 
     metadata_cache = {}
     url_cache = {}
-    nodes = await asyncio.gather(
-        *[
-            _create_sample_item(
-                view, sample, metadata_cache, url_cache, pagination_data
-            )
-            for sample in samples
-        ]
-    )
+    async with aiohttp.ClientSession(trust_env=True) as session:
+        nodes = await asyncio.gather(
+            *[
+                _create_sample_item(
+                    view,
+                    sample,
+                    metadata_cache,
+                    url_cache,
+                    session,
+                    pagination_data,
+                )
+                for sample in samples
+            ]
+        )
 
     edges = []
     for idx, node in enumerate(nodes):
@@ -169,6 +179,7 @@ async def _create_sample_item(
     sample: t.Dict,
     metadata_cache: t.Dict[str, t.Dict],
     url_cache: t.Dict[str, str],
+    session: aiohttp.ClientSession,
     pagination_data: bool,
 ) -> SampleItem:
     media_type = fom.get_media_type(sample["filepath"])
@@ -185,11 +196,15 @@ async def _create_sample_item(
         raise ValueError(f"unknown media type '{media_type}'")
 
     metadata = await fosm.get_metadata(
-        dataset, sample, media_type, metadata_cache, url_cache
+        dataset, sample, media_type, metadata_cache, url_cache, session
     )
 
     if cls == VideoSample:
         metadata = dict(**metadata, frame_number=sample.get("frame_number", 1))
+
+        # address frame overlays that might have cloud urls
+        if "frames" in sample:
+            convert_frames_overlay_paths_to_cloud_urls(sample["frames"])
 
     _id = sample["_id"]
 

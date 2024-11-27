@@ -1,19 +1,19 @@
 #!/usr/bin/env python
 """
-Installs FiftyOne.
+Installs FiftyOne Teams.
 
 | Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
-from importlib import metadata
 import os
 import re
-from setuptools import setup, find_packages
+from importlib import metadata
 
+from setuptools import find_packages, setup
 
-VERSION = "1.1.0"
+VERSION = "2.2.0"
 
 
 def get_version():
@@ -37,8 +37,10 @@ INSTALL_REQUIRES = [
     "boto3",
     "cachetools",
     "dacite>=1.6.0,<1.8.0",
+    "dill",
     "Deprecated",
     "ftfy",
+    "jsonlines",
     "humanize",
     "hypercorn>=0.13.2",
     "Jinja2>=3",
@@ -73,9 +75,22 @@ INSTALL_REQUIRES = [
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     "pydash",
+    # teams specific
+    "aiohttp",
+    "azure-identity",
+    "azure-storage-blob>=12.4.0",
+    "backoff",
+    "boto3>=1.15",
+    "google-api-python-client",
+    "google-cloud-storage>=1.36",
+    "pysftp",
+    "schedule",
+    "websocket-client>=1.5.0",
+    "yarl",
+    "wcmatch",
     # internal packages
     "fiftyone-brain>=0.17.0,<0.18",
-    "fiftyone-db>=0.4,<2.0",
+    "fiftyone-db~=0.4",  # pinned to legacy db, do not remove
     "voxel51-eta>=0.13.0,<0.14",
 ]
 
@@ -119,15 +134,13 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone",
-    version=get_version(),
+    version="2.2.0rc35",
     description=(
-        "FiftyOne: the open-source tool for building high-quality datasets "
+        "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"
     ),
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
-    url="https://github.com/voxel51/fiftyone",
-    license="Apache",
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(
