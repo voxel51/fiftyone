@@ -88,7 +88,7 @@ export default class DetectionOverlay<
     this.label.mask && this.drawMask(ctx, state);
     !state.config.thumbnail && this.drawLabelText(ctx, state);
 
-    if (this.is3D) {
+    if (this.is3D && this.label.dimensions && this.label.location) {
       this.fillRectFor3d(ctx, state, this.getColor(state));
     } else {
       this.strokeRect(ctx, state, this.getColor(state));
