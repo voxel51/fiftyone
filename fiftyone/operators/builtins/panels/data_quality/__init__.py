@@ -367,12 +367,7 @@ class DataQualityPanel(Panel):
                     )
                     == "completed"
                 ):
-                    ctx.panel.state.computing[issue_type] = {
-                        "is_computing": False,
-                        "execution_type": "",
-                        "delegation_run_id": "",
-                        "delegation_status": "",
-                    }
+                    self.change_computing_status(ctx, issue_type)
             else:
                 print(
                     f"navigate_to_screen:no computing or issue_type:{issue_type} found"
@@ -390,7 +385,6 @@ class DataQualityPanel(Panel):
         key = self._get_store_key(ctx)
         content = store.get(key)
 
-        computing_copy = ctx.panel.state.computing
         new_samples_copy = ctx.panel.state.new_samples
 
         # new samples > 0 so we are within rescan logic
@@ -404,28 +398,29 @@ class DataQualityPanel(Panel):
 
         if dropdown_value == "execute":
             print("executing now")
-            computing_copy[issue_type] = {
-                "is_computing": True,
-                "execution_type": "execute",
-                "delegation_run_id": "",
-                "delegation_status": "",
-            }
-            ctx.panel.state.set("computing", computing_copy)
+            self.change_computing_status(
+                ctx,
+                issue_type,
+                is_computing=True,
+                execution_type="execute",
+                delegation_run_id="",
+                delegation_status="",
+            )
 
         elif (
             dropdown_value == "delegate"
             or dropdown_value == "delegate_execution"
         ):
             print("delegating execution")
-            computing_copy[issue_type] = {
-                "is_computing": True,
-                "execution_type": "delegate_execution",
-                "delegation_run_id": str(run_id),
-                "delegation_status": "",
-            }
-            ctx.panel.state.set("computing", computing_copy)
+            self.change_computing_status(
+                ctx,
+                issue_type,
+                is_computing=True,
+                execution_type="delegate_execution",
+                delegation_run_id=str(run_id),
+                delegation_status="",
+            )
 
-        content["computing"] = computing_copy
         content["status"][issue_type] = STATUS[1]  # change badge to computing
 
         store.set(key, content)
@@ -993,17 +988,43 @@ class DataQualityPanel(Panel):
 
     def _rescan_samples(self, ctx):
 
-        ctx.panel.state.computing[ctx.panel.state.issue_type] = {
-            "is_computing": False,
-            "execution_type": "",
-            "delegation_run_id": "",
-            "delegation_status": "",
-        }
+        self.change_computing_status(ctx, ctx.panel.state.issue_type)
         self.navigate_to_screen(
             ctx,
             issue_type=ctx.panel.state.issue_type,
             next_screen="pre_load_compute",
         )
+
+    def change_computing_status(
+        self,
+        ctx,
+        issue_type,
+        is_computing=False,
+        execution_type="",
+        delegation_run_id="",
+        delegation_status="",
+        issue_status=None,
+    ):
+
+        store = self.get_store(ctx)
+        key = self._get_store_key(ctx)
+        content = store.get(key)
+
+        computing_copy = ctx.panel.state.computing
+        computing_copy[issue_type] = {
+            "is_computing": is_computing,
+            "execution_type": execution_type,
+            "delegation_run_id": delegation_run_id,
+            "delegation_status": delegation_status,
+        }
+
+        ctx.panel.state.set("computing", computing_copy)
+        content["computing"] = computing_copy
+
+        if issue_status is not None:
+            content["status"][issue_type] = issue_status
+
+        store.set(key, content)
 
     ###
     # COMPUTATION
@@ -1014,7 +1035,6 @@ class DataQualityPanel(Panel):
             f"computation_handler called {ctx.params.get('original_params', '')}"
         )
 
-        computing_copy = ctx.panel.state.computing
         check_existing_field = ctx.params.get(
             "check_existing_field", check_existing_field
         )
@@ -1031,15 +1051,9 @@ class DataQualityPanel(Panel):
             print(
                 f"all samples already have {FIELD_NAME[issue_type]} field, skipping computation"
             )
-
-            computing_copy[issue_type] = {
-                "is_computing": True,
-                "execution_type": "execute",
-                "delegation_run_id": "",
-                "delegation_status": "",
-            }
-            ctx.panel.state.set("computing", computing_copy)
-
+            self.change_computing_status(
+                ctx, issue_type, is_computing=True, execution_type="execute"
+            )
             self._process_issue_computation(
                 ctx, issue_type
             )  # process existing values and move onto analysis screen
@@ -1056,19 +1070,19 @@ class DataQualityPanel(Panel):
                     key = self._get_store_key(ctx)
                     content = store.get(key)
 
-                    content["status"][issue_type] = STATUS[1]
-
-                    computing_copy = ctx.panel.state.computing
-                    computing_copy[issue_type] = {
-                        "is_computing": True,
-                        "execution_type": "delegate_execution",
-                        "delegation_run_id": str(run_id),
-                        "delegation_status": "",
-                    }
-                    ctx.panel.state.set("computing", computing_copy)
-                    content["computing"] = computing_copy
+                    content["status"][issue_type] = STATUS[
+                        1
+                    ]  # set issue status to In Review
 
                     store.set(key, content)
+
+                    self.change_computing_status(
+                        ctx,
+                        issue_type,
+                        is_computing=True,
+                        execution_type="delegate_execution",
+                        delegation_run_id=str(run_id),
+                    )
                 else:  # adding just in case, but shouldn't get here because result shouldn't exist on immediate execution
                     print(f"computation_handler:run_id:unavailable")
                     self.scan_dataset(ctx, issue_type)
@@ -1109,6 +1123,7 @@ class DataQualityPanel(Panel):
             },
             skip_prompt=False,
             on_success=self._on_complete_compute_near_duplicates,
+            on_error=self.cancel_compute,
         )
 
     def _on_complete_compute_brightness(self, ctx):
@@ -1266,15 +1281,15 @@ class DataQualityPanel(Panel):
             ctx.panel.state.set("new_samples", new_sample_copy)
 
         # clear out and update completed computing state
-        computing_copy = ctx.panel.state.computing
         computing_field = content.get("computing", {}).get(field, {})
-        computing_copy[field] = {
-            "is_computing": False,
-            "execution_type": computing_field.get("execution_type", ""),
-            "delegation_run_id": computing_field.get("delegation_run_id", ""),
-            "delegation_status": "",
-        }
-        ctx.panel.state.set("computing", computing_copy)
+        self.change_computing_status(
+            ctx,
+            field,
+            is_computing=False,
+            execution_type=computing_field.get("execution_type", ""),
+            delegation_run_id=computing_field.get("delegation_run_id", ""),
+            delegation_status="",
+        )
 
         if not recompute:
             self.navigate_to_screen(
@@ -1312,45 +1327,103 @@ class DataQualityPanel(Panel):
             == "delegate_execution"
         ):
             # programmatically cancel a delegated execution logic would go here
+            print("canceled delegated ops")
             pass
         else:  # programmatically canceling an immediate operator ctx.prompt call would go here
+            print("canceled execute now")
             pass
 
         if issue_type:
-            ctx.panel.state.computing[issue_type] = {
-                "is_computing": False,
-                "execution_type": "",
-                "delegation_run_id": "",
-                "delegation_status": "",
-            }
+            self.change_computing_status(
+                ctx, issue_type, is_computing=False, issue_status=STATUS[0]
+            )
         else:
             print("cancel_compute:no issue type found")
 
-    def check_delegation_status(self, ctx):
-        print(f"check_delegation_status called {ctx.params}")
+    def check_computing_status(self, ctx):
+        print(f"check_computing_status called {ctx.params}")
         issue_type = ctx.params.get("issue_type", None)
         run_id = ctx.params.get("run_id")
-
-        # grab delegation status from run_id
-        dos = DelegatedOperationService()
-        delegated_state = dos.get(bson.ObjectId(run_id)).run_state
-        print(
-            f"check_delegation_status state for issue {issue_type} is {delegated_state}"
-        )
 
         store = self.get_store(ctx)
         key = self._get_store_key(ctx)
         content = store.get(key)
 
+        if (
+            content["computing"][issue_type]["execution_type"]
+            != "delegate_execution"
+        ):
+            last_scan_timestamp = content["last_scan"][issue_type].get(
+                "timestamp", None
+            )
+            if last_scan_timestamp is None:  # save scan start if not already
+                last_scan_timestamp = datetime.utcnow()
+                content["last_scan"][issue_type][
+                    "timestamp"
+                ] = last_scan_timestamp
+                store.set(key, content)
+
+            if datetime.utcnow() > last_scan_timestamp + timedelta(minutes=10):
+                self.change_computing_status(
+                    ctx, issue_type, is_computing=False
+                )  # timeout immediate execution beyond 10 minutes
+
+        # grab delegation status from run_id
+        dos = DelegatedOperationService()
+        try:
+            delegated_state = dos.get(bson.ObjectId(run_id)).run_state
+            print(
+                f"check_delegation_status state for issue {issue_type} is {delegated_state}"
+            )
+        except (
+            Exception
+        ) as e:  # TODO eventually we should get more specific with this error
+            print(
+                f"check_delegation_status:failed to get delegated state. issue:{issue_type}, run_id:{run_id}, error:{e}"
+            )
+            self.change_computing_status(
+                ctx, issue_type, issue_status=STATUS[0]
+            )
+            return  # exit function
+
+        if delegated_state == "failed":
+            print(
+                f"check_delegation_status:{delegated_state} for issue {issue_type} and run_id {run_id}"
+            )
+            self.change_computing_status(
+                ctx, issue_type, issue_status=STATUS[0]
+            )
+
+            try:
+                self._process_issue_computation(
+                    ctx, issue_type
+                )  # if some samples have new field, try to navigate to analysis
+            except (
+                Exception
+            ) as e:  # TODO eventually we should get more specific with this error
+                print(
+                    f"no samples exist with {issue_type} field, post processing of computation results failed: {e}"
+                )
+
+                ctx.panel.state.alert = f"computation_failed_{issue_type}"  # new alert for failed computation
+
+                # only navigate if the current page is the analysis for failed issue_type computation
+                if ctx.panel.state.issue_type == issue_type:
+                    self.navigate_to_screen(
+                        ctx, issue_type=issue_type, next_screen="home"
+                    )
+            return
+
         if delegated_state is not None and issue_type is not None:
-            ctx.panel.state.computing[issue_type] = {
-                "is_computing": False,
-                "execution_type": "delegate_execution",
-                "delegation_run_id": str(run_id),
-                "delegation_status": delegated_state.lower(),
-            }
-            content["computing"] = ctx.panel.state.computing
-            store.set(key, content)  # save latest delegation status
+            # save latest delegation status
+            self.change_computing_status(
+                ctx,
+                issue_type,
+                is_computing=False,
+                execution_type="delegate_execution",
+                delegation_run_id=str(run_id),
+                delegation_status=delegated_state.lower(),
+            )
 
             if delegated_state == "completed":
                 print(f"check_delegation_status:completed:{issue_type}")
@@ -2227,9 +2300,8 @@ class DataQualityPanel(Panel):
 
     def _render_toast(self, panel, toast_type, ctx):
         view = {
-            "duration": 2000,
+            "duration": 3000,
             "layout": {
-                "vertical": "top",
                 "horizontal": "center",
                 "top": "50px",
                 "fontSize": "15px",
@@ -2237,13 +2309,24 @@ class DataQualityPanel(Panel):
             },
         }
 
+        issue_type = " ".join(ctx.panel.state.issue_type.split("_"))
+
         if ctx.panel.state.issue_type:
             if toast_type == "tagging":
                 message = f"Selected samples tagged with: {', '.join(ctx.panel.state.tags)}"
                 view["message"] = message
             elif toast_type == "reviewed":
-                message = f"{' '.join(ctx.panel.state.issue_type.split('_')).capitalize()} issues marked as reviewed!"
+                message = (
+                    f"{issue_type.capitalize()} issues marked as reviewed!"
+                )
                 view["message"] = message
+            elif "computation_failed" in toast_type:
+                issue_type = " ".join(toast_type.split("_")[2:])
+                message = (
+                    f"Scan for {issue_type} issues failed. Please try again."
+                )
+                view["message"] = message
+                view["layout"]["backgroundColor"] = "#d32f2f"
             else:
                 return  # exit if no alert
 
@@ -2566,6 +2649,8 @@ class DataQualityPanel(Panel):
                 self._render_toast(panel, "tagging", ctx)
             elif ctx.panel.state.alert == "reviewed":
                 self._render_toast(panel, "reviewed", ctx)
+            elif "computation_failed" in ctx.panel.state.alert:
+                self._render_toast(panel, ctx.panel.state.alert, ctx)
 
         # delegated op exists, initiate long polling
         if ctx.panel.state.computing:
@@ -2573,14 +2658,14 @@ class DataQualityPanel(Panel):
                 del_run_id = scan.get("delegation_run_id", "")
                 is_computing = scan.get("is_computing", False)
 
-                if del_run_id != "" and is_computing:
+                if is_computing:
                     print("render:setting a TimerView:{issue_type}")
 
                     panel.view(
                         issue_type,
                         view=types.TimerView(
                             interval=25000,
-                            on_interval=self.check_delegation_status,
+                            on_interval=self.check_computing_status,
                             params={
                                 "issue_type": issue_type,
                                 "run_id": del_run_id,
