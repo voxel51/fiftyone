@@ -100,6 +100,6 @@ get_cached_media_url = create_tlru_cache(
                 - timedelta(minutes=5)
             ).total_seconds(),
         ),
-        timer=datetime.now,
+        timer=datetime.utcnow,
     ),
 )
