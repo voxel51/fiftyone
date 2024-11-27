@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import React, { useCallback } from "react";
 import { getColorByCode } from "../utils";
+import { useTheme } from "@fiftyone/components";
 
 const DEFAULT_MAX_INLINE = 1;
 
@@ -77,9 +78,22 @@ function Action(props: ActionPropsType) {
   const { label, name, onClick, icon, variant, mode, color, size, tooltip } =
     props;
   const resolvedColor = color ? getColorByCode(color) : undefined;
-
+  const theme = useTheme();
   const Icon = icon ? (
-    <MuiIconFont name={icon} sx={{ color: resolvedColor }} />
+    <MuiIconFont
+      name={icon}
+      sx={{
+        color: resolvedColor,
+        ...(label
+          ? {}
+          : {
+              "&:hover": {
+                backgroundColor: theme.background.button,
+                borderRadius: "50%",
+              },
+            }),
+      }}
+    />
   ) : null;
 
   const handleClick = useCallback(
@@ -99,12 +113,20 @@ function Action(props: ActionPropsType) {
           color: resolvedColor,
           padding: size === "small" ? 0 : undefined,
           minWidth: size === "small" ? 40 : undefined,
+          ...(label
+            ? {}
+            : {
+                "&:hover": { backgroundColor: "transparent" },
+              }),
         }}
       >
         {label}
       </Button>
     ) : (
-      <MenuItem onClick={handleClick}>
+      <MenuItem
+        onClick={handleClick}
+        sx={{ "&:hover": { backgroundColor: "white" } }}
+      >
         {Icon && <ListItemIcon>{Icon}</ListItemIcon>}
         <ListItemText sx={{ color: resolvedColor }}>
           {label || name}
