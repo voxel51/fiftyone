@@ -9,7 +9,7 @@ This page lists common issues encountered when installing FiftyOne and possible
 solutions. If you encounter an issue that this page doesn't help you resolve,
 feel free to
 `open an issue on GitHub <https://github.com/voxel51/fiftyone/issues/new?labels=bug&template=installation_issue_template.md&title=%5BSETUP-BUG%5D>`_
-or `contact us on Discord <http://community.voxel51.com>`_.
+or `contact us on Discord <https://community.voxel51.com>`_.
 
 .. note::
 

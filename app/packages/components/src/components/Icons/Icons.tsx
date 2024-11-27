@@ -11,7 +11,7 @@ export { iconContainer } from "./Icons.module.css";
 export const DiscordLink = () => (
   <ExternalLink
     className={iconLink}
-    href={"http://community.voxel51.com/"}
+    href={"https://community.voxel51.com/"}
     title={"Discord"}
   >
     <SvgIcon

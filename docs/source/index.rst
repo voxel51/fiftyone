@@ -14,7 +14,7 @@ FiftyOne
         </a>
       </th>
       <th>
-        <a target="_blank" href="http://community.voxel51.com/">
+        <a target="_blank" href="https://community.voxel51.com/">
           <img alt="Discord community" src="_static/images/icons/discord-logo-256px.png">
           &nbsp Join us on Discord
         </a>
@@ -472,7 +472,7 @@ Need Support?
 _____________
 
 If you run into any issues with FiftyOne or have any burning questions, feel
-free to `connect with us on Discord <http://community.voxel51.com>`_ or reach out to
+free to `connect with us on Discord <https://community.voxel51.com>`_ or reach out to
 us at support@voxel51.com.
 
 .. toctree::

@@ -125,7 +125,7 @@ If you're finding FiftyOne helpful, here's how you can get involved:
 |  https://github.com/voxel51/fiftyone
 |
 |  🚀🚀🚀 Join the FiftyOne Discord community 🚀🚀🚀
-|  http://community.voxel51.com/
+|  https://community.voxel51.com/
 |
 """
 
