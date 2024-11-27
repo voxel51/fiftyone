@@ -96,6 +96,10 @@ const withRelay = <P extends {} = {}, Q extends OperationType = OperationType>(
             httpOnly: true,
             secure: process.env.CAS_SECURE_COOKIE !== "false",
           });
+          console.log(
+            "withRelay unauthorized set-cookie cookieStr=",
+            cookieStr
+          );
 
           res.setHeader("Set-Cookie", cookieStr);
         }
