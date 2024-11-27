@@ -472,7 +472,7 @@ Need Support?
 _____________
 
 If you run into any issues with FiftyOne or have any burning questions, feel
-free to `connect with us on Slack <https://slack.voxel51.com>`_ or reach out to
+free to `connect with us on Discord <http://community.voxel51.com>`_ or reach out to
 us at support@voxel51.com.
 
 .. toctree::
