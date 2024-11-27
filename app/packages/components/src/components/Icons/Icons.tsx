@@ -8,11 +8,11 @@ import { iconLink } from "./Icons.module.css";
 
 export { iconContainer } from "./Icons.module.css";
 
-export const SlackLink = () => (
+export const DiscordLink = () => (
   <ExternalLink
     className={iconLink}
-    href={"https://slack.voxel51.com"}
-    title={"Slack"}
+    href={"http://community.voxel51.com/"}
+    title={"Discord"}
   >
     <SvgIcon
       sx={{

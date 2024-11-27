@@ -124,8 +124,8 @@ If you're finding FiftyOne helpful, here's how you can get involved:
 |  ⭐⭐⭐ Give the project a star on GitHub ⭐⭐⭐
 |  https://github.com/voxel51/fiftyone
 |
-|  🚀🚀🚀 Join the FiftyOne Slack community 🚀🚀🚀
-|  https://slack.voxel51.com
+|  🚀🚀🚀 Join the FiftyOne Discord community 🚀🚀🚀
+|  http://community.voxel51.com/
 |
 """
 
