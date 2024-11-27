@@ -14,9 +14,9 @@ FiftyOne
         </a>
       </th>
       <th>
-        <a target="_blank" href="https://slack.voxel51.com">
-          <img alt="Slack community" src="_static/images/icons/slack-logo-256px.png">
-          &nbsp Join us on Slack
+        <a target="_blank" href="http://community.voxel51.com/">
+          <img alt="Discord community" src="_static/images/icons/discord-logo-256px.png">
+          &nbsp Join us on Discord
         </a>
       </th>
       <th>
