@@ -2076,10 +2076,13 @@ class DataQualityPanel(Panel):
         )
 
         last_dataset_size = (
-            ctx.panel.state.last_scan.get(issue_type) or {}
-        ).get(  # state could be None + store might be None because panel hasn't closed before yet
-            "dataset_size",
-            last_scan.get("dataset_size", None) or ctx.dataset.count(),
+            (
+                ctx.panel.state.last_scan.get(issue_type) or {}
+            ).get(  # state could be None + store might be None because panel hasn't closed before yet
+                "dataset_size",
+                last_scan.get("dataset_size", None) or ctx.dataset.count(),
+            )
+            or 0
         )
 
         recompute = False  # recompute histogram
@@ -2090,9 +2093,9 @@ class DataQualityPanel(Panel):
             if ctx.panel.state.new_samples[issue_type][
                 1
             ]:  # check new samples ran this panel instance, meaning dataset.exists() has already been executed
-                if (
-                    ctx.panel.state.new_samples[issue_type][0] == 0
-                ) or last_dataset_size >= ctx.dataset.count():  # at least all samples contain current issue type field
+                if (ctx.panel.state.new_samples[issue_type][0] == 0) or (
+                    last_dataset_size >= ctx.dataset.count()
+                ):  # at least all samples contain current issue type field
                     recompute = True
                     next_screen = "analysis"
                 else:  # new samples detected, handle on analysis screen
