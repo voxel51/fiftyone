@@ -2309,9 +2309,9 @@ class DataQualityPanel(Panel):
             },
         }
 
-        issue_type = " ".join(ctx.panel.state.issue_type.split("_"))
+        if ctx.panel.state.issue_type is not None:
+            issue_type = " ".join(ctx.panel.state.issue_type.split("_"))
 
-        if ctx.panel.state.issue_type:
             if toast_type == "tagging":
                 message = f"Selected samples tagged with: {', '.join(ctx.panel.state.tags)}"
                 view["message"] = message
@@ -2649,7 +2649,7 @@ class DataQualityPanel(Panel):
                 self._render_toast(panel, "tagging", ctx)
             elif ctx.panel.state.alert == "reviewed":
                 self._render_toast(panel, "reviewed", ctx)
-            elif "computation_failed" in ctx.panel.state.alert:
+            elif "computation_failed" in (ctx.panel.state.alert or ""):
                 self._render_toast(panel, ctx.panel.state.alert, ctx)
 
         # delegated op exists, initiate long polling
