@@ -13,7 +13,6 @@ import {
 } from "@mui/material";
 import React, { useCallback } from "react";
 import { getColorByCode } from "../utils";
-import { useTheme } from "@fiftyone/components";
 
 const DEFAULT_MAX_INLINE = 1;
 
@@ -78,20 +77,11 @@ function Action(props: ActionPropsType) {
   const { label, name, onClick, icon, variant, mode, color, size, tooltip } =
     props;
   const resolvedColor = color ? getColorByCode(color) : undefined;
-  const theme = useTheme();
   const Icon = icon ? (
     <MuiIconFont
       name={icon}
       sx={{
         color: resolvedColor,
-        ...(label
-          ? {}
-          : {
-              "&:hover": {
-                backgroundColor: theme.background.button,
-                borderRadius: "50%",
-              },
-            }),
       }}
     />
   ) : null;
@@ -105,23 +95,30 @@ function Action(props: ActionPropsType) {
 
   const content =
     mode === "inline" ? (
-      <Button
-        variant={variant}
-        startIcon={Icon}
-        onClick={handleClick}
-        sx={{
-          color: resolvedColor,
-          padding: size === "small" ? 0 : undefined,
-          minWidth: size === "small" ? 40 : undefined,
-          ...(label
-            ? {}
-            : {
-                "&:hover": { backgroundColor: "transparent" },
-              }),
-        }}
-      >
-        {label}
-      </Button>
+      label ? (
+        <Button
+          variant={variant}
+          startIcon={Icon}
+          onClick={handleClick}
+          sx={{
+            color: resolvedColor,
+            padding: size === "small" ? 0 : undefined,
+            minWidth: size === "small" ? 40 : undefined,
+          }}
+        >
+          {label}
+        </Button>
+      ) : (
+        <IconButton
+          onClick={handleClick}
+          size={size}
+          sx={{
+            color: resolvedColor,
+          }}
+        >
+          {Icon}
+        </IconButton>
+      )
     ) : (
       <MenuItem onClick={handleClick}>
         {Icon && <ListItemIcon>{Icon}</ListItemIcon>}
