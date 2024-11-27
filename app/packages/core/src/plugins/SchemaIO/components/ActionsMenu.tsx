@@ -123,10 +123,7 @@ function Action(props: ActionPropsType) {
         {label}
       </Button>
     ) : (
-      <MenuItem
-        onClick={handleClick}
-        sx={{ "&:hover": { backgroundColor: "white" } }}
-      >
+      <MenuItem onClick={handleClick}>
         {Icon && <ListItemIcon>{Icon}</ListItemIcon>}
         <ListItemText sx={{ color: resolvedColor }}>
           {label || name}
