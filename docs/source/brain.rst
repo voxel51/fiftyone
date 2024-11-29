@@ -74,9 +74,9 @@ workflow:
   examples to train on in your data and for visualizing common modes of the
   data.
 
-* :ref:`Leaky Splits <brain-image-leaky-splits>`:
+* :ref:`Leaky splits <brain-image-leaky-splits>`:
   Often when sourcing data en masse, duplicates and near duplicates can slip
-  through the cracks. The FiftyOne Brain offers a *leaky-splits analysis* that
+  through the cracks. The FiftyOne Brain offers a *leaky splits analysis* that
   can be used to find potential leaks between dataset splits. These splits can
   be misleading when evaluating a model, giving an overly optimistic measure
   for the quality of training. 
@@ -1766,25 +1766,21 @@ samples being less representative and closer samples being more representative.
    :alt: representativeness
    :align: center
 
-
 .. _brain-image-leaky-splits:
 
-Leaky Splits
+Leaky splits
 ____________
 
 Despite our best efforts, duplicates and other forms of non-IID samples
 show up in our data. When these samples end up in different splits, this
 can have consequences when evaluating a model. It can often be easy to
-overestimate model capability due to this issue. The FiftyOne Brain offers a way
-to identify such cases in dataset splits.
+overestimate model capability due to this issue. The FiftyOne Brain offers a
+way to identify such cases in dataset splits.
 
-The leaks of a |Dataset| or |DatasetView| can be computed directly without the need
-for the predictions of a pre-trained model via the
+The leaks of a |Dataset| or |DatasetView| can be computed directly without the
+need for the predictions of a pre-trained model via the
 :meth:`compute_leaky_splits() <fiftyone.brain.compute_leaky_splits>`
-method:. The splits of a dataset can be defined in three ways. Through tags, by
-tagging samples with their corresponding split. Through a field, by giving each
-split a unique value in that field. And finally through views, by having views
-corresponding to each split.
+method:
 
 .. code-block:: python
     :linenos:
@@ -1793,45 +1789,54 @@ corresponding to each split.
     import fiftyone.brain as fob
 
     dataset = fo.load_dataset(...)
-    
-    # splits via tags
-    split_tags = ['train', 'test']
-    index, leaks = fob.compute_leaky_splits(dataset, split_tags=split_tags)
 
-    # splits via field
-    split_field = ['split'] # holds split values e.g. 'train' or 'test'
-    index, leaks = fob.compute_leaky_splits(dataset, split_field=split_field)
+    # Splits defined via tags
+    split_tags = ["train", "test"]
+    index = fob.compute_leaky_splits(dataset, splits=split_tags)
+    leaks = index.leaks_view()
 
-    # splits via views
-    split_views = {
-        'train' : some_view
-        'test' : some_other_view
-    }
-    index, leaks = fob.compute_leaky_splits(dataset, split_views=split_views)
+    # Splits defined via field
+    split_field = "split"  # holds split values e.g. 'train' or 'test'
+    index = fob.compute_leaky_splits(dataset, splits=split_field)
+    leaks = index.leaks_view()
 
-Here is a sample snippet to run this on the `COCO <https://cocodataset.org/#home>`_ dataset.
-Try it for yourself and see what you may find.
+    # Splits defined via views
+    split_views = {"train": train_view, "test": test_view}
+    index = fob.compute_leaky_splits(dataset, splits=split_views)
+    leaks = index.leaks_view()
+
+Notice how the splits of the dataset can be defined in three ways: through
+sample tags, through a string field that assigns each split a unique value in
+the field, or by directly providing views that define the splits.
+
+Here is a sample snippet to run this on the
+`COCO dataset <https://cocodataset.org/#home>`_. Try it for yourself and see
+what you find:
 
 .. code-block:: python
     :linenos:
 
     import fiftyone as fo
+    import fiftyone.brain as fob
     import fiftyone.zoo as foz
     import fiftyone.utils.random as four
-    from fiftyone.brain import compute_leaky_splits
 
-    # load coco
+    # Load some COCO data
     dataset = foz.load_zoo_dataset("coco-2017", split="test")
-    
-    # set up splits via tags
+
+    # Set up splits via tags
     dataset.untag_samples(dataset.distinct("tags"))
     four.random_split(dataset, {"train": 0.7, "test": 0.3})
 
-    # compute leaks
-    index, leaks = compute_leaky_splits(dataset, split_tags=['train', 'test'])
+    # Find leaks
+    index = fob.compute_leaky_splits(dataset, splits=["train", "test"])
+    leaks = index.leaks_view()
 
-Once you have these leaks, it is wise to look through them. You may gain some insight
-into the source of the leaks.
+The
+:meth:`leaks_view() <fiftyone.brain.internal.core.leaky_splits.LeakySplitsIndex.leaks_view>`
+method returns a view that contains only the leaks in the input splits. Once
+you have these leaks, it is wise to look through them. You may gain some
+insight into the source of the leaks:
 
 .. code-block:: python
     :linenos:
@@ -1839,24 +1844,19 @@ into the source of the leaks.
     session = fo.launch_app(leaks)
 
 Before evaluating your model on your test set, consider getting a version of it
-with the leaks removed. This can be easily done with the built in method
-:meth:`no_leaks_view() <fiftyone.brain.internal.core.leaky_splits.LeakySplitsIndex.no_leaks_view>`.
+with the leaks removed. This can be easily done via
+:meth:`no_leaks_view() <fiftyone.brain.internal.core.leaky_splits.LeakySplitsIndex.no_leaks_view>`:
 
 .. code-block:: python
     :linenos:
 
-    # if you already have it
-    test_set = some_view
+    # The original test split
+    test_set = index.split_views["test"]
 
-    # can also be found with the variable `split_views` from the index
-    # make sure to put in the right string based on the field/tag/key in view dict
-    # passed when building the index
-    test_set = index.split_views['test']
+    # The test set with leaks removed
+    test_set_no_leaks = index.no_leaks_view(test_set)
 
-    test_set_no_leaks = index.no_leaks_view(test_set) # return a view with leaks removed
     session.view = test_set_no_leaks
-
-    # do evaluations on test_set_no_leaks rather than test_set
 
 Performance on the clean test set will can be closer to the performance of the
 model in the wild. If you found some leaks in your dataset, consider comparing
@@ -1865,43 +1865,45 @@ performance on the base test set against the clean test set.
 **Input**: A |Dataset| or |DatasetView|, and a definition of splits through one
 of tags, a field, or views.
 
-**Output**: An index that will allow you to look through your leaks and
-provides some useful actions once they are discovered such as automatically
-cleaning the dataset with
+**Output**: An index that will allow you to look through your leaks with
+:meth:`leaks_view() <fiftyone.brain.internal.core.leaky_splits.LeakySplitsIndex.leaks_view>`
+and also provides some useful actions once they are discovered such as
+automatically cleaning the dataset with
 :meth:`no_leaks_view() <fiftyone.brain.internal.core.leaky_splits.LeakySplitsIndex.no_leaks_view>`
-or tagging them for the future with
+or tagging the leaks for the future action with
 :meth:`tag_leaks() <fiftyone.brain.internal.core.leaky_splits.LeakySplitsIndex.tag_leaks>`.
-Besides this, a view with all leaks is returned. Visualization of this view
-can give you an insight into the source of the leaks in your dataset.
 
-**What to expect**: Leakiness find leaks by embedding samples with a powerful
+**What to expect**: Leaky splits works by embedding samples with a powerful
 model and finding very close samples in different splits in this space. Large,
 powerful models that were *not* trained on a dataset can provide insight into
 visual and semantic similarity between images, without creating further leaks
 in the process.
 
-**Similarity**: At its core, the leaky-splits module is a wrapper for the brain's
-:class:`SimilarityIndex <fiftyone.brain.similarity.SimilarityIndex>`. Any similarity
-backend, (see :ref:`similarity backends <brain-similarity-backends>`) that implements
-the :class:`DuplicatesMixin <fiftyone.brain.similarity.DuplicatesMixin>` can be used
-to compute leaky splits. You can either pass an existing similarity index by passing
-its brain key to the argument `similarity_brain_key`, or have the method create one on
-the fly for you. If there is a specific configuration for `Similarity` you would like
-to use, pass it in the argument `similarity_config_dict`.
+**Similarity index**: Under the hood, leaky splits leverages the brain's
+:class:`SimilarityIndex <fiftyone.brain.similarity.SimilarityIndex>` to detect
+leaks. Any :ref:`similarity backend <brain-similarity-backends>` that
+implements the
+:class:`DuplicatesMixin <fiftyone.brain.similarity.DuplicatesMixin>` can be
+used to compute leaky splits. You can either pass an existing similarity index
+by passing its brain key to the argument `similarity_brain_key`, or have the
+method create one on the fly for you.
 
-**Models and Embeddings**: If you opt for the method to create a `SimilarityIndex`
-for you, you can still bring you own model by passing it in the `model` argument.
-Alternatively, compute embeddings and pass the field that they reside on. We will
-handle the rest.
+**Embeddings**: You can customize the model used to compute embeddings via the
+`model` argument of
+:meth:`compute_leaky_splits() <fiftyone.brain.compute_leaky_splits>`. You can
+also precompute embeddings and tell leaky splits to use them by passing them
+via the `embeddings` argument.
 
-**Thresholds**: The leaky-splits module uses a threshold to decide what samples
-are 'too close' and mark them as potential leaks. This threshold can be changed
-either by passing a value to the `threshold` argument of the `compute_leaky_splits()`
-method, or by using the
+**Thresholds**: Leaky splits uses a threshold to decide what samples are
+too close and thus mark them as potential leaks. This threshold can be
+customized either by passing a value to the `threshold` argument of
+:meth:`compute_leaky_splits() <fiftyone.brain.compute_leaky_splits>` or after
+the fact via the
 :meth:`set_threshold() <fiftyone.brain.internal.core.leaky_splits.SimilarityIndex.set_threshold>`
-method. The best value for your use-case may vary depending on your dataset, as well
-as the embeddings used. A threshold that's too big will have a lot of false positives,
-a threshold that's too small will have a lot of false negatives.
+method. The best value for your use case may vary depending on your dataset, as
+well as the embeddings used. A threshold that's too big may have a lot of
+false positives, while a threshold that's too small may have a lot of false
+negatives.
 
 .. image:: /images/brain/brain-leaky-splits.png
    :alt: leaky-splits
