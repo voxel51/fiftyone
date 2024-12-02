@@ -222,12 +222,14 @@ export default function TableView(props: ViewPropsType) {
                             : "unset",
                         }}
                       >
-                        {currentRowHasActions && (
+                        {currentRowHasActions ? (
                           <ActionsMenu
                             actions={getRowActions(rowIndex)}
                             size={size}
                             maxInline={max_inline_actions}
                           />
+                        ) : (
+                          <Box sx={{ minHeight: "32px" }} />
                         )}
                       </TableCell>
                     )}

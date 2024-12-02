@@ -1142,10 +1142,10 @@ executed in the background while you continue to use the App.
 There are a variety of options available for configuring whether a given
 operation should be delegated or executed immediately.
 
-.. _operator-delegation-configuration:
+.. _operator-execution-options:
 
-Delegation configuration
-~~~~~~~~~~~~~~~~~~~~~~~~
+Execution options
+~~~~~~~~~~~~~~~~~
 
 You can provide the optional properties described below in the
 :ref:`operator's config <operator-config>` to specify the available execution
@@ -1183,12 +1183,12 @@ user to choose between the supported options if there are multiple:
 .. image:: /images/plugins/operators/operator-execute-button.png
     :align: center
 
-.. _operator-execution-options:
+.. _dynamic-execution-options:
 
-Execution options
-~~~~~~~~~~~~~~~~~
+Dynamic execution options
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Operators can implement
+Operators may also implement
 :meth:`resolve_execution_options() <fiftyone.operators.operator.Operator.resolve_execution_options>`
 to dynamically configure the available execution options based on the current
 execution context:
@@ -1238,14 +1238,9 @@ of the current view:
         # Force delegation for large views and immediate execution for small views
         return len(ctx.view) > 1000
 
-.. note::
-
-    If :meth:`resolve_delegation() <fiftyone.operators.operator.Operator.resolve_delegation>`
-    is not implemented or returns `None`, then the choice of execution mode is
-    deferred to
-    :meth:`resolve_execution_options() <fiftyone.operators.operator.Operator.resolve_execution_options>`
-    to specify the available execution options as described in the previous
-    section.
+If :meth:`resolve_delegation() <fiftyone.operators.operator.Operator.resolve_delegation>`
+is not implemented or returns `None`, then the choice of execution mode is
+deferred to the prior mechanisms described above.
 
 .. _operator-reporting-progress:
 

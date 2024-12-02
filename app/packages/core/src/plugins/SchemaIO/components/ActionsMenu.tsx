@@ -77,9 +77,13 @@ function Action(props: ActionPropsType) {
   const { label, name, onClick, icon, variant, mode, color, size, tooltip } =
     props;
   const resolvedColor = color ? getColorByCode(color) : undefined;
-
   const Icon = icon ? (
-    <MuiIconFont name={icon} sx={{ color: resolvedColor }} />
+    <MuiIconFont
+      name={icon}
+      sx={{
+        color: resolvedColor,
+      }}
+    />
   ) : null;
 
   const handleClick = useCallback(
@@ -91,18 +95,30 @@ function Action(props: ActionPropsType) {
 
   const content =
     mode === "inline" ? (
-      <Button
-        variant={variant}
-        startIcon={Icon}
-        onClick={handleClick}
-        sx={{
-          color: resolvedColor,
-          padding: size === "small" ? 0 : undefined,
-          minWidth: size === "small" ? 40 : undefined,
-        }}
-      >
-        {label}
-      </Button>
+      label ? (
+        <Button
+          variant={variant}
+          startIcon={Icon}
+          onClick={handleClick}
+          sx={{
+            color: resolvedColor,
+            padding: size === "small" ? 0 : undefined,
+            minWidth: size === "small" ? 40 : undefined,
+          }}
+        >
+          {label}
+        </Button>
+      ) : (
+        <IconButton
+          onClick={handleClick}
+          size={size}
+          sx={{
+            color: resolvedColor,
+          }}
+        >
+          {Icon}
+        </IconButton>
+      )
     ) : (
       <MenuItem onClick={handleClick}>
         {Icon && <ListItemIcon>{Icon}</ListItemIcon>}

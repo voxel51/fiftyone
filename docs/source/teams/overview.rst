@@ -72,7 +72,7 @@ Here's a high-level overview of the capabilities that FiftyOne Teams brings:
     </tr>
     <tr class="row-even", style="border-top: 1px solid #cacaca"><th class="stub"><p>Enterprise Support</p></th>
     <td style="text-align: center"><p><a class="reference internal" href="https://voxel51.com/images/icons/checkmark.svg"><img alt="check" height="20pt" src="https://voxel51.com/images/icons/checkmark.svg" width="20pt" /></a></p></td>
-    <td style="text-align: center"><p>Slack Community</p></td>
+    <td style="text-align: center"><p>Discord Community</p></td>
     </tr>
     <tr class="row-odd", style="border-top: 1px solid #cacaca"><th class="stub"><p>Licensing</p></th>
     <td style="text-align: center"><p>Unlimited data, flexible<br>user-based licensing</p></td>
