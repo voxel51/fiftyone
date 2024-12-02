@@ -427,7 +427,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def _is_generated(self):
-        return self._is_patches or self._is_frames or self._is_clips
+        return (
+            self._is_patches
+            or self._is_frames
+            or self._is_clips
+            or self._is_materialized
+        )
 
     @property
     def _is_patches(self):
@@ -442,6 +447,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @property
     def _is_clips(self):
         return self._sample_collection_name.startswith("clips.")
+
+    @property
+    def _is_materialized(self):
+        return self._sample_collection_name.startswith("materialized.")
 
     @property
     def _is_dynamic_groups(self):
@@ -4909,7 +4918,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return self._clone(name=name, persistent=persistent)
 
-    def _clone(self, name=None, persistent=False, view=None):
+    def _clone(
+        self,
+        name=None,
+        persistent=False,
+        view=None,
+        materialized=False,
+    ):
         if name is None:
             name = get_default_dataset_name()
 
@@ -4918,7 +4933,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             sample_collection = self
 
-        return _clone_collection(sample_collection, name, persistent)
+        return _clone_collection(
+            sample_collection,
+            name,
+            persistent=persistent,
+            materialized=materialized,
+        )
 
     def clear(self):
         """Removes all samples from the dataset.
@@ -8312,7 +8332,7 @@ def _clone_collection_indexes(
 
 
 def _make_sample_collection_name(
-    dataset_id, patches=False, frames=False, clips=False
+    dataset_id, patches=False, frames=False, clips=False, materialized=False
 ):
     if patches and frames:
         prefix = "patches.frames"
@@ -8322,6 +8342,8 @@ def _make_sample_collection_name(
         prefix = "frames"
     elif clips:
         prefix = "clips"
+    elif materialized:
+        prefix = "materialized"
     else:
         prefix = "samples"
 
@@ -8504,7 +8526,12 @@ def _delete_dataset_doc(dataset_doc):
     dataset_doc.delete()
 
 
-def _clone_collection(sample_collection, name, persistent):
+def _clone_collection(
+    sample_collection,
+    name,
+    persistent=False,
+    materialized=False,
+):
     slug = _validate_dataset_name(name)
 
     contains_videos = sample_collection._contains_videos(any_slice=True)
@@ -8531,7 +8558,9 @@ def _clone_collection(sample_collection, name, persistent):
     _id = dataset_doc.id
     now = datetime.utcnow()
 
-    sample_collection_name = _make_sample_collection_name(_id)
+    sample_collection_name = _make_sample_collection_name(
+        _id, materialized=materialized
+    )
 
     if contains_videos:
         frame_collection_name = _make_frame_collection_name(

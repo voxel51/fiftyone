@@ -292,6 +292,11 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement _is_clips")
 
     @property
+    def _is_materialized(self):
+        """Whether this collection contains a materialized view."""
+        raise NotImplementedError("Subclass must implement _is_materialized")
+
+    @property
     def _is_dynamic_groups(self):
         """Whether this collection contains dynamic groups."""
         raise NotImplementedError("Subclass must implement _is_dynamic_groups")
@@ -6192,6 +6197,33 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.MatchTags(tags, bool=bool, all=all))
+
+    @view_stage
+    def materialize(self):
+        """Materializes the current view into a temporary database collection.
+
+        Apply this stage to an expensive view (eg an unindexed filtering
+        operation on a large dataset) if you plan to perform multiple
+        downstream operations on the view.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            view = dataset.filter_labels("ground_truth", F("label") == "cat")
+            materialized_view = view.materialize()
+
+            print(view.count("ground_truth.detections"))
+            print(materialized_view.count("ground_truth.detections"))
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.Materialize())
 
     @view_stage
     def mongo(self, pipeline, _needs_frames=None, _group_slices=None):
