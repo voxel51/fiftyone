@@ -9,6 +9,7 @@ FiftyOne Server lightning queries
 from bson import ObjectId
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
+import math
 import typing as t
 
 import asyncio
@@ -419,20 +420,16 @@ def _first(
     floats=False,
 ):
     pipeline = [{"$sort": {path: sort}}]
-
-    if floats:
-        pipeline.extend(_handle_nonfinites(path, sort))
-
     matched_arrays = _match_arrays(dataset, path, is_frame_field)
     if matched_arrays:
         pipeline += matched_arrays
+    elif floats:
+        pipeline.extend(_handle_nonfinites(path, sort))
 
     pipeline.extend([{"$match": {path: {"$exists": True}}}, {"$limit": 1}])
     unwound = _unwind(dataset, path, is_frame_field)
     if unwound:
         pipeline += unwound
-        if floats:
-            pipeline.extend(_handle_nonfinites(path, sort))
 
     return pipeline + [
         {
@@ -504,8 +501,9 @@ def _match_arrays(dataset: fo.Dataset, path: str, is_frame_field: bool):
 def _parse_result(data):
     if data and data[0]:
         value = data[0]
-        if value.get("value", None) is not None:
-            return value["value"]
+        if "value" in value:
+            value = value["value"]
+            return value if math.isfinite(value) else None
 
         return value.get("_id", None)
 
