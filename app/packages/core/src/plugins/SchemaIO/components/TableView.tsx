@@ -194,6 +194,7 @@ export default function TableView(props: ViewPropsType) {
                             background: isSelected
                               ? selectedCellColor
                               : "unset",
+                            fontSize: "1rem",
                           }}
                           onClick={() => {
                             handleCellClick(rowIndex, columnIndex);
@@ -220,6 +221,7 @@ export default function TableView(props: ViewPropsType) {
                           background: isRowSelected
                             ? selectedCellColor
                             : "unset",
+                          fontSize: "1rem",
                         }}
                       >
                         {currentRowHasActions ? (
