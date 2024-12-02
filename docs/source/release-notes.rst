@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Teams 2.2.0
 --------------------
-*Released November 26, 2024*
+*Released December 3, 2024*
 
 Includes all updates from :ref:`FiftyOne 1.1.0 <release-notes-v1.1.0>`, plus:
 
@@ -27,7 +27,7 @@ Includes all updates from :ref:`FiftyOne 1.1.0 <release-notes-v1.1.0>`, plus:
 
 FiftyOne 1.1.0
 --------------
-*Released November 26, 2024*
+*Released December 3, 2024*
 
 What's New
 
@@ -36,6 +36,10 @@ What's New
 - Introduced :ref:`Query Performance <app-optimize-query-performance>` in the
   App, which automatically nudges you to create the necessary indexes to
   greatly optimize queries on large datasets
+- Added a :ref:`leaky splits method <brain-leaky-splits>` for automatically
+  detecting near-duplicate samples in different splits of your datasets
+- Added a :ref:`near duplicates method <brain-near-duplicates>` that scans
+  your datasets and detects potential duplicate samples
 
 App
 
@@ -4415,7 +4419,7 @@ Annotation
 Docs
 
 - Added a :doc:`CVAT annotation tutorial </tutorials/cvat_annotation>`
-- Added a :ref:`new example <brain-similarity-cifar10>` to the brain user guide
+- Added a :ref:`new example <brain-near-duplicates>` to the brain user guide
   that demonstrates unique and near-duplicate image workflows
 - Added an object embeddings example to the
   :ref:`embeddings visualization section <brain-embeddings-visualization>` of

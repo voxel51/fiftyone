@@ -38,6 +38,26 @@ workflow:
   you can easily query and sort your datasets to find similar examples, both
   programmatically and via point-and-click in the App.
 
+* :ref:`Leaky splits <brain-leaky-splits>`:
+  Often when sourcing data en masse, duplicates and near duplicates can slip
+  through the cracks. The FiftyOne Brain offers a *leaky splits analysis* that
+  can be used to find potential leaks between dataset splits. Such leaks can
+  be misleading when evaluating a model, giving an overly optimistic measure
+  for the quality of training.
+
+* :ref:`Near duplicates <brain-near-duplicates>`:
+  When curating massive datasets, you may inadvertently add near duplicate data
+  to your datasets, which can bias or otherwise confuse your models. The
+  FiftyOne Brain offers a *near duplicate detection* algorithm that
+  automatically surfaces such data quality issues and prompts you to take
+  action to resolve them.
+
+* :ref:`Exact duplicates <brain-exact-duplicates>`:
+  Despite your best efforts, you may accidentally add duplicate data to a
+  dataset. The FiftyOne Brain provides an *exact duplicate detection* method
+  that scans your data and alerts you if a dataset contains duplicate samples,
+  either under the same or different filenames.
+
 * :ref:`Uniqueness <brain-image-uniqueness>`:
   During the training loop for a model, the best results will
   be seen when training on unique data. The FiftyOne Brain provides a
@@ -74,17 +94,10 @@ workflow:
   examples to train on in your data and for visualizing common modes of the
   data.
 
-* :ref:`Leaky splits <brain-image-leaky-splits>`:
-  Often when sourcing data en masse, duplicates and near duplicates can slip
-  through the cracks. The FiftyOne Brain offers a *leaky splits analysis* that
-  can be used to find potential leaks between dataset splits. These splits can
-  be misleading when evaluating a model, giving an overly optimistic measure
-  for the quality of training. 
-
 .. note::
 
     Check out the :ref:`tutorials page <tutorials>` for detailed examples
-    demonstrating the use of each Brain capability.
+    demonstrating the use of many Brain capabilities.
 
 .. _brain-embeddings-visualization:
 
@@ -765,22 +778,6 @@ along with the `brain_key` of a compatible similarity index:
     :class:`PromptMixin <fiftyone.core.models.PromptMixin>` interface can
     support text similarity queries!
 
-.. _brain-similarity-duplicates:
-
-Duplicate detection
--------------------
-
-For some :ref:`similarity backends <brain-similarity-backends>` --- including
-the default sklearn backend --- the |SimilarityIndex| object returned by
-:meth:`compute_similarity() <fiftyone.brain.compute_similarity>` also provides
-powerful
-:meth:`find_unique() <fiftyone.brain.similarity.DuplicatesMixin.find_unique>`
-and
-:meth:`find_duplicates() <fiftyone.brain.similarity.DuplicatesMixin.find_duplicates>`
-methods that you can use to find both maximally unique and near-duplicate
-subsets of your datasets or their object patches. See
-:ref:`this section <brain-similarity-cifar10>` for example uses.
-
 .. _brain-similarity-api:
 
 Similarity API
@@ -1268,29 +1265,210 @@ more detail or underrepresented classes that need more training examples.
 
 Here are a few of the many possible applications:
 
+-   Pruning :ref:`near-duplicate images <brain-near-duplicates>` from your
+    training dataset
 -   Identifying failure patterns of a model
 -   Finding examples of target scenarios in your data lake
 -   Mining hard examples for your evaluation pipeline
 -   Recommending samples from your data lake for classes that need additional
     training data
--   Pruning near-duplicate images from your training dataset
 
-.. _brain-similarity-cifar10:
+.. _brain-leaky-splits:
 
-CIFAR-10 example
-----------------
+Leaky splits
+____________
 
-The following example demonstrates two common workflows that you can perform
-using a similarity index generated via
-:meth:`compute_similarity() <fiftyone.brain.compute_similarity>` on the
+Despite our best efforts, duplicates and other forms of non-IID samples
+show up in our data. When these samples end up in different splits, this
+can have consequences when evaluating a model. It can often be easy to
+overestimate model capability due to this issue. The FiftyOne Brain offers a
+way to identify such cases in dataset splits.
+
+The leaks of a |Dataset| or |DatasetView| can be computed directly without the
+need for the predictions of a pre-trained model via the
+:meth:`compute_leaky_splits() <fiftyone.brain.compute_leaky_splits>`
+method:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+
+    dataset = fo.load_dataset(...)
+
+    # Splits defined via tags
+    split_tags = ["train", "test"]
+    index = fob.compute_leaky_splits(dataset, splits=split_tags)
+    leaks = index.leaks_view()
+
+    # Splits defined via field
+    split_field = "split"  # holds split values e.g. 'train' or 'test'
+    index = fob.compute_leaky_splits(dataset, splits=split_field)
+    leaks = index.leaks_view()
+
+    # Splits defined via views
+    split_views = {"train": train_view, "test": test_view}
+    index = fob.compute_leaky_splits(dataset, splits=split_views)
+    leaks = index.leaks_view()
+
+Notice how the splits of the dataset can be defined in three ways: through
+sample tags, through a string field that assigns each split a unique value in
+the field, or by directly providing views that define the splits.
+
+**Input**: A |Dataset| or |DatasetView|, and a definition of splits through one
+of tags, a field, or views.
+
+**Output**: An index that will allow you to look through your leaks with
+:meth:`leaks_view() <fiftyone.brain.internal.core.leaky_splits.LeakySplitsIndex.leaks_view>`
+and also provides some useful actions once they are discovered such as
+automatically cleaning the dataset with
+:meth:`no_leaks_view() <fiftyone.brain.internal.core.leaky_splits.LeakySplitsIndex.no_leaks_view>`
+or tagging the leaks for the future action with
+:meth:`tag_leaks() <fiftyone.brain.internal.core.leaky_splits.LeakySplitsIndex.tag_leaks>`.
+
+**What to expect**: Leaky splits works by embedding samples with a powerful
+model and finding very close samples in different splits in this space. Large,
+powerful models that were *not* trained on a dataset can provide insight into
+visual and semantic similarity between images, without creating further leaks
+in the process.
+
+**Similarity index**: Under the hood, leaky splits leverages the brain's
+:class:`SimilarityIndex <fiftyone.brain.similarity.SimilarityIndex>` to detect
+leaks. Any :ref:`similarity backend <brain-similarity-backends>` that
+implements the
+:class:`DuplicatesMixin <fiftyone.brain.similarity.DuplicatesMixin>` can be
+used to compute leaky splits. You can either pass an existing similarity index
+by passing its brain key to the argument `similarity_index`, or have the
+method create one on the fly for you.
+
+**Embeddings**: You can customize the model used to compute embeddings via the
+`model` argument of
+:meth:`compute_leaky_splits() <fiftyone.brain.compute_leaky_splits>`. You can
+also precompute embeddings and tell leaky splits to use them by passing them
+via the `embeddings` argument.
+
+**Thresholds**: Leaky splits uses a threshold to decide what samples are
+too close and thus mark them as potential leaks. This threshold can be
+customized either by passing a value to the `threshold` argument of
+:meth:`compute_leaky_splits() <fiftyone.brain.compute_leaky_splits>`. The best
+value for your use case may vary depending on your dataset, as well as the
+embeddings used. A threshold that's too big may have a lot of false positives,
+while a threshold that's too small may have a lot of false negatives.
+
+The example code below runs leaky splits analysis on the
+`COCO dataset <https://cocodataset.org/#home>`_. Try it for yourself and see
+what you find!
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+    import fiftyone.utils.random as four
+
+    # Load some COCO data
+    dataset = foz.load_zoo_dataset("coco-2017", split="test")
+
+    # Set up splits via tags
+    dataset.untag_samples(dataset.distinct("tags"))
+    four.random_split(dataset, {"train": 0.7, "test": 0.3})
+
+    # Find leaks
+    index = fob.compute_leaky_splits(dataset, splits=["train", "test"])
+    leaks = index.leaks_view()
+
+The
+:meth:`leaks_view() <fiftyone.brain.internal.core.leaky_splits.LeakySplitsIndex.leaks_view>`
+method returns a view that contains only the leaks in the input splits. Once
+you have these leaks, it is wise to look through them. You may gain some
+insight into the source of the leaks:
+
+.. code-block:: python
+    :linenos:
+
+    session = fo.launch_app(leaks)
+
+Before evaluating your model on your test set, consider getting a version of it
+with the leaks removed. This can be easily done via
+:meth:`no_leaks_view() <fiftyone.brain.internal.core.leaky_splits.LeakySplitsIndex.no_leaks_view>`:
+
+.. code-block:: python
+    :linenos:
+
+    # The original test split
+    test_set = index.split_views["test"]
+
+    # The test set with leaks removed
+    test_set_no_leaks = index.no_leaks_view(test_set)
+
+    session.view = test_set_no_leaks
+
+Performance on the clean test set will can be closer to the performance of the
+model in the wild. If you found some leaks in your dataset, consider comparing
+performance on the base test set against the clean test set.
+
+.. image:: /images/brain/brain-leaky-splits.png
+   :alt: leaky-splits
+   :align: center
+
+.. _brain-near-duplicates:
+
+Near duplicates
+_______________
+
+When curating massive datasets, you may inadvertently add near duplicate data
+to your datasets, which can bias or otherwise confuse your models.
+
+The :meth:`compute_near_duplicates() <fiftyone.brain.compute_near_duplicates>`
+method leverages embeddings to automatically surface near-duplicate samples in
+your dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+
+    dataset = fo.load_dataset(...)
+
+    index = fob.compute_near_duplicates(dataset)
+    print(index.duplicate_ids)
+
+    dups_view = index.duplicates_view()
+    session = fo.launch_app(dups_view)
+
+**Input**: An unlabeled (or labeled) dataset. There are
+:ref:`recipes <recipes>` for building datasets from a wide variety of image
+formats, ranging from a simple directory of images to complicated dataset
+structures like `COCO <https://cocodataset.org/#home>`_.
+
+**Output**: A |SimilarityIndex| object that provides powerful methods such as
+:meth:`duplicate_ids <fiftyone.brain.similarity.DuplicatesMixin.duplicate_ids>`,
+:meth:`neighbors_map <fiftyone.brain.similarity.DuplicatesMixin.neighbors_map>`
+and
+:meth:`duplicates_view() <fiftyone.brain.similarity.DuplicatesMixin.duplicates_view>`
+to analyze potential near duplicates as demonstrated below
+
+**What to expect**: Near duplicates analysis leverages embeddings to identify
+samples  that are too close to their nearest neighbors. You can provide
+pre-computed embeddings, specify a :ref:`zoo model <model-zoo>` of your choice
+to use to compute embeddings, or provide nothing and rely on the method's
+default model to generate embeddings.
+
+**Thresholds**: When using custom embeddings/models, you may need to adjust the
+distance threshold used to detect potential duplicates. You can do this by
+passing a value to the `threshold` argument of
+:meth:`compute_near_duplicates() <fiftyone.brain.compute_near_duplicates>`. The
+best value for your use case may vary depending on your dataset, as well as the
+embeddings used. A threshold that's too big may have a lot of false positives,
+while a threshold that's too small may have a lot of false negatives.
+
+The following example demonstrates how to use
+:meth:`compute_near_duplicates() <fiftyone.brain.compute_near_duplicates>` to
+detect near duplicate images on the
 :ref:`CIFAR-10 dataset <dataset-zoo-cifar10>`:
-
--   Selecting a set of maximally unique images from the dataset
--   Identifying near-duplicate images in the dataset
-
-.. warning::
-
-    This workflow is only supported by the default `sklearn` backend.
 
 .. code-block:: python
     :linenos:
@@ -1299,18 +1477,16 @@ using a similarity index generated via
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("cifar10", split="test")
-    print(dataset)
 
 To proceed, we first need some suitable image embeddings for the dataset.
-Although the :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`
-and :meth:`compute_visualization() <fiftyone.brain.compute_visualization>`
-methods are equipped with a default general-purpose model to generate
-embeddings if none are provided, you'll typically find higher-quality insights
-when a domain-specific model is used to generate embeddings.
+Although the :meth:`compute_near_duplicates() <fiftyone.brain.compute_near_duplicates>`
+method is equipped with a default general-purpose model to generate embeddings
+if none are provided, you'll typically find higher-quality insights when a
+domain-specific model is used to generate embeddings.
 
 In this case, we'll use a classifier that has been fine-tuned on CIFAR-10 to
-compute some embeddings and then generate image similarity/visualization
-indexes for them:
+pre-compute embeddings and them feed them to
+:meth:`compute_near_duplicates() <fiftyone.brain.compute_near_duplicates>`:
 
 .. code-block:: python
     :linenos:
@@ -1322,95 +1498,28 @@ indexes for them:
     model = fbm.load_model("simple-resnet-cifar10")
     embeddings = dataset.compute_embeddings(model, batch_size=16)
 
-    # Generate similarity index
-    results = fob.compute_similarity(
-        dataset, embeddings=embeddings, brain_key="img_sim"
+    # Scan for near-duplicates
+    index = fob.compute_near_duplicates(
+        dataset,
+        embeddings=embeddings,
+        thresh=0.02,
     )
 
-    # Generate a 2D visualization
-    viz_results = fob.compute_visualization(
-        dataset, embeddings=embeddings, brain_key="img_viz"
-    )
-
-Finding maximally unique images
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-With a similarity index generated, we can use the
-:meth:`find_unique() <fiftyone.brain.similarity.DuplicatesMixin.find_unique>`
-method of the index to identify a set of images of any desired size that are
-maximally unique with respect to each other:
-
-.. code-block:: python
-    :linenos:
-
-    # Use the similarity index to identify 500 maximally unique images
-    results.find_unique(500)
-    print(results.unique_ids[:5])
-
-We can also conveniently visualize the results of this operation via the
-:meth:`visualize_unique() <fiftyone.brain.similarity.DuplicatesMixin.visualize_unique>`
-method of the results object, which generates a scatterplot with the unique
-images colored separately:
-
-.. code-block:: python
-    :linenos:
-
-    # Visualize the unique images in embeddings space
-    plot = results.visualize_unique(visualization=viz_results)
-    plot.show(height=800, yaxis_scaleanchor="x")
-
-.. image:: /images/brain/brain-cifar10-unique-viz.png
-   :alt: cifar10-unique-viz
-   :align: center
-
-And of course we can load a view containing the unique images in the App to
-explore the results in detail:
-
-.. code-block:: python
-    :linenos:
-
-    # Visualize the unique images in the App
-    unique_view = dataset.select(results.unique_ids)
-    session = fo.launch_app(view=unique_view)
-
-.. image:: /images/brain/brain-cifar10-unique-view.png
-   :alt: cifar10-unique-view
-   :align: center
-
-Finding near-duplicate images
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-We can also use our similarity index to detect *near-duplicate* images in the
-dataset.
-
-For example, let's use the
-:meth:`find_duplicates() <fiftyone.brain.similarity.DuplicatesMixin.find_duplicates>`
-method to identify the least similar images in our dataset:
-
-.. code-block:: python
-    :linenos:
-
-    # Use the similarity index to identify the 1% of images that are least
-    # similar w.r.t. the other images
-    results.find_duplicates(fraction=0.01)
-
-    print(results.neighbors_map)
-
-.. note::
-
-    You can also provide a specific embeddings distance threshold to
-    :meth:`find_duplicates() <fiftyone.brain.similarity.DuplicatesMixin.find_duplicates>`,
-    in which case the non-duplicate set will be the (approximately) largest set
-    such that all pairwise distances between non-duplicate images are
-    *greater* than this threshold.
+Finding near-duplicate samples
+------------------------------
 
 The
 :meth:`neighbors_map <fiftyone.brain.similarity.DuplicatesMixin.neighbors_map>`
-property of the results object provides a data structure that summarizes the
-findings. The keys of the dictionary are the sample IDs of each nearest
-non-duplicate image, and the values are lists of `(id, distance)` tuples
-listing the sample IDs of the duplicate images for each in-sample image
-together with the embedding distance between the two images:
+property of the index provides a data structure that summarizes the findings.
+The keys of the dictionary are the sample IDs of each non-duplicate sample, and
+the values are lists of `(id, distance)` tuples listing the sample IDs of the
+duplicate samples for each reference sample together with the embedding
+distance between the two samples:
+
+.. code-block:: python
+    :linenos:
+
+    print(index.neighbors_map)
 
 .. code-block:: text
 
@@ -1433,25 +1542,108 @@ together with the embedding distance between the two images:
 
 We can conveniently visualize this information in the App via the
 :meth:`duplicates_view() <fiftyone.brain.similarity.DuplicatesMixin.duplicates_view>`
-method of the results object, which constructs a view with the duplicate images
-arranged directly after their corresponding nearest in-sample image, with
-additional sample fields recording the type and nearest in-sample ID/distance
-for each image:
+method of the index, which constructs a view with the duplicate samples
+arranged directly after their corresponding reference sample, with optional
+additional fields recording the type and nearest reference sample ID/distance:
 
 .. code-block:: python
     :linenos:
 
-    duplicates_view = results.duplicates_view(
+    duplicates_view = index.duplicates_view(
         type_field="dup_type",
         id_field="dup_id",
         dist_field="dup_dist",
     )
 
-    session.view = duplicates_view
+    session = fo.launch_app(duplicates_view)
 
 .. image:: /images/brain/brain-cifar10-duplicate-view.png
    :alt: cifar10-duplicate-view
    :align: center
+
+Finding maximally unique samples
+--------------------------------
+
+You can also use the
+:meth:`find_unique() <fiftyone.brain.similarity.DuplicatesMixin.find_unique>`
+method of the index to identify a set of samples of any desired size that are
+maximally unique with respect to each other:
+
+.. code-block:: python
+    :linenos:
+
+    # Use the similarity index to identify 500 maximally unique samples
+    index.find_unique(500)
+    print(index.unique_ids[:5])
+
+We can also conveniently visualize the results of this operation via the
+:meth:`visualize_unique() <fiftyone.brain.similarity.DuplicatesMixin.visualize_unique>`
+method of the index, which generates a scatterplot with the unique samples
+colored separately:
+
+.. code-block:: python
+    :linenos:
+
+    # Generate a 2D visualization
+    viz_results = fob.compute_visualization(dataset, embeddings=embeddings)
+
+    # Visualize the unique samples in embeddings space
+    plot = index.visualize_unique(viz_results)
+    plot.show(height=800, yaxis_scaleanchor="x")
+
+.. image:: /images/brain/brain-cifar10-unique-viz.png
+   :alt: cifar10-unique-viz
+   :align: center
+
+And of course we can load a view containing the unique samples in the App to
+explore the results in detail:
+
+.. code-block:: python
+    :linenos:
+
+    # Visualize the unique images in the App
+    unique_view = dataset.select(index.unique_ids)
+    session = fo.launch_app(view=unique_view)
+
+.. image:: /images/brain/brain-cifar10-unique-view.png
+   :alt: cifar10-unique-view
+   :align: center
+
+.. _brain-exact-duplicates:
+
+Exact duplicates
+________________
+
+Despite your best efforts, you may accidentally add duplicate data to a
+dataset. Left unmitigated, such quality issues can bias your models and
+confound your analysis.
+
+The :meth:`compute_exact_duplicates() <fiftyone.brain.compute_exact_duplicates>`
+method scans your dataset and determines if you have duplicate data either
+under the same or different filenames:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+
+    dataset = fo.load_dataset(...)
+
+    duplicates_map = fob.compute_exact_duplicates(dataset)
+    print(duplicates_map)
+
+**Input**: An unlabeled (or labeled) dataset. There are
+:ref:`recipes <recipes>` for building datasets from a wide variety of image
+formats, ranging from a simple directory of images to complicated dataset
+structures like `COCO <https://cocodataset.org/#home>`_.
+
+**Output**: A dictionary mapping IDs of samples with exact duplicates to lists
+of IDs of the duplicates for the corresponding sample
+
+**What to expect**: Exact duplicates analysis uses filehases to identify
+duplicate data, regardless of whether they are stored under the same or
+different filepaths in your dataset.
 
 .. _brain-image-uniqueness:
 
@@ -1762,151 +1954,17 @@ similar looking groups of samples. The representativeness is then computed
 based on each sample's proximity to the computed cluster centers, farther
 samples being less representative and closer samples being more representative.
 
+.. note::
+
+    Did you know? You can specify a region of interest within each image to use
+    to compute representativeness by providing the optional `roi_field`
+    argument to
+    :meth:`compute_representativeness() <fiftyone.brain.compute_representativeness>`,
+    which contains |Detections| or |Polylines| that define the ROI for each
+    sample.
+
 .. image:: /images/brain/brain-representativeness.png
    :alt: representativeness
-   :align: center
-
-.. _brain-image-leaky-splits:
-
-Leaky splits
-____________
-
-Despite our best efforts, duplicates and other forms of non-IID samples
-show up in our data. When these samples end up in different splits, this
-can have consequences when evaluating a model. It can often be easy to
-overestimate model capability due to this issue. The FiftyOne Brain offers a
-way to identify such cases in dataset splits.
-
-The leaks of a |Dataset| or |DatasetView| can be computed directly without the
-need for the predictions of a pre-trained model via the
-:meth:`compute_leaky_splits() <fiftyone.brain.compute_leaky_splits>`
-method:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.brain as fob
-
-    dataset = fo.load_dataset(...)
-
-    # Splits defined via tags
-    split_tags = ["train", "test"]
-    index = fob.compute_leaky_splits(dataset, splits=split_tags)
-    leaks = index.leaks_view()
-
-    # Splits defined via field
-    split_field = "split"  # holds split values e.g. 'train' or 'test'
-    index = fob.compute_leaky_splits(dataset, splits=split_field)
-    leaks = index.leaks_view()
-
-    # Splits defined via views
-    split_views = {"train": train_view, "test": test_view}
-    index = fob.compute_leaky_splits(dataset, splits=split_views)
-    leaks = index.leaks_view()
-
-Notice how the splits of the dataset can be defined in three ways: through
-sample tags, through a string field that assigns each split a unique value in
-the field, or by directly providing views that define the splits.
-
-Here is a sample snippet to run this on the
-`COCO dataset <https://cocodataset.org/#home>`_. Try it for yourself and see
-what you find:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.brain as fob
-    import fiftyone.zoo as foz
-    import fiftyone.utils.random as four
-
-    # Load some COCO data
-    dataset = foz.load_zoo_dataset("coco-2017", split="test")
-
-    # Set up splits via tags
-    dataset.untag_samples(dataset.distinct("tags"))
-    four.random_split(dataset, {"train": 0.7, "test": 0.3})
-
-    # Find leaks
-    index = fob.compute_leaky_splits(dataset, splits=["train", "test"])
-    leaks = index.leaks_view()
-
-The
-:meth:`leaks_view() <fiftyone.brain.internal.core.leaky_splits.LeakySplitsIndex.leaks_view>`
-method returns a view that contains only the leaks in the input splits. Once
-you have these leaks, it is wise to look through them. You may gain some
-insight into the source of the leaks:
-
-.. code-block:: python
-    :linenos:
-
-    session = fo.launch_app(leaks)
-
-Before evaluating your model on your test set, consider getting a version of it
-with the leaks removed. This can be easily done via
-:meth:`no_leaks_view() <fiftyone.brain.internal.core.leaky_splits.LeakySplitsIndex.no_leaks_view>`:
-
-.. code-block:: python
-    :linenos:
-
-    # The original test split
-    test_set = index.split_views["test"]
-
-    # The test set with leaks removed
-    test_set_no_leaks = index.no_leaks_view(test_set)
-
-    session.view = test_set_no_leaks
-
-Performance on the clean test set will can be closer to the performance of the
-model in the wild. If you found some leaks in your dataset, consider comparing
-performance on the base test set against the clean test set.
-
-**Input**: A |Dataset| or |DatasetView|, and a definition of splits through one
-of tags, a field, or views.
-
-**Output**: An index that will allow you to look through your leaks with
-:meth:`leaks_view() <fiftyone.brain.internal.core.leaky_splits.LeakySplitsIndex.leaks_view>`
-and also provides some useful actions once they are discovered such as
-automatically cleaning the dataset with
-:meth:`no_leaks_view() <fiftyone.brain.internal.core.leaky_splits.LeakySplitsIndex.no_leaks_view>`
-or tagging the leaks for the future action with
-:meth:`tag_leaks() <fiftyone.brain.internal.core.leaky_splits.LeakySplitsIndex.tag_leaks>`.
-
-**What to expect**: Leaky splits works by embedding samples with a powerful
-model and finding very close samples in different splits in this space. Large,
-powerful models that were *not* trained on a dataset can provide insight into
-visual and semantic similarity between images, without creating further leaks
-in the process.
-
-**Similarity index**: Under the hood, leaky splits leverages the brain's
-:class:`SimilarityIndex <fiftyone.brain.similarity.SimilarityIndex>` to detect
-leaks. Any :ref:`similarity backend <brain-similarity-backends>` that
-implements the
-:class:`DuplicatesMixin <fiftyone.brain.similarity.DuplicatesMixin>` can be
-used to compute leaky splits. You can either pass an existing similarity index
-by passing its brain key to the argument `similarity_brain_key`, or have the
-method create one on the fly for you.
-
-**Embeddings**: You can customize the model used to compute embeddings via the
-`model` argument of
-:meth:`compute_leaky_splits() <fiftyone.brain.compute_leaky_splits>`. You can
-also precompute embeddings and tell leaky splits to use them by passing them
-via the `embeddings` argument.
-
-**Thresholds**: Leaky splits uses a threshold to decide what samples are
-too close and thus mark them as potential leaks. This threshold can be
-customized either by passing a value to the `threshold` argument of
-:meth:`compute_leaky_splits() <fiftyone.brain.compute_leaky_splits>` or after
-the fact via the
-:meth:`set_threshold() <fiftyone.brain.internal.core.leaky_splits.SimilarityIndex.set_threshold>`
-method. The best value for your use case may vary depending on your dataset, as
-well as the embeddings used. A threshold that's too big may have a lot of
-false positives, while a threshold that's too small may have a lot of false
-negatives.
-
-.. image:: /images/brain/brain-leaky-splits.png
-   :alt: leaky-splits
    :align: center
 
 .. _brain-managing-runs:
