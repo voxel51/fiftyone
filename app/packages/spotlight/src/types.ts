@@ -38,8 +38,7 @@ export type Render = (
   id: ID,
   element: HTMLDivElement,
   dimensions: [number, number],
-  soft: boolean,
-  disable: boolean
+  zooming: boolean
 ) => void;
 
 export interface Response<K, V> {
