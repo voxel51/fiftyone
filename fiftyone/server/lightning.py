@@ -324,7 +324,6 @@ async def _do_async_query(
     if filter:
         query.insert(0, {"$match": filter})
 
-    fo.pprint(query)
     return [i async for i in collection.aggregate(query)]
 
 
@@ -428,8 +427,7 @@ def _first(
     if matched_arrays:
         pipeline += matched_arrays
 
-    pipeline.append({"$limit": 1})
-
+    pipeline.extend([{"$match": {path: {"$exists": True}}}, {"$limit": 1}])
     unwound = _unwind(dataset, path, is_frame_field)
     if unwound:
         pipeline += unwound
