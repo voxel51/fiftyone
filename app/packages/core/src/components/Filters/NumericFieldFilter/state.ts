@@ -31,10 +31,11 @@ export const nonfinitesText = selectorFamily({
     (params: { path: string; modal: boolean }) =>
     ({ get }) => {
       const data = get(nonfiniteData({ ...params, extended: false }));
-      const result = Object.fromEntries(
-        Object.entries(data).filter(([k, v]) => k !== "none" && Boolean(v))
+      const result = Object.entries(data).filter(
+        ([k, v]) => k !== "none" && Boolean(v)
       );
-      return result.length ? result.join(", ") : null;
+
+      return result.length ? result.map(([key]) => key).join(", ") : null;
     },
 });
 
