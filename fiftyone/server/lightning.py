@@ -322,6 +322,11 @@ async def _do_async_query(
 
         return await _do_distinct_pipeline(dataset, collection, query, filter)
 
+    if filter:
+        for k, v in filter.items():
+            query.insert(0, {"$match": {k: v}})
+            query.insert(0, {"$sort": {k: 1}})
+
     return [i async for i in collection.aggregate(query)]
 
 
@@ -418,12 +423,11 @@ def _first(
 ):
     pipeline = [{"$sort": {path: sort}}]
 
-    if floats:
-        pipeline.extend(_handle_nonfinites(path, sort))
-
     matched_arrays = _match_arrays(dataset, path, is_frame_field)
     if matched_arrays:
         pipeline += matched_arrays
+    elif floats:
+        pipeline.extend(_handle_nonfinites(path, sort))
 
     pipeline.extend([{"$match": {path: {"$exists": True}}}, {"$limit": 1}])
     unwound = _unwind(dataset, path, is_frame_field)
@@ -504,7 +508,11 @@ def _parse_result(data):
         value = data[0]
         if "value" in value:
             value = value["value"]
-            return value if math.isfinite(value) else None
+            return (
+                value
+                if not isinstance(value, float) or math.isfinite(value)
+                else None
+            )
 
         return value.get("_id", None)
 

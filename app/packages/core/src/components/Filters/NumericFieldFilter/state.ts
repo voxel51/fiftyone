@@ -25,14 +25,28 @@ export const hasDefaultRange = selectorFamily({
     },
 });
 
-export const hasNonfinites = selectorFamily({
-  key: "hasNonfinites",
+export const nonfinitesText = selectorFamily({
+  key: "nonfinitesText",
   get:
     (params: { path: string; modal: boolean }) =>
     ({ get }) => {
-      return FLOAT_NONFINITES.every((key) =>
-        get(nonfiniteAtom({ key, ...params }))
+      console.log(
+        FLOAT_NONFINITES.map((key) => [
+          key,
+          get(nonfiniteAtom({ key, ...params })),
+        ])
+          .filter(([_, v]) => v)
+          .map(([k]) => k)
+          .join(", ")
       );
+      const result = FLOAT_NONFINITES.map((key) => [
+        key,
+        get(nonfiniteAtom({ key, ...params })),
+      ])
+        .filter(([_, v]) => v)
+        .map(([k]) => k);
+
+      return result.length ? result.join(", ") : null;
     },
 });
 
