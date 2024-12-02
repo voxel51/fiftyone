@@ -1284,10 +1284,9 @@ can have consequences when evaluating a model. It can often be easy to
 overestimate model capability due to this issue. The FiftyOne Brain offers a
 way to identify such cases in dataset splits.
 
-The leaks of a |Dataset| or |DatasetView| can be computed directly without the
-need for the predictions of a pre-trained model via the
-:meth:`compute_leaky_splits() <fiftyone.brain.compute_leaky_splits>`
-method:
+The leaks of a dataset can be computed directly without the need for the
+predictions of a pre-trained model via the
+:meth:`compute_leaky_splits() <fiftyone.brain.compute_leaky_splits>` method:
 
 .. code-block:: python
     :linenos:
@@ -1560,6 +1559,15 @@ additional fields recording the type and nearest reference sample ID/distance:
 .. image:: /images/brain/brain-cifar10-duplicate-view.png
    :alt: cifar10-duplicate-view
    :align: center
+
+.. note::
+
+    You can also use the
+    :meth:`find_duplicates() <fiftyone.brain.similarity.DuplicatesMixin.find_duplicates>`
+    method of the index to rerun the duplicate detection with a different
+    `threshold` without calling
+    :meth:`compute_near_duplicates() <fiftyone.brain.compute_near_duplicates>`
+    again.
 
 Finding maximally unique samples
 --------------------------------
