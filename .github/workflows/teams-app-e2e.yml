@@ -7,7 +7,7 @@ jobs:
     timeout-minutes: 90
     runs-on: ubuntu-latest-m
     env:
-      BASE_URL: https://newauth.dev.fiftyone.ai
+      BASE_URL: https://newauth.rc.fiftyone.ai
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/ms-playwright
     defaults:
       run:
