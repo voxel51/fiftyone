@@ -324,6 +324,7 @@ async def _do_async_query(
     if filter:
         query.insert(0, {"$match": filter})
 
+    fo.pprint(query)
     return [i async for i in collection.aggregate(query)]
 
 
@@ -423,9 +424,6 @@ def _first(
     if floats:
         pipeline.extend(_handle_nonfinites(path, sort))
 
-    if sort:
-        pipeline.append({"$match": {path: {"$ne": None}}})
-
     matched_arrays = _match_arrays(dataset, path, is_frame_field)
     if matched_arrays:
         pipeline += matched_arrays
@@ -437,11 +435,6 @@ def _first(
         pipeline += unwound
         if floats:
             pipeline.extend(_handle_nonfinites(path, sort))
-
-        if sort:
-            pipeline.append({"$match": {path: {"$ne": None}}})
-
-        pipeline.append({"$sort": {path: sort}})
 
     return pipeline + [
         {
