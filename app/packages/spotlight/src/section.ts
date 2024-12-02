@@ -218,7 +218,6 @@ export default class Section<K, V> {
 
   updateItems(updater: (id: ID) => void) {
     for (const row of this.#shown) row.updateItems(updater);
-    for (const row of this.#rows) !this.#shown.has(row);
   }
 
   async first(
