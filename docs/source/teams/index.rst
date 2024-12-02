@@ -108,7 +108,7 @@ pages on this site apply to Teams deployments as well.
     :header: Model Evaluation  __SUB_NEW__
     :description: Evaluate your models and interactively and visually analyze their performance.
     :button_text: Evaluate models
-    :button_link: ../user_guide/evaluation.html
+    :button_link: ../user_guide/app.html#app-model-evaluation-panel
 
 .. customcalloutitem::
     :header: Query Performance  __SUB_NEW__

@@ -1742,8 +1742,8 @@ The Embeddings panel supports the following `state` parameters:
 
 .. _app-model-evaluation-panel:
 
-Model Evaluation panel
-______________________
+Model Evaluation panel __SUB_NEW__
+__________________________________
 
 When you load a dataset in the App that contains one or more
 :ref:`evaluations <evaluating-models>`, you can open the Model Evaluation panel
