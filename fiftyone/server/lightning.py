@@ -140,11 +140,11 @@ async def lightning_resolver(
         for item in sublist
     ]
 
-    filter = (
-        {f"{dataset.group_field}.name": input.slice}
-        if dataset.group_field and input.slice
-        else None
-    )
+    if dataset.group_field and input.slice:
+        filter = {f"{dataset.group_field}.name": input.slice}
+        dataset.group_slice = input.slice
+    else:
+        filter = {}
     result = await _do_async_pooled_queries(dataset, flattened, filter)
 
     results = []
@@ -317,7 +317,7 @@ async def _do_async_query(
     filter: t.Optional[t.Mapping[str, str]],
 ):
     if isinstance(query, DistinctQuery):
-        if query.has_list and not query.filters:
+        if query.has_list:
             return await _do_distinct_query(collection, query, filter)
 
         return await _do_distinct_pipeline(dataset, collection, query, filter)
