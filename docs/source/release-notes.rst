@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Teams 2.2.0
 --------------------
-*Released December 3, 2024*
+*Released December 4, 2024*
 
 Includes all updates from :ref:`FiftyOne 1.1.0 <release-notes-v1.1.0>`, plus:
 
@@ -22,12 +22,15 @@ Includes all updates from :ref:`FiftyOne 1.1.0 <release-notes-v1.1.0>`, plus:
   :ref:`Embeddings panel <app-embeddings-panel>`
 - Added support for evaluating models natively from the
   :ref:`Modal Evaluation panel <app-model-evaluation-panel>`
+- Added support for :ref:`configuring an SMTP server <identity-providers>` for
+  sending user invitiations via email when running in
+  :ref:`Internal Mode <internal-mode>`
 
 .. _release-notes-v1.1.0:
 
 FiftyOne 1.1.0
 --------------
-*Released December 3, 2024*
+*Released December 4, 2024*
 
 What's New
 
@@ -106,6 +109,10 @@ Plugins
   methods for programmatically controlling what sample(s) are displayed in the
   App's sample modal
   `#5168 <https://github.com/voxel51/fiftyone/pull/5168>`_
+- Added a `skip_prompt` option to
+  :meth:`ctx.prompt <fiftyone.operators.executor.ExecutionContext.prompt>`,
+  allowing users to bypass prompts during operation execution
+  `#4992 <https://github.com/voxel51/fiftyone/pull/4992>`_
 - Introduced a new
   :class:`StatusButtonView <fiftyone.operators.types.StatusButtonView>` type
   for rendering buttons with status indicators

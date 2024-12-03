@@ -11,7 +11,7 @@ Query Performance is a builtin feature of the
 :ref:`FiftyOne Teams App <teams-app>` that leverages database indexes to
 optimize your queries on large-scale datasets.
 
-Optimizing query performance
+Optimizing Query Performance
 ____________________________
 
 The App's sidebar is optimized to leverage database indexes whenever possible.
@@ -23,7 +23,7 @@ field/attribute names:
     :alt: app-query-performance
     :align: center
 
-The above GIF shows query performance in action on the train split of the
+The above GIF shows Query Performance in action on the train split of the
 :ref:`BDD100K dataset <dataset-zoo-bdd100k>` with an index on the
 `detections.detections.label` field.
 
@@ -160,18 +160,18 @@ in the actions column of the panel.
 
 .. _query-performance-disable:
 
-Disabling query performance
+Disabling Query Performance
 ___________________________
 
-Query performance is enabled by default for all datasets. This is generally the
+Query Performance is enabled by default for all datasets. This is generally the
 recommended setting for all large datasets to ensure that queries are
 performant.
 
-However, in certain circumstances you may prefer to disable query performance,
+However, in certain circumstances you may prefer to disable Query Performance,
 which enables the App's sidebar to show additional information such as
 label/value counts that are useful but more expensive to compute.
 
-You can enable/disable query performance for a particular dataset for its
+You can enable/disable Query Performance for a particular dataset for its
 lifetime (in your current browser) via the gear icon in the Samples panel's
 actions row:
 
@@ -179,22 +179,22 @@ actions row:
     :alt: app-query-performance-disabled
     :align: center
 
-You can also enable/disable query performance via the status button in the
-upper right corner of the Query performance panel:
+You can also enable/disable Query Performance via the status button in the
+upper right corner of the Query Performance panel:
 
 .. image:: /images/teams/qp_config.png
     :alt: query-performance-config
     :align: center
 
-Deployment admins can also configure the global behavior of the query
-performance feature via the following environment variables:
+Deployment admins can also configure the global behavior of Query Performance
+via the following environment variables:
 
 .. code-block:: shell
 
-    # Disable query performance by default for all new datasets
+    # Disable Query Performance by default for all new datasets
     FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE=false
 
 .. code-block:: shell
 
-    # Completely disable the query performance feature for all users
+    # Completely disable Query Performance for all users
     FIFTYONE_APP_ENABLE_QUERY_PERFORMANCE=false
