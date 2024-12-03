@@ -1132,7 +1132,7 @@ class TestGroupDatasetLightningQueries(unittest.IsolatedAsyncioTestCase):
                 },
                 {
                     "path": "classifications.classifications.label",
-                    "values": ["one"],
+                    "values": ["one", "two"],
                 },
                 {"path": "numeric", "min": 1.0, "max": 1.0},
                 {"path": "string", "values": ["one"]},
@@ -1164,7 +1164,7 @@ class TestGroupDatasetLightningQueries(unittest.IsolatedAsyncioTestCase):
                 },
                 {
                     "path": "classifications.classifications.label",
-                    "values": ["two"],
+                    "values": ["one", "two"],
                 },
                 {"path": "numeric", "min": 2.0, "max": 2.0},
                 {"path": "string", "values": ["two"]},
