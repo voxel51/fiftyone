@@ -7,6 +7,7 @@ import { useRecoilValue } from "recoil";
 import { gridAt, gridOffset, gridPage } from "./recoil";
 
 const MAX_LRU_CACHE_ITEMS = 510;
+const MAX_LRU_CACHE_SIZE = 1e9;
 
 export default function useRefreshers() {
   const cropToContent = useRecoilValue(fos.cropToContent(false));
@@ -87,7 +88,10 @@ export default function useRefreshers() {
       max: MAX_LRU_CACHE_ITEMS,
       maxSize: MAX_LRU_CACHE_SIZE,
       noDisposeOnSet: true,
-      sizeCalculation: (looker) => looker.getSizeBytesEstimate(),
+      sizeCalculation: (looker) => {
+        return looker.getSizeBytesEstimate();
+      },
+      updateAgeOnGet: true,
     });
 
     const loading = new Map<string, fos.Lookers>();
@@ -97,19 +101,25 @@ export default function useRefreshers() {
         loading.delete(key);
         loaded.delete(key);
       },
+      get: (key: string) => loaded.get(key) ?? loading.get(key),
+      keys: function* () {
+        for (const it of loading.keys()) {
+          yield* it;
+        }
+        for (const it of loaded.keys()) {
+          yield* it;
+        }
+      },
       set: (key: string, looker: fos.Lookers) => {
         const onReady = () => {
           loaded.set(key, looker);
           loading.delete(key);
-          looker.removeEventListener("error", onReady);
           looker.removeEventListener("load", onReady);
         };
 
-        looker.addEventListener("error", onReady);
         looker.addEventListener("load", onReady);
         loading.set(key, looker);
       },
-      get: (key: string) => loaded.get(key) ?? loading.get(key),
     };
   }, [reset]);
 

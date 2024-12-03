@@ -193,6 +193,10 @@ export abstract class AbstractLooker<
 
   getSizeBytesEstimate() {
     let size = 1;
+    if (this.state.dimensions) {
+      const [w, h] = this.state.dimensions;
+      size += w * h * 4;
+    }
     for (let index = 0; index < this.sampleOverlays.length; index++) {
       size += this.sampleOverlays[index].getSizeBytes();
     }
@@ -257,6 +261,7 @@ export abstract class AbstractLooker<
   }
 
   private makeUpdate(): StateUpdate<State> {
+    let ready = false;
     return (stateOrUpdater, postUpdate) => {
       try {
         const updates =
@@ -304,6 +309,11 @@ export abstract class AbstractLooker<
         if (this.state.destroyed && this.sampleOverlays) {
           // close all current overlays
           this.pluckedOverlays.forEach((overlay) => overlay.cleanup?.());
+        }
+
+        if (!ready && this.state.dimensions && this.state.overlaysPrepared) {
+          ready = true;
+          this.dispatchEvent("load", undefined);
         }
 
         if (
