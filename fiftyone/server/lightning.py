@@ -9,6 +9,7 @@ FiftyOne Server lightning queries
 from bson import ObjectId
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
+import math
 import typing as t
 
 import asyncio
@@ -126,7 +127,7 @@ async def lightning_resolver(
     input: LightningInput, info: Info
 ) -> t.List[LightningResults]:
     dataset: fo.Dataset = fo.load_dataset(input.dataset)
-    collections, queries, resolvers = zip(
+    collections, queries, resolvers, is_frames = zip(
         *[
             _resolve_lightning_path_queries(path, dataset, info)
             for path in input.paths
@@ -134,16 +135,18 @@ async def lightning_resolver(
     )
     counts = [len(a) for a in queries]
     flattened = [
-        (collection, item)
-        for collection, sublist in zip(collections, queries)
+        (collection, item, is_frames)
+        for collection, sublist, is_frames in zip(
+            collections, queries, is_frames
+        )
         for item in sublist
     ]
 
-    filter = (
-        {f"{dataset.group_field}.name": input.slice}
-        if dataset.group_field and input.slice
-        else None
-    )
+    if dataset.group_field and input.slice:
+        filter = {f"{dataset.group_field}.name": input.slice}
+        dataset.group_slice = input.slice
+    else:
+        filter = {}
     result = await _do_async_pooled_queries(dataset, flattened, filter)
 
     results = []
@@ -210,7 +213,7 @@ def _resolve_lightning_path_queries(
                 true=bool(true),
             )
 
-        return collection, queries, _resolve_bool
+        return collection, queries, _resolve_bool, is_frame_field
 
     if meets_type(field, (fof.DateField, fof.DateTimeField, fof.IntField)):
         queries = [
@@ -228,7 +231,7 @@ def _resolve_lightning_path_queries(
                 none=bool(none),
             )
 
-        return collection, queries, _resolve_int
+        return collection, queries, _resolve_int, is_frame_field
 
     if meets_type(field, fof.FloatField):
         queries = [
@@ -257,7 +260,7 @@ def _resolve_lightning_path_queries(
                 none=none,
             )
 
-        return collection, queries, _resolve_float
+        return collection, queries, _resolve_float, is_frame_field
 
     if meets_type(field, fof.ObjectIdField):
 
@@ -273,6 +276,7 @@ def _resolve_lightning_path_queries(
             collection,
             [DistinctQuery(**d)],
             _resolve_object_id,
+            is_frame_field,
         )
 
     if meets_type(field, fof.StringField):
@@ -289,6 +293,7 @@ def _resolve_lightning_path_queries(
             collection,
             [DistinctQuery(**d)],
             _resolve_string,
+            is_frame_field,
         )
 
     raise ValueError(f"cannot resolve {path.path}: {field} is not supported")
@@ -297,14 +302,20 @@ def _resolve_lightning_path_queries(
 async def _do_async_pooled_queries(
     dataset: fo.Dataset,
     queries: t.List[
-        t.Tuple[AsyncIOMotorCollection, t.Union[DistinctQuery, t.List[t.Dict]]]
+        t.Tuple[
+            AsyncIOMotorCollection,
+            t.Union[DistinctQuery, t.List[t.Dict]],
+            bool,
+        ]
     ],
     filter: t.Optional[t.Mapping[str, str]],
 ):
     return await asyncio.gather(
         *[
-            _do_async_query(dataset, collection, query, filter)
-            for collection, query in queries
+            _do_async_query(
+                dataset, collection, query, None if is_frames else filter
+            )
+            for collection, query, is_frames in queries
         ]
     )
 
@@ -316,13 +327,15 @@ async def _do_async_query(
     filter: t.Optional[t.Mapping[str, str]],
 ):
     if isinstance(query, DistinctQuery):
-        if query.has_list and not query.filters:
+        if query.has_list:
             return await _do_distinct_query(collection, query, filter)
 
         return await _do_distinct_pipeline(dataset, collection, query, filter)
 
     if filter:
-        query.insert(0, {"$match": filter})
+        for k, v in filter.items():
+            query.insert(0, {"$match": {k: v}})
+            query.insert(0, {"$sort": {k: 1}})
 
     return [i async for i in collection.aggregate(query)]
 
@@ -420,28 +433,18 @@ def _first(
 ):
     pipeline = [{"$sort": {path: sort}}]
 
-    if floats:
-        pipeline.extend(_handle_nonfinites(path, sort))
-
-    if sort:
-        pipeline.append({"$match": {path: {"$ne": None}}})
-
     matched_arrays = _match_arrays(dataset, path, is_frame_field)
     if matched_arrays:
         pipeline += matched_arrays
+    elif floats:
+        pipeline.extend(_handle_nonfinites(path, sort))
 
-    pipeline.append({"$limit": 1})
-
+    pipeline.extend([{"$match": {path: {"$exists": True}}}, {"$limit": 1}])
     unwound = _unwind(dataset, path, is_frame_field)
     if unwound:
         pipeline += unwound
         if floats:
             pipeline.extend(_handle_nonfinites(path, sort))
-
-        if sort:
-            pipeline.append({"$match": {path: {"$ne": None}}})
-
-        pipeline.append({"$sort": {path: sort}})
 
     return pipeline + [
         {
@@ -513,8 +516,13 @@ def _match_arrays(dataset: fo.Dataset, path: str, is_frame_field: bool):
 def _parse_result(data):
     if data and data[0]:
         value = data[0]
-        if value.get("value", None) is not None:
-            return value["value"]
+        if "value" in value:
+            value = value["value"]
+            return (
+                value
+                if not isinstance(value, float) or math.isfinite(value)
+                else None
+            )
 
         return value.get("_id", None)
 
