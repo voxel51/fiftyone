@@ -127,7 +127,7 @@ async def lightning_resolver(
     input: LightningInput, info: Info
 ) -> t.List[LightningResults]:
     dataset: fo.Dataset = fo.load_dataset(input.dataset)
-    collections, queries, resolvers = zip(
+    collections, queries, resolvers, is_frames = zip(
         *[
             _resolve_lightning_path_queries(path, dataset, info)
             for path in input.paths
@@ -135,8 +135,10 @@ async def lightning_resolver(
     )
     counts = [len(a) for a in queries]
     flattened = [
-        (collection, item)
-        for collection, sublist in zip(collections, queries)
+        (collection, item, is_frames)
+        for collection, sublist, is_frames in zip(
+            collections, queries, is_frames
+        )
         for item in sublist
     ]
 
@@ -211,7 +213,7 @@ def _resolve_lightning_path_queries(
                 true=bool(true),
             )
 
-        return collection, queries, _resolve_bool
+        return collection, queries, _resolve_bool, is_frame_field
 
     if meets_type(field, (fof.DateField, fof.DateTimeField, fof.IntField)):
         queries = [
@@ -229,7 +231,7 @@ def _resolve_lightning_path_queries(
                 none=bool(none),
             )
 
-        return collection, queries, _resolve_int
+        return collection, queries, _resolve_int, is_frame_field
 
     if meets_type(field, fof.FloatField):
         queries = [
@@ -258,7 +260,7 @@ def _resolve_lightning_path_queries(
                 none=none,
             )
 
-        return collection, queries, _resolve_float
+        return collection, queries, _resolve_float, is_frame_field
 
     if meets_type(field, fof.ObjectIdField):
 
@@ -274,6 +276,7 @@ def _resolve_lightning_path_queries(
             collection,
             [DistinctQuery(**d)],
             _resolve_object_id,
+            is_frame_field,
         )
 
     if meets_type(field, fof.StringField):
@@ -290,6 +293,7 @@ def _resolve_lightning_path_queries(
             collection,
             [DistinctQuery(**d)],
             _resolve_string,
+            is_frame_field,
         )
 
     raise ValueError(f"cannot resolve {path.path}: {field} is not supported")
@@ -298,14 +302,20 @@ def _resolve_lightning_path_queries(
 async def _do_async_pooled_queries(
     dataset: fo.Dataset,
     queries: t.List[
-        t.Tuple[AsyncIOMotorCollection, t.Union[DistinctQuery, t.List[t.Dict]]]
+        t.Tuple[
+            AsyncIOMotorCollection,
+            t.Union[DistinctQuery, t.List[t.Dict]],
+            bool,
+        ]
     ],
     filter: t.Optional[t.Mapping[str, str]],
 ):
     return await asyncio.gather(
         *[
-            _do_async_query(dataset, collection, query, filter)
-            for collection, query in queries
+            _do_async_query(
+                dataset, collection, query, None if is_frames else filter
+            )
+            for collection, query, is_frames in queries
         ]
     )
 
