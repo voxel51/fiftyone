@@ -73,7 +73,11 @@ class DatasourceConnectorOperator(foo.Operator):
             )
 
             if operator_result.is_generator:
-                operator_result = next(operator_result.result)
+                # The generator we receive may already be exhausted
+                try:
+                    operator_result = next(operator_result.result)
+                except StopIteration:
+                    operator_result = DataLensSearchResponse()
             else:
                 operator_result = operator_result.result
 
