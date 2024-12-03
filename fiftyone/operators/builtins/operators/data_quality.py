@@ -1,25 +1,22 @@
-import fiftyone as fo
-import fiftyone.operators as foo
-import fiftyone.operators.types as types
-import numpy as np
-import cv2
+"""
+Data quality operators.
 
+| Copyright 2017-2024, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
+import cv2
+import numpy as np
 from PIL import Image
 
-########## COMMENT below && UNCOMMENT for OSS to WORK ################
+import fiftyone as fo
+import fiftyone.core.patches as fop
+import fiftyone.operators as foo
+import fiftyone.operators.types as types
+import fiftyone.zoo.models as fozm
 
-# from .utils import (
-#     get_filepath,
-#     _convert_opencv_to_pillow,
-#     _convert_pillow_to_opencv,
-#     _crop_pillow_image,
-#     _get_opencv_grayscale_image,
-#     _get_pillow_patch,
-#     _handle_patch_inputs,
-# )
-
-########## COMMENT ^ && UNCOMMENT for TEAMS to WORK ################
-# pylint:disable=import-error,no-name-in-module
+# pylint:disable=no-name-in-module
 from fiftyone.operators.builtins.operators.utils import (
     get_filepath,
     _convert_opencv_to_pillow,
@@ -30,12 +27,13 @@ from fiftyone.operators.builtins.operators.utils import (
     _handle_patch_inputs,
 )
 
-########################## ################ ################ ################
+# pylint:disable=import-error,no-name-in-module
+import fiftyone.brain as fob
 
 
-###
+###############################################################################
 # Operator Setup
-###
+###############################################################################
 
 
 def _handle_inputs(ctx, property_name):
@@ -77,21 +75,9 @@ def _handle_execution(ctx, property_name):
     print(f"Computation done for {property_name}")
 
 
-def _handle_calling(
-    uri, sample_collection, patches_field=None, delegate=False
-):
-    ctx = dict(view=sample_collection.view())
-    params = dict(
-        target="CURRENT_VIEW",
-        patches_field=patches_field,
-        delegate=delegate,
-    )
-    return foo.execute_operator(uri, ctx, params=params)
-
-
-###
+###############################################################################
 # Operators
-###
+###############################################################################
 
 
 class ComputeBrightness(foo.Operator):
@@ -99,10 +85,12 @@ class ComputeBrightness(foo.Operator):
     def config(self):
         return foo.OperatorConfig(
             name="compute_brightness",
-            label="Data Quality Panel Brightness",
-            dynamic=True,
+            label="Compute brightness",
             allow_delegated_execution=True,
-            # default_choice_to_delegated=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=True,
+            dynamic=True,
+            unlisted=True,
         )
 
     def resolve_input(self, ctx):
@@ -111,24 +99,18 @@ class ComputeBrightness(foo.Operator):
     def execute(self, ctx):
         _handle_execution(ctx, "brightness")
 
-    def __call__(self, sample_collection, patches_field=None, delegate=False):
-        return _handle_calling(
-            self.uri,
-            sample_collection,
-            patches_field=patches_field,
-            delegate=delegate,
-        )
-
 
 class ComputeEntropy(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
             name="compute_entropy",
-            label="Data Quality Panel Entropy",
-            dynamic=True,
+            label="Compute entropy",
             allow_delegated_execution=True,
-            # default_choice_to_delegated=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=True,
+            dynamic=True,
+            unlisted=True,
         )
 
     def resolve_input(self, ctx):
@@ -137,24 +119,18 @@ class ComputeEntropy(foo.Operator):
     def execute(self, ctx):
         _handle_execution(ctx, "entropy")
 
-    def __call__(self, sample_collection, patches_field=None, delegate=False):
-        return _handle_calling(
-            self.uri,
-            sample_collection,
-            patches_field=patches_field,
-            delegate=delegate,
-        )
-
 
 class ComputeAspectRatio(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
             name="compute_aspect_ratio",
-            label="Data Quality Panel Aspect Ratio",
-            dynamic=True,
+            label="Compute aspect ratio",
             allow_delegated_execution=True,
-            # default_choice_to_delegated=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=True,
+            dynamic=True,
+            unlisted=True,
         )
 
     def resolve_input(self, ctx):
@@ -163,24 +139,18 @@ class ComputeAspectRatio(foo.Operator):
     def execute(self, ctx):
         _handle_execution(ctx, "aspect_ratio")
 
-    def __call__(self, sample_collection, patches_field=None, delegate=False):
-        return _handle_calling(
-            self.uri,
-            sample_collection,
-            patches_field=patches_field,
-            delegate=delegate,
-        )
-
 
 class ComputeExposure(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
             name="compute_exposure",
-            label="Data Quality Panel Exposure",
-            dynamic=True,
+            label="Compute exposure",
             allow_delegated_execution=True,
-            # default_choice_to_delegated=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=True,
+            dynamic=True,
+            unlisted=True,
         )
 
     def resolve_input(self, ctx):
@@ -189,24 +159,18 @@ class ComputeExposure(foo.Operator):
     def execute(self, ctx):
         _handle_execution(ctx, "exposure")
 
-    def __call__(self, sample_collection, patches_field=None, delegate=False):
-        return _handle_calling(
-            self.uri,
-            sample_collection,
-            patches_field=patches_field,
-            delegate=delegate,
-        )
-
 
 class ComputeBlurriness(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
             name="compute_blurriness",
-            label="Data Quality Panel Blur",
-            dynamic=True,
+            label="Compute blurriness",
             allow_delegated_execution=True,
-            # default_choice_to_delegated=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=True,
+            dynamic=True,
+            unlisted=True,
         )
 
     def resolve_input(self, ctx):
@@ -215,24 +179,81 @@ class ComputeBlurriness(foo.Operator):
     def execute(self, ctx):
         _handle_execution(ctx, "blurriness")
 
-    def __call__(self, sample_collection, patches_field=None, delegate=False):
-        return _handle_calling(
-            self.uri,
-            sample_collection,
-            patches_field=patches_field,
-            delegate=delegate,
-        )
 
-
-class ComputeHash(foo.Operator):
+class ComputeNearDuplicates(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
-            name="compute_hash",
-            label="Data Quality Hashing",
-            dynamic=True,
+            name="compute_near_duplicates",
+            label="Compute near duplicates",
             allow_delegated_execution=True,
-            # default_choice_to_delegated=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=True,
+            dynamic=True,
+            unlisted=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        target_view = get_target_view(ctx, inputs)
+        get_embeddings(ctx, inputs, target_view, None)
+        get_metric(ctx, inputs)
+
+        view = types.View(label="Compute near duplicates")
+        return types.Property(inputs, view=view)
+
+    def execute(self, ctx):
+        target = ctx.params.get("target", None)
+        embeddings = ctx.params.get("embeddings", None) or None
+        model = ctx.params.get("model", None) or None
+        batch_size = 8
+        metric = ctx.params.get("metric", "cosine")
+
+        # No multiprocessing allowed when running synchronously
+        if not ctx.delegated:
+            num_workers = 0
+        else:
+            num_workers = None
+
+        target_view = _get_target_view(ctx, target)
+
+        index = fob.compute_similarity(
+            target_view,
+            brain_key=None,
+            embeddings=embeddings,
+            model=model,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            skip_failures=True,
+            backend="sklearn",
+            metric=metric,
+        )
+
+        nearest_inds, dists = index._kneighbors(k=1, return_dists=True)
+
+        index_ids = index.current_sample_ids
+        nearest_ids = np.array([index_ids[i[0]] for i in nearest_inds])
+        dists = np.array([d[0] for d in dists])
+
+        values = dict(zip(index_ids, dists))
+        ctx.dataset.set_values("nearest_neighbor", values, key_field="id")
+
+        values = dict(zip(index_ids, nearest_ids))
+        ctx.dataset.set_values("nearest_id", values, key_field="id")
+
+
+class ComputeExactDuplicates(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="compute_exact_duplicates",
+            label="Compute exact duplicates",
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=True,
+            dynamic=True,
+            unlisted=True,
         )
 
     def resolve_input(self, ctx):
@@ -241,190 +262,6 @@ class ComputeHash(foo.Operator):
 
     def execute(self, ctx):
         compute_filehashes(ctx.dataset)
-
-        # filehash_counts = Counter(
-        #     sample.filehash for sample in ctx.dataset
-        # )
-        # dup_filehashes = [
-        #     k for k, v in filehash_counts.items() if v > 1
-        # ]
-        # print(ctx.panel_id)
-        # ctx.ops.set_panel_state()
-        # ctx.ops.patch_panel_state({'temp': "dfgdfg"}, panel_id=ctx.panel_id)
-
-        # ctx.panel.state.exact_dup_filehashs = dup_filehashes
-
-
-class DeleteSamples(foo.Operator):
-    @property
-    def config(self):
-        return foo.OperatorConfig(
-            name="delete_samples",
-            label="Delete Quality Issue Samples",
-            dynamic=True,
-            unlisted=True,
-        )
-
-    def resolve_delegation(self, ctx):
-        return ctx.params.get("delegate", False)
-
-    def resolve_input(self, ctx):
-        inputs = types.Object()
-        inputs.md(
-            """Are you sure you want to remove these samples from your dataset?
-                  """
-        )
-        radio_group = types.RadioGroup()
-        radio_group.add_choice(
-            "yes", label="Yes", description="Remove the selected samples"
-        )
-        radio_group.add_choice(
-            "no",
-            label="No",
-            description="Will not remove the selected samples",
-        )
-        inputs.enum("choice", radio_group.values(), view=radio_group)
-
-        # Ask user if they want to make this the default method for handling
-        # this issue
-        radio_group2 = types.RadioGroup()
-        radio_group2.add_choice(
-            "yes",
-            label="Yes",
-            description="Make this the default method for handling this issue",
-        )
-        radio_group2.add_choice(
-            "no",
-            label="No",
-            description="Do not make this the default method for handling this issue",
-        )
-        inputs.enum("save_default", radio_group2.values(), view=radio_group2)
-        inputs.view_target(ctx)
-        return types.Property(inputs)
-
-    def execute(self, ctx):
-        target_view = ctx.target_view()
-        if ctx.params["choice"] == "yes":
-            if ctx.params["save_default"] == "yes":
-                issue_config = ctx.panel.state.issue_config
-                issue_config[ctx.panel.state.issue_type][
-                    "default_method"
-                ] = "delete"
-                ctx.panel.state.issue_config = issue_config
-            ctx.dataset.delete_samples(target_view)
-            ctx.ops.set_view(ctx.dataset.view())
-
-
-class TagSamples(foo.Operator):
-    @property
-    def config(self):
-        return foo.OperatorConfig(
-            name="tag_samples",
-            label="Tag Quality Issue Samples",
-            dynamic=True,
-            unlisted=True,
-        )
-
-    def resolve_delegation(self, ctx):
-        return ctx.params.get("delegate", False)
-
-    def resolve_input(self, ctx):
-        inputs = types.Object()
-        inputs.md(
-            """What names would you like to tag these samples with?
-                  """
-        )
-        # Add text input for tag name
-        inputs.str("tag_name", label="Tag Name", required=True)
-
-        # Ask user if they want to make this the default method for handling
-        # this issue
-        radio_group2 = types.RadioGroup()
-        radio_group2.add_choice(
-            "yes",
-            label="Yes",
-            description="Make this the default method for handling this issue",
-        )
-        radio_group2.add_choice(
-            "no",
-            label="No",
-            description="Do not make this the default method for handling this issue",
-        )
-        inputs.enum("save_default", radio_group2.values(), view=radio_group2)
-
-        inputs.view_target(ctx)
-        return types.Property(inputs)
-
-    def execute(self, ctx):
-        target_view = ctx.target_view()
-        if ctx.params["save_default"] == "yes":
-            issue_config = ctx.panel.state.issue_config
-            issue_config[ctx.panel.state.issue_type]["default_method"] = "tag"
-            ctx.panel.state.issue_config = issue_config
-        target_view.tag_samples(ctx.params["tag_name"])
-
-
-class SaveView(foo.Operator):
-    @property
-    def config(self):
-        return foo.OperatorConfig(
-            name="save_view",
-            label="Data Quality Panel Save View",
-            dynamic=True,
-            unlisted=True,
-        )
-
-    def resolve_delegation(self, ctx):
-        return ctx.params.get("delegate", False)
-
-    def resolve_input(self, ctx):
-        inputs = types.Object()
-        inputs.str(
-            "temp_text",
-            view=types.HeaderView(
-                title="title",
-                label="Create View",
-            ),
-        )
-        inputs.str("view_name", description="Name", view=types.TextFieldView())
-        inputs.str(
-            "description", description="Description", view=types.FieldView()
-        )
-        # TODO: Fix color picker
-        inputs.str("Color", view=types.ColorView())
-
-        # Ask user if they want to make this the default method for handling
-        # this issue
-        radio_group2 = types.RadioGroup()
-        radio_group2.add_choice(
-            "yes",
-            label="Yes",
-            description="Make this the default method for handling this issue",
-        )
-        radio_group2.add_choice(
-            "no",
-            label="No",
-            description="Do not make this the default method for handling this issue",
-        )
-        inputs.enum("save_default", radio_group2.values(), view=radio_group2)
-
-        inputs.view_target(ctx)
-        return types.Property(inputs)
-
-    def execute(self, ctx):
-        target_view = ctx.target_view()
-
-        if ctx.params["save_default"] == "yes":
-            issue_config = ctx.panel.state.issue_config
-            issue_config[ctx.panel.state.issue_type][
-                "default_method"
-            ] = "save_view"
-            ctx.panel.state.issue_config = issue_config
-
-        ctx.dataset.save_view(
-            ctx.params["view_name"], target_view, ctx.params["description"]
-        )
-        ctx.ops.set_view(name=ctx.params["view_name"])
 
 
 def compute_dataset_property(property, dataset, view=None, patches_field=None):
@@ -486,9 +323,9 @@ def prop_compute_function(property, patch_or_sample, args):
             return compute_patch_exposure(**args)
 
 
-###
+###############################################################################
 # Operator Helper Functions
-###
+###############################################################################
 
 
 def dhash(image, hash_size=8):
@@ -547,9 +384,9 @@ def gen_approx_duplicate_groups_view(ctx, index):
     return near_dup_view, approx_dup_groups_view
 
 
-###
+###############################################################################
 # Computation Functions
-###
+###############################################################################
 
 
 def _compute_brightness(pillow_img):
@@ -662,3 +499,156 @@ def compute_patch_blurriness(sample, detection):
     patch = _get_pillow_patch(sample, detection)
     patch = _convert_pillow_to_opencv(patch)
     return _compute_blurriness(patch)
+
+
+###############################################################################
+# Near Duplicates Functions
+###############################################################################
+
+
+def get_target_view(ctx, inputs, allow_selected=True):
+    has_base_view = isinstance(ctx.view, fop.PatchesView)
+    if has_base_view:
+        has_view = ctx.view != ctx.view._base_view
+    else:
+        has_view = ctx.view != ctx.dataset.view()
+    has_selected = allow_selected and bool(ctx.selected)
+    default_target = None
+
+    if has_view or has_selected:
+        target_choices = types.RadioGroup(orientation="horizontal")
+
+        if has_base_view:
+            target_choices.add_choice(
+                "BASE_VIEW",
+                label="Base view",
+                description="Process the base view",
+            )
+        else:
+            target_choices.add_choice(
+                "DATASET",
+                label="Entire dataset",
+                description="Process the entire dataset",
+            )
+
+        if has_view:
+            target_choices.add_choice(
+                "CURRENT_VIEW",
+                label="Current view",
+                description="Process the current view",
+            )
+            default_target = "CURRENT_VIEW"
+
+        if has_selected:
+            target_choices.add_choice(
+                "SELECTED_SAMPLES",
+                label="Selected samples",
+                description="Process only the selected samples",
+            )
+            default_target = "SELECTED_SAMPLES"
+
+        inputs.enum(
+            "target",
+            target_choices.values(),
+            default=default_target,
+            required=True,
+            label="Target view",
+            view=target_choices,
+        )
+
+    target = ctx.params.get("target", default_target)
+
+    return _get_target_view(ctx, target)
+
+
+def _get_target_view(ctx, target):
+    if target == "SELECTED_SAMPLES":
+        return ctx.view.select(ctx.selected)
+
+    if target == "BASE_VIEW":
+        return ctx.view._base_view
+
+    if target == "DATASET":
+        return ctx.dataset
+
+    return ctx.view
+
+
+def get_embeddings(ctx, inputs, view, patches_field):
+    if patches_field is not None:
+        root, _ = view._get_label_field_root(patches_field)
+        field = view.get_field(root, leaf=True)
+        schema = field.get_field_schema(ftype=fo.VectorField)
+        embeddings_fields = set(root + "." + k for k in schema.keys())
+    else:
+        schema = view.get_field_schema(ftype=fo.VectorField)
+        embeddings_fields = set(schema.keys())
+
+    embeddings_choices = types.AutocompleteView()
+    for field_name in sorted(embeddings_fields):
+        embeddings_choices.add_choice(field_name, label=field_name)
+
+    inputs.str(
+        "embeddings",
+        default=None,
+        label="Embeddings",
+        description=(
+            "An optional sample field containing pre-computed embeddings to "
+            "use. Or when a model is provided, an optional field in which to "
+            "store the embeddings"
+        ),
+        view=embeddings_choices,
+    )
+
+    embeddings = ctx.params.get("embeddings", None)
+
+    if embeddings not in embeddings_fields:
+        model_choices = types.AutocompleteView()
+        for name in sorted(_get_zoo_models()):
+            model_choices.add_choice(name, label=name)
+
+        inputs.enum(
+            "model",
+            model_choices.values(),
+            default=None,
+            required=False,
+            label="Model",
+            description=(
+                "An optional name of a model from the "
+                "[FiftyOne Model Zoo](https://docs.voxel51.com/user_guide/model_zoo/models.html) "
+                "to use to generate embeddings"
+            ),
+            view=model_choices,
+        )
+
+
+def _get_zoo_models():
+    if hasattr(fozm, "_list_zoo_models"):
+        manifest = fozm._list_zoo_models()
+    else:
+        # Can remove this code path if we require fiftyone>=1.0.0
+        manifest = fozm._load_zoo_models_manifest()
+
+    # pylint: disable=no-member
+    available_models = set()
+    for model in manifest:
+        if model.has_tag("embeddings"):
+            available_models.add(model.name)
+
+    return available_models
+
+
+def get_metric(ctx, inputs):
+    metric_choices = types.DropdownView()
+    metric_choices.add_choice("cosine", label="cosine")
+    metric_choices.add_choice("euclidean", label="euclidean")
+
+    inputs.enum(
+        "metric",
+        metric_choices.values(),
+        default="cosine",
+        required=True,
+        label="Metric",
+        description="The embedding distance metric to use",
+        view=metric_choices,
+    )

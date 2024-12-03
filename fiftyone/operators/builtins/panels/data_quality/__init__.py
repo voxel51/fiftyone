@@ -1,17 +1,35 @@
+"""
+Data quality panel.
+
+| Copyright 2017-2024, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
 import asyncio
+from collections import Counter
+from datetime import datetime, timedelta
 import math
 import uuid
 
-from datetime import datetime, timedelta
-from collections import Counter
-
 import bson
+import numpy as np
+
 import fiftyone.operators as foo
 from fiftyone.operators import Panel, PanelConfig
 from fiftyone.operators.delegated import DelegatedOperationService
 import fiftyone.operators.types as types
 from fiftyone import ViewField as F
-import numpy as np
+
+# pylint:disable=no-name-in-module
+from fiftyone.operators.builtins.operators.data_quality import (
+    ComputeAspectRatio,
+    ComputeBlurriness,
+    ComputeBrightness,
+    ComputeEntropy,
+    ComputeNearDuplicates,
+    ComputeExactDuplicates,
+)
 
 from .constants import (
     ISSUE_TYPES,
@@ -27,52 +45,13 @@ from .constants import (
     LAST_SCAN,
 )
 
-########## UNCOMMENT for OSS to WORK ###############################
-# from .check_quality_operators import (
-#     ComputeAspectRatio,
-#     ComputeBlurriness,
-#     ComputeBrightness,
-#     ComputeEntropy,
-#     ComputeExposure,
-#     ComputeHash,
-#     DeleteSamples,
-#     SaveView,
-#     TagSamples,
-# )
 
-# OPERATOR_BASE_PATH = "@voxel51/data_quality"
-# BRIGHTNESS_OPERATOR = "@voxel51/data_quality/compute_brightness"
-# BLURRINESS_OPERATOR = "@voxel51/data_quality/compute_blurriness"
-# ASPECT_RATIO_OPERATOR = "@voxel51/data_quality/compute_aspect_ratio"
-# ENTROPY_OPERATOR = "@voxel51/data_quality/compute_entropy"
-# HASH_OPERATOR = "@voxel51/data_quality/compute_hash"
-# NEAR_DUPLICATES_OPERATOR = "@voxel51/brain/compute_similarity"
-
-########## COMMENT ^ && UNCOMMENT for TEAMS to WORK ################
-# pylint:disable=import-error,no-name-in-module
-from fiftyone.operators.builtins.operators.brain import ComputeSimilarity
-
-from fiftyone.operators.builtins.operators.data_quality import (
-    ComputeAspectRatio,
-    ComputeBlurriness,
-    ComputeBrightness,
-    ComputeEntropy,
-    ComputeExposure,
-    ComputeHash,
-    DeleteSamples,
-    SaveView,
-    TagSamples,
-)
-
-OPERATOR_BASE_PATH = "@voxel51/operators"
 BRIGHTNESS_OPERATOR = "@voxel51/operators/compute_brightness"
 BLURRINESS_OPERATOR = "@voxel51/operators/compute_blurriness"
 ASPECT_RATIO_OPERATOR = "@voxel51/operators/compute_aspect_ratio"
 ENTROPY_OPERATOR = "@voxel51/operators/compute_entropy"
-HASH_OPERATOR = "@voxel51/operators/compute_hash"
-NEAR_DUPLICATES_OPERATOR = "@voxel51/operators/compute_similarity"
-
-####################################################################
+NEAR_DUPLICATES_OPERATOR = "@voxel51/operators/compute_near_duplicates"
+EXACT_DUPLICATES_OPERATOR = "@voxel51/operators/compute_exact_duplicates"
 
 ICON_PATH = "troubleshoot"
 NOT_PERMITTED_TEXT = "You do not have sufficient permission."
@@ -82,7 +61,7 @@ operator_mapping = {
     "aspect_ratio": ASPECT_RATIO_OPERATOR,
     "entropy": ENTROPY_OPERATOR,
     "near_duplicates": NEAR_DUPLICATES_OPERATOR,
-    "exact_duplicates": HASH_OPERATOR,
+    "exact_duplicates": EXACT_DUPLICATES_OPERATOR,
 }
 
 
@@ -1111,20 +1090,12 @@ class DataQualityPanel(Panel):
         issue_method(ctx)
 
     def compute_near_duplicates(self, ctx):
-        # keep pop up prompt for near duplicates
-        uniqueness_field = ctx.params.get(
-            "uniqueness_field", "nearest_neighbor"
-        )
-
         ctx.prompt(
             NEAR_DUPLICATES_OPERATOR,
             params={
-                "brain_key": "data_quality_panel_similarity",
-                "backend": "sklearn",
                 "model": "clip-vit-base32-torch",
                 "batch_size": 8,
                 "metric": "cosine",
-                "uniqueness_field": uniqueness_field,
             },
             skip_prompt=False,
             on_success=self._on_complete_compute_near_duplicates,
@@ -1194,56 +1165,19 @@ class DataQualityPanel(Panel):
             content["counts"][field] = sum(
                 len(ids) for ids in filehash_to_ids.values()
             )
-
-        elif field == "near_duplicates":
-            brain_key = ctx.params.get("original_params", {}).get(
-                "brain_key", None
-            )
-
-            if brain_key is None:
-                # fallback load the latest similarity index from brain_key
-                sim_brain_keys = ctx.dataset.list_brain_runs(type="similarity")
-                brain_key = self._get_latest_sim_brain_key(ctx, sim_brain_keys)
-
-            index = ctx.dataset.load_brain_results(brain_key=brain_key)
-
-            nearest_inds, dists = index._kneighbors(k=1, return_dists=True)
-
-            index_ids = index.current_sample_ids
-            nearest_ids = np.array([index_ids[i[0]] for i in nearest_inds])
-            dists = np.array([d[0] for d in dists])
-
-            values = dict(zip(index_ids, dists))
-            ctx.dataset.set_values(
-                FIELD_NAME["near_duplicates"], values, key_field="id"
-            )
-
-            values = dict(zip(index_ids, nearest_ids))
-            ctx.dataset.set_values("nearest_id", values, key_field="id")
-
-            counts, edges, _ = ctx.dataset.histogram_values(
-                FIELD_NAME[field], bins=50
-            )
-            content["results"][field] = {
-                "counts": counts,
-                "edges": edges,
-            }
-
         else:
+            field_name = FIELD_NAME[field]
+
             # issue_results
             counts, edges, _ = ctx.dataset.histogram_values(
-                FIELD_NAME[field], bins=50
+                field_name, bins=50
             )
             content["results"][field] = {
                 "counts": counts,
                 "edges": edges,
             }
 
-        # save threshold issue counts
-        if (
-            field != "exact_duplicates"
-        ):  # counts already calculated above for exact_duplicates
-            field_name = FIELD_NAME[field]
+            # save threshold issue counts
             issue_config = ctx.panel.state.issue_config[field]
             lower_threshold, upper_threshold = self.get_plot_defaults(
                 ctx, field, issue_config["detect_method"]
@@ -1300,25 +1234,6 @@ class DataQualityPanel(Panel):
             self.navigate_to_screen(
                 ctx, issue_type=field, next_screen="analysis"
             )
-
-    def _get_latest_sim_brain_key(self, ctx, sim_brain_keys):
-        latest_key, latest_timestamp = None, datetime.min
-
-        if not sim_brain_keys:
-            return "data_quality_panel_similarity"
-
-        for key in sim_brain_keys:
-            brain_info = ctx.dataset.get_brain_info(key)
-            timestamp = brain_info.timestamp
-
-            # Convert only if `timestamp` is not already a datetime object
-            if isinstance(timestamp, str):
-                timestamp = datetime.fromisoformat(timestamp)
-
-            if timestamp > latest_timestamp:
-                latest_key, latest_timestamp = key, timestamp
-
-        return latest_key
 
     def cancel_compute(self, ctx):
         print(f"cancel_compute:{ctx.params.get('original_params')}")
@@ -1655,9 +1570,6 @@ class DataQualityPanel(Panel):
                     label=button_string,
                     variant="contained",
                     on_click=self.compute_near_duplicates,
-                    params={
-                        "uniqueness_field": "nearest_neighbor",
-                    },
                     disabled=no_access or is_computing,
                     title=(NOT_PERMITTED_TEXT if no_access else ""),
                 )
@@ -2768,32 +2680,12 @@ class DataQualityPanel(Panel):
         )
 
 
-########## UNCOMMENT for OSS to WORK ###############################
-# def register(p):
-#     p.register(DataQualityPanel)
-#     p.register(ComputeBrightness)
-#     p.register(ComputeBlurriness)
-#     p.register(ComputeEntropy)
-#     p.register(ComputeAspectRatio)
-#     p.register(ComputeExposure)
-#     p.register(DeleteSamples)
-#     p.register(TagSamples)
-#     p.register(SaveView)
-#     p.register(ComputeHash)
-
-
-########## COMMENT ^ && UNCOMMENT for TEAMS to WORK ################
 PANELS = [DataQualityPanel(_builtin=True)]
 OPERATORS = [
     ComputeBrightness(_builtin=True),
     ComputeBlurriness(_builtin=True),
     ComputeEntropy(_builtin=True),
     ComputeAspectRatio(_builtin=True),
-    ComputeExposure(_builtin=True),
-    DeleteSamples(_builtin=True),
-    TagSamples(_builtin=True),
-    SaveView(_builtin=True),
-    ComputeHash(_builtin=True),
-    ComputeSimilarity(_builtin=True),
+    ComputeNearDuplicates(_builtin=True),
+    ComputeExactDuplicates(_builtin=True),
 ]
-####################################################################
