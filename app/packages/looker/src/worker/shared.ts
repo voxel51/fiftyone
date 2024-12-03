@@ -1,3 +1,5 @@
+import { HEATMAP } from "@fiftyone/utilities";
+
 /**
  * Map the _id field to id
  */
@@ -7,4 +9,13 @@ export const mapId = (obj) => {
     delete obj._id;
   }
   return obj;
+};
+
+export const getOverlayFieldFromCls = (cls: string) => {
+  switch (cls) {
+    case HEATMAP:
+      return { canonical: "map", disk: "map_path" };
+    default:
+      return { canonical: "mask", disk: "mask_path" };
+  }
 };

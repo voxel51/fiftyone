@@ -2,14 +2,12 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import {
   DENSE_LABELS,
   DETECTION,
   DETECTIONS,
   DYNAMIC_EMBEDDED_DOCUMENT,
   EMBEDDED_DOCUMENT,
-  HEATMAP,
   LABEL_LIST,
   Schema,
   Stage,
@@ -29,11 +27,10 @@ import {
   LabelTagColor,
   Sample,
 } from "../state";
-import { decodeWithCanvas } from "./canvas-decoder";
-import { fetchWithLinearBackoff } from "./decorated-fetch";
 import { DeserializerFactory } from "./deserializer";
+import { decodeOverlayOnDisk } from "./disk-overlay-decoder";
 import { PainterFactory } from "./painter";
-import { mapId } from "./shared";
+import { getOverlayFieldFromCls, mapId } from "./shared";
 import { process3DLabels } from "./threed-label-processor";
 
 interface ResolveColor {
@@ -97,89 +94,15 @@ const painterFactory = PainterFactory(requestColor);
 const ALL_VALID_LABELS = new Set(VALID_LABEL_TYPES);
 
 /**
- * Some label types (example: segmentation, heatmap) can have their overlay data stored on-disk,
- * we want to impute the relevant mask property of these labels from what's stored in the disk
+ * This function processes labels in a recursive manner. It follows the following steps:
+ * 1. Deserialize masks. Accumulate promises.
+ * 2. Await mask path decoding to finish.
+ * 3. Start painting overlays. Accumulate promises.
+ * 4. Await overlay painting to finish.
+ * 5. Start bitmap generation. Accumulate promises.
+ * 6. Await bitmap generation to finish.
+ * 7. Transfer bitmaps and mask targets array buffers back to the main thread.
  */
-const imputeOverlayFromPath = async (
-  field: string,
-  label: Record<string, any>,
-  coloring: Coloring,
-  customizeColorSetting: CustomizeColor[],
-  colorscale: Colorscale,
-  buffers: ArrayBuffer[],
-  sources: { [path: string]: string },
-  cls: string,
-  maskPathDecodingPromises: Promise<void>[] = []
-) => {
-  // handle all list types here
-  if (cls === DETECTIONS) {
-    const promises: Promise<void>[] = [];
-    for (const detection of label.detections) {
-      promises.push(
-        imputeOverlayFromPath(
-          field,
-          detection,
-          coloring,
-          customizeColorSetting,
-          colorscale,
-          buffers,
-          {},
-          DETECTION
-        )
-      );
-    }
-    maskPathDecodingPromises.push(...promises);
-  }
-
-  // overlay path is in `map_path` property for heatmap, or else, it's in `mask_path` property (for segmentation or detection)
-  const overlayPathField = cls === HEATMAP ? "map_path" : "mask_path";
-  const overlayField = overlayPathField === "map_path" ? "map" : "mask";
-
-  if (
-    Object.hasOwn(label, overlayField) ||
-    !Object.hasOwn(label, overlayPathField)
-  ) {
-    // nothing to be done
-    return;
-  }
-
-  // convert absolute file path to a URL that we can "fetch" from
-  const overlayImageUrl = getSampleSrc(
-    sources[`${field}.${overlayPathField}`] || label[overlayPathField]
-  );
-  const urlTokens = overlayImageUrl.split("?");
-
-  let baseUrl = overlayImageUrl;
-
-  // remove query params if not local URL
-  if (!urlTokens.at(1)?.startsWith("filepath=")) {
-    baseUrl = overlayImageUrl.split("?")[0];
-  }
-
-  let overlayImageBlob: Blob;
-  try {
-    const overlayImageFetchResponse = await fetchWithLinearBackoff(baseUrl);
-    overlayImageBlob = await overlayImageFetchResponse.blob();
-  } catch (e) {
-    console.error(e);
-    // skip decoding if fetch fails altogether
-    return;
-  }
-
-  const overlayMask = await decodeWithCanvas(overlayImageBlob);
-  const [overlayHeight, overlayWidth] = overlayMask.shape;
-
-  // set the `mask` property for this label
-  label[overlayField] = {
-    data: overlayMask,
-    image: new ArrayBuffer(overlayWidth * overlayHeight * 4),
-  };
-
-  // transfer buffers
-  buffers.push(overlayMask.buffer);
-  buffers.push(label[overlayField].image);
-};
-
 const processLabels = async (
   sample: ProcessSample["sample"],
   coloring: ProcessSample["coloring"],
@@ -190,19 +113,23 @@ const processLabels = async (
   labelTagColors: ProcessSample["labelTagColors"],
   selectedLabelTags: ProcessSample["selectedLabelTags"],
   schema: Schema
-): Promise<ArrayBuffer[]> => {
-  const buffers: ArrayBuffer[] = [];
-  const painterPromises = [];
+): Promise<[Promise<ImageBitmap[]>[], ArrayBuffer[]]> => {
+  const maskPathDecodingPromises: Promise<void>[] = [];
+  const painterPromises: Promise<void>[] = [];
+  const bitmapPromises: Promise<ImageBitmap[]>[] = [];
+  const maskTargetsBuffers: ArrayBuffer[] = [];
 
-  const maskPathDecodingPromises = [];
-
-  // mask deserialization / mask_path decoding loop
+  // mask deserialization / on-disk overlay decoding loop
   for (const field in sample) {
     let labels = sample[field];
     if (!Array.isArray(labels)) {
       labels = [labels];
     }
     const cls = getCls(`${prefix ? prefix : ""}${field}`, schema);
+
+    if (!cls) {
+      continue;
+    }
 
     for (const label of labels) {
       if (!label) {
@@ -211,37 +138,39 @@ const processLabels = async (
 
       if (DENSE_LABELS.has(cls)) {
         maskPathDecodingPromises.push(
-          imputeOverlayFromPath(
+          decodeOverlayOnDisk(
             `${prefix || ""}${field}`,
             label,
             coloring,
             customizeColorSetting,
             colorscale,
-            buffers,
             sources,
             cls,
-            maskPathDecodingPromises
+            maskPathDecodingPromises,
+            maskTargetsBuffers
           )
         );
       }
 
       if (cls in DeserializerFactory) {
-        DeserializerFactory[cls](label, buffers);
+        DeserializerFactory[cls](label, maskTargetsBuffers);
       }
 
       if ([EMBEDDED_DOCUMENT, DYNAMIC_EMBEDDED_DOCUMENT].includes(cls)) {
-        const moreBuffers = await processLabels(
-          label,
-          coloring,
-          `${prefix ? prefix : ""}${field}.`,
-          sources,
-          customizeColorSetting,
-          colorscale,
-          labelTagColors,
-          selectedLabelTags,
-          schema
-        );
-        buffers.push(...moreBuffers);
+        const [moreBitmapPromises, moreMaskTargetsBuffers] =
+          await processLabels(
+            label,
+            coloring,
+            `${prefix ? prefix : ""}${field}.`,
+            sources,
+            customizeColorSetting,
+            colorscale,
+            labelTagColors,
+            selectedLabelTags,
+            schema
+          );
+        bitmapPromises.push(...moreBitmapPromises);
+        maskTargetsBuffers.push(...moreMaskTargetsBuffers);
       }
 
       if (ALL_VALID_LABELS.has(cls)) {
@@ -261,10 +190,16 @@ const processLabels = async (
   // overlay painting loop
   for (const field in sample) {
     let labels = sample[field];
+
     if (!Array.isArray(labels)) {
       labels = [labels];
     }
+
     const cls = getCls(`${prefix ? prefix : ""}${field}`, schema);
+
+    if (!cls) {
+      continue;
+    }
 
     for (const label of labels) {
       if (!label) {
@@ -286,7 +221,72 @@ const processLabels = async (
     }
   }
 
-  return Promise.all(painterPromises).then(() => buffers);
+  await Promise.allSettled(painterPromises);
+
+  // bitmap generation loop
+  for (const field in sample) {
+    let labels = sample[field];
+
+    if (!Array.isArray(labels)) {
+      labels = [labels];
+    }
+
+    const cls = getCls(`${prefix ? prefix : ""}${field}`, schema);
+
+    if (!cls) {
+      continue;
+    }
+
+    for (const label of labels) {
+      if (!label) {
+        continue;
+      }
+
+      collectBitmapPromises(label, cls, bitmapPromises);
+    }
+  }
+
+  return [bitmapPromises, maskTargetsBuffers];
+};
+
+const collectBitmapPromises = (label, cls, bitmapPromises) => {
+  if (cls === DETECTIONS) {
+    label?.detections?.forEach((detection) =>
+      collectBitmapPromises(detection, DETECTION, bitmapPromises)
+    );
+    return;
+  }
+
+  const overlayFields = getOverlayFieldFromCls(cls);
+  const overlayField = overlayFields.canonical;
+
+  if (label[overlayField]) {
+    const [height, width] = label[overlayField].data.shape;
+
+    if (!height || !width) {
+      label[overlayField].image = null;
+      return;
+    }
+
+    const imageData = new ImageData(
+      new Uint8ClampedArray(label[overlayField].image),
+      width,
+      height
+    );
+
+    // set raw image to null - will be garbage collected
+    // we don't need it anymore since we copied to ImageData
+    label[overlayField].image = null;
+
+    bitmapPromises.push(
+      new Promise((resolve) => {
+        createImageBitmap(imageData).then((imageBitmap) => {
+          label[overlayField].bitmap = imageBitmap;
+          resolve(imageBitmap);
+        });
+      })
+    );
+  }
 };
 
 /** GLOBALS */
@@ -316,7 +316,7 @@ export interface ProcessSample {
 
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
-const processSample = ({
+const processSample = async ({
   sample,
   uuid,
   coloring,
@@ -329,48 +329,68 @@ const processSample = ({
 }: ProcessSample) => {
   mapId(sample);
 
-  let bufferPromises = [];
+  const imageBitmapPromises: Promise<ImageBitmap[]>[] = [];
+  let maskTargetsBuffers: ArrayBuffer[] = [];
 
   if (sample?._media_type === "point-cloud" || sample?._media_type === "3d") {
     process3DLabels(schema, sample);
   } else {
-    bufferPromises = [
-      processLabels(
-        sample,
-        coloring,
-        null,
-        sources,
-        customizeColorSetting,
-        colorscale,
-        labelTagColors,
-        selectedLabelTags,
-        schema
-      ),
-    ];
+    const [bitmapPromises, moreMaskTargetsBuffers] = await processLabels(
+      sample,
+      coloring,
+      null,
+      sources,
+      customizeColorSetting,
+      colorscale,
+      labelTagColors,
+      selectedLabelTags,
+      schema
+    );
+
+    if (bitmapPromises.length !== 0) {
+      imageBitmapPromises.push(...bitmapPromises);
+    }
+
+    if (moreMaskTargetsBuffers.length !== 0) {
+      maskTargetsBuffers.push(...moreMaskTargetsBuffers);
+    }
   }
 
-  if (sample.frames && sample.frames.length) {
-    bufferPromises = [
-      ...bufferPromises,
-      ...sample.frames
-        .map((frame) =>
-          processLabels(
-            frame,
-            coloring,
-            "frames.",
-            sources,
-            customizeColorSetting,
-            colorscale,
-            labelTagColors,
-            selectedLabelTags,
-            schema
-          )
+  // this usually only applies to thumbnail frame
+  // other frames are processed in the stream (see `getSendChunk`)
+  if (sample.frames?.length) {
+    const allFramePromises: ReturnType<typeof processLabels>[] = [];
+    for (const frame of sample.frames) {
+      allFramePromises.push(
+        processLabels(
+          frame,
+          coloring,
+          "frames.",
+          sources,
+          customizeColorSetting,
+          colorscale,
+          labelTagColors,
+          selectedLabelTags,
+          schema
         )
-        .flat(),
-    ];
+      );
+    }
+    const framePromisesResolved = await Promise.all(allFramePromises);
+    for (const [bitmapPromises, buffers] of framePromisesResolved) {
+      if (bitmapPromises.length !== 0) {
+        imageBitmapPromises.push(...bitmapPromises);
+      }
+
+      if (buffers.length !== 0) {
+        maskTargetsBuffers.push(...buffers);
+      }
+    }
   }
 
-  Promise.all(bufferPromises).then((buffers) => {
+  Promise.all(imageBitmapPromises).then((bitmaps) => {
+    const flatBitmaps = bitmaps.flat() ?? [];
+    const flatMaskTargetsBuffers = maskTargetsBuffers.flat() ?? [];
+    const transferables = [...flatBitmaps, ...flatMaskTargetsBuffers];
     postMessage(
       {
         method: "processSample",
@@ -383,7 +403,7 @@ const processSample = ({
         selectedLabelTags,
       },
       // @ts-ignore
-      buffers.flat()
+      transferables
     );
   });
 };
@@ -503,9 +523,9 @@ const createReader = ({
 
 const getSendChunk =
   (uuid: string) =>
-  ({ value }: { done: boolean; value?: FrameChunkResponse }) => {
+  async ({ value }: { done: boolean; value?: FrameChunkResponse }) => {
     if (value) {
-      Promise.all(
+      const allLabelsPromiseResults = await Promise.allSettled(
         value.frames.map((frame) =>
           processLabels(
             frame,
@@ -519,18 +539,35 @@ const getSendChunk =
             value.schema
           )
         )
-      ).then((buffers) => {
-        postMessage(
-          {
-            method: "frameChunk",
-            frames: value.frames,
-            range: value.range,
-            uuid,
-          },
-          // @ts-ignore
-          buffers.flat()
-        );
-      });
+      );
+
+      const allLabelsResults = allLabelsPromiseResults
+        .filter((result) => result.status === "fulfilled")
+        .map((result) => result.value);
+
+      const allBuffers = allLabelsResults.map((result) => result[1]).flat();
+
+      const allBitmapsPromises = allLabelsResults
+        .map((result) => result[0])
+        .flat();
+
+      const bitmapPromiseResults = (
+        await Promise.allSettled(allBitmapsPromises)
+      )
+        .map((result) => (result.status === "fulfilled" ? result.value : []))
+        .flat();
+
+      const transferables = [...bitmapPromiseResults, ...allBuffers];
+      postMessage(
+        {
+          method: "frameChunk",
+          frames: value.frames,
+          range: value.range,
+          uuid,
+        },
+        // @ts-ignore
+        transferables
+      );
     }
   };
 
