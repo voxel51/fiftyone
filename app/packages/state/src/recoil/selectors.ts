@@ -142,6 +142,15 @@ export const datasetAppConfig = graphQLSyncFragmentAtom<
   }
 );
 
+export const defaultVisibilityLabels =
+  selector<State.DefaultVisibilityLabelsConfig>({
+    key: "defaultVisibilityLabels",
+    get: ({ get }) => {
+      return get(datasetAppConfig)
+        .defaultVisibilityLabels as State.DefaultVisibilityLabelsConfig | null;
+    },
+  });
+
 export const disableFrameFiltering = selector<boolean>({
   key: "disableFrameFiltering",
   get: ({ get }) => {
