@@ -83,13 +83,35 @@ export default function useRefreshers() {
     reset;
     /** LOOKER STORE REFRESHER */
 
-    return new LRUCache<string, fos.Lookers>({
-      dispose: (looker) => {
-        looker.destroy();
-      },
+    const loaded = new LRUCache<string, fos.Lookers>({
+      dispose: (looker) => looker.destroy(),
       max: MAX_LRU_CACHE_ITEMS,
+      maxSize: MAX_LRU_CACHE_SIZE,
       noDisposeOnSet: true,
+      sizeCalculation: (looker) => looker.getSizeBytesEstimate(),
     });
+
+    const loading = new Map<string, fos.Lookers>();
+
+    return {
+      delete: (key: string) => {
+        loading.delete(key);
+        loaded.delete(key);
+      },
+      set: (key: string, looker: fos.Lookers) => {
+        const onReady = () => {
+          loaded.set(key, looker);
+          loading.delete(key);
+          looker.removeEventListener("error", onReady);
+          looker.removeEventListener("load", onReady);
+        };
+
+        looker.addEventListener("error", onReady);
+        looker.addEventListener("load", onReady);
+        loading.set(key, looker);
+      },
+      get: (key: string) => loaded.get(key) ?? loading.get(key),
+    };
   }, [reset]);
 
   return {

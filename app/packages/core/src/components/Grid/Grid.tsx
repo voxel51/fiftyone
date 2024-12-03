@@ -71,7 +71,8 @@ function Grid() {
       rowAspectRatioThreshold: threshold,
       get: (next) => page(next),
       render: (id, element, dimensions, soft, hide) => {
-        if (lookerStore.has(id.description)) {
+        const cached = lookerStore.get(id.description);
+        if (cached) {
           const looker = lookerStore.get(id.description);
           hide ? looker?.disable() : looker?.attach(element, dimensions);
 
