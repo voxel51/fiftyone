@@ -158,6 +158,7 @@ class DataQualityPanel(Panel):
         ctx.panel.state.alert = ""
         ctx.panel.state.tags = []
         ctx.panel.state.first_open = False
+        ctx.panel.state.dataset_name = ctx.dataset.name
 
         # load store
         store = self.get_store(ctx)
@@ -301,11 +302,14 @@ class DataQualityPanel(Panel):
 
     def on_unload(self, ctx):
         """Clear the view & performs state saving after closing panel"""
+        ctx.log(f"on_unload:called for {ctx.dataset.name}")
 
         store = self.get_store(ctx)
         key = self._get_store_key(ctx)
         content = store.get(key)
-        if content is not None:  # set store on panel close
+        if (
+            content is not None and ctx.panel.state.computing is not None
+        ):  # set store on panel close
             content["computing"] = ctx.panel.state.computing
 
             store.set(key, content)
@@ -361,13 +365,7 @@ class DataQualityPanel(Panel):
             self.change_view(ctx, ctx.params.get("issue_type", issue_type))
 
             if ctx.panel.state.computing and issue_type:
-                if (
-                    ctx.panel.state.computing.get(issue_type, {}).get(
-                        "delegation_run_id", ""
-                    )
-                    == "completed"
-                ):
-                    self.change_computing_status(ctx, issue_type)
+                self.change_computing_status(ctx, issue_type)
             else:
                 print(
                     f"navigate_to_screen:no computing or issue_type:{issue_type} found"
@@ -858,10 +856,11 @@ class DataQualityPanel(Panel):
         else:
             return content.get("status", {}).get(issue_type, STATUS[0])
 
-    def _change_issue_status(self, ctx, new_status=None):
+    def _change_issue_status(self, ctx, issue_type=None, new_status=None):
         """Change the status of the issue type"""
 
-        issue_type = ctx.panel.state.issue_type
+        if issue_type is None:
+            issue_type = ctx.panel.state.issue_type
         if new_status is not None:
             status = new_status
         else:
@@ -981,6 +980,12 @@ class DataQualityPanel(Panel):
             else:
                 ctx.panel.state.new_samples[issue_type] = [0, True, False]
                 print(f"no new samples without field: {field_name}")
+
+            # edge case all samples have had their respective sample field deleted
+            if len(new_samples_view) == ctx.dataset.count():
+                self._change_issue_status(
+                    ctx, issue_type=issue_type, new_status=STATUS[0]
+                )
         else:
             print(
                 f"sample check already run, dataset not modified since last saved timestamp"
@@ -1340,19 +1345,32 @@ class DataQualityPanel(Panel):
         else:
             print("cancel_compute:no issue type found")
 
+    def has_store(self, ctx):
+        store = self.get_store(ctx)
+        key = self._get_store_key(ctx)
+        return True if store.get(key) else False
+
     def check_computing_status(self, ctx):
         print(f"check_computing_status called {ctx.params}")
         issue_type = ctx.params.get("issue_type", None)
         run_id = ctx.params.get("run_id")
 
+        if issue_type is None:
+            raise Exception(
+                f"check_computing_status issue_type must be valid - got {issue_type}"
+            )
+
         store = self.get_store(ctx)
         key = self._get_store_key(ctx)
         content = store.get(key)
 
-        if (
-            content["computing"][issue_type]["execution_type"]
-            != "delegate_execution"
-        ):
+        exec_type = (
+            content.get("computing", {})
+            .get(issue_type, {})
+            .get("execution_type")
+        )
+
+        if exec_type != "delegate_execution":
             last_scan_timestamp = content["last_scan"][issue_type].get(
                 "timestamp", None
             )
@@ -1367,6 +1385,8 @@ class DataQualityPanel(Panel):
                 self.change_computing_status(
                     ctx, issue_type, is_computing=False
                 )  # timeout immediate execution beyond 10 minutes
+
+            return
 
         # grab delegation status from run_id
         dos = DelegatedOperationService()
@@ -1414,8 +1434,9 @@ class DataQualityPanel(Panel):
                     )
             return
 
-        if delegated_state is not None and issue_type is not None:
-            # save latest delegation status
+        if delegated_state == "completed":
+            print(f"check_delegation_status:completed:{issue_type}")
+
             self.change_computing_status(
                 ctx,
                 issue_type,
@@ -1423,23 +1444,31 @@ class DataQualityPanel(Panel):
                 execution_type="delegate_execution",
                 delegation_run_id=str(run_id),
                 delegation_status=delegated_state.lower(),
+                issue_status=STATUS[2],  # in review
             )
 
-            if delegated_state == "completed":
-                print(f"check_delegation_status:completed:{issue_type}")
+            self._process_issue_computation(
+                ctx, issue_type, recompute=True
+            )  # compute histogram
 
-                self._process_issue_computation(
-                    ctx, issue_type, recompute=True
-                )  # compute histogram
-
-                if (
-                    issue_type == issue_type
-                    and ctx.panel.state.screen == "pre_load_compute"
-                ):  # if still in panel on same screen to analysis
-                    self.navigate_to_screen(
-                        ctx, issue_type=issue_type, next_screen="analysis"
-                    )
-        else:
+            if (
+                ctx.panel.state.issue_type is not None
+                and ctx.panel.state.issue_type == issue_type
+                and ctx.panel.state.screen == "pre_load_compute"
+            ):  # if still in panel on same screen to analysis
+                self.navigate_to_screen(
+                    ctx, issue_type=issue_type, next_screen="analysis"
+                )
+        else:  # not failed nor completed (running, queued, etc)
+            if delegated_state is not None:
+                self.change_computing_status(
+                    ctx,
+                    issue_type,
+                    is_computing=True,
+                    execution_type="delegate_execution",
+                    delegation_run_id=str(run_id),
+                    delegation_status=delegated_state.lower(),
+                )
             print(
                 f"check_delegation_status:delegated_state={delegated_state} | issue_type={issue_type}"
             )
@@ -1467,7 +1496,12 @@ class DataQualityPanel(Panel):
             in ctx.dataset.get_field_schema()
             and ctx.panel.state.new_samples[issue_type][0] == 0
         )
-        new_sample_exist = ctx.panel.state.new_samples[issue_type][0] > 0
+        # new samples exist + all samples are explicitly not missing the sample field
+        new_sample_exist = (
+            ctx.panel.state.new_samples[issue_type][0] > 0
+            and not ctx.dataset.count()
+            == ctx.panel.state.new_samples[issue_type][0]
+        )
         is_computing = (
             ctx.panel.state.computing
             and ctx.panel.state.computing[issue_type]["is_computing"]
@@ -1689,12 +1723,39 @@ class DataQualityPanel(Panel):
                         "padding": "12px",
                         "border": "1px solid grey",
                         "borderRadius": "10px",
+                        "display": "flex",
+                        "flexDirection": "row",
+                        "& > :first-of-type": {
+                            "width": "100%",
+                            "& > :last-child": {
+                                "& > :first-of-type": {
+                                    "flex": "stretch",
+                                },
+                                "& > :last-child": {
+                                    "flex": "1",
+                                    "minWidth": "100px",
+                                },
+                            },
+                        },
                     }
                 ),
+                componentsProps={
+                    "grid": {
+                        "sx": {
+                            "display": "flex",
+                            "flexDirection": "row",
+                            "justifyContent": "space-between",
+                            "alignItems": "center",
+                        }
+                    },
+                },
             )
-            left_computing_card = main_computing_card.v_stack(
-                "left_computing_card"
+
+            left_container = main_computing_card.h_stack(
+                "compute_card_container"
             )
+
+            left_computing_card = left_container.v_stack("left_computing_card")
             branded_vertical_divider = types.ImageView(
                 alt="Divider",
                 height="60px",
@@ -1707,7 +1768,7 @@ class DataQualityPanel(Panel):
                 view=branded_vertical_divider,
                 default=IMAGES["vertical_line"],
             )
-            right_computing_card = main_computing_card.v_stack(
+            right_computing_card = left_container.v_stack(
                 "right_computing_card"
             )
             right_sub_computing_card_top = right_computing_card.h_stack(
@@ -1721,8 +1782,10 @@ class DataQualityPanel(Panel):
                 and ctx.panel.state.computing[issue_type]["execution_type"]
                 == "delegate_execution"
             ):
-                computing_card_title_text = "Scheduled scan"
-                computing_card_helper_text = "This execution is scheduled in your orchestrator queue. Monitor its status within your"
+                computing_card_title_text = "Scan Scheduled"
+                computing_card_helper_text = (
+                    "Scheduled data quality scan on this dataset."
+                )
             else:
                 computing_card_title_text = "Execution in progress"
                 computing_card_helper_text = "This may take a few minutes. Keep this panel open to monitor progress."
@@ -1763,20 +1826,15 @@ class DataQualityPanel(Panel):
                 and ctx.panel.state.computing[issue_type]["execution_type"]
                 == "delegate_execution"
             ):
-                computing_card_text_runs_link = types.LinkView(
-                    label="Runs",
-                    href=f"/datasets/{ctx.dataset.slug}/runs/{ctx.panel.state.computing[ctx.panel.state.issue_type]['delegation_run_id']}",
-                    componentsProps={
-                        "link": {
-                            "sx": {
-                                "color": "#FFC399",
-                            }
-                        }
-                    },
+                computing_card_runs_button = types.ButtonView(
+                    label="View Status",
+                    href=f"/datasets/{ctx.dataset.slug}/runs/{ctx.panel.state.computing[issue_type]['delegation_run_id']}",
+                    variant="outlined",
                 )
-                right_sub_computing_card_bottom.view(
-                    "computing_card_text_runs_link",
-                    computing_card_text_runs_link,
+
+                main_computing_card.view(
+                    "computing_card_runs_button",
+                    computing_card_runs_button,
                 )
 
     def add_stack(
@@ -2087,9 +2145,11 @@ class DataQualityPanel(Panel):
 
         recompute = False  # recompute histogram
 
-        if last_scan_timestamp is not None or last_scan.get(
-            "timestamp", None
-        ):  # we've run this scan before
+        if (
+            last_scan_timestamp is not None or last_scan.get("timestamp", None)
+        ) and not (
+            ctx.dataset.count() == ctx.panel.state.new_samples[issue_type][0]
+        ):  # we've run this scan before or all samples missing expected field
             if ctx.panel.state.new_samples[issue_type][
                 1
             ]:  # check new samples ran this panel instance, meaning dataset.exists() has already been executed
@@ -2193,6 +2253,8 @@ class DataQualityPanel(Panel):
             screen == "home"
             and ctx.panel.state.new_samples[issue_type][0] > 0
             and not ctx.panel.state.new_samples[issue_type][2]
+            and ctx.panel.state.new_samples[issue_type][0]
+            != ctx.dataset.count()
         ):
             sub_card_left.view(
                 f"collapsed_issue_new_sample_count_{issue_type}",
@@ -2632,51 +2694,69 @@ class DataQualityPanel(Panel):
     def render(self, ctx):
         panel = types.Object()
 
-        if ctx.dataset.media_type != "image":
-            self.wrapper_screen(panel, ctx, "unsupported")
-        elif ctx.panel.state.first_open:
-            self.wrapper_screen(panel, ctx, "entry")
-        else:
-            if ctx.panel.state.screen == "home":
-                self.home_screen(panel, ctx)
-            elif ctx.panel.state.screen == "pre_load_compute":
-                self.pre_load_compute_screen(
-                    panel, ctx.panel.state.issue_type, ctx
-                )
-            elif ctx.panel.state.screen == "analysis":
-                self.analysis_screen(panel, ctx.panel.state.issue_type, ctx)
+        old_dataset_name = ctx.panel.state.dataset_name
+        new_dataset_name = ctx.dataset.name
+        ctx.log(f"Rendering... {new_dataset_name} - {old_dataset_name}")
+
+        # NOTE: listing to on_dataset_changed causes state issues outside of this panel's context
+        # this makes sure we don't render dataset A's state on dataset B's screen when switching
+        if new_dataset_name != old_dataset_name:
+            ctx.log(
+                f"render:aborting render because dataset changed from {old_dataset_name} to {new_dataset_name}"
+            )
+
+        # make sure there is a store
+        # NOTE: if dataset changes, the render function is called on the new dataset with the old dataset's store
+        #   before it gets called again with the right store - this can cause incosistency in the UX.
+        #   hence the dataset name check
+        if self.has_store(ctx) and new_dataset_name == old_dataset_name:
+            if ctx.dataset.media_type != "image":
+                self.wrapper_screen(panel, ctx, "unsupported")
+            elif ctx.panel.state.first_open:
+                self.wrapper_screen(panel, ctx, "entry")
             else:
-                self.home_screen(panel, ctx)
-
-            if ctx.panel.state.alert == "tagging":
-                self._render_toast(panel, "tagging", ctx)
-            elif ctx.panel.state.alert == "reviewed":
-                self._render_toast(panel, "reviewed", ctx)
-            elif "computation_failed" in (ctx.panel.state.alert or ""):
-                self._render_toast(panel, ctx.panel.state.alert, ctx)
-
-        # delegated op exists, initiate long polling
-        if ctx.panel.state.computing:
-            for issue_type, scan in ctx.panel.state.computing.items():
-                del_run_id = scan.get("delegation_run_id", "")
-                is_computing = scan.get("is_computing", False)
-
-                if is_computing:
-                    print("render:setting a TimerView:{issue_type}")
-
-                    panel.view(
-                        issue_type,
-                        view=types.TimerView(
-                            interval=25000,
-                            on_interval=self.check_computing_status,
-                            params={
-                                "issue_type": issue_type,
-                                "run_id": del_run_id,
-                            },
-                        ),
+                if ctx.panel.state.screen == "home":
+                    self.home_screen(panel, ctx)
+                elif ctx.panel.state.screen == "pre_load_compute":
+                    self.pre_load_compute_screen(
+                        panel, ctx.panel.state.issue_type, ctx
+                    )
+                elif ctx.panel.state.screen == "analysis":
+                    self.analysis_screen(
+                        panel, ctx.panel.state.issue_type, ctx
                     )
                 else:
-                    pass
+                    self.home_screen(panel, ctx)
+
+                if ctx.panel.state.alert == "tagging":
+                    self._render_toast(panel, "tagging", ctx)
+                elif ctx.panel.state.alert == "reviewed":
+                    self._render_toast(panel, "reviewed", ctx)
+                elif "computation_failed" in (ctx.panel.state.alert or ""):
+                    self._render_toast(panel, ctx.panel.state.alert, ctx)
+
+            # delegated op exists, initiate long polling
+            if ctx.panel.state.computing:
+                for issue_type, scan in ctx.panel.state.computing.items():
+                    del_run_id = scan.get("delegation_run_id", "")
+                    is_computing = scan.get("is_computing", False)
+
+                    if is_computing:
+                        print(f"render:setting a TimerView:{issue_type}")
+
+                        panel.view(
+                            issue_type,
+                            view=types.TimerView(
+                                interval=15000,
+                                on_interval=self.check_computing_status,
+                                params={
+                                    "issue_type": issue_type,
+                                    "run_id": del_run_id,
+                                },
+                            ),
+                        )
+                    else:
+                        pass
 
         return types.Property(
             panel,
