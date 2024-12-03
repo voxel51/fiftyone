@@ -328,7 +328,7 @@ async def _do_async_query(
 ):
     if isinstance(query, DistinctQuery):
         if query.has_list:
-            return await _do_distinct_query(collection, query, filter)
+            return await _do_distinct_query(collection, query)
 
         return await _do_distinct_pipeline(dataset, collection, query, filter)
 
@@ -343,14 +343,13 @@ async def _do_async_query(
 async def _do_distinct_query(
     collection: AsyncIOMotorCollection,
     query: DistinctQuery,
-    filter: t.Optional[t.Mapping[str, str]],
 ):
     match = None
     if query.search:
         match = query.search
 
     try:
-        result = await collection.distinct(query.path, filter)
+        result = await collection.distinct(query.path)
     except:
         # too many results
         return None
