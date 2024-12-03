@@ -400,32 +400,16 @@ only those samples and/or labels that match the filter.
 Optimizing query performance
 ----------------------------
 
-By default, the sidebar filters are optimized to use indexes when no view is
-present. Filters that do have an index are highlighted with the lightning bolt
-icon. Query performance can be disabled by default via
-`default_query_performance` in your
-:ref:`App config <configuring-fiftyone-app>`.
+The App's sidebar is optimized to leverage database indexes whenever possible.
 
-When a view is present and indexes are no longer applicable, granular filter
-widgets are shown that include comphrensive counts. Granular filters can be
-toggled for a dataset via the settings "Gear" or
-`enable_query_performance` and `disabled_query_performance` operators.
+Fields that are indexed are indicated by lightning bolt icons next to their
+field/attribute names:
 
-.. image:: /images/app/app-granular.gif
-   :alt: app-granular
-   :align: center
-
-.. note::
-
-    When query performance mode is toggled through the "Gear" icon or
-    `enable_query_performance` and `disabled_query_performance` operators
-    the setting is persisted in your browser for that dataset
-
-.. image:: /images/app/app-query-performance-mode.gif
-    :alt: app-query-performance-mode
+.. image:: /images/app/app-query-performance.gif
+    :alt: app-query-performance
     :align: center
 
-The above GIF shows query performance mode in action on the train split of the
+The above GIF shows query performance in action on the train split of the
 :ref:`BDD100K dataset <dataset-zoo-bdd100k>` with an index on the
 `detections.detections.label` field:
 
@@ -448,6 +432,11 @@ The above GIF shows query performance mode in action on the train split of the
 
     session = fo.launch_app(dataset)
 
+.. note::
+
+    When filtering by multiple fields, queries will be more efficient when your
+    **first** filter is on an indexed field.
+
 The SDK provides a number of useful utilities for managing indexes on your
 datasets:
 
@@ -462,8 +451,9 @@ datasets:
 
 .. note::
 
-    Did you know? Teams customers can manage dataset indexes via the App with the builtin Query Performance panel!
-    See :ref:`this page <query-performance>` for more information.
+    Did you know? With :ref:`FiftyOne Teams <fiftyone-teams>` you can manage
+    indexes natively in the App via the
+    :ref:`Query Performance panel <query-performance>`.
 
 In general, we recommend indexing *only* the specific fields that you wish to
 perform initial filters on:
@@ -492,14 +482,12 @@ perform initial filters on:
 
 .. note::
 
-    Frame fields are not directly optimizable. Use
-    :ref:`summary fields <summary-fields>` to efficiently query frame-level
-    information on large video datasets
+    Filtering by frame fields of video datasets is not directly optimizable by
+    creating indexes. Instead, use :ref:`summary fields <summary-fields>` to
+    efficiently query frame-level information on large video datasets.
 
-.. note::
-
-    Frame filtering for the grid can be completely disabled via the 
-    `disable_frame_filtering` setting in
+    Frame filtering in the App's grid view can be disabled by setting
+    `disable_frame_filtering=True` in your
     :ref:`App config <configuring-fiftyone-app>`.
 
 For :ref:`grouped datasets <groups>`, you should create two indexes for each
@@ -553,6 +541,30 @@ field:
 .. note::
 
     Numeric field filters are not supported by wildcard indexes.
+
+.. _app-disasbling-query-performance:
+
+Disabling query performance
+---------------------------
+
+Query performance is enabled by default for all datasets. This is generally the
+recommended setting for all large datasets to ensure that queries are
+performant.
+
+However, in certain circumstances you may prefer to disable query performance,
+which enables the App's sidebar to show additional information such as
+label/value counts that are useful but more expensive to compute.
+
+You can disable query performance for a particular dataset for its lifetime
+(in your current browser) via the gear icon in the Samples panel's actions row:
+
+.. image:: /images/app/app-query-performance-disabled.gif
+    :alt: app-query-performance-disabled
+    :align: center
+
+You can also disable query performance by default for all datasets by setting
+`default_query_performance=False` in your
+:ref:`App config <configuring-fiftyone-app>`.
 
 .. _app-sidebar-groups:
 
@@ -1302,12 +1314,14 @@ FiftyOne natively includes the following Panels:
 
 -   :ref:`Samples panel <app-samples-panel>`: the media grid that loads by
     default when you launch the App
--   :ref:`Histograms panel <app-histograms-panel>`: a dashboard of histograms
-    for the fields of your dataset
 -   :ref:`Embeddings panel <app-embeddings-panel>`: a canvas for working with
     :ref:`embeddings visualizations <brain-embeddings-visualization>`
+-   :ref:`Model Evaluation panel <app-model-evaluation-panel>`: interactively
+    analyze and visualize your model's performance
 -   :ref:`Map panel <app-map-panel>`: visualizes the geolocation data of
     datasets that have a |GeoLocation| field
+-   :ref:`Histograms panel <app-histograms-panel>`: a dashboard of histograms
+    for the fields of your dataset
 
 .. note::
 
@@ -1624,8 +1638,8 @@ _____________
 By default, when you launch the App, your spaces layout will contain a single
 space with the Samples panel active:
 
-.. image:: /images/app/app-histograms-panel.gif
-    :alt: app-histograms-panel
+.. image:: /images/app/app-samples-panel.gif
+    :alt: app-samples-panel
     :align: center
 
 When configuring spaces :ref:`in Python <app-spaces-python>`, you can create a
@@ -1635,49 +1649,6 @@ Samples panel as follows:
     :linenos:
 
     samples_panel = fo.Panel(type="Samples")
-
-.. _app-histograms-panel:
-
-Histograms panel
-________________
-
-The Histograms panel in the App lets you visualize different statistics about
-the fields of your dataset.
-
--   The `Sample tags` and `Label tags` modes show the distribution of any
-    :ref:`tags <app-tagging>` that you've added to your dataset
--   The `Labels` mode shows the class distributions for each
-    :ref:`labels field <using-labels>` that you've added to your dataset. For
-    example, you may have histograms of ground truth labels and one more sets
-    of model predictions
--   The `Other fields` mode shows distributions for numeric (integer or float)
-    or categorical (e.g., string)
-    :ref:`primitive fields <adding-sample-fields>` that you've added to your
-    dataset. For example, if you computed
-    :ref:`uniqueness <brain-image-uniqueness>` on your dataset, a histogram of
-    uniqueness values will be available under this mode.
-
-.. note::
-
-    The statistics in the plots automatically update to reflect the current
-    :ref:`view <using-views>` that you have loaded in the App!
-
-.. image:: /images/app/app-histograms-panel.gif
-    :alt: app-histograms-panel
-    :align: center
-
-When configuring spaces :ref:`in Python <app-spaces-python>`, you can define a
-Histograms panel as follows:
-
-.. code-block:: python
-    :linenos:
-
-    histograms_panel = fo.Panel(type="Histograms", state=dict(plot="Labels"))
-
-The Histograms panel supports the following `state` parameters:
-
--   **plot**: the histograms to plot. Supported values are `"Sample tags"`,
-    `"Label tags"`, `"Labels"`, and `"Other fields"`
 
 .. _app-embeddings-panel:
 
@@ -1723,6 +1694,12 @@ samples/patches in the Samples panel:
     :alt: app-embeddings-panel
     :align: center
 
+.. note::
+
+    Did you know? With :ref:`FiftyOne Teams <fiftyone-teams>` you can generate
+    embeddings visualizations natively from the App
+    :ref:`in the background <delegated-operations>` while you work.
+
 The embeddings UI also provides a number of additional controls:
 
 -   Press the `pan` icon in the menu (or type `g`) to switch to pan mode, in
@@ -1762,6 +1739,139 @@ The Embeddings panel supports the following `state` parameters:
     to display
 -   **colorByField**: an optional sample field (or label attribute, for patches
     embeddings) to color the points by
+
+.. _app-model-evaluation-panel:
+
+Model Evaluation panel __SUB_NEW__
+__________________________________
+
+When you load a dataset in the App that contains one or more
+:ref:`evaluations <evaluating-models>`, you can open the Model Evaluation panel
+to visualize and interactively explore the evaluation results in the App:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Evaluate the objects in the `predictions` field with respect to the
+    # objects in the `ground_truth` field
+    results = dataset.evaluate_detections(
+        "predictions",
+        gt_field="ground_truth",
+        eval_key="eval",
+    )
+
+    session = fo.launch_app(dataset)
+
+The panel's home page shows a list of evaluation on the dataset, their current
+review status, and any evaluation notes that you've added. Click on an
+evaluation to open its expanded view, which provides a set of expandable cards
+that dives into various aspects of the model's performance:
+
+.. image:: /images/app/model-evaluation-open.gif
+    :alt: model-evaluation-open
+    :align: center
+
+.. note::
+
+    Did you know? With :ref:`FiftyOne Teams <fiftyone-teams>` you can execute
+    model evaluations natively from the App
+    :ref:`in the background <delegated-operations>` while you work.
+
+Review status
+-------------
+
+You can use the status pill in the upper right-hand corner of the panel to
+toggle an evaluation between `Needs Review`, `In Review`, and `Reviewed`:
+
+.. image:: /images/app/model-evaluation-review.gif
+    :alt: model-evaluation-review
+    :align: center
+
+Evaluation notes
+----------------
+
+The Evaluation Notes card provides a place to add your own Markdown-formatted
+notes about the model's performance:
+
+.. image:: /images/app/model-evaluation-notes.gif
+    :alt: model-evaluation-notes
+    :align: center
+
+Summary
+-------
+
+The Summary card provides a table of common model performance metrics. You can
+click on the grid icons next to TP/FP/FN to load the corresponding labels in
+the Samples panel:
+
+.. image:: /images/app/model-evaluation-summary.gif
+    :alt: model-evaluation-summary
+    :align: center
+
+Metric performance
+------------------
+
+The Metric Performance card provides a graphical summary of key model
+performance metrics:
+
+.. image:: /images/app/model-evaluation-metric.gif
+    :alt: model-evaluation-metric
+    :align: center
+
+Class performance
+-----------------
+
+The Class Performance card provides a per-class breakdown of each model
+performance metric. If an evaluation contains many classes, you can use the
+settings menu to control which classes are shown. The histograms are also
+interactive: you can click on bars to show the corresponding labels in the
+Samples panel:
+
+.. image:: /images/app/model-evaluation-class.gif
+    :alt: model-evaluation-class
+    :align: center
+
+Confusion matrices
+------------------
+
+The Confusion Matrices card provides an interactive confusion matrix for the
+evaluation. If an evaluation contains many classes, you can use the settings
+menu to control which classes are shown. You can also click on cells to show
+the corresponding labels in the Samples panel:
+
+.. image:: /images/app/model-evaluation-confusion.gif
+    :alt: model-evaluation-confusion
+    :align: center
+
+Comparing models
+----------------
+
+When a dataset contains multiple evaluations, you can compare two model's
+performance by selecting a "Compare against" key:
+
+.. code-block:: python
+    :linenos:
+
+    model = foz.load_zoo_model("yolo11s-coco-torch")
+
+    dataset.apply_model(model, label_field="predictions_yolo11")
+
+    dataset.evaluate_detections(
+        "predictions_yolo11",
+        gt_field="ground_truth",
+        eval_key="eval_yolo11",
+    )
+
+    session.refresh()
+
+.. image:: /images/app/model-evaluation-compare.gif
+    :alt: model-evaluation-compare
+    :align: center
 
 .. _app-map-panel:
 
@@ -1891,6 +2001,49 @@ the above values on a :ref:`dataset's App config <dataset-app-config>`:
 
     Dataset-specific plugin settings will override any settings from your
     :ref:`global App config <configuring-fiftyone-app>`.
+
+.. _app-histograms-panel:
+
+Histograms panel
+________________
+
+The Histograms panel in the App lets you visualize different statistics about
+the fields of your dataset.
+
+-   The `Sample tags` and `Label tags` modes show the distribution of any
+    :ref:`tags <app-tagging>` that you've added to your dataset
+-   The `Labels` mode shows the class distributions for each
+    :ref:`labels field <using-labels>` that you've added to your dataset. For
+    example, you may have histograms of ground truth labels and one more sets
+    of model predictions
+-   The `Other fields` mode shows distributions for numeric (integer or float)
+    or categorical (e.g., string)
+    :ref:`primitive fields <adding-sample-fields>` that you've added to your
+    dataset. For example, if you computed
+    :ref:`uniqueness <brain-image-uniqueness>` on your dataset, a histogram of
+    uniqueness values will be available under this mode.
+
+.. note::
+
+    The statistics in the plots automatically update to reflect the current
+    :ref:`view <using-views>` that you have loaded in the App!
+
+.. image:: /images/app/app-histograms-panel.gif
+    :alt: app-histograms-panel
+    :align: center
+
+When configuring spaces :ref:`in Python <app-spaces-python>`, you can define a
+Histograms panel as follows:
+
+.. code-block:: python
+    :linenos:
+
+    histograms_panel = fo.Panel(type="Histograms", state=dict(plot="Labels"))
+
+The Histograms panel supports the following `state` parameters:
+
+-   **plot**: the histograms to plot. Supported values are `"Sample tags"`,
+    `"Label tags"`, `"Labels"`, and `"Other fields"`
 
 .. _app-select-samples:
 
