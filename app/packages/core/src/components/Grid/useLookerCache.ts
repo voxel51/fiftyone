@@ -42,10 +42,10 @@ export default function useLookerCache<
       get: (key: string) => loaded.get(key) ?? loading.get(key),
       keys: function* () {
         for (const it of loading.keys()) {
-          yield* it;
+          yield it;
         }
         for (const it of loaded.keys()) {
-          yield* it;
+          yield it;
         }
       },
       loadingSize: () => loading.size,
