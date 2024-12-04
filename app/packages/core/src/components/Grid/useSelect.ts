@@ -16,13 +16,25 @@ export default function useSelect(
   useEffect(() => {
     deferred(() => {
       const fontSize = getFontSize();
+      const retained = new Set<string>();
       spotlight?.updateItems((id) => {
-        store.get(id.description)?.updateOptions({
+        const instance = store.get(id.description);
+        if (!instance) {
+          return;
+        }
+
+        retained.add(id.description);
+        instance.updateOptions({
           ...options,
           fontSize,
           selected: selected.has(id.description),
         });
       });
+
+      for (const id of store.keys()) {
+        if (retained.has(id)) continue;
+        store.delete(id);
+      }
     });
   }, [deferred, getFontSize, options, selected, spotlight, store]);
 

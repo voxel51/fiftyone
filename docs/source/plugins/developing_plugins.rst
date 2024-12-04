@@ -141,9 +141,9 @@ directory.
 
 .. note::
 
-   For vite configs we recommend forking the
-   `FiftyOne Plugins <https://github.com/voxel51/hello-world-plugin-js>`_
-   repository and following the conventions there to build your plugin.
+   For JS plugins we recommend forking the
+   `FiftyOne Hello World JS Example <https://github.com/voxel51/hello-world-plugin-js>`_
+   repository and following the conventions there to build your JS plugin.
 
 .. _plugin-anatomy:
 
@@ -2382,7 +2382,7 @@ loaded only when the `brain_key` property is modified.
     Panel data is never readable in Python; it is only implicitly used by
     the types you define when they are rendered clientside.
 
-.. _panel-execution-store
+.. _panel-execution-store:
 
 Execution store
 ---------------
@@ -3131,6 +3131,18 @@ Developing JS plugins
 _____________________
 
 This section describes how to develop JS-specific plugin components.
+
+Getting Started
+---------------
+
+To start building your own JS plugin, refer to the 
+`hello-world-plugin-js <https://github.com/voxel51/hello-world-plugin-js>`_ 
+repository. This repo serves as a starting point, providing examples of a build 
+process, a JS panel, and a JS operator.
+
+The `fiftyone-js-plugin-build <https://github.com/voxel51/fiftyone-js-plugin-build>`_ 
+package offers a utility for configuring `vite <https://vite.dev>`_ to build your 
+JS plugin bundle.
 
 Component types
 ---------------
