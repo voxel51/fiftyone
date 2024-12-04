@@ -27,7 +27,7 @@ export default function useLookerCache<
       updateAgeOnGet: true,
     });
 
-    // an intermediate mapping while until the "load" event
+    // an intermediate mapping until the "load" event
     // "load" must occur before requesting the size bytes estimate
     const loading = new Map<string, T>();
 
