@@ -15,6 +15,7 @@ import numpy as np
 
 from .constants import (
     ISSUE_TYPES,
+    HOME_ISSUE_TYPES,
     DEFAULT_ISSUE_CONFIG,
     DEFAULT_ISSUE_COUNTS,
     FIELD_NAME,
@@ -1486,7 +1487,7 @@ class DataQualityPanel(Panel):
         )
         panel.view("title_view", title_view)
 
-        for issue_type in ISSUE_TYPES:
+        for issue_type in HOME_ISSUE_TYPES:
             self._render_issue_card(panel, issue_type, ctx, expanded=False)
 
     def pre_load_compute_screen(self, panel, issue_type, ctx):
