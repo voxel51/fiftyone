@@ -1,13 +1,10 @@
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { LRUCache } from "lru-cache";
 import { useEffect, useMemo } from "react";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
 import { gridAt, gridOffset, gridPage } from "./recoil";
-
-const MAX_LRU_CACHE_ITEMS = 510;
-const MAX_LRU_CACHE_SIZE = 1e9;
+import useLookerCache from "./useLookerCache";
 
 export default function useRefreshers() {
   const cropToContent = useRecoilValue(fos.cropToContent(false));
@@ -78,53 +75,8 @@ export default function useRefreshers() {
     []
   );
 
-  const lookerStore = useMemo(() => {
-    /** LOOKER STORE REFRESHER */
-    reset;
-    /** LOOKER STORE REFRESHER */
-
-    const loaded = new LRUCache<string, fos.Lookers>({
-      dispose: (looker) => looker.destroy(),
-      max: MAX_LRU_CACHE_ITEMS,
-      maxSize: MAX_LRU_CACHE_SIZE,
-      noDisposeOnSet: true,
-      sizeCalculation: (looker) => {
-        return looker.getSizeBytesEstimate();
-      },
-      updateAgeOnGet: true,
-    });
-
-    const loading = new Map<string, fos.Lookers>();
-
-    return {
-      delete: (key: string) => {
-        loading.delete(key);
-        loaded.delete(key);
-      },
-      get: (key: string) => loaded.get(key) ?? loading.get(key),
-      keys: function* () {
-        for (const it of loading.keys()) {
-          yield* it;
-        }
-        for (const it of loaded.keys()) {
-          yield* it;
-        }
-      },
-      set: (key: string, looker: fos.Lookers) => {
-        const onReady = () => {
-          loaded.set(key, looker);
-          loading.delete(key);
-          looker.removeEventListener("load", onReady);
-        };
-
-        looker.addEventListener("load", onReady);
-        loading.set(key, looker);
-      },
-    };
-  }, [reset]);
-
   return {
-    lookerStore,
+    lookerStore: useLookerCache(reset),
     pageReset,
     reset,
   };
