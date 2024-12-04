@@ -20,6 +20,7 @@ import fiftyone.core.patches as fop
 import fiftyone.core.utils as fou
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
+import fiftyone.zoo as foz
 import fiftyone.zoo.models as fozm
 
 # pylint:disable=import-error,no-name-in-module
@@ -43,7 +44,7 @@ class ComputeBrightness(foo.Operator):
         )
 
     def resolve_input(self, ctx):
-        return _handle_inputs(ctx, "brightness")
+        return types.Property(types.Object())
 
     def execute(self, ctx):
         _handle_execution(ctx, "brightness", _compute_sample_brightness)
@@ -63,7 +64,7 @@ class ComputeEntropy(foo.Operator):
         )
 
     def resolve_input(self, ctx):
-        return _handle_inputs(ctx, "entropy")
+        return types.Property(types.Object())
 
     def execute(self, ctx):
         _handle_execution(ctx, "entropy", _compute_sample_entropy)
@@ -83,7 +84,7 @@ class ComputeAspectRatio(foo.Operator):
         )
 
     def resolve_input(self, ctx):
-        return _handle_inputs(ctx, "aspect_ratio")
+        return types.Property(types.Object())
 
     def execute(self, ctx):
         _handle_execution(ctx, "aspect_ratio", _compute_sample_aspect_ratio)
@@ -103,7 +104,7 @@ class ComputeBlurriness(foo.Operator):
         )
 
     def resolve_input(self, ctx):
-        return _handle_inputs(ctx, "blurriness")
+        return types.Property(types.Object())
 
     def execute(self, ctx):
         _handle_execution(ctx, "blurriness", _compute_sample_blurriness)
@@ -143,29 +144,17 @@ class ComputeExactDuplicates(foo.Operator):
         )
 
     def resolve_input(self, ctx):
-        inputs = types.Object()
-        return types.Property(inputs)
+        return types.Property(types.Object())
 
     def execute(self, ctx):
         _handle_execution(ctx, "filehash", _compute_sample_filehash)
 
 
-def _handle_inputs(ctx, field):
-    inputs = types.Object()
-
-    label = f'Compute {field.replace("_", " ").title()}'
-    inputs.message("computation_label", label=label)
-
-    inputs.view_target(ctx)
-
-    return types.Property(inputs)
-
-
 def _handle_execution(ctx, field, fcn, skip_failures=True, progress=None):
     if ctx.dataset.has_field(field):
-        samples = ctx.dataset.exists(field, bool=False)
+        samples = ctx.dataset.exists(field, bool=False).select_fields(field)
     else:
-        samples = ctx.dataset
+        samples = ctx.dataset.select_fields()
 
     with contextlib.ExitStack() as context:
         context.enter_context(
@@ -192,21 +181,42 @@ def _handle_execution(ctx, field, fcn, skip_failures=True, progress=None):
 def _handle_near_duplicates_inputs(ctx):
     inputs = types.Object()
 
-    target_view = _get_target_view_inputs(ctx, inputs)
-    _get_embeddings_inputs(ctx, inputs, target_view)
-    _get_metric_inputs(ctx, inputs)
+    _get_embeddings_inputs(ctx, inputs)
 
-    # @todo add warning that this method only supports <100k samples
+    metric_choices = types.DropdownView()
+    metric_choices.add_choice("cosine", label="cosine")
+    metric_choices.add_choice("euclidean", label="euclidean")
+
+    inputs.enum(
+        "metric",
+        metric_choices.values(),
+        default="cosine",
+        required=True,
+        label="Metric",
+        description="The embedding distance metric to use",
+        view=metric_choices,
+    )
+
+    num_samples = ctx.dataset._sample_collection.estimated_document_count()
+    if num_samples > 100000:
+        inputs.str(
+            "warning",
+            label=(
+                "Near Duplicates scans are not currently recommended for "
+                "datasets with over 100k samples"
+            ),
+            view=types.Warning(),
+        )
+
     view = types.View(label="Compute near duplicates")
     return types.Property(inputs, view=view)
 
 
 def _handle_near_duplicates_execution(ctx):
-    target = ctx.params.get("target", None)
-    embeddings = ctx.params.get("embeddings", None) or None
-    model = ctx.params.get("model", None) or None
-    batch_size = 8
+    embeddings_field = ctx.params.get("embeddings", None) or None
+    model_name = ctx.params.get("model", None) or None
     metric = ctx.params.get("metric", "cosine")
+    batch_size = 8
 
     # No multiprocessing allowed when running synchronously
     if not ctx.delegated:
@@ -214,14 +224,34 @@ def _handle_near_duplicates_execution(ctx):
     else:
         num_workers = None
 
-    target_view = _get_target_view(ctx, target)
+    if ctx.dataset.has_field("nearest_neighbor"):
+        if len(ctx.dataset.exists("nearest_neighbor", bool=False)) == 0:
+            return
 
-    # @todo only compute embeddings for samples that don't have them
+    # Store embeddings on dataset if requested
+    if embeddings_field is not None and model_name is not None:
+        if ctx.dataset.has_field(embeddings_field):
+            view = ctx.dataset.exists(embeddings_field, bool=False)
+        else:
+            view = ctx.dataset
+
+        if len(view) > 0:
+            model = foz.load_zoo_model(model_name)
+            view.compute_embeddings(
+                model,
+                embeddings_field=embeddings_field,
+                batch_size=batch_size,
+                num_workers=num_workers,
+                skip_failures=True,
+            )
+
+        model_name = None
+
     index = fob.compute_similarity(
-        target_view,
+        ctx.dataset,
         brain_key=None,
-        embeddings=embeddings,
-        model=model,
+        embeddings=embeddings_field,
+        model=model_name,
         batch_size=batch_size,
         num_workers=num_workers,
         skip_failures=True,
@@ -264,20 +294,10 @@ def _compute_brightness(pillow_img):
         r, g, b = pixels.mean(axis=(0, 1))
     else:
         mean = pixels.mean()
-        r, g, b = (
-            mean,
-            mean,
-            mean,
-        )
+        r, g, b = mean, mean, mean
 
-    ## equation from here:
-    ## https://www.nbdtech.com/Blog/archive/2008/04/27/calculating-the-perceived-brightness-of-a-color.aspx
-    ## and here:
-    ## https://github.com/cleanlab/cleanvision/blob/72a1535019fe7b4636d43a9ef4e8e0060b8d66ec/src/cleanvision/issue_managers/image_property.py#L95
-    brightness = (
-        np.sqrt(0.241 * r**2 + 0.691 * g**2 + 0.068 * b**2) / 255
-    )
-    return brightness
+    # source: https://www.nbdtech.com/Blog/archive/2008/04/27/calculating-the-perceived-brightness-of-a-color.aspx
+    return np.sqrt(0.241 * r**2 + 0.691 * g**2 + 0.068 * b**2) / 255
 
 
 def _compute_sample_entropy(sample):
@@ -314,82 +334,13 @@ def _compute_sample_blurriness(sample):
 def _compute_blurriness(cv2_img):
     # pylint: disable=no-member
     gray = cv2.cvtColor(cv2_img, cv2.COLOR_BGR2GRAY)
-    # pylint: disable=no-member
     laplacian = cv2.Laplacian(gray, cv2.CV_64F)
     variance = laplacian.var()
     return variance
 
 
-def _get_target_view(ctx, target):
-    if target == "SELECTED_SAMPLES":
-        return ctx.view.select(ctx.selected)
-
-    if target == "BASE_VIEW":
-        return ctx.view._base_view
-
-    if target == "DATASET":
-        return ctx.dataset
-
-    return ctx.view
-
-
-def _get_target_view_inputs(ctx, inputs, allow_selected=True):
-    has_base_view = isinstance(ctx.view, fop.PatchesView)
-    if has_base_view:
-        has_view = ctx.view != ctx.view._base_view
-    else:
-        has_view = ctx.view != ctx.dataset.view()
-    has_selected = allow_selected and bool(ctx.selected)
-    default_target = None
-
-    if has_view or has_selected:
-        target_choices = types.RadioGroup(orientation="horizontal")
-
-        if has_base_view:
-            target_choices.add_choice(
-                "BASE_VIEW",
-                label="Base view",
-                description="Process the base view",
-            )
-        else:
-            target_choices.add_choice(
-                "DATASET",
-                label="Entire dataset",
-                description="Process the entire dataset",
-            )
-
-        if has_view:
-            target_choices.add_choice(
-                "CURRENT_VIEW",
-                label="Current view",
-                description="Process the current view",
-            )
-            default_target = "CURRENT_VIEW"
-
-        if has_selected:
-            target_choices.add_choice(
-                "SELECTED_SAMPLES",
-                label="Selected samples",
-                description="Process only the selected samples",
-            )
-            default_target = "SELECTED_SAMPLES"
-
-        inputs.enum(
-            "target",
-            target_choices.values(),
-            default=default_target,
-            required=True,
-            label="Target view",
-            view=target_choices,
-        )
-
-    target = ctx.params.get("target", default_target)
-
-    return _get_target_view(ctx, target)
-
-
-def _get_embeddings_inputs(ctx, inputs, view):
-    schema = view.get_field_schema(ftype=fo.VectorField)
+def _get_embeddings_inputs(ctx, inputs):
+    schema = ctx.dataset.get_field_schema(ftype=fo.VectorField)
     embeddings_fields = set(schema.keys())
 
     embeddings_choices = types.AutocompleteView()
@@ -399,6 +350,7 @@ def _get_embeddings_inputs(ctx, inputs, view):
     inputs.str(
         "embeddings",
         default=None,
+        required=False,
         label="Embeddings",
         description=(
             "An optional sample field containing pre-computed embeddings to "
@@ -410,32 +362,27 @@ def _get_embeddings_inputs(ctx, inputs, view):
 
     embeddings = ctx.params.get("embeddings", None)
 
-    if embeddings not in embeddings_fields:
-        model_choices = types.AutocompleteView()
-        for name in sorted(_get_zoo_models()):
-            model_choices.add_choice(name, label=name)
+    model_choices = types.AutocompleteView()
+    for name in sorted(_get_zoo_models()):
+        model_choices.add_choice(name, label=name)
 
-        inputs.enum(
-            "model",
-            model_choices.values(),
-            default=None,
-            required=False,
-            label="Model",
-            description=(
-                "An optional name of a model from the "
-                "[FiftyOne Model Zoo](https://docs.voxel51.com/user_guide/model_zoo/models.html) "
-                "to use to generate embeddings"
-            ),
-            view=model_choices,
-        )
+    inputs.enum(
+        "model",
+        model_choices.values(),
+        default=None,
+        required=False,
+        label="Model",
+        description=(
+            "An optional name of a model from the "
+            "[FiftyOne Model Zoo](https://docs.voxel51.com/user_guide/model_zoo/models.html) "
+            "to use to generate embeddings"
+        ),
+        view=model_choices,
+    )
 
 
 def _get_zoo_models():
-    if hasattr(fozm, "_list_zoo_models"):
-        manifest = fozm._list_zoo_models()
-    else:
-        # Can remove this code path if we require fiftyone>=1.0.0
-        manifest = fozm._load_zoo_models_manifest()
+    manifest = fozm._list_zoo_models()
 
     # pylint: disable=no-member
     available_models = set()
@@ -444,19 +391,3 @@ def _get_zoo_models():
             available_models.add(model.name)
 
     return available_models
-
-
-def _get_metric_inputs(ctx, inputs):
-    metric_choices = types.DropdownView()
-    metric_choices.add_choice("cosine", label="cosine")
-    metric_choices.add_choice("euclidean", label="euclidean")
-
-    inputs.enum(
-        "metric",
-        metric_choices.values(),
-        default="cosine",
-        required=True,
-        label="Metric",
-        description="The embedding distance metric to use",
-        view=metric_choices,
-    )

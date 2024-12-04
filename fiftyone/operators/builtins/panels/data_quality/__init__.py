@@ -7,7 +7,7 @@ Data quality panel.
 """
 
 import asyncio
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 import math
 import uuid
@@ -79,12 +79,10 @@ def missing_min_access_required(ctx, min_required_dataset_access="EDIT"):
 
 
 class DataQualityPanel(Panel):
-    # global variables
     version = "v1"
 
     @property
     def config(self):
-
         return PanelConfig(
             name="data_quality_panel",
             label="Data Quality",
@@ -108,21 +106,7 @@ class DataQualityPanel(Panel):
 
     def get_store(self, ctx):
         """Returns latest state of execution store or creates a new one with given key"""
-        try:
-            store = ctx.create_store(
-                self._get_store_key(ctx)
-            )  # backwards compatibility
-        except AttributeError:
-            store = ctx.store(self._get_store_key(ctx))
-
-        return store
-
-    # TODO: delete this method after dev finishes; only for dev process
-    def clear_key_store(self, ctx):
-        store = self.get_store(ctx)
-        keys = store.list_keys()
-        for key in keys:
-            store.delete(key)
+        return ctx.store(self._get_store_key(ctx))
 
     ###
     # LIFECYCLE METHODS
@@ -144,10 +128,8 @@ class DataQualityPanel(Panel):
         key = self._get_store_key(ctx)
         content = store.get(key)
         if content is None:
-            print("panel opened for the first time")
             ctx.panel.state.first_open = True
 
-            print("initializing store")
             store.set(key, SAMPLE_STORE)
 
             ctx.panel.state.issue_config = DEFAULT_ISSUE_CONFIG
@@ -157,7 +139,6 @@ class DataQualityPanel(Panel):
 
             results = SAMPLE_STORE["results"]
         else:
-            print("initialize on load use store and set state")
             ctx.panel.state.issue_config = content.get(
                 "config", DEFAULT_ISSUE_CONFIG
             )
@@ -271,32 +252,25 @@ class DataQualityPanel(Panel):
         )
 
     def on_change_selected(self, ctx):
-        # note: do not delete, function must exist to update state of ctx.selected
-        if (ctx.panel.state.screen == "analysis") and (
+        if (
             ctx.panel.state.issue_type == "exact_duplicates"
+            and ctx.panel.state.screen == "analysis"
         ):
             self.toggle_select_from_grid(ctx)
 
-        pass
-
     def on_unload(self, ctx):
-        """Clear the view & performs state saving after closing panel"""
-        ctx.log(f"on_unload:called for {ctx.dataset.name}")
+        if ctx.dataset is None:
+            return
 
         store = self.get_store(ctx)
         key = self._get_store_key(ctx)
         content = store.get(key)
-        if (
-            content is not None and ctx.panel.state.computing is not None
-        ):  # set store on panel close
-            content["computing"] = ctx.panel.state.computing
 
+        if content is not None and ctx.panel.state.computing is not None:
+            content["computing"] = ctx.panel.state.computing
             store.set(key, content)
 
         ctx.ops.clear_view()
-
-        # TODO: delete this method after dev finishes; only for dev process
-        # self.clear_key_store(ctx)
 
     ###
     # EVENT HANDLERS
@@ -305,7 +279,6 @@ class DataQualityPanel(Panel):
     def navigate_to_screen(
         self, ctx, issue_type=None, next_screen="home", recompute=False
     ):
-        """Changes which screen to show"""
         _issue_type = ctx.params.get("issue_type", issue_type)
         issue_type = _issue_type if _issue_type is not None else issue_type
 
@@ -345,10 +318,6 @@ class DataQualityPanel(Panel):
 
             if ctx.panel.state.computing and issue_type:
                 self.change_computing_status(ctx, issue_type)
-            else:
-                print(
-                    f"navigate_to_screen:no computing or issue_type:{issue_type} found"
-                )
 
     def _on_compute_option_selected(
         self, ctx, execution_option="execute", run_id=""
@@ -356,25 +325,24 @@ class DataQualityPanel(Panel):
         issue_type = ctx.params.get("issue_type", ctx.panel.state.issue_type)
         dropdown_value = ctx.params.get("selected_option", {}).get(
             "id", execution_option
-        )  # dropdown selection, default to execute
+        )
 
         store = self.get_store(ctx)
         key = self._get_store_key(ctx)
         content = store.get(key)
 
-        new_samples_copy = ctx.panel.state.new_samples
+        new_samples = ctx.panel.state.new_samples
 
         # new samples > 0 so we are within rescan logic
-        if new_samples_copy[issue_type][0] > 0:
-            new_samples_copy[issue_type] = [
-                new_samples_copy[issue_type][0],
-                new_samples_copy[issue_type][1],
+        if new_samples[issue_type][0] > 0:
+            new_samples[issue_type] = [
+                new_samples[issue_type][0],
+                new_samples[issue_type][1],
                 True,
             ]
-            ctx.panel.state.set("new_samples", new_samples_copy)
+            ctx.panel.state.set("new_samples", new_samples)
 
         if dropdown_value == "execute":
-            print("executing now")
             self.change_computing_status(
                 ctx,
                 issue_type,
@@ -388,7 +356,6 @@ class DataQualityPanel(Panel):
             dropdown_value == "delegate"
             or dropdown_value == "delegate_execution"
         ):
-            print("delegating execution")
             self.change_computing_status(
                 ctx,
                 issue_type,
@@ -398,12 +365,11 @@ class DataQualityPanel(Panel):
                 delegation_status="",
             )
 
-        content["status"][issue_type] = STATUS[1]  # change badge to computing
-
+        # Change status to computing
+        content["status"][issue_type] = STATUS[1]
         store.set(key, content)
 
     def on_change_set_threshold(self, ctx):
-        """Change the config based on the threshold values"""
         issue_type = ctx.panel.state.issue_type
 
         store = self.get_store(ctx)
@@ -456,168 +422,86 @@ class DataQualityPanel(Panel):
                 [default_lower, default_upper],
             )
 
-    def change_view(self, ctx, quality_issue: str):
-        """Filters the view based on the histogram bounds"""
+    def change_view(self, ctx, issue_type):
+        """Updates the view based on the histogram bounds."""
+        field = FIELD_NAME[issue_type]
+
         store = self.get_store(ctx)
         key = self._get_store_key(ctx)
         content = store.get(key)
+
         counts = content.get("counts", DEFAULT_ISSUE_COUNTS)
         current_counts = content.get("current_counts", DEFAULT_ISSUE_COUNTS)
 
-        # if not started, update the status here
-        if content["status"][quality_issue] == STATUS[0]:
-            content["status"][quality_issue] = STATUS[2]
+        # If not started, update the status here
+        if content["status"][issue_type] == STATUS[0]:
+            content["status"][issue_type] = STATUS[2]
 
-        if (
-            (
-                ctx.panel.state.hist_lower_thresh
-                or ctx.panel.state.hist_upper_thresh
-            )
-            and quality_issue != "exact_duplicates"
-            and quality_issue != "near_duplicates"
+        if issue_type not in ("near_duplicates", "exact_duplicates") and (
+            ctx.panel.state.hist_lower_thresh
+            or ctx.panel.state.hist_upper_thresh
         ):
-            # Filter the view to be between hist_lower_thresh and hist_upper_thresh
-            print(
-                f"thresholds on change view: {ctx.panel.state.hist_lower_thresh}, {ctx.panel.state.hist_upper_thresh}"
-            )
-            # field could be different
-            field = FIELD_NAME[quality_issue]
             view = ctx.dataset.match(
                 (F(field) >= ctx.panel.state.hist_lower_thresh)
                 & (F(field) <= ctx.panel.state.hist_upper_thresh)
             )
             num_issue_samples = len(view)
 
-            print(
-                "change_view",
-                ctx.panel.state.hist_lower_thresh,
-                ctx.panel.state.hist_upper_thresh,
-            )
-
             ctx.ops.set_view(view)
-            ctx.panel.state.issue_counts[quality_issue] = num_issue_samples
+            ctx.panel.state.issue_counts[issue_type] = num_issue_samples
 
-            current_counts[quality_issue] = num_issue_samples
+            current_counts[issue_type] = num_issue_samples
 
             store.set(key, content)
 
             ctx.panel.state.set(
-                f"{quality_issue}_analysis.header_{quality_issue}.collaspsed_sub_left_{quality_issue}.issue_count_{quality_issue}_analysis_page",
+                f"{issue_type}_analysis.header_{issue_type}.collaspsed_sub_left_{issue_type}.issue_count_{issue_type}_analysis_page",
                 num_issue_samples,
             )
 
-            return True
-        else:
-            if quality_issue == "near_duplicates" and (
-                ctx.panel.state.hist_lower_thresh
-                or ctx.panel.state.hist_upper_thresh
-            ):
-                print(
-                    f"thresholds on change view: {ctx.panel.state.hist_lower_thresh}, {ctx.panel.state.hist_upper_thresh}"
-                )
-                # field could be different
-                field = FIELD_NAME[quality_issue]
-                view = ctx.dataset.match(
-                    (F(field) >= ctx.panel.state.hist_lower_thresh)
-                    & (F(field) <= ctx.panel.state.hist_upper_thresh)
-                )
-                num_issue_samples = len(view)
+            return
 
-                ctx.panel.state.issue_counts[quality_issue] = num_issue_samples
-                content["current_counts"][quality_issue] = num_issue_samples
-                store.set(key, content)
+        if issue_type == "near_duplicates" and (
+            ctx.panel.state.hist_lower_thresh
+            or ctx.panel.state.hist_upper_thresh
+        ):
+            view = ctx.dataset.match(
+                (F(field) >= ctx.panel.state.hist_lower_thresh)
+                & (F(field) <= ctx.panel.state.hist_upper_thresh)
+            )
+            num_issue_samples = len(view)
 
-                ctx.panel.state.set(
-                    f"{quality_issue}_analysis.header_{quality_issue}.collaspsed_sub_left_{quality_issue}.issue_count_{quality_issue}_analysis_page",
-                    num_issue_samples,
-                )
+            ctx.panel.state.issue_counts[issue_type] = num_issue_samples
+            content["current_counts"][issue_type] = num_issue_samples
+            store.set(key, content)
 
-                ctx.ops.set_view(view)
-                return True
+            ctx.panel.state.set(
+                f"{issue_type}_analysis.header_{issue_type}.collaspsed_sub_left_{issue_type}.issue_count_{issue_type}_analysis_page",
+                num_issue_samples,
+            )
 
-            if quality_issue == "exact_duplicates":
-                if FIELD_NAME[quality_issue] in ctx.dataset.get_field_schema():
-                    store = self.get_store(ctx)
-                    key = self._get_store_key(ctx)
-                    content = store.get(key)
-                    dups = content["results"]["exact_duplicates"][
-                        "dup_filehash"
-                    ]
-                    filehash_ids = content["results"]["exact_duplicates"][
-                        "dup_sample_ids"
-                    ]
-                    if dups is not None and filehash_ids is not None:
-                        dup_sample_ids = [
-                            sample_id
-                            for _, ids in filehash_ids
-                            for sample_id in ids
-                        ]
-                        exact_dup_view = ctx.dataset.match(
-                            F("filehash").is_in(dups)
-                        ).sort_by("filehash")
+            ctx.ops.set_view(view)
+            return
 
-                        ctx.panel.state.issue_counts[
-                            ctx.panel.state.issue_type
-                        ] = len(dup_sample_ids)
-                        counts[ctx.panel.state.issue_type] = len(
-                            dup_sample_ids
-                        )
-                        current_counts[ctx.panel.state.issue_type] = len(
-                            dup_sample_ids
-                        )
-                        store.set(key, content)
+        if issue_type == "exact_duplicates" and ctx.dataset.has_field(field):
+            dup_filehashes = content["results"][issue_type]["dup_filehash"]
+            filehash_ids = content["results"][issue_type]["dup_sample_ids"]
+            num_duplicates = content["counts"][issue_type]
 
-                        ctx.ops.set_view(exact_dup_view)
-                        # ctx.ops.set_selected_samples(dup_sample_ids)
-                        return True
-                    else:
-                        filehash_counts = Counter(
-                            sample.filehash for sample in ctx.dataset
-                        )
-                        dup_filehash = [
-                            k for k, v in filehash_counts.items() if v > 1
-                        ]
-                        filehash_to_ids = {}
-                        for sample in ctx.dataset:
-                            if sample.filehash in dup_filehash:
-                                filehash_to_ids.setdefault(
-                                    sample.filehash, []
-                                ).append(sample.id)
-                        dup_hash_sample_ids = [
-                            (filehash, ids)
-                            for filehash, ids in filehash_to_ids.items()
-                        ]
-                        content["results"]["exact_duplicates"][
-                            "dup_filehash"
-                        ] = dup_filehash
-                        content["results"]["exact_duplicates"][
-                            "dup_sample_ids"
-                        ] = dup_hash_sample_ids
-                        dup_sample_ids = [
-                            sample_id
-                            for _, ids in dup_hash_sample_ids
-                            for sample_id in ids
-                        ]
-                        exact_dup_view = ctx.dataset.match(
-                            F("filehash").is_in(dup_filehash)
-                        ).sort_by("filehash")
-                        ctx.panel.state.issue_counts[
-                            ctx.panel.state.issue_type
-                        ] = len(dup_sample_ids)
-                        counts[ctx.panel.state.issue_type] = len(
-                            dup_sample_ids
-                        )
-                        current_counts[ctx.panel.state.issue_type] = len(
-                            dup_sample_ids
-                        )
-                        store.set(key, content)
-                        ctx.ops.set_view(exact_dup_view)
-                        # ctx.ops.set_selected_samples(dup_sample_ids)
-                        return True
+            exact_dup_view = ctx.dataset.match(
+                F("filehash").is_in(dup_filehashes)
+            )
 
-            # Set view to entire dataset
-            ctx.ops.clear_view()
-            return True
+            ctx.panel.state.issue_counts[issue_type] = num_duplicates
+            counts[issue_type] = num_duplicates
+            current_counts[issue_type] = num_duplicates
+            store.set(key, content)
+
+            ctx.ops.set_view(exact_dup_view)
+            return
+
+        ctx.ops.clear_view()
+        return
 
     def get_threshold_range(
         self, min_v, max_v, lower_std_bound, upper_std_bound
@@ -901,7 +785,6 @@ class DataQualityPanel(Panel):
         else:
             dataset_size = ctx.dataset.count()
         if ctx.panel.state.issue_type == "brightness":
-            # 10 seconds per 5,000 samples in dataset_size
             return 45 * (dataset_size // 5000)
         elif ctx.panel.state.issue_type == "blurriness":
             return 45 * (dataset_size // 5000)
@@ -919,11 +802,8 @@ class DataQualityPanel(Panel):
     async def check_for_new_samples(
         self, ctx, issue_type, field_name, previous_results, last_scan_time
     ):
-        """Check if there are new samples in the dataset"""
-
-        last_scan = last_scan_time or datetime.utcnow() + timedelta(
-            days=1
-        )  # note: default to future datetime if None (never scanned)
+        # note: default to future datetime if None (never scanned)
+        last_scan = last_scan_time or datetime.utcnow() + timedelta(days=1)
         last_modified = ctx.dataset._max("last_modified_at") or last_scan
 
         if last_scan_time is not None:
@@ -934,9 +814,11 @@ class DataQualityPanel(Panel):
                         and previous_results.get("edges", None) is not None
                     ):
                         return
-            else:  # exit early if no new samples
+            else:
+                # exit early, no new samples
                 return
-        else:  # exit early, scan has never been run before
+        else:
+            # exit early, scan has never been run before
             return
 
         print(f"checking for new {issue_type} samples")
@@ -971,7 +853,6 @@ class DataQualityPanel(Panel):
             )
 
     def _rescan_samples(self, ctx):
-
         self.change_computing_status(ctx, ctx.panel.state.issue_type)
         self.navigate_to_screen(
             ctx,
@@ -989,7 +870,6 @@ class DataQualityPanel(Panel):
         delegation_status="",
         issue_status=None,
     ):
-
         store = self.get_store(ctx)
         key = self._get_store_key(ctx)
         content = store.get(key)
@@ -1015,10 +895,6 @@ class DataQualityPanel(Panel):
     ###
 
     def computation_handler(self, ctx, check_existing_field=False):
-        print(
-            f"computation_handler called {ctx.params.get('original_params', '')}"
-        )
-
         check_existing_field = ctx.params.get(
             "check_existing_field", check_existing_field
         )
@@ -1027,67 +903,37 @@ class DataQualityPanel(Panel):
             "issue_type", None
         )
 
-        if (
-            check_existing_field
-            and len(ctx.dataset.exists(FIELD_NAME[issue_type], bool=False))
-            == 0
+        # If all computation is already done, skip to analysis
+        if check_existing_field and not ctx.dataset.exists(
+            FIELD_NAME[issue_type], bool=False
         ):
-            print(
-                f"all samples already have {FIELD_NAME[issue_type]} field, skipping computation"
-            )
             self.change_computing_status(
                 ctx, issue_type, is_computing=True, execution_type="execute"
             )
-            self._process_issue_computation(
-                ctx, issue_type
-            )  # process existing values and move onto analysis screen
+            self._process_issue_computation(ctx, issue_type)
+            return
 
-        if ctx.params is not None:
-            result = ctx.params.get("result", None)
+        run_id = self._get_run_id(ctx)
+        if run_id is not None:
+            # delegated execution was chosen
+            store = self.get_store(ctx)
+            key = self._get_store_key(ctx)
+            content = store.get(key)
 
-            if result is not None and issue_type is not None:
-                run_id = result.get("id", None)
-                print(f"computation_handler:delegated:run_id={run_id}")
+            # set issue status to computing
+            content["status"][issue_type] = STATUS[1]
+            store.set(key, content)
 
-                if run_id:  # delegation was chosen
-                    store = self.get_store(ctx)
-                    key = self._get_store_key(ctx)
-                    content = store.get(key)
-
-                    content["status"][issue_type] = STATUS[
-                        1
-                    ]  # set issue status to In Review
-
-                    store.set(key, content)
-
-                    self.change_computing_status(
-                        ctx,
-                        issue_type,
-                        is_computing=True,
-                        execution_type="delegate_execution",
-                        delegation_run_id=str(run_id),
-                    )
-                else:  # adding just in case, but shouldn't get here because result shouldn't exist on immediate execution
-                    print(f"computation_handler:run_id:unavailable")
-                    self.scan_dataset(ctx, issue_type)
-            else:  # immediate execution was chosen
-                self.scan_dataset(ctx, issue_type)
-
-    def scan_dataset(self, ctx, scan_type):
-        if scan_type == "brightness":
-            issue_method = self._on_complete_compute_brightness
-        elif scan_type == "blurriness":
-            issue_method = self._on_complete_compute_blurriness
-        elif scan_type == "aspect_ratio":
-            issue_method = self._on_complete_compute_aspect_ratio
-        elif scan_type == "entropy":
-            issue_method = self._on_complete_compute_entropy
-        elif scan_type == "exact_duplicates":
-            issue_method = self._on_complete_compute_exact_duplicates
-        elif scan_type == "near_duplicates":
-            issue_method = self.compute_near_duplicates
-
-        issue_method(ctx)
+            self.change_computing_status(
+                ctx,
+                issue_type,
+                is_computing=True,
+                execution_type="delegate_execution",
+                delegation_run_id=str(run_id),
+            )
+        else:
+            # immediate execution was chosen
+            self._process_issue_computation(ctx, issue_type)
 
     def compute_near_duplicates(self, ctx):
         ctx.prompt(
@@ -1098,89 +944,77 @@ class DataQualityPanel(Panel):
                 "metric": "cosine",
             },
             skip_prompt=False,
-            on_success=self._on_complete_compute_near_duplicates,
+            on_success=self._on_success_near_duplicates,
             on_error=self.cancel_compute,
         )
 
-    def _on_complete_compute_brightness(self, ctx):
-        self._process_issue_computation(ctx, "brightness")
-
-    def _on_complete_compute_blurriness(self, ctx):
-        self._process_issue_computation(ctx, "blurriness")
-
-    def _on_complete_compute_aspect_ratio(self, ctx):
-        self._process_issue_computation(ctx, "aspect_ratio")
-
-    def _on_complete_compute_entropy(self, ctx):
-        self._process_issue_computation(ctx, "entropy")
-
-    def _on_complete_compute_exact_duplicates(self, ctx):
-        self._process_issue_computation(ctx, "exact_duplicates")
-
-    def _on_complete_compute_near_duplicates(self, ctx):
-        callback_params = ctx.params.get("original_params", {})
-
-        delegate = callback_params.get("delegate", False)
-        run_id = ""
-        if ctx.params is not None:
-            result = ctx.params.get("result", {})
-            if result is not None:
-                run_id = bson.ObjectId(
-                    result.get("id", "")
-                )  # delegation was chosen
-
-        if delegate:
+    def _on_success_near_duplicates(self, ctx):
+        run_id = self._get_run_id(ctx)
+        if run_id is not None:
+            # delegated execution was chosen
             self._on_compute_option_selected(ctx, "delegate", run_id=run_id)
         else:
+            # immediate execution was chosen
             self._on_compute_option_selected(ctx, "execute")
             self._process_issue_computation(ctx, "near_duplicates")
 
-    def _process_issue_computation(self, ctx, field: str, recompute=False):
+    def _get_run_id(self, ctx):
+        result = ctx.params.get("result", None)
+        return result.get("id", None) if result else None
+
+    def _process_exact_duplicates(self, ctx):
+        if ctx.dataset.has_field("filehash"):
+            view = ctx.dataset.exists("filehash")
+            sample_ids, filehashes = view.values(["id", "filehash"])
+        else:
+            sample_ids, filehashes = [], []
+
+        filehash_counts = Counter(filehashes)
+        dup_filehashes = {k for k, v in filehash_counts.items() if v > 1}
+
+        filehash_to_ids = defaultdict(list)
+        if dup_filehashes:
+            for id, filehash in zip(sample_ids, filehashes):
+                if filehash in dup_filehashes:
+                    filehash_to_ids[filehash].append(id)
+
+        dup_filehashes = list(dup_filehashes)
+        dup_sample_ids = list(filehash_to_ids.items())
+        num_duplicates = sum(len(ids) for ids in filehash_to_ids.values())
+
+        return dup_filehashes, dup_sample_ids, num_duplicates
+
+    def _process_issue_computation(self, ctx, issue_type, recompute=False):
         store = self.get_store(ctx)
         key = self._get_store_key(ctx)
         content = store.get(key)
 
-        if field == "exact_duplicates":
-            # issue_results
-            filehash_counts = Counter(
-                sample.filehash for sample in ctx.dataset
-            )
-            dup_filehash = [k for k, v in filehash_counts.items() if v > 1]
+        if issue_type == "exact_duplicates":
+            (
+                dup_filehashes,
+                dup_sample_ids,
+                num_duplicates,
+            ) = self._process_exact_duplicates(ctx)
 
-            filehash_to_ids = {}
-
-            for sample in ctx.dataset:
-                if sample.filehash in dup_filehash:
-                    filehash_to_ids.setdefault(sample.filehash, []).append(
-                        sample.id
-                    )
-
-            dup_hash_sample_ids = [
-                (filehash, ids) for filehash, ids in filehash_to_ids.items()
-            ]
-            content["results"][field]["dup_filehash"] = dup_filehash
-            content["results"][field]["dup_sample_ids"] = dup_hash_sample_ids
-
-            # total duplicates
-            content["counts"][field] = sum(
-                len(ids) for ids in filehash_to_ids.values()
-            )
+            content["results"][issue_type]["dup_filehash"] = dup_filehashes
+            content["results"][issue_type]["dup_sample_ids"] = dup_sample_ids
+            content["counts"][issue_type] = num_duplicates
         else:
-            field_name = FIELD_NAME[field]
+            field_name = FIELD_NAME[issue_type]
 
-            # issue_results
+            # Generate histogram
             counts, edges, _ = ctx.dataset.histogram_values(
                 field_name, bins=50
             )
-            content["results"][field] = {
+            content["results"][issue_type] = {
                 "counts": counts,
                 "edges": edges,
             }
 
-            # save threshold issue counts
-            issue_config = ctx.panel.state.issue_config[field]
+            # Save threshold issue counts
+            issue_config = ctx.panel.state.issue_config[issue_type]
             lower_threshold, upper_threshold = self.get_plot_defaults(
-                ctx, field, issue_config["detect_method"]
+                ctx, issue_type, issue_config["detect_method"]
             )
             view = ctx.dataset.match(
                 (F(field_name) >= lower_threshold)
@@ -1188,42 +1022,36 @@ class DataQualityPanel(Panel):
             )
             num_issue_samples = len(view)
 
-            content["counts"][field] = num_issue_samples
+            content["counts"][issue_type] = num_issue_samples
 
-        # update issue_status
-        content["status"][field] = STATUS[2]
+        # Update issue_status
+        content["status"][issue_type] = STATUS[2]
 
-        # update last scan details
-        # Ensure 'last_scan' exists and is a dictionary
+        # Update last scan details
         if "last_scan" not in content or content["last_scan"] is None:
             content["last_scan"] = {}
+        if content["last_scan"].get(issue_type) is None:
+            content["last_scan"][issue_type] = {}
+        content["last_scan"][issue_type]["timestamp"] = datetime.utcnow()
+        content["last_scan"][issue_type]["dataset_size"] = ctx.dataset.count()
 
-        # Check if 'field' exists in 'last_scan' and is not None
-        if content["last_scan"].get(field) is None:
-            content["last_scan"][field] = {}
-
-        # Now safely assign values
-        content["last_scan"][field]["timestamp"] = datetime.utcnow()
-        content["last_scan"][field]["dataset_size"] = ctx.dataset.count()
-
-        print("saving store", content)
-        # save the results, counts, and status to the store
+        # Save the results, counts, and status to the store
         store.set(key, content)
 
-        # update new samples state
+        # Update new samples status
         if (
-            ctx.panel.state.new_samples[field][0] > 0
-            and ctx.panel.state.new_samples[field][2]
-        ):  # we are in rescan logic
+            ctx.panel.state.new_samples[issue_type][0] > 0
+            and ctx.panel.state.new_samples[issue_type][2]
+        ):
             new_sample_copy = ctx.panel.state.new_samples
-            new_sample_copy[field] = [0, True, True]
+            new_sample_copy[issue_type] = [0, True, True]
             ctx.panel.state.set("new_samples", new_sample_copy)
 
-        # clear out and update completed computing state
-        computing_field = content.get("computing", {}).get(field, {})
+        # Update computing status
+        computing_field = content.get("computing", {}).get(issue_type, {})
         self.change_computing_status(
             ctx,
-            field,
+            issue_type,
             is_computing=False,
             execution_type=computing_field.get("execution_type", ""),
             delegation_run_id=computing_field.get("delegation_run_id", ""),
@@ -1232,7 +1060,7 @@ class DataQualityPanel(Panel):
 
         if not recompute:
             self.navigate_to_screen(
-                ctx, issue_type=field, next_screen="analysis"
+                ctx, issue_type=issue_type, next_screen="analysis"
             )
 
     def cancel_compute(self, ctx):
@@ -1350,8 +1178,6 @@ class DataQualityPanel(Panel):
             return
 
         if delegated_state == "completed":
-            print(f"check_delegation_status:completed:{issue_type}")
-
             self.change_computing_status(
                 ctx,
                 issue_type,
@@ -1362,30 +1188,24 @@ class DataQualityPanel(Panel):
                 issue_status=STATUS[2],  # in review
             )
 
-            self._process_issue_computation(
-                ctx, issue_type, recompute=True
-            )  # compute histogram
+            self._process_issue_computation(ctx, issue_type, recompute=True)
 
             if (
                 ctx.panel.state.issue_type is not None
                 and ctx.panel.state.issue_type == issue_type
                 and ctx.panel.state.screen == "pre_load_compute"
-            ):  # if still in panel on same screen to analysis
+            ):
                 self.navigate_to_screen(
                     ctx, issue_type=issue_type, next_screen="analysis"
                 )
-        else:  # not failed nor completed (running, queued, etc)
-            if delegated_state is not None:
-                self.change_computing_status(
-                    ctx,
-                    issue_type,
-                    is_computing=True,
-                    execution_type="delegate_execution",
-                    delegation_run_id=str(run_id),
-                    delegation_status=delegated_state.lower(),
-                )
-            print(
-                f"check_delegation_status:delegated_state={delegated_state} | issue_type={issue_type}"
+        elif delegated_state is not None:
+            self.change_computing_status(
+                ctx,
+                issue_type,
+                is_computing=True,
+                execution_type="delegate_execution",
+                delegation_run_id=str(run_id),
+                delegation_status=delegated_state.lower(),
             )
 
     ###
@@ -1600,14 +1420,23 @@ class DataQualityPanel(Panel):
                     view=operator_button,
                 )
 
+        """
         if (
             ctx.panel.state.computing
             and ctx.panel.state.computing[issue_type]["delegation_status"]
             != "completed"
         ):
             # wait time text
+            wait_time = self.estimate_execution_wait_time(
+                ctx, ctx.panel.state.new_samples[issue_type][0]
+            )
+            if wait_time < 60:
+                wait_time_str = "< 1 minute"
+            else:
+                wait_time_str = f"~{math.ceil(wait_time)/60} minutes"
+
             text_view_wait = types.TextView(
-                title=f"Estimated wait time: {'< 1 minute' if self.estimate_execution_wait_time(ctx, ctx.panel.state.new_samples[issue_type][0]) < 60 else f'~{math.ceil(self.estimate_execution_wait_time(ctx, ctx.panel.state.new_samples[issue_type][0]) / 60)} minutes'}",
+                title=f"Estimated wait time: {wait_time_str}",
                 variant="body2",
                 italic=True,
                 padding="6px 0 0 0",
@@ -1616,6 +1445,7 @@ class DataQualityPanel(Panel):
             card_content.view(
                 "text_view_estimated_weight", view=text_view_wait
             )
+        """
 
         # scan size info
         scan_count = (
@@ -2604,6 +2434,9 @@ class DataQualityPanel(Panel):
     ###
 
     def render(self, ctx):
+        if ctx.dataset is None:
+            return types.Property(types.Object())
+
         panel = types.Object()
 
         old_dataset_name = ctx.panel.state.dataset_name
