@@ -74,7 +74,7 @@ INSTALL_REQUIRES = [
     "universal-analytics-python3>=1.0.1,<2",
     "pydash",
     # internal packages
-    "fiftyone-brain>=0.17.0,<0.18",
+    "fiftyone-brain>=0.18.0,<0.19",
     "fiftyone-db>=0.4,<2.0",
     "voxel51-eta>=0.13.0,<0.14",
 ]
