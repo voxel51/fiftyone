@@ -366,6 +366,7 @@ def _get_embeddings_inputs(ctx, inputs):
     for name in sorted(_get_zoo_models()):
         model_choices.add_choice(name, label=name)
 
+    # @todo either embeddings or model must be provided
     inputs.enum(
         "model",
         model_choices.values(),
