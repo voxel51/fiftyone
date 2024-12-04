@@ -39,16 +39,28 @@ on your data quickly and easily.
     :button_link: using_views.html
 
 .. customcalloutitem::
+    :header: Grouped datasets
+    :description: Use grouped datasets to represent your multiview image, video, and point cloud data.
+    :button_text: Learn more about grouped datasets
+    :button_link: groups.html
+
+.. customcalloutitem::
     :header: Using the App
     :description: Visualize your datasets in the FiftyOne App and interactively search, sort, and filter them.
     :button_text: Learn more about the App
     :button_link: app.html
 
 .. customcalloutitem::
-    :header: Grouped datasets
-    :description: Use grouped datasets to represent your multiview image, video, and point cloud data.
-    :button_text: Learn more about grouped datasets
-    :button_link: groups.html
+    :header: Annotating datasets
+    :description: Use builtin or custom integrations to add or edit labels on your FiftyOne datasets.
+    :button_text: Learn more about annotations
+    :button_link: annotation.html
+
+.. customcalloutitem::
+    :header: Evaluating models  __SUB_NEW__
+    :description: Use FiftyOne's builtin methods to evaluate your models and analyze their strengths and weaknesses.
+    :button_text: Learn more about evaluating models
+    :button_link: evaluation.html
 
 .. customcalloutitem::
     :header: Using aggregations
@@ -61,18 +73,6 @@ on your data quickly and easily.
     :description: Use FiftyOne's powerful interactive plotting features to uncover patterns and improve your data.
     :button_text: Dive into interactive plotting
     :button_link: plots.html
-
-.. customcalloutitem::
-    :header: Annotating datasets
-    :description: Use builtin or custom integrations to add or edit labels on your FiftyOne datasets.
-    :button_text: Learn more about annotations
-    :button_link: annotation.html
-
-.. customcalloutitem::
-    :header: Evaluating models
-    :description: Use FiftyOne's builtin methods to evaluate your models and analyze their strengths and weaknesses.
-    :button_text: Learn more about evaluating models
-    :button_link: evaluation.html
 
 .. customcalloutitem::
     :header: Exporting datasets
@@ -111,10 +111,10 @@ on your data quickly and easily.
     Dataset views <using_views>
     Using the App <app>
     Grouped datasets <groups>
+    Annotating datasets <annotation>
+    Evaluating models __SUB_NEW__ <evaluation>
     Using aggregations <using_aggregations>
     Interactive plots <plots>
-    Annotating datasets <annotation>
-    Evaluating models <evaluation>
     Exporting datasets <export_datasets>
     Drawing labels on samples <draw_labels>
     Configuring FiftyOne <config>

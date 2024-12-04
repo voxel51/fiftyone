@@ -22,8 +22,8 @@ load into FiftyOne with a single command.
     :button_text: Explore the datasets in the zoo
     :button_link: datasets.html
 
-Remotely-sourced datasets __SUB_NEW__
--------------------------------------
+Remotely-sourced datasets
+-------------------------
 
 The Dataset Zoo also supports loading datasets whose download/preparation
 methods are provided via GitHub repositories or URLs.
