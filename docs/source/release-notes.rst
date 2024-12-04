@@ -3,17 +3,147 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 2.2.0
+--------------------
+*Released December 4, 2024*
+
+Includes all updates from :ref:`FiftyOne 1.1.0 <release-notes-v1.1.0>`, plus:
+
+- All Teams deployments now have builtin compute capacity for
+  executing :ref:`delegated operations <teams-delegated-operations>` in the
+  background while you work in the App
+- Introduced :ref:`Data Lens <data-lens>`, which allows you to explore and
+  import samples from external data sources into FiftyOne
+- Added a :ref:`Data Quality Panel <data-quality>` that automatically scans
+  your data for quality issues and helps you take action to resolve them
+- Added a :ref:`Query Performance Panel <query-performance>` that helps you
+  create the necessary indexes to optimize queries on large datasets
+- Added support for creating embeddings visualizations natively from the
+  :ref:`Embeddings panel <app-embeddings-panel>`
+- Added support for evaluating models natively from the
+  :ref:`Modal Evaluation panel <app-model-evaluation-panel>`
+- Added support for :ref:`configuring an SMTP server <identity-providers>` for
+  sending user invitiations via email when running in
+  :ref:`Internal Mode <internal-mode>`
+
+.. _release-notes-v1.1.0:
+
+FiftyOne 1.1.0
+--------------
+*Released December 4, 2024*
+
+What's New
+
+- Added a :ref:`Model Evaluation panel <app-model-evaluation-panel>` for
+  visually and interactively evaluating models in the FiftyOne App
+- Introduced :ref:`Query Performance <app-optimize-query-performance>` in the
+  App, which automatically nudges you to create the necessary indexes to
+  greatly optimize queries on large datasets
+- Added a :ref:`leaky splits method <brain-leaky-splits>` for automatically
+  detecting near-duplicate samples in different splits of your datasets
+- Added a :ref:`near duplicates method <brain-near-duplicates>` that scans
+  your datasets and detects potential duplicate samples
+
+App
+
+- Added zoom-to-crop and set-look-at for selected labels in the
+  :ref:`3D visualizer <app-3d-visualizer>`
+  `#4931 <https://github.com/voxel51/fiftyone/pull/4931>`_
+- Gracefully handle deleted + recreated datasets of the same name
+  `#5183 <https://github.com/voxel51/fiftyone/pull/5183>`_
+- Fixed a bug that prevented video playback from working for videos with
+  unknown frame rate
+  `#5155 <https://github.com/voxel51/fiftyone/pull/5155>`_
+
+SDK
+
+- Added :meth:`min() <fiftyone.core.collections.SampleCollection.min>` and
+  :meth:`max() <fiftyone.core.collections.SampleCollection.max>` and
+  aggregations
+  `#5029 <https://github.com/voxel51/fiftyone/pull/5029>`_
+- Improved support for creating summary fields and indexes
+  `#5091 <https://github.com/voxel51/fiftyone/pull/5091>`_
+- Added support for creating compound indexes when using the builtin
+  :class:`create_index <fiftyone.operators.builtin.CreateIndex>` operator that
+  optimize sidebar queries for group datasets
+  `#5174 <https://github.com/voxel51/fiftyone/pull/5174>`_
+- The builtin
+  :class:`clear_sample_field <fiftyone.operators.builtin.ClearSampleField>`
+  and
+  :class:`clear_frame_field <fiftyone.operators.builtin.ClearFrameField>`
+  operators now support clearing fields of views, in addition to full datasets
+  `#5122 <https://github.com/voxel51/fiftyone/pull/5122>`_
+- Fixed a bug that prevented users with `pydantic` installed from loading the
+  :ref:`quickstart-3d dataset <dataset-zoo-quickstart-3d>` from the zoo
+  `#4994 <https://github.com/voxel51/fiftyone/pull/4994>`_
+
+Brain
+
+- Added support for passing existing
+  :ref:`similarity indexes <brain-similarity>` to
+  :func:`compute_visualization() <fiftyone.brain.compute_visualization>`,
+  :func:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`, and
+  :func:`compute_representativeness() <fiftyone.brain.compute_representativeness>`
+  `#201 <https://github.com/voxel51/fiftyone-brain/pull/201>`_,
+  `#204 <https://github.com/voxel51/fiftyone-brain/pull/204>`_
+- Upgraded the :ref:`Pinecone integration <pinecone-integration>` to support
+  `pinecone-client>=3.2`
+  `#202 <https://github.com/voxel51/fiftyone-brain/pull/202>`_
+
+Plugins
+
+- Added an :ref:`Execution Store <panel-execution-store>` that provides a
+  key-value interface for persisting data beyond the lifetime of a panel
+  `#4827 <https://github.com/voxel51/fiftyone/pull/4827>`_,
+  `#5144 <https://github.com/voxel51/fiftyone/pull/5144>`_
+- Added
+  :meth:`ctx.spaces <fiftyone.operators.executor.ExecutionContext.spaces>`
+  and
+  :meth:`set_spaces() <fiftyone.operators.operations.Operations.set_spaces>`
+  to the operator execution context
+  `#4902 <https://github.com/voxel51/fiftyone/pull/4902>`_
+- Added
+  :meth:`open_sample() <fiftyone.operators.operations.Operations.open_sample>`
+  and
+  :meth:`close_sample() <fiftyone.operators.operations.Operations.close_sample>`
+  methods for programmatically controlling what sample(s) are displayed in the
+  App's sample modal
+  `#5168 <https://github.com/voxel51/fiftyone/pull/5168>`_
+- Added a `skip_prompt` option to
+  :meth:`ctx.prompt <fiftyone.operators.executor.ExecutionContext.prompt>`,
+  allowing users to bypass prompts during operation execution
+  `#4992 <https://github.com/voxel51/fiftyone/pull/4992>`_
+- Introduced a new
+  :class:`StatusButtonView <fiftyone.operators.types.StatusButtonView>` type
+  for rendering buttons with status indicators
+  `#5105 <https://github.com/voxel51/fiftyone/pull/5105>`_
+- Added support for giving
+  :class:`ImageView <fiftyone.operators.types.ImageView>` components click
+  targets
+  `#4996 <https://github.com/voxel51/fiftyone/pull/4996>`_
+- Added an :ref:`allow_legacy_orchestrators <configuring-fiftyone>` config flag
+  to enable running delegated operations
+  :ref:`locally <delegated-orchestrator-open-source>`
+  `#5176 <https://github.com/voxel51/fiftyone/pull/5176>`_
+- Fixed a bug when running delegated operations
+  :ref:`programmatically <direct-operator-execution>`
+  `#5180 <https://github.com/voxel51/fiftyone/pull/5180>`_
+- Fixed a bug when running delegated operations with output schemas on
+  MongoDB <v5
+  `#5181 <https://github.com/voxel51/fiftyone/pull/5181>`_
+
+
 FiftyOne Teams 2.1.3
 --------------------
-*Released November XX, 2024*
+*Released November 8, 2024*
 
-Includes all updates from :ref:`FiftyOne 1.0.2 <release-notes-v1.0.2>`
+Includes all updates from :ref:`FiftyOne 1.0.2 <release-notes-v1.0.2>`.
 
-.. _release-notes-v1.0.3:
+.. _release-notes-v1.0.2:
 
 FiftyOne 1.0.2
 --------------
-*Released November XX, 2024*
+*Released November 8, 2024*
 
 Zoo
 
@@ -51,6 +181,7 @@ App
   `#5022 <https://github.com/voxel51/fiftyone/pull/5022>`_
 - Fixed batch selection with ctrl + click in the grid
   `#5046 <https://github.com/voxel51/fiftyone/pull/5046>`_
+
 
 FiftyOne Teams 2.1.2
 --------------------
@@ -4295,7 +4426,7 @@ Annotation
 Docs
 
 - Added a :doc:`CVAT annotation tutorial </tutorials/cvat_annotation>`
-- Added a :ref:`new example <brain-similarity-cifar10>` to the brain user guide
+- Added a :ref:`new example <brain-near-duplicates>` to the brain user guide
   that demonstrates unique and near-duplicate image workflows
 - Added an object embeddings example to the
   :ref:`embeddings visualization section <brain-embeddings-visualization>` of
