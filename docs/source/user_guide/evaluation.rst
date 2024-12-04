@@ -9,20 +9,12 @@ FiftyOne provides a variety of builtin methods for evaluating your model
 predictions, including regressions, classifications, detections, polygons,
 instance and semantic segmentations, on both image and video datasets.
 
-.. note::
-
-    Did you know? You can evaluate models from within the FiftyOne App by
-    installing the
-    `@voxel51/evaluation <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/evaluation>`_
-    plugin!
-
 When you evaluate a model in FiftyOne, you get access to the standard aggregate
 metrics such as classification reports, confusion matrices, and PR curves
 for your model. In addition, FiftyOne can also record fine-grained statistics
 like accuracy and false positive counts at the sample-level, which you can
-leverage via :ref:`dataset views <using-views>` and the
-:ref:`FiftyOne App <fiftyone-app>` to interactively explore the strengths and
-weaknesses of your models on individual data samples.
+:ref:`interactively explore <model-evaluation-panel>` in the App to diagnose
+the strengths and weaknesses of your models on individual data samples.
 
 Sample-level analysis often leads to critical insights that will help you
 improve your datasets and models. For example, viewing the samples with the
@@ -53,21 +45,37 @@ method:
 .. code-block:: python
     :linenos:
 
+    import fiftyone as fo
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart")
-    print(dataset)
 
     # Evaluate the objects in the `predictions` field with respect to the
     # objects in the `ground_truth` field
     results = dataset.evaluate_detections(
         "predictions",
         gt_field="ground_truth",
-        eval_key="eval_predictions",
+        eval_key="eval",
     )
 
-Aggregate metrics
+    session = fo.launch_app(dataset)
+
+Model Evaluation panel __SUB_NEW__
+----------------------------------
+
+When you load a dataset in the App that contains one or more
+:ref:`evaluations <evaluating-models>`, you can open the
+:ref:`Model Evaluation panel <app-model-evaluation-panel>` to visualize and
+interactively explore the evaluation results in the App:
+
+.. image:: /images/app/model-evaluation-compare.gif
+    :alt: model-evaluation-compare
+    :align: center
+
+Per-class metrics
 -----------------
+
+You can also retrieve and interact with evaluation results via the SDK.
 
 Running an evaluation returns an instance of a task-specific subclass of
 |EvaluationResults| that provides a handful of methods for generating aggregate
@@ -102,14 +110,13 @@ statistics about your dataset.
         macro avg       0.27      0.57      0.35      1311
      weighted avg       0.42      0.68      0.51      1311
 
-
 .. note::
+
     For details on micro, macro, and weighted averaging, see the 
     `sklearn.metrics documentation  <https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_recall_fscore_support.html#sklearn.metrics.precision_recall_fscore_support>`_.
 
-
-Sample metrics
---------------
+Per-sample metrics
+------------------
 
 In addition to standard aggregate metrics, when you pass an ``eval_key``
 parameter to the evaluation routine, FiftyOne will populate helpful
@@ -131,8 +138,8 @@ dataset:
     # only includes false positive boxes in the `predictions` field
     view = (
         dataset
-        .sort_by("eval_predictions_fp", reverse=True)
-        .filter_labels("predictions", F("eval_predictions") == "fp")
+        .sort_by("eval_fp", reverse=True)
+        .filter_labels("predictions", F("eval") == "fp")
     )
 
     # Visualize results in the App
@@ -160,34 +167,17 @@ real performance of a model.
 Confusion matrices
 ------------------
 
-When you use evaluation methods such as
-:meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`
-and
-:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
-to evaluate model predictions, the confusion matrices that you can generate
-by calling the
-:meth:`plot_confusion_matrix() <fiftyone.utils.eval.classification.ClassificationResults.plot_confusion_matrix>`
-method are responsive plots that can be attached to App instances to
-interactively explore specific cases of your model's performance.
-
 .. note::
 
-    See :ref:`this section <confusion-matrix-plots>` for more information about
-    interactive confusion matrices in FiftyOne.
+    The easiest way to work with confusion matrices in FiftyOne is via the
+    :ref:`Model Evaluation panel <app-model-evaluation-panel>`!
 
-Continuing with our example, the code block below generates a confusion matrix
-for our evaluation results and :ref:`attaches it to the App <attaching-plots>`.
-
-In this setup, you can click on individual cells of the confusion matrix to
-select the corresponding ground truth and/or predicted objects in the App. For
-example, if you click on a diagonal cell of the confusion matrix, you will
-see the true positive examples of that class in the App.
-
-Likewise, whenever you modify the Session's view, either in the App or by
-programmatically setting
-:meth:`session.view <fiftyone.core.session.Session.view>`, the confusion matrix
-is automatically updated to show the cell counts for only those objects that
-are included in the current view.
+When you use evaluation methods such as
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+that support confusion matrices, you can use the
+:meth:`plot_confusion_matrix() <fiftyone.utils.eval.detection.DetectionResults.plot_confusion_matrix>`
+method to render responsive plots that can be attached to App instances to
+interactively explore specific cases of your model's performance:
 
 .. code-block:: python
     :linenos:
@@ -202,6 +192,17 @@ are included in the current view.
 .. image:: /images/plots/detection-evaluation.gif
    :alt: detection-evaluation
    :align: center
+
+In this setup, you can click on individual cells of the confusion matrix to
+select the corresponding ground truth and/or predicted objects in the App. For
+example, if you click on a diagonal cell of the confusion matrix, you will
+see the true positive examples of that class in the App.
+
+Likewise, whenever you modify the Session's view, either in the App or by
+programmatically setting
+:meth:`session.view <fiftyone.core.session.Session.view>`, the confusion matrix
+is automatically updated to show the cell counts for only those objects that
+are included in the current view.
 
 .. _managing-evaluations:
 
@@ -228,22 +229,22 @@ The example below demonstrates the basic interface:
 
     # List evaluations you've run on a dataset
     dataset.list_evaluations()
-    # ['eval_predictions']
+    # ['eval']
 
     # Print information about an evaluation
-    print(dataset.get_evaluation_info("eval_predictions"))
+    print(dataset.get_evaluation_info("eval"))
 
     # Load existing evaluation results and use them
-    results = dataset.load_evaluation_results("eval_predictions")
+    results = dataset.load_evaluation_results("eval")
     results.print_report()
 
     # Rename the evaluation
     # This will automatically rename any evaluation fields on your dataset
-    dataset.rename_evaluation("eval_predictions", "eval")
+    dataset.rename_evaluation("eval", "still_eval")
 
     # Delete the evaluation
     # This will remove any evaluation data that was populated on your dataset
-    dataset.delete_evaluation("eval")
+    dataset.delete_evaluation("still_eval")
 
 The sections below discuss evaluating various types of predictions in more
 detail.
@@ -490,10 +491,8 @@ to it to demonstrate the workflow:
 
 .. note::
 
-    Did you know? You can
-    :ref:`attach confusion matrices to the App <confusion-matrix-plots>` and
-    interactively explore them by clicking on their cells and/or modifying your
-    view in the App.
+    The easiest way to analyze models in FiftyOne is via the
+    :ref:`Model Evaluation panel <app-model-evaluation-panel>`!
 
 Top-k evaluation
 ----------------
@@ -575,6 +574,11 @@ from a pre-trained model from the :ref:`Model Zoo <model-zoo>`:
 .. image:: /images/evaluation/imagenet_top_k_eval.png
    :alt: imagenet-top-k-eval
    :align: center
+
+.. note::
+
+    The easiest way to analyze models in FiftyOne is via the
+    :ref:`Model Evaluation panel <app-model-evaluation-panel>`!
 
 Binary evaluation
 -----------------
@@ -670,6 +674,11 @@ added to it to demonstrate the workflow:
 .. image:: /images/evaluation/cifar10_binary_pr_curve.png
    :alt: cifar10-binary-pr-curve
    :align: center
+
+.. note::
+
+    The easiest way to analyze models in FiftyOne is via the
+    :ref:`Model Evaluation panel <app-model-evaluation-panel>`!
 
 .. _evaluating-detections:
 
@@ -1027,6 +1036,11 @@ The example below demonstrates COCO-style detection evaluation on the
    :alt: quickstart-evaluate-detections
    :align: center
 
+.. note::
+
+    The easiest way to analyze models in FiftyOne is via the
+    :ref:`Model Evaluation panel <app-model-evaluation-panel>`!
+
 mAP and PR curves
 ~~~~~~~~~~~~~~~~~
 
@@ -1097,12 +1111,6 @@ ground truth objects of different classes.
 .. image:: /images/evaluation/coco_confusion_matrix.png
    :alt: coco-confusion-matrix
    :align: center
-
-.. note::
-
-    Did you know? :ref:`Confusion matrices <confusion-matrices>` can be
-    attached to your |Session| object and dynamically explored using FiftyOne's
-    :ref:`interactive plotting features <confusion-matrix-plots>`!
 
 .. _evaluating-detections-open-images:
 
@@ -1257,6 +1265,11 @@ The example below demonstrates Open Images-style detection evaluation on the
    :alt: quickstart-evaluate-detections-oi
    :align: center
 
+.. note::
+
+    The easiest way to analyze models in FiftyOne is via the
+    :ref:`Model Evaluation panel <app-model-evaluation-panel>`!
+
 mAP and PR curves
 ~~~~~~~~~~~~~~~~~
 
@@ -1330,12 +1343,6 @@ matched with ground truth objects of different classes.
 .. image:: /images/evaluation/oi_confusion_matrix.png
    :alt: oi-confusion-matrix
    :align: center
-
-.. note::
-
-    Did you know? :ref:`Confusion matrices <confusion-matrices>` can be
-    attached to your |Session| object and dynamically explored using FiftyOne's
-    :ref:`interactive plotting features <confusion-matrix-plots>`!
 
 .. _evaluating-detections-activitynet:
 
@@ -1479,6 +1486,11 @@ on the :ref:`ActivityNet 200 dataset <dataset-zoo-activitynet-200>`:
    :alt: activitynet-evaluate-detections
    :align: center
 
+.. note::
+
+    The easiest way to analyze models in FiftyOne is via the
+    :ref:`Model Evaluation panel <app-model-evaluation-panel>`!
+
 mAP and PR curves
 ~~~~~~~~~~~~~~~~~
 
@@ -1597,12 +1609,6 @@ matched with ground truth segments of different classes.
 .. image:: /images/evaluation/activitynet_confusion_matrix.png
    :alt: activitynet-confusion-matrix
    :align: center
-
-.. note::
-
-    Did you know? :ref:`Confusion matrices <confusion-matrices>` can be
-    attached to your |Session| object and dynamically explored using FiftyOne's
-    :ref:`interactive plotting features <confusion-matrix-plots>`!
 
 .. _evaluating-segmentations:
 
@@ -1732,6 +1738,11 @@ masks generated by two DeepLabv3 models (with
 .. image:: /images/evaluation/evaluate_segmentations.gif
    :alt: evaluate-segmentations
    :align: center
+
+.. note::
+
+    The easiest way to analyze models in FiftyOne is via the
+    :ref:`Model Evaluation panel <app-model-evaluation-panel>`!
 
 .. _evaluation-advanced:
 

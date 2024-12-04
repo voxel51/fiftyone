@@ -108,7 +108,7 @@ would with open source FiftyOne:
      - | :ref:`Using the FiftyOne App <fiftyone-app>`
        | :ref:`Creating views into datasets <using-views>`
        | `Embedding-based dataset analysis <https://voxel51.com/docs/fiftyone/tutorials/image_embeddings.html>`_
-       | :ref:`Visual similarity and dataset uniqueness <brain-similarity-cifar10>`
+       | :ref:`Visual similarity <brain-similarity>` and :ref:`dataset uniqueness <brain-image-uniqueness>`
    * - Annotation
      - :ref:`Using the annotation API <fiftyone-annotation>`
    * - Model training and evaluation
