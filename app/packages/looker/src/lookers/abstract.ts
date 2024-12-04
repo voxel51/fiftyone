@@ -208,7 +208,7 @@ export abstract class AbstractLooker<
     return size;
   }
 
-  protected dispatchEvent(eventType: string, detail: any): void {
+  dispatchEvent(eventType: string, detail: any): void {
     if (detail instanceof ErrorEvent) {
       this.updater({ error: detail.error });
       return;
@@ -273,7 +273,6 @@ export abstract class AbstractLooker<
   }
 
   private makeUpdate(): StateUpdate<State> {
-    let ready = false;
     return (stateOrUpdater, postUpdate) => {
       try {
         const updates =

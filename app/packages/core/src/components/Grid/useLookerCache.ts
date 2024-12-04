@@ -1,17 +1,24 @@
-import { Lookers } from "@fiftyone/state";
+import * as fos from "@fiftyone/state";
 import { LRUCache } from "lru-cache";
 import { useMemo } from "react";
 
 const MAX_LRU_CACHE_ITEMS = 510;
 const MAX_LRU_CACHE_SIZE = 1e9;
 
-export default function useLookerCache(reset: string) {
+interface Lookers extends EventTarget {
+  destroy: () => void;
+  getSizeBytesEstimate: () => number;
+}
+
+export default function useLookerCache<
+  T extends Lookers | fos.Lookers = fos.Lookers
+>(reset: string) {
   return useMemo(() => {
     /** CLEAR CACHE WHEN reset CHANGES */
     reset;
     /** CLEAR CACHE WHEN reset CHANGES */
 
-    const loaded = new LRUCache<string, Lookers>({
+    const loaded = new LRUCache<string, T>({
       dispose: (looker) => looker.destroy(),
       max: MAX_LRU_CACHE_ITEMS,
       maxSize: MAX_LRU_CACHE_SIZE,
@@ -25,7 +32,7 @@ export default function useLookerCache(reset: string) {
 
     // an intermediate mapping while until the "load" event
     // "load" must occur before requesting the size bytes estimate
-    const loading = new Map<string, Lookers>();
+    const loading = new Map<string, T>();
 
     return {
       delete: (key: string) => {
@@ -41,7 +48,9 @@ export default function useLookerCache(reset: string) {
           yield* it;
         }
       },
-      set: (key: string, looker: Lookers) => {
+      loadingSize: () => loading.size,
+      loadedSize: () => loaded.size,
+      set: (key: string, looker: T) => {
         const onReady = () => {
           loaded.set(key, looker);
           loading.delete(key);
@@ -51,6 +60,7 @@ export default function useLookerCache(reset: string) {
         looker.addEventListener("load", onReady);
         loading.set(key, looker);
       },
+      sizeEstimate: () => loaded.calculatedSize,
     };
   }, [reset]);
 }
