@@ -23,10 +23,7 @@ export default function useLookerCache<
       max: MAX_LRU_CACHE_ITEMS,
       maxSize: MAX_LRU_CACHE_SIZE,
       noDisposeOnSet: true,
-      sizeCalculation: (looker) => {
-        console.log(looker.getSizeBytesEstimate());
-        return looker.getSizeBytesEstimate();
-      },
+      sizeCalculation: (looker) => looker.getSizeBytesEstimate(),
       updateAgeOnGet: true,
     });
 
