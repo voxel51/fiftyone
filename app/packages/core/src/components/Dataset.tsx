@@ -1,14 +1,15 @@
+import { useTrackEvent } from "@fiftyone/analytics";
 import { subscribe } from "@fiftyone/relay";
 import { isModalActive } from "@fiftyone/state";
 import React, { useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
+import { useOptimizeDenseLabelsLoading } from "../hooks";
 import ColorModal from "./ColorModal/ColorModal";
 import { activeColorEntry } from "./ColorModal/state";
+import EventTracker from "./EventTracker";
 import Modal from "./Modal";
 import SamplesContainer from "./SamplesContainer";
-import EventTracker from "./EventTracker";
-import { useTrackEvent } from "@fiftyone/analytics";
 
 const Container = styled.div`
   height: 100%;
@@ -40,6 +41,8 @@ function Dataset() {
       reset(activeColorEntry);
     });
   }, []);
+
+  useOptimizeDenseLabelsLoading();
 
   return (
     <>
