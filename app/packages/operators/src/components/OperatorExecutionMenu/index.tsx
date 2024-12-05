@@ -1,6 +1,6 @@
 import { Menu, MenuItem, Stack, Typography } from "@mui/material";
-import React from "react";
 import { OperatorExecutionOption } from "../../state";
+import ExecutionOptionItem from "../../ExecutionOptionItem";
 
 /**
  * Component which provides a context menu for executing an operator using a
@@ -28,24 +28,42 @@ export const OperatorExecutionMenu = ({
   return (
     <Menu anchorEl={anchor} open={open} onClose={onClose}>
       {executionOptions.map((target) => (
-        <MenuItem
+        <Item
           key={target.id}
-          onClick={() => {
-            onClose?.();
-            onOptionClick?.(target);
-            target.onClick();
-          }}
-        >
-          <Stack direction="column" spacing={1}>
-            <Typography fontWeight="bold">
-              {target.choiceLabel ?? target.label}
-            </Typography>
-            <Typography color="secondary">{target.description}</Typography>
-          </Stack>
-        </MenuItem>
+          target={target}
+          disabled={target.isDisabledSchedule || !target.onClick}
+          onClose={onClose}
+          onOptionClick={onOptionClick}
+        />
       ))}
     </Menu>
   );
 };
 
 export default OperatorExecutionMenu;
+
+function Item({ target, disabled, onClose, onOptionClick }) {
+  return (
+    <MenuItem
+      key={target.id}
+      onClick={() => {
+        if (disabled) return;
+        onClose?.();
+        onOptionClick?.(target);
+        target.onClick();
+      }}
+      sx={{ cursor: disabled ? "default" : "pointer" }}
+    >
+      <Stack direction="column" spacing={1}>
+        <Typography fontWeight="bold">
+          <ExecutionOptionItem
+            label={target.choiceLabel ?? target.label}
+            tag={target.tag}
+            disabled={disabled}
+          />
+        </Typography>
+        <Typography color="secondary">{target.description}</Typography>
+      </Stack>
+    </MenuItem>
+  );
+}
