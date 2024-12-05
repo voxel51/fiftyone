@@ -281,8 +281,7 @@ def _handle_near_duplicates_execution(ctx):
 
 def _compute_sample_filehash(sample):
     filepath = sample.local_path
-    method = "md5" if sample.media_type == fom.VIDEO else None
-    return _compute_filehash(filepath, method=method)
+    return _compute_filehash(filepath, method="md5")
 
 
 def _compute_filehash(filepath, method=None):

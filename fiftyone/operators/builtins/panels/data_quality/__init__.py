@@ -534,7 +534,7 @@ class DataQualityPanel(Panel):
 
             exact_dup_view = ctx.dataset.match(
                 F("filehash").is_in(dup_filehashes)
-            ).sort_by("filehash")
+            ).sort_by("filehash", create_index=False)
 
             ctx.panel.state.issue_counts[issue_type] = num_duplicates
             counts[issue_type] = num_duplicates
