@@ -6,6 +6,14 @@ ISSUE_TYPES = [
     "near_duplicates",
     "exact_duplicates",
 ]
+# remove near_duplicates for now in homescreen
+HOME_ISSUE_TYPES = [
+    "brightness",
+    "blurriness",
+    "aspect_ratio",
+    "entropy",
+    "exact_duplicates",
+]
 
 DEFAULT_ISSUE_CONFIG = {
     "brightness": {
