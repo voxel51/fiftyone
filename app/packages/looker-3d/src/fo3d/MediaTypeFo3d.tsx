@@ -441,7 +441,7 @@ export const MediaTypeFo3dComponent = () => {
         labelBoundingBoxes.push(thisLabelBoundingBox);
       }
 
-      const unionBoundingBox: THREE.Box3 = labelBoundingBoxes[0];
+      const unionBoundingBox: THREE.Box3 = labelBoundingBoxes[0].clone();
 
       for (let i = 1; i < labelBoundingBoxes.length; i++) {
         unionBoundingBox.union(labelBoundingBoxes[i]);
