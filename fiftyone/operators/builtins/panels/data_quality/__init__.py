@@ -2254,8 +2254,9 @@ class DataQualityPanel(Panel):
             "paper_bgcolor": "rgba(0, 0, 0, 0)",  # Transparent background for the entire layout
             "colorway": ["grey", "#FF6D04", "blue"],
         }
-        ctx.panel.state.histogram = histogram_data
-        ctx.panel.state.layout = layout
+
+        # ctx.panel.set_data("histogram", histogram_data)
+        # ctx.panel.set_data("layout", layout)
 
         wrapper_stack = stack.h_stack(
             "plot_wrapper",
@@ -2274,8 +2275,8 @@ class DataQualityPanel(Panel):
         # Bar Chart - Histogram
         wrapper_stack.plot(
             f"{field}-histogram",
-            data=ctx.panel.state.histogram,
-            layout=ctx.panel.state.layout,
+            data=histogram_data,
+            layout=layout,
             config={
                 "scrollZoom": False,
                 "displayModeBar": False,
