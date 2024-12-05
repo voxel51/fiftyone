@@ -105,7 +105,9 @@ class DataQualityPanel(Panel):
         )
 
     def get_store(self, ctx):
-        """Returns latest state of execution store or creates a new one with given key"""
+        """Returns latest state of execution store or creates a new one with
+        given key.
+        """
         return ctx.store(self._get_store_key(ctx))
 
     ###
@@ -274,9 +276,8 @@ class DataQualityPanel(Panel):
     ###
 
     def should_reset_issue(self, ctx, issue_type):
-        """
-        determines whether an issue's store values need to be reset.
-        """
+        """Determines whether an issue's store values need to be reset."""
+
         # only check issues with status > computing
         if self._get_issue_status(ctx, issue_type) in [STATUS[2], STATUS[3]]:
             sample_count_with_field = len(
@@ -1314,10 +1315,9 @@ class DataQualityPanel(Panel):
         )
         card_content.view("text_view_compute", view=text_view)
 
-        # @todo show field name, not issue type here
         if existing_field_criteria and not is_computing:
             card_content.md(
-                f"It looks like the field `{ctx.panel.state.issue_type}` already exists on your dataset. We'll skip over any samples with this existing field and only scan new samples without this field for {' '.join(issue_type.split('_'))} issues. Would you like to scan them now?",
+                f"It looks like the `{FIELD_NAME[ctx.panel.state.issue_type]}` field already exists on your dataset. We'll skip over any samples with this existing field and only scan new samples without this field for {' '.join(issue_type.split('_'))} issues. Would you like to scan them now?",
                 "text_view_existing_field",
             )
 
