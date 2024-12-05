@@ -130,11 +130,17 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
         field_type = _create_index_or_summary_field_inputs(ctx, inputs)
 
         if field_type == "INDEX":
-            label = "Create index"
+            label = "Create Index"
         else:
-            label = "Create summary field"
+            label = "Create Summary Field"
 
-        return types.Property(inputs, view=types.View(label=label))
+        return types.Property(
+            inputs,
+            view=types.View(
+                label=label,
+                submit_button_label=label,
+            ),
+        )
 
     """
     def resolve_execution_options(self, ctx):
@@ -443,18 +449,21 @@ class IndexFieldRemovalConfirmationOperator(Operator):
         field_type = ctx.params.get("field_type", "N/A")
 
         if field_type == "summary_field":
-            message = f"Are you sure you want to delete summary field `{field_name}`?"
-            label = f"Delete Summary Field: {field_name}"
+            message = f"Are you sure you want to delete the `{field_name}` summary field ?"
+            label = "Delete Summary Field"
         else:
-            message = f"Are you sure you want to delete the `{field_name}` field's index?"
-            label = f"Delete Index: {field_name}"
+            message = (
+                f"Are you sure you want to delete the `{field_name}` index?"
+            )
+            label = "Delete Index"
 
         inputs.view("confirmation", types.Warning(label=message))
+
         return Property(
             inputs,
             view=types.PromptView(
                 label=label,
-                submit_button_label="Accept",
+                submit_button_label=label,
             ),
         )
 
@@ -508,7 +517,7 @@ class QueryPerformanceConfigConfirmationOperator(Operator):
             inputs,
             view=PromptView(
                 label="Query Performance Settings",
-                submit_button_label="Accept",
+                submit_button_label="Apply",
             ),
         )
 
@@ -557,7 +566,7 @@ class SummaryFieldUpdateOperator(foo.Operator):
             return types.Property(
                 inputs,
                 view=types.PromptView(
-                    label=f"Update Summary Field: {field_name}",
+                    label="Update Summary Field",
                     submit_button_label="Update Summary Field",
                 ),
             )
@@ -825,9 +834,9 @@ class QueryPerformancePanel(Panel):
         else:
             all_indices = ctx.dataset.list_indexes()
             if all_indices and summary_fields:
-                message = f"{len(all_indices)} Indexed and {len(summary_fields)} Summary Fields"
+                message = f"{len(all_indices)} Indexes and {len(summary_fields)} Summary Fields"
             else:
-                message = f"{len(all_indices)} Indexed Fields"
+                message = f"{len(all_indices)} Indexes"
 
             h_stack = panel.h_stack(
                 "v_stack",
