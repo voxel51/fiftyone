@@ -273,6 +273,43 @@ class DataQualityPanel(Panel):
     # EVENT HANDLERS
     ###
 
+    def should_reset_issue(self, ctx, issue_type):
+        """
+        determines whether an issue's store values need to be reset.
+        """
+        # only check issues with status > computing
+        if self._get_issue_status(ctx, issue_type) in [STATUS[2], STATUS[3]]:
+            sample_count_with_field = len(
+                ctx.dataset.exists(FIELD_NAME[issue_type], bool=True)
+            )
+
+            if sample_count_with_field == 0:
+                ctx.log(f"should_reset_issue:{issue_type}")
+                return True
+
+        return False
+
+    def reset_issue(self, ctx, issue_type):
+        # change status
+        self.change_computing_status(
+            ctx,
+            issue_type,
+            is_computing=False,
+            issue_status=STATUS[0],
+        )
+
+        store = self.get_store(ctx)
+        key = self._get_store_key(ctx)
+        content = store.get(key)
+
+        # clear old data
+        content["results"][issue_type] = SAMPLE_STORE["results"][issue_type]
+        content["last_scan"][issue_type] = SAMPLE_STORE["last_scan"][
+            issue_type
+        ]
+
+        store.set(key, content)
+
     def navigate_to_screen(
         self, ctx, issue_type=None, next_screen="home", recompute=False
     ):
@@ -298,20 +335,29 @@ class DataQualityPanel(Panel):
             ctx.ops.set_view(ctx.dataset.view())
 
         # when change to analysis screen, change view
-        if ctx.params.get("next_screen", next_screen) == "analysis":
-            if recompute:
-                self._process_issue_computation(ctx, issue_type, recompute)
+        if next_screen == "analysis":
+            try:
+                if recompute:
+                    self._process_issue_computation(ctx, issue_type, recompute)
 
-            if issue_type in [
-                "brightness",
-                "blurriness",
-                "aspect_ratio",
-                "entropy",
-                "near_duplicates",
-            ]:
-                self.set_hist_defaults(ctx)
+                if issue_type in [
+                    "brightness",
+                    "blurriness",
+                    "aspect_ratio",
+                    "entropy",
+                    "near_duplicates",
+                ]:
+                    self.set_hist_defaults(ctx)
+            except ValueError as e:
+                ctx.log(f"navigate_to_screen warning: {e}")
+                if self.should_reset_issue(ctx, issue_type):
+                    self.reset_issue(ctx, issue_type)
+                    ctx.panel.state.screen = "pre_load_compute"
+                    return
+                else:
+                    raise e
 
-            self.change_view(ctx, ctx.params.get("issue_type", issue_type))
+            self.change_view(ctx, issue_type)
 
             if ctx.panel.state.computing and issue_type:
                 self.change_computing_status(ctx, issue_type)
@@ -1788,7 +1834,10 @@ class DataQualityPanel(Panel):
         )
 
     def _render_issue_navigation(self, panel, issue_type, ctx):
-        store_content = self.get_store(ctx).get(self._get_store_key(ctx))
+        store = self.get_store(ctx)
+        key = self._get_store_key(ctx)
+        store_content = store.get(key)
+
         last_scan_timestamp = (
             ctx.panel.state.last_scan.get(issue_type) or {}
         ).get("timestamp", None)
