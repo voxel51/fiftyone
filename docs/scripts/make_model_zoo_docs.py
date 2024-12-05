@@ -173,7 +173,7 @@ _MODEL_TEMPLATE = """
     model = foz.load_zoo_model("{{ name }}")
 
     embeddings = dataset.compute_embeddings(model)
-{% elif 'zero-shot-detection-transformer-torch' in name %}
+{% elif 'zero-shot' in name and 'transformer' in name %}
     model = foz.load_zoo_model(
         "{{ name }}",
         classes=["person", "dog", "cat", "bird", "car", "tree", "chair"],
