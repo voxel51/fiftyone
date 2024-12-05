@@ -388,7 +388,7 @@ export const MediaTypeFo3dComponent = () => {
         return;
       }
 
-      const labelBoundingBoxes = [];
+      const labelBoundingBoxes: THREE.Box3[] = [];
 
       for (const selectedLabel of currentSelectedLabels) {
         const field = selectedLabel.field;
@@ -441,17 +441,23 @@ export const MediaTypeFo3dComponent = () => {
         labelBoundingBoxes.push(thisLabelBoundingBox);
       }
 
-      const unionBoundingBox = labelBoundingBoxes[0].clone();
+      const unionBoundingBox: THREE.Box3 = labelBoundingBoxes[0];
 
       for (let i = 1; i < labelBoundingBoxes.length; i++) {
         unionBoundingBox.union(labelBoundingBoxes[i]);
       }
 
-      const unionBoundingBoxCenter = unionBoundingBox.getCenter(
-        new THREE.Vector3()
-      );
-      const unionBoundingBoxSize = unionBoundingBox.getSize(
-        new THREE.Vector3()
+      // center = (min + max) / 2
+      let unionBoundingBoxCenter = new Vector3();
+      unionBoundingBoxCenter = unionBoundingBoxCenter
+        .addVectors(unionBoundingBox.min, unionBoundingBox.max)
+        .multiplyScalar(0.5);
+
+      // size = max - min
+      let unionBoundingBoxSize = new Vector3();
+      unionBoundingBoxSize = unionBoundingBoxSize.subVectors(
+        unionBoundingBox.max,
+        unionBoundingBox.min
       );
 
       const maxSize = Math.max(
