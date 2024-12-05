@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Teams 2.2.0
 --------------------
-*Released December 4, 2024*
+*Released December 5, 2024*
 
 Includes all updates from :ref:`FiftyOne 1.1.0 <release-notes-v1.1.0>`, plus:
 
@@ -30,7 +30,7 @@ Includes all updates from :ref:`FiftyOne 1.1.0 <release-notes-v1.1.0>`, plus:
 
 FiftyOne 1.1.0
 --------------
-*Released December 4, 2024*
+*Released December 5, 2024*
 
 What's New
 
