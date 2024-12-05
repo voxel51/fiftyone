@@ -29,6 +29,7 @@ current analysis/review status:
 -   **Entropy**: scans for images that have unusually small or large entropy
 -   **Near Duplicates**: leverages embeddings to scan for
     :ref:`near-duplicate samples <brain-near-duplicates>` in your dataset
+    (*Coming Soon!*)
 -   **Exact Duplicates**: uses filehashes to scan your dataset for duplicate
     data with either the same or different filenames
 
@@ -106,7 +107,7 @@ from which the displayed histograms are generated:
 -   **Entropy**: the entropy of each image is stored in an `entropy` field of
     the sample
 -   **Near Duplicates**: the nearest neighbor distance of each sample is stored
-    in a `nearest_neighbor` field of the sample
+    in a `nearest_neighbor` field of the sample (*Coming Soon!*)
 -   **Exact Duplicates**: the filehash of each image is stored in a `filehash`
     field of the sample
 
