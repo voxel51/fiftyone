@@ -256,6 +256,7 @@ export type OperatorExecutionOption = {
   default?: boolean;
   selected?: boolean;
   onSelect?: () => void;
+  isDisabledSchedule?: boolean;
 };
 
 const useOperatorPromptSubmitOptions = (
@@ -357,6 +358,7 @@ const useOperatorPromptSubmitOptions = (
       id: "disabled-schedule",
       description: markdownDesc,
       isDelegated: true,
+      isDisabledSchedule: true,
     });
   }
 
