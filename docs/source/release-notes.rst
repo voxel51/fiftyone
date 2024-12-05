@@ -76,6 +76,9 @@ SDK
 - Fixed a bug that prevented users with `pydantic` installed from loading the
   :ref:`quickstart-3d dataset <dataset-zoo-quickstart-3d>` from the zoo
   `#4994 <https://github.com/voxel51/fiftyone/pull/4994>`_
+- Added optional `email` parameter to the
+  :ref:`CVAT integration <cvat-integration>`
+  `#5218 <https://github.com/voxel51/fiftyone/pull/5218>`_
 
 Brain
 
