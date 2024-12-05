@@ -2841,6 +2841,122 @@
             "date_added": "2023-07-31 10:17:51"
         },
         {
+            "base_name": "dinov2-vits14-reg-torch",
+            "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-S/14 distilled",
+            "source": "https://github.com/facebookresearch/dinov2",
+            "size_bytes": 88291785,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.torch.TorchImageModel",
+                "config": {
+                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "entrypoint_args": {
+                        "repo_or_dir": "facebookresearch/dinov2",
+                        "model": "dinov2_vits14_reg"
+                    },
+                    "image_patch_size": 14,
+                    "embeddings_layer": "head"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["embeddings", "torch", "dinov2"],
+            "date_added": "2023-12-02 16:42:00"
+        },
+        {
+            "base_name": "dinov2-vitb14-reg-torch",
+            "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-B/14 distilled",
+            "source": "https://github.com/facebookresearch/dinov2",
+            "size_bytes": 346393545,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.torch.TorchImageModel",
+                "config": {
+                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "entrypoint_args": {
+                        "repo_or_dir": "facebookresearch/dinov2",
+                        "model": "dinov2_vitb14_reg"
+                    },
+                    "image_patch_size": 14,
+                    "embeddings_layer": "head"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["embeddings", "torch", "dinov2"],
+            "date_added": "2023-12-02 16:42:00"
+        },
+        {
+            "base_name": "dinov2-vitl14-reg-torch",
+            "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-L/14 distilled",
+            "source": "https://github.com/facebookresearch/dinov2",
+            "size_bytes": 1217607321,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.torch.TorchImageModel",
+                "config": {
+                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "entrypoint_args": {
+                        "repo_or_dir": "facebookresearch/dinov2",
+                        "model": "dinov2_vitl14_reg"
+                    },
+                    "image_patch_size": 14,
+                    "embeddings_layer": "head"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["embeddings", "torch", "dinov2"],
+            "date_added": "2023-12-02 16:42:00"
+        },
+        {
+            "base_name": "dinov2-vitg14-reg-torch",
+            "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-g/14",
+            "source": "https://github.com/facebookresearch/dinov2",
+            "size_bytes": 4546140349,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.torch.TorchImageModel",
+                "config": {
+                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "entrypoint_args": {
+                        "repo_or_dir": "facebookresearch/dinov2",
+                        "model": "dinov2_vitg14_reg"
+                    },
+                    "image_patch_size": 14,
+                    "embeddings_layer": "head"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["embeddings", "torch", "dinov2"],
+            "date_added": "2023-12-02 16:42:00"
+        },
+        {
             "base_name": "yolov5n-coco-torch",
             "description": "Ultralytics YOLOv5n model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
