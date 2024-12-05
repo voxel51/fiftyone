@@ -3214,7 +3214,11 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self, url=None, username=None, password=None, email=None, headers=None
     ):
         self._load_parameters(
-            url=url, username=username, password=password, email=email, headers=headers
+            url=url,
+            username=username,
+            password=password,
+            email=email,
+            headers=headers,
         )
 
 
@@ -3755,13 +3759,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self._server_version = Version("2")
 
         try:
-            self._login(username, password, email)
+            self._login(username, password, email=email)
         except requests.exceptions.HTTPError as e:
             if e.response.status_code != 404:
                 raise e
 
             self._server_version = Version("1")
-            self._login(username, password, email)
+            self._login(username, password, email=email)
 
         self._add_referer()
         self._add_organization()
@@ -3798,13 +3802,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def close(self):
         self._session.close()
 
-    def _login(self, username, password, email):
+    def _login(self, username, password, email=None):
         payload = {
             "username": username,
-            "password": password,   
+            "password": password,
         }
         if email is not None:
             payload["email"] = email
+
         response = self._make_request(
             self._session.post,
             self.login_url,
