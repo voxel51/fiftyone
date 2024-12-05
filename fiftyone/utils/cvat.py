@@ -3045,6 +3045,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             media files on disk to upload
         url (None): the url of the CVAT server
         username (None): the CVAT username
+        email (None): the CVAT email
         password (None): the CVAT password
         headers (None): an optional dict of headers to add to all CVAT API
             requests
@@ -3125,6 +3126,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         media_field="filepath",
         url=None,
         username=None,
+        email=None,
         password=None,
         headers=None,
         task_size=None,
@@ -3172,6 +3174,7 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
 
         # store privately so these aren't serialized
         self._username = username
+        self._email = email
         self._password = password
         self._headers = headers
 
@@ -3182,6 +3185,14 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
     @username.setter
     def username(self, value):
         self._username = value
+
+    @property
+    def email(self):
+        return self._email
+
+    @email.setter
+    def email(self, value):
+        self._email = value
 
     @property
     def password(self):
@@ -3200,10 +3211,10 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self._headers = value
 
     def load_credentials(
-        self, url=None, username=None, password=None, headers=None
+        self, url=None, username=None, password=None, email=None, headers=None
     ):
         self._load_parameters(
-            url=url, username=username, password=password, headers=headers
+            url=url, username=username, password=password, email=email, headers=headers
         )
 
 
@@ -3303,6 +3314,7 @@ class CVATBackend(foua.AnnotationBackend):
             self.config.name,
             self.config.url,
             username=self.config.username,
+            email=self.config.email,
             password=self.config.password,
             headers=self.config.headers,
             organization=self.config.organization,
@@ -3550,6 +3562,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         name: the name of the backend
         url: url of the CVAT server
         username (None): the CVAT username
+        email (None): the CVAT email
         password (None): the CVAT password
         headers (None): an optional dict of headers to add to all requests
         organization (None): the name of the organization to use when sending
@@ -3561,6 +3574,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         name,
         url,
         username=None,
+        email=None,
         password=None,
         headers=None,
         organization=None,
@@ -3568,6 +3582,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self._name = name
         self._url = url.rstrip("/")
         self._username = username
+        self._email = email
         self._password = password
         self._headers = headers
         self._organization = organization
@@ -3722,6 +3737,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         username = self._username
         password = self._password
+        email = self._email
 
         if username is None or password is None:
             username, password = self._prompt_username_password(
@@ -3739,13 +3755,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self._server_version = Version("2")
 
         try:
-            self._login(username, password)
+            self._login(username, password, email)
         except requests.exceptions.HTTPError as e:
             if e.response.status_code != 404:
                 raise e
 
             self._server_version = Version("1")
-            self._login(username, password)
+            self._login(username, password, email)
 
         self._add_referer()
         self._add_organization()
@@ -3782,12 +3798,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def close(self):
         self._session.close()
 
-    def _login(self, username, password):
+    def _login(self, username, password, email):
         response = self._make_request(
             self._session.post,
             self.login_url,
             print_error_info=False,
-            json={"username": username, "password": password},
+            json={"username": username, "password": password, "email": email},
         )
 
         if "csrftoken" in response.cookies:
