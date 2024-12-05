@@ -3799,11 +3799,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self._session.close()
 
     def _login(self, username, password, email):
+        payload = {
+            "username": username,
+            "password": password,   
+        }
+        if email is not None:
+            payload["email"] = email
         response = self._make_request(
             self._session.post,
             self.login_url,
             print_error_info=False,
-            json={"username": username, "password": password, "email": email},
+            json=payload,
         )
 
         if "csrftoken" in response.cookies:
