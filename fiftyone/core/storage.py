@@ -6,7 +6,6 @@ File storage utilities.
 |
 """
 from collections import defaultdict
-from contextlib import contextmanager
 from datetime import datetime
 import io
 import itertools
@@ -52,6 +51,7 @@ region_clients = {}
 bucket_clients = {}
 path_clients = {}
 client_lock = threading.Lock()
+init_lock = threading.Lock()
 minio_prefixes = []
 azure_prefixes = []
 
@@ -66,28 +66,29 @@ def init_storage():
 
     This method may be called at any time to reinitialize storage client usage.
     """
-    global creds_manager
-    if fi.has_encryption_key():
-        from fiftyone.internal.credentials import CloudCredentialsManager
+    with init_lock:
+        global creds_manager
+        if fi.has_encryption_key():
+            from fiftyone.internal.credentials import CloudCredentialsManager
 
-        encryption_key = os.environ.get(fic.ENCRYPTION_KEY_ENV_VAR)
-        creds_manager = CloudCredentialsManager(encryption_key)
-    else:
-        creds_manager = None
+            encryption_key = os.environ.get(fic.ENCRYPTION_KEY_ENV_VAR)
+            creds_manager = CloudCredentialsManager(encryption_key)
+        else:
+            creds_manager = None
 
-    global available_file_systems
-    available_file_systems = None
+        global available_file_systems
+        available_file_systems = None
 
-    default_clients.clear()
-    bucket_regions.clear()
-    region_clients.clear()
-    bucket_clients.clear()
-    path_clients.clear()
-    minio_prefixes.clear()
-    azure_prefixes.clear()
+        default_clients.clear()
+        bucket_regions.clear()
+        region_clients.clear()
+        bucket_clients.clear()
+        path_clients.clear()
+        minio_prefixes.clear()
+        azure_prefixes.clear()
 
-    _load_minio_prefixes()
-    _load_azure_prefixes()
+        _load_minio_prefixes()
+        _load_azure_prefixes()
 
 
 def _load_minio_prefixes():
