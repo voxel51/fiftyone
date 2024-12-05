@@ -151,6 +151,7 @@ class ComputeExactDuplicates(foo.Operator):
 
 
 def _handle_execution(ctx, field, fcn, skip_failures=True, progress=None):
+    # Only process samples that don't yet have the field populated
     if ctx.dataset.has_field(field):
         samples = ctx.dataset.exists(field, bool=False).select_fields(field)
     else:
@@ -202,21 +203,21 @@ def _handle_near_duplicates_inputs(ctx):
         inputs.str(
             "warning",
             label=(
-                "Near Duplicates scans are not currently recommended for "
-                "datasets with over 100k samples"
+                "Near Duplicates scans are not recommended for datasets with "
+                "over 100k samples"
             ),
             view=types.Warning(),
         )
 
-    view = types.View(label="Compute near duplicates")
+    view = types.View(label="Compute Near Duplicates")
     return types.Property(inputs, view=view)
 
 
 def _handle_near_duplicates_execution(ctx):
-    embeddings_field = ctx.params.get("embeddings", None) or None
     model_name = ctx.params.get("model", None) or None
+    embeddings_field = ctx.params.get("embeddings", None) or None
     metric = ctx.params.get("metric", "cosine")
-    batch_size = 8
+    batch_size = 8  # will be ignored if chosen model doesn't support batching
 
     # No multiprocessing allowed when running synchronously
     if not ctx.delegated:
@@ -224,12 +225,14 @@ def _handle_near_duplicates_execution(ctx):
     else:
         num_workers = None
 
+    # If all samples already have nearest neighbors populated, there's nothing
+    # for us to do here
     if ctx.dataset.has_field("nearest_neighbor"):
         if len(ctx.dataset.exists("nearest_neighbor", bool=False)) == 0:
             return
 
     # Store embeddings on dataset if requested
-    if embeddings_field is not None and model_name is not None:
+    if model_name is not None and embeddings_field is not None:
         if ctx.dataset.has_field(embeddings_field):
             view = ctx.dataset.exists(embeddings_field, bool=False)
         else:
@@ -245,6 +248,8 @@ def _handle_near_duplicates_execution(ctx):
                 skip_failures=True,
             )
 
+        # Don't pass model to `compute_similarity()` because embeddings are
+        # stored on the dataset
         model_name = None
 
     index = fob.compute_similarity(
@@ -259,6 +264,8 @@ def _handle_near_duplicates_execution(ctx):
         metric=metric,
     )
 
+    # NOTE: we always recompute nearest neighbors for all samples because
+    # adding a single new sample could change everybody's nearest neighbor
     nearest_inds, dists = index._kneighbors(k=1, return_dists=True)
 
     index_ids = index.current_sample_ids
@@ -347,47 +354,50 @@ def _get_embeddings_inputs(ctx, inputs):
     for field_name in sorted(embeddings_fields):
         embeddings_choices.add_choice(field_name, label=field_name)
 
-    inputs.str(
-        "embeddings",
-        default=None,
-        required=False,
-        label="Embeddings",
-        description=(
-            "An optional sample field containing pre-computed embeddings to "
-            "use. Or when a model is provided, an optional field in which to "
-            "store the embeddings"
-        ),
-        view=embeddings_choices,
-    )
-
-    embeddings = ctx.params.get("embeddings", None)
-
     model_choices = types.AutocompleteView()
-    for name in sorted(_get_zoo_models()):
+    for name in sorted(_get_zoo_models_with_embeddings()):
         model_choices.add_choice(name, label=name)
 
-    # @todo either embeddings or model must be provided
-    inputs.enum(
+    prop = inputs.enum(
         "model",
         model_choices.values(),
         default=None,
         required=False,
         label="Model",
         description=(
-            "An optional name of a model from the "
+            "A model from the "
             "[FiftyOne Model Zoo](https://docs.voxel51.com/user_guide/model_zoo/models.html) "
             "to use to generate embeddings"
         ),
         view=model_choices,
     )
 
+    inputs.str(
+        "embeddings",
+        default=None,
+        required=False,
+        label="Embeddings field",
+        description=(
+            "A sample field containing pre-computed embeddings to use. Or "
+            "when a model is provided, an optional field in which to store "
+            "the embeddings"
+        ),
+        view=embeddings_choices,
+    )
 
-def _get_zoo_models():
-    manifest = fozm._list_zoo_models()
+    model = ctx.params.get("model", None)
+    embeddings = ctx.params.get("embeddings", None)
 
-    # pylint: disable=no-member
+    if not model and embeddings not in embeddings_fields:
+        prop.error_message = (
+            "You must choose a model or an existing embeddings field"
+        )
+        prop.invalid = True
+
+
+def _get_zoo_models_with_embeddings():
     available_models = set()
-    for model in manifest:
+    for model in fozm._list_zoo_models():
         if model.has_tag("embeddings"):
             available_models.add(model.name)
 
