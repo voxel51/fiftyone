@@ -64,6 +64,7 @@ class DatasetView(foc.SampleCollection):
         "__media_type",
         "__group_slice",
         "__name",
+        "_download_context",
         "_make_sample_fcn",
         "_make_frame_fcn",
     )
