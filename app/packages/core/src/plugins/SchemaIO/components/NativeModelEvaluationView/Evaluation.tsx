@@ -1,5 +1,5 @@
 import { Dialog } from "@fiftyone/components";
-import { view } from "@fiftyone/state";
+import { editingFieldAtom, view } from "@fiftyone/state";
 import {
   ArrowBack,
   ArrowDropDown,
@@ -41,7 +41,7 @@ import {
   useTheme,
 } from "@mui/material";
 import React, { useEffect, useMemo, useState } from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useSetRecoilState } from "recoil";
 import EvaluationNotes from "./EvaluationNotes";
 import EvaluationPlot from "./EvaluationPlot";
 import Status from "./Status";
@@ -133,6 +133,7 @@ export default function Evaluation(props: EvaluationProps) {
 
   const triggerEvent = useTriggerEvent();
   const activeFilter = useActiveFilter(evaluation, compareEvaluation);
+  const setEditingField = useSetRecoilState(editingFieldAtom);
 
   const closeNoteDialog = () => {
     setEditNoteState((note) => ({ ...note, open: false }));
@@ -1295,6 +1296,12 @@ export default function Evaluation(props: EvaluationProps) {
             </Typography>
           </Stack>
           <TextField
+            onFocus={() => {
+              setEditingField(true);
+            }}
+            onBlur={() => {
+              setEditingField(false);
+            }}
             multiline
             rows={10}
             defaultValue={evaluationNotes}
