@@ -371,10 +371,6 @@ class DataQualityPanel(Panel):
             "id", execution_option
         )
 
-        store = self.get_store(ctx)
-        key = self._get_store_key(ctx)
-        content = store.get(key)
-
         new_samples = ctx.panel.state.new_samples
 
         # new samples > 0 so we are within rescan logic
@@ -394,12 +390,9 @@ class DataQualityPanel(Panel):
                 execution_type="execute",
                 delegation_run_id="",
                 delegation_status="",
+                issue_status=STATUS[1],
             )
-
-        elif (
-            dropdown_value == "delegate"
-            or dropdown_value == "delegate_execution"
-        ):
+        elif dropdown_value in ["delegate", "delegate_execution"]:
             self.change_computing_status(
                 ctx,
                 issue_type,
@@ -407,11 +400,8 @@ class DataQualityPanel(Panel):
                 execution_type="delegate_execution",
                 delegation_run_id=str(run_id),
                 delegation_status="",
+                issue_status=STATUS[1],
             )
-
-        # Change status to computing
-        content["status"][issue_type] = STATUS[1]
-        store.set(key, content)
 
     def on_change_set_threshold(self, ctx):
         issue_type = ctx.panel.state.issue_type
@@ -874,7 +864,7 @@ class DataQualityPanel(Panel):
         ctx.panel.state.set("computing", computing_copy)
         content["computing"] = computing_copy
 
-        if issue_status is not None:
+        if issue_status in list(STATUS.values()):
             content["status"][issue_type] = issue_status
 
         store.set(key, content)
@@ -1013,9 +1003,6 @@ class DataQualityPanel(Panel):
 
             content["counts"][issue_type] = num_issue_samples
 
-        # Update issue_status
-        content["status"][issue_type] = STATUS[2]
-
         # Update last scan details
         if "last_scan" not in content or content["last_scan"] is None:
             content["last_scan"] = {}
@@ -1044,6 +1031,7 @@ class DataQualityPanel(Panel):
             execution_type=computing_field.get("execution_type", ""),
             delegation_run_id=computing_field.get("delegation_run_id", ""),
             delegation_status="",
+            issue_status=STATUS[2],
         )
 
         if not recompute:
@@ -1109,8 +1097,12 @@ class DataQualityPanel(Panel):
 
             # Immediate executions timeout after 10 minutes, so handle that
             if datetime.utcnow() > last_scan_timestamp + timedelta(minutes=10):
+                # new status based on saved results
                 self.change_computing_status(
-                    ctx, issue_type, is_computing=False
+                    ctx,
+                    issue_type,
+                    is_computing=False,
+                    issue_status=STATUS[0],
                 )
 
             return
