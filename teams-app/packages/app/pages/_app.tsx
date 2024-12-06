@@ -142,7 +142,6 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
       doNotTrack,
     });
     if (isServiceWorkerEnabled) {
-      // window.LOOKER_CROSS_ORIGIN_MEDIA = true;
       registerServiceWorker(asPath).then(() => {
         setIsServiceWorkerReady(true);
       });

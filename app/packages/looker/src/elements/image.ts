@@ -29,6 +29,7 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
     return {
       load: ({ update }) => {
         this.imageSource = this.element;
+        console.log("this.imageSource.src=", this.imageSource.src);
 
         update({
           loaded: true,
@@ -53,13 +54,9 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
   renderSelf({ config: { src } }: Readonly<ImageState>) {
     if (this.src !== src) {
       this.src = src;
-      console.log(
-        'sessionStorage.getItem("customCredentialsAudience")=',
-        sessionStorage.getItem("customCredentialsAudience")
-      );
       if (
-        sessionStorage.getItem("customCredentialsAudience") &&
-        src.includes(sessionStorage.getItem("customCredentialsAudience"))
+        this.customCredentialsAudience &&
+        src.includes(this.customCredentialsAudience)
       ) {
         console.log("setting crossOrigin=Anonymous");
         this.element.setAttribute("crossOrigin", "Anonymous");

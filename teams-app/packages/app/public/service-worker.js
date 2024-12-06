@@ -91,7 +91,6 @@ const fetchEvent = () => {
         // Create new request using the current request with modified headers for auth
 
         const modifiedHeaders = new Headers(event.request.headers);
-        console.log("modifiedHeaders", modifiedHeaders);
         if (Object.keys(authHeaderProps.headerOverrides).length > 0) {
           for (const [header, value] of Object.entries(
             authHeaderProps.headerOverrides
@@ -125,7 +124,6 @@ const fetchEvent = () => {
         event.respondWith(fetch(modifiedRequest));
       } else {
         // Allow the request to continue as normal
-        console.log("unmodified request url:", requestUrl);
         event.respondWith(fetch(event.request));
       }
     } catch (error) {
@@ -140,56 +138,3 @@ const fetchEvent = () => {
   });
 };
 fetchEvent();
-
-// const fetchEvent = () => {
-//   let jwt = "";
-//   let jwtKeyName = "";
-//   self.addEventListener("fetch", async (e) => {
-//
-//     try {
-//       if (!jwt) {
-//         jwt = new URLSearchParams(location.search).get("token");
-//       }
-//
-//       // modifiable token key name
-//       if (!jwtKeyName) {
-//         jwtKeyName = new URLSearchParams(location.search).get("tokenKey");
-//       }
-//
-//       // better way to detect (media) image/video
-//       const destinationType = e.request.destination;
-//       const path = e.request.url;
-//       const isMediaRequest =
-//         supportedDestinations.includes(destinationType) ||
-//         supportedMediaExtensions.filter((mt) => path.includes(mt))?.length > 0;
-//
-//       if (!isMediaRequest || !jwt) {
-//         if (!jwt) {
-//           console.warn("cannot set token");
-//         }
-//         e.respondWith(fetch(e.request));
-//         return;
-//       }
-//
-//       // Clone headers and add 'jwt' property
-//       const newHeaders = new Headers(e.request.headers);
-//       newHeaders.set(jwtKeyName, jwt);
-//
-//       // Create a new request with the new headers
-//       const modifiedRequest = new Request(e.request, {
-//         headers: newHeaders,
-//       });
-//
-//       e.respondWith(fetch(modifiedRequest));
-//     } catch (error) {
-//       console.error("failed to fetch: ", error);
-//       e.respondWith(
-//         new Response(JSON.stringify({ message: error.message }), {
-//           status: 500,
-//           headers: { "Content-Type": "application/json" },
-//         })
-//       );
-//     }
-//   });
-// };
-// fetchEvent();
