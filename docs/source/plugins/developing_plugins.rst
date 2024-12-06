@@ -251,6 +251,7 @@ plugin's `fiftyone.yml` looks like this:
     secrets:
       - FIFTYONE_CVAT_URL
       - FIFTYONE_CVAT_USERNAME
+      - FIFTYONE_CVAT_EMAIL
       - FIFTYONE_CVAT_PASSWORD
       - FIFTYONE_LABELBOX_URL
       - FIFTYONE_LABELBOX_API_KEY
@@ -1527,6 +1528,7 @@ plugin declares the following secrets:
    secrets:
      - FIFTYONE_CVAT_URL
      - FIFTYONE_CVAT_USERNAME
+     - FIFTYONE_CVAT_EMAIL
      - FIFTYONE_CVAT_PASSWORD
      - FIFTYONE_LABELBOX_URL
      - FIFTYONE_LABELBOX_API_KEY
@@ -1543,6 +1545,7 @@ plugin, you would set:
 
     FIFTYONE_CVAT_URL=...
     FIFTYONE_CVAT_USERNAME=...
+    FIFTYONE_CVAT_EMAIL=...
     FIFTYONE_CVAT_PASSWORD=...
 
 At runtime, the plugin's :ref:`execution context <operator-execution-context>`
@@ -1555,6 +1558,7 @@ plugin. Operators can access these secrets via the `ctx.secrets` dict:
    def execute(self, ctx):
       url = ctx.secrets["FIFTYONE_CVAT_URL"]
       username = ctx.secrets["FIFTYONE_CVAT_USERNAME"]
+      email = ctx.secrets["FIFTYONE_CVAT_EMAIL"]
       password = ctx.secrets["FIFTYONE_CVAT_PASSWORD"]
 
 .. _operator-outputs:
@@ -2500,6 +2504,7 @@ plugin. Panels can access these secrets via the `ctx.secrets` dict:
     def on_load(self, ctx):
         url = ctx.secrets["FIFTYONE_CVAT_URL"]
         username = ctx.secrets["FIFTYONE_CVAT_USERNAME"]
+        email = ctx.secrets["FIFTYONE_CVAT_EMAIL"]
         password = ctx.secrets["FIFTYONE_CVAT_PASSWORD"]
 
 .. _panel-common-patterns:

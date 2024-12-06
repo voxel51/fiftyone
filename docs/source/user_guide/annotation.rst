@@ -357,12 +357,13 @@ settings that you declare in this way will be passed as keyword arguments to
 methods like
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
 whenever the corresponding backend is in use. For example, you can configure
-the URL, username, and password of your CVAT server as follows:
+the URL, username, email, and password of your CVAT server as follows:
 
 .. code-block:: shell
 
     export FIFTYONE_CVAT_URL=http://localhost:8080
     export FIFTYONE_CVAT_USERNAME=...
+    export FIFTYONE_CVAT_EMAIL=...
     export FIFTYONE_CVAT_PASSWORD=...
 
 The `FIFTYONE_ANNOTATION_BACKENDS` environment variable can be set to a
