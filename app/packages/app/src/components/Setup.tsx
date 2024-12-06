@@ -2,7 +2,7 @@ import {
   DocsLink,
   GitHubLink,
   Header,
-  SlackLink,
+  DiscordLink,
   iconContainer,
   useTheme,
 } from "@fiftyone/components";
@@ -190,7 +190,7 @@ const Setup = () => {
     <div data-cy="setup-page">
       <Header title={"FiftyOne Teams"}>
         <div className={iconContainer} style={{ flex: 1 }}>
-          <SlackLink />
+          <DiscordLink />
           <GitHubLink />
           <DocsLink />
         </div>

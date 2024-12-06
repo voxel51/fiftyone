@@ -279,14 +279,16 @@ async def execute_or_delegate_operator(
         try:
             from .delegated import DelegatedOperationService
 
+            ctx.request_params["delegated"] = True
             metadata = {"inputs_schema": None, "outputs_schema": None}
 
-            try:
-                metadata["inputs_schema"] = inputs.to_json()
-            except Exception as e:
-                logger.warning(
-                    f"Failed to resolve inputs schema for the operation: {str(e)}"
-                )
+            if inputs is not None:
+                try:
+                    metadata["inputs_schema"] = inputs.to_json()
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to resolve inputs schema for the operation: {str(e)}"
+                    )
 
             op = DelegatedOperationService().queue_operation(
                 operator=operator.uri,
@@ -332,6 +334,7 @@ async def prepare_operator_executor(
     request_token=None,  # teams-only
     api_key=None,  # teams-only
     user=None,  # teams-only
+    allow_null_user=False,  # teams-only
 ):
     registry = OperatorRegistry()
     if registry.operator_exists(operator_uri) is False:
@@ -340,9 +343,12 @@ async def prepare_operator_executor(
     operator = registry.get_operator(operator_uri)
     executor = Executor()
     dataset = request_params.get("dataset_name", None)
-    user = await resolve_operation_user(
-        id=user, dataset=dataset, token=request_token, api_key=api_key
-    )
+
+    if not (user is None and allow_null_user):
+        user = await resolve_operation_user(
+            id=user, dataset=dataset, token=request_token, api_key=api_key
+        )
+
     execution_context_user = (
         ExecutionContextUser.from_dict(user) if user else None
     )
@@ -425,6 +431,7 @@ async def resolve_type(
     request_params,
     request_token=None,  # teams-only
     user=None,  # teams-only
+    ctx=None,  # teams-only
 ):
     """Resolves the inputs property type of the operator with the given name.
 
@@ -457,33 +464,29 @@ async def resolve_type(
     await ctx.resolve_secret_values(
         operator._plugin_secrets, request_token=request_token
     )
-    try:
-        # User code
-        with ctx:
-            return operator.resolve_type(
-                ctx, request_params.get("target", "inputs")
-            )
-    except Exception as e:
-        return ExecutionResult(error=traceback.format_exc())
+    return await resolve_type_with_context(operator, ctx)
 
 
-async def resolve_type_with_context(request_params, target=None):
+async def resolve_type_with_context(operator, context):
     """Resolves the "inputs" or "outputs" schema of an operator with the given
     context.
 
     Args:
-        request_params: a dictionary of request parameters
-        target (None): the target schema ("inputs" or "outputs")
+        operator: the :class:`fiftyone.operators.Operator`
+        context: the :class:`ExecutionContext` of an operator
 
     Returns:
-        the schema of "inputs" or "outputs"
+        the "inputs" or "outputs" schema
         :class:`fiftyone.operators.types.Property` of an operator, or None
     """
-    computed_target = target or request_params.get("target", None)
-    computed_request_params = {**request_params, "target": computed_target}
-    operator_uri = request_params.get("operator_uri", None)
-    registry = OperatorRegistry()
-    return await resolve_type(registry, operator_uri, computed_request_params)
+    try:
+        # User code
+        with context:
+            return operator.resolve_type(
+                context, context.request_params.get("target", "inputs")
+            )
+    except Exception as e:
+        return ExecutionResult(error=traceback.format_exc())
 
 
 async def resolve_execution_options(
@@ -910,12 +913,12 @@ class ExecutionContext(contextlib.AbstractContextManager):
 
     @property
     def delegated(self):
-        """Whether delegated execution has been forced for the operation."""
+        """Whether the operation was delegated."""
         return self.request_params.get("delegated", False)
 
     @property
     def requesting_delegated_execution(self):
-        """Whether delegated execution has been requested for the operation."""
+        """Whether delegated execution was requested for the operation."""
         return self.request_params.get("request_delegation", False)
 
     @property
@@ -1494,13 +1497,7 @@ class ExecutionOptions(object):
 
     @property
     def orchestrator_registration_enabled(self):
-        legacy_orchestrator_mode_allowed = (
-            os.environ.get(
-                "FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS", "false"
-            ).lower()
-            == "true"
-        )
-        return not legacy_orchestrator_mode_allowed
+        return not fo.config.allow_legacy_orchestrators
 
     def update(self, available_orchestrators=None):
         self._available_orchestrators = available_orchestrators

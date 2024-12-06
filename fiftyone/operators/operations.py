@@ -665,6 +665,21 @@ class Operations(object):
         """
         return self._ctx.trigger("set_group_slice", {"slice": slice})
 
+    def open_sample(self, id=None, group_id=None):
+        """Opens the specified sample or group in the App's sample modal.
+
+        Args:
+            id (None): a sample ID to open in the modal
+            group_id (None): a group ID to open in the modal
+        """
+        return self._ctx.trigger(
+            "open_sample", {"id": id, "group_id": group_id}
+        )
+
+    def close_sample(self):
+        """Closes the App's sample modal."""
+        return self._ctx.trigger("close_sample")
+
 
 def _serialize_view(view):
     return json.loads(json_util.dumps(view._serialize()))

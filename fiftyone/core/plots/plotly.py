@@ -104,6 +104,8 @@ def plot_confusion_matrix(
             labels,
             colorscale=colorscale,
             title=title,
+            gt_field=gt_field,
+            pred_field=pred_field,
             **kwargs,
         )
 
@@ -122,16 +124,24 @@ def plot_confusion_matrix(
 
 
 def _plot_confusion_matrix_static(
-    confusion_matrix, labels, colorscale=None, title=None, **kwargs
+    confusion_matrix,
+    labels,
+    colorscale=None,
+    title=None,
+    gt_field=None,
+    pred_field=None,
+    **kwargs,
 ):
     confusion_matrix = np.asarray(confusion_matrix)
     num_rows, num_cols = confusion_matrix.shape
     zlim = [0, confusion_matrix.max()]
+    truth = gt_field or "truth"
+    predicted = pred_field or "predicted"
 
     hover_lines = [
         "<b>count: %{z:d}</b>",
-        "truth: %{y}",
-        "predicted: %{x}",
+        f"{truth}: %{{y}}",
+        f"{predicted}: %{{x}}",
     ]
     hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 
@@ -165,8 +175,6 @@ def _plot_confusion_matrix_static(
             scaleanchor="x",
             scaleratio=1,
         ),
-        xaxis_title="Predicted label",
-        yaxis_title="True label",
         title=title,
     )
 
@@ -235,6 +243,8 @@ def _plot_confusion_matrix_interactive(
         xlabels=xlabels,
         ylabels=ylabels,
         zlim=zlim,
+        gt_field=gt_field,
+        pred_field=pred_field,
         colorscale=colorscale,
         link_type="labels",
         init_view=samples,
@@ -1963,6 +1973,10 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
         zlim (None): a ``[zmin, zmax]`` limit to use for the colorbar
         values_title ("count"): the semantic meaning of the heatmap values.
             Used for tooltips
+        gt_field (None): the name of the ground truth field, if known. Used for
+            tooltips
+        pred_field (None): the name of the predictions field, if known. Used
+            for tooltips
         colorscale (None): a plotly colorscale to use
         grid_opacity (0.1): an opacity value for the grid points
         bg_opacity (0.25): an opacity value for background (unselected) cells
@@ -1978,6 +1992,8 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
         ylabels=None,
         zlim=None,
         values_title="count",
+        gt_field=None,
+        pred_field=None,
         colorscale=None,
         grid_opacity=0.1,
         bg_opacity=0.25,
@@ -1995,6 +2011,8 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
         self.ylabels = ylabels
         self.zlim = zlim
         self.values_title = values_title
+        self.gt_field = gt_field
+        self.pred_field = pred_field
         self.colorscale = colorscale
         self.grid_opacity = grid_opacity
         self.bg_opacity = bg_opacity
@@ -2189,11 +2207,13 @@ class InteractiveHeatmap(PlotlyInteractivePlot):
         xticks = np.arange(num_cols)
         yticks = np.arange(num_rows)
         X, Y = np.meshgrid(xticks, yticks)
+        truth = self.gt_field or "truth"
+        predicted = self.pred_field or "predicted"
 
         hover_lines = [
             "<b>%s: %%{z}</b>" % self.values_title,
-            "truth: %{y}",
-            "predicted: %{x}",
+            f"{truth}: %{{y}}",
+            f"{predicted}: %{{x}}",
         ]
         hovertemplate = "<br>".join(hover_lines) + "<extra></extra>"
 

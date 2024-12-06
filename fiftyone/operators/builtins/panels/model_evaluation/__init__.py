@@ -89,11 +89,12 @@ class EvaluationPanel(Panel):
         view_state = ctx.panel.get_state("view") or {}
         evaluations = []
         for key in ctx.dataset.list_evaluations():
-            evaluation = {
-                "key": key,
-                "id": self.get_evaluation_id(ctx.dataset, key),
-            }
-            evaluations.append(evaluation)
+            if self.has_evaluation_results(ctx.dataset, key):
+                evaluation = {
+                    "key": key,
+                    "id": self.get_evaluation_id(ctx.dataset, key),
+                }
+                evaluations.append(evaluation)
         ctx.panel.set_state("evaluations", evaluations)
         initialized = view_state.get("init", False)
         if not initialized:
@@ -102,8 +103,6 @@ class EvaluationPanel(Panel):
         ctx.panel.set_data("notes", notes)
         ctx.panel.set_data("permissions", permissions)
         self.load_pending_evaluations(ctx)
-        # keys = ctx.dataset.list_evaluations()
-        # ctx.panel.set_state("keys", keys)
 
     def get_avg_confidence(self, per_class_metrics):
         count = 0
@@ -251,31 +250,38 @@ class EvaluationPanel(Panel):
         return colorscale
 
     def get_confusion_matrices(self, results):
-        classes = results.classes
+        default_classes = results.classes
         freq = Counter(results.ytrue)
         if results.missing in freq:
             freq.pop(results.missing)
-        az_classes = sorted(classes)
-        za_classes = sorted(classes, reverse=True)
+        az_classes = sorted(default_classes)
+        za_classes = sorted(default_classes, reverse=True)
         mc_classes = sorted(freq, key=freq.get, reverse=True)
         lc_classes = sorted(freq, key=freq.get)
+        default_matrix = results.confusion_matrix()
         az_matrix = results.confusion_matrix(classes=az_classes)
         za_matrix = results.confusion_matrix(classes=za_classes)
         mc_matrix = results.confusion_matrix(classes=mc_classes)
         lc_matrix = results.confusion_matrix(classes=lc_classes)
+        default_colorscale = self.get_confusion_matrix_colorscale(
+            default_matrix
+        )
         az_colorscale = self.get_confusion_matrix_colorscale(az_matrix)
         za_colorscale = self.get_confusion_matrix_colorscale(za_matrix)
         mc_colorscale = self.get_confusion_matrix_colorscale(mc_matrix)
         lc_colorscale = self.get_confusion_matrix_colorscale(lc_matrix)
         return {
+            "default_classes": default_classes.tolist(),
             "az_classes": az_classes,
             "za_classes": za_classes,
             "mc_classes": mc_classes,
             "lc_classes": lc_classes,
+            "default_matrix": default_matrix.tolist(),
             "az_matrix": az_matrix.tolist(),
             "za_matrix": za_matrix.tolist(),
             "mc_matrix": mc_matrix.tolist(),
             "lc_matrix": lc_matrix.tolist(),
+            "default_colorscale": default_colorscale,
             "az_colorscale": az_colorscale,
             "za_colorscale": za_colorscale,
             "mc_colorscale": mc_colorscale,
@@ -356,7 +362,7 @@ class EvaluationPanel(Panel):
             pending_evaluations_in_store[
                 dataset_id
             ] = updated_pending_evaluations_for_dataset_in_stored
-            store.set("pending_evaluations", pending_evaluations)
+            store.set("pending_evaluations", pending_evaluations_in_store)
         ctx.panel.set_data("pending_evaluations", pending_evaluations)
 
     def on_evaluate_model_success(self, ctx):

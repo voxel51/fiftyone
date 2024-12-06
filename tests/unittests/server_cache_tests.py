@@ -15,10 +15,15 @@ class TestExtractTtuFromUrl(unittest.TestCase):
         expiration = extract_ttu_from_url(url, self.now, self.default_sec)
         self.assertEqual(expiration, datetime(2024, 10, 25, 12, 0, 0))
 
-    def test_azure_url_se(self):
+    def test_azure_url_se_v1(self):
         url = "https://example.com/resource?se=20241025T121500Z"
         expiration = extract_ttu_from_url(url, self.now, self.default_sec)
         self.assertEqual(expiration, datetime(2024, 10, 25, 12, 15, 0))
+
+    def test_azure_url_se_v2(self):
+        url = "https://example.blob.core.windows.net/path/to/sample/001.jpg?se=2024-11-22T22%3A14%3A41Z"
+        expiration = extract_ttu_from_url(url, self.now, self.default_sec)
+        self.assertEqual(expiration, datetime(2024, 11, 22, 22, 14, 41))
 
     def test_url_missing_expires(self):
         date_str = "20241025T121500Z"
