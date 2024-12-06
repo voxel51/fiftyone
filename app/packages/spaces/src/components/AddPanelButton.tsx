@@ -121,7 +121,7 @@ function PanelCategories({ children }) {
 function PanelCategory({ label, children }) {
   const theme = useTheme();
   return (
-    <Grid item>
+    <Grid item sx={{ width: "100%" }}>
       <Typography
         variant="subtitle2"
         sx={{ padding: "0 8px", color: theme.text.secondary }}
