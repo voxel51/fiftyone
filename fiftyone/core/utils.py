@@ -1539,6 +1539,117 @@ class StaticBatcher(Batcher):
         return self.batch_size
 
 
+class ContentSizeBatcher(Batcher):
+    """Class for iterating over the elements of an iterable with a dynamic
+    batch size to achieve a desired content size.
+
+    The batch sizes emitted when iterating over this object are dynamically
+    scaled such that the total content size of the batch is as close as
+    possible to a specified target size.
+
+    This batcher does not require backpressure feedback because it calculates
+    the total size of the iterable object before batching.
+
+    This class is often used in conjunction with a :class:`ProgressBar` to keep
+    the user appraised on the status of a long-running task.
+
+    Example usage::
+
+        import fiftyone.core.utils as fou
+
+        elements = range(int(1e7))
+
+        batcher = fou.ContentSizeBatcher(
+            elements,
+            target_size=2**20,
+            progress=True
+        )
+
+        with batcher:
+            for batch in batcher:
+                print("batch size: %d" % len(batch))
+
+    Args:
+        iterable: an iterable to batch over. If ``None``, the result of
+            ``next()`` will be a batch size instead of a batch, and is an
+            infinite iterator.
+        target_size (1048576): the target batch bson content size, in bytes
+        min_batch_size (1): the minimum allowed batch size
+        max_batch_size (None): an optional maximum allowed batch size
+        return_views (False): whether to return each batch as a
+            :class:`fiftyone.core.view.DatasetView`. Only applicable when the
+            iterable is a :class:`fiftyone.core.collections.SampleCollection`
+        progress (False): whether to render a progress bar tracking the
+            consumption of the batches (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
+        total (None): the length of ``iterable``. Only applicable when
+            ``progress=True``. If not provided, it is computed via
+            ``len(iterable)``, if possible
+    """
+
+    def __init__(
+        self,
+        iterable,
+        target_size=2**20,
+        min_batch_size=1,
+        max_batch_size=None,
+        return_views=False,
+        progress=False,
+        total=None,
+    ):
+        iterable, iterable_copy = itertools.tee(iterable)
+        super().__init__(
+            iterable, return_views=return_views, progress=progress, total=total
+        )
+        self.batch_sizes = self._compute_batch_sizes(
+            target_size, min_batch_size, max_batch_size, iterable_copy
+        )
+        self.curr_batch = 0
+
+    def _compute_batch_sizes(
+        self, target_size, min_batch_size, max_batch_size, iterable
+    ):
+        batch_sizes = []
+        curr_batch_size = 0
+        curr_batch_content_size = 0
+
+        for obj in iterable:
+            try:
+                curr_batch_content_size += len(
+                    json_util.dumps(self._make_dict(obj))
+                )
+            except Exception:
+                curr_batch_content_size += len(str(obj))
+            curr_batch_size += 1
+            if curr_batch_size >= min_batch_size and (
+                curr_batch_content_size >= target_size
+                or curr_batch_size == max_batch_size
+            ):
+                batch_sizes.append(curr_batch_size)
+                curr_batch_size = 0
+                curr_batch_content_size = 0
+
+        if curr_batch_size:
+            batch_sizes.append(curr_batch_size)
+
+        return batch_sizes
+
+    def _make_dict(self, obj):
+        return (
+            obj.to_mongo_dict(include_id=True)
+            if hasattr(obj, "to_mongo_dict")
+            else obj
+        )
+
+    def _compute_batch_size(self):
+        size = 1
+        if self.curr_batch < len(self.batch_sizes):
+            size = self.batch_sizes[self.curr_batch]
+        self.curr_batch += 1
+        return size
+
+
 def get_default_batcher(iterable, progress=False, total=None):
     """Returns a :class:`Batcher` over ``iterable`` using defaults from your
     FiftyOne config.
@@ -1575,11 +1686,9 @@ def get_default_batcher(iterable, progress=False, total=None):
         )
     elif default_batcher == "size":
         target_content_size = fo.config.batcher_target_size_bytes
-        return ContentSizeDynamicBatcher(
-            iterable,
+        return ContentSizeBatcher(
+            iterable=iterable,
             target_size=target_content_size,
-            init_batch_size=1,
-            max_batch_beta=8.0,
             max_batch_size=100000,
             progress=progress,
             total=total,
