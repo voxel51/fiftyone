@@ -99,15 +99,32 @@ export default function Evaluation(props: EvaluationProps) {
     const evaluation = data?.[`evaluation_${compareKey}_error`];
     return evaluation;
   }, [data]);
+  const evaluationMaskTargets = useMemo(() => {
+    return evaluation?.mask_targets || {};
+  }, [evaluation]);
+  const compareEvaluationMaskTargets = useMemo(() => {
+    return compareEvaluation?.mask_targets || {};
+  }, [compareEvaluation]);
   const confusionMatrix = useMemo(() => {
-    return getMatrix(evaluation?.confusion_matrices, confusionMatrixConfig);
-  }, [evaluation, confusionMatrixConfig]);
+    return getMatrix(
+      evaluation?.confusion_matrices,
+      confusionMatrixConfig,
+      evaluationMaskTargets
+    );
+  }, [evaluation, confusionMatrixConfig, evaluationMaskTargets]);
   const compareConfusionMatrix = useMemo(() => {
     return getMatrix(
       compareEvaluation?.confusion_matrices,
-      confusionMatrixConfig
+      confusionMatrixConfig,
+      evaluationMaskTargets,
+      compareEvaluationMaskTargets
     );
-  }, [compareEvaluation, confusionMatrixConfig]);
+  }, [
+    compareEvaluation,
+    confusionMatrixConfig,
+    evaluationMaskTargets,
+    compareEvaluationMaskTargets,
+  ]);
   const compareKeys = useMemo(() => {
     const keys: string[] = [];
     const evaluations = data?.evaluations || [];
@@ -452,9 +469,12 @@ export default function Evaluation(props: EvaluationProps) {
       if (!perClassPerformance[metric]) {
         perClassPerformance[metric] = [];
       }
+      const maskTarget = evaluationMaskTargets?.[key];
+      const compareMaskTarget = compareEvaluationMaskTargets?.[key];
       perClassPerformance[metric].push({
         id: key,
-        property: key,
+        property: maskTarget || key,
+        compareProperty: compareMaskTarget || maskTarget || key,
         value: metrics[metric],
         compareValue: compareMetrics[metric],
       });
@@ -1059,7 +1079,10 @@ export default function Evaluation(props: EvaluationProps) {
                         y: classPerformance.map(
                           (metrics) => metrics.compareValue
                         ),
-                        x: classPerformance.map((metrics) => metrics.property),
+                        x: classPerformance.map(
+                          (metrics) =>
+                            metrics.compareProperty || metrics.property
+                        ),
                         type: "histogram",
                         name: `${CLASS_LABELS[performanceClass]} per class`,
                         marker: {
@@ -1218,6 +1241,10 @@ export default function Evaluation(props: EvaluationProps) {
                     layout={{
                       yaxis: {
                         autorange: "reversed",
+                        type: "category",
+                      },
+                      xaxis: {
+                        type: "category",
                       },
                     }}
                   />
@@ -1258,6 +1285,10 @@ export default function Evaluation(props: EvaluationProps) {
                       layout={{
                         yaxis: {
                           autorange: "reversed",
+                          type: "category",
+                        },
+                        xaxis: {
+                          type: "category",
                         },
                       }}
                     />
@@ -1613,14 +1644,17 @@ function formatPerClassPerformance(perClassPerformance, barConfig) {
   return computedPerClassPerformance;
 }
 
-function getMatrix(matrices, config) {
+function getMatrix(matrices, config, maskTargets, compareMaskTargets?) {
   if (!matrices) return;
   const { sortBy = "az", limit } = config;
   const parsedLimit = typeof limit === "number" ? limit : undefined;
   const classes = matrices[`${sortBy}_classes`].slice(0, parsedLimit);
   const matrix = matrices[`${sortBy}_matrix`].slice(0, parsedLimit);
   const colorscale = matrices[`${sortBy}_colorscale`];
-  return { labels: classes, matrix, colorscale };
+  const labels = classes.map((c) => {
+    return compareMaskTargets?.[c] || maskTargets?.[c] || c;
+  });
+  return { labels, matrix, colorscale };
 }
 
 function getConfigLabel({ config, type, dashed }) {
