@@ -66,6 +66,7 @@ plugin declares the following secrets:
     secrets:
       - FIFTYONE_CVAT_URL
       - FIFTYONE_CVAT_USERNAME
+      - FIFTYONE_CVAT_EMAIL
       - FIFTYONE_CVAT_PASSWORD
       - FIFTYONE_LABELBOX_URL
       - FIFTYONE_LABELBOX_API_KEY
@@ -82,6 +83,7 @@ secrets via the ``ctx.secrets`` dict:
     def execute(self, ctx):
         url = ctx.secrets["FIFTYONE_CVAT_URL"]
         username = ctx.secrets["FIFTYONE_CVAT_USERNAME"]
+        email = ctx.secrets["FIFTYONE_CVAT_EMAIL"]
         password = ctx.secrets["FIFTYONE_CVAT_PASSWORD"]
 
 The ``ctx.secrets`` dict will also be automatically populated with the
