@@ -4,7 +4,6 @@ import { isModalActive } from "@fiftyone/state";
 import React, { useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { useOptimizeDenseLabelsLoading } from "../hooks";
 import ColorModal from "./ColorModal/ColorModal";
 import { activeColorEntry } from "./ColorModal/state";
 import EventTracker from "./EventTracker";
@@ -41,8 +40,6 @@ function Dataset() {
       reset(activeColorEntry);
     });
   }, []);
-
-  useOptimizeDenseLabelsLoading();
 
   return (
     <>
