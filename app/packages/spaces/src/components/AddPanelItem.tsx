@@ -42,6 +42,7 @@ export default function AddPanelItem({
         cursor: "pointer",
         padding: "4px 8px",
         alignItems: "center",
+        width: "100%",
         "&:hover": { background: "var(--fo-palette-background-body)" },
       }}
     >
