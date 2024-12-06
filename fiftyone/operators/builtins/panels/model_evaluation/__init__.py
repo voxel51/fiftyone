@@ -288,6 +288,16 @@ class EvaluationPanel(Panel):
             "lc_colorscale": lc_colorscale,
         }
 
+    def get_mask_targets(self, dataset, gt_field):
+        mask_targets = dataset.mask_targets.get(gt_field, None)
+        if mask_targets:
+            return mask_targets
+
+        if dataset.default_mask_targets:
+            return dataset.default_mask_targets
+
+        return None
+
     def load_evaluation(self, ctx):
         view_state = ctx.panel.get_state("view") or {}
         eval_key = view_state.get("key")
@@ -300,7 +310,6 @@ class EvaluationPanel(Panel):
         )
         if evaluation_data is None:
             info = ctx.dataset.get_evaluation_info(computed_eval_key)
-            serialized_info = info.serialize()
             evaluation_type = info.config.type
             if evaluation_type not in SUPPORTED_EVALUATION_TYPES:
                 ctx.panel.set_data(
@@ -308,6 +317,13 @@ class EvaluationPanel(Panel):
                     {"error": "unsupported", "info": serialized_info},
                 )
                 return
+            serialized_info = info.serialize()
+            gt_field = info.config.gt_field
+            mask_targets = (
+                self.get_mask_targets(ctx.dataset, gt_field)
+                if evaluation_type == "segmentation"
+                else None
+            )
             results = ctx.dataset.load_evaluation_results(computed_eval_key)
             metrics = results.metrics()
             per_class_metrics = self.get_per_class_metrics(info, results)
@@ -323,6 +339,7 @@ class EvaluationPanel(Panel):
                 "info": serialized_info,
                 "confusion_matrices": self.get_confusion_matrices(results),
                 "per_class_metrics": per_class_metrics,
+                "mask_targets": mask_targets,
             }
             if ENABLE_CACHING:
                 # Cache the evaluation data
