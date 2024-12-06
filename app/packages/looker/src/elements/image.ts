@@ -29,7 +29,7 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
     return {
       load: ({ update }) => {
         this.imageSource = this.element;
-        console.log("this.imageSource.src=", this.imageSource.src);
+        // set crossOrigin here using this.imageSource.src?
 
         update({
           loaded: true,
