@@ -141,9 +141,9 @@ directory.
 
 .. note::
 
-   For vite configs we recommend forking the
-   `FiftyOne Plugins <https://github.com/voxel51/fiftyone-plugins>`_ repository
-   and following the conventions there to build your plugin.
+   For JS plugins we recommend forking the
+   `FiftyOne Hello World JS Example <https://github.com/voxel51/hello-world-plugin-js>`_
+   repository and following the conventions there to build your JS plugin.
 
 .. _plugin-anatomy:
 
@@ -974,6 +974,7 @@ contains the following properties:
 -   `ctx.dataset_name`:  the name of the current dataset
 -   `ctx.dataset` - the current |Dataset| instance
 -   `ctx.view` - the current |DatasetView| instance
+-   `ctx.spaces` - the current :ref:`Spaces layout <app-spaces>` in the App
 -   `ctx.current_sample` - the ID of the active sample in the App modal, if any
 -   `ctx.selected` - the list of currently selected samples in the App, if any
 -   `ctx.selected_labels` - the list of currently selected labels in the App,
@@ -991,9 +992,8 @@ contains the following properties:
     instance that you can use to read and write the :ref:`state <panel-state>`
     and :ref:`data <panel-data>` of the current panel, if the operator was
     invoked from a panel
--   `ctx.delegated` - whether delegated execution has been forced for the
-    operation
--   `ctx.requesting_delegated_execution` - whether delegated execution has been
+-   `ctx.delegated` - whether the operation was delegated
+-   `ctx.requesting_delegated_execution` - whether delegated execution was
     requested for the operation
 -   `ctx.delegation_target` - the orchestrator to which the operation should be
     delegated, if applicable
@@ -1127,27 +1127,25 @@ computation, evaluation, and exports are computationally intensive and/or not
 suitable for immediate execution.
 
 In such cases, :ref:`delegated operations <delegated-operations>` come to the
-rescue by allowing operators to schedule tasks that are executed on a connected
-workflow orchestrator like :ref:`Apache Airflow <delegated-operations-airflow>`
-or run just :ref:`run locally <delegated-operations-local>` in a separate
-process.
+rescue by allowing users to schedule potentially long-running tasks that are
+executed in the background while you continue to use the App.
 
 .. note::
 
-    Even though delegated operations are run in a separate process or physical
-    location, they are provided with the same `ctx` that was hydrated by the
-    operator's :ref:`input form <operator-inputs>`.
+    :ref:`FiftyOne Teams <teams-delegated-operations>` deployments come out of
+    the box with a connected compute cluster for executing delegated operations
+    at scale.
 
-    Refer to :ref:`this section <delegated-operations>` for more information
-    about how delegated operations are executed.
+    In FiftyOne Open Source, you can use delegated operations at small scale
+    by :ref:`running them locally <delegated-orchestrator-open-source>`.
 
 There are a variety of options available for configuring whether a given
 operation should be delegated or executed immediately.
 
-.. _operator-delegation-configuration:
+.. _operator-execution-options:
 
-Delegation configuration
-~~~~~~~~~~~~~~~~~~~~~~~~
+Execution options
+~~~~~~~~~~~~~~~~~
 
 You can provide the optional properties described below in the
 :ref:`operator's config <operator-config>` to specify the available execution
@@ -1185,12 +1183,12 @@ user to choose between the supported options if there are multiple:
 .. image:: /images/plugins/operators/operator-execute-button.png
     :align: center
 
-.. _operator-execution-options:
+.. _dynamic-execution-options:
 
-Execution options
-~~~~~~~~~~~~~~~~~
+Dynamic execution options
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Operators can implement
+Operators may also implement
 :meth:`resolve_execution_options() <fiftyone.operators.operator.Operator.resolve_execution_options>`
 to dynamically configure the available execution options based on the current
 execution context:
@@ -1240,54 +1238,9 @@ of the current view:
         # Force delegation for large views and immediate execution for small views
         return len(ctx.view) > 1000
 
-.. note::
-
-    If :meth:`resolve_delegation() <fiftyone.operators.operator.Operator.resolve_delegation>`
-    is not implemented or returns `None`, then the choice of execution mode is
-    deferred to
-    :meth:`resolve_execution_options() <fiftyone.operators.operator.Operator.resolve_execution_options>`
-    to specify the available execution options as described in the previous
-    section.
-
-Alternatively, you could simply ask the user to decide:
-
-.. code-block:: python
-    :linenos:
-
-    def resolve_input(self, ctx):
-        delegate = ctx.params.get("delegate", None)
-
-        if delegate:
-            description = "Uncheck this box to execute the operation immediately"
-        else:
-            description = "Check this box to delegate execution of this task"
-
-        inputs.bool(
-            "delegate",
-            label="Delegate execution?",
-            description=description,
-            view=types.CheckboxView(),
-        )
-
-        if delegate:
-            inputs.view(
-                "notice",
-                types.Notice(
-                    label=(
-                        "You've chosen delegated execution. Note that you must "
-                        "have a delegated operation service running in order for "
-                        "this task to be processed. See "
-                        "https://docs.voxel51.com/plugins/index.html#operators "
-                        "for more information"
-                    )
-                ),
-            )
-
-    def resolve_delegation(self, ctx):
-        return ctx.params.get("delegate", None)
-
-.. image:: /images/plugins/operators/operator-user-delegation.png
-    :align: center
+If :meth:`resolve_delegation() <fiftyone.operators.operator.Operator.resolve_delegation>`
+is not implemented or returns `None`, then the choice of execution mode is
+deferred to the prior mechanisms described above.
 
 .. _operator-reporting-progress:
 
@@ -1996,6 +1949,19 @@ subsequent sections.
             ctx.panel.set_state("event", "on_change_view")
             ctx.panel.set_data("event_data", event)
 
+        def on_change_spaces(self, ctx):
+            """Implement this method to set panel state/data when the current
+            spaces layout changes.
+
+            The current spaces layout will be available via ``ctx.spaces``.
+            """
+            event = {
+                "data": ctx.spaces,
+                "description": "the current spaces layout",
+            }
+            ctx.panel.set_state("event", "on_change_spaces")
+            ctx.panel.set_data("event_data", event)
+
         def on_change_current_sample(self, ctx):
             """Implement this method to set panel state/data when a new sample
             is loaded in the Sample modal.
@@ -2415,6 +2381,91 @@ loaded only when the `brain_key` property is modified.
 
     Panel data is never readable in Python; it is only implicitly used by
     the types you define when they are rendered clientside.
+
+.. _panel-execution-store:
+
+Execution store
+---------------
+
+Panels can store data in the execution store, which is a key-value store that
+is persisted beyond the lifetime of the panel. This is useful for storing
+information that should persist across panel instances and App sessions, such
+as cached data, long-lived panel state, or user preferences.
+
+You can create/retrieve execution stores scoped to the current ``ctx.dataset``
+via :meth:`ctx.store <fiftyone.operators.executor.ExecutionContext.store>`:
+
+.. code-block:: python
+    :linenos:
+
+    def on_load(ctx):
+        # Retrieve a store scoped to the current `ctx.dataset`
+        # The store is automatically created if necessary
+        store = ctx.store("my_store")
+
+        # Load a pre-existing value from the store
+        user_choice = store.get("user_choice")
+
+        # Store data with a TTL to ensure it is evicted after `ttl` seconds
+        store.set("my_key", {"foo": "bar"}, ttl=60)
+
+        # List all keys in the store
+        print(store.list_keys())  # ["user_choice", "my_key"]
+
+        # Retrieve data from the store
+        print(store.get("my_key"))  # {"foo": "bar"}
+
+        # Retrieve metadata about a key
+        print(store.get_metadata("my_key"))
+        # {"created_at": ..., "updated_at": ..., "expires_at": ...}
+
+        # Delete a key from the store
+        store.delete("my_key")
+
+        # Clear all data in the store
+        store.clear()
+
+.. note::
+
+    Did you know? Any execution stores associated with a dataset are
+    automatically  deleted when the dataset is deleted.
+
+For advanced use cases, it is also possible to create and use global stores
+that are available to all datasets via the
+:class:`ExecutionStore <fiftyone.operators.store.ExecutionStore>` class:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone.operators import ExecutionStore
+
+    # Retrieve a global store
+    # The store is automatically created if necessary
+    store = ExecutionStore.create("my_store")
+
+    # Store data with a TTL to ensure it is evicted after `ttl` seconds
+    store.set("my_key", {"foo": "bar"}, ttl=60)
+
+    # List all keys in the global store
+    print(store.list_keys())  # ["my_key"]
+
+    # Retrieve data from the global store
+    print(store.get("my_key"))  # {"foo": "bar"}
+
+    # Retrieve metadata about a key
+    print(store.get_metadata("my_key"))
+    # {"created_at": ..., "updated_at": ..., "expires_at": ...}
+
+    # Delete a key from the global store
+    store.delete("my_key")
+
+    # Clear all data in the global store
+    store.clear()
+
+.. warning::
+
+    Global stores have no automatic garbage collection, so take care when
+    creating and using global stores whose keys do not utilize TTLs.
 
 .. _panel-saved-workspaces
 
@@ -3081,6 +3132,18 @@ _____________________
 
 This section describes how to develop JS-specific plugin components.
 
+Getting Started
+---------------
+
+To start building your own JS plugin, refer to the 
+`hello-world-plugin-js <https://github.com/voxel51/hello-world-plugin-js>`_ 
+repository. This repo serves as a starting point, providing examples of a build 
+process, a JS panel, and a JS operator.
+
+The `fiftyone-js-plugin-build <https://github.com/voxel51/fiftyone-js-plugin-build>`_ 
+package offers a utility for configuring `vite <https://vite.dev>`_ to build your 
+JS plugin bundle.
+
 Component types
 ---------------
 
@@ -3552,7 +3615,7 @@ Delegated execution
 ~~~~~~~~~~~~~~~~~~~
 
 Python operations may also be :ref:`delegated <operator-delegated-execution>`
-to an external orchestrator like Apache Airflow or a local process.
+for execution in the background.
 
 When an operation is delegated, the following happens:
 

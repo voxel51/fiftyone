@@ -124,7 +124,7 @@ nbsphinx_prolog = """
             </a>
         </td>
         <td>
-            <a target="_blank" href="https://gitcdn.link/cdn/voxel51/fiftyone/%s/docs/source/{{ env.doc2path(env.docname, base=None) }}" download>
+            <a target="_blank" href="https://raw.githubusercontent.com/voxel51/fiftyone/%s/docs/source/{{ env.doc2path(env.docname, base=None) }}" download>
                 <img src="../_static/images/icons/cloud-icon-256px.png"> &nbsp; Download notebook
             </a>
         </td>
@@ -185,7 +185,7 @@ html_copy_source = False
 html_context = {
     "address_main_line1": "330 E Liberty St",
     "address_main_line2": "Ann Arbor, MI 48104",
-    "phone_main": "+1 734-489-1134",
+    "phone_main": "+1 734-519-0955",
     "email_info": "info@voxel51.com",
     # Links - copied from website config
     "link_blog": "https://voxel51.com/blog/",
@@ -210,6 +210,7 @@ html_context = {
     "link_voxel51_facebook": "https://www.facebook.com/voxel51/",
     "link_voxel51_github": "https://github.com/voxel51/",
     "link_voxel51_linkedin": "https://www.linkedin.com/company/voxel51/",
+    "link_voxel51_discord": "https://community.voxel51.com",
     "link_voxel51_slack": "https://slack.voxel51.com",
     "link_voxel51_twitter": "https://twitter.com/voxel51",
     "link_voxel51_blog": "https://voxel51.com/blog/",

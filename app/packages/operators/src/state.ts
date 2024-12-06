@@ -1,7 +1,13 @@
 import { useAnalyticsInfo } from "@fiftyone/analytics";
 import * as fos from "@fiftyone/state";
 import { debounce } from "lodash";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   atom,
   selector,
@@ -32,6 +38,7 @@ import {
 import { OperatorPromptType, Places } from "./types";
 import { OperatorExecutorOptions } from "./types-internal";
 import { ValidationContext } from "./validation";
+import { Markdown } from "@fiftyone/components";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -94,6 +101,9 @@ const globalContextSelector = selector({
     const viewName = get(fos.viewName);
     const extendedSelection = get(fos.extendedSelection);
     const groupSlice = get(fos.groupSlice);
+    const queryPerformance = get(fos.queryPerformance);
+    const spaces = get(fos.sessionSpaces);
+    const workspaceName = spaces?._name;
 
     return {
       datasetName,
@@ -105,6 +115,9 @@ const globalContextSelector = selector({
       viewName,
       extendedSelection,
       groupSlice,
+      queryPerformance,
+      spaces,
+      workspaceName,
     };
   },
 });
@@ -145,6 +158,9 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     viewName,
     extendedSelection,
     groupSlice,
+    queryPerformance,
+    spaces,
+    workspaceName,
   } = curCtx;
   const [analyticsInfo] = useAnalyticsInfo();
   const ctx = useMemo(() => {
@@ -162,6 +178,9 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         extendedSelection,
         analyticsInfo,
         groupSlice,
+        queryPerformance,
+        spaces,
+        workspaceName,
       },
       hooks
     );
@@ -177,6 +196,9 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     viewName,
     currentSample,
     groupSlice,
+    queryPerformance,
+    spaces,
+    workspaceName,
   ]);
 
   return ctx;
@@ -210,17 +232,34 @@ function useExecutionOptions(operatorURI, ctx, isRemote) {
   return { isLoading, executionOptions, fetch };
 }
 
+/**
+ * Type representing an operator execution target.
+ */
+export type OperatorExecutionOption = {
+  label: string;
+  id: string;
+  description: string | React.ReactNode;
+  onClick?: () => void;
+  isDelegated: boolean;
+  choiceLabel?: string;
+  tag?: string;
+  default?: boolean;
+  selected?: boolean;
+  onSelect?: () => void;
+  isDisabledSchedule?: boolean;
+};
+
 const useOperatorPromptSubmitOptions = (
   operatorURI,
   execDetails,
-  execute,
+  execute: (options?: OperatorExecutorOptions) => void,
   promptView?: OperatorPromptType["promptView"]
 ) => {
-  const options = [];
+  const options: OperatorExecutionOption[] = [];
   const persistUnderKey = `operator-prompt-${operatorURI}`;
   const availableOrchestrators =
     execDetails.executionOptions?.availableOrchestrators || [];
-  const hasAvailableOrchestators = availableOrchestrators.length > 0;
+  const hasAvailableOrchestrators = availableOrchestrators.length > 0;
   const executionOptions = execDetails.executionOptions || {};
   const defaultToExecute = executionOptions.allowDelegatedExecution
     ? !executionOptions.defaultChoiceToDelegated
@@ -235,14 +274,17 @@ const useOperatorPromptSubmitOptions = (
         promptView?.submit_button_label ||
         "Execute",
       id: "execute",
+      tag: "FOR TESTING",
       default: defaultToExecute,
-      description: "Run this operation now",
+      description:
+        "Run this operation synchronously. Only suitable for small datasets",
       onSelect() {
         setSelectedID("execute");
       },
       onClick() {
         execute();
       },
+      isDelegated: false,
     });
   }
   if (
@@ -253,25 +295,26 @@ const useOperatorPromptSubmitOptions = (
       label: "Schedule",
       id: "schedule",
       default: defaultToSchedule,
-      description: "Schedule this operation to run later",
+      description: "Run this operation in the background",
       onSelect() {
         setSelectedID("schedule");
       },
       onClick() {
         execute({ requestDelegation: true });
       },
+      isDelegated: true,
     });
   }
 
   if (
     executionOptions.allowDelegatedExecution &&
-    hasAvailableOrchestators &&
+    hasAvailableOrchestrators &&
     executionOptions.orchestratorRegistrationEnabled
   ) {
     for (let orc of execDetails.executionOptions.availableOrchestrators) {
       options.push({
         label: "Schedule",
-        choiceLabel: `Schedule on "${orc.instanceID}"`,
+        choiceLabel: `Schedule on ${orc.instanceID}`,
         id: orc.id,
         description: `Run this operation on ${orc.instanceID}`,
         onSelect() {
@@ -283,12 +326,47 @@ const useOperatorPromptSubmitOptions = (
             requestDelegation: true,
           });
         },
+        isDelegated: true,
       });
     }
+  } else if (
+    executionOptions.allowDelegatedExecution &&
+    executionOptions.allowImmediateExecution &&
+    executionOptions.orchestratorRegistrationEnabled &&
+    !hasAvailableOrchestrators
+  ) {
+    const markdownDesc = React.createElement(
+      Markdown,
+      null,
+      "[Learn how](https://docs.voxel51.com/plugins/using_plugins.html#delegated-operations) to run this operation in the background"
+    );
+    options.push({
+      label: "Schedule",
+      choiceLabel: `Schedule`,
+      tag: "NOT AVAILABLE",
+      id: "disabled-schedule",
+      description: markdownDesc,
+      isDelegated: true,
+      isDisabledSchedule: true,
+    });
   }
 
+  // sort options so that the default is always the first in the list
+  options.sort((a, b) => {
+    if (a.default) return -1;
+    if (b.default) return 1;
+    return 0;
+  });
+
+  const fallbackId = executionOptions.allowImmediateExecution
+    ? "execute"
+    : "schedule";
+
   const defaultID =
-    options.find((option) => option.default)?.id || options[0]?.id || "execute";
+    options.find((option) => option.default)?.id ||
+    options[0]?.id ||
+    fallbackId;
+
   let [selectedID, setSelectedID] = fos.useBrowserStorage(
     persistUnderKey,
     defaultID
@@ -296,8 +374,13 @@ const useOperatorPromptSubmitOptions = (
   const selectedOption = options.find((option) => option.id === selectedID);
 
   useEffect(() => {
+    const selectedOptionExists = !!options.find((o) => o.id === selectedID);
     if (options.length === 1) {
       setSelectedID(options[0].id);
+    } else if (!selectedOptionExists) {
+      const nextSelectedID =
+        options.find((option) => option.default)?.id || options[0]?.id;
+      setSelectedID(nextSelectedID);
     }
   }, [options]);
 
@@ -311,9 +394,11 @@ const useOperatorPromptSubmitOptions = (
   if (selectedOption) selectedOption.selected = true;
   const showWarning =
     executionOptions.orchestratorRegistrationEnabled &&
-    !hasAvailableOrchestators;
-  const warningMessage =
-    "There are no available orchestrators to schedule this operation. Please contact your administrator to add an orchestrator.";
+    !hasAvailableOrchestrators &&
+    !executionOptions.allowImmediateExecution;
+  const warningStr =
+    "This operation requires [delegated execution](https://docs.voxel51.com/plugins/using_plugins.html#delegated-operations)";
+  const warningMessage = React.createElement(Markdown, null, warningStr);
 
   return {
     showWarning,
@@ -323,6 +408,32 @@ const useOperatorPromptSubmitOptions = (
     hasOptions: options.length > 0,
     isLoading: execDetails.isLoading,
     handleSubmit,
+  };
+};
+
+/**
+ * Hook which provides state management for operator option enumeration.
+ */
+export const useOperatorExecutionOptions = ({
+  operatorUri,
+  onExecute,
+}: {
+  operatorUri: string;
+  onExecute: (opts: OperatorExecutorOptions) => void;
+}): {
+  executionOptions: OperatorExecutionOption[];
+} => {
+  const ctx = useExecutionContext(operatorUri);
+  const { isRemote } = getLocalOrRemoteOperator(operatorUri);
+  const execDetails = useExecutionOptions(operatorUri, ctx, isRemote);
+  const submitOptions = useOperatorPromptSubmitOptions(
+    operatorUri,
+    execDetails,
+    onExecute
+  );
+
+  return {
+    executionOptions: submitOptions.options,
   };
 };
 
@@ -442,13 +553,15 @@ export const useOperatorPrompt = () => {
     ({ get, set }) =>
       (fieldName, value) => {
         const state = get(promptingOperatorState);
-        set(promptingOperatorState, {
-          ...state,
-          params: {
-            ...state.params,
-            [fieldName]: value,
-          },
-        });
+        if (state) {
+          set(promptingOperatorState, {
+            ...state,
+            params: {
+              ...state?.params,
+              [fieldName]: value,
+            },
+          });
+        }
       }
   );
   const execute = useCallback(
@@ -460,6 +573,7 @@ export const useOperatorPrompt = () => {
         return;
       }
       executor.execute(promptingOperator.params, {
+        ...options,
         ...promptingOperator.options,
       });
     },
@@ -929,10 +1043,22 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         setResult(result.result);
         setError(result.error);
         setIsDelegated(result.delegated);
-        handlers.onSuccess?.(result);
-        callback?.(result);
+        if (result.error) {
+          handlers.onError?.(result, { ctx });
+          notify({
+            msg: result.errorMessage || `Operation failed: ${uri}`,
+            variant: "error",
+          });
+          console.error("Error executing operator", uri, result.errorMessage);
+          console.error(result.error);
+        } else {
+          handlers.onSuccess?.(result, { ctx });
+        }
+        callback?.(result, { ctx });
       } catch (e) {
-        callback?.(new OperatorResult(operator, null, ctx.executor, e, false));
+        callback?.(new OperatorResult(operator, null, ctx.executor, e, false), {
+          ctx,
+        });
         const isAbortError =
           e.name === "AbortError" || e instanceof DOMException;
         const msg = e.message || "Failed to execute an operation";

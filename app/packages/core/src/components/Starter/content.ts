@@ -49,7 +49,7 @@ export const CONTENT_BY_MODE = {
     codeSubtitle:
       "Use Python or command line tools to set dataset for the current session",
     learnMoreLink: "https://docs.voxel51.com/user_guide/app.html",
-    learnMoreLabel: "about using the Fiftyone App",
+    learnMoreLabel: "about using the FiftyOne App",
   },
   ADD_SAMPLE: {
     title: "No samples yet",

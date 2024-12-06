@@ -16,6 +16,7 @@ const FilterablePathEntries = ({
 }) => {
   const { data } = useFilterData(modal, path);
   const color = useRecoilValue(pathColor(path));
+
   return (
     <>
       {data.map(({ color: _, ...props }) => (

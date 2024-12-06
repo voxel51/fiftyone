@@ -207,14 +207,6 @@ class NamedKeypointSkeleton(KeypointSkeleton):
     name: str
 
 
-@gql.enum
-class SidebarMode(Enum):
-    all = "all"
-    best = "best"
-    disabled = "disabled"
-    fast = "fast"
-
-
 @gql.type
 class DatasetAppConfig:
     color_scheme: t.Optional[ColorScheme]
@@ -225,7 +217,6 @@ class DatasetAppConfig:
     media_fallback: bool = False
     plugins: t.Optional[JSON]
     sidebar_groups: t.Optional[t.List[SidebarGroup]]
-    sidebar_mode: t.Optional[SidebarMode]
     spaces: t.Optional[JSON]
 
 
@@ -374,7 +365,8 @@ class AppConfig:
     color_pool: t.List[str]
     colorscale: str
     grid_zoom: int
-    lightning_threshold: t.Optional[int]
+    enable_query_performance: bool
+    default_query_performance: bool
     loop_videos: bool
     multicolor_keypoints: bool
     notebook_height: int
@@ -384,7 +376,6 @@ class AppConfig:
     show_label: bool
     show_skeletons: bool
     show_tooltip: bool
-    sidebar_mode: SidebarMode
     theme: Theme
     timezone: t.Optional[str]
     use_frame_number: bool
@@ -594,11 +585,7 @@ async def serialize_dataset(
         if not fod.dataset_exists(dataset_name):
             return None
 
-        dataset = fod.load_dataset(dataset_name)
-
-        if update_last_loaded_at:
-            dataset._update_last_loaded_at(force=True)
-
+        dataset = fo.Dataset(dataset_name, _create=False, _force_load=True)
         dataset.reload()
         view_name = None
         try:
@@ -706,5 +693,5 @@ def _assign_estimated_counts(dataset: Dataset, fo_dataset: fo.Dataset):
 
 def _assign_lightning_info(dataset: Dataset, fo_dataset: fo.Dataset):
     dataset.sample_indexes, dataset.frame_indexes = indexes_from_dict(
-        fo_dataset.get_index_information()
+        fo_dataset.get_index_information(include_stats=True)
     )

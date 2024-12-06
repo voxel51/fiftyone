@@ -72,7 +72,7 @@ const Column: React.FC = () => {
   );
 
   const createLooker = fos.useCreateLooker(
-    false,
+    true,
     true,
     {
       ...opts,

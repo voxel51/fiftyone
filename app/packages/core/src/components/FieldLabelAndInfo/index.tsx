@@ -2,7 +2,6 @@ import { InfoIcon, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { coloring } from "@fiftyone/state";
 import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
-import Bolt from "@mui/icons-material/Bolt";
 import PaletteIcon from "@mui/icons-material/Palette";
 import React, {
   MutableRefObject,
@@ -20,7 +19,6 @@ import {
 } from "recoil";
 import styled from "styled-components";
 import { ExternalLink } from "../../utils/generic";
-import { LIGHTNING_MODE } from "../../utils/links";
 import { activeColorEntry } from "../ColorModal/state";
 
 const selectedFieldInfo = atom<string | null>({
@@ -271,7 +269,7 @@ function FieldInfoExpanded({
 
   useEffect(updatePosition, [field, isCollapsed]);
   const timeZone = useRecoilValue(fos.timeZone);
-  const disabled = useRecoilValue(fos.disabledFilterPaths);
+  const disabled = useRecoilValue(fos.isDisabledFilterPath(path));
 
   return ReactDOM.createPortal(
     <FieldInfoHoverTarget
@@ -283,14 +281,14 @@ function FieldInfoExpanded({
       onClick={(e) => e.stopPropagation()}
     >
       <FieldInfoExpandedContainer color={color}>
-        {!disabled.has(field) && (
+        {!disabled && (
           <CustomizeColor
             onClick={onClickCustomizeColor}
             color={color}
             colorBy={colorBy}
           />
         )}
-        <Lightning color={color} path={field.path} />
+
         {field.description && (
           <ExpFieldInfoDesc
             collapsed={descTooLong && isCollapsed}
@@ -320,42 +318,6 @@ function FieldInfoExpanded({
     document.body
   );
 }
-
-type LightningProp = {
-  color: string;
-  path: string;
-};
-
-const Lightning: React.FunctionComponent<LightningProp> = ({ color, path }) => {
-  const lightning = useRecoilValue(fos.lightning);
-  const lightnigPath = useRecoilValue(fos.lightningPaths(path)).size > 0;
-  const theme = useTheme();
-  if (!lightning || !lightnigPath) {
-    return null;
-  }
-
-  return (
-    <FieldInfoTableContainer color={color}>
-      <tbody>
-        <tr>
-          <td>
-            <Bolt sx={{ color }} fontSize={"small"} />
-          </td>
-          <td>
-            <ContentValue>
-              <ExternalLink
-                style={{ color: theme.text.primary }}
-                href={LIGHTNING_MODE}
-              >
-                Lightning indexed
-              </ExternalLink>
-            </ContentValue>
-          </td>
-        </tr>
-      </tbody>
-    </FieldInfoTableContainer>
-  );
-};
 
 type CustomizeColorProp = {
   color: string;

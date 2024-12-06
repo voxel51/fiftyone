@@ -32,6 +32,7 @@ export interface SelectorProps<T> {
   onMouseEnter?: React.MouseEventHandler;
   cy?: string;
   noResults?: string;
+  DuringSuspense?: (props: React.PropsWithChildren) => React.JSX.Element;
 }
 
 function Selector<T>(props: SelectorProps<T>) {
@@ -52,6 +53,7 @@ function Selector<T>(props: SelectorProps<T>) {
     onMouseEnter,
     cy,
     noResults,
+    DuringSuspense = ({ children }) => <>{children}</>,
     ...otherProps
   } = props;
 
@@ -205,7 +207,9 @@ function Selector<T>(props: SelectorProps<T>) {
               >
                 <Suspense
                   fallback={
-                    <LoadingDots style={{ float: "right" }} text="Loading" />
+                    <DuringSuspense>
+                      <LoadingDots style={{ float: "right" }} text="Loading" />
+                    </DuringSuspense>
                   }
                 >
                   <SearchResults

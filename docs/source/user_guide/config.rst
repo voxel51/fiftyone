@@ -14,119 +14,121 @@ Configuration options
 
 FiftyOne supports the configuration options described below:
 
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| Config field                  | Environment variable                | Default value                 | Description                                                                            |
-+===============================+=====================================+===============================+========================================================================================+
-| `database_admin`              | `FIFTYONE_DATABASE_ADMIN`           | `True`                        | Whether the client is allowed to trigger database migrations. See                      |
-|                               |                                     |                               | :ref:`this section <database-migrations>` for more information.                        |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `database_dir`                | `FIFTYONE_DATABASE_DIR`             | `~/.fiftyone/var/lib/mongo`   | The directory in which to store FiftyOne's backing database. Only applicable if        |
-|                               |                                     |                               | `database_uri` is not defined.                                                         |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `database_name`               | `FIFTYONE_DATABASE_NAME`            | `fiftyone`                    | A name to use for FiftyOne's backing database in your MongoDB instance. The database   |
-|                               |                                     |                               | is automatically created if necessary.                                                 |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `database_uri`                | `FIFTYONE_DATABASE_URI`             | `None`                        | A `MongoDB URI <https://docs.mongodb.com/manual/reference/connection-string/>`_ to     |
-|                               |                                     |                               | specifying a custom MongoDB database to which to connect. See                          |
-|                               |                                     |                               | :ref:`this section <configuring-mongodb-connection>` for more information.             |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `database_validation`         | `FIFTYONE_DATABASE_VALIDATION`      | `True`                        | Whether to validate the compatibility of database before connecting to it. See         |
-|                               |                                     |                               | :ref:`this section <configuring-mongodb-connection>` for more information.             |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `dataset_zoo_dir`             | `FIFTYONE_DATASET_ZOO_DIR`          | `~/fiftyone`                  | The default directory in which to store datasets that are downloaded from the          |
-|                               |                                     |                               | :ref:`FiftyOne Dataset Zoo <dataset-zoo>`.                                             |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `dataset_zoo_manifest_paths`  | `FIFTYONE_ZOO_MANIFEST_PATHS`       | `None`                        | A list of manifest JSON files specifying additional zoo datasets. See                  |
-|                               |                                     |                               | :ref:`adding datasets to the zoo <dataset-zoo-add>` for more information.              |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `default_dataset_dir`         | `FIFTYONE_DEFAULT_DATASET_DIR`      | `~/fiftyone`                  | The default directory to use when performing FiftyOne operations that                  |
-|                               |                                     |                               | require writing dataset contents to disk, such as ingesting datasets via               |
-|                               |                                     |                               | :meth:`ingest_labeled_images() <fiftyone.core.dataset.Dataset.ingest_labeled_images>`. |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `default_ml_backend`          | `FIFTYONE_DEFAULT_ML_BACKEND`       | `torch`                       | The default ML backend to use when performing operations such as                       |
-|                               |                                     |                               | downloading datasets from the FiftyOne Dataset Zoo that support multiple ML            |
-|                               |                                     |                               | backends. Supported values are `torch` and `tensorflow`. By default,                   |
-|                               |                                     |                               | `torch` is used if `PyTorch <https://pytorch.org>`_ is installed in your               |
-|                               |                                     |                               | Python environment, and `tensorflow` is used if                                        |
-|                               |                                     |                               | `TensorFlow <http://tensorflow.org>`_ is installed. If no supported backend            |
-|                               |                                     |                               | is detected, this defaults to `None`, and any operation that requires an               |
-|                               |                                     |                               | installed ML backend will raise an informative error message if invoked in             |
-|                               |                                     |                               | this state.                                                                            |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `default_batch_size`          | `FIFTYONE_DEFAULT_BATCH_SIZE`       | `None`                        | A default batch size to use when :ref:`applying models to datasets <model-zoo-apply>`. |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `default_batcher`             | `FIFTYONE_DEFAULT_BATCHER`          | `latency`                     | Batching implementation to use in some batched database operations such as             |
-|                               |                                     |                               | :meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>`,                     |
-|                               |                                     |                               | :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`, and      |
-|                               |                                     |                               | :meth:`save_context() <fiftyone.core.collections.SampleCollection.save_context>`.      |
-|                               |                                     |                               | Supported values are `latency`, `size`, and `static`.                                  |
-|                               |                                     |                               |                                                                                        |
-|                               |                                     |                               | `latency` is the default, which uses a dynamic batch size to achieve a target latency  |
-|                               |                                     |                               | of `batcher_target_latency` between calls. The default changes to `size` for the       |
-|                               |                                     |                               | FiftyOne Teams SDK in :ref:`API connection mode <teams-api-connection>`, which targets |
-|                               |                                     |                               | a size of `batcher_target_size_bytes` for each call. `static` uses a fixed batch size  |
-|                               |                                     |                               | of `batcher_static_size`.                                                              |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `batcher_static_size`         | `FIFTYONE_BATCHER_STATIC_SIZE`      | `100`                         | Fixed size of batches. Only used when `default_batcher` is `static`.                   |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `batcher_target_size_bytes`   | `FIFTYONE_BATCHER_TARGET_SIZE_BYTES`| `2 ** 20`                     | Target content size of batches, in bytes. Only used when `default_batcher` is `size`.  |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `batcher_target_latency`      | `FIFTYONE_BATCHER_TARGET_LATENCY`   | `0.2`                         | Target latency between batches, in seconds. Only used when `default_batcher` is        |
-|                               |                                     |                               | `latency`.                                                                             |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `default_sequence_idx`        | `FIFTYONE_DEFAULT_SEQUENCE_IDX`     | `%06d`                        | The default numeric string pattern to use when writing sequential lists of             |
-|                               |                                     |                               | files.                                                                                 |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `default_image_ext`           | `FIFTYONE_DEFAULT_IMAGE_EXT`        | `.jpg`                        | The default image format to use when writing images to disk.                           |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `default_video_ext`           | `FIFTYONE_DEFAULT_VIDEO_EXT`        | `.mp4`                        | The default video format to use when writing videos to disk.                           |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `default_app_port`            | `FIFTYONE_DEFAULT_APP_PORT`         | `5151`                        | The default port to use to serve the :ref:`FiftyOne App <fiftyone-app>`.               |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `default_app_address`         | `FIFTYONE_DEFAULT_APP_ADDRESS`      | `localhost`                   | The default address to use to serve the :ref:`FiftyOne App <fiftyone-app>`. This may   |
-|                               |                                     |                               | be either an IP address or hostname. If it's a hostname, the App will listen to all    |
-|                               |                                     |                               | IP addresses associated with the name. The default is `localhost`, which means the App |
-|                               |                                     |                               | will only listen on the local interface. See :ref:`this page <restricting-app-address>`|
-|                               |                                     |                               | for more information.                                                                  |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `do_not_track`                | `FIFTYONE_DO_NOT_TRACK`             | `False`                       | Controls whether UUID based import and App usage events are tracked.                   |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `logging_level`               | `FIFTYONE_LOGGING_LEVEL`            | `INFO`                        | Controls FiftyOne's package-wide logging level. Can be any valid ``logging`` level as  |
-|                               |                                     |                               | a string: ``DEBUG, INFO, WARNING, ERROR, CRITICAL``.                                   |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `max_thread_pool_workers`     | `FIFTYONE_MAX_THREAD_POOL_WORKERS`  | `None`                        | An optional maximum number of workers to use when creating thread pools                |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `max_process_pool_workers`    | `FIFTYONE_MAX_PROCESS_POOL_WORKERS` | `None`                        | An optional maximum number of workers to use when creating process pools               |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `model_zoo_dir`               | `FIFTYONE_MODEL_ZOO_DIR`            | `~/fiftyone/__models__`       | The default directory in which to store models that are downloaded from the            |
-|                               |                                     |                               | :ref:`FiftyOne Model Zoo <model-zoo>`.                                                 |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `model_zoo_manifest_paths`    | `FIFTYONE_MODEL_ZOO_MANIFEST_PATHS` | `None`                        | A list of manifest JSON files specifying additional zoo models. See                    |
-|                               |                                     |                               | :ref:`adding models to the zoo <model-zoo-add>` for more information.                  |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `module_path`                 | `FIFTYONE_MODULE_PATH`              | `None`                        | A list of modules that should be automatically imported whenever FiftyOne is imported. |
-|                               |                                     |                               | See :ref:`this page <custom-embedded-documents>` for an example usage.                 |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `operator_timeout`            | `FIFTYONE_OPERATOR_TIMEOUT`         | `600`                         | The timeout for execution of an operator. See :ref:`this page <fiftyone-plugins>` for  |
-|                               |                                     |                               | more information.                                                                      |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `plugins_dir`                 | `FIFTYONE_PLUGINS_DIR`              | `None`                        | A directory containing custom App plugins. See :ref:`this page <fiftyone-plugins>` for |
-|                               |                                     |                               | more information.                                                                      |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `plugins_cache_enabled`       | `FIFTYONE_PLUGINS_CACHE_ENABLED`    | `False`                       | When set to ``True`` plugins will be cached until their directory's ``mtime`` changes. |
-|                               |                                     |                               | This is intended to be used in production.                                             |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `requirement_error_level`     | `FIFTYONE_REQUIREMENT_ERROR_LEVEL`  | `0`                           | A default error level to use when ensuring/installing requirements such as third-party |
-|                               |                                     |                               | packages. See :ref:`loading zoo models <model-zoo-load>` for an example usage.         |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `show_progress_bars`          | `FIFTYONE_SHOW_PROGRESS_BARS`       | `True`                        | Controls whether progress bars are printed to the terminal when performing             |
-|                               |                                     |                               | operations such reading/writing large datasets or activating FiftyOne                  |
-|                               |                                     |                               | Brain methods on datasets.                                                             |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `timezone`                    | `FIFTYONE_TIMEZONE`                 | `None`                        | An optional timezone string. If provided, all datetimes read from FiftyOne datasets    |
-|                               |                                     |                               | will be expressed in this timezone. See :ref:`this section <configuring-timezone>` for |
-|                               |                                     |                               | more information.                                                                      |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| Config field                  | Environment variable                  | Default value                 | Description                                                                            |
++===============================+=======================================+===============================+========================================================================================+
+| `database_admin`              | `FIFTYONE_DATABASE_ADMIN`             | `True`                        | Whether the client is allowed to trigger database migrations. See                      |
+|                               |                                       |                               | :ref:`this section <database-migrations>` for more information.                        |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `database_dir`                | `FIFTYONE_DATABASE_DIR`               | `~/.fiftyone/var/lib/mongo`   | The directory in which to store FiftyOne's backing database. Only applicable if        |
+|                               |                                       |                               | `database_uri` is not defined.                                                         |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `database_name`               | `FIFTYONE_DATABASE_NAME`              | `fiftyone`                    | A name to use for FiftyOne's backing database in your MongoDB instance. The database   |
+|                               |                                       |                               | is automatically created if necessary.                                                 |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `database_uri`                | `FIFTYONE_DATABASE_URI`               | `None`                        | A `MongoDB URI <https://docs.mongodb.com/manual/reference/connection-string/>`_ to     |
+|                               |                                       |                               | specifying a custom MongoDB database to which to connect. See                          |
+|                               |                                       |                               | :ref:`this section <configuring-mongodb-connection>` for more information.             |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `database_validation`         | `FIFTYONE_DATABASE_VALIDATION`        | `True`                        | Whether to validate the compatibility of database before connecting to it. See         |
+|                               |                                       |                               | :ref:`this section <configuring-mongodb-connection>` for more information.             |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `dataset_zoo_dir`             | `FIFTYONE_DATASET_ZOO_DIR`            | `~/fiftyone`                  | The default directory in which to store datasets that are downloaded from the          |
+|                               |                                       |                               | :ref:`FiftyOne Dataset Zoo <dataset-zoo>`.                                             |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `dataset_zoo_manifest_paths`  | `FIFTYONE_ZOO_MANIFEST_PATHS`         | `None`                        | A list of manifest JSON files specifying additional zoo datasets. See                  |
+|                               |                                       |                               | :ref:`adding datasets to the zoo <dataset-zoo-add>` for more information.              |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `default_dataset_dir`         | `FIFTYONE_DEFAULT_DATASET_DIR`        | `~/fiftyone`                  | The default directory to use when performing FiftyOne operations that                  |
+|                               |                                       |                               | require writing dataset contents to disk, such as ingesting datasets via               |
+|                               |                                       |                               | :meth:`ingest_labeled_images() <fiftyone.core.dataset.Dataset.ingest_labeled_images>`. |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `default_ml_backend`          | `FIFTYONE_DEFAULT_ML_BACKEND`         | `torch`                       | The default ML backend to use when performing operations such as                       |
+|                               |                                       |                               | downloading datasets from the FiftyOne Dataset Zoo that support multiple ML            |
+|                               |                                       |                               | backends. Supported values are `torch` and `tensorflow`. By default,                   |
+|                               |                                       |                               | `torch` is used if `PyTorch <https://pytorch.org>`_ is installed in your               |
+|                               |                                       |                               | Python environment, and `tensorflow` is used if                                        |
+|                               |                                       |                               | `TensorFlow <http://tensorflow.org>`_ is installed. If no supported backend            |
+|                               |                                       |                               | is detected, this defaults to `None`, and any operation that requires an               |
+|                               |                                       |                               | installed ML backend will raise an informative error message if invoked in             |
+|                               |                                       |                               | this state.                                                                            |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `default_batch_size`          | `FIFTYONE_DEFAULT_BATCH_SIZE`         | `None`                        | A default batch size to use when :ref:`applying models to datasets <model-zoo-apply>`. |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `default_batcher`             | `FIFTYONE_DEFAULT_BATCHER`            | `latency`                     | Batching implementation to use in some batched database operations such as             |
+|                               |                                       |                               | :meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>`,                     |
+|                               |                                       |                               | :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`, and      |
+|                               |                                       |                               | :meth:`save_context() <fiftyone.core.collections.SampleCollection.save_context>`.      |
+|                               |                                       |                               | Supported values are `latency`, `size`, and `static`.                                  |
+|                               |                                       |                               |                                                                                        |
+|                               |                                       |                               | `latency` is the default, which uses a dynamic batch size to achieve a target latency  |
+|                               |                                       |                               | of `batcher_target_latency` between calls. The default changes to `size` for the       |
+|                               |                                       |                               | FiftyOne Teams SDK in :ref:`API connection mode <teams-api-connection>`, which targets |
+|                               |                                       |                               | a size of `batcher_target_size_bytes` for each call. `static` uses a fixed batch size  |
+|                               |                                       |                               | of `batcher_static_size`.                                                              |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `batcher_static_size`         | `FIFTYONE_BATCHER_STATIC_SIZE`        | `100`                         | Fixed size of batches. Only used when `default_batcher` is `static`.                   |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `batcher_target_size_bytes`   | `FIFTYONE_BATCHER_TARGET_SIZE_BYTES`  | `2 ** 20`                     | Target content size of batches, in bytes. Only used when `default_batcher` is `size`.  |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `batcher_target_latency`      | `FIFTYONE_BATCHER_TARGET_LATENCY`     | `0.2`                         | Target latency between batches, in seconds. Only used when `default_batcher` is        |
+|                               |                                       |                               | `latency`.                                                                             |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `default_sequence_idx`        | `FIFTYONE_DEFAULT_SEQUENCE_IDX`       | `%06d`                        | The default numeric string pattern to use when writing sequential lists of             |
+|                               |                                       |                               | files.                                                                                 |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `default_image_ext`           | `FIFTYONE_DEFAULT_IMAGE_EXT`          | `.jpg`                        | The default image format to use when writing images to disk.                           |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `default_video_ext`           | `FIFTYONE_DEFAULT_VIDEO_EXT`          | `.mp4`                        | The default video format to use when writing videos to disk.                           |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `default_app_port`            | `FIFTYONE_DEFAULT_APP_PORT`           | `5151`                        | The default port to use to serve the :ref:`FiftyOne App <fiftyone-app>`.               |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `default_app_address`         | `FIFTYONE_DEFAULT_APP_ADDRESS`        | `localhost`                   | The default address to use to serve the :ref:`FiftyOne App <fiftyone-app>`. This may   |
+|                               |                                       |                               | be either an IP address or hostname. If it's a hostname, the App will listen to all    |
+|                               |                                       |                               | IP addresses associated with the name. The default is `localhost`, which means the App |
+|                               |                                       |                               | will only listen on the local interface. See :ref:`this page <restricting-app-address>`|
+|                               |                                       |                               | for more information.                                                                  |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `do_not_track`                | `FIFTYONE_DO_NOT_TRACK`               | `False`                       | Controls whether UUID based import and App usage events are tracked.                   |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `logging_level`               | `FIFTYONE_LOGGING_LEVEL`              | `INFO`                        | Controls FiftyOne's package-wide logging level. Can be any valid ``logging`` level as  |
+|                               |                                       |                               | a string: ``DEBUG, INFO, WARNING, ERROR, CRITICAL``.                                   |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `max_thread_pool_workers`     | `FIFTYONE_MAX_THREAD_POOL_WORKERS`    | `None`                        | An optional maximum number of workers to use when creating thread pools                |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `max_process_pool_workers`    | `FIFTYONE_MAX_PROCESS_POOL_WORKERS`   | `None`                        | An optional maximum number of workers to use when creating process pools               |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `model_zoo_dir`               | `FIFTYONE_MODEL_ZOO_DIR`              | `~/fiftyone/__models__`       | The default directory in which to store models that are downloaded from the            |
+|                               |                                       |                               | :ref:`FiftyOne Model Zoo <model-zoo>`.                                                 |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `model_zoo_manifest_paths`    | `FIFTYONE_MODEL_ZOO_MANIFEST_PATHS`   | `None`                        | A list of manifest JSON files specifying additional zoo models. See                    |
+|                               |                                       |                               | :ref:`adding models to the zoo <model-zoo-add>` for more information.                  |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `module_path`                 | `FIFTYONE_MODULE_PATH`                | `None`                        | A list of modules that should be automatically imported whenever FiftyOne is imported. |
+|                               |                                       |                               | See :ref:`this page <custom-embedded-documents>` for an example usage.                 |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `operator_timeout`            | `FIFTYONE_OPERATOR_TIMEOUT`           | `600`                         | The timeout for execution of an operator. See :ref:`this page <fiftyone-plugins>` for  |
+|                               |                                       |                               | more information.                                                                      |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `allow_legacy_orchestrators`  | `FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS` | `False`                       | Whether to allow delegated operations to be scheduled locally.                         |
+|                               |                                       |                               | See :ref:`this page <delegated-orchestrator-open-source>` for more information.        |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `plugins_dir`                 | `FIFTYONE_PLUGINS_DIR`                | `None`                        | A directory containing custom App plugins. See :ref:`this page <fiftyone-plugins>` for |
+|                               |                                       |                               | more information.                                                                      |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `plugins_cache_enabled`       | `FIFTYONE_PLUGINS_CACHE_ENABLED`      | `False`                       | When set to ``True`` plugins will be cached until their directory's ``mtime`` changes. |
+|                               |                                       |                               | This is intended to be used in production.                                             |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `do_not_track`                | `FIFTYONE_DO_NOT_TRACK`               | `False`                       | Controls whether UUID based import and App usage events are tracked.                   |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `show_progress_bars`          | `FIFTYONE_SHOW_PROGRESS_BARS`         | `True`                        | Controls whether progress bars are printed to the terminal when performing             |
+|                               |                                       |                               | operations such reading/writing large datasets or activating FiftyOne                  |
+|                               |                                       |                               | Brain methods on datasets.                                                             |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `timezone`                    | `FIFTYONE_TIMEZONE`                   | `None`                        | An optional timezone string. If provided, all datetimes read from FiftyOne datasets    |
+|                               |                                       |                               | will be expressed in this timezone. See :ref:`this section <configuring-timezone>` for |
+|                               |                                       |                               | more information.                                                                      |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 
 Viewing your config
 -------------------
@@ -178,6 +180,7 @@ and the CLI:
             "model_zoo_manifest_paths": null,
             "module_path": null,
             "operator_timeout": 600,
+            "allow_legacy_orchestrators": false,
             "plugins_cache_enabled": false,
             "plugins_dir": null,
             "requirement_error_level": 0,
@@ -227,6 +230,7 @@ and the CLI:
             "model_zoo_manifest_paths": null,
             "module_path": null,
             "operator_timeout": 600,
+            "allow_legacy_orchestrators": false,
             "plugins_cache_enabled": false,
             "plugins_dir": null,
             "requirement_error_level": 0,
@@ -668,13 +672,17 @@ The FiftyOne App can be configured in the ways described below:
 | `colorscale`               | `FIFTYONE_APP_COLORSCALE`               | `"viridis"`   | The colorscale to use when rendering heatmaps in the App. See                              |
 |                            |                                         |               | :ref:`this section <heatmaps>` for more details.                                           |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `disable_frame_filtering`  | `FIFTYONE_APP_DISABLE_FRAME_FILTERING`  | `False`       | Whether to disable frame filtering for video datasets in the App's grid view.              |
+| `default_query_performance`| `FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE`| `True`        | Default if a user hasn't selected a query performance mode in their current session. See   |
+|                            |                                         |               | :ref:`this section <app-optimizing-query-performance>` for more details.                   |
++----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `disable_frame_filtering`  | `FIFTYONE_APP_DISABLE_FRAME_FILTERING`  | `False`       | Whether to disable frame filtering for video datasets in the App's grid view. See          |
+|                            |                                         |               | :ref:`this section <app-optimizing-query-performance>` for more details.                   |
++----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
+| `enable_query_performance` | `FIFTYONE_APP_ENABLE_QUERY_PERFORMANCE` | `True`        | Whether to show the query performance toggle in the UI for users to select. See            |
+|                            |                                         |               | :ref:`this section <app-optimizing-query-performance>` for more details.                   |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `grid_zoom`                | `FIFTYONE_APP_GRID_ZOOM`                | `5`           | The zoom level of the App's sample grid. Larger values result in larger samples (and thus  |
 |                            |                                         |               | fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                        |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `lightning_threshold`      | `FIFTYONE_APP_LIGHTNING_THRESHOLD`      | `None`        | A dataset sample count threshold that enables performant sidebar filtering on indexed      |
-|                            |                                         |               | fields. See :ref:`this section <app-lightning-mode>` for more details.                     |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `loop_videos`              | `FIFTYONE_APP_LOOP_VIDEOS`              | `False`       | Whether to loop videos by default in the expanded sample view.                             |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
@@ -698,10 +706,6 @@ The FiftyOne App can be configured in the ways described below:
 | `show_skeletons`           | `FIFTYONE_APP_SHOW_SKELETONS`           | `True`        | Whether to show keypoint skeletons, if available.                                          |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `show_tooltip`             | `FIFTYONE_APP_SHOW_TOOLTIP`             | `True`        | Whether to show the tooltip when hovering over labels in the App's expanded sample view.   |
-+----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
-| `sidebar_mode`             | `FIFTYONE_APP_SIDEBAR_MODE`             | `fast`        | The default loading behavior of the App's sidebar. Supported values are                    |
-|                            |                                         |               | `{"fast", "all", "best", "disabled"}`. See :ref:`this section <app-sidebar-mode>`          |
-|                            |                                         |               | more details.                                                                              |
 +----------------------------+-----------------------------------------+---------------+--------------------------------------------------------------------------------------------+
 | `theme`                    | `FIFTYONE_APP_THEME`                    | `"browser"`   | The default theme to use in the App. Supported values are `{"browser", "dark", "light"}`.  |
 |                            |                                         |               | If `"browser"`, your current theme will be persisted in your browser's storage.            |
@@ -754,10 +758,11 @@ You can print your App config at any time via the Python library and the CLI:
             "colorscale": "viridis",
             "frame_stream_size": 1000,
             "grid_zoom": 5,
-            "lightning_threshold": null,
             "loop_videos": false,
             "media_fallback": false,
+            "default_query_performance": true,
             "disable_frame_filtering": false,
+            "enable_query_performance": true,
             "multicolor_keypoints": false,
             "notebook_height": 800,
             "proxy_url": None,
@@ -806,10 +811,11 @@ You can print your App config at any time via the Python library and the CLI:
             "colorscale": "viridis",
             "frame_stream_size": 1000,
             "grid_zoom": 5,
-            "lightning_threshold": null,
+            "default_query_performance": true,
+            "disable_frame_filtering": false,
+            "enable_query_performance": true,
             "loop_videos": false,
             "media_fallback": false,
-            "disable_frame_filtering": false,
             "multicolor_keypoints": false,
             "notebook_height": 800,
             "proxy_url": None,

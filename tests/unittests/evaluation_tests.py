@@ -1845,6 +1845,91 @@ class DetectionsTests(unittest.TestCase):
         self.assertEqual(type(results), foud.DetectionResults)
 
 
+class BoxesTests(unittest.TestCase):
+    def _make_dataset(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="image1.jpg",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.11, 0.11, 0.39, 0.39],
+                    ),
+                ]
+            ),
+            predictions=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.4, 0.4],
+                        confidence=0.9,
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.11, 0.11, 0.39, 0.39],
+                        confidence=0.9,
+                    ),
+                ]
+            ),
+        )
+        sample2 = fo.Sample(filepath="image2.jpg")
+
+        dataset.add_samples([sample1, sample2])
+
+        return dataset
+
+    def test_compute_max_ious(self):
+        dataset = self._make_dataset()
+
+        foui.compute_max_ious(
+            dataset,
+            "ground_truth",
+            iou_attr="max_iou",
+        )
+        bounds1 = dataset.bounds("ground_truth.detections.max_iou")
+
+        self.assertIsNotNone(bounds1[0])
+        self.assertIsNotNone(bounds1[1])
+
+        foui.compute_max_ious(
+            dataset,
+            "predictions",
+            other_field="ground_truth",
+            iou_attr="max_iou",
+        )
+        bounds2 = dataset.bounds("predictions.detections.max_iou")
+
+        self.assertIsNotNone(bounds2[0])
+        self.assertIsNotNone(bounds2[1])
+
+    def test_find_duplicates(self):
+        dataset = self._make_dataset()
+
+        dup_ids1 = foui.find_duplicates(
+            dataset,
+            "ground_truth",
+            iou_thresh=0.9,
+            method="simple",
+        )
+
+        self.assertEqual(len(dup_ids1), 1)
+
+        dup_ids2 = foui.find_duplicates(
+            dataset,
+            "ground_truth",
+            iou_thresh=0.9,
+            method="greedy",
+        )
+
+        self.assertEqual(len(dup_ids2), 1)
+
+
 class CuboidTests(unittest.TestCase):
     def _make_dataset(self):
         group = fo.Group()
@@ -1936,15 +2021,20 @@ class CuboidTests(unittest.TestCase):
     def _check_iou(self, dataset, field1, field2, expected_iou):
         dets1 = dataset.first()[field1].detections
         dets2 = dataset.first()[field2].detections
-        actual_iou = foui.compute_ious(dets1, dets2)[0][0]
+        ious = foui.compute_ious(dets1, dets2, sparse=True)
+        result = next(iter(ious.values()), [])
 
-        self.assertTrue(np.isclose(actual_iou, expected_iou))
+        if expected_iou == 0:
+            self.assertTrue(len(result) == 0)
+        else:
+            _, actual_iou = result[0]
+            self.assertTrue(np.isclose(actual_iou, expected_iou))
 
     @drop_datasets
     def test_non_overlapping_boxes(self):
         dataset = self._make_dataset()
 
-        expected_iou = 0.0
+        expected_iou = 0
         self._check_iou(dataset, "test1_box1", "test1_box2", expected_iou)
 
     @drop_datasets

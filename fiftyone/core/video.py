@@ -82,6 +82,15 @@ class FramesView(fov.DatasetView):
             the frames in this view
     """
 
+    __slots__ = (
+        "_source_collection",
+        "_frames_stage",
+        "_frames_dataset",
+        "__stages",
+        "__media_type",
+        "__name",
+    )
+
     def __init__(
         self,
         source_collection,

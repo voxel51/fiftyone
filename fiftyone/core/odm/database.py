@@ -579,6 +579,36 @@ def drop_orphan_runs(dry_run=False):
             _delete_run_results(conn, orphan_result_ids)
 
 
+def drop_orphan_stores(dry_run=False):
+    """Drops all orphan execution stores from the database.
+
+    Orphan stores are those that are associated with a dataset that no longer
+    exists in the database.
+
+    Args:
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    dataset_ids = set(conn.datasets.distinct("_id"))
+
+    store_ids = set(conn.execution_store.distinct("dataset_id"))
+    store_ids.discard(None)
+
+    orphan_store_ids = list(store_ids - dataset_ids)
+
+    if orphan_store_ids:
+        _logger.info(
+            "Deleting %d orphan store(s): %s",
+            len(orphan_store_ids),
+            orphan_store_ids,
+        )
+        if not dry_run:
+            _delete_stores(conn, orphan_store_ids)
+
+
 def stream_collection(collection_name):
     """Streams the contents of the collection to stdout.
 
@@ -1126,6 +1156,15 @@ def delete_dataset(name, dry_run=False):
         if not dry_run:
             _delete_run_results(conn, result_ids)
 
+    _id = dataset_dict["_id"]
+    num_stores = conn.execution_store.count_documents(
+        {"dataset_id": _id, "key": "__store__"}
+    )
+    if num_stores > 0:
+        _logger.info("Deleting %d store(s)", num_stores)
+        if not dry_run:
+            conn.execution_store.delete_many({"dataset_id": _id})
+
 
 def delete_saved_view(dataset_name, view_name, dry_run=False):
     """Deletes the saved view with the given name from the dataset with the
@@ -1602,6 +1641,10 @@ def _delete_run_docs(conn, run_ids):
 def _delete_run_results(conn, result_ids):
     conn.fs.files.delete_many({"_id": {"$in": result_ids}})
     conn.fs.chunks.delete_many({"files_id": {"$in": result_ids}})
+
+
+def _delete_stores(conn, dataset_ids):
+    conn.execution_store.delete_many({"dataset_id": {"$in": dataset_ids}})
 
 
 _RUNS_FIELDS = ["annotation_runs", "brain_methods", "evaluations", "runs"]

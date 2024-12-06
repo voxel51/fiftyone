@@ -26,6 +26,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
+from fiftyone.operators.store import ExecutionStoreService
 import fiftyone.utils.data as foud
 from fiftyone import ViewField as F
 
@@ -138,18 +139,35 @@ class DatasetTests(unittest.TestCase):
         self.assertListEqual(list_datasets(), dataset_names)
 
         name = dataset_names.pop(0)
-        datasets[name].delete()
+
+        dataset = datasets[name]
+        dataset_id = dataset._doc.id
+        svc = ExecutionStoreService(dataset_id=dataset_id)
+        store_name = "test_store"
+        svc.set_key(store_name, "foo", "bar")
+        keys = svc.list_keys(store_name)
+
+        self.assertListEqual(keys, ["foo"])
+
+        dataset.delete()
+
         self.assertListEqual(list_datasets(), dataset_names)
+        keys = svc.list_keys(store_name)
+
+        self.assertListEqual(keys, [])
         with self.assertRaises(ValueError):
-            len(datasets[name])
+            len(dataset)
 
         name = dataset_names.pop(0)
+
         fo.delete_dataset(name)
+
         self.assertListEqual(list_datasets(), dataset_names)
         with self.assertRaises(ValueError):
             len(datasets[name])
 
         new_dataset = fo.Dataset(name)
+
         self.assertEqual(len(new_dataset), 0)
 
     @drop_datasets
@@ -195,6 +213,14 @@ class DatasetTests(unittest.TestCase):
         last_loaded_at3 = dataset.last_loaded_at
 
         self.assertTrue(last_loaded_at3 > last_loaded_at2)
+
+    @drop_datasets
+    def test_set_unknown_attribute(self):
+        dataset_name = self.test_set_unknown_attribute.__name__
+
+        dataset = fo.Dataset(dataset_name)
+        self.assertRaises(AttributeError, setattr, dataset, "persistant", True)
+        self.assertRaises(AttributeError, setattr, dataset, "somethingelse", 5)
 
     @drop_datasets
     def test_dataset_tags(self):
@@ -695,8 +721,10 @@ class DatasetTests(unittest.TestCase):
         frame_stats["indexBuilds"] = ["gt.detections.label_1"]
 
         with patch.object(
-            dataset, "_sample_collstats", return_value=sample_stats
-        ), patch.object(dataset, "_frame_collstats", return_value=frame_stats):
+            fo.Dataset, "_sample_collstats", return_value=sample_stats
+        ), patch.object(
+            fo.Dataset, "_frame_collstats", return_value=frame_stats
+        ):
             info = dataset.get_index_information(include_stats=True)
             for key in [
                 "gt.detections.label",
@@ -5634,14 +5662,14 @@ class DatasetDeletionTests(unittest.TestCase):
         self.assertTrue(last_modified_at4b < last_modified_at5b)
         self.assertEqual(last_modified_at4c, last_modified_at5c)
 
-        last_modified_at6b = dataset._get_last_modified_at()
-        last_modified_at6c = dataset._get_last_modified_at(frames=True)
+        last_modified_at6b = dataset._max("last_modified_at")
+        last_modified_at6c = dataset._max("frames.last_modified_at")
 
         self.assertEqual(last_modified_at6b, last_modified_at5b)
         self.assertEqual(last_modified_at6c, last_modified_at5c)
 
-        last_modified_at7b = dataset.view()._get_last_modified_at()
-        last_modified_at7c = dataset.view()._get_last_modified_at(frames=True)
+        last_modified_at7b = dataset.view()._max("last_modified_at")
+        last_modified_at7c = dataset.view()._max("frames.last_modified_at")
 
         self.assertEqual(last_modified_at7b, last_modified_at5b)
         self.assertEqual(last_modified_at7c, last_modified_at5c)

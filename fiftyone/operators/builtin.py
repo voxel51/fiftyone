@@ -14,6 +14,10 @@ import fiftyone.core.media as fom
 import fiftyone.core.storage as fos
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
+from fiftyone.core.odm.workspace import default_workspace_factory
+
+# pylint: disable=no-name-in-module
+from fiftyone.operators.builtins.panels.model_evaluation import EvaluationPanel
 
 
 class EditFieldInfo(foo.Operator):
@@ -64,8 +68,9 @@ def _edit_field_info_inputs(ctx, inputs):
             }
         )
 
+    path_keys = list(schema.keys())
     path_selector = types.AutocompleteView()
-    for key in sorted(schema.keys()):
+    for key in path_keys:
         path_selector.add_choice(key, label=key)
 
     inputs.enum(
@@ -237,7 +242,7 @@ def _clone_sample_field_inputs(ctx, inputs):
     schema = target_view.get_field_schema(flat=True)
     full_schema = ctx.dataset.get_field_schema(flat=True)
 
-    field_keys = sorted(schema.keys())
+    field_keys = list(schema.keys())
     field_selector = types.AutocompleteView()
     for key in field_keys:
         field_selector.add_choice(key, label=key)
@@ -365,7 +370,7 @@ def _clone_frame_field_inputs(ctx, inputs):
     schema = target_view.get_frame_field_schema(flat=True)
     full_schema = ctx.dataset.get_frame_field_schema(flat=True)
 
-    field_keys = sorted(schema.keys())
+    field_keys = list(schema.keys())
     field_selector = types.AutocompleteView()
     for key in field_keys:
         field_selector.add_choice(key, label=key)
@@ -452,8 +457,9 @@ def _rename_sample_field_inputs(ctx, inputs):
         prop.invalid = True
         return
 
+    field_keys = list(schema.keys())
     field_selector = types.AutocompleteView()
-    for key in sorted(schema.keys()):
+    for key in field_keys:
         field_selector.add_choice(key, label=key)
 
     field_prop = inputs.enum(
@@ -547,8 +553,9 @@ def _rename_frame_field_inputs(ctx, inputs):
         prop.invalid = True
         return
 
+    field_keys = list(schema.keys())
     field_selector = types.AutocompleteView()
-    for key in sorted(schema.keys()):
+    for key in field_keys:
         field_selector.add_choice(key, label=key)
 
     field_prop = inputs.enum(
@@ -615,8 +622,11 @@ class ClearSampleField(foo.Operator):
 
     def execute(self, ctx):
         field_name = ctx.params["field_name"]
+        target = ctx.params.get("target", None)
 
-        ctx.dataset.clear_sample_field(field_name)
+        target_view = _get_target_view(ctx, target)
+
+        target_view.clear_sample_field(field_name)
         ctx.trigger("reload_dataset")
 
 
@@ -662,7 +672,7 @@ def _clear_sample_field_inputs(ctx, inputs):
     schema.pop("id", None)
     schema.pop("filepath", None)
 
-    field_keys = sorted(schema.keys())
+    field_keys = list(schema.keys())
     field_selector = types.AutocompleteView()
     for key in field_keys:
         field_selector.add_choice(key, label=key)
@@ -706,8 +716,11 @@ class ClearFrameField(foo.Operator):
 
     def execute(self, ctx):
         field_name = ctx.params["field_name"]
+        target = ctx.params.get("target", None)
 
-        ctx.dataset.clear_frame_field(field_name)
+        target_view = _get_target_view(ctx, target)
+
+        target_view.clear_frame_field(field_name)
         ctx.trigger("reload_dataset")
 
 
@@ -762,7 +775,7 @@ def _clear_frame_field_inputs(ctx, inputs):
     schema.pop("id", None)
     schema.pop("frame_number", None)
 
-    field_keys = sorted(schema.keys())
+    field_keys = list(schema.keys())
     field_selector = types.AutocompleteView()
     for key in field_keys:
         field_selector.add_choice(key, label=key)
@@ -905,8 +918,9 @@ def _delete_sample_field_inputs(ctx, inputs):
         prop.invalid = True
         return
 
+    field_keys = list(schema.keys())
     field_selector = types.AutocompleteView()
-    for key in sorted(schema.keys()):
+    for key in field_keys:
         field_selector.add_choice(key, label=key)
 
     field_prop = inputs.enum(
@@ -974,8 +988,9 @@ def _delete_frame_field_inputs(ctx, inputs):
         prop.invalid = True
         return
 
+    field_keys = list(schema.keys())
     field_selector = types.AutocompleteView()
-    for key in sorted(schema.keys()):
+    for key in field_keys:
         field_selector.add_choice(key, label=key)
 
     field_prop = inputs.enum(
@@ -1019,9 +1034,34 @@ class CreateIndex(foo.Operator):
                 }
             )
 
+        categorical_field_types = (
+            fo.StringField,
+            fo.BooleanField,
+            fo.ObjectIdField,
+        )
+        numeric_field_types = (
+            fo.FloatField,
+            fo.IntField,
+            fo.DateField,
+            fo.DateTimeField,
+        )
+        valid_field_types = categorical_field_types + numeric_field_types
+
+        path_keys = [
+            p
+            for p, f in schema.items()
+            if (
+                isinstance(f, valid_field_types)
+                or (
+                    isinstance(f, fo.ListField)
+                    and isinstance(f.field, valid_field_types)
+                )
+            )
+        ]
+
         indexes = set(ctx.dataset.list_indexes())
 
-        field_keys = sorted(p for p in schema if p not in indexes)
+        field_keys = [p for p in path_keys if p not in indexes]
         field_selector = types.AutocompleteView()
         for key in field_keys:
             field_selector.add_choice(key, label=key)
@@ -1043,13 +1083,33 @@ class CreateIndex(foo.Operator):
             description="Whether to add a uniqueness constraint to the index",
         )
 
+        if ctx.dataset.media_type == fom.GROUP:
+            inputs.bool(
+                "group_index",
+                default=True,
+                required=False,
+                label="Group index",
+                description=(
+                    "Whether to also add a compound group index. This "
+                    "optimizes sidebar queries when viewing specific group "
+                    "slice(s)"
+                ),
+            )
+
         return types.Property(inputs, view=types.View(label="Create index"))
 
     def execute(self, ctx):
         field_name = ctx.params["field_name"]
         unique = ctx.params.get("unique", False)
+        group_index = ctx.params.get("group_index", False)
 
-        ctx.dataset.create_index(field_name, unique=unique)
+        if ctx.dataset.media_type == fom.GROUP and group_index:
+            group_path = ctx.dataset.group_field + ".name"
+            index_spec = [(group_path, 1), (field_name, 1)]
+
+            ctx.dataset.create_index(index_spec, unique=unique, wait=False)
+
+        ctx.dataset.create_index(field_name, unique=unique, wait=False)
 
 
 class DropIndex(foo.Operator):
@@ -1069,7 +1129,8 @@ class DropIndex(foo.Operator):
         default_indexes = set(ctx.dataset._get_default_indexes())
         if ctx.dataset._has_frame_fields():
             default_indexes.update(
-                ctx.dataset._get_default_indexes(frames=True)
+                ctx.dataset._FRAMES_PREFIX + path
+                for path in ctx.dataset._get_default_indexes(frames=True)
             )
 
         indexes = [i for i in indexes if i not in default_indexes]
@@ -1123,12 +1184,15 @@ class CreateSummaryField(foo.Operator):
 
     def execute(self, ctx):
         path = ctx.params["path"]
-        field_name = ctx.params.get("field_name", None)
+        _, field_name = _get_dynamic(ctx.params, "field_name", path, None)
         sidebar_group = ctx.params.get("sidebar_group", None)
         include_counts = ctx.params.get("include_counts", False)
         group_by = ctx.params.get("group_by", None)
         read_only = ctx.params.get("read_only", True)
         create_index = ctx.params.get("create_index", True)
+
+        if not field_name:
+            field_name = None
 
         if not sidebar_group:
             sidebar_group = False
@@ -1146,6 +1210,12 @@ class CreateSummaryField(foo.Operator):
         ctx.trigger("reload_dataset")
 
 
+def _get_dynamic(params, key, ref_path, default=None):
+    dynamic_key = key + "|" + ref_path.replace(".", "_")
+    value = params.get(dynamic_key, default)
+    return dynamic_key, value
+
+
 def _create_summary_field_inputs(ctx, inputs):
     schema = ctx.dataset.get_field_schema(flat=True)
     if ctx.dataset._has_frame_fields():
@@ -1157,24 +1227,34 @@ def _create_summary_field_inputs(ctx, inputs):
             }
         )
 
-    categorical_field_types = (fo.StringField, fo.BooleanField)
+    categorical_field_types = (
+        fo.StringField,
+        fo.BooleanField,
+        fo.ObjectIdField,
+    )
     numeric_field_types = (
         fo.FloatField,
         fo.IntField,
         fo.DateField,
         fo.DateTimeField,
     )
+    valid_field_types = categorical_field_types + numeric_field_types
 
-    schema = {
-        p: f
+    field_keys = [
+        p
         for p, f in schema.items()
         if (
-            isinstance(f, categorical_field_types)
-            or isinstance(f, numeric_field_types)
+            isinstance(f, valid_field_types)
+            or (
+                isinstance(f, fo.ListField)
+                and isinstance(f.field, valid_field_types)
+            )
         )
-    }
+    ]
 
-    path_keys = list(schema.keys())
+    summarized_fields = set(ctx.dataset._get_summarized_fields_map())
+
+    path_keys = [p for p in field_keys if p not in summarized_fields]
     path_selector = types.AutocompleteView()
     for key in path_keys:
         path_selector.add_choice(key, label=key)
@@ -1192,23 +1272,23 @@ def _create_summary_field_inputs(ctx, inputs):
     if path is None or path not in path_keys:
         return
 
-    field_name = ctx.params.get("field_name", None)
+    prop_name, field_name = _get_dynamic(ctx.params, "field_name", path, None)
     if field_name is None:
         default_field_name = ctx.dataset._get_default_summary_field_name(path)
     else:
         default_field_name = field_name
 
-    field_name_prop = inputs.str(
-        "field_name",
+    prop = inputs.str(
+        prop_name,
         required=False,
         label="Summary field",
         description="The sample field in which to store the summary data",
         default=default_field_name,
     )
 
-    if field_name and field_name in path_keys:
-        field_name_prop.invalid = True
-        field_name_prop.error_message = f"Field '{field_name}' already exists"
+    if field_name and field_name in schema:
+        prop.invalid = True
+        prop.error_message = f"Field '{field_name}' already exists"
         inputs.str(
             "error",
             label="Error",
@@ -1252,7 +1332,7 @@ def _create_summary_field_inputs(ctx, inputs):
         )
     elif isinstance(field, numeric_field_types):
         group_prefix = path.rsplit(".", 1)[0] + "."
-        group_by_keys = sorted(p for p in schema if p.startswith(group_prefix))
+        group_by_keys = [p for p in field_keys if p.startswith(group_prefix)]
         group_by_selector = types.AutocompleteView()
         for group in group_by_keys:
             group_by_selector.add_choice(group, label=group)
@@ -1939,28 +2019,6 @@ class SaveWorkspace(foo.Operator):
             ),
         )
 
-        # @todo infer this automatically from current App spaces
-        spaces_prop = inputs.oneof(
-            "spaces",
-            [types.String(), types.Object()],
-            default=None,
-            required=True,
-            label="Spaces",
-            description=(
-                "JSON description of the workspace to save: "
-                "`print(session.spaces.to_json(True))`"
-            ),
-            view=types.CodeView(),
-        )
-
-        spaces = ctx.params.get("spaces", None)
-        if spaces is not None:
-            try:
-                _parse_spaces(spaces)
-            except:
-                spaces_prop.invalid = True
-                spaces_prop.error_message = "Invalid workspace definition"
-
         name = ctx.params.get("name", None)
 
         if name in workspaces:
@@ -1979,7 +2037,11 @@ class SaveWorkspace(foo.Operator):
         color = ctx.params.get("color", None)
         spaces = ctx.params.get("spaces", None)
 
-        spaces = _parse_spaces(spaces)
+        curr_spaces = spaces is None
+        if curr_spaces:
+            spaces = ctx.spaces
+        else:
+            spaces = _parse_spaces(ctx, spaces)
 
         ctx.dataset.save_workspace(
             name,
@@ -1988,6 +2050,9 @@ class SaveWorkspace(foo.Operator):
             color=color,
             overwrite=True,
         )
+
+        if curr_spaces:
+            ctx.ops.set_spaces(name=name)
 
 
 class EditWorkspaceInfo(foo.Operator):
@@ -2014,8 +2079,13 @@ class EditWorkspaceInfo(foo.Operator):
         description = ctx.params.get("description", None)
         color = ctx.params.get("color", None)
 
+        curr_name = ctx.spaces.name
         info = dict(name=new_name, description=description, color=color)
+
         ctx.dataset.update_workspace_info(name, info)
+
+        if curr_name is not None and curr_name != new_name:
+            ctx.ops.set_spaces(name=new_name)
 
 
 def _edit_workspace_info_inputs(ctx, inputs):
@@ -2034,10 +2104,10 @@ def _edit_workspace_info_inputs(ctx, inputs):
     for key in workspaces:
         workspace_selector.add_choice(key, label=key)
 
-    # @todo default to current workspace name, if one is currently open
     inputs.enum(
         "name",
         workspace_selector.values(),
+        default=ctx.spaces.name,
         required=True,
         label="Workspace",
         description="The workspace to edit",
@@ -2106,7 +2176,7 @@ class DeleteWorkspace(foo.Operator):
             inputs.enum(
                 "name",
                 workspace_selector.values(),
-                default=None,
+                default=ctx.spaces.name,
                 required=True,
                 label="Workspace",
                 description="The workspace to delete",
@@ -2127,7 +2197,11 @@ class DeleteWorkspace(foo.Operator):
     def execute(self, ctx):
         name = ctx.params["name"]
 
+        curr_spaces = name == ctx.spaces.name
         ctx.dataset.delete_workspace(name)
+
+        if curr_spaces:
+            ctx.ops.set_spaces(spaces=default_workspace_factory())
 
 
 class SyncLastModifiedAt(foo.Operator):
@@ -2292,10 +2366,11 @@ def _get_non_default_frame_fields(dataset):
     return schema
 
 
-def _parse_spaces(spaces):
-    if isinstance(spaces, dict):
-        return fo.Space.from_dict(spaces)
-    return fo.Space.from_json(spaces)
+def _parse_spaces(ctx, spaces):
+    if isinstance(spaces, str):
+        spaces = json.loads(spaces)
+
+    return fo.Space.from_dict(spaces)
 
 
 BUILTIN_OPERATORS = [
@@ -2332,3 +2407,5 @@ BUILTIN_OPERATORS = [
     SyncLastModifiedAt(_builtin=True),
     ListFiles(_builtin=True),
 ]
+
+BUILTIN_PANELS = [EvaluationPanel(_builtin=True)]

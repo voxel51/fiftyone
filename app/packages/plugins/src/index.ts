@@ -228,6 +228,21 @@ export function getAbsolutePluginPath(name: string, path: string): string {
   }
 }
 
+/** a utility for safely calling plugin defined activator functions */
+export function safePluginActivator(
+  plugin: PluginComponentRegistration,
+  ctx: any
+): boolean {
+  if (typeof plugin.activator === "function") {
+    try {
+      return plugin.activator(ctx);
+    } catch (e) {
+      console.error(`Error activating plugin ${plugin.name}`, e);
+    }
+  }
+  return false;
+}
+
 /**
  * A react hook that returns a list of active plugins.
  *
@@ -240,10 +255,7 @@ export function useActivePlugins(type: PluginComponentType, ctx: any) {
     usingRegistry()
       .getByType(type)
       .filter((p) => {
-        if (typeof p.activator === "function") {
-          return p.activator(ctx);
-        }
-        return false;
+        return safePluginActivator(p, ctx);
       })
   );
 
@@ -252,10 +264,7 @@ export function useActivePlugins(type: PluginComponentType, ctx: any) {
       const refreshedPlugins = usingRegistry()
         .getByType(type)
         .filter((p) => {
-          if (typeof p.activator === "function") {
-            return p.activator(ctx);
-          }
-          return false;
+          return safePluginActivator(p, ctx);
         });
 
       setPlugins(refreshedPlugins);
@@ -297,11 +306,39 @@ export enum PluginComponentType {
    */
 }
 
+type CategoryID = "import" | "curate" | "analyze" | "custom";
+
+export enum Categories {
+  Import = "import",
+  Curate = "curate",
+  Analyze = "analyze",
+  Custom = "custom",
+}
+
+export function getCategoryLabel(category: CategoryID): string {
+  switch (category) {
+    case "import":
+      return "Import";
+    case "curate":
+      return "Curate";
+    case "analyze":
+      return "Analyze";
+    default:
+      return "Custom";
+  }
+}
+
+export function getCategoryForPanel(panel: PluginComponentRegistration) {
+  return panel.panelOptions?.category || "custom";
+}
+
 type PluginActivator = (props: any) => boolean;
 
 type PanelOptions = {
   /**
-   * Whether to allow multiple instances of the plugin
+   * Whether to allow multiple instances of the plugin.
+   *
+   * Defaults to `false`.
    */
   allowDuplicates?: boolean;
 
@@ -312,7 +349,7 @@ type PanelOptions = {
   priority?: number;
 
   /**
-   * Markdown help text for the plugin
+   * Markdown help text for the plugin.
    */
   helpMarkdown?: string;
 
@@ -325,11 +362,35 @@ type PanelOptions = {
    * Content displayed on the right side of the label in the panel title bar.
    */
   TabIndicator?: React.ComponentType;
+
+  /**
+   * The category of the plugin.
+   *
+   * Defaults to `custom`.
+   */
+  category?: CategoryID;
+
+  /**
+   * Whether the plugin is in beta.
+   * This is used to highlight beta plugins.
+   *
+   * Defaults to `false`.
+   */
+  beta?: boolean;
+
+  /**
+   * Whether the plugin is new.
+   * This is used to highlight new plugins.
+   *
+   * Defaults to `false`.
+   */
+  isNew?: boolean;
 };
 
 type PluginComponentProps<T> = T & {
   panelNode?: unknown;
   dimensions?: unknown;
+  isModalPanel?: boolean;
 };
 
 /**

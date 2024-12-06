@@ -57,6 +57,7 @@ import fiftyone.core.view as fov
 
 fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
+foos = fou.lazy_import("fiftyone.operators.store")
 
 
 _SUMMARY_FIELD_KEY = "_summary_field"
@@ -295,6 +296,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         overwrite (False): whether to overwrite an existing dataset of the same
             name
     """
+
+    __slots__ = (
+        "_doc",
+        "_sample_doc_cls",
+        "_frame_doc_cls",
+        "_group_slice",
+        "_annotation_cache",
+        "_brain_cache",
+        "_evaluation_cache",
+        "_run_cache",
+        "_deleted",
+    )
 
     def __init__(
         self,
@@ -1660,6 +1673,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self.get_field_schema(flat=True, info_keys=_SUMMARY_FIELD_KEY)
         )
 
+    def _get_summarized_fields_map(self):
+        schema = self.get_field_schema(flat=True, info_keys=_SUMMARY_FIELD_KEY)
+
+        summarized_fields = {}
+        for path, field in schema.items():
+            summary_info = field.info[_SUMMARY_FIELD_KEY]
+            source_path = summary_info.get("path", None)
+            if source_path is not None:
+                summarized_fields[source_path] = path
+
+        return summarized_fields
+
     def create_summary_field(
         self,
         path,
@@ -1737,13 +1762,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         _field = self.get_field(path)
 
-        if isinstance(_field, (fof.StringField, fof.BooleanField)):
+        is_list_field = isinstance(_field, fof.ListField)
+        if is_list_field:
+            _field = _field.field
+
+        if isinstance(
+            _field,
+            (fof.StringField, fof.BooleanField, fof.ObjectIdField),
+        ):
             field_type = "categorical"
         elif isinstance(
             _field,
             (fof.FloatField, fof.IntField, fof.DateField, fof.DateTimeField),
         ):
             field_type = "numeric"
+        elif is_list_field:
+            raise ValueError(
+                f"Cannot generate a summary for list field '{path}' with "
+                f"element type {type(_field)}"
+            )
         elif _field is not None:
             raise ValueError(
                 f"Cannot generate a summary for field '{path}' of "
@@ -1876,8 +1913,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return field_name
 
     def _get_default_summary_field_name(self, path):
-        _path, is_frame_field, list_fields, _, _ = self._parse_field_name(path)
+        (
+            _path,
+            is_frame_field,
+            list_fields,
+            _,
+            id_to_str,
+        ) = self._parse_field_name(path)
+
         _chunks = _path.split(".")
+        if id_to_str:
+            _chunks = [c[1:] if c.startswith("_") else c for c in _chunks]
 
         chunks = []
         if is_frame_field:
@@ -1894,7 +1940,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if found_list:
             chunks.append(_chunks[-1])
 
-        return "_".join(chunks)
+        field_name = "_".join(chunks)
+
+        if field_name == path:
+            field_name += "_summary"
+
+        return field_name
 
     def _populate_summary_field(self, field_name, summary_info):
         path = summary_info["path"]
@@ -2071,15 +2122,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 update_indexes.append(path)
             elif self._is_frame_field(source_path):
                 if frames_last_modified_at is None:
-                    frames_last_modified_at = self._get_last_modified_at(
-                        frames=True
+                    frames_last_modified_at = self._max(
+                        "frames.last_modified_at"
                     )
 
                 if frames_last_modified_at > last_modified_at:
                     update_indexes.append(path)
             else:
                 if samples_last_modified_at is None:
-                    samples_last_modified_at = self._get_last_modified_at()
+                    samples_last_modified_at = self._max("last_modified_at")
 
                 if samples_last_modified_at > last_modified_at:
                     update_indexes.append(path)
@@ -5168,9 +5219,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_collection.drop()
             fofr.Frame._reset_docs(self._frame_collection_name)
 
+        svc = foos.ExecutionStoreService(dataset_id=self._doc.id)
+        svc.cleanup()
+
         # Update singleton
         self._instances.pop(self._doc.name, None)
-
         _delete_dataset_doc(self._doc)
         self._deleted = True
 

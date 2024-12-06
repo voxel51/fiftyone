@@ -14,9 +14,9 @@ FiftyOne
         </a>
       </th>
       <th>
-        <a target="_blank" href="https://slack.voxel51.com">
-          <img alt="Slack community" src="_static/images/icons/slack-logo-256px.png">
-          &nbsp Join us on Slack
+        <a target="_blank" href="https://community.voxel51.com/">
+          <img alt="Discord community" src="_static/images/icons/discord-logo-256px.png">
+          &nbsp Join us on Discord
         </a>
       </th>
       <th>
@@ -374,8 +374,11 @@ customizing the functionality of the tool to suit your specific needs.
 
 With plugins, you can add new functionality to the FiftyOne App, create
 integrations with other tools and APIs, render custom panels, and add custom
-buttons to menus. You can even schedule long running tasks from within the App
-that execute on a connected workflow orchestration tool like Apache Airflow.
+buttons to menus.
+
+With :ref:`FiftyOne Teams <teams-delegated-operations>`, you can even write
+plugins that allow users to execute long-running tasks from within the App that
+run on a connected compute cluster.
 
 .. custombutton::
     :button_text: Install some plugins!
@@ -469,7 +472,7 @@ Need Support?
 _____________
 
 If you run into any issues with FiftyOne or have any burning questions, feel
-free to `connect with us on Slack <https://slack.voxel51.com>`_ or reach out to
+free to `connect with us on Discord <https://community.voxel51.com>`_ or reach out to
 us at support@voxel51.com.
 
 .. toctree::
@@ -484,8 +487,8 @@ us at support@voxel51.com.
    Recipes <recipes/index>
    Cheat Sheets <cheat_sheets/index>
    User Guide <user_guide/index>
-   Dataset Zoo __SUB_NEW__ <dataset_zoo/index>
-   Model Zoo __SUB_NEW__ <model_zoo/index>
+   Dataset Zoo <dataset_zoo/index>
+   Model Zoo <model_zoo/index>
    FiftyOne Brain <brain>
    Integrations <integrations/index>
    Plugins <plugins/index>

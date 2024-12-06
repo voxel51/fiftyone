@@ -1,9 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ObjectSchemaType, ViewPropsType } from "../utils/types";
-import {
-  DEFAULT_FRAME_NUMBER,
-  GLOBAL_TIMELINE_ID,
-} from "@fiftyone/playback/src/lib/constants";
+import { DEFAULT_FRAME_NUMBER } from "@fiftyone/playback/src/lib/constants";
 import { BufferManager, BufferRange } from "@fiftyone/utilities";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId, useSetPanelStateById } from "@fiftyone/spaces";
@@ -15,7 +12,7 @@ const FRAME_LOADED_EVENT = "frames-loaded";
 export default function FrameLoaderView(props: ViewPropsType) {
   const { schema, path, data } = props;
   const { view = {} } = schema;
-  const { on_load_range, timeline_id, target } = view;
+  const { on_load_range, target, timeline_name } = view;
   const panelId = usePanelId();
   const triggerEvent = usePanelEvent();
   const setPanelState = useSetPanelStateById(true);
@@ -86,14 +83,14 @@ export default function FrameLoaderView(props: ViewPropsType) {
     [data, setPanelState, panelId, target]
   );
 
-  const { isTimelineInitialized, subscribe } = useTimeline();
+  const { isTimelineInitialized, subscribe } = useTimeline(timeline_name);
   const [subscribed, setSubscribed] = useState(false);
 
   React.useEffect(() => {
     if (subscribed) return;
     if (isTimelineInitialized) {
       subscribe({
-        id: timeline_id || GLOBAL_TIMELINE_ID,
+        id: panelId,
         loadRange,
         renderFrame: myRenderFrame,
       });

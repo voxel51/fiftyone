@@ -8,7 +8,6 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import FieldLabelAndInfo from "../../../FieldLabelAndInfo";
 import RegularEntry from "../RegularEntry";
 import FilterablePathEntries from "./FilterablePathEntries";
-import LightningFilterablePathEntries from "./LightningFilterablePathEntries";
 import Loading from "./Loading";
 import useTitleTemplate from "./useTitleTemplate";
 
@@ -59,14 +58,8 @@ const FilterableEntry = ({
     fos.sidebarExpanded({ modal, path: expandedPath })
   );
   const onClick = useOnClick({ modal, path });
-  const lightning = useRecoilValue(fos.isLightningPath(path));
   const theme = useTheme();
   const color = disabled ? theme.background.paper : pathColor;
-
-  const Entries =
-    lightning && !modal
-      ? LightningFilterablePathEntries
-      : FilterablePathEntries;
 
   return (
     <RegularEntry
@@ -112,7 +105,7 @@ const FilterableEntry = ({
     >
       {expanded && (
         <Suspense fallback={<Loading />}>
-          <Entries
+          <FilterablePathEntries
             {...{
               modal,
               onBlur,

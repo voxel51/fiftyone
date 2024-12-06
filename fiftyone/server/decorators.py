@@ -34,7 +34,8 @@ class Encoder(JSONEncoder):
 
 async def create_response(response: dict):
     return Response(
-        await run_sync_task(lambda: json_util.dumps(response, cls=Encoder))
+        await run_sync_task(lambda: json_util.dumps(response, cls=Encoder)),
+        headers={"Content-Type": "application/json"},
     )
 
 
