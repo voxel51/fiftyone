@@ -1,5 +1,5 @@
-import { EnvironmentKey } from 'recoil-relay';
+import { EnvironmentKey } from "recoil-relay";
 
 export const recoilEnvironmentKey = new EnvironmentKey(
-  'Global Recoil Relay Environment'
+  "Global Recoil Relay Environment"
 );

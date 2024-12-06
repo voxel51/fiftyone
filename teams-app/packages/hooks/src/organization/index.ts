@@ -1,1 +1,1 @@
-export { default as useCurrentOrganization } from './useCurrentOrganization';
+export { default as useCurrentOrganization } from "./useCurrentOrganization";

@@ -9,7 +9,7 @@ import React from "react";
 import { ViewPropsType } from "../utils/types";
 
 export default function ArrowNavView(props: ViewPropsType) {
-  const { schema } = props;
+  const { schema, otherProps } = props;
   const { view = {} } = schema;
   const {
     on_backward,
@@ -20,12 +20,16 @@ export default function ArrowNavView(props: ViewPropsType) {
   } = view;
   const panelId = usePanelId();
   const handleClick = usePanelEvent();
+  const backwardStyles = positionBasedStyleBackward[position] || {};
+  const forwardStyles = positionBasedStyleForward[position] || {};
+  const { isModalPanel } = otherProps;
+  const zIndex = isModalPanel ? 1501 : 1000;
 
   return (
     <>
       {backward && (
         <Arrow
-          style={positionBasedStyleBackward[position]}
+          style={{ ...backwardStyles, zIndex }}
           onClick={() => {
             if (on_backward) {
               handleClick(panelId, { operator: on_backward });
@@ -38,7 +42,7 @@ export default function ArrowNavView(props: ViewPropsType) {
       {forward && (
         <Arrow
           $isRight
-          style={positionBasedStyleForward[position]}
+          style={{ ...forwardStyles, zIndex }}
           onClick={() => {
             if (on_forward) {
               handleClick(panelId, { operator: on_forward });

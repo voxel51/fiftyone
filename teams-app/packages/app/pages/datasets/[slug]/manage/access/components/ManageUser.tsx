@@ -59,11 +59,13 @@ export default function ManageUser({
     <TableRow key={target.id}>
       <TableCell width="40%">
         <UserCard
+          id={target.id}
           name={target.name}
           email={target?.description ?? target?.email}
           src={target?.picture}
           detailed
           titleSx={{ maxWidth: "150px" }}
+          bgColor={target.role ? undefined : "gray"}
           {...userCardProps}
         />
       </TableCell>

@@ -1,30 +1,30 @@
-import useDatasetsFilter from '@fiftyone/hooks/src/datasets/DatasetList/useFilters';
+import useDatasetsFilter from "@fiftyone/hooks/src/datasets/DatasetList/useFilters";
 import {
   DatalistTableRow,
   EmptyDatasets,
-  Pagination
-} from '@fiftyone/teams-components';
+  Pagination,
+} from "@fiftyone/teams-components";
 import {
   DatasetsV2RootQueryT,
-  datasetListCountState
-} from '@fiftyone/teams-state';
-import { changeRoute } from '@fiftyone/teams-state/src/Datasets';
-import Box from '@mui/material/Box';
+  datasetListCountState,
+} from "@fiftyone/teams-state";
+import { changeRoute } from "@fiftyone/teams-state/src/Datasets";
+import Box from "@mui/material/Box";
 import {
   ChangeEvent,
   useCallback,
   useEffect,
   useLayoutEffect,
-  useRef
-} from 'react';
-import { GraphQLTaggedNode, PreloadedQuery } from 'react-relay';
+  useRef,
+} from "react";
+import { GraphQLTaggedNode, PreloadedQuery } from "react-relay";
 import {
   graphql,
   usePreloadedQuery,
-  useRefetchableFragment
-} from 'react-relay/hooks';
-import { useSetRecoilState } from 'recoil';
-import { DatasetListFragment$data } from './__generated__/DatasetListFragment.graphql';
+  useRefetchableFragment,
+} from "react-relay/hooks";
+import { useSetRecoilState } from "recoil";
+import { DatasetListFragment$data } from "./__generated__/DatasetListFragment.graphql";
 
 // TODO: This query duplicates `TheDatasetsListQuery`, which is used
 //  for the datasets count. We should figure out how to combine these two
@@ -54,7 +54,7 @@ export const DatasetListFragment = graphql`
 
 const DatasetList = ({
   preloadedQuery,
-  InitialQuery
+  InitialQuery,
 }: {
   InitialQuery: GraphQLTaggedNode;
   preloadedQuery: PreloadedQuery<DatasetsV2RootQueryT>;
@@ -99,7 +99,7 @@ const DatasetList = ({
   useLayoutEffect(() => {
     if (ref.current) {
       ref.current.dispatchEvent(
-        new CustomEvent('dataset-list', { bubbles: true })
+        new CustomEvent("dataset-list", { bubbles: true })
       );
     }
   }, [ref]);
@@ -118,7 +118,7 @@ const DatasetList = ({
         sx={{
           bgcolor: (theme) => theme.palette.background.primary,
           boxShadow: (theme) => theme.voxelShadows.sm,
-          borderRadius: 1
+          borderRadius: 1,
         }}
       >
         {datasetsPage.nodes.map((ds, index: number) => (

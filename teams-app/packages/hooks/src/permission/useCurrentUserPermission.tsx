@@ -1,5 +1,5 @@
-import { useCurrentUser } from '@fiftyone/hooks';
-import { hasPermission } from '@fiftyone/teams-state';
+import { useCurrentUser } from "@fiftyone/hooks";
+import { hasPermission } from "@fiftyone/teams-state";
 
 export default function useCurrentUserPermission(actions) {
   const [currentUser = {}] = useCurrentUser();

@@ -1,23 +1,18 @@
 import { Tooltip } from "@fiftyone/components";
-import useLightningUnlocked from "@fiftyone/state/src/hooks/useLightningUnlocked";
 import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUp from "@mui/icons-material/KeyboardArrowUp";
 import React from "react";
-import { RecoilState, useRecoilState } from "recoil";
+import type { RecoilState } from "recoil";
+import { useRecoilState } from "recoil";
 import { useTheme } from "styled-components";
-import {
-  FRAME_FILTERING_DISABLED,
-  LIGHTNING_MODE,
-} from "../../../../utils/links";
+import { FRAME_FILTERING_DISABLED } from "../../../../utils/links";
 import DisabledReason from "./DisabledReason";
 
 export default ({
   id,
-  color,
   disabled,
   expanded,
   frameFilterDisabledPath,
-  unindexed,
 }: {
   id: string;
   color?: string;
@@ -29,7 +24,6 @@ export default ({
   const [isExpanded, setExpanded] = useRecoilState(expanded);
   const Arrow = isExpanded ? KeyboardArrowUp : KeyboardArrowDown;
   const theme = useTheme();
-  const unlocked = useLightningUnlocked();
   const arrow = (
     <Arrow
       data-cy={`sidebar-field-arrow-disabled-${id}`}
@@ -57,24 +51,13 @@ export default ({
     return arrow;
   }
 
-  if (unindexed && !unlocked) {
-    return (
-      <Tooltip
-        text={<DisabledReason text={"add an index"} href={LIGHTNING_MODE} />}
-        placement="top-center"
-      >
-        {arrow}
-      </Tooltip>
-    );
-  }
-
   return (
     <Arrow
       data-cy={`sidebar-field-arrow-enabled-${id}`}
       style={{
         cursor: "pointer",
         margin: 0,
-        color: color ?? theme.text.primary,
+        color: theme.text.secondary,
       }}
       onClick={(event) => {
         event.preventDefault();

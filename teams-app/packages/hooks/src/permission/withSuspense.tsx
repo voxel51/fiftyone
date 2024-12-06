@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense } from "react";
 
 export default function withSuspense<ComponentProps>(
   Component: React.ComponentType<ComponentProps>,

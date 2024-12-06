@@ -11,9 +11,11 @@ import {
   ListItemText,
   Tooltip,
   ButtonProps,
+  Box,
 } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { onEnter } from "./utils";
+import ExecutionOptionItem from "./ExecutionOptionItem";
 
 const ButtonStylesOverrides: ButtonProps["sx"] = {
   color: (theme) => theme.palette.text.secondary,
@@ -61,6 +63,7 @@ export default function SplitButton({
   };
 
   const handleSelect = (option) => {
+    if (!option.onSelect) return;
     option.onSelect();
     setOpen(false);
   };
@@ -127,6 +130,9 @@ export default function SplitButton({
                         key={option.id}
                         disabled={option.disabled}
                         selected={option.selected}
+                        sx={{
+                          cursor: option.onClick ? "pointer" : "default",
+                        }}
                         onClick={() => handleSelect(option)}
                       >
                         <ListItemText
@@ -136,8 +142,23 @@ export default function SplitButton({
                                 ? theme.palette.text.primary
                                 : theme.palette.text.disabled,
                           }}
-                          primary={option.choiceLabel || option.label}
-                          secondary={option.description}
+                          primary={
+                            <ExecutionOptionItem
+                              label={option.choiceLabel || option.label}
+                              tag={option.tag}
+                              disabled={option.disabled || !option.onClick}
+                            />
+                          }
+                          secondary={
+                            <Box
+                              sx={{
+                                fontSize: "11px",
+                                "& *": { fontSize: "inherit" },
+                              }}
+                            >
+                              {option.description}
+                            </Box>
+                          }
                         />
                       </MenuItem>
                     ))}

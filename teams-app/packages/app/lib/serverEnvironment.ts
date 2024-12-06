@@ -1,6 +1,6 @@
-import { withHydrateDatetime } from 'relay-nextjs/date';
-import { Environment, Network, RecordSource, Store } from 'relay-runtime';
-import { API_URL } from '@fiftyone/teams-state/src/constants';
+import { withHydrateDatetime } from "relay-nextjs/date";
+import { Environment, Network, RecordSource, Store } from "relay-runtime";
+import { API_URL } from "@fiftyone/teams-state/src/constants";
 
 export function createServerNetwork(
   cookie: string,
@@ -14,15 +14,15 @@ export function createServerNetwork(
      * nextjs with getServerSideProps, it fires up a GET RESOURCE.json
      * request in addition to the core graphql POST request on page load.
      */
-    if (variables?.['identifier']?.includes('.json')) {
+    if (variables?.["identifier"]?.includes(".json")) {
       return Promise.resolve({ data: {} });
     }
 
     const response = await fetch(`${API_URL}/graphql/v1`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', cookie },
-      mode: 'cors',
-      body: JSON.stringify({ query: params.text, variables })
+      method: "POST",
+      headers: { "Content-Type": "application/json", cookie },
+      mode: "cors",
+      body: JSON.stringify({ query: params.text, variables }),
     });
 
     const json = await response.text();
@@ -30,7 +30,7 @@ export function createServerNetwork(
     if (response.status === 401 || response.status === 403) {
       return onUnauthenticated?.(
         response.status,
-        json ? JSON.parse(json).message : ''
+        json ? JSON.parse(json).message : ""
       );
     }
 
@@ -39,10 +39,10 @@ export function createServerNetwork(
         const res = JSON.parse(json, withHydrateDatetime);
 
         if (res.errors) {
-          console.debug('graphql error in response', res.errors);
+          console.debug("graphql error in response", res.errors);
           const badPageError = res.errors.some(
             ({ message }: { message: string }) =>
-              message.includes('Invalid page number')
+              message.includes("Invalid page number")
           );
           if (badPageError) {
             onRedirect?.();
@@ -51,7 +51,7 @@ export function createServerNetwork(
         }
         return res;
       } catch (e) {
-        console.error('error', e);
+        console.error("error", e);
         throw new Error(`graphql responded with non json: ${json}`);
       }
     }
@@ -66,6 +66,6 @@ export function createServerEnvironment(
   return new Environment({
     network: createServerNetwork(cookie, onRedirect, onUnauthenticated),
     store: new Store(new RecordSource()),
-    isServer: true
+    isServer: true,
   });
 }

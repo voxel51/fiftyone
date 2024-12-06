@@ -1,11 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo } from "react";
 import {
   Dataset,
   lastPinToggledDatasetState,
-  setDatasetPinnedMutation
-} from '@fiftyone/teams-state';
-import { useSetRecoilState } from 'recoil';
-import { useMutation } from '@fiftyone/hooks';
+  setDatasetPinnedMutation,
+} from "@fiftyone/teams-state";
+import { useSetRecoilState } from "recoil";
+import { useMutation } from "@fiftyone/hooks";
 
 interface Props {
   slug: string;
@@ -16,7 +16,7 @@ interface Props {
 export const useHandleDatasetPinChanged = (props: Props) => {
   const { slug, currentlyPinned, row } = props;
   const [setDatasetPinned] = useMutation(setDatasetPinnedMutation);
-  const toggleType = currentlyPinned ? 'unpin' : 'pin';
+  const toggleType = currentlyPinned ? "unpin" : "pin";
 
   const setLastPinToggledDataset = useSetRecoilState(
     lastPinToggledDatasetState
@@ -33,10 +33,10 @@ export const useHandleDatasetPinChanged = (props: Props) => {
             setLastPinToggledDataset(row);
           },
           onError: (e) => {
-            console.error('pinning failed', e);
-          }
+            console.error("pinning failed", e);
+          },
         });
-      }
+      },
     };
   }, [props]);
 };

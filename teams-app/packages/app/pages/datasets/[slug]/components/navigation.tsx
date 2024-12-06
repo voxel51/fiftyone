@@ -1,23 +1,23 @@
-import { useCurrentUserPermission, useDatasetRedirect } from '@fiftyone/hooks';
-import { Box } from '@fiftyone/teams-components';
+import { useCurrentUserPermission, useDatasetRedirect } from "@fiftyone/hooks";
+import { Box } from "@fiftyone/teams-components";
 import {
   CLONE_VIEW as CLONE_VIEW_PERMISSION,
   EXPORT_VIEW as EXPORT_VIEW_PERMISSION,
   hideHeaders,
   mainTitleSelector,
   shareDatasetOpen,
-  useCurrentDataset
-} from '@fiftyone/teams-state';
-import { DATASET_TABS } from '@fiftyone/teams-state/src/constants';
-import { Button, Tab, Tabs } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
-import NextLink from 'next/link';
-import { useRouter } from 'next/router';
-import { useEffect, useMemo } from 'react';
-import { useRecoilValue, useSetRecoilState } from 'recoil';
-import CloneView from './CloneView';
-import ExportView from './ExportView';
-import ShareDataset from './Share';
+  useCurrentDataset,
+} from "@fiftyone/teams-state";
+import { DATASET_TABS } from "@fiftyone/teams-state/src/constants";
+import { Button, Tab, Tabs } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import NextLink from "next/link";
+import { useRouter } from "next/router";
+import { useEffect, useMemo } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import CloneView from "./CloneView";
+import ExportView from "./ExportView";
+import ShareDataset from "./Share";
 
 const DatasetDetailLink = (slug: string, label: string, tabName: string) => {
   const router = useRouter();
@@ -26,12 +26,12 @@ const DatasetDetailLink = (slug: string, label: string, tabName: string) => {
   const box = (
     <Box
       sx={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        cursor: isCurrent ? 'default' : 'pointer'
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: isCurrent ? "default" : "pointer",
       }}
     >
       {label}
@@ -50,11 +50,11 @@ const DatasetMenuTab = (slug: string, label: string, tabName: string) => {
     <Tab
       label={DatasetDetailLink(slug, label, tabName)}
       sx={{
-        textTransform: 'capitalize',
+        textTransform: "capitalize",
         padding: 0,
-        minWidth: 'auto',
+        minWidth: "auto",
         marginRight: 4,
-        minHeight: '32px'
+        minHeight: "32px",
       }}
       value={tabName}
     />
@@ -80,20 +80,20 @@ function DatasetNavigation() {
 
   const samplesTab = DatasetMenuTab(
     datasetSlug as string,
-    'Samples',
-    'samples'
+    "Samples",
+    "samples"
   );
   const historyTab = DatasetMenuTab(
     datasetSlug as string,
-    'History',
-    'history'
+    "History",
+    "history"
   );
   const manageTab = DatasetMenuTab(
     datasetSlug as string,
-    'Manage',
-    'manage/basic_info'
+    "Manage",
+    "manage/basic_info"
   );
-  const runsTab = DatasetMenuTab(datasetSlug as string, 'Runs', 'runs');
+  const runsTab = DatasetMenuTab(datasetSlug as string, "Runs", "runs");
   const activeTab = useMemo(
     () =>
       DATASET_TABS.find(({ path, subPaths = [], pattern }) => {
@@ -118,7 +118,7 @@ function DatasetNavigation() {
       <Tabs
         value={activeTab?.path}
         aria-label="Dataset tabs"
-        sx={{ minHeight: '32px' }}
+        sx={{ minHeight: "32px" }}
       >
         {samplesTab}
         {historyTab}

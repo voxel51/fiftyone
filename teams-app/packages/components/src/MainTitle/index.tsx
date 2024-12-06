@@ -1,5 +1,5 @@
-import { useBooleanEnv, useCurrentOrganization } from '@fiftyone/hooks';
-import { DatasetPin, ProfileMenu } from '@fiftyone/teams-components';
+import { useBooleanEnv, useCurrentOrganization } from "@fiftyone/hooks";
+import { DatasetPin, ProfileMenu } from "@fiftyone/teams-components";
 import {
   CONSTANT_VARIABLES,
   datasetListCountState,
@@ -7,19 +7,19 @@ import {
   hostState,
   mainTitleSelector,
   showReadonlyDatasetIndicator,
-  useCurrentDataset
-} from '@fiftyone/teams-state';
-import { Lock } from '@mui/icons-material';
-import ArrowForwardIosOutlinedIcon from '@mui/icons-material/ArrowForwardIosOutlined';
-import { Box, Grid, Link, Tooltip, Typography } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
-import Head from 'next/head';
-import NextLink from 'next/link';
-import { useRouter } from 'next/router';
-import { useEffect } from 'react';
-import { useRecoilValue, useSetRecoilState } from 'recoil';
-import Workflows from '../Workflows';
-import { FIFTYONE_APP_ENABLE_WORKFLOWS_ENV_KEY } from '@fiftyone/teams-state/src/constants';
+  useCurrentDataset,
+} from "@fiftyone/teams-state";
+import { Lock } from "@mui/icons-material";
+import ArrowForwardIosOutlinedIcon from "@mui/icons-material/ArrowForwardIosOutlined";
+import { Box, Grid, Link, Tooltip, Typography } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import Head from "next/head";
+import NextLink from "next/link";
+import { useRouter } from "next/router";
+import { useEffect } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import Workflows from "../Workflows";
+import { FIFTYONE_APP_ENABLE_WORKFLOWS_ENV_KEY } from "@fiftyone/teams-state/src/constants";
 
 const { COMPANY_NAME } = CONSTANT_VARIABLES;
 
@@ -46,9 +46,9 @@ export default function MainTitle({ noBorder }) {
   useEffect(
     () => {
       const origin =
-        typeof window !== 'undefined' && window.location.origin
+        typeof window !== "undefined" && window.location.origin
           ? window.location.origin
-          : '';
+          : "";
       setHost(origin);
     },
     [
@@ -57,7 +57,7 @@ export default function MainTitle({ noBorder }) {
   );
 
   if (hideHeadersState) return null;
-  const showDatasetCount = router.pathname.endsWith('/datasets');
+  const showDatasetCount = router.pathname.endsWith("/datasets");
 
   return (
     <Grid
@@ -96,7 +96,7 @@ export default function MainTitle({ noBorder }) {
         </NextLink>
         <Box display="flex" alignItems="center">
           <NextLink href="/datasets" passHref>
-            <Link style={{ textDecoration: 'none' }}>
+            <Link style={{ textDecoration: "none" }}>
               <Typography
                 variant="body2"
                 fontWeight="light"
@@ -121,7 +121,7 @@ export default function MainTitle({ noBorder }) {
             <ArrowForwardIosOutlinedIcon
               fontSize="inherit"
               color="inherit"
-              sx={{ verticalAlign: 'middle' }}
+              sx={{ verticalAlign: "middle" }}
             />
           </Box>
         </Box>
@@ -131,13 +131,13 @@ export default function MainTitle({ noBorder }) {
           fontSize={24}
           noWrap
           height="100%"
-          data-cy={'main-title-text'}
+          data-cy={"main-title-text"}
         >
           {mainTitle}
         </Typography>
         {isDatasetDetailPage && (
           // TODO: explore nextjs layout for pluggable solution
-          <Box sx={{ cursor: 'pointer', ml: 1.5, height: '100%', mt: 0.5 }}>
+          <Box sx={{ cursor: "pointer", ml: 1.5, height: "100%", mt: 0.5 }}>
             {currentDataset && (
               <DatasetPin
                 row={currentDataset}

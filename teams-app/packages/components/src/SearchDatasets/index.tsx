@@ -1,15 +1,15 @@
-import { useSearchAdornment } from '@fiftyone/hooks';
-import useDatasetsFilter from '@fiftyone/hooks/src/datasets/DatasetList/useFilters';
+import { useSearchAdornment } from "@fiftyone/hooks";
+import useDatasetsFilter from "@fiftyone/hooks/src/datasets/DatasetList/useFilters";
 import {
   CONSTANT_VARIABLES,
   datasetSearchTermState,
   searchInputState,
   searchSuggestions,
-  searchTermState
-} from '@fiftyone/teams-state';
-import { SearchSuggestionResult } from '@fiftyone/teams-state/src/Datasets';
-import { Close } from '@mui/icons-material';
-import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
+  searchTermState,
+} from "@fiftyone/teams-state";
+import { SearchSuggestionResult } from "@fiftyone/teams-state/src/Datasets";
+import { Close } from "@mui/icons-material";
+import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import {
   Autocomplete,
   Box,
@@ -17,17 +17,17 @@ import {
   CircularProgress,
   IconButton,
   TextField,
-  Typography
-} from '@mui/material';
-import { throttle } from 'lodash';
-import { useRouter } from 'next/router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+  Typography,
+} from "@mui/material";
+import { throttle } from "lodash";
+import { useRouter } from "next/router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   useRecoilState,
   useRecoilValueLoadable,
   useResetRecoilState,
-  useSetRecoilState
-} from 'recoil';
+  useSetRecoilState,
+} from "recoil";
 
 const { DEFAULT_SUGGESTION_COUNT, SEARCH_INPUT_DEBOUNCE } = CONSTANT_VARIABLES;
 
@@ -37,7 +37,7 @@ export default function SearchDatasets() {
   const [term, setTerm] = useRecoilState(searchTermState);
   const resetTerm = useResetRecoilState(searchTermState);
   const [searchInput, setSearchInput] = useRecoilState(searchInputState);
-  const prefixes = ['name:', 'tags:'];
+  const prefixes = ["name:", "tags:"];
   const { typeAdornment, displayWithoutAdornment } = useSearchAdornment(
     prefixes,
     searchInput
@@ -51,12 +51,12 @@ export default function SearchDatasets() {
   );
   const [suggestions, setSuggestions] = useState<SearchSuggestionResult[]>([]);
   const { state, contents } = useRecoilValueLoadable(searchSuggestions);
-  const options = state === 'hasValue' ? contents : [];
+  const options = state === "hasValue" ? contents : [];
 
   const { searchHelpText } = useDatasetsFilter();
 
   useEffect(() => {
-    if (state === 'hasValue' || !term) setSuggestions(options);
+    if (state === "hasValue" || !term) setSuggestions(options);
   }, [state, term]);
 
   const visibleSuggestions = suggestions?.slice(0, DEFAULT_SUGGESTION_COUNT);
@@ -66,12 +66,12 @@ export default function SearchDatasets() {
   const computedOptions = useMemo(() => {
     const options: SearchSuggestionResult[] = [];
     if (term)
-      options.push({ label: searchInput, help: searchHelpText, type: 'help' });
+      options.push({ label: searchInput, help: searchHelpText, type: "help" });
     if (Array.isArray(visibleSuggestions)) options.push(...visibleSuggestions);
     if (moreSuggestionsLen)
       options.push({
         label: `+${moreSuggestionsLen} more`,
-        type: 'hidden_count'
+        type: "hidden_count",
       });
     return options;
   }, [term, suggestions]);
@@ -90,31 +90,31 @@ export default function SearchDatasets() {
       options={computedOptions}
       onChange={async (_, suggestion, reason) => {
         // avoid premature clearing of input
-        if (['clear', 'createOption'].indexOf(reason) > -1) return;
+        if (["clear", "createOption"].indexOf(reason) > -1) return;
 
-        let fields = ['name'];
-        let term = '';
+        let fields = ["name"];
+        let term = "";
         if (suggestion) {
           // route directly to the dataset on suggestion selection
-          if (suggestion.type === 'Dataset' && suggestion?.slug) {
+          if (suggestion.type === "Dataset" && suggestion?.slug) {
             router.push(`/datasets/${suggestion.slug}/samples`);
             return;
           }
 
           if (
-            suggestion.type !== 'help' &&
-            suggestion.type !== 'hidden_count' &&
+            suggestion.type !== "help" &&
+            suggestion.type !== "hidden_count" &&
             suggestion?.field
           ) {
             fields = [suggestion.field];
             term = `${suggestion.field}:${suggestion.label}`;
           } else {
-            fields = ['name', 'tags'];
+            fields = ["name", "tags"];
             term = searchInput;
           }
         }
         const searchOptions = { fields, term };
-        if (reason === 'selectOption') {
+        if (reason === "selectOption") {
           setDatasetSearchTerm(searchOptions);
         }
       }}
@@ -123,28 +123,28 @@ export default function SearchDatasets() {
       }}
       inputValue={displayWithoutAdornment}
       onInputChange={(e, value, reason) => {
-        if (reason === 'clear') {
+        if (reason === "clear") {
           resetTerm();
           return;
         }
-        if (e && reason !== 'reset') {
+        if (e && reason !== "reset") {
           const adjustedValue = typeAdornment
-            ? [typeAdornment, value].join(':')
+            ? [typeAdornment, value].join(":")
             : value;
           setSearchInput(adjustedValue);
           setTermRecoil(adjustedValue);
         }
       }}
       onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Backspace') {
+        if (e.key === "Backspace") {
           if (searchInput === `${typeAdornment}:`) {
             handleDeleteTypeAdornment();
           }
         }
       }}
-      getOptionLabel={() => ''}
+      getOptionLabel={() => ""}
       componentsProps={{
-        clearIndicator: { color: 'secondary', size: 'small' }
+        clearIndicator: { color: "secondary", size: "small" },
       }}
       renderInput={(params) => {
         return (
@@ -171,7 +171,7 @@ export default function SearchDatasets() {
               ),
               endAdornment: (
                 <Box display="flex" mr={-4.5} alignItems="center">
-                  {state === 'loading' && term && (
+                  {state === "loading" && term && (
                     <CircularProgress
                       size={14}
                       sx={{ mr: 0.5 }}
@@ -188,10 +188,10 @@ export default function SearchDatasets() {
                       sx={{
                         fontSize: 16,
                         color: (theme) => theme.palette.text.secondary,
-                        borderRadius: '50%',
-                        ':hover': {
-                          cursor: 'pointer'
-                        }
+                        borderRadius: "50%",
+                        ":hover": {
+                          cursor: "pointer",
+                        },
                       }}
                       onClick={() => {
                         resetTerm();
@@ -201,7 +201,7 @@ export default function SearchDatasets() {
                     />
                   </IconButton>
                 </Box>
-              )
+              ),
             }}
             placeholder="Ex: name, tags, name:foo, tags:bar"
             value={searchInput}
@@ -209,17 +209,17 @@ export default function SearchDatasets() {
         );
       }}
       renderOption={(props, option) => {
-        if (option.type === 'hidden_count')
+        if (option.type === "hidden_count")
           return (
             <Typography
               {...props}
               className=""
               color="text.tertiary"
               sx={{
-                textAlign: 'center',
+                textAlign: "center",
                 p: 0.5,
                 mt: 0.5,
-                borderTop: (theme) => `1px solid ${theme.palette.divider}`
+                borderTop: (theme) => `1px solid ${theme.palette.divider}`,
               }}
             >
               {option.label}
@@ -234,7 +234,7 @@ export default function SearchDatasets() {
               color="text.tertiary"
               noWrap
             >
-              {option.type === 'help' ? option.help : option.type}
+              {option.type === "help" ? option.help : option.type}
             </Typography>
           </li>
         );

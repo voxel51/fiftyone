@@ -1,7 +1,7 @@
-import { currentOrganizationQuery } from '@fiftyone/teams-state';
-import { OrganizationQuery } from '@fiftyone/teams-state/src/Organization/__generated__/OrganizationQuery.graphql';
-import { useMemo } from 'react';
-import { loadQuery, usePreloadedQuery, useRelayEnvironment } from 'react-relay';
+import { currentOrganizationQuery } from "@fiftyone/teams-state";
+import { OrganizationQuery } from "@fiftyone/teams-state/src/Organization/__generated__/OrganizationQuery.graphql";
+import { useMemo } from "react";
+import { loadQuery, usePreloadedQuery, useRelayEnvironment } from "react-relay";
 
 export default function useCurrentOrganization() {
   const environment = useRelayEnvironment();

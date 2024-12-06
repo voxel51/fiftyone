@@ -1,17 +1,17 @@
-import { withSuspense } from '@fiftyone/hooks';
-import { Dialog } from '@fiftyone/teams-components';
+import { withSuspense } from "@fiftyone/hooks";
+import { Dialog } from "@fiftyone/teams-components";
 import {
   multiUserSearchSelectModalOpenState,
-  User
-} from '@fiftyone/teams-state';
-import { Stack } from '@mui/material';
-import { capitalize } from 'lodash';
-import { Suspense, useState } from 'react';
-import { useRecoilState } from 'recoil';
-import MultiUserSearchSelectModalTitle from './MultiUserSearchSelectModalTitle';
+  User,
+} from "@fiftyone/teams-state";
+import { Stack } from "@mui/material";
+import { capitalize } from "lodash";
+import { Suspense, useState } from "react";
+import { useRecoilState } from "recoil";
+import MultiUserSearchSelectModalTitle from "./MultiUserSearchSelectModalTitle";
 
-import ManageUser from 'pages/datasets/[slug]/manage/access/components/ManageUser';
-import UserInputSuggestion from 'pages/datasets/[slug]/manage/access/components/UserInputSuggestion';
+import ManageUser from "pages/datasets/[slug]/manage/access/components/ManageUser";
+import UserInputSuggestion from "pages/datasets/[slug]/manage/access/components/UserInputSuggestion";
 
 interface Props {
   onSelectUsers: (userIds: string[]) => any;
@@ -22,12 +22,12 @@ function MultiUserSearchSelectModal(props: Props) {
   const { onSelectUsers, loading } = props;
   const [open, setOpen] = useRecoilState(multiUserSearchSelectModalOpenState);
   const [selectedUsers, setSelectedUsers] = useState<Record<string, User>>({});
-  const [permission, setPermission] = useState<any>('VIEW');
+  const [permission, setPermission] = useState<any>("VIEW");
 
   function closeDialog() {
     setOpen(false);
     setSelectedUsers({});
-    setPermission('VIEW');
+    setPermission("VIEW");
   }
 
   return (

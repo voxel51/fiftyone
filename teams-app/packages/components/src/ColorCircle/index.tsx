@@ -1,5 +1,5 @@
-import { Box } from '@fiftyone/teams-components';
-import { BoxProps } from '@mui/material';
+import { Box } from "@fiftyone/teams-components";
+import { BoxProps } from "@mui/material";
 
 export type ColorCircleProps = BoxProps & {
   color: string;
@@ -11,10 +11,10 @@ export default function ColorCircle({ color, ...props }: ColorCircleProps) {
       {...props}
       sx={{
         backgroundColor: color,
-        borderRadius: '50%',
+        borderRadius: "50%",
         height: 8,
         width: 8,
-        ...(props.sx || {})
+        ...(props.sx || {}),
       }}
     />
   );

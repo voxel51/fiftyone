@@ -58,7 +58,7 @@ class SettingsRolesAsserter {
   async ensurePageSubtitle() {
     const subtitle = await this.pom.getPageSubtitle();
     expect(subtitle).toBe(
-      'Detailed access to actions of different roles in the organization'
+      'Detailed access to actions of different roles in the organization '
     );
   }
 

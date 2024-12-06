@@ -4,8 +4,8 @@ import {
   FormControlLabel,
   Radio,
   RadioGroupProps,
-  FormControlProps
-} from '@mui/material';
+  FormControlProps,
+} from "@mui/material";
 
 export default function RadioGroup(props: RadioGroupPropsType) {
   const { items, formControlProps = {}, ...otherProps } = props;

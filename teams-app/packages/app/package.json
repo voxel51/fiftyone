@@ -12,8 +12,8 @@
     "dependencies": {
         "@fiftyone/state": "*",
         "bytes": "^3.1.2",
-        "cookie": "^0.6.0",
-        "cookies-next": "^2.1.1",
+        "cookie": "0.7.0",
+        "email-validator": "^2.0.4",
         "global-agent": "^3.0.0",
         "jose": "^5.2.0",
         "lodash": "^4.17.21",

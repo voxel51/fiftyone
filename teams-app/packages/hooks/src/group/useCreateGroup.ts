@@ -1,10 +1,10 @@
-import { useMutation } from '../common';
+import { useMutation } from "../common";
 import {
   groupsCreateUserGroupMutation,
-  groupsCreateUserGroupMutationT
-} from '@fiftyone/teams-state';
-import { useCallback } from 'react';
-import { useRouter } from 'next/router';
+  groupsCreateUserGroupMutationT,
+} from "@fiftyone/teams-state";
+import { useCallback } from "react";
+import { useRouter } from "next/router";
 
 interface Props {
   name: string;
@@ -28,24 +28,24 @@ export default function useCreateGroup() {
         successMessage,
         errorMessage,
         onComplete,
-        onHandleError
+        onHandleError,
       } = props;
       return createGroupMutation({
         variables: {
           name,
-          description
+          description,
         },
         successMessage:
           successMessage || `Successfully created a group ${name}`,
-        errorMessage: errorMessage || 'Failed to create a group',
+        errorMessage: errorMessage || "Failed to create a group",
         onCompleted: (data) => {
           const newGroupSlug = data?.createUserGroup?.slug;
           router.push(
-            `/settings/team/groups${newGroupSlug ? `/${newGroupSlug}` : ''}`
+            `/settings/team/groups${newGroupSlug ? `/${newGroupSlug}` : ""}`
           );
           onComplete && onComplete(data);
         },
-        onError: (error) => onHandleError && onHandleError(error)
+        onError: (error) => onHandleError && onHandleError(error),
       });
     },
     [router]
@@ -53,6 +53,6 @@ export default function useCreateGroup() {
 
   return {
     createGroup,
-    isCreatingGroup: loading
+    isCreatingGroup: loading,
   };
 }

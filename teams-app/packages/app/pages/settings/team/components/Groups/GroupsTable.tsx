@@ -1,10 +1,10 @@
-import { Pagination, TableContainer } from '@fiftyone/teams-components';
-import { Box, Table, TableBody } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import { Pagination, TableContainer } from "@fiftyone/teams-components";
+import { Box, Table, TableBody } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 
-import { FC } from 'react';
-import GroupsTableRow from './GroupsTableRow';
-import { Group } from '@fiftyone/teams-state';
+import { FC } from "react";
+import GroupsTableRow from "./GroupsTableRow";
+import { Group } from "@fiftyone/teams-state";
 
 type GroupsTableProps = {
   readonly groups: Group[];
@@ -23,7 +23,7 @@ const GroupsTable: FC<GroupsTableProps> = ({
   pageSize,
   pageTotal,
   groups,
-  readOnly
+  readOnly,
 }) => {
   const theme = useTheme();
 
@@ -31,9 +31,9 @@ const GroupsTable: FC<GroupsTableProps> = ({
     <Box>
       <TableContainer
         sx={{
-          border: '1px solid',
+          border: "1px solid",
           borderColor: theme.palette.divider,
-          borderRadius: 2
+          borderRadius: 2,
         }}
       >
         <Table>

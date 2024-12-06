@@ -1,1 +1,1 @@
-# Embeddings Fiftyone Plugin Example
+# Embeddings FiftyOne Plugin Example

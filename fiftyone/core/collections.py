@@ -57,6 +57,7 @@ foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
 fou3d = fou.lazy_import("fiftyone.utils.utils3d")
+foos = fou.lazy_import("fiftyone.operators.store")
 
 
 logger = logging.getLogger(__name__)
@@ -480,6 +481,8 @@ class SampleCollection(object):
     :class:`fiftyone.core.sample.Sample` instances in a
     :class:`fiftyone.core.dataset.Dataset`.
     """
+
+    __slots__ = ("__weakref__", "_download_context")
 
     _FRAMES_PREFIX = "frames."
     _GROUPS_PREFIX = "groups."
@@ -940,55 +943,72 @@ class SampleCollection(object):
     def _sync_dataset_last_modified_at(self):
         dataset = self._root_dataset
         curr_lma = dataset.last_modified_at
-        lma = self._get_last_modified_at()
+        lma = self._max("last_modified_at")
 
         if lma is not None and (curr_lma is None or lma > curr_lma):
             dataset._doc.last_modified_at = lma
             dataset._doc.save(virtual=True)
 
-    def _get_last_modified_at(self, frames=False):
-        if frames and not self._contains_videos(any_slice=True):
+    def _min(self, path):
+        return self._get_extremum(path, 1)
+
+    def _max(self, path):
+        return self._get_extremum(path, -1)
+
+    def _get_extremum(self, path, order):
+        #
+        # This method exists in addition to `min()` and `max()` aggregations
+        # for two reasons:
+        #
+        # 1. `$sort + $limit 1` is more efficient than `$group _id: None` when
+        #    the field is indexed
+        #
+        # 2. When `path` is a frame-level field, these methods are optimized to
+        #    directly aggregate on the frames collection, which is something
+        #    that the Aggregation classes do not yet support. In other words,
+        #    `dataset._max("frames.last_modified_at")` is currently more
+        #    performant than `dataset.max("frames.last_modified_at")`
+        #
+
+        path, is_frame_field = self._handle_frame_field(path)
+        path = self._handle_db_field(path, frames=is_frame_field)
+
+        if is_frame_field and not self._contains_videos(any_slice=True):
             return
 
         if isinstance(self, fod.Dataset):
             # pylint:disable=no-member
             dataset = self
-            if frames:
+            if is_frame_field:
                 coll = dataset._frame_collection
             else:
                 coll = dataset._sample_collection
 
             pipeline = [
-                {"$sort": {"last_modified_at": -1}},
+                {"$sort": {path: order}},
                 {"$limit": 1},
-                {"$project": {"last_modified_at": True}},
+                {"$project": {path: True}},
             ]
 
             results = foo.aggregate(coll, pipeline)
         else:
             if self.media_type == fom.GROUP:
-                if frames:
+                if is_frame_field:
                     view = self.select_group_slices(media_type=fom.VIDEO)
                 else:
                     view = self.select_group_slices(_allow_mixed=True)
             else:
                 view = self
 
-            pipeline = [
-                {
-                    "$group": {
-                        "_id": None,
-                        "last_modified_at": {"$max": "$last_modified_at"},
-                    }
-                }
-            ]
+            op = "$min" if order > 0 else "$max"
+            pipeline = [{"$group": {"_id": None, path: {op: "$" + path}}}]
 
             results = view._aggregate(
-                frames_only=frames, post_pipeline=pipeline
+                frames_only=is_frame_field, post_pipeline=pipeline
             )
 
         try:
-            return next(iter(results))["last_modified_at"]
+            return next(iter(results))[path]
         except:
             return None
 
@@ -8209,11 +8229,13 @@ class SampleCollection(object):
 
         ``None``-valued fields are ignored.
 
-        This aggregation is typically applied to *numeric* field types (or
-        lists of such types):
+        This aggregation is typically applied to *numeric* or *date* field
+        types (or lists of such types):
 
         -   :class:`fiftyone.core.fields.IntField`
         -   :class:`fiftyone.core.fields.FloatField`
+        -   :class:`fiftyone.core.fields.DateField`
+        -   :class:`fiftyone.core.fields.DateTimeField`
 
         Examples::
 
@@ -8249,7 +8271,7 @@ class SampleCollection(object):
             print(bounds)  # (min, max)
 
             #
-            # Compute the a bounds of a numeric list field
+            # Compute the bounds of a numeric list field
             #
 
             bounds = dataset.bounds("numeric_list_field")
@@ -8685,6 +8707,174 @@ class SampleCollection(object):
         """
         make = lambda field_or_expr: foa.HistogramValues(
             field_or_expr, expr=expr, bins=bins, range=range, auto=auto
+        )
+        return self._make_and_aggregate(make, field_or_expr)
+
+    @aggregation
+    def min(self, field_or_expr, expr=None, safe=False):
+        """Computes the minimum of a numeric field of the collection.
+
+        ``None``-valued fields are ignored.
+
+        This aggregation is typically applied to *numeric* or *date* field
+        types (or lists of such types):
+
+        -   :class:`fiftyone.core.fields.IntField`
+        -   :class:`fiftyone.core.fields.FloatField`
+        -   :class:`fiftyone.core.fields.DateField`
+        -   :class:`fiftyone.core.fields.DateTimeField`
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        numeric_field=1.0,
+                        numeric_list_field=[1, 2, 3],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        numeric_field=4.0,
+                        numeric_list_field=[1, 2],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        numeric_field=None,
+                        numeric_list_field=None,
+                    ),
+                ]
+            )
+
+            #
+            # Compute the minimum of a numeric field
+            #
+
+            min = dataset.min("numeric_field")
+            print(min)  # the min
+
+            #
+            # Compute the minimum of a numeric list field
+            #
+
+            min = dataset.min("numeric_list_field")
+            print(min)  # the min
+
+            #
+            # Compute the minimum of a transformation of a numeric field
+            #
+
+            min = dataset.min(2 * (F("numeric_field") + 1))
+            print(min)  # the min
+
+        Args:
+            field_or_expr: a field name, ``embedded.field.name``,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case a tuple of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be returned
+            expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                to apply to ``field_or_expr`` (which must be a field) before
+                aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
+
+        Returns:
+            the minimum value
+        """
+        make = lambda field_or_expr: foa.Min(
+            field_or_expr, expr=expr, safe=safe
+        )
+        return self._make_and_aggregate(make, field_or_expr)
+
+    @aggregation
+    def max(self, field_or_expr, expr=None, safe=False):
+        """Computes the maximum of a numeric field of the collection.
+
+        ``None``-valued fields are ignored.
+
+        This aggregation is typically applied to *numeric* or *date* field
+        types (or lists of such types):
+
+        -   :class:`fiftyone.core.fields.IntField`
+        -   :class:`fiftyone.core.fields.FloatField`
+        -   :class:`fiftyone.core.fields.DateField`
+        -   :class:`fiftyone.core.fields.DateTimeField`
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        numeric_field=1.0,
+                        numeric_list_field=[1, 2, 3],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        numeric_field=4.0,
+                        numeric_list_field=[1, 2],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        numeric_field=None,
+                        numeric_list_field=None,
+                    ),
+                ]
+            )
+
+            #
+            # Compute the maximum of a numeric field
+            #
+
+            max = dataset.max("numeric_field")
+            print(max)  # the max
+
+            #
+            # Compute the maximum of a numeric list field
+            #
+
+            max = dataset.max("numeric_list_field")
+            print(max)  # the max
+
+            #
+            # Compute the maximum of a transformation of a numeric field
+            #
+
+            max = dataset.max(2 * (F("numeric_field") + 1))
+            print(max)  # the max
+
+        Args:
+            field_or_expr: a field name, ``embedded.field.name``,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate. This can also
+                be a list or tuple of such arguments, in which case a tuple of
+                corresponding aggregation results (each receiving the same
+                additional keyword arguments, if any) will be returned
+            expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                to apply to ``field_or_expr`` (which must be a field) before
+                aggregating
+            safe (False): whether to ignore nan/inf values when dealing with
+                floating point values
+
+        Returns:
+            the maximum value
+        """
+        make = lambda field_or_expr: foa.Max(
+            field_or_expr, expr=expr, safe=safe
         )
         return self._make_and_aggregate(make, field_or_expr)
 
@@ -11481,6 +11671,24 @@ class SampleCollection(object):
                 values_map[_id] = _val
 
         return [values_map.get(i, None) for i in ids]
+
+    def _has_stores(self):
+        dataset_id = self._root_dataset._doc.id
+        svc = foos.ExecutionStoreService(dataset_id=dataset_id)
+        return svc.count_stores() > 0
+
+    def _list_stores(self):
+        dataset_id = self._root_dataset._doc.id
+        svc = foos.ExecutionStoreService(dataset_id=dataset_id)
+        return svc.list_stores()
+
+    def _get_store(self, store_name):
+        dataset_id = self._root_dataset._doc.id
+        svc = foos.ExecutionStoreService(dataset_id=dataset_id)
+        if not svc.has_store(store_name):
+            raise ValueError(f"Dataset has no store '{store_name}'")
+
+        return foos.ExecutionStore(store_name, svc)
 
 
 def _iter_label_fields(sample_collection):

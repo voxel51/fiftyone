@@ -1,16 +1,16 @@
-import { useCurrentDataset } from '@fiftyone/hooks';
-import { DatasetHighlightsWidget, Timestamp } from '@fiftyone/teams-components';
+import { useCurrentDataset } from "@fiftyone/hooks";
+import { DatasetHighlightsWidget, Timestamp } from "@fiftyone/teams-components";
 import {
   Dataset,
   runsPageQuery,
   runsPageQueryDefaultVariables,
-  runsPageQueryT
-} from '@fiftyone/teams-state';
-import { useRouter } from 'next/router';
-import { Suspense, useEffect } from 'react';
-import { usePreloadedQuery, useQueryLoader } from 'react-relay';
-import getTimestamp from '../utils/getTimestamp';
-import RunStatus from './RunStatus';
+  runsPageQueryT,
+} from "@fiftyone/teams-state";
+import { useRouter } from "next/router";
+import { Suspense, useEffect } from "react";
+import { usePreloadedQuery, useQueryLoader } from "react-relay";
+import getTimestamp from "../utils/getTimestamp";
+import RunStatus from "./RunStatus";
 
 function RecentRunsWithQuery(props) {
   const { queryRef } = props;
@@ -26,11 +26,11 @@ function RecentRunsWithQuery(props) {
     return {
       title: label || operator,
       subtitle: [
-        <Timestamp key={id + '-timestamp'} timestamp={timestamp} />,
-        ...(runByName ? [runByName] : [])
+        <Timestamp key={id + "-timestamp"} timestamp={timestamp} />,
+        ...(runByName ? [runByName] : []),
       ],
       Icon: <RunStatus status={runState} variant="circle" />,
-      link: `${asPath}/${id}`
+      link: `${asPath}/${id}`,
     };
   });
 
@@ -51,7 +51,7 @@ export default function RecentRuns() {
   useEffect(() => {
     loadQuery({
       ...runsPageQueryDefaultVariables,
-      filter: { datasetIdentifier: { eq: id } }
+      filter: { datasetIdentifier: { eq: id } },
     });
   }, [id, loadQuery]);
 

@@ -1,8 +1,8 @@
-import { useTheme } from '@mui/material/styles';
-import { Box, Typography, Tooltip } from '@mui/material';
-import React, { useMemo } from 'react';
-import { CONSTANT_VARIABLES } from '@fiftyone/teams-state';
-import UserCard from '../UserCard';
+import { useTheme } from "@mui/material/styles";
+import { Box, Typography, Tooltip } from "@mui/material";
+import React, { useMemo } from "react";
+import { CONSTANT_VARIABLES } from "@fiftyone/teams-state";
+import UserCard from "../UserCard";
 
 const { MEMBER_AVATARS_TO_SHOW_COUNT } = CONSTANT_VARIABLES;
 
@@ -24,13 +24,13 @@ export default function Bubble(props: Props) {
     items,
     itemsToShow = MEMBER_AVATARS_TO_SHOW_COUNT,
     hiddenItemsCount,
-    showHiddenItemsInTooltip = true
+    showHiddenItemsInTooltip = true,
   } = props;
 
   const toShowItems = useMemo(() => items.slice(0, itemsToShow), [items]);
   const toHideItems = useMemo(() => items.slice(itemsToShow), [items]);
   const hiddenCount =
-    typeof hiddenItemsCount === 'number'
+    typeof hiddenItemsCount === "number"
       ? hiddenItemsCount
       : toHideItems.length;
 
@@ -62,29 +62,27 @@ export default function Bubble(props: Props) {
         <Tooltip title={item.title} key={item.id}>
           <Box
             sx={{
-              display: 'flex',
-              flexDirection: 'row',
+              display: "flex",
+              flexDirection: "row",
               marginLeft: index === 0 ? 0 : -1.5,
-              zIndex: index + 1
+              zIndex: index + 1,
             }}
           >
-            <UserCard
-              name={item.title}
-              src={item.picture}
-            />
+            <UserCard id={item.id} name={item.title} src={item.picture} />
           </Box>
         </Tooltip>
       ))}
       {hiddenCount > 0 && (
         <Tooltip title={hiddenTitle} key="more-members">
           <UserCard
+            id={hiddenCount}
             name={`+ ${hiddenCount}`}
             sx={{
               boxShadow: theme.voxelShadows.leftSm,
-              display: 'flex',
-              flexDirection: 'row',
+              display: "flex",
+              flexDirection: "row",
               marginLeft: -2,
-              zIndex: toShowItems.length
+              zIndex: toShowItems.length,
             }}
           />
         </Tooltip>

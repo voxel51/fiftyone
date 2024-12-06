@@ -1,17 +1,17 @@
-import { useCurrentUser, useCurrentUserPermission } from '@fiftyone/hooks';
+import { useCurrentUser, useCurrentUserPermission } from "@fiftyone/hooks";
 import {
   CREATE_DATASETS,
-  isSearchOrFiltersSelector
-} from '@fiftyone/teams-state';
-import { Box } from '@fiftyone/teams-components';
-import { Typography } from '@mui/material';
-import Button from '@mui/material/Button';
-import { useTheme } from '@mui/material/styles';
-import { capitalize } from 'lodash';
-import { useCallback, useMemo } from 'react';
-import { useRecoilValue } from 'recoil';
-import { useRouter } from 'next/router';
-import useDatasetsFilter from '@fiftyone/hooks/src/datasets/DatasetList/useFilters';
+  isSearchOrFiltersSelector,
+} from "@fiftyone/teams-state";
+import { Box } from "@fiftyone/teams-components";
+import { Typography } from "@mui/material";
+import Button from "@mui/material/Button";
+import { useTheme } from "@mui/material/styles";
+import { capitalize } from "lodash";
+import { useCallback, useMemo } from "react";
+import { useRecoilValue } from "recoil";
+import { useRouter } from "next/router";
+import useDatasetsFilter from "@fiftyone/hooks/src/datasets/DatasetList/useFilters";
 
 export default function EmptyDatasets() {
   const theme = useTheme();
@@ -27,21 +27,21 @@ export default function EmptyDatasets() {
   const handleSearchFilterResetClick = useCallback(() => {
     resetCreatedByUser();
     router.push({
-      query: {}
+      query: {},
     });
   }, [router]);
 
   const { createDatasetNote, title } = useMemo(() => {
     const createDatasetNote = canCreateDataset
-      ? 'Click “New dataset” to start adding data'
-      : '';
+      ? "Click “New dataset” to start adding data"
+      : "";
 
     const noDatasetNote = canCreateDataset
-      ? 'No datasets yet'
+      ? "No datasets yet"
       : `${roleLabel}s can only access datasets shared with them`;
 
     const title = isSearchOrFilterActive
-      ? 'No dataset found with your search'
+      ? "No dataset found with your search"
       : noDatasetNote;
 
     return { createDatasetNote, noDatasetNote, title };

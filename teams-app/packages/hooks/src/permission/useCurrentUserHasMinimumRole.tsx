@@ -1,5 +1,5 @@
-import { useCurrentUser } from '@fiftyone/hooks';
-import { Role, hasMinimumRole } from '@fiftyone/teams-state';
+import { useCurrentUser } from "@fiftyone/hooks";
+import { Role, hasMinimumRole } from "@fiftyone/teams-state";
 
 export default function useCurrentUserHasMinimumRole() {
   const [{ role }] = useCurrentUser();

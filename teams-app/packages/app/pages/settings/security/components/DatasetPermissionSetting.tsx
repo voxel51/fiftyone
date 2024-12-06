@@ -1,6 +1,6 @@
-import { DatasetPermissionSelection } from '@fiftyone/teams-components';
-import { DatasetPermissionSelectionProps } from '@fiftyone/teams-components/src/DatasetPermissionSelection';
-import { SettingComponentProps } from '../config/types';
+import { DatasetPermissionSelection } from "@fiftyone/teams-components";
+import { DatasetPermissionSelectionProps } from "@fiftyone/teams-components/src/DatasetPermissionSelection";
+import { SettingComponentProps } from "../config/types";
 
 export default function DatasetPermissionSetting(
   props: DatasetPermissionSettingProps
@@ -12,7 +12,7 @@ export default function DatasetPermissionSetting(
       key={value as string}
       defaultValue={value as any}
       onChange={onChange}
-      selectProps={{ sx: { width: '100%' } }}
+      selectProps={{ sx: { width: "100%" } }}
       includeNoAccess
       disabled={updating}
       loading={updating}

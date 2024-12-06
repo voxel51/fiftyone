@@ -1,9 +1,9 @@
-import { PopoverButton } from '@fiftyone/teams-components';
-import { cloneViewForceClosePopoverCount } from '@fiftyone/teams-state';
-import { ContentCopy } from '@mui/icons-material';
-import { Typography } from '@mui/material';
-import { useRecoilValue } from 'recoil';
-import CloneViewBody from './CloneViewBody';
+import { PopoverButton } from "@fiftyone/teams-components";
+import { cloneViewForceClosePopoverCount } from "@fiftyone/teams-state";
+import { ContentCopy } from "@mui/icons-material";
+import { Typography } from "@mui/material";
+import { useRecoilValue } from "recoil";
+import CloneViewBody from "./CloneViewBody";
 
 export default function CloneView() {
   const count = useRecoilValue(cloneViewForceClosePopoverCount);
@@ -20,9 +20,9 @@ export default function CloneView() {
         startIcon: (
           <ContentCopy
             fontSize="inherit"
-            sx={{ fontSize: '16px!important', ml: 0.5 }}
+            sx={{ fontSize: "16px!important", ml: 0.5 }}
           />
-        )
+        ),
       }}
       PopoverBody={CloneViewBody}
       forceCloseCount={count}

@@ -1,6 +1,6 @@
-import { useCurrentUser } from '@fiftyone/hooks';
-import { hasPermission, useCurrentDataset } from '@fiftyone/teams-state';
-import { useRouter } from 'next/router';
+import { useCurrentUser } from "@fiftyone/hooks";
+import { hasPermission, useCurrentDataset } from "@fiftyone/teams-state";
+import { useRouter } from "next/router";
 
 export default function useCurrentDatasetAndUserPermission(actions) {
   const router = useRouter();
@@ -12,7 +12,7 @@ export default function useCurrentDatasetAndUserPermission(actions) {
       !hasPermission(action, {
         role: currentUser?.role,
         datasetViewer: currentDataset?.viewer,
-        attributes: currentUser?.attributes ?? {}
+        attributes: currentUser?.attributes ?? {},
       })
     )
       return false;

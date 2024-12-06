@@ -1,15 +1,15 @@
-import { useTheme } from '@fiftyone/components';
-import { DatasetURL } from '@fiftyone/teams-components';
+import { useTheme } from "@fiftyone/components";
+import { DatasetURL } from "@fiftyone/teams-components";
 import {
   Dataset,
   useCurrentDataset,
-  useIsEditingDatasetName
-} from '@fiftyone/teams-state';
-import { MAX_DATASET_NAME_LEN } from '@fiftyone/teams-state/src/constants';
-import { Box, Button, TextField, Typography } from '@mui/material';
-import { Suspense, useEffect } from 'react';
-import Skeleton, { SkeletonTheme } from 'react-loading-skeleton';
-import 'react-loading-skeleton/dist/skeleton.css';
+  useIsEditingDatasetName,
+} from "@fiftyone/teams-state";
+import { MAX_DATASET_NAME_LEN } from "@fiftyone/teams-state/src/constants";
+import { Box, Button, TextField, Typography } from "@mui/material";
+import { Suspense, useEffect } from "react";
+import Skeleton, { SkeletonTheme } from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 
 interface PropsType {
   dataCy?: string;
@@ -17,7 +17,7 @@ interface PropsType {
   value: string;
   slug?: string;
   onChange: (e: any) => void;
-  direction?: 'h' | 'v';
+  direction?: "h" | "v";
   withDatasetUrl?: boolean;
   disabled?: boolean;
   initialEditMode?: boolean;
@@ -36,15 +36,15 @@ export default function DatasetNameInput(props: PropsType) {
     label,
     value,
     onChange,
-    inputProps
+    inputProps,
   } = props;
 
   const currentDataset: Dataset | null = useCurrentDataset(slug as string);
 
   const [isEditing, setIsEditing] = useIsEditingDatasetName();
 
-  const dir = direction || 'v';
-  const isVertical = dir === 'v';
+  const dir = direction || "v";
+  const isVertical = dir === "v";
   const showDatasetUrl = withDatasetUrl || false;
   const disabled = !!isDisabled;
 
@@ -58,10 +58,10 @@ export default function DatasetNameInput(props: PropsType) {
     <Box display="flex" width="100%" flexDirection="row">
       <Box
         display="flex"
-        justifyContent={dir === 'h' ? 'space-between' : 'start'}
-        flexDirection={dir === 'h' ? 'row' : 'column'}
+        justifyContent={dir === "h" ? "space-between" : "start"}
+        flexDirection={dir === "h" ? "row" : "column"}
         width="100%"
-        alignItems={dir === 'h' ? 'center' : 'start'}
+        alignItems={dir === "h" ? "center" : "start"}
       >
         <Box display="flex" flex="1" height="100%">
           <Typography variant="body1" noWrap paddingLeft={0.5} pb={1} pl={0}>
@@ -82,8 +82,8 @@ export default function DatasetNameInput(props: PropsType) {
               <Typography
                 variant="body1"
                 sx={{
-                  display: 'flex',
-                  alignItems: 'center'
+                  display: "flex",
+                  alignItems: "center",
                 }}
               >
                 {currentDataset?.name}
@@ -107,7 +107,7 @@ export default function DatasetNameInput(props: PropsType) {
                   placeholder="Your dataset name"
                   onChange={onChange}
                   value={value}
-                  InputProps={{ inputProps: { 'data-cy': dataCy } }}
+                  InputProps={{ inputProps: { "data-cy": dataCy } }}
                   defaultValue={currentDataset?.name}
                   inputProps={{ maxLength: MAX_DATASET_NAME_LEN }}
                 />
@@ -125,7 +125,7 @@ export default function DatasetNameInput(props: PropsType) {
                           duration={2}
                           style={{
                             marginTop: 0,
-                            marginBottom: 0
+                            marginBottom: 0,
                           }}
                         />
                       </SkeletonTheme>

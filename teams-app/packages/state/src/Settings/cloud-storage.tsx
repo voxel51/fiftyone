@@ -1,41 +1,41 @@
-import { graphql } from 'react-relay';
-import { atom } from 'recoil';
-import { cloudStorageCredentialsQuery$dataT } from './__generated__';
+import { graphql } from "react-relay";
+import { atom } from "recoil";
+import { cloudStorageCredentialsQuery$dataT } from "./__generated__";
 
 export const addCredentialAtom = atom<{
-  provider: 'AWS' | 'GCP' | 'MINIO' | 'AZURE';
+  provider: "AWS" | "GCP" | "MINIO" | "AZURE";
   open: boolean;
 }>({
-  key: 'addCredentialAtom',
+  key: "addCredentialAtom",
   default: {
-    provider: 'GCP',
-    open: false
-  }
+    provider: "GCP",
+    open: false,
+  },
 });
 
 export const deleteCredentialAtom = atom<{
-  provider: 'AWS' | 'GCP' | 'MINIO' | 'AZURE';
+  provider: "AWS" | "GCP" | "MINIO" | "AZURE";
   open: boolean;
   prefixes?: string[] | readonly string[];
 }>({
-  key: 'deleteCredentialAtom',
+  key: "deleteCredentialAtom",
   default: {
-    provider: 'GCP',
-    open: false
-  }
+    provider: "GCP",
+    open: false,
+  },
 });
 
 export const manageCloudStorageAtom = atom<{
-  provider: 'AWS' | 'GCP' | 'MINIO' | 'AZURE';
+  provider: "AWS" | "GCP" | "MINIO" | "AZURE";
   open: boolean;
-  credentials: cloudStorageCredentialsQuery$dataT['cloudCredentials'];
+  credentials: cloudStorageCredentialsQuery$dataT["cloudCredentials"];
 }>({
-  key: 'manageCloudStorageState',
+  key: "manageCloudStorageState",
   default: {
-    provider: 'GCP',
+    provider: "GCP",
     open: false,
-    credentials: []
-  }
+    credentials: [],
+  },
 });
 
 export const cloudStorageCredentialsQuery = graphql`

@@ -1,4 +1,4 @@
-import SvgIcon from '@mui/material/SvgIcon';
+import SvgIcon from "@mui/material/SvgIcon";
 
 export default function SlackIcon() {
   return (

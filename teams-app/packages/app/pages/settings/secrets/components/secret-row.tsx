@@ -1,19 +1,19 @@
-import { useMutation } from '@fiftyone/hooks';
+import { useMutation } from "@fiftyone/hooks";
 import {
   Box,
   Dialog,
   OverflowMenu,
-  TextInput
-} from '@fiftyone/teams-components';
-import { timeFromNow } from '@fiftyone/teams-utilities';
-import { TableCell, TableRow, Typography } from '@mui/material';
-import { useCallback, useState } from 'react';
+  TextInput,
+} from "@fiftyone/teams-components";
+import { timeFromNow } from "@fiftyone/teams-utilities";
+import { TableCell, TableRow, Typography } from "@mui/material";
+import { useCallback, useState } from "react";
 import {
   secretsDeleteMutation,
-  secretsUpdateMutation
-} from '@fiftyone/teams-state/src/Settings/secrets';
-import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
-import EditIcon from '@mui/icons-material/Edit';
+  secretsUpdateMutation,
+} from "@fiftyone/teams-state/src/Settings/secrets";
+import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
+import EditIcon from "@mui/icons-material/Edit";
 
 type SecretRowProps = {
   secretKey: string;
@@ -28,7 +28,7 @@ export default function SecretRow({
   createdAt,
   description,
   onDelete,
-  onUpdate
+  onUpdate,
 }: SecretRowProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteSecret, deleteInProgress] = useMutation(secretsDeleteMutation);
@@ -38,16 +38,16 @@ export default function SecretRow({
   const [updateSecret, updatingSecret] = useMutation(secretsUpdateMutation);
   const handleClose = useCallback(() => {
     setShowUpdateDialog(false);
-    setSecretDescription('');
+    setSecretDescription("");
   }, [setShowUpdateDialog, setSecretDescription]);
 
   return (
-    <TableRow sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+    <TableRow sx={{ "&:last-child td, &:last-child th": { border: 0 } }}>
       <TableCell>
         <Typography
           variant="body1"
           sx={{
-            color: (theme) => theme.palette.text.primary
+            color: (theme) => theme.palette.text.primary,
           }}
         >
           {secretKey}
@@ -57,37 +57,37 @@ export default function SecretRow({
         <Typography
           variant="body1"
           sx={{
-            color: (theme) => theme.palette.text.secondary
+            color: (theme) => theme.palette.text.secondary,
           }}
         >
           {description}
         </Typography>
       </TableCell>
 
-      <TableCell sx={{ width: '16rem' }}>
+      <TableCell sx={{ width: "16rem" }}>
         {createdAt && (
           <Typography variant="body1">
             Created {timeFromNow(createdAt)}
           </Typography>
         )}
       </TableCell>
-      <TableCell align="right" sx={{ width: '6rem' }}>
+      <TableCell align="right" sx={{ width: "6rem" }}>
         <OverflowMenu
           items={[
             {
-              primaryText: 'Edit',
+              primaryText: "Edit",
               IconComponent: <EditIcon color="secondary" />,
               onClick() {
                 setShowUpdateDialog(true);
-              }
+              },
             },
             {
               primaryText: <Typography color="error">Delete</Typography>,
               IconComponent: <DeleteOutlinedIcon color="error" />,
               onClick() {
                 setShowDeleteDialog(true);
-              }
-            }
+              },
+            },
           ]}
         />
       </TableCell>
@@ -100,11 +100,11 @@ export default function SecretRow({
         loading={updatingSecret}
         onConfirm={() => {
           updateSecret({
-            successMessage: 'Successfully updated secret',
-            errorMessage: 'Failed to update secret',
+            successMessage: "Successfully updated secret",
+            errorMessage: "Failed to update secret",
             variables: {
               key: secretKey,
-              description: secretDescription
+              description: secretDescription,
             },
             onCompleted(data) {
               setShowUpdateDialog(false);
@@ -112,7 +112,7 @@ export default function SecretRow({
             },
             onError(error) {
               console.error(error);
-            }
+            },
           });
         }}
       >
@@ -131,7 +131,7 @@ export default function SecretRow({
           <Box paddingTop={3}>
             <TextInput
               fieldLabel="Description"
-              placeholder={description || ''}
+              placeholder={description || ""}
               fullWidth
               autoComplete="off"
               disabled={updatingSecret}
@@ -162,7 +162,7 @@ export default function SecretRow({
             onCompleted: () => {
               setShowDeleteDialog(false);
               if (onDelete) onDelete();
-            }
+            },
           });
         }}
       >

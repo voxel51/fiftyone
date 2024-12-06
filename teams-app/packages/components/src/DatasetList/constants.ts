@@ -1,4 +1,4 @@
-import { SORT_OPTIONS } from '@fiftyone/teams-components/src/DatasetListFilterBar/constants';
+import { SORT_OPTIONS } from "@fiftyone/teams-components/src/DatasetListFilterBar/constants";
 
 export const DEFAULT_PAGE_SIZE = 25;
 export const DEFAULT_PAGE = 1;

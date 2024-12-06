@@ -1,5 +1,5 @@
-import { formatListWithCount } from '@fiftyone/teams-utilities';
-import { Stack, Typography } from '@mui/material';
+import { formatListWithCount } from "@fiftyone/teams-utilities";
+import { Stack, Typography } from "@mui/material";
 
 export default function SnapshotChanges(props: SnapshotChangesProps) {
   const { items } = props;
@@ -39,7 +39,7 @@ export default function SnapshotChanges(props: SnapshotChangesProps) {
   );
 }
 export type SnapshotChangesItem = {
-  type: 'sample' | 'tag';
+  type: "sample" | "tag";
   count: number;
 };
 

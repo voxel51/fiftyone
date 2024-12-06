@@ -1,16 +1,16 @@
-import { useMutation } from '@fiftyone/hooks';
-import { Dialog, TextInput, Timestamp } from '@fiftyone/teams-components';
+import { useMutation } from "@fiftyone/hooks";
+import { Dialog, TextInput, Timestamp } from "@fiftyone/teams-components";
 import {
   historyRevertDatasetToSnapshotMutation,
   pendingDatasetRefresh,
   rollbackSnapshotState,
-  useCurrentDataset
-} from '@fiftyone/teams-state';
-import { longDate } from '@fiftyone/teams-utilities';
-import { Stack, Typography } from '@mui/material';
-import { useRouter } from 'next/router';
-import { useCallback, useState } from 'react';
-import { useRecoilState, useSetRecoilState } from 'recoil';
+  useCurrentDataset,
+} from "@fiftyone/teams-state";
+import { longDate } from "@fiftyone/teams-utilities";
+import { Stack, Typography } from "@mui/material";
+import { useRouter } from "next/router";
+import { useCallback, useState } from "react";
+import { useRecoilState, useSetRecoilState } from "recoil";
 
 export default function RollbackSnapshot(props: RollbackSnapshotPropsType) {
   const { refresh, onRollback } = props;
@@ -18,7 +18,7 @@ export default function RollbackSnapshot(props: RollbackSnapshotPropsType) {
   const dataset = useCurrentDataset(route.query.slug as string);
   const [state, setState] = useRecoilState(rollbackSnapshotState);
   const setPending = useSetRecoilState(pendingDatasetRefresh);
-  const [inputState, setInputState] = useState('');
+  const [inputState, setInputState] = useState("");
   const [rollback, rollingBack] = useMutation(
     historyRevertDatasetToSnapshotMutation
   );
@@ -46,7 +46,7 @@ export default function RollbackSnapshot(props: RollbackSnapshotPropsType) {
             if (refresh) refresh();
             if (onRollback) onRollback();
             setPending(true); // force dataset to refresh
-          }
+          },
         });
       }}
       loading={rollingBack}
@@ -58,22 +58,22 @@ export default function RollbackSnapshot(props: RollbackSnapshotPropsType) {
         <Typography>
           This will permanently reset all samples and dataset metadata to the
           snapshot &ldquo;
-          <Typography fontWeight={360} component={'span'}>
+          <Typography fontWeight={360} component={"span"}>
             {name}
           </Typography>
-          &rdquo; saved by{' '}
-          <Typography fontWeight={360} component={'span'}>
+          &rdquo; saved by{" "}
+          <Typography fontWeight={360} component={"span"}>
             {author}
           </Typography>
           .
         </Typography>
         <Typography fontWeight={360}>
-          All changes to the dataset since{' '}
+          All changes to the dataset since{" "}
           <Timestamp
             timestamp={since as number}
             format="long"
             fontWeight={360}
-          />{' '}
+          />{" "}
           will be lost.
         </Typography>
       </Stack>

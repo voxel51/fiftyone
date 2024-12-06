@@ -2,18 +2,18 @@ import {
   useMutation,
   usePaginationFragment,
   usePreloadedQuery,
-  useRefetchableFragment
-} from 'react-relay';
-import { useRecoilValue } from 'recoil';
-import numeral from 'numeral';
+  useRefetchableFragment,
+} from "react-relay";
+import { useRecoilValue } from "recoil";
+import numeral from "numeral";
 
 import {
   CONSTANT_VARIABLES,
   datasetsConnectionFragment,
   datasetsCountFragment,
   datasetsRootQuery,
-  lastPinToggledDatasetState
-} from '@fiftyone/teams-state';
+  lastPinToggledDatasetState,
+} from "@fiftyone/teams-state";
 
 import {
   Box,
@@ -22,14 +22,14 @@ import {
   Link,
   List,
   ListItem,
-  Typography
-} from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+  Typography,
+} from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 
-import { PinnedDatasetRow } from './row';
+import { PinnedDatasetRow } from "./row";
 
 const { PINNED_DATASET_LOAD_MORE_LIMIT } = CONSTANT_VARIABLES;
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
 // todo: move all hard-coded text to constant @Ibrahim
 export default function PinnedDatasets({ queryRef }) {
@@ -56,8 +56,8 @@ export default function PinnedDatasets({ queryRef }) {
 
   useEffect(() => {
     if (lastPinToggledDataset) {
-      refetch({}, { fetchPolicy: 'store-and-network' });
-      refetchCount({}, { fetchPolicy: 'store-and-network' });
+      refetch({}, { fetchPolicy: "store-and-network" });
+      refetchCount({}, { fetchPolicy: "store-and-network" });
     }
   }, [lastPinToggledDataset]);
 

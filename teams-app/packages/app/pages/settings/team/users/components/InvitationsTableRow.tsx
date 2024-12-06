@@ -57,7 +57,7 @@ export default function InvitationsTableRow({
   return (
     <TableRow>
       <TableCell>
-        <Avatar title={email} detailed>
+        <Avatar title={email} detailed bgColor={"gray"}>
           <EmailOutlined />
         </Avatar>
       </TableCell>

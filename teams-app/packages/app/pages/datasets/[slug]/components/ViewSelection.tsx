@@ -1,4 +1,4 @@
-import { Selection } from '@fiftyone/teams-components';
+import { Selection } from "@fiftyone/teams-components";
 
 interface IProp {
   type: string;
@@ -6,17 +6,16 @@ interface IProp {
   options: {
     id: string;
     label: string;
-}[]
+  }[];
 }
-export default function ViewOrDatasetSelection(props: IProp
-) {
+export default function ViewOrDatasetSelection(props: IProp) {
   return (
     <Selection
       label="View"
       items={props.options}
       value={props.type}
       selectProps={{
-        fullWidth: true
+        fullWidth: true,
       }}
       containerProps={{ sx: { mt: 1 } }}
       onChange={(selectedType) => {

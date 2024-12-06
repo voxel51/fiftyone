@@ -1,8 +1,8 @@
-import { useCurrentUser } from '@fiftyone/hooks';
-import { Container, SectionHeader } from '@fiftyone/teams-components';
-import { Group } from '@fiftyone/teams-state';
-import { Chip, Stack } from '@mui/material';
-import { useRouter } from 'next/router';
+import { useCurrentUser } from "@fiftyone/hooks";
+import { Container, SectionHeader } from "@fiftyone/teams-components";
+import { Group } from "@fiftyone/teams-state";
+import { Chip, Stack } from "@mui/material";
+import { useRouter } from "next/router";
 
 interface GroupProps {
   groups: Group[];
@@ -10,7 +10,7 @@ interface GroupProps {
 
 const GroupsSection: React.FC<GroupProps> = ({ groups }) => {
   const [currentUser] = useCurrentUser();
-  const isAdmin = currentUser?.role === 'ADMIN';
+  const isAdmin = currentUser?.role === "ADMIN";
   const router = useRouter();
 
   if (!groups.length) {
@@ -26,7 +26,7 @@ const GroupsSection: React.FC<GroupProps> = ({ groups }) => {
             key={index}
             label={group.name}
             variant="outlined"
-            sx={isAdmin ? { cursor: 'pointer' } : {}}
+            sx={isAdmin ? { cursor: "pointer" } : {}}
             onClick={() => {
               if (isAdmin) {
                 router.push(`/settings/team/groups/${group.slug}`);

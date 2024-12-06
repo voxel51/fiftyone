@@ -1,12 +1,12 @@
-import * as fos from '@fiftyone/state';
-import { Selection, TextInputCopy } from '@fiftyone/teams-components';
-import { toSlug } from '@fiftyone/utilities';
-import { Box, Link, Typography } from '@mui/material';
-import NextLink from 'next/link';
-import { useRouter } from 'next/router';
-import { useEffect, useMemo, useState } from 'react';
-import type { SetterOrUpdater } from 'recoil';
-import { useRecoilValue } from 'recoil';
+import * as fos from "@fiftyone/state";
+import { Selection, TextInputCopy } from "@fiftyone/teams-components";
+import { toSlug } from "@fiftyone/utilities";
+import { Box, Link, Typography } from "@mui/material";
+import NextLink from "next/link";
+import { useRouter } from "next/router";
+import { useEffect, useMemo, useState } from "react";
+import type { SetterOrUpdater } from "recoil";
+import { useRecoilValue } from "recoil";
 
 const MAX_URL_LENGTH = 2000;
 
@@ -16,12 +16,12 @@ const getURL = (url: URL, share: object) => {
   for (const [key, value] of Object.entries(share)) {
     if (!value) continue;
     if (Array.isArray(value) && !value.length) continue;
-    if (typeof value === 'object' && !Object.keys(value).length) continue;
+    if (typeof value === "object" && !Object.keys(value).length) continue;
     filtered[key] = value;
   }
 
   Object.keys(filtered).length &&
-    url.searchParams.set('share', encodeURIComponent(JSON.stringify(filtered)));
+    url.searchParams.set("share", encodeURIComponent(JSON.stringify(filtered)));
   const urlString = url.toString();
   return urlString.length > MAX_URL_LENGTH ? undefined : urlString;
 };
@@ -35,43 +35,43 @@ const useItems = (onSamplesPage: boolean, snapshot: string | null) => {
     modalFilters,
     modalSelector,
     view,
-    viewName
+    viewName,
   } = useDatasetState(onSamplesPage);
 
   const items = useMemo(() => {
     const url = new URL(window.location.toString());
 
     if (snapshot && onSamplesPage) {
-      url.searchParams.set('snapshot', toSlug(snapshot));
+      url.searchParams.set("snapshot", toSlug(snapshot));
     }
 
     if (viewName && onSamplesPage) {
-      url.searchParams.set('view', toSlug(viewName));
+      url.searchParams.set("view", toSlug(viewName));
     }
 
     if (modalSelector && onSamplesPage) {
       const items = [
         {
-          id: 'dataset',
-          label: 'Sample',
+          id: "dataset",
+          label: "Sample",
           url: getURL(url, {
             fieldVisibilityStage,
             filters,
-            view: viewName ? [] : view
-          })
-        }
+            view: viewName ? [] : view,
+          }),
+        },
       ];
 
       if (hasModalFilters) {
         items.push({
-          id: 'filters',
-          label: 'Sample with sidebar filters',
+          id: "filters",
+          label: "Sample with sidebar filters",
           url: getURL(url, {
             fieldVisibilityStage,
             filters,
             modalFilters,
-            view: viewName ? [] : view
-          })
+            view: viewName ? [] : view,
+          }),
         });
       }
 
@@ -81,15 +81,15 @@ const useItems = (onSamplesPage: boolean, snapshot: string | null) => {
     const items = [
       viewName && onSamplesPage
         ? {
-            id: 'dataset',
-            label: 'Saved view',
-            url: getURL(url, { fieldVisibilityStage })
+            id: "dataset",
+            label: "Saved view",
+            url: getURL(url, { fieldVisibilityStage }),
           }
         : {
-            id: 'dataset',
-            label: 'Dataset',
-            url: getURL(url, { fieldVisibilityStage })
-          }
+            id: "dataset",
+            label: "Dataset",
+            url: getURL(url, { fieldVisibilityStage }),
+          },
     ];
 
     if (!onSamplesPage) {
@@ -99,9 +99,9 @@ const useItems = (onSamplesPage: boolean, snapshot: string | null) => {
     if (!view.length && !viewName) {
       if (hasFilters) {
         items.push({
-          id: 'sidebar',
-          label: 'Dataset with sidebar filters',
-          url: getURL(url, { fieldVisibilityStage, filters })
+          id: "sidebar",
+          label: "Dataset with sidebar filters",
+          url: getURL(url, { fieldVisibilityStage, filters }),
         });
       }
 
@@ -110,20 +110,20 @@ const useItems = (onSamplesPage: boolean, snapshot: string | null) => {
 
     !viewName &&
       items.push({
-        id: 'view',
-        label: 'View',
-        url: getURL(url, { fieldVisibilityStage, view })
+        id: "view",
+        label: "View",
+        url: getURL(url, { fieldVisibilityStage, view }),
       });
 
     if (hasFilters) {
       items.push({
-        id: 'view-sidebar',
-        label: `${viewName ? 'Saved view' : 'view'} with sidebar filters`,
+        id: "view-sidebar",
+        label: `${viewName ? "Saved view" : "view"} with sidebar filters`,
         url: getURL(url, {
           fieldVisibilityStage,
           filters,
-          view
-        })
+          view,
+        }),
       });
     }
 
@@ -138,7 +138,7 @@ const useItems = (onSamplesPage: boolean, snapshot: string | null) => {
     onSamplesPage,
     snapshot,
     view,
-    viewName
+    viewName,
   ]);
 
   const itemMap = useMemo(() => {
@@ -150,10 +150,10 @@ const useItems = (onSamplesPage: boolean, snapshot: string | null) => {
 
 const useDatasetContext = () => {
   // todo: improve this
-  const onSamplesPage = window.location.pathname.endsWith('/samples');
+  const onSamplesPage = window.location.pathname.endsWith("/samples");
   return {
     onSamplesPage,
-    snapshot: onSamplesPage ? useRecoilValue(fos.datasetSnapshotName) : null
+    snapshot: onSamplesPage ? useRecoilValue(fos.datasetSnapshotName) : null,
   };
 };
 
@@ -179,7 +179,7 @@ const useDatasetState = (onSamplesPage: boolean) => {
     modalFilters,
     modalSelector,
     view,
-    viewName
+    viewName,
   };
 };
 
@@ -188,7 +188,7 @@ function InputDatasetURL({ setOpen }: { setOpen: SetterOrUpdater<boolean> }) {
   const { items, itemMap } = useItems(onSamplesPage, snapshot);
   const router = useRouter();
   const { slug } = router.query;
-  const [selection, setSelection] = useState('dataset');
+  const [selection, setSelection] = useState("dataset");
 
   useEffect(() => {
     items;
@@ -206,7 +206,7 @@ function InputDatasetURL({ setOpen }: { setOpen: SetterOrUpdater<boolean> }) {
             value={selection}
             onChange={(selection) => {
               if (Array.isArray(selection)) {
-                throw new Error('unexpected');
+                throw new Error("unexpected");
               }
               setSelection(selection);
             }}
@@ -230,7 +230,7 @@ function InputDatasetURL({ setOpen }: { setOpen: SetterOrUpdater<boolean> }) {
             passHref
           >
             <Link> Create a snapshot</Link>
-          </NextLink>{' '}
+          </NextLink>{" "}
           to share a permalink
         </Typography>
       )}

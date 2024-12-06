@@ -1,12 +1,8 @@
 import * as fos from "@fiftyone/state";
 import { FLOAT_FIELD } from "@fiftyone/utilities";
 import React from "react";
-import {
-  RecoilValueReadOnly,
-  SetterOrUpdater,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
+import type { RecoilValueReadOnly, SetterOrUpdater } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import Checkbox from "../../Common/Checkbox";
 import * as state from "./state";
 
@@ -49,7 +45,9 @@ const useNonfiniteSettings = (params: { modal: boolean; path: string }) => {
 const useNonfinites = (options: { modal: boolean; path: string }) => {
   const get = useNonfiniteSettings(options);
   const list = [get("none")];
-  const { ftype } = fos.useAssertedRecoilValue(fos.field(options.path));
+  const { ftype, subfield } = fos.useAssertedRecoilValue(
+    fos.field(options.path)
+  );
   const data = useRecoilValue(
     fos.nonfiniteData({
       extended: false,
@@ -57,8 +55,10 @@ const useNonfinites = (options: { modal: boolean; path: string }) => {
       modal: options.modal,
     })
   );
-  if (ftype === FLOAT_FIELD) {
-    state.FLOAT_NONFINITES.forEach((key) => list.push(get(key)));
+  if (ftype === FLOAT_FIELD || subfield === FLOAT_FIELD) {
+    for (const key of state.FLOAT_NONFINITES) {
+      list.push(get(key));
+    }
   }
 
   return list
@@ -80,18 +80,8 @@ function Nonfinites({ modal, path }: { modal: boolean; path: string }) {
   });
   const hasBounds = useRecoilValue(state.hasBounds({ modal, path }));
   const one = useRecoilValue(state.oneBound({ modal, path }));
-  const lightning = useRecoilValue(fos.lightning);
-  const lightningPath = useRecoilValue(fos.isLightningPath(path));
 
-  if (lightning && lightningPath && nonfinites.length) {
-    return (
-      <span style={{ color: "var(--fo-palette-danger-plainColor)" }}>
-        {nonfinites.map(({ key }) => key).join(", ")} present
-      </span>
-    );
-  }
-
-  if (nonfinites.length == 1 && nonfinites[0].key === "none") {
+  if (nonfinites.length === 1 && nonfinites[0].key === "none") {
     return null;
   }
 
@@ -103,7 +93,9 @@ function Nonfinites({ modal, path }: { modal: boolean; path: string }) {
           color={color}
           name={NONFINITES[key]}
           forceColor={true}
-          disabled={one && nonfinites.length === 1 && !(one && hasBounds)}
+          disabled={Boolean(
+            one && nonfinites.length === 1 && !(one && hasBounds)
+          )}
           {...props}
         />
       ))}

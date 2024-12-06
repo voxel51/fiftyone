@@ -4,48 +4,49 @@ import {
   KeyboardArrowDown,
   KeyboardArrowUp,
   Loading,
-  ThemeProvider
-} from '@fiftyone/components';
+  ThemeProvider,
+} from "@fiftyone/components";
 import {
   useCurrentDatasetPermission,
   useCurrentOrganization,
-  withPermissions
-} from '@fiftyone/hooks';
-import type { ExecutionContext } from '@fiftyone/operators';
-import { Writer, datasetQuery } from '@fiftyone/relay';
-import * as fos from '@fiftyone/state';
+  withPermissions,
+} from "@fiftyone/hooks";
+import type { ExecutionContext } from "@fiftyone/operators";
+import { Writer, datasetQuery } from "@fiftyone/relay";
+import * as fos from "@fiftyone/state";
 import {
   Box,
+  BuiltinPanels,
   EmptySamples,
-  ThemeProvider as HubThemeProvider
-} from '@fiftyone/teams-components';
+  ThemeProvider as HubThemeProvider,
+} from "@fiftyone/teams-components";
 import {
   EDIT_DATASET,
   INVITE_PEOPLE_TO_DATASET,
   VIEW_DATASET,
   hideHeaders,
   shareDatasetOpen,
-  useCurrentDataset
-} from '@fiftyone/teams-state';
-import { FIFTYONE_TEAMS_PROXY_ENDPOINT } from '@fiftyone/teams-state/src/constants';
-import * as fou from '@fiftyone/utilities';
-import { useColorScheme } from '@mui/material';
-import { getEnv } from 'lib/env';
-import getTokenFromReq from 'lib/getTokenFromReq';
-import { GetServerSidePropsContext } from 'next';
-import dynamic from 'next/dynamic';
-import { useRouter } from 'next/router';
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import * as recoil from 'recoil';
-import styled from 'styled-components';
-import DatasetNavigation from '../components/navigation';
-import SessionContext from './components/SessionContext';
-import SnapshotBanner from './components/SnapshotBanner';
-import injectDynamicRouter from './dynamicRouting/injectDynamicRouter';
-import { resetSession } from './dynamicRouting/useLocalSession';
-import useTheme from './useTheme';
+  useCurrentDataset,
+} from "@fiftyone/teams-state";
+import { FIFTYONE_TEAMS_PROXY_ENDPOINT } from "@fiftyone/teams-state/src/constants";
+import * as fou from "@fiftyone/utilities";
+import { useColorScheme } from "@mui/material";
+import { getEnv } from "lib/env";
+import getTokenFromReq from "lib/getTokenFromReq";
+import { GetServerSidePropsContext } from "next";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/router";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import * as recoil from "recoil";
+import styled from "styled-components";
+import DatasetNavigation from "../components/navigation";
+import SessionContext from "./components/SessionContext";
+import SnapshotBanner from "./components/SnapshotBanner";
+import injectDynamicRouter from "./dynamicRouting/injectDynamicRouter";
+import { resetSession } from "./dynamicRouting/useLocalSession";
+import useTheme from "./useTheme";
 
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   fou.setFetchFunction(
     window.location.origin,
     {},
@@ -62,7 +63,7 @@ const Container = styled.div`
   background: var(--fo-palette-background-level2);
   margin: 0;
   padding: 0;
-  font-family: 'Palanquin', sans-serif;
+  font-family: "Palanquin", sans-serif;
   font-size: 14px;
   color: var(--fo-palette-text-primary);
   display: flex;
@@ -73,6 +74,7 @@ const ViewBarWrapper = styled.div`
   padding: 16px;
   background: var(--fo-palette-background-header);
   display: flex;
+  align-items: center;
 `;
 const CoreDatasetContainer = styled.div`
   flex: 1;
@@ -95,42 +97,43 @@ const Guard = ({ children }: React.PropsWithChildren<{}>) => {
 const DynamicDataset = dynamic(
   async () => {
     await Promise.all([
-      import('@fiftyone/embeddings'),
-      import('@fiftyone/looker-3d'),
-      import('@fiftyone/map')
+      import("@fiftyone/embeddings"),
+      import("@fiftyone/looker-3d"),
+      import("@fiftyone/map"),
     ]);
 
     const {
       Dataset: CoreDataset,
       ViewBar,
       Snackbar,
-      StarterSubtitle
-    } = await import('@fiftyone/core');
+      StarterSubtitle,
+      QueryPerformanceToastTeams,
+    } = await import("@fiftyone/core");
     const { registerOperator, types, Operator, OperatorConfig, OperatorCore } =
-      await import('@fiftyone/operators');
+      await import("@fiftyone/operators");
     const { useOperatorBrowser } = await import(
-      '@fiftyone/operators/src/state'
+      "@fiftyone/operators/src/state"
     );
-    const { usePlugins } = await import('@fiftyone/plugins');
+    const { usePlugins } = await import("@fiftyone/plugins");
 
     class Share extends Operator {
       get config() {
         return new OperatorConfig({
-          name: 'share_link',
-          label: 'Share a link'
+          name: "share_link",
+          label: "Share a link",
         });
       }
 
       async resolvePlacement() {
         return new types.Placement(types.Places.SAMPLES_VIEWER_ACTIONS, {
-          label: 'Share',
-          options: {}
+          label: "Share",
+          options: {},
         });
       }
       useHooks() {
         const setOpen = recoil.useSetRecoilState(shareDatasetOpen);
         return {
-          setOpen
+          setOpen,
         };
       }
       async execute(ctx: ExecutionContext) {
@@ -138,13 +141,17 @@ const DynamicDataset = dynamic(
       }
     }
 
-    registerOperator(Share, 'share_link');
+    registerOperator(Share, "share_link");
 
     function Plugins({ children }: React.PropsWithChildren<{}>) {
       const plugins = usePlugins();
-      if (plugins.hasError) return <div>Plugin error...</div>;
       if (plugins.isLoading) return <Loading>Pixelating...</Loading>;
-      return <>{children}</>;
+      return (
+        <>
+          {children}
+          <BuiltinPanels />
+        </>
+      );
     }
 
     const useDynamicRouter = injectDynamicRouter();
@@ -167,6 +174,7 @@ const DynamicDataset = dynamic(
                 </CoreDatasetContainer>
 
                 <Snackbar />
+                <QueryPerformanceToastTeams />
               </>
             ) : (
               <HubThemeProvider>
@@ -177,6 +185,7 @@ const DynamicDataset = dynamic(
           </Plugins>
           <div id="modal" />
           <div id="colorModal" />
+          <div id="queryPerformance"></div>
         </>
       );
     }
@@ -235,7 +244,7 @@ function Dataset() {
   const organizationDisplayName = currentOrganization?.displayName;
   const canEdit = useCurrentDatasetPermission([EDIT_DATASET]);
   const dataset = useCurrentDataset(slug as string);
-  const datasetName = dataset?.name || '';
+  const datasetName = dataset?.name || "";
   const canInvite = useCurrentDatasetPermission([INVITE_PEOPLE_TO_DATASET]);
   const hasSamples = !!dataset?.samplesCount;
 
@@ -255,9 +264,9 @@ function Dataset() {
         ref={datasetContainer}
         sx={{
           height: `calc(100vh - ${HEIGHT_OF_HEADERS})`,
-          overflow: hasSamples ? 'hidden' : 'auto',
-          '--Icon-fontSize': '1.5rem',
-          position: 'relative'
+          overflow: hasSamples ? "hidden" : "auto",
+          "--Icon-fontSize": "1.5rem",
+          position: "relative",
         }}
       >
         <Container>
@@ -279,32 +288,46 @@ export async function getServerSideProps(ctx: GetServerSidePropsContext) {
   const token = getTokenFromReq(ctx.req);
 
   return {
-    props: { ...getEnv(), token }
+    props: { ...getEnv(), token },
   };
 }
 
 const HeadersToggle = () => {
   const [hide, toggle] = recoil.useRecoilState(hideHeaders);
   return (
-    <IconButton
-      title={`${hide ? 'Show' : 'Hide'} headers`}
-      onClick={() => toggle((cur) => !cur)}
-      disableRipple
-      sx={{ color: (theme) => theme.palette.text.secondary }}
+    <div
+      style={{
+        width: 30,
+        height: 30,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
     >
-      {hide && <KeyboardArrowDown />}
-      {!hide && <KeyboardArrowUp />}
-    </IconButton>
+      <IconButton
+        title={`${hide ? "Show" : "Hide"} headers`}
+        onClick={() => toggle((cur) => !cur)}
+        disableRipple
+        sx={{
+          color: (theme) => theme.palette.text.secondary,
+          width: "100%",
+          height: "100%",
+        }}
+      >
+        {hide && <KeyboardArrowDown />}
+        {!hide && <KeyboardArrowUp />}
+      </IconButton>
+    </div>
   );
 };
 
-export default withPermissions(Dataset, [VIEW_DATASET], 'dataset', {
+export default withPermissions(Dataset, [VIEW_DATASET], "dataset", {
   getLayoutProps: () => ({
     hideFooter: true,
     topNavProps: {
-      noBorder: true
-    }
-  })
+      noBorder: true,
+    },
+  }),
 });
 
 function Pixelating() {
@@ -312,7 +335,7 @@ function Pixelating() {
   return (
     <Loading
       style={{
-        color: mode === 'dark' ? 'hsl(200, 0%, 70%)' : 'hsl(200, 0%, 30%)'
+        color: mode === "dark" ? "hsl(200, 0%, 70%)" : "hsl(200, 0%, 30%)",
       }}
     >
       Pixelating...

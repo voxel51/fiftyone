@@ -2,19 +2,19 @@ import {
   extendedStages,
   filters,
   selectedSamples,
-  view
-} from '@fiftyone/state';
-import { selector, useRecoilValue } from 'recoil';
+  view,
+} from "@fiftyone/state";
+import { selector, useRecoilValue } from "recoil";
 
 export const currentDatasetFilters = selector({
-  key: 'teams.currentDatasetFilters',
+  key: "teams.currentDatasetFilters",
   get: ({ get }) => {
     return {
       filters: get(filters),
       extended: get(extendedStages),
-      sampleIds: [...get(selectedSamples)]
+      sampleIds: [...get(selectedSamples)],
     };
-  }
+  },
 });
 
 // @ts-ignore

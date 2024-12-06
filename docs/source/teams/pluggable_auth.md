@@ -44,8 +44,6 @@ and [OAuth2](https://oauth.net/2/).
 
 <!-- TODO: Enumerate what connection types are supported. -->
 
-> NOTE: invitations to onboard users are not supported in internal mode.
-
 (super-admin-ui)=
 
 ## Super Admin UI
@@ -71,6 +69,56 @@ screen, and provide the `FIFTYONE_AUTH_SECRET` to login.
 > installation or upgrade.
 
 (identity-providers)=
+
+### New User Invitations
+
+As of FiftyOne Teams 2.1.0, onboarding new users can be done via invitation
+links. To do so, "Enable invitation" must be toggled on in the Organizations
+section of the [Super Admin UI](#super-admin-ui).
+
+![Enable Invitations](/images/teams/cas/org_enable_invitations.png)
+
+This allows creating invitation links in [internal mode](#internal-mode) that
+can be manually sent to users. When those users click the links, they will be
+added to the Organization and prompted to log in.
+
+As of FiftyOne Teams 2.2.0, these invitation links can be automatically sent
+via an email through a configured SMTP server. This provides similar
+functionality to [legacy mode](#legacy-mode) email invitations, but without the
+need for Auth0 or any other external connections beyond the SMTP server itself.
+
+> **NOTE:** Unless the deployment is a Managed Deployment, users must provide
+> their own SMTP server to use in [internal mode](#internal-mode). This new
+> functionality provides a way to authenticate and communicate with your
+> existing mail server.
+
+To do so, "Send email invitations" must be toggled on in the Organizations
+section of the [Super Admin UI](#super-admin-ui)
+
+![Send email invitations](/images/teams/cas/org_send_email_invitations.png)
+
+To configure your SMTP connection, navigate to the SMTP section of the
+[Super Admin UI](#super-admin-ui)
+
+![SMTP Config](/images/teams/cas/SMTP_config.png)
+
+A notification at the top of the menu will inform if an SMTP configuration is
+already saved. Currently, only one SMTP configuration can be saved per
+Organization.
+
+Select the appropriate type of authentication for your SMTP server and fill out
+the associated fields. When you save the configuration, FiftyOne Teams will do
+a preliminary check to ensure that the SMTP server is reachable at the host
+provided. The configuration will not save otherwise.
+
+Additionally, users can enter a valid email address and click Send Test Email
+to test the connection.
+
+![SMTP Config test email](/images/teams/cas/SMTP_config_test_email.png)
+
+> **NOTE:** Emails and an SMTP connection are not required to use invitations.
+> Invitation links can still be generated and manually distributed without an
+> SMTP configuration.
 
 ## Identity Providers (IdP)
 
@@ -225,18 +273,22 @@ async function Hook(context) {
                 groupName
             );
         }
-        // Add signed-in user to the group and update the group
-        group.userIds.push(user.id);
-        const updatedGroupName = undefined;
-        const updatedGroupDescription = undefined;
-        const updatedGroupUserIds = [...group.userIds, user.id];
-        await services.directory.groups.updateGroup(
-            orgId,
-            group.id,
-            updatedGroupName,
-            updatedGroupDescription,
-            updatedGroupUserIds
-        );
+
+        if (!group.userIds.includes(user.id)) {
+            // Add signed-in user to the group and update the group
+            const updatedGroupName = undefined;
+            const updatedGroupDescription = undefined;
+            const updatedGroupUserIds = [...group.userIds, user.id];
+            const accessorId = undefined;
+            await services.directory.groups.updateGroup(
+                orgId,
+                group.id,
+                accessorId,
+                updatedGroupName,
+                updatedGroupDescription,
+                updatedGroupUserIds
+            );
+        }
     }
 }
 ```

@@ -6,7 +6,11 @@ FiftyOne operator utilities.
 |
 """
 
+from datetime import datetime
 import logging
+
+import fiftyone as fo
+import fiftyone.operators.types as types
 
 
 class ProgressHandler(logging.Handler):
@@ -65,3 +69,42 @@ def is_method_overridden(base_class, sub_class_instance, method_name):
     base_method = getattr(base_class, method_name, None)
     sub_method = getattr(type(sub_class_instance), method_name, None)
     return base_method != sub_method
+
+
+def is_new(release_date, days=30):
+    """
+    Determines if a feature is considered "new" based on its release date.
+
+    A feature is considered new if its release date is within the specified
+    number of days.
+
+    Examples::
+
+        is_new("2024-11-09")
+        # True if today's date is within 30 days after 2024-11-09
+
+        is_new(datetime(2024, 11, 9), days=15)
+        # True if today's date is within 15 days after November 9, 2024
+
+        is_new("2024-10-01", days=45)
+        # False if today's date is more than 45 days after October 1, 2024
+
+    Args:
+        release_date: the release date of the feature, in one of the following
+            formats:
+
+            -   a string in the format ``"%Y-%m-%d"``, e.g., ``"2024-11-09"``
+            -   a datetime instance
+
+        days (30): the number of days for which the feature is considered new
+
+    Returns:
+        True/False whether the release date is within the specified number of
+        days
+    """
+    if isinstance(release_date, str):
+        release_date = datetime.strptime(release_date, "%Y-%m-%d")
+    elif not isinstance(release_date, datetime):
+        raise ValueError("release_date must be a string or datetime object")
+
+    return (datetime.now() - release_date).days <= days

@@ -3,6 +3,7 @@ import {
   GitHubLink,
   Header,
   IconButton,
+  DiscordLink,
   SlackLink,
   Tooltip,
   iconContainer,
@@ -134,7 +135,7 @@ const Nav: React.FC<
           >
             {mode === "dark" ? <LightMode color="inherit" /> : <DarkMode />}
           </IconButton>
-          <SlackLink />
+          <DiscordLink />
           <GitHubLink />
           <DocsLink />
         </div>

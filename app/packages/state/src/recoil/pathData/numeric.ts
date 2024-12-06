@@ -1,6 +1,6 @@
 import { selectorFamily } from "recoil";
 import { aggregation } from "../aggregations";
-import { isLightningPath, lightning } from "../lightning";
+import { queryPerformance } from "../queryPerformance";
 import { count } from "./counts";
 import { lightningNonfinites } from "./lightningNumeric";
 
@@ -30,11 +30,7 @@ export const nonfiniteData = selectorFamily({
   get:
     (params: { extended: boolean; path: string; modal: boolean }) =>
     ({ get }) => {
-      if (
-        !params.modal &&
-        get(lightning) &&
-        get(isLightningPath(params.path))
-      ) {
+      if (!params.modal && get(queryPerformance)) {
         return get(lightningNonfinites(params.path));
       }
 

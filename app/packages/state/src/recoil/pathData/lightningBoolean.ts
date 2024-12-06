@@ -1,5 +1,4 @@
 import { selectorFamily } from "recoil";
-import { lightningQuery } from "../lightning";
 
 export const lightningBooleanResults = selectorFamily<
   {
@@ -9,25 +8,14 @@ export const lightningBooleanResults = selectorFamily<
   { path: string; modal: boolean; extended: boolean }
 >({
   key: "lightningBooleanResults",
-  get:
-    (params) =>
-    ({ get }) => {
-      const [data] = get(lightningQuery([{ path: params.path }]));
-
-      if (data.__typename !== "BooleanLightningResult") {
-        throw new Error(
-          `unexpected ${data.__typename} for path '${params.path}' in lightningBooleanResults`
-        );
-      }
-
-      return {
-        count: null,
-        results: [
-          { value: "False", count: data.false },
-          { value: "True", count: data.true },
-        ]
-          .filter(({ count }) => count)
-          .map(({ value }) => ({ value, count: null })),
-      };
-    },
+  get: () => () => {
+    return {
+      count: null,
+      results: [
+        { value: "False", count: null },
+        { value: "True", count: null },
+        { value: null, count: null },
+      ],
+    };
+  },
 });

@@ -47,6 +47,10 @@ const getInferredParamsForUndefinedProjection = (
 
     if (cls === DETECTIONS) {
       for (const detection of label.detections as DetectionLabel[]) {
+        if (!detection.location || !detection.dimensions) {
+          continue;
+        }
+
         const [x, y] = detection.location;
         const [lx, ly] = detection.dimensions;
 
@@ -55,7 +59,7 @@ const getInferredParamsForUndefinedProjection = (
         minY = Math.min(minY, y - ly / 2);
         maxY = Math.max(maxY, y + ly / 2);
       }
-    } else if (cls === "Detection") {
+    } else if (cls === "Detection" && label.location && label.dimensions) {
       const [x, y] = label.location as DetectionLabel["location"];
       const [lx, ly] = label.dimensions as DetectionLabel["dimensions"];
 

@@ -1,22 +1,22 @@
-import useAppNotification from '@fiftyone/hooks/src/notifications/useAppNotification';
-import { NotificationCodeT, NotificationLevelT } from '@fiftyone/teams-state';
-import { Alert, Collapse, Link } from '@mui/material';
-import React from 'react';
-import AlertLink from '../AlertLink';
+import useAppNotification from "@fiftyone/hooks/src/notifications/useAppNotification";
+import { NotificationCodeT, NotificationLevelT } from "@fiftyone/teams-state";
+import { Alert, Collapse, Link } from "@mui/material";
+import React from "react";
+import AlertLink from "../AlertLink";
 
 export default function AppAlert() {
   // instead of showing one alert, we show a list of alerts
   const notifications = useAppNotification();
 
   const getDismissedAlerts = () => {
-    const dismissedAlerts = localStorage.getItem('dismissedAlerts');
+    const dismissedAlerts = localStorage.getItem("dismissedAlerts");
     return dismissedAlerts ? JSON.parse(dismissedAlerts) : {};
   };
 
   const setDismissedAlert = (code: NotificationCodeT) => {
     const dismissedAlerts = getDismissedAlerts();
     dismissedAlerts[code] = new Date().toISOString();
-    localStorage.setItem('dismissedAlerts', JSON.stringify(dismissedAlerts));
+    localStorage.setItem("dismissedAlerts", JSON.stringify(dismissedAlerts));
   };
 
   const shouldShowAlert = (code: NotificationCodeT) => {
@@ -62,7 +62,7 @@ function AlertInfo({
   details,
   type,
   code,
-  setDismissedAlert
+  setDismissedAlert,
 }): AlertInfoProps {
   const [open, setOpen] = React.useState(true);
 
@@ -75,7 +75,7 @@ function AlertInfo({
     <Collapse in={open}>
       <Alert severity={type} onClose={handleClose}>
         <div
-          style={{ display: 'inline' }}
+          style={{ display: "inline" }}
           data-testid={`global-notification-${code.toLowerCase()}`}
         >
           {title} <AlertLink code={code} details={details} />

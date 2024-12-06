@@ -1,12 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo } from "react";
 import {
   cloneDatasetState,
   DatasetCloneMutation,
-  newDatasetNameState
-} from '@fiftyone/teams-state';
-import { useRecoilState, useSetRecoilState } from 'recoil';
-import { DatasetCloneMutation$data } from '@fiftyone/teams-state/src/Dataset/__generated__/DatasetCloneMutation.graphql';
-import { useMutation } from '@fiftyone/hooks';
+  newDatasetNameState,
+} from "@fiftyone/teams-state";
+import { useRecoilState, useSetRecoilState } from "recoil";
+import { DatasetCloneMutation$data } from "@fiftyone/teams-state/src/Dataset/__generated__/DatasetCloneMutation.graphql";
+import { useMutation } from "@fiftyone/hooks";
 
 interface CloneProps {
   newName: string;
@@ -35,13 +35,13 @@ export const useCloneDataset = () => {
             cb?.(theClonedDataset?.slug);
           },
           onError: (e) => {
-            console.error('failed to update dataset', e);
-          }
+            console.error("failed to update dataset", e);
+          },
         });
       },
       cloningDataset,
       setNewCloneName,
-      newCloneName
+      newCloneName,
     };
   }, [newCloneName, cloningDataset]);
 };

@@ -6,6 +6,7 @@ FiftyOne Teams internal cloud credential management.
 |
 """
 import re
+import time
 from collections import defaultdict
 import configparser
 from datetime import datetime, timedelta
@@ -141,7 +142,6 @@ class CloudCredentialsManager(object):
             the credentials path, or ``None``
         """
         creds_path = None
-
         if bucket is not None:
             creds_path = self._bucket_creds_exact[fs].get(bucket, None)
 
@@ -207,11 +207,32 @@ class CloudCredentialsManager(object):
                 continue
 
             try:
+                # write the creds to a file if they don't exist or are outdated
                 creds_path = self._make_creds_path(credentials)
-                raw_creds = self._get_raw_creds(credentials)
-                # if raw creds returned None, then the file was already written
-                if raw_creds:
-                    self._write_creds(provider, raw_creds, creds_path)
+                cloud_creds_last_modified_time = time.mktime(
+                    credentials["modified_at"].timetuple()
+                )
+
+                # File doesn't exist or is older than modified_at time.
+                if not os.path.exists(creds_path) or int(
+                    os.path.getmtime(creds_path)
+                ) < int(cloud_creds_last_modified_time):
+
+                    raw_creds = self._get_raw_creds(credentials)
+                    # if raw creds returned None, then the file was already written
+                    if raw_creds:
+                        self._write_creds(provider, raw_creds, creds_path)
+
+                    # Set modified time for this file based on actual mod time
+                    #   from mongo
+                    os.utime(
+                        creds_path,
+                        (
+                            cloud_creds_last_modified_time,
+                            cloud_creds_last_modified_time,
+                        ),
+                    )
+
             except Exception as e:
                 creds_path = None
 

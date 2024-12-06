@@ -1,9 +1,9 @@
-import { setView, setViewMutation } from '@fiftyone/relay';
-import { State, viewStateForm_INTERNAL } from '@fiftyone/state';
-import { PayloadError, commitMutation } from 'relay-runtime';
-import { getHistoryState, pushHistoryState } from '../state';
-import { writeSession } from '../useLocalSession';
-import { RegisteredSetter } from './registerSetter';
+import { setView, setViewMutation } from "@fiftyone/relay";
+import { State, viewStateForm_INTERNAL } from "@fiftyone/state";
+import { PayloadError, commitMutation } from "relay-runtime";
+import { getHistoryState, pushHistoryState } from "../state";
+import { writeSession } from "../useLocalSession";
+import { RegisteredSetter } from "./registerSetter";
 
 const onSetView: RegisteredSetter =
   ({ environment, handleError }) =>
@@ -12,7 +12,7 @@ const onSetView: RegisteredSetter =
 
     const onError = async (errors: readonly PayloadError[]) => {
       handleError(errors.map((e) => e.message));
-      const { rollbackViewBar } = await import('@fiftyone/core');
+      const { rollbackViewBar } = await import("@fiftyone/core");
       rollbackViewBar();
       return;
     };
@@ -22,8 +22,8 @@ const onSetView: RegisteredSetter =
       variables: {
         view,
         datasetName: state.datasetName,
-        subscription: '',
-        form: get(viewStateForm_INTERNAL) || {}
+        subscription: "",
+        form: get(viewStateForm_INTERNAL) || {},
       },
       onError: (error) => onError([error]),
       onCompleted: async ({ setView: view }, errors) => {
@@ -44,9 +44,9 @@ const onSetView: RegisteredSetter =
         await pushHistoryState({
           ...state,
           fieldVisibilityStage: undefined,
-          view
+          view,
         });
-      }
+      },
     });
   };
 

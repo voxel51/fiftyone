@@ -1,8 +1,6 @@
-import React from 'react';
-import { layout, SettingsNav } from '@fiftyone/teams-components';
-import { Box } from '@mui/material';
-
-
+import React from "react";
+import { layout, SettingsNav } from "@fiftyone/teams-components";
+import { Box } from "@mui/material";
 
 export default function SettingsLayout(props) {
   const { children } = props;
@@ -16,7 +14,7 @@ export default function SettingsLayout(props) {
         sx={{
           padding: 2,
           marginTop: 1.25,
-          borderRadius: 1
+          borderRadius: 1,
         }}
       >
         {children}

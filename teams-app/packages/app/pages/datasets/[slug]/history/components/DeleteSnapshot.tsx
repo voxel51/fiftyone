@@ -1,18 +1,18 @@
-import { useCurrentDataset, useMutation } from '@fiftyone/hooks';
-import { Dialog, TextInput } from '@fiftyone/teams-components';
+import { useCurrentDataset, useMutation } from "@fiftyone/hooks";
+import { Dialog, TextInput } from "@fiftyone/teams-components";
 import {
   deleteSnapshotState,
-  historyDeleteSnapshotMutation
-} from '@fiftyone/teams-state';
-import { Typography } from '@mui/material';
-import { useCallback, useState } from 'react';
-import { useRecoilState } from 'recoil';
+  historyDeleteSnapshotMutation,
+} from "@fiftyone/teams-state";
+import { Typography } from "@mui/material";
+import { useCallback, useState } from "react";
+import { useRecoilState } from "recoil";
 
 export default function DeleteSnapshot(props) {
   const { refresh, onDelete } = props;
   const [state, setState] = useRecoilState(deleteSnapshotState);
   const dataset = useCurrentDataset();
-  const [inputState, setInputState] = useState('');
+  const [inputState, setInputState] = useState("");
   const [deleteSnapshot, deletingSnapshot] = useMutation(
     historyDeleteSnapshotMutation
   );
@@ -33,9 +33,9 @@ export default function DeleteSnapshot(props) {
           successMessage: `Successfully deleted snapshot "${name}"`,
           onSuccess: () => {
             handleClose();
-            if (typeof refresh === 'function') refresh();
-            if (typeof onDelete === 'function') onDelete();
-          }
+            if (typeof refresh === "function") refresh();
+            if (typeof onDelete === "function") onDelete();
+          },
         });
       }}
       title="Delete dataset snapshot?"

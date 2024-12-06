@@ -1,9 +1,9 @@
-import { ExportIcon, PopoverButton } from '@fiftyone/teams-components';
-import { exportViewForceClosePopoverCount } from '@fiftyone/teams-state';
-import { Typography } from '@mui/material';
-import { useRecoilValue } from 'recoil';
-import ExportViewBody from './ExportViewBody';
-import { datasetPage } from '../../samples/dynamicRouting/usePage';
+import { ExportIcon, PopoverButton } from "@fiftyone/teams-components";
+import { exportViewForceClosePopoverCount } from "@fiftyone/teams-state";
+import { Typography } from "@mui/material";
+import { useRecoilValue } from "recoil";
+import ExportViewBody from "./ExportViewBody";
+import { datasetPage } from "../../samples/dynamicRouting/usePage";
 
 export default function ExportView() {
   const count = useRecoilValue(exportViewForceClosePopoverCount);
@@ -21,7 +21,7 @@ export default function ExportView() {
       popoverButtonProps={{
         variant: undefined,
         sx: { mr: 2 },
-        startIcon: <ExportIcon fontSize="inherit" sx={{ ml: 0.5 }} />
+        startIcon: <ExportIcon fontSize="inherit" sx={{ ml: 0.5 }} />,
       }}
       PopoverBody={ExportViewBody}
       forceCloseCount={count}

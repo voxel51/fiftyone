@@ -5,3 +5,4 @@
 !docker/
 !app/
 !teams-app/
+teams-app/packages/app/.env.local

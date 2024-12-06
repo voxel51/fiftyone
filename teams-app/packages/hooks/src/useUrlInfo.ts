@@ -1,6 +1,6 @@
-import { hostState } from '@fiftyone/teams-state';
-import { useMemo } from 'react';
-import { useRecoilValue } from 'recoil';
+import { hostState } from "@fiftyone/teams-state";
+import { useMemo } from "react";
+import { useRecoilValue } from "recoil";
 
 // Hook
 export function useURLInfo() {
@@ -8,7 +8,7 @@ export function useURLInfo() {
 
   return useMemo(() => {
     return {
-      host
+      host,
     };
   }, [host]);
 }

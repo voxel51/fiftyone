@@ -1,11 +1,11 @@
-import { TableContainer } from '@fiftyone/teams-components';
+import { TableContainer } from "@fiftyone/teams-components";
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
-  TableRow
-} from '@mui/material';
+  TableRow,
+} from "@mui/material";
 
 interface Props {
   remaining: any;
@@ -20,7 +20,7 @@ const UserAuditTable = (props: Props) => {
       <Table
         data-testid="license-info-table"
         aria-label="License status table"
-        sx={{ '.MuiTableCell-root': { fontSize: '1rem' } }}
+        sx={{ ".MuiTableCell-root": { fontSize: "1rem" } }}
       >
         <TableHead>
           <TableRow>
@@ -50,7 +50,7 @@ const UserAuditTable = (props: Props) => {
         <TableBody>
           {Object.values(remaining).map(
             ({ current = 0, remaining = 0, role }) => {
-              if (!hasCollaborators && role === 'Collaborator') return null;
+              if (!hasCollaborators && role === "Collaborator") return null;
               return (
                 <TableRow key={role}>
                   <TableCell component="th" scope="row">

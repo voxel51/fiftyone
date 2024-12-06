@@ -1,17 +1,17 @@
-import { useDeleteGroup } from '@fiftyone/hooks';
-import { Dialog, TextInput } from '@fiftyone/teams-components';
-import { removeGroupState } from '@fiftyone/teams-state';
-import { Typography } from '@mui/material';
-import { FC, useCallback, useState } from 'react';
-import { useRecoilState } from 'recoil';
-import Router from 'next/router';
+import { useDeleteGroup } from "@fiftyone/hooks";
+import { Dialog, TextInput } from "@fiftyone/teams-components";
+import { removeGroupState } from "@fiftyone/teams-state";
+import { Typography } from "@mui/material";
+import { FC, useCallback, useState } from "react";
+import { useRecoilState } from "recoil";
+import Router from "next/router";
 
 const DeleteGroupModal: FC = () => {
   const [groupToBeDelete, setGroupToBeDelete] =
     useRecoilState(removeGroupState);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const open = !!groupToBeDelete;
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleClose = useCallback(() => {
     setGroupToBeDelete(null);
@@ -34,8 +34,8 @@ const DeleteGroupModal: FC = () => {
             handleClose();
           },
           (error) => {
-            console.error('Failed to delete group', error);
-            setError('Failed to delete group');
+            console.error("Failed to delete group", error);
+            setError("Failed to delete group");
           }
         );
       }}
@@ -63,9 +63,9 @@ const DeleteGroupModal: FC = () => {
           variant="subtitle2"
           color="error"
           sx={{
-            transition: 'height 0.3s ease-in',
-            overflow: 'hidden',
-            paddingBottom: '1rem'
+            transition: "height 0.3s ease-in",
+            overflow: "hidden",
+            paddingBottom: "1rem",
           }}
         >
           {error}

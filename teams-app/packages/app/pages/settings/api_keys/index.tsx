@@ -1,32 +1,32 @@
-import { useCurrentUser, withPermissions } from '@fiftyone/hooks';
+import { useCurrentUser, withPermissions } from "@fiftyone/hooks";
 import {
   VIEW_API_KEYS,
   mainTitleSelector,
-  showGenerateAPITokenDialog
-} from '@fiftyone/teams-state';
+  showGenerateAPITokenDialog,
+} from "@fiftyone/teams-state";
 import {
   Box,
   EmptyState,
   SectionHeader,
   SettingsLayout,
-  TableContainer
-} from '@fiftyone/teams-components';
-import { Button, Table, TableBody } from '@mui/material';
-import { useEffect } from 'react';
-import { useSetRecoilState } from 'recoil';
-import APITokenRow from './components/api-token-row';
-import GenerateAPIToken from './components/generate-api-token';
-import InstallContent from '@fiftyone/teams-components/src/Modal/InstallContent';
+  TableContainer,
+} from "@fiftyone/teams-components";
+import { Button, Table, TableBody } from "@mui/material";
+import { useEffect } from "react";
+import { useSetRecoilState } from "recoil";
+import APITokenRow from "./components/api-token-row";
+import GenerateAPIToken from "./components/generate-api-token";
+import InstallContent from "@fiftyone/teams-components/src/Modal/InstallContent";
 
 function APITokens() {
   const showGenerateTokenDialog = useSetRecoilState(showGenerateAPITokenDialog);
 
   const setPageTitle = useSetRecoilState(mainTitleSelector);
   useEffect(() => {
-    setPageTitle('Settings');
+    setPageTitle("Settings");
   }, []);
 
-  const [currentUser, refresh] = useCurrentUser('store-and-network');
+  const [currentUser, refresh] = useCurrentUser("store-and-network");
   const apiKeys = currentUser?.apiKeys || [];
 
   return (
@@ -56,7 +56,7 @@ function APITokens() {
         <TableContainer
           sx={{
             border: (theme) => `1px solid ${theme.palette.divider}`,
-            borderRadius: 2
+            borderRadius: 2,
           }}
         >
           <Table>
@@ -85,6 +85,6 @@ function APITokens() {
   );
 }
 
-export { getServerSideProps } from 'lib/env';
+export { getServerSideProps } from "lib/env";
 
-export default withPermissions(APITokens, [VIEW_API_KEYS], 'user');
+export default withPermissions(APITokens, [VIEW_API_KEYS], "user");

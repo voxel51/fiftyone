@@ -1,15 +1,15 @@
-import { subscribe } from '@fiftyone/relay';
+import { subscribe } from "@fiftyone/relay";
 import {
   hiddenLabels,
   savedLookerOptions,
-  similaritySorting
-} from '@fiftyone/state';
-import { loading, setPending } from 'pages/state';
-import loadPageQuery from '../loadPageQuery';
-import { getHistoryState } from '../state';
-import { writeSession } from '../useLocalSession';
-import { datasetPage } from '../usePage';
-import { RegisteredSetter } from './registerSetter';
+  similaritySorting,
+} from "@fiftyone/state";
+import { loading, setPending } from "pages/state";
+import loadPageQuery from "../loadPageQuery";
+import { getHistoryState } from "../state";
+import { writeSession } from "../useLocalSession";
+import { datasetPage } from "../usePage";
+import { RegisteredSetter } from "./registerSetter";
 
 const onSetSimilarityParameters: RegisteredSetter =
   ({ runner }) =>
@@ -31,7 +31,7 @@ const onSetSimilarityParameters: RegisteredSetter =
           set(similaritySorting, false);
           set(savedLookerOptions, (cur) => ({
             ...cur,
-            showJSON: false
+            showJSON: false,
           }));
           set(hiddenLabels, {});
           set(loading, false);

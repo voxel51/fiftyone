@@ -1,24 +1,24 @@
-import { useLazyLoadLatestQuery } from '@fiftyone/hooks';
+import { useLazyLoadLatestQuery } from "@fiftyone/hooks";
 import {
   Box,
   Button,
   Container,
   PopoverButton,
   TableSkeleton,
-  Timestamp
-} from '@fiftyone/teams-components';
+  Timestamp,
+} from "@fiftyone/teams-components";
 import {
   SNAPSHOT_BANNER_QUERY_CACHE_KEY,
   historySnapshotQuery$dataT,
   historySnapshotQueryT,
   historySnapshotsConnectionQuery,
-  historySnapshotsConnectionQueryT
-} from '@fiftyone/teams-state';
+  historySnapshotsConnectionQueryT,
+} from "@fiftyone/teams-state";
 import {
   AccessTime,
   ArrowCircleLeftOutlined,
-  ExpandMore
-} from '@mui/icons-material';
+  ExpandMore,
+} from "@mui/icons-material";
 import {
   Grid,
   Link,
@@ -27,24 +27,24 @@ import {
   ListItemButton,
   ListItemText,
   Stack,
-  Typography
-} from '@mui/material';
-import NextLink from 'next/link';
-import { useRouter } from 'next/router';
-import { Fragment, Suspense, useCallback, useState } from 'react';
-import { SnapshotSummary } from '../../history/components/Snapshot';
+  Typography,
+} from "@mui/material";
+import NextLink from "next/link";
+import { useRouter } from "next/router";
+import { Fragment, Suspense, useCallback, useState } from "react";
+import { SnapshotSummary } from "../../history/components/Snapshot";
 import {
   SnapshotActionsMenu,
-  SnapshotActionsModals
-} from '../../history/components/SnapshotActions';
-import { getHistoryState, pushHistoryState } from '../dynamicRouting/state';
+  SnapshotActionsModals,
+} from "../../history/components/SnapshotActions";
+import { getHistoryState, pushHistoryState } from "../dynamicRouting/state";
 export default function SnapshotBanner({
-  snapshotData: { dataset }
+  snapshotData: { dataset },
 }: {
-  snapshotData: historySnapshotQueryT['response'];
+  snapshotData: historySnapshotQueryT["response"];
 }) {
   if (!dataset?.snapshot) {
-    throw new Error('no snapshot');
+    throw new Error("no snapshot");
   }
   const { name, id, createdAt, createdBy, loadStatus } = dataset.snapshot;
 
@@ -54,12 +54,12 @@ export default function SnapshotBanner({
       datasetId: state.datasetId,
       datasetName: state.datasetName,
       datasetSlug: state.datasetSlug,
-      view: []
+      view: [],
     });
   }, []);
 
   return (
-    <Container data-cy={'snapshot-banner'}>
+    <Container data-cy={"snapshot-banner"}>
       <Grid container alignItems="center" spacing={2}>
         <Grid item xs>
           <Stack direction="row" spacing={1}>
@@ -67,7 +67,7 @@ export default function SnapshotBanner({
               sx={{
                 color: (theme) => theme.palette.text.secondary,
                 my: 0.5,
-                fontSize: 20
+                fontSize: 20,
               }}
             />
             <Box>
@@ -92,8 +92,8 @@ export default function SnapshotBanner({
                   </Stack>
                 )}
                 popoverButtonProps={{
-                  variant: 'text',
-                  sx: { py: 0.25, px: 0.5 }
+                  variant: "text",
+                  sx: { py: 0.25, px: 0.5 },
                 }}
                 PopoverBody={() => (
                   <Box maxHeight="60vh" maxWidth="50vw">
@@ -103,7 +103,7 @@ export default function SnapshotBanner({
                           skeletonProps={{
                             height: 48,
                             width: 512,
-                            sx: { mx: 2 }
+                            sx: { mx: 2 },
                           }}
                         />
                       }
@@ -113,7 +113,7 @@ export default function SnapshotBanner({
                   </Box>
                 )}
                 popoverProps={{
-                  anchorOrigin: { vertical: 'bottom', horizontal: 'right' }
+                  anchorOrigin: { vertical: "bottom", horizontal: "right" },
                 }}
               />
             </Box>
@@ -187,7 +187,7 @@ function CompactSnapshot(props: CompactSnapshotPropsType) {
   const { snapshot, selected, noBorder } = props;
   const [hovered, setHovered] = useState(false);
   const { query, pathname } = useRouter();
-  const isLoaded = snapshot.loadStatus === 'LOADED';
+  const isLoaded = snapshot.loadStatus === "LOADED";
   const ListItemComponent =
     selected || !isLoaded ? ListItemText : ListItemButton;
   const listItemComponentProps =
@@ -196,7 +196,7 @@ function CompactSnapshot(props: CompactSnapshotPropsType) {
   const listParentComponentProps = selected
     ? {}
     : {
-        href: { pathname, query: { ...query, snapshot: snapshot.name } }
+        href: { pathname, query: { ...query, snapshot: snapshot.name } },
       };
   return (
     <ListParentComponent {...listParentComponentProps}>
@@ -204,11 +204,11 @@ function CompactSnapshot(props: CompactSnapshotPropsType) {
         disablePadding
         sx={{
           borderBottom: noBorder
-            ? 'unset'
+            ? "unset"
             : (theme) => `1px solid ${theme.palette.divider}`,
           backgroundColor: selected
             ? (theme) => theme.palette.action.hover
-            : 'unset'
+            : "unset",
         }}
         onMouseEnter={() => {
           setHovered(true);
@@ -223,15 +223,15 @@ function CompactSnapshot(props: CompactSnapshotPropsType) {
             {!isLoaded && hovered && (
               <Box
                 sx={{
-                  position: 'absolute',
+                  position: "absolute",
                   top: 0,
                   left: 0,
-                  display: 'flex',
-                  alignItems: 'center',
+                  display: "flex",
+                  alignItems: "center",
                   px: 2,
                   background: (theme) => theme.palette.background.overlay,
-                  height: '100%',
-                  width: '100%'
+                  height: "100%",
+                  width: "100%",
                 }}
               >
                 <Typography color="text.tertiary">
@@ -254,7 +254,7 @@ type SnapshotsSummaryPropsType = {
 };
 
 type CompactSnapshotPropsType = {
-  snapshot: historySnapshotQuery$dataT['dataset']['snapshot'];
+  snapshot: historySnapshotQuery$dataT["dataset"]["snapshot"];
   selected?: boolean;
   noBorder?: boolean;
 };

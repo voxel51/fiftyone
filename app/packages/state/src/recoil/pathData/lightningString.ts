@@ -1,9 +1,15 @@
+import type { SerializableParam } from "recoil";
 import { selectorFamily } from "recoil";
-import { lightningQuery } from "../lightning";
+import { lightningQuery } from "../queryPerformance";
 
 export const lightningStringResults = selectorFamily<
   string[],
-  { path: string; search?: string; exclude?: string[] }
+  {
+    path: string;
+    search?: string;
+    exclude?: string[];
+    filters: SerializableParam;
+  }
 >({
   key: "lightningStringResults",
   get:
@@ -11,7 +17,10 @@ export const lightningStringResults = selectorFamily<
     ({ get }) => {
       const [data] = get(lightningQuery([params]));
 
-      if (data.__typename !== "StringLightningResult") {
+      if (
+        data.__typename !== "StringLightningResult" &&
+        data.__typename !== "ObjectIdLightningResult"
+      ) {
         throw new Error(
           `unexpected ${data.__typename} for path '${params.path}' in lightningStringResults`
         );

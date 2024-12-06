@@ -1,4 +1,4 @@
-import { Box, BoxProps } from '@mui/material';
+import { Box, BoxProps } from "@mui/material";
 
 export default function Container({ children, ...props }: BoxProps) {
   return (
@@ -8,12 +8,12 @@ export default function Container({ children, ...props }: BoxProps) {
         padding: 2,
         borderColor: (theme) => theme.palette.divider,
         borderRadius: 1,
-        '& tr:last-child td': {
-          border: 'none'
+        "& tr:last-child td": {
+          border: "none",
         },
         backgroundColor: (theme) => theme.palette.background.primary,
         boxShadow: (theme) => theme.voxelShadows.sm,
-        ...(props?.sx || {})
+        ...(props?.sx || {}),
       }}
     >
       {children}

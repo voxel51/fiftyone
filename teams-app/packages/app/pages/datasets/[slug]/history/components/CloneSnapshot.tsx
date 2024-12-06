@@ -1,13 +1,13 @@
-import { useCreateDataset, useMutation } from '@fiftyone/hooks';
-import { DatasetModal } from '@fiftyone/teams-components';
+import { useCreateDataset, useMutation } from "@fiftyone/hooks";
+import { DatasetModal } from "@fiftyone/teams-components";
 import {
   DatasetCloneMutation,
   DatasetCloneMutationT,
-  cloneSnapshotState
-} from '@fiftyone/teams-state';
-import { useRouter } from 'next/router';
-import { useCallback } from 'react';
-import { useRecoilState } from 'recoil';
+  cloneSnapshotState,
+} from "@fiftyone/teams-state";
+import { useRouter } from "next/router";
+import { useCallback } from "react";
+import { useRecoilState } from "recoil";
 
 export default function CloneSnapshot() {
   const { query } = useRouter();
@@ -32,10 +32,10 @@ export default function CloneSnapshot() {
           variables: {
             sourceIdentifier: slug as string,
             name: newName,
-            snapshot: name
+            snapshot: name,
           },
-          successMessage: 'Successfully cloned snapshot to a new dataset',
-          onSuccess: handleClose
+          successMessage: "Successfully cloned snapshot to a new dataset",
+          onSuccess: handleClose,
         });
       }}
       title="Clone snapshot to new dataset"

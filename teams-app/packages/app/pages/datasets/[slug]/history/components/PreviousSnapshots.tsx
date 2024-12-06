@@ -3,21 +3,21 @@ import {
   Container,
   EmptyState,
   Pagination,
-  SectionHeader
-} from '@fiftyone/teams-components';
+  SectionHeader,
+} from "@fiftyone/teams-components";
 import {
   ROLLBACK_DATASET_TO_SNAPSHOT,
   historySnapshotsQuery,
   historySnapshotsQueryT,
-  snapshotsPageState
-} from '@fiftyone/teams-state';
-import { LEARN_MORE_ABOUT_DATASET_SNAPSHOT_LINK } from '@fiftyone/teams-state/src/constants';
-import { Timeline, timelineItemClasses } from '@mui/lab';
-import { usePreloadedQuery } from 'react-relay';
-import { useRecoilState } from 'recoil';
-import Snapshot from './Snapshot';
-import { SnapshotActionsModals } from './SnapshotActions';
-import { useCurrentDatasetPermission } from '@fiftyone/hooks';
+  snapshotsPageState,
+} from "@fiftyone/teams-state";
+import { LEARN_MORE_ABOUT_DATASET_SNAPSHOT_LINK } from "@fiftyone/teams-state/src/constants";
+import { Timeline, timelineItemClasses } from "@mui/lab";
+import { usePreloadedQuery } from "react-relay";
+import { useRecoilState } from "recoil";
+import Snapshot from "./Snapshot";
+import { SnapshotActionsModals } from "./SnapshotActions";
+import { useCurrentDatasetPermission } from "@fiftyone/hooks";
 
 export default function PreviousSnapshots(props) {
   const { queryRef, refresh } = props;
@@ -27,11 +27,11 @@ export default function PreviousSnapshots(props) {
   );
   const [pageState, setPageState] = useRecoilState(snapshotsPageState);
   const canRollback = useCurrentDatasetPermission([
-    ROLLBACK_DATASET_TO_SNAPSHOT
+    ROLLBACK_DATASET_TO_SNAPSHOT,
   ]);
   const rollback = canRollback
-    ? ' or permanently roll your dataset back to '
-    : ' ';
+    ? " or permanently roll your dataset back to "
+    : " ";
 
   const { nodes = [], pageTotal = 0 } = history.dataset?.snapshotsPage || {};
   const hasSnapshots = nodes.length > 0;
@@ -50,8 +50,8 @@ export default function PreviousSnapshots(props) {
             sx={{
               [`& .${timelineItemClasses.root}:before`]: {
                 flex: 0,
-                padding: 0
-              }
+                padding: 0,
+              },
             }}
           >
             {nodes.map((node, i) => (

@@ -6,40 +6,36 @@ FiftyOne Server metadata utilities.
 |
 """
 
-from cachetools import LRUCache, TLRUCache
-from datetime import datetime, timedelta
-from enum import Enum
+import asyncio
 import logging
-import requests
 import shutil
 import struct
 import typing as t
-
+from enum import Enum
 from functools import reduce
 
-import asyncio
 import aiofiles
 import aiohttp
 import backoff
-import strawberry as gql
-
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
+import requests
+import strawberry as gql
+from cachetools import LRUCache
 
 import fiftyone as fo
 import fiftyone.core.cache as foc
 import fiftyone.core.fields as fof
-from fiftyone.core.collections import SampleCollection
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
 import fiftyone.core.utils as fou
+from fiftyone.core.collections import SampleCollection
 from fiftyone.core.config import HTTPRetryConfig
-from fiftyone.utils.utils3d import OrthographicProjectionMetadata
+from fiftyone.server.cache import get_cached_media_url
 from fiftyone.utils.rerun import RrdFile
-from fiftyone.server.cache import create_tlru_cache
-
+from fiftyone.utils.utils3d import OrthographicProjectionMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -51,17 +47,6 @@ _ADDITIONAL_MEDIA_FIELDS = {
 }
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
-
-_get_url = create_tlru_cache(
-    lambda path: foc.media_cache.get_url(path),
-    TLRUCache(
-        fo.config.signed_url_cache_size,
-        lambda _, __, now: now
-        + timedelta(hours=fo.config.signed_url_expiration)
-        - timedelta(minutes=5),
-        datetime.now,
-    ),
-)
 _metadata_cache = LRUCache(
     fo.config.signed_url_cache_size,
 )
@@ -582,7 +567,7 @@ async def _create_media_urls(
             else:
                 # Get a URL to use to retrieve metadata (if necessary) and for
                 # the App to use to serve the media
-                url = _get_url(path)
+                url = get_cached_media_url(path)
         except:
             # Gracefully continue so that missing cloud credentials do not
             # cause fatal App errors

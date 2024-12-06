@@ -1,12 +1,12 @@
-import { useTheme } from '@mui/material';
-import SvgIcon, { SvgIconProps } from '@mui/material/SvgIcon';
+import { useTheme } from "@mui/material";
+import SvgIcon, { SvgIconProps } from "@mui/material/SvgIcon";
 
 type PinOutlinedProps = SvgIconProps & {
-  variant?: 'contained' | 'outlined';
+  variant?: "contained" | "outlined";
 };
 
 export default function PinIcon({
-  variant = 'contained',
+  variant = "contained",
   ...props
 }: PinOutlinedProps) {
   const theme = useTheme();
@@ -17,7 +17,7 @@ export default function PinIcon({
       viewBox="0 0 14 20"
       sx={{
         fontSize: 16,
-        fill: variant === 'outlined' ? 'none' : theme.palette.text.secondary
+        fill: variant === "outlined" ? "none" : theme.palette.text.secondary,
       }}
     >
       <path

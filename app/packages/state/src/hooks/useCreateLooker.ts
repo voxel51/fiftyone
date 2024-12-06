@@ -16,6 +16,7 @@ import {
   getFieldInfo,
   getMimeType,
   isNullish,
+  Schema,
 } from "@fiftyone/utilities";
 import { get } from "lodash";
 import { useEffect, useRef } from "react";
@@ -37,7 +38,8 @@ export default <T extends AbstractLooker<BaseState>>(
   thumbnail: boolean,
   options: Omit<Parameters<T["updateOptions"]>[0], "selected">,
   highlight?: (sample: Sample) => boolean,
-  enableTimeline?: boolean
+  enableTimeline?: boolean,
+  sampleSchema?: Schema
 ) => {
   const abortControllerRef = useRef(new AbortController());
   const environment = useRelayEnvironment();
@@ -51,9 +53,9 @@ export default <T extends AbstractLooker<BaseState>>(
   const dataset = useRecoilValue(datasetName);
   const mediaField = useRecoilValue(selectedMediaField(isModal));
 
-  const fieldSchema = useRecoilValue(
-    schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE })
-  );
+  const fieldSchema =
+    sampleSchema ??
+    useRecoilValue(schemaAtoms.fieldSchema({ space: State.SPACE.SAMPLE }));
   const frameFieldSchema = useRecoilValue(
     schemaAtoms.fieldSchema({ space: State.SPACE.FRAME })
   );
@@ -125,7 +127,6 @@ export default <T extends AbstractLooker<BaseState>>(
         let config: ConstructorParameters<T>[1] = {
           enableTimeline,
           fieldSchema: {
-            ...fieldSchema,
             frames: {
               name: "frames",
               ftype: LIST_FIELD,
@@ -134,6 +135,7 @@ export default <T extends AbstractLooker<BaseState>>(
               fields: frameFieldSchema,
               dbField: null,
             },
+            ...fieldSchema,
           },
           sources: urls,
           frameNumber: create === FrameLooker ? frameNumber : undefined,

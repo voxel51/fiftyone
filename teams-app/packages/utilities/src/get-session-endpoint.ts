@@ -1,6 +1,6 @@
-import { SESSION_ENDPOINT } from '@fiftyone/teams-state/src/constants';
+import { SESSION_ENDPOINT } from "@fiftyone/teams-state/src/constants";
 
-const DEFAULT_REDIRECT = '/';
+const DEFAULT_REDIRECT = "/";
 
 export default function getSessionEndpoint(redirect?: string) {
   return `${SESSION_ENDPOINT}?redirect=${encodeURIComponent(

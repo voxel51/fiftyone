@@ -105,7 +105,8 @@ export const getClampedTime = (
 };
 
 export const getTime = (frameNumber: number, frameRate: number): number => {
-  return (frameNumber - 1 + 0.01) / frameRate;
+  const time = (frameNumber - 1 + 0.01) / frameRate;
+  return isFinite(time) ? time : 0.0;
 };
 
 export const getFrameString = (

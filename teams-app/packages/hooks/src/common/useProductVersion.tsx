@@ -1,5 +1,5 @@
-import { useLazyLoadQuery } from 'react-relay';
-import { productVersionQuery } from '@fiftyone/teams-state';
+import { useLazyLoadQuery } from "react-relay";
+import { productVersionQuery } from "@fiftyone/teams-state";
 
 export default function useProductVersion() {
   // todo: use SSR

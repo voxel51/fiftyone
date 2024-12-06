@@ -1,8 +1,8 @@
 import {
   useAddUsersToGroup,
   useRemoveUsersFromGroup,
-  withPermissions
-} from '@fiftyone/hooks';
+  withPermissions,
+} from "@fiftyone/hooks";
 import {
   Box,
   EmptyState,
@@ -11,8 +11,8 @@ import {
   SettingsLayout,
   TableContainer,
   UserGroupModal,
-  WithTooltip
-} from '@fiftyone/teams-components';
+  WithTooltip,
+} from "@fiftyone/teams-components";
 import {
   Group,
   GroupUserFrag,
@@ -22,46 +22,46 @@ import {
   groupUsersPageInfo,
   groupUsersQuery,
   mainTitleSelector,
-  multiUserSearchSelectModalOpenState
-} from '@fiftyone/teams-state';
+  multiUserSearchSelectModalOpenState,
+} from "@fiftyone/teams-state";
 import {
   Breadcrumbs,
   Button,
   IconButton,
   Table,
   TableBody,
-  Typography
-} from '@mui/material';
-import { useEffect } from 'react';
-import { useFragment } from 'react-relay';
-import { useSetRecoilState } from 'recoil';
-import { RelayProps } from 'relay-nextjs';
+  Typography,
+} from "@mui/material";
+import { useEffect } from "react";
+import { useFragment } from "react-relay";
+import { useSetRecoilState } from "recoil";
+import { RelayProps } from "relay-nextjs";
 
-import { Add } from '@mui/icons-material';
-import withRelay from 'lib/withRelay';
+import { Add } from "@mui/icons-material";
+import withRelay from "lib/withRelay";
 
-import { groupUsersQueryT } from '@fiftyone/teams-state';
-import EditIcon from '@mui/icons-material/Edit';
+import { groupUsersQueryT } from "@fiftyone/teams-state";
+import EditIcon from "@mui/icons-material/Edit";
 
-import { groupUsersFragment$key } from '@fiftyone/teams-state/src/Settings/__generated__/groupUsersFragment.graphql';
-import { groupUsersQuery as GroupUsersQuery } from '@fiftyone/teams-state/src/Settings/__generated__/groupUsersQuery.graphql';
+import { groupUsersFragment$key } from "@fiftyone/teams-state/src/Settings/__generated__/groupUsersFragment.graphql";
+import { groupUsersQuery as GroupUsersQuery } from "@fiftyone/teams-state/src/Settings/__generated__/groupUsersQuery.graphql";
 import {
   DEFAULT_PAGE,
   DEFAULT_PAGE_SIZE,
   FEATURE_FLAG_ENABLE_MANUAL_USER_GROUP_MANAGEMENT_ENV_KEY,
-  MANUAL_GROUP_MGMT_DISABLED_TEXT
-} from '@fiftyone/teams-state/src/constants';
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
-import Link from 'next/link';
-import ManageUser from 'pages/datasets/[slug]/manage/access/components/ManageUser';
-import { usePreloadedQuery } from 'react-relay';
-import { useRecoilState } from 'recoil';
-import MultiUserSearchSelectModal from './components/MultiUserSearchSelectModal';
-import { useBooleanEnv } from '@fiftyone/hooks/src/common/useEnv';
+  MANUAL_GROUP_MGMT_DISABLED_TEXT,
+} from "@fiftyone/teams-state/src/constants";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import Link from "next/link";
+import ManageUser from "pages/datasets/[slug]/manage/access/components/ManageUser";
+import { usePreloadedQuery } from "react-relay";
+import { useRecoilState } from "recoil";
+import MultiUserSearchSelectModal from "./components/MultiUserSearchSelectModal";
+import { useBooleanEnv } from "@fiftyone/hooks/src/common/useEnv";
 
 const UserRow = ({
   frag,
-  readOnly = false
+  readOnly = false,
 }: {
   frag: groupUsersFragment$key;
   readOnly?: boolean;
@@ -89,7 +89,7 @@ function GroupUsers({ preloadedQuery }: RelayProps<{}, GroupUsersQuery>) {
   );
   const setPageTitle = useSetRecoilState(mainTitleSelector);
   useEffect(() => {
-    setPageTitle('Settings');
+    setPageTitle("Settings");
   }, [setPageTitle]);
 
   const { userGroup } = usePreloadedQuery<groupUsersQueryT>(
@@ -118,22 +118,22 @@ function GroupUsers({ preloadedQuery }: RelayProps<{}, GroupUsersQuery>) {
             sx={{
               pb: 1,
               li: {
-                maxWidth: '70%',
+                maxWidth: "70%",
                 height: 30,
-                display: 'flex',
-                alignItems: 'center'
-              }
+                display: "flex",
+                alignItems: "center",
+              },
             }}
             separator={
-              <ArrowForwardIosIcon fontSize="small" sx={{ mt: '.5rem' }} />
+              <ArrowForwardIosIcon fontSize="small" sx={{ mt: ".5rem" }} />
             }
           >
             <Typography
               variant="h5"
               fontWeight="bolder"
               sx={{
-                cursor: 'pointer',
-                '&:hover': { color: (theme) => theme.palette.text.primary }
+                cursor: "pointer",
+                "&:hover": { color: (theme) => theme.palette.text.primary },
               }}
             >
               <Link href="/settings/team/groups">All groups</Link>
@@ -143,11 +143,11 @@ function GroupUsers({ preloadedQuery }: RelayProps<{}, GroupUsersQuery>) {
                 variant="h5"
                 sx={{
                   color: (theme) => theme.palette.text.primary,
-                  position: 'relative'
+                  position: "relative",
                 }}
                 noWrap
               >
-                {userGroup?.name || 'No name'}
+                {userGroup?.name || "No name"}
               </Typography>
               <WithTooltip
                 disabled={!enableManualGroupMgmt}
@@ -155,10 +155,10 @@ function GroupUsers({ preloadedQuery }: RelayProps<{}, GroupUsersQuery>) {
               >
                 <IconButton
                   size="small"
-                  title={'Edit group info'}
+                  title={"Edit group info"}
                   sx={{
                     background: (theme) => theme.palette.background.secondary,
-                    ml: 1
+                    ml: 1,
                   }}
                   onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
@@ -178,12 +178,12 @@ function GroupUsers({ preloadedQuery }: RelayProps<{}, GroupUsersQuery>) {
             variant="h5"
             sx={{
               color: (theme) => theme.palette.text.secondary,
-              position: 'relative'
+              position: "relative",
             }}
             fontSize="1.2rem"
             noWrap
           >
-            {userGroup?.description || ''}
+            {userGroup?.description || ""}
           </Typography>
         }
       >
@@ -198,7 +198,7 @@ function GroupUsers({ preloadedQuery }: RelayProps<{}, GroupUsersQuery>) {
             variant="contained"
             disabled={!enableManualGroupMgmt}
           >
-            <Add sx={{ mr: 1, fontSize: '1.5rem' }} />
+            <Add sx={{ mr: 1, fontSize: "1.5rem" }} />
             Add users
           </Button>
         </WithTooltip>
@@ -209,7 +209,7 @@ function GroupUsers({ preloadedQuery }: RelayProps<{}, GroupUsersQuery>) {
           <TableContainer
             sx={{
               border: (theme) => `1px solid ${theme.palette.divider}`,
-              borderRadius: 2
+              borderRadius: 2,
             }}
           >
             <Table>
@@ -258,11 +258,11 @@ function GroupUsers({ preloadedQuery }: RelayProps<{}, GroupUsersQuery>) {
 }
 
 export default withRelay(
-  withPermissions(GroupUsers, [MANAGE_ORGANIZATION], 'user'),
+  withPermissions(GroupUsers, [MANAGE_ORGANIZATION], "user"),
   groupUsersQuery,
   {},
   {
     page: DEFAULT_PAGE,
-    pageSize: DEFAULT_PAGE_SIZE
+    pageSize: DEFAULT_PAGE_SIZE,
   }
 );

@@ -1,15 +1,15 @@
-import { getSessionEndpoint } from '@fiftyone/teams-utilities';
-import React from 'react';
-import { getRelaySerializedState } from 'relay-nextjs';
-import { withHydrateDatetime } from 'relay-nextjs/date';
+import { getSessionEndpoint } from "@fiftyone/teams-utilities";
+import React from "react";
+import { getRelaySerializedState } from "relay-nextjs";
+import { withHydrateDatetime } from "relay-nextjs/date";
 import {
   Environment,
   IEnvironment,
   Network,
   RecordSource,
-  Store
-} from 'relay-runtime';
-import { SIGN_IN_ENDPOINT_WITH_ERROR_PREFIX } from './constants';
+  Store,
+} from "relay-runtime";
+import { SIGN_IN_ENDPOINT_WITH_ERROR_PREFIX } from "./constants";
 
 export const TeamsRelayEnvironment = React.createContext<
   IEnvironment | undefined
@@ -27,16 +27,16 @@ function triggerSignIn(errMsg?: string) {
 
 export function createClientNetwork() {
   return Network.create(async (params, variables) => {
-    const response = await fetch('/api/proxy/graphql-v1', {
-      method: 'POST',
-      credentials: 'include',
+    const response = await fetch("/api/proxy/graphql-v1", {
+      method: "POST",
+      credentials: "include",
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         query: params.text,
-        variables
-      })
+        variables,
+      }),
     });
 
     let jsonResponse;
@@ -45,13 +45,13 @@ export function createClientNetwork() {
       try {
         jsonResponse = JSON.parse(apiResponse, withHydrateDatetime);
       } catch (e) {
-        console.debug('Error parsing graphql response from api', e);
+        console.debug("Error parsing graphql response from api", e);
       }
     }
 
     if (response.status === 401 || response.status === 403) {
-      console.debug('Unauthorized api request', jsonResponse || apiResponse);
-      const errMsg = jsonResponse?.error || 'UserComplianceError';
+      console.debug("Unauthorized api request", jsonResponse || apiResponse);
+      const errMsg = jsonResponse?.error || "UserComplianceError";
       return triggerSignIn(errMsg);
     }
 
@@ -66,11 +66,11 @@ export function createClientNetwork() {
 
 let teamsClientEnv: Environment | null = null;
 export function getTeamsClientEnvironment(): Environment {
-  if (typeof window !== 'undefined' && teamsClientEnv === null) {
+  if (typeof window !== "undefined" && teamsClientEnv === null) {
     teamsClientEnv = new Environment({
       network: createClientNetwork(),
       store: new Store(new RecordSource(getRelaySerializedState()?.records)),
-      isServer: false
+      isServer: false,
     });
   }
 

@@ -1,6 +1,6 @@
-import * as state from '@fiftyone/teams-state';
-import { useMemo } from 'react';
-import { useRecoilState } from 'recoil';
+import * as state from "@fiftyone/teams-state";
+import { useMemo } from "react";
+import { useRecoilState } from "recoil";
 
 /**
  * Custom hook to be connected to the URL params as well
@@ -21,7 +21,7 @@ const useUsersSearch = () => {
       setPageInfo,
       field,
       direction,
-      setSort
+      setSort,
     };
   }, [page, pageSize, setPageInfo, field, direction, setSort]);
 };

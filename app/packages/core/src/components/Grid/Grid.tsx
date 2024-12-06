@@ -12,6 +12,7 @@ import React, {
 } from "react";
 import { useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
+import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
 import { gridCrop, gridSpacing, pageParameters } from "./recoil";
 import useAt from "./useAt";
 import useEscape from "./useEscape";
@@ -61,15 +62,17 @@ function Grid() {
         looker?.destroy();
         lookerStore.delete(id.description);
       },
+      detach: (id) => {
+        const looker = lookerStore.get(id.description);
+        looker?.detach();
+      },
       onItemClick: setSample,
       retainItems: true,
       rowAspectRatioThreshold: threshold,
       get: (next) => page(next),
-      render: (id, element, dimensions, soft, hide) => {
+      render: (id, element, dimensions, zooming) => {
         if (lookerStore.has(id.description)) {
-          const looker = lookerStore.get(id.description);
-          hide ? looker?.disable() : looker?.attach(element, dimensions);
-
+          lookerStore.get(id.description)?.attach(element, dimensions);
           return;
         }
 
@@ -79,7 +82,7 @@ function Grid() {
           throw new Error("bad data");
         }
 
-        if (soft) {
+        if (zooming) {
           // we are scrolling fast, skip creation
           return;
         }
@@ -121,7 +124,17 @@ function Grid() {
     }
 
     const element = document.getElementById(id);
+
+    const info = fos.getQueryPerformancePath();
+    const timeout = setTimeout(() => {
+      if (info) {
+        window.dispatchEvent(
+          new QueryPerformanceToastEvent(info.path, info.isFrameField)
+        );
+      }
+    }, QP_WAIT);
     const mount = () => {
+      clearTimeout(timeout);
       document.dispatchEvent(new CustomEvent("grid-mount"));
     };
 
@@ -130,6 +143,7 @@ function Grid() {
     spotlight.addEventListener("rowchange", set);
 
     return () => {
+      clearTimeout(timeout);
       freeVideos();
       spotlight.removeEventListener("load", mount);
       spotlight.removeEventListener("rowchange", set);

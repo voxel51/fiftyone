@@ -1,1 +1,1 @@
-export { default as useUpdateInvitationsList } from './useUpdateInvitationsList';
+export { default as useUpdateInvitationsList } from "./useUpdateInvitationsList";

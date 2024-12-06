@@ -1,9 +1,9 @@
-import { graphql } from 'react-relay/hooks';
-import { atom } from 'recoil';
+import { graphql } from "react-relay/hooks";
+import { atom } from "recoil";
 
 export enum UPLOAD_PLUGIN_MODE {
-  INSTALL = 'install',
-  UPGRADE = 'upgrade'
+  INSTALL = "install",
+  UPGRADE = "upgrade",
 }
 
 export const uploadPluginAtom = atom<{
@@ -11,24 +11,24 @@ export const uploadPluginAtom = atom<{
   mode?: UPLOAD_PLUGIN_MODE;
   pluginName?: string;
 }>({
-  key: 'uploadPluginAtom',
-  default: {}
+  key: "uploadPluginAtom",
+  default: {},
 });
 
 export const manageOperatorsPluginAtom = atom<{
   open?: boolean;
   pluginName?: string;
 }>({
-  key: 'manageOperatorsPluginAtom',
-  default: {}
+  key: "manageOperatorsPluginAtom",
+  default: {},
 });
 
 export const uninstallPluginAtom = atom<{
   open?: boolean;
   pluginName?: string;
 }>({
-  key: 'uninstallPluginAtom',
-  default: {}
+  key: "uninstallPluginAtom",
+  default: {},
 });
 
 export const pluginsQuery = graphql`

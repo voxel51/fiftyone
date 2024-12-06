@@ -5,7 +5,10 @@ FiftyOne Teams internal cloud credential management tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import datetime
 import json
+import os
+
 import pytest
 from unittest import mock
 
@@ -56,30 +59,46 @@ DEFAULT_CREDENTIAL_DATA = {
 ENCRYPTION_KEY = "'Ra_32QZcYDKDd75a56lUy5rNffhvbjps36gPdHOqMjE='"
 
 
-@pytest.fixture(name="manager", scope="module")
-def manager_fixture():
-    with mock.patch.object(
-        credentials.foo, "get_cloud_credentials"
-    ) as get_cloud_credentials_mock:
-        fernet = Fernet(ENCRYPTION_KEY)
-        creds = [
-            {
-                "provider": c["provider"],
-                "prefixes": c["prefixes"],
-                "credentials": fernet.encrypt(json.dumps(c["creds"]).encode()),
-            }
-            for c in CREDENTIAL_DATA
-        ]
-        creds += [
-            {
-                "provider": key,
-                "prefixes": [],
-                "credentials": fernet.encrypt(json.dumps(c).encode()),
-            }
-            for key, c in DEFAULT_CREDENTIAL_DATA.items()
-        ]
-        get_cloud_credentials_mock.return_value = creds
-        return credentials.CloudCredentialsManager(ENCRYPTION_KEY)
+@pytest.fixture(
+    name="manager",
+)
+def manager_fixture(tmp_path_factory):
+    tmp_dir = tmp_path_factory.mktemp("fiftyone_config")
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setenv("FIFTYONE_CONFIG_PATH", str(tmp_dir))
+    try:
+        with mock.patch.object(
+            credentials.foo, "get_cloud_credentials"
+        ) as get_cloud_credentials_mock:
+            fernet = Fernet(ENCRYPTION_KEY)
+            creds = [
+                {
+                    "provider": c["provider"],
+                    "prefixes": c["prefixes"],
+                    "credentials": fernet.encrypt(
+                        json.dumps(c["creds"]).encode()
+                    ),
+                    "modified_at": datetime.datetime.strptime(
+                        "2025-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%SZ"
+                    ),
+                }
+                for c in CREDENTIAL_DATA
+            ]
+            creds += [
+                {
+                    "provider": key,
+                    "prefixes": [],
+                    "credentials": fernet.encrypt(json.dumps(c).encode()),
+                    "modified_at": datetime.datetime.strptime(
+                        "2025-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%SZ"
+                    ),
+                }
+                for key, c in DEFAULT_CREDENTIAL_DATA.items()
+            ]
+            get_cloud_credentials_mock.return_value = creds
+            yield credentials.CloudCredentialsManager(ENCRYPTION_KEY)
+    finally:
+        monkeypatch.undo()
 
 
 def _make_default_creds_path(manager, provider):

@@ -1,8 +1,8 @@
-import { useBooleanEnv } from '@fiftyone/hooks/src/common/useEnv';
-import { Dialog } from '@fiftyone/teams-components';
-import { FIFTYONE_APP_DEMO_MODE } from '@fiftyone/teams-state/src/constants';
-import DemoInstallContent from './DemoInstallContent';
-import InstallContent from './InstallContent';
+import { useBooleanEnv } from "@fiftyone/hooks/src/common/useEnv";
+import { Dialog } from "@fiftyone/teams-components";
+import { FIFTYONE_APP_DEMO_MODE } from "@fiftyone/teams-state/src/constants";
+import DemoInstallContent from "./DemoInstallContent";
+import InstallContent from "./InstallContent";
 
 interface Props {
   open?: boolean;

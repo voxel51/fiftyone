@@ -1,5 +1,15 @@
 import { selectorFamily } from "recoil";
-import { lightningQuery } from "../lightning";
+import { lightningQuery } from "../queryPerformance";
+import { filterFields, isNumericField } from "../schema";
+
+export const numericFields = selectorFamily({
+  key: "numericFields",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      return get(filterFields(path)).filter((p) => get(isNumericField(p)));
+    },
+});
 
 export const lightningNumericResults = selectorFamily({
   key: "lightningNumericResults",
@@ -12,6 +22,7 @@ export const lightningNumericResults = selectorFamily({
         return {
           max: data.dateMax,
           min: data.dateMin,
+          none: data.none,
         };
       }
 
@@ -19,6 +30,7 @@ export const lightningNumericResults = selectorFamily({
         return {
           max: data.datetimeMax,
           min: data.datetimeMin,
+          none: data.none,
         };
       }
 
@@ -26,6 +38,7 @@ export const lightningNumericResults = selectorFamily({
         return {
           max: data.intMax,
           min: data.intMin,
+          none: data.none,
         };
       }
 
@@ -65,6 +78,7 @@ export const lightningNonfinites = selectorFamily({
           inf: data.inf,
           nan: data.nan,
           ninf: data.ninf,
+          none: data.none,
         };
       }
 

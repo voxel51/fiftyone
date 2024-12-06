@@ -1,10 +1,10 @@
-import { ParsedUrlQuery } from 'querystring';
-import { commonQueryParams, normalizeQueryParams } from './urlSyncCommon';
-import { QParamT } from '@fiftyone/teams-state/src/urlSyncCommon';
+import { ParsedUrlQuery } from "querystring";
+import { commonQueryParams, normalizeQueryParams } from "./urlSyncCommon";
+import { QParamT } from "@fiftyone/teams-state/src/urlSyncCommon";
 
 // known query parameters
 const queryParams: { [key: string]: QParamT } = {
-  ...commonQueryParams
+  ...commonQueryParams,
 };
 
 export const normalizeDatasetAccessQueryParams = (
@@ -13,6 +13,6 @@ export const normalizeDatasetAccessQueryParams = (
 ): { [key: string]: any } => {
   return {
     ...normalizeQueryParams(query, queryParams),
-    datasetIdentifier: identifier
+    datasetIdentifier: identifier,
   };
 };

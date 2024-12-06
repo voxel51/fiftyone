@@ -1,12 +1,12 @@
-const MIDDLE_ITEM_SEPARATOR = ', ';
-const LAST_ITEM_SEPARATOR = ', and ';
-const TUPLE_SEPARATOR = ' and ';
+const MIDDLE_ITEM_SEPARATOR = ", ";
+const LAST_ITEM_SEPARATOR = ", and ";
+const TUPLE_SEPARATOR = " and ";
 
 export function formatListWithCount(items: Array<ListWithCountItem>) {
   return items.reduce((list, item, i) => {
     const { label, pluralLabel, amount } = item;
     const computedLabel = amount === 1 ? label : pluralLabel || `${label}s`;
-    let separator = '';
+    let separator = "";
     if (i > 0) {
       if (items.length === 2) separator = TUPLE_SEPARATOR;
       else if (items.length >= 2) {
@@ -19,7 +19,7 @@ export function formatListWithCount(items: Array<ListWithCountItem>) {
     }
 
     return `${list}${separator}${amount} ${computedLabel}`;
-  }, '');
+  }, "");
 }
 
 export function pluralize(
@@ -28,7 +28,7 @@ export function pluralize(
   plural?: string | JSX.Element
 ) {
   const fallbackPlural =
-    typeof singular === 'string' ? `${singular}s` : singular;
+    typeof singular === "string" ? `${singular}s` : singular;
   return number === 1 ? singular : plural || fallbackPlural;
 }
 

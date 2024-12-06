@@ -1,6 +1,6 @@
-import { currentDatasetState } from '@fiftyone/teams-state';
-import { useRouter } from 'next/router';
-import { useRecoilValue } from 'recoil';
+import { currentDatasetState } from "@fiftyone/teams-state";
+import { useRouter } from "next/router";
+import { useRecoilValue } from "recoil";
 
 export function useCurrentDataset() {
   const route = useRouter();

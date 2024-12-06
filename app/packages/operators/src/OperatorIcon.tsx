@@ -24,6 +24,7 @@ export default function OperatorIcon(props: CustomIconPropsType) {
   } else if (_builtIn) {
     return <ImageIcon src={iconPath} />;
   } else {
+    if (!pluginName) return null;
     return (
       <CustomOperatorIcon
         pluginName={pluginName}

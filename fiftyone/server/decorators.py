@@ -40,7 +40,9 @@ async def load_variables(request: Request):
 
 async def create_response(response: dict):
     return Response(
-        await run_sync_task(lambda: json_util.dumps(response, cls=Encoder))
+        await run_sync_task(lambda: json_util.dumps(response, cls=Encoder)),
+        media_type="application/json",
+        headers={"Content-Type": "application/json"},
     )
 
 

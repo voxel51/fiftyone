@@ -94,7 +94,7 @@ class AbstractSecret(ISecret, abc.ABC):
 
 class UnencryptedSecret(AbstractSecret):
     """
-    Fiftyone secret with plaintext value.
+    FiftyOne secret with plaintext value.
     """
 
     def __init__(self, key: str, value: str):

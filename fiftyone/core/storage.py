@@ -6,7 +6,6 @@ File storage utilities.
 |
 """
 from collections import defaultdict
-from contextlib import contextmanager
 from datetime import datetime
 import io
 import itertools
@@ -52,6 +51,7 @@ region_clients = {}
 bucket_clients = {}
 path_clients = {}
 client_lock = threading.Lock()
+init_lock = threading.Lock()
 minio_prefixes = []
 azure_prefixes = []
 
@@ -66,28 +66,29 @@ def init_storage():
 
     This method may be called at any time to reinitialize storage client usage.
     """
-    global creds_manager
-    if fi.has_encryption_key():
-        from fiftyone.internal.credentials import CloudCredentialsManager
+    with init_lock:
+        global creds_manager
+        if fi.has_encryption_key():
+            from fiftyone.internal.credentials import CloudCredentialsManager
 
-        encryption_key = os.environ.get(fic.ENCRYPTION_KEY_ENV_VAR)
-        creds_manager = CloudCredentialsManager(encryption_key)
-    else:
-        creds_manager = None
+            encryption_key = os.environ.get(fic.ENCRYPTION_KEY_ENV_VAR)
+            creds_manager = CloudCredentialsManager(encryption_key)
+        else:
+            creds_manager = None
 
-    global available_file_systems
-    available_file_systems = None
+        global available_file_systems
+        available_file_systems = None
 
-    default_clients.clear()
-    bucket_regions.clear()
-    region_clients.clear()
-    bucket_clients.clear()
-    path_clients.clear()
-    minio_prefixes.clear()
-    azure_prefixes.clear()
+        default_clients.clear()
+        bucket_regions.clear()
+        region_clients.clear()
+        bucket_clients.clear()
+        path_clients.clear()
+        minio_prefixes.clear()
+        azure_prefixes.clear()
 
-    _load_minio_prefixes()
-    _load_azure_prefixes()
+        _load_minio_prefixes()
+        _load_azure_prefixes()
 
 
 def _load_minio_prefixes():
@@ -623,13 +624,15 @@ def to_writeable(path, **kwargs):
     return get_url(path, **params)
 
 
-def make_temp_dir(basedir=None):
+def make_temp_dir(basedir=None, ensure_writeable=False):
     """Makes a temporary directory.
 
     Args:
         basedir (None): an optional local or remote directory in which to
             create the new directory. The default is
             ``fiftyone.config.default_dataset_dir``
+        ensure_writeable (False): If ``True`` and the basedir is not writeable,
+            pivot to the system's default temp dir location.
 
     Returns:
         the temporary directory path
@@ -638,7 +641,17 @@ def make_temp_dir(basedir=None):
         basedir = fo.config.default_dataset_dir
 
     if is_local(basedir):
-        ensure_dir(basedir)
+        try:
+            ensure_dir(basedir)
+        except PermissionError:
+            if not ensure_writeable:
+                raise
+            basedir = None
+        else:
+            # Dir is there but check that it's writeable
+            if ensure_writeable and not os.access(basedir, os.W_OK):
+                basedir = None
+
         return tempfile.mkdtemp(dir=basedir)
 
     return join(basedir, str(bson.ObjectId()))
@@ -651,14 +664,19 @@ class TempDir(object):
         basedir (None): an optional local or remote directory in which to
             create the new directory. The default is
             ``fiftyone.config.default_dataset_dir``
+        ensure_writeable (False): If ``True`` and the basedir is not writeable,
+            pivot to the system's default temp dir location.
     """
 
-    def __init__(self, basedir=None):
+    def __init__(self, basedir=None, ensure_writeable=False):
         self._basedir = basedir
+        self._ensure_writeable = ensure_writeable
         self._name = None
 
     def __enter__(self):
-        self._name = make_temp_dir(basedir=self._basedir)
+        self._name = make_temp_dir(
+            basedir=self._basedir, ensure_writeable=self._ensure_writeable
+        )
         return self._name
 
     def __exit__(self, *args):
@@ -2718,11 +2736,9 @@ def _make_client(
 
 
 def _refresh_managed_credentials_if_necessary():
-    if creds_manager is None:
-        return
-
-    if creds_manager.is_expired:
-        init_storage()
+    if creds_manager is None or creds_manager.is_expired:
+        if fi.has_encryption_key():
+            init_storage()
 
 
 def _get_buckets_with_managed_credentials(fs):

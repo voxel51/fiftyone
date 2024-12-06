@@ -9,8 +9,6 @@ FiftyOne operator registry.
 from fiftyone.operators.panel import Panel
 import fiftyone.plugins.context as fopc
 
-from .builtin import BUILTIN_OPERATORS
-
 
 def get_operator(operator_uri, enabled=True):
     """Gets the operator with the given URI.
@@ -86,12 +84,16 @@ class OperatorRegistry(object):
         Returns:
             a list of :class:`fiftyone.operators.Operator` instances
         """
+        # If this is a top-level import, then it creates circular dependency issues.
+        from .builtin import BUILTIN_OPERATORS, BUILTIN_PANELS
+
         operators = []
         for pctx in self.plugin_contexts:
             operators.extend(pctx.instances)
 
         if include_builtin:
             operators.extend(BUILTIN_OPERATORS)
+            operators.extend(BUILTIN_PANELS)
 
         if type == "panel":
             operators = [op for op in operators if isinstance(op, Panel)]

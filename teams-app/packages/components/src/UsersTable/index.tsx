@@ -1,20 +1,20 @@
-import { Box, Table, TableBody } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import { Box, Table, TableBody } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import {
   TableContainer,
   UsersTableRow,
-  Pagination
-} from '@fiftyone/teams-components';
-import { usePreloadedQuery } from 'react-relay';
+  Pagination,
+} from "@fiftyone/teams-components";
+import { usePreloadedQuery } from "react-relay";
 import {
   teamUsersListQuery,
   teamUsersListQueryT,
-  userListUsersCountState
-} from '@fiftyone/teams-state';
-import { useEffect } from 'react';
-import EmptyUsers from '../EmptyUsers';
-import { useSetRecoilState } from 'recoil';
-import { useUserAudit } from '@fiftyone/hooks';
+  userListUsersCountState,
+} from "@fiftyone/teams-state";
+import { useEffect } from "react";
+import EmptyUsers from "../EmptyUsers";
+import { useSetRecoilState } from "recoil";
+import { useUserAudit } from "@fiftyone/hooks";
 
 type User = {
   id: string;
@@ -39,7 +39,7 @@ export default function UsersTable({
   onPageSizeChange,
   page,
   pageSize,
-  queryRef
+  queryRef,
 }: UsersTableProps) {
   const setUserListUsersCount = useSetRecoilState(userListUsersCountState);
   const { usersPage } = usePreloadedQuery<teamUsersListQueryT>(
@@ -64,9 +64,9 @@ export default function UsersTable({
     <Box>
       <TableContainer
         sx={{
-          border: '1px solid',
+          border: "1px solid",
           borderColor: theme.palette.divider,
-          borderRadius: 2
+          borderRadius: 2,
         }}
       >
         <Table>

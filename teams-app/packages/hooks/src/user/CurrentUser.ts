@@ -1,4 +1,4 @@
-import { graphql } from 'react-relay/hooks';
+import { graphql } from "react-relay/hooks";
 
 const CurrentUserFragment = graphql`
   fragment CurrentUserFragment on Query

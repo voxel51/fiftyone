@@ -1,12 +1,12 @@
-import type { Setter } from '@fiftyone/relay';
-import * as fos from '@fiftyone/state';
-import { loading } from 'pages/state';
-import { useMemo } from 'react';
-import { useRecoilCallback } from 'recoil';
-import type { Page } from '../loadPageQuery';
-import type { DatasetData } from '../transition';
-import { pageRunner } from '../usePage';
-import { REGISTERED_SETTERS } from './registerSetter';
+import type { Setter } from "@fiftyone/relay";
+import * as fos from "@fiftyone/state";
+import { loading } from "pages/state";
+import { useMemo } from "react";
+import { useRecoilCallback } from "recoil";
+import type { Page } from "../loadPageQuery";
+import type { DatasetData } from "../transition";
+import { pageRunner } from "../usePage";
+import { REGISTERED_SETTERS } from "./registerSetter";
 
 const useSetters = (dataset: DatasetData) => {
   const handleError = useRecoilCallback(
@@ -26,7 +26,7 @@ const useSetters = (dataset: DatasetData) => {
       environment: fos.getCurrentEnvironment(),
       handleError,
       runner: (page: Page) => pageRunner(page),
-      setter
+      setter,
     };
     REGISTERED_SETTERS.forEach((value, key) => {
       setters.set(key, value(ctx));

@@ -10,7 +10,8 @@ export default r(graphql`
       colorscale
       disableFrameFiltering
       gridZoom
-      lightningThreshold
+      enableQueryPerformance
+      defaultQueryPerformance
       loopVideos
       mediaFallback
       multicolorKeypoints
@@ -21,7 +22,6 @@ export default r(graphql`
       showLabel
       showSkeletons
       showTooltip
-      sidebarMode
       theme
       timezone
       useFrameNumber

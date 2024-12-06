@@ -308,12 +308,12 @@ def _add_labels_tags_counts(view):
             isinstance(field, fof.EmbeddedDocumentField)
             and issubclass(field.document_type, fol._HasLabelList)
         ):
-            if path.startswith(view._FRAMES_PREFIX):
+            if view._is_frame_field(path):
                 add_tags = _add_frame_labels_tags
             else:
                 add_tags = _add_labels_tags
         else:
-            if path.startswith(view._FRAMES_PREFIX):
+            if view._is_frame_field(path):
                 add_tags = _add_frame_label_tags
             else:
                 add_tags = _add_label_tags
@@ -564,19 +564,32 @@ def _make_range_query(path: str, field: fof.Field, args):
         mn, mx = None, None
 
     exclude = args.get("exclude", False)
+
+    min_expr = {path: {"$gte": mn}} if mn is not None else None
+    max_expr = {path: {"$lte": mx}} if mx is not None else None
     if not exclude and range_:
         return {
             "$and": [
-                {path: {"$gte": mn}},
-                {path: {"$lte": mx}},
+                e
+                for e in [
+                    min_expr,
+                    max_expr,
+                ]
+                if e
             ]
         }
 
+    min_expr = {path: {"$lt": mn}} if mn is not None else None
+    max_expr = {path: {"$gt": mx}} if mx is not None else None
     if range_:
         return {
             "$or": [
-                {path: {"$lt": mn}},
-                {path: {"$gt": mx}},
+                e
+                for e in [
+                    min_expr,
+                    max_expr,
+                ]
+                if e
             ]
         }
 
@@ -601,8 +614,9 @@ def _make_range_query(path: str, field: fof.Field, args):
 def _make_scalar_expression(f, args, field, list_field=None, is_label=False):
     expr = None
     if _is_support(field):
-        mn, mx = args["range"]
-        expr = (f[0] >= mn) & (f[1] <= mx)
+        if "range" in args:
+            mn, mx = args["range"]
+            expr = (f[0] >= mn) & (f[1] <= mx)
     elif isinstance(field, fof.ListField):
         if isinstance(list_field, str):
             return f.filter(
@@ -627,12 +641,14 @@ def _make_scalar_expression(f, args, field, list_field=None, is_label=False):
         if not true and not false:
             expr = (f != True) & (f != False)
     elif _is_datetime(field):
-        mn, mx = args["range"]
-        p = fou.timestamp_to_datetime
-        expr = (f >= p(mn)) & (f <= p(mx))
+        if "range" in args:
+            mn, mx = args["range"]
+            p = fou.timestamp_to_datetime
+            expr = (f >= p(mn)) & (f <= p(mx))
     elif isinstance(field, (fof.FloatField, fof.IntField)):
-        mn, mx = args["range"]
-        expr = (f >= mn) & (f <= mx)
+        if "range" in args:
+            mn, mx = args["range"]
+            expr = (f >= mn) & (f <= mx)
     else:
         values = args["values"]
         if not values:

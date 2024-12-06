@@ -1,7 +1,7 @@
 import { VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { selectorFamily } from "recoil";
 import { aggregation } from "../aggregations";
-import { isLightningPath, lightning, lightningUnlocked } from "../lightning";
+import { queryPerformance } from "../queryPerformance";
 import * as schemaAtoms from "../schema";
 import * as selectors from "../selectors";
 import { noneCount } from "./counts";
@@ -26,7 +26,7 @@ export const stringResults = selectorFamily({
 
       if (isSkeletonPoints) {
         const skeleton = get(selectors.skeleton(parent));
-        if (skeleton && skeleton.labels) {
+        if (skeleton?.labels) {
           return {
             count: skeleton.labels.length,
             results: skeleton.labels.map((value) => ({ value, count: null })),
@@ -34,12 +34,7 @@ export const stringResults = selectorFamily({
         }
       }
 
-      if (
-        !params.modal &&
-        get(isLightningPath(params.path)) &&
-        get(lightning) &&
-        !get(lightningUnlocked)
-      ) {
+      if (!params.modal && get(queryPerformance)) {
         return { count: null, results: [] };
       }
 

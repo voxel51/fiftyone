@@ -1,12 +1,12 @@
-import { Box, EmptyState } from '@fiftyone/teams-components';
+import { Box, EmptyState } from "@fiftyone/teams-components";
 import {
   groupSearchInputState,
-  groupSearchTermState
-} from '@fiftyone/teams-state';
-import { Typography } from '@mui/material';
-import Button from '@mui/material/Button';
-import { useTheme } from '@mui/material/styles';
-import { useRecoilValue, useResetRecoilState } from 'recoil';
+  groupSearchTermState,
+} from "@fiftyone/teams-state";
+import { Typography } from "@mui/material";
+import Button from "@mui/material/Button";
+import { useTheme } from "@mui/material/styles";
+import { useRecoilValue, useResetRecoilState } from "recoil";
 
 export default function EmptyGroups() {
   const theme = useTheme();

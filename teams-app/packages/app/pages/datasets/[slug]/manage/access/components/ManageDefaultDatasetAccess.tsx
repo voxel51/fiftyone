@@ -1,48 +1,48 @@
-import { useCacheStore, useCurrentOrganization } from '@fiftyone/hooks';
+import { useCacheStore, useCurrentOrganization } from "@fiftyone/hooks";
 import {
   DATASET_SHARE_MODAL_INFO_CACHE_KEY,
   DatasetPermission,
   manageDatasetDefaultAccessInfoQuery,
   manageDatasetDefaultAccessInfoQueryT,
-  manageDatasetSetDatasetDefaultPermissionMutation
-} from '@fiftyone/teams-state';
+  manageDatasetSetDatasetDefaultPermissionMutation,
+} from "@fiftyone/teams-state";
 import {
   DatasetPermissionSelection,
-  TableContainer
-} from '@fiftyone/teams-components';
-import { CorporateFare } from '@mui/icons-material';
+  TableContainer,
+} from "@fiftyone/teams-components";
+import { CorporateFare } from "@mui/icons-material";
 import {
   Avatar,
   CardHeader,
   Table,
   TableBody,
   TableCell,
-  TableRow
-} from '@mui/material';
-import { useRouter } from 'next/router';
-import { useLazyLoadQuery } from 'react-relay';
-import { useMutation } from '@fiftyone/hooks';
-import { useState } from 'react';
+  TableRow,
+} from "@mui/material";
+import { useRouter } from "next/router";
+import { useLazyLoadQuery } from "react-relay";
+import { useMutation } from "@fiftyone/hooks";
+import { useState } from "react";
 
 type ManageDefaultDatasetAccessProps = {
   readOnly?: boolean;
 };
 
 export default function ManageDefaultDatasetAccess({
-  readOnly
+  readOnly,
 }: ManageDefaultDatasetAccessProps) {
   const router = useRouter();
   const { slug: datasetIdentifier } = router.query;
   const result = useLazyLoadQuery<manageDatasetDefaultAccessInfoQueryT>(
     manageDatasetDefaultAccessInfoQuery,
     { identifier: datasetIdentifier as string },
-    { fetchPolicy: 'store-and-network' }
+    { fetchPolicy: "store-and-network" }
   );
 
-  const usersCount = result?.dataset?.usersCount || '';
+  const usersCount = result?.dataset?.usersCount || "";
 
   const [defaultPermission, setDefaultPermission] = useState<DatasetPermission>(
-    (result?.dataset?.defaultPermission || 'VIEW') as DatasetPermission
+    (result?.dataset?.defaultPermission || "VIEW") as DatasetPermission
   );
 
   const [setDatasetDefaultPermission] = useMutation(
@@ -68,11 +68,11 @@ export default function ManageDefaultDatasetAccess({
                 title={`Members at ${organizationDisplayName}`}
                 subheader={`${usersCount} people`}
                 titleTypographyProps={{
-                  variant: 'body1',
-                  color: (theme) => theme.palette.text.primary
+                  variant: "body1",
+                  color: (theme) => theme.palette.text.primary,
                 }}
                 subheaderTypographyProps={{
-                  variant: 'body1'
+                  variant: "body1",
                 }}
               />
             </TableCell>
@@ -83,19 +83,19 @@ export default function ManageDefaultDatasetAccess({
                 onChange={(permission) => {
                   setDatasetDefaultPermission({
                     successMessage:
-                      'Successfully updated the default permission of dataset',
+                      "Successfully updated the default permission of dataset",
                     errorMessage:
-                      'Failed to update the default permission of dataset',
+                      "Failed to update the default permission of dataset",
                     variables: { datasetIdentifier, permission },
                     onCompleted() {
                       setDefaultPermission(permission);
                       setStale(true);
-                    }
+                    },
                   });
                 }}
                 includeNoAccess
                 disabled={readOnly}
-                selectProps={{ sx: { textAlign: 'left' } }}
+                selectProps={{ sx: { textAlign: "left" } }}
               />
             </TableCell>
           </TableRow>

@@ -1,26 +1,26 @@
-import { Alert, AlertTitle, Grid, Typography, Button } from '@mui/material';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import Layout from '../components/Layout';
-import { Box, Container, Dialog, TextInput } from '@fiftyone/teams-components';
-import { useState } from 'react';
-import { useRouter } from 'next/router';
+import { Alert, AlertTitle, Grid, Typography, Button } from "@mui/material";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import Layout from "../components/Layout";
+import { Box, Container, Dialog, TextInput } from "@fiftyone/teams-components";
+import { useState } from "react";
+import { useRouter } from "next/router";
 import {
   manageDatasetRemoveDatasetMutation,
   UPDATE_DATASET,
-  useCurrentDataset
-} from '@fiftyone/teams-state';
-import { withPermissions, useMutation } from '@fiftyone/hooks';
+  useCurrentDataset,
+} from "@fiftyone/teams-state";
+import { withPermissions, useMutation } from "@fiftyone/hooks";
 // import { DELETE_DATASET_DOCS_LINK } from '@fiftyone/teams-state/src/constants';
 
 function DangerZone() {
   const [open, setOpen] = useState(false);
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState("");
   const [removeDataset, removeDatasetInProgress] = useMutation(
     manageDatasetRemoveDatasetMutation
   );
   const {
     query: { slug },
-    push
+    push,
   } = useRouter();
   const dataset = useCurrentDataset(slug as string);
   const datasetName = dataset?.name;
@@ -81,13 +81,13 @@ function DangerZone() {
           loading={removeDatasetInProgress}
           onConfirm={() => {
             removeDataset({
-              successMessage: 'Successfully deleted the dataset',
-              errorMessage: 'Failed to delete the dataset',
+              successMessage: "Successfully deleted the dataset",
+              errorMessage: "Failed to delete the dataset",
               variables: { identifier: slug },
               onCompleted() {
                 setOpen(false);
-                push('/datasets');
-              }
+                push("/datasets");
+              },
             });
           }}
         >
@@ -113,12 +113,12 @@ function DangerZone() {
   );
 }
 
-export { getServerSideProps } from 'lib/env';
+export { getServerSideProps } from "lib/env";
 
-export default withPermissions<{}>(DangerZone, [UPDATE_DATASET], 'dataset', {
+export default withPermissions<{}>(DangerZone, [UPDATE_DATASET], "dataset", {
   getLayoutProps: () => ({
     topNavProps: {
-      noBorder: true
-    }
-  })
+      noBorder: true,
+    },
+  }),
 });

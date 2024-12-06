@@ -1,9 +1,5 @@
-import {
-  Nonfinite,
-  boundsAtom,
-  nonfiniteAtom,
-  rangeAtom,
-} from "@fiftyone/state";
+import type { Nonfinite } from "@fiftyone/state";
+import { boundsAtom, nonfiniteData, rangeAtom } from "@fiftyone/state";
 import { selectorFamily } from "recoil";
 
 export const FLOAT_NONFINITES: Nonfinite[] = ["inf", "ninf", "nan"];
@@ -11,9 +7,12 @@ export const FLOAT_NONFINITES: Nonfinite[] = ["inf", "ninf", "nan"];
 export const hasBounds = selectorFamily({
   key: "hasBounds",
   get:
-    (params: { path: string; modal: boolean }) =>
+    (params: { path: string; modal: boolean; shouldCalculate?: boolean }) =>
     ({ get }) => {
-      return Boolean(get(boundsAtom(params))?.every((b) => b !== null));
+      const shouldCalculate = params.shouldCalculate ?? true;
+      return shouldCalculate
+        ? Boolean(get(boundsAtom(params))?.every((b) => b !== null))
+        : Boolean(false);
     },
 });
 
@@ -26,14 +25,17 @@ export const hasDefaultRange = selectorFamily({
     },
 });
 
-export const hasNonfinites = selectorFamily({
-  key: "hasNonfinites",
+export const nonfinitesText = selectorFamily({
+  key: "nonfinitesText",
   get:
     (params: { path: string; modal: boolean }) =>
     ({ get }) => {
-      return FLOAT_NONFINITES.every((key) =>
-        get(nonfiniteAtom({ key, ...params }))
+      const data = get(nonfiniteData({ ...params, extended: false }));
+      const result = Object.entries(data).filter(
+        ([k, v]) => k !== "none" && Boolean(v)
       );
+
+      return result.length ? result.map(([key]) => key).join(", ") : null;
     },
 });
 

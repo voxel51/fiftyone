@@ -1,14 +1,14 @@
-import { Box } from '@fiftyone/teams-components';
+import { Box } from "@fiftyone/teams-components";
 import {
   isSearchOrFiltersSelector,
   userSearchInputState,
-  userSearchTermState
-} from '@fiftyone/teams-state';
-import { Typography } from '@mui/material';
-import Button from '@mui/material/Button';
-import { useTheme } from '@mui/material/styles';
-import { useRouter } from 'next/router';
-import { useRecoilValue, useResetRecoilState } from 'recoil';
+  userSearchTermState,
+} from "@fiftyone/teams-state";
+import { Typography } from "@mui/material";
+import Button from "@mui/material/Button";
+import { useTheme } from "@mui/material/styles";
+import { useRouter } from "next/router";
+import { useRecoilValue, useResetRecoilState } from "recoil";
 
 export default function EmptyUsers() {
   const theme = useTheme();
@@ -20,8 +20,8 @@ export default function EmptyUsers() {
   const resetUserSearchTerm = useResetRecoilState(userSearchTermState);
 
   const title = isSearchOrFilterActive
-    ? 'No users found with your search'
-    : 'No users yet';
+    ? "No users found with your search"
+    : "No users yet";
 
   const subTitle = isSearchOrFilterActive ? (
     <Button
@@ -35,7 +35,7 @@ export default function EmptyUsers() {
       Reset search and filters
     </Button>
   ) : (
-    'Click “Invite” to start adding users'
+    "Click “Invite” to start adding users"
   );
 
   return (

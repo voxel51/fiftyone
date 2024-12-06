@@ -1,4 +1,4 @@
-import React, { SyntheticEvent, useEffect, useMemo, useState } from 'react';
+import React, { SyntheticEvent, useEffect, useMemo, useState } from "react";
 import {
   Box,
   Pagination as MuiPagination,
@@ -7,17 +7,17 @@ import {
   BoxProps,
   Typography,
   Autocomplete,
-  TextField
-} from '@mui/material';
+  TextField,
+} from "@mui/material";
 import {
   KeyboardDoubleArrowRight,
   KeyboardDoubleArrowLeft,
   KeyboardArrowLeft,
   KeyboardArrowRight,
-  ArrowDropDown
-} from '@mui/icons-material';
-import TextInput from '../TextInput';
-import { DEFAULT_LIST_PAGE_SIZES } from '@fiftyone/teams-state/src/constants';
+  ArrowDropDown,
+} from "@mui/icons-material";
+import TextInput from "../TextInput";
+import { DEFAULT_LIST_PAGE_SIZES } from "@fiftyone/teams-state/src/constants";
 
 interface Props extends PaginationProps {
   containerProps?: BoxProps;
@@ -45,7 +45,7 @@ export default function Pagination(props: Props) {
   const iconStyle = useMemo(() => {
     return {
       color: (theme) => theme.palette.grey[500],
-      fontSize: 24
+      fontSize: 24,
     };
   }, []);
 
@@ -74,18 +74,18 @@ export default function Pagination(props: Props) {
           options={availablePageSizes || DEFAULT_LIST_PAGE_SIZES}
           clearOnBlur
           sx={{
-            '&.MuiAutocomplete-root .MuiAutocomplete-inputRoot': {
-              padding: '0 !important',
-              fontSize: '14px',
-              cursor: 'pointer'
+            "&.MuiAutocomplete-root .MuiAutocomplete-inputRoot": {
+              padding: "0 !important",
+              fontSize: "14px",
+              cursor: "pointer",
             },
-            '.MuiOutlinedInput-root .MuiAutocomplete-input': {
-              padding: '.5rem 1.25rem !important'
+            ".MuiOutlinedInput-root .MuiAutocomplete-input": {
+              padding: ".5rem 1.25rem !important",
             },
-            '.MuiOutlinedInput-root .MuiAutocomplete-endAdornment': {
+            ".MuiOutlinedInput-root .MuiAutocomplete-endAdornment": {
               right: 5,
-              top: 5
-            }
+              top: 5,
+            },
           }}
           disableListWrap
           multiple={false}
@@ -98,7 +98,7 @@ export default function Pagination(props: Props) {
               />
             );
           }}
-          popupIcon={<ArrowDropDown sx={{ height: '100%' }} />}
+          popupIcon={<ArrowDropDown sx={{ height: "100%" }} />}
           onChange={(_: SyntheticEvent<Element, Event>, newValue: string) => {
             if (newValue) {
               onPageSizeChange(Number(newValue));
@@ -112,33 +112,53 @@ export default function Pagination(props: Props) {
         boundaryCount={2}
         siblingCount={1}
         sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          position: 'relative'
+          display: "flex",
+          justifyContent: "center",
+          position: "relative",
         }}
         renderItem={(item) => (
           <PaginationItem
             components={{
               first: (props) => (
-                <Box display="flex" {...props} sx={{ alignItems: 'end' }} data-testid="go-to-first-page">
+                <Box
+                  display="flex"
+                  {...props}
+                  sx={{ alignItems: "end" }}
+                  data-testid="go-to-first-page"
+                >
                   <KeyboardDoubleArrowLeft sx={iconStyle} />
                 </Box>
               ),
               last: (props) => (
-                <Box display="flex" {...props} sx={{ alignItems: 'end' }} data-testid="go-to-last-page">
+                <Box
+                  display="flex"
+                  {...props}
+                  sx={{ alignItems: "end" }}
+                  data-testid="go-to-last-page"
+                >
                   <KeyboardDoubleArrowRight sx={iconStyle} />
                 </Box>
               ),
               previous: (props) => (
-                <Box display="flex" {...props} sx={{ alignItems: 'end' } } data-testid="go-to-previous-page">
+                <Box
+                  display="flex"
+                  {...props}
+                  sx={{ alignItems: "end" }}
+                  data-testid="go-to-previous-page"
+                >
                   <KeyboardArrowLeft sx={iconStyle} />
                 </Box>
               ),
               next: (props) => (
-                <Box display="flex" {...props} sx={{ alignItems: 'end' }} data-testid="go-to-next-page">
+                <Box
+                  display="flex"
+                  {...props}
+                  sx={{ alignItems: "end" }}
+                  data-testid="go-to-next-page"
+                >
                   <KeyboardArrowRight sx={iconStyle} />
                 </Box>
-              )
+              ),
             }}
             {...item}
           />
@@ -148,7 +168,7 @@ export default function Pagination(props: Props) {
       {showManualInput && (
         <>
           <TextInput
-            value={customPage || ''}
+            value={customPage || ""}
             onChange={(e) => {
               const val = e.target.value;
               if (DIGITS_ONLY_REGEX.test(val)) {
@@ -158,7 +178,7 @@ export default function Pagination(props: Props) {
               }
             }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && customPage <= props.count) {
+              if (e.key === "Enter" && customPage <= props.count) {
                 onManualPageChange &&
                   customPage &&
                   onManualPageChange(customPage);
@@ -167,15 +187,15 @@ export default function Pagination(props: Props) {
             autoComplete="off"
             containerProps={{
               width: 50,
-              height: '100%',
-              padding: '.25rem',
-              textAlign: 'center'
+              height: "100%",
+              padding: ".25rem",
+              textAlign: "center",
             }}
-            inputProps={{ sx: { padding: '0.5rem', borderRadius: '.25rem' } }}
+            inputProps={{ sx: { padding: "0.5rem", borderRadius: ".25rem" } }}
             disabled={props.disabled}
           />
           <Typography fontSize="small">
-            {props.page ? `of ${props.count}` : ''}
+            {props.page ? `of ${props.count}` : ""}
           </Typography>
         </>
       )}

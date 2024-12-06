@@ -1,5 +1,5 @@
-import { Box as MUIBox, BoxProps } from '@mui/material';
-import { forwardRef } from 'react';
+import { Box as MUIBox, BoxProps } from "@mui/material";
+import { forwardRef } from "react";
 
 function Box(props: BoxProps, ref: React.Ref<unknown>) {
   return <MUIBox ref={ref} {...props} />;

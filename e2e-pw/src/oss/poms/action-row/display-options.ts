@@ -3,7 +3,7 @@ import { Page } from "src/oss/fixtures";
 type SidebarStatisticsMode = "slice" | "group";
 type SidebarMode = "fast" | "best" | "all";
 type SidebarSortMode = "count" | "value";
-type LightningMode = "enable" | "disable";
+type QueryPerformanceMode = "enabled" | "disabled";
 
 export class DisplayOptionsPom {
   readonly page: Page;
@@ -12,8 +12,8 @@ export class DisplayOptionsPom {
     this.page = page;
   }
 
-  async setLightningMode(mode: LightningMode) {
-    const selector = this.page.getByTestId(`lightning-mode-${mode}`);
+  async setQueryPerformance(mode: QueryPerformanceMode) {
+    const selector = this.page.getByTestId(`qp-mode-${mode}`);
     return selector.click();
   }
 

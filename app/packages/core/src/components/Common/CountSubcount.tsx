@@ -1,11 +1,13 @@
 import { LoadingDots } from "@fiftyone/components";
-import { Suspense } from "react";
+import React, { Suspense } from "react";
 import type { RecoilValue } from "recoil";
 import { constSelector, useRecoilValue } from "recoil";
 
+const CONST_SELECTOR = constSelector(null);
+
 const EntryCounts = ({
-  countAtom = constSelector(null),
-  subcountAtom = constSelector(null),
+  countAtom = CONST_SELECTOR,
+  subcountAtom = CONST_SELECTOR,
 }: {
   countAtom?: RecoilValue<number | null>;
   subcountAtom?: RecoilValue<number | null>;
@@ -15,25 +17,33 @@ const EntryCounts = ({
     useRecoilValue(subcountAtom),
   ];
 
-  if (typeof count !== "number") {
+  if (countAtom !== CONST_SELECTOR && typeof count !== "number") {
     return <LoadingDots text="" />;
   }
 
   if (!["number", "undefined"].includes(typeof subcount)) {
     return (
       <span style={{ whiteSpace: "nowrap" }}>
-        <LoadingDots text="" /> {count.toLocaleString()}
+        <LoadingDots text="" /> {count?.toLocaleString()}
       </span>
     );
   }
 
   if (count === subcount || count === 0) {
-    return <span data-cy="entry-count-all">{count.toLocaleString()}</span>;
+    return <span data-cy="entry-count-all">{count?.toLocaleString()}</span>;
+  }
+
+  if (countAtom !== CONST_SELECTOR) {
+    return (
+      <span style={{ whiteSpace: "nowrap" }} data-cy="entry-count-part">
+        {subcount?.toLocaleString()} of {count?.toLocaleString()}
+      </span>
+    );
   }
 
   return (
     <span style={{ whiteSpace: "nowrap" }} data-cy="entry-count-part">
-      {subcount?.toLocaleString() ?? "0"} of {count.toLocaleString()}
+      {subcount?.toLocaleString() ?? 0}
     </span>
   );
 };

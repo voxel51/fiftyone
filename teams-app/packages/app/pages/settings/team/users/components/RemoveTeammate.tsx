@@ -1,13 +1,13 @@
 import {
   teamRemoveTeammateTargetState,
   teamRemoveTeammateOpenState,
-  teamRemoveUserMutation
-} from '@fiftyone/teams-state';
-import { Dialog } from '@fiftyone/teams-components';
-import { Stack, Typography } from '@mui/material';
-import { useRecoilState, useRecoilValue } from 'recoil';
-import { useMutation } from '@fiftyone/hooks';
-import { useRouter } from 'next/router';
+  teamRemoveUserMutation,
+} from "@fiftyone/teams-state";
+import { Dialog } from "@fiftyone/teams-components";
+import { Stack, Typography } from "@mui/material";
+import { useRecoilState, useRecoilValue } from "recoil";
+import { useMutation } from "@fiftyone/hooks";
+import { useRouter } from "next/router";
 
 export default function RemoveTeammate() {
   const [open, setOpen] = useRecoilState(teamRemoveTeammateOpenState);
@@ -27,15 +27,15 @@ export default function RemoveTeammate() {
       }}
       onConfirm={() => {
         removeTeammate({
-          successMessage: 'Successfully removed user from the team',
-          errorMessage: 'Failed to remove user from the team',
+          successMessage: "Successfully removed user from the team",
+          errorMessage: "Failed to remove user from the team",
           variables: {
-            userId: id
+            userId: id,
           },
           onCompleted() {
             setOpen(false);
             router.replace(router.asPath);
-          }
+          },
         });
       }}
       confirmationButtonColor="error"
@@ -43,10 +43,10 @@ export default function RemoveTeammate() {
     >
       <Stack spacing={2}>
         <Typography>
-          You are removing{' '}
+          You are removing{" "}
           <Typography component="span" fontWeight="medium" color="text.primary">
             {name}
-          </Typography>{' '}
+          </Typography>{" "}
           from your organization.
         </Typography>
         <Typography>

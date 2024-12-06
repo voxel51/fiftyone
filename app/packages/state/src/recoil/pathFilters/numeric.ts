@@ -1,16 +1,12 @@
-import {
-  DefaultValue,
-  GetRecoilValue,
-  selectorFamily,
-  SetRecoilState,
-} from "recoil";
+import type { GetRecoilValue, SetRecoilState } from "recoil";
+import { DefaultValue, selectorFamily } from "recoil";
 import * as fos from "../atoms";
 import * as visibilityAtoms from "../attributeVisibility";
 import * as filterAtoms from "../filters";
-import { isLightningPath } from "../lightning";
 import * as pathData from "../pathData";
-import { Range } from "../utils";
+import type { Range } from "../utils";
 import { isFilterDefault } from "./utils";
+import { queryPerformance } from "../queryPerformance";
 
 export interface NumericFilter {
   range: Range;
@@ -72,14 +68,16 @@ const meetsDefault = (filter: NumericFilter, bounds: Range) => {
   );
 };
 
-const setFilter = (
-  get: GetRecoilValue,
-  set: SetRecoilState,
-  modal: boolean,
-  path: string,
-  key: string,
-  value: boolean | Range | DefaultValue
-) => {
+interface SetParams {
+  get: GetRecoilValue;
+  set: SetRecoilState;
+  modal: boolean;
+  path: string;
+  key: string;
+  value: boolean | Range | DefaultValue;
+}
+
+const setFilter = ({ get, set, modal, path, key, value }: SetParams) => {
   const filter = {
     isMatching: true,
     exclude: false,
@@ -108,14 +106,7 @@ const setFilter = (
   }
 };
 
-const setVisibility = (
-  get: GetRecoilValue,
-  set: SetRecoilState,
-  modal: boolean,
-  path: string,
-  key: string,
-  value: boolean | Range | DefaultValue
-) => {
+const setVisibility = ({ get, set, modal, path, key, value }: SetParams) => {
   const visibility = {
     isMatching: true,
     exclude: false,
@@ -156,19 +147,12 @@ export const boundsAtom = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      const lightning = get(isLightningPath(params.path));
-
-      const atom =
-        lightning && !params.modal
-          ? pathData.lightningBounds(params.path)
-          : pathData.bounds({ ...params, extended: false });
-      const bounds = get(atom);
-
-      if (!bounds) {
-        return lightning ? null : [null, null];
+      if (get(queryPerformance) && !params.modal) {
+        return get(pathData.lightningBounds(params.path));
       }
 
-      return bounds;
+      const bounds = get(pathData.bounds({ ...params, extended: false }));
+      return bounds ? bounds : [null, null];
     },
 });
 
@@ -197,11 +181,71 @@ export const rangeAtom = selectorFamily<
   set:
     ({ modal, path }) =>
     ({ get, set }, range) => {
-      const isFilterMode = get(fos.isSidebarFilterMode);
-      if (isFilterMode) {
-        setFilter(get, set, modal, path, "range", range);
+      const params = { get, set, modal, path, key: "range", value: range };
+      if (get(fos.isSidebarFilterMode)) {
+        setFilter(params);
       } else {
-        setVisibility(get, set, modal, path, "range", range);
+        setVisibility(params);
+      }
+    },
+});
+
+export const minAtom = selectorFamily<
+  number | null,
+  {
+    modal: boolean;
+    path: string;
+    withBounds?: boolean;
+  }
+>({
+  key: "filterNumericFieldMin",
+  get:
+    (params) =>
+    ({ get }) =>
+      get(rangeAtom({ ...params }))[0],
+
+  set:
+    ({ modal, path }) =>
+    ({ get, set }, value) => {
+      const range: Range = [
+        value instanceof DefaultValue ? null : value,
+        get(maxAtom({ modal, path })),
+      ];
+      const params = { get, set, modal, path, key: "range", value: range };
+      if (get(fos.isSidebarFilterMode)) {
+        setFilter(params);
+      } else {
+        setVisibility(params);
+      }
+    },
+});
+
+export const maxAtom = selectorFamily<
+  number | null,
+  {
+    modal: boolean;
+    path: string;
+    withBounds?: boolean;
+  }
+>({
+  key: "filterNumericFieldMax",
+  get:
+    (params) =>
+    ({ get }) =>
+      get(rangeAtom({ ...params }))[1],
+
+  set:
+    ({ modal, path }) =>
+    ({ get, set }, value) => {
+      const range: Range = [
+        get(minAtom({ modal, path })),
+        value instanceof DefaultValue ? null : value,
+      ];
+      const params = { get, set, modal, path, key: "range", value: range };
+      if (get(fos.isSidebarFilterMode)) {
+        setFilter(params);
+      } else {
+        setVisibility(params);
       }
     },
 });
@@ -228,9 +272,9 @@ export const nonfiniteAtom = selectorFamily<
     ({ get, set }, value) => {
       const isFilterMode = get(fos.isSidebarFilterMode);
       if (isFilterMode) {
-        setFilter(get, set, modal, path, key, value);
+        setFilter({ get, set, modal, path, key, value });
       } else {
-        setVisibility(get, set, modal, path, key, value);
+        setVisibility({ get, set, modal, path, key, value });
       }
     },
 });
@@ -256,9 +300,9 @@ export const numericExcludeAtom = selectorFamily<
     ({ get, set }, value) => {
       const isFilterMode = get(fos.isSidebarFilterMode);
       if (isFilterMode) {
-        setFilter(get, set, modal, path, "exclude", value);
+        setFilter({ get, set, modal, path, key: "exclude", value });
       } else {
-        setVisibility(get, set, modal, path, "exclude", value);
+        setVisibility({ get, set, modal, path, key: "exclude", value });
       }
     },
 });
@@ -279,7 +323,7 @@ export const numericIsMatchingAtom = selectorFamily<
   set:
     ({ modal, path }) =>
     ({ get, set }, value) => {
-      setFilter(get, set, modal, path, "isMatching", value);
+      setFilter({ get, set, modal, path, key: "isMatching", value });
     },
 });
 

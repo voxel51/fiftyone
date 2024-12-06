@@ -1,13 +1,13 @@
-import { CodeTabs } from '@fiftyone/components';
-import { Box, Link, Stack, Typography } from '@mui/material';
-import { useTrackEvent } from '@fiftyone/analytics';
-import { useEffect } from 'react';
+import { CodeTabs } from "@fiftyone/components";
+import { Box, Link, Stack, Typography } from "@mui/material";
+import { useTrackEvent } from "@fiftyone/analytics";
+import { useEffect } from "react";
 
 export default function DemoInstallContent() {
   const trackEvent = useTrackEvent();
 
   useEffect(() => {
-    trackEvent('demo_install_content');
+    trackEvent("demo_install_content");
   }, []);
 
   return (
@@ -18,13 +18,13 @@ export default function DemoInstallContent() {
       <Box
         sx={{
           div: {
-            minWidth: 'unset'
-          }
+            minWidth: "unset",
+          },
         }}
       >
         <CodeTabs
           tabs={[
-            { id: 'bash-install', label: 'Bash', code: INSTALL_FIFTYONE_CODE }
+            { id: "bash-install", label: "Bash", code: INSTALL_FIFTYONE_CODE },
           ]}
         />
       </Box>
@@ -32,13 +32,13 @@ export default function DemoInstallContent() {
       <Box
         sx={{
           div: {
-            minWidth: 'unset'
-          }
+            minWidth: "unset",
+          },
         }}
       >
         <CodeTabs
           tabs={[
-            { id: 'python-launch-app', label: 'Python', code: LAUNCH_APP_CODE }
+            { id: "python-launch-app", label: "Python", code: LAUNCH_APP_CODE },
           ]}
         />
       </Box>
@@ -48,7 +48,7 @@ export default function DemoInstallContent() {
           href="https://voxel51.com/book-a-demo/"
           target="_blank"
           onClick={() => {
-            trackEvent('click_schedule_demo');
+            trackEvent("click_schedule_demo");
           }}
         >
           Schedule a demo
@@ -59,7 +59,7 @@ export default function DemoInstallContent() {
   );
 }
 
-const INSTALL_FIFTYONE_CODE = 'pip install fiftyone';
+const INSTALL_FIFTYONE_CODE = "pip install fiftyone";
 const LAUNCH_APP_CODE = `import fiftyone as fo
 import fiftyone.zoo as foz
 

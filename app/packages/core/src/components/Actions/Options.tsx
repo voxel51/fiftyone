@@ -1,27 +1,12 @@
-import {
-  PopoutSectionTitle,
-  Selector,
-  TabOption,
-  useTheme,
-} from "@fiftyone/components";
+import { PopoutSectionTitle, TabOption, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import {
-  configuredSidebarModeDefault,
-  groupStatistics,
-  sidebarMode,
-} from "@fiftyone/state";
+import { groupStatistics } from "@fiftyone/state";
 import type { RefObject } from "react";
-import React, { useMemo } from "react";
-import {
-  useRecoilState,
-  useRecoilValue,
-  useResetRecoilState,
-  useSetRecoilState,
-} from "recoil";
-import { LIGHTNING_MODE, SIDEBAR_MODE } from "../../utils/links";
+import { default as React, useMemo } from "react";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { QP_MODE } from "../../utils/links";
 import Checkbox from "../Common/Checkbox";
 import RadioGroup from "../Common/RadioGroup";
-import { Button } from "../utils";
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
 
@@ -115,43 +100,6 @@ const GroupStatistics = ({ modal }) => {
   );
 };
 
-const SidebarMode = () => {
-  const mode = useRecoilValue(configuredSidebarModeDefault(false));
-  const setMode = useSetRecoilState(sidebarMode(false));
-  const theme = useTheme();
-
-  if (mode === "disabled") {
-    return null;
-  }
-
-  return (
-    <>
-      <ActionOption
-        id="sidebar-mode"
-        text="Sidebar mode"
-        href={SIDEBAR_MODE}
-        title={"More on sidebar mode"}
-        style={{
-          background: "unset",
-          color: theme.text.primary,
-          paddingTop: 0,
-          paddingBottom: 0,
-        }}
-        svgStyles={{ height: "1rem", marginTop: 7.5 }}
-      />
-
-      <TabOption
-        active={mode}
-        options={["fast", "best", "all"].map((value) => ({
-          text: value,
-          title: value,
-          onClick: () => setMode(value as "fast" | "best" | "all"),
-        }))}
-      />
-    </>
-  );
-};
-
 const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
   const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
   const hasGroupSlices = useRecoilValue(fos.hasGroupSlices);
@@ -196,7 +144,13 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
     }
 
     return options;
-  }, [isOrderedDynamicGroup, hasGroupSlices]);
+  }, [
+    isOrderedDynamicGroup,
+    hasGroupSlices,
+    setIsCarouselVisible,
+    setIsMainVisible,
+    setMode,
+  ]);
 
   if (!modal && !isOrderedDynamicGroup) {
     return null;
@@ -217,20 +171,20 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
   );
 };
 
-const Lightning = () => {
-  const [threshold, setThreshold] = useRecoilState(fos.lightningThreshold);
-  const config = useRecoilValue(fos.lightningThresholdConfig);
-  const reset = useResetRecoilState(fos.lightningThreshold);
-  const count = useRecoilValue(fos.datasetSampleCount);
+const QueryPerformance = () => {
   const theme = useTheme();
+  const [enabled, setEnabled] = useRecoilState(fos.queryPerformance);
+  if (!useRecoilValue(fos.enableQueryPerformanceConfig)) {
+    return null;
+  }
 
   return (
     <>
       <ActionOption
-        id="lightning-mode"
-        text="Lightning mode"
-        href={LIGHTNING_MODE}
-        title={"More on lightning mode"}
+        id="qp-mode"
+        text="Query Performance mode"
+        href={QP_MODE}
+        title={"More on Query Performance mode"}
         style={{
           background: "unset",
           color: theme.text.primary,
@@ -240,57 +194,14 @@ const Lightning = () => {
         svgStyles={{ height: "1rem", marginTop: 7.5 }}
       />
       <TabOption
-        active={threshold === null ? "disable" : "enable"}
-        options={["disable", "enable"].map((value) => ({
+        active={enabled ? "enabled" : "disabled"}
+        options={["disabled", "enabled"].map((value) => ({
           text: value,
           title: value,
-          dataCy: `lightning-mode-${value}`,
-          onClick: () =>
-            setThreshold(value === "disable" ? null : config ?? count),
+          dataCy: `qp-mode-${value}`,
+          onClick: () => setEnabled(value === "enabled"),
         }))}
       />
-      {threshold !== null && (
-        <>
-          <Selector
-            placeholder="sample threshold"
-            onSelect={async (text) => {
-              if (text === "") {
-                reset();
-                return "";
-              }
-              const value = parseInt(text);
-
-              if (!isNaN(value)) {
-                setThreshold(value);
-                return text;
-              }
-
-              return "";
-            }}
-            inputStyle={{
-              fontSize: "1rem",
-              textAlign: "right",
-              float: "right",
-              width: "100%",
-            }}
-            key={threshold}
-            value={threshold === null ? "" : String(threshold)}
-            containerStyle={{ display: "flex", justifyContent: "right" }}
-          />
-          {config !== threshold && config !== null && (
-            <Button
-              style={{
-                margin: "0.25rem -0.5rem",
-                height: "2rem",
-                borderRadius: 0,
-                textAlign: "center",
-              }}
-              text={"Reset"}
-              onClick={reset}
-            />
-          )}
-        </>
-      )}
     </>
   );
 };
@@ -318,7 +229,7 @@ const HideFieldSetting = () => {
         options={["disable", "enable"].map((value) => ({
           text: value,
           title: value,
-          onClick: () => setHideNone(value === "enable" ? true : false),
+          onClick: () => setHideNone(value === "enable"),
         }))}
       />
     </>
@@ -369,12 +280,11 @@ const Options = ({ modal, anchorRef }: OptionsProps) => {
     <Popout modal={modal} fixed anchorRef={anchorRef}>
       {modal && <HideFieldSetting />}
       {modal && <ShowModalNav />}
-      {isDynamicGroup && <DynamicGroupsViewMode modal={modal} />}
+      {isDynamicGroup && <DynamicGroupsViewMode modal={!!modal} />}
       {isGroup && !isDynamicGroup && <GroupStatistics modal={modal} />}
       <MediaFields modal={modal} />
       <Patches modal={modal} />
-      {!view?.length && <Lightning />}
-      {!modal && <SidebarMode />}
+      {!view?.length && <QueryPerformance />}
       <SortFilterResults modal={modal} />
     </Popout>
   );

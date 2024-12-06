@@ -1,16 +1,16 @@
-import { useMutation, useUserRole } from '@fiftyone/hooks';
+import { useMutation, useUserRole } from "@fiftyone/hooks";
 import {
   Box,
   DatasetPermissionSelection,
   Dialog,
-  RoleSelection
-} from '@fiftyone/teams-components';
+  RoleSelection,
+} from "@fiftyone/teams-components";
 import {
   enableDisableOperatorMutation,
   manageOperatorsPluginAtom,
   setOperatorPermissionMutation,
-  setOperatorRoleMutation
-} from '@fiftyone/teams-state';
+  setOperatorRoleMutation,
+} from "@fiftyone/teams-state";
 import {
   FormControlLabel,
   Switch,
@@ -19,11 +19,11 @@ import {
   TableCell,
   TableHead,
   TableRow,
-  Typography
-} from '@mui/material';
-import { startTransition, useState } from 'react';
-import { useRecoilState } from 'recoil';
-import { PluginsComponentProps } from './types';
+  Typography,
+} from "@mui/material";
+import { startTransition, useState } from "react";
+import { useRecoilState } from "recoil";
+import { PluginsComponentProps } from "./types";
 
 export default function ManageOperators(props: PluginsComponentProps) {
   const { plugins = [], refresh } = props;
@@ -73,7 +73,7 @@ function usePluginOperators(plugins, name) {
 
 function Title(props) {
   const { name, operators = [] } = props;
-  const label = operators.length === 1 ? 'operator' : 'operators';
+  const label = operators.length === 1 ? "operator" : "operators";
   return (
     <Box sx={{ pb: 2 }}>
       <Typography variant="h6">{name}</Typography>
@@ -100,7 +100,7 @@ function ManageOperator(props) {
   );
 
   return (
-    <TableRow sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+    <TableRow sx={{ "&:last-child td, &:last-child th": { border: 0 } }}>
       <TableCell>
         <Typography color="text.primary">{name}</Typography>
       </TableCell>
@@ -121,7 +121,7 @@ function ManageOperator(props) {
                   refresh();
                 },
                 successMessage:
-                  'Successfully updated the minimum role required for the operator'
+                  "Successfully updated the minimum role required for the operator",
               });
             });
           }}
@@ -139,14 +139,14 @@ function ManageOperator(props) {
                 variables: {
                   pluginName: plugin,
                   operatorName: name,
-                  permission
+                  permission,
                 },
                 onSuccess() {
                   setState({ ...state, minimum_role: permission });
                   refresh();
                 },
                 successMessage:
-                  'Successfully updated the minimum dataset permission required for the operator'
+                  "Successfully updated the minimum dataset permission required for the operator",
               });
             });
           }}
@@ -166,8 +166,8 @@ function ToggleOperator(props) {
   const [toggleOperator, togglingOperator] = useMutation(
     enableDisableOperatorMutation
   );
-  const label = checked ? 'Enabled' : 'Disabled';
-  const updateType = !checked ? 'enabled' : 'disabled';
+  const label = checked ? "Enabled" : "Disabled";
+  const updateType = !checked ? "enabled" : "disabled";
 
   return (
     <FormControlLabel
@@ -181,13 +181,13 @@ function ToggleOperator(props) {
               variables: {
                 pluginName: plugin,
                 operatorName: name,
-                enabled: !checked
+                enabled: !checked,
               },
               onSuccess() {
                 setChecked(!checked);
                 refresh();
               },
-              successMessage: `Successfully ${updateType} the operator`
+              successMessage: `Successfully ${updateType} the operator`,
             });
           }}
           disabled={togglingOperator}
