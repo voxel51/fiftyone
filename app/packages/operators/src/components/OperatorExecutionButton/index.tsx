@@ -93,6 +93,14 @@ export const OperatorExecutionButton = ({
 
   if (isLoading) return null;
 
+  if (disabled) {
+    return (
+      <Button disabled {...props} variant={props.variant}>
+        {children}
+      </Button>
+    );
+  }
+
   if (showWarning) {
     return (
       <TooltipProvider title={warningMessage}>
