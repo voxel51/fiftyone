@@ -7,6 +7,9 @@ ARG PYTHON_VERSION=3.11
 FROM python:${PYTHON_VERSION} AS wheelhouse
 ARG PIP_INDEX_URL=https://pypi.org/simple
 
+# Why are these pinned?
+# https://community.openai.com/t/error-with-openai-1-56-0-client-init-got-an-unexpected-keyword-argument-proxies/1040332/2
+# We should unpin these and test during a non-release cycle
 RUN pip wheel --wheel-dir=/tmp/wheels \
       "langchain-community==0.3.5" \
       "langchain-core==0.3.15" \
@@ -14,6 +17,7 @@ RUN pip wheel --wheel-dir=/tmp/wheels \
       "langchain==0.3.7" \
       "openai==1.54.3" \
       "tiktoken>=0.7.0" \
+      "httpx==0.27.2" \
       google-cloud-bigquery \
       pandas \
       scipy
@@ -29,6 +33,7 @@ RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
       "langchain==0.3.7" \
       "openai==1.54.3" \
       "tiktoken>=0.7.0" \
+      "httpx==0.27.2" \
       google-cloud-bigquery \
       pandas \
       scipy
