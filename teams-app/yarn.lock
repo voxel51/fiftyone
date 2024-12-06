@@ -12564,13 +12564,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"iobuffer@npm:^5.0.4":
-  version: 5.3.1
-  resolution: "iobuffer@npm:5.3.1"
-  checksum: 10/43ece680614ecb4f09023f0a93a1d7fa3d5e9d31a57213e4df396acf42446a199981f73db4a30c83f7738c3006c7d04048733ae84829914feaf3f7b40e380705
-  languageName: node
-  linkType: hard
-
 "ip@npm:^2.0.1":
   version: 2.0.1
   resolution: "ip@npm:2.0.1"
