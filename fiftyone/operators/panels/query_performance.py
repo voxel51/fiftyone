@@ -481,11 +481,11 @@ class IndexFieldRemovalConfirmationOperator(Operator):
         }
 
 
-class QueryPerformanceConfigConfirmationOperator(Operator):
+class GetQueryPerformanceConfigConfirmationOperator(Operator):
     @property
     def config(self):
         return OperatorConfig(
-            name="query_performance_config_confirmation",
+            name="get_query_performance_config_confirmation",
             label="Query Performance Settings",
             dynamic=True,
             unlisted=True,
@@ -715,7 +715,7 @@ class QueryPerformancePanel(Panel):
 
     def qp_setting(self, ctx):
         ctx.prompt(
-            "query_performance_config_confirmation",
+            "get_query_performance_config_confirmation",
         )
 
     def refresh(self, ctx):

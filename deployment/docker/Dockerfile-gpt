@@ -7,13 +7,17 @@ ARG PYTHON_VERSION=3.11
 FROM python:${PYTHON_VERSION} AS wheelhouse
 ARG PIP_INDEX_URL=https://pypi.org/simple
 
+# Why are these pinned?
+# https://community.openai.com/t/error-with-openai-1-56-0-client-init-got-an-unexpected-keyword-argument-proxies/1040332/2
+# We should unpin these and test during a non-release cycle
 RUN pip wheel --wheel-dir=/tmp/wheels \
-      "langchain-community>=0.2.0" \
-      "langchain-core>=0.2.0" \
-      "langchain-openai>=0.1.0" \
-      "langchain>=0.2.0" \
-      "openai>=1.0.0" \
+      "langchain-community==0.3.5" \
+      "langchain-core==0.3.15" \
+      "langchain-openai==0.2.6" \
+      "langchain==0.3.7" \
+      "openai==1.54.3" \
       "tiktoken>=0.7.0" \
+      "httpx==0.27.2" \
       google-cloud-bigquery \
       pandas \
       scipy
@@ -23,12 +27,13 @@ FROM ${TORCH_IMAGE_NAME} AS gptrelease
 RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     pip install --no-cache-dir -q --no-index \
       --find-links=/wheelhouse/tmp/wheels \
-      "langchain-community>=0.2.0" \
-      "langchain-core>=0.2.0" \
-      "langchain-openai>=0.1.0" \
-      "langchain>=0.2.0" \
-      "openai>=1.0.0" \
+      "langchain-community==0.3.5" \
+      "langchain-core==0.3.15" \
+      "langchain-openai==0.2.6" \
+      "langchain==0.3.7" \
+      "openai==1.54.3" \
       "tiktoken>=0.7.0" \
+      "httpx==0.27.2" \
       google-cloud-bigquery \
       pandas \
       scipy
