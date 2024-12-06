@@ -23,6 +23,7 @@ import {
   StrictField,
   VALID_NUMERIC_TYPES,
   VALID_PRIMITIVE_TYPES,
+  getDenseLabelNames,
   meetsFieldType,
   withPath,
 } from "@fiftyone/utilities";
@@ -31,6 +32,7 @@ import * as atoms from "./atoms";
 import { dataset as datasetAtom } from "./dataset";
 import { activeModalSample } from "./groups";
 import { labelPathsSetExpanded } from "./labels";
+import { defaultVisibilityLabels } from "./selectors";
 import { State } from "./types";
 import { getLabelFields } from "./utils";
 
@@ -320,6 +322,66 @@ export const dbPath = selectorFamily({
     },
 });
 
+export const defaultLabels = selectorFamily<string[], { space?: State.SPACE }>({
+  key: "defaultLabels",
+  get:
+    ({ space }) =>
+    ({ get }) => {
+      const schema = get(fieldSchema({ space }));
+      const denseLabels = getDenseLabelNames(schema);
+      const allLabels = get(labelFields({ space }));
+
+      const defaultVisibleLabelsConfig = get(defaultVisibilityLabels);
+
+      if (
+        !defaultVisibleLabelsConfig?.include &&
+        !defaultVisibleLabelsConfig?.exclude
+      ) {
+        // todo: frames
+        return allLabels.filter((label) => !denseLabels.includes(label));
+      }
+
+      if (
+        defaultVisibleLabelsConfig.include &&
+        !defaultVisibleLabelsConfig.exclude
+      ) {
+        return allLabels.filter((label) =>
+          defaultVisibleLabelsConfig.include.includes(label)
+        );
+      }
+
+      if (
+        !defaultVisibleLabelsConfig.include &&
+        defaultVisibleLabelsConfig.exclude
+      ) {
+        return allLabels.filter(
+          (label) => !defaultVisibleLabelsConfig.exclude.includes(label)
+        );
+      }
+
+      // is in both include and exclude
+      const includeList = new Set(defaultVisibleLabelsConfig.include);
+      const excludeList = new Set(defaultVisibleLabelsConfig.exclude);
+      // resolved = set(include) - set(exclude)
+      const resolved = new Set(
+        [...includeList].filter((x) => !excludeList.has(x))
+      );
+      return allLabels.filter((label) => resolved.has(label));
+
+      // todo: frames
+      if (space) {
+        return space === State.SPACE.FRAME
+          ? getLabelFields(get(atoms.frameFields), "frames.")
+          : getLabelFields(get(atoms.sampleFields));
+      }
+
+      return [
+        ...getLabelFields(get(atoms.sampleFields)),
+        ...getLabelFields(get(atoms.frameFields), "frames."),
+      ];
+    },
+});
+
 export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
   key: "labelFields",
   get:
@@ -513,7 +575,7 @@ export const activeFields = selectorFamily<string[], { modal: boolean }>({
     ({ modal }) =>
     ({ get }) => {
       return filterPaths(
-        get(_activeFields({ modal })) || get(labelFields({})),
+        get(_activeFields({ modal })) || get(defaultLabels({})),
         buildSchema(get(atoms.sampleFields), get(atoms.frameFields))
       );
     },
