@@ -3,13 +3,13 @@
 # Then `TEAMS_IMAGE_NAME` should already be set, just reuse it here...
 ARG TEAMS_IMAGE_NAME
 
-FROM ${TEAMS_IMAGE_NAME} as wheelhouse
+FROM ${TEAMS_IMAGE_NAME} AS wheelhouse
 ARG PIP_INDEX_URL=https://pypi.org/simple
 
 RUN pip wheel --wheel-dir=/tmp/wheels torchvision torch
 
 
-FROM ${TEAMS_IMAGE_NAME} as torchrelease
+FROM ${TEAMS_IMAGE_NAME} AS torchrelease
 
 RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     pip --no-cache-dir install -q --no-index \

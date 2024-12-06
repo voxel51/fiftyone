@@ -4,13 +4,13 @@
 ARG TORCH_IMAGE_NAME
 ARG PYTHON_VERSION=3.11
 
-FROM python:${PYTHON_VERSION} as wheelhouse
+FROM python:${PYTHON_VERSION} AS wheelhouse
 ARG PIP_INDEX_URL=https://pypi.org/simple
 
 RUN pip wheel --wheel-dir=/tmp/wheels segments-ai==1.6.0 tqdm>=4.66.1 pathos==0.2.8
 
 
-FROM ${TORCH_IMAGE_NAME} as scytheplugins
+FROM ${TORCH_IMAGE_NAME} AS scytheplugins
 
 RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     pip --no-cache-dir install -q --no-index \
