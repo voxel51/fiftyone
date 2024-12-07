@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Teams 2.2.0
 --------------------
-*Released December 4, 2024*
+*Released December 6, 2024*
 
 Includes all updates from :ref:`FiftyOne 1.1.0 <release-notes-v1.1.0>`, plus:
 
@@ -30,7 +30,7 @@ Includes all updates from :ref:`FiftyOne 1.1.0 <release-notes-v1.1.0>`, plus:
 
 FiftyOne 1.1.0
 --------------
-*Released December 4, 2024*
+*Released December 6, 2024*
 
 What's New
 
@@ -76,6 +76,9 @@ SDK
 - Fixed a bug that prevented users with `pydantic` installed from loading the
   :ref:`quickstart-3d dataset <dataset-zoo-quickstart-3d>` from the zoo
   `#4994 <https://github.com/voxel51/fiftyone/pull/4994>`_
+- Added optional `email` parameter to the
+  :ref:`CVAT integration <cvat-integration>`
+  `#5218 <https://github.com/voxel51/fiftyone/pull/5218>`_
 
 Brain
 
