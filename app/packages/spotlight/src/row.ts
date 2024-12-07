@@ -120,7 +120,7 @@ export default class Row<K, V> {
   }
 
   destroy(destroyItems = false) {
-    destroyItems && this.#destroyItems();
+    this.#destroyItems(destroyItems);
     this.#aborter.abort();
   }
 
@@ -147,18 +147,10 @@ export default class Row<K, V> {
 
   show(
     element: HTMLDivElement,
-    hidden: boolean,
     attr: typeof BOTTOM | typeof TOP,
-    soft: boolean,
+    zooming: boolean,
     config: SpotlightConfig<K, V>
   ): void {
-    if (hidden !== this.#hidden) {
-      hidden
-        ? this.#container.classList.add(styles.spotlightRowHidden)
-        : this.#container.classList.remove(styles.spotlightRowHidden);
-      this.#hidden = hidden;
-    }
-
     if (!this.attached) {
       this.#container.style[attr] = `${this.#from}px`;
       this.#container.style[attr === BOTTOM ? TOP : BOTTOM] = UNSET;
@@ -171,7 +163,7 @@ export default class Row<K, V> {
 
     for (const { element, item } of this.#row) {
       const width = item.aspectRatio * this.height;
-      config.render(item.id, element, [width, this.height], soft, hidden);
+      config.render(item.id, element, [width, this.height], zooming);
     }
   }
 
@@ -231,8 +223,8 @@ export default class Row<K, V> {
     return set.size === ONE ? this.#row[ZERO].item.aspectRatio : null;
   }
 
-  #destroyItems() {
-    const destroy = this.#config.destroy;
+  #destroyItems(destroyItems = false) {
+    const destroy = destroyItems ? this.#config.destroy : this.#config.detach;
     if (!destroy) {
       return;
     }

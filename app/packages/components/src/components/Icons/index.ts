@@ -12,5 +12,5 @@ export {
   KeyboardArrowUp,
   LookerArrowLeftIcon,
   LookerArrowRightIcon,
-  SlackLink,
+  DiscordLink,
 } from "./Icons";

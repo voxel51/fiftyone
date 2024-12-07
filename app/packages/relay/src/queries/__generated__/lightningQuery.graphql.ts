@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e18d763b5048c83b0ba06ace4b52f593>>
+ * @generated SignedSource<<b00c282e2f46c6801c4836c6006241a1>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,6 +12,7 @@ import { ConcreteRequest, Query } from 'relay-runtime';
 export type LightningInput = {
   dataset: string;
   paths: ReadonlyArray<LightningPathInput>;
+  slice?: string | null;
 };
 export type LightningPathInput = {
   exclude?: ReadonlyArray<string> | null;

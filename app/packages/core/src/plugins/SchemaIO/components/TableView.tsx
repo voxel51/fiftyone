@@ -10,6 +10,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
   useTheme,
 } from "@mui/material";
 import { isPlainObject } from "lodash";
@@ -34,6 +35,7 @@ export default function TableView(props: ViewPropsType) {
     size = "small",
     variant = "filled",
     max_inline_actions = 1,
+    tooltips = [],
   } = view;
   const { rows, selectedCells, selectedRows, selectedColumns } =
     getTableData(props);
@@ -45,22 +47,33 @@ export default function TableView(props: ViewPropsType) {
   const selectedCellColor =
     selected_color || theme.palette.background.activeCell;
 
-  const getRowActions = useCallback((row) => {
-    const computedRowActions = [] as any;
-    for (const action of row_actions) {
-      if (action.rows?.[row] !== false) {
-        computedRowActions.push({
-          ...action,
-          onClick: (action, e) => {
-            handleClick(panelId, {
-              operator: action.on_click,
-              params: { path, event: action.name, row },
-            });
-          },
-        });
+  const getRowActions = useCallback(
+    (row) => {
+      const computedRowActions = [] as any;
+      for (const action of row_actions) {
+        if (action.rows?.[row] !== false) {
+          computedRowActions.push({
+            ...action,
+            onClick: (action, e) => {
+              handleClick(panelId, {
+                operator: action.on_click,
+                params: { path, event: action.name, row },
+              });
+            },
+          });
+        }
       }
+      return computedRowActions;
+    },
+    [row_actions, handleClick, panelId, path]
+  );
+
+  const getTooltips = useCallback((tooltipList) => {
+    const tooltipDict = {};
+    for (const { value, row, column } of tooltipList) {
+      tooltipDict[`${row},${column}`] = value; // Create a key from row and column
     }
-    return computedRowActions;
+    return tooltipDict;
   }, []);
 
   const handleCellClick = useCallback(
@@ -93,6 +106,7 @@ export default function TableView(props: ViewPropsType) {
     color: theme.palette.text.secondary,
   };
   const filled = variant === "filled";
+  const tooltipMap = getTooltips(tooltips);
 
   return (
     <Box {...getComponentProps(props, "container")}>
@@ -170,23 +184,36 @@ export default function TableView(props: ViewPropsType) {
                         selectedCells.has(coordinate) ||
                         isRowSelected ||
                         selectedColumns.has(columnIndex);
-                      return (
+
+                      const tooltip = tooltipMap[coordinate]; // Check if there's a tooltip for the cell
+                      const content = formatCellValue(item[key], props);
+                      const cell = (
                         <TableCell
                           key={key}
                           sx={{
                             background: isSelected
                               ? selectedCellColor
                               : "unset",
+                            fontSize: "1rem",
                           }}
                           onClick={() => {
                             handleCellClick(rowIndex, columnIndex);
                           }}
                           {...getComponentProps(props, "tableBodyCell")}
                         >
-                          {formatCellValue(item[key], props)}
+                          {tooltip ? (
+                            <Tooltip title={tooltip} arrow>
+                              <span> {content} </span>
+                            </Tooltip>
+                          ) : (
+                            content
+                          )}
                         </TableCell>
                       );
+
+                      return cell;
                     })}
+
                     {hasRowActions && (
                       <TableCell
                         align="right"
@@ -194,14 +221,17 @@ export default function TableView(props: ViewPropsType) {
                           background: isRowSelected
                             ? selectedCellColor
                             : "unset",
+                          fontSize: "1rem",
                         }}
                       >
-                        {currentRowHasActions && (
+                        {currentRowHasActions ? (
                           <ActionsMenu
                             actions={getRowActions(rowIndex)}
                             size={size}
                             maxInline={max_inline_actions}
                           />
+                        ) : (
+                          <Box sx={{ minHeight: "32px" }} />
                         )}
                       </TableCell>
                     )}

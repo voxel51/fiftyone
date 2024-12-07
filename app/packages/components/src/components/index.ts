@@ -35,6 +35,8 @@ export { default as Selector, SelectorValidationError } from "./Selector";
 export { default as StatusButton } from "./StatusButton";
 export type { UseSearch } from "./Selector";
 export { default as TabOption } from "./TabOption";
+export { default as Tag } from "./Tag";
+export { default as TagsInput } from "./TagsInput";
 export { default as TextField } from "./TextField";
 export { default as ThemeProvider, useFont, useTheme } from "./ThemeProvider";
 export { default as Tooltip } from "./Tooltip";

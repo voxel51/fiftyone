@@ -11,10 +11,11 @@ import {
   ListItemText,
   Tooltip,
   ButtonProps,
+  Box,
 } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { onEnter } from "./utils";
-import { useTheme } from "@fiftyone/components";
+import ExecutionOptionItem from "./ExecutionOptionItem";
 
 const ButtonStylesOverrides: ButtonProps["sx"] = {
   color: (theme) => theme.palette.text.secondary,
@@ -62,6 +63,7 @@ export default function SplitButton({
   };
 
   const handleSelect = (option) => {
+    if (!option.onSelect) return;
     option.onSelect();
     setOpen(false);
   };
@@ -128,6 +130,9 @@ export default function SplitButton({
                         key={option.id}
                         disabled={option.disabled}
                         selected={option.selected}
+                        sx={{
+                          cursor: option.onClick ? "pointer" : "default",
+                        }}
                         onClick={() => handleSelect(option)}
                       >
                         <ListItemText
@@ -138,12 +143,22 @@ export default function SplitButton({
                                 : theme.palette.text.disabled,
                           }}
                           primary={
-                            <PrimaryWithTag
+                            <ExecutionOptionItem
                               label={option.choiceLabel || option.label}
                               tag={option.tag}
+                              disabled={option.disabled || !option.onClick}
                             />
                           }
-                          secondary={option.description}
+                          secondary={
+                            <Box
+                              sx={{
+                                fontSize: "11px",
+                                "& *": { fontSize: "inherit" },
+                              }}
+                            >
+                              {option.description}
+                            </Box>
+                          }
                         />
                       </MenuItem>
                     ))}
@@ -155,26 +170,5 @@ export default function SplitButton({
         </Popper>
       )}
     </React.Fragment>
-  );
-}
-
-function PrimaryWithTag({ label, tag }) {
-  const theme = useTheme();
-  const tagEl = tag ? (
-    <span
-      style={{
-        fontSize: "11px",
-        color: theme.custom.primarySoft,
-        marginLeft: "5px",
-      }}
-    >
-      {tag}
-    </span>
-  ) : null;
-  return (
-    <div style={{ display: "flex", alignItems: "center" }}>
-      {label}
-      {tagEl}
-    </div>
   );
 }

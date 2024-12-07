@@ -74,6 +74,7 @@ const ViewBarWrapper = styled.div`
   padding: 16px;
   background: var(--fo-palette-background-header);
   display: flex;
+  align-items: center;
 `;
 const CoreDatasetContainer = styled.div`
   flex: 1;
@@ -294,15 +295,29 @@ export async function getServerSideProps(ctx: GetServerSidePropsContext) {
 const HeadersToggle = () => {
   const [hide, toggle] = recoil.useRecoilState(hideHeaders);
   return (
-    <IconButton
-      title={`${hide ? "Show" : "Hide"} headers`}
-      onClick={() => toggle((cur) => !cur)}
-      disableRipple
-      sx={{ color: (theme) => theme.palette.text.secondary }}
+    <div
+      style={{
+        width: 30,
+        height: 30,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
     >
-      {hide && <KeyboardArrowDown />}
-      {!hide && <KeyboardArrowUp />}
-    </IconButton>
+      <IconButton
+        title={`${hide ? "Show" : "Hide"} headers`}
+        onClick={() => toggle((cur) => !cur)}
+        disableRipple
+        sx={{
+          color: (theme) => theme.palette.text.secondary,
+          width: "100%",
+          height: "100%",
+        }}
+      >
+        {hide && <KeyboardArrowDown />}
+        {!hide && <KeyboardArrowUp />}
+      </IconButton>
+    </div>
   );
 };
 

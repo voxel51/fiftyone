@@ -232,7 +232,7 @@ class DelegatedOperationServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(doc.queued_at)
         self.assertEqual(doc.label, "Mock Operator")
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
-        self.assertIsNone(doc.metadata)
+        self.assertEqual(doc.metadata, {})
 
         doc2_metadata = {"inputs_schema": {}}
         doc2 = self.svc.queue_operation(
@@ -247,7 +247,6 @@ class DelegatedOperationServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(doc2.queued_at)
         self.assertEqual(doc2.label, "@voxelfiftyone/operator/foo")
         self.assertEqual(doc2.run_state, ExecutionRunState.QUEUED)
-        self.assertIsNotNone(doc2.metadata)
         self.assertEqual(doc2.metadata, doc2_metadata)
 
     def test_list_operations(
@@ -520,39 +519,6 @@ class DelegatedOperationServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(doc.status.progress, 0.5)
         self.assertEqual(doc.status.label, "halfway there")
         self.assertIsNotNone(doc.status.updated_at)
-
-    def test_output_schema_null_metadata(
-        self,
-        mock_get_operator,
-        mock_operator_exists,
-        mock_is_remote_service,
-        mock_resolve_operation_user,
-    ):
-        mock_outputs = MockOutputs()
-        doc = self.svc.queue_operation(
-            operator="@voxelfiftyone/operator/foo",
-            delegation_target="test_target",
-            context=ExecutionContext(request_params={"foo": "bar"}),
-        )
-
-        # Set metadata to null instead of being unset, to test that corner case
-        self.svc._repo._collection.find_one_and_update(
-            {"_id": bson.ObjectId(doc.id)}, {"$set": {"metadata": None}}
-        )
-
-        self.svc.set_completed(
-            doc.id,
-            result=ExecutionResult(outputs_schema=mock_outputs.to_json()),
-        )
-
-        doc = self.svc.get(doc_id=doc.id)
-        self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
-        self.assertEqual(
-            doc.metadata,
-            {
-                "outputs_schema": mock_outputs.to_json(),
-            },
-        )
 
     @patch(
         "fiftyone.core.odm.utils.load_dataset",

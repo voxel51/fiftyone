@@ -10,6 +10,7 @@ import humanize
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.media as fom
 from fiftyone.management.dataset import DatasetPermission
 import fiftyone.operators as foo
 from fiftyone.operators.categories import Categories
@@ -130,11 +131,17 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
         field_type = _create_index_or_summary_field_inputs(ctx, inputs)
 
         if field_type == "INDEX":
-            label = "Create index"
+            label = "Create Index"
         else:
-            label = "Create summary field"
+            label = "Create Summary Field"
 
-        return types.Property(inputs, view=types.View(label=label))
+        return types.Property(
+            inputs,
+            view=types.View(
+                label=label,
+                submit_button_label=label,
+            ),
+        )
 
     """
     def resolve_execution_options(self, ctx):
@@ -153,6 +160,13 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
 
         if field_type == "INDEX":
             unique = ctx.params.get("unique", False)
+            group_index = ctx.params.get("group_index", False)
+
+            if ctx.dataset.media_type == fom.GROUP:
+                group_path = ctx.dataset.group_field + ".name"
+                index_spec = [(group_path, 1), (path, 1)]
+
+                ctx.dataset.create_index(index_spec, unique=unique, wait=False)
 
             ctx.dataset.create_index(path, unique=unique, wait=False)
         else:
@@ -306,6 +320,19 @@ def _create_index_or_summary_field_inputs(ctx, inputs):
             description="Whether to add a uniqueness constraint to the index",
         )
 
+        if ctx.dataset.media_type == fom.GROUP:
+            inputs.bool(
+                "group_index",
+                default=True,
+                required=False,
+                label="Group index",
+                description=(
+                    "Whether to also add a compound group index. This "
+                    "optimizes sidebar queries when viewing specific group "
+                    "slice(s)"
+                ),
+            )
+
         return field_type
 
     prop_name, field_name = _get_dynamic(ctx.params, "field_name", path, None)
@@ -423,12 +450,23 @@ class IndexFieldRemovalConfirmationOperator(Operator):
         field_type = ctx.params.get("field_type", "N/A")
 
         if field_type == "summary_field":
-            message = f"Are you sure you want to delete summary field `{field_name}`?"
+            message = f"Are you sure you want to delete the `{field_name}` summary field ?"
+            label = "Delete Summary Field"
         else:
-            message = f"Are you sure you want to delete the `{field_name}` field's index?"
+            message = (
+                f"Are you sure you want to delete the `{field_name}` index?"
+            )
+            label = "Delete Index"
 
         inputs.view("confirmation", types.Warning(label=message))
-        return Property(inputs)
+
+        return Property(
+            inputs,
+            view=types.PromptView(
+                label=label,
+                submit_button_label=label,
+            ),
+        )
 
     def execute(self, ctx):
         field_type = ctx.params.get("field_type", "N/A")
@@ -444,11 +482,11 @@ class IndexFieldRemovalConfirmationOperator(Operator):
         }
 
 
-class QueryPerformanceConfigConfirmationOperator(Operator):
+class GetQueryPerformanceConfigConfirmationOperator(Operator):
     @property
     def config(self):
         return OperatorConfig(
-            name="query_performance_config_confirmation",
+            name="get_query_performance_config_confirmation",
             label="Query Performance Settings",
             dynamic=True,
             unlisted=True,
@@ -480,7 +518,7 @@ class QueryPerformanceConfigConfirmationOperator(Operator):
             inputs,
             view=PromptView(
                 label="Query Performance Settings",
-                submit_button_label="Accept",
+                submit_button_label="Apply",
             ),
         )
 
@@ -529,7 +567,7 @@ class SummaryFieldUpdateOperator(foo.Operator):
             return types.Property(
                 inputs,
                 view=types.PromptView(
-                    label=f"Update Summary Field: {field_name}",
+                    label="Update Summary Field",
                     submit_button_label="Update Summary Field",
                 ),
             )
@@ -599,7 +637,7 @@ class QueryPerformancePanel(Panel):
                 rows.append(
                     {
                         "Field": name,
-                        "Size": "N/A",
+                        "Size": "-",
                         "Type": "Summary",
                     }
                 )
@@ -622,7 +660,8 @@ class QueryPerformancePanel(Panel):
         ctx.panel.set_data("table", self._get_index_table_data(ctx))
 
     def on_refresh_button_click(self, ctx):
-        self._build_view(ctx)
+        self.refresh(ctx)
+        ctx.ops.notify("Query Performance panel refreshed")
 
     def on_load(self, ctx):
         self._build_view(ctx)
@@ -677,11 +716,12 @@ class QueryPerformancePanel(Panel):
 
     def qp_setting(self, ctx):
         ctx.prompt(
-            "query_performance_config_confirmation",
+            "get_query_performance_config_confirmation",
         )
 
     def refresh(self, ctx):
         self._build_view(ctx)
+        ctx.trigger("reload_dataset")
 
     def reload(self, ctx):
         self._build_view(ctx)
@@ -705,7 +745,7 @@ class QueryPerformancePanel(Panel):
         summary_fields = _get_summary_fields(ctx)
 
         if not (droppable_index or summary_fields):
-            lightning_path = "https://i.imgur.com/1NdrvHl.png"
+            lightning_path = "/panels/lightning_path.png"
 
             card_main = panel.v_stack(
                 "homepage_card",
@@ -795,9 +835,9 @@ class QueryPerformancePanel(Panel):
         else:
             all_indices = ctx.dataset.list_indexes()
             if all_indices and summary_fields:
-                message = f"{len(all_indices)} Indexed and {len(summary_fields)} Summary Fields"
+                message = f"{len(all_indices)} Indexes and {len(summary_fields)} Summary Fields"
             else:
-                message = f"{len(all_indices)} Indexed Fields"
+                message = f"{len(all_indices)} Indexes"
 
             h_stack = panel.h_stack(
                 "v_stack",
@@ -845,7 +885,7 @@ class QueryPerformancePanel(Panel):
                 "Enabled" if ctx.query_performance else "Disabled"
             )
 
-            status_btn = types.StatusButtonView(  # pylint: disable=E1101
+            status_btn = types.StatusButtonView(
                 on_click=self.qp_setting,
                 severity=severity,
                 title="Query Performance Status",
@@ -868,33 +908,64 @@ class QueryPerformancePanel(Panel):
             table.add_column("Size", label="Size")
             table.add_column("Type", label="Type")
 
+            # add tooltips for summary field size
+            for row in range(
+                len(all_indices), len(all_indices) + len(summary_fields)
+            ):
+                table.add_tooltip(  # pylint: disable=E1101
+                    row, 1, "Summary field size is not available"
+                )
+
             if _has_edit_permission(ctx):
                 # Calculating row conditionality for the update button
                 if summary_fields:
-                    table.add_row_action(  # pylint: disable=E1101
-                        "update",
-                        self.on_click_update,
-                        icon="update",
-                        rows=[False] * len(all_indices)
-                        + [True] * len(summary_fields),
-                        color="secondary",
+                    self._add_summary_field_action(
+                        table, all_indices, summary_fields
                     )
 
                 # Calculating row conditionality for the delete button
-                rows = (
-                    [False] * (len(all_indices) - len(droppable_index))
-                    + [True] * len(droppable_index)
-                    + [True] * len(summary_fields)
-                )
-
-                table.add_row_action(  # pylint: disable=E1101
-                    "delete",
-                    self.on_click_delete,
-                    icon="delete",
-                    rows=rows,
-                    color="secondary",
+                self._add_delete_index(
+                    table, all_indices, droppable_index, summary_fields
                 )
 
             panel.list("table", Object(), view=table)
 
         return Property(panel, view=GridView(pad=3, gap=3))
+
+    def _add_summary_field_action(self, table, all_indices, summary_fields):
+        rows = [False] * len(all_indices) + [True] * len(summary_fields)
+        table.add_row_action(
+            "update_summary_field",
+            self.on_click_update,
+            icon="update",
+            rows=rows,
+            color="secondary",
+            tooltip="Update summary field",
+        )
+
+    def _add_delete_index(
+        self, table, all_indices, droppable_index, summary_fields
+    ):
+        rows = (
+            [False] * (len(all_indices) - len(droppable_index))
+            + [True] * len(droppable_index)
+            + [False] * len(summary_fields)
+        )
+        table.add_row_action(
+            "delete_index",
+            self.on_click_delete,
+            icon="delete",
+            rows=rows,
+            color="secondary",
+            tooltip="Delete index",
+        )
+
+        rows = [False] * len(all_indices) + [True] * len(summary_fields)
+        table.add_row_action(
+            "delete_summary_field",
+            self.on_click_delete,
+            icon="delete",
+            rows=rows,
+            color="secondary",
+            tooltip="Delete summary field",
+        )

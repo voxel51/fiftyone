@@ -21,6 +21,7 @@ class BaseResponse:
 class DataLensSearchRequest:
     """Request model representing a Data Lens search."""
     search_params: dict
+    batch_size: int
     max_results: int
     pagination_token: str = None
 
@@ -83,8 +84,9 @@ class ImportRequest:
     operator_uri: str
     batch_size: int
     dataset_name: str
-    max_samples: int = 0
+    max_results: int = 0
     tags: list[str] = field(default_factory=list)
+    dedupe_samples: bool = False
 
 
 @dataclass

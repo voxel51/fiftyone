@@ -1843,7 +1843,7 @@ __metadata:
     "@emotion/styled": ^11.10.4
     "@fiftyone/state": "*"
     "@mdx-js/react": ^1.6.22
-    "@mui/icons-material": ^5.10.2
+    "@mui/icons-material": ^5.16.7
     "@mui/material": ^5.9.0
     "@react-spring/web": ^9.7.3
     "@textea/json-viewer": ^3.4.1
@@ -1882,7 +1882,7 @@ __metadata:
     "@fiftyone/state": "*"
     "@fiftyone/utilities": "*"
     "@monaco-editor/react": ^4.5.0
-    "@mui/icons-material": ^5.10.2
+    "@mui/icons-material": ^5.16.7
     "@mui/material": ^5.9.0
     "@react-spring/web": ^9.4.3
     "@types/lodash": ^4.14.182
@@ -3084,9 +3084,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mui/icons-material@npm:^5.10.2":
-  version: 5.15.15
-  resolution: "@mui/icons-material@npm:5.15.15"
+"@mui/icons-material@npm:^5.16.7":
+  version: 5.16.7
+  resolution: "@mui/icons-material@npm:5.16.7"
   dependencies:
     "@babel/runtime": ^7.23.9
   peerDependencies:
@@ -3096,7 +3096,7 @@ __metadata:
   peerDependenciesMeta:
     "@types/react":
       optional: true
-  checksum: 42d62fc94be25a361034a8974b1860608e866c155ff2eea7dc18f10a4acc71dbe2f48af3f0309a345ff6fb16be30c6fbc1d8a0a447c828aa1380a49e176a8803
+  checksum: a875f2837897d79a83173d80461e06ab090b64d08913d26433cf2cbeb8e7c7456468632a7aa495d722718f09111a8043255777d73b4dfbe9e0f863a170fc7190
   languageName: node
   linkType: hard
 
