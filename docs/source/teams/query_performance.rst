@@ -106,7 +106,7 @@ field's filter widget and performing queries on it will be noticably faster.
     before creating multiple indexes simultaneously.
 
 You can also create and manage custom indexes
-:ref:`via the SDK <app-optimize-query-performance>`.
+:ref:`via the SDK <app-optimizing-query-performance>`.
 
 .. _query-performance-summary:
 

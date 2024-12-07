@@ -36,7 +36,7 @@ What's New
 
 - Added a :ref:`Model Evaluation panel <app-model-evaluation-panel>` for
   visually and interactively evaluating models in the FiftyOne App
-- Introduced :ref:`Query Performance <app-optimize-query-performance>` in the
+- Introduced :ref:`Query Performance <app-optimizing-query-performance>` in the
   App, which automatically nudges you to create the necessary indexes to
   greatly optimize queries on large datasets
 - Added a :ref:`leaky splits method <brain-leaky-splits>` for automatically
@@ -169,7 +169,7 @@ Core
 
 App
 
-- Added a new :ref:`TimelineView <fiftyone.operators.types.TimelineView>` for
+- Added a new :class:`TimelineView <fiftyone.operators.types.TimelineView>` for
   building custom animations
   `#4965 <https://github.com/voxel51/fiftyone/pull/4965>`_
 - Fixed overlay z-index and overflow for panels
@@ -480,7 +480,7 @@ What's New
   that allows users to build custom no-code dashboards that display statistics
   of interest about the current dataset (and beyond)
 - Added `Segment Anything 2 <https://ai.meta.com/sam2>`_ to the
-  :ref:`model zoo <segment-anything-2-hiera-small-video-torch>`!
+  :ref:`model zoo <model-zoo-segment-anything-2-hiera-small-video-torch>`!
   `#4671 <https://github.com/voxel51/fiftyone/pull/4671>`_
 - Added an :ref:`Elasticsearch integration <elasticsearch-integration>` for
   native text and image searches on FiftyOne datasets!
