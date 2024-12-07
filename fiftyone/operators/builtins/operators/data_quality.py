@@ -281,11 +281,11 @@ def _handle_near_duplicates_execution(ctx):
 
 def _compute_sample_filehash(sample):
     filepath = sample.local_path
-    return _compute_filehash(filepath, method="md5")
+    return _compute_filehash(filepath)
 
 
-def _compute_filehash(filepath, method=None):
-    return fou.compute_filehash(filepath, method=method)
+def _compute_filehash(filepath):
+    return fou.compute_filehash(filepath, method="md5")
 
 
 def _compute_sample_brightness(sample):
