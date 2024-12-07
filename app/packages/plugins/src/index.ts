@@ -384,7 +384,7 @@ type PanelOptions = {
    *
    * Defaults to `false`.
    */
-  isNew?: boolean;
+  isNew: boolean;
 };
 
 type PluginComponentProps<T> = T & {

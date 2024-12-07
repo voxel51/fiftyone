@@ -103,12 +103,11 @@ export class ErrorElement<State extends BaseState> extends BaseElement<State> {
       }
     }
 
+    if (!error && this.errorElement) {
+      this.errorElement.remove();
+      this.errorElement = null;
+    }
+
     return this.errorElement;
   }
 }
-
-const onClick = (href) => {
-  let openExternal;
-
-  return null;
-};

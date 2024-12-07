@@ -52,7 +52,15 @@ interface AcquireReaderOptions {
 export const { acquireReader, clearReader } = (() => {
   const createCache = (removeFrame: RemoveFrame) => {
     return new LRUCache<number, Frame>({
-      dispose: (_, key) => removeFrame(key),
+      dispose: (frame, key) => {
+        const overlays = frame.overlays;
+
+        for (let i = 0; i < overlays.length; i++) {
+          overlays[i].cleanup?.();
+        }
+
+        removeFrame(key);
+      },
       max: MAX_FRAME_STREAM_SIZE,
       maxSize: MAX_FRAME_STREAM_SIZE_BYTES,
       noDisposeOnSet: true,

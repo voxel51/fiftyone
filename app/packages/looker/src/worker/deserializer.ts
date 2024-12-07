@@ -25,7 +25,6 @@ export const DeserializerFactory = {
         image: new ArrayBuffer(width * height * 4),
       };
       buffers.push(data.buffer);
-      buffers.push(label.mask.image);
     }
   },
   Detections: (labels, buffers) => {
@@ -47,7 +46,6 @@ export const DeserializerFactory = {
       };
 
       buffers.push(data.buffer);
-      buffers.push(label.map.image);
     }
   },
   Segmentation: (label, buffers) => {
@@ -63,7 +61,6 @@ export const DeserializerFactory = {
       };
 
       buffers.push(data.buffer);
-      buffers.push(label.mask.image);
     }
   },
 };

@@ -19,6 +19,9 @@ export default function AddPanelItem({
   const theme = useTheme();
   const trackEvent = useTrackEvent();
   const { spaces } = useSpaces(spaceId);
+  if (showBeta) {
+    showNew = false;
+  }
   return (
     <Stack
       direction="row"
@@ -57,7 +60,7 @@ export default function AddPanelItem({
           style={{
             color: theme.custom.primarySoft,
             fontSize: "11px",
-            marginLeft: "6px",
+            marginLeft: "5px",
           }}
         >
           NEW
@@ -68,7 +71,7 @@ export default function AddPanelItem({
           style={{
             color: theme.custom.primarySoft,
             fontSize: "11px",
-            marginLeft: "6px",
+            marginLeft: "5px",
           }}
         >
           BETA

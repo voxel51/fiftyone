@@ -119,10 +119,25 @@ export const PainterFactory = (requestColor) => ({
     );
     const bitColor = get32BitColor(color);
 
-    // these for loops must be fast. no "in" or "of" syntax
-    for (let i = 0; i < overlay.length; i++) {
-      if (targets[i]) {
-        overlay[i] = bitColor;
+    if (label.mask_path) {
+      // putImageData results in an UInt8ClampedArray (for both grayscale or RGB masks),
+      // where each pixel is represented by 4 bytes (RGBA)
+      // it's packed like: [R, G, B, A, R, G, B, A, ...]
+      // use first channel info to determine if the pixel is in the mask
+      // skip second (G), third (B) and fourth (A) channels
+      for (let i = 0; i < targets.length; i += 4) {
+        if (targets[i]) {
+          // overlay image is a Uint32Array, where each pixel is represented by 4 bytes (RGBA)
+          // so we need to divide by 4 to get the correct index to assign 32 bit color
+          const overlayIndex = i / 4;
+          overlay[overlayIndex] = bitColor;
+        }
+      }
+    } else {
+      for (let i = 0; i < overlay.length; i++) {
+        if (targets[i]) {
+          overlay[i] = bitColor;
+        }
       }
     }
   },

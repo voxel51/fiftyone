@@ -293,6 +293,11 @@ export abstract class AbstractLooker<
           return;
         }
 
+        if (this.state.destroyed && this.sampleOverlays) {
+          // close all current overlays
+          this.pluckedOverlays.forEach((overlay) => overlay.cleanup?.());
+        }
+
         if (
           !this.state.windowBBox ||
           this.state.destroyed ||
