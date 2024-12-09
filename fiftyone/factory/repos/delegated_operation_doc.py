@@ -85,7 +85,7 @@ class DelegatedOperationDocument(object):
         if "context" in doc and doc["context"] is not None:
             user = (
                 ExecutionContextUser(id=doc["context"]["user"])
-                if doc["context"]["user"]
+                if doc["context"].get("user")
                 else None
             )
             request_params = doc["context"].get("request_params")
