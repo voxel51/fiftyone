@@ -1968,8 +1968,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             _id = "_id"
 
-        if list_fields:
-            pipeline.append({"$unwind": "$" + list_fields[0]})
+        for list_field in list_fields:
+            pipeline.append({"$unwind": "$" + list_field})
 
         if field_type == "categorical":
             if include_counts:
