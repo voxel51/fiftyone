@@ -23,7 +23,7 @@ import {
 import { Events } from "../elements/base";
 import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
-import { CONTAINS, Overlay } from "../overlays/base";
+import { CONTAINS, LabelMask, Overlay } from "../overlays/base";
 import processOverlays from "../processOverlays";
 import {
   BaseState,
@@ -515,7 +515,29 @@ export abstract class AbstractLooker<
   abstract updateOptions(options: Partial<State["options"]>): void;
 
   updateSample(sample: Sample) {
-    this.loadSample(sample);
+    // collect any mask targets array buffer that overalys might have
+    // we'll transfer that to the worker instead of copying it
+    const arrayBuffers: ArrayBuffer[] = [];
+
+    for (const overlay of this.pluckedOverlays ?? []) {
+      // we paint overlays again, so cleanup the old ones
+      // this helps prevent memory leaks from, for instance, dangling ImageBitmaps
+      overlay.cleanup();
+
+      let overlayData: LabelMask = null;
+
+      if ("mask" in overlay.label) {
+        overlayData = overlay.label.mask as LabelMask;
+      } else if ("map" in overlay.label) {
+        overlayData = overlay.label.map as LabelMask;
+      }
+
+      if (overlayData?.data?.buffer) {
+        arrayBuffers.push(overlayData.data.buffer);
+      }
+    }
+
+    this.loadSample(sample, arrayBuffers);
   }
 
   getSample(): Promise<Sample> {
@@ -698,7 +720,7 @@ export abstract class AbstractLooker<
     );
   }
 
-  private loadSample(sample: Sample) {
+  private loadSample(sample: Sample, transfer: Transferable[] = []) {
     const messageUUID = uuid();
 
     const labelsWorker = getLabelsWorker();
@@ -719,18 +741,21 @@ export abstract class AbstractLooker<
 
     labelsWorker.addEventListener("message", listener);
 
-    labelsWorker.postMessage({
-      sample: sample as ProcessSample["sample"],
-      method: "processSample",
-      coloring: this.state.options.coloring,
-      customizeColorSetting: this.state.options.customizeColorSetting,
-      colorscale: this.state.options.colorscale,
-      labelTagColors: this.state.options.labelTagColors,
-      selectedLabelTags: this.state.options.selectedLabelTags,
-      sources: this.state.config.sources,
-      schema: this.state.config.fieldSchema,
-      uuid: messageUUID,
-    } as ProcessSample);
+    labelsWorker.postMessage(
+      {
+        sample: sample as ProcessSample["sample"],
+        method: "processSample",
+        coloring: this.state.options.coloring,
+        customizeColorSetting: this.state.options.customizeColorSetting,
+        colorscale: this.state.options.colorscale,
+        labelTagColors: this.state.options.labelTagColors,
+        selectedLabelTags: this.state.options.selectedLabelTags,
+        sources: this.state.config.sources,
+        schema: this.state.config.fieldSchema,
+        uuid: messageUUID,
+      } as ProcessSample,
+      transfer
+    );
   }
 }
 
