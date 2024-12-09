@@ -515,7 +515,7 @@ export abstract class AbstractLooker<
   abstract updateOptions(options: Partial<State["options"]>): void;
 
   updateSample(sample: Sample) {
-    // collect any mask targets array buffer that overalys might have
+    // collect any mask targets array buffer that overlays might have
     // we'll transfer that to the worker instead of copying it
     const arrayBuffers: ArrayBuffer[] = [];
 
