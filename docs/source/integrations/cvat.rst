@@ -218,6 +218,7 @@ to CVAT is made.
 
     export FIFTYONE_CVAT_USERNAME=...
     export FIFTYONE_CVAT_PASSWORD=...
+    export FIFTYONE_CVAT_EMAIL=...  # if applicable
 
 **FiftyOne annotation config**
 
@@ -232,7 +233,8 @@ You can also store your credentials in your
             "cvat": {
                 ...
                 "username": ...,
-                "password": ...
+                "password": ...,
+                "email": ...  # if applicable
             }
         }
     }

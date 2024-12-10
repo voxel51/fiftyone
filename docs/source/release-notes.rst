@@ -51,6 +51,8 @@ App
   `#4931 <https://github.com/voxel51/fiftyone/pull/4931>`_
 - Gracefully handle deleted + recreated datasets of the same name
   `#5183 <https://github.com/voxel51/fiftyone/pull/5183>`_
+- Added a `referrerPolicy` so the App can run behind reverse proxies
+  `#4944 <https://github.com/voxel51/fiftyone/pull/4944>`_
 - Fixed a bug that prevented video playback from working for videos with
   unknown frame rate
   `#5155 <https://github.com/voxel51/fiftyone/pull/5155>`_
@@ -61,6 +63,8 @@ SDK
   :meth:`max() <fiftyone.core.collections.SampleCollection.max>` and
   aggregations
   `#5029 <https://github.com/voxel51/fiftyone/pull/5029>`_
+- Optimized object detection evaluation with r-trees
+  `#4758 <https://github.com/voxel51/fiftyone/pull/4758>`_
 - Improved support for creating summary fields and indexes
   `#5091 <https://github.com/voxel51/fiftyone/pull/5091>`_
 - Added support for creating compound indexes when using the builtin

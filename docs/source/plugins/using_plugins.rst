@@ -296,6 +296,7 @@ available metadata about a plugin:
     secrets                 FIFTYONE_CVAT_URL
                             FIFTYONE_CVAT_USERNAME
                             FIFTYONE_CVAT_PASSWORD
+                            FIFTYONE_CVAT_EMAIL
                             FIFTYONE_LABELBOX_URL
                             FIFTYONE_LABELBOX_API_KEY
                             FIFTYONE_LABELSTUDIO_URL
@@ -469,6 +470,7 @@ plugin declares the following secrets:
       - FIFTYONE_CVAT_URL
       - FIFTYONE_CVAT_USERNAME
       - FIFTYONE_CVAT_PASSWORD
+      - FIFTYONE_CVAT_EMAIL
       - FIFTYONE_LABELBOX_URL
       - FIFTYONE_LABELBOX_API_KEY
       - FIFTYONE_LABELSTUDIO_URL
@@ -491,6 +493,7 @@ plugin, you would set:
     FIFTYONE_CVAT_URL=...
     FIFTYONE_CVAT_USERNAME=...
     FIFTYONE_CVAT_PASSWORD=...
+    FIFTYONE_CVAT_EMAIL=...
 
 At runtime, the plugin's execution context will automatically be hydrated with
 any available secrets that are declared by the plugin. Operators access these
@@ -503,6 +506,7 @@ secrets via the `ctx.secrets` dict:
         url = ctx.secrets["FIFTYONE_CVAT_URL"]
         username = ctx.secrets["FIFTYONE_CVAT_USERNAME"]
         password = ctx.secrets["FIFTYONE_CVAT_PASSWORD"]
+        email = ctx.secrets["FIFTYONE_CVAT_EMAIL"]
 
 .. _using-panels:
 
