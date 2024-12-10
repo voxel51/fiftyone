@@ -532,12 +532,30 @@ export abstract class AbstractLooker<
         overlayData = overlay.label.map as LabelMask;
       }
 
-      if (overlayData?.data?.buffer) {
-        arrayBuffers.push(overlayData.data.buffer);
+      const buffer = overlayData?.data?.buffer;
+
+      if (!buffer) {
+        continue;
+      }
+
+      // check for detached buffer (happens if user is switching colors too fast)
+      // note: ArrayBuffer.prototype.detached is a new browser API
+      if (typeof buffer.detached !== "undefined") {
+        if (buffer.detached) {
+          // most likely sample is already being processed, skip update
+          return;
+        } else {
+          arrayBuffers.push(buffer);
+        }
+      } else {
+        // hope we don't run into this edge case (old browser)
+        // if we do, we'll just copy the buffer
+        // might get a DataCloneError if user is switching colors too fast
+        arrayBuffers.push(buffer);
       }
     }
 
-    this.loadSample(sample, arrayBuffers);
+    this.loadSample(sample, arrayBuffers.flat());
   }
 
   getSample(): Promise<Sample> {
@@ -741,21 +759,31 @@ export abstract class AbstractLooker<
 
     labelsWorker.addEventListener("message", listener);
 
-    labelsWorker.postMessage(
-      {
-        sample: sample as ProcessSample["sample"],
-        method: "processSample",
-        coloring: this.state.options.coloring,
-        customizeColorSetting: this.state.options.customizeColorSetting,
-        colorscale: this.state.options.colorscale,
-        labelTagColors: this.state.options.labelTagColors,
-        selectedLabelTags: this.state.options.selectedLabelTags,
-        sources: this.state.config.sources,
-        schema: this.state.config.fieldSchema,
-        uuid: messageUUID,
-      } as ProcessSample,
-      transfer
-    );
+    const workerArgs = {
+      sample: sample as ProcessSample["sample"],
+      method: "processSample",
+      coloring: this.state.options.coloring,
+      customizeColorSetting: this.state.options.customizeColorSetting,
+      colorscale: this.state.options.colorscale,
+      labelTagColors: this.state.options.labelTagColors,
+      selectedLabelTags: this.state.options.selectedLabelTags,
+      sources: this.state.config.sources,
+      schema: this.state.config.fieldSchema,
+      uuid: messageUUID,
+    } as ProcessSample;
+
+    try {
+      labelsWorker.postMessage(workerArgs, transfer);
+    } catch (error) {
+      // rarely we'll get a DataCloneError
+      // if one of the buffers is detached and we didn't catch it
+      // try again without transferring the buffers (copying them)
+      if (error.name === "DataCloneError") {
+        labelsWorker.postMessage(workerArgs);
+      } else {
+        throw error;
+      }
+    }
   }
 }
 
