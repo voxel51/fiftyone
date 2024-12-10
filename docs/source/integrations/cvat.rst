@@ -211,14 +211,14 @@ which can be done in a variety of ways.
 
 The recommended way to configure your CVAT login credentials is to store them
 in the `FIFTYONE_CVAT_USERNAME` and `FIFTYONE_CVAT_PASSWORD` environment
-variables. Optionally, you can also set the `FIFTYONE_CVAT_EMAIL` environment variable. These are automatically accessed by FiftyOne whenever a connection
+variables. These are automatically accessed by FiftyOne whenever a connection
 to CVAT is made.
 
 .. code-block:: shell
 
     export FIFTYONE_CVAT_USERNAME=...
-    export FIFTYONE_CVAT_EMAIL=...
     export FIFTYONE_CVAT_PASSWORD=...
+    export FIFTYONE_CVAT_EMAIL=...  # if applicable
 
 **FiftyOne annotation config**
 
@@ -233,7 +233,8 @@ You can also store your credentials in your
             "cvat": {
                 ...
                 "username": ...,
-                "password": ...
+                "password": ...,
+                "email": ...  # if applicable
             }
         }
     }
