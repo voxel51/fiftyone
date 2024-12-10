@@ -547,9 +547,10 @@ export abstract class AbstractLooker<
         } else {
           arrayBuffers.push(buffer);
         }
-      } else {
+      } else if (buffer.byteLength) {
         // hope we don't run into this edge case (old browser)
-        // if we do, we'll just copy the buffer
+        // sometimes detached buffers have bytelength > 0
+        // if we run into this case, we'll just attempt to transfer the buffer
         // might get a DataCloneError if user is switching colors too fast
         arrayBuffers.push(buffer);
       }
