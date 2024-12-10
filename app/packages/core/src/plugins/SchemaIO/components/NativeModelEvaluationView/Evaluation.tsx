@@ -611,20 +611,26 @@ export default function Evaluation(props: EvaluationProps) {
       <Card sx={{ p: 2 }}>
         <Stack direction="row" sx={{ justifyContent: "space-between" }}>
           <Typography color="secondary">Evaluation notes</Typography>
-          {can_edit_note && (
-            <Box>
-              <IconButton
-                size="small"
-                color="secondary"
-                sx={{ borderRadius: 16 }}
-                onClick={() => {
-                  setEditNoteState((note) => ({ ...note, open: true }));
-                }}
-              >
-                <EditNote />
-              </IconButton>
-            </Box>
-          )}
+          <Box
+            title={
+              can_edit_note
+                ? ""
+                : "You do not have permission to edit evaluation notes"
+            }
+            sx={{ cursor: can_edit_note ? "pointer" : "not-allowed" }}
+          >
+            <IconButton
+              size="small"
+              color="secondary"
+              sx={{ borderRadius: 16 }}
+              onClick={() => {
+                setEditNoteState((note) => ({ ...note, open: true }));
+              }}
+              disabled={!can_edit_note}
+            >
+              <EditNote />
+            </IconButton>
+          </Box>
         </Stack>
         <EvaluationNotes notes={evaluationNotes} variant="details" />
       </Card>
