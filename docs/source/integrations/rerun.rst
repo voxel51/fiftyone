@@ -8,9 +8,9 @@ Rerun Integration
 `Rerun <https://www.rerun.io>`_ is an open-source visualization and 
 logging tool for robotics, spatial AI, and related domains.
 
-This integration allows you to easily associate `.rrd` files with your FiftyOne
-datasets, allowing you to explore and analyze complex sensor streams from
-robotic or autonomous systems.
+This integration allows you to easily associate and visualize `.rrd` files with
+the samples in your FiftyOne datasets, allowing you to explore and analyze
+complex sensor streams from robotic or autonomous systems.
 
 .. _rerun_setup
 
@@ -51,17 +51,17 @@ Use the following workflow to integrate RRD files with your FiftyOne dataset:
    .. code-block:: python
   
        import rerun as rr
-       from fiftyone.utils.rerun import RrdFile
 
-       # Create a new recording
+       # create a new recording
        recording = rr.new_recording(application_id="my_dataset", recording_id="my_scene.rrd")
 
+       # log example data
        recording.log("my_points", rr.Points3D(positions, colors=colors, radii=0.5))
 
        recording.save("/path/to/my_scene.rrd")
 
 2. Iterate through the samples in your dataset, associating the `.rrd` files
-   with each sample. Use the `fiftyone.utils.rerun::Rrdfile` to create a field
+   with each sample. Use the `fiftyone.utils.rerun::RrdFile` to create a field
    that references the `.rrd` file. The following example demonstrates how to
    associate an `.rrd` file with a sample in a FiftyOne dataset:
 
@@ -88,7 +88,8 @@ Use the following workflow to integrate RRD files with your FiftyOne dataset:
 
    .. warning::
         The Rerun server must be running before you launch the FiftyOne App
-        to visualize the `.rrd` files.
+        to visualize the `.rrd` files. Ensure your Rerun server and FiftyOne
+        App are on the same machine or accessible network.
 
 4. Launch the FiftyOne App.
 
@@ -99,11 +100,11 @@ Use the following workflow to integrate RRD files with your FiftyOne dataset:
 5. Open a sample. In the modal title bar, click on the "+" icon and select the
 Rerun plugin.
 
-.. note::
+.. tip::
     If you have a grouped dataset and have an RRD file that spans multiple
-    samples or slices in the group, redundantly add the `.rrd` file to each sample
-    in the group. The Rerun panel will not reload when you navigate between
-    samples so long as they refer to the same `.rrd` file.
+    samples or slices in the group, add the same `.rrd` file reference to each
+    sample in a group. The Rerun panel will not reload when you navigate
+    between samples so long as they refer to the same `.rrd` file.
 
 The example below demonstrates this workflow using the NuScenes dataset.
 
