@@ -71,6 +71,8 @@ jobs:
       # - name: Setup FFmpeg (with retries)
       #   uses: FedericoCarboni/setup-ffmpeg@v3
 
+      # Use this until https://github.com/federicocarboni/setup-ffmpeg/pull/23
+      # is merged or the maintainer addresses the root issue.
       - name: Setup FFmpeg (with retries)
         uses: afoley587/setup-ffmpeg@main
 
