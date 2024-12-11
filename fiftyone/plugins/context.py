@@ -35,7 +35,7 @@ def build_plugin_contexts(enabled=True):
         a list of :class:`PluginContext` instances
     """
     plugin_contexts = []
-    for pd in fop.list_plugins(enabled=enabled):
+    for pd in fop.list_plugins(enabled=enabled, include_builtin=True):
         pctx = PluginContext(pd)
         pctx.register_all()
         plugin_contexts.append(pctx)
