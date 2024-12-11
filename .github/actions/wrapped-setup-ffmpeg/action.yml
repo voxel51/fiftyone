@@ -1,9 +1,6 @@
 name: 'Setup FFmpeg with retries'
 description: 'Installs FFmpeg with retry logic'
 inputs:
-  github-token:
-    description: 'GitHub Token (required by "FedericoCarboni/setup-ffmpeg@v3")'
-    required: true
   retries:
     description: 'Number of retry attempts (default 5)'
     default: '5'
