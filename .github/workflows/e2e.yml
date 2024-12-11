@@ -69,7 +69,7 @@ jobs:
           python tests/utils/github_actions_flags.py
 
       - name: Setup FFmpeg (with retries)
-        uses: ./actions/wrapped-setup-ffmpeg
+        uses: ./.github/actions/wrapped-setup-ffmpeg
         with:
           retries: 5
           delay: 5
