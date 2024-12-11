@@ -88,7 +88,7 @@ class PluginContext(object):
 
         return self.plugin_definition.can_register_operator(instance.name)
 
-    def register(self, cls):
+    def register(self, cls, builtin=False):
         """Registers the given operator on the plugin.
 
         .. note::
@@ -96,10 +96,11 @@ class PluginContext(object):
             Any errors are logged rather than being raised.
 
         Args:
-            cls: an :class:`fiftyone.operators.operator.Operator` class
+            cls: an :class:`fiftyone.operators.operator.Operator` or :class:`fiftyone.operators.panel.Panel` class
+            builtin (False): For internal use. Whether the cls is a builtin operator or panel
         """
         try:
-            instance = cls()
+            instance = cls(_builtin=builtin)
             if self.can_register(instance):
                 instance.plugin_name = self.name
                 if self.secrets:

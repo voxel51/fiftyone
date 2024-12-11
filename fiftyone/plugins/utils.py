@@ -245,3 +245,8 @@ def _do_get_plugin_info(task):
             spec = gh_repo
 
         logger.debug("Failed to retrieve plugin info for %s: %s", spec, e)
+
+
+def get_builtin_plugins_dir():
+    """Returns the path to the built-in plugins directory."""
+    return os.path.join(os.path.dirname(__file__), "..", "builtins")
