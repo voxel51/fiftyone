@@ -71,7 +71,6 @@ jobs:
       - name: Setup FFmpeg (with retries)
         uses: ./actions/wrapped-setup-ffmpeg
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           retries: 5
           delay: 5
 

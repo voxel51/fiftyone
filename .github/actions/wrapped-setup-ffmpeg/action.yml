@@ -26,7 +26,7 @@ runs:
           echo "Attempt $count of $retries..."
           
           # Try to run the setup-ffmpeg action
-          npx -c "gh action run FedericoCarboni/setup-ffmpeg@v3 --github-token ${{ inputs.github-token }}"
+          npx -c "gh action run FedericoCarboni/setup-ffmpeg@v3"
           
           # Check the exit code of the previous command
           if [ $? -eq 0 ]; then
@@ -46,3 +46,5 @@ runs:
           echo "FFmpeg setup failed after $retries attempts"
           exit 1
         fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
