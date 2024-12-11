@@ -119,5 +119,5 @@ The
 has an example script that demonstrates how to combine FiftyOne with Rerun for
 the `NuScenes dataset <https://www.nuscenes.org/>`_.
 
-Follow the directions in the README to download the example data and launch the
-script.
+Follow the directions in the README to download the example data and to create
+a new FiftyOne dataset with samples that reference `.rrd` files.
