@@ -312,16 +312,19 @@ class SimpleEvaluation(RegressionEvaluation):
         # Metric operators.
         agg_metric_ops = []
         if eval_metrics:
-            for metric_op, metric_kwargs in eval_metrics:
+            import fiftyone.operators as foo
+
+            for metric_uri, metric_kwargs in eval_metrics:
+                metric_op = foo.get_operator(metric_uri)
                 if not metric_op.is_aggregate:  # check if per-sample/frame
                     try:
-                        metric_op(
-                            samples, ytrue, ypred, eval_key, **metric_kwargs
-                        )
+                        metric_kwargs["ytrue"] = ytrue
+                        metric_kwargs["ypred"] = ypred
+                        metric_op(samples, **metric_kwargs)
                     except Exception as e:
                         print(e)
                 else:
-                    agg_metric_ops.append((metric_op, metric_kwargs))
+                    agg_metric_ops.append((metric_uri, metric_kwargs))
 
         results = RegressionResults(
             samples,
@@ -474,9 +477,12 @@ class RegressionResults(foe.EvaluationResults):
         }
 
         if self.agg_metrics_ops:
-            for metric_op, metric_kwargs in self.agg_metrics_ops:
+            import fiftyone.operators as foo
+
+            for metric_uri, metric_kwargs in self.agg_metrics_ops:
+                metric_op = foo.get_operator(metric_uri)
                 metric_val = metric_op(self.samples, **metric_kwargs)
-                sample_eval_key = metric_kwargs.get("sample_eval_key", None)
+                sample_eval_key = metric_kwargs.get("sample_eval_key")
                 metric_name = (
                     f"{metric_op.name}_{sample_eval_key}"
                     if sample_eval_key
