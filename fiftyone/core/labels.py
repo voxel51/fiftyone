@@ -19,7 +19,6 @@ import skimage.segmentation as sks
 
 import eta.core.frameutils as etaf
 import eta.core.image as etai
-import eta.core.utils as etau
 
 import fiftyone.core.cache as foc
 from fiftyone.core.odm import DynamicEmbeddedDocument
@@ -463,7 +462,8 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
             its bounding box, which should be a 2D binary or 0/1 integer numpy
             array
         mask_path (None):  the absolute path to the instance segmentation image
-            on disk
+            on disk, which should be a single-channel PNG image where any
+            non-zero values represent the instance's extent
         confidence (None): a confidence in ``[0, 1]`` for the detection
         index (None): an index for the object
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
@@ -494,7 +494,7 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
             return self.mask
 
         if self.mask_path is not None:
-            return _read_mask(self.mask_path)
+            return _read_mask(self.local_path)
 
         return None
 
@@ -507,7 +507,7 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
                 attribute after importing
         """
         if self.mask_path is not None:
-            self.mask = _read_mask(self.mask_path)
+            self.mask = _read_mask(self.local_path)
 
             if update:
                 self.mask_path = None
@@ -522,7 +522,7 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
                 exporting in-database segmentations
         """
         if self.mask_path is not None:
-            etau.copy_file(self.mask_path, outpath)
+            fos.copy_file(self.local_path, outpath)
         else:
             _write_mask(self.mask, outpath)
 
@@ -586,8 +586,8 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
         """
         if not self.has_mask:
             raise ValueError(
-                "Only detections with their `mask` attributes populated can "
-                "be converted to segmentations"
+                "Only detections with their `mask` or `mask_path` attribute "
+                "populated can be converted to segmentations"
             )
 
         mask, target = _parse_segmentation_target(mask, frame_size, target)
