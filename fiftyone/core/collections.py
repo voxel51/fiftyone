@@ -10681,6 +10681,9 @@ class SampleCollection(object):
                 app_media_fields.discard("filepath")
 
         for field_name, field in schema.items():
+            while isinstance(field, fof.ListField):
+                field = field.field
+
             if field_name in app_media_fields:
                 media_fields[field_name] = None
             elif isinstance(field, fof.EmbeddedDocumentField) and issubclass(

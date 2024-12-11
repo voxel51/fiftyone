@@ -14,6 +14,7 @@ import random
 
 from bson import json_util
 from mongoengine.base import get_document
+import pydash
 
 import eta.core.datasets as etad
 import eta.core.image as etai
@@ -2151,32 +2152,43 @@ def _import_runs(dataset, runs, results_dir, run_cls):
 
 def _parse_media_fields(sd, media_fields, rel_dir):
     for field_name, key in media_fields.items():
-        value = sd.get(field_name, None)
+        value = pydash.get(sd, field_name, None)
         if value is None:
             continue
 
         if isinstance(value, dict):
-            if key is False:
-                try:
-                    _cls = value.get("_cls", None)
-                    key = get_document(_cls)._MEDIA_FIELD
-                except Exception as e:
-                    logger.warning(
-                        "Failed to infer media field for '%s'. Reason: %s",
-                        field_name,
-                        e,
-                    )
-                    key = None
-
-                media_fields[field_name] = key
-
-            if key is not None:
-                path = value.get(key, None)
-                if path is not None and not os.path.isabs(path):
-                    value[key] = os.path.join(rel_dir, path)
+            _parse_nested_media_field(
+                value, media_fields, rel_dir, field_name, key
+            )
+        elif isinstance(value, list):
+            for d in value:
+                _parse_nested_media_field(
+                    d, media_fields, rel_dir, field_name, key
+                )
         elif etau.is_str(value):
             if not os.path.isabs(value):
-                sd[field_name] = os.path.join(rel_dir, value)
+                pydash.set_(sd, field_name, os.path.join(rel_dir, value))
+
+
+def _parse_nested_media_field(d, media_fields, rel_dir, field_name, key):
+    if key is False:
+        try:
+            _cls = d.get("_cls", None)
+            key = get_document(_cls)._MEDIA_FIELD
+        except Exception as e:
+            logger.warning(
+                "Failed to infer media field for '%s'. Reason: %s",
+                field_name,
+                e,
+            )
+            key = None
+
+        media_fields[field_name] = key
+
+    if key is not None:
+        path = d.get(key, None)
+        if path is not None and not os.path.isabs(path):
+            d[key] = os.path.join(rel_dir, path)
 
 
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
