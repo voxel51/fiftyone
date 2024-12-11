@@ -43,5 +43,3 @@ runs:
           echo "FFmpeg setup failed after $retries attempts"
           exit 1
         fi
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
