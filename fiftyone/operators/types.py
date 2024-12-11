@@ -1827,16 +1827,18 @@ class Action(View):
         on_click: the operator to execute when the action is clicked
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, name, **kwargs):
         super().__init__(**kwargs)
+        self.name = name
 
     def clone(self):
-        clone = Action(**self._kwargs)
+        clone = Action(self.name, **self._kwargs)
         return clone
 
     def to_json(self):
-        return {**super().to_json()}
-    
+        return {**super().to_json(), "name": self.name}
+
+
 class Tooltip(View):
     """A tooltip (currently supported only in a :class:`TableView`).
 
@@ -1846,15 +1848,17 @@ class Tooltip(View):
         column: the column of the tooltip
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, row, column, **kwargs):
         super().__init__(**kwargs)
+        self.row = row
+        self.column = column
 
     def clone(self):
-        clone = Tooltip(**self._kwargs)
+        clone = Tooltip(self.row, self.column, **self._kwargs)
         return clone
 
     def to_json(self):
-        return {**super().to_json()}
+        return {**super().to_json(), "row": self.row, "column": self.column}
 
 
 class TableView(View):
@@ -1870,11 +1874,16 @@ class TableView(View):
         self.columns = kwargs.get("columns", [])
         self.row_actions = kwargs.get("row_actions", [])
         self.tooltips = kwargs.get("tooltips", [])
+        self._tooltip_map = {}
 
     def keys(self):
         return [column.key for column in self.columns]
 
     def add_column(self, key, **kwargs):
+        for column in self.columns:
+            if column.key == key:
+                raise ValueError(f"Column with key '{key}' already exists")
+
         column = Column(key, **kwargs)
         self.columns.append(column)
         return column
@@ -1882,6 +1891,10 @@ class TableView(View):
     def add_row_action(
         self, name, on_click, label=None, icon=None, tooltip=None, **kwargs
     ):
+        for action in self.row_actions:
+            if action.name == name:
+                raise ValueError(f"Action with name '{name}' already exists")
+
         row_action = Action(
             name=name,
             on_click=on_click,
@@ -1892,10 +1905,16 @@ class TableView(View):
         )
         self.row_actions.append(row_action)
         return row_action
-    
+
     def add_tooltip(self, row, column, value, **kwargs):
+        if (row, column) in self._tooltip_map:
+            raise ValueError(
+                f"Tooltip for row '{row}' and column '{column}' already exists"
+            )
+
         tooltip = Tooltip(row=row, column=column, value=value, **kwargs)
         self.tooltips.append(tooltip)
+        self._tooltip_map[(row, column)] = tooltip
         return tooltip
 
     def clone(self):
@@ -1903,6 +1922,10 @@ class TableView(View):
         clone.columns = [column.clone() for column in self.columns]
         clone.row_actions = [action.clone() for action in self.row_actions]
         clone.tooltips = [tooltip.clone() for tooltip in self.tooltips]
+        clone._tooltip_map = {
+            (tooltip.row, tooltip.column): tooltip
+            for tooltip in clone.tooltips
+        }
         return clone
 
     def to_json(self):
