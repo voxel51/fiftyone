@@ -30,6 +30,8 @@ jobs:
               - 'app/**'
             e2e-pw:
               - 'e2e-pw/**'
+              - '.github/workflows/e2e.yml'
+              - '.github/actions/wrapped-setup-ffmpeg/action.yml'
             fiftyone:
               - 'fiftyone/**'
               - 'package/**'
