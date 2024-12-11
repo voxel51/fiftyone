@@ -1,4 +1,5 @@
 import { PanelCTA } from "@fiftyone/components";
+import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import { constants } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import React, { useCallback, useMemo } from "react";
@@ -9,7 +10,15 @@ import { useTriggerEvent } from "./utils";
 
 const TRY_LINK = "http://voxel51.com/try-evaluation";
 
-export default function NativeModelEvaluationView(props) {
+registerComponent({
+  name: "ModelEvaluationView",
+  label: "ModelEvaluationView",
+  component: ModelEvaluationView,
+  type: PluginComponentType.Component,
+  activator: () => true,
+});
+
+function ModelEvaluationView(props) {
   const { data = {}, schema, onChange, layout } = props;
   const { view } = schema;
   const {
