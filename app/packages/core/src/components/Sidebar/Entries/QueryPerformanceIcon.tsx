@@ -1,12 +1,11 @@
 import { useTheme } from "@fiftyone/components";
-import { SpaceNode, useSpaceNodes, useSpaces } from "@fiftyone/spaces";
-import * as fos from "@fiftyone/state";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { Bolt } from "@mui/icons-material";
 import { Box, Button, Tooltip } from "@mui/material";
 import React from "react";
 import { atom, useRecoilState } from "recoil";
 import styled from "styled-components";
+import { executeOperator } from "@fiftyone/operators";
 
 const SectionTitle = styled.div`
   font-size: 1rem;
@@ -44,10 +43,6 @@ const QueryPerformanceIcon = () => {
   const lightningBoltColor = showExpanded
     ? theme.custom.lightning
     : theme.text.secondary;
-  const PANEL_NAME = "query_performance_panel";
-  const { FIFTYONE_GRID_SPACES_ID } = fos.constants;
-  const { spaces } = useSpaces(FIFTYONE_GRID_SPACES_ID);
-  const openedPanels = useSpaceNodes(FIFTYONE_GRID_SPACES_ID);
   return (
     <Tooltip
       title={
@@ -74,15 +69,12 @@ const QueryPerformanceIcon = () => {
                     flexGrow: 1,
                   }}
                   onClick={() => {
-                    let openedPanel = openedPanels.find(
-                      ({ type }) => type === PANEL_NAME
-                    );
-                    if (!openedPanel) {
-                      openedPanel = new SpaceNode();
-                      openedPanel.type = PANEL_NAME;
-                      spaces.addNodeAfter(spaces.root, openedPanel, true);
-                    }
-                    spaces.setNodeActive(openedPanel);
+                    executeOperator("open_panel", {
+                      name: "query_performance_panel",
+                      isActive: true,
+                      force: true,
+                      layout: "horizontal",
+                    });
                   }}
                 >
                   Manage Indexes
