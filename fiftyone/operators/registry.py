@@ -90,9 +90,8 @@ class OperatorRegistry(object):
         for pctx in self.plugin_contexts:
             operators.extend(pctx.instances)
 
-        if include_builtin:
-            operators.extend(BUILTIN_OPERATORS)
-            operators.extend(BUILTIN_PANELS)
+        if not include_builtin:
+            operators = [op for op in operators if op._builtin is False]
 
         if type == "panel":
             operators = [op for op in operators if isinstance(op, Panel)]
