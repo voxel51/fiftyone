@@ -2,15 +2,15 @@ const findFieldsHelper = (
   fields: string[],
   data: any,
   prefix?: string,
-  urls?: { [k: string]: any }
+  output?: { [k: string]: any }
 ): { [k: string]: any } => {
-  urls = urls ?? {};
+  output = output ?? {};
 
   if (data) {
     for (const attr of Object.keys(data)) {
       if (fields.includes(attr)) {
-        const urlKey = prefix ? `${prefix}.${attr}` : attr;
-        urls[urlKey] = data[attr];
+        const key = prefix ? `${prefix}.${attr}` : attr;
+        output[key] = data[attr];
       }
 
       // Recurse for any nested objects
@@ -19,13 +19,13 @@ const findFieldsHelper = (
           fields,
           data[attr],
           prefix ? `${prefix}.${attr}` : attr,
-          urls
+          output
         );
       }
     }
   }
 
-  return urls;
+  return output;
 };
 
 /**
