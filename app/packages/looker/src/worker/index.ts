@@ -327,10 +327,6 @@ const processSample = async ({
   labelTagColors,
   schema,
 }: ProcessSample) => {
-  if (!sample) {
-    return;
-  }
-
   mapId(sample);
 
   const imageBitmapPromises: Promise<ImageBitmap[]>[] = [];
