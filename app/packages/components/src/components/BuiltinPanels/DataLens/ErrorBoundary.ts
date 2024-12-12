@@ -8,14 +8,7 @@ type ErrorBoundaryProps = {
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps> {
   state: { error?: Error };
 
-  constructor(
-    props: React.ComponentProps<
-      {
-        fallback: React.ReactNode;
-        children: React.ReactNode;
-      } & any
-    >
-  ) {
+  constructor(props: React.ComponentProps<ErrorBoundaryProps>) {
     super(props);
     this.state = {};
   }
