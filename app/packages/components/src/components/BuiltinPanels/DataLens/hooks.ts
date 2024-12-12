@@ -249,6 +249,8 @@ type SampleStoreEntry = {
   urls: SampleUrls;
 };
 
+const sampleMediaFields = ["filepath"];
+
 /**
  * Hook which manages a spotlight instance used to render samples.
  * @param samples Samples to render
@@ -288,10 +290,10 @@ export const useSpotlight = ({
     cleanedSchema
   );
 
-  const buildUrls = useMemo(() => {
-    const mediaFields = ["filepath"];
-    return (sampleData: any) => findFields(mediaFields, sampleData);
-  }, []);
+  const buildUrls = useCallback(
+    (sampleData: any) => findFields(sampleMediaFields, sampleData),
+    []
+  );
 
   return useMemo(() => {
     if (resizing) {
