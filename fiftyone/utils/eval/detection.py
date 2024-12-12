@@ -5,6 +5,7 @@ Detection evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import contextlib
 from copy import deepcopy
 import inspect
 import itertools
@@ -188,32 +189,40 @@ def evaluate_detections(
 
     matches = []
     logger.info("Evaluating detections...")
-    for sample in _samples.iter_samples(progress=progress, autosave=save):
-        if processing_frames:
-            docs = sample.frames.values()
-        else:
-            docs = [sample]
+    with contextlib.ExitStack() as context:
+        if use_masks:
+            context.enter_context(
+                _samples.download_context(
+                    media_fields=[gt_field, pred_field], progress=progress
+                )
+            )
 
-        sample_tp = 0
-        sample_fp = 0
-        sample_fn = 0
-        for doc in docs:
-            doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
-            matches.extend(doc_matches)
-            tp, fp, fn = _tally_matches(doc_matches)
-            sample_tp += tp
-            sample_fp += fp
-            sample_fn += fn
+        for sample in _samples.iter_samples(progress=progress, autosave=save):
+            if processing_frames:
+                docs = sample.frames.values()
+            else:
+                docs = [sample]
 
-            if processing_frames and save:
-                doc[tp_field] = tp
-                doc[fp_field] = fp
-                doc[fn_field] = fn
+            sample_tp = 0
+            sample_fp = 0
+            sample_fn = 0
+            for doc in docs:
+                doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
+                matches.extend(doc_matches)
+                tp, fp, fn = _tally_matches(doc_matches)
+                sample_tp += tp
+                sample_fp += fp
+                sample_fn += fn
 
-        if save:
-            sample[tp_field] = sample_tp
-            sample[fp_field] = sample_fp
-            sample[fn_field] = sample_fn
+                if processing_frames and save:
+                    doc[tp_field] = tp
+                    doc[fp_field] = fp
+                    doc[fn_field] = fn
+
+            if save:
+                sample[tp_field] = sample_tp
+                sample[fp_field] = sample_fp
+                sample[fn_field] = sample_fn
 
     results = eval_method.generate_results(
         samples,

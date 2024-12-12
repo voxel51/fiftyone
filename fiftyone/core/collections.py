@@ -255,12 +255,14 @@ def _resolve_media_fields(sample_collection, media_fields):
     else:
         media_fields = [media_fields]
 
-    # Omit media fields that contain no values
+    # Omit media fields that contain no values to minimize database I/O
     resolved_fields = []
     for field in media_fields:
         if field != "filepath":
             field = sample_collection._resolve_media_field(field)
-            if not sample_collection.exists(field).limit(1):
+
+            # note: `field` could be a nested path (instance segmentations)
+            if sample_collection.count(field) == 0:
                 continue
 
         resolved_fields.append(field)
