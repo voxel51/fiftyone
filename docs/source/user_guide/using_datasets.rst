@@ -2542,7 +2542,7 @@ Object detections stored in |Detections| may also have instance segmentation
 masks.
 
 These masks can be stored in one of two ways: either directly in the database
-via the :attr:`mask<fiftyone.core.labels.Detection.mask>` attribute, or on
+via the :attr:`mask <fiftyone.core.labels.Detection.mask>` attribute, or on
 disk referenced by the
 :attr:`mask_path <fiftyone.core.labels.Detection.mask_path>` attribute.
 
@@ -2605,8 +2605,10 @@ object's bounding box when visualizing in the App.
                 <Detection: {
                     'id': '5f8709282018186b6ef6682b',
                     'attributes': {},
+                    'tags': [],
                     'label': 'cat',
                     'bounding_box': [0.48, 0.513, 0.397, 0.288],
+                    'mask': None,
                     'mask_path': '/path/to/mask.png',
                     'confidence': 0.96,
                     'index': None,
@@ -2615,8 +2617,8 @@ object's bounding box when visualizing in the App.
         }>,
     }>
 
-Like all |Label| types, you can also add custom attributes to your detections
-by dynamically adding new fields to each |Detection| instance:
+Like all |Label| types, you can also add custom attributes to your instance
+segmentations by dynamically adding new fields to each |Detection| instance:
 
 .. code-block:: python
     :linenos:
