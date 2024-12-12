@@ -357,37 +357,23 @@ export const useSpotlight = ({
         id: ID,
         element: HTMLDivElement,
         dimensions: [number, number],
-        soft: boolean,
-        disable: boolean
+        zooming: boolean
       ) => {
-        if (lookerStore.has(id)) {
-          const looker = lookerStore.get(id);
-          if (disable) {
-            looker?.disable();
-          } else {
-            looker?.attach(element, dimensions);
+        if (!lookerStore.has(id) && !zooming) {
+          const sample = sampleStore.get(id);
+
+          if (!(createLooker.current && sample)) {
+            throw new Error(
+              `createLooker=${!!createLooker.current}, sample=${JSON.stringify(
+                sample
+              )}`
+            );
           }
-          return;
+
+          lookerStore.set(id, createLooker.current({ ...sample, symbol: id }));
         }
 
-        const sample = sampleStore.get(id);
-
-        if (!(createLooker.current && sample)) {
-          throw new Error(
-            `createLooker=${!!createLooker.current}, sample=${JSON.stringify(
-              sample
-            )}`
-          );
-        }
-
-        const init = (looker: Lookers) => {
-          lookerStore.set(id, looker);
-          looker.attach(element, dimensions);
-        };
-
-        if (!soft) {
-          init(createLooker.current({ ...sample, symbol: id }));
-        }
+        lookerStore.get(id)?.attach(element, dimensions);
       },
       spacing: 20,
       destroy: (id: ID) => {
