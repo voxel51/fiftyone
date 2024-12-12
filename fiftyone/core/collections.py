@@ -11434,9 +11434,9 @@ class SampleCollection(object):
 
         return media_fields
 
-    def _resolve_media_field(self, media_field):
+    def _parse_media_field(self, media_field):
         if media_field in self._dataset.app_config.media_fields:
-            return media_field
+            return media_field, None
 
         _media_field, is_frame_field = self._handle_frame_field(media_field)
 
@@ -11452,7 +11452,13 @@ class SampleCollection(object):
                 if is_frame_field:
                     _resolved_field = self._FRAMES_PREFIX + _resolved_field
 
-                return _resolved_field
+                _list_fields = self._parse_field_name(
+                    _resolved_field, auto_unwind=False
+                )[-2]
+                if _list_fields:
+                    return _resolved_field, _list_fields[0]
+
+                return _resolved_field, None
 
         raise ValueError("'%s' is not a valid media field" % media_field)
 
