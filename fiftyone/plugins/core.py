@@ -28,7 +28,9 @@ from fiftyone.utils.github import GitHubRepository
 
 
 PLUGIN_METADATA_FILENAMES = ("fiftyone.yml", "fiftyone.yaml")
-BUILTIN_PLUGINS_DIR = os.path.join(os.path.dirname(__file__), "..", "builtins")
+BUILTIN_PLUGINS_DIR = os.path.join(
+    os.path.dirname(__file__), "..", "..", "plugins"
+)
 
 logger = logging.getLogger(__name__)
 
