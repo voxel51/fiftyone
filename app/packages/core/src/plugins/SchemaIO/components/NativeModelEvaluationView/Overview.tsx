@@ -97,7 +97,7 @@ function EvaluationCard(props: EvaluationCardProps) {
               }
             />
           )}
-          {status && <Status status={status} />}
+          {status && <Status status={status} readOnly />}
         </Stack>
         {note && <EvaluationNotes notes={note} variant="overview" />}
       </Card>
