@@ -7,6 +7,7 @@ import abc
 from typing import TYPE_CHECKING, Any, Union, Iterable
 
 import pymongo
+import pymongo.errors
 
 from fiftyone.api.pymongo import mixin, proxy
 
@@ -57,6 +58,11 @@ class AbstractCommandCursor(proxy.PymongoWebsocketProxy, abc.ABC):
                         break
 
                 self.__docs = iter(docs)
+
+    def _handle_disconnect(self):
+        raise pymongo.errors.CursorNotFound(
+            "CommandCursor::Websocket disconnect"
+        )
 
     @property
     def __proxy_api_client__(self) -> proxy.ProxyAPIClient:

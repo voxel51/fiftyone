@@ -98,6 +98,9 @@ class PymongoWebsocketProxy(PymongoRestProxy, abc.ABC):
             None, init_batch_size=100, max_batch_beta=128.0
         )
 
+    def _handle_disconnect(self):
+        self.__proxy_socket_connect__()
+
     def __proxy_it__(
         self,
         name: str,
@@ -118,17 +121,7 @@ class PymongoWebsocketProxy(PymongoRestProxy, abc.ABC):
                 marshalled_response = next(self.__proxy_api_socket)
                 return self.__proxy_api_handle_reponse__(marshalled_response)
             except socket.SocketDisconnectException as err:
-                self.__proxy_socket_connect__()
-
-                # Older version of the API didn't include AttributeErrors as
-                # execution errors and instead caused a hard error and
-                # disconnect. On the special case of `__next_batch`, cast to
-                # AttributeError to match the newer API behavior.
-                if name == "__next_batch":
-                    raise AttributeError(
-                        f"'{self.__class__.__name__}' object has no attribute "
-                        "'__next_batch'"
-                    ) from err
+                self._handle_disconnect()
 
     # pylint: disable-next=missing-function-docstring
     def close(self) -> None:
