@@ -269,8 +269,6 @@ export default <T extends AbstractLooker<BaseState>>(
           { signal: abortControllerRef.current.signal }
         );
 
-        // add event listener for message event
-
         return looker;
       },
     [

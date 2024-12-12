@@ -29,7 +29,6 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
     return {
       load: ({ update }) => {
         this.imageSource = this.element;
-        // set crossOrigin here using this.imageSource.src?
 
         update({
           loaded: true,
@@ -58,7 +57,6 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
         this.customCredentialsAudience &&
         src.includes(this.customCredentialsAudience)
       ) {
-        console.log("setting crossOrigin=Anonymous");
         this.element.setAttribute("crossOrigin", "Anonymous");
       }
       this.element.setAttribute("src", src);

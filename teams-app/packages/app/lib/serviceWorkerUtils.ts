@@ -46,8 +46,12 @@ export const sendMessageToServiceWorker = async (
     try {
       const registration = await navigator.serviceWorker.ready;
       if (registration.active) {
-        console.log("Posting message to service worker:", message);
         registration.active.postMessage(message);
+        if (message.accessToken) {
+          console.info(
+            "Sent message to service worker with latest credentials"
+          );
+        }
       } else {
         console.warn("No active service worker available");
       }
