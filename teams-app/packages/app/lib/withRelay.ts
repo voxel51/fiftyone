@@ -111,6 +111,7 @@ const withRelay = <P extends {} = {}, Q extends OperationType = OperationType>(
 
       // for media service-worker
       const token = getTokenFromReq(req as IncomingMessage);
+      console.log("withRelay token=", token);
       return {
         token,
         onUnauthenticated,

@@ -105,7 +105,6 @@ const fetchEvent = () => {
         if (event.request.method !== "OPTIONS") {
           modifiedHeaders.set(authHeader, `${authPrefix} ${token}`);
         }
-        console.log("modifiedHeaders=", modifiedHeaders);
         // Create a new request with the modified properties by explicitly setting them.
         // Otherwise, the options will be ignored if they are already set in the original request.
         const modifiedRequest = new Request(event.request.url, {
@@ -118,8 +117,6 @@ const fetchEvent = () => {
           referrer: request.referrer,
           headers: modifiedHeaders,
         });
-
-        console.log("fetchEvent modifiedRequest", modifiedRequest);
 
         event.respondWith(fetch(modifiedRequest));
       } else {

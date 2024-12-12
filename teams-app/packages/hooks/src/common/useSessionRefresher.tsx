@@ -29,7 +29,6 @@ export default function useSessionRefresher() {
       sessionExp - Date.now() > EARLY_REFRESH_WINDOW
     ) {
       if (serviceWorkerStatus !== "disabled" && customCredsRef.current) {
-        console.log("Service worker is active but not ready. Sending token");
         await sendMessageToServiceWorker(customCredsRef.current);
         sessionStorage.setItem(
           "customCredentialsAudience",
