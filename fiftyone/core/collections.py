@@ -10662,9 +10662,7 @@ class SampleCollection(object):
         db_fields_map = self._get_db_fields_map(frames=frames)
         return [db_fields_map.get(p, p) for p in paths]
 
-    def _get_media_fields(
-        self, include_filepath=True, whitelist=None, frames=False
-    ):
+    def _get_media_fields(self, whitelist=None, blacklist=None, frames=False):
         media_fields = {}
 
         if frames:
@@ -10674,11 +10672,8 @@ class SampleCollection(object):
             schema = self.get_field_schema(flat=True)
             app_media_fields = set(self._dataset.app_config.media_fields)
 
-            if include_filepath:
-                # 'filepath' should already be in set, but add it just in case
-                app_media_fields.add("filepath")
-            else:
-                app_media_fields.discard("filepath")
+            # 'filepath' should already be in set, but add it just in case
+            app_media_fields.add("filepath")
 
         for field_name, field in schema.items():
             while isinstance(field, fof.ListField):
@@ -10698,7 +10693,21 @@ class SampleCollection(object):
                 whitelist = {whitelist}
 
             media_fields = {
-                k: v for k, v in media_fields.items() if k in whitelist
+                k: v
+                for k, v in media_fields.items()
+                if any(w == k or k.startswith(w + ".") for w in whitelist)
+            }
+
+        if blacklist is not None:
+            if etau.is_container(blacklist):
+                blacklist = set(blacklist)
+            else:
+                blacklist = {blacklist}
+
+            media_fields = {
+                k: v
+                for k, v in media_fields.items()
+                if not any(w == k or k.startswith(w + ".") for w in blacklist)
             }
 
         return media_fields
@@ -10714,7 +10723,9 @@ class SampleCollection(object):
             if leaf is not None:
                 leaf = root + "." + leaf
 
-            if _media_field in (root, leaf):
+            if _media_field in (root, leaf) or root.startswith(
+                _media_field + "."
+            ):
                 _resolved_field = leaf if leaf is not None else root
                 if is_frame_field:
                     _resolved_field = self._FRAMES_PREFIX + _resolved_field
