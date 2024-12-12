@@ -259,7 +259,7 @@ def _resolve_media_fields(sample_collection, media_fields):
     resolved_fields = []
     for field in media_fields:
         if field != "filepath":
-            field = sample_collection._resolve_media_field(field)
+            field, _ = sample_collection._parse_media_field(field)
 
             # note: `field` could be a nested path (instance segmentations)
             if sample_collection.count(field) == 0:
@@ -3839,7 +3839,7 @@ class SampleCollection(object):
         else:
             media_fields = [media_fields]
 
-        media_fields = [self._resolve_media_field(f) for f in media_fields]
+        media_fields = [self._parse_media_field(f)[0] for f in media_fields]
 
         if flat:
             # Generate flat list of all media paths

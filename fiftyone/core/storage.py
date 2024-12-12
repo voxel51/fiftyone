@@ -2395,8 +2395,13 @@ def upload_media(
         )
 
     contains_3d = sample_collection._contains_media_type(fom.THREE_D)
-    media_field = sample_collection._resolve_media_field(media_field)
-    ids, filepaths = sample_collection.values(["id", media_field])
+    media_field, list_field = sample_collection._parse_media_field(media_field)
+
+    if list_field:
+        _, id_path = sample_collection._get_label_field_path(list_field, "id")
+        ids, filepaths = sample_collection.values([id_path, media_field])
+    else:
+        ids, filepaths = sample_collection.values(["id", media_field])
 
     filename_maker = fou.UniqueFilenameMaker(
         output_dir=remote_dir,
@@ -2411,9 +2416,15 @@ def upload_media(
         if filepath is None:
             continue
 
-        remote_path = filename_maker.get_output_path(filepath)
-        remote_paths[_id] = remote_path
-        paths_map[filepath] = remote_path
+        if list_field:
+            for _label_id, _filepath in zip(_id, filepath):
+                remote_path = filename_maker.get_output_path(_filepath)
+                remote_paths[_label_id] = remote_path
+                paths_map[_filepath] = remote_path
+        else:
+            remote_path = filename_maker.get_output_path(filepath)
+            remote_paths[_id] = remote_path
+            paths_map[filepath] = remote_path
 
     if contains_3d:
         _update_scene_asset_paths(paths_map, filename_maker)
@@ -2435,7 +2446,12 @@ def upload_media(
         )
 
     if update_filepaths:
-        sample_collection.set_values(media_field, remote_paths, key_field="id")
+        if list_field:
+            sample_collection.set_label_values(media_field, remote_paths)
+        else:
+            sample_collection.set_values(
+                media_field, remote_paths, key_field="id"
+            )
 
 
 def _update_scene_asset_paths(paths_map, filename_maker):
