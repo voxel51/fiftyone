@@ -28,20 +28,6 @@ const activateEvent = () => {
 };
 activateEvent();
 
-const supportedMediaExtensions = [
-  ".jpg",
-  ".jpeg",
-  ".bmp",
-  ".gif",
-  ".png",
-  ".mpg",
-  ".mp2",
-  ".mpeg",
-  ".mpe",
-  ".mpv",
-  ".mp4",
-  ".pcd",
-];
 const supportedDestinations = ["image", "video"];
 
 const authHeaderProps = {

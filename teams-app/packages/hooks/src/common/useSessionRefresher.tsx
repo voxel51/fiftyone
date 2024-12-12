@@ -1,8 +1,9 @@
 import { SESSION_ENDPOINT } from "@fiftyone/teams-state/src/constants";
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   CustomAuthMessage,
   deregisterAllServiceWorkers,
+  getCustomAuthMessageFromData,
   sendMessageToServiceWorker,
 } from "@fiftyone/teams-app/lib/serviceWorkerUtils";
 
@@ -28,7 +29,10 @@ export default function useSessionRefresher() {
       typeof sessionExp === "number" &&
       sessionExp - Date.now() > EARLY_REFRESH_WINDOW
     ) {
-      if (serviceWorkerStatus !== "disabled" && customCredsRef.current) {
+      if (
+        serviceWorkerStatus !== "disabled" &&
+        customCredsRef.current.accessToken
+      ) {
         await sendMessageToServiceWorker(customCredsRef.current);
         sessionStorage.setItem(
           "customCredentialsAudience",
@@ -43,34 +47,26 @@ export default function useSessionRefresher() {
       const data = await response.json();
       sessionExpRef.current = data.exp * 1000;
 
-      // Check for custom access token that enables overriding the one returned by the auth provider
-      const accessToken = data.customAccessToken || data.accessToken;
-      const audience = data.accessTokenAudience;
+      const message = getCustomAuthMessageFromData(data);
 
-      if (audience) {
-        const message: CustomAuthMessage = { accessToken, audience };
-
-        if (data.authHeader) message.authHeader = data.authHeader;
-        if (data.authPrefix) message.authPrefix = data.authPrefix;
-        if (data.headerOverrides)
-          message.headerOverrides = data.headerOverrides;
-
+      if (message) {
         customCredsRef.current = message;
-
         await sendMessageToServiceWorker(message);
 
-        sessionStorage.setItem("customCredentialsAudience", audience);
+        sessionStorage.setItem("customCredentialsAudience", message.audience);
         sessionStorage.setItem("serviceWorkerStatus", "ready");
       } else {
+        // If no audience specified in the token via js hook,
+        // disable the service worker and don't send creds
         customCredsRef.current = null;
-        console.log("Disabling all service workers");
         deregisterAllServiceWorkers();
         sessionStorage.setItem("serviceWorkerStatus", "disabled");
       }
     } catch (error) {
+      // If there's an error fetching the session,
+      // disable the service worker to prevent issues being compounded
       console.error("Error fetching session:", error);
       sessionExpRef.current = null;
-      console.log("Disabling all service workers");
       deregisterAllServiceWorkers();
       sessionStorage.setItem("serviceWorkerStatus", "disabled");
     }
