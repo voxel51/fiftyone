@@ -2132,7 +2132,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             )
 
         self._media_fields = sample_collection._get_media_fields(
-            include_filepath=False
+            blacklist="filepath",
         )
 
         info = dict(sample_collection.info)
@@ -2460,7 +2460,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             )
 
         self._media_fields = sample_collection._get_media_fields(
-            include_filepath=False
+            blacklist="filepath"
         )
 
         logger.info("Exporting samples...")
