@@ -97,7 +97,9 @@ class StateDescription(etas.Serializable):
 
             if self.dataset is not None:
                 d["dataset"] = self.dataset.name
-                collection = self.dataset
+                collection = fo.Dataset(
+                    self.dataset.name, _create=False, _force_load=True
+                )
                 if self.view is not None:
                     collection = self.view
 
