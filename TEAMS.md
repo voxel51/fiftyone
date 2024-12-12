@@ -37,27 +37,27 @@ please contact an experienced frontend team member!
     - React web application                                                     │
     - Runs at: http://localhost:3000                                            │
     - Code directory at `fiftyone-teams/teams-app/packages/app` and
-	  `fiftyone-teams/app`
+      `fiftyone-teams/app`
 
 - FiftyOne Teams App
     ```shell
-    % cd fiftyone-teams
-
-    # Use node 18
-    % nvm use 18
-    # Enable yarn (with node 18)
-    % corepack enable
-
-    # Install dependencies
-    % cd app && yarn install && cd -
-    % cd teams-app && yarn install && cd -
-
-    # Start the server
-    % cd teams-app/packages/app
-    % yarn dev
+    % make -f Makefile.teams run-embedded-api
 
     # FOT should now be running at localhost:3000
     ```
+
+## License Files and .env Files
+Developer license files and .env files are stored in GCP for ease of use
+and repeatability.
+These files can be downloaded via the `Makefile.teams` helper commands:
+
+```shell
+# To download the default developer license file
+% make -f Makefile.teams gcloud-cp-license
+
+# To download the default developer .env file
+% make -f Makefile.teams gcloud-cp-env
+```
 
 ### App Prerequisites
 
@@ -65,6 +65,13 @@ please contact an experienced frontend team member!
     -   [nvm](https://github.com/nvm-sh/nvm) is recommended
 -   [Yarn](https://classic.yarnpkg.com/lang/en/docs/install)
 
+These can be installed via the corresponding websites or with the following Makefile target:
+
+```shell
+# Installs nvm, node, pyenv, python, and virtual environments
+% make -f Makefile.teams configure
+```
+ 
 ### App Setup
 
 The embedded code requires a separate API server. The
