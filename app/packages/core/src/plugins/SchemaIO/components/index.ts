@@ -35,7 +35,6 @@ export { default as MapView } from "./MapView";
 export { default as MarkdownView } from "./MarkdownView";
 export { default as MediaPlayerView } from "./MediaPlayerView";
 export { default as ModalView } from "./ModalView";
-export { default as NativeModelEvaluationView } from "./NativeModelEvaluationView";
 export { default as ObjectView } from "./ObjectView";
 export { default as OneOfView } from "./OneOfView";
 export { default as OperatorExecutionButtonView } from "./OperatorExecutionButtonView";
