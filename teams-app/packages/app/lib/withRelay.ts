@@ -96,10 +96,6 @@ const withRelay = <P extends {} = {}, Q extends OperationType = OperationType>(
             httpOnly: true,
             secure: process.env.CAS_SECURE_COOKIE !== "false",
           });
-          console.log(
-            "withRelay unauthorized set-cookie cookieStr=",
-            cookieStr
-          );
 
           res.setHeader("Set-Cookie", cookieStr);
         }
@@ -115,7 +111,7 @@ const withRelay = <P extends {} = {}, Q extends OperationType = OperationType>(
 
       // for media service-worker
       const token = getTokenFromReq(req as IncomingMessage);
-      console.log("withRelay token=", token);
+      // console.log("withRelay token=", token);
       return {
         token,
         onUnauthenticated,

@@ -10,7 +10,7 @@ import logging
 import re
 import typing as t
 import urllib.parse as urlparse
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 from cachetools import TLRUCache, cached
 

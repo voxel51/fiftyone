@@ -234,7 +234,6 @@ const DynamicDataset = dynamic(
 );
 
 function Dataset() {
-  // semd message to service worker?
   const datasetContainer = useRef<HTMLDivElement>(null);
   const [topOffset, setTopOffset] = useState(130);
   const hideHeadersState = recoil.useRecoilValue(hideHeaders);

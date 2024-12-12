@@ -146,7 +146,7 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
         setIsServiceWorkerReady(true);
       });
     }
-  }, [isServiceWorkerEnabled, asPath, token]);
+  }, [isServiceWorkerEnabled, asPath]);
 
   useEffect(() => {
     router.events.on("routeChangeStart", () => {
