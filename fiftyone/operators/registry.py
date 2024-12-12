@@ -34,7 +34,7 @@ def get_operator(operator_uri, enabled=True):
     return operator
 
 
-def list_operators(enabled=True, type=None):
+def list_operators(enabled=True, type=None, builtins_only=False):
     """Returns all available operators.
 
     Args:
@@ -42,12 +42,17 @@ def list_operators(enabled=True, type=None):
             only disabled operators (False) or all operators ("all")
         type (None): whether to include only ``"panel"`` or ``"operator"`` type
             operators
+        builtins_only (False): whether to include only builtin operators
 
     Returns:
         a list of :class:`fiftyone.operators.Operator` instances
     """
     registry = OperatorRegistry(enabled=enabled)
-    return registry.list_operators(include_builtin=enabled != False, type=type)
+    return registry.list_operators(
+        include_builtin=enabled != False,
+        type=type,
+        builtins_only=builtins_only,
+    )
 
 
 def operator_exists(operator_uri, enabled=True):
@@ -75,13 +80,16 @@ class OperatorRegistry(object):
     def __init__(self, enabled=True):
         self.plugin_contexts = fopc.build_plugin_contexts(enabled=enabled)
 
-    def list_operators(self, include_builtin=True, type=None):
+    def list_operators(
+        self, include_builtin=True, type=None, builtins_only=False
+    ):
         """Lists the available FiftyOne operators.
 
         Args:
             include_builtin (True): whether to include builtin operators
             type (None): whether to include only ``"panel"`` or ``"operator"``
                 type operators
+            builtins_only (False): whether to include only builtin operators
 
         Returns:
             a list of :class:`fiftyone.operators.Operator` instances
@@ -92,6 +100,9 @@ class OperatorRegistry(object):
 
         if not include_builtin:
             operators = [op for op in operators if op._builtin is False]
+
+        if builtins_only:
+            operators = [op for op in operators if op._builtin is True]
 
         if type == "panel":
             operators = [op for op in operators if isinstance(op, Panel)]
@@ -125,7 +136,7 @@ class OperatorRegistry(object):
         Returns:
             True/False
         """
-        for operator in self.list_operators():
+        for operator in self.list_operators(include_builtin=True):
             if operator_uri == operator.uri:
                 return True
 
