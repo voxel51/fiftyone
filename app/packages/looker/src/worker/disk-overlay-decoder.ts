@@ -1,8 +1,8 @@
 import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import { DETECTION, DETECTIONS } from "@fiftyone/utilities";
-import { Coloring, CustomizeColor } from "..";
-import { OverlayMask } from "../numpy";
-import { Colorscale } from "../state";
+import type { Coloring, CustomizeColor } from "..";
+import type { OverlayMask } from "../numpy";
+import type { Colorscale } from "../state";
 import { decodeWithCanvas } from "./canvas-decoder";
 import { enqueueFetch } from "./pooled-fetch";
 import { getOverlayFieldFromCls } from "./shared";
@@ -13,8 +13,9 @@ export type IntermediateMask = {
 };
 
 /**
- * Some label types (example: segmentation, heatmap) can have their overlay data stored on-disk,
- * we want to impute the relevant mask property of these labels from what's stored in the disk
+ * Some label types (example: segmentation, heatmap) can have their overlay
+ * data stored on-disk, we want to impute the relevant mask property of these
+ * labels from what's stored in the disk
  */
 export const decodeOverlayOnDisk = async (
   field: string,
@@ -53,18 +54,16 @@ export const decodeOverlayOnDisk = async (
   const overlayField = overlayFields.canonical;
 
   if (Boolean(label[overlayField]) || !Object.hasOwn(label, overlayPathField)) {
-    // it's possible we're just re-coloring, in which case re-init mask image and set bitmap to null
-    if (
-      label[overlayField] &&
-      label[overlayField].bitmap &&
-      !label[overlayField].image
-    ) {
+    // it's possible we're just re-coloring, in which case re-init mask image
+    // and set bitmap to null
+    if (label[overlayField]?.bitmap && !label[overlayField]?.image) {
       const height = label[overlayField].bitmap.height;
       const width = label[overlayField].bitmap.width;
       label[overlayField].image = new ArrayBuffer(height * width * 4);
       label[overlayField].bitmap.close();
       label[overlayField].bitmap = null;
     }
+
     // nothing to be done
     return;
   }

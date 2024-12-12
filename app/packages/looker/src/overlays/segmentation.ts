@@ -3,24 +3,26 @@
  */
 
 import { getColor, sizeBytesEstimate } from "@fiftyone/utilities";
-import { ARRAY_TYPES, TypedArray } from "../numpy";
-import { BaseState, Coordinates, MaskTargets } from "../state";
-import {
+import type { TypedArray } from "../numpy";
+import { ARRAY_TYPES } from "../numpy";
+import type { BaseState, Coordinates, MaskTargets } from "../state";
+import type {
   BaseLabel,
-  CONTAINS,
   LabelMask,
   Overlay,
   PointInfo,
   SelectData,
-  isShown,
 } from "./base";
+import { CONTAINS, isShown } from "./base";
 import { isRgbMaskTargets, strokeCanvasRect, t } from "./util";
 
-interface SegmentationLabel extends BaseLabel {
+export interface SegmentationLabel extends BaseLabel {
+  is_panoptic?: boolean;
   mask?: LabelMask;
 }
 
 interface SegmentationInfo extends BaseLabel {
+  instance?: number | bigint;
   mask?: {
     shape: [number, number];
   };
@@ -103,26 +105,7 @@ export default class SegmentationOverlay<State extends BaseState>
     if (this.containsPoint(state)) {
       return 0;
     }
-    return Infinity;
-  }
-
-  initRgbMaskTargetsCache(rgbMaskTargets: MaskTargets) {
-    if (!this.isRgbMaskTargets && isRgbMaskTargets(rgbMaskTargets)) {
-      this.isRgbMaskTargets = true;
-    }
-
-    if (this.rgbMaskTargetsReverseMap) {
-      return;
-    }
-
-    this.rgbMaskTargetsReverseMap = {};
-
-    Object.entries(rgbMaskTargets).map(([color, intTargetAndLabel]) => {
-      this.rgbMaskTargetsReverseMap[intTargetAndLabel.intTarget] = {
-        color,
-        label: intTargetAndLabel.label,
-      };
-    });
+    return Number.Infinity;
   }
 
   getPointInfo(state: Readonly<State>): Partial<PointInfo<SegmentationInfo>> {
@@ -139,76 +122,43 @@ export default class SegmentationOverlay<State extends BaseState>
     const target = this.getTarget(state);
 
     if (this.label.mask.data.channels > 2) {
-      const rgbSegmentationInfoWithoutColor: Omit<
-        PointInfo<SegmentationInfo>,
-        "color"
-      > = {
-        label: {
-          ...this.label,
-          mask: {
-            shape: this.label.mask.data.shape
-              ? this.label.mask.data.shape
-              : null,
-          },
+      return this.handleRgbTargets(maskTargets, target);
+    }
+
+    const result = {
+      color:
+        maskTargets && Object.keys(maskTargets).length === 1
+          ? getColor(
+              state.options.coloring.pool,
+              state.options.coloring.seed,
+              this.field
+            )
+          : coloring.targets[
+              Math.round(Math.abs(target)) % coloring.targets.length
+            ],
+      label: {
+        ...this.label,
+        mask: {
+          shape: this.label.mask.data.shape ? this.label.mask.data.shape : null,
         },
-        field: this.field,
-        target,
-        type: "Segmentation",
-      };
+      },
+      field: this.field,
+      target,
+      type: "Segmentation",
+    };
 
-      this.initRgbMaskTargetsCache(maskTargets);
-
-      if (!this.isRgbMaskTargets) {
-        // getting color here is computationally inefficient, return no tooltip ribbon color for this edge case
-        return rgbSegmentationInfoWithoutColor;
-      }
-
-      if (
-        !this.rgbMaskTargetsReverseMap ||
-        !this.rgbMaskTargetsReverseMap[target]
-      ) {
-        return undefined;
-      }
-
+    if (this.label.mask.data.channels === 2) {
+      console.log({
+        ...result,
+        instance: this.getInstance(state),
+      });
       return {
-        color: this.rgbMaskTargetsReverseMap[target].color,
-        label: {
-          ...this.label,
-          mask: {
-            shape: this.label.mask.data.shape
-              ? this.label.mask.data.shape
-              : null,
-          },
-        },
-        field: this.field,
-        target,
-        type: "Segmentation",
-      };
-    } else {
-      return {
-        color:
-          maskTargets && Object.keys(maskTargets).length === 1
-            ? getColor(
-                state.options.coloring.pool,
-                state.options.coloring.seed,
-                this.field
-              )
-            : coloring.targets[
-                Math.round(Math.abs(target)) % coloring.targets.length
-              ],
-        label: {
-          ...this.label,
-          mask: {
-            shape: this.label.mask.data.shape
-              ? this.label.mask.data.shape
-              : null,
-          },
-        },
-        field: this.field,
-        target,
-        type: "Segmentation",
+        ...result,
+        instance: this.getInstance(state),
       };
     }
+
+    return result;
   }
 
   getSelectData(): SelectData {
@@ -235,7 +185,13 @@ export default class SegmentationOverlay<State extends BaseState>
     if (sx < 0 || sy < 0) {
       return -1;
     }
-    return this.label.mask.data.shape[1] * sy + sx;
+
+    let mulitplier = 1;
+    if (this.label.is_panoptic) {
+      mulitplier = this.label.mask?.data?.channels;
+    }
+
+    return mulitplier * (this.label.mask.data.shape[1] * sy + sx);
   }
 
   private getMaskCoordinates({
@@ -248,13 +204,87 @@ export default class SegmentationOverlay<State extends BaseState>
     return [sx, sy];
   }
 
-  private getTarget(state: Readonly<State>): number {
+  private getInstance(state: Readonly<State>): number {
     const index = this.getIndex(state);
 
     if (index < 0 || !this.targets || index >= this.targets.length) {
       return null;
     }
-    return this.targets[index];
+
+    return Number(this.targets[index + 1]);
+  }
+
+  private getTarget(state: Readonly<State>): number {
+    const index = this.getIndex(state);
+    if (index < 0) {
+      return null;
+    }
+
+    return Number(this.targets[index]);
+  }
+
+  private handleRgbTargets(targets: MaskTargets, target: number) {
+    const rgbSegmentationInfoWithoutColor: Omit<
+      PointInfo<SegmentationInfo>,
+      "color"
+    > = {
+      label: {
+        ...this.label,
+        mask: {
+          shape: this.label.mask.data.shape ? this.label.mask.data.shape : null,
+        },
+      },
+      field: this.field,
+      target,
+      type: "Segmentation",
+    };
+
+    this.initRgbMaskTargetsCache(targets);
+
+    if (!this.isRgbMaskTargets) {
+      // getting color here is computationally inefficient, return no tooltip
+      // ribbon color for this edge case
+      return rgbSegmentationInfoWithoutColor;
+    }
+
+    if (
+      !this.rgbMaskTargetsReverseMap ||
+      !this.rgbMaskTargetsReverseMap[target]
+    ) {
+      return undefined;
+    }
+
+    return {
+      color: this.rgbMaskTargetsReverseMap[target].color,
+      label: {
+        ...this.label,
+        mask: {
+          shape: this.label.mask.data.shape ? this.label.mask.data.shape : null,
+        },
+      },
+      field: this.field,
+      target,
+      type: "Segmentation",
+    };
+  }
+
+  private initRgbMaskTargetsCache(targets: MaskTargets) {
+    if (!this.isRgbMaskTargets && isRgbMaskTargets(targets)) {
+      this.isRgbMaskTargets = true;
+    }
+
+    if (this.rgbMaskTargetsReverseMap) {
+      return;
+    }
+
+    this.rgbMaskTargetsReverseMap = {};
+
+    Object.entries(targets).map(([color, intTargetAndLabel]) => {
+      this.rgbMaskTargetsReverseMap[intTargetAndLabel.intTarget] = {
+        color,
+        label: intTargetAndLabel.label,
+      };
+    });
   }
 
   getSizeBytes(): number {
@@ -269,7 +299,7 @@ export default class SegmentationOverlay<State extends BaseState>
 }
 
 export const getSegmentationPoints = (
-  labels: SegmentationLabel[]
+  _: SegmentationLabel[]
 ): Coordinates[] => {
   return [
     [0, 0],

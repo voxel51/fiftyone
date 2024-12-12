@@ -2,22 +2,23 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
+import type { Schema, Stage } from "@fiftyone/utilities";
 import {
   DENSE_LABELS,
   DETECTION,
   DETECTIONS,
   DYNAMIC_EMBEDDED_DOCUMENT,
   EMBEDDED_DOCUMENT,
+  HEATMAP,
   LABEL_LIST,
-  Schema,
-  Stage,
+  SEGMENTATION,
   VALID_LABEL_TYPES,
   getCls,
   getFetchFunction,
   setFetchFunction,
 } from "@fiftyone/utilities";
 import { CHUNK_SIZE } from "../constants";
-import {
+import type {
   BaseConfig,
   Coloring,
   Colorscale,
@@ -29,67 +30,11 @@ import {
 } from "../state";
 import { DeserializerFactory } from "./deserializer";
 import { decodeOverlayOnDisk } from "./disk-overlay-decoder";
-import { PainterFactory } from "./painter";
+import { painter, resolveColor } from "./painters";
+import type { ResolveColor, ResolveColorMethod } from "./painters/utils";
 import { getOverlayFieldFromCls, mapId } from "./shared";
 import { process3DLabels } from "./threed-label-processor";
-
-interface ResolveColor {
-  key: string | number;
-  seed: number;
-  color: string;
-}
-
-type ResolveColorMethod = ReaderMethod & ResolveColor;
-
-const [requestColor, resolveColor] = ((): [
-  (pool: string[], seed: number, key: string | number) => Promise<string>,
-  (result: ResolveColor) => void
-] => {
-  const cache = {};
-  const requests = {};
-  const promises = {};
-
-  return [
-    (pool, seed, key) => {
-      if (!(seed in cache)) {
-        cache[seed] = {};
-      }
-
-      const colors = cache[seed];
-
-      if (!(key in colors)) {
-        if (!(seed in requests)) {
-          requests[seed] = {};
-          promises[seed] = {};
-        }
-
-        const seedRequests = requests[seed];
-        const seedPromises = promises[seed];
-
-        if (!(key in seedRequests)) {
-          seedPromises[key] = new Promise((resolve) => {
-            seedRequests[key] = resolve;
-            postMessage({
-              method: "requestColor",
-              key,
-              seed,
-              pool,
-            });
-          });
-        }
-
-        return seedPromises[key];
-      }
-
-      return Promise.resolve(colors[key]);
-    },
-    ({ key, seed, color }) => {
-      requests[seed][key](color);
-    },
-  ];
-})();
-
-const painterFactory = PainterFactory(requestColor);
+import type { ReaderMethod } from "./types";
 
 const ALL_VALID_LABELS = new Set(VALID_LABEL_TYPES);
 
@@ -205,19 +150,33 @@ const processLabels = async (
       if (!label) {
         continue;
       }
-      if (painterFactory[cls]) {
-        painterPromises.push(
-          painterFactory[cls](
-            prefix ? prefix + field : field,
-            label,
-            coloring,
-            customizeColorSetting,
-            colorscale,
-            labelTagColors,
-            selectedLabelTags
-          )
-        );
+
+      const params = {
+        field: prefix ? prefix + field : field,
+        label,
+        coloring,
+        customizeColorSetting,
+        colorscale,
+        labelTagColors,
+        selectedLabelTags,
+      };
+      let promise: Promise<void>;
+      switch (cls) {
+        case DETECTION:
+          promise = painter.Detection(params);
+          break;
+        case DETECTIONS:
+          promise = painter.Detections(params);
+          break;
+        case HEATMAP:
+          promise = painter.Heatmap(params);
+          break;
+        case SEGMENTATION:
+          promise = painter.Segmentation(params);
+          break;
       }
+
+      painterPromises.push(promise);
     }
   }
 
@@ -251,9 +210,9 @@ const processLabels = async (
 
 const collectBitmapPromises = (label, cls, bitmapPromises) => {
   if (cls === DETECTIONS) {
-    label?.detections?.forEach((detection) =>
-      collectBitmapPromises(detection, DETECTION, bitmapPromises)
-    );
+    for (const detection of label?.detections ?? []) {
+      collectBitmapPromises(detection, DETECTION, bitmapPromises);
+    }
     return;
   }
 
@@ -297,10 +256,6 @@ let stream: FrameStream | null = null;
 let streamId: string | null = null;
 
 /** END GLOBALS */
-
-interface ReaderMethod {
-  method: string;
-}
 
 export interface ProcessSample {
   uuid: string;
@@ -545,17 +500,17 @@ const getSendChunk =
         .filter((result) => result.status === "fulfilled")
         .map((result) => result.value);
 
-      const allBuffers = allLabelsResults.map((result) => result[1]).flat();
+      const allBuffers = allLabelsResults.flatMap((result) => result[1]);
 
-      const allBitmapsPromises = allLabelsResults
-        .map((result) => result[0])
-        .flat();
+      const allBitmapsPromises = allLabelsResults.flatMap(
+        (result) => result[0]
+      );
 
       const bitmapPromiseResults = (
         await Promise.allSettled(allBitmapsPromises)
-      )
-        .map((result) => (result.status === "fulfilled" ? result.value : []))
-        .flat();
+      ).flatMap((result) =>
+        result.status === "fulfilled" ? result.value : []
+      );
 
       const transferables = [...bitmapPromiseResults, ...allBuffers];
       postMessage(
@@ -616,7 +571,7 @@ const setStream = ({
   group,
   schema,
 }: SetStream) => {
-  stream && stream.cancel();
+  stream?.cancel();
   streamId = uuid;
 
   stream = createReader({
