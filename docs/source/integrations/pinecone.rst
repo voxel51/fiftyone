@@ -185,7 +185,13 @@ FiftyOne whenever a connection to Pinecone is made:
 .. code-block:: shell
 
     export FIFTYONE_BRAIN_SIMILARITY_PINECONE_API_KEY=XXXXXX
-    export FIFTYONE_BRAIN_SIMILARITY_PINECONE_ENVIRONMENT="us-west1-gcp"
+
+    # Serverless indexes
+    export FIFTYONE_BRAIN_SIMILARITY_PINECONE_CLOUD="aws"
+    export FIFTYONE_BRAIN_SIMILARITY_PINECONE_REGION="us-east-1"
+
+    # Pod-based indexes
+    export FIFTYONE_BRAIN_SIMILARITY_PINECONE_ENVIRONMENT="us-east-1-aws"
 
 **FiftyOne Brain config**
 
@@ -198,7 +204,9 @@ located at `~/.fiftyone/brain_config.json`:
         "similarity_backends": {
             "pinecone": {
                 "api_key": "XXXXXXXXXXXX",
-                "environment": "us-west1-gcp"
+                "cloud": "aws",                 # serverless indexes
+                "region": "us-east-1",          # serverless indexes
+                "environment": "us-east-1-aws"  # pod-based indexes
             }
         }
     }
@@ -222,7 +230,8 @@ connections to Pinecone:
         backend="pinecone",
         brain_key="pinecone_index",
         api_key="XXXXXX",
-        environment="us-west1-gcp",
+        cloud="aws",
+        region="us-east-1",
     )
 
 Note that, when using this strategy, you must manually provide the credentials
@@ -235,7 +244,8 @@ when loading an index later via
     pinecone_index = dataset.load_brain_results(
         "pinecone_index",
         api_key="XXXXXX",
-        environment="us-west1-gcp",
+        cloud="aws",
+        region="us-east-1",
     )
 
 .. _pinecone-config-parameters:
@@ -248,26 +258,28 @@ customize your similarity queries. These parameters include:
 
 -   **index_name** (*None*): the name of the Pinecone index to use or create.
     If not specified, a new unique name is generated automatically
--   **index_type** (*None*): the index type to use when creating a new index
+-   **index_type** (*None*): the index type to use when creating a new index.
+    The supported values are ``["serverless", "pod"]``, and the default is
+    ``"serverless"``
 -   **namespace** (*None*): a namespace under which to store vectors added to
     the index
 -   **metric** (*"cosine"*): the distance/similarity metric to use for the
     index. Supported values are ``("cosine", "dotproduct", "euclidean")``
 -   **replicas** (*None*): an optional number of replicas to use when creating
-    a new index
+    a new pod-based index
 -   **shards** (*None*): an optional number of shards to use when creating a
-    new index
+    new pod-based index
 -   **pods** (*None*): an optional number of pods to use when creating a new
-    index
+    pod-based index
 -   **pod_type** (*None*): an optional pod type to use when creating a new
-    index
+    pod-based index
 
 For detailed information on these parameters, see the 
 `Pinecone documentation <https://docs.pinecone.io/docs/indexes>`_.
 
 You can specify these parameters via any of the strategies described in the
 previous section. Here's an example of a :ref:`brain config <brain-config>`
-that includes all of the available parameters:
+that configures a serverless index:
 
 .. code-block:: json
 
@@ -275,13 +287,8 @@ that includes all of the available parameters:
         "similarity_backends": {
             "pinecone": {
                 "index_name": "your-index",
-                "index_type": null,
-                "namespace": null,
+                "index_type": "serverless",
                 "metric": "cosine",
-                "replicas": 1,
-                "shards": 1,
-                "pods": 1,
-                "pod_type": "p1"
             }
         }
     }
@@ -298,9 +305,8 @@ a specific new index:
         backend="pinecone",
         brain_key="pinecone_index",
         index_name="your-index",
+        index_type="serverless",
         metric="cosine",
-        pod_type="s1",
-        pods=2,
     )
 
 .. _pinecone-managing-brain-runs:
@@ -388,7 +394,7 @@ a FiftyOne dataset using the Pinecone backend.
 .. note::
 
     All of the examples below assume you have configured your Pinecone API key
-    and environment as described in :ref:`this section <pinecone-setup>`.
+    as described in :ref:`this section <pinecone-setup>`.
 
 .. _pinecone-new-similarity-index:
 
@@ -685,10 +691,6 @@ underlying Pinecone client instance and use its methods as desired:
 
     print(pinecone_index.index)
 
-    # The Pinecone SDK is already initialized for you as well
-    import pinecone
-    print(pinecone.list_indexes())
-
 .. _pinecone-advanced-usage:
 
 Advanced usage
@@ -720,9 +722,6 @@ product similarity, and populate the index for only a subset of our dataset:
         brain_key="pinecone_index",
         backend="pinecone",
         index_name="custom-pinecone-index",
-        pod_type="s1",
-        pods=2,
-        shards=2,
     )
 
     # Add embeddings for a subset of the dataset
@@ -731,7 +730,3 @@ product similarity, and populate the index for only a subset of our dataset:
     pinecone_index.add_to_index(embeddings, sample_ids)
 
     print(pinecone_index.index)
-
-    # The Pinecone SDK is already initialized for you as well
-    import pinecone
-    print(pinecone.list_indexes())

@@ -3,9 +3,10 @@ import {
   LookerArrowRightIcon,
 } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
+import { createDebouncedNavigator } from "./debouncedNavigator";
 
 const Arrow = styled.span<{
   $isRight?: boolean;
@@ -26,7 +27,7 @@ const Arrow = styled.span<{
   left: ${(props) => (props.$isRight ? "initial" : "0.75rem")};
   z-index: 99999;
   padding: 0.75rem;
-  bottom: 33vh;
+  top: 50%;
   width: 3rem;
   height: 3rem;
   background-color: var(--fo-palette-background-button);
@@ -41,9 +42,13 @@ const Arrow = styled.span<{
     transition: box-shadow 0.15s ease-in-out;
     transition: opacity 0.15s ease-in-out;
   }
+
+  &:active {
+    top: calc(50% + 2px);
+  }
 `;
 
-const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
+const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   const showModalNavigationControls = useRecoilValue(
     fos.showModalNavigationControls
   );
@@ -61,19 +66,51 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
 
   const setModal = fos.useSetExpandedSample();
   const modal = useRecoilValue(fos.modalSelector);
-  const navigation = useRecoilValue(fos.modalNavigation);
 
-  const navigateNext = useCallback(async () => {
-    onNavigate();
-    const result = await navigation?.next();
-    setModal(result);
-  }, [navigation, onNavigate, setModal]);
+  const modalRef = useRef(modal);
 
-  const navigatePrevious = useCallback(async () => {
-    onNavigate();
-    const result = await navigation?.previous();
-    setModal(result);
-  }, [onNavigate, navigation, setModal]);
+  modalRef.current = modal;
+
+  // important: make sure all dependencies of the navigators are referentially stable,
+  // or else the debouncing mechanism won't work
+  const nextNavigator = useMemo(
+    () =>
+      createDebouncedNavigator({
+        isNavigationIllegalWhen: () => modalRef.current?.hasNext === false,
+        navigateFn: async (offset) => {
+          const navigation = fos.modalNavigation.get();
+          if (navigation) {
+            return await navigation.next(offset).then(setModal);
+          }
+        },
+        onNavigationStart: closePanels,
+        debounceTime: 150,
+      }),
+    [closePanels, setModal]
+  );
+
+  const previousNavigator = useMemo(
+    () =>
+      createDebouncedNavigator({
+        isNavigationIllegalWhen: () => modalRef.current?.hasPrevious === false,
+        navigateFn: async (offset) => {
+          const navigation = fos.modalNavigation.get();
+          if (navigation) {
+            return await navigation.previous(offset).then(setModal);
+          }
+        },
+        onNavigationStart: closePanels,
+        debounceTime: 150,
+      }),
+    [closePanels, setModal]
+  );
+
+  useEffect(() => {
+    return () => {
+      nextNavigator.cleanup();
+      previousNavigator.cleanup();
+    };
+  }, [nextNavigator, previousNavigator]);
 
   const keyboardHandler = useCallback(
     (e: KeyboardEvent) => {
@@ -89,12 +126,12 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
       }
 
       if (e.key === "ArrowLeft") {
-        navigatePrevious();
+        previousNavigator.navigate();
       } else if (e.key === "ArrowRight") {
-        navigateNext();
+        nextNavigator.navigate();
       }
     },
-    [navigateNext, navigatePrevious]
+    [nextNavigator, previousNavigator]
   );
 
   fos.useEventHandler(document, "keyup", keyboardHandler);
@@ -109,7 +146,7 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
         <Arrow
           $isSidebarVisible={isSidebarVisible}
           $sidebarWidth={sidebarwidth}
-          onClick={navigatePrevious}
+          onClick={previousNavigator.navigate}
         >
           <LookerArrowLeftIcon data-cy="nav-left-button" />
         </Arrow>
@@ -119,7 +156,7 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
           $isRight
           $isSidebarVisible={isSidebarVisible}
           $sidebarWidth={sidebarwidth}
-          onClick={navigateNext}
+          onClick={nextNavigator.navigate}
         >
           <LookerArrowRightIcon data-cy="nav-right-button" />
         </Arrow>

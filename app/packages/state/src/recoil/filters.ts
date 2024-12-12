@@ -4,16 +4,28 @@ import {
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
-import { DefaultValue, selector, selectorFamily } from "recoil";
+import { DefaultValue, selectorFamily } from "recoil";
 import { getSessionRef, sessionAtom } from "../session";
-import { lightning, lightningPaths } from "./lightning";
-import { dbPath, expandPath, fields } from "./schema";
-import { hiddenLabelIds } from "./selectors";
-import {
-  granularSidebarExpandedStore,
-  sidebarExpandedStore,
-} from "./sidebarExpanded";
-import { State } from "./types";
+import { pathHasIndexes, queryPerformance } from "./queryPerformance";
+import { expandPath, fields } from "./schema";
+import { hiddenLabelIds, isFrameField } from "./selectors";
+import type { State } from "./types";
+
+export const { getQueryPerformancePath, setQueryPerformancePath } = (() => {
+  let queryPerformancePath: { isFrameField: boolean; path: string } | null =
+    null;
+
+  return {
+    getQueryPerformancePath: () => queryPerformancePath,
+    setQueryPerformancePath: (path: string | null, isFrameField = false) => {
+      if (path) {
+        queryPerformancePath = { isFrameField, path };
+      } else {
+        queryPerformancePath = null;
+      }
+    },
+  };
+})();
 
 export const modalFilters = sessionAtom({
   key: "modalFilters",
@@ -40,6 +52,7 @@ export const filters = (() => {
       effects: [
         ({ onSet }) => {
           onSet((next) => {
+            setQueryPerformancePath(null);
             current = next;
           });
         },
@@ -48,25 +61,6 @@ export const filters = (() => {
     }
   );
 })();
-
-export const lightningFilters = selector({
-  key: "lightningFilters",
-  get: ({ get }) => {
-    if (!get(lightning)) {
-      return {};
-    }
-
-    const f = { ...get(filters) };
-    const paths = get(lightningPaths(""));
-    for (const p in f) {
-      if (!paths.has(get(dbPath(p)))) {
-        delete f[p];
-      }
-    }
-
-    return f;
-  },
-});
 
 export const filter = selectorFamily<
   State.Filter,
@@ -86,36 +80,22 @@ export const filter = selectorFamily<
     },
   set:
     ({ path, modal }) =>
-    ({ get, reset, set }, filter) => {
+    ({ get, set }, filter) => {
       const atom = modal ? modalFilters : filters;
       const newFilters = Object.assign({}, get(atom));
-      const currentLightningPaths = get(lightningPaths(""));
 
-      if (!modal && currentLightningPaths.has(path)) {
-        for (const p in newFilters) {
-          if (!currentLightningPaths.has(p)) {
-            delete newFilters[p];
-          }
-        }
-        reset(granularSidebarExpandedStore);
-        set(sidebarExpandedStore(false), (current) => {
-          const next = { ...current };
-
-          for (const parent in next) {
-            if (![...currentLightningPaths].some((p) => p.startsWith(parent))) {
-              delete next[parent];
-            }
-          }
-
-          return next;
-        });
-      }
+      const setQueryPerformance =
+        !modal && get(queryPerformance) && get(pathCanBeOptimized(path));
 
       if (filter === null || filter instanceof DefaultValue) {
         delete newFilters[path];
+        setQueryPerformance && setQueryPerformancePath(null);
       } else {
         newFilters[path] = filter;
+        setQueryPerformance &&
+          setQueryPerformancePath(path, setQueryPerformance.isFrameField);
       }
+
       set(atom, newFilters);
     },
 });
@@ -140,6 +120,9 @@ export const fieldIsFiltered = selectorFamily<
   get:
     ({ path, modal }) =>
     ({ get }) => {
+      if (!path) {
+        return false;
+      }
       const f = get(modal ? modalFilters : filters);
 
       const expandedPath = get(expandPath(path));
@@ -154,5 +137,31 @@ export const fieldIsFiltered = selectorFamily<
         Boolean(f[path]) ||
         paths.some(({ name }) => f[`${expandedPath}.${name}`])
       );
+    },
+});
+
+export const pathCanBeOptimized = selectorFamily({
+  key: "pathCanBeOptimized",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      if (path === "_label_tags") {
+        return false;
+      }
+      const indexed = get(pathHasIndexes(path));
+      const frameField = get(isFrameField(path));
+      if (indexed && !frameField) {
+        return false;
+      }
+      const f = get(filters);
+      for (const key of Object.keys(f)) {
+        if (key === path) {
+          continue;
+        }
+        if (get(pathHasIndexes(path)) && !get(isFrameField(path))) {
+          return false;
+        }
+      }
+      return { isFrameField: frameField };
     },
 });

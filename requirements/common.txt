@@ -9,15 +9,14 @@ httpx==0.23.0
 hypercorn==0.13.2
 kaleido==0.2.1
 matplotlib==3.5.2
-mongoengine==0.24.2
-motor>=2.5
+mongoengine~=0.29.1
+motor~=3.6.0
 packaging==20.3
 pandas>=1.3
 plotly==5.17.0
 pprintpp==0.4.0
 psutil>=5.7.0
-pymongo>=3.12,<4.9
-pydantic==2.6.4
+pymongo~=4.9.2
 pytz==2022.1
 PyYAML==6.0.1
 regex==2022.8.17
@@ -27,7 +26,7 @@ scikit-image>=0.16.2
 setuptools>=45.2.0,<71
 sseclient-py>=1.7.2
 sse-starlette>=0.10.3
-starlette==0.36.2
+starlette==0.40.0
 strawberry-graphql==0.243.0
 tabulate==0.8.10
 xmltodict==0.12.0

@@ -203,6 +203,7 @@ export interface BaseConfig {
   sampleId: string;
   symbol: symbol;
   fieldSchema: Schema;
+  isDynamicGroup: boolean;
   view: Stage[];
   dataset: string;
   group?: {
@@ -354,6 +355,7 @@ export interface VideoState extends BaseState {
   SHORTCUTS: Readonly<ControlMap<VideoState>>;
   hasPoster: boolean;
   waitingForVideo: boolean;
+  waitingToStream: boolean;
   lockedToSupport: boolean;
 }
 

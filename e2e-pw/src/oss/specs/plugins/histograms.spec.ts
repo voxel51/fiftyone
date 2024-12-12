@@ -59,6 +59,7 @@ test("histograms panel", async ({ histogram, panel }) => {
     "detections.detections.confidence",
     "detections.detections.index",
     "detections.detections.label",
+    "detections.detections.mask_path",
     "detections.detections.tags",
     "float",
     "int",
@@ -75,15 +76,13 @@ test("histograms panel", async ({ histogram, panel }) => {
     "str",
     "tags",
   ]);
-  await expect(await histogram.locator).toHaveScreenshot("bool-histogram.png", {
+  await expect(histogram.locator).toHaveScreenshot("bool-histogram.png", {
     animations: "allow",
   });
+  await histogram.selector.closeResults();
 
   await histogram.selectField("float");
-  await expect(await histogram.locator).toHaveScreenshot(
-    "float-histogram.png",
-    {
-      animations: "allow",
-    }
-  );
+  await expect(histogram.locator).toHaveScreenshot("float-histogram.png", {
+    animations: "allow",
+  });
 });

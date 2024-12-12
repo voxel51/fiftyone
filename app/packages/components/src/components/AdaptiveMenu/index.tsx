@@ -53,8 +53,10 @@ export default function AdaptiveMenu(props: AdaptiveMenuPropsType) {
     if (!containerElem) return;
     hideOverflowingNodes(containerElem, (_: number, lastVisibleItemId) => {
       const lastVisibleItem = itemsById[lastVisibleItemId];
-      const computedHidden = items.length - lastVisibleItem.index - 1;
-      setHidden(computedHidden);
+      if (lastVisibleItem?.index) {
+        const computedHidden = items.length - lastVisibleItem.index - 1;
+        setHidden(computedHidden);
+      }
     });
   }
 

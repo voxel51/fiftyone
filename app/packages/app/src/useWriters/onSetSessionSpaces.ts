@@ -8,7 +8,7 @@ const onSetSessionSpaces: RegisteredWriter<"sessionSpaces"> =
   ({ environment, router, subscription }) =>
   (spaces) => {
     const state = router.history.location.state as LocationState;
-    router.history.replace(
+    router.replace(
       resolveURL({
         currentPathname: router.history.location.pathname,
         currentSearch: router.history.location.search,
@@ -16,7 +16,7 @@ const onSetSessionSpaces: RegisteredWriter<"sessionSpaces"> =
           workspace: spaces._name || null,
         },
       }),
-      { ...state, workspace: spaces._name || null }
+      { ...state, event: "spaces", workspace: spaces._name || null }
     );
 
     commitMutation<setSpacesMutation>(environment, {

@@ -4,17 +4,15 @@
 import { NONFINITES } from "@fiftyone/utilities";
 
 import { INFO_COLOR } from "../constants";
-import { OverlayMask } from "../numpy";
-import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
+import type { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
 import { distanceFromLineSegment } from "../util";
-import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
+import type { LabelMask, PointInfo, RegularLabel } from "./base";
+import { CONTAINS, CoordinateOverlay } from "./base";
 import { t } from "./util";
 
 export interface DetectionLabel extends RegularLabel {
-  mask?: {
-    data: OverlayMask;
-    image: ArrayBuffer;
-  };
+  mask?: LabelMask;
+  mask_path?: string;
   bounding_box: BoundingBox;
 
   // valid for 3D bounding boxes
@@ -27,10 +25,8 @@ export interface DetectionLabel extends RegularLabel {
 export default class DetectionOverlay<
   State extends BaseState
 > extends CoordinateOverlay<State, DetectionLabel> {
-  private imageData: ImageData;
   private is3D: boolean;
   private labelBoundingBox: BoundingBox;
-  private canvas: HTMLCanvasElement;
 
   constructor(field, label) {
     super(field, label);
@@ -39,32 +35,6 @@ export default class DetectionOverlay<
       this.is3D = true;
     } else {
       this.is3D = false;
-    }
-
-    if (this.label.mask) {
-      const [height, width] = this.label.mask.data.shape;
-
-      if (!height || !width) {
-        return;
-      }
-
-      this.canvas = document.createElement("canvas");
-      this.canvas.width = width;
-      this.canvas.height = height;
-      this.imageData = new ImageData(
-        new Uint8ClampedArray(this.label.mask.image),
-        width,
-        height
-      );
-      const maskCtx = this.canvas.getContext("2d");
-      maskCtx.imageSmoothingEnabled = false;
-      maskCtx.clearRect(
-        0,
-        0,
-        this.label.mask.data.shape[1],
-        this.label.mask.data.shape[0]
-      );
-      maskCtx.putImageData(this.imageData, 0, 0);
     }
   }
 
@@ -88,7 +58,7 @@ export default class DetectionOverlay<
     this.label.mask && this.drawMask(ctx, state);
     !state.config.thumbnail && this.drawLabelText(ctx, state);
 
-    if (this.is3D) {
+    if (this.is3D && this.label.dimensions && this.label.location) {
       this.fillRectFor3d(ctx, state, this.getColor(state));
     } else {
       this.strokeRect(ctx, state, this.getColor(state));
@@ -169,7 +139,7 @@ export default class DetectionOverlay<
   }
 
   private drawMask(ctx: CanvasRenderingContext2D, state: Readonly<State>) {
-    if (!this.canvas) {
+    if (!this.label.mask?.bitmap) {
       return;
     }
 
@@ -177,8 +147,9 @@ export default class DetectionOverlay<
     const [x, y] = t(state, tlx, tly);
     const tmp = ctx.globalAlpha;
     ctx.globalAlpha = state.options.alpha;
+    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(
-      this.canvas,
+      this.label.mask.bitmap,
       x,
       y,
       w * state.canvasBBox[2],
@@ -191,17 +162,17 @@ export default class DetectionOverlay<
     let text =
       this.label.label && state.options.showLabel ? `${this.label.label}` : "";
 
-    if (state.options.showIndex && !isNaN(this.label.index)) {
-      text.length && (text += " ");
+    if (state.options.showIndex && !Number.isNaN(this.label.index)) {
+      if (text.length) text += " ";
       text += `${Number(this.label.index).toLocaleString()}`;
     }
 
     if (
       state.options.showConfidence &&
-      (!isNaN(this.label.confidence as number) ||
+      (!Number.isNaN(this.label.confidence as number) ||
         NONFINITES.has(this.label.confidence as NONFINITE))
     ) {
-      text.length && (text += " ");
+      if (text.length) text += " ";
       text += `(${
         typeof this.label.confidence === "number"
           ? Number(this.label.confidence).toFixed(2)
@@ -285,11 +256,18 @@ export default class DetectionOverlay<
     const oh = state.strokeWidth / state.canvasBBox[3];
     return [(bx - ow) * w, (by - oh) * h, (bw + ow * 2) * w, (bh + oh * 2) * h];
   }
+
+  public cleanup(): void {
+    if (this.label.mask?.bitmap) {
+      this.label.mask?.bitmap.close();
+      this.label.mask.bitmap = null;
+    }
+  }
 }
 
 export const getDetectionPoints = (labels: DetectionLabel[]): Coordinates[] => {
   let points: Coordinates[] = [];
-  labels.forEach((label) => {
+  for (const label of labels) {
     const [tlx, tly, w, h] = label.bounding_box;
     points = [
       ...points,
@@ -298,6 +276,6 @@ export const getDetectionPoints = (labels: DetectionLabel[]): Coordinates[] => {
       [tlx + w, tly + h],
       [tlx, tly + h],
     ];
-  });
+  }
   return points;
 };

@@ -120,6 +120,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_OPERATOR_TIMEOUT",
             default=600,  # 600 seconds (10 minutes)
         )
+        self.allow_legacy_orchestrators = self.parse_bool(
+            d,
+            "allow_legacy_orchestrators",
+            env_var="FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS",
+            default=False,
+        )
         self.dataset_zoo_manifest_paths = self.parse_path_array(
             d,
             "dataset_zoo_manifest_paths",
@@ -348,13 +354,6 @@ class AppConfig(EnvConfig):
         self.grid_zoom = self.parse_int(
             d, "grid_zoom", env_var="FIFTYONE_APP_GRID_ZOOM", default=5
         )
-        # deprecate lightning threshold in favor of a timer-based approach
-        self.lightning_threshold = self.parse_int(
-            d,
-            "lightning_threshold",
-            env_var="FIFTYONE_APP_LIGHTNING_THRESHOLD",
-            default=None,
-        )
         self.enable_query_performance = self.parse_bool(
             d,
             "enable_query_performance",
@@ -433,12 +432,6 @@ class AppConfig(EnvConfig):
             env_var="FIFTYONE_APP_SHOW_TOOLTIP",
             default=True,
         )
-        self.sidebar_mode = self.parse_string(
-            d,
-            "sidebar_mode",
-            env_var="FIFTYONE_APP_SIDEBAR_MODE",
-            default="fast",
-        )
         self.theme = self.parse_string(
             d,
             "theme",
@@ -509,17 +502,6 @@ class AppConfig(EnvConfig):
                 default_color_by,
             )
             self.color_by = default_color_by
-
-        supported_sidebar_modes = {"all", "best", "fast", "disabled"}
-        default_sidebar_mode = "best"
-        if self.sidebar_mode not in supported_sidebar_modes:
-            logger.warning(
-                "Invalid sidebar_mode=%s. Must be one of %s. Defaulting to '%s'",
-                self.sidebar_mode,
-                supported_sidebar_modes,
-                default_sidebar_mode,
-            )
-            self.sidebar_mode = default_sidebar_mode
 
         supported_themes = {"browser", "dark", "light"}
         default_theme = "browser"

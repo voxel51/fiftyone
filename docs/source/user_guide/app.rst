@@ -395,17 +395,23 @@ only those samples and/or labels that match the filter.
    :alt: app-filters
    :align: center
 
-.. _app-indexed-filtering:
+.. _app-optimizing-query-performance:
 
-Leveraging indexes while filtering
-----------------------------------
+Optimizing Query Performance
+----------------------------
 
-By default, most sidebar filters require full collection scans to retrieve the
-relevant results.
+The App's sidebar is optimized to leverage database indexes whenever possible.
 
-However, you can optimize any sidebar filter(s) of interest by using
-:meth:`create_index() <fiftyone.core.collections.SampleCollection.create_index>`
-to index the field or embedded field that you wish to filter by:
+Fields that are indexed are indicated by lightning bolt icons next to their
+field/attribute names:
+
+.. image:: /images/app/app-query-performance.gif
+    :alt: app-query-performance
+    :align: center
+
+The above GIF shows query performance in action on the train split of the
+:ref:`BDD100K dataset <dataset-zoo-bdd100k>` with an index on the
+`detections.detections.label` field:
 
 .. code-block:: python
     :linenos:
@@ -413,27 +419,80 @@ to index the field or embedded field that you wish to filter by:
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    dataset = foz.load_zoo_dataset("coco-2017", split="validation")
+    # The path to the source files that you manually downloaded
+    source_dir = "/path/to/dir-with-bdd100k-files"
 
-    # Add index to optimize ground truth label filters
-    dataset.create_index("ground_truth.detections.label")
+    dataset = foz.load_zoo_dataset(
+        "bdd100k",
+        split="train",
+        source_dir=source_dir,
+    )
+
+    dataset.create_index("detections.detections.label")
 
     session = fo.launch_app(dataset)
 
-You can use
-:meth:`list_indexes() <fiftyone.core.collections.SampleCollection.list_indexes>`
-to view the existing indexes on a dataset, and you can use
-:meth:`drop_index() <fiftyone.core.collections.SampleCollection.drop_index>`
-to delete indexes that you no longer need.
+.. note::
+
+    When filtering by multiple fields, queries will be more efficient when your
+    **first** filter is on an indexed field.
+
+The SDK provides a number of useful utilities for managing indexes on your
+datasets:
+
+-   :meth:`list_indexes() <fiftyone.core.collections.SampleCollection.list_indexes>` -
+    list all existing indexes
+-   :meth:`create_index() <fiftyone.core.collections.SampleCollection.create_index>` -
+    create a new index
+-   :meth:`drop_index() <fiftyone.core.collections.SampleCollection.drop_index>` -
+    drop an existing index
+-   :meth:`get_index_information() <fiftyone.core.collections.SampleCollection.get_index_information>` -
+    get information about the existing indexes
 
 .. note::
 
-    Use :ref:`summary fields <summary-fields>` to efficiently query frame-level
-    fields on large video datasets.
+    Did you know? With :ref:`FiftyOne Teams <fiftyone-teams>` you can manage
+    indexes natively in the App via the
+    :ref:`Query Performance panel <query-performance>`.
 
-For :ref:`group datasets <groups>`, you should also add a compound index that
-includes your group `name` field to optimize filters applied when viewing a
-single :ref:`group slice <groups-app>`:
+In general, we recommend indexing *only* the specific fields that you wish to
+perform initial filters on:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    # Index specific top-level fields
+    dataset.create_index("camera_id")
+    dataset.create_index("recorded_at")
+    dataset.create_index("annotated_at")
+    dataset.create_index("annotated_by")
+
+    # Index specific embedded document fields
+    dataset.create_index("ground_truth.detections.label")
+    dataset.create_index("ground_truth.detections.confidence")
+
+    # Note: it is faster to declare indexes before adding samples
+    dataset.add_samples(...)
+
+    session = fo.launch_app(dataset)
+
+.. note::
+
+    Filtering by frame fields of video datasets is not directly optimizable by
+    creating indexes. Instead, use :ref:`summary fields <summary-fields>` to
+    efficiently query frame-level information on large video datasets.
+
+    Frame filtering in the App's grid view can be disabled by setting
+    `disable_frame_filtering=True` in your
+    :ref:`App config <configuring-fiftyone-app>`.
+
+For :ref:`grouped datasets <groups>`, you should create two indexes for each
+field you wish to filter by: the field itself and a compound index that
+includes the group slice name:
 
 .. code-block:: python
     :linenos:
@@ -443,13 +502,69 @@ single :ref:`group slice <groups-app>`:
 
     dataset = foz.load_zoo_dataset("quickstart-groups")
 
-    # Add index to optimize detections label filters in "group" mode
-    dataset.create_index("detections.detections.label")
-
-    # Add compound index to optimize detections label filters in "slice" mode
-    dataset.create_index([("group.name", 1), ("detections.detections.label", 1)])
+    # Index a specific field
+    dataset.create_index("ground_truth.detections.label")
+    dataset.create_index([("group.name", 1), ("ground_truth.detections.label", 1)])
 
     session = fo.launch_app(dataset)
+
+For datasets with a small number of fields, you can index all fields by adding
+a single
+`global wildcard index <https://www.mongodb.com/docs/manual/core/indexes/index-types/index-wildcard/create-wildcard-index-all-fields/#std-label-create-wildcard-index-all-fields>`_:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset.create_index("$**")
+
+    session = fo.launch_app(dataset)
+
+.. warning::
+
+    For large datasets with many fields, global wildcard indexes may require a
+    substantial amount of RAM and query performance may be degraded compared to
+    selectively indexing a smaller number of fields.
+
+You can also wildcard index all attributes of a specific embedded document
+field:
+
+.. code-block:: python
+    :linenos:
+
+    # Wildcard index for all attributes of ground truth detections
+    dataset.create_index("ground_truth.detections.$**")
+
+.. note::
+
+    Numeric field filters are not supported by wildcard indexes.
+
+.. _app-disabling-query-performance:
+
+Disabling Query Performance
+---------------------------
+
+:ref:`Query Performance <app-optimizing-query-performance>` is enabled by
+default for all datasets. This is generally the recommended setting for all
+large datasets to ensure that queries are performant.
+
+However, in certain circumstances you may prefer to disable Query Performance,
+which enables the App's sidebar to show additional information such as
+label/value counts that are useful but more expensive to compute.
+
+You can disable Query Performance for a particular dataset for its lifetime
+(in your current browser) via the gear icon in the Samples panel's actions row:
+
+.. image:: /images/app/app-query-performance-disabled.gif
+    :alt: app-query-performance-disabled
+    :align: center
+
+You can also disable Query Performance by default for all datasets by setting
+`default_query_performance=False` in your
+:ref:`App config <configuring-fiftyone-app>`.
 
 .. _app-sidebar-groups:
 
@@ -518,234 +633,6 @@ You can conveniently reset the sidebar groups to their default state by setting
     :class:`sidebar_groups <fiftyone.core.odm.dataset.DatasetAppConfig>`
     property, these fields will be dynamically assigned to default groups in
     the App at runtime.
-
-.. _app-lightning-mode:
-
-Lightning mode
---------------
-
-Lightning mode is a performant sidebar setting for larger datasets that can be
-enabled either by adding a `lightning_threshold` to your
-:ref:`App config <configuring-fiftyone-app>`, or for a particular dataset by
-clicking on the "Gear" icon above the sample grid in the App.
-
-.. note::
-
-    When lightning mode is enabled through the "Gear" icon in the App, the
-    setting is persisted in your browser for that dataset.
-
-The lightning threshold specifies a dataset/view size (sample count) above
-which filters can *only* be applied to fields that have been **indexed**. After
-applying filters that bring the current view size below the lightning
-threshold, all fields become available for filtering and additional information
-like value counts are presented.
-
-.. image:: /images/app/app-lightning-mode.gif
-    :alt: app-lightning-mode
-    :align: center
-
-The above GIF shows lightning mode in action on the train split of the
-:ref:`BDD100K dataset <dataset-zoo-bdd100k>` with an index on the
-`metadata.size_bytes` field:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    # The path to the source files that you manually downloaded
-    source_dir = "/path/to/dir-with-bdd100k-files"
-
-    dataset = foz.load_zoo_dataset(
-        "bdd100k",
-        split="train",
-        source_dir=source_dir,
-    )
-
-    dataset.create_index("metadata.size_bytes")
-
-    session = fo.launch_app(dataset)
-
-The SDK provides a number of useful utilities for managing indexes on your
-datasets:
-
--   :meth:`list_indexes() <fiftyone.core.collections.SampleCollection.list_indexes>` -
-    list all existing indexes
--   :meth:`create_index() <fiftyone.core.collections.SampleCollection.create_index>` -
-    create a new index
--   :meth:`drop_index() <fiftyone.core.collections.SampleCollection.drop_index>` -
-    drop an existing index
--   :meth:`get_index_information() <fiftyone.core.collections.SampleCollection.get_index_information>` -
-    get information about the existing indexes
-
-.. note::
-
-    Did you know? You can manage dataset indexes via the App by installing the
-    `@voxel51/indexes <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/indexes>`_
-    plugin!
-
-In general, we recommend indexing *only* the specific fields that you wish to
-perform initial filters on:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-
-    dataset = fo.Dataset()
-
-    # Index specific top-level fields
-    dataset.create_index("camera_id")
-    dataset.create_index("recorded_at")
-    dataset.create_index("annotated_at")
-    dataset.create_index("annotated_by")
-
-    # Index specific embedded document fields
-    dataset.create_index("ground_truth.detections.label")
-    dataset.create_index("ground_truth.detections.confidence")
-
-    # Note: it is faster to declare indexes before adding samples
-    dataset.add_samples(...)
-
-    # For illustration, so that any filter brings dataset out of lightning mode
-    fo.app_config.lightning_threshold = len(dataset)
-
-    session = fo.launch_app(dataset)
-
-.. note::
-
-    Use :ref:`summary fields <summary-fields>` to efficiently query frame-level
-    fields on large video datasets.
-
-For :ref:`grouped datasets <groups>`, you should create two indexes for each
-field you wish to filter by in lightning mode: the field itself and a compound
-index that includes the group slice name:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart-groups")
-
-    # Index a specific field
-    dataset.create_index("ground_truth.detections.label")
-    dataset.create_index([("group.name", 1), ("ground_truth.detections.label", 1)])
-
-    # For illustration, so that any filter brings dataset out of lightning mode
-    fo.app_config.lightning_threshold = len(dataset)
-
-    session = fo.launch_app(dataset)
-
-For datasets with a small number of fields, you can index all fields by adding
-a single
-`global wildcard index <https://www.mongodb.com/docs/manual/core/indexes/index-types/index-wildcard/create-wildcard-index-all-fields/#std-label-create-wildcard-index-all-fields>`_:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-    dataset.create_index("$**")
-
-    # For illustration, so that any filter brings dataset out of lightning mode
-    fo.app_config.lightning_threshold = len(dataset)
-
-    session = fo.launch_app(dataset)
-
-.. warning::
-
-    For large datasets with many fields, global wildcard indexes may require a
-    substantial amount of RAM and query performance may be degraded compared to
-    selectively indexing a smaller number of fields.
-
-You can also wildcard index all attributes of a specific embedded document
-field:
-
-.. code-block:: python
-    :linenos:
-
-    # Wildcard index for all attributes of ground truth detections
-    dataset.create_index("ground_truth.detections.$**")
-
-.. note::
-
-    Numeric field filters are not supported by wildcard indexes.
-
-For video datasets with frame-level fields, a separate wildcard index for frame
-fields is also necessary:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart-video")
-
-    dataset.create_index("$**")
-    dataset.create_index("frames.$**")
-
-    # For illustration, so that any filter brings dataset out of lightning mode
-    fo.app_config.lightning_threshold = len(dataset)
-
-    session = fo.launch_app(dataset)
-
-.. _app-sidebar-mode:
-
-Sidebar mode
-------------
-
-Each time you load a new dataset or view in the App, the sidebar will update to
-show statistics for the current collection based on the **sidebar mode**:
-
--   `fast` (*default*): only compute counts for fields whose filter tray is
-    expanded
--   `all`: always compute counts for all fields
--   `best`: automatically choose between `fast` and `all` mode based on the
-    size of the dataset
--   `disabled`: disable the feature in the App and always choose `fast`
-
-When the sidebar mode is `best`, the App will choose `fast` mode if any of the
-following conditions are met:
-
--   Any dataset with 10,000+ samples
--   Any dataset with 1,000+ samples and 15+ top-level fields in the sidebar
--   Any video dataset with frame-level label fields
-
-You can toggle the sidebar mode dynamically for your current session via the
-App's settings menu:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-    session = fo.launch_app(dataset)
-
-.. image:: /images/app/app-sidebar-mode.gif
-    :alt: app-sidebar-mode
-    :align: center
-
-You can permanently configure the default sidebar mode of a dataset by
-modifying the
-:class:`sidebar_mode <fiftyone.core.odm.dataset.DatasetAppConfig>` property of
-the :ref:`dataset's App config <dataset-app-config>`:
-
-.. code-block:: python
-    :linenos:
-
-    # Set the default sidebar mode to "best"
-    dataset.app_config.sidebar_mode = "best"
-    dataset.save()  # must save after edits
-
-    session.refresh()
 
 .. _app-create-view:
 
@@ -1427,12 +1314,14 @@ FiftyOne natively includes the following Panels:
 
 -   :ref:`Samples panel <app-samples-panel>`: the media grid that loads by
     default when you launch the App
--   :ref:`Histograms panel <app-histograms-panel>`: a dashboard of histograms
-    for the fields of your dataset
 -   :ref:`Embeddings panel <app-embeddings-panel>`: a canvas for working with
     :ref:`embeddings visualizations <brain-embeddings-visualization>`
+-   :ref:`Model Evaluation panel <app-model-evaluation-panel>`: interactively
+    analyze and visualize your model's performance
 -   :ref:`Map panel <app-map-panel>`: visualizes the geolocation data of
     datasets that have a |GeoLocation| field
+-   :ref:`Histograms panel <app-histograms-panel>`: a dashboard of histograms
+    for the fields of your dataset
 
 .. note::
 
@@ -1749,8 +1638,8 @@ _____________
 By default, when you launch the App, your spaces layout will contain a single
 space with the Samples panel active:
 
-.. image:: /images/app/app-histograms-panel.gif
-    :alt: app-histograms-panel
+.. image:: /images/app/app-samples-panel.gif
+    :alt: app-samples-panel
     :align: center
 
 When configuring spaces :ref:`in Python <app-spaces-python>`, you can create a
@@ -1760,49 +1649,6 @@ Samples panel as follows:
     :linenos:
 
     samples_panel = fo.Panel(type="Samples")
-
-.. _app-histograms-panel:
-
-Histograms panel
-________________
-
-The Histograms panel in the App lets you visualize different statistics about
-the fields of your dataset.
-
--   The `Sample tags` and `Label tags` modes show the distribution of any
-    :ref:`tags <app-tagging>` that you've added to your dataset
--   The `Labels` mode shows the class distributions for each
-    :ref:`labels field <using-labels>` that you've added to your dataset. For
-    example, you may have histograms of ground truth labels and one more sets
-    of model predictions
--   The `Other fields` mode shows distributions for numeric (integer or float)
-    or categorical (e.g., string)
-    :ref:`primitive fields <adding-sample-fields>` that you've added to your
-    dataset. For example, if you computed
-    :ref:`uniqueness <brain-image-uniqueness>` on your dataset, a histogram of
-    uniqueness values will be available under this mode.
-
-.. note::
-
-    The statistics in the plots automatically update to reflect the current
-    :ref:`view <using-views>` that you have loaded in the App!
-
-.. image:: /images/app/app-histograms-panel.gif
-    :alt: app-histograms-panel
-    :align: center
-
-When configuring spaces :ref:`in Python <app-spaces-python>`, you can define a
-Histograms panel as follows:
-
-.. code-block:: python
-    :linenos:
-
-    histograms_panel = fo.Panel(type="Histograms", state=dict(plot="Labels"))
-
-The Histograms panel supports the following `state` parameters:
-
--   **plot**: the histograms to plot. Supported values are `"Sample tags"`,
-    `"Label tags"`, `"Labels"`, and `"Other fields"`
 
 .. _app-embeddings-panel:
 
@@ -1848,6 +1694,12 @@ samples/patches in the Samples panel:
     :alt: app-embeddings-panel
     :align: center
 
+.. note::
+
+    Did you know? With :ref:`FiftyOne Teams <fiftyone-teams>` you can generate
+    embeddings visualizations natively from the App
+    :ref:`in the background <delegated-operations>` while you work.
+
 The embeddings UI also provides a number of additional controls:
 
 -   Press the `pan` icon in the menu (or type `g`) to switch to pan mode, in
@@ -1887,6 +1739,139 @@ The Embeddings panel supports the following `state` parameters:
     to display
 -   **colorByField**: an optional sample field (or label attribute, for patches
     embeddings) to color the points by
+
+.. _app-model-evaluation-panel:
+
+Model Evaluation panel __SUB_NEW__
+__________________________________
+
+When you load a dataset in the App that contains one or more
+:ref:`evaluations <evaluating-models>`, you can open the Model Evaluation panel
+to visualize and interactively explore the evaluation results in the App:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Evaluate the objects in the `predictions` field with respect to the
+    # objects in the `ground_truth` field
+    results = dataset.evaluate_detections(
+        "predictions",
+        gt_field="ground_truth",
+        eval_key="eval",
+    )
+
+    session = fo.launch_app(dataset)
+
+The panel's home page shows a list of evaluation on the dataset, their current
+review status, and any evaluation notes that you've added. Click on an
+evaluation to open its expanded view, which provides a set of expandable cards
+that dives into various aspects of the model's performance:
+
+.. image:: /images/app/model-evaluation-open.gif
+    :alt: model-evaluation-open
+    :align: center
+
+.. note::
+
+    Did you know? With :ref:`FiftyOne Teams <fiftyone-teams>` you can execute
+    model evaluations natively from the App
+    :ref:`in the background <delegated-operations>` while you work.
+
+Review status
+-------------
+
+You can use the status pill in the upper right-hand corner of the panel to
+toggle an evaluation between `Needs Review`, `In Review`, and `Reviewed`:
+
+.. image:: /images/app/model-evaluation-review.gif
+    :alt: model-evaluation-review
+    :align: center
+
+Evaluation notes
+----------------
+
+The Evaluation Notes card provides a place to add your own Markdown-formatted
+notes about the model's performance:
+
+.. image:: /images/app/model-evaluation-notes.gif
+    :alt: model-evaluation-notes
+    :align: center
+
+Summary
+-------
+
+The Summary card provides a table of common model performance metrics. You can
+click on the grid icons next to TP/FP/FN to load the corresponding labels in
+the Samples panel:
+
+.. image:: /images/app/model-evaluation-summary.gif
+    :alt: model-evaluation-summary
+    :align: center
+
+Metric performance
+------------------
+
+The Metric Performance card provides a graphical summary of key model
+performance metrics:
+
+.. image:: /images/app/model-evaluation-metric.gif
+    :alt: model-evaluation-metric
+    :align: center
+
+Class performance
+-----------------
+
+The Class Performance card provides a per-class breakdown of each model
+performance metric. If an evaluation contains many classes, you can use the
+settings menu to control which classes are shown. The histograms are also
+interactive: you can click on bars to show the corresponding labels in the
+Samples panel:
+
+.. image:: /images/app/model-evaluation-class.gif
+    :alt: model-evaluation-class
+    :align: center
+
+Confusion matrices
+------------------
+
+The Confusion Matrices card provides an interactive confusion matrix for the
+evaluation. If an evaluation contains many classes, you can use the settings
+menu to control which classes are shown. You can also click on cells to show
+the corresponding labels in the Samples panel:
+
+.. image:: /images/app/model-evaluation-confusion.gif
+    :alt: model-evaluation-confusion
+    :align: center
+
+Comparing models
+----------------
+
+When a dataset contains multiple evaluations, you can compare two model's
+performance by selecting a "Compare against" key:
+
+.. code-block:: python
+    :linenos:
+
+    model = foz.load_zoo_model("yolo11s-coco-torch")
+
+    dataset.apply_model(model, label_field="predictions_yolo11")
+
+    dataset.evaluate_detections(
+        "predictions_yolo11",
+        gt_field="ground_truth",
+        eval_key="eval_yolo11",
+    )
+
+    session.refresh()
+
+.. image:: /images/app/model-evaluation-compare.gif
+    :alt: model-evaluation-compare
+    :align: center
 
 .. _app-map-panel:
 
@@ -2016,6 +2001,49 @@ the above values on a :ref:`dataset's App config <dataset-app-config>`:
 
     Dataset-specific plugin settings will override any settings from your
     :ref:`global App config <configuring-fiftyone-app>`.
+
+.. _app-histograms-panel:
+
+Histograms panel
+________________
+
+The Histograms panel in the App lets you visualize different statistics about
+the fields of your dataset.
+
+-   The `Sample tags` and `Label tags` modes show the distribution of any
+    :ref:`tags <app-tagging>` that you've added to your dataset
+-   The `Labels` mode shows the class distributions for each
+    :ref:`labels field <using-labels>` that you've added to your dataset. For
+    example, you may have histograms of ground truth labels and one more sets
+    of model predictions
+-   The `Other fields` mode shows distributions for numeric (integer or float)
+    or categorical (e.g., string)
+    :ref:`primitive fields <adding-sample-fields>` that you've added to your
+    dataset. For example, if you computed
+    :ref:`uniqueness <brain-image-uniqueness>` on your dataset, a histogram of
+    uniqueness values will be available under this mode.
+
+.. note::
+
+    The statistics in the plots automatically update to reflect the current
+    :ref:`view <using-views>` that you have loaded in the App!
+
+.. image:: /images/app/app-histograms-panel.gif
+    :alt: app-histograms-panel
+    :align: center
+
+When configuring spaces :ref:`in Python <app-spaces-python>`, you can define a
+Histograms panel as follows:
+
+.. code-block:: python
+    :linenos:
+
+    histograms_panel = fo.Panel(type="Histograms", state=dict(plot="Labels"))
+
+The Histograms panel supports the following `state` parameters:
+
+-   **plot**: the histograms to plot. Supported values are `"Sample tags"`,
+    `"Label tags"`, `"Labels"`, and `"Other fields"`
 
 .. _app-select-samples:
 

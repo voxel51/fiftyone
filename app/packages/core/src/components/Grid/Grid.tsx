@@ -1,9 +1,7 @@
 import styles from "./Grid.module.css";
 
 import { freeVideos } from "@fiftyone/looker";
-import type { ID } from "@fiftyone/spotlight";
 import Spotlight from "@fiftyone/spotlight";
-import type { Lookers } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import React, {
   useEffect,
@@ -14,6 +12,7 @@ import React, {
 } from "react";
 import { useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
+import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
 import { gridCrop, gridSpacing, pageParameters } from "./recoil";
 import useAt from "./useAt";
 import useEscape from "./useEscape";
@@ -27,11 +26,9 @@ import useThreshold from "./useThreshold";
 
 function Grid() {
   const id = useMemo(() => uuid(), []);
-  const lookerStore = useMemo(() => new WeakMap<ID, Lookers>(), []);
   const spacing = useRecoilValue(gridSpacing);
-
   const selectSample = useRef<ReturnType<typeof useSelectSample>>();
-  const { pageReset, reset } = useRefreshers();
+  const { lookerStore, pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
   const threshold = useThreshold();
 
@@ -50,21 +47,32 @@ function Grid() {
   const getFontSize = useFontSize(id);
 
   const spotlight = useMemo(() => {
+    /** SPOTLIGHT REFRESHER */
     reset;
+    /** SPOTLIGHT REFRESHER */
+
     if (resizing) {
       return undefined;
     }
 
     return new Spotlight<number, fos.Sample>({
       ...get(),
+      destroy: (id) => {
+        const looker = lookerStore.get(id.description);
+        looker?.destroy();
+        lookerStore.delete(id.description);
+      },
+      detach: (id) => {
+        const looker = lookerStore.get(id.description);
+        looker?.detach();
+      },
       onItemClick: setSample,
+      retainItems: true,
       rowAspectRatioThreshold: threshold,
       get: (next) => page(next),
-      render: (id, element, dimensions, soft, hide) => {
-        if (lookerStore.has(id)) {
-          const looker = lookerStore.get(id);
-          hide ? looker?.disable() : looker?.attach(element, dimensions);
-
+      render: (id, element, dimensions, zooming) => {
+        if (lookerStore.has(id.description)) {
+          lookerStore.get(id.description)?.attach(element, dimensions);
           return;
         }
 
@@ -74,24 +82,22 @@ function Grid() {
           throw new Error("bad data");
         }
 
-        const init = (l) => {
-          l.addEventListener("selectthumbnail", ({ detail }: CustomEvent) => {
-            selectSample.current?.(detail);
-          });
-          lookerStore.set(id, l);
-          l.attach(element, dimensions);
-        };
-
-        if (!soft) {
-          init(
-            createLooker.current?.(
-              { ...result, symbol: id },
-              {
-                fontSize: getFontSize(),
-              }
-            )
-          );
+        if (zooming) {
+          // we are scrolling fast, skip creation
+          return;
         }
+
+        const looker = createLooker.current?.(
+          { ...result, symbol: id },
+          {
+            fontSize: getFontSize(),
+          }
+        );
+        looker.addEventListener("selectthumbnail", ({ detail }) =>
+          selectSample.current?.(detail)
+        );
+        lookerStore.set(id.description, looker);
+        looker.attach(element, dimensions);
       },
       scrollbar: true,
       spacing,
@@ -102,7 +108,6 @@ function Grid() {
     getFontSize,
     lookerStore,
     page,
-    records,
     reset,
     resizing,
     setSample,
@@ -119,7 +124,17 @@ function Grid() {
     }
 
     const element = document.getElementById(id);
+
+    const info = fos.getQueryPerformancePath();
+    const timeout = setTimeout(() => {
+      if (info) {
+        window.dispatchEvent(
+          new QueryPerformanceToastEvent(info.path, info.isFrameField)
+        );
+      }
+    }, QP_WAIT);
     const mount = () => {
+      clearTimeout(timeout);
       document.dispatchEvent(new CustomEvent("grid-mount"));
     };
 
@@ -128,6 +143,7 @@ function Grid() {
     spotlight.addEventListener("rowchange", set);
 
     return () => {
+      clearTimeout(timeout);
       freeVideos();
       spotlight.removeEventListener("load", mount);
       spotlight.removeEventListener("rowchange", set);

@@ -1,9 +1,12 @@
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
+import { LRUCache } from "lru-cache";
 import { useEffect, useMemo } from "react";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
 import { gridAt, gridOffset, gridPage } from "./recoil";
+
+const MAX_LRU_CACHE_ITEMS = 510;
 
 export default function useRefreshers() {
   const cropToContent = useRecoilValue(fos.cropToContent(false));
@@ -63,13 +66,8 @@ export default function useRefreshers() {
 
   useEffect(
     () =>
-      subscribe(({ event }, { reset }, previous) => {
-        if (
-          event === "fieldVisibility" ||
-          event === "modal" ||
-          previous?.event === "modal"
-        )
-          return;
+      subscribe(({ event }, { reset }) => {
+        if (event === "fieldVisibility") return;
 
         // if not a modal page change, reset the grid location
         reset(gridAt);
@@ -79,7 +77,22 @@ export default function useRefreshers() {
     []
   );
 
+  const lookerStore = useMemo(() => {
+    /** LOOKER STORE REFRESHER */
+    reset;
+    /** LOOKER STORE REFRESHER */
+
+    return new LRUCache<string, fos.Lookers>({
+      dispose: (looker) => {
+        looker.destroy();
+      },
+      max: MAX_LRU_CACHE_ITEMS,
+      noDisposeOnSet: true,
+    });
+  }, [reset]);
+
   return {
+    lookerStore,
     pageReset,
     reset,
   };

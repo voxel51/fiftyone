@@ -37,7 +37,7 @@
                     ]
                 }
             },
-            "tags": ["segmentation", "cityscapes", "tf"],
+            "tags": ["segmentation", "cityscapes", "tf", "deeplabv3"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -77,7 +77,7 @@
                     ]
                 }
             },
-            "tags": ["segmentation", "cityscapes", "tf"],
+            "tags": ["segmentation", "cityscapes", "tf", "deeplabv3"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -116,7 +116,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf1", "efficientdet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -155,7 +155,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf1", "efficientdet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -194,7 +194,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf1", "efficientdet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -233,7 +233,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf1", "efficientdet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -272,7 +272,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf1", "efficientdet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -311,7 +311,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf1", "efficientdet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -350,7 +350,7 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf1", "efficientdet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -388,7 +388,14 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf"],
+            "tags": [
+                "detection",
+                "coco",
+                "tf",
+                "faster-rcnn",
+                "inception",
+                "resnet"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -426,7 +433,14 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf"],
+            "tags": [
+                "detection",
+                "coco",
+                "tf",
+                "faster-rcnn",
+                "inception",
+                "resnet"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -464,7 +478,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf"],
+            "tags": ["detection", "coco", "tf", "faster-rcnn", "inception"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -502,7 +516,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf"],
+            "tags": ["detection", "coco", "tf", "faster-rcnn"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -540,7 +554,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf"],
+            "tags": ["detection", "coco", "tf", "faster-rcnn"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -578,7 +592,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf"],
+            "tags": ["detection", "coco", "tf", "faster-rcnn", "resnet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -616,7 +630,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf"],
+            "tags": ["detection", "coco", "tf", "faster-rcnn", "resnet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -654,7 +668,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf"],
+            "tags": ["detection", "coco", "tf", "faster-rcnn", "resnet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -692,7 +706,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf"],
+            "tags": ["detection", "coco", "tf", "faster-rcnn", "resnet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -735,7 +749,9 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "tf1"
+                "tf1",
+                "inception",
+                "resnet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -779,7 +795,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "tf1"
+                "tf1",
+                "inception"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -818,7 +835,14 @@
                     ]
                 }
             },
-            "tags": ["instances", "coco", "tf"],
+            "tags": [
+                "instances",
+                "coco",
+                "tf",
+                "mask-rcnn",
+                "inception",
+                "resnet"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -856,7 +880,7 @@
                     ]
                 }
             },
-            "tags": ["instances", "coco", "tf"],
+            "tags": ["instances", "coco", "tf", "mask-rcnn", "inception"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -894,7 +918,7 @@
                     ]
                 }
             },
-            "tags": ["instances", "coco", "tf"],
+            "tags": ["instances", "coco", "tf", "mask-rcnn", "resnet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -932,7 +956,7 @@
                     ]
                 }
             },
-            "tags": ["instances", "coco", "tf"],
+            "tags": ["instances", "coco", "tf", "mask-rcnn", "resnet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -974,7 +998,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "tf1"
+                "tf1",
+                "mobilenet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1018,7 +1043,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "tf1"
+                "tf1",
+                "resnet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1062,7 +1088,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "tf1"
+                "tf1",
+                "resnet"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1101,7 +1128,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf"],
+            "tags": ["detection", "coco", "tf", "rfcn", "resnet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1139,7 +1166,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf"],
+            "tags": ["detection", "coco", "tf", "ssd", "inception"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1177,7 +1204,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf"],
+            "tags": ["detection", "coco", "tf", "ssd", "mobilenet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1215,7 +1242,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf"],
+            "tags": ["detection", "coco", "tf", "ssd", "mobilenet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1253,7 +1280,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf"],
+            "tags": ["detection", "coco", "tf", "ssd", "resnet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1295,7 +1322,8 @@
                 "embeddings",
                 "logits",
                 "imagenet",
-                "tf1"
+                "tf1",
+                "vgg"
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1333,7 +1361,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf1", "yolo"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1373,7 +1401,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf2"],
+            "tags": ["detection", "coco", "tf2", "centernet"],
             "date_added": "2021-01-6 11:01:34"
         },
         {
@@ -1413,7 +1441,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf2"],
+            "tags": ["detection", "coco", "tf2", "centernet"],
             "date_added": "2021-12-26 07:04:23"
         },
         {
@@ -1453,7 +1481,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf2"],
+            "tags": ["detection", "coco", "tf2", "centernet", "resnet"],
             "date_added": "2021-12-27 14:45:23"
         },
         {
@@ -1493,7 +1521,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf2"],
+            "tags": ["detection", "coco", "tf2", "centernet", "resnet"],
             "date_added": "2021-12-27 14:55:13"
         },
         {
@@ -1533,7 +1561,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf2"],
+            "tags": ["detection", "coco", "tf2", "centernet", "resnet"],
             "date_added": "2021-12-27 14:59:23"
         },
         {
@@ -1573,7 +1601,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf2"],
+            "tags": ["detection", "coco", "tf2", "centernet", "mobilenet"],
             "date_added": "2021-12-27 17:05:20"
         },
         {
@@ -1613,7 +1641,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf2"],
+            "tags": ["detection", "coco", "tf2", "efficientdet"],
             "date_added": "2021-12-27 18:25:10"
         },
         {
@@ -1653,7 +1681,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf2"],
+            "tags": ["detection", "coco", "tf2", "efficientdet"],
             "date_added": "2021-12-27 18:25:10"
         },
         {
@@ -1693,7 +1721,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf2"],
+            "tags": ["detection", "coco", "tf2", "efficientdet"],
             "date_added": "2021-12-27 18:40:20"
         },
         {
@@ -1733,7 +1761,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf2"],
+            "tags": ["detection", "coco", "tf2", "efficientdet"],
             "date_added": "2021-12-27 18:42:30"
         },
         {
@@ -1773,7 +1801,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf2"],
+            "tags": ["detection", "coco", "tf2", "efficientdet"],
             "date_added": "2021-12-27 18:42:30"
         },
         {
@@ -1813,7 +1841,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf2"],
+            "tags": ["detection", "coco", "tf2", "efficientdet"],
             "date_added": "2021-12-27 18:50:20"
         },
         {
@@ -1853,7 +1881,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf2"],
+            "tags": ["detection", "coco", "tf2", "efficientdet"],
             "date_added": "2021-12-27 19:00:20"
         },
         {
@@ -1893,7 +1921,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf2"],
+            "tags": ["detection", "coco", "tf2", "efficientdet"],
             "date_added": "2021-12-27 19:05:20"
         },
         {
@@ -1933,7 +1961,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf2"],
+            "tags": ["detection", "coco", "tf2", "ssd", "mobilenet"],
             "date_added": "2021-12-27 20:01:40"
         },
         {
@@ -1973,7 +2001,7 @@
                     ]
                 }
             },
-            "tags": ["detection", "coco", "tf2"],
+            "tags": ["detection", "coco", "tf2", "ssd", "mobilenet"],
             "date_added": "2021-12-27 20:05:20"
         }
     ]

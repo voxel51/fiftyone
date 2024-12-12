@@ -11,6 +11,5 @@ export default graphql`
     modalMediaField
     mediaFallback
     plugins
-    sidebarMode
   }
 `;

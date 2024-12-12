@@ -15,6 +15,7 @@ from bson import ObjectId
 from pymongo import IndexModel
 from pymongo.collection import Collection
 
+from fiftyone.internal.util import is_remote_service
 from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.factory.repos import DelegatedOperationDocument
 from fiftyone.operators.executor import (
@@ -134,7 +135,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         self._collection = (
             collection if collection is not None else self._get_collection()
         )
-
+        self.is_remote = is_remote_service()
         self._create_indexes()
 
     def _get_collection(self) -> Collection:
@@ -170,21 +171,21 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             self._collection.create_indexes(indices_to_create)
 
     def queue_operation(self, **kwargs: Any) -> DelegatedOperationDocument:
-        op = DelegatedOperationDocument()
+        op = DelegatedOperationDocument(is_remote=self.is_remote)
         for prop in self.required_props:
             if prop not in kwargs:
                 raise ValueError("Missing required property '%s'" % prop)
             setattr(op, prop, kwargs.get(prop))
 
-        # also set the delegation target (not required)
         delegation_target = kwargs.get("delegation_target", None)
         if delegation_target:
             setattr(op, "delegation_target", delegation_target)
 
-        # also set the metadata (not required)
         metadata = kwargs.get("metadata", None)
         if metadata:
             setattr(op, "metadata", metadata)
+        else:
+            setattr(op, "metadata", {})
 
         context = None
         if isinstance(op.context, dict):
@@ -271,10 +272,10 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 }
             }
 
-        if outputs_schema:
-            update["$set"]["metadata.outputs_schema"] = {
-                "$ifNull": [outputs_schema, {}]
-            }
+            if outputs_schema:
+                update["$set"]["metadata.outputs_schema"] = (
+                    outputs_schema or {}
+                )
 
         elif run_state == ExecutionRunState.FAILED:
             update = {
@@ -326,7 +327,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         doc = self._collection.find_one_and_update(
             filter=collection_filter,
-            update=[update],
+            update=update,
             return_document=pymongo.ReturnDocument.AFTER,
         )
 

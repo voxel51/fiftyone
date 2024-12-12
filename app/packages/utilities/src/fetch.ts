@@ -18,7 +18,7 @@ export interface FetchFunction {
     body?: A,
     result?: "json" | "blob" | "text" | "arrayBuffer" | "json-stream",
     retries?: number,
-    retryCodes?: number[] | "arrayBuffer"
+    retryCodes?: number[]
   ): Promise<R>;
 }
 
@@ -110,7 +110,7 @@ export const setFetchFunction = (
     const fetchCall = retries
       ? fetchRetry(fetch, {
           retries,
-          retryDelay: 0,
+          retryDelay: 500,
           retryOn: (attempt, error, response) => {
             if (
               (error !== null || retryCodes.includes(response.status)) &&
@@ -129,6 +129,7 @@ export const setFetchFunction = (
       mode: "cors",
       body: body ? JSON.stringify(body) : null,
       signal: controller.signal,
+      referrerPolicy: "same-origin",
     });
 
     if (response.status >= 400) {
@@ -271,6 +272,7 @@ export const getEventSource = (
       method: "POST",
       signal,
       body: JSON.stringify(body),
+      referrerPolicy: "same-origin",
       async onopen(response) {
         if (response.ok) {
           events.onopen && events.onopen();
@@ -405,4 +407,19 @@ const pollingEventSource = (
         2000
       );
     });
+};
+
+const getFirstFilterPath = (requestBody: any) => {
+  if (requestBody && requestBody.query) {
+    if (requestBody.query.includes("paginateSamplesQuery")) {
+      const pathsArray = requestBody?.variables?.filters;
+      const paths = pathsArray ? Object.keys(pathsArray) : [];
+      return paths.length > 0 ? paths[0] : undefined;
+    }
+    if (requestBody.query.includes("lightningQuery")) {
+      const paths = requestBody?.variables?.input?.paths;
+      return paths && paths.length > 0 ? paths[0].path : undefined;
+    }
+  }
+  return undefined;
 };

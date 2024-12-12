@@ -17,7 +17,6 @@ import fiftyone.core.labels as fol
 from fiftyone.core.models import Model
 import fiftyone.utils.torch as fout
 import fiftyone.core.utils as fou
-import fiftyone.zoo as foz
 import fiftyone.zoo.models as fozm
 
 ultralytics = fou.lazy_import("ultralytics")
@@ -468,7 +467,7 @@ class FiftyOneRTDETRModelConfig(FiftyOneYOLOModelConfig):
     """
 
     def __init__(self, d):
-        pass
+        super().__init__(d)
 
 
 class FiftyOneRTDETRModel(Model):

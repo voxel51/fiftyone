@@ -5,6 +5,7 @@ import { useSpaces } from "../hooks";
 import SpaceNode from "../SpaceNode";
 import { AddPanelItemProps } from "../types";
 import PanelIcon from "./PanelIcon";
+import { useTheme } from "@fiftyone/components";
 
 export default function AddPanelItem({
   node,
@@ -12,9 +13,15 @@ export default function AddPanelItem({
   label,
   onClick,
   spaceId,
+  showBeta,
+  showNew,
 }: AddPanelItemProps) {
+  const theme = useTheme();
   const trackEvent = useTrackEvent();
   const { spaces } = useSpaces(spaceId);
+  if (showBeta) {
+    showNew = false;
+  }
   return (
     <Stack
       direction="row"
@@ -48,6 +55,28 @@ export default function AddPanelItem({
       >
         {label || (name as string)}
       </Typography>
+      {showNew && (
+        <span
+          style={{
+            color: theme.custom.primarySoft,
+            fontSize: "11px",
+            marginLeft: "5px",
+          }}
+        >
+          NEW
+        </span>
+      )}
+      {showBeta && (
+        <span
+          style={{
+            color: theme.custom.primarySoft,
+            fontSize: "11px",
+            marginLeft: "5px",
+          }}
+        >
+          BETA
+        </span>
+      )}
     </Stack>
   );
 }

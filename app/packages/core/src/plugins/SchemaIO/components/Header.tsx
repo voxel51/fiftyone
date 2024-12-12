@@ -65,9 +65,11 @@ export default function Header(props: HeaderProps) {
             sx={{ display: "flex", alignItems: "center" }}
             {...getComponentProps(viewProps, "label")}
           >
-            <Markdown {...getComponentProps(viewProps, "label.markdown")}>
-              {label}
-            </Markdown>
+            {label && (
+              <Markdown {...getComponentProps(viewProps, "label.markdown")}>
+                {label}
+              </Markdown>
+            )}
             {descriptionView === "tooltip" && (
               <HelpTooltip
                 title={description}

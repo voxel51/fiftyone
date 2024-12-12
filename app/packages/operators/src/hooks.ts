@@ -7,6 +7,7 @@ import { RESOLVE_PLACEMENTS_TTL } from "./constants";
 import {
   ExecutionContext,
   fetchRemotePlacements,
+  listLocalAndRemoteOperators,
   resolveLocalPlacements,
 } from "./operators";
 import {
@@ -28,6 +29,8 @@ function useOperatorThrottledContextSetter() {
   const groupSlice = useRecoilValue(fos.groupSlice);
   const currentSample = useCurrentSample();
   const setContext = useSetRecoilState(operatorThrottledContext);
+  const spaces = useRecoilValue(fos.sessionSpaces);
+  const workspaceName = spaces._name;
   const setThrottledContext = useMemo(() => {
     return debounce(
       (context) => {
@@ -49,6 +52,8 @@ function useOperatorThrottledContextSetter() {
       currentSample,
       viewName,
       groupSlice,
+      spaces,
+      workspaceName,
     });
   }, [
     setThrottledContext,
@@ -61,6 +66,8 @@ function useOperatorThrottledContextSetter() {
     currentSample,
     viewName,
     groupSlice,
+    spaces,
+    workspaceName,
   ]);
 }
 
@@ -142,4 +149,15 @@ export function useActivePanelEventsCount(id: string) {
   );
 
   return { count, increment, decrement };
+}
+
+export function useFirstExistingUri(uris: string[]) {
+  const availableOperators = useMemo(() => listLocalAndRemoteOperators(), []);
+  return useMemo(() => {
+    const existingUri = uris.find((uri) =>
+      availableOperators.allOperators.some((op) => op.uri === uri)
+    );
+    const exists = Boolean(existingUri);
+    return { firstExistingUri: existingUri, exists };
+  }, [availableOperators, uris]);
 }

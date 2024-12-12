@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("recoil");
 vi.mock("recoil-relay");
 
-import { setMockAtoms, TestSelectorFamily } from "../../../../__mocks__/recoil";
+import { TestSelectorFamily, setMockAtoms } from "../../../../__mocks__/recoil";
 import * as filters from "./filters";
 
 describe("filter resolves correctly", () => {
@@ -49,23 +49,5 @@ describe("hasFilter resolves correctly", () => {
       (<unknown>filters.hasFilters(true))
     );
     expect(test2()).toBe(true);
-  });
-});
-
-describe("setting a filter does not use async state", () => {
-  const test = <TestSelectorFamily<typeof filters.filter>>(
-    (<unknown>filters.filter({ modal: false, path: "my_field" }))
-  );
-
-  it("does not use lightningUnlocked ", () => {
-    setMockAtoms({
-      granularSidebarExpandedStore: {},
-      lightning: true,
-      lightningPaths: () => new Set(["my_field"]),
-      lightningUnlocked: () => {
-        throw new Error("do not call me");
-      },
-    });
-    test.set({ exclude: false, isMatching: false, values: ["value"] });
   });
 });

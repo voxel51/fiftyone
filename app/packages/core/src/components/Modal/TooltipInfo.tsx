@@ -679,7 +679,7 @@ const SegmentationInfo = ({ detail }) => {
             value={detail.target}
           />
         ))}
-      {detail.instance >= 0 && (
+      {detail.instance > 0 && (
         <ContentItem
           key={"instance-value"}
           field={detail.field}

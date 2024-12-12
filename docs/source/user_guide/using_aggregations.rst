@@ -376,6 +376,46 @@ compute the sum of the (non-``None``) values of a field in a collection:
     )
     # 0.34994137249820706
 
+.. _aggregations-min:
+
+Min values
+__________
+
+You can use the
+:meth:`min() <fiftyone.core.collections.SampleCollection.min>` aggregation to
+compute the minimum of the (non-``None``) values of a field in a collection:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Compute minimum confidence of detections in the `predictions` field
+    print(dataset.min("predictions.detections.confidence"))
+    # 0.05003104358911514
+
+.. _aggregations-max:
+
+Max values
+__________
+
+You can use the
+:meth:`max() <fiftyone.core.collections.SampleCollection.max>` aggregation to
+compute the maximum of the (non-``None``) values of a field in a collection:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Compute maximum confidence of detections in the `predictions` field
+    print(dataset.max("predictions.detections.confidence"))
+    # 0.9999035596847534
+
 .. _aggregations-mean:
 
 Mean values

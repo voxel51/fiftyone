@@ -2,20 +2,23 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { getColor } from "@fiftyone/utilities";
-import type { OverlayMask, TypedArray } from "../numpy";
+import { getColor, sizeBytesEstimate } from "@fiftyone/utilities";
+import type { TypedArray } from "../numpy";
 import { ARRAY_TYPES } from "../numpy";
 import type { BaseState, Coordinates, MaskTargets } from "../state";
-import type { BaseLabel, Overlay, PointInfo, SelectData } from "./base";
+import type {
+  BaseLabel,
+  LabelMask,
+  Overlay,
+  PointInfo,
+  SelectData,
+} from "./base";
 import { CONTAINS, isShown } from "./base";
-import { isRgbMaskTargets, sizeBytes, strokeCanvasRect, t } from "./util";
+import { isRgbMaskTargets, strokeCanvasRect, t } from "./util";
 
 export interface SegmentationLabel extends BaseLabel {
   is_panoptic?: boolean;
-  mask?: {
-    data: OverlayMask;
-    image: ArrayBuffer;
-  };
+  mask?: LabelMask;
 }
 
 interface SegmentationInfo extends BaseLabel {
@@ -31,8 +34,6 @@ export default class SegmentationOverlay<State extends BaseState>
   readonly field: string;
   private label: SegmentationLabel;
   private targets?: TypedArray;
-  private canvas: HTMLCanvasElement;
-  private imageData: ImageData;
 
   private isRgbMaskTargets = false;
 
@@ -50,6 +51,7 @@ export default class SegmentationOverlay<State extends BaseState>
     if (!this.label.mask) {
       return;
     }
+
     const [height, width] = this.label.mask.data.shape;
 
     if (!height || !width) {
@@ -59,25 +61,6 @@ export default class SegmentationOverlay<State extends BaseState>
     this.targets = new ARRAY_TYPES[this.label.mask.data.arrayType](
       this.label.mask.data.buffer
     );
-
-    this.canvas = document.createElement("canvas");
-    this.canvas.width = width;
-    this.canvas.height = height;
-
-    this.imageData = new ImageData(
-      new Uint8ClampedArray(this.label.mask.image),
-      width,
-      height
-    );
-    const maskCtx = this.canvas.getContext("2d");
-    maskCtx.imageSmoothingEnabled = false;
-    maskCtx.clearRect(
-      0,
-      0,
-      this.label.mask.data.shape[1],
-      this.label.mask.data.shape[0]
-    );
-    maskCtx.putImageData(this.imageData, 0, 0);
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
@@ -96,12 +79,12 @@ export default class SegmentationOverlay<State extends BaseState>
       return;
     }
 
-    if (this.imageData) {
+    if (this.label.mask?.bitmap) {
       const [tlx, tly] = t(state, 0, 0);
       const [brx, bry] = t(state, 1, 1);
       const tmp = ctx.globalAlpha;
       ctx.globalAlpha = state.options.alpha;
-      ctx.drawImage(this.canvas, tlx, tly, brx - tlx, bry - tly);
+      ctx.drawImage(this.label.mask.bitmap, tlx, tly, brx - tlx, bry - tly);
       ctx.globalAlpha = tmp;
     }
 
@@ -165,6 +148,10 @@ export default class SegmentationOverlay<State extends BaseState>
     };
 
     if (this.label.mask.data.channels === 2) {
+      console.log({
+        ...result,
+        instance: this.getInstance(state),
+      });
       return {
         ...result,
         instance: this.getInstance(state),
@@ -191,10 +178,6 @@ export default class SegmentationOverlay<State extends BaseState>
 
   getPoints(): Coordinates[] {
     return getSegmentationPoints([]);
-  }
-
-  getSizeBytes(): number {
-    return sizeBytes(this.label);
   }
 
   private getIndex(state: Readonly<State>): number {
@@ -224,7 +207,7 @@ export default class SegmentationOverlay<State extends BaseState>
   private getInstance(state: Readonly<State>): number {
     const index = this.getIndex(state);
 
-    if (index < 0) {
+    if (index < 0 || !this.targets || index >= this.targets.length) {
       return null;
     }
 
@@ -302,6 +285,16 @@ export default class SegmentationOverlay<State extends BaseState>
         label: intTargetAndLabel.label,
       };
     });
+  }
+
+  getSizeBytes(): number {
+    return sizeBytesEstimate(this.label);
+  }
+
+  public cleanup(): void {
+    if (this.label.mask?.bitmap) {
+      this.label.mask?.bitmap.close();
+    }
   }
 }
 

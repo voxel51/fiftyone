@@ -38,8 +38,7 @@ export type Render = (
   id: ID,
   element: HTMLDivElement,
   dimensions: [number, number],
-  soft: boolean,
-  disable: boolean
+  zooming: boolean
 ) => void;
 
 export interface Response<K, V> {
@@ -56,12 +55,15 @@ export type Request<K, V> = (key: K) => Promise<{
 }>;
 
 export interface SpotlightConfig<K, V> {
-  get: Get<K, V>;
   at?: At;
+  destroy?: (id: ID) => void;
+  detach?: (id: ID) => void;
+  get: Get<K, V>;
   key: K;
   offset?: number;
   onItemClick?: ItemClick<K, V>;
   render: Render;
+  retainItems: boolean;
   rowAspectRatioThreshold: (width: number) => number;
   spacing?: number;
   scrollbar?: boolean;

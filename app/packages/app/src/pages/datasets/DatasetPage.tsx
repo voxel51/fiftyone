@@ -1,4 +1,4 @@
-import { Dataset, Snackbar, Starter } from "@fiftyone/core";
+import { Dataset, Snackbar, Starter, QueryPerformanceToast } from "@fiftyone/core";
 import "@fiftyone/embeddings";
 import "@fiftyone/map";
 import { OperatorCore } from "@fiftyone/operators";
@@ -115,6 +115,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
         )}
       </div>
       <Snackbar />
+      <QueryPerformanceToast />
     </Nav>
   );
 };

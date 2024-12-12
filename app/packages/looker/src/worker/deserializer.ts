@@ -1,26 +1,43 @@
 import { deserialize } from "../numpy";
 
+const extractSerializedMask = (
+  label: object,
+  maskProp: string
+): string | undefined => {
+  if (typeof label?.[maskProp] === "string") {
+    return label[maskProp];
+  } else if (typeof label?.[maskProp]?.$binary?.base64 === "string") {
+    return label[maskProp].$binary.base64;
+  }
+
+  return undefined;
+};
+
 export const DeserializerFactory = {
   Detection: (label, buffers) => {
-    if (typeof label?.mask === "string") {
-      const data = deserialize(label.mask);
+    const serializedMask = extractSerializedMask(label, "mask");
+
+    if (serializedMask) {
+      const data = deserialize(serializedMask);
       const [height, width] = data.shape;
       label.mask = {
         data,
         image: new ArrayBuffer(width * height * 4),
       };
       buffers.push(data.buffer);
-      buffers.push(label.mask.image);
     }
   },
   Detections: (labels, buffers) => {
-    labels?.detections?.forEach((label) =>
-      DeserializerFactory.Detection(label, buffers)
-    );
+    const list = labels?.detections || [];
+    for (const label of list) {
+      DeserializerFactory.Detection(label, buffers);
+    }
   },
   Heatmap: (label, buffers) => {
-    if (typeof label?.map === "string") {
-      const data = deserialize(label.map);
+    const serializedMask = extractSerializedMask(label, "map");
+
+    if (serializedMask) {
+      const data = deserialize(serializedMask);
       const [height, width] = data.shape;
 
       label.map = {
@@ -29,12 +46,13 @@ export const DeserializerFactory = {
       };
 
       buffers.push(data.buffer);
-      buffers.push(label.map.image);
     }
   },
   Segmentation: (label, buffers) => {
-    if (typeof label?.mask === "string") {
-      const data = deserialize(label.mask);
+    const serializedMask = extractSerializedMask(label, "mask");
+
+    if (serializedMask) {
+      const data = deserialize(serializedMask);
       const [height, width] = data.shape;
 
       label.mask = {
@@ -43,7 +61,6 @@ export const DeserializerFactory = {
       };
 
       buffers.push(data.buffer);
-      buffers.push(label.mask.image);
     }
   },
 };

@@ -28,12 +28,11 @@ class PanelConfig(OperatorConfig):
             in dark mode
         allow_multiple (False): whether to allow multiple instances of the
             panel to be opened
-        reload_on_navigation (False): whether to reload the panel when the
-            user navigates to a new page. This is only applicable to panels
-            that are not shown in a modal
         surfaces ("grid"): the surfaces on which the panel can be displayed
         help_markdown (None): a markdown string to display in the panel's help
             tooltip
+        category (Category): the category id of the panel
+        priority (None): the priority of the panel for sorting in the UI
     """
 
     def __init__(
@@ -41,12 +40,15 @@ class PanelConfig(OperatorConfig):
         name,
         label,
         help_markdown=None,
+        beta=False,
+        is_new=False,
+        category=None,
         icon=None,
         light_icon=None,
         dark_icon=None,
         allow_multiple=False,
         surfaces: PANEL_SURFACE = "grid",
-        reload_on_navigation=False,
+        priority=None,
         **kwargs
     ):
         super().__init__(name)
@@ -59,8 +61,11 @@ class PanelConfig(OperatorConfig):
         self.allow_multiple = allow_multiple
         self.unlisted = True
         self.on_startup = True
-        self.reload_on_navigation = reload_on_navigation
         self.surfaces = surfaces
+        self.category = category
+        self.beta = beta
+        self.is_new = is_new
+        self.priority = priority
         self.kwargs = kwargs  # unused, placeholder for future extensibility
 
     def to_json(self):
@@ -68,14 +73,17 @@ class PanelConfig(OperatorConfig):
             "name": self.name,
             "label": self.label,
             "help_markdown": self.help_markdown,
+            "category": str(self.category) if self.category else None,
+            "beta": self.beta,
+            "is_new": self.is_new,
             "icon": self.icon,
             "light_icon": self.light_icon,
             "dark_icon": self.dark_icon,
             "allow_multiple": self.allow_multiple,
             "on_startup": self.on_startup,
             "unlisted": self.unlisted,
-            "reload_on_navigation": self.reload_on_navigation,
             "surfaces": self.surfaces,
+            "priority": self.priority,
         }
 
 
@@ -114,18 +122,24 @@ class Panel(Operator):
             "dark_icon": self.config.dark_icon,
             "light_icon": self.config.light_icon,
             "surfaces": self.config.surfaces,
-            "reload_on_navigation": self.config.reload_on_navigation,
+            "category": self.config.category,
+            "beta": self.config.beta,
+            "is_new": self.config.is_new,
+            "priority": self.config.priority,
+            "_builtin": self._builtin,
         }
         methods = ["on_load", "on_unload", "on_change"]
         ctx_change_events = [
             "on_change_ctx",
-            "on_change_view",
             "on_change_dataset",
+            "on_change_view",
+            "on_change_spaces",
             "on_change_current_sample",
             "on_change_selected",
             "on_change_selected_labels",
             "on_change_extended_selection",
             "on_change_group_slice",
+            "on_change_query_performance",
         ]
         for method in methods + ctx_change_events:
             if hasattr(self, method) and callable(getattr(self, method)):

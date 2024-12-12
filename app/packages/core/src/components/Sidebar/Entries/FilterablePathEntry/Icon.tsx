@@ -1,7 +1,25 @@
+import { Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { Bolt } from "@mui/icons-material";
 import React from "react";
 import { useRecoilValue } from "recoil";
+import styled from "styled-components";
 import Arrow from "./Arrow";
+
+const LightningIcon = styled(Bolt)`
+  color: ${({ theme }) => theme.text.secondary};
+`;
+
+export const LightningBolt: React.FC = (_) => {
+  return (
+    <Tooltip placement="top-center" text={"Indexed"}>
+      <LightningIcon
+        data-cy={"query-performance"}
+        style={{ height: 16, marginRight: 2, width: 16 }}
+      />
+    </Tooltip>
+  );
+};
 
 const Lightning = ({
   path,
@@ -10,29 +28,30 @@ const Lightning = ({
   path: string;
   frameFilteringDisabled: boolean;
 }) => {
-  const lightning = useRecoilValue(fos.isLightningPath(path));
   const expandedPath = useRecoilValue(fos.expandPath(path));
-  const color = useRecoilValue(fos.pathColor(path));
 
   return (
-    <Arrow
-      color={!lightning ? undefined : color}
-      unindexed={!lightning}
-      expanded={fos.sidebarExpanded({ modal: false, path: expandedPath })}
-      id={path}
-      frameFilterDisabledPath={frameFilteringDisabled}
-    />
+    <>
+      <LightningBolt />
+      <Arrow
+        expanded={fos.sidebarExpanded({ modal: false, path: expandedPath })}
+        id={path}
+        frameFilterDisabledPath={frameFilteringDisabled}
+      />
+    </>
   );
 };
 
 const IconWrapper = ({ modal, path }: { modal: boolean; path: string }) => {
-  const disabled = useRecoilValue(fos.isDisabledFilterPath(path));
+  const disabled = useRecoilValue(fos.isDisabledFilterPath(path)) && !modal;
   const expandedPath = useRecoilValue(fos.expandPath(path));
-  const lightning = useRecoilValue(fos.lightning);
   const frameFilteringDisabled =
     useRecoilValue(fos.isDisabledFrameFilterPath(path)) && !modal;
+  const indexed = useRecoilValue(fos.pathHasIndexes(path));
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  const frameField = useRecoilValue(fos.isFrameField(path));
 
-  if (lightning && !modal) {
+  if (queryPerformance && indexed && !modal && !frameField) {
     return (
       <Lightning path={path} frameFilteringDisabled={frameFilteringDisabled} />
     );

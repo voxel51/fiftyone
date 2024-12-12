@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest-m
     env:
       FIFTYONE_DO_NOT_TRACK: true
+      FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE: false
       FIFTYONE_DATABASE_URI: mongodb://localhost:27017
       FIFTYONE_DATABASE_NAME: playwright
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
@@ -67,8 +68,13 @@ jobs:
           python tests/utils/setup_config.py
           python tests/utils/github_actions_flags.py
 
-      - name: FFmpeg
-        uses: FedericoCarboni/setup-ffmpeg@v3
+      # - name: Setup FFmpeg (with retries)
+      #   uses: FedericoCarboni/setup-ffmpeg@v3
+
+      # Use this until https://github.com/federicocarboni/setup-ffmpeg/pull/23
+      # is merged or the maintainer addresses the root issue.
+      - name: Setup FFmpeg (with retries)
+        uses: afoley587/setup-ffmpeg@main
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache

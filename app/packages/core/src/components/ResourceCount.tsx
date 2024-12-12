@@ -24,8 +24,12 @@ const RightDiv = styled.div`
 
 const ResourceCount = () => {
   const groupStats = useRecoilValue(fos.groupStatistics(false));
-  const lightning = useRecoilValue(fos.lightning);
-  return groupStats === "group" && !lightning ? <GroupsCount /> : <Count />;
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  return groupStats === "group" && !queryPerformance ? (
+    <GroupsCount />
+  ) : (
+    <Count />
+  );
 };
 
 const GroupsCount = () => {
@@ -41,13 +45,11 @@ const GroupsCount = () => {
   return (
     <RightDiv data-cy="entry-counts">
       <div>
-        (<PathEntryCounts modal={false} path={""} />
-        {` `}
-        {elementTotal === 1 ? element.singular : element.plural}){` `}
-        <PathEntryCounts modal={false} path={"_"} ignoreSidebarMode />
-        {` `}
+        (<PathEntryCounts modal={false} path={""} />{" "}
+        {elementTotal === 1 ? element.singular : element.plural}){" "}
+        <PathEntryCounts modal={false} path={"_"} />{" "}
         {total === 1 ? "group" : "groups"}
-        {groupSlice && ` with slice`}
+        {groupSlice && " with slice"}
       </div>
     </RightDiv>
   );
@@ -56,17 +58,23 @@ const GroupsCount = () => {
 const Count = () => {
   let element = useRecoilValue(fos.elementNames);
   const isDynamicGroupViewStageActive = useRecoilValue(fos.isDynamicGroup);
-  const total = useRecoilValue(
+  let total = useRecoilValue(
     fos.count({ path: "", extended: false, modal: false })
+  );
+  const subtotal = useRecoilValue(
+    fos.count({ path: "", extended: true, modal: false })
   );
 
   const parent = useRecoilValue(parentMediaTypeSelector);
   const slice = useRecoilValue(fos.groupSlice);
 
   const isGroup = useRecoilValue(isGroupAtom);
-  const lightning = useRecoilValue(fos.lightning);
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  if (queryPerformance) {
+    total = subtotal;
+  }
   if (
-    !lightning &&
+    !queryPerformance &&
     ((isGroup && !isDynamicGroupViewStageActive) ||
       (isDynamicGroupViewStageActive && parent === "group") ||
       (isDynamicGroupViewStageActive && element.singular === "sample"))
@@ -80,13 +88,12 @@ const Count = () => {
   return (
     <RightDiv data-cy="entry-counts">
       <div style={{ whiteSpace: "nowrap" }}>
-        <PathEntryCounts modal={false} path={""} />
-        {` `}
+        <PathEntryCounts modal={false} path={""} />{" "}
         {isDynamicGroupViewStageActive &&
           !["sample", "group"].includes(element.singular) &&
           `group${total === 1 ? "" : "s"} of `}
         {total === 1 ? element.singular : element.plural}
-        {!lightning && slice && ` with slice`}
+        {!queryPerformance && slice && " with slice"}
       </div>
     </RightDiv>
   );

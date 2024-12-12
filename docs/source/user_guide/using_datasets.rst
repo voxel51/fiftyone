@@ -425,23 +425,6 @@ that should be used by default whenever the dataset is loaded in the App:
     Did you know? You can also configure color schemes
     :ref:`directly in the App <app-color-schemes>`!
 
-.. _dataset-app-config-sidebar-mode:
-
-Sidebar mode
-~~~~~~~~~~~~
-
-You can configure the default loading behavior of the
-:ref:`filters sidebar <app-sidebar-mode>`:
-
-.. code-block:: python
-    :linenos:
-
-    # Set the default sidebar mode to "best"
-    dataset.app_config.sidebar_mode = "best"
-    dataset.save()  # must save after edits
-
-    session.refresh()
-
 .. _dataset-app-config-sidebar-groups:
 
 Sidebar groups
@@ -1662,9 +1645,9 @@ interested in finding videos that contain specific classes of interest, eg
 
 One approach is to directly query the frame-level field (`frames.detections`
 in this case) in the App's sidebar. However, when the dataset is large, such
-queries are inefficient, as they cannot
-:ref:`leverage indexes <app-indexed-filtering>` and thus require full
-collection scans over all frames to retrieve the relevant samples.
+queries are inefficient, as they cannot unlock
+:ref:`query performance <app-optimizing-query-performance>` and thus require
+full collection scans over all frames to retrieve the relevant samples.
 
 A more efficient approach is to first use
 :meth:`create_summary_field() <fiftyone.core.dataset.Dataset.create_summary_field>`
@@ -1765,9 +1748,9 @@ As the above examples illustrate, summary fields allow you to encode various
 types of information at the sample-level that you can directly query to find
 samples that contain specific values.
 
-Moreover, summary fields are :ref:`indexed <app-indexed-filtering>` by default
-and the App can natively leverage these indexes to provide performant
-filtering:
+Moreover, summary fields are :ref:`indexed <app-optimizing-query-performance>`
+by default and the App can natively leverage these indexes to provide
+performant filtering:
 
 .. image:: /images/datasets/quickstart-video-summary-fields.gif
    :alt: quickstart-video-summary-fields
@@ -2556,25 +2539,41 @@ Instance segmentations
 ----------------------
 
 Object detections stored in |Detections| may also have instance segmentation
-masks, which should be stored in the
-:attr:`mask <fiftyone.core.labels.Detection.mask>` attribute of each
-|Detection|.
+masks.
 
-The mask must be a 2D numpy array containing either booleans or 0/1 integers
-encoding the extent of the instance mask within the
+These masks can be stored in one of two ways: either directly in the database
+via the :attr:`mask<fiftyone.core.labels.Detection.mask>` attribute, or on
+disk referenced by the
+:attr:`mask_path <fiftyone.core.labels.Detection.mask_path>` attribute.
+
+Masks stored directly in the database must be 2D numpy arrays
+containing either booleans or 0/1 integers that encode the extent of the
+instance mask within the
 :attr:`bounding_box <fiftyone.core.labels.Detection.bounding_box>` of the
-object. The array can be of any size; it is stretched as necessary to fill the
+object.
+
+For masks stored on disk, the
+:attr:`mask_path <fiftyone.core.labels.Detection.mask_path>` attribute should
+contain the file path to the mask image. We recommend storing masks as
+single-channel PNG images, where a pixel value of 0 indicates the
+background (rendered as transparent in the App), and any other 
+value indicates the object.
+
+Masks can be of any size; they are stretched as necessary to fill the
 object's bounding box when visualizing in the App.
 
 .. code-block:: python
     :linenos:
 
     import numpy as np
+    from PIL import Image
 
     import fiftyone as fo
 
     # Example instance mask
-    mask = (np.random.randn(32, 32) > 0)
+    mask = ((np.random.randn(32, 32) > 0) * 255).astype(np.uint8)
+    mask_path = "/path/to/mask.png"
+    Image.fromarray(mask).save(mask_path)
 
     sample = fo.Sample(filepath="/path/to/image.png")
 
@@ -2583,7 +2582,7 @@ object's bounding box when visualizing in the App.
             fo.Detection(
                 label="cat",
                 bounding_box=[0.480, 0.513, 0.397, 0.288],
-                mask=mask,
+                mask_path=mask_path,
                 confidence=0.96,
             ),
         ]
@@ -2608,13 +2607,7 @@ object's bounding box when visualizing in the App.
                     'attributes': {},
                     'label': 'cat',
                     'bounding_box': [0.48, 0.513, 0.397, 0.288],
-                    'mask': array([[False,  True, False, ...,  True,  True, False],
-                           [ True, False,  True, ..., False,  True,  True],
-                           [False,  True, False, ..., False,  True, False],
-                           ...,
-                           [ True,  True, False, ..., False, False,  True],
-                           [ True,  True,  True, ...,  True,  True, False],
-                           [False,  True,  True, ..., False,  True,  True]]),
+                    'mask_path': '/path/to/mask.png',
                     'confidence': 0.96,
                     'index': None,
                 }>,
@@ -2634,7 +2627,7 @@ by dynamically adding new fields to each |Detection| instance:
     detection = fo.Detection(
         label="cat",
         bounding_box=[0.5, 0.5, 0.4, 0.3],
-        mask=np.random.randn(32, 32) > 0,
+        mask_path="/path/to/mask.png",
         age=51,  # custom attribute
         mood="salty",  # custom attribute
     )
@@ -2649,13 +2642,7 @@ by dynamically adding new fields to each |Detection| instance:
         'tags': [],
         'label': 'cat',
         'bounding_box': [0.5, 0.5, 0.4, 0.3],
-        'mask': array([[False, False,  True, ...,  True,  True, False],
-               [ True,  True, False, ...,  True, False,  True],
-               [False, False,  True, ..., False, False, False],
-               ...,
-               [False, False,  True, ...,  True,  True, False],
-               [ True, False,  True, ...,  True, False,  True],
-               [False,  True, False, ...,  True,  True,  True]]),
+        'mask_path': '/path/to/mask.png',
         'confidence': None,
         'index': None,
         'age': 51,

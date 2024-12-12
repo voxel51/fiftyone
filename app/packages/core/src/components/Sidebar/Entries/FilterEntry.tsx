@@ -1,16 +1,22 @@
 import { Tooltip, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { Settings, VisibilityOff } from "@mui/icons-material";
-import FilterAltIcon from "@mui/icons-material/FilterAlt";
+import { FilterList, Settings, VisibilityOff } from "@mui/icons-material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Box, Typography } from "@mui/material";
 import React from "react";
-import { useRecoilState, useResetRecoilState, useSetRecoilState } from "recoil";
+import {
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+  useSetRecoilState,
+} from "recoil";
 import styled from "styled-components";
+import QueryPerformanceIcon from "./QueryPerformanceIcon";
 import { FilterInputDiv } from "./utils";
 
 const Text = styled.div`
   font-size: 1rem;
+  color: ${({ theme }) => theme.text.secondary};
 `;
 
 const Filter = () => {
@@ -33,17 +39,18 @@ const Filter = () => {
   } = fos.useSchemaSettings();
 
   const { setSearchResults } = fos.useSearchSchemaFields(mergedSchema);
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
 
   return (
     <FilterInputDiv>
-      <Box alignItems={"center"} display="flex">
+      <Box alignItems="center" display="flex">
         {isFilterMode && (
           <Box display="flex" onClick={() => setIsFilterMode(false)}>
             <Tooltip
               text={"Toggle to visibility mode"}
               placement="bottom-start"
             >
-              <FilterAltIcon
+              <FilterList
                 sx={{
                   color: theme.text.tertiary,
                   "&:hover": {
@@ -83,7 +90,7 @@ const Filter = () => {
         )}
       </Box>
 
-      <Box display="flex" alignItems="center">
+      <Box display="flex" alignItems="center" gap="4px">
         {isFieldVisibilityActive && (
           <Tooltip text="Clear field selection" placement="bottom-center">
             <Box
@@ -124,6 +131,7 @@ const Filter = () => {
             </Box>
           </Tooltip>
         )}
+        {queryPerformance && <QueryPerformanceIcon />}
         <Tooltip
           text="Change field visibility"
           placement="bottom-center"

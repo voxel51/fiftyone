@@ -10,6 +10,7 @@ import platform
 import unittest
 
 import fiftyone as fo
+import fiftyone.core.odm as foo
 
 
 def drop_datasets(func):
@@ -41,6 +42,24 @@ def drop_async_dataset(func):
         dataset.delete()
 
     return wrapper
+
+
+def drop_collection(collection_name):
+    """Decorator that drops a collection from the database before and after running a test."""
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            db = foo.get_db_conn()
+            db.drop_collection(collection_name)
+            try:
+                return func(*args, **kwargs)
+            finally:
+                db.drop_collection(collection_name)
+
+        return wrapper
+
+    return decorator
 
 
 def skip_windows(func):

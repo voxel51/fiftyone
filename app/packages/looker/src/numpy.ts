@@ -9,6 +9,7 @@ export { deserialize };
 
 export const ARRAY_TYPES = {
   Uint8Array,
+  Uint8ClampedArray,
   Int8Array,
   Uint16Array,
   Int16Array,
@@ -22,6 +23,7 @@ export const ARRAY_TYPES = {
 
 export type TypedArray =
   | Uint8Array
+  | Uint8ClampedArray
   | Int8Array
   | Uint16Array
   | Int16Array

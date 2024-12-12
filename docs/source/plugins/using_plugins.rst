@@ -296,6 +296,7 @@ available metadata about a plugin:
     secrets                 FIFTYONE_CVAT_URL
                             FIFTYONE_CVAT_USERNAME
                             FIFTYONE_CVAT_PASSWORD
+                            FIFTYONE_CVAT_EMAIL
                             FIFTYONE_LABELBOX_URL
                             FIFTYONE_LABELBOX_API_KEY
                             FIFTYONE_LABELSTUDIO_URL
@@ -469,6 +470,7 @@ plugin declares the following secrets:
       - FIFTYONE_CVAT_URL
       - FIFTYONE_CVAT_USERNAME
       - FIFTYONE_CVAT_PASSWORD
+      - FIFTYONE_CVAT_EMAIL
       - FIFTYONE_LABELBOX_URL
       - FIFTYONE_LABELBOX_API_KEY
       - FIFTYONE_LABELSTUDIO_URL
@@ -491,6 +493,7 @@ plugin, you would set:
     FIFTYONE_CVAT_URL=...
     FIFTYONE_CVAT_USERNAME=...
     FIFTYONE_CVAT_PASSWORD=...
+    FIFTYONE_CVAT_EMAIL=...
 
 At runtime, the plugin's execution context will automatically be hydrated with
 any available secrets that are declared by the plugin. Operators access these
@@ -503,6 +506,7 @@ secrets via the `ctx.secrets` dict:
         url = ctx.secrets["FIFTYONE_CVAT_URL"]
         username = ctx.secrets["FIFTYONE_CVAT_USERNAME"]
         password = ctx.secrets["FIFTYONE_CVAT_PASSWORD"]
+        email = ctx.secrets["FIFTYONE_CVAT_EMAIL"]
 
 .. _using-panels:
 
@@ -594,8 +598,8 @@ operator can be invoked like so:
     dataset = foz.load_zoo_dataset("quickstart")
     compute_metadata = foo.get_operator("@voxel51/utils/compute_metadata")
 
-    # Schedule a delegated operation to (re)compute metadata
-    compute_metadata(dataset, overwrite=True, delegate=True)
+    # (Re)compute the dataset's metadata
+    compute_metadata(dataset, overwrite=True)
 
 .. note::
 
@@ -614,13 +618,11 @@ follows:
             sample_collection,
             overwrite=False,
             num_workers=None,
-            delegate=False,
         ):
             ctx = dict(view=sample_collection.view())
             params = dict(
                 overwrite=overwrite,
                 num_workers=num_workers,
-                delegate=delegate,
             )
             return foo.execute_operator(self.uri, ctx, params=params)
 
@@ -654,6 +656,150 @@ data, you can access it via the ``result`` property of the returned
 
         result = await op(...)
         print(result.result) # {...}
+
+Requesting delegation
+~~~~~~~~~~~~~~~~~~~~~
+
+Operators that support :ref:`delegated execution <delegated-operations>` can
+support this via the `__call__()` syntax by passing the
+`request_delegation=True` flag to
+:func:`execute_operator() <fiftyone.operators.execute_operator>`.
+
+In fact, the
+`@voxel51/utils/compute_metadata <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/utils>`_
+operator does just that:
+
+.. code-block:: python
+    :linenos:
+
+    class ComputeMetadata(foo.Operator):
+        return foo.OperatorConfig(
+            ...
+            allow_immediate_execution=True,
+            allow_delegated_execution=True,
+        )
+
+        def __call__(
+            self,
+            sample_collection,
+            overwrite=False,
+            num_workers=None,
+            delegate=False,
+        ):
+            ctx = dict(view=sample_collection.view())
+            params = dict(
+                overwrite=overwrite,
+                num_workers=num_workers,
+            )
+            return foo.execute_operator(
+                self.uri,
+                ctx,
+                params=params,
+                request_delegation=delegate,
+            )
+
+which means that it can be invoked like so:
+
+.. code-block:: python
+    :linenos:
+
+    compute_metadata = foo.get_operator("@voxel51/utils/compute_metadata")
+
+    # Schedule a delegated operation to (re)compute metadata
+    compute_metadata(dataset, overwrite=True, delegate=True)
+
+.. _direct-operator-execution:
+
+Direct execution
+----------------
+
+You can programmatically execute any operator by directly calling
+:func:`execute_operator() <fiftyone.operators.execute_operator>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.operators as foo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    ctx = {
+        "view": dataset.take(10),
+        "params": dict(
+            export_type="LABELS_ONLY",
+            dataset_type="COCO",
+            labels_path=dict(absolute_path="/tmp/coco/labels.json"),
+            label_field="ground_truth",
+        )
+    }
+
+    foo.execute_operator("@voxel51/io/export_samples", ctx)
+
+.. note::
+
+    In general, to use
+    :func:`execute_operator() <fiftyone.operators.execute_operator>` you must
+    inspect the operator's
+    :meth:`execute() <fiftyone.operators.operator.Operator.execute>`
+    implementation to understand what parameters are required.
+
+For operators whose
+:meth:`execute() <fiftyone.operators.operator.Operator.execute>` method returns
+data, you can access it via the ``result`` property of the returned
+:class:`ExecutionResult <fiftyone.operators.executor.ExecutionResult>` object:
+
+.. code-block:: python
+    :linenos:
+
+    result = foo.execute_operator("@an-operator/with-results", ctx)
+    print(result.result)  # {...}
+
+.. note::
+
+    When working in notebook contexts, executing operators returns an
+    ``asyncio.Task`` that you can ``await`` to retrieve the
+    :class:`ExecutionResult <fiftyone.operators.executor.ExecutionResult>`:
+
+    .. code-block:: python
+
+        result = await foo.execute_operator("@an-operator/with-results", ctx)
+        print(result.result)  # {...}
+
+Requesting delegation
+~~~~~~~~~~~~~~~~~~~~~
+
+If an operation supports both immediate and
+:ref:`delegated execution <delegated-operations>` as specified by its
+:ref:`execution options <operator-execution-options>`, you can request
+delegated execution by passing the `request_delegation=True` flag to
+:func:`execute_operator() <fiftyone.operators.execute_operator>`:
+
+.. code-block:: python
+    :linenos:
+
+    foo.execute_operator(operator_uri, ctx=ctx, request_delegation=True)
+
+This has the same effect as choosing `Schedule` from the dropdown in the
+operator's input modal when executing it from within the App:
+
+.. image:: /images/plugins/operators/operator-execute-button.png
+    :align: center
+
+.. note::
+
+    :ref:`FiftyOne Teams <fiftyone-teams>` users can also specify an optional
+    delegation target for their delegated operations:
+
+    .. code-block:: python
+
+        foo.execute_operator(
+            operator_uri,
+            ctx=ctx,
+            request_delegation=True,
+            delegation_target="overnight",
+        )
 
 .. _delegating-function-calls:
 
@@ -714,125 +860,23 @@ above forms:
         persistent=True,
     )
 
-.. _direct-operator-execution:
-
-Direct execution
-----------------
-
-You can also programmatically execute any operator by directly calling
-:func:`execute_operator() <fiftyone.operators.execute_operator>`:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.operators as foo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-
-    ctx = {
-        "view": dataset.take(10),
-        "params": dict(
-            export_type="LABELS_ONLY",
-            dataset_type="COCO",
-            labels_path=dict(absolute_path="/tmp/coco/labels.json"),
-            label_field="ground_truth",
-            delegate=False,  # False: execute immediately, True: delegate
-        )
-    }
-
-    foo.execute_operator("@voxel51/io/export_samples", ctx)
-
-In the above example, the `delegate=True/False` parameter controls whether
-execution happens immediately or is
-:ref:`delegated <operator-delegated-execution>` because the operator implements
-its
-:meth:`resolve_delegation() <fiftyone.operators.operator.Operator.resolve_delegation>`
-as follows:
-
-.. code-block:: python
-    :linenos:
-
-    def resolve_delegation(self, ctx):
-        return ctx.params.get("delegate", False)
-
-.. note::
-
-    In general, to use
-    :func:`execute_operator() <fiftyone.operators.execute_operator>` you must
-    inspect the operator's
-    :meth:`execute() <fiftyone.operators.operator.Operator.execute>`
-    implementation to understand what parameters are required.
-
-For operators whose
-:meth:`execute() <fiftyone.operators.operator.Operator.execute>` method returns
-data, you can access it via the ``result`` property of the returned
-:class:`ExecutionResult <fiftyone.operators.executor.ExecutionResult>` object:
-
-.. code-block:: python
-    :linenos:
-
-    result = foo.execute_operator("@an-operator/with-results", ctx)
-    print(result.result)  # {...}
-
-.. note::
-
-    When working in notebook contexts, executing operators returns an
-    ``asyncio.Task`` that you can ``await`` to retrieve the
-    :class:`ExecutionResult <fiftyone.operators.executor.ExecutionResult>`:
-
-    .. code-block:: python
-
-        result = await foo.execute_operator("@an-operator/with-results", ctx)
-        print(result.result)  # {...}
-
-.. _requesting-operator-delegation:
-
-Requesting delegation
----------------------
-
-If an operation supports both immediate and delegated execution as specified
-either by its :ref:`configuration <operator-delegation-configuration>` or
-:ref:`execution options <operator-execution-options>`, you can request
-delegated execution by passing the `request_delegation=True` flag to
-:func:`execute_operator() <fiftyone.operators.execute_operator>`:
-
-.. code-block:: python
-    :linenos:
-
-    foo.execute_operator(operator_uri, ctx=ctx, request_delegation=True)
-
-This has the same effect as choosing `Schedule` from the dropdown in the
-operator's input modal when executing it from within the App:
-
-.. image:: /images/plugins/operators/operator-execute-button.png
-    :align: center
-
-.. note::
-
-    :ref:`FiftyOne Teams <fiftyone-teams>` users can also specify an optional
-    delegation target for their delegated operations:
-
-    .. code-block:: python
-
-        foo.execute_operator(
-            operator_uri,
-            ctx=ctx,
-            request_delegation=True,
-            delegation_target="overnight",
-        )
-
 .. _delegated-operations:
 
 Delegated operations
 ____________________
 
 Delegated operations are a powerful feature of FiftyOne's plugin framework that
-allows you to schedule tasks from within the App that are executed on a
-connected workflow orchestrator like
-:ref:`Apache Airflow <delegated-operations-airflow>` or run just
-:ref:`run locally <delegated-operations-local>` in a separate process.
+allows you to schedule potentially long-running tasks from within the App that
+are executed in the background while you continue to work.
+
+.. note::
+
+    :ref:`FiftyOne Teams <teams-delegated-operations>` deployments come out of
+    the box with a connected compute cluster for executing delegated operations
+    at scale.
+
+    In FiftyOne Open Source, you can use delegated operations at small scale
+    by :ref:`running them locally <delegated-orchestrator-open-source>`.
 
 For example, have model predictions on your dataset that you want to evaluate?
 The `@voxel51/evaluation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/evaluation/README.md>`_
@@ -856,6 +900,58 @@ curation, and evaluation are performed.
 .. note::
 
     Want to run delegated operations at scale?
+    `Contact us <https://voxel51.com/get-fiftyone-teams>`_ about
+    :ref:`FiftyOne Teams <fiftyone-teams>`, an open source-compatible
+    enterprise deployment of FiftyOne with multiuser collaboration features,
+    native cloud dataset support, and much more!
+
+    Think of FiftyOne Teams as the single source of truth on which you
+    co-develop your data and models together 📈
+
+.. _delegated-orchestrator:
+
+Setting up an orchestrator
+__________________________
+
+.. _delegated-orchestrator-open-source:
+
+FiftyOne Open Source
+--------------------
+
+FiftyOne Open Source users can run delegated operations via the
+:ref:`fiftyone delegated launch <cli-fiftyone-delegated-launch>` CLI command:
+
+.. code-block:: shell
+
+    fiftyone delegated launch
+
+This command starts a service that will continuously check for any queued
+delegated operations and execute them serially in its process.
+
+You must also ensure that the
+:ref:`allow_legacy_orchestrators <configuring-fiftyone>` config flag is set
+in the environment where you run the App/SDK, e.g. by setting:
+
+.. code-block:: shell
+
+    export FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS=true
+
+.. _delegated-orchestrator-teamas:
+
+FiftyOne Teams
+--------------
+
+:ref:`FiftyOne Teams <teams-delegated-operations>` deployments come out of the
+box with a connected compute cluster for executing delegated operations at
+scale.
+
+This powerful feature allows users to install/build plugins that execute
+potentially long-running tasks in the background while users continue with
+other work in the App.
+
+.. note::
+
+    Want to take advantage of this functionality?
     `Contact us <https://voxel51.com/get-fiftyone-teams>`_ about
     :ref:`FiftyOne Teams <fiftyone-teams>`, an open source-compatible
     enterprise deployment of FiftyOne with multiuser collaboration features,
@@ -927,56 +1023,3 @@ cleanup delegated operations:
 
     # Print information about operations rather than actually deleting them
     fiftyone delegated cleanup --orphan --dry-run
-
-.. _delegated-orchestrator:
-
-Setting up an orchestrator
-__________________________
-
-.. _delegated-operations-local:
-
-Local execution
----------------
-
-The simplest way to execute delegated operations is to launch a delegated
-operation service via the
-:ref:`fiftyone delegated launch <cli-fiftyone-delegated-launch>` CLI command:
-
-.. code-block:: shell
-
-    fiftyone delegated launch
-
-This command starts a service that will continuously check for any queued
-delegated operations and execute them serially in its process.
-
-.. _delegated-operations-airflow:
-
-Apache Airflow
---------------
-
-Delegated operations are also designed to be executed by workflow orchestration
-tools like `Airflow <https://airflow.apache.org>`_.
-
-You can set up Airflow as an orchestrator to run delegated operations in a
-development environment by following these steps:
-
--   Install
-    `Apache Airflow <https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html>`_
--   Install a
-    `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/tree/main/orchestrators/airflow>`_
--   Ensure that your :ref:`plugins directory <plugins-directory>` is available,
-    either by installing them on the same machine or by making them available
-    via a shared filesystem
--   Configure your :ref:`MongoDB connection <configuring-mongodb-connection>`
--   You're all set. Schedule those operations!
-
-.. note::
-
-    Want to run delegated operations at scale in production?
-    `Contact us <https://voxel51.com/get-fiftyone-teams>`_ about
-    :ref:`FiftyOne Teams <fiftyone-teams>`, an open source-compatible
-    enterprise deployment of FiftyOne with multiuser collaboration features,
-    native cloud dataset support, and much more!
-
-    FiftyOne Teams as the single source of truth on which you
-    co-develop your data and models together 📈
