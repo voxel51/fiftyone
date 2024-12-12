@@ -42,7 +42,6 @@ export interface SelectData {
 
 export type LabelMask = {
   bitmap?: ImageBitmap;
-  closedBitmapDims?: { width: number; height: number };
   data?: OverlayMask;
 };
 

@@ -520,10 +520,6 @@ export abstract class AbstractLooker<
     const arrayBuffers: ArrayBuffer[] = [];
 
     for (const overlay of this.pluckedOverlays ?? []) {
-      // we paint overlays again, so cleanup the old ones
-      // this helps prevent memory leaks from, for instance, dangling ImageBitmaps
-      overlay.cleanup();
-
       let overlayData: LabelMask = null;
 
       if ("mask" in overlay.label) {
@@ -739,6 +735,12 @@ export abstract class AbstractLooker<
     );
   }
 
+  protected cleanOverlays() {
+    for (const overlay of this.sampleOverlays ?? []) {
+      overlay.cleanup();
+    }
+  }
+
   private loadSample(sample: Sample, transfer: Transferable[] = []) {
     const messageUUID = uuid();
 
@@ -746,6 +748,9 @@ export abstract class AbstractLooker<
 
     const listener = ({ data: { sample, coloring, uuid } }) => {
       if (uuid === messageUUID) {
+        // we paint overlays again, so cleanup the old ones
+        // this helps prevent memory leaks from, for instance, dangling ImageBitmaps
+        this.cleanOverlays();
         this.sample = sample;
         this.state.options.coloring = coloring;
         this.loadOverlays(sample);

@@ -262,16 +262,8 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   public cleanup(): void {
-    if (this.label.mask?.bitmap) {
-      // store height and width in bitmap object since it might be used again
-      const height = this.label.mask.bitmap.height;
-      const width = this.label.mask.bitmap.width;
-
-      this.label.mask?.bitmap.close();
-      this.label.mask.bitmap = null;
-
-      this.label.mask.closedBitmapDims = { width, height };
-    }
+    this.label.mask?.bitmap?.close();
+    this.label.mask.bitmap = null;
   }
 }
 

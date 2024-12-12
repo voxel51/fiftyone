@@ -56,11 +56,16 @@ export const decodeOverlayOnDisk = async (
     // it's possible we're just re-coloring, in which case re-init mask image and set bitmap to null
     if (
       label[overlayField] &&
-      label[overlayField].closedBitmapDims &&
+      label[overlayField].bitmap &&
       !label[overlayField].image
     ) {
-      const height = label[overlayField].closedBitmapDims.height;
-      const width = label[overlayField].closedBitmapDims.width;
+      const height = label[overlayField].bitmap.height;
+      const width = label[overlayField].bitmap.width;
+
+      // close the copied bitmap
+      label[overlayField].bitmap.close();
+      label[overlayField].bitmap = null;
+
       label[overlayField].image = new ArrayBuffer(height * width * 4);
       label[overlayField].bitmap.close();
       label[overlayField].bitmap = null;

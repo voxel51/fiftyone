@@ -207,16 +207,8 @@ export default class HeatmapOverlay<State extends BaseState>
   }
 
   public cleanup(): void {
-    if (this.label.map?.bitmap) {
-      // store height and width in bitmap object since it might be used again
-      const height = this.label.map.bitmap.height;
-      const width = this.label.map.bitmap.width;
-
-      this.label.map?.bitmap.close();
-      this.label.map.bitmap = null;
-
-      this.label.map.closedBitmapDims = { width, height };
-    }
+    this.label.map?.bitmap?.close();
+    this.label.map.bitmap = null;
   }
 }
 
