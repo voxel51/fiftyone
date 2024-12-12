@@ -263,7 +263,6 @@ export default class DetectionOverlay<
 
   public cleanup(): void {
     this.label.mask?.bitmap?.close();
-    this.label.mask.bitmap = null;
   }
 }
 
