@@ -308,12 +308,16 @@ export const useSpotlight = ({
         return Math.max(minZoomLevel, maxZoomLevel - Math.max(min, zoom));
       },
       get: (page: number): Promise<SamplePage> => {
-        // In this implementation, we only support a single page, which
-        //   is the collection of samples passed in through props.
-        const mappedSamples: SampleMetadata[] = samples.map((s) => {
+        const pageSize = 20;
+        const samplePage = samples.slice(
+          page * pageSize,
+          (page + 1) * pageSize
+        );
+
+        const mappedSamples: SampleMetadata[] = samplePage.map((s) => {
           const id = uuid();
           return {
-            key: 0,
+            key: page,
             aspectRatio: 1,
             id: {
               description: id,
@@ -334,7 +338,7 @@ export const useSpotlight = ({
         // Store these samples in the sample store; this is where the renderer will pull from
         mappedSamples.forEach((s) => {
           const storeElement: SampleStoreEntry = {
-            aspectRatio: 1,
+            aspectRatio: s.aspectRatio,
             id: s.id.description,
             sample: s.data.sample,
             urls: s.data.urls,
@@ -345,8 +349,8 @@ export const useSpotlight = ({
 
         return Promise.resolve({
           items: mappedSamples,
-          next: null,
-          previous: null,
+          next: (page + 1) * pageSize < samples.length ? page + 1 : null,
+          previous: page > 0 ? page - 1 : null,
         });
       },
       render: (
