@@ -30,10 +30,6 @@ export const sendMessageToServiceWorker = async (
       if (registration.active) {
         if (message.accessToken) {
           registration.active.postMessage(message);
-          console.info(
-            "Sent message to service worker with latest credentials",
-            message
-          );
         }
       } else {
         console.warn("No active service worker available");
@@ -48,9 +44,13 @@ export const sendMessageToServiceWorker = async (
 
 export function decodeToken(token: string) {
   try {
-    return JSON.parse(atob(token.split(".")[1]));
+    const base64Payload = token.split(".")[1];
+    const decodedPayload = Buffer.from(base64Payload, "base64").toString(
+      "utf-8"
+    );
+    return JSON.parse(decodedPayload);
   } catch (e) {
-    console.error("failed to parse token.", e);
+    console.error("Failed to parse token.", e);
     return null;
   }
 }
