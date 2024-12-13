@@ -31,7 +31,7 @@ export default function useSessionRefresher() {
     ) {
       if (
         serviceWorkerStatus !== "disabled" &&
-        customCredsRef.current.accessToken
+        customCredsRef.current?.accessToken
       ) {
         await sendMessageToServiceWorker(customCredsRef.current);
         sessionStorage.setItem(
