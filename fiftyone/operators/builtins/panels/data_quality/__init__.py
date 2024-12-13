@@ -1743,7 +1743,7 @@ class DataQualityPanel(Panel):
             f"{which_wrapper}dataset_image",
             view=wrapper_dataset_image,
             default=(
-                ICON_PATH
+                IMAGES["data_quality"]
                 if which_wrapper == "entry"
                 else IMAGES["unsupported_dataset"]
             ),

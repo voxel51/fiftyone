@@ -180,4 +180,5 @@ IMAGES = {
     "vertical_line": "/panels/vertical_line.png",
     "alert": "/panels/alert.png",
     "alert_in_circle": "/panels/alert_in_circle.png",
+    "data_quality": "/panels/data_quality.png",
 }
