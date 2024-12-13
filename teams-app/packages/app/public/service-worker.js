@@ -110,12 +110,30 @@ const fetchEvent = () => {
         event.respondWith(fetch(event.request));
       }
     } catch (error) {
-      console.error("failed to fetch: ", error);
+      console.error("Fetch handler encountered an error:", error);
+
+      // Safely extract error details
+      let errorMessage = "An unknown error occurred in the service worker.";
+      if (error instanceof Error && error.message) {
+        errorMessage = error.message;
+      } else if (typeof error === "object" && error !== null) {
+        try {
+          errorMessage = JSON.stringify(error);
+        } catch (jsonError) {
+          // If the error details cannot be stringified, use a generic message to prevent circular references
+          errorMessage = "Error details could not be stringified.";
+        }
+      }
+
+      // Respond with a 500 error on failure
       event.respondWith(
-        new Response(JSON.stringify({ message: error.message }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        })
+        new Response(
+          JSON.stringify({ message: `Service worker error: ${errorMessage}` }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
       );
     }
   });
