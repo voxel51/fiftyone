@@ -88,6 +88,9 @@ const withRelay = <P extends {} = {}, Q extends OperationType = OperationType>(
       const onUnauthenticated = (status?: number, msg?: string) => {
         if (!res) return;
         if (req?.headers.cookie) {
+          console.error("on unauthenticated, clearing cookie");
+          console.error("status", status);
+          console.error("msg", msg);
           const authCookieName = getSessionCookieName();
           const cookieStr = cookie.serialize(authCookieName, "", {
             path: "/",

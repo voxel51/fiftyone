@@ -45,6 +45,7 @@ export default function useSessionRefresher() {
     try {
       const response = await fetch(SESSION_ENDPOINT);
       const data = await response.json();
+
       sessionExpRef.current = data.exp * 1000;
 
       const message = getCustomAuthMessageFromData(data);
@@ -55,22 +56,15 @@ export default function useSessionRefresher() {
 
         sessionStorage.setItem("customCredentialsAudience", message.audience);
         sessionStorage.setItem("serviceWorkerStatus", "ready");
-      } else {
-        // If no audience specified in the token via js hook,
-        // disable the service worker and don't send creds
-        customCredsRef.current = null;
-        console.log("de-registering all service workers because no message");
-        deregisterAllServiceWorkers();
-        sessionStorage.setItem("serviceWorkerStatus", "disabled");
       }
     } catch (error) {
       // If there's an error fetching the session,
       // disable the service worker to prevent issues being compounded
       console.error("Error fetching session:", error);
-      console.log("de-registering all service workers because of error");
+      console.log("setting service worker status to error");
       sessionExpRef.current = null;
-      deregisterAllServiceWorkers();
-      sessionStorage.setItem("serviceWorkerStatus", "disabled");
+      // deregisterAllServiceWorkers();
+      sessionStorage.setItem("serviceWorkerStatus", "error");
     }
   }, []);
 
@@ -85,7 +79,7 @@ export default function useSessionRefresher() {
 
   useEffect(() => {
     return initSessionRefresher();
-  }, [initSessionRefresher, serviceWorkerStatus]);
+  }, [initSessionRefresher]);
 
   return null;
 }

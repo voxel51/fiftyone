@@ -23,7 +23,10 @@ import {
   FIFTYONE_APP_SEGMENT_WRITE_KEY,
   FIFTYONE_DO_NOT_TRACK_LS,
 } from "@fiftyone/teams-state/src/constants";
-import { registerServiceWorker } from "lib/serviceWorkerUtils";
+import {
+  deregisterAllServiceWorkers,
+  registerServiceWorker,
+} from "lib/serviceWorkerUtils";
 import { AppProps } from "next/app";
 import { useRouter } from "next/router";
 import { PropsWithChildren, useEffect, useMemo, useState } from "react";
@@ -146,13 +149,18 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
     });
     if (isServiceWorkerEnabled) {
       console.log(
-        "service worker enabled and registering for pathname",
+        "service worker enabled and registering for pathname if appropriate",
         pathname
       );
 
       registerServiceWorker(pathname, token).then(() => {
         setIsServiceWorkerReady(true);
       });
+    } else {
+      console.log(
+        'serviceWorkerStatus is "disabled". de-registering all service workers'
+      );
+      deregisterAllServiceWorkers();
     }
   }, [isServiceWorkerEnabled, pathname]);
 
