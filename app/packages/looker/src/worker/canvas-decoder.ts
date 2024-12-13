@@ -36,6 +36,8 @@ export const decodeWithCanvas = async (blob: ImageBitmapSource) => {
   imageBitmap.close();
 
   const imageData = ctx.getImageData(0, 0, width, height);
+
+  // for nongrayscale images, channel is guaranteed to be 4 (RGBA)
   const channels = isGrayscale(imageData.data) ? 1 : 4;
 
   if (channels === 1) {
