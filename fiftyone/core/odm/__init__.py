@@ -73,6 +73,7 @@ from .mixins import get_default_fields
 from .runs import RunDocument
 from .sample import (
     DatasetSampleDocument,
+    DatasetSampleReferenceDocument,
     NoDatasetSampleDocument,
     NoDatasetSampleReferenceDocument
 )

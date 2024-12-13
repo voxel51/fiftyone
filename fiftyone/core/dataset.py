@@ -312,6 +312,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self,
         name=None,
         persistent=False,
+        reference=False,
         overwrite=False,
         _create=True,
         _virtual=False,
@@ -325,7 +326,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if _create:
             doc, sample_doc_cls, frame_doc_cls = _create_dataset(
-                self, name, persistent=persistent, **kwargs
+                self, name, reference, persistent=persistent, **kwargs
             )
         else:
             doc, sample_doc_cls, frame_doc_cls = _load_dataset(
@@ -7975,6 +7976,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                             non_existent_fields.add(field_name)
                 else:
                     if value is not None or not field.null:
+                        print(field, type(value), value)
                         try:
                             field.validate(value)
                         except Exception as e:
@@ -8116,6 +8118,7 @@ def _list_datasets_query(include_private=False, glob_patt=None, tags=None):
 def _create_dataset(
     obj,
     name,
+    reference,
     persistent=False,
     _patches=False,
     _frames=False,
@@ -8130,7 +8133,7 @@ def _create_dataset(
     sample_collection_name = _make_sample_collection_name(
         _id, patches=_patches, frames=_frames, clips=_clips
     )
-    sample_doc_cls = _create_sample_document_cls(obj, sample_collection_name)
+    sample_doc_cls = _create_sample_document_cls(obj, sample_collection_name, reference)
 
     # pylint: disable=no-member
     sample_fields = [
@@ -8309,9 +8312,13 @@ def _make_frame_collection_name(sample_collection_name):
 
 
 def _create_sample_document_cls(
-    dataset, sample_collection_name, field_docs=None
+    dataset, sample_collection_name, reference, field_docs=None
 ):
-    cls = type(sample_collection_name, (foo.DatasetSampleDocument,), {})
+    if reference:
+        cls = type(sample_collection_name, (foo.DatasetSampleReferenceDocument,), {})
+    else:
+        cls = type(sample_collection_name, (foo.DatasetSampleDocument,), {})
+
     cls._dataset = dataset
 
     _declare_fields(dataset, cls, field_docs=field_docs)
@@ -8403,7 +8410,7 @@ def _do_load_dataset(obj, name):
     frame_collection_name = dataset_doc.frame_collection_name
 
     sample_doc_cls = _create_sample_document_cls(
-        obj, sample_collection_name, field_docs=dataset_doc.sample_fields
+        obj, sample_collection_name, reference=False, field_docs=dataset_doc.sample_fields
     )
 
     if sample_collection_name.startswith("clips."):

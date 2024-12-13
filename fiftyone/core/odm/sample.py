@@ -49,6 +49,8 @@ type :class:`NoDatasetSampleDocument` to type ``dataset._sample_doc_cls``::
 from collections import OrderedDict
 import random
 
+from bson import ObjectId
+
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
@@ -186,13 +188,12 @@ class NoDatasetSampleReferenceDocument(NoDatasetMixin, SerializableDocument):
             return self._sample_reference.get_field(field_name)
         except AttributeError:
             pass
-
         return super().get_field(field_name)
 
     def __init__(self, sample, **kwargs):
         kwargs["id"] = kwargs.get("id", None)
         kwargs["media_type"] = sample.media_type
-        kwargs["sample_id"] = sample.id
+        kwargs["sample_id"] = ObjectId(sample.id)
 
         self._sample_reference = sample
 
@@ -201,9 +202,11 @@ class NoDatasetSampleReferenceDocument(NoDatasetMixin, SerializableDocument):
         for field_name in self.default_fields_ordered:
             value = kwargs.pop(field_name, None)
 
-            if value is None and field_name not in ("id", "_dataset_id"):
+            print(value, type(value), field_name)
+
+            if value is None and field_name not in ("id", "_dataset_id", "sample_id"):
                 value = self._get_default(self.default_fields[field_name])
 
             self._data[field_name] = value
-
+        
         self._data.update(kwargs)

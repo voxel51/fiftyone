@@ -16,6 +16,7 @@ from PIL import ExifTags, Image
 import fiftyone as fo
 from fiftyone import ViewField as F
 import fiftyone.core.odm as foo
+from fiftyone.core.odm.sample import DatasetSampleReferenceDocument
 import fiftyone.core.sample as fos
 
 from decorators import drop_datasets
@@ -1050,7 +1051,10 @@ class SampleReferenceTests(unittest.TestCase):
         self.assertEqual(sample_reference.test1, sample.test1)
         self.assertEqual(sample_reference.test2, "123")
 
-        dataset2 = fo.Dataset()
+        print(sample_reference.get_field("sample_id"), type(sample_reference.get_field("sample_id")))
+        print(sample_reference.sample_id, type(sample_reference.sample_id))
+
+        dataset2 = fo.Dataset(reference=True)
         dataset2.add_sample(sample_reference)
 
         self.assertEqual(dataset2.first().test1, "123")
