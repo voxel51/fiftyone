@@ -1495,19 +1495,28 @@ class FiftyOneTorchDataset(Dataset):
     @staticmethod
     def worker_init(worker_id):
         torch_dataset_object = torch.utils.data.get_worker_info().dataset
+        torch_dataset_object._load_samples()
+
+    def _load_samples(self):
         import fiftyone as fo
 
-        torch_dataset_object._dataset = fo.load_dataset(
-            torch_dataset_object.name
-        )
-        if torch_dataset_object.stages is not None:
-            torch_dataset_object._samples = fov.DatasetView._build(
-                torch_dataset_object._dataset, torch_dataset_object.stages
-            )
+        self._dataset = fo.load_dataset(self.name)
+        if self.stages is not None:
+            self._samples = fov.DatasetView._build(self._dataset, self.stages)
         else:
-            torch_dataset_object._samples = torch_dataset_object._dataset
+            self._samples = self._dataset
 
     def __getitem__(self, index):
+
+        # if self._samples is None at this point then
+        # worker_init was probably never called
+        # meaning we are working on main process
+        # most likely num_workers=0 in dataloader
+        # or someone is testing this object
+        # load samples here instead
+        if self._samples is None:
+            self._load_samples()
+
         # pylint: disable=unsubscriptable-object
         sample = self._samples[self.ids[index].decode()]
         return self.get_item(sample)
