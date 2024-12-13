@@ -517,8 +517,8 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
         """Returns a :class:`PanopticSegmentation` representation of this
         instance.
 
-        The detection must have an instance mask, i.e., its :attr:`mask`
-        attribute must be populated.
+        The detection must have an instance mask, i.e., its :attr:`mask` or
+        :attr:`mask_path` attribute must be populated.
 
         You must provide either ``mask`` or ``frame_size`` to use this method.
 
@@ -534,6 +534,12 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
         Returns:
             a :class:`PanopticSegmentation`
         """
+        if not self.has_mask:
+            raise ValueError(
+                "Only detections with their `mask` or `mask_path` can be "
+                "converted to panoptic segmentations"
+            )
+
         mask, target = _parse_segmentation_target(
             mask, frame_size, target, True
         )
@@ -549,8 +555,8 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
     ):
         """Returns a :class:`Segmentation` representation of this instance.
 
-        The detection must have an instance mask, i.e., its :attr:`mask`
-        attribute must be populated.
+        The detection must have an instance mask, i.e., its :attr:`mask` or
+        :attr:`mask_path` attribute must be populated.
 
         You must provide either ``mask`` or ``frame_size`` to use this method.
 
@@ -568,8 +574,8 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
         """
         if not self.has_mask:
             raise ValueError(
-                "Only detections with their `mask` attributes populated can "
-                "be converted to segmentations"
+                "Only detections with their `mask` or `mask_path` can be "
+                "converted to panoptic segmentations"
             )
 
         mask, target = _parse_segmentation_target(

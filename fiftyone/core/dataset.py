@@ -19,7 +19,6 @@ import string
 
 from bson import json_util, ObjectId, DBRef
 import cachetools
-from deprecated import deprecated
 import mongoengine.errors as moe
 from pymongo import (
     DeleteMany,
@@ -28,7 +27,6 @@ from pymongo import (
     UpdateMany,
     UpdateOne,
 )
-from pymongo.collection import Collection
 from pymongo.errors import CursorNotFound, BulkWriteError
 
 import eta.core.serial as etas
