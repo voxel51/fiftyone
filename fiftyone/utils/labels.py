@@ -5,6 +5,7 @@ Label utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
@@ -325,7 +326,7 @@ def transform_segmentations(
     """
     fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
-        sample_collection, in_field, fol.Segmentation
+        sample_collection, in_field, fol._BaseSegmentation
     )
 
     samples = sample_collection.select_fields(in_field)

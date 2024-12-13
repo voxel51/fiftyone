@@ -6,6 +6,7 @@ Labels stored in dataset samples.
 |
 """
 
+from collections import defaultdict
 from functools import partial
 import itertools
 import warnings
@@ -512,8 +513,39 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
             **attributes,
         )
 
+    def to_panoptic_segmentation(self, mask=None, frame_size=None, target=255):
+        """Returns a :class:`PanopticSegmentation` representation of this
+        instance.
+
+        The detection must have an instance mask, i.e., its :attr:`mask`
+        attribute must be populated.
+
+        You must provide either ``mask`` or ``frame_size`` to use this method.
+
+        Args:
+            mask (None): an optional numpy array to use as an initial mask to
+                which to add this object
+            frame_size (None): the ``(width, height)`` of the segmentation
+                mask to render. This parameter has no effect if a ``mask`` is
+                provided
+            target (255): the pixel value or RGB hex string to use to render
+                the object
+
+        Returns:
+            a :class:`PanopticSegmentation`
+        """
+        mask, target = _parse_segmentation_target(
+            mask, frame_size, target, True
+        )
+        instance_mask = (mask == target).astype(np.uint8)
+        mask = np.stack([mask, instance_mask], axis=-1)
+        return PanopticSegmentation(mask=mask)
+
     def to_segmentation(
-        self, mask=None, frame_size=None, target=255, panoptic=False
+        self,
+        mask=None,
+        frame_size=None,
+        target=255,
     ):
         """Returns a :class:`Segmentation` representation of this instance.
 
@@ -530,7 +562,6 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
                 provided
             target (255): the pixel value or RGB hex string to use to render
                 the object
-            panoptic (False): whether to return a panoptic segmentation
 
         Returns:
             a :class:`Segmentation`
@@ -542,13 +573,10 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
             )
 
         mask, target = _parse_segmentation_target(
-            mask, frame_size, target, panoptic
+            mask, frame_size, target, False
         )
         _render_instance(mask, self, target)
-        if panoptic:
-            instance_mask = (mask == target).astype(np.uint8)
-            mask = np.stack([mask, instance_mask], axis=-1)
-        return Segmentation(mask=mask, is_panoptic=panoptic)
+        return Segmentation(mask=mask)
 
     def to_shapely(self, frame_size=None):
         """Returns a Shapely representation of this instance.
@@ -607,6 +635,64 @@ class Detections(_HasLabelList, Label):
 
     detections = fof.ListField(fof.EmbeddedDocumentField(Detection))
 
+    def to_panoptic_segmentation(
+        self, mask=None, frame_size=None, mask_targets=None
+    ):
+        """Returns a :class:`PanopticSegmentation` representation of this
+        instance.
+
+        Only detections with instance masks (i.e., their :attr:`mask`
+        attributes populated) will be rendered.
+
+        You must provide either ``mask`` or ``frame_size`` to use this method.
+
+        Args:
+            mask (None): an optional array to use as an initial mask to which
+                to add objects
+            frame_size (None): the ``(width, height)`` of the segmentation
+                mask to render. This parameter has no effect if a ``mask`` is
+                provided
+            mask_targets (None): a dict mapping integer pixel values (2D masks)
+                or RGB hex strings (3D masks) to label strings defining which
+                object classes to render and which pixel values to use for each
+                class. If omitted, all objects are rendered with pixel value
+                255
+
+        Returns:
+            a :class:`PanopticSegmentation`
+        """
+        mask, labels_to_targets = _parse_segmentation_mask_targets(
+            mask, frame_size, mask_targets, True
+        )
+        instance_mask = mask.copy()
+
+        index_map = defaultdict(lambda: 1)
+        # pylint: disable=not-an-iterable
+        for detection in self.detections:
+            if not detection.has_mask:
+                msg = "Skipping detection(s) with no instance mask"
+                warnings.warn(msg)
+                continue
+
+            if labels_to_targets is not None:
+                target = labels_to_targets.get(detection.label, None)
+                if target is None:
+                    continue  # skip unknown target
+            else:
+                target = 255
+
+            _render_instance(mask, detection, target)
+
+            index = detection.index
+            if index is None:
+                index = index_map[detection.label]
+                index_map[detection.label] = index + 1
+
+            _render_instance(instance_mask, detection, index)
+
+        mask = np.stack([mask, instance_mask], axis=-1)
+        return PanopticSegmentation(mask=mask)
+
     def to_polylines(self, tolerance=2, filled=True):
         """Returns a :class:`Polylines` representation of this instance.
 
@@ -630,9 +716,7 @@ class Detections(_HasLabelList, Label):
             ]
         )
 
-    def to_segmentation(
-        self, mask=None, frame_size=None, mask_targets=None, panoptic=False
-    ):
+    def to_segmentation(self, mask=None, frame_size=None, mask_targets=None):
         """Returns a :class:`Segmentation` representation of this instance.
 
         Only detections with instance masks (i.e., their :attr:`mask`
@@ -651,19 +735,15 @@ class Detections(_HasLabelList, Label):
                 object classes to render and which pixel values to use for each
                 class. If omitted, all objects are rendered with pixel value
                 255
-            panoptic (False): whether to return a panoptic segmentation
 
         Returns:
             a :class:`Segmentation`
         """
         mask, labels_to_targets = _parse_segmentation_mask_targets(
-            mask, frame_size, mask_targets, panoptic
+            mask, frame_size, mask_targets, False
         )
-        if panoptic:
-            instance_mask = mask.copy()
-
         # pylint: disable=not-an-iterable
-        for idx, detection in enumerate(self.detections):
+        for detection in self.detections:
             if not detection.has_mask:
                 msg = "Skipping detection(s) with no instance mask"
                 warnings.warn(msg)
@@ -678,13 +758,7 @@ class Detections(_HasLabelList, Label):
 
             _render_instance(mask, detection, target)
 
-            if panoptic:
-                _render_instance(instance_mask, detection, idx + 1)
-
-        if panoptic:
-            mask = np.stack([mask, instance_mask], axis=-1)
-
-        return Segmentation(mask=mask, is_panoptic=panoptic)
+        return Segmentation(mask=mask)
 
 
 class Polyline(_HasAttributesDict, _HasID, Label):
@@ -763,13 +837,46 @@ class Polyline(_HasAttributesDict, _HasID, Label):
             **attributes,
         )
 
+    def to_panoptic_segmentation(
+        self,
+        mask=None,
+        frame_size=None,
+        target=255,
+        thickness=1,
+    ):
+        """Returns a :class:`PanopticSegmentation` representation of this
+        instance.
+
+        You must provide either ``mask`` or ``frame_size`` to use this method.
+
+        Args:
+            mask (None): an optional numpy array to use as an initial mask to
+                which to add objects
+            frame_size (None): the ``(width, height)`` of the segmentation
+                mask to render. This parameter has no effect if a ``mask`` is
+                provided
+            target (255): the pixel value or RGB hex string to use to render
+                the object
+            thickness (1): the thickness, in pixels, at which to render
+                (non-filled) polylines
+
+        Returns:
+            a :class:`PanopticSegmentation`
+        """
+        mask, target = _parse_segmentation_target(
+            mask, frame_size, target, True
+        )
+        _render_polyline(mask, self, target, thickness)
+        instance_mask = (mask == target).astype(np.uint8)
+        mask = np.stack([mask, instance_mask], axis=-1)
+        return PanopticSegmentation(mask=mask)
+
     def to_segmentation(
         self,
         mask=None,
         frame_size=None,
         target=255,
         thickness=1,
-        panoptic=False,
     ):
         """Returns a :class:`Segmentation` representation of this instance.
 
@@ -785,18 +892,14 @@ class Polyline(_HasAttributesDict, _HasID, Label):
                 the object
             thickness (1): the thickness, in pixels, at which to render
                 (non-filled) polylines
-            panoptic (False): whether to return a panoptic segmentation
 
         Returns:
             a :class:`Segmentation`
         """
         mask, target = _parse_segmentation_target(
-            mask, frame_size, target, panoptic
+            mask, frame_size, target, False
         )
         _render_polyline(mask, self, target, thickness)
-        if panoptic:
-            instance_mask = (mask == target).astype(np.uint8)
-            mask = np.stack([mask, instance_mask], axis=-1)
         return Segmentation(mask=mask)
 
     def to_shapely(self, frame_size=None, filled=None):
@@ -1001,13 +1104,67 @@ class Polylines(_HasLabelList, Label):
             ]
         )
 
+    def to_panoptic_segmentation(
+        self,
+        mask=None,
+        frame_size=None,
+        mask_targets=None,
+        thickness=1,
+    ):
+        """Returns a :class:`PanopticSegmentation` representation of this
+        instance.
+
+        You must provide either ``mask`` or ``frame_size`` to use this method.
+
+        Args:
+            mask (None): an optional numpy array to use as an initial mask to
+                which to add objects
+            frame_size (None): the ``(width, height)`` of the segmentation
+                mask to render. This parameter has no effect if a ``mask`` is
+                provided
+            mask_targets (None): a dict mapping integer pixel values (2D masks)
+                or RGB hex strings (3D masks) to label strings defining which
+                object classes to render and which pixel values to use for each
+                class. If omitted, all objects are rendered with pixel value
+                255
+            thickness (1): the thickness, in pixels, at which to render
+                (non-filled) polylines
+
+        Returns:
+            a :class:`Segmentation`
+        """
+        mask, labels_to_targets = _parse_segmentation_mask_targets(
+            mask, frame_size, mask_targets, True
+        )
+        instance_mask = mask.copy()
+
+        index_map = defaultdict(lambda: 1)
+        # pylint: disable=not-an-iterable
+        for polyline in self.polylines:
+            if labels_to_targets is not None:
+                target = labels_to_targets.get(polyline.label, None)
+                if target is None:
+                    continue  # skip unknown target
+            else:
+                target = 255
+
+            _render_polyline(mask, polyline, target, thickness)
+            index = polyline.index
+            if index is None:
+                index = index_map[polyline.label]
+                index_map[polyline.label] = index + 1
+
+            _render_polyline(instance_mask, polyline, index + 1, index)
+
+        mask = np.stack([mask, instance_mask], axis=-1)
+        return PanopticSegmentation(mask=mask)
+
     def to_segmentation(
         self,
         mask=None,
         frame_size=None,
         mask_targets=None,
         thickness=1,
-        panoptic=False,
     ):
         """Returns a :class:`Segmentation` representation of this instance.
 
@@ -1026,19 +1183,16 @@ class Polylines(_HasLabelList, Label):
                 255
             thickness (1): the thickness, in pixels, at which to render
                 (non-filled) polylines
-            panoptic (False): whether to return a panoptic segmentation
 
         Returns:
             a :class:`Segmentation`
         """
         mask, labels_to_targets = _parse_segmentation_mask_targets(
-            mask, frame_size, mask_targets, panoptic
+            mask, frame_size, mask_targets, False
         )
-        if panoptic:
-            instance_mask = mask.copy()
 
         # pylint: disable=not-an-iterable
-        for idx, polyline in enumerate(self.polylines):
+        for polyline in self.polylines:
             if labels_to_targets is not None:
                 target = labels_to_targets.get(polyline.label, None)
                 if target is None:
@@ -1047,12 +1201,6 @@ class Polylines(_HasLabelList, Label):
                 target = 255
 
             _render_polyline(mask, polyline, target, thickness)
-
-            if panoptic:
-                _render_polyline(instance_mask, polyline, idx + 1, thickness)
-
-        if panoptic:
-            mask = np.stack([mask, instance_mask], axis=-1)
 
         return Segmentation(mask=mask)
 
@@ -1106,36 +1254,15 @@ class Keypoints(_HasLabelList, Label):
     keypoints = fof.ListField(fof.EmbeddedDocumentField(Keypoint))
 
 
-class Segmentation(_HasID, _HasMedia, Label):
-    """A segmentation for an image.
-
-    Provide either the ``mask`` or ``mask_path`` argument to define the
-    segmentation.
-
-    Set ``is_panoptic`` to ``True`` for panoptic segmentations, which
-    encode both class and instance labels. Otherwise this object
-    represents a semantic segmentation, which only encodes class
-    labels.
-
-    If ``is_panoptic`` is ``True``, ``mask`` must have two channels.
-    The first channel encodes the class, and the second the instance.
-    Grayscale (one channel) and RGB (three channel) masks are only
-    supported for semantic segmentation.
-
-    ``mask_path`` may be a file in TIFF or BigTIFF format, to allow
-    enough bit depth to represent large numbers of objects. They must use
-    the ".tif" or ".tiff" extension.
-
-    Args:
-        mask (None): a numpy array with integer values encoding the labels
-        mask_path (None): the absolute path to the segmentation image on disk
+class _BaseSegmentation(_HasID, _HasMedia, Label):
+    """Base class for :class:`PanopticSegmentation` and :class:`Segmentation`
+    label classes.
     """
 
     _MEDIA_FIELD = "mask_path"
 
     mask = fof.ArrayField()
     mask_path = fof.StringField()
-    is_panoptic = fof.BooleanField()
 
     @property
     def has_mask(self):
@@ -1152,7 +1279,9 @@ class Segmentation(_HasID, _HasMedia, Label):
             return self.mask
 
         if self.mask_path is not None:
-            return _read_mask(self.mask_path, self.is_panoptic)
+            return _read_mask(
+                self.mask_path, isinstance(self, PanopticSegmentation)
+            )
 
         return None
 
@@ -1165,7 +1294,9 @@ class Segmentation(_HasID, _HasMedia, Label):
                 attribute after importing
         """
         if self.mask_path is not None:
-            self.mask = _read_mask(self.mask_path, self.is_panoptic)
+            self.mask = _read_mask(
+                self.mask_path, isinstance(self, PanopticSegmentation)
+            )
             if update:
                 self.mask_path = None
 
@@ -1198,7 +1329,7 @@ class Segmentation(_HasID, _HasMedia, Label):
         Note that any pixel values not in ``targets_map`` will be zero in the
         transformed mask.
 
-        If this is a panoptic segmentation, only the class labels will
+        If this is a :class:`PanopticSegmentation`, only the class labels will
         be transformed.
 
         Args:
@@ -1217,7 +1348,7 @@ class Segmentation(_HasID, _HasMedia, Label):
         if mask is None:
             return
 
-        if self.is_panoptic:
+        if isinstance(self, PanopticSegmentation):
             mask[:, :, 0] = _transform_mask(mask[:, :, 0], targets_map)
         else:
             mask = _transform_mask(mask, targets_map)
@@ -1265,27 +1396,32 @@ class Segmentation(_HasID, _HasMedia, Label):
                 regions, each representing an instance of the thing). Can be
                 any of the following:
 
-                -   ``"stuff"`` if all classes are stuff
-                    classes. Ignores panoptic intances.
+                -   ``"stuff"`` if all classes are stuff classes. Ignores
+                    panoptic intances
                 -   ``"thing"`` if all classes are thing classes. Panoptic
                     instances are handled first, then any remaining labels
-                    are separated into connected components.
+                    are separated into connected components
                 -   ``"panoptic"`` if all panoptic instances are thing classes
-                     and all remaining are stuff classes. Panoptic only.
+                     and all remaining are stuff classes. For
+                     :class:`PanopticSegmentation` only
                 -   ``"object"``: only keep panoptic object instances
                 -   a dict mapping pixel values (2D masks) or RGB hex strings
                     (3D masks) to ``"stuff"``, ``"thing"``, ``"panoptic"``,
                     or ``"object"`` for each class
 
-                Defaults to ``"stuff"`` for semantic segmentations and
-                ``"panoptic"`` for panoptic segmentations.
+                Defaults to ``"stuff"`` for :class:`Segmentation` and
+                ``"panoptic"`` for :class:`PanopticSegmentation`
 
         Returns:
             a :class:`Detections`
 
         """
         if mask_types is None:
-            mask_types = "panoptic" if self.is_panoptic else "stuff"
+            mask_types = (
+                "panoptic"
+                if isinstance(self, PanopticSegmentation)
+                else "stuff"
+            )
 
         detections = _segmentation_to_detections(
             self, mask_targets, mask_types
@@ -1338,39 +1474,32 @@ class Segmentation(_HasID, _HasMedia, Label):
 
         """
         if mask_types is None:
-            mask_types = "panoptic" if self.is_panoptic else "stuff"
+            mask_types = (
+                "panoptic"
+                if isinstance(self, PanopticSegmentation)
+                else "stuff"
+            )
 
         polylines = _segmentation_to_polylines(
             self, mask_targets, mask_types, tolerance
         )
         return Polylines(polylines=polylines)
 
-    def to_semantic(self, to_rgb=False):
-        """Convert panoptic segmentation to semantic.
 
-        Optionally converts the class integer values back to 3D pixel
-        values.
+class Segmentation(_BaseSegmentation):
+    """A semantic segmentation for an image.
 
-        If self.is_panoptic is False, the original mask is returned
-        as-is.
+    Provide either the ``mask`` or ``mask_path`` argument to define the
+    segmentation.
 
-        Args:
-            to_rgb (False): convert integer classes to RGB hex values
+    Args:
+        mask (None): a numpy array with integer values encoding the labels
+        mask_path (None): the absolute path to the segmentation image on disk
+    """
 
-        Returns:
-            a :class:`Segmentation`
-
-        """
-        mask = self.get_mask()
-        if self.is_panoptic:
-            mask = mask[..., 0]
-            if to_rgb:
-                mask = _int_array_to_rgb(mask)
-
-        return Segmentation(mask=mask, is_panoptic=False)
-
-    def to_panoptic(self, mask_types="thing"):
-        """Convert semantic segmentation to panoptic.
+    def to_panoptic_segmentation(self, mask_types="thing"):
+        """Returns a :class:`PanopticSegmentation` representation of this
+        segmentation.
 
         Each ``"stuff"`` class will be kept as-is.
 
@@ -1392,13 +1521,42 @@ class Segmentation(_HasID, _HasMedia, Label):
                     (3D masks) to ``"stuff"`` or ``"thing"`` for each class
 
         Returns:
+            a :class:`PanopticSegmentation`
+
+        """
+        mask = _mask_to_panoptic(self.get_mask(), mask_types)
+        return PanopticSegmentation(mask=mask)
+
+
+class PanopticSegmentation(_BaseSegmentation):
+    """A segmentation that encodes both class and instance labels
+
+    The ``mask`` must have at least two channels. The first channel encodes the
+    class, and the second the instance.
+
+    To store a two channel via :attr:`mask_path`, a ".tif" or ".tiff" filepath
+    is required.
+    """
+
+    def to_segmentation(self, to_rgb=False):
+        """Convert panoptic segmentation to semantic segmentation.
+
+        Optionally converts the class integer values back to 3D pixel
+        values.
+
+        Args:
+            to_rgb (False): convert integer classes to RGB hex values
+
+        Returns:
             a :class:`Segmentation`
 
         """
         mask = self.get_mask()
-        if not self.is_panoptic:
-            mask = _mask_to_panoptic(mask, mask_types)
-        return Segmentation(mask=mask, is_panoptic=True)
+        mask = mask[..., 0]
+        if to_rgb:
+            mask = _int_array_to_rgb(mask)
+
+        return Segmentation(mask=mask)
 
 
 class Heatmap(_HasID, _HasMedia, Label):
@@ -1700,10 +1858,8 @@ def _get_uint_dtype(maxval):
         return np.uint16
     elif maxval < 2**32:
         return np.uint32
-    elif maxval < 2**64:
-        return np.uint64
 
-    raise ValueError(f"max value of {maxval} exceeds upper limit of 2^64")
+    raise ValueError(f"max value of {maxval} exceeds upper limit of 2^32")
 
 
 def _mask_to_image(mask):
@@ -1762,8 +1918,7 @@ def _write_mask(mask, mask_path):
     extension = _get_extension(mask_path)
     mask = _mask_to_image(mask)
     if extension in (".tif", ".tiff"):
-        bigtiff = mask.dtype == np.uint64
-        tifffile.imwrite(mask_path, mask, compression="zlib", bigtiff=bigtiff)
+        tifffile.imwrite(mask_path, mask, compression="zlib")
     else:
         if mask.ndim == 3 and mask.shape[-1] == 2:
             # add empty third channel
@@ -1880,7 +2035,7 @@ def _parse_segmentation_mask_targets(mask, frame_size, mask_targets, panoptic):
         is_rgb = False
 
     if panoptic and is_rgb:
-        raise ValueError("panoptic segmentation cannot have RGB mask")
+        raise ValueError("a panoptic segmentation cannot have RGB mask")
 
     if mask is None:
         if frame_size is None:
@@ -1971,7 +2126,10 @@ def _mask_is_rgb(mask):
 
 
 def _mask_to_panoptic(mask, mask_types):
-    """Convert semantic segmentation to panoptic segmentation."""
+    """Convert a :class:`Segmentation` mask to a :class:`PanopticSegmentation`
+    mask.
+
+    """
     if isinstance(mask_types, dict):
         default = None
     else:
@@ -2051,7 +2209,7 @@ def _convert_segmentation(segmentation, mask_targets, mask_types, converter):
             mask_targets = {_hex_to_int(k): v for k, v in mask_targets.items()}
 
     results = []
-    if segmentation.is_panoptic:
+    if isinstance(segmentation, PanopticSegmentation):
         # handle all individual instances, zeroing them out as they
         # are added.  any remaining segmentation pixels are handled
         # like semantic segmentations.
@@ -2107,9 +2265,8 @@ def _convert_segmentation(segmentation, mask_targets, mask_types, converter):
         if label is None or label_type is None:
             continue  # skip unknown target
 
-        if (
-            label_type in ("panoptic", "object")
-            and not segmentation.is_panoptic
+        if label_type in ("panoptic", "object") and not isinstance(
+            segmentation, PanopticSegmentation
         ):
             raise ValueError(
                 f"Unsupported label type for semantic segmentation: {label_type}"
