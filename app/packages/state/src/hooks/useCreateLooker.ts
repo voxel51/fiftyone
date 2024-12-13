@@ -1,8 +1,8 @@
 import {
   AbstractLooker,
   FrameLooker,
-  ImageLooker,
   ImaVidLooker,
+  ImageLooker,
   Sample,
   ThreeDLooker,
   VideoLooker,
@@ -12,10 +12,10 @@ import { ImaVidFramesControllerStore } from "@fiftyone/looker/src/lookers/imavid
 import type { BaseState, ImaVidConfig } from "@fiftyone/looker/src/state";
 import {
   EMBEDDED_DOCUMENT_FIELD,
+  LIST_FIELD,
   getFieldInfo,
   getMimeType,
   isNullish,
-  LIST_FIELD,
   Schema,
 } from "@fiftyone/utilities";
 import { get } from "lodash";
