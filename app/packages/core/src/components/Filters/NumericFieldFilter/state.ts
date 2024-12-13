@@ -1,5 +1,5 @@
 import type { Nonfinite } from "@fiftyone/state";
-import { boundsAtom, nonfiniteAtom, rangeAtom } from "@fiftyone/state";
+import { boundsAtom, nonfiniteData, rangeAtom } from "@fiftyone/state";
 import { selectorFamily } from "recoil";
 
 export const FLOAT_NONFINITES: Nonfinite[] = ["inf", "ninf", "nan"];
@@ -25,14 +25,17 @@ export const hasDefaultRange = selectorFamily({
     },
 });
 
-export const hasNonfinites = selectorFamily({
-  key: "hasNonfinites",
+export const nonfinitesText = selectorFamily({
+  key: "nonfinitesText",
   get:
     (params: { path: string; modal: boolean }) =>
     ({ get }) => {
-      return FLOAT_NONFINITES.every((key) =>
-        get(nonfiniteAtom({ key, ...params }))
+      const data = get(nonfiniteData({ ...params, extended: false }));
+      const result = Object.entries(data).filter(
+        ([k, v]) => k !== "none" && Boolean(v)
       );
+
+      return result.length ? result.map(([key]) => key).join(", ") : null;
     },
 });
 

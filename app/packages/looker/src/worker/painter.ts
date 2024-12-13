@@ -278,7 +278,14 @@ export const PainterFactory = (requestColor) => ({
 
     const isRgbMaskTargets_ = isRgbMaskTargets(maskTargets);
 
-    if (maskData.channels > 2) {
+    // we have an additional guard for targets length = new image buffer byte length
+    // because we reduce the RGBA mask into a grayscale mask in first load for
+    // performance reasons
+    // For subsequent mask updates, the maskData.buffer is already a single channel
+    if (
+      maskData.channels === 4 &&
+      targets.length === label.mask.image.byteLength
+    ) {
       for (let i = 0; i < overlay.length; i++) {
         const [r, g, b] = getRgbFromMaskData(targets, maskData.channels, i);
 

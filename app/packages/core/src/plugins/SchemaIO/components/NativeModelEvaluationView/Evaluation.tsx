@@ -1,5 +1,5 @@
 import { Dialog } from "@fiftyone/components";
-import { view } from "@fiftyone/state";
+import { editingFieldAtom, view } from "@fiftyone/state";
 import {
   ArrowBack,
   ArrowDropDown,
@@ -41,7 +41,7 @@ import {
   useTheme,
 } from "@mui/material";
 import React, { useEffect, useMemo, useState } from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useSetRecoilState } from "recoil";
 import EvaluationNotes from "./EvaluationNotes";
 import EvaluationPlot from "./EvaluationPlot";
 import Status from "./Status";
@@ -133,6 +133,7 @@ export default function Evaluation(props: EvaluationProps) {
 
   const triggerEvent = useTriggerEvent();
   const activeFilter = useActiveFilter(evaluation, compareEvaluation);
+  const setEditingField = useSetRecoilState(editingFieldAtom);
 
   const closeNoteDialog = () => {
     setEditNoteState((note) => ({ ...note, open: false }));
@@ -1155,11 +1156,27 @@ export default function Evaluation(props: EvaluationProps) {
                         colorscale: confusionMatrixConfig.log
                           ? confusionMatrix?.colorscale || "viridis"
                           : "viridis",
+                        hovertemplate:
+                          [
+                            "<b>count: %{z:d}</b>",
+                            `${
+                              evaluation?.info?.config?.gt_field || "truth"
+                            }: %{y}`,
+                            `${
+                              evaluation?.info?.config?.pred_field ||
+                              "predicted"
+                            }: %{x}`,
+                          ].join(" <br>") + "<extra></extra>",
                       },
                     ]}
                     onClick={({ points }) => {
                       const firstPoint = points[0];
                       loadView("matrix", { x: firstPoint.x, y: firstPoint.y });
+                    }}
+                    layout={{
+                      yaxis: {
+                        autorange: "reversed",
+                      },
                     }}
                   />
                 </Stack>
@@ -1183,8 +1200,24 @@ export default function Evaluation(props: EvaluationProps) {
                           colorscale: confusionMatrixConfig.log
                             ? compareConfusionMatrix?.colorscale || "viridis"
                             : "viridis",
+                          hovertemplate:
+                            [
+                              "<b>count: %{z:d}</b>",
+                              `${
+                                evaluation?.info?.config?.gt_field || "truth"
+                              }: %{y}`,
+                              `${
+                                evaluation?.info?.config?.pred_field ||
+                                "predicted"
+                              }: %{x}`,
+                            ].join(" <br>") + "<extra></extra>",
                         },
                       ]}
+                      layout={{
+                        yaxis: {
+                          autorange: "reversed",
+                        },
+                      }}
                     />
                   </Stack>
                 )}
@@ -1263,6 +1296,12 @@ export default function Evaluation(props: EvaluationProps) {
             </Typography>
           </Stack>
           <TextField
+            onFocus={() => {
+              setEditingField(true);
+            }}
+            onBlur={() => {
+              setEditingField(false);
+            }}
             multiline
             rows={10}
             defaultValue={evaluationNotes}
@@ -1532,8 +1571,8 @@ function getMatrix(matrices, config) {
   if (!matrices) return;
   const { sortBy = "az", limit } = config;
   const parsedLimit = typeof limit === "number" ? limit : undefined;
-  const classes = matrices[`${sortBy}_classes`].slice(parsedLimit);
-  const matrix = matrices[`${sortBy}_matrix`].slice(parsedLimit);
+  const classes = matrices[`${sortBy}_classes`].slice(0, parsedLimit);
+  const matrix = matrices[`${sortBy}_matrix`].slice(0, parsedLimit);
   const colorscale = matrices[`${sortBy}_colorscale`];
   return { labels: classes, matrix, colorscale };
 }

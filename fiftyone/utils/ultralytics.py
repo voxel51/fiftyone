@@ -467,7 +467,7 @@ class FiftyOneRTDETRModelConfig(FiftyOneYOLOModelConfig):
     """
 
     def __init__(self, d):
-        pass
+        super().__init__(d)
 
 
 class FiftyOneRTDETRModel(Model):

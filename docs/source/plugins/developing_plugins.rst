@@ -141,9 +141,9 @@ directory.
 
 .. note::
 
-   For vite configs we recommend forking the
-   `FiftyOne Plugins <https://github.com/voxel51/hello-world-plugin-js>`_
-   repository and following the conventions there to build your plugin.
+   For JS plugins we recommend forking the
+   `FiftyOne Hello World JS Example <https://github.com/voxel51/hello-world-plugin-js>`_
+   repository and following the conventions there to build your JS plugin.
 
 .. _plugin-anatomy:
 
@@ -252,6 +252,7 @@ plugin's `fiftyone.yml` looks like this:
       - FIFTYONE_CVAT_URL
       - FIFTYONE_CVAT_USERNAME
       - FIFTYONE_CVAT_PASSWORD
+      - FIFTYONE_CVAT_EMAIL
       - FIFTYONE_LABELBOX_URL
       - FIFTYONE_LABELBOX_API_KEY
       - FIFTYONE_LABELSTUDIO_URL
@@ -1142,10 +1143,10 @@ executed in the background while you continue to use the App.
 There are a variety of options available for configuring whether a given
 operation should be delegated or executed immediately.
 
-.. _operator-delegation-configuration:
+.. _operator-execution-options:
 
-Delegation configuration
-~~~~~~~~~~~~~~~~~~~~~~~~
+Execution options
+~~~~~~~~~~~~~~~~~
 
 You can provide the optional properties described below in the
 :ref:`operator's config <operator-config>` to specify the available execution
@@ -1183,12 +1184,12 @@ user to choose between the supported options if there are multiple:
 .. image:: /images/plugins/operators/operator-execute-button.png
     :align: center
 
-.. _operator-execution-options:
+.. _dynamic-execution-options:
 
-Execution options
-~~~~~~~~~~~~~~~~~
+Dynamic execution options
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Operators can implement
+Operators may also implement
 :meth:`resolve_execution_options() <fiftyone.operators.operator.Operator.resolve_execution_options>`
 to dynamically configure the available execution options based on the current
 execution context:
@@ -1238,14 +1239,9 @@ of the current view:
         # Force delegation for large views and immediate execution for small views
         return len(ctx.view) > 1000
 
-.. note::
-
-    If :meth:`resolve_delegation() <fiftyone.operators.operator.Operator.resolve_delegation>`
-    is not implemented or returns `None`, then the choice of execution mode is
-    deferred to
-    :meth:`resolve_execution_options() <fiftyone.operators.operator.Operator.resolve_execution_options>`
-    to specify the available execution options as described in the previous
-    section.
+If :meth:`resolve_delegation() <fiftyone.operators.operator.Operator.resolve_delegation>`
+is not implemented or returns `None`, then the choice of execution mode is
+deferred to the prior mechanisms described above.
 
 .. _operator-reporting-progress:
 
@@ -1533,6 +1529,7 @@ plugin declares the following secrets:
      - FIFTYONE_CVAT_URL
      - FIFTYONE_CVAT_USERNAME
      - FIFTYONE_CVAT_PASSWORD
+     - FIFTYONE_CVAT_EMAIL
      - FIFTYONE_LABELBOX_URL
      - FIFTYONE_LABELBOX_API_KEY
      - FIFTYONE_LABELSTUDIO_URL
@@ -1549,6 +1546,7 @@ plugin, you would set:
     FIFTYONE_CVAT_URL=...
     FIFTYONE_CVAT_USERNAME=...
     FIFTYONE_CVAT_PASSWORD=...
+    FIFTYONE_CVAT_EMAIL=...
 
 At runtime, the plugin's :ref:`execution context <operator-execution-context>`
 is automatically hydrated with any available secrets that are declared by the
@@ -1561,6 +1559,7 @@ plugin. Operators can access these secrets via the `ctx.secrets` dict:
       url = ctx.secrets["FIFTYONE_CVAT_URL"]
       username = ctx.secrets["FIFTYONE_CVAT_USERNAME"]
       password = ctx.secrets["FIFTYONE_CVAT_PASSWORD"]
+      email = ctx.secrets["FIFTYONE_CVAT_EMAIL"]
 
 .. _operator-outputs:
 
@@ -2387,7 +2386,7 @@ loaded only when the `brain_key` property is modified.
     Panel data is never readable in Python; it is only implicitly used by
     the types you define when they are rendered clientside.
 
-.. _panel-execution-store
+.. _panel-execution-store:
 
 Execution store
 ---------------
@@ -2506,6 +2505,7 @@ plugin. Panels can access these secrets via the `ctx.secrets` dict:
         url = ctx.secrets["FIFTYONE_CVAT_URL"]
         username = ctx.secrets["FIFTYONE_CVAT_USERNAME"]
         password = ctx.secrets["FIFTYONE_CVAT_PASSWORD"]
+        email = ctx.secrets["FIFTYONE_CVAT_EMAIL"]
 
 .. _panel-common-patterns:
 
@@ -3136,6 +3136,18 @@ Developing JS plugins
 _____________________
 
 This section describes how to develop JS-specific plugin components.
+
+Getting Started
+---------------
+
+To start building your own JS plugin, refer to the 
+`hello-world-plugin-js <https://github.com/voxel51/hello-world-plugin-js>`_ 
+repository. This repo serves as a starting point, providing examples of a build 
+process, a JS panel, and a JS operator.
+
+The `fiftyone-js-plugin-build <https://github.com/voxel51/fiftyone-js-plugin-build>`_ 
+package offers a utility for configuring `vite <https://vite.dev>`_ to build your 
+JS plugin bundle.
 
 Component types
 ---------------
