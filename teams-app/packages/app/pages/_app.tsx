@@ -29,7 +29,7 @@ import {
 } from "lib/serviceWorkerUtils";
 import { AppProps } from "next/app";
 import { useRouter } from "next/router";
-import { PropsWithChildren, useEffect, useMemo, useState } from "react";
+import { PropsWithChildren, useEffect, useState } from "react";
 import { useRecoilState } from "recoil";
 import { getInitialPreloadedQuery, getRelayProps } from "relay-nextjs/app";
 import "../styles/globals.css";
@@ -108,6 +108,7 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
   const pathname = router.pathname;
   const [loading, setLoading] = useRecoilState(loadingState);
 
+  // Allow disabling the service worker client side
   const isServiceWorkerEnabled =
     sessionStorage?.getItem("serviceWorkerStatus") !== "disabled";
 
@@ -148,18 +149,10 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
       doNotTrack,
     });
     if (isServiceWorkerEnabled) {
-      console.log(
-        "service worker enabled and registering for pathname if appropriate",
-        pathname
-      );
-
       registerServiceWorker(pathname, token).then(() => {
         setIsServiceWorkerReady(true);
       });
     } else {
-      console.log(
-        'serviceWorkerStatus is "disabled". de-registering all service workers'
-      );
       deregisterAllServiceWorkers();
     }
   }, [isServiceWorkerEnabled, pathname]);
