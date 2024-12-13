@@ -59,6 +59,7 @@ export default function useSessionRefresher() {
         // If no audience specified in the token via js hook,
         // disable the service worker and don't send creds
         customCredsRef.current = null;
+        console.log("de-registering all service workers because no message");
         deregisterAllServiceWorkers();
         sessionStorage.setItem("serviceWorkerStatus", "disabled");
       }
@@ -66,6 +67,7 @@ export default function useSessionRefresher() {
       // If there's an error fetching the session,
       // disable the service worker to prevent issues being compounded
       console.error("Error fetching session:", error);
+      console.log("de-registering all service workers because of error");
       sessionExpRef.current = null;
       deregisterAllServiceWorkers();
       sessionStorage.setItem("serviceWorkerStatus", "disabled");

@@ -28,10 +28,11 @@ export const sendMessageToServiceWorker = async (
     try {
       const registration = await navigator.serviceWorker.ready;
       if (registration.active) {
-        registration.active.postMessage(message);
         if (message.accessToken) {
+          registration.active.postMessage(message);
           console.info(
-            "Sent message to service worker with latest credentials"
+            "Sent message to service worker with latest credentials",
+            message
           );
         }
       } else {
@@ -80,28 +81,47 @@ export function getCustomAuthMessageFromData(data: {
 // register, install, activate, and run the service worker for a certain path
 export const registerServiceWorker = async (path: string, token?: string) => {
   const isSWAvailable = "serviceWorker" in navigator;
+
   if (isSWAvailable && match.test(path)) {
-    const registration = await navigator.serviceWorker.register(
-      `/service-worker.js`
-    );
-    sessionStorage.setItem("serviceWorkerStatus", "registered");
-    // update to latest
-    await registration.update();
-    if (token) {
-      const data = decodeToken(token);
-      const message = getCustomAuthMessageFromData(data || {});
-      if (message) {
-        try {
-          await sendMessageToServiceWorker(message);
-        } catch (error) {
-          console.error("Error sending message to service worker:", error);
-        }
+    console.log("Checking service worker registration...");
+
+    try {
+      // Check if a service worker is already registered
+      const existingRegistration =
+        await navigator.serviceWorker.getRegistration();
+      if (existingRegistration) {
+        console.log("Service worker already registered.");
+        sessionStorage.setItem("serviceWorkerStatus", "registered");
+
+        // Update to the latest version if available
+        await existingRegistration.update();
       } else {
-        if (!match.test(path) && isSWAvailable) {
-          sessionStorage.setItem("serviceWorkerStatus", "inactive");
+        console.log("Registering new service worker...");
+        const newRegistration = await navigator.serviceWorker.register(
+          `/service-worker.js`
+        );
+        sessionStorage.setItem("serviceWorkerStatus", "registered");
+
+        // Update to the latest version if necessary
+        await newRegistration.update();
+      }
+
+      if (token) {
+        const data = decodeToken(token);
+        const message = getCustomAuthMessageFromData(data || {});
+
+        if (message) {
+          try {
+            await sendMessageToServiceWorker(message);
+          } catch (error) {
+            console.error("Error sending message to service worker:", error);
+          }
         }
       }
-      return null;
+    } catch (error) {
+      console.error("Error during service worker registration:", error);
     }
+  } else {
+    console.log("Service worker registration skipped.");
   }
 };

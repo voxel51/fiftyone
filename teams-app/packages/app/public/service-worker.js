@@ -106,8 +106,8 @@ const fetchEvent = () => {
 
         event.respondWith(fetch(modifiedRequest));
       } else {
-        // Allow the request to continue as normal
-        event.respondWith(fetch(event.request));
+        // Allow the request to continue as normal and allow the browser to handle it
+        return;
       }
     } catch (error) {
       console.error("Fetch handler encountered an error:", error);

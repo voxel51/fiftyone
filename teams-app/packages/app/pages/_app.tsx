@@ -26,7 +26,7 @@ import {
 import { registerServiceWorker } from "lib/serviceWorkerUtils";
 import { AppProps } from "next/app";
 import { useRouter } from "next/router";
-import { PropsWithChildren, useEffect, useState } from "react";
+import { PropsWithChildren, useEffect, useMemo, useState } from "react";
 import { useRecoilState } from "recoil";
 import { getInitialPreloadedQuery, getRelayProps } from "relay-nextjs/app";
 import "../styles/globals.css";
@@ -132,6 +132,8 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
   const demoMode = useBooleanEnv(FIFTYONE_APP_DEMO_MODE);
 
   useEffect(() => {
+    console.log("pathname", pathname);
+    console.log("token", token);
     window.FIFTYONE_SEGMENT_WRITE_KEY = SEGMENT_WRITE_KEY;
     setAnalyticsInfo({
       writeKey: SEGMENT_WRITE_KEY,
@@ -143,6 +145,11 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
       doNotTrack,
     });
     if (isServiceWorkerEnabled) {
+      console.log(
+        "service worker enabled and registering for pathname",
+        pathname
+      );
+
       registerServiceWorker(pathname, token).then(() => {
         setIsServiceWorkerReady(true);
       });
