@@ -135,9 +135,10 @@ class BaseRunConfig(Config):
 
         try:
             config_cls = etau.get_class(config_cls)
-        except:
-            logger.debug(
-                "Unable to load '%s'; falling back to base class", config_cls
+        except Exception as e:
+            logger.warning(
+                f"Unable to load {config_cls}; falling back to base class",
+                exc_info=True,
             )
             config_cls = cls.base_config_cls(type)
 
