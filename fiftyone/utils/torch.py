@@ -572,9 +572,9 @@ class TorchImageModel(
         if self.config.cudnn_benchmark is not None:
             torch.backends.cudnn.benchmark = self._benchmark_orig
             self._benchmark_orig = None
-
-        self._no_grad.__exit__(*args)
-        self._no_grad = None
+        if self._no_grad is not None:
+            self._no_grad.__exit__(*args)
+            self._no_grad = None
 
     @property
     def media_type(self):
