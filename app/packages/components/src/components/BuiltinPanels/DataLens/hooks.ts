@@ -8,15 +8,16 @@ import {
 import { Dispatch, useCallback, useEffect, useMemo, useState } from "react";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useRecoilValue } from "recoil";
+import type { Sample } from "@fiftyone/state";
 import {
   datasetName,
   Lookers,
-  useLookerOptions as fosUseLookerOptions,
   useCreateLooker,
+  useLookerOptions as fosUseLookerOptions,
 } from "@fiftyone/state";
 import { v4 as uuid } from "uuid";
 import Spotlight, { ID } from "@fiftyone/spotlight";
-import type { Sample } from "@fiftyone/state";
+import { findFields } from "./utils";
 
 /**
  * Hook which provides the active dataset.
@@ -208,7 +209,7 @@ const useSampleSchemaGenerator = ({ baseSchema }: { baseSchema: object }) => {
  * URLs type encapsulated in other types.
  */
 type SampleUrls = {
-  filepath: string;
+  [field: string]: string;
 };
 
 /**
@@ -247,6 +248,8 @@ type SampleStoreEntry = {
   sample: LensSample;
   urls: SampleUrls;
 };
+
+const sampleMediaFields = ["filepath"];
 
 /**
  * Hook which manages a spotlight instance used to render samples.
@@ -287,6 +290,11 @@ export const useSpotlight = ({
     cleanedSchema
   );
 
+  const buildUrls = useCallback(
+    (sampleData: any) => findFields(sampleMediaFields, sampleData),
+    []
+  );
+
   return useMemo(() => {
     if (resizing) {
       return;
@@ -316,6 +324,8 @@ export const useSpotlight = ({
 
         const mappedSamples: SampleMetadata[] = samplePage.map((s) => {
           const id = uuid();
+          const urls = buildUrls(s);
+
           return {
             key: page,
             aspectRatio: 1,
@@ -328,9 +338,7 @@ export const useSpotlight = ({
                 _id: id,
                 ...s,
               },
-              urls: {
-                filepath: s.filepath,
-              },
+              urls,
             },
           };
         });
