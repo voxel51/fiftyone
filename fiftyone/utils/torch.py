@@ -10,6 +10,7 @@ import itertools
 import multiprocessing
 import os
 import sys
+from typing import Callable, Any
 
 import cv2
 import numpy as np
@@ -26,6 +27,9 @@ import fiftyone.core.models as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.utils.image as foui
+import fiftyone.core.collections as focol
+import fiftyone.core.sample as fos
+import fiftyone.core.view as fov
 
 fou.ensure_torch()
 import torch
@@ -1458,6 +1462,58 @@ def _is_string_array(targets):
         return etau.is_str(next(iter(targets)))
     except StopIteration:
         return False
+
+
+class FiftyOneTorchDataset(Dataset):
+    def __init__(
+        self,
+        samples: focol.SampleCollection,
+        get_item: Callable[fos.SampleView, Any],
+    ):
+        super().__init__()
+
+        self.name = samples._dataset.name
+        # either a whole dataset or a view
+        self.stages = (
+            samples._serialize()
+            if isinstance(samples, fov.DatasetView)
+            else None
+        )
+        self.get_item = get_item
+        # make this a file we call for very large datasets
+        self.ids = _to_bytes_array(samples.values("id"))
+
+        # initialized in worker
+        self._dataset = None
+        self._samples = None
+
+    @property
+    def samples(self):
+        return self._samples
+
+    # called on every worker init
+    @staticmethod
+    def worker_init(worker_id):
+        torch_dataset_object = torch.utils.data.get_worker_info().dataset
+        import fiftyone as fo
+
+        torch_dataset_object._dataset = fo.load_dataset(
+            torch_dataset_object.name
+        )
+        if torch_dataset_object.stages is not None:
+            torch_dataset_object._samples = fov.DatasetView._build(
+                torch_dataset_object._dataset, torch_dataset_object.stages
+            )
+        else:
+            torch_dataset_object._samples = torch_dataset_object._dataset
+
+    def __getitem__(self, index):
+        # pylint: disable=unsubscriptable-object
+        sample = self._samples[self.ids[index].decode()]
+        return self.get_item(sample)
+
+    def __len__(self):
+        return len(self.ids)
 
 
 class TorchImageDataset(Dataset):
