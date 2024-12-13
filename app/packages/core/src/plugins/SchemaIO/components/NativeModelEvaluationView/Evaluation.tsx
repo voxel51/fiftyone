@@ -166,6 +166,7 @@ export default function Evaluation(props: EvaluationProps) {
   const evaluationConfig = evaluationInfo.config;
   const evaluationMetrics = evaluation.metrics;
   const evaluationType = evaluationConfig.type;
+  const evaluationMethod = evaluationConfig.method;
   const compareEvaluationInfo = compareEvaluation?.info || {};
   const compareEvaluationKey = compareEvaluationInfo?.key;
   const compareEvaluationTimestamp = compareEvaluationInfo?.timestamp;
@@ -174,6 +175,9 @@ export default function Evaluation(props: EvaluationProps) {
   const compareEvaluationType = compareEvaluationConfig.type;
   const isObjectDetection = evaluationType === "detection";
   const isSegmentation = evaluationType === "segmentation";
+  const isBinaryClassification =
+    evaluationType === "classification" && evaluationMethod === "binary";
+  const showTpFpFn = isObjectDetection || isBinaryClassification;
   const infoRows = [
     {
       id: "evaluation_key",
@@ -385,7 +389,7 @@ export default function Evaluation(props: EvaluationProps) {
             ? "compare"
             : "selected"
           : false,
-      hide: !isObjectDetection,
+      hide: !showTpFpFn,
     },
     {
       id: "fp",
@@ -400,7 +404,7 @@ export default function Evaluation(props: EvaluationProps) {
             ? "compare"
             : "selected"
           : false,
-      hide: !isObjectDetection,
+      hide: !showTpFpFn,
     },
     {
       id: "fn",
@@ -415,7 +419,7 @@ export default function Evaluation(props: EvaluationProps) {
             ? "compare"
             : "selected"
           : false,
-      hide: !isObjectDetection,
+      hide: !showTpFpFn,
     },
   ];
 

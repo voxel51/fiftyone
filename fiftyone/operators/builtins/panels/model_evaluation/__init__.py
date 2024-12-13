@@ -5,6 +5,7 @@ Model evaluation panel.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict, Counter
 import os
 import traceback
@@ -96,6 +97,12 @@ class EvaluationPanel(Panel):
         ctx.panel.set_data("permissions", permissions)
         self.load_pending_evaluations(ctx)
 
+    def is_binary_classification(self, info):
+        return (
+            info.config.type == "classification"
+            and info.config.method == "binary"
+        )
+
     def get_avg_confidence(self, per_class_metrics):
         count = 0
         total = 0
@@ -107,10 +114,7 @@ class EvaluationPanel(Panel):
 
     def get_tp_fp_fn(self, info, results):
         # Binary classification
-        if (
-            info.config.type == "classification"
-            and info.config.method == "binary"
-        ):
+        if self.is_binary_classification(info):
             neg_label, pos_label = results.classes
             tp_count = np.count_nonzero(
                 (results.ytrue == pos_label) & (results.ypred == pos_label)
@@ -422,10 +426,15 @@ class EvaluationPanel(Panel):
                 gt_field, F("label") == y
             ).filter_labels(pred_field, F("label") == x)
         elif view_type == "field":
-            view = ctx.dataset.filter_labels(
-                pred_field, F(computed_eval_key) == field
-            )
-
+            if self.is_binary_classification(info):
+                uppercase_field = field.upper()
+                view = ctx.dataset.match(
+                    {computed_eval_key: {"$eq": uppercase_field}}
+                )
+            else:
+                view = ctx.dataset.filter_labels(
+                    pred_field, F(computed_eval_key) == field
+                )
         if view is not None:
             ctx.ops.set_view(view)
 
