@@ -2,13 +2,13 @@ import { OverlayMask } from "../numpy";
 
 /**
  * Checks if the given pixel data is grayscale by sampling a subset of pixels.
- * If the image is grayscale, the R, G, and B channels will be equal for CHECKS iteration,
+ * The function will check at least 500 pixels or 1% of all pixels, whichever is larger.
+ * If the image is grayscale, the R, G, and B channels will be equal for all sampled pixels,
  * and the alpha channel will always be 255.
- *
- * Note: this is a very useful heuristic but still doesn't guarantee accuracy.
  */
-export const isGrayscale = (data: Uint8ClampedArray, checks = 500): boolean => {
+export const isGrayscale = (data: Uint8ClampedArray): boolean => {
   const totalPixels = data.length / 4;
+  const checks = Math.max(500, Math.floor(totalPixels * 0.01));
   const step = Math.max(1, Math.floor(totalPixels / checks));
 
   for (let p = 0; p < totalPixels; p += step) {
