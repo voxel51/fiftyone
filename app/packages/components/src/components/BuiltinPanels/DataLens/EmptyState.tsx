@@ -1,4 +1,4 @@
-import { Box, Button, Card, Grid, Typography } from "@mui/material";
+import { Box, Button, Card, Grid, Tooltip, Typography } from "@mui/material";
 import CodeIcon from "@mui/icons-material/Code";
 import HubIcon from "@mui/icons-material/HubOutlined";
 import CenterFocusWeakIcon from "@mui/icons-material/CenterFocusWeak";
@@ -8,7 +8,7 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
  * Model defining the UX for an onboarding step.
  */
 type StepConfig = {
-  icon: React.JSX;
+  icon: React.FC;
   text: string;
   description: string;
   extra?: React.ReactNode;
@@ -23,8 +23,10 @@ type StepConfig = {
  */
 export const EmptyState = ({
   onManageConfigsClick,
+  disabled,
 }: {
-  onManageConfigsClick: () => void;
+  onManageConfigsClick?: () => void;
+  disabled?: boolean;
 }) => {
   const steps: StepConfig[] = [
     {
@@ -50,9 +52,19 @@ export const EmptyState = ({
       extra: (
         <Box>
           <Typography sx={{ mb: 1 }}>Get started:</Typography>
-          <Button variant="contained" onClick={onManageConfigsClick}>
-            Connect to a data source
-          </Button>
+          <Tooltip
+            title={disabled ? "You do not have sufficient permission" : ""}
+          >
+            <span>
+              <Button
+                variant="contained"
+                disabled={disabled}
+                onClick={onManageConfigsClick}
+              >
+                Connect to a data source
+              </Button>
+            </span>
+          </Tooltip>
         </Box>
       ),
     },
