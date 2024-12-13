@@ -8,8 +8,7 @@ export type CustomAuthMessage = {
 
 const match = RegExp("/datasets/.*/samples");
 
-// All pages except the embedded dataset/samples page
-// deregister the worker to avoid unintended issues
+// deregister all service workers when service worker is disabled in the session
 export const deregisterAllServiceWorkers = () => {
   const isSWAvailable = "serviceWorker" in navigator;
   if (isSWAvailable) {
@@ -63,8 +62,8 @@ export function getCustomAuthMessageFromData(data: {
   authPrefix: string | undefined;
   headerOverrides: Record<string, string> | undefined;
 }): CustomAuthMessage | null {
-  const accessToken = data.customAccessToken || data.accessToken;
-  const audience = data.accessTokenAudience;
+  const accessToken = data?.customAccessToken || data?.accessToken;
+  const audience = data?.accessTokenAudience;
 
   if (audience && accessToken) {
     const message: CustomAuthMessage = { accessToken, audience };
@@ -83,33 +82,22 @@ export const registerServiceWorker = async (path: string, token?: string) => {
   const isSWAvailable = "serviceWorker" in navigator;
 
   if (isSWAvailable && match.test(path)) {
-    console.log("Checking service worker registration...");
-
+    // Register and update the service worker
     try {
-      // Check if a service worker is already registered
-      const existingRegistration =
-        await navigator.serviceWorker.getRegistration();
-      if (existingRegistration) {
-        console.log("Service worker already registered.");
-        sessionStorage.setItem("serviceWorkerStatus", "registered");
-
-        // Update to the latest version if available
-        await existingRegistration.update();
-      } else {
-        console.log("Registering new service worker...");
-        const newRegistration = await navigator.serviceWorker.register(
+      let registration = await navigator.serviceWorker.getRegistration();
+      if (!registration) {
+        registration = await navigator.serviceWorker.register(
           `/service-worker.js`
         );
-        sessionStorage.setItem("serviceWorkerStatus", "registered");
-
-        // Update to the latest version if necessary
-        await newRegistration.update();
       }
+      sessionStorage.setItem("serviceWorkerStatus", "registered");
+      await registration.update();
 
+      // Send a message to the service worker with the token immediately
+      // in case the first session refresh takes awhile
       if (token) {
         const data = decodeToken(token);
         const message = getCustomAuthMessageFromData(data || {});
-
         if (message) {
           try {
             await sendMessageToServiceWorker(message);
@@ -121,7 +109,5 @@ export const registerServiceWorker = async (path: string, token?: string) => {
     } catch (error) {
       console.error("Error during service worker registration:", error);
     }
-  } else {
-    console.log("Service worker registration skipped.");
   }
 };
