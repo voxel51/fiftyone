@@ -2218,6 +2218,115 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
             dataset2.values("segmentations.mask_path"),
         )
 
+    @drop_datasets
+    def test_instance_segmentation_fiftyone_dataset(self):
+        self._test_instance_segmentation_fiftyone_dataset(
+            fo.types.FiftyOneDataset
+        )
+
+    @drop_datasets
+    def test_instance_segmentation_legacy_fiftyone_dataset(self):
+        self._test_instance_segmentation_fiftyone_dataset(
+            fo.types.LegacyFiftyOneDataset
+        )
+
+    def _test_instance_segmentation_fiftyone_dataset(self, dataset_type):
+        dataset = self._make_dataset()
+
+        # In-database instance segmentations
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=dataset_type,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=dataset_type,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertEqual(dataset.count("detections.detections.mask_path"), 0)
+        self.assertEqual(dataset2.count("detections.detections.mask_path"), 0)
+        self.assertEqual(
+            dataset.count("detections.detections.mask"),
+            dataset2.count("detections.detections.mask"),
+        )
+
+        # Convert to on-disk instance segmentations
+
+        segmentations_dir = self._new_dir()
+
+        foul.export_segmentations(dataset, "detections", segmentations_dir)
+
+        self.assertEqual(dataset.count("detections.detections.mask"), 0)
+        for mask_path in dataset.values("detections.detections[].mask_path"):
+            if mask_path is not None:
+                self.assertTrue(mask_path.startswith(segmentations_dir))
+
+        # On-disk instance segmentations
+
+        export_dir = self._new_dir()
+        field_dir = os.path.join(export_dir, "fields", "detections.detections")
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=dataset_type,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=dataset_type,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertEqual(dataset2.count("detections.detections.mask"), 0)
+        self.assertEqual(
+            dataset.count("detections.detections.mask_path"),
+            dataset2.count("detections.detections.mask_path"),
+        )
+
+        for mask_path in dataset2.values("detections.detections[].mask_path"):
+            if mask_path is not None:
+                self.assertTrue(mask_path.startswith(field_dir))
+
+        # On-disk instance segmentations (don't export media)
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=dataset_type,
+            export_media=False,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=dataset_type,
+        )
+
+        self.assertEqual(len(dataset), len(dataset2))
+        self.assertListEqual(
+            dataset.values("filepath"),
+            dataset2.values("filepath"),
+        )
+        self.assertListEqual(
+            dataset.values("detections.detections[].mask_path"),
+            dataset2.values("detections.detections[].mask_path"),
+        )
+
+        # Convert to in-database instance segmentations
+
+        foul.import_segmentations(dataset2, "detections")
+
+        self.assertEqual(dataset2.count("detections.detections.mask_path"), 0)
+        self.assertEqual(
+            dataset2.count("detections.detections.mask"),
+            dataset.count("detections.detections.mask_path"),
+        )
+
 
 class DICOMDatasetTests(ImageDatasetTests):
     def _get_dcm_path(self):
