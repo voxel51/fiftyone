@@ -21,8 +21,6 @@
         "@ungap/event-target": "^0.2.2",
         "@xmldom/xmldom": "^0.8.6",
         "copy-to-clipboard": "^3.3.1",
-        "decode-tiff": "^0.2.1",
-        "fast-png": "^6.1.0",
         "immutable": "^4.0.0-rc.12",
         "lodash": "^4.17.21",
         "lru-cache": "^11.0.1",

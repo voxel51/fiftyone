@@ -1,10 +1,15 @@
-import { OverlayMask } from "../numpy";
+import type { OverlayMask } from "../numpy";
 
 /**
  * Decodes a given image source into an OverlayMask using an OffscreenCanvas
  */
 export const decodeWithCanvas = async (blob: ImageBitmapSource) => {
-  const imageBitmap = await createImageBitmap(blob);
+  try {
+    const imageBitmap = await createImageBitmap(blob);
+  } catch (e) {
+    console.error(e);
+  }
+
   const width = imageBitmap.width;
   const height = imageBitmap.height;
 

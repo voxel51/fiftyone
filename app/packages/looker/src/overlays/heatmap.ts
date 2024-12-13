@@ -12,7 +12,7 @@ import type { TypedArray } from "../numpy";
 import { ARRAY_TYPES } from "../numpy";
 import type { BaseState, Coordinates } from "../state";
 import { isFloatArray } from "../util";
-import { clampedIndex } from "../worker/painter";
+import { clampedIndex } from "../worker/painters/utils";
 import type {
   BaseLabel,
   LabelMask,

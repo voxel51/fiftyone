@@ -121,6 +121,7 @@ export default class SegmentationOverlay<State extends BaseState>
 
     const target = this.getTarget(state);
 
+    console.log(this.label.mask.data.shape);
     if (this.label.mask.data.channels > 2) {
       return this.handleRgbTargets(maskTargets, target);
     }

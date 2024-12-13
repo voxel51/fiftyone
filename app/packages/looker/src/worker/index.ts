@@ -285,7 +285,7 @@ const processSample = async ({
   mapId(sample);
 
   const imageBitmapPromises: Promise<ImageBitmap[]>[] = [];
-  let maskTargetsBuffers: ArrayBuffer[] = [];
+  const maskTargetsBuffers: ArrayBuffer[] = [];
 
   if (sample?._media_type === "point-cloud" || sample?._media_type === "3d") {
     process3DLabels(schema, sample);
