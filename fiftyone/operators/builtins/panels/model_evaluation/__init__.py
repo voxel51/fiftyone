@@ -97,12 +97,6 @@ class EvaluationPanel(Panel):
         ctx.panel.set_data("permissions", permissions)
         self.load_pending_evaluations(ctx)
 
-    def is_binary_classification(self, info):
-        return (
-            info.config.type == "classification"
-            and info.config.method == "binary"
-        )
-
     def get_avg_confidence(self, per_class_metrics):
         count = 0
         total = 0
@@ -114,7 +108,10 @@ class EvaluationPanel(Panel):
 
     def get_tp_fp_fn(self, info, results):
         # Binary classification
-        if self.is_binary_classification(info):
+        if (
+            info.config.type == "classification"
+            and info.config.method == "binary"
+        ):
             neg_label, pos_label = results.classes
             tp_count = np.count_nonzero(
                 (results.ytrue == pos_label) & (results.ypred == pos_label)
@@ -418,23 +415,81 @@ class EvaluationPanel(Panel):
         y = view_options.get("y", None)
         field = view_options.get("field", None)
         computed_eval_key = view_options.get("key", eval_key)
+        eval_view = ctx.dataset.load_evaluation_view(eval_key)
+
         view = None
-        if view_type == "class":
-            view = ctx.dataset.filter_labels(pred_field, F("label") == x)
-        elif view_type == "matrix":
-            view = ctx.dataset.filter_labels(
-                gt_field, F("label") == y
-            ).filter_labels(pred_field, F("label") == x)
-        elif view_type == "field":
-            if self.is_binary_classification(info):
-                uppercase_field = field.upper()
-                view = ctx.dataset.match(
-                    {computed_eval_key: {"$eq": uppercase_field}}
+        if info.config.type == "classification":
+            if view_type == "class":
+                view = eval_view.match(
+                    (F(f"{gt_field}.label") == x)
+                    | (F(f"{pred_field}.label") == x)
                 )
-            else:
-                view = ctx.dataset.filter_labels(
-                    pred_field, F(computed_eval_key) == field
+            elif view_type == "matrix":
+                view = eval_view.match(
+                    (F(f"{gt_field}.label") == y)
+                    & (F(f"{pred_field}.label") == x)
                 )
+            elif view_type == "field":
+                if field == "fn":
+                    view = eval_view.match(
+                        F(f"{gt_field}.{computed_eval_key}") == field
+                    )
+                else:
+                    view = eval_view.match(
+                        F(f"{pred_field}.{computed_eval_key}") == field
+                    )
+        elif info.config.type == "detection":
+            _, pred_root = ctx.dataset._get_label_field_path(pred_field)
+            _, gt_root = ctx.dataset._get_label_field_path(gt_field)
+
+            if view_type == "class":
+                view = (
+                    eval_view.filter_labels(
+                        pred_field, F("label") == x, only_matches=False
+                    )
+                    .filter_labels(
+                        gt_field, F("label") == x, only_matches=False
+                    )
+                    .match(
+                        (F(pred_root).length() > 0) | (F(gt_root).length() > 0)
+                    )
+                )
+            elif view_type == "matrix":
+                view = (
+                    eval_view.filter_labels(
+                        gt_field, F("label") == y, only_matches=False
+                    )
+                    .filter_labels(
+                        pred_field, F("label") == x, only_matches=False
+                    )
+                    .match(
+                        (F(pred_root).length() > 0) & (F(gt_root).length() > 0)
+                    )
+                )
+            elif view_type == "field":
+                if field == "tp":
+                    view = eval_view.filter_labels(
+                        gt_field,
+                        F(computed_eval_key) == field,
+                        only_matches=False,
+                    ).filter_labels(
+                        pred_field,
+                        F(computed_eval_key) == field,
+                        only_matches=True,
+                    )
+                elif field == "fn":
+                    view = eval_view.filter_labels(
+                        gt_field,
+                        F(computed_eval_key) == field,
+                        only_matches=True,
+                    )
+                else:
+                    view = eval_view.filter_labels(
+                        pred_field,
+                        F(computed_eval_key) == field,
+                        only_matches=True,
+                    )
+
         if view is not None:
             ctx.ops.set_view(view)
 
