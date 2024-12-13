@@ -102,6 +102,7 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
 
   const router = useRouter();
   const asPath = router.asPath;
+  const pathname = router.pathname;
   const [loading, setLoading] = useRecoilState(loadingState);
 
   const isServiceWorkerEnabled =
@@ -142,11 +143,11 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
       doNotTrack,
     });
     if (isServiceWorkerEnabled) {
-      registerServiceWorker(asPath, token).then(() => {
+      registerServiceWorker(pathname, token).then(() => {
         setIsServiceWorkerReady(true);
       });
     }
-  }, [isServiceWorkerEnabled, asPath]);
+  }, [isServiceWorkerEnabled, pathname]);
 
   useEffect(() => {
     router.events.on("routeChangeStart", () => {
