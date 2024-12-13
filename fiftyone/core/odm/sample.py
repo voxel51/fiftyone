@@ -142,3 +142,68 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
     def _get_repr_fields(self):
         fields = self.field_names
         return fields[:1] + ("media_type",) + fields[1:]
+
+
+class DatasetSampleReferenceDocument(DatasetMixin, Document):
+    meta = {"abstract": True}
+
+    _is_frames_doc = False
+
+    id = fof.ObjectIdField(required=True, primary_key=True, db_field="_id")
+    sample_id = fof.ReferenceField(DatasetSampleDocument, required=True)
+
+    _sample_reference = None
+
+    def get_field(self, field_name):
+        if self._sample_reference is None:
+            print(self.sample_id)
+            exit(1)
+        try:
+            return self._sample_reference.get_field(field_name)
+        except AttributeError:
+            pass
+
+        return super().get_field(field_name)
+
+
+class NoDatasetSampleReferenceDocument(NoDatasetMixin, SerializableDocument):
+    _is_frames_doc = False
+
+    # pylint: disable=no-member
+    default_fields = DatasetSampleReferenceDocument._fields
+    default_fields_ordered = get_default_fields(
+        DatasetSampleReferenceDocument, include_private=True
+    )
+
+    _sample_reference = None
+
+    @property
+    def _sample_data(self):
+        return self._sample_reference._data
+
+    def get_field(self, field_name):
+        try:
+            return self._sample_reference.get_field(field_name)
+        except AttributeError:
+            pass
+
+        return super().get_field(field_name)
+
+    def __init__(self, sample, **kwargs):
+        kwargs["id"] = kwargs.get("id", None)
+        kwargs["media_type"] = sample.media_type
+        kwargs["sample_id"] = sample.id
+
+        self._sample_reference = sample
+
+        self._data = OrderedDict()
+
+        for field_name in self.default_fields_ordered:
+            value = kwargs.pop(field_name, None)
+
+            if value is None and field_name not in ("id", "_dataset_id"):
+                value = self._get_default(self.default_fields[field_name])
+
+            self._data[field_name] = value
+
+        self._data.update(kwargs)

@@ -10,12 +10,14 @@ import os
 from bson import ObjectId
 
 from fiftyone.core.document import Document, DocumentView
+from fiftyone.core.fields import ReferenceField
 import fiftyone.core.frame as fofr
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
+from fiftyone.core.odm.sample import DatasetSampleDocument
 import fiftyone.core.utils as fou
 from fiftyone.core.singletons import SampleSingleton
 
@@ -746,6 +748,16 @@ class SampleView(_SampleMixin, DocumentView):
         sample_ops = super()._save(deferred=deferred)
 
         return sample_ops, frame_ops
+
+
+
+class SampleReference(Document):
+    sample = ReferenceField(DatasetSampleDocument)
+
+    _NO_DATASET_DOC_CLS = foo.NoDatasetSampleReferenceDocument
+
+    def __init__(self, sample: Sample, **kwargs):
+        super().__init__(sample=sample, **kwargs)
 
 
 def _apply_confidence_thresh(label, confidence_thresh):

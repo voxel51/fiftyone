@@ -1038,6 +1038,33 @@ class SampleFieldTests(unittest.TestCase):
         self.assertEqual(sample.custom_field.list[0].label, "list")
 
 
+class SampleReferenceTests(unittest.TestCase):
+    @drop_datasets
+    def test_reference(self):
+        dataset = fo.Dataset()
+        sample = fo.Sample("test_123.jpg", test1="123")
+        dataset.add_sample(sample)
+
+        sample_reference = fo.SampleReference(sample, test2="123")
+        self.assertEqual(sample_reference.filepath, sample.filepath)
+        self.assertEqual(sample_reference.test1, sample.test1)
+        self.assertEqual(sample_reference.test2, "123")
+
+        dataset2 = fo.Dataset()
+        dataset2.add_sample(sample_reference)
+
+        self.assertEqual(dataset2.first().test1, "123")
+        self.assertEqual(dataset2.first().test2, "123")
+        self.assertEqual(dataset2.first().filepath, sample.filepath)
+
+        sample["test1"] = "234"
+        sample.save()
+
+        self.assertEqual(dataset2.first().test1, "234")
+
+
 if __name__ == "__main__":
+    import sys
+    sys.setrecursionlimit(100)
     fo.config.show_progress_bars = False
     unittest.main(verbosity=2)

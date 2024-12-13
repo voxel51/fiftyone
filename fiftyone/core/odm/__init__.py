@@ -74,6 +74,7 @@ from .runs import RunDocument
 from .sample import (
     DatasetSampleDocument,
     NoDatasetSampleDocument,
+    NoDatasetSampleReferenceDocument
 )
 from .utils import (
     serialize_value,
