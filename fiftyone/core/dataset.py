@@ -45,7 +45,7 @@ import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
-from fiftyone.core.odm.dataset import DatasetAppConfig, SidebarGroupDocument
+from fiftyone.core.odm.dataset import DatasetAppConfig
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -2026,35 +2026,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if sidebar_group is None:
                 sidebar_group = "summaries"
 
-            if self.app_config.sidebar_groups is None:
-                sidebar_groups = DatasetAppConfig.default_sidebar_groups(self)
-                self.app_config.sidebar_groups = sidebar_groups
-            else:
-                sidebar_groups = self.app_config.sidebar_groups
-
-            index_group = None
-            for group in sidebar_groups:
-                if group.name == sidebar_group:
-                    index_group = group
-                else:
-                    if field_name in group.paths:
-                        group.paths.remove(field_name)
-
-            if index_group is None:
-                index_group = SidebarGroupDocument(name=sidebar_group)
-
-                insert_after = None
-                for i, group in enumerate(sidebar_groups):
-                    if group.name == "labels":
-                        insert_after = i
-
-                if insert_after is None:
-                    sidebar_groups.append(index_group)
-                else:
-                    sidebar_groups.insert(insert_after + 1, index_group)
-
-            if field_name not in index_group.paths:
-                index_group.paths.append(field_name)
+            self.app_config._add_path_to_sidebar_group(
+                field_name,
+                sidebar_group,
+                after_group="labels",
+                dataset=self,
+            )
 
         if create_index:
             for _field_name in index_fields:

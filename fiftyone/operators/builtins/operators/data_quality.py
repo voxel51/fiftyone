@@ -157,6 +157,14 @@ def _handle_execution(ctx, field, fcn, skip_failures=True, progress=None):
     else:
         samples = ctx.dataset.select_fields()
 
+    ctx.dataset.app_config._add_path_to_sidebar_group(
+        field,
+        "data quality",
+        after_group="labels",
+        dataset=ctx.dataset,
+    )
+    ctx.dataset.save()
+
     with contextlib.ExitStack() as context:
         context.enter_context(
             samples.download_context(
@@ -224,6 +232,20 @@ def _handle_near_duplicates_execution(ctx):
         num_workers = 0
     else:
         num_workers = None
+
+    ctx.dataset.app_config._add_path_to_sidebar_group(
+        "nearest_neighbor",
+        "data quality",
+        after_group="labels",
+        dataset=ctx.dataset,
+    )
+    ctx.dataset.app_config._add_path_to_sidebar_group(
+        "nearest_id",
+        "data quality",
+        after_group="labels",
+        dataset=ctx.dataset,
+    )
+    ctx.dataset.save()
 
     # If all samples already have nearest neighbors populated, there's nothing
     # for us to do here
