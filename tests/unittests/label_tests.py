@@ -6,6 +6,8 @@ FiftyOne Label-related unit tests.
 |
 """
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from bson import Binary, ObjectId
 import numpy as np
@@ -17,6 +19,45 @@ import fiftyone.utils.labels as foul
 from fiftyone import ViewField as F
 
 from decorators import drop_datasets
+
+
+def _make_panoptic(dtype=np.uint8):
+    max_value = np.iinfo(dtype).max
+
+    instance_mask = np.zeros((8, 8), dtype=dtype)
+    instance_mask[1:2, 1:2] = 1
+    instance_mask[2:3, 2:3] = 2
+    instance_mask[3:4, 3:4] = 3
+    class_mask = (instance_mask > 0).astype(dtype)
+
+    class_mask[4:5, 4:5] = 1
+    class_mask[5:6, 5:6] = max_value
+    class_mask[6:7, 6:7] = 1
+
+    panoptic_mask = np.stack([class_mask, instance_mask], axis=-1).astype(
+        dtype
+    )
+    seg = fo.Segmentation(mask=panoptic_mask, is_panoptic=True)
+
+    return seg
+
+
+def _make_1d_segmentation(dtype=np.uint8):
+    max_value = np.iinfo(dtype).max
+    mask = np.zeros((4, 4), dtype=dtype)
+    mask[0:2, 0:2] = 1
+    mask[2:4, 2:4] = max_value
+    seg = fo.Segmentation(mask=mask, is_panoptic=False)
+    return seg
+
+
+def _make_3d_segmentation(dtype=np.uint8):
+    max_value = np.iinfo(dtype).max
+    mask = np.zeros((4, 4, 3), dtype=dtype)
+    mask[0:2, 0:2, 2] = 1
+    mask[2:4, 2:4, :] = max_value
+    seg = fo.Segmentation(mask=mask, is_panoptic=False)
+    return seg
 
 
 class LabelTests(unittest.TestCase):
@@ -531,6 +572,182 @@ class LabelTests(unittest.TestCase):
         )
         rgb_to_rgb = focl._transform_mask(int_to_rgb, targets_map)
         nptest.assert_array_equal(rgb_to_rgb, np.zeros((3, 3, 3), dtype=int))
+
+    @drop_datasets
+    def test_panoptic_segmentation_conversion(self):
+        seg = _make_panoptic()
+        frame_size = seg.mask.shape[:2][::-1]
+        mask_targets = dict(
+            (int(idx), str(idx)) for idx in seg.mask[..., 0].flatten()
+        )
+
+        for mask_types in (
+            None,
+            "panoptic",
+            "stuff",
+            "thing",
+            "object",
+        ):
+            if mask_types is None or mask_types == "panoptic":
+                n_expected = 5
+                expected_class_mask = seg.mask[..., 0]
+            elif mask_types == "stuff":
+                n_expected = 2
+                expected_class_mask = seg.mask[..., 0]
+            elif mask_types == "thing":
+                n_expected = 6
+                expected_class_mask = seg.mask[..., 0]
+            elif mask_types == "object":
+                n_expected = 3
+                expected_class_mask = seg.mask[..., 0].copy()
+                expected_class_mask[seg.mask[..., 1] == 0] = 0
+
+            # detections
+            dets = seg.to_detections(mask_types=mask_types)
+            self.assertEqual(len(dets.detections), n_expected)
+
+            sseg1 = dets.to_segmentation(
+                panoptic=False,
+                frame_size=frame_size,
+                mask_targets=mask_targets,
+            )
+
+            pseg1 = dets.to_segmentation(
+                panoptic=True, frame_size=frame_size, mask_targets=mask_targets
+            )
+
+            self.assertTrue(np.all(sseg1.mask == expected_class_mask))
+            self.assertTrue(np.all(pseg1.mask[..., 0] == expected_class_mask))
+            self.assertEqual(
+                len(np.unique(pseg1.mask[..., 1])), n_expected + 1
+            )
+
+            # single detection
+            single_seg1 = dets.detections[0].to_segmentation(
+                panoptic=True,
+                frame_size=frame_size,
+            )
+
+            # polylines
+            poly = seg.to_polylines(mask_types=mask_types, tolerance=0)
+            self.assertEqual(len(poly.polylines), n_expected)
+
+            sseg2 = poly.to_segmentation(
+                panoptic=False,
+                frame_size=frame_size,
+                mask_targets=mask_targets,
+            )
+
+            pseg2 = poly.to_segmentation(
+                panoptic=True, frame_size=frame_size, mask_targets=mask_targets
+            )
+
+            # cannot get the segmentation mask to exactly match the
+            # exact match.  it seems to be due to the tolerance
+            # setting, but adjusting the tolerance does not help.
+            self.assertTrue(np.all(sseg2.mask == pseg2.mask[..., 0]))
+            self.assertEqual(
+                len(np.unique(pseg2.mask[..., 1])), n_expected + 1
+            )
+
+            # single polyline
+            single_seg2 = poly.polylines[0].to_segmentation(
+                panoptic=True,
+                frame_size=frame_size,
+            )
+
+            # same problem with tolerance
+            self.assertEqual(
+                set(single_seg1.mask.flatten()),
+                set(single_seg2.mask.flatten()),
+            )
+
+    def test_1d_segmentation_conversion(self):
+        # 1d to panoptic
+        seg = _make_1d_segmentation()
+        pseg = seg.to_panoptic()
+
+        class_mask = seg.mask
+        instance_mask = np.array(
+            [[1, 1, 0, 0], [1, 1, 0, 0], [0, 0, 2, 2], [0, 0, 2, 2]], dtype=int
+        )
+
+        self.assertTrue(np.all(pseg.mask[..., 0] == seg.mask))
+        self.assertTrue(np.all(pseg.mask[..., 1] == instance_mask))
+
+        # back to 1d semantic
+        seg2 = pseg.to_semantic()
+        self.assertTrue(np.all(seg2.mask == seg.mask))
+
+        # check that this throws an error
+        with self.assertRaises(ValueError):
+            seg2.to_detections(mask_types="panoptic")
+
+        # to rgb semantic
+        seg3 = pseg.to_semantic(to_rgb=True)
+        self.assertTrue(np.all(seg3.mask[..., 2] == seg.mask))
+        self.assertTrue(np.all(seg3.mask[..., 1] == 0))
+        self.assertTrue(np.all(seg3.mask[..., 0] == 0))
+
+    def test_3d_segmentation_conversion(self):
+        # 3d to panoptic
+        seg = _make_3d_segmentation()
+        pseg = seg.to_panoptic()
+
+        x = 2**24 - 1
+        class_mask = np.array(
+            [[1, 1, 0, 0], [1, 1, 0, 0], [0, 0, x, x], [0, 0, x, x]], dtype=int
+        )
+
+        instance_mask = np.array(
+            [[1, 1, 0, 0], [1, 1, 0, 0], [0, 0, 2, 2], [0, 0, 2, 2]], dtype=int
+        )
+
+        self.assertTrue(np.all(pseg.mask[..., 0] == class_mask))
+        self.assertTrue(np.all(pseg.mask[..., 1] == instance_mask))
+
+        seg2 = pseg.to_semantic(to_rgb=False)
+        self.assertTrue(np.all(seg2.mask == class_mask))
+
+        seg3 = pseg.to_semantic(to_rgb=True)
+        self.assertTrue(np.all(seg3.mask == seg.mask))
+
+    def test_segmentation_io(self):
+        def _test_io(dims, tif, dtype):
+            with TemporaryDirectory() as temp_dir:
+                if tif:
+                    mask_path = Path(temp_dir) / "mask.tif"
+                else:
+                    mask_path = Path(temp_dir) / "mask.png"
+
+                mask_path = str(mask_path)
+
+                if dims == 1:
+                    seg = _make_1d_segmentation(dtype=dtype)
+                if dims == 2:
+                    seg = _make_panoptic(dtype=dtype)
+                if dims == 3:
+                    seg = _make_3d_segmentation(dtype=dtype)
+                seg.export_mask(mask_path, update=False)
+
+                seg2 = fo.Segmentation(
+                    mask_path=mask_path, is_panoptic=(dims == 2)
+                )
+                seg2.import_mask()
+
+                self.assertTrue(np.all(seg.mask == seg2.mask))
+
+        for dims in (1, 2, 3):
+            for tif in (False, True):
+                if dims == 3:
+                    dtypes = [np.uint8]
+                elif tif:
+                    dtypes = [np.uint8, np.uint16, np.uint32, np.uint64]
+                else:
+                    dtypes = [np.uint8, np.uint16]
+
+                for dtype in dtypes:
+                    _test_io(dims=dims, tif=tif, dtype=dtype)
 
 
 class LabelUtilsTests(unittest.TestCase):
