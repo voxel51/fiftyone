@@ -12,11 +12,13 @@ import os
 import warnings
 from collections import defaultdict
 
+from bson import json_util
+import pydash
+
 import eta.core.datasets as etad
 import eta.core.frameutils as etaf
 import eta.core.serial as etas
 import eta.core.utils as etau
-from bson import json_util
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
@@ -1892,7 +1894,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             self._metadata["frame_fields"] = schema
 
         self._media_fields = sample_collection._get_media_fields(
-            include_filepath=False
+            blacklist="filepath",
         )
 
         info = dict(sample_collection.info)
@@ -2029,34 +2031,38 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
     def _export_media_fields(self, sd):
         for field_name, key in self._media_fields.items():
-            value = sd.get(field_name, None)
-            if value is None:
-                continue
-
-            if key is not None:
-                self._export_media_field(value, field_name, key=key)
-            else:
-                self._export_media_field(sd, field_name)
+            self._export_media_field(sd, field_name, key=key)
 
     def _export_media_field(self, d, field_name, key=None):
-        if key is not None:
-            value = d.get(key, None)
-        else:
-            key = field_name
-            value = d.get(field_name, None)
-
+        value = pydash.get(d, field_name, None)
         if value is None:
             return
 
         media_exporter = self._get_media_field_exporter(field_name)
-        outpath, _ = media_exporter.export(value)
 
-        if self.abs_paths:
-            d[key] = outpath
-        else:
-            d[key] = fou.safe_relpath(
-                outpath, self.export_dir, default=outpath
-            )
+        if not isinstance(value, (list, tuple)):
+            value = [value]
+
+        for _d in value:
+            if key is not None:
+                _value = _d.get(key, None)
+            else:
+                _value = _d
+
+            if _value is None:
+                continue
+
+            outpath, _ = media_exporter.export(_value)
+
+            if not self.abs_paths:
+                outpath = fou.safe_relpath(
+                    outpath, self.export_dir, default=outpath
+                )
+
+            if key is not None:
+                _d[key] = outpath
+            else:
+                pydash.set_(d, field_name, outpath)
 
     def _get_media_field_exporter(self, field_name):
         media_exporter = self._media_field_exporters.get(field_name, None)
@@ -2196,7 +2202,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             _sample_collection = sample_collection
 
         self._media_fields = sample_collection._get_media_fields(
-            include_filepath=False
+            blacklist="filepath"
         )
 
         logger.info("Exporting samples...")
@@ -2333,33 +2339,43 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
     def _export_media_fields(self, sd):
         for field_name, key in self._media_fields.items():
-            value = sd.get(field_name, None)
-            if value is None:
-                continue
-
-            if key is not None:
-                self._export_media_field(value, field_name, key=key)
-            else:
-                self._export_media_field(sd, field_name)
+            self._export_media_field(sd, field_name, key=key)
 
     def _export_media_field(self, d, field_name, key=None):
-        if key is not None:
-            value = d.get(key, None)
-        else:
-            key = field_name
-            value = d.get(field_name, None)
-
+        value = pydash.get(d, field_name, None)
         if value is None:
             return
 
-        if self.export_media is not False:
-            # Store relative path
-            media_exporter = self._get_media_field_exporter(field_name)
-            _, uuid = media_exporter.export(value)
-            d[key] = os.path.join("fields", field_name, uuid)
-        elif self.rel_dir is not None:
-            # Remove `rel_dir` prefix from path
-            d[key] = fou.safe_relpath(value, self.rel_dir, default=value)
+        media_exporter = self._get_media_field_exporter(field_name)
+
+        if not isinstance(value, (list, tuple)):
+            value = [value]
+
+        for _d in value:
+            if key is not None:
+                _value = _d.get(key, None)
+            else:
+                _value = _d
+
+            if _value is None:
+                continue
+
+            if self.export_media is not False:
+                # Store relative path
+                _, uuid = media_exporter.export(_value)
+                outpath = os.path.join("fields", field_name, uuid)
+            elif self.rel_dir is not None:
+                # Remove `rel_dir` prefix from path
+                outpath = fou.safe_relpath(
+                    _value, self.rel_dir, default=_value
+                )
+            else:
+                continue
+
+            if key is not None:
+                _d[key] = outpath
+            else:
+                pydash.set_(d, field_name, outpath)
 
     def _get_media_field_exporter(self, field_name):
         media_exporter = self._media_field_exporters.get(field_name, None)
