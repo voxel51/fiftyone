@@ -13,7 +13,7 @@ from fiftyone.core.document import Document, DocumentView
 from fiftyone.core.fields import ReferenceField
 import fiftyone.core.frame as fofr
 import fiftyone.core.frame_utils as fofu
-from fiftyone.core.h import _create_sample_document_cls
+from fiftyone.core.dataset_helpers import _create_sample_document_cls
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
