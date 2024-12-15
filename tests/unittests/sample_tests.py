@@ -1045,8 +1045,6 @@ class SampleReferenceTests(unittest.TestCase):
         sample = fo.Sample("test_123.jpg", test1="123")
         dataset.add_sample(sample)
 
-        dataset.persistent = True
-        
         sample_reference = fo.SampleReference(sample, test2="123")
         self.assertEqual(sample_reference.filepath, sample.filepath)
         self.assertEqual(sample_reference.test1, sample.test1)
@@ -1068,6 +1066,8 @@ class SampleReferenceTests(unittest.TestCase):
 
         self.assertEqual(dataset2.first().test1, "345")
         self.assertEqual(dataset2.first().filepath, sample.filepath)
+
+        self.assertIn("test1", dataset2.get_field_schema())
 
 
 if __name__ == "__main__":

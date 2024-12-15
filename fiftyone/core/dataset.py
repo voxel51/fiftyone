@@ -1389,7 +1389,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a dict mapping field names to :class:`fiftyone.core.fields.Field`
             instances
         """
-        return self._sample_doc_cls.get_field_schema(
+        base_schema = self._sample_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             read_only=read_only,
@@ -1399,6 +1399,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             flat=flat,
             mode=mode,
         )
+
+        if self._reference:
+            reference_schema = self._reference.get_field_schema()
+
+            del reference_schema["id"]
+            del reference_schema["created_at"]
+            del reference_schema["last_modified_at"]
+
+            base_schema.update(reference_schema)
+        
+        return base_schema
+        
 
     def get_frame_field_schema(
         self,
