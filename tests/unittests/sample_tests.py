@@ -1046,13 +1046,12 @@ class SampleReferenceTests(unittest.TestCase):
         sample = fo.Sample("test_123.jpg", test1="123")
         dataset.add_sample(sample)
 
+        dataset.persistent = True
+        
         sample_reference = fo.SampleReference(sample, test2="123")
         self.assertEqual(sample_reference.filepath, sample.filepath)
         self.assertEqual(sample_reference.test1, sample.test1)
         self.assertEqual(sample_reference.test2, "123")
-
-        print(sample_reference.get_field("sample_id"), type(sample_reference.get_field("sample_id")))
-        print(sample_reference.sample_id, type(sample_reference.sample_id))
 
         dataset2 = fo.Dataset(reference=True)
         dataset2.add_sample(sample_reference)
@@ -1062,9 +1061,11 @@ class SampleReferenceTests(unittest.TestCase):
         self.assertEqual(dataset2.first().filepath, sample.filepath)
 
         sample["test1"] = "234"
+        sample["filepath"] = "test_124.jpg"
         sample.save()
 
         self.assertEqual(dataset2.first().test1, "234")
+        self.assertEqual(dataset2.first().filepath, sample.filepath)
 
 
 if __name__ == "__main__":

@@ -49,7 +49,7 @@ type :class:`NoDatasetSampleDocument` to type ``dataset._sample_doc_cls``::
 from collections import OrderedDict
 import random
 
-from bson import ObjectId
+from bson import DBRef, ObjectId
 
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
@@ -152,14 +152,17 @@ class DatasetSampleReferenceDocument(DatasetMixin, Document):
     _is_frames_doc = False
 
     id = fof.ObjectIdField(required=True, primary_key=True, db_field="_id")
-    sample_id = fof.ReferenceField(DatasetSampleDocument, required=True)
+    _sample_id = fof.ReferenceField(DatasetSampleDocument, required=True)
 
-    _sample_reference = None
+    created_at = fof.DateTimeField(read_only=True)
+    last_modified_at = fof.DateTimeField(read_only=True)
+    _dataset_id = fof.ObjectIdField()
+
+    @property
+    def _sample_reference(self):
+        return self._sample_id
 
     def get_field(self, field_name):
-        if self._sample_reference is None:
-            print(self.sample_id)
-            exit(1)
         try:
             return self._sample_reference.get_field(field_name)
         except AttributeError:
@@ -191,9 +194,10 @@ class NoDatasetSampleReferenceDocument(NoDatasetMixin, SerializableDocument):
         return super().get_field(field_name)
 
     def __init__(self, sample, **kwargs):
+        assert sample.in_dataset, "Sample must already be in dataset before creating reference"
         kwargs["id"] = kwargs.get("id", None)
         kwargs["media_type"] = sample.media_type
-        kwargs["sample_id"] = ObjectId(sample.id)
+        kwargs["_sample_id"] = DBRef(sample._doc.collection_name, ObjectId(sample.id))
 
         self._sample_reference = sample
 
@@ -202,9 +206,7 @@ class NoDatasetSampleReferenceDocument(NoDatasetMixin, SerializableDocument):
         for field_name in self.default_fields_ordered:
             value = kwargs.pop(field_name, None)
 
-            print(value, type(value), field_name)
-
-            if value is None and field_name not in ("id", "_dataset_id", "sample_id"):
+            if value is None and field_name not in ("id", "_dataset_id", "_sample_id"):
                 value = self._get_default(self.default_fields[field_name])
 
             self._data[field_name] = value

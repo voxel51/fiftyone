@@ -306,6 +306,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         "_evaluation_cache",
         "_run_cache",
         "_deleted",
+        "_reference",
     )
 
     def __init__(
@@ -336,6 +337,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc = doc
         self._sample_doc_cls = sample_doc_cls
         self._frame_doc_cls = frame_doc_cls
+
+        self._reference = reference
 
         self._group_slice = doc.default_group_slice
 
@@ -7976,7 +7979,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                             non_existent_fields.add(field_name)
                 else:
                     if value is not None or not field.null:
-                        print(field, type(value), value)
                         try:
                             field.validate(value)
                         except Exception as e:
@@ -8022,7 +8024,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return
 
         doc, sample_doc_cls, frame_doc_cls = _load_dataset(
-            self, self.name, virtual=True
+            self, self.name, self._reference, virtual=True
         )
 
         new_media_type = doc.media_type != self.media_type
@@ -8376,12 +8378,12 @@ def _load_clips_source_dataset(frame_collection_name):
     return load_dataset(doc["name"])
 
 
-def _load_dataset(obj, name, virtual=False):
+def _load_dataset(obj, name, reference, virtual=False):
     if not virtual:
         fomi.migrate_dataset_if_necessary(name)
 
     try:
-        return _do_load_dataset(obj, name)
+        return _do_load_dataset(obj, name, reference)
     except Exception as e:
         try:
             version = fomi.get_dataset_revision(name)
@@ -8398,7 +8400,7 @@ def _load_dataset(obj, name, virtual=False):
         raise e
 
 
-def _do_load_dataset(obj, name):
+def _do_load_dataset(obj, name, reference):
     # pylint: disable=no-member
     db = foo.get_db_conn()
     res = db.datasets.find_one({"name": name})
@@ -8410,7 +8412,7 @@ def _do_load_dataset(obj, name):
     frame_collection_name = dataset_doc.frame_collection_name
 
     sample_doc_cls = _create_sample_document_cls(
-        obj, sample_collection_name, reference=False, field_docs=dataset_doc.sample_fields
+        obj, sample_collection_name, reference=reference, field_docs=dataset_doc.sample_fields
     )
 
     if sample_collection_name.startswith("clips."):

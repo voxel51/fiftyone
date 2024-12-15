@@ -165,7 +165,7 @@ class _Document(object):
             )
 
         if isinstance(value, ObjectId):
-            value = str(value)
+           value = str(value)
 
         return value
 
