@@ -1040,7 +1040,7 @@ class SampleFieldTests(unittest.TestCase):
 
 class SampleReferenceTests(unittest.TestCase):
     @drop_datasets
-    def test_referenc(self):
+    def test_reference(self):
         dataset = fo.Dataset()
         sample = fo.Sample("test_123.jpg", test1="123")
         dataset.add_sample(sample)
