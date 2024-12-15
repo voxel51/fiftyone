@@ -430,7 +430,8 @@ class EvaluationPanel(Panel):
         return types.Property(
             panel,
             view=types.View(
-                component="NativeModelEvaluationView",
+                # component="NativeModelEvaluationView",
+                component="ModelEvaluationView",
                 composite_view=True,
                 on_change_view=self.on_change_view,
                 on_evaluate_model=self.on_evaluate_model,
