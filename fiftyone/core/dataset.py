@@ -314,7 +314,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self,
         name=None,
         persistent=False,
-        reference=False,
+        reference=None,
         overwrite=False,
         _create=True,
         _virtual=False,

@@ -146,6 +146,7 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
         return fields[:1] + ("media_type",) + fields[1:]
 
 
+
 class DatasetSampleReferenceDocument(DatasetMixin, Document):
     meta = {"abstract": True}
 

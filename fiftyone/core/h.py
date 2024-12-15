@@ -8,12 +8,25 @@ def _create_sample_document_cls(
 ):
     if reference:
         cls = type(sample_collection_name, (foo.DatasetSampleReferenceDocument,), {})
+        cls._dataset = dataset
+
+        name = reference.name
+
+        db = foo.get_db_conn()
+        res = db.datasets.find_one({"name": name})
+        if not res:
+            raise Exception(name)
+
+        dataset_doc = foo.DatasetDocument.from_dict(res)
+
+        sample_collection_name = dataset_doc.sample_collection_name
+
+        cls._sample_id.document_type_obj = _create_sample_document_cls(reference, reference._sample_collection_name, None, field_docs=dataset_doc.sample_fields)
     else:
         cls = type(sample_collection_name, (foo.DatasetSampleDocument,), {})
+        cls._dataset = dataset
+        _declare_fields(dataset, cls, field_docs=field_docs)
 
-    cls._dataset = dataset
-
-    _declare_fields(dataset, cls, field_docs=field_docs)
     return cls
 
 

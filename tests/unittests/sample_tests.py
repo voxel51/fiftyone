@@ -16,7 +16,6 @@ from PIL import ExifTags, Image
 import fiftyone as fo
 from fiftyone import ViewField as F
 import fiftyone.core.odm as foo
-from fiftyone.core.odm.sample import DatasetSampleReferenceDocument
 import fiftyone.core.sample as fos
 
 from decorators import drop_datasets
@@ -1041,7 +1040,7 @@ class SampleFieldTests(unittest.TestCase):
 
 class SampleReferenceTests(unittest.TestCase):
     @drop_datasets
-    def test_reference(self):
+    def test_referenc(self):
         dataset = fo.Dataset()
         sample = fo.Sample("test_123.jpg", test1="123")
         dataset.add_sample(sample)
@@ -1053,18 +1052,21 @@ class SampleReferenceTests(unittest.TestCase):
         self.assertEqual(sample_reference.test1, sample.test1)
         self.assertEqual(sample_reference.test2, "123")
 
-        dataset2 = fo.Dataset(reference=True)
+        sample["test1"] = "234"
+        self.assertEqual(sample_reference.test1, "234")
+
+        dataset2 = fo.Dataset(reference=dataset)
         dataset2.add_sample(sample_reference)
 
         self.assertEqual(dataset2.first().test1, "123")
         self.assertEqual(dataset2.first().test2, "123")
         self.assertEqual(dataset2.first().filepath, sample.filepath)
 
-        sample["test1"] = "234"
+        sample["test1"] = "345"
         sample["filepath"] = "test_124.jpg"
         sample.save()
 
-        self.assertEqual(dataset2.first().test1, "234")
+        self.assertEqual(dataset2.first().test1, "345")
         self.assertEqual(dataset2.first().filepath, sample.filepath)
 
 
