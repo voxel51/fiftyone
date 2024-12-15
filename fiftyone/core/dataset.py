@@ -332,7 +332,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
         else:
             doc, sample_doc_cls, frame_doc_cls = _load_dataset(
-                self, name, virtual=_virtual
+                self, name, reference, virtual=_virtual
             )
 
         self._doc = doc
