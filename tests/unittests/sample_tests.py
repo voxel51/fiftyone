@@ -1071,7 +1071,5 @@ class SampleReferenceTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    import sys
-    sys.setrecursionlimit(100)
     fo.config.show_progress_bars = False
     unittest.main(verbosity=2)
