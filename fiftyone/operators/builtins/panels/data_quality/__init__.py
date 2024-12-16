@@ -1112,11 +1112,22 @@ class DataQualityPanel(Panel):
                 )
             else:
                 if ctx.dataset.has_field(FIELD_NAME[issue_type]):
+                    badge_status = STATUS[1]
+
+                    if not ctx.dataset.exists(
+                        FIELD_NAME[issue_type], bool=False
+                    ):  # all samples have field already
+                        if (
+                            ctx.panel.state.screen == "pre_load_compute"
+                            and ctx.panel.state.issue_type == issue_type
+                        ):
+                            ctx.panel.state.screen = "analysis"
+                            badge_status = STATUS[2]
                     self.change_computing_status(
                         ctx,
                         issue_type,
                         is_computing=False,
-                        issue_status=STATUS[1],
+                        issue_status=badge_status,
                     )
 
             return
