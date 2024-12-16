@@ -67,22 +67,30 @@ logger = logging.getLogger(__name__)
 def list_hub_datasets():
     """Lists all FiftyOne datasets available on the Hugging Face Hub.
 
-    This function prints instructions for loading datasets and displays a list of
-    all datasets published by Voxel51 on the Hugging Face Hub.
+
+
+    Examples::
+
+        from fiftyone.utils.huggingface import load_from_hub
+        
+        # Return an iterable of all datasets in Voxel51 org
+        org_datasets = list_hub_datasets()
+        
+        # Print names of datasets
+        for dataset in org_datasets:
+            dataset_name = dataset.id
+            print(dataset_name)
+
+        # If a dataset looks interesting, you can load any of the following datasets as follows
+        dataset = load_from_hub("Voxel51/dataset-name")
+
+    Returns:
+        generator: A generator of dataset objects from the Hugging Face Hub API 
+             containing metadata about each dataset published by Voxel51
     """
-    from huggingface_hub import list_datasets
-    
-    print('You can load any of the following datasets as follows:\n')
-    print('from fiftyone.utils.huggingface import load_from_hub')
-    print('dataset = load_from_hub("Voxel51/dataset-name")\n')
-    print('Datasets on the Hugging Face Hub:\n')
-    
-    # List all datasets for Voxel51
-    org_datasets = list_datasets(author="Voxel51")
-    
-    for dataset in org_datasets:
-        dataset_name = dataset.id.split('Voxel51/')[-1]
-        print(dataset_name)
+
+
+    return hfh.list_datasets(author="Voxel51")
 
 
 def push_to_hub(
