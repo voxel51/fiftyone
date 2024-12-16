@@ -21,6 +21,7 @@ import {
   FIFTYONE_APP_ANONYMOUS_ANALYTICS_ENABLED,
   FIFTYONE_APP_DEMO_MODE,
   FIFTYONE_APP_SEGMENT_WRITE_KEY,
+  FIFTYONE_APP_SERVICE_WORKER_ENABLED,
   FIFTYONE_DO_NOT_TRACK_LS,
 } from "@fiftyone/teams-state/src/constants";
 import {
@@ -108,8 +109,10 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
   const pathname = router.pathname;
   const [loading, setLoading] = useRecoilState(loadingState);
 
-  // Allow disabling the service worker client side
+  // Enable service worker server-side, but also use client-side to check
+  // to prevent client from getting stuck in a error state if things go wrong
   const isServiceWorkerEnabled =
+    useEnv(FIFTYONE_APP_SERVICE_WORKER_ENABLED) === "true" &&
     sessionStorage?.getItem("serviceWorkerStatus") !== "disabled";
 
   const doNotTrackLocalStorage =

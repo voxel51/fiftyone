@@ -61,9 +61,7 @@ export default function useSessionRefresher() {
       // If there's an error fetching the session,
       // disable the service worker to prevent issues being compounded
       console.error("Error fetching session:", error);
-      console.log("setting service worker status to error");
       sessionExpRef.current = null;
-      // deregisterAllServiceWorkers();
       sessionStorage.setItem("serviceWorkerStatus", "error");
     }
   }, []);
