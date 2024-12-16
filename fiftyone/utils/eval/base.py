@@ -6,16 +6,123 @@ Base evaluation methods.
 |
 """
 import itertools
+import logging
 
 import numpy as np
 import sklearn.metrics as skm
 
 import fiftyone.core.evaluation as foe
 import fiftyone.core.plots as fop
+import fiftyone.core.utils as fou
+
+foo = fou.lazy_import("fiftyone.operators")
+
+
+logger = logging.getLogger(__name__)
+
+
+class BaseEvaluationMethodConfig(foe.EvaluationMethodConfig):
+    """Base class for configuring evaluation methods.
+
+    Args:
+        **kwargs: any leftover keyword arguments after subclasses have done
+            their parsing
+    """
+
+    pass
+
+
+class BaseEvaluationMethod(foe.EvaluationMethod):
+    """Base class for evaluation methods.
+
+    Args:
+        config: an :class:`BaseEvaluationMethodConfig`
+    """
+
+    def _get_custom_metrics(self):
+        if not self.config.custom_metrics:
+            return {}
+
+        if isinstance(self.config.custom_metrics, list):
+            return {m: None for m in self.config.custom_metrics}
+
+        return self.config.custom_metrics
+
+    def compute_custom_metrics(self, samples, eval_key, results):
+        results.custom_metrics = {}
+
+        for metric, kwargs in self._get_custom_metrics().items():
+            try:
+                operator = foo.get_operator(metric)
+                value = operator.compute(
+                    samples, eval_key, results, **kwargs or {}
+                )
+                if value is not None:
+                    results.custom_metrics[operator.config.label] = value
+            except Exception as e:
+                logger.warning(
+                    "Failed to compute metric '%s': Reason: %s",
+                    operator.uri,
+                    e,
+                )
+
+    def get_custom_metric_fields(self, samples, eval_key):
+        fields = []
+
+        for metric in self._get_custom_metrics().keys():
+            try:
+                operator = foo.get_operator(metric)
+                fields.extend(operator.get_fields(samples, eval_key))
+            except Exception as e:
+                logger.warning(
+                    "Failed to get fields for metric '%s': Reason: %s",
+                    operator.uri,
+                    e,
+                )
+
+        return fields
+
+    def rename_custom_metrics(self, samples, eval_key, new_eval_key):
+        for metric in self._get_custom_metrics().keys():
+            try:
+                operator = foo.get_operator(metric)
+                operator.rename(samples, eval_key, new_eval_key)
+            except Exception as e:
+                logger.warning(
+                    "Failed to rename fields for metric '%s': Reason: %s",
+                    operator.uri,
+                    e,
+                )
+
+    def cleanup_custom_metrics(self, samples, eval_key):
+        for metric in self._get_custom_metrics().keys():
+            try:
+                operator = foo.get_operator(metric)
+                operator.cleanup(samples, eval_key)
+            except Exception as e:
+                logger.warning(
+                    "Failed to cleanup metric '%s': Reason: %s",
+                    operator.uri,
+                    e,
+                )
 
 
 class BaseEvaluationResults(foe.EvaluationResults):
     """Base class for evaluation results.
+
+    Args:
+        samples: the :class:`fiftyone.core.collections.SampleCollection` used
+        config: the :class:`BaseEvaluationMethodConfig` used
+        eval_key: the evaluation key
+        backend (None): an :class:`EvaluationMethod` backend
+    """
+
+    pass
+
+
+class BaseClassificationResults(BaseEvaluationResults):
+    """Base class for evaluation results that expose classification metrics
+    like P/R/F1 and confusion matrices.
 
     Args:
         samples: the :class:`fiftyone.core.collections.SampleCollection` used
@@ -32,8 +139,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
             observed ground truth/predicted labels are used
         missing (None): a missing label string. Any None-valued labels are
             given this label for evaluation purposes
-        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
-            for which the results were computed
+        custom_metrics (None): an optional dict of custom metrics
         backend (None): a :class:`fiftyone.core.evaluation.EvaluationMethod`
             backend
     """
@@ -51,6 +157,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
         ypred_ids=None,
         classes=None,
         missing=None,
+        custom_metrics=None,
         backend=None,
     ):
         super().__init__(samples, config, eval_key, backend=backend)
@@ -72,6 +179,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
         )
         self.classes = np.asarray(classes)
         self.missing = missing
+        self.custom_metrics = custom_metrics
 
     def report(self, classes=None):
         """Generates a classification report for the results via
