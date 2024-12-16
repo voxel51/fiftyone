@@ -1060,12 +1060,11 @@ class SampleReferenceTests(unittest.TestCase):
         dataset2.add_sample(sample_reference)
         reference = dataset2.first()
 
-        # Not saved, should be 123 still
+        # TODO: should this reference be auto updated before saving? (like the sample singleton is)
         self.assertEqual(reference.test1, "123")
-
         sample.save()
-        reference = dataset2.first()
 
+        reference = dataset2.first()
         self.assertEqual(reference.test1, "234")
         self.assertEqual(reference.test2, "123")
         self.assertEqual(reference.filepath, sample.filepath)
