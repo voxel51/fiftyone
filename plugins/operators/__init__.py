@@ -18,6 +18,11 @@ import fiftyone.operators.types as types
 from fiftyone.core.odm.workspace import default_workspace_factory
 
 
+from .foo import bar
+
+print(bar())
+
+
 class EditFieldInfo(foo.Operator):
     @property
     def config(self):
