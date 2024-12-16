@@ -35,7 +35,7 @@ export function getNumericDifference(
 export function formatValue(value: string | number, fractionDigits = 3) {
   const numericValue =
     typeof value === "number" ? value : parseFloat(value as string);
-  if (!isNaN(numericValue)) {
+  if (!isNaN(numericValue) && numericValue == value) {
     return parseFloat(numericValue.toFixed(fractionDigits));
   }
   return value;
