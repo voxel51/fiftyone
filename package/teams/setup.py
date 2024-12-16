@@ -12,7 +12,7 @@ from pkg_resources import DistributionNotFound, get_distribution
 from setuptools import setup
 
 INSTALL_REQUIRES = [
-    "fiftyone>2.3,<2.5",
+    "fiftyone>2.2,<2.4",
     "python-jose>=3.3.0,<4",
     "strawberry-graphql==0.243",
 ]

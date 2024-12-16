@@ -13,7 +13,7 @@ from importlib import metadata
 
 from setuptools import find_packages, setup
 
-VERSION = "2.4.0"
+VERSION = "2.3.0"
 
 
 def get_version():
