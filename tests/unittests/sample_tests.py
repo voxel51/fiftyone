@@ -1056,18 +1056,26 @@ class SampleReferenceTests(unittest.TestCase):
         dataset2 = fo.Dataset(reference=dataset)
         dataset2.add_sample(sample_reference)
 
-        self.assertEqual(dataset2.first().test1, "123")
-        self.assertEqual(dataset2.first().test2, "123")
-        self.assertEqual(dataset2.first().filepath, sample.filepath)
+        reference = dataset2.first()
+
+        self.assertEqual(reference.test1, "234")
+        self.assertEqual(reference.test2, "123")
+        self.assertEqual(reference.filepath, sample.filepath)
 
         sample["test1"] = "345"
         sample["filepath"] = "test_124.jpg"
         sample.save()
 
-        self.assertEqual(dataset2.first().test1, "345")
-        self.assertEqual(dataset2.first().filepath, sample.filepath)
+        # TODO: this reference should be updated without having to fetch again
+        reference = dataset2.first()
+
+        self.assertEqual(reference.test1, "345")
+        self.assertEqual(reference.filepath, "test_124.jpg")
 
         self.assertIn("test1", dataset2.get_field_schema())
+
+        with self.assertRaises(Exception):
+            reference["test1"] = "123"
 
 
 if __name__ == "__main__":

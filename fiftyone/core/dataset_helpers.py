@@ -1,6 +1,14 @@
+
 import fiftyone.core.odm as foo
 from datetime import datetime
 import fiftyone.core.fields as fof
+
+
+def _set_field_read_only(field_doc, read_only):
+    field_doc.read_only = read_only
+    if hasattr(field_doc, "fields"):
+        for _field_doc in field_doc.fields:
+            _set_field_read_only(_field_doc, read_only)
 
 
 def _create_sample_document_cls(
@@ -20,6 +28,9 @@ def _create_sample_document_cls(
         dataset_doc = foo.DatasetDocument.from_dict(res)
 
         sample_collection_name = dataset_doc.sample_collection_name
+
+        for d in dataset_doc.sample_fields:
+            _set_field_read_only(d, True)
 
         cls._sample_id.document_type_obj = _create_sample_document_cls(reference, reference._sample_collection_name, None, field_docs=dataset_doc.sample_fields)
     else:

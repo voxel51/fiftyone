@@ -42,7 +42,7 @@ from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.groups as fog
-from fiftyone.core.dataset_helpers import _create_frame_document_cls, _create_sample_document_cls
+from fiftyone.core.dataset_helpers import _create_frame_document_cls, _create_sample_document_cls, _set_field_read_only
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
@@ -10139,13 +10139,6 @@ def _handle_nested_fields(schema):
             break
 
     return safe_schemas
-
-
-def _set_field_read_only(field_doc, read_only):
-    field_doc.read_only = read_only
-    if hasattr(field_doc, "fields"):
-        for _field_doc in field_doc.fields:
-            _set_field_read_only(_field_doc, read_only)
 
 
 def _extract_archive_if_necessary(archive_path, cleanup):
