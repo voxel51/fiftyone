@@ -37,12 +37,12 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.constants as focn
 import fiftyone.core.collections as foc
+from fiftyone.core.dataset_helpers import _create_frame_document_cls, _create_sample_document_cls, _set_field_read_only
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.groups as fog
-from fiftyone.core.dataset_helpers import _create_frame_document_cls, _create_sample_document_cls, _set_field_read_only
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
