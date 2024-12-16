@@ -1469,7 +1469,7 @@ class FiftyOneTorchDataset(Dataset):
 
     Args:
         - samples: a :class:`fo.core.collections.SampleCollection`
-        - get_item: a `Callable[:class:`fo.core.sample.SampleView`, Any]` or a
+        - get_item: a `Callable[:class:`fo.core.sample.SampleView`, Any]`
 
     Notes:
         torch.utils.data.Dataloader use:
