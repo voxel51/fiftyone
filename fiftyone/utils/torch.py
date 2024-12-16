@@ -1465,6 +1465,26 @@ def _is_string_array(targets):
 
 
 class FiftyOneTorchDataset(Dataset):
+    """A class that accepts a FO dataset and creates a corresponding torch.utils.data.Dataset
+
+    Args:
+        - samples: a :class:`fo.core.collections.SampleCollection`
+        - get_item: a `Callable[:class:`fo.core.sample.SampleView`, Any]` or a
+
+    Notes:
+        torch.utils.data.Dataloader use:
+        - DO NOT use torch.Tensor.to in this function, do so in the train loop, or use
+            the `pin_memory` argument in your torch.utils.data.DataLoader
+        - If using a dataloader with many workers, remember to pass
+            :method:`fo.utils.torch.FiftyOneTorchDataset.worker_init` to the argument `worker_init_fn`.
+            This class will not work otherwise.
+        - Using `persistent_workers=True` is a good idea.
+        - this has only been tested for the default linux `multiprocessing_context`
+            use in other environments at your own peril. In theory any mechanism that
+            will allow child workers to connect and query to your database backend
+            should work.
+    """
+
     def __init__(
         self,
         samples: focol.SampleCollection,
