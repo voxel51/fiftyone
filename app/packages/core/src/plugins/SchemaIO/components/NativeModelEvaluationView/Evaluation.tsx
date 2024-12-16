@@ -600,14 +600,16 @@ export default function Evaluation(props: EvaluationProps) {
                 <TableHead>
                   <TableRow
                     sx={{
-                      th: {
+                      "th p": {
                         color: (theme) => theme.palette.text.secondary,
                         fontSize: "1rem",
                         fontWeight: 600,
                       },
                     }}
                   >
-                    <TableCell>Metric</TableCell>
+                    <TableCell>
+                      <Typography>Metric</Typography>
+                    </TableCell>
                     <TableCell>
                       <Stack
                         direction="row"
@@ -630,7 +632,9 @@ export default function Evaluation(props: EvaluationProps) {
                             <Typography>{compareKey}</Typography>
                           </Stack>
                         </TableCell>
-                        <TableCell>Difference</TableCell>
+                        <TableCell>
+                          <Typography>Difference</Typography>
+                        </TableCell>
                       </>
                     )}
                   </TableRow>
@@ -869,14 +873,16 @@ export default function Evaluation(props: EvaluationProps) {
                     <TableHead>
                       <TableRow
                         sx={{
-                          th: {
+                          "th p": {
                             color: (theme) => theme.palette.text.secondary,
                             fontSize: "1rem",
                             fontWeight: 600,
                           },
                         }}
                       >
-                        <TableCell>Metric</TableCell>
+                        <TableCell>
+                          <Typography>Metric</Typography>
+                        </TableCell>
                         <TableCell>
                           <Stack
                             direction="row"
@@ -898,8 +904,10 @@ export default function Evaluation(props: EvaluationProps) {
                                 <ColorSquare color={COMPARE_KEY_COLOR} />
                                 <Typography>{compareKey}</Typography>
                               </Stack>
-                            </TableCell>{" "}
-                            <TableCell>Difference</TableCell>
+                            </TableCell>
+                            <TableCell>
+                              <Typography>Difference</Typography>
+                            </TableCell>
                           </>
                         )}
                       </TableRow>
@@ -1048,14 +1056,16 @@ export default function Evaluation(props: EvaluationProps) {
                     <TableHead>
                       <TableRow
                         sx={{
-                          th: {
+                          "th p": {
                             color: (theme) => theme.palette.text.secondary,
                             fontSize: "1rem",
                             fontWeight: 600,
                           },
                         }}
                       >
-                        <TableCell>Metric</TableCell>
+                        <TableCell>
+                          <Typography>Metric</Typography>
+                        </TableCell>
                         <TableCell>
                           <Stack
                             direction="row"
@@ -1078,7 +1088,9 @@ export default function Evaluation(props: EvaluationProps) {
                                 <Typography>{compareKey}</Typography>
                               </Stack>
                             </TableCell>{" "}
-                            <TableCell>Difference</TableCell>
+                            <TableCell>
+                              <Typography>Difference</Typography>
+                            </TableCell>
                           </>
                         )}
                       </TableRow>
@@ -1236,14 +1248,16 @@ export default function Evaluation(props: EvaluationProps) {
             <TableHead>
               <TableRow
                 sx={{
-                  th: {
+                  "th p": {
                     color: (theme) => theme.palette.text.secondary,
                     fontSize: "1rem",
                     fontWeight: 600,
                   },
                 }}
               >
-                <TableCell>Property</TableCell>
+                <TableCell>
+                  <Typography>Property</Typography>
+                </TableCell>
                 <TableCell align="right" sx={{ fontSize: 16 }}>
                   <Stack
                     direction="row"
