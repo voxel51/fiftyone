@@ -230,9 +230,9 @@ class COCOEvaluation(DetectionEvaluation):
             matches,
             precision,
             recall,
-            recall_sweep,
             iou_threshs,
             classes,
+            recall_sweep=recall_sweep,
             thresholds=thresholds,
             missing=missing,
             backend=self,
@@ -253,9 +253,9 @@ class COCODetectionResults(DetectionResults):
         precision: an array of precision values of shape
             ``num_iou_threshs x num_classes x num_recall``
         recall: an array of recall values
-        recall_sweep: an array of recall values of shape ``num_iou x num_classes``
         iou_threshs: an array of IoU thresholds
         classes: the list of possible classes
+        recall_sweep (None): an array of recall values of shape ``num_iou x num_classes``
         thresholds (None): an optional array of decision thresholds of shape
             ``num_iou_threshs x num_classes x num_recall``
         missing (None): a missing label string. Any unmatched objects are
@@ -271,9 +271,9 @@ class COCODetectionResults(DetectionResults):
         matches,
         precision,
         recall,
-        recall_sweep,
         iou_threshs,
         classes,
+        recall_sweep=None,
         thresholds=None,
         missing=None,
         backend=None,
@@ -296,7 +296,9 @@ class COCODetectionResults(DetectionResults):
         )
 
         self._classwise_AP = np.mean(precision, axis=(0, 2))
-        self._classwise_AR = np.mean(recall_sweep, axis=0)
+        self._classwise_AR = (
+            np.mean(recall_sweep, axis=0) if recall_sweep is not None else None
+        )
 
     def plot_pr_curves(
         self, classes=None, iou_thresh=None, backend="plotly", **kwargs
@@ -394,6 +396,11 @@ class COCODetectionResults(DetectionResults):
         Returns:
             the mAR in ``[0, 1]``
         """
+        if self._classwise_AR is None:
+            raise Exception(
+                "Classwise AR is not available. mAR can't be computed."
+            )
+
         if classes is not None:
             class_inds = np.array([self._get_class_index(c) for c in classes])
             classwise_AR = self._classwise_AR[class_inds]
