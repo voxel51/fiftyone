@@ -105,6 +105,8 @@ export class ExecutionContext {
     public params: object = {},
     public _currentContext: RawContext,
     public hooks: object = {},
+    public panelId: string = null,
+    public panelState: any = null,
     public executor: Executor = null
   ) {
     this.state = _currentContext.state;
@@ -151,9 +153,10 @@ export class ExecutionContext {
   public get workspaceName(): string {
     return this._currentContext.workspaceName;
   }
-
   getCurrentPanelId(): string | null {
-    return this.params.panel_id || this.currentPanel?.id || null;
+    return (
+      this.panelId || this.currentPanel?.id || this.params.panel_id || null
+    );
   }
   trigger(operatorURI: string, params: object = {}) {
     if (!this.executor) {
@@ -728,6 +731,8 @@ export async function executeOperatorWithContext(
           query_performance: currentContext.queryPerformance,
           spaces: currentContext.spaces,
           workspace_name: currentContext.workspaceName,
+          panel_id: ctx.getCurrentPanelId(),
+          panel_state: ctx.panelState,
         }
       );
       result = serverResult.result;
@@ -834,6 +839,8 @@ export async function resolveRemoteType(
       query_performance: currentContext.queryPerformance,
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
+      panel_id: ctx.getCurrentPanelId(),
+      panel_state: ctx.panelState,
     }
   );
 
@@ -911,6 +918,8 @@ export async function resolveExecutionOptions(
       query_performance: currentContext.queryPerformance,
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
+      panel_id: ctx.getCurrentPanelId(),
+      panel_state: ctx.panelState,
     }
   );
 
@@ -945,6 +954,8 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
       query_performance: currentContext.queryPerformance,
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
+      panel_id: ctx.getCurrentPanelId(),
+      panel_state: ctx.panelState,
     }
   );
   if (result && result.error) {

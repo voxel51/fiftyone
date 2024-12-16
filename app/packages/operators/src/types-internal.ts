@@ -15,4 +15,6 @@ export type OperatorExecutorOptions = {
   requestDelegation?: boolean;
   skipOutput?: boolean;
   callback?: ExecutionCallback;
+  panelId?: string;
+  panelState?: object;
 };

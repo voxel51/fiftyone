@@ -139,7 +139,7 @@ class Operations(object):
     def _create_panel_params(self, panel_id, state=None, data=None):
         params = {"panel_id": panel_id}
         if panel_id is None:
-            params["panel_id"] = self._ctx.params.get("panel_id", None)
+            params["panel_id"] = self._ctx.panel_id
         if state is not None:
             params["state"] = state
         if data is not None:

@@ -151,9 +151,7 @@ class Panel(Operator):
         pass
 
     def execute(self, ctx):
-        panel_id = ctx.params.get("panel_id", None)
         method_name = ctx.params.get("__method__", None)
-        state = ctx.params.get("state", {})
         event_args = ctx.params.get("event_args", {})
         if method_name is None or method_name == "on_startup":
             return self.on_startup(ctx)

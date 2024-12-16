@@ -893,6 +893,7 @@ function useUpdatePanelStatePartial(local?: boolean) {
     targetParam = targetParam || targetPartial;
     setTimeout(() => {
       const panelId = ctx.getCurrentPanelId();
+      console.log("panelId", panelId);
       setPanelStateById(panelId, (current = {}) => {
         const currentCustomPanelState = current?.[targetPartial] || {};
         let updatedState;

@@ -39,6 +39,7 @@ import { OperatorPromptType, Places } from "./types";
 import { OperatorExecutorOptions } from "./types-internal";
 import { ValidationContext } from "./validation";
 import { Markdown } from "@fiftyone/components";
+import { usePanel, usePanelId } from "@fiftyone/spaces";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -139,7 +140,7 @@ const currentContextSelector = selectorFamily({
 export function useGlobalExecutionContext(): ExecutionContext {
   const globalCtx = useRecoilValue(globalContextSelector);
   const ctx = useMemo(() => {
-    return new ExecutionContext({}, globalCtx);
+    return new ExecutionContext({}, globalCtx, {});
   }, [globalCtx]);
   return ctx;
 }
@@ -163,6 +164,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     workspaceName,
   } = curCtx;
   const [analyticsInfo] = useAnalyticsInfo();
+  const panelId = usePanelId();
   const ctx = useMemo(() => {
     return new ExecutionContext(
       params,
@@ -182,7 +184,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         spaces,
         workspaceName,
       },
-      hooks
+      hooks,
+      panelId
     );
   }, [
     params,
@@ -199,6 +202,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     queryPerformance,
     spaces,
     workspaceName,
+    panelId,
   ]);
 
   return ctx;
@@ -1030,7 +1034,9 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
       const ctx = new ExecutionContext(
         paramOverrides || params,
         { ...currentContext, currentSample },
-        hooks
+        hooks,
+        options.panelId,
+        options.panelState
       );
       ctx.state = state;
       ctx.delegationTarget = delegationTarget;

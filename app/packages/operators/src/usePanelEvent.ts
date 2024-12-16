@@ -21,6 +21,7 @@ export default function usePanelEvent() {
   return usePanelStateByIdCallback((panelId, panelState, args) => {
     const options = args[0] as HandlerOptions;
     const { params, operator, prompt, currentPanelState } = options;
+    const actualPanelState = currentPanelState ?? (panelState?.state || {});
 
     if (!operator) {
       notify({
@@ -29,12 +30,6 @@ export default function usePanelEvent() {
       });
       return console.error("No operator provided for panel event.");
     }
-
-    const actualParams = {
-      ...params,
-      panel_id: panelId,
-      panel_state: currentPanelState ?? (panelState?.state || {}),
-    };
 
     const eventCallback = (result, opts) => {
       decrement(panelId);
@@ -49,10 +44,18 @@ export default function usePanelEvent() {
     };
 
     if (prompt) {
-      promptForOperator(operator, actualParams, { callback: eventCallback });
+      promptForOperator(
+        operator,
+        {},
+        { panelId, panelState: actualPanelState, callback: eventCallback }
+      );
     } else {
       increment(panelId);
-      executeOperator(operator, actualParams, { callback: eventCallback });
+      executeOperator(
+        operator,
+        {},
+        { panelId, panelState: actualPanelState, callback: eventCallback }
+      );
     }
   });
 }

@@ -500,7 +500,7 @@ class ExecutionContext(object):
                 required_secrets=self._required_secret_keys,
             )
         if self.panel_id:
-            self._panel_state = self.params.get("panel_state", {})
+            self._panel_state = self.request_params.get("panel_state", {})
             self._panel = PanelRef(self)
 
     @property
@@ -671,8 +671,7 @@ class ExecutionContext(object):
     @property
     def panel_id(self):
         """The ID of the panel that invoked the operator, if any."""
-        # @todo: move panel_id to top level param
-        return self.params.get("panel_id", None)
+        return self.request_params.get("panel_id", None)
 
     @property
     def panel_state(self):

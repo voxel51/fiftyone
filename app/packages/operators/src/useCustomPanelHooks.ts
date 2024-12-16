@@ -11,6 +11,7 @@ import { executeOperator } from "./operators";
 import { useCurrentSample, useGlobalExecutionContext } from "./state";
 import usePanelEvent from "./usePanelEvent";
 import { memoizedDebounce } from "./utils";
+import { callbacks } from "@fiftyone/state/src/hooks/useBeforeScreenshot";
 
 export interface CustomPanelProps {
   panelId: string;
@@ -82,16 +83,13 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
 
   const onLoad = useCallback(() => {
     if (props.onLoad && !isLoaded) {
-      executeOperator(
-        props.onLoad,
-        { panel_id: panelId, panel_state: panelState?.state },
-        {
-          callback(result) {
-            const { error: onLoadError } = result;
-            setPanelStateLocal((s) => ({ ...s, onLoadError, loaded: true }));
-          },
-        }
-      );
+      triggerPanelEvent(panelId, {
+        operator: props.onLoad,
+        callback(result) {
+          const { error: onLoadError } = result;
+          setPanelStateLocal((s) => ({ ...s, onLoadError, loaded: true }));
+        },
+      });
     }
   }, [props.onLoad, panelId, panelState?.state, isLoaded, setPanelStateLocal]);
   useCtxChangePanelEvent(
