@@ -32,6 +32,7 @@ ENABLE_CACHING = (
     os.environ.get("FIFTYONE_DISABLE_EVALUATION_CACHING") not in TRUTHY_VALUES
 )
 CACHE_TTL = 30 * 24 * 60 * 60  # 30 days in seconds
+SUPPORTED_EVALUATION_TYPES = ["classification", "detection", "segmentation"]
 
 
 class EvaluationPanel(Panel):
@@ -299,6 +300,14 @@ class EvaluationPanel(Panel):
         )
         if evaluation_data is None:
             info = ctx.dataset.get_evaluation_info(computed_eval_key)
+            serialized_info = info.serialize()
+            evaluation_type = info.config.type
+            if evaluation_type not in SUPPORTED_EVALUATION_TYPES:
+                ctx.panel.set_data(
+                    f"evaluation_{computed_eval_key}_error",
+                    {"error": "unsupported", "info": serialized_info},
+                )
+                return
             results = ctx.dataset.load_evaluation_results(computed_eval_key)
             metrics = results.metrics()
             per_class_metrics = self.get_per_class_metrics(info, results)
@@ -311,7 +320,7 @@ class EvaluationPanel(Panel):
             metrics["mAP"] = self.get_map(results)
             evaluation_data = {
                 "metrics": metrics,
-                "info": info.serialize(),
+                "info": serialized_info,
                 "confusion_matrices": self.get_confusion_matrices(results),
                 "per_class_metrics": per_class_metrics,
             }

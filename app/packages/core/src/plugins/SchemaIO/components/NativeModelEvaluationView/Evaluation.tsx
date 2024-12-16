@@ -42,6 +42,7 @@ import {
 } from "@mui/material";
 import React, { useEffect, useMemo, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
+import Error from "./Error";
 import EvaluationNotes from "./EvaluationNotes";
 import EvaluationPlot from "./EvaluationPlot";
 import Status from "./Status";
@@ -88,6 +89,14 @@ export default function Evaluation(props: EvaluationProps) {
   }, [data]);
   const compareEvaluation = useMemo(() => {
     const evaluation = data?.[`evaluation_${compareKey}`];
+    return evaluation;
+  }, [data]);
+  const evaluationError = useMemo(() => {
+    const evaluation = data?.[`evaluation_${name}_error`];
+    return evaluation;
+  }, [data]);
+  const compareEvaluationError = useMemo(() => {
+    const evaluation = data?.[`evaluation_${compareKey}_error`];
     return evaluation;
   }, [data]);
   const confusionMatrix = useMemo(() => {
@@ -144,6 +153,10 @@ export default function Evaluation(props: EvaluationProps) {
   const closeConfusionMatrixConfigDialog = () => {
     setConfusionMatrixDialogConfig((state) => ({ ...state, open: false }));
   };
+
+  if (evaluationError) {
+    return <Error onBack={navigateBack} />;
+  }
 
   if (!evaluation) {
     return (
@@ -516,7 +529,14 @@ export default function Evaluation(props: EvaluationProps) {
           </Stack>
         </Stack>
         <Stack sx={{ width: "50%" }} spacing={0.5}>
-          <Typography color="secondary">Compare against</Typography>
+          <Stack direction="row" spacing={1}>
+            <Typography color="secondary">Compare against</Typography>
+            {compareEvaluationError && (
+              <Typography sx={{ color: theme.palette.error.main }}>
+                Unsupported model evaluation type
+              </Typography>
+            )}
+          </Stack>
           {compareKeys.length === 0 ? (
             <Typography
               variant="body2"
