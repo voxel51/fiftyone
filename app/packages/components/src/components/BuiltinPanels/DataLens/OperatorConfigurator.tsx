@@ -64,7 +64,7 @@ export const OperatorConfigurator = ({
 
   // Hook which fetches an operator's input schema.
   const refreshInputSchema = useCallback(
-    (params: object) => {
+    debounce((params: object) => {
       const requestBody = {
         operator_uri: operator,
         dataset_name: activeDataset,
@@ -88,7 +88,7 @@ export const OperatorConfigurator = ({
             setIsLoading(false);
           }
         });
-    },
+    }, 300),
     [operator, activeDataset]
   );
 
@@ -97,7 +97,7 @@ export const OperatorConfigurator = ({
   useEffect(() => refreshInputSchema({}), [refreshInputSchema]);
 
   // Callback which handles updates to the form state.
-  const updateFormState = debounce((newState: FormState) => {
+  const updateFormState = (newState: FormState) => {
     const hasData = Object.keys(newState).reduce(
       (acc, key) => acc || newState[key] || newState[key] === 0,
       false
@@ -115,7 +115,7 @@ export const OperatorConfigurator = ({
     }
 
     onStateChange?.(newState, isValid);
-  }, 300);
+  };
 
   const ioComponent =
     operator && schema ? (
