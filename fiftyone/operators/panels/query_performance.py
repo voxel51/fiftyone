@@ -29,6 +29,8 @@ from ..types import (
 from ..operator import Operator, OperatorConfig
 from ..panel import Panel, PanelConfig
 
+NOT_PERMITTED_TEXT = "You do not have sufficient permission."
+
 
 def _has_edit_permission(ctx):
     if ctx.user is None:
@@ -824,6 +826,10 @@ class QueryPerformancePanel(Panel):
                 on_click=self.create_index_or_summary_field,
                 variant="contained",
                 padding=1,
+                disabled=not _has_edit_permission(ctx),
+                title=(
+                    NOT_PERMITTED_TEXT if not _has_edit_permission(ctx) else ""
+                ),
             )
 
             return types.Property(
