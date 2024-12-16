@@ -27,8 +27,8 @@ from .operator import Operator
 
 
 def get_operators(registry: PermissionedOperatorRegistry):
-    operators = registry.list_operators(True, "operator")
-    panels = registry.list_operators(True, "panel")
+    operators = registry.list_operators(include_builtin=True, type="operator")
+    panels = registry.list_operators(include_builtin=True, type="panel")
     return operators + panels
 
 

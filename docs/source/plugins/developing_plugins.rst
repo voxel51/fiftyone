@@ -86,7 +86,7 @@ configurable backend. Operators can even be composed of other operators or be
 used to add functionality to custom panels.
 
 FiftyOne comes with a number of builtin
-:mod:`Python <fiftyone.operators.builtin>` and
+:mod:`Python <fiftyone.operators.builtin.operations>` and
 `JavaScript <https://github.com/voxel51/fiftyone/blob/develop/app/packages/operators/src/built-in-operators.ts>`_
 operators for common tasks that are intended for either user-facing or internal
 plugin use.
