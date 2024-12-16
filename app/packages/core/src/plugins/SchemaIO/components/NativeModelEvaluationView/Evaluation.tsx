@@ -174,6 +174,7 @@ export default function Evaluation(props: EvaluationProps) {
   const compareEvaluationMetrics = compareEvaluation?.metrics || {};
   const compareEvaluationType = compareEvaluationConfig.type;
   const isObjectDetection = evaluationType === "detection";
+  const isClassification = evaluationType === "classification";
   const isSegmentation = evaluationType === "segmentation";
   const isBinaryClassification =
     evaluationType === "classification" && evaluationMethod === "binary";
@@ -226,6 +227,7 @@ export default function Evaluation(props: EvaluationProps) {
       property: "IoU Threshold",
       value: evaluationConfig.iou,
       compareValue: compareEvaluationConfig.iou,
+      hide: !isObjectDetection,
     },
     {
       id: "classwise",
@@ -266,6 +268,7 @@ export default function Evaluation(props: EvaluationProps) {
       compareValue: Array.isArray(compareEvaluationConfig.iou_threshs)
         ? compareEvaluationConfig.iou_threshs.join(", ")
         : "",
+      hide: !isObjectDetection,
     },
     {
       id: "max_preds",
@@ -299,12 +302,14 @@ export default function Evaluation(props: EvaluationProps) {
       property: "Average Confidence",
       value: evaluationMetrics.average_confidence,
       compareValue: compareEvaluationMetrics.average_confidence,
+      hide: isSegmentation,
     },
     {
       id: "iou",
       property: "IoU Threshold",
       value: evaluationConfig.iou,
       compareValue: compareEvaluationConfig.iou,
+      hide: !isObjectDetection,
     },
     {
       id: "precision",
@@ -325,6 +330,7 @@ export default function Evaluation(props: EvaluationProps) {
       compareValue: compareEvaluationMetrics.fscore,
     },
   ];
+  const computedMetricPerformance = metricPerformance.filter((m) => !m.hide);
   const summaryRows = [
     {
       id: "average_confidence",
@@ -847,8 +853,8 @@ export default function Evaluation(props: EvaluationProps) {
                     data={[
                       {
                         histfunc: "sum",
-                        y: metricPerformance.map((m) => m.value),
-                        x: metricPerformance.map((m) => m.property),
+                        y: computedMetricPerformance.map((m) => m.value),
+                        x: computedMetricPerformance.map((m) => m.property),
                         type: "histogram",
                         name: name,
                         marker: {
@@ -857,8 +863,8 @@ export default function Evaluation(props: EvaluationProps) {
                       },
                       {
                         histfunc: "sum",
-                        y: metricPerformance.map((m) => m.compareValue),
-                        x: metricPerformance.map((m) => m.property),
+                        y: computedMetricPerformance.map((m) => m.compareValue),
+                        x: computedMetricPerformance.map((m) => m.property),
                         type: "histogram",
                         name: compareKey,
                         marker: {
@@ -913,7 +919,7 @@ export default function Evaluation(props: EvaluationProps) {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {metricPerformance.map((row) => (
+                      {computedMetricPerformance.map((row) => (
                         <TableRow key={row.id}>
                           <TableCell component="th" scope="row">
                             {row.property}
@@ -1283,17 +1289,19 @@ export default function Evaluation(props: EvaluationProps) {
               </TableRow>
             </TableHead>
             <TableBody>
-              {infoRows.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell component="th" scope="row">
-                    {row.property}
-                  </TableCell>
-                  <TableCell>{formatValue(row.value)}</TableCell>
-                  {compareKey && (
-                    <TableCell>{formatValue(row.compareValue)}</TableCell>
-                  )}
-                </TableRow>
-              ))}
+              {infoRows.map((row) =>
+                row.hide ? null : (
+                  <TableRow key={row.id}>
+                    <TableCell component="th" scope="row">
+                      {row.property}
+                    </TableCell>
+                    <TableCell>{formatValue(row.value)}</TableCell>
+                    {compareKey && (
+                      <TableCell>{formatValue(row.compareValue)}</TableCell>
+                    )}
+                  </TableRow>
+                )
+              )}
             </TableBody>
           </EvaluationTable>
         </Card>
