@@ -1053,9 +1053,17 @@ class SampleReferenceTests(unittest.TestCase):
         sample["test1"] = "234"
         self.assertEqual(sample_reference.test1, "234")
 
+        with self.assertRaises(Exception):
+            sample_reference["test1"] = "123"
+
         dataset2 = fo.Dataset(reference=dataset)
         dataset2.add_sample(sample_reference)
+        reference = dataset2.first()
 
+        # Not saved, should be 123 still
+        self.assertEqual(reference.test1, "123")
+
+        sample.save()
         reference = dataset2.first()
 
         self.assertEqual(reference.test1, "234")

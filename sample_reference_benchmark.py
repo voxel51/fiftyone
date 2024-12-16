@@ -6,7 +6,7 @@ import time
 from tests.unittests.decorators import drop_datasets
 
 
-NUM_SAMPLES = 16384
+NUM_SAMPLES = 1024
 
 
 def random_polyline(size):
@@ -35,7 +35,7 @@ def sample_copy_benchmark():
         copy.add_sample(sample)
     print(f"create: {time.time() - start}s")
     
-    print(f"{int(foo.get_db_conn().command("dbstats")["dataSize"])} bytes")
+    print(f"{int(foo.get_db_conn().command('dbstats')['dataSize'])} bytes")
 
     start = time.time()
     loaded = list(copy)
@@ -55,7 +55,7 @@ def sample_reference_benchmark():
         ref.add_sample(fo.SampleReference(sample, extra_field="123"))
     print(f"create: {time.time() - start}s")
 
-    print(f"{int(foo.get_db_conn().command("dbstats")["dataSize"])} bytes")
+    print(f"{int(foo.get_db_conn().command('dbstats')['dataSize'])} bytes")
 
     start = time.time()
     loaded = list(ref)
@@ -65,3 +65,6 @@ def sample_reference_benchmark():
 if __name__ == "__main__":
     sample_copy_benchmark()
     sample_reference_benchmark()
+
+    session = fo.launch_app()
+    session.wait()

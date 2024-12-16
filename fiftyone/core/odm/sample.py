@@ -171,6 +171,11 @@ class DatasetSampleReferenceDocument(DatasetMixin, Document):
 
         return super().get_field(field_name)
 
+    def set_field(self, field_name, value, create=True, validate=True, dynamic=False):
+        if field_name in self._sample_reference.field_names:
+            raise Exception("read only!!")
+        return super().set_field(field_name, value, create, validate, dynamic)
+
 
 class NoDatasetSampleReferenceDocument(NoDatasetMixin, SerializableDocument):
     _is_frames_doc = False
@@ -193,6 +198,11 @@ class NoDatasetSampleReferenceDocument(NoDatasetMixin, SerializableDocument):
         except AttributeError:
             pass
         return super().get_field(field_name)
+
+    def set_field(self, field_name, value, create=True, validate=True, dynamic=False):
+        if field_name in self._sample_reference.field_names:
+            raise Exception("read only!!")
+        return super().set_field(field_name, value, create, validate, dynamic)
 
     def __init__(self, sample, **kwargs):
         assert sample.in_dataset, "Sample must already be in dataset before creating reference"
