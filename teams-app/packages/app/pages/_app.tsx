@@ -139,8 +139,6 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
   const demoMode = useBooleanEnv(FIFTYONE_APP_DEMO_MODE);
 
   useEffect(() => {
-    console.log("pathname", pathname);
-    console.log("token", token);
     window.FIFTYONE_SEGMENT_WRITE_KEY = SEGMENT_WRITE_KEY;
     setAnalyticsInfo({
       writeKey: SEGMENT_WRITE_KEY,
