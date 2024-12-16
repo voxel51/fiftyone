@@ -9,8 +9,6 @@ FiftyOne operator registry.
 from fiftyone.operators.panel import Panel
 import fiftyone.plugins.context as fopc
 
-from .builtin import BUILTIN_OPERATORS, BUILTIN_PANELS
-
 
 def get_operator(operator_uri, enabled=True):
     """Gets the operator with the given URI.
