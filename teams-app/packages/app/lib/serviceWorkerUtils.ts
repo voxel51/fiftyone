@@ -8,7 +8,7 @@ export type CustomAuthMessage = {
 
 const match = RegExp("/datasets/.*/samples");
 
-// deregister all service workers when service worker is disabled in the session
+// Explicitly de-register all service workers if they are not enabled to prevent any unnecessary overhead or potential issues
 export const deregisterAllServiceWorkers = () => {
   const isSWAvailable = "serviceWorker" in navigator;
   if (isSWAvailable) {

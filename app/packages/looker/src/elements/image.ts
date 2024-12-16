@@ -9,6 +9,8 @@ import { BaseElement } from "./base";
 export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
   // Teams only
   private allowAnonymousOrigin: boolean;
+  // For matching the url to determine if we should add crossOrigin="Anonymous"
+  // which is required for fetching images with service-worker injected custom credentials
   private customCredentialsAudience: string | null = null;
 
   private src = "";
