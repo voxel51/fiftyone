@@ -1,8 +1,9 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Box, Typography } from "@mui/material";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { OperatorIO, types } from "@fiftyone/operators";
-import { useActiveDataset } from "./hooks";
+import { useActiveDataset, useOperatorConfig } from "./hooks";
+import { debounce } from "lodash";
 
 /**
  * Data model which captures the current values of the form inputs.
@@ -31,6 +32,7 @@ export const OperatorConfigurator = ({
   const [operatorSchema, setOperatorSchema] = useState({});
   const { activeDataset } = useActiveDataset();
   const [isLoading, setIsLoading] = useState(false);
+  const operatorConfig = useOperatorConfig({ operatorUri: operator });
 
   // Synchronize external ready state with internal loading state
   useEffect(() => onReadyChange?.(!isLoading), [isLoading]);
@@ -60,26 +62,42 @@ export const OperatorConfigurator = ({
     return required;
   }, [operatorSchema]);
 
-  // Hook which fetches an operator's schema any time the selected operator changes.
-  useEffect(() => {
-    const requestBody = {
-      operator_uri: operator,
-      dataset_name: activeDataset,
-      target: "inputs",
-    };
+  // Hook which fetches an operator's input schema.
+  const refreshInputSchema = useCallback(
+    (params: object) => {
+      const requestBody = {
+        operator_uri: operator,
+        dataset_name: activeDataset,
+        target: "inputs",
+        params,
+      };
 
-    setOperatorSchema({});
-    setIsLoading(true);
+      const clearContent = Object.keys(params).length === 0;
 
-    getFetchFunction()("POST", "/operators/resolve-type", requestBody)
-      .then((res: object) => {
-        setOperatorSchema(res);
-      })
-      .finally(() => setIsLoading(false));
-  }, [operator, setOperatorSchema]);
+      if (clearContent) {
+        setOperatorSchema({});
+        setIsLoading(true);
+      }
+
+      getFetchFunction()("POST", "/operators/resolve-type", requestBody)
+        .then((res: object) => {
+          setOperatorSchema(res);
+        })
+        .finally(() => {
+          if (clearContent) {
+            setIsLoading(false);
+          }
+        });
+    },
+    [operator, activeDataset]
+  );
+
+  // Synchronize operator reset with schema reset;
+  //  refreshInputSchema will be recreated any time the operator changes.
+  useEffect(() => refreshInputSchema({}), [refreshInputSchema]);
 
   // Callback which handles updates to the form state.
-  const updateFormState = (newState: FormState) => {
+  const updateFormState = debounce((newState: FormState) => {
     const hasData = Object.keys(newState).reduce(
       (acc, key) => acc || newState[key] || newState[key] === 0,
       false
@@ -90,8 +108,14 @@ export const OperatorConfigurator = ({
     );
     const isValid = hasData && hasRequiredData;
 
+    // For dynamic operators, we need to resolve inputs every time the form
+    //  state changes.
+    if (operatorConfig?.dynamic) {
+      refreshInputSchema(newState);
+    }
+
     onStateChange?.(newState, isValid);
-  };
+  }, 300);
 
   const ioComponent =
     operator && schema ? (

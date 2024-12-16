@@ -6,7 +6,7 @@ import {
   OperatorResponse,
 } from "./models";
 import { Dispatch, useCallback, useEffect, useMemo, useState } from "react";
-import { useOperatorExecutor } from "@fiftyone/operators";
+import { OperatorConfig, useOperatorExecutor } from "@fiftyone/operators";
 import { useRecoilValue } from "recoil";
 import type { Sample } from "@fiftyone/state";
 import {
@@ -18,6 +18,7 @@ import {
 import { v4 as uuid } from "uuid";
 import Spotlight, { ID } from "@fiftyone/spotlight";
 import { findFields } from "./utils";
+import { getLocalOrRemoteOperator } from "@fiftyone/operators/src/operators";
 
 /**
  * Hook which provides the active dataset.
@@ -390,4 +391,22 @@ export const useSpotlight = ({
       },
     });
   }, [lookerStore, sampleStore, createLooker, samples, resizing, zoom]);
+};
+
+/**
+ * Hook which manages a configuration object for the provided operator.
+ *
+ * @param operatorUri Operator URI
+ */
+export const useOperatorConfig = ({
+  operatorUri,
+}: {
+  operatorUri: string;
+}): OperatorConfig | null => {
+  const { operator } = useMemo(
+    () => getLocalOrRemoteOperator(operatorUri),
+    [operatorUri]
+  );
+
+  return operator.config;
 };
