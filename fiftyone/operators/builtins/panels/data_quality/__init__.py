@@ -1253,7 +1253,7 @@ class DataQualityPanel(Panel):
                     "padding": "0px",
                     "textAlign": "center",
                     "alignItems": "center",
-                    "height": "calc(100vh - 310px)",
+                    "height": "calc(100vh - 185px)",
                     "minHeight": "400px",
                 }
             ),
@@ -1569,7 +1569,7 @@ class DataQualityPanel(Panel):
         id,
         container,
         container_justify_content="center",
-        height="calc(100vh - 230px)",
+        height="calc(100vh - 185px)",
         px=0,
         py=0,
         h_stack=False,
@@ -1617,7 +1617,7 @@ class DataQualityPanel(Panel):
             f"{issue_type}_analysis_content",
             card_main,
             container_justify_content="normal",
-            height="calc(100vh - 230px - 158px)",
+            height="calc(100vh - 343px)",
             px=4,
             py=1,
         )
