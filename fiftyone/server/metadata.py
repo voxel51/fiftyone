@@ -12,6 +12,7 @@ import struct
 import typing as t
 
 from functools import reduce
+from pydash import get
 
 import asyncio
 import aiofiles
@@ -415,7 +416,7 @@ def _create_media_urls(
     media_urls = []
 
     for field in media_fields:
-        path = _deep_get(sample, field)
+        path = get(sample, field)
 
         if path not in cache:
             cache[path] = path
@@ -452,15 +453,3 @@ def _get_additional_media_fields(
             additional.append(f"{field_name}.{subfield_name}")
 
     return opm_field, additional
-
-
-def _deep_get(sample, keys, default=None):
-    """
-    Get a value from a nested dictionary by specifying keys delimited by '.',
-    similar to lodash's ``_.get()``.
-    """
-    return reduce(
-        lambda d, key: d.get(key, default) if isinstance(d, dict) else default,
-        keys.split("."),
-        sample,
-    )
