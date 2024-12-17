@@ -1075,7 +1075,7 @@ class DataQualityPanel(Panel):
         return True if store.get(key) else False
 
     def check_computing_status(self, ctx, issue_type=None):
-        # TimerView cannot takes arguments from polling. Polling uses ctx.params.issue_type.
+        # TimerView cannot take arguments from polling. Polling uses ctx.params.issue_type.
         # Other instances, we can get issue_type from the function argument.
         issue_type = ctx.params.get("issue_type", issue_type)
         run_id = ctx.params.get("run_id")
@@ -1092,6 +1092,8 @@ class DataQualityPanel(Panel):
             .get(issue_type, {})
             .get("execution_type", "")
         )
+
+        ctx.log(f"Execution type: {exec_type}")
 
         if exec_type == "execute":
             last_scan_timestamp = content["last_scan"][issue_type].get(
@@ -1146,7 +1148,8 @@ class DataQualityPanel(Panel):
 
             try:
                 delegated_state = dos.get(bson.ObjectId(run_id)).run_state
-            except:
+            except Exception as e:
+                ctx.log(f"checking delegation status failed: {e}")
                 self.change_computing_status(
                     ctx, issue_type, issue_status=STATUS[0]
                 )
@@ -1192,6 +1195,7 @@ class DataQualityPanel(Panel):
                         ctx, issue_type=issue_type, next_screen="analysis"
                     )
             elif delegated_state is not None:
+                ctx.log(f"delegation status: {delegated_state}")
                 self.change_computing_status(
                     ctx,
                     issue_type,
