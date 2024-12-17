@@ -1075,6 +1075,8 @@ class DataQualityPanel(Panel):
         return True if store.get(key) else False
 
     def check_computing_status(self, ctx, issue_type=None):
+        # TimerView cannot takes arguments from polling. Polling uses ctx.params.issue_type. 
+        # Other instances, we can get issue_type from the function argument.
         issue_type = ctx.params.get("issue_type", issue_type)
         run_id = ctx.params.get("run_id")
 
