@@ -102,7 +102,7 @@ export const decodeOverlayOnDisk = async (
   let baseUrl = overlayImageUrl;
 
   // remove query params if not local URL
-  if (!urlTokens.at(1)?.startsWith("filepath=")) {
+  if (!urlTokens.at(1)?.startsWith("filepath=") && !source) {
     baseUrl = overlayImageUrl.split("?")[0];
   }
 
