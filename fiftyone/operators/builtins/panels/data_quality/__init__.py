@@ -1075,7 +1075,7 @@ class DataQualityPanel(Panel):
         return True if store.get(key) else False
 
     def check_computing_status(self, ctx, issue_type=None):
-        # TimerView cannot takes arguments from polling. Polling uses ctx.params.issue_type. 
+        # TimerView cannot takes arguments from polling. Polling uses ctx.params.issue_type.
         # Other instances, we can get issue_type from the function argument.
         issue_type = ctx.params.get("issue_type", issue_type)
         run_id = ctx.params.get("run_id")
@@ -1265,7 +1265,7 @@ class DataQualityPanel(Panel):
                     "padding": "0px",
                     "textAlign": "center",
                     "alignItems": "center",
-                    "height": "calc(100vh - 185px)",
+                    "height": "calc(100vh - 185px - 110px)",  # 110 is for Teams
                     "minHeight": "400px",
                 }
             ),
@@ -1581,7 +1581,7 @@ class DataQualityPanel(Panel):
         id,
         container,
         container_justify_content="center",
-        height="calc(100vh - 185px)",
+        height="calc(100vh - 185px - 110px)",  # 110px for Teams
         px=0,
         py=0,
         h_stack=False,
@@ -1629,7 +1629,7 @@ class DataQualityPanel(Panel):
             f"{issue_type}_analysis_content",
             card_main,
             container_justify_content="normal",
-            height="calc(100vh - 343px)",
+            height="calc(100vh - 343px - 110px)",  # 110 is for Teams Header
             px=4,
             py=1,
         )
