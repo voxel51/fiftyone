@@ -85,9 +85,13 @@ export const decodeOverlayOnDisk = async (
   let source = sources[`${field}.${overlayPathField}`];
 
   if (typeof overlayCollectionProcessingParams !== "undefined") {
+    // example: for detections, we need to access the source from the parent label
+    // like: if field is "prediction_masks", we're trying to get "predictiion_masks.detections[INDEX].mask"
     source =
       sources[
-        `${field}.${overlayCollectionProcessingParams.cls}[${overlayCollectionProcessingParams.idx}].${overlayPathField}`
+        `${field}.${overlayCollectionProcessingParams.cls.toLocaleLowerCase()}[${
+          overlayCollectionProcessingParams.idx
+        }].${overlayPathField}`
       ];
   }
 
