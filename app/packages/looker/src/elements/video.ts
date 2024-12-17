@@ -529,7 +529,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     this.element = null;
     this.update(({ config: { thumbnail, src, frameRate, support } }) => {
       this.src = src;
-      this.element = document.createElement("video");
       const customCredentialsAudience = sessionStorage.getItem(
         "customCredentialsAudience"
       );
