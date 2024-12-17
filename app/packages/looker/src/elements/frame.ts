@@ -2,8 +2,8 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { FrameState, StateUpdate } from "../state";
-import { BaseElement, Events } from "./base";
+import { FrameState } from "../state";
+import { BaseElement } from "./base";
 import {
   acquirePlayer,
   acquireThumbnailer,
@@ -45,6 +45,15 @@ export class FrameElement extends BaseElement<FrameState, null> {
 
     this.update(({ config: { thumbnail, src, frameRate, frameNumber } }) => {
       this.src = src;
+      const customCredentialsAudience = sessionStorage.getItem(
+        "customCredentialsAudience"
+      );
+      if (
+        customCredentialsAudience &&
+        src.includes(customCredentialsAudience)
+      ) {
+        this.element.crossOrigin = "Anonymous";
+      }
 
       const acquirer = thumbnail ? acquireThumbnailer : acquirePlayer;
 
