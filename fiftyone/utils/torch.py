@@ -11,6 +11,7 @@ import multiprocessing
 import os
 import sys
 from typing import Callable, Any
+import pickle
 
 import cv2
 import numpy as np
@@ -1470,6 +1471,14 @@ class FiftyOneTorchDataset(Dataset):
     Args:
         - samples: a :class:`fo.core.collections.SampleCollection`
         - get_item: a `Callable[:class:`fo.core.sample.SampleView`, Any]`
+        - cache_fields (None): a list of strings. Fields to cache in memory. If this
+            argument is passed, get_item should be from from a dict with keys and values
+            corresponding to the sample's fields and values to the model input.
+            This argument is highly recommended, as it offers a significant performance
+            boost.
+            IMPORTANT:  For proper functionality, the field type must be serializable.
+                        DO NOT PASS OBJECT FIELDS. This will cause memory usage of this object
+                        to multiply by (num dataloaders * num gpus + num gpus).
 
     Notes:
         torch.utils.data.Dataloader use:
@@ -1483,12 +1492,23 @@ class FiftyOneTorchDataset(Dataset):
             use in other environments at your own peril. In theory any mechanism that
             will allow child workers to connect and query to your database backend
             should work.
+
+        On reading and writing to the FO object during training:
+        - Reading
+            - Try to have as many of the reads as possible during `get_item` or
+             when caching fields rather than in the main training script loop.
+             Reads into the FO object during training may slow your code down significantly.
+        - Writing
+            - Writing currently happens on the process from which it is called. This
+            shows moderate slowdown, and will be adressed.
+
     """
 
     def __init__(
         self,
         samples: focol.SampleCollection,
         get_item: Callable[fos.SampleView, Any],
+        cache_fields: list[str] = None,
     ):
         super().__init__()
 
@@ -1503,12 +1523,37 @@ class FiftyOneTorchDataset(Dataset):
         # make this a file we call for very large datasets
         self.ids = _to_bytes_array(samples.values("id"))
 
+        self.cached_fields = None
+        self.cache_fields = cache_fields
+        self._load_cached_fields(samples, cache_fields)
+
         # initialized in worker
         self._dataset = None
         self._samples = None
 
+    # need a better solution
+    def _load_cached_fields(self, samples, cache_fields):
+        if cache_fields is None:
+            return
+
+        self.cached_fields = {}
+        for field_name in cache_fields:
+            if not samples.has_field(field_name):
+                raise ValueError(
+                    f'Can\'t find field with name "{field_name}" in samples passed.'
+                )
+
+            # TODO: pick one
+            # self.cached_fields[field_name] = samples.values(field_name)
+            self.cached_fields[field_name] = NumpySerializedList(
+                samples.values(field_name)
+            )
+            # self.cached_fields[field_name] = TorchSerializedList(samples.values(field_name))
+
     @property
     def samples(self):
+        if self._samples == None:
+            self._load_samples()
         return self._samples
 
     # called on every worker init
@@ -1537,9 +1582,16 @@ class FiftyOneTorchDataset(Dataset):
         if self._samples is None:
             self._load_samples()
 
-        # pylint: disable=unsubscriptable-object
-        sample = self._samples[self.ids[index].decode()]
-        return self.get_item(sample)
+        if self.cached_fields is None:
+            # pylint: disable=unsubscriptable-object
+            sample = self._samples[self.ids[index].decode()]
+            return self.get_item(sample)
+
+        else:
+            sample_dict = {
+                fn: self.cached_fields[fn][index] for fn in self.cache_fields
+            }
+            return self.get_item(sample_dict)
 
     def __len__(self):
         return len(self.ids)
@@ -2115,3 +2167,48 @@ def _load_image(image_path, use_numpy, force_rgb):
         img = img.convert("RGB")
 
     return img
+
+
+# taken from https://github.com/ppwwyyxx/RAM-multiprocess-dataloader/blob/795868a37446d61412b9a58dbb1b7c76e75d39c4/serialize.py#L19
+class NumpySerializedList:
+    def __init__(self, lst: list):
+        def _serialize(data):
+            buffer = pickle.dumps(data, protocol=-1)
+            return np.frombuffer(buffer, dtype=np.uint8)
+
+        print(
+            "Serializing {} elements to byte tensors and concatenating them all ...".format(
+                len(lst)
+            )
+        )
+        self._lst = [_serialize(x) for x in lst]
+        self._addr = np.asarray([len(x) for x in self._lst], dtype=np.int64)
+        self._addr = np.cumsum(self._addr)
+        self._lst = np.concatenate(self._lst)
+        print(
+            "Serialized dataset takes {:.2f} MiB".format(
+                len(self._lst) / 1024**2
+            )
+        )
+
+    def __len__(self):
+        return len(self._addr)
+
+    def __getitem__(self, idx):
+        start_addr = 0 if idx == 0 else self._addr[idx - 1].item()
+        end_addr = self._addr[idx].item()
+        bytes = memoryview(self._lst[start_addr:end_addr])
+        return pickle.loads(bytes)
+
+
+class TorchSerializedList(NumpySerializedList):
+    def __init__(self, lst: list):
+        super().__init__(lst)
+        self._addr = torch.from_numpy(self._addr)
+        self._lst = torch.from_numpy(self._lst)
+
+    def __getitem__(self, idx):
+        start_addr = 0 if idx == 0 else self._addr[idx - 1].item()
+        end_addr = self._addr[idx].item()
+        bytes = memoryview(self._lst[start_addr:end_addr].numpy())
+        return pickle.loads(bytes)
