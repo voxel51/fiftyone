@@ -61,6 +61,11 @@ export const decodeOverlayOnDisk = async (
     ) {
       const height = label[overlayField].bitmap.height;
       const width = label[overlayField].bitmap.width;
+
+      // close the copied bitmap
+      label[overlayField].bitmap.close();
+      label[overlayField].bitmap = null;
+
       label[overlayField].image = new ArrayBuffer(height * width * 4);
       label[overlayField].bitmap.close();
       label[overlayField].bitmap = null;

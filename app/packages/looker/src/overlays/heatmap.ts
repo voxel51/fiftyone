@@ -39,7 +39,7 @@ export default class HeatmapOverlay<State extends BaseState>
   implements Overlay<State>
 {
   readonly field: string;
-  private label: HeatmapLabel;
+  readonly label: HeatmapLabel;
   private targets?: TypedArray;
   private readonly range: [number, number];
 
@@ -207,9 +207,7 @@ export default class HeatmapOverlay<State extends BaseState>
   }
 
   public cleanup(): void {
-    if (this.label.map?.bitmap) {
-      this.label.map?.bitmap.close();
-    }
+    this.label.map?.bitmap?.close();
   }
 }
 
