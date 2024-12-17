@@ -369,7 +369,8 @@ class DataQualityPanel(Panel):
             self.change_view(ctx, issue_type)
 
         # check computing state every page change - optimization within check_computing_status call
-        self.check_computing_status(ctx, issue_type)
+        if ctx.panel.state.screen == "pre_load_compute":
+            self.check_computing_status(ctx, issue_type)
 
     def _on_compute_option_selected(
         self, ctx, execution_option="execute", run_id=""
