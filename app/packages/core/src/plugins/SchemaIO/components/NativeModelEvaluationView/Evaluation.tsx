@@ -42,6 +42,7 @@ import {
 } from "@mui/material";
 import React, { useEffect, useMemo, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
+import Error from "./Error";
 import EvaluationNotes from "./EvaluationNotes";
 import EvaluationPlot from "./EvaluationPlot";
 import Status from "./Status";
@@ -90,15 +91,40 @@ export default function Evaluation(props: EvaluationProps) {
     const evaluation = data?.[`evaluation_${compareKey}`];
     return evaluation;
   }, [data]);
+  const evaluationError = useMemo(() => {
+    const evaluation = data?.[`evaluation_${name}_error`];
+    return evaluation;
+  }, [data]);
+  const compareEvaluationError = useMemo(() => {
+    const evaluation = data?.[`evaluation_${compareKey}_error`];
+    return evaluation;
+  }, [data]);
+  const evaluationMaskTargets = useMemo(() => {
+    return evaluation?.mask_targets || {};
+  }, [evaluation]);
+  const compareEvaluationMaskTargets = useMemo(() => {
+    return compareEvaluation?.mask_targets || {};
+  }, [compareEvaluation]);
   const confusionMatrix = useMemo(() => {
-    return getMatrix(evaluation?.confusion_matrices, confusionMatrixConfig);
-  }, [evaluation, confusionMatrixConfig]);
+    return getMatrix(
+      evaluation?.confusion_matrices,
+      confusionMatrixConfig,
+      evaluationMaskTargets
+    );
+  }, [evaluation, confusionMatrixConfig, evaluationMaskTargets]);
   const compareConfusionMatrix = useMemo(() => {
     return getMatrix(
       compareEvaluation?.confusion_matrices,
-      confusionMatrixConfig
+      confusionMatrixConfig,
+      evaluationMaskTargets,
+      compareEvaluationMaskTargets
     );
-  }, [compareEvaluation, confusionMatrixConfig]);
+  }, [
+    compareEvaluation,
+    confusionMatrixConfig,
+    evaluationMaskTargets,
+    compareEvaluationMaskTargets,
+  ]);
   const compareKeys = useMemo(() => {
     const keys: string[] = [];
     const evaluations = data?.evaluations || [];
@@ -145,6 +171,10 @@ export default function Evaluation(props: EvaluationProps) {
     setConfusionMatrixDialogConfig((state) => ({ ...state, open: false }));
   };
 
+  if (evaluationError) {
+    return <Error onBack={navigateBack} />;
+  }
+
   if (!evaluation) {
     return (
       <Box
@@ -174,6 +204,7 @@ export default function Evaluation(props: EvaluationProps) {
   const compareEvaluationMetrics = compareEvaluation?.metrics || {};
   const compareEvaluationType = compareEvaluationConfig.type;
   const isObjectDetection = evaluationType === "detection";
+  const isClassification = evaluationType === "classification";
   const isSegmentation = evaluationType === "segmentation";
   const isBinaryClassification =
     evaluationType === "classification" && evaluationMethod === "binary";
@@ -226,6 +257,7 @@ export default function Evaluation(props: EvaluationProps) {
       property: "IoU Threshold",
       value: evaluationConfig.iou,
       compareValue: compareEvaluationConfig.iou,
+      hide: !isObjectDetection,
     },
     {
       id: "classwise",
@@ -266,6 +298,7 @@ export default function Evaluation(props: EvaluationProps) {
       compareValue: Array.isArray(compareEvaluationConfig.iou_threshs)
         ? compareEvaluationConfig.iou_threshs.join(", ")
         : "",
+      hide: !isObjectDetection,
     },
     {
       id: "max_preds",
@@ -299,12 +332,14 @@ export default function Evaluation(props: EvaluationProps) {
       property: "Average Confidence",
       value: evaluationMetrics.average_confidence,
       compareValue: compareEvaluationMetrics.average_confidence,
+      hide: isSegmentation,
     },
     {
       id: "iou",
       property: "IoU Threshold",
       value: evaluationConfig.iou,
       compareValue: compareEvaluationConfig.iou,
+      hide: !isObjectDetection,
     },
     {
       id: "precision",
@@ -325,6 +360,7 @@ export default function Evaluation(props: EvaluationProps) {
       compareValue: compareEvaluationMetrics.fscore,
     },
   ];
+  const computedMetricPerformance = metricPerformance.filter((m) => !m.hide);
   const summaryRows = [
     {
       id: "average_confidence",
@@ -433,9 +469,12 @@ export default function Evaluation(props: EvaluationProps) {
       if (!perClassPerformance[metric]) {
         perClassPerformance[metric] = [];
       }
+      const maskTarget = evaluationMaskTargets?.[key];
+      const compareMaskTarget = compareEvaluationMaskTargets?.[key];
       perClassPerformance[metric].push({
         id: key,
-        property: key,
+        property: maskTarget || key,
+        compareProperty: compareMaskTarget || maskTarget || key,
         value: metrics[metric],
         compareValue: compareMetrics[metric],
       });
@@ -510,7 +549,14 @@ export default function Evaluation(props: EvaluationProps) {
           </Stack>
         </Stack>
         <Stack sx={{ width: "50%" }} spacing={0.5}>
-          <Typography color="secondary">Compare against</Typography>
+          <Stack direction="row" spacing={1}>
+            <Typography color="secondary">Compare against</Typography>
+            {compareEvaluationError && (
+              <Typography sx={{ color: theme.palette.error.main }}>
+                Unsupported model evaluation type
+              </Typography>
+            )}
+          </Stack>
           {compareKeys.length === 0 ? (
             <Typography
               variant="body2"
@@ -600,14 +646,16 @@ export default function Evaluation(props: EvaluationProps) {
                 <TableHead>
                   <TableRow
                     sx={{
-                      th: {
+                      "th p": {
                         color: (theme) => theme.palette.text.secondary,
                         fontSize: "1rem",
                         fontWeight: 600,
                       },
                     }}
                   >
-                    <TableCell>Metric</TableCell>
+                    <TableCell>
+                      <Typography>Metric</Typography>
+                    </TableCell>
                     <TableCell>
                       <Stack
                         direction="row"
@@ -630,7 +678,9 @@ export default function Evaluation(props: EvaluationProps) {
                             <Typography>{compareKey}</Typography>
                           </Stack>
                         </TableCell>
-                        <TableCell>Difference</TableCell>
+                        <TableCell>
+                          <Typography>Difference</Typography>
+                        </TableCell>
                       </>
                     )}
                   </TableRow>
@@ -843,8 +893,8 @@ export default function Evaluation(props: EvaluationProps) {
                     data={[
                       {
                         histfunc: "sum",
-                        y: metricPerformance.map((m) => m.value),
-                        x: metricPerformance.map((m) => m.property),
+                        y: computedMetricPerformance.map((m) => m.value),
+                        x: computedMetricPerformance.map((m) => m.property),
                         type: "histogram",
                         name: name,
                         marker: {
@@ -853,8 +903,8 @@ export default function Evaluation(props: EvaluationProps) {
                       },
                       {
                         histfunc: "sum",
-                        y: metricPerformance.map((m) => m.compareValue),
-                        x: metricPerformance.map((m) => m.property),
+                        y: computedMetricPerformance.map((m) => m.compareValue),
+                        x: computedMetricPerformance.map((m) => m.property),
                         type: "histogram",
                         name: compareKey,
                         marker: {
@@ -869,14 +919,16 @@ export default function Evaluation(props: EvaluationProps) {
                     <TableHead>
                       <TableRow
                         sx={{
-                          th: {
+                          "th p": {
                             color: (theme) => theme.palette.text.secondary,
                             fontSize: "1rem",
                             fontWeight: 600,
                           },
                         }}
                       >
-                        <TableCell>Metric</TableCell>
+                        <TableCell>
+                          <Typography>Metric</Typography>
+                        </TableCell>
                         <TableCell>
                           <Stack
                             direction="row"
@@ -898,14 +950,16 @@ export default function Evaluation(props: EvaluationProps) {
                                 <ColorSquare color={COMPARE_KEY_COLOR} />
                                 <Typography>{compareKey}</Typography>
                               </Stack>
-                            </TableCell>{" "}
-                            <TableCell>Difference</TableCell>
+                            </TableCell>
+                            <TableCell>
+                              <Typography>Difference</Typography>
+                            </TableCell>
                           </>
                         )}
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {metricPerformance.map((row) => (
+                      {computedMetricPerformance.map((row) => (
                         <TableRow key={row.id}>
                           <TableCell component="th" scope="row">
                             {row.property}
@@ -1025,7 +1079,10 @@ export default function Evaluation(props: EvaluationProps) {
                         y: classPerformance.map(
                           (metrics) => metrics.compareValue
                         ),
-                        x: classPerformance.map((metrics) => metrics.property),
+                        x: classPerformance.map(
+                          (metrics) =>
+                            metrics.compareProperty || metrics.property
+                        ),
                         type: "histogram",
                         name: `${CLASS_LABELS[performanceClass]} per class`,
                         marker: {
@@ -1048,14 +1105,16 @@ export default function Evaluation(props: EvaluationProps) {
                     <TableHead>
                       <TableRow
                         sx={{
-                          th: {
+                          "th p": {
                             color: (theme) => theme.palette.text.secondary,
                             fontSize: "1rem",
                             fontWeight: 600,
                           },
                         }}
                       >
-                        <TableCell>Metric</TableCell>
+                        <TableCell>
+                          <Typography>Metric</Typography>
+                        </TableCell>
                         <TableCell>
                           <Stack
                             direction="row"
@@ -1078,7 +1137,9 @@ export default function Evaluation(props: EvaluationProps) {
                                 <Typography>{compareKey}</Typography>
                               </Stack>
                             </TableCell>{" "}
-                            <TableCell>Difference</TableCell>
+                            <TableCell>
+                              <Typography>Difference</Typography>
+                            </TableCell>
                           </>
                         )}
                       </TableRow>
@@ -1180,6 +1241,10 @@ export default function Evaluation(props: EvaluationProps) {
                     layout={{
                       yaxis: {
                         autorange: "reversed",
+                        type: "category",
+                      },
+                      xaxis: {
+                        type: "category",
                       },
                     }}
                   />
@@ -1220,6 +1285,10 @@ export default function Evaluation(props: EvaluationProps) {
                       layout={{
                         yaxis: {
                           autorange: "reversed",
+                          type: "category",
+                        },
+                        xaxis: {
+                          type: "category",
                         },
                       }}
                     />
@@ -1236,14 +1305,16 @@ export default function Evaluation(props: EvaluationProps) {
             <TableHead>
               <TableRow
                 sx={{
-                  th: {
+                  "th p": {
                     color: (theme) => theme.palette.text.secondary,
                     fontSize: "1rem",
                     fontWeight: 600,
                   },
                 }}
               >
-                <TableCell>Property</TableCell>
+                <TableCell>
+                  <Typography>Property</Typography>
+                </TableCell>
                 <TableCell align="right" sx={{ fontSize: 16 }}>
                   <Stack
                     direction="row"
@@ -1269,17 +1340,19 @@ export default function Evaluation(props: EvaluationProps) {
               </TableRow>
             </TableHead>
             <TableBody>
-              {infoRows.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell component="th" scope="row">
-                    {row.property}
-                  </TableCell>
-                  <TableCell>{formatValue(row.value)}</TableCell>
-                  {compareKey && (
-                    <TableCell>{formatValue(row.compareValue)}</TableCell>
-                  )}
-                </TableRow>
-              ))}
+              {infoRows.map((row) =>
+                row.hide ? null : (
+                  <TableRow key={row.id}>
+                    <TableCell component="th" scope="row">
+                      {row.property}
+                    </TableCell>
+                    <TableCell>{formatValue(row.value)}</TableCell>
+                    {compareKey && (
+                      <TableCell>{formatValue(row.compareValue)}</TableCell>
+                    )}
+                  </TableRow>
+                )
+              )}
             </TableBody>
           </EvaluationTable>
         </Card>
@@ -1571,14 +1644,17 @@ function formatPerClassPerformance(perClassPerformance, barConfig) {
   return computedPerClassPerformance;
 }
 
-function getMatrix(matrices, config) {
+function getMatrix(matrices, config, maskTargets, compareMaskTargets?) {
   if (!matrices) return;
   const { sortBy = "az", limit } = config;
   const parsedLimit = typeof limit === "number" ? limit : undefined;
   const classes = matrices[`${sortBy}_classes`].slice(0, parsedLimit);
   const matrix = matrices[`${sortBy}_matrix`].slice(0, parsedLimit);
   const colorscale = matrices[`${sortBy}_colorscale`];
-  return { labels: classes, matrix, colorscale };
+  const labels = classes.map((c) => {
+    return compareMaskTargets?.[c] || maskTargets?.[c] || c;
+  });
+  return { labels, matrix, colorscale };
 }
 
 function getConfigLabel({ config, type, dashed }) {
