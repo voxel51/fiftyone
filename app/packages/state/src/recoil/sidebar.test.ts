@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("recoil");
 vi.mock("recoil-relay");
 
-import { Field } from "@fiftyone/utilities";
-import { setMockAtoms, TestSelector } from "../../../../__mocks__/recoil";
+import { DICT_FIELD, Field, STRING_FIELD } from "@fiftyone/utilities";
+import { TestSelector, setMockAtoms } from "../../../../__mocks__/recoil";
 import * as sidebar from "./sidebar";
 
 const mockFields = {
@@ -564,5 +564,25 @@ describe("hiddenNoneGroups selector", () => {
     });
 
     expect(testHiddenNoneGroups()).toStrictEqual(present);
+  });
+});
+
+describe("collapsedPaths resolution", () => {
+  it("does not add valid list fields (i.e. with a primitive subfield)", () => {
+    setMockAtoms({
+      field: (path) =>
+        path === "dict_list"
+          ? { subfield: DICT_FIELD }
+          : { subfield: STRING_FIELD },
+      fieldPaths: ({ ftype }) =>
+        ftype === DICT_FIELD ? [] : ["dict_list", "string_list"],
+      fields: () => [],
+    });
+
+    const collapsed = <TestSelector<typeof sidebar.collapsedPaths>>(
+      (<unknown>sidebar.collapsedPaths)
+    );
+
+    expect(collapsed()).toStrictEqual(new Set(["dict_list"]));
   });
 });

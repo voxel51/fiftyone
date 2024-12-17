@@ -20,6 +20,7 @@ import {
   LABELS_PATH,
   LABEL_DOC_TYPES,
   LIST_FIELD,
+  UNSUPPORTED_FILTER_TYPES,
   VALID_LABEL_TYPES,
   VALID_PRIMITIVE_TYPES,
   withPath,
@@ -292,7 +293,6 @@ export const resolveGroups = (
     "other",
     fieldsMatcher(frameFields, () => true, present, "frames.")
   );
-
   return groups;
 };
 
@@ -761,11 +761,16 @@ export const isDisabledFilterPath = selectorFamily<boolean, string>({
       get(disabledFilterPaths).has(path),
 });
 
-const collapsedPaths = selector<Set<string>>({
+export const collapsedPaths = selector<Set<string>>({
   key: "collapsedPaths",
   get: ({ get }) => {
     let paths = [...get(fieldPaths({ ftype: DICT_FIELD }))];
-    paths = [...paths, ...get(fieldPaths({ ftype: LIST_FIELD }))];
+    paths = [
+      ...paths,
+      ...get(fieldPaths({ ftype: LIST_FIELD })).filter((path) =>
+        UNSUPPORTED_FILTER_TYPES.includes(get(field(path)).subfield)
+      ),
+    ];
 
     for (const { fields: fieldsData, name: prefix } of get(
       fields({ ftype: EMBEDDED_DOCUMENT_FIELD, space: State.SPACE.SAMPLE })
@@ -877,6 +882,7 @@ export const groupShown = selectorFamily<
         if (["tags"].includes(group)) {
           return null;
         }
+
         return (
           !data.paths.length ||
           !data.paths.every((path) => get(collapsedPaths).has(path))
