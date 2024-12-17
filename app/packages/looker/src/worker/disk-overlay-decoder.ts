@@ -92,9 +92,7 @@ export const decodeOverlayOnDisk = async (
   }
 
   // convert absolute file path to a URL that we can "fetch" from
-  const overlayImageUrl = getSampleSrc(
-    sources[`${field}.${overlayPathField}`] || label[overlayPathField]
-  );
+  const overlayImageUrl = getSampleSrc(source || label[overlayPathField]);
   const urlTokens = overlayImageUrl.split("?");
 
   let baseUrl = overlayImageUrl;
