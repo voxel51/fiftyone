@@ -31,6 +31,8 @@ import fiftyone.core.media as fom
 logger = logging.getLogger(__name__)
 
 _ADDITIONAL_MEDIA_FIELDS = {
+    fol.Detection: "mask_path",
+    fol.Detections: "mask_path",
     fol.Heatmap: "map_path",
     fol.Segmentation: "mask_path",
     OrthographicProjectionMetadata: "filepath",
