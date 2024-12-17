@@ -124,6 +124,7 @@ class DataQualityPanel(Panel):
         ctx.panel.state.tags = []
         ctx.panel.state.first_open = False
         ctx.panel.state.dataset_name = ctx.dataset.name
+        ctx.panel.state.computation_checks_ran = 0
 
         # load store
         store = self.get_store(ctx)
@@ -369,8 +370,7 @@ class DataQualityPanel(Panel):
             self.change_view(ctx, issue_type)
 
         # check computing state every page change - optimization within check_computing_status call
-        if ctx.panel.state.screen == "pre_load_compute":
-            self.check_computing_status(ctx, issue_type)
+        self.check_computing_status(ctx, issue_type)
 
     def _on_compute_option_selected(
         self, ctx, execution_option="execute", run_id=""
@@ -1112,24 +1112,29 @@ class DataQualityPanel(Panel):
                     issue_status=STATUS[0],
                 )
             else:
-                if ctx.dataset.has_field(FIELD_NAME[issue_type]):
-                    badge_status = STATUS[1]
-
-                    if not ctx.dataset.exists(
-                        FIELD_NAME[issue_type], bool=False
-                    ):  # all samples have field already
-                        if (
-                            ctx.panel.state.screen == "pre_load_compute"
-                            and ctx.panel.state.issue_type == issue_type
-                        ):
-                            ctx.panel.state.screen = "analysis"
-                            badge_status = STATUS[2]
-                    self.change_computing_status(
-                        ctx,
-                        issue_type,
-                        is_computing=False,
-                        issue_status=badge_status,
-                    )
+                # reopening of the panel
+                if (
+                    ctx.panel.state.computation_checks_ran is not None
+                    and ctx.panel.state.computation_checks_ran == 0
+                ):
+                    if ctx.dataset.has_field(FIELD_NAME[issue_type]):
+                        badge_status = STATUS[1]
+                        without_field = ctx.dataset.exists(
+                            FIELD_NAME[issue_type], bool=False
+                        )
+                        if not without_field:  # all samples have field already
+                            if (
+                                ctx.panel.state.screen == "pre_load_compute"
+                                and ctx.panel.state.issue_type == issue_type
+                            ):
+                                ctx.panel.state.screen = "analysis"
+                                badge_status = STATUS[2]
+                        self.change_computing_status(
+                            ctx,
+                            issue_type,
+                            is_computing=False,
+                            issue_status=badge_status,
+                        )
 
             return
 
@@ -1193,6 +1198,10 @@ class DataQualityPanel(Panel):
                     delegation_run_id=str(run_id),
                     delegation_status=delegated_state.lower(),
                 )
+
+        ctx.panel.state.computation_checks_ran = (
+            ctx.panel.state.computation_checks_ran + 1
+        )
 
     ###
     # SCREENS
