@@ -25,12 +25,17 @@ export const decodeOverlayOnDisk = async (
   sources: { [path: string]: string },
   cls: string,
   maskPathDecodingPromises: Promise<void>[] = [],
-  maskTargetsBuffers: ArrayBuffer[] = []
+  maskTargetsBuffers: ArrayBuffer[] = [],
+  overlayCollectionProcessingParams:
+    | { idx: number; cls: string }
+    | undefined = undefined
 ) => {
   // handle all list types here
-  if (cls === DETECTIONS) {
+  if (cls === DETECTIONS && label.detections) {
     const promises: Promise<void>[] = [];
-    for (const detection of label.detections) {
+
+    for (let i = 0; i < label.detections.length; i++) {
+      const detection = label.detections[i];
       promises.push(
         decodeOverlayOnDisk(
           field,
@@ -38,10 +43,11 @@ export const decodeOverlayOnDisk = async (
           coloring,
           customizeColorSetting,
           colorscale,
-          {},
+          sources,
           DETECTION,
           maskPathDecodingPromises,
-          maskTargetsBuffers
+          maskTargetsBuffers,
+          { idx: i, cls: DETECTIONS }
         )
       );
     }
@@ -72,6 +78,17 @@ export const decodeOverlayOnDisk = async (
     }
     // nothing to be done
     return;
+  }
+
+  // if we have an explicit source defined from sample.urls, use that
+  // otherwise, use the path field from the label
+  let source = sources[`${field}.${overlayPathField}`];
+
+  if (typeof overlayCollectionProcessingParams !== "undefined") {
+    source =
+      sources[
+        `${field}.${overlayCollectionProcessingParams.cls}[${overlayCollectionProcessingParams.idx}].${overlayPathField}`
+      ];
   }
 
   // convert absolute file path to a URL that we can "fetch" from
