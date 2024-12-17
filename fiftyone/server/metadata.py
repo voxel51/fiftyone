@@ -441,6 +441,9 @@ def _create_media_urls(
     for field in media_fields:
         path = get(sample, field)
 
+        if not path:
+            continue
+
         if path not in cache:
             cache[path] = path
 
