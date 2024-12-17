@@ -529,6 +529,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     this.element = null;
     this.update(({ config: { thumbnail, src, frameRate, support } }) => {
       this.src = src;
+      this.element = document.createElement("video");
       const customCredentialsAudience = sessionStorage.getItem(
         "customCredentialsAudience"
       );
@@ -536,10 +537,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         customCredentialsAudience &&
         src.includes(customCredentialsAudience)
       ) {
-        this.element = document.createElement("video");
         this.element.crossOrigin = "Anonymous";
-      } else {
-        this.element = document.createElement("video");
       }
       this.posterFrame = support ? support[0] : 1;
       if (thumbnail) {
