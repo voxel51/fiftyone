@@ -529,15 +529,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     this.element = null;
     this.update(({ config: { thumbnail, src, frameRate, support } }) => {
       this.src = src;
-      const customCredentialsAudience = sessionStorage.getItem(
-        "customCredentialsAudience"
-      );
-      if (
-        customCredentialsAudience &&
-        src.includes(customCredentialsAudience)
-      ) {
-        this.element.crossOrigin = "Anonymous";
-      }
       this.posterFrame = support ? support[0] : 1;
       if (thumbnail) {
         this.canvas = document.createElement("canvas");
@@ -589,6 +580,15 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         this.element = document.createElement("video");
         this.element.preload = "metadata";
         this.element.src = src;
+      }
+      const customCredentialsAudience = sessionStorage.getItem(
+        "customCredentialsAudience"
+      );
+      if (
+        customCredentialsAudience &&
+        src.includes(customCredentialsAudience)
+      ) {
+        this.element.crossOrigin = "Anonymous";
       }
 
       return {};
