@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 from starlette.exceptions import HTTPException
 
+import fiftyone.operators.types as types
 from fiftyone.operators.operator import Operator
 from fiftyone.operators.executor import (
     execute_or_delegate_operator,
@@ -9,6 +10,10 @@ from fiftyone.operators.executor import (
     ExecutionContext,
 )
 from fiftyone.operators import OperatorConfig
+import fiftyone.operators.builtin as builtin
+
+
+ECHO_URI = "@voxel51/operators/echo"
 
 
 class EchoOperator(Operator):
@@ -16,33 +21,28 @@ class EchoOperator(Operator):
     def config(self):
         return OperatorConfig(name="echo")
 
-    @property
-    def uri(self):
-        return "@testing/plugin/echo"
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+        inputs.str("message")
+        return types.Property(inputs)
 
     def execute(self, ctx):
         return {"message": ctx.params.get("message", None)}
 
 
-@pytest.mark.asyncio
-@patch("fiftyone.operators.executor.OperatorRegistry")
-async def test_execute_or_delegate_operator_with_global_mock(
-    mock_registry_cls,
-):
-    test_op = EchoOperator()
-    mock_registry = MagicMock()
-    mock_registry.can_execute.return_value = True
-    mock_registry.operator_exists.return_value = True
-    mock_registry.get_operator.return_value = test_op
-    mock_registry_cls.return_value = mock_registry
+# Force registration of the operator for testing
+builtin.BUILTIN_OPERATORS.append(EchoOperator(_builtin=True))
 
+
+@pytest.mark.asyncio
+async def test_execute_or_delegate_operator():
     request_params = {
         "dataset_name": "test_dataset",
-        "operator_uri": test_op.uri,
+        "operator_uri": ECHO_URI,
         "params": {"message": "Hello, World!"},
     }
 
-    result = await execute_or_delegate_operator(test_op.uri, request_params)
+    result = await execute_or_delegate_operator(ECHO_URI, request_params)
 
     assert isinstance(result, ExecutionResult)
     json_result = result.to_json()
