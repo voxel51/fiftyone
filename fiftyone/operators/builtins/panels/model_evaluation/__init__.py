@@ -134,6 +134,12 @@ class EvaluationPanel(Panel):
         except Exception as e:
             return None
 
+    def get_mar(self, results):
+        try:
+            return results.mAR()
+        except Exception as e:
+            return None
+
     def set_status(self, ctx):
         if not self.can_edit_status(ctx):
             ctx.ops.notify(
@@ -301,6 +307,7 @@ class EvaluationPanel(Panel):
                 ctx
             )
             metrics["mAP"] = self.get_map(results)
+            metrics["mAR"] = self.get_mar(results)
             evaluation_data = {
                 "metrics": metrics,
                 "info": info.serialize(),

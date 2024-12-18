@@ -1041,16 +1041,17 @@ The example below demonstrates COCO-style detection evaluation on the
     The easiest way to analyze models in FiftyOne is via the
     :ref:`Model Evaluation panel <app-model-evaluation-panel>`!
 
-mAP and PR curves
+mAP, mAR and PR curves
 ~~~~~~~~~~~~~~~~~
 
-You can compute mean average precision (mAP) and precision-recall (PR) curves
-for your objects by passing the ``compute_mAP=True`` flag to
+You can compute mean average precision (mAP), mean average recall (mAR), and
+precision-recall (PR) curves for your predictions by passing the
+``compute_mAP=True`` flag to
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`:
 
 .. note::
 
-    All mAP calculations are performed according to the
+    All mAP and mAR calculations are performed according to the
     `COCO evaluation protocol <https://cocodataset.org/#detection-eval>`_.
 
 .. code-block:: python
@@ -1062,7 +1063,7 @@ for your objects by passing the ``compute_mAP=True`` flag to
     dataset = foz.load_zoo_dataset("quickstart")
     print(dataset)
 
-    # Performs an IoU sweep so that mAP and PR curves can be computed
+    # Performs an IoU sweep so that mAP, mAR, and PR curves can be computed
     results = dataset.evaluate_detections(
         "predictions",
         gt_field="ground_truth",
@@ -1071,6 +1072,9 @@ for your objects by passing the ``compute_mAP=True`` flag to
 
     print(results.mAP())
     # 0.3957
+
+    print(results.mAR())
+    # 0.5210
 
     plot = results.plot_pr_curves(classes=["person", "kite", "car"])
     plot.show()
