@@ -52,6 +52,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     if (LOOKER_WITH_READER === this) {
       clearReader();
       LOOKER_WITH_READER = null;
+      this.state.buffers = this.initialBuffers(this.state.config);
     }
     super.detach();
   }
@@ -361,6 +362,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     if (LOOKER_WITH_READER === this) {
       if (this.state.config.thumbnail && !this.state.hovering) {
         clearReader();
+        this.state.buffers = this.initialBuffers(this.state.config);
         LOOKER_WITH_READER = null;
       }
     }
