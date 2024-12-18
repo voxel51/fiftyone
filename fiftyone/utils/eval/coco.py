@@ -5,6 +5,7 @@ COCO-style detection evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 from collections import defaultdict
 
@@ -50,7 +51,7 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels
         compute_mAP (False): whether to perform the necessary computations so
-            that mAP and PR curves can be generated
+            that mAP, mAR, and PR curves can be generated
         iou_threshs (None): a list of IoU thresholds to use when computing mAP
             and PR curves. Only applicable when ``compute_mAP`` is True
         max_preds (None): the maximum number of predicted objects to evaluate
@@ -255,7 +256,8 @@ class COCODetectionResults(DetectionResults):
         recall: an array of recall values
         iou_threshs: an array of IoU thresholds
         classes: the list of possible classes
-        recall_sweep (None): an array of recall values of shape ``num_iou x num_classes``
+        recall_sweep (None): an array of recall values of shape
+            ``num_iou x num_classes``
         thresholds (None): an optional array of decision thresholds of shape
             ``num_iou_threshs x num_classes x num_recall``
         missing (None): a missing label string. Any unmatched objects are
