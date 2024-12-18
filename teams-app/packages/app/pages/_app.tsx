@@ -23,9 +23,11 @@ import {
   FIFTYONE_APP_SEGMENT_WRITE_KEY,
   FIFTYONE_APP_SERVICE_WORKER_ENABLED,
   FIFTYONE_DO_NOT_TRACK_LS,
-  APP_SERVICE_WORKER_TOKEN_HEADER_KEY,
 } from "@fiftyone/teams-state/src/constants";
-import { registerServiceWorker } from "lib/serviceWorkerUtils";
+import {
+  deregisterAllServiceWorkers,
+  registerServiceWorker,
+} from "lib/serviceWorkerUtils";
 import { AppProps } from "next/app";
 import { useRouter } from "next/router";
 import { PropsWithChildren, useEffect, useState } from "react";
@@ -102,15 +104,16 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
   const [user] = useCurrentUser();
   const org = useCurrentOrganization();
 
-  const { asPath } = useRouter();
   const router = useRouter();
+  const asPath = router.asPath;
+  const pathname = router.pathname;
   const [loading, setLoading] = useRecoilState(loadingState);
 
+  // Enable service worker server-side, but also use client-side to check
+  // to prevent client from getting stuck in a error state if things go wrong
   const isServiceWorkerEnabled =
-    useEnv(FIFTYONE_APP_SERVICE_WORKER_ENABLED) === "true" ||
-    localStorage?.getItem(FIFTYONE_APP_SERVICE_WORKER_ENABLED) === "true";
-
-  const serviceWorkerHeaderKey = useEnv(APP_SERVICE_WORKER_TOKEN_HEADER_KEY);
+    useEnv(FIFTYONE_APP_SERVICE_WORKER_ENABLED) === "true" &&
+    sessionStorage?.getItem("serviceWorkerStatus") !== "disabled";
 
   const doNotTrackLocalStorage =
     localStorage?.getItem(FIFTYONE_DO_NOT_TRACK_LS) === "true";
@@ -147,14 +150,13 @@ function AppContainer({ children, ...props }: PropsWithChildren) {
       doNotTrack,
     });
     if (isServiceWorkerEnabled) {
-      window.LOOKER_CROSS_ORIGIN_MEDIA = true;
-      registerServiceWorker(asPath, token, serviceWorkerHeaderKey).then(() => {
+      registerServiceWorker(pathname, token).then(() => {
         setIsServiceWorkerReady(true);
       });
     } else {
-      window.LOOKER_CROSS_ORIGIN_MEDIA = false;
+      deregisterAllServiceWorkers();
     }
-  }, [isServiceWorkerEnabled, asPath, token, serviceWorkerHeaderKey]);
+  }, [isServiceWorkerEnabled, pathname]);
 
   useEffect(() => {
     router.events.on("routeChangeStart", () => {
