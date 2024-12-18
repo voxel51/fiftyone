@@ -30,7 +30,10 @@ class DelegatedOperationDocument(object):
         self.operator = operator
         self.label = None
         self.delegation_target = delegation_target
-        assert isinstance(context, ExecutionContext) or context is None
+        try:
+            assert isinstance(context, ExecutionContext) or context is None
+        except:
+            raise AttributeError
         self.context = context
         self.run_state = (
             ExecutionRunState.SCHEDULED
