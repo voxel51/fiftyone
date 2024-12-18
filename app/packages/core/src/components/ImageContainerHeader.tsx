@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import { isGroup as isGroupAtom } from "@fiftyone/state";
 import { Apps, ImageAspectRatio } from "@mui/icons-material";
 import Color from "color";
-import { Suspense, useMemo } from "react";
+import React, { Suspense, useMemo } from "react";
 import {
   constSelector,
   useRecoilCallback,
