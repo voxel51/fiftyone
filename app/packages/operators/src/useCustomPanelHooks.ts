@@ -165,14 +165,6 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     triggerPanelEvent,
   ]);
 
-  useEffect(() => {
-    return () => {
-      if (props.onUnLoad) {
-        triggerPanelEvent(panelId, { operator: props.onUnLoad });
-      }
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const handlePanelStateChangeOpDebounced = useMemo(() => {
     return debounce(
       (state, onChange, panelId) => {
