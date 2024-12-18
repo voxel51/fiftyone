@@ -30,7 +30,7 @@ class DelegatedOperationDocument(object):
         self.operator = operator
         self.label = None
         self.delegation_target = delegation_target
-        assert isinstance(context, ExecutionContext)
+        assert isinstance(context, ExecutionContext) or context is None
         self.context = context
         self.run_state = (
             ExecutionRunState.SCHEDULED
@@ -108,9 +108,10 @@ class DelegatedOperationDocument(object):
 
     def to_pymongo(self) -> dict:
         d = self.__dict__
-        d["context"] = {
-            "request_params": d["context"]._get_serialized_request_params()
-        }
+        if self.context:
+            d["context"] = {
+                "request_params": self.context._get_serialized_request_params()
+            }
         d.pop("_doc")
         d.pop("id")
         return d
