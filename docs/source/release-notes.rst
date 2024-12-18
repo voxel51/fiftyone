@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Teams 2.2.0
 --------------------
-*Released December 5, 2024*
+*Released December 6, 2024*
 
 Includes all updates from :ref:`FiftyOne 1.1.0 <release-notes-v1.1.0>`, plus:
 
@@ -30,13 +30,13 @@ Includes all updates from :ref:`FiftyOne 1.1.0 <release-notes-v1.1.0>`, plus:
 
 FiftyOne 1.1.0
 --------------
-*Released December 5, 2024*
+*Released December 6, 2024*
 
 What's New
 
 - Added a :ref:`Model Evaluation panel <app-model-evaluation-panel>` for
   visually and interactively evaluating models in the FiftyOne App
-- Introduced :ref:`Query Performance <app-optimize-query-performance>` in the
+- Introduced :ref:`Query Performance <app-optimizing-query-performance>` in the
   App, which automatically nudges you to create the necessary indexes to
   greatly optimize queries on large datasets
 - Added a :ref:`leaky splits method <brain-leaky-splits>` for automatically
@@ -51,6 +51,8 @@ App
   `#4931 <https://github.com/voxel51/fiftyone/pull/4931>`_
 - Gracefully handle deleted + recreated datasets of the same name
   `#5183 <https://github.com/voxel51/fiftyone/pull/5183>`_
+- Added a `referrerPolicy` so the App can run behind reverse proxies
+  `#4944 <https://github.com/voxel51/fiftyone/pull/4944>`_
 - Fixed a bug that prevented video playback from working for videos with
   unknown frame rate
   `#5155 <https://github.com/voxel51/fiftyone/pull/5155>`_
@@ -61,6 +63,8 @@ SDK
   :meth:`max() <fiftyone.core.collections.SampleCollection.max>` and
   aggregations
   `#5029 <https://github.com/voxel51/fiftyone/pull/5029>`_
+- Optimized object detection evaluation with r-trees
+  `#4758 <https://github.com/voxel51/fiftyone/pull/4758>`_
 - Improved support for creating summary fields and indexes
   `#5091 <https://github.com/voxel51/fiftyone/pull/5091>`_
 - Added support for creating compound indexes when using the builtin
@@ -169,7 +173,7 @@ Core
 
 App
 
-- Added a new :ref:`TimelineView <fiftyone.operators.types.TimelineView>` for
+- Added a new :class:`TimelineView <fiftyone.operators.types.TimelineView>` for
   building custom animations
   `#4965 <https://github.com/voxel51/fiftyone/pull/4965>`_
 - Fixed overlay z-index and overflow for panels
@@ -480,7 +484,7 @@ What's New
   that allows users to build custom no-code dashboards that display statistics
   of interest about the current dataset (and beyond)
 - Added `Segment Anything 2 <https://ai.meta.com/sam2>`_ to the
-  :ref:`model zoo <segment-anything-2-hiera-small-video-torch>`!
+  :ref:`model zoo <model-zoo-segment-anything-2-hiera-small-video-torch>`!
   `#4671 <https://github.com/voxel51/fiftyone/pull/4671>`_
 - Added an :ref:`Elasticsearch integration <elasticsearch-integration>` for
   native text and image searches on FiftyOne datasets!

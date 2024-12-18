@@ -19,6 +19,7 @@ import { addToBuffers, removeFromBuffers } from "../util";
 import { AbstractLooker } from "./abstract";
 import { type Frame, acquireReader, clearReader } from "./frame-reader";
 import { LookerUtils, withFrames } from "./shared";
+import { hasFrame } from "./utils";
 
 let LOOKER_WITH_READER: VideoLooker | null = null;
 
@@ -394,13 +395,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
   }
 
   private hasFrame(frameNumber: number) {
-    if (frameNumber === this.firstFrameNumber) {
-      return this.firstFrame;
-    }
-    return (
-      this.frames.has(frameNumber) &&
-      this.frames.get(frameNumber)?.deref() !== undefined
-    );
+    return hasFrame(this.state.buffers, frameNumber);
   }
 
   private getFrame(frameNumber: number) {
