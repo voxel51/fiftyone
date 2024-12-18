@@ -581,6 +581,15 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
         this.element.preload = "metadata";
         this.element.src = src;
       }
+      const customCredentialsAudience = sessionStorage.getItem(
+        "customCredentialsAudience"
+      );
+      if (
+        customCredentialsAudience &&
+        src.includes(customCredentialsAudience)
+      ) {
+        this.element.crossOrigin = "Anonymous";
+      }
 
       return {};
     });
