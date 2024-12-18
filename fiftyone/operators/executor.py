@@ -891,7 +891,7 @@ class ExecutionContext(object):
 
     def _get_serialized_request_params(self):
         request_params_copy = self.request_params.copy()
-        request_params_copy.pop("panel_state")
+        request_params_copy.pop("panel_state", None)
         return request_params_copy
 
     def serialize(self):
