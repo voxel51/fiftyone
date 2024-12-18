@@ -72,12 +72,9 @@ function Grid() {
       get: (next) => page(next),
       render: (id, element, dimensions, zooming) => {
         if (lookerStore.has(id.description)) {
-          const looker = lookerStore.get(id.description);
-          if (!zooming)
-            looker?.updateOptions({
-              fontSize: getFontSize(),
-            });
-          looker?.attach(element, dimensions);
+          lookerStore
+            .get(id.description)
+            ?.attach(element, dimensions, getFontSize());
 
           return;
         }
