@@ -1481,6 +1481,10 @@ class FiftyOneTorchDataset(Dataset):
                         to multiply by (num dataloaders * num gpus + num gpus).
 
     Notes:
+        General:
+        - This only works with persistent dataset.
+        In order to make a dataset persistent, do `dataset.persistent = True`
+
         torch.utils.data.Dataloader use:
         - DO NOT use torch.Tensor.to in this function, do so in the train loop, or use
             the `pin_memory` argument in your torch.utils.data.DataLoader
