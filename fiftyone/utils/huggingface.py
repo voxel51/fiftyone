@@ -31,6 +31,7 @@ from fiftyone.core.sample import Sample
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
 
+
 hfh = fou.lazy_import(
     "huggingface_hub",
     callback=lambda: fou.ensure_package("huggingface_hub>=0.20.0"),
@@ -62,6 +63,34 @@ SUPPORTED_DTYPES = (
 )
 
 logger = logging.getLogger(__name__)
+
+def list_hub_datasets():
+    """Lists all FiftyOne datasets available on the Hugging Face Hub.
+
+
+
+    Examples::
+
+        from fiftyone.utils.huggingface import load_from_hub
+        
+        # Return an iterable of all datasets in Voxel51 org
+        org_datasets = list_hub_datasets()
+        
+        # Print names of datasets
+        for dataset in org_datasets:
+            dataset_name = dataset.id
+            print(dataset_name)
+
+        # If a dataset looks interesting, you can load any of the following datasets as follows
+        dataset = load_from_hub("Voxel51/dataset-name")
+
+    Returns:
+        generator: A generator of dataset objects from the Hugging Face Hub API 
+             containing metadata about each dataset published by Voxel51
+    """
+
+
+    return hfh.list_datasets(author="Voxel51")
 
 
 def push_to_hub(
