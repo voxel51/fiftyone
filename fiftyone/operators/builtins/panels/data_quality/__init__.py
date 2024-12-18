@@ -155,7 +155,7 @@ class DataQualityPanel(Panel):
             results = content.get("results", SAMPLE_STORE.get("results"))
 
         # async checks
-        # format: [new_samples_count, check ran?, rescan completed?]
+        # format: [new_samples_count, check ran, rescan completed]
         ctx.panel.state.new_samples = {
             "brightness": [0, False, False],
             "blurriness": [0, False, False],
@@ -349,6 +349,14 @@ class DataQualityPanel(Panel):
                     "near_duplicates",
                 ]:
                     self.set_hist_defaults(ctx)
+
+                if (
+                    self._get_issue_status(ctx, issue_type) != STATUS[3]
+                ):  # change any non-reviewed statuses
+                    self.change_computing_status(
+                        ctx, issue_type, issue_status=STATUS[2]
+                    )
+
             except ValueError as e:
                 ctx.log(f"navigate_to_screen warning: {e}")
                 if self.should_reset_issue(ctx, issue_type):
@@ -359,9 +367,6 @@ class DataQualityPanel(Panel):
                     raise e
 
             self.change_view(ctx, issue_type)
-
-            if ctx.panel.state.computing and issue_type:
-                self.change_computing_status(ctx, issue_type)
 
     def _on_compute_option_selected(
         self, ctx, execution_option="execute", run_id=""
@@ -1125,7 +1130,7 @@ class DataQualityPanel(Panel):
             try:
                 self._process_issue_computation(ctx, issue_type)
             except:
-                ctx.panel.state.alert = f"computation_failed_{issue_type}"  #
+                ctx.panel.state.alert = f"computation_failed_{issue_type}"
                 if ctx.panel.state.issue_type == issue_type:
                     self.navigate_to_screen(
                         ctx, issue_type=issue_type, next_screen="home"
@@ -1224,7 +1229,7 @@ class DataQualityPanel(Panel):
                     "padding": "0px",
                     "textAlign": "center",
                     "alignItems": "center",
-                    "height": "calc(100vh - 310px)",
+                    "height": "calc(100vh - 185px - 110px)",  # 110 is for Teams
                     "minHeight": "400px",
                 }
             ),
@@ -1271,7 +1276,7 @@ class DataQualityPanel(Panel):
             card_content.obj("loader", view=loader)
         elif existing_field_criteria:
             alert_icon = types.ImageView(
-                width="50px",
+                width="48px",
                 componentsProps={
                     "container": {
                         "sx": {
@@ -1288,8 +1293,7 @@ class DataQualityPanel(Panel):
             )
         else:
             image_icon = types.ImageView(
-                width="50px",
-                height="50px",
+                width="48px",
                 alt=f"{' '.join(issue_type.split('_')).title()} Icon",
             )
             card_content.view(
@@ -1309,7 +1313,7 @@ class DataQualityPanel(Panel):
 
         if existing_field_criteria and not is_computing:
             card_content.md(
-                f"It looks like the `{FIELD_NAME[ctx.panel.state.issue_type]}` field already exists on your dataset. We'll skip over any samples with this existing field and only scan new samples without this field for {' '.join(issue_type.split('_'))} issues. Would you like to scan them now?",
+                f"It looks like the `{FIELD_NAME[ctx.panel.state.issue_type]}` field already exists on some samples in your dataset. We'll skip over these samples and only scan new samples without this field for {' '.join(issue_type.split('_'))} issues. Would you like to scan them now?",
                 "text_view_existing_field",
             )
 
@@ -1541,7 +1545,7 @@ class DataQualityPanel(Panel):
         id,
         container,
         container_justify_content="center",
-        height="calc(100vh - 230px)",
+        height="calc(100vh - 185px - 110px)",  # 110px for Teams
         px=0,
         py=0,
         h_stack=False,
@@ -1589,7 +1593,7 @@ class DataQualityPanel(Panel):
             f"{issue_type}_analysis_content",
             card_main,
             container_justify_content="normal",
-            height="calc(100vh - 230px - 158px)",
+            height="calc(100vh - 343px - 110px)",  # 110 is for Teams Header
             px=4,
             py=1,
         )
@@ -1716,18 +1720,17 @@ class DataQualityPanel(Panel):
         # rescan functionality
         self._get_rescan_modal_screen(rescan_functionality_stack, ctx)
 
-    def wrapper_screen(self, panel, ctx, which_wrapper):
+    def wrapper_screen(self, panel, which_wrapper):
         card_main = self.add_stack("pre_load_compute", panel)
         wrapper_dataset_image = types.ImageView(
-            width="75px" if which_wrapper == "entry" else "66px",
-            height="75px" if which_wrapper == "entry" else "75px",
+            width="48px",
             alt=f"{which_wrapper.title()} Image",
         )
         card_main.view(
             f"{which_wrapper}dataset_image",
             view=wrapper_dataset_image,
             default=(
-                IMAGES["blurriness"]
+                IMAGES["data_quality"]
                 if which_wrapper == "entry"
                 else IMAGES["unsupported_dataset"]
             ),
@@ -1755,6 +1758,8 @@ class DataQualityPanel(Panel):
                 label=f"Get Started",
                 variant="contained",
                 on_click=self.navigate_to_screen,
+                icon="arrow_forward",
+                icon_position="right",
             )
 
     def _render_issue_status_badge(self, panel, issue_type, ctx):
@@ -2123,8 +2128,7 @@ class DataQualityPanel(Panel):
         )
 
         image_icon = types.ImageView(
-            width="80px",
-            height="80px",
+            width="48px",
             alt=f"{' '.join(issue_type.split('_')).title()} Icon",
         )
         no_result_container.view(
@@ -2134,7 +2138,7 @@ class DataQualityPanel(Panel):
         )
 
         text_view = types.TextView(
-            title=f"No  {' '.join(issue_type.split('_'))} within your dataset.",
+            title=f"No {' '.join(issue_type.split('_'))} issues found within your dataset.",
             variant="caption",
             padding=0,
             bold=True,
@@ -2393,9 +2397,9 @@ class DataQualityPanel(Panel):
         # the right store. This can cause incosistency in the UX
         if self.has_store(ctx) and new_dataset_name == old_dataset_name:
             if ctx.dataset.media_type != "image":
-                self.wrapper_screen(panel, ctx, "unsupported")
+                self.wrapper_screen(panel, "unsupported")
             elif ctx.panel.state.first_open:
-                self.wrapper_screen(panel, ctx, "entry")
+                self.wrapper_screen(panel, "entry")
             else:
                 if ctx.panel.state.screen == "home":
                     self.home_screen(panel, ctx)
