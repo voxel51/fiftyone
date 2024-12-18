@@ -16,6 +16,7 @@ import scipy.spatial as sp
 
 import eta.core.numutils as etan
 import eta.core.utils as etau
+import eta.core.image as etai
 
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
@@ -549,9 +550,6 @@ def _dense_iou(gt, pred, gt_crowd=False):
     pred_img_w = round(pred_mask_w / pred_bb[2])
     pred_img_h = round(pred_mask_h / pred_bb[3])
 
-    # @todo: it's possible that pred and gt have different shapes
-    # in which case we should resize them to the same shape
-
     gt_mask_full = np.zeros((gt_img_h, gt_img_w))
     pred_mask_full = np.zeros((pred_img_h, pred_img_w))
 
@@ -566,6 +564,18 @@ def _dense_iou(gt, pred, gt_crowd=False):
     x2 = round(x1 + (pred_bb[2] * pred_img_w))
     y2 = round(y1 + (pred_bb[3] * pred_img_h))
     pred_mask_full[y1:y2, x1:x2] = pred_mask
+
+    if gt_img_w != pred_img_w or gt_img_h != pred_img_h:
+        gt_size = gt_img_w * gt_img_h
+        pred_size = pred_img_w * pred_img_h
+        if gt_size > pred_size:
+            pred_mask_full = etai.resize(
+                pred_mask_full, height=gt_img_h, width=gt_img_w
+            )
+        else:
+            gt_mask_full = etai.resize(
+                gt_mask_full, height=pred_img_h, width=pred_img_w
+            )
 
     inter = np.logical_and(gt_mask_full, pred_mask_full).sum()
     union = np.logical_or(gt_mask_full, pred_mask_full).sum()
