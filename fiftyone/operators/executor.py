@@ -889,6 +889,11 @@ class ExecutionContext(object):
         dataset_id = self.dataset._doc.id
         return ExecutionStore.create(store_name, dataset_id)
 
+    def _get_serialized_request_params(self):
+        request_params_copy = self.request_params.copy()
+        request_params_copy.pop("panel_state")
+        return request_params_copy
+
     def serialize(self):
         """Serializes the execution context.
 

@@ -24,17 +24,14 @@ class DelegatedOperationDocument(object):
         self,
         operator: str = None,
         delegation_target: str = None,
-        context: dict = None,
+        context: ExecutionContext = None,
         is_remote: bool = False,
     ):
         self.operator = operator
         self.label = None
         self.delegation_target = delegation_target
-        self.context = (
-            context.to_dict()
-            if isinstance(context, ExecutionContext)
-            else context
-        )
+        assert isinstance(context, ExecutionContext)
+        self.context = context
         self.run_state = (
             ExecutionRunState.SCHEDULED
             if is_remote
@@ -111,11 +108,9 @@ class DelegatedOperationDocument(object):
 
     def to_pymongo(self) -> dict:
         d = self.__dict__
-        d["context"] = (
-            d["context"].to_dict()
-            if isinstance(d["context"], ExecutionContext)
-            else d["context"]
-        )
+        d["context"] = {
+            "request_params": d["context"]._get_serialized_request_params()
+        }
         d.pop("_doc")
         d.pop("id")
         return d
