@@ -2550,7 +2550,10 @@ def draw_labeled_images(
         config, kwargs, samples=samples, label_fields=label_fields
     )
 
-    media_fields = samples._get_media_fields(whitelist=label_fields)
+    media_fields = samples._get_media_fields(
+        whitelist=label_fields,
+        blacklist=samples._dataset.app_config.media_fields,
+    )
     media_fields["filepath"] = None
     media_fields = list(media_fields.keys())
 
