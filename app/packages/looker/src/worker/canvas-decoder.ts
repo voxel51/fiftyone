@@ -1,5 +1,6 @@
 import { OverlayMask } from "../numpy";
 
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 /**
  * Reads the PNG's image header chunk to determine the color type.
  * Returns the color type if PNG, otherwise undefined.
@@ -14,11 +15,10 @@ const getPngcolorType = async (blob: Blob): Promise<number | undefined> => {
   // = 8 + 4 + 4 + 8 + 1 = 25 (0-based index)
 
   const header = new Uint8Array(await blob.slice(0, 26).arrayBuffer());
-  const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
   // check PNG signature
-  for (let i = 0; i < pngSignature.length; i++) {
-    if (header[i] !== pngSignature[i]) {
+  for (let i = 0; i < PNG_SIGNATURE.length; i++) {
+    if (header[i] !== PNG_SIGNATURE[i]) {
       // not a PNG
       return undefined;
     }
