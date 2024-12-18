@@ -420,7 +420,7 @@ class EvaluationPanel(Panel):
         eval_key2 = view_state.get("compareKey", None)
         pred_field2 = None
         gt_field2 = None
-        if eval_key2 is not None:
+        if eval_key2:
             info2 = ctx.dataset.get_evaluation_info(eval_key2)
             pred_field2 = info2.config.pred_field
             if info2.config.gt_field != gt_field:

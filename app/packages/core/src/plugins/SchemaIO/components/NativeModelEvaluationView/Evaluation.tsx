@@ -1217,6 +1217,14 @@ export default function Evaluation(props: EvaluationProps) {
                             ].join(" <br>") + "<extra></extra>",
                         },
                       ]}
+                      onClick={({ points }) => {
+                        const firstPoint = points[0];
+                        loadView("matrix", {
+                          x: firstPoint.x,
+                          y: firstPoint.y,
+                          key: compareKey,
+                        });
+                      }}
                       layout={{
                         yaxis: {
                           autorange: "reversed",
@@ -1598,7 +1606,7 @@ function useActiveFilter(evaluation, compareEvaluation) {
   const evalKey = evaluation?.info?.key;
   const compareKey = compareEvaluation?.info?.key;
   const [stages] = useRecoilState(view);
-  if (stages?.length === 1) {
+  if (stages?.length >= 1) {
     const stage = stages[0];
     const { _cls, kwargs } = stage;
     if (_cls.endsWith("FilterLabels")) {
