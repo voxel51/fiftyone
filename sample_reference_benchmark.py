@@ -14,7 +14,7 @@ def random_polyline(size):
 
 
 def create_base_dataset():
-    base = fo.Dataset("base")
+    base = fo.Dataset()
 
     for i in range(NUM_SAMPLES):
         base.add_sample(fo.Sample(f"test_{i}.jpg", large_field=random_polyline(20)))
@@ -28,7 +28,7 @@ def sample_copy_benchmark():
 
     base = create_base_dataset()
 
-    copy = fo.Dataset("copy")
+    copy = fo.Dataset()
 
     start = time.time()
     for sample in base:
@@ -48,7 +48,7 @@ def sample_reference_benchmark():
 
     base = create_base_dataset()
 
-    ref = fo.Dataset("ref", reference=base)
+    ref = fo.Dataset(reference=base)
 
     start = time.time()
     for sample in base:

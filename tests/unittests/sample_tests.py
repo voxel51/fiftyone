@@ -5,6 +5,7 @@ FiftyOne sample-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import itertools
 import os
 import tempfile
 import unittest
@@ -1040,7 +1041,7 @@ class SampleFieldTests(unittest.TestCase):
 
 
 class SampleReferenceTests(unittest.TestCase):
-    def common(self, pull_base, pull_reference):
+    def common(self, pull_base, pull_reference, reload_reference):
         dataset = fo.Dataset()
         sample = fo.Sample("test_123.jpg", test_base1="123")
         dataset.add_sample(sample)
@@ -1051,6 +1052,9 @@ class SampleReferenceTests(unittest.TestCase):
         dataset_reference = fo.Dataset(reference=dataset)
         sample_reference = fo.SampleReference(sample, test_local1="123")
         dataset_reference.add_sample(sample_reference)
+
+        if reload_reference:
+            dataset_reference = fo.load_dataset(dataset_reference.name)
         
         if pull_reference:
             sample_reference = dataset_reference.first()
@@ -1068,29 +1072,19 @@ class SampleReferenceTests(unittest.TestCase):
             # sample must be in dataset before it can be referenced
             sample_reference = fo.SampleReference(sample, test_local="123")
 
-    @parameterized.expand([
-        [False, False],
-        [False, True],
-        [True, False],
-        [True, True]
-    ])
+    @parameterized.expand(itertools.product([True, False], repeat=3))
     @drop_datasets
-    def test_basic(self, pull_base, pull_reference):
-        sample, sample_reference, dataset, dataset_reference = self.common(pull_base, pull_reference)
+    def test_basic(self, pull_base, pull_reference, reload_reference):
+        sample, sample_reference, dataset, dataset_reference = self.common(pull_base, pull_reference, reload_reference)
 
         self.assertIn("test_123.jpg", sample_reference.filepath)
         self.assertEqual(sample_reference.test_base1, "123")
         self.assertEqual(sample_reference.test_local1, "123")
 
-    @parameterized.expand([
-        [False, False],
-        [False, True],
-        [True, False],
-        [True, True]
-    ])
+    @parameterized.expand(itertools.product([True, False], repeat=3))
     @drop_datasets
-    def test_change_base(self, pull_base, pull_reference):
-        sample, sample_reference, dataset, dataset_reference = self.common(pull_base, pull_reference)
+    def test_change_base(self, pull_base, pull_reference, reload_reference):
+        sample, sample_reference, dataset, dataset_reference = self.common(pull_base, pull_reference, reload_reference)
 
         self.assertEqual(sample_reference.test_base1, "123")
         sample["test_base1"] = "234"
@@ -1099,15 +1093,10 @@ class SampleReferenceTests(unittest.TestCase):
         self.assertEqual(sample.test_base1, "234")
         self.assertEqual(sample_reference.test_base1, "234")
 
-    @parameterized.expand([
-        [False, False],
-        [False, True],
-        [True, False],
-        [True, True]
-    ])
+    @parameterized.expand(itertools.product([True, False], repeat=3))
     @drop_datasets
-    def test_read_only_base_fields(self, pull_base, pull_reference):
-        sample, sample_reference, dataset, dataset_reference = self.common(pull_base, pull_reference)
+    def test_read_only_base_fields(self, pull_base, pull_reference, reload_reference):
+        sample, sample_reference, dataset, dataset_reference = self.common(pull_base, pull_reference, reload_reference)
 
         # Can edit local fields
         sample_reference["test_local1"] = "789"
@@ -1116,15 +1105,10 @@ class SampleReferenceTests(unittest.TestCase):
             # Cannot edit a base value
             sample_reference["test_base1"] = "789"
 
-    @parameterized.expand([
-        [False, False],
-        [False, True],
-        [True, False],
-        [True, True]
-    ])
+    @parameterized.expand(itertools.product([True, False], repeat=3))
     @drop_datasets
-    def test_schema(self, pull_base, pull_reference):
-        sample, sample_reference, dataset, dataset_reference = self.common(pull_base, pull_reference)
+    def test_schema(self, pull_base, pull_reference, reload_reference):
+        sample, sample_reference, dataset, dataset_reference = self.common(pull_base, pull_reference, reload_reference)
 
         self.assertIn("test_base1", dataset.get_field_schema())
         self.assertNotIn("test_local1", dataset.get_field_schema())
