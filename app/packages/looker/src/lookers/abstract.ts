@@ -469,13 +469,18 @@ export abstract class AbstractLooker<
   /**
    * Attaches the instance to the provided HTMLElement and adds event listeners
    */
-  attach(element: HTMLElement | string, dimensions?: Dimensions): void {
+  attach(
+    element: HTMLElement | string,
+    dimensions?: Dimensions,
+    fontSize?: number
+  ): void {
     if (typeof element === "string") {
       element = document.getElementById(element);
     }
 
     if (element === this.lookerElement.element.parentElement) {
-      this.state.disabled && this.updater({ disabled: false });
+      this.state.disabled &&
+        this.updater({ disabled: false, options: { fontSize } });
       return;
     }
 
@@ -491,6 +496,7 @@ export abstract class AbstractLooker<
     this.updater({
       windowBBox: dimensions ? [0, 0, ...dimensions] : getElementBBox(element),
       disabled: false,
+      options: { fontSize },
     });
     element.appendChild(this.lookerElement.element);
     !dimensions && this.resizeObserver.observe(element);
