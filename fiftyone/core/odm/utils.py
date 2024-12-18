@@ -277,6 +277,9 @@ def create_field(
 
         field_kwargs["document_type"] = embedded_doc_type
         field_kwargs["fields"] = fields or []
+    elif issubclass(ftype, fof.ReferenceField):
+        import fiftyone.core.odm as foo
+        field_kwargs["document_type"] = foo.DatasetSampleDocument
 
     field = ftype(**field_kwargs)
     field.name = name

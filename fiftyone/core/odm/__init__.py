@@ -75,6 +75,10 @@ from .sample import (
     DatasetSampleDocument,
     NoDatasetSampleDocument,
 )
+from .sample_reference import (
+    DatasetSampleReferenceDocument,
+    NoDatasetSampleReferenceDocument
+)
 from .utils import (
     serialize_value,
     deserialize_value,
