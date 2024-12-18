@@ -23,7 +23,7 @@ import {
 import { Events } from "../elements/base";
 import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
-import { CONTAINS, Overlay } from "../overlays/base";
+import { CONTAINS, LabelMask, Overlay } from "../overlays/base";
 import processOverlays from "../processOverlays";
 import {
   BaseState,
@@ -515,7 +515,44 @@ export abstract class AbstractLooker<
   abstract updateOptions(options: Partial<State["options"]>): void;
 
   updateSample(sample: Sample) {
-    this.loadSample(sample);
+    // collect any mask targets array buffer that overlays might have
+    // we'll transfer that to the worker instead of copying it
+    const arrayBuffers: ArrayBuffer[] = [];
+
+    for (const overlay of this.pluckedOverlays ?? []) {
+      let overlayData: LabelMask = null;
+
+      if ("mask" in overlay.label) {
+        overlayData = overlay.label.mask as LabelMask;
+      } else if ("map" in overlay.label) {
+        overlayData = overlay.label.map as LabelMask;
+      }
+
+      const buffer = overlayData?.data?.buffer;
+
+      if (!buffer) {
+        continue;
+      }
+
+      // check for detached buffer (happens if user is switching colors too fast)
+      // note: ArrayBuffer.prototype.detached is a new browser API
+      if (typeof buffer.detached !== "undefined") {
+        if (buffer.detached) {
+          // most likely sample is already being processed, skip update
+          return;
+        } else {
+          arrayBuffers.push(buffer);
+        }
+      } else if (buffer.byteLength) {
+        // hope we don't run into this edge case (old browser)
+        // sometimes detached buffers have bytelength > 0
+        // if we run into this case, we'll just attempt to transfer the buffer
+        // might get a DataCloneError if user is switching colors too fast
+        arrayBuffers.push(buffer);
+      }
+    }
+
+    this.loadSample(sample, arrayBuffers.flat());
   }
 
   getSample(): Promise<Sample> {
@@ -698,13 +735,22 @@ export abstract class AbstractLooker<
     );
   }
 
-  private loadSample(sample: Sample) {
+  protected cleanOverlays() {
+    for (const overlay of this.sampleOverlays ?? []) {
+      overlay.cleanup();
+    }
+  }
+
+  private loadSample(sample: Sample, transfer: Transferable[] = []) {
     const messageUUID = uuid();
 
     const labelsWorker = getLabelsWorker();
 
     const listener = ({ data: { sample, coloring, uuid } }) => {
       if (uuid === messageUUID) {
+        // we paint overlays again, so cleanup the old ones
+        // this helps prevent memory leaks from, for instance, dangling ImageBitmaps
+        this.cleanOverlays();
         this.sample = sample;
         this.state.options.coloring = coloring;
         this.loadOverlays(sample);
@@ -719,7 +765,7 @@ export abstract class AbstractLooker<
 
     labelsWorker.addEventListener("message", listener);
 
-    labelsWorker.postMessage({
+    const workerArgs = {
       sample: sample as ProcessSample["sample"],
       method: "processSample",
       coloring: this.state.options.coloring,
@@ -730,7 +776,20 @@ export abstract class AbstractLooker<
       sources: this.state.config.sources,
       schema: this.state.config.fieldSchema,
       uuid: messageUUID,
-    } as ProcessSample);
+    } as ProcessSample;
+
+    try {
+      labelsWorker.postMessage(workerArgs, transfer);
+    } catch (error) {
+      // rarely we'll get a DataCloneError
+      // if one of the buffers is detached and we didn't catch it
+      // try again without transferring the buffers (copying them)
+      if (error.name === "DataCloneError") {
+        labelsWorker.postMessage(workerArgs);
+      } else {
+        throw error;
+      }
+    }
   }
 }
 
