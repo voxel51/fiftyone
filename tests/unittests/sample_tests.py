@@ -12,6 +12,7 @@ import unittest
 from bson import Binary, ObjectId
 import numpy as np
 from PIL import ExifTags, Image
+from parameterized import parameterized
 
 import fiftyone as fo
 from fiftyone import ViewField as F
@@ -1039,50 +1040,104 @@ class SampleFieldTests(unittest.TestCase):
 
 
 class SampleReferenceTests(unittest.TestCase):
-    @drop_datasets
-    def test_reference(self):
+    def common(self, pull_base, pull_reference):
         dataset = fo.Dataset()
-        sample = fo.Sample("test_123.jpg", test1="123")
+        sample = fo.Sample("test_123.jpg", test_base1="123")
         dataset.add_sample(sample)
 
-        sample_reference = fo.SampleReference(sample, test2="123")
-        self.assertEqual(sample_reference.filepath, sample.filepath)
-        self.assertEqual(sample_reference.test1, sample.test1)
-        self.assertEqual(sample_reference.test2, "123")
+        if pull_base:
+            sample = dataset.first()
 
-        sample["test1"] = "234"
-        self.assertEqual(sample_reference.test1, "234")
+        dataset_reference = fo.Dataset(reference=dataset)
+        sample_reference = fo.SampleReference(sample, test_local1="123")
+        dataset_reference.add_sample(sample_reference)
+        
+        if pull_reference:
+            sample_reference = dataset_reference.first()
+        
+        self.assertEqual(type(sample), fo.Sample)
+        self.assertEqual(type(sample_reference), fo.SampleReference)
 
-        with self.assertRaises(Exception):
-            sample_reference["test1"] = "123"
+        return sample, sample_reference, dataset, dataset_reference
 
-        dataset2 = fo.Dataset(reference=dataset)
-        dataset2.add_sample(sample_reference)
-        reference = dataset2.first()
-
-        # TODO: should this reference be auto updated before saving? (like the sample singleton is)
-        self.assertEqual(reference.test1, "123")
-        sample.save()
-
-        reference = dataset2.first()
-        self.assertEqual(reference.test1, "234")
-        self.assertEqual(reference.test2, "123")
-        self.assertEqual(reference.filepath, sample.filepath)
-
-        sample["test1"] = "345"
-        sample["filepath"] = "test_124.jpg"
-        sample.save()
-
-        # TODO: this reference should be updated without having to fetch again
-        reference = dataset2.first()
-
-        self.assertEqual(reference.test1, "345")
-        self.assertEqual(reference.filepath, "test_124.jpg")
-
-        self.assertIn("test1", dataset2.get_field_schema())
+    @drop_datasets
+    def test_not_in_dataset(self):
+        sample = fo.Sample("test_123.jpg", test_base1="123")
 
         with self.assertRaises(Exception):
-            reference["test1"] = "123"
+            # sample must be in dataset before it can be referenced
+            sample_reference = fo.SampleReference(sample, test_local="123")
+
+    @parameterized.expand([
+        [False, False],
+        [False, True],
+        [True, False],
+        [True, True]
+    ])
+    @drop_datasets
+    def test_basic(self, pull_base, pull_reference):
+        sample, sample_reference, dataset, dataset_reference = self.common(pull_base, pull_reference)
+
+        self.assertIn("test_123.jpg", sample_reference.filepath)
+        self.assertEqual(sample_reference.test_base1, "123")
+        self.assertEqual(sample_reference.test_local1, "123")
+
+    @parameterized.expand([
+        [False, False],
+        [False, True],
+        [True, False],
+        [True, True]
+    ])
+    @drop_datasets
+    def test_change_base(self, pull_base, pull_reference):
+        sample, sample_reference, dataset, dataset_reference = self.common(pull_base, pull_reference)
+
+        self.assertEqual(sample_reference.test_base1, "123")
+        sample["test_base1"] = "234"
+        sample.save()
+
+        self.assertEqual(sample.test_base1, "234")
+        self.assertEqual(sample_reference.test_base1, "234")
+
+    @parameterized.expand([
+        [False, False],
+        [False, True],
+        [True, False],
+        [True, True]
+    ])
+    @drop_datasets
+    def test_read_only_base_fields(self, pull_base, pull_reference):
+        sample, sample_reference, dataset, dataset_reference = self.common(pull_base, pull_reference)
+
+        # Can edit local fields
+        sample_reference["test_local1"] = "789"
+        
+        with self.assertRaises(Exception):
+            # Cannot edit a base value
+            sample_reference["test_base1"] = "789"
+
+    @parameterized.expand([
+        [False, False],
+        [False, True],
+        [True, False],
+        [True, True]
+    ])
+    @drop_datasets
+    def test_schema(self, pull_base, pull_reference):
+        sample, sample_reference, dataset, dataset_reference = self.common(pull_base, pull_reference)
+
+        self.assertIn("test_base1", dataset.get_field_schema())
+        self.assertNotIn("test_local1", dataset.get_field_schema())
+        self.assertIn("test_base1", dataset_reference.get_field_schema())
+        self.assertIn("test_local1", dataset_reference.get_field_schema())
+
+        # Add new field to base
+
+        sample["test_base2"] = "123"
+        sample.save()
+
+        self.assertIn("test_base2", dataset.get_field_schema())
+        self.assertIn("test_base2", dataset_reference.get_field_schema())
 
 
 if __name__ == "__main__":

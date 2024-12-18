@@ -7905,6 +7905,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _make_sample(self, d):
         doc = self._sample_dict_to_doc(d)
+        if self._reference:
+            return fos.SampleReference.from_doc(doc, dataset=self)
         return fos.Sample.from_doc(doc, dataset=self)
 
     def _sample_dict_to_doc(self, d):
