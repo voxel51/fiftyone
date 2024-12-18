@@ -1544,7 +1544,7 @@ class FiftyOneTorchDataset(Dataset):
                 )
 
             # TODO: pick one
-            self.cached_fields[field_name] = samples.values(field_name)
+            # self.cached_fields[field_name] = samples.values(field_name)
             # self.cached_fields[field_name] = NumpySerializedList(
             #     samples.values(field_name)
             # )
