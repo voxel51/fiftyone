@@ -1160,7 +1160,6 @@ class DataQualityPanel(Panel):
                     ctx, issue_type=issue_type, next_screen="analysis"
                 )
         elif delegated_state is not None:
-            ctx.log(f"delegation status: {delegated_state}")
             self.change_computing_status(
                 ctx,
                 issue_type,
