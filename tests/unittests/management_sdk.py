@@ -287,10 +287,10 @@ class ManagementSdkTests(unittest.TestCase):
 
         # Test with Exception
         self.client.post_graphql_request.side_effect = (
-            fom.exceptions.FiftyOneManagementError("Some error")
+            fom.FiftyOneManagementError("Some error")
         )
 
-        with self.assertRaises(fom.exceptions.FiftyOneManagementError):
+        with self.assertRaises(fom.FiftyOneManagementError):
             fom.add_cloud_credentials(
                 provider,
                 cred_type,
@@ -340,11 +340,12 @@ class ManagementSdkTests(unittest.TestCase):
         mocks = [mock.Mock() for _ in range(5)]
 
         self.assertEqual(
-            fom.AwsCredentialsFactory.from_access_keys(*mocks[:3]),
+            fom.AwsCredentialsFactory.from_access_keys(*mocks[:4]),
             {
                 "access-key-id": mocks[0],
                 "secret-access-key": mocks[1],
                 "default-region": mocks[2],
+                "session-token": mocks[3],
             },
         )
 
@@ -544,9 +545,7 @@ class ManagementSdkTests(unittest.TestCase):
         )
 
     def test_get_permissions_wrapper(self):
-        self.assertRaises(
-            fom.exceptions.FiftyOneManagementError, fom.get_permissions
-        )
+        self.assertRaises(fom.FiftyOneManagementError, fom.get_permissions)
         with mock.patch(
             "fiftyone.management.dataset.get_permissions_for_dataset"
         ) as the_mock:
@@ -637,7 +636,7 @@ class ManagementSdkTests(unittest.TestCase):
         # if the dataset is not found expect an error
         self.client.post_graphql_request.return_value = {"dataset": None}
 
-        with pytest.raises(fom.exceptions.FiftyOneManagementError):
+        with pytest.raises(fom.FiftyOneManagementError):
             fom.get_permissions_for_dataset_user_group(
                 "non-existent-dataset",
                 "group-name",
@@ -689,7 +688,7 @@ class ManagementSdkTests(unittest.TestCase):
                 },
             )
         self.assertRaises(
-            ValueError,
+            fom.FiftyOneManagementError,
             fom.set_dataset_default_permission,
             self.DATASET_NAME,
             "invalid",
@@ -713,7 +712,7 @@ class ManagementSdkTests(unittest.TestCase):
                     },
                 )
         self.assertRaises(
-            ValueError,
+            fom.FiftyOneManagementError,
             fom.set_dataset_user_permission,
             self.DATASET_NAME,
             self.USER,
@@ -738,7 +737,7 @@ class ManagementSdkTests(unittest.TestCase):
             resolve_user_group_id.assert_called_with("group-name")
 
         # raise exception for invalid permission
-        with pytest.raises(fom.exceptions.FiftyOneManagementError):
+        with pytest.raises(fom.FiftyOneManagementError):
             fom.set_dataset_user_group_permission(
                 self.DATASET_NAME, "group-name", "invalid-permission"
             )
@@ -968,7 +967,7 @@ class ManagementSdkTests(unittest.TestCase):
             minimum_role="invalid",
         )
         self.assertRaises(
-            ValueError,
+            fom.FiftyOneManagementError,
             fom.set_plugin_operator_permissions,
             self.PLUGIN_NAME,
             self.PLUGIN_OPERATOR_NAME,
