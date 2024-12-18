@@ -124,7 +124,6 @@ class DataQualityPanel(Panel):
         ctx.panel.state.tags = []
         ctx.panel.state.first_open = False
         ctx.panel.state.dataset_name = ctx.dataset.name
-        ctx.panel.state.computation_checks_ran = 0
 
         # load store
         store = self.get_store(ctx)
@@ -368,9 +367,6 @@ class DataQualityPanel(Panel):
                     raise e
 
             self.change_view(ctx, issue_type)
-
-        # check computing state every page change - optimization within check_computing_status call
-        self.check_computing_status(ctx, issue_type)
 
     def _on_compute_option_selected(
         self, ctx, execution_option="execute", run_id=""
@@ -1074,14 +1070,14 @@ class DataQualityPanel(Panel):
         key = self._get_store_key(ctx)
         return True if store.get(key) else False
 
-    def check_computing_status(self, ctx, issue_type=None):
-        # TimerView cannot take arguments from polling. Polling uses ctx.params.issue_type.
-        # Other instances, we can get issue_type from the function argument.
-        issue_type = ctx.params.get("issue_type", issue_type)
+    def check_computing_status(self, ctx):
+        issue_type = ctx.params.get("issue_type", None)
         run_id = ctx.params.get("run_id")
 
         if issue_type is None:
-            return
+            raise Exception(
+                f"check_computing_status issue_type must be valid - got {issue_type}"
+            )
 
         store = self.get_store(ctx)
         key = self._get_store_key(ctx)
@@ -1090,12 +1086,10 @@ class DataQualityPanel(Panel):
         exec_type = (
             content.get("computing", {})
             .get(issue_type, {})
-            .get("execution_type", "")
+            .get("execution_type")
         )
 
-        ctx.log(f"Execution type: {exec_type}")
-
-        if exec_type == "execute":
+        if exec_type != "delegate_execution":
             last_scan_timestamp = content["last_scan"][issue_type].get(
                 "timestamp", None
             )
@@ -1115,99 +1109,66 @@ class DataQualityPanel(Panel):
                     is_computing=False,
                     issue_status=STATUS[0],
                 )
-            else:
-                # reopening of the panel
-                if (
-                    ctx.panel.state.computation_checks_ran is not None
-                    and ctx.panel.state.computation_checks_ran == 0
-                ):
-                    if ctx.dataset.has_field(FIELD_NAME[issue_type]):
-                        badge_status = STATUS[1]
-                        without_field = ctx.dataset.exists(
-                            FIELD_NAME[issue_type], bool=False
-                        )
-                        if not without_field:  # all samples have field already
-                            if (
-                                ctx.panel.state.screen == "pre_load_compute"
-                                and ctx.panel.state.issue_type == issue_type
-                            ):
-                                ctx.panel.state.screen = "analysis"
-                                badge_status = STATUS[2]
-                        self.change_computing_status(
-                            ctx,
-                            issue_type,
-                            is_computing=False,
-                            issue_status=badge_status,
-                        )
 
             return
 
-        elif exec_type == "delegate_execution":
+        dos = DelegatedOperationService()
 
-            dos = DelegatedOperationService()
+        try:
+            delegated_state = dos.get(bson.ObjectId(run_id)).run_state
+        except:
+            self.change_computing_status(
+                ctx, issue_type, issue_status=STATUS[0]
+            )
+            return
+
+        if delegated_state == "failed":
+            self.change_computing_status(
+                ctx, issue_type, issue_status=STATUS[0]
+            )
 
             try:
-                delegated_state = dos.get(bson.ObjectId(run_id)).run_state
-            except Exception as e:
-                ctx.log(f"checking delegation status failed: {e}")
-                self.change_computing_status(
-                    ctx, issue_type, issue_status=STATUS[0]
-                )
-                return
-
-            if delegated_state == "failed":
-                self.change_computing_status(
-                    ctx, issue_type, issue_status=STATUS[0]
-                )
-
-                try:
-                    self._process_issue_computation(ctx, issue_type)
-                except:
-                    ctx.panel.state.alert = f"computation_failed_{issue_type}"
-                    if ctx.panel.state.issue_type == issue_type:
-                        self.navigate_to_screen(
-                            ctx, issue_type=issue_type, next_screen="home"
-                        )
-
-                return
-
-            if delegated_state == "completed":
-                self.change_computing_status(
-                    ctx,
-                    issue_type,
-                    is_computing=False,
-                    execution_type="delegate_execution",
-                    delegation_run_id=str(run_id),
-                    delegation_status=delegated_state.lower(),
-                    issue_status=STATUS[2],
-                )
-
-                self._process_issue_computation(
-                    ctx, issue_type, recompute=True
-                )
-
-                if (
-                    ctx.panel.state.issue_type is not None
-                    and ctx.panel.state.issue_type == issue_type
-                    and ctx.panel.state.screen == "pre_load_compute"
-                ):
+                self._process_issue_computation(ctx, issue_type)
+            except:
+                ctx.panel.state.alert = f"computation_failed_{issue_type}"
+                if ctx.panel.state.issue_type == issue_type:
                     self.navigate_to_screen(
-                        ctx, issue_type=issue_type, next_screen="analysis"
+                        ctx, issue_type=issue_type, next_screen="home"
                     )
-            elif delegated_state is not None:
-                ctx.log(f"delegation status: {delegated_state}")
-                self.change_computing_status(
-                    ctx,
-                    issue_type,
-                    is_computing=True,
-                    execution_type="delegate_execution",
-                    delegation_run_id=str(run_id),
-                    delegation_status=delegated_state.lower(),
-                )
 
-        ctx.panel.state.computation_checks_ran = (
-            ctx.panel.state.computation_checks_ran + 1
-        )
+            return
+
+        if delegated_state == "completed":
+            self.change_computing_status(
+                ctx,
+                issue_type,
+                is_computing=False,
+                execution_type="delegate_execution",
+                delegation_run_id=str(run_id),
+                delegation_status=delegated_state.lower(),
+                issue_status=STATUS[2],
+            )
+
+            self._process_issue_computation(ctx, issue_type, recompute=True)
+
+            if (
+                ctx.panel.state.issue_type is not None
+                and ctx.panel.state.issue_type == issue_type
+                and ctx.panel.state.screen == "pre_load_compute"
+            ):
+                self.navigate_to_screen(
+                    ctx, issue_type=issue_type, next_screen="analysis"
+                )
+        elif delegated_state is not None:
+            ctx.log(f"delegation status: {delegated_state}")
+            self.change_computing_status(
+                ctx,
+                issue_type,
+                is_computing=True,
+                execution_type="delegate_execution",
+                delegation_run_id=str(run_id),
+                delegation_status=delegated_state.lower(),
+            )
 
     ###
     # SCREENS
