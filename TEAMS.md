@@ -752,3 +752,90 @@ sample_collection.clear_media()
 # Get stats about a sample collection's contribution to the media cache
 sample_collection.cache_stats()
 ```
+
+## Developer Utilities
+
+Two utilities are availble to Voxel51 developers:
+[coder](https://coder.com/)
+and 
+[telepresence](https://www.telepresence.io/).
+
+### Coder
+
+Our coder instance is located at https://coder.dev.fiftyone.ai.
+You should use coder if you want to deploy a remote virtual machine that
+gets automatically configured for you.
+
+For detailed information on using coder for development, please refer
+to the 
+[centralized coder docs](https://infra-docs.dev.fiftyone.ai/deployments/deploying-to-coder/)
+
+### Telepresence
+
+Telepresence is a utility for hot-swapping your local processes into a 
+kubernetes cluster.
+
+To use telepresence, you'll need to
+[install the telepresence CLI](https://www.telepresence.io/docs/install/client).
+
+Once telepresence is installed, you will need to
+[deploy an ephemeral environment](https://infra-docs.dev.fiftyone.ai/deployments/deploying-developer-environment/).
+
+Finally, you can use the Makefile.teams file to assist you in running teams:
+
+```shell
+# Authenticate with Gcloud, if needed.
+make -f Makefile.teams gcloud-auth
+
+# Setup the .env files so that your local and remote are utilizing the same
+# env vars.
+make -f Makefile.teams gcloud-cp-env-ephemeral
+
+# Download the license file, if needed.
+make -f Makefile.teams gcloud-cp-license-ephemeral
+```
+
+Once the .env and license files are in place, you can start running
+teams:
+
+```shell
+
+# In one terminal, run the embedded API
+make -f Makefile.teams run-embedded-api
+# In another terminal, run the embedded App
+make -f Makefile.teams run-teams-app
+```
+
+Telepresence can now be setup to intercept traffic:
+
+```shell
+# Connect to the remote telepresence instance and begin intercepting
+# traffic
+make -f Makefile.teams telepresence-connect \
+    telepresence-tunnel-teams-app \
+    telepresence-tunnel-fiftyone-app
+```
+
+You can now navigate to `https://<name>.ephem.fiftyone.ai` and see your 
+changes in realtime.
+
+### Known Issues
+
+If you are running the embedded api and are seeing the following errors:
+
+```shell
+WARNING:google.auth.compute_engine._metadata:Compute Engine Metadata server unavailable on attempt 1 of 5. Reason: HTTPConnectionPool(host='metadata.google.internal', port=80): Max retries exceeded with url: /computeMetadata/v1/instance/service-accounts/default/?recursive=true (Caused by NameResolutionError("<urllib3.connection.HTTPConnection object at 0x11b6ae1a0>: Failed to resolve 'metadata.google.internal' ([Errno 8] nodename nor servname provided, or not known)"))
+```
+
+This is because google can't find your application default login credentials
+and is trying to use workload identity.
+To resolve this, export the `GOOGLE_APPLICATION_CREDENTIALS` environment
+variable and restart the process:
+
+```shell
+ps -ef | grep 'package/teams'
+# kill the above processes
+
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account/json
+make -f Makefile.teams run-embedded-api
+```
