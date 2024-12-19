@@ -50,7 +50,8 @@ RUN --mount=type=secret,id=PIP_EXTRA_INDEX_URL \
     darwin-fiftyone \
     /tmp/wheels/fiftyone-*-py3-none-any.whl \
     pyperclip \
-    sentence_transformers
+    sentence_transformers \
+    databricks-sdk
 
 
 FROM ${GPT_PLUGIN_IMAGE_NAME} AS internalrelease
@@ -61,7 +62,8 @@ RUN --mount=type=cache,from=internal-wheelhouse,target=/wheelhouse,ro \
     albumentations \
     darwin-fiftyone \
     pyperclip \
-    sentence_transformers
+    sentence_transformers \
+    databricks-sdk
 
 ### `fiftyone-app` image - last to make it the default
 FROM python:${PYTHON_VERSION}-slim AS release
