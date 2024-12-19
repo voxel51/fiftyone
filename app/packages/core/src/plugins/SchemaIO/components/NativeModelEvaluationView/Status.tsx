@@ -4,10 +4,10 @@ import React from "react";
 import { useTriggerEvent } from "./utils";
 
 export default function Status(props: StatusProps) {
-  const { status, canEdit, setStatusEvent } = props;
+  const { status, canEdit, readOnly, setStatusEvent } = props;
   const triggerEvent = useTriggerEvent();
 
-  if (canEdit) {
+  if (!readOnly) {
     return (
       <Select
         sx={{
@@ -22,6 +22,12 @@ export default function Status(props: StatusProps) {
         onChange={(e) => {
           triggerEvent(setStatusEvent, { status: e.target.value });
         }}
+        title={
+          canEdit
+            ? ""
+            : "You do not have permission to update evaluation status"
+        }
+        disabled={!canEdit}
       >
         {STATUSES.map((status) => {
           const color = COLOR_BY_STATUS[status];
@@ -63,7 +69,8 @@ export default function Status(props: StatusProps) {
 type StatusProps = {
   status?: string;
   canEdit?: boolean;
-  setStatusEvent?: string;
+  readOnly?: boolean;
+  setStatusEvent: string;
 };
 
 const STATUS_LABELS = {
