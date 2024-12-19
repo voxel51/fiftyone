@@ -181,6 +181,13 @@ on the cards below to see how!
     :image: ../_static/images/integrations/lightning_flash.png
     :tags: Model-Training,Model-Evaluation,Models
 
+.. customcarditem::
+    :header: Rerun
+    :description: Visualize Rerun data files inside the FiftyOne App.
+    :link: rerun.html
+    :image: ../_static/images/integrations/rerun.jpeg
+    :tags: Visualization
+
 .. End of integrations cards
 
 .. raw:: html
@@ -220,3 +227,4 @@ on the cards below to see how!
     OpenCLIP <openclip.rst>
     PyTorch Hub <pytorch_hub.rst>
     Lightning Flash <lightning_flash.rst>
+    Rerun <rerun.rst>
