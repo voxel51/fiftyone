@@ -1125,3 +1125,84 @@ as powerful as it needs to be. We can leverage internal libraries and services,
 hosted solutions, and tooling that meets the specific needs of our data. We
 can expose flexible but precise controls to users to allow them to find exactly
 the data that's needed.
+
+.. _data-lens-snippet-remap-fields:
+
+Snippet: Dynamic user inputs
+---------------
+
+As the volume and complexity of your data grows, you may want to expose many
+options to Data Lens users, but doing so all at once can be overwhelming for
+the user. In this example, we'll look at how we can use
+:ref:`dynamic operators <operator-inputs>` to conditionally expose
+configuration options to Data Lens users.
+
+.. code-block:: python
+    :linenos:
+
+    class MyOperator(DataLensOperator):
+        @property
+        def config(self) -> foo.OperatorConfig:
+            return OperatorConfig(
+                name="my_operator",
+                label="My operator",
+                dynamic=True,
+            )
+
+
+By setting `dynamic=True` in our operator config, our operator will be able to
+customize the options shown to a Data Lens user based on the current state.
+Let's use this to optionally show an "advanced options" section in our query
+parameters.
+
+.. code-block:: python
+    :linenos:
+
+    def resolve_input(self, ctx: foo.ExecutionContext):
+        inputs = types.Object()
+
+        inputs.str("some_param", label="Parameter value")
+        inputs.str("other_param", label="Other value")
+
+        inputs.bool("show_advanced", label="Show advanced options", default=False)
+
+        # Since this is a dynamic operator,
+        #   we can use `ctx.params` to conditionally show options
+        if ctx.params.get("show_advanced") is True:
+            # In this example, we'll optionally show configuration which allows a user
+            #   to remap selected sample fields to another name.
+            # This could be used to enable users to import samples into datasets with
+            #   varying schemas.
+            remappable_fields = ("field_a", "field_b")
+            for field_name in remappable_fields:
+                inputs.str(f"{field_name}_remap", label=f"Remap {field_name} to another name")
+
+        return types.Property(inputs)
+
+Our operator's `resolve_input` method will be called each time `ctx.params`
+changes, which allows us to create an experience that is tailored to the Data
+Lens user's behavior. In this example, we're optionally displaying advanced
+configuration that allows a user to remap sample fields. Applying this
+remapping might look something like this.
+
+.. code-block:: python
+    :linenos:
+
+    def _remap_sample_fields(self, sample: dict, request: DataLensSearchRequest):
+        remappable_fields = ("field_a", "field_b")
+        for field_name in remappable_fields:
+            remapped_field_name = request.search_params.get(f"{field_name}_remap")
+            if remapped_field_name not in (None, ""):
+                sample[remapped_field_name] = sample[field_name]
+                del sample[field_name]
+
+Of course, dynamic operators can be used for much more than this. Search
+experiences can be broadened or narrowed to allow for both breadth and depth
+within your connected data sources.
+
+As an example, suppose a user is searching for detections of "traffic light"
+in an autonomous driving dataset. A dynamic operator can be used to expose
+additional search options that are specific to traffic lights, such as being
+able to select samples with only red, yellow, or green lights. In this way,
+dynamic operators provide a simple mechanism for developing intuitive and
+context-sensitive search experiences for Data Lens users.
