@@ -97,19 +97,11 @@ export const decodeOverlayOnDisk = async (
 
   // convert absolute file path to a URL that we can "fetch" from
   const overlayImageUrl = getSampleSrc(source || label[overlayPathField]);
-  const urlTokens = overlayImageUrl.split("?");
-
-  let baseUrl = overlayImageUrl;
-
-  // remove query params if not local URL
-  if (!urlTokens.at(1)?.startsWith("filepath=") && !source) {
-    baseUrl = overlayImageUrl.split("?")[0];
-  }
 
   let overlayImageBlob: Blob;
   try {
     const overlayImageFetchResponse = await enqueueFetch({
-      url: baseUrl,
+      url: overlayImageUrl,
       options: { priority: "low" },
     });
     overlayImageBlob = await overlayImageFetchResponse.blob();
