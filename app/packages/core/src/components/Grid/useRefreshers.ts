@@ -7,7 +7,6 @@ import { useRecoilValue } from "recoil";
 import { gridAt, gridOffset, gridPage } from "./recoil";
 
 const MAX_LRU_CACHE_ITEMS = 510;
-const MAX_LRU_CACHE_SIZE = 1e9;
 
 export default function useRefreshers() {
   const cropToContent = useRecoilValue(fos.cropToContent(false));

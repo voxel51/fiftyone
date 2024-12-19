@@ -614,8 +614,9 @@ def _make_range_query(path: str, field: fof.Field, args):
 def _make_scalar_expression(f, args, field, list_field=None, is_label=False):
     expr = None
     if _is_support(field):
-        mn, mx = args["range"]
-        expr = (f[0] >= mn) & (f[1] <= mx)
+        if "range" in args:
+            mn, mx = args["range"]
+            expr = (f[0] >= mn) & (f[1] <= mx)
     elif isinstance(field, fof.ListField):
         if isinstance(list_field, str):
             return f.filter(
@@ -640,12 +641,14 @@ def _make_scalar_expression(f, args, field, list_field=None, is_label=False):
         if not true and not false:
             expr = (f != True) & (f != False)
     elif _is_datetime(field):
-        mn, mx = args["range"]
-        p = fou.timestamp_to_datetime
-        expr = (f >= p(mn)) & (f <= p(mx))
+        if "range" in args:
+            mn, mx = args["range"]
+            p = fou.timestamp_to_datetime
+            expr = (f >= p(mn)) & (f <= p(mx))
     elif isinstance(field, (fof.FloatField, fof.IntField)):
-        mn, mx = args["range"]
-        expr = (f >= mn) & (f <= mx)
+        if "range" in args:
+            mn, mx = args["range"]
+            expr = (f >= mn) & (f <= mx)
     else:
         values = args["values"]
         if not values:

@@ -11,6 +11,7 @@ import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { config } from "./config";
 import { getBrowserStorageEffectForKey } from "./customEffects";
+import { groupSlice } from "./groups";
 import { isLabelPath } from "./labels";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
@@ -34,6 +35,7 @@ export const lightningQuery = graphQLSelectorFamily<
         input: {
           dataset: get(datasetName),
           paths,
+          slice: get(groupSlice),
         },
       };
     },

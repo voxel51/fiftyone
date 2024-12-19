@@ -535,6 +535,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
         """
 
         result = await _execute(query, dataset, fo.FloatField, keys)
+
         self.assertListEqual(
             result.data["lightning"],
             [
@@ -568,7 +569,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                 {
                     "path": "classification.inf_list",
                     "inf": True,
-                    "max": 1.0,
+                    "max": None,
                     "min": -1.0,
                     "nan": False,
                     "ninf": False,
@@ -587,7 +588,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                     "path": "classification.nan_list",
                     "inf": False,
                     "max": 1.0,
-                    "min": -1.0,
+                    "min": None,
                     "nan": True,
                     "ninf": False,
                     "none": False,
@@ -605,7 +606,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                     "path": "classification.ninf_list",
                     "inf": False,
                     "max": 1.0,
-                    "min": -1.0,
+                    "min": None,
                     "nan": False,
                     "ninf": True,
                     "none": False,
@@ -631,7 +632,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                 {
                     "path": "detections.detections.inf",
                     "inf": True,
-                    "max": 1.0,
+                    "max": None,
                     "min": -1.0,
                     "nan": False,
                     "ninf": False,
@@ -640,7 +641,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                 {
                     "path": "detections.detections.inf_list",
                     "inf": True,
-                    "max": 1.0,
+                    "max": None,
                     "min": -1.0,
                     "nan": False,
                     "ninf": False,
@@ -650,7 +651,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                     "path": "detections.detections.nan",
                     "inf": False,
                     "max": 1.0,
-                    "min": -1.0,
+                    "min": None,
                     "nan": True,
                     "ninf": False,
                     "none": False,
@@ -659,7 +660,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                     "path": "detections.detections.nan_list",
                     "inf": False,
                     "max": 1.0,
-                    "min": -1.0,
+                    "min": None,
                     "nan": True,
                     "ninf": False,
                     "none": False,
@@ -668,7 +669,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                     "path": "detections.detections.ninf",
                     "inf": False,
                     "max": 1.0,
-                    "min": -1.0,
+                    "min": None,
                     "nan": False,
                     "ninf": True,
                     "none": False,
@@ -677,7 +678,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                     "path": "detections.detections.ninf_list",
                     "inf": False,
                     "max": 1.0,
-                    "min": -1.0,
+                    "min": None,
                     "nan": False,
                     "ninf": True,
                     "none": False,
@@ -730,7 +731,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                 {
                     "path": "frames.classification.inf_list",
                     "inf": True,
-                    "max": 1.0,
+                    "max": None,
                     "min": -1.0,
                     "nan": False,
                     "ninf": False,
@@ -749,7 +750,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                     "path": "frames.classification.nan_list",
                     "inf": False,
                     "max": 1.0,
-                    "min": -1.0,
+                    "min": None,
                     "nan": True,
                     "ninf": False,
                     "none": False,
@@ -767,7 +768,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                     "path": "frames.classification.ninf_list",
                     "inf": False,
                     "max": 1.0,
-                    "min": -1.0,
+                    "min": None,
                     "nan": False,
                     "ninf": True,
                     "none": False,
@@ -793,7 +794,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                 {
                     "path": "frames.detections.detections.inf",
                     "inf": True,
-                    "max": 1.0,
+                    "max": None,
                     "min": -1.0,
                     "nan": False,
                     "ninf": False,
@@ -802,7 +803,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                 {
                     "path": "frames.detections.detections.inf_list",
                     "inf": True,
-                    "max": 1.0,
+                    "max": None,
                     "min": -1.0,
                     "nan": False,
                     "ninf": False,
@@ -812,7 +813,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                     "path": "frames.detections.detections.nan",
                     "inf": False,
                     "max": 1.0,
-                    "min": -1.0,
+                    "min": None,
                     "nan": True,
                     "ninf": False,
                     "none": False,
@@ -821,7 +822,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                     "path": "frames.detections.detections.nan_list",
                     "inf": False,
                     "max": 1.0,
-                    "min": -1.0,
+                    "min": None,
                     "nan": True,
                     "ninf": False,
                     "none": False,
@@ -830,7 +831,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                     "path": "frames.detections.detections.ninf",
                     "inf": False,
                     "max": 1.0,
-                    "min": -1.0,
+                    "min": None,
                     "nan": False,
                     "ninf": True,
                     "none": False,
@@ -839,7 +840,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                     "path": "frames.detections.detections.ninf_list",
                     "inf": False,
                     "max": 1.0,
-                    "min": -1.0,
+                    "min": None,
                     "nan": False,
                     "ninf": True,
                     "none": False,
@@ -928,7 +929,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                 {
                     "path": "inf_list",
                     "inf": True,
-                    "max": 1.0,
+                    "max": None,
                     "min": -1.0,
                     "nan": False,
                     "ninf": False,
@@ -947,7 +948,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                     "path": "nan_list",
                     "inf": False,
                     "max": 1.0,
-                    "min": -1.0,
+                    "min": None,
                     "nan": True,
                     "ninf": False,
                     "none": False,
@@ -965,7 +966,7 @@ class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
                     "path": "ninf_list",
                     "inf": False,
                     "max": 1.0,
-                    "min": -1.0,
+                    "min": None,
                     "nan": False,
                     "ninf": True,
                     "none": False,
@@ -1053,6 +1054,124 @@ class TestStringLightningQueries(unittest.IsolatedAsyncioTestCase):
         )
 
 
+class TestGroupDatasetLightningQueries(unittest.IsolatedAsyncioTestCase):
+    @drop_async_dataset
+    async def test_group_dataset(self, dataset: fo.Dataset):
+        group = fo.Group()
+        one = fo.Sample(
+            classifications=fo.Classifications(
+                classifications=[
+                    fo.Classification(label="one"),
+                    fo.Classification(confidence=1),
+                    fo.Classification(confidence=-1),
+                ]
+            ),
+            filepath="one.png",
+            group=group.element("one"),
+            numeric=1,
+            string="one",
+        )
+        two = fo.Sample(
+            classifications=fo.Classifications(
+                classifications=[
+                    fo.Classification(label="two"),
+                    fo.Classification(confidence=2),
+                    fo.Classification(confidence=-2),
+                ]
+            ),
+            filepath="two.png",
+            group=group.element("two"),
+            numeric=2,
+            string="two",
+        )
+        dataset.add_samples([one, two])
+
+        query = """
+            query Query($input: LightningInput!) {
+                lightning(input: $input) {
+                    ... on FloatLightningResult {
+                        path
+                        min
+                        max
+                    }
+                    ... on IntLightningResult {
+                        path
+                        min
+                        max
+                    }
+                    ... on StringLightningResult {
+                        path
+                        values
+                    }
+                }
+            }
+        """
+
+        # only query "one" slice samples
+        result = await _execute(
+            query,
+            dataset,
+            (fo.FloatField, fo.IntField, fo.StringField),
+            [
+                "classifications.classifications.confidence",
+                "classifications.classifications.label",
+                "numeric",
+                "string",
+            ],
+            frames=False,
+            slice="one",
+        )
+
+        self.assertListEqual(
+            result.data["lightning"],
+            [
+                {
+                    "path": "classifications.classifications.confidence",
+                    "min": -1.0,
+                    "max": 1.0,
+                },
+                {
+                    "path": "classifications.classifications.label",
+                    "values": ["one", "two"],
+                },
+                {"path": "numeric", "min": 1.0, "max": 1.0},
+                {"path": "string", "values": ["one"]},
+            ],
+        )
+
+        # only query "two" slice samples
+        result = await _execute(
+            query,
+            dataset,
+            (fo.FloatField, fo.IntField, fo.StringField),
+            [
+                "classifications.classifications.confidence",
+                "classifications.classifications.label",
+                "numeric",
+                "string",
+            ],
+            frames=False,
+            slice="two",
+        )
+
+        self.assertListEqual(
+            result.data["lightning"],
+            [
+                {
+                    "path": "classifications.classifications.confidence",
+                    "min": -2.0,
+                    "max": 2.0,
+                },
+                {
+                    "path": "classifications.classifications.label",
+                    "values": ["one", "two"],
+                },
+                {"path": "numeric", "min": 2.0, "max": 2.0},
+                {"path": "string", "values": ["two"]},
+            ],
+        )
+
+
 def _add_samples(dataset: fo.Dataset, *sample_data: t.List[t.Dict]):
     samples = []
     keys = set()
@@ -1067,7 +1186,12 @@ def _add_samples(dataset: fo.Dataset, *sample_data: t.List[t.Dict]):
 
 
 async def _execute(
-    query: str, dataset: fo.Dataset, field: fo.Field, keys: t.Set[str]
+    query: str,
+    dataset: fo.Dataset,
+    field: fo.Field,
+    keys: t.Set[str],
+    frames=True,
+    slice: t.Optional[str] = None,
 ):
     return await execute(
         schema,
@@ -1076,7 +1200,8 @@ async def _execute(
             "input": asdict(
                 LightningInput(
                     dataset=dataset.name,
-                    paths=_get_paths(dataset, field, keys),
+                    paths=_get_paths(dataset, field, keys, frames=frames),
+                    slice=slice,
                 )
             )
         },
@@ -1084,17 +1209,23 @@ async def _execute(
 
 
 def _get_paths(
-    dataset: fo.Dataset, field_type: t.Type[fo.Field], keys: t.Set[str]
+    dataset: fo.Dataset,
+    field_type: t.Type[fo.Field],
+    keys: t.Set[str],
+    frames=True,
 ):
     field_dict = dataset.get_field_schema(flat=True)
-    field_dict.update(
-        **{
-            f"frames.{path}": field
-            for path, field in dataset.get_frame_field_schema(
-                flat=True
-            ).items()
-        }
-    )
+
+    if frames:
+        field_dict.update(
+            **{
+                f"frames.{path}": field
+                for path, field in dataset.get_frame_field_schema(
+                    flat=True
+                ).items()
+            }
+        )
+
     paths: t.List[LightningPathInput] = []
     for path in sorted(field_dict):
         field = field_dict[path]

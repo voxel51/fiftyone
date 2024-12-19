@@ -222,7 +222,7 @@ const makeGetEntryResource = <T extends OperationType>() => {
     hard: boolean;
     handleError?: (error: unknown) => void;
   }): Resource<Entry<T>> => {
-    if (isReusable(location)) {
+    if (!hard && isReusable(location)) {
       // throw the current resource (page) if it can be reused
       throw currentResource;
     }

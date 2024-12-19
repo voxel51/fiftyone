@@ -444,6 +444,7 @@ input LabelTagColorInput {
 input LightningInput {
   dataset: String!
   paths: [LightningPathInput!]!
+  slice: String = null
 }
 
 input LightningPathInput {

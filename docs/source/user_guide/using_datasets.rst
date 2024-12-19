@@ -425,23 +425,6 @@ that should be used by default whenever the dataset is loaded in the App:
     Did you know? You can also configure color schemes
     :ref:`directly in the App <app-color-schemes>`!
 
-.. _dataset-app-config-sidebar-mode:
-
-Sidebar mode
-~~~~~~~~~~~~
-
-You can configure the default loading behavior of the
-:ref:`filters sidebar <app-sidebar-mode>`:
-
-.. code-block:: python
-    :linenos:
-
-    # Set the default sidebar mode to "best"
-    dataset.app_config.sidebar_mode = "best"
-    dataset.save()  # must save after edits
-
-    session.refresh()
-
 .. _dataset-app-config-sidebar-groups:
 
 Sidebar groups
@@ -1662,9 +1645,9 @@ interested in finding videos that contain specific classes of interest, eg
 
 One approach is to directly query the frame-level field (`frames.detections`
 in this case) in the App's sidebar. However, when the dataset is large, such
-queries are inefficient, as they cannot
-:ref:`leverage indexes <app-indexed-filtering>` and thus require full
-collection scans over all frames to retrieve the relevant samples.
+queries are inefficient, as they cannot unlock
+:ref:`query performance <app-optimizing-query-performance>` and thus require
+full collection scans over all frames to retrieve the relevant samples.
 
 A more efficient approach is to first use
 :meth:`create_summary_field() <fiftyone.core.dataset.Dataset.create_summary_field>`
@@ -1765,9 +1748,9 @@ As the above examples illustrate, summary fields allow you to encode various
 types of information at the sample-level that you can directly query to find
 samples that contain specific values.
 
-Moreover, summary fields are :ref:`indexed <app-indexed-filtering>` by default
-and the App can natively leverage these indexes to provide performant
-filtering:
+Moreover, summary fields are :ref:`indexed <app-optimizing-query-performance>`
+by default and the App can natively leverage these indexes to provide
+performant filtering:
 
 .. image:: /images/datasets/quickstart-video-summary-fields.gif
    :alt: quickstart-video-summary-fields
@@ -2559,7 +2542,7 @@ Object detections stored in |Detections| may also have instance segmentation
 masks.
 
 These masks can be stored in one of two ways: either directly in the database
-via the :attr:`mask<fiftyone.core.labels.Detection.mask>` attribute, or on
+via the :attr:`mask <fiftyone.core.labels.Detection.mask>` attribute, or on
 disk referenced by the
 :attr:`mask_path <fiftyone.core.labels.Detection.mask_path>` attribute.
 
@@ -2622,8 +2605,10 @@ object's bounding box when visualizing in the App.
                 <Detection: {
                     'id': '5f8709282018186b6ef6682b',
                     'attributes': {},
+                    'tags': [],
                     'label': 'cat',
                     'bounding_box': [0.48, 0.513, 0.397, 0.288],
+                    'mask': None,
                     'mask_path': '/path/to/mask.png',
                     'confidence': 0.96,
                     'index': None,
@@ -2632,8 +2617,8 @@ object's bounding box when visualizing in the App.
         }>,
     }>
 
-Like all |Label| types, you can also add custom attributes to your detections
-by dynamically adding new fields to each |Detection| instance:
+Like all |Label| types, you can also add custom attributes to your instance
+segmentations by dynamically adding new fields to each |Detection| instance:
 
 .. code-block:: python
     :linenos:

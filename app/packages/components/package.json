@@ -40,7 +40,7 @@
         "@emotion/react": "^11.10.4",
         "@emotion/styled": "^11.10.4",
         "@fiftyone/state": "*",
-        "@mui/icons-material": "^5.10.2",
+        "@mui/icons-material": "^5.16.7",
         "@mui/material": "^5.9.0",
         "@react-spring/web": "^9.7.3",
         "@textea/json-viewer": "^3.4.1",

@@ -42,6 +42,13 @@ export class SidebarPom {
     return this.sidebar.getByTestId(`${filterType}-filter-${fieldName}`);
   }
 
+  queryPerformance(fieldName: string, filterType?: "categorical" | "numeric") {
+    const locator = filterType
+      ? this.filter(fieldName, filterType)
+      : this.fieldContainer(fieldName);
+    return locator.getByTestId("query-performance");
+  }
+
   sidebarEntryDraggableArea(fieldName: string) {
     return this.sidebar
       .getByTestId(`sidebar-entry-draggable-${fieldName}`)
@@ -177,6 +184,28 @@ class SidebarAsserter {
     for (let i = 0; i < fieldNames.length; i++) {
       await this.assertCheckboxDisabled(fieldNames[i]);
     }
+  }
+
+  async assertFieldHasQueryPerformance(fieldName: string) {
+    await expect(this.sb.queryPerformance(fieldName)).toBeVisible();
+  }
+
+  async assertFieldMissingQueryPerformance(fieldName: string) {
+    await expect(this.sb.queryPerformance(fieldName)).toBeHidden();
+  }
+
+  async assertSubfieldHasQueryPerformance(
+    fieldName: string,
+    filterType?: "categorical" | "numeric"
+  ) {
+    await expect(this.sb.queryPerformance(fieldName, filterType)).toBeVisible();
+  }
+
+  async assertSubfieldMissingQueryPerformance(
+    fieldName: string,
+    filterType?: "categorical" | "numeric"
+  ) {
+    await expect(this.sb.queryPerformance(fieldName, filterType)).toBeHidden();
   }
 
   async assertFieldInSidebar(fieldName: string) {

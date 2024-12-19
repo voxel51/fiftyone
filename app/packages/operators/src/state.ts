@@ -1,7 +1,13 @@
 import { useAnalyticsInfo } from "@fiftyone/analytics";
 import * as fos from "@fiftyone/state";
 import { debounce } from "lodash";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   atom,
   selector,
@@ -32,6 +38,7 @@ import {
 import { OperatorPromptType, Places } from "./types";
 import { OperatorExecutorOptions } from "./types-internal";
 import { ValidationContext } from "./validation";
+import { Markdown } from "@fiftyone/components";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -231,14 +238,15 @@ function useExecutionOptions(operatorURI, ctx, isRemote) {
 export type OperatorExecutionOption = {
   label: string;
   id: string;
-  description: string;
-  onClick: () => void;
+  description: string | React.ReactNode;
+  onClick?: () => void;
   isDelegated: boolean;
   choiceLabel?: string;
   tag?: string;
   default?: boolean;
   selected?: boolean;
   onSelect?: () => void;
+  isDisabledSchedule?: boolean;
 };
 
 const useOperatorPromptSubmitOptions = (
@@ -251,7 +259,7 @@ const useOperatorPromptSubmitOptions = (
   const persistUnderKey = `operator-prompt-${operatorURI}`;
   const availableOrchestrators =
     execDetails.executionOptions?.availableOrchestrators || [];
-  const hasAvailableOrchestators = availableOrchestrators.length > 0;
+  const hasAvailableOrchestrators = availableOrchestrators.length > 0;
   const executionOptions = execDetails.executionOptions || {};
   const defaultToExecute = executionOptions.allowDelegatedExecution
     ? !executionOptions.defaultChoiceToDelegated
@@ -287,7 +295,7 @@ const useOperatorPromptSubmitOptions = (
       label: "Schedule",
       id: "schedule",
       default: defaultToSchedule,
-      description: "Run this operation on your compute cluster",
+      description: "Run this operation in the background",
       onSelect() {
         setSelectedID("schedule");
       },
@@ -300,7 +308,7 @@ const useOperatorPromptSubmitOptions = (
 
   if (
     executionOptions.allowDelegatedExecution &&
-    hasAvailableOrchestators &&
+    hasAvailableOrchestrators &&
     executionOptions.orchestratorRegistrationEnabled
   ) {
     for (let orc of execDetails.executionOptions.availableOrchestrators) {
@@ -321,6 +329,26 @@ const useOperatorPromptSubmitOptions = (
         isDelegated: true,
       });
     }
+  } else if (
+    executionOptions.allowDelegatedExecution &&
+    executionOptions.allowImmediateExecution &&
+    executionOptions.orchestratorRegistrationEnabled &&
+    !hasAvailableOrchestrators
+  ) {
+    const markdownDesc = React.createElement(
+      Markdown,
+      null,
+      "[Learn how](https://docs.voxel51.com/plugins/using_plugins.html#delegated-operations) to run this operation in the background"
+    );
+    options.push({
+      label: "Schedule",
+      choiceLabel: `Schedule`,
+      tag: "NOT AVAILABLE",
+      id: "disabled-schedule",
+      description: markdownDesc,
+      isDelegated: true,
+      isDisabledSchedule: true,
+    });
   }
 
   // sort options so that the default is always the first in the list
@@ -366,10 +394,11 @@ const useOperatorPromptSubmitOptions = (
   if (selectedOption) selectedOption.selected = true;
   const showWarning =
     executionOptions.orchestratorRegistrationEnabled &&
-    !hasAvailableOrchestators &&
+    !hasAvailableOrchestrators &&
     !executionOptions.allowImmediateExecution;
-  const warningMessage =
-    "There are no available orchestrators to schedule this operation. Please contact your administrator to add an orchestrator.";
+  const warningStr =
+    "This operation requires [delegated execution](https://docs.voxel51.com/plugins/using_plugins.html#delegated-operations)";
+  const warningMessage = React.createElement(Markdown, null, warningStr);
 
   return {
     showWarning,
@@ -524,13 +553,15 @@ export const useOperatorPrompt = () => {
     ({ get, set }) =>
       (fieldName, value) => {
         const state = get(promptingOperatorState);
-        set(promptingOperatorState, {
-          ...state,
-          params: {
-            ...state.params,
-            [fieldName]: value,
-          },
-        });
+        if (state) {
+          set(promptingOperatorState, {
+            ...state,
+            params: {
+              ...state?.params,
+              [fieldName]: value,
+            },
+          });
+        }
       }
   );
   const execute = useCallback(
@@ -820,6 +851,7 @@ export function useOperatorBrowser() {
   const choices = useRecoilValue(operatorBrowserChoices);
   const promptForInput = usePromptOperatorInput();
   const isOperatorPaletteOpened = useRecoilValue(operatorPaletteOpened);
+  const editingField = useRecoilValue(fos.editingFieldAtom);
 
   const selectedValue = useMemo(() => {
     return selected ?? defaultSelected;
@@ -882,7 +914,8 @@ export function useOperatorBrowser() {
     (e) => {
       if (e.key !== "`" && !isVisible) return;
       if (e.key === "`" && isOperatorPaletteOpened) return;
-      if (BROWSER_CONTROL_KEYS.includes(e.key)) e.preventDefault();
+      if (BROWSER_CONTROL_KEYS.includes(e.key) && !editingField)
+        e.preventDefault();
       switch (e.key) {
         case "ArrowDown":
           selectNext();
@@ -891,7 +924,7 @@ export function useOperatorBrowser() {
           selectPrevious();
           break;
         case "`":
-          if (isOperatorPaletteOpened) break;
+          if (isOperatorPaletteOpened || editingField) break;
           if (isVisible) {
             close();
           } else {

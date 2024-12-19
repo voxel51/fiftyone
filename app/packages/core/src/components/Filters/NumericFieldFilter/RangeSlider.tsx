@@ -35,9 +35,12 @@ const RangeSlider = ({
   const one = useRecoilValue(state.oneBound({ path, modal }));
   const timeZone = useRecoilValue(fos.timeZone);
   const hasBounds = useRecoilValue(state.hasBounds({ path, modal }));
+  const nonfinitesText = useRecoilValue(state.nonfinitesText({ path, modal }));
 
   if (!hasBounds) {
-    return <Box text="No results" />;
+    return (
+      <Box text={nonfinitesText ? `${nonfinitesText} present` : "No results"} />
+    );
   }
 
   const showSlider = hasBounds && !(excluded && defaultRange);

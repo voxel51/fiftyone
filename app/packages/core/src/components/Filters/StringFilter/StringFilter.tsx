@@ -1,11 +1,11 @@
 import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import Bolt from "@mui/icons-material/Bolt";
 import React from "react";
 import type { RecoilState } from "recoil";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import { LightningBolt } from "../../Sidebar/Entries/FilterablePathEntry/Icon";
 import { isInKeypointsField } from "../state";
 import useQueryPerformanceTimeout from "../use-query-performance-timeout";
 import Checkboxes from "./Checkboxes";
@@ -103,9 +103,7 @@ const StringFilter = ({
           template={({ label, hoverTarget }) => (
             <NamedStringFilterHeader>
               <span ref={hoverTarget}>{label}</span>
-              {showQueryPerformanceIcon && (
-                <Bolt fontSize={"small"} sx={{ color: theme.action.active }} />
-              )}
+              {showQueryPerformanceIcon && <LightningBolt />}
             </NamedStringFilterHeader>
           )}
         />

@@ -14,9 +14,9 @@ FiftyOne
         </a>
       </th>
       <th>
-        <a target="_blank" href="https://slack.voxel51.com">
-          <img alt="Slack community" src="_static/images/icons/slack-logo-256px.png">
-          &nbsp Join us on Slack
+        <a target="_blank" href="https://community.voxel51.com/">
+          <img alt="Discord community" src="_static/images/icons/discord-logo-256px.png">
+          &nbsp Join us on Discord
         </a>
       </th>
       <th>
@@ -472,7 +472,7 @@ Need Support?
 _____________
 
 If you run into any issues with FiftyOne or have any burning questions, feel
-free to `connect with us on Slack <https://slack.voxel51.com>`_ or reach out to
+free to `connect with us on Discord <https://community.voxel51.com>`_ or reach out to
 us at support@voxel51.com.
 
 .. toctree::
@@ -487,8 +487,8 @@ us at support@voxel51.com.
    Recipes <recipes/index>
    Cheat Sheets <cheat_sheets/index>
    User Guide <user_guide/index>
-   Dataset Zoo __SUB_NEW__ <dataset_zoo/index>
-   Model Zoo __SUB_NEW__ <model_zoo/index>
+   Dataset Zoo <dataset_zoo/index>
+   Model Zoo <model_zoo/index>
    FiftyOne Brain <brain>
    Integrations <integrations/index>
    Plugins <plugins/index>

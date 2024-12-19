@@ -17,7 +17,7 @@
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
         "@monaco-editor/react": "^4.5.0",
-        "@mui/icons-material": "^5.10.2",
+        "@mui/icons-material": "^5.16.7",
         "@mui/material": "^5.9.0",
         "@react-spring/web": "^9.4.3",
         "@use-gesture/react": "^10.3.0",

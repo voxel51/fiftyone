@@ -135,7 +135,11 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     const newPolylineOverlays = [];
 
     for (const overlay of rawOverlays) {
-      if (overlay._cls === "Detection") {
+      if (
+        overlay._cls === "Detection" &&
+        overlay.dimensions &&
+        overlay.location
+      ) {
         newCuboidOverlays.push(
           <Cuboid
             key={`cuboid-${overlay.id ?? overlay._id}-${overlay.sampleId}`}

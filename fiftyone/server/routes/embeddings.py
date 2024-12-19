@@ -51,12 +51,18 @@ class OnPlotLoad(HTTPEndpoint):
 
         try:
             results = dataset.load_brain_results(brain_key)
-            assert results is not None
         except:
             msg = (
                 "Failed to load results for brain run with key '%s'. Try "
                 "regenerating the results"
             ) % brain_key
+            return {"error": msg}
+
+        if results is None:
+            msg = (
+                "Results for brain run with key '%s' are not yet available"
+                % brain_key
+            )
             return {"error": msg}
 
         view = fosv.get_view(

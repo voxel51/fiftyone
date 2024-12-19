@@ -50,7 +50,10 @@ const NumericFieldFilter = ({ color, modal, named = true, path }: Props) => {
   };
 
   return (
-    <Container onClick={(e) => e.stopPropagation()}>
+    <Container
+      data-cy={`numeric-filter-${path}`}
+      onClick={(e) => e.stopPropagation()}
+    >
       {named && name && (
         <FieldLabelAndInfo
           nested

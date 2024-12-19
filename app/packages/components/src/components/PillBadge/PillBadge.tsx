@@ -60,8 +60,12 @@ const PillBadge = ({
     success: "#8BC18D",
   };
 
+  const getColor = (colorValue: string): string => {
+    return COLORS[colorValue] || colorValue;
+  };
+
   const chipStyle: { [key: string]: string | number } = {
-    color: COLORS[chipColor || "default"] || COLORS.default,
+    color: getColor(chipColor || color || "default"),
     fontSize: 14,
     fontWeight: 500,
     paddingLeft: 1,

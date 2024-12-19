@@ -4,7 +4,7 @@ import {
   mediaFieldsFragment,
   mediaFieldsFragment$key,
 } from "@fiftyone/relay";
-import { atomFamily, selector, selectorFamily } from "recoil";
+import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { datasetSampleCount } from "./dataset";
 import { fieldPaths } from "./schema";
@@ -55,15 +55,41 @@ export const selectedMediaField = selectorFamily<string, boolean>({
       set(selectedMediaFieldAtomFamily(modal), value),
 });
 
-export const dynamicGroupsViewMode = atomFamily<
-  "carousel" | "pagination" | "video",
+export const dynamicGroupsViewModeStore = atomFamily<
+  "carousel" | "pagination" | "video" | null,
   boolean
 >({
-  key: "dynamicGroupsViewMode",
-  default: "pagination",
+  key: "dynamicGroupsViewModeStore",
+  default: null,
   effects: (modal) => [
     getBrowserStorageEffectForKey(`dynamicGroupsViewMode-${modal}`),
   ],
+});
+
+export const dynamicGroupsViewMode = selectorFamily({
+  key: "dynamicGroupsViewMode",
+  get:
+    (modal: boolean) =>
+    ({ get }) => {
+      const value = get(dynamicGroupsViewModeStore(modal));
+
+      if (!value) {
+        return modal
+          ? get(dynamicGroupsViewModeStore(false)) ?? "pagination"
+          : "pagination";
+      }
+
+      return value;
+    },
+  set:
+    (modal: boolean) =>
+    ({ reset, set }, newValue) => {
+      const instance = dynamicGroupsViewModeStore(modal);
+
+      newValue instanceof DefaultValue
+        ? reset(instance)
+        : set(instance, newValue);
+    },
 });
 
 export const isLargeVideo = selector<boolean>({

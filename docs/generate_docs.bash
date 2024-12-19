@@ -102,7 +102,7 @@ echo "Generating API docs"
 sphinx-apidoc --force --no-toc --separate --follow-links \
     --templatedir=docs/templates/apidoc \
     -o docs/source/api fiftyone \
-        fiftyone/brain/internal \
+        fiftyone/brain/internal/models \
         fiftyone/server \
         fiftyone/service \
         fiftyone/management \

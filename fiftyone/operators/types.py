@@ -327,13 +327,12 @@ class Object(BaseType):
         Examples::
 
             import fiftyone.operators.types as types
-
-            ctx.panel.state.my_img = "https://i.imgur.com/TGEZj1Rl.jpg"
+            ctx.panel.state.my_img = "/path/to/my/image.jpg"
 
             panel = types.Object()
             panel.img(
-                "my_img",
-                href="https://voxel51.com",
+                "my_img", # uses the value in ctx.panel.state.my_img
+                href="https://path/to/navigate/to",
                 on_click=self.do_something,
                 prompt=False,
                 params={"foo": "bar"},
@@ -344,8 +343,8 @@ class Object(BaseType):
             )
 
         Args:
-            name: the name of the property from state
-            href (None): the URL to navigate to when the button is clicked
+            name: the name of the state variable to use as the image source
+            href (None): the url to navigate to when the image is clicked
             on_click (None): the name of the operator to execute when the button is clicked
             prompt (False): whether to prompt the user before executing the operator
             params (None): the parameters to pass to the operator
@@ -1828,16 +1827,18 @@ class Action(View):
         on_click: the operator to execute when the action is clicked
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, name, **kwargs):
         super().__init__(**kwargs)
+        self.name = name
 
     def clone(self):
-        clone = Action(**self._kwargs)
+        clone = Action(self.name, **self._kwargs)
         return clone
 
     def to_json(self):
-        return {**super().to_json()}
-    
+        return {**super().to_json(), "name": self.name}
+
+
 class Tooltip(View):
     """A tooltip (currently supported only in a :class:`TableView`).
 
@@ -1847,15 +1848,17 @@ class Tooltip(View):
         column: the column of the tooltip
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, row, column, **kwargs):
         super().__init__(**kwargs)
+        self.row = row
+        self.column = column
 
     def clone(self):
-        clone = Tooltip(**self._kwargs)
+        clone = Tooltip(self.row, self.column, **self._kwargs)
         return clone
 
     def to_json(self):
-        return {**super().to_json()}
+        return {**super().to_json(), "row": self.row, "column": self.column}
 
 
 class TableView(View):
@@ -1871,25 +1874,47 @@ class TableView(View):
         self.columns = kwargs.get("columns", [])
         self.row_actions = kwargs.get("row_actions", [])
         self.tooltips = kwargs.get("tooltips", [])
+        self._tooltip_map = {}
 
     def keys(self):
         return [column.key for column in self.columns]
 
     def add_column(self, key, **kwargs):
+        for column in self.columns:
+            if column.key == key:
+                raise ValueError(f"Column with key '{key}' already exists")
+
         column = Column(key, **kwargs)
         self.columns.append(column)
         return column
 
-    def add_row_action(self, name, on_click, label=None, icon=None, tooltip=None, **kwargs):
+    def add_row_action(
+        self, name, on_click, label=None, icon=None, tooltip=None, **kwargs
+    ):
+        for action in self.row_actions:
+            if action.name == name:
+                raise ValueError(f"Action with name '{name}' already exists")
+
         row_action = Action(
-            name=name, on_click=on_click, label=label, icon=icon, tooltip=tooltip, **kwargs
+            name=name,
+            on_click=on_click,
+            label=label,
+            icon=icon,
+            tooltip=tooltip,
+            **kwargs,
         )
         self.row_actions.append(row_action)
         return row_action
-    
+
     def add_tooltip(self, row, column, value, **kwargs):
+        if (row, column) in self._tooltip_map:
+            raise ValueError(
+                f"Tooltip for row '{row}' and column '{column}' already exists"
+            )
+
         tooltip = Tooltip(row=row, column=column, value=value, **kwargs)
         self.tooltips.append(tooltip)
+        self._tooltip_map[(row, column)] = tooltip
         return tooltip
 
     def clone(self):
@@ -1897,6 +1922,10 @@ class TableView(View):
         clone.columns = [column.clone() for column in self.columns]
         clone.row_actions = [action.clone() for action in self.row_actions]
         clone.tooltips = [tooltip.clone() for tooltip in self.tooltips]
+        clone._tooltip_map = {
+            (tooltip.row, tooltip.column): tooltip
+            for tooltip in clone.tooltips
+        }
         return clone
 
     def to_json(self):
@@ -2004,7 +2033,7 @@ class ImageView(View):
         height (None): the height of the image
         width (None): the width of the image
         alt (None): the alt text of the image
-        href (None): the href of the image
+        href (None): the url to navigate to when the image is clicked
         operator (None): the name of the callable operator to execute when the image is clicked
         prompt (False): whether to prompt the user before executing the operator
         params (None): the parameters to pass to the operator
@@ -2820,6 +2849,21 @@ class TimelineView(View):
         timeline_name (None): the name of the timeline
         total_frames (None): the total number of frames in the timeline
         loop (False): whether to loop the timeline
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class TimerView(View):
+    """Supports a timer for executing operators/events after a specified duration or interval.
+
+    Args:
+        timeout (None): the duration in milliseconds to wait before executing the operator
+        interval (None): the interval in milliseconds to wait before executing the operator
+        on_timeout (None): the operator to execute when the timeout is reached
+        on_interval (None): the operator to execute at the interval
+        params (None): the params passed to the on_interval or on_timeout operator
     """
 
     def __init__(self, **kwargs):
