@@ -308,13 +308,13 @@ class EvaluationPanel(Panel):
         if evaluation_data is None:
             info = ctx.dataset.get_evaluation_info(computed_eval_key)
             evaluation_type = info.config.type
+            serialized_info = info.serialize()
             if evaluation_type not in SUPPORTED_EVALUATION_TYPES:
                 ctx.panel.set_data(
                     f"evaluation_{computed_eval_key}_error",
                     {"error": "unsupported", "info": serialized_info},
                 )
                 return
-            serialized_info = info.serialize()
             gt_field = info.config.gt_field
             mask_targets = (
                 self.get_mask_targets(ctx.dataset, gt_field)
