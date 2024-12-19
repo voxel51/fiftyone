@@ -367,10 +367,24 @@ for more information.
 
 - **[Visualize Complex Datasets:](https://docs.voxel51.com/user_guide/app.html)** Easily explore images, videos, and associated labels in a powerful visual interface.
 - **[Explore Embeddings:](https://docs.voxel51.com/user_guide/app.html#embeddings-panel)** Select points of interest and view the corresponding samples/labels.
+
 - **[Analyze and Improve Models:](https://docs.voxel51.com/user_guide/evaluation.html)** Evaluate model performance, identify failure modes, and fine-tune your models.
+
+https://github.com/user-attachments/assets/fc06d33d-8d17-4f67-af26-8c1a5abb5d9d
+
 - **[Advanced Data Curation:](https://docs.voxel51.com/brain.html)** Quickly find and fix data issues, annotation errors, and edge cases.
+
+https://github.com/user-attachments/assets/8c4ff038-8926-4a42-b829-4f43bc2d8d6a
+
+https://github.com/user-attachments/assets/da97d84d-1213-40cf-a501-7a0d7efbe426
+
 - **[Rich Integration:](https://docs.voxel51.com/integrations/index.html)** Works with popular deep learning libraries like TensorFlow, PyTorch, Keras, and more.
+
+https://github.com/user-attachments/assets/670a684a-0f6c-49cc-8f51-fbe15530c5e3
+
 - **[Open and Extensible](https://docs.voxel51.com/plugins/index.html)** Customize and extend FiftyOne to fit your specific needs.
+
+https://github.com/user-attachments/assets/dd91272d-2808-4373-90c5-5e906a0b80f1
 
 <div align="center">
 <p align="center">
