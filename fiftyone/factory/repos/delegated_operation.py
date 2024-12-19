@@ -214,6 +214,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             context.request_params["dataset_id"] = str(op.dataset_id)
             context.request_params["dataset_name"] = context.dataset.name
 
+        op.context = context
         doc = self._collection.insert_one(op.to_pymongo())
         op.id = doc.inserted_id
         return DelegatedOperationDocument().from_pymongo(op.__dict__)
