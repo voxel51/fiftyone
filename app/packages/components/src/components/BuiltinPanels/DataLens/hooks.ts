@@ -8,15 +8,16 @@ import {
 import { Dispatch, useCallback, useEffect, useMemo, useState } from "react";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useRecoilValue } from "recoil";
+import type { Sample } from "@fiftyone/state";
 import {
   datasetName,
   Lookers,
-  useLookerOptions as fosUseLookerOptions,
   useCreateLooker,
+  useLookerOptions as fosUseLookerOptions,
 } from "@fiftyone/state";
 import { v4 as uuid } from "uuid";
 import Spotlight, { ID } from "@fiftyone/spotlight";
-import type { Sample } from "@fiftyone/state";
+import { findFields } from "./utils";
 
 /**
  * Hook which provides the active dataset.
@@ -208,7 +209,7 @@ const useSampleSchemaGenerator = ({ baseSchema }: { baseSchema: object }) => {
  * URLs type encapsulated in other types.
  */
 type SampleUrls = {
-  filepath: string;
+  [field: string]: string;
 };
 
 /**
@@ -247,6 +248,8 @@ type SampleStoreEntry = {
   sample: LensSample;
   urls: SampleUrls;
 };
+
+const sampleMediaFields = ["filepath"];
 
 /**
  * Hook which manages a spotlight instance used to render samples.
@@ -287,6 +290,11 @@ export const useSpotlight = ({
     cleanedSchema
   );
 
+  const buildUrls = useCallback(
+    (sampleData: any) => findFields(sampleMediaFields, sampleData),
+    []
+  );
+
   return useMemo(() => {
     if (resizing) {
       return;
@@ -308,12 +316,18 @@ export const useSpotlight = ({
         return Math.max(minZoomLevel, maxZoomLevel - Math.max(min, zoom));
       },
       get: (page: number): Promise<SamplePage> => {
-        // In this implementation, we only support a single page, which
-        //   is the collection of samples passed in through props.
-        const mappedSamples: SampleMetadata[] = samples.map((s) => {
+        const pageSize = 20;
+        const samplePage = samples.slice(
+          page * pageSize,
+          (page + 1) * pageSize
+        );
+
+        const mappedSamples: SampleMetadata[] = samplePage.map((s) => {
           const id = uuid();
+          const urls = buildUrls(s);
+
           return {
-            key: 0,
+            key: page,
             aspectRatio: 1,
             id: {
               description: id,
@@ -324,9 +338,7 @@ export const useSpotlight = ({
                 _id: id,
                 ...s,
               },
-              urls: {
-                filepath: s.filepath,
-              },
+              urls,
             },
           };
         });
@@ -334,7 +346,7 @@ export const useSpotlight = ({
         // Store these samples in the sample store; this is where the renderer will pull from
         mappedSamples.forEach((s) => {
           const storeElement: SampleStoreEntry = {
-            aspectRatio: 1,
+            aspectRatio: s.aspectRatio,
             id: s.id.description,
             sample: s.data.sample,
             urls: s.data.urls,
@@ -345,45 +357,31 @@ export const useSpotlight = ({
 
         return Promise.resolve({
           items: mappedSamples,
-          next: null,
-          previous: null,
+          next: (page + 1) * pageSize < samples.length ? page + 1 : null,
+          previous: page > 0 ? page - 1 : null,
         });
       },
       render: (
         id: ID,
         element: HTMLDivElement,
         dimensions: [number, number],
-        soft: boolean,
-        disable: boolean
+        zooming: boolean
       ) => {
-        if (lookerStore.has(id)) {
-          const looker = lookerStore.get(id);
-          if (disable) {
-            looker?.disable();
-          } else {
-            looker?.attach(element, dimensions);
+        if (!lookerStore.has(id) && !zooming) {
+          const sample = sampleStore.get(id);
+
+          if (!(createLooker.current && sample)) {
+            throw new Error(
+              `createLooker=${!!createLooker.current}, sample=${JSON.stringify(
+                sample
+              )}`
+            );
           }
-          return;
+
+          lookerStore.set(id, createLooker.current({ ...sample, symbol: id }));
         }
 
-        const sample = sampleStore.get(id);
-
-        if (!(createLooker.current && sample)) {
-          throw new Error(
-            `createLooker=${!!createLooker.current}, sample=${JSON.stringify(
-              sample
-            )}`
-          );
-        }
-
-        const init = (looker: Lookers) => {
-          lookerStore.set(id, looker);
-          looker.attach(element, dimensions);
-        };
-
-        if (!soft) {
-          init(createLooker.current({ ...sample, symbol: id }));
-        }
+        lookerStore.get(id)?.attach(element, dimensions);
       },
       spacing: 20,
       destroy: (id: ID) => {
