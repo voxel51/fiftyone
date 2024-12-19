@@ -51,6 +51,7 @@ import { formatValue, getNumericDifference, useTriggerEvent } from "./utils";
 const KEY_COLOR = "#ff6d04";
 const COMPARE_KEY_COLOR = "#03a9f4";
 const DEFAULT_BAR_CONFIG = { sortBy: "default" };
+const NONE_CLASS = "(none)";
 
 export default function Evaluation(props: EvaluationProps) {
   const {
@@ -1656,12 +1657,23 @@ function getMatrix(matrices, config, maskTargets, compareMaskTargets?) {
   if (!matrices) return;
   const { sortBy = "az", limit } = config;
   const parsedLimit = typeof limit === "number" ? limit : undefined;
-  const classes = matrices[`${sortBy}_classes`].slice(0, parsedLimit);
-  const matrix = matrices[`${sortBy}_matrix`].slice(0, parsedLimit);
+  const originalClasses = matrices[`${sortBy}_classes`];
+  const originalMatrix = matrices[`${sortBy}_matrix`];
+  const classes = originalClasses.slice(0, parsedLimit);
+  const matrix = originalMatrix.slice(0, parsedLimit);
   const colorscale = matrices[`${sortBy}_colorscale`];
   const labels = classes.map((c) => {
     return compareMaskTargets?.[c] || maskTargets?.[c] || c;
   });
+  const noneIndex = originalClasses.indexOf(NONE_CLASS);
+  if (parsedLimit < originalClasses.length) {
+    labels.push(
+      compareMaskTargets?.[NONE_CLASS] ||
+        maskTargets?.[NONE_CLASS] ||
+        NONE_CLASS
+    );
+    matrix.push(originalMatrix[noneIndex]);
+  }
   return { labels, matrix, colorscale };
 }
 
@@ -1687,7 +1699,7 @@ function useActiveFilter(evaluation, compareEvaluation) {
     const { _cls, kwargs } = stage;
     if (_cls.endsWith("FilterLabels")) {
       const [_, filter] = kwargs;
-      const filterEq = filter[1].$eq;
+      const filterEq = filter[1].$eq || [];
       const [filterEqLeft, filterEqRight] = filterEq;
       if (filterEqLeft === "$$this.label") {
         return { type: "label", value: filterEqRight };
