@@ -256,7 +256,7 @@ class EvaluationPanel(Panel):
         return colorscale
 
     def get_confusion_matrices(self, results):
-        default_classes = results.classes
+        default_classes = results.classes.tolist()
         freq = Counter(results.ytrue)
         if results.missing in freq:
             freq.pop(results.missing)
@@ -264,11 +264,35 @@ class EvaluationPanel(Panel):
         za_classes = sorted(default_classes, reverse=True)
         mc_classes = sorted(freq, key=freq.get, reverse=True)
         lc_classes = sorted(freq, key=freq.get)
-        default_matrix = results.confusion_matrix()
-        az_matrix = results.confusion_matrix(classes=az_classes)
-        za_matrix = results.confusion_matrix(classes=za_classes)
-        mc_matrix = results.confusion_matrix(classes=mc_classes)
-        lc_matrix = results.confusion_matrix(classes=lc_classes)
+        default_matrix, _default_classes, _ = results._confusion_matrix(
+            include_other=False,
+            include_missing=True,
+            tabulate_ids=False,
+        )
+        az_matrix, _az_classes, _ = results._confusion_matrix(
+            classes=az_classes,
+            include_other=False,
+            include_missing=True,
+            tabulate_ids=False,
+        )
+        za_matrix, _za_classes, _ = results._confusion_matrix(
+            classes=za_classes,
+            include_other=False,
+            include_missing=True,
+            tabulate_ids=False,
+        )
+        mc_matrix, _mc_classes, _ = results._confusion_matrix(
+            classes=mc_classes,
+            include_other=False,
+            include_missing=True,
+            tabulate_ids=False,
+        )
+        lc_matrix, _lc_classes, _ = results._confusion_matrix(
+            classes=lc_classes,
+            include_other=False,
+            include_missing=True,
+            tabulate_ids=False,
+        )
         default_colorscale = self.get_confusion_matrix_colorscale(
             default_matrix
         )
@@ -277,11 +301,11 @@ class EvaluationPanel(Panel):
         mc_colorscale = self.get_confusion_matrix_colorscale(mc_matrix)
         lc_colorscale = self.get_confusion_matrix_colorscale(lc_matrix)
         return {
-            "default_classes": default_classes.tolist(),
-            "az_classes": az_classes,
-            "za_classes": za_classes,
-            "mc_classes": mc_classes,
-            "lc_classes": lc_classes,
+            "default_classes": _default_classes,
+            "az_classes": _az_classes,
+            "za_classes": _za_classes,
+            "mc_classes": _mc_classes,
+            "lc_classes": _lc_classes,
             "default_matrix": default_matrix.tolist(),
             "az_matrix": az_matrix.tolist(),
             "za_matrix": za_matrix.tolist(),
@@ -317,13 +341,13 @@ class EvaluationPanel(Panel):
         if evaluation_data is None:
             info = ctx.dataset.get_evaluation_info(computed_eval_key)
             evaluation_type = info.config.type
+            serialized_info = info.serialize()
             if evaluation_type not in SUPPORTED_EVALUATION_TYPES:
                 ctx.panel.set_data(
                     f"evaluation_{computed_eval_key}_error",
                     {"error": "unsupported", "info": serialized_info},
                 )
                 return
-            serialized_info = info.serialize()
             gt_field = info.config.gt_field
             mask_targets = (
                 self.get_mask_targets(ctx.dataset, gt_field)
