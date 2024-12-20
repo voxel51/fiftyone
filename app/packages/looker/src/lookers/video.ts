@@ -1,5 +1,5 @@
 import { setFrameNumberAtom } from "@fiftyone/playback";
-import { getDefaultStore } from "jotai";
+import { jotaiStore } from "@fiftyone/state/src/jotai";
 import { getVideoElements } from "../elements";
 import { VIDEO_SHORTCUTS } from "../elements/common";
 import { getFrameNumber } from "../elements/util";
@@ -353,7 +353,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     }
 
     if (this.state.config.enableTimeline) {
-      getDefaultStore().set(setFrameNumberAtom, {
+      jotaiStore.set(setFrameNumberAtom, {
         name: `timeline-${this.state.config.sampleId}`,
         newFrameNumber: this.state.frameNumber,
       });
