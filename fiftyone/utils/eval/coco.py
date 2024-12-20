@@ -795,7 +795,6 @@ def _compute_pr_curves(samples, config, classes=None, progress=None):
                 for ri, pi in enumerate(inds):
                     q[ri] = pre[pi]
                     t[ri] = confs[pi]
-
             except:
                 pass
 

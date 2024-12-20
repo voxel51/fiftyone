@@ -1042,7 +1042,7 @@ The example below demonstrates COCO-style detection evaluation on the
     :ref:`Model Evaluation panel <app-model-evaluation-panel>`!
 
 mAP, mAR and PR curves
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 You can compute mean average precision (mAP), mean average recall (mAR), and
 precision-recall (PR) curves for your predictions by passing the
