@@ -12,8 +12,10 @@ which allows you to use FiftyOne to explore and import samples from external
 data sources.
 
 Whether your data resides in a database like PostgreSQL or a data lake like
-Google BigQuery, Data Lens provides a way to search your data sources,
-visualize sample data, and import into FiftyOne for further analysis.
+:ref:`Databricks <data-lens-databricks>` or
+:ref:`BigQuery <data-lens-bigquery>`, Data Lens provides a way to search your
+data sources, visualize sample data, and import into FiftyOne for further
+analysis.
 
 .. image:: /images/teams/data_lens_home.png
     :alt: data-lens-home-tab
@@ -1129,7 +1131,7 @@ the data that's needed.
 .. _data-lens-snippet-remap-fields:
 
 Snippet: Dynamic user inputs
----------------
+----------------------------
 
 As the volume and complexity of your data grows, you may want to expose many
 options to Data Lens users, but doing so all at once can be overwhelming for
