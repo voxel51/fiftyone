@@ -48,7 +48,8 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
             of the provided :class:`fiftyone.core.labels.Polyline` instances
             rather than using their actual geometries
         tolerance (None): a tolerance, in pixels, when generating approximate
-            polylines for instance masks. Typical values are 1-3 pixels
+            polylines for instance masks. Typical values are 1-3 pixels. By
+            default, IoUs are computed directly on the dense pixel masks
         compute_mAP (False): whether to perform the necessary computations so
             that mAP and PR curves can be generated
         iou_threshs (None): a list of IoU thresholds to use when computing mAP

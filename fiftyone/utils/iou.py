@@ -74,7 +74,8 @@ def compute_ious(
             of the provided :class:`fiftyone.core.labels.Polyline` instances
             rather than using their actual geometries
         tolerance (None): a tolerance, in pixels, when generating approximate
-            polylines for instance masks. Typical values are 1-3 pixels
+            polylines for instance masks. Typical values are 1-3 pixels. By
+            default, IoUs are computed directly on the dense pixel masks
         sparse (False): whether to return a sparse dict of non-zero IoUs rather
             than a full matrix
         error_level (1): the error level to use when manipulating instance
