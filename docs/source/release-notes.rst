@@ -3,6 +3,97 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 2.3.0
+--------------------
+*Released December 20, 2024*
+
+Includes all updates from :ref:`FiftyOne 1.2.0 <release-notes-v1.2.0>`, plus:
+
+- Added an example :ref:`Databricks connector <data-lens-databricks>` showing
+  how to connect FiftyOne Teams to your lakehouse via
+  :ref:`Data Lens <data-lens>`
+- Added a :ref:`Data Lens connector <data-lens-snippet-remap-fields>`
+  that demonstrates how to allow users to dynamically configure the field(s)
+  that are imported
+- :ref:`Data Lens <data-lens>` now supports previewing 3D data imports
+- Guest users can now open :ref:`Data Lens <data-lens>`
+- Prevented unnecessary scrollbars from appearing when using the
+  :ref:`Data Quality Panel <data-quality>`
+- Fixed a bug that could cause `StopIteration` errors when performing
+  long-running operations like computing embeddings when using
+  :ref:`API connections <teams-api-connection>`
+
+.. _release-notes-v1.2.0:
+
+FiftyOne 1.2.0
+--------------
+*Released December 30, 2024*
+
+App
+
+- Added support for :ref:`instance segmentations <instance-segmentation>` whose
+  masks are stored on-disk
+  `#5120 <https://github.com/voxel51/fiftyone/pull/5120>`_,
+  `#5256 <https://github.com/voxel51/fiftyone/pull/5256>`_
+- Optimized overlay rendering for dense label fields like segmentations and
+  heatmaps
+  `#5156 <https://github.com/voxel51/fiftyone/pull/5156>`_,
+  `#5169 <https://github.com/voxel51/fiftyone/pull/5169>`_,
+  `#5247 <https://github.com/voxel51/fiftyone/pull/5247>`_
+- Improved stability of frame rendering for videos
+  `#5199 <https://github.com/voxel51/fiftyone/pull/5199>`_,
+  `#5293 <https://github.com/voxel51/fiftyone/pull/5293>`_
+- Sidebar groups that contain only list fields are no longer collapsed by
+  default
+  `#5280 <https://github.com/voxel51/fiftyone/pull/5280>`_
+- The :ref:`Model Evaluation panel <app-model-evaluation-panel>` now filters
+  both ground truth and prediction fields when you perform interactive filters
+  via the TP/FP/FN icons, per-class histograms, and confusion matrices
+  `#5268 <https://github.com/voxel51/fiftyone/pull/5268>`_
+- When comparing two models in the
+  :ref:`Model Evaluation panel <app-model-evaluation-panel>`, interactive
+  filters now apply to both evaluation runs
+  `#5268 <https://github.com/voxel51/fiftyone/pull/5268>`_
+- The :ref:`Model Evaluation panel <app-model-evaluation-panel>` now supports
+  evaluations that were performed on subsets (views) of the full dataset
+  `#5267 <https://github.com/voxel51/fiftyone/pull/5267>`_
+- The :ref:`Model Evaluation panel <app-model-evaluation-panel>` now shows mask
+  targets for segmentation evaluations when they are available
+  `#5281 <https://github.com/voxel51/fiftyone/pull/5281>`_
+- The :ref:`Model Evaluation panel <app-model-evaluation-panel>` now hides
+  metrics that aren't applicable to a given evaluation type
+  `#5281 <https://github.com/voxel51/fiftyone/pull/5281>`_
+- Fixed an issue where backtick can't be typed when editing markdown notes in
+  the :ref:`Model Evaluation panel <app-model-evaluation-panel>`
+  `#5233 <https://github.com/voxel51/fiftyone/pull/5233>`_
+- Fixed a race condition that could cause errors when performing
+  :ref:`text similarity searches <brain-similarity-text>`
+  `#5273 <https://github.com/voxel51/fiftyone/pull/5273>`_
+- Fixed a caching bug that prevented label overlay font sizes from dynamically
+  resizing as expected in some cases
+  `#5287 <https://github.com/voxel51/fiftyone/pull/5287>`_
+- Fixed a bug that excluded selected samples from the counter above the Samples
+  panel
+  `#5286 <https://github.com/voxel51/fiftyone/pull/5286>`_
+
+SDK
+
+- Optimized :meth:`dataset.first() <fiftyone.core.dataset.Dataset.first>` calls
+  `#5305 <https://github.com/voxel51/fiftyone/pull/5305>`_
+
+Brain
+
+- Upgraded the :Ref:`MongoDB vector search integration <mongodb-integration>`
+  to use the `vectorSearch` type
+  `#218 <https://github.com/voxel51/fiftyone-brain/pull/218>`_
+
+Zoo
+
+- Fixed a bug with loading the
+  :ref:`rtdetr-l-coco-torch <model-zoo-rtdetr-l-coco-torch>` and
+  :ref:`rtdetr-x-coco-torch <model-zoo-rtdetr-x-coco-torch>` zoo models
+  `#5220 <https://github.com/voxel51/fiftyone/pull/5220>`_
+
 FiftyOne Teams 2.2.0
 --------------------
 *Released December 6, 2024*
@@ -21,7 +112,7 @@ Includes all updates from :ref:`FiftyOne 1.1.0 <release-notes-v1.1.0>`, plus:
 - Added support for creating embeddings visualizations natively from the
   :ref:`Embeddings panel <app-embeddings-panel>`
 - Added support for evaluating models natively from the
-  :ref:`Modal Evaluation panel <app-model-evaluation-panel>`
+  :ref:`Model Evaluation panel <app-model-evaluation-panel>`
 - Added support for :ref:`configuring an SMTP server <identity-providers>` for
   sending user invitiations via email when running in
   :ref:`Internal Mode <internal-mode>`
@@ -2639,8 +2730,8 @@ Core
 - Using new libraries for ndjson and archive extraction
   `#2864 <https://github.com/voxel51/fiftyone/pull/2864>`_
 - Fixed a bug that prevented
-  :ref:`text similarity searches <brain-similarity-text>` searches from
-  succeeding when GPU is available
+  :ref:`text similarity searches <brain-similarity-text>` from succeeding when
+  GPU is available
   `#2853 <https://github.com/voxel51/fiftyone/pull/2853>`_
 - Fixed a bug where
   :meth:`stats() <fiftyone.core.collections.SampleCollection.stats>` would
