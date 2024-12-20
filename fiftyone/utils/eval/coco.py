@@ -293,6 +293,7 @@ class COCODetectionResults(DetectionResults):
         self.precision = np.asarray(precision)
         self.recall = np.asarray(recall)
         self.iou_threshs = np.asarray(iou_threshs)
+        self.recall_sweep = recall_sweep
         self.thresholds = (
             np.asarray(thresholds) if thresholds is not None else None
         )
@@ -449,6 +450,7 @@ class COCODetectionResults(DetectionResults):
         precision = d["precision"]
         recall = d["recall"]
         iou_threshs = d["iou_threshs"]
+        recall_sweep = d.get("recall_sweep", None)
         thresholds = d.get("thresholds", None)
         return super()._from_dict(
             d,
@@ -458,6 +460,7 @@ class COCODetectionResults(DetectionResults):
             precision=precision,
             recall=recall,
             iou_threshs=iou_threshs,
+            recall_sweep=recall_sweep,
             thresholds=thresholds,
             **kwargs,
         )
