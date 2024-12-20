@@ -17,8 +17,12 @@ Includes all updates from :ref:`FiftyOne 1.2.0 <release-notes-v1.2.0>`, plus:
   that are imported
 - :ref:`Data Lens <data-lens>` now supports previewing 3D data imports
 - Guest users can now open :ref:`Data Lens <data-lens>`
+- When scanning for issues with the :ref:`Data Quality Panel <data-quality>`,
+  any fields created are now added to a `DATA QUALITY` sidebar group
 - Prevented unnecessary scrollbars from appearing when using the
   :ref:`Data Quality Panel <data-quality>`
+- AWS session tokens are now supported when configuring
+  :ref:`cloud credentials <teams-cloud-credentials>`
 - Fixed a bug that could cause `StopIteration` errors when performing
   long-running operations like computing embeddings when using
   :ref:`API connections <teams-api-connection>`
