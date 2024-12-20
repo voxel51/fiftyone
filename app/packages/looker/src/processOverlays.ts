@@ -31,6 +31,36 @@ const processOverlays = <State extends BaseState>(
       continue;
     }
 
+    // skip if mask_path is present but mask is not (segmentations)
+    if (overlay.label.mask_path && !overlay.label.mask) {
+      continue;
+    }
+    // for heatmaps
+    if (overlay.label.map_path && !overlay.label.map) {
+      continue;
+    }
+
+    if (!(overlay.field && overlay.field in bins)) continue;
+
+    // todo: find a better approach / place for this.
+    // for instance, this won't work in detection overlay, where
+    // we might want the bounding boxes but masks might not have been loaded
+    if (
+      overlay instanceof SegmentationOverlay &&
+      overlay.label.mask_path &&
+      !overlay.label.mask
+    ) {
+      continue;
+    }
+
+    if (
+      overlay instanceof HeatmapOverlay &&
+      overlay.label.map_path &&
+      !overlay.label.map
+    ) {
+      continue;
+    }
+
     if (!overlay.isShown(state)) continue;
 
     if (filter(overlay, bins)) continue;
