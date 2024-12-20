@@ -10,8 +10,9 @@ import itertools
 import multiprocessing
 import os
 import sys
-from typing import Callable, Any
+from typing import Callable, Any, Optional, List
 import pickle
+import functools
 
 import cv2
 import numpy as np
@@ -37,6 +38,7 @@ import torch
 import torchvision
 from torchvision.transforms import functional as F
 from torch.utils.data import Dataset
+import torch.distributed as dist
 
 
 logger = logging.getLogger(__name__)
@@ -1479,11 +1481,17 @@ class FiftyOneTorchDataset(Dataset):
             IMPORTANT:  For proper functionality, the field type must be serializable.
                         DO NOT PASS OBJECT FIELDS. This will cause memory usage of this object
                         to multiply by (num dataloaders * num gpus + num gpus).
+        - local_process_group (None) - only pass if running DDP. The process group with
+            each of the processes running the main train script on the machine this
+            object is on.
 
     Notes:
         General:
-        - This only works with persistent dataset.
-        In order to make a dataset persistent, do `dataset.persistent = True`
+        - This only works with persistent datasets.
+            In order to make a dataset persistent, do `dataset.persistent = True`
+        - Make sure to not touch `self.samples` or subscript this object until after
+            all workers are initialized. This will help you avoid unnecessary memory
+            usage. If you're using DDP, this will help your code not crash.
 
         torch.utils.data.Dataloader use:
         - DO NOT use torch.Tensor.to in this function, do so in the train loop, or use
@@ -1513,6 +1521,7 @@ class FiftyOneTorchDataset(Dataset):
         samples: focol.SampleCollection,
         get_item: Callable[fos.SampleView, Any],
         cache_fields: list[str] = None,
+        local_process_group=None,
     ):
         super().__init__()
 
@@ -1525,18 +1534,20 @@ class FiftyOneTorchDataset(Dataset):
         )
         self.get_item = get_item
         # make this a file we call for very large datasets
+        # TODO: remove duplication with cached_fields, just have
+        # ids always be one of the cached fields.
         self.ids = _to_bytes_array(samples.values("id"))
 
         self.cached_fields = None
         self.cache_fields = cache_fields
-        self._load_cached_fields(samples, cache_fields)
+        self._load_cached_fields(samples, cache_fields, local_process_group)
 
         # initialized in worker
         self._dataset = None
         self._samples = None
 
     # need a better solution
-    def _load_cached_fields(self, samples, cache_fields):
+    def _load_cached_fields(self, samples, cache_fields, local_process_group):
         if cache_fields is None:
             return
 
@@ -1547,14 +1558,23 @@ class FiftyOneTorchDataset(Dataset):
                     f'Can\'t find field with name "{field_name}" in samples passed.'
                 )
 
-            # TODO: pick one
-            # self.cached_fields[field_name] = samples.values(field_name)
-            # self.cached_fields[field_name] = NumpySerializedList(
-            #     samples.values(field_name)
-            # )
-            self.cached_fields[field_name] = TorchSerializedList(
-                samples.values(field_name)
-            )
+            # don't get fancy if you don't have to
+            if local_process_group is None:
+                self.cached_fields[field_name] = TorchSerializedList(
+                    samples.values(field_name)
+                )
+            # have to get fancy
+            else:
+                if get_local_rank(local_process_group) == 0:
+                    self.cached_fields[field_name] = TorchShmSerializedList(
+                        samples.values(field_name), local_process_group
+                    )
+                else:
+                    # don't need to pass actual data if not local rank 0
+                    # we read it from shared memory anyways
+                    self.cached_fields[field_name] = TorchShmSerializedList(
+                        [], local_process_group
+                    )
 
     @property
     def samples(self):
@@ -2176,6 +2196,7 @@ def _load_image(image_path, use_numpy, force_rgb):
 
 
 # taken from https://github.com/ppwwyyxx/RAM-multiprocess-dataloader/blob/795868a37446d61412b9a58dbb1b7c76e75d39c4/serialize.py#L19
+# as well as https://github.com/facebookresearch/detectron2/blob/main/detectron2/utils/comm.py
 class NumpySerializedList:
     def __init__(self, lst: list):
         def _serialize(data):
@@ -2218,3 +2239,135 @@ class TorchSerializedList(NumpySerializedList):
         end_addr = self._addr[idx].item()
         bytes = memoryview(self._lst[start_addr:end_addr].numpy())
         return pickle.loads(bytes)
+
+
+class TorchShmSerializedList(TorchSerializedList):
+    def __init__(self, lst: list, local_process_group):
+        if get_local_rank(local_process_group) == 0:
+            super().__init__(lst)
+        if get_local_rank(local_process_group) == 0:
+            # Move data to shared memory, obtain a handle to send to each local worker.
+            # This is cheap because a tensor will only be moved to shared memory once.
+            handles = [None] + [
+                bytes(
+                    multiprocessing.reduction.ForkingPickler.dumps(
+                        (self._addr, self._lst)
+                    )
+                )
+                for _ in range(get_local_size(local_process_group) - 1)
+            ]
+        else:
+            handles = None
+        # Each worker receives the handle from local leader.
+        handle = local_scatter(handles, local_process_group)
+
+        if get_local_rank(local_process_group) > 0:
+            # Materialize the tensor from shared memory.
+            (
+                self._addr,
+                self._lst,
+            ) = multiprocessing.reduction.ForkingPickler.loads(handle)
+            print(
+                f"Worker {get_rank()} obtains a dataset of length="
+                f"{len(self)} from its local leader."
+            )
+
+
+def get_local_size(local_process_group) -> int:
+    """
+    Returns:
+        The size of the per-machine process group,
+        i.e. the number of processes per machine.
+    """
+    if not dist.is_available():
+        return 1
+    if not dist.is_initialized():
+        return 1
+    return dist.get_world_size(group=local_process_group)
+
+
+def get_local_rank(local_process_group) -> int:
+    """
+    Returns:
+        The rank of the current process within the local (per-machine) process group.
+    """
+    if not dist.is_available():
+        return 0
+    if not dist.is_initialized():
+        return 0
+    return dist.get_rank(group=local_process_group)
+
+
+def get_rank() -> int:
+    if not dist.is_available():
+        return 0
+    if not dist.is_initialized():
+        return 0
+    return dist.get_rank()
+
+
+def local_scatter(array: Optional[List[Any]], local_process_group):
+    """
+    Scatter an array from local leader to all local workers.
+    The i-th local worker gets array[i].
+
+    Args:
+        array: Array with same size of #local workers.
+    """
+    if get_local_size(local_process_group) == 1:
+        # Just one worker. Do nothing.
+        return array[0]
+    if get_local_rank(local_process_group) == 0:
+        assert len(array) == get_local_size(local_process_group)
+        all_gather(array)
+    else:
+        all_data = all_gather(None)
+        array = all_data[get_rank() - get_local_rank(local_process_group)]
+    return array[get_local_rank(local_process_group)]
+
+
+def all_gather(data, group=None):
+    """
+    Run all_gather on arbitrary picklable data (not necessarily tensors).
+
+    Args:
+        data: any picklable object
+        group: a torch process group. By default, will use a group which
+            contains all ranks on gloo backend.
+
+    Returns:
+        list[data]: list of data gathered from each rank
+    """
+    if get_world_size() == 1:
+        return [data]
+    if group is None:
+        group = (
+            _get_global_gloo_group()
+        )  # use CPU group by default, to reduce GPU RAM usage.
+    world_size = dist.get_world_size(group)
+    if world_size == 1:
+        return [data]
+
+    output = [None for _ in range(world_size)]
+    dist.all_gather_object(output, data, group=group)
+    return output
+
+
+def get_world_size() -> int:
+    if not dist.is_available():
+        return 1
+    if not dist.is_initialized():
+        return 1
+    return dist.get_world_size()
+
+
+@functools.lru_cache()
+def _get_global_gloo_group():
+    """
+    Return a process group based on gloo backend, containing all the ranks
+    The result is cached.
+    """
+    if dist.get_backend() == "nccl":
+        return dist.new_group(backend="gloo")
+    else:
+        return dist.group.WORLD
