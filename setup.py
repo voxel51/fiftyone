@@ -91,7 +91,7 @@ INSTALL_REQUIRES = [
     # internal packages
     "fiftyone-brain>=0.18.2,<0.19",
     "fiftyone-db~=0.4",  # pinned to legacy db, do not remove
-    "voxel51-eta>=0.13.0,<0.14",
+    "voxel51-eta>=0.13.1,<0.14",
 ]
 
 
