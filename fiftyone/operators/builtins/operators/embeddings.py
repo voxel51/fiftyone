@@ -46,8 +46,8 @@ class ComputeVisualization(foo.Operator):
         num_workers = ctx.params.get("num_workers", None)
         skip_failures = ctx.params.get("skip_failures", True)
 
-        # @todo how can we only set to 0 for immediate execution?
-        if num_workers is None:
+        # No multiprocessing allowed when running synchronously
+        if not ctx.delegated:
             num_workers = 0
 
         target_view = _get_target_view(ctx, target)
