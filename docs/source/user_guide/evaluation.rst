@@ -737,8 +737,9 @@ The only difference between each task type is in how the IoU between objects is
 calculated:
 
 -   For object detections, IoUs are computed between each pair of bounding boxes
--   For instance segmentations and polygons, IoUs are computed between the
-    polygonal shapes rather than their rectangular bounding boxes
+-   For instance segmentations, when ``use_masks=True``, IoUs are computed
+    between the dense pixel masks rather than their rectangular bounding boxes
+-   For polygons, IoUs are computed between the polygonal shapes
 -   For keypoint tasks,
     `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_
     is computed for each pair of objects, using the extent of the ground truth
@@ -752,8 +753,7 @@ stored in |Detections| format.
 
 For instance segmentation tasks, the ground truth and predicted objects should
 be stored in |Detections| format, and each |Detection| instance should have its
-:attr:`mask <fiftyone.core.labels.Detection.mask>` attribute populated to
-define the extent of the object within its bounding box.
+mask populated to define the extent of the object within its bounding box.
 
 .. note::
 
