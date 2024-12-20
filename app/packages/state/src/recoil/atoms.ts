@@ -267,7 +267,7 @@ export const extendedSelectionOverrideStage = (() => {
     {
       fragments: [datasetFragment],
       keys: ["dataset"],
-      default: { selection: null },
+      default: null,
       read: (data, previous) => {
         if (previous && data.id !== previous?.id) {
           current = null;
