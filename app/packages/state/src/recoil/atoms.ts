@@ -237,14 +237,50 @@ export const similaritySorting = atom<boolean>({
   default: false,
 });
 
-export const extendedSelection = atom<{ selection: string[]; scope?: string }>({
-  key: "extendedSelection",
-  default: { selection: null },
-});
-export const extendedSelectionOverrideStage = atom<any>({
-  key: "extendedSelectionOverrideStage",
-  default: null,
-});
+export const extendedSelection = (() => {
+  let current = { selection: null };
+  return graphQLSyncFragmentAtom<
+    datasetFragment$key,
+    { selection: string[]; scope?: string }
+  >(
+    {
+      fragments: [datasetFragment],
+      keys: ["dataset"],
+      default: { selection: null },
+      read: (data, previous) => {
+        if (previous && data.id !== previous?.id) {
+          current = { selection: null };
+        }
+
+        return current;
+      },
+    },
+    {
+      key: "extendedSelection",
+    }
+  );
+})();
+
+export const extendedSelectionOverrideStage = (() => {
+  let current = null;
+  return graphQLSyncFragmentAtom<datasetFragment$key, any>(
+    {
+      fragments: [datasetFragment],
+      keys: ["dataset"],
+      default: { selection: null },
+      read: (data, previous) => {
+        if (previous && data.id !== previous?.id) {
+          current = null;
+        }
+
+        return current;
+      },
+    },
+    {
+      key: "extendedSelectionOverrideStage",
+    }
+  );
+})();
 
 export const similarityParameters = (() => {
   let update = false;
