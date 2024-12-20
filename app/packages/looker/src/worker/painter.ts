@@ -113,16 +113,32 @@ export const PainterFactory = (requestColor) => ({
       }
     }
 
+    const numChannels = label.mask.data.channels;
     const overlay = new Uint32Array(label.mask.image);
     const targets = new ARRAY_TYPES[label.mask.data.arrayType](
       label.mask.data.buffer
     );
     const bitColor = get32BitColor(color);
 
-    // these for loops must be fast. no "in" or "of" syntax
-    for (let i = 0; i < overlay.length; i++) {
-      if (targets[i]) {
-        overlay[i] = bitColor;
+    if (label.mask_path) {
+      // putImageData results in an UInt8ClampedArray,
+      // if image is grayscale, it'll be packed as:
+      // [I, I, I, I, I...], where I is the intensity value
+      // or else it'll be packed as:
+      // [R, G, B, A, R, G, B, A...]
+      // for non-grayscale masks, we can check every nth byte,
+      // where n = numChannels, to check for whether or not the pixel is part of the mask
+      for (let i = 0; i < targets.length; i += numChannels) {
+        if (targets[i]) {
+          const overlayIndex = i / numChannels;
+          overlay[overlayIndex] = bitColor;
+        }
+      }
+    } else {
+      for (let i = 0; i < overlay.length; i++) {
+        if (targets[i]) {
+          overlay[i] = bitColor;
+        }
       }
     }
   },
@@ -263,7 +279,14 @@ export const PainterFactory = (requestColor) => ({
 
     const isRgbMaskTargets_ = isRgbMaskTargets(maskTargets);
 
-    if (maskData.channels > 2) {
+    // we have an additional guard for targets length = new image buffer byte length
+    // because we reduce the RGBA mask into a grayscale mask in first load for
+    // performance reasons
+    // For subsequent mask updates, the maskData.buffer is already a single channel
+    if (
+      maskData.channels === 4 &&
+      targets.length === label.mask.image.byteLength
+    ) {
       for (let i = 0; i < overlay.length; i++) {
         const [r, g, b] = getRgbFromMaskData(targets, maskData.channels, i);
 

@@ -360,6 +360,10 @@ def _write_default_aws_ini_file(creds_dict, creds_path):
         "aws_secret_access_key": creds_dict["secret-access-key"],
     }
 
+    session_token = creds_dict.get("session-token", None)
+    if session_token is not None:
+        config["default"]["aws_session_token"] = session_token
+
     region = creds_dict.get("default-region", None)
     if region is not None:
         config["default"]["region"] = region

@@ -319,7 +319,7 @@ export const setFrameNumberAtom = atom(
   ) => {
     const subscribers = get(_subscribers(name));
 
-    if (!subscribers) {
+    if (!subscribers || subscribers.size === 0) {
       set(_frameNumbers(name), newFrameNumber);
       return;
     }

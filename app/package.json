@@ -52,7 +52,6 @@
     ],
     "packageManager": "yarn@3.2.1",
     "dependencies": {
-        "jpeg-js": "^0.4.4",
         "react-player": "^2.16.0",
         "react-plotly.js": "^2.6.0"
     }

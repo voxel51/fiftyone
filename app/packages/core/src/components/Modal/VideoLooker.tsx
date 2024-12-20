@@ -50,31 +50,27 @@ export const VideoLookerReact = (props: VideoLookerReactProps) => {
   );
 };
 
-const TimelineController = ({
-  looker,
-  totalFrames,
-}: {
-  looker: VideoLooker;
-  totalFrames: number;
-}) => {
-  const { getName } = useDefaultTimelineNameImperative();
-  const timelineName = React.useMemo(() => getName(), [getName]);
+const TimelineController = React.memo(
+  ({ looker, totalFrames }: { looker: VideoLooker; totalFrames: number }) => {
+    const { getName } = useDefaultTimelineNameImperative();
+    const timelineName = React.useMemo(() => getName(), [getName]);
 
-  useCreateTimeline({
-    name: timelineName,
-    config: totalFrames
-      ? {
-          totalFrames,
-          loop: true,
-        }
-      : undefined,
-    optOutOfAnimation: true,
-  });
+    useCreateTimeline({
+      name: timelineName,
+      config: totalFrames
+        ? {
+            totalFrames,
+            loop: true,
+          }
+        : undefined,
+      optOutOfAnimation: true,
+    });
 
-  const { pause, play } = useTimeline(timelineName);
+    const { pause, play } = useTimeline(timelineName);
 
-  fos.useEventHandler(looker, "pause", pause);
-  fos.useEventHandler(looker, "play", play);
+    fos.useEventHandler(looker, "pause", pause);
+    fos.useEventHandler(looker, "play", play);
 
-  return null;
-};
+    return null;
+  }
+);

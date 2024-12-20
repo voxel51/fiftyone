@@ -65,17 +65,18 @@ export class LoaderBar extends BaseElement<VideoState> {
   }: Readonly<VideoState>) {
     const shown =
       !error && hovering && (waitingForVideo || buffering || waitingToStream);
+
+    if (shown === this.shown) {
+      return this.element;
+    }
+
     const start = lockedToSupport ? support[0] : 1;
     const end = lockedToSupport
       ? support[1]
       : getFrameNumber(duration, duration, frameRate);
-    if (shown === this.shown || start === end) {
-      return this.element;
-    }
 
     this.shown = shown;
-
-    if (this.shown) {
+    if (this.shown && start !== end) {
       this.element.style.display = "block";
     } else {
       this.element.style.display = "none";

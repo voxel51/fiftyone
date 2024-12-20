@@ -13,7 +13,7 @@ from importlib import metadata
 
 from setuptools import find_packages, setup
 
-VERSION = "2.2.0"
+VERSION = "2.3.0"
 
 
 def get_version():
@@ -48,8 +48,8 @@ INSTALL_REQUIRES = [
     # https://plotly.com/python/static-image-export/
     "kaleido!=0.2.1.post1",
     "matplotlib",
-    "mongoengine==0.24.2",
-    "motor>=2.5",
+    "mongoengine~=0.29.1",
+    "motor~=3.6.0",
     "numpy",
     "packaging",
     "pandas",
@@ -57,7 +57,7 @@ INSTALL_REQUIRES = [
     "plotly>=4.14",
     "pprintpp",
     "psutil",
-    "pymongo>=3.12,<4.9",
+    "pymongo~=4.9.2",
     "pytz",
     "PyYAML",
     "regex",
@@ -89,9 +89,9 @@ INSTALL_REQUIRES = [
     "yarl",
     "wcmatch",
     # internal packages
-    "fiftyone-brain>=0.18.0,<0.19",
+    "fiftyone-brain>=0.18.2,<0.19",
     "fiftyone-db~=0.4",  # pinned to legacy db, do not remove
-    "voxel51-eta>=0.13.0,<0.14",
+    "voxel51-eta>=0.13.1,<0.14",
 ]
 
 
@@ -134,7 +134,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone",
-    version="2.2.0",
+    version="2.3.0",
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"

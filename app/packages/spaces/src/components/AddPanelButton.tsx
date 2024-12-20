@@ -112,7 +112,7 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
 
 function PanelCategories({ children }) {
   return (
-    <Grid container gap={1} sx={{ p: 2 }}>
+    <Grid container gap={1} sx={{ p: 1 }}>
       {children}
     </Grid>
   );
@@ -121,7 +121,7 @@ function PanelCategories({ children }) {
 function PanelCategory({ label, children }) {
   const theme = useTheme();
   return (
-    <Grid item>
+    <Grid item sx={{ width: "100%" }}>
       <Typography
         variant="subtitle2"
         sx={{ padding: "0 8px", color: theme.text.secondary }}

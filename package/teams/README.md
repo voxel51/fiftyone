@@ -19,3 +19,13 @@ should be run in this README's directory.
 ```
 hypercorn fiftyone.teams.app:app --bind 0.0.0.0:5151 --reload
 ```
+
+There is alternatively a Makefile target which will:
+
+1. Configure the .venv
+1. install keyrings
+1. Run pip installs in the venv
+
+```shell
+make -f ../../Makefile.teams run-embedded-api
+```

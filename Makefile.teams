@@ -1,0 +1,52 @@
+.PHONY: app python docker docker-export
+
+.DEFAULT_GOAL := docker-export
+
+# Help
+.PHONY: $(shell sed -n -e '/^$$/ { n ; /^[^ .\#][^ ]*:/ { s/:.*$$// ; p ; } ; }' $(MAKEFILE_LIST))
+
+help:
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+configure: ## Set up the development environment
+	@bash scripts/configure.sh
+
+gcloud-cp-env: ## Copy developer .env file from cloud storage
+	@gcloud storage cp \
+		gs://voxel51-fiftyone-ai/dev-env-files/deploy/dev/.env \
+		./teams-app/.env \
+		--project computer-vision-team
+		
+gcloud-cp-license: ## Copy developer license file from cloud storage
+	@gcloud storage cp \
+		gs://voxel51-test/licenses/org_6nvHI0NrwCmc2fXp/1/license.key \
+		license.key \
+		--project computer-vision-team
+
+gcloud-cp-license-ephemeral: ## Copy ephemeral env license file from cloud storage
+	@gcloud storage cp \
+		gs://voxel51-licenses-dev/licenses/dev-internal-env/1/license.key \
+		license.key \
+		--project computer-vision-team
+
+run-teams-app: ## Run the fiftyone-teams app
+	@corepack enable && \
+		cd app && yarn install && cd - && \
+		cd teams-app && yarn install && cd - && \
+		cd teams-app/packages/app && \
+		yarn dev
+
+run-embedded-api: SHELL:=$(shell echo $$SHELL)
+run-embedded-api: ## Run the fiftyone-teams embedded api
+	@cd package/teams && \
+		if [ "$(SHELL)" = "/bin/zsh" ]; then \
+			. $$HOME/.zshrc; \
+		else \
+			. $$HOME/.bash_profile; \
+		fi && \
+		pyenv shell 3.10 && \
+		python -m venv .venv && \
+		. ./.venv/bin/activate && \
+		pip install keyrings.google-artifactregistry-auth && \
+		pip install --extra-index-url https://us-central1-python.pkg.dev/computer-vision-team/dev-python/simple/ . && \
+		hypercorn fiftyone.teams.app:app --bind localhost:5151 --reload

@@ -287,6 +287,7 @@ class AwsCredentialsFactory:
         access_key_id: str,
         secret_access_key: str,
         default_region: Optional[str] = None,
+        session_token: Optional[str] = None,
     ) -> Dict[str, str]:
         """Get formatted AWS credentials from access keys.
 
@@ -296,14 +297,17 @@ class AwsCredentialsFactory:
             access_key_id: AWS access key ID
             secret_access_key: AWS secret access key
             default_region (``None``): default AWS region to set
+            session_token (``None``): AWS session token
 
         Returns:
             Formatted credentials
         """
+
         return {
             "access-key-id": access_key_id,
             "secret-access-key": secret_access_key,
             "default-region": default_region,
+            "session-token": session_token,
         }
 
 

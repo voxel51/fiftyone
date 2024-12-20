@@ -90,8 +90,7 @@ class DatasourceConnectorOperator(foo.Operator):
             # These samples are not being added to a dataset, so we need to
             #  manually resolve the URL for any cloud-backed media.
             for sample in operator_response.query_result:
-                if "filepath" in sample:
-                    sample["filepath"] = self._resolve_url(sample["filepath"])
+                self._resolve_sample_urls(sample)
 
             # We also need to generate a valid field schema for these samples
             #  to be rendered with their labels.
@@ -196,6 +195,20 @@ class DatasourceConnectorOperator(foo.Operator):
             return ImportResponse(
                 error=traceback.format_exc(),
             )
+
+    def _resolve_sample_urls(self, sample_data: dict) -> dict:
+        url_attribute_names = ("filepath",)
+
+        for attr in url_attribute_names:
+            if attr in sample_data:
+                sample_data[attr] = self._resolve_url(sample_data[attr])
+
+        # Resolve recursively for any nested dicts
+        for k, v in sample_data.items():
+            if isinstance(v, dict):
+                sample_data[k] = self._resolve_sample_urls(v)
+
+        return sample_data
 
     def _execute_operator(
         self,

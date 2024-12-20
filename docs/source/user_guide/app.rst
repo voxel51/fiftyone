@@ -395,9 +395,9 @@ only those samples and/or labels that match the filter.
    :alt: app-filters
    :align: center
 
-.. _app-optimize-query-performance:
+.. _app-optimizing-query-performance:
 
-Optimizing query performance
+Optimizing Query Performance
 ----------------------------
 
 The App's sidebar is optimized to leverage database indexes whenever possible.
@@ -491,8 +491,8 @@ perform initial filters on:
     :ref:`App config <configuring-fiftyone-app>`.
 
 For :ref:`grouped datasets <groups>`, you should create two indexes for each
-field you wish to filter by in query performance mode: the field itself and a
-compound index that includes the group slice name:
+field you wish to filter by: the field itself and a compound index that
+includes the group slice name:
 
 .. code-block:: python
     :linenos:
@@ -542,27 +542,27 @@ field:
 
     Numeric field filters are not supported by wildcard indexes.
 
-.. _app-disasbling-query-performance:
+.. _app-disabling-query-performance:
 
-Disabling query performance
+Disabling Query Performance
 ---------------------------
 
-Query performance is enabled by default for all datasets. This is generally the
-recommended setting for all large datasets to ensure that queries are
-performant.
+:ref:`Query Performance <app-optimizing-query-performance>` is enabled by
+default for all datasets. This is generally the recommended setting for all
+large datasets to ensure that queries are performant.
 
-However, in certain circumstances you may prefer to disable query performance,
+However, in certain circumstances you may prefer to disable Query Performance,
 which enables the App's sidebar to show additional information such as
 label/value counts that are useful but more expensive to compute.
 
-You can disable query performance for a particular dataset for its lifetime
+You can disable Query Performance for a particular dataset for its lifetime
 (in your current browser) via the gear icon in the Samples panel's actions row:
 
 .. image:: /images/app/app-query-performance-disabled.gif
     :alt: app-query-performance-disabled
     :align: center
 
-You can also disable query performance by default for all datasets by setting
+You can also disable Query Performance by default for all datasets by setting
 `default_query_performance=False` in your
 :ref:`App config <configuring-fiftyone-app>`.
 

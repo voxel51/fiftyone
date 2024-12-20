@@ -60,10 +60,6 @@ function TeamUsers() {
   const organizationDisplayName = currentOrganization?.displayName;
 
   const canFilterUsers = useCurrentUser()[0]?.role === "ADMIN";
-  const userListUsersCount = useRecoilValue(userListUsersCountState);
-  const userListInvitationsCount = useRecoilValue(
-    userListInvitationsCountState
-  );
 
   const { canInvite } = useUserRole();
   const [tab, setTab] = useState<TabType>("users");
@@ -105,18 +101,6 @@ function TeamUsers() {
     loadQuery(variables, { fetchPolicy: "store-and-network" });
   }, [loadQuery, variables]);
 
-  const usersCountText = useMemo(() => {
-    if (userListUsersCount !== 1) {
-      return "This person has";
-    } else {
-      return `These ${userListUsersCount} people have`;
-    }
-  }, [userListUsersCount]);
-
-  const invitationsCountText = userListInvitationsCount
-    ? `${userListInvitationsCount} `
-    : "";
-
   return (
     <SettingsLayout>
       <Box>
@@ -133,7 +117,7 @@ function TeamUsers() {
           <>
             <SectionHeader
               title={""}
-              description={`${usersCountText} read access to one or more datasets.`}
+              description={`People with read access to one or more datasets.`}
               learnMoreLink={LEARN_MORE_ABOUT_ROLES_LINK}
               learnMoreText="Learn more about roles and permissions"
             >
@@ -162,7 +146,7 @@ function TeamUsers() {
           <>
             <SectionHeader
               title=""
-              description={`These ${invitationsCountText}people have been invited to join
+              description={`People who have been invited to join
                 ${organizationDisplayName}, but have not yet accepted.`}
             >
               {canInvite ? invitationBtn : undefined}

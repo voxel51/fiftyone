@@ -59,6 +59,7 @@ test("histograms panel", async ({ histogram, panel }) => {
     "detections.detections.confidence",
     "detections.detections.index",
     "detections.detections.label",
+    "detections.detections.mask_path",
     "detections.detections.tags",
     "float",
     "int",

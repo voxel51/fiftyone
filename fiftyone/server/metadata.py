@@ -13,6 +13,7 @@ import struct
 import typing as t
 from enum import Enum
 from functools import reduce
+from pydash import get
 
 import aiofiles
 import aiohttp
@@ -40,6 +41,8 @@ from fiftyone.utils.utils3d import OrthographicProjectionMetadata
 logger = logging.getLogger(__name__)
 
 _ADDITIONAL_MEDIA_FIELDS = {
+    fol.Detection: "mask_path",
+    fol.Detections: "mask_path",
     fol.Heatmap: "map_path",
     fol.Segmentation: "mask_path",
     OrthographicProjectionMetadata: "filepath",
@@ -85,7 +88,11 @@ async def get_metadata(
     filepath = sample["filepath"]
     metadata = sample.get("metadata", None)
 
-    opm_field, additional_fields = _get_additional_media_fields(collection)
+    (
+        opm_field,
+        detections_fields,
+        additional_fields,
+    ) = _get_additional_media_fields(collection)
 
     filepath_result, filepath_source, urls = await _create_media_urls(
         collection,
@@ -95,6 +102,7 @@ async def get_metadata(
         session,
         additional_fields=additional_fields,
         opm_field=opm_field,
+        detections_fields=detections_fields,
     )
     if filepath_result is not None:
         filepath = filepath_result
@@ -516,6 +524,7 @@ async def _create_media_urls(
     session: aiohttp.ClientSession,
     additional_fields: t.Optional[t.List[str]] = None,
     opm_field: t.Optional[str] = None,
+    detections_fields: t.Optional[t.List[str]] = None,
 ) -> t.Dict[str, str]:
     filepath_source = None
     media_fields = collection.app_config.media_fields.copy()
@@ -525,6 +534,23 @@ async def _create_media_urls(
     )
     if additional_fields is not None:
         media_fields.extend(additional_fields)
+
+    if detections_fields is not None:
+        for field in detections_fields:
+            detections = get(sample, field)
+
+            if not detections:
+                continue
+
+            detections_list = get(detections, "detections")
+
+            if not detections_list or len(detections_list) == 0:
+                continue
+
+            len_detections = len(detections_list)
+
+            for i in range(len_detections):
+                media_fields.append(f"{field}.detections[{i}].mask_path")
 
     if (
         sample_media_type == fom.POINT_CLOUD
@@ -542,7 +568,8 @@ async def _create_media_urls(
     filepath = None
     media_urls = []
     for field in media_fields:
-        path = _deep_get(sample, field)
+        path = get(sample, field)
+
         if not path:
             continue
 
@@ -590,6 +617,8 @@ def _get_additional_media_fields(
 ) -> t.List[str]:
     additional = []
     opm_field = None
+    detections_fields = None
+
     for cls, subfield_name in _ADDITIONAL_MEDIA_FIELDS.items():
         for field_name, field in collection.get_field_schema(
             flat=True
@@ -602,18 +631,13 @@ def _get_additional_media_fields(
             if cls == OrthographicProjectionMetadata:
                 opm_field = field_name
 
-            additional.append(f"{field_name}.{subfield_name}")
+            if cls == fol.Detections:
+                if detections_fields is None:
+                    detections_fields = [field_name]
+                else:
+                    detections_fields.append(field_name)
 
-    return opm_field, additional
+            else:
+                additional.append(f"{field_name}.{subfield_name}")
 
-
-def _deep_get(sample, keys, default=None):
-    """
-    Get a value from a nested dictionary by specifying keys delimited by '.',
-    similar to lodash's ``_.get()``.
-    """
-    return reduce(
-        lambda d, key: d.get(key, default) if isinstance(d, dict) else default,
-        keys.split("."),
-        sample,
-    )
+    return opm_field, detections_fields, additional

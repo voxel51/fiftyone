@@ -166,8 +166,8 @@ def export_segmentations(
     overwrite=False,
     progress=None,
 ):
-    """Exports the segmentations (or heatmaps) stored as in-database arrays in
-    the specified field to images on disk.
+    """Exports the semantic segmentations, instance segmentations, or heatmaps
+    stored as in-database arrays in the specified field to images on disk.
 
     Any labels without in-memory arrays are skipped.
 
@@ -175,7 +175,9 @@ def export_segmentations(
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         in_field: the name of the
-            :class:`fiftyone.core.labels.Segmentation` or
+            :class:`fiftyone.core.labels.Segmentation`,
+            :class:`fiftyone.core.labels.Detection`,
+            :class:`fiftyone.core.labels.Detections`, or
             :class:`fiftyone.core.labels.Heatmap` field
         output_dir: the directory in which to write the images
         rel_dir (None): an optional relative directory to strip from each input
@@ -194,7 +196,9 @@ def export_segmentations(
     """
     fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
-        sample_collection, in_field, (fol.Segmentation, fol.Heatmap)
+        sample_collection,
+        in_field,
+        (fol.Segmentation, fol.Detection, fol.Detections, fol.Heatmap),
     )
 
     samples = sample_collection.select_fields(in_field)
@@ -222,22 +226,46 @@ def export_segmentations(
                 if label is None:
                     continue
 
-                outpath = filename_maker.get_output_path(
-                    image.filepath, output_ext=".png"
-                )
-                local_path = filename_maker.get_alt_path(outpath)
-
-                if isinstance(label, fol.Heatmap):
-                    if label.map is not None:
-                        label.export_map(local_path)
-                        if update:
-                            label.map_path = outpath
-                            label.map = None
-                else:
+                if isinstance(label, fol.Segmentation):
                     if label.mask is not None:
+                        outpath = filename_maker.get_output_path(
+                            image.filepath, output_ext=".png"
+                        )
+                        local_path = filename_maker.get_alt_path(outpath)
                         label.export_mask(local_path)
                         if update:
                             label.mask_path = outpath
+                            label.mask = None
+                elif isinstance(label, fol.Detection):
+                    if label.mask is not None:
+                        outpath = filename_maker.get_output_path(
+                            image.filepath, output_ext=".png"
+                        )
+                        local_path = filename_maker.get_alt_path(outpath)
+                        label.export_mask(local_path)
+                        if update:
+                            label.mask_path = outpath
+                            label.mask = None
+                elif isinstance(label, fol.Detections):
+                    for detection in label.detections:
+                        if detection.mask is not None:
+                            outpath = filename_maker.get_output_path(
+                                image.filepath, output_ext=".png"
+                            )
+                            local_path = filename_maker.get_alt_path(outpath)
+                            detection.export_mask(local_path)
+                            if update:
+                                detection.mask_path = outpath
+                                detection.mask = None
+                elif isinstance(label, fol.Heatmap):
+                    if label.map is not None:
+                        outpath = filename_maker.get_output_path(
+                            image.filepath, output_ext=".png"
+                        )
+                        local_path = filename_maker.get_alt_path(outpath)
+                        label.export_map(local_path)
+                        if update:
+                            label.map_path = outpath
                             label.mask = None
 
 
@@ -248,8 +276,8 @@ def import_segmentations(
     delete_images=False,
     progress=None,
 ):
-    """Imports the segmentations (or heatmaps) stored on disk in the specified
-    field to in-database arrays.
+    """Imports the semantic segmentations, instance segmentations, or heatmaps
+    stored on disk in the specified field to in-database arrays.
 
     Any labels without images on disk are skipped.
 
@@ -257,7 +285,9 @@ def import_segmentations(
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         in_field: the name of the
-            :class:`fiftyone.core.labels.Segmentation` or
+            :class:`fiftyone.core.labels.Segmentation`,
+            :class:`fiftyone.core.labels.Detection`,
+            :class:`fiftyone.core.labels.Detections`, or
             :class:`fiftyone.core.labels.Heatmap` field
         update (True): whether to delete the image paths from the labels
         delete_images (False): whether to delete any imported images from disk
@@ -267,7 +297,9 @@ def import_segmentations(
     """
     fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
-        sample_collection, in_field, (fol.Segmentation, fol.Heatmap)
+        sample_collection,
+        in_field,
+        (fol.Segmentation, fol.Detection, fol.Detections, fol.Heatmap),
     )
 
     samples = sample_collection.select_fields(in_field)
@@ -292,16 +324,31 @@ def import_segmentations(
                 if label is None:
                     continue
 
-                if isinstance(label, fol.Heatmap):
-                    if label.map_path is not None:
-                        del_path = label.map_path if delete_images else None
-                        label.import_map(update=update)
-                        if del_path:
-                            df.delete(del_path)
-                else:
+                if isinstance(label, fol.Segmentation):
                     if label.mask_path is not None:
                         del_path = label.mask_path if delete_images else None
                         label.import_mask(update=update)
+                        if del_path:
+                            df.delete(del_path)
+                elif isinstance(label, fol.Detection):
+                    if label.mask_path is not None:
+                        del_path = label.mask_path if delete_images else None
+                        label.import_mask(update=update)
+                        if del_path:
+                            df.delete(del_path)
+                elif isinstance(label, fol.Detections):
+                    for detection in label.detections:
+                        if detection.mask_path is not None:
+                            del_path = (
+                                detection.mask_path if delete_images else None
+                            )
+                            detection.import_mask(update=update)
+                            if del_path:
+                                df.delete(del_path)
+                elif isinstance(label, fol.Heatmap):
+                    if label.map_path is not None:
+                        del_path = label.map_path if delete_images else None
+                        label.import_map(update=update)
                         if del_path:
                             df.delete(del_path)
 
@@ -448,6 +495,9 @@ def segmentations_to_detections(
     out_field,
     mask_targets=None,
     mask_types="stuff",
+    output_dir=None,
+    rel_dir=None,
+    overwrite=False,
     progress=None,
 ):
     """Converts the semantic segmentations masks in the specified field of the
@@ -482,6 +532,18 @@ def segmentations_to_detections(
             -   ``"thing"`` if all classes are thing classes
             -   a dict mapping pixel values (2D masks) or RGB hex strings (3D
                 masks) to ``"stuff"`` or ``"thing"`` for each class
+        output_dir (None): an optional output directory in which to write
+            instance segmentation images. If none is provided, the instance
+            segmentations are stored in the database
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier that is joined with
+            ``output_dir`` to generate an output path for each instance
+            segmentation image. This argument allows for populating nested
+            subdirectories in ``output_dir`` that match the shape of the input
+            paths. The path is converted to an absolute path (if necessary) via
+            :func:`fiftyone.core.storage.normalize_path`
+        overwrite (False): whether to delete ``output_dir`` prior to exporting
+            if it exists
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -500,6 +562,18 @@ def segmentations_to_detections(
             samples.download_context(media_fields=in_field, progress=progress)
         )
 
+        if output_dir is not None:
+            if overwrite:
+                fos.delete_dir(output_dir)
+
+            local_dir = context.enter_context(fos.LocalDir(output_dir, "w"))
+            filename_maker = fou.UniqueFilenameMaker(
+                output_dir=output_dir,
+                rel_dir=rel_dir,
+                alt_dir=local_dir,
+                idempotent=False,
+            )
+
         in_field, processing_frames = samples._handle_frame_field(in_field)
         out_field, _ = samples._handle_frame_field(out_field)
 
@@ -514,9 +588,21 @@ def segmentations_to_detections(
                 if label is None:
                     continue
 
-                image[out_field] = label.to_detections(
+                detections = label.to_detections(
                     mask_targets=mask_targets, mask_types=mask_types
                 )
+                if output_dir is not None:
+                    for detection in detections.detections:
+                        mask_path = filename_maker.get_output_path(
+                            image.filepath, output_ext=".png"
+                        )
+                        local_path = filename_maker.get_alt_path(mask_path)
+
+                        detection.export_mask(local_path)
+                        detection.mask_path = mask_path
+                        detection.mask = None
+
+                image[out_field] = detections
 
 
 def instances_to_polylines(
