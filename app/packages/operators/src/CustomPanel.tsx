@@ -14,12 +14,14 @@ import { useActivePanelEventsCount } from "./hooks";
 import { Property } from "./types";
 import { CustomPanelProps, useCustomPanelHooks } from "./useCustomPanelHooks";
 import { useTrackEvent } from "@fiftyone/analytics";
+import usePanelEvent from "./usePanelEvent";
 
 export function CustomPanel(props: CustomPanelProps) {
   const { panelId, dimensions, panelName, panelLabel, isModalPanel } = props;
   const { height, width } = dimensions?.bounds || {};
   const { count } = useActivePanelEventsCount(panelId);
   const [_, setLoading] = usePanelLoading(panelId);
+  const triggerPanelEvent = usePanelEvent();
 
   const {
     handlePanelStateChange,
@@ -36,6 +38,7 @@ export function CustomPanel(props: CustomPanelProps) {
     setPanelCloseEffect(() => {
       clearUseKeyStores(panelId);
       trackEvent("close_panel", { panel: panelName });
+      triggerPanelEvent(panelId, { operator: props.onUnLoad });
     });
   }, []);
 
