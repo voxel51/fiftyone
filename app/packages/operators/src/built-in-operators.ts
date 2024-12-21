@@ -17,7 +17,12 @@ import { LOAD_WORKSPACE_OPERATOR } from "@fiftyone/spaces/src/components/Workspa
 import { toSlug } from "@fiftyone/utilities";
 import copyToClipboard from "copy-to-clipboard";
 import { cloneDeep, merge, set as setValue } from "lodash";
-import { useRecoilCallback, useSetRecoilState } from "recoil";
+import {
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import { useOperatorExecutor } from ".";
 import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
 import registerPanel from "./Panel/register";
@@ -1409,6 +1414,66 @@ class CloseSample extends Operator {
   }
 }
 
+class ShowSidebar extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "show_sidebar",
+      label: "Show sidebar",
+    });
+  }
+  useHooks(): object {
+    const modal = useRecoilValue(fos.modal);
+    const [visible, setVisible] = useRecoilState(fos.sidebarVisible(!!modal));
+    return {
+      show: () => setVisible(true),
+    };
+  }
+  async execute({ hooks }: ExecutionContext) {
+    hooks.show();
+  }
+}
+
+class HideSidebar extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "hide_sidebar",
+      label: "Hide sidebar",
+    });
+  }
+  useHooks(): object {
+    const modal = useRecoilValue(fos.modal);
+    const [visible, setVisible] = useRecoilState(fos.sidebarVisible(!!modal));
+    return {
+      hide: () => setVisible(false),
+    };
+  }
+  async execute({ hooks }: ExecutionContext) {
+    hooks.hide();
+  }
+}
+
+class ToggleSidebar extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "toggle_sidebar",
+      label: "Toggle sidebar",
+    });
+  }
+  useHooks(): object {
+    const modal = useRecoilValue(fos.modal);
+    const [visible, setVisible] = useRecoilState(fos.sidebarVisible(!!modal));
+    return {
+      toggle: () => setVisible(!visible),
+    };
+  }
+  async execute({ hooks }: ExecutionContext) {
+    hooks.toggle();
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -1462,6 +1527,9 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(EnableQueryPerformance);
     _registerBuiltInOperator(OpenSample);
     _registerBuiltInOperator(CloseSample);
+    _registerBuiltInOperator(ShowSidebar);
+    _registerBuiltInOperator(HideSidebar);
+    _registerBuiltInOperator(ToggleSidebar);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);
