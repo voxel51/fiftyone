@@ -30,6 +30,8 @@ export const PainterFactory = (requestColor) => ({
       return;
     }
 
+    label.renderStatus = "painting";
+
     const setting = customizeColorSetting?.find((s) => s.path === field);
     let color;
 
@@ -141,6 +143,8 @@ export const PainterFactory = (requestColor) => ({
         }
       }
     }
+
+    label.renderStatus = "painted";
   },
   Detections: async (
     field,
@@ -155,6 +159,8 @@ export const PainterFactory = (requestColor) => ({
       return;
     }
 
+    labels.renderStatus = "painting";
+
     const promises = labels.detections.map((label) =>
       PainterFactory(requestColor).Detection(
         field,
@@ -168,6 +174,8 @@ export const PainterFactory = (requestColor) => ({
     );
 
     await Promise.all(promises);
+
+    labels.renderStatus = "painted";
   },
   Heatmap: async (
     field,
@@ -181,6 +189,8 @@ export const PainterFactory = (requestColor) => ({
     if (!label?.map) {
       return;
     }
+
+    label.renderStatus = "painting";
 
     const overlay = new Uint32Array(label.map.image);
 
@@ -245,6 +255,8 @@ export const PainterFactory = (requestColor) => ({
 
       overlay[i] = r;
     }
+
+    label.renderStatus = "painted";
   },
   Segmentation: async (
     field,
@@ -258,6 +270,8 @@ export const PainterFactory = (requestColor) => ({
     if (!label?.mask) {
       return;
     }
+
+    label.renderStatus = "painting";
 
     // the actual overlay that'll be painted, byte-length of width * height * 4 (RGBA channels)
     const overlay = new Uint32Array(label.mask.image);
@@ -390,6 +404,8 @@ export const PainterFactory = (requestColor) => ({
         }
       }
     }
+
+    label.renderStatus = "painted";
   },
 });
 
