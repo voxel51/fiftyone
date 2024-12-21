@@ -6,6 +6,7 @@ import {
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 import { DefaultValue, selectorFamily } from "recoil";
 import { getSessionRef, sessionAtom } from "../session";
+import { extendedSelection } from "./atoms";
 import { pathHasIndexes, queryPerformance } from "./queryPerformance";
 import { expandPath, fields } from "./schema";
 import { hiddenLabelIds, isFrameField } from "./selectors";
@@ -107,8 +108,10 @@ export const hasFilters = selectorFamily<boolean, boolean>({
     ({ get }) => {
       const f = Object.keys(get(modal ? modalFilters : filters)).length > 0;
       const hidden = Boolean(modal && get(hiddenLabelIds).size);
+      const selection =
+        !modal && Boolean(get(extendedSelection)?.selection?.length);
 
-      return f || hidden;
+      return f || hidden || selection;
     },
 });
 

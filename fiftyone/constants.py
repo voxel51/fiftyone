@@ -45,12 +45,12 @@ RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 # This setting may be ``None`` if this client has no compatibility with other
 # versions
 #
-COMPATIBLE_VERSIONS = ">=0.19,<1.4"
+COMPATIBLE_VERSIONS = ">=0.19,<1.3"
 
 # Package metadata
 _META = metadata("fiftyone")
 NAME = _META["name"]
-VERSION = "1.3.0"  # open source compatibility version
+VERSION = "1.2.0"  # open source compatibility version
 TEAMS_VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
 AUTHOR = _META["author"]
