@@ -66,6 +66,8 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
 
             If ``error_level > 0``, any calculation that raises a geometric
             error will default to an IoU of 0
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
     """
 
     def __init__(
@@ -82,10 +84,16 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         iou_threshs=None,
         max_preds=None,
         error_level=1,
+        custom_metrics=None,
         **kwargs,
     ):
         super().__init__(
-            pred_field, gt_field, iou=iou, classwise=classwise, **kwargs
+            pred_field,
+            gt_field,
+            iou=iou,
+            classwise=classwise,
+            custom_metrics=custom_metrics,
+            **kwargs,
         )
 
         if compute_mAP and iou_threshs is None:
@@ -262,6 +270,7 @@ class COCODetectionResults(DetectionResults):
             ``num_iou_threshs x num_classes x num_recall``
         missing (None): a missing label string. Any unmatched objects are
             given this label for evaluation purposes
+        custom_metrics (None): an optional dict of custom metrics
         backend (None): a :class:`COCOEvaluation` backend
     """
 
@@ -278,6 +287,7 @@ class COCODetectionResults(DetectionResults):
         recall_sweep=None,
         thresholds=None,
         missing=None,
+        custom_metrics=None,
         backend=None,
     ):
         super().__init__(
@@ -287,6 +297,7 @@ class COCODetectionResults(DetectionResults):
             matches,
             classes=classes,
             missing=missing,
+            custom_metrics=custom_metrics,
             backend=backend,
         )
 
