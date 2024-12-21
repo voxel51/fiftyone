@@ -31,7 +31,7 @@ Includes all updates from :ref:`FiftyOne 1.2.0 <release-notes-v1.2.0>`, plus:
 
 FiftyOne 1.2.0
 --------------
-*Released December 30, 2024*
+*Released December 20, 2024*
 
 App
 
