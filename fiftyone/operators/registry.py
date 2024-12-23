@@ -68,6 +68,9 @@ def operator_exists(operator_uri, enabled=True):
     return registry.operator_exists(operator_uri)
 
 
+_EXTRA_OPERATORS = []
+
+
 class OperatorRegistry(object):
     """Operator registry.
 
@@ -93,6 +96,7 @@ class OperatorRegistry(object):
             a list of :class:`fiftyone.operators.Operator` instances
         """
         operators = []
+        operators.extend(_EXTRA_OPERATORS)
         for pctx in self.plugin_contexts:
             operators.extend(pctx.instances)
 
