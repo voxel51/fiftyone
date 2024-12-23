@@ -41,6 +41,13 @@ class PluginDefinition(object):
         return self._directory
 
     @property
+    def builtin(self):
+        """Whether the plugin is a builtin plugin."""
+        from fiftyone.plugins.core import BUILTIN_PLUGINS_DIR
+
+        self.directory.startswith(BUILTIN_PLUGINS_DIR)
+
+    @property
     def author(self):
         """The author of the plugin."""
         return self._metadata.get("author", None)

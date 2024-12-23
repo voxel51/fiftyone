@@ -10,4 +10,4 @@ from .model_evaluation import EvaluationPanel
 
 
 def register(p):
-    p.register(EvaluationPanel, builtin=True)
+    p.register(EvaluationPanel)
