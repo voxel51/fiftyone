@@ -5,6 +5,7 @@ import { Field } from "./schema";
 
 export * from "./buffer-manager";
 export * from "./color";
+export * as constants from "./constants";
 export * from "./errors";
 export * from "./fetch";
 export * from "./order";
@@ -14,7 +15,6 @@ export * from "./schema";
 export { default as sizeBytesEstimate } from "./size-bytes-estimate";
 export * as styles from "./styles";
 export * from "./type-check";
-export * as constants from "./constants";
 
 interface O {
   [key: string]: O | any;
@@ -145,6 +145,7 @@ export const GEOLOCATIONS = "GeoLocations";
 export const HEATMAP = "Heatmap";
 export const KEYPOINT = "Keypoint";
 export const KEYPOINTS = "Keypoints";
+export const PANOPTIC_SEGMENTATION = "PanopticSegmentation";
 export const POLYLINE = "Polyline";
 export const POLYLINES = "Polylines";
 export const REGRESSION = "Regression";
@@ -178,6 +179,7 @@ export const LABELS_MAP = {
   [HEATMAP]: HEATMAP,
   [KEYPOINT]: KEYPOINT,
   [KEYPOINTS]: KEYPOINTS,
+  [PANOPTIC_SEGMENTATION]: PANOPTIC_SEGMENTATION,
   [POLYLINE]: POLYLINE,
   [POLYLINES]: POLYLINES,
   [SEGMENTATION]: SEGMENTATION,
@@ -190,10 +192,11 @@ export const MASK_LABELS = new Set([DETECTION, SEGMENTATION]);
 
 // defined as labels that can have on-disk overlays
 export const DENSE_LABELS = new Set([
-  SEGMENTATION,
-  HEATMAP,
   DETECTION,
   DETECTIONS,
+  HEATMAP,
+  PANOPTIC_SEGMENTATION,
+  SEGMENTATION,
 ]);
 
 export const VALID_OBJECT_TYPES = [
@@ -208,7 +211,11 @@ export const VALID_OBJECT_TYPES = [
 ];
 
 export const VALID_CLASS_TYPES = ["Classification", "Classifications"];
-export const VALID_MASK_TYPES = ["Heatmap", "Segmentation"];
+export const VALID_MASK_TYPES = [
+  "Heatmap",
+  "PanopticSegmentation",
+  "Segmentation",
+];
 export const VALID_LIST_TYPES = [
   "Classifications",
   "Detections",
@@ -269,6 +276,8 @@ export const POLYLINE_FIELD = "fiftyone.core.labels.Polyline";
 export const POLYLINES_FIELD = "fiftyone.core.labels.Polylines";
 export const GEO_LOCATIONS_FIELD = "fiftyone.core.labels.GeoLocations";
 export const GEO_LOCATION_FIELD = "fiftyone.core.labels.GeoLocation";
+export const PANOPTIC_SEGMENTATION_FIELD =
+  "fiftyone.core.labels.PanopticSegmentation";
 export const SEGMENTATION_FIELD = "fiftyone.core.labels.Segmentation";
 export const HEATMAP_FIELD = "fiftyone.core.labels.Heatmap";
 export const CLASSIFICATION_FIELD = "fiftyone.core.labels.Classification";
@@ -309,15 +318,16 @@ export const GROUP = "fiftyone.core.groups.Group";
 export const VALID_LIST_FIELDS = [FRAME_SUPPORT_FIELD, LIST_FIELD];
 
 export const VALID_NON_LIST_LABEL_TYPES = [
-  DETECTION_FIELD,
   CLASSIFICATION_FIELD,
-  KEYPOINT_FIELD,
-  TEMPORAL_DETECTION_FIELD,
-  REGRESSION_FIELD,
-  HEATMAP_FIELD,
-  SEGMENTATION_FIELD,
+  DETECTION_FIELD,
   GEO_LOCATION_FIELD,
+  KEYPOINT_FIELD,
+  HEATMAP_FIELD,
+  PANOPTIC_SEGMENTATION_FIELD,
   POLYLINE_FIELD,
+  REGRESSION_FIELD,
+  SEGMENTATION_FIELD,
+  TEMPORAL_DETECTION_FIELD,
 ];
 
 export const VALID_LIST_LABEL_FIELDS = [
@@ -437,6 +447,13 @@ export const KEYPOINT_DISABLED_SUB_PATHS = [
   ...BASE_DISABLED_PATHS,
   "points",
   "index",
+];
+
+export const PANOPTIC_SEGMENTATION_DISABLED_SUB_PATHS = [
+  "id",
+  "tags",
+  "mask",
+  "mask_path",
 ];
 
 export const SEGMENTATION_DISABLED_SUB_PATHS = [

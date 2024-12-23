@@ -2111,6 +2111,7 @@ __metadata:
     "@xmldom/xmldom": ^0.8.6
     buffer: ^6.0.3
     copy-to-clipboard: ^3.3.1
+    decode-tiff: ^0.2.1
     immutable: ^4.0.0-rc.12
     lodash: ^4.17.21
     lru-cache: ^11.0.1
@@ -7792,6 +7793,13 @@ __metadata:
   dependencies:
     character-entities: ^2.0.0
   checksum: f4c71d3b93105f20076052f9cb1523a22a9c796b8296cd35eef1ca54239c78d182c136a848b83ff8da2071e3ae2b1d300bf29d00650a6d6e675438cc31b11d78
+  languageName: node
+  linkType: hard
+
+"decode-tiff@npm:^0.2.1":
+  version: 0.2.1
+  resolution: "decode-tiff@npm:0.2.1"
+  checksum: 83e57af690cdb63dc4eb0915e195291ec4ed938cb8d14715231e6c2b4c6ad9ed6e9fea44c1830cac974eb73e90599dc70281840e98a4c800756a814a1dd0dad0
   languageName: node
   linkType: hard
 

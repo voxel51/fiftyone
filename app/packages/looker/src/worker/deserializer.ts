@@ -6,7 +6,9 @@ const extractSerializedMask = (
 ): string | undefined => {
   if (typeof label?.[maskProp] === "string") {
     return label[maskProp];
-  } else if (typeof label?.[maskProp]?.$binary?.base64 === "string") {
+  }
+
+  if (typeof label?.[maskProp]?.$binary?.base64 === "string") {
     return label[maskProp].$binary.base64;
   }
 
