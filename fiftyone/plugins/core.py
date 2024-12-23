@@ -25,12 +25,9 @@ from fiftyone.core.config import locate_app_config
 import fiftyone.core.utils as fou
 from fiftyone.plugins.definitions import PluginDefinition
 from fiftyone.utils.github import GitHubRepository
-
+import fiftyone.plugins.constants as constants
 
 PLUGIN_METADATA_FILENAMES = ("fiftyone.yml", "fiftyone.yaml")
-BUILTIN_PLUGINS_DIR = os.path.join(
-    os.path.dirname(__file__), "..", "..", "plugins"
-)
 
 logger = logging.getLogger(__name__)
 
@@ -496,7 +493,7 @@ def _list_plugins(enabled=None, include_builtin=False):
     plugins = []
     external_plugin_paths = list(_iter_plugin_metadata_files())
     builtin_plugin_paths = list(
-        _iter_plugin_metadata_files(BUILTIN_PLUGINS_DIR)
+        _iter_plugin_metadata_files(constants.BUILTIN_PLUGINS_DIR)
     )
     all_plugin_paths = (
         (external_plugin_paths + builtin_plugin_paths)

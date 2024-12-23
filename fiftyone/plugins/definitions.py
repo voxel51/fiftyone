@@ -13,6 +13,7 @@ import yaml
 import eta.core.serial as etas
 
 import fiftyone as fo
+import fiftyone.plugins.constants as constants
 
 
 class PluginDefinition(object):
@@ -43,9 +44,7 @@ class PluginDefinition(object):
     @property
     def builtin(self):
         """Whether the plugin is a builtin plugin."""
-        from fiftyone.plugins.core import BUILTIN_PLUGINS_DIR
-
-        self.directory.startswith(BUILTIN_PLUGINS_DIR)
+        self.directory.startswith(constants.BUILTIN_PLUGINS_DIR)
 
     @property
     def author(self):
