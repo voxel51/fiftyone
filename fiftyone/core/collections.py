@@ -10970,6 +10970,12 @@ class SampleCollection(object):
 
         return foos.ExecutionStore(store_name, svc)
 
+    def to_torch(self, get_item, **kwargs):
+        """See fo.utils.torch.FiftyOneTorchDataset for documentation."""
+        from fiftyone.utils.torch import FiftyOneTorchDataset
+
+        return FiftyOneTorchDataset(self, get_item, **kwargs)
+
 
 def _iter_label_fields(sample_collection):
     schema = sample_collection.get_field_schema()
