@@ -211,6 +211,7 @@ class PluginDefinition(object):
             "has_js": self.has_js,
             "server_path": self.server_path,
             "secrets": self.secrets,
+            "builtin": self.builtin,
         }
 
     @classmethod
