@@ -28,8 +28,8 @@ import type {
   LabelTagColor,
   Sample,
 } from "../state";
+import decodeImages from "./decoders";
 import { DeserializerFactory } from "./deserializer";
-import { decodeOverlayOnDisk } from "./disk-overlay-decoder";
 import { painter, resolveColor } from "./painters";
 import type { ResolveColor, ResolveColorMethod } from "./painters/utils";
 import { getOverlayFieldFromCls, mapId } from "./shared";
@@ -39,7 +39,9 @@ import type { ReaderMethod } from "./types";
 const ALL_VALID_LABELS = new Set(VALID_LABEL_TYPES);
 
 /**
- * This function processes labels in a recursive manner. It follows the following steps:
+ * This function processes labels in a recursive manner.
+ *
+ * It has the following steps:
  * 1. Deserialize masks. Accumulate promises.
  * 2. Await mask path decoding to finish.
  * 3. Start painting overlays. Accumulate promises.
@@ -51,7 +53,7 @@ const ALL_VALID_LABELS = new Set(VALID_LABEL_TYPES);
 const processLabels = async (
   sample: ProcessSample["sample"],
   coloring: ProcessSample["coloring"],
-  prefix = "",
+  prefix: string,
   sources: { [key: string]: string },
   customizeColorSetting: ProcessSample["customizeColorSetting"],
   colorscale: ProcessSample["colorscale"],
@@ -70,8 +72,8 @@ const processLabels = async (
     if (!Array.isArray(labels)) {
       labels = [labels];
     }
-    const cls = getCls(`${prefix ? prefix : ""}${field}`, schema);
 
+    const cls = getCls(`${prefix ? prefix : ""}${field}`, schema);
     if (!cls) {
       continue;
     }
@@ -83,17 +85,17 @@ const processLabels = async (
 
       if (DENSE_LABELS.has(cls)) {
         maskPathDecodingPromises.push(
-          decodeOverlayOnDisk(
-            `${prefix || ""}${field}`,
-            label,
-            coloring,
-            customizeColorSetting,
-            colorscale,
-            sources,
+          decodeImages({
             cls,
+            coloring,
+            colorscale,
+            customizeColorSetting,
+            field: `${prefix || ""}${field}`,
+            label,
+            sources,
             maskPathDecodingPromises,
-            maskTargetsBuffers
-          )
+            maskTargetsBuffers,
+          })
         );
       }
 
@@ -141,7 +143,6 @@ const processLabels = async (
     }
 
     const cls = getCls(`${prefix ? prefix : ""}${field}`, schema);
-
     if (!cls) {
       continue;
     }
@@ -472,7 +473,9 @@ const createReader = ({
     frameNumber,
     chunkSize,
     reader: privateStream.getReader(),
-    cancel: () => (cancelled = true),
+    cancel: () => {
+      cancelled = true;
+    },
   };
 };
 

@@ -464,7 +464,7 @@ export const createWorker = (
   worker.addEventListener(
     "error",
     (error) => {
-      dispatchEvent("error", error);
+      dispatchEvent?.("error", error);
     },
     signal
   );
@@ -476,7 +476,7 @@ export const createWorker = (
         const error = !ERRORS[data.error.cls]
           ? new Error(data.error.message)
           : new ERRORS[data.error.cls](data.error.data, data.error.message);
-        dispatchEvent("error", new ErrorEvent("error", { error }));
+        dispatchEvent?.("error", new ErrorEvent("error", { error }));
       }
     },
     signal
