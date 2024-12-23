@@ -25,12 +25,17 @@ export const decodeOverlayOnDisk = async (
   sources: { [path: string]: string },
   cls: string,
   maskPathDecodingPromises: Promise<void>[] = [],
-  maskTargetsBuffers: ArrayBuffer[] = []
+  maskTargetsBuffers: ArrayBuffer[] = [],
+  overlayCollectionProcessingParams:
+    | { idx: number; cls: string }
+    | undefined = undefined
 ) => {
   // handle all list types here
-  if (cls === DETECTIONS) {
+  if (cls === DETECTIONS && label.detections) {
     const promises: Promise<void>[] = [];
-    for (const detection of label.detections) {
+
+    for (let i = 0; i < label.detections.length; i++) {
+      const detection = label.detections[i];
       promises.push(
         decodeOverlayOnDisk(
           field,
@@ -38,10 +43,11 @@ export const decodeOverlayOnDisk = async (
           coloring,
           customizeColorSetting,
           colorscale,
-          {},
+          sources,
           DETECTION,
           maskPathDecodingPromises,
-          maskTargetsBuffers
+          maskTargetsBuffers,
+          { idx: i, cls: DETECTIONS }
         )
       );
     }
@@ -61,6 +67,11 @@ export const decodeOverlayOnDisk = async (
     ) {
       const height = label[overlayField].bitmap.height;
       const width = label[overlayField].bitmap.width;
+
+      // close the copied bitmap
+      label[overlayField].bitmap.close();
+      label[overlayField].bitmap = null;
+
       label[overlayField].image = new ArrayBuffer(height * width * 4);
       label[overlayField].bitmap.close();
       label[overlayField].bitmap = null;
@@ -69,23 +80,28 @@ export const decodeOverlayOnDisk = async (
     return;
   }
 
-  // convert absolute file path to a URL that we can "fetch" from
-  const overlayImageUrl = getSampleSrc(
-    sources[`${field}.${overlayPathField}`] || label[overlayPathField]
-  );
-  const urlTokens = overlayImageUrl.split("?");
+  // if we have an explicit source defined from sample.urls, use that
+  // otherwise, use the path field from the label
+  let source = sources[`${field}.${overlayPathField}`];
 
-  let baseUrl = overlayImageUrl;
-
-  // remove query params if not local URL
-  if (!urlTokens.at(1)?.startsWith("filepath=")) {
-    baseUrl = overlayImageUrl.split("?")[0];
+  if (typeof overlayCollectionProcessingParams !== "undefined") {
+    // example: for detections, we need to access the source from the parent label
+    // like: if field is "prediction_masks", we're trying to get "predictiion_masks.detections[INDEX].mask"
+    source =
+      sources[
+        `${field}.${overlayCollectionProcessingParams.cls.toLocaleLowerCase()}[${
+          overlayCollectionProcessingParams.idx
+        }].${overlayPathField}`
+      ];
   }
+
+  // convert absolute file path to a URL that we can "fetch" from
+  const overlayImageUrl = getSampleSrc(source || label[overlayPathField]);
 
   let overlayImageBlob: Blob;
   try {
     const overlayImageFetchResponse = await enqueueFetch({
-      url: baseUrl,
+      url: overlayImageUrl,
       options: { priority: "low" },
     });
     overlayImageBlob = await overlayImageFetchResponse.blob();

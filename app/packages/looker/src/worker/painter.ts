@@ -113,6 +113,7 @@ export const PainterFactory = (requestColor) => ({
       }
     }
 
+    const numChannels = label.mask.data.channels;
     const overlay = new Uint32Array(label.mask.image);
     const targets = new ARRAY_TYPES[label.mask.data.arrayType](
       label.mask.data.buffer
@@ -120,16 +121,16 @@ export const PainterFactory = (requestColor) => ({
     const bitColor = get32BitColor(color);
 
     if (label.mask_path) {
-      // putImageData results in an UInt8ClampedArray (for both grayscale or RGB masks),
-      // where each pixel is represented by 4 bytes (RGBA)
-      // it's packed like: [R, G, B, A, R, G, B, A, ...]
-      // use first channel info to determine if the pixel is in the mask
-      // skip second (G), third (B) and fourth (A) channels
-      for (let i = 0; i < targets.length; i += 4) {
+      // putImageData results in an UInt8ClampedArray,
+      // if image is grayscale, it'll be packed as:
+      // [I, I, I, I, I...], where I is the intensity value
+      // or else it'll be packed as:
+      // [R, G, B, A, R, G, B, A...]
+      // for non-grayscale masks, we can check every nth byte,
+      // where n = numChannels, to check for whether or not the pixel is part of the mask
+      for (let i = 0; i < targets.length; i += numChannels) {
         if (targets[i]) {
-          // overlay image is a Uint32Array, where each pixel is represented by 4 bytes (RGBA)
-          // so we need to divide by 4 to get the correct index to assign 32 bit color
-          const overlayIndex = i / 4;
+          const overlayIndex = i / numChannels;
           overlay[overlayIndex] = bitColor;
         }
       }
@@ -278,7 +279,14 @@ export const PainterFactory = (requestColor) => ({
 
     const isRgbMaskTargets_ = isRgbMaskTargets(maskTargets);
 
-    if (maskData.channels > 2) {
+    // we have an additional guard for targets length = new image buffer byte length
+    // because we reduce the RGBA mask into a grayscale mask in first load for
+    // performance reasons
+    // For subsequent mask updates, the maskData.buffer is already a single channel
+    if (
+      maskData.channels === 4 &&
+      targets.length === label.mask.image.byteLength
+    ) {
       for (let i = 0; i < overlay.length; i++) {
         const [r, g, b] = getRgbFromMaskData(targets, maskData.channels, i);
 

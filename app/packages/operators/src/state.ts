@@ -246,6 +246,7 @@ export type OperatorExecutionOption = {
   default?: boolean;
   selected?: boolean;
   onSelect?: () => void;
+  isDisabledSchedule?: boolean;
 };
 
 const useOperatorPromptSubmitOptions = (
@@ -346,6 +347,7 @@ const useOperatorPromptSubmitOptions = (
       id: "disabled-schedule",
       description: markdownDesc,
       isDelegated: true,
+      isDisabledSchedule: true,
     });
   }
 
@@ -849,6 +851,7 @@ export function useOperatorBrowser() {
   const choices = useRecoilValue(operatorBrowserChoices);
   const promptForInput = usePromptOperatorInput();
   const isOperatorPaletteOpened = useRecoilValue(operatorPaletteOpened);
+  const editingField = useRecoilValue(fos.editingFieldAtom);
 
   const selectedValue = useMemo(() => {
     return selected ?? defaultSelected;
@@ -911,7 +914,8 @@ export function useOperatorBrowser() {
     (e) => {
       if (e.key !== "`" && !isVisible) return;
       if (e.key === "`" && isOperatorPaletteOpened) return;
-      if (BROWSER_CONTROL_KEYS.includes(e.key)) e.preventDefault();
+      if (BROWSER_CONTROL_KEYS.includes(e.key) && !editingField)
+        e.preventDefault();
       switch (e.key) {
         case "ArrowDown":
           selectNext();
@@ -920,7 +924,7 @@ export function useOperatorBrowser() {
           selectPrevious();
           break;
         case "`":
-          if (isOperatorPaletteOpened) break;
+          if (isOperatorPaletteOpened || editingField) break;
           if (isVisible) {
             close();
           } else {

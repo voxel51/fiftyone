@@ -624,6 +624,44 @@ class DatasetAppConfig(EmbeddedDocument):
         for path, new_path in zip(paths, new_paths):
             self._rename_path(path, new_path)
 
+    def _add_path_to_sidebar_group(
+        self,
+        path,
+        sidebar_group,
+        after_group=None,
+        dataset=None,
+    ):
+        if self.sidebar_groups is None:
+            if dataset is None:
+                return
+
+            self.sidebar_groups = self.default_sidebar_groups(dataset)
+
+        index_group = None
+        for group in self.sidebar_groups:
+            if group.name == sidebar_group:
+                index_group = group
+            else:
+                if path in group.paths:
+                    group.paths.remove(path)
+
+        if index_group is None:
+            index_group = SidebarGroupDocument(name=sidebar_group)
+
+            insert_after = None
+            if after_group is not None:
+                for i, group in enumerate(self.sidebar_groups):
+                    if group.name == after_group:
+                        insert_after = i
+
+            if insert_after is None:
+                self.sidebar_groups.append(index_group)
+            else:
+                self.sidebar_groups.insert(insert_after + 1, index_group)
+
+        if path not in index_group.paths:
+            index_group.paths.append(path)
+
 
 def _make_default_sidebar_groups(sample_collection):
     # Possible sidebar groups

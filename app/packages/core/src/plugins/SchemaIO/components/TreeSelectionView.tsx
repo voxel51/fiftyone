@@ -177,7 +177,8 @@ export default function TreeSelectionView(props: ViewPropsType) {
       const selectedSampleIds = Object.keys(updatedState).filter((key) => {
         const isSample =
           !structure.some(([parentId]) => parentId === key) &&
-          key !== "selectAll";
+          key !== "selectAll" &&
+          !Object.keys(updatedState[key])?.includes("indeterminate");
         return isSample && updatedState[key].checked;
       });
 

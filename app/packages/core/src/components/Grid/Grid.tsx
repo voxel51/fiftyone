@@ -73,7 +73,7 @@ function Grid() {
       render: (id, element, dimensions, zooming) => {
         const cached = lookerStore.get(id.description);
         if (cached) {
-          cached?.attach(element, dimensions);
+          cached?.attach(element, dimensions, getFontSize());
           return;
         }
 

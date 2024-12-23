@@ -6,15 +6,17 @@ Model evaluation panel.
 |
 """
 
+from collections import defaultdict, Counter
 import os
 import traceback
-import fiftyone.operators.types as types
 
-from collections import defaultdict, Counter
+import numpy as np
+
 from fiftyone import ViewField as F
 from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
 from fiftyone.core.plots.plotly import _to_log_colorscale
+import fiftyone.operators.types as types
 
 
 STORE_NAME = "model_evaluation_panel_builtin"
@@ -30,6 +32,7 @@ ENABLE_CACHING = (
     os.environ.get("FIFTYONE_DISABLE_EVALUATION_CACHING") not in TRUTHY_VALUES
 )
 CACHE_TTL = 30 * 24 * 60 * 60  # 30 days in seconds
+SUPPORTED_EVALUATION_TYPES = ["classification", "detection", "segmentation"]
 
 
 class EvaluationPanel(Panel):
@@ -104,33 +107,42 @@ class EvaluationPanel(Panel):
                 total += metrics["confidence"]
         return total / count if count > 0 else None
 
-    def get_tp_fp_fn(self, ctx):
-        view_state = ctx.panel.get_state("view") or {}
-        key = view_state.get("key")
-        dataset = ctx.dataset
-        tp_key = f"{key}_tp"
-        fp_key = f"{key}_fp"
-        fn_key = f"{key}_fn"
-        tp_total = (
-            sum(ctx.dataset.values(tp_key))
-            if dataset.has_field(tp_key)
-            else None
-        )
-        fp_total = (
-            sum(ctx.dataset.values(fp_key))
-            if dataset.has_field(fp_key)
-            else None
-        )
-        fn_total = (
-            sum(ctx.dataset.values(fn_key))
-            if dataset.has_field(fn_key)
-            else None
-        )
-        return tp_total, fp_total, fn_total
+    def get_tp_fp_fn(self, info, results):
+        # Binary classification
+        if (
+            info.config.type == "classification"
+            and info.config.method == "binary"
+        ):
+            neg_label, pos_label = results.classes
+            tp_count = np.count_nonzero(
+                (results.ytrue == pos_label) & (results.ypred == pos_label)
+            )
+            fp_count = np.count_nonzero(
+                (results.ytrue != pos_label) & (results.ypred == pos_label)
+            )
+            fn_count = np.count_nonzero(
+                (results.ytrue == pos_label) & (results.ypred != pos_label)
+            )
+            return tp_count, fp_count, fn_count
+
+        # Object detection
+        if info.config.type == "detection":
+            tp_count = np.count_nonzero(results.ytrue == results.ypred)
+            fp_count = np.count_nonzero(results.ytrue == results.missing)
+            fn_count = np.count_nonzero(results.ypred == results.missing)
+            return tp_count, fp_count, fn_count
+
+        return None, None, None
 
     def get_map(self, results):
         try:
             return results.mAP()
+        except Exception as e:
+            return None
+
+    def get_mar(self, results):
+        try:
+            return results.mAR()
         except Exception as e:
             return None
 
@@ -241,7 +253,7 @@ class EvaluationPanel(Panel):
         return colorscale
 
     def get_confusion_matrices(self, results):
-        default_classes = results.classes
+        default_classes = results.classes.tolist()
         freq = Counter(results.ytrue)
         if results.missing in freq:
             freq.pop(results.missing)
@@ -249,11 +261,35 @@ class EvaluationPanel(Panel):
         za_classes = sorted(default_classes, reverse=True)
         mc_classes = sorted(freq, key=freq.get, reverse=True)
         lc_classes = sorted(freq, key=freq.get)
-        default_matrix = results.confusion_matrix()
-        az_matrix = results.confusion_matrix(classes=az_classes)
-        za_matrix = results.confusion_matrix(classes=za_classes)
-        mc_matrix = results.confusion_matrix(classes=mc_classes)
-        lc_matrix = results.confusion_matrix(classes=lc_classes)
+        default_matrix, _default_classes, _ = results._confusion_matrix(
+            include_other=False,
+            include_missing=True,
+            tabulate_ids=False,
+        )
+        az_matrix, _az_classes, _ = results._confusion_matrix(
+            classes=az_classes,
+            include_other=False,
+            include_missing=True,
+            tabulate_ids=False,
+        )
+        za_matrix, _za_classes, _ = results._confusion_matrix(
+            classes=za_classes,
+            include_other=False,
+            include_missing=True,
+            tabulate_ids=False,
+        )
+        mc_matrix, _mc_classes, _ = results._confusion_matrix(
+            classes=mc_classes,
+            include_other=False,
+            include_missing=True,
+            tabulate_ids=False,
+        )
+        lc_matrix, _lc_classes, _ = results._confusion_matrix(
+            classes=lc_classes,
+            include_other=False,
+            include_missing=True,
+            tabulate_ids=False,
+        )
         default_colorscale = self.get_confusion_matrix_colorscale(
             default_matrix
         )
@@ -262,11 +298,11 @@ class EvaluationPanel(Panel):
         mc_colorscale = self.get_confusion_matrix_colorscale(mc_matrix)
         lc_colorscale = self.get_confusion_matrix_colorscale(lc_matrix)
         return {
-            "default_classes": default_classes.tolist(),
-            "az_classes": az_classes,
-            "za_classes": za_classes,
-            "mc_classes": mc_classes,
-            "lc_classes": lc_classes,
+            "default_classes": _default_classes,
+            "az_classes": _az_classes,
+            "za_classes": _za_classes,
+            "mc_classes": _mc_classes,
+            "lc_classes": _lc_classes,
             "default_matrix": default_matrix.tolist(),
             "az_matrix": az_matrix.tolist(),
             "za_matrix": za_matrix.tolist(),
@@ -278,6 +314,16 @@ class EvaluationPanel(Panel):
             "mc_colorscale": mc_colorscale,
             "lc_colorscale": lc_colorscale,
         }
+
+    def get_mask_targets(self, dataset, gt_field):
+        mask_targets = dataset.mask_targets.get(gt_field, None)
+        if mask_targets:
+            return mask_targets
+
+        if dataset.default_mask_targets:
+            return dataset.default_mask_targets
+
+        return None
 
     def load_evaluation(self, ctx):
         view_state = ctx.panel.get_state("view") or {}
@@ -291,6 +337,20 @@ class EvaluationPanel(Panel):
         )
         if evaluation_data is None:
             info = ctx.dataset.get_evaluation_info(computed_eval_key)
+            evaluation_type = info.config.type
+            serialized_info = info.serialize()
+            if evaluation_type not in SUPPORTED_EVALUATION_TYPES:
+                ctx.panel.set_data(
+                    f"evaluation_{computed_eval_key}_error",
+                    {"error": "unsupported", "info": serialized_info},
+                )
+                return
+            gt_field = info.config.gt_field
+            mask_targets = (
+                self.get_mask_targets(ctx.dataset, gt_field)
+                if evaluation_type == "segmentation"
+                else None
+            )
             results = ctx.dataset.load_evaluation_results(computed_eval_key)
             metrics = results.metrics()
             per_class_metrics = self.get_per_class_metrics(info, results)
@@ -298,15 +358,19 @@ class EvaluationPanel(Panel):
                 per_class_metrics
             )
             metrics["tp"], metrics["fp"], metrics["fn"] = self.get_tp_fp_fn(
-                ctx
+                info, results
             )
             metrics["mAP"] = self.get_map(results)
+            metrics["mAR"] = self.get_mar(results)
             evaluation_data = {
                 "metrics": metrics,
-                "info": info.serialize(),
+                "info": serialized_info,
                 "confusion_matrices": self.get_confusion_matrices(results),
                 "per_class_metrics": per_class_metrics,
+                "mask_targets": mask_targets,
             }
+            ctx.panel.set_state("missing", results.missing)
+
             if ENABLE_CACHING:
                 # Cache the evaluation data
                 try:
@@ -401,26 +465,126 @@ class EvaluationPanel(Panel):
             return
 
         view_state = ctx.panel.get_state("view") or {}
+        view_options = ctx.params.get("options", {})
+
         eval_key = view_state.get("key")
+        eval_key = view_options.get("key", eval_key)
+        eval_view = ctx.dataset.load_evaluation_view(eval_key)
         info = ctx.dataset.get_evaluation_info(eval_key)
         pred_field = info.config.pred_field
         gt_field = info.config.gt_field
-        view_options = ctx.params.get("options", {})
+
+        eval_key2 = view_state.get("compareKey", None)
+        pred_field2 = None
+        gt_field2 = None
+        if eval_key2:
+            info2 = ctx.dataset.get_evaluation_info(eval_key2)
+            pred_field2 = info2.config.pred_field
+            if info2.config.gt_field != gt_field:
+                gt_field2 = info2.config.gt_field
+
         x = view_options.get("x", None)
         y = view_options.get("y", None)
         field = view_options.get("field", None)
-        computed_eval_key = view_options.get("key", eval_key)
+        missing = ctx.panel.get_state("missing", "(none)")
+
         view = None
-        if view_type == "class":
-            view = ctx.dataset.filter_labels(pred_field, F("label") == x)
-        elif view_type == "matrix":
-            view = ctx.dataset.filter_labels(
-                gt_field, F("label") == y
-            ).filter_labels(pred_field, F("label") == x)
-        elif view_type == "field":
-            view = ctx.dataset.filter_labels(
-                pred_field, F(computed_eval_key) == field
-            )
+        if info.config.type == "classification":
+            if view_type == "class":
+                # All GT/predictions of class `x`
+                expr = F(f"{gt_field}.label") == x
+                expr |= F(f"{pred_field}.label") == x
+                if gt_field2 is not None:
+                    expr |= F(f"{gt_field2}.label") == x
+                if pred_field2 is not None:
+                    expr |= F(f"{pred_field2}.label") == x
+                view = eval_view.match(expr)
+            elif view_type == "matrix":
+                # Specific confusion matrix cell (including FP/FN)
+                expr = F(f"{gt_field}.label") == y
+                expr &= F(f"{pred_field}.label") == x
+                view = eval_view.match(expr)
+            elif view_type == "field":
+                if info.config.method == "binary":
+                    # All TP/FP/FN
+                    expr = F(f"{eval_key}") == field.upper()
+                    view = eval_view.match(expr)
+                else:
+                    # Correct/incorrect
+                    expr = F(f"{eval_key}") == field
+                    view = eval_view.match(expr)
+        elif info.config.type == "detection":
+            _, gt_root = ctx.dataset._get_label_field_path(gt_field)
+            _, pred_root = ctx.dataset._get_label_field_path(pred_field)
+            if gt_field2 is not None:
+                _, gt_root2 = ctx.dataset._get_label_field_path(gt_field2)
+            if pred_field2 is not None:
+                _, pred_root2 = ctx.dataset._get_label_field_path(pred_field2)
+
+            if view_type == "class":
+                # All GT/predictions of class `x`
+                view = eval_view.filter_labels(
+                    gt_field, F("label") == x, only_matches=False
+                )
+                expr = F(gt_root).length() > 0
+                view = view.filter_labels(
+                    pred_field, F("label") == x, only_matches=False
+                )
+                expr |= F(pred_root).length() > 0
+                if gt_field2 is not None:
+                    view = view.filter_labels(
+                        gt_field2, F("label") == x, only_matches=False
+                    )
+                    expr |= F(gt_root2).length() > 0
+                if pred_field2 is not None:
+                    view = view.filter_labels(
+                        pred_field2, F("label") == x, only_matches=False
+                    )
+                    expr |= F(pred_root2).length() > 0
+                view = view.match(expr)
+            elif view_type == "matrix":
+                if y == missing:
+                    # False positives of class `x`
+                    expr = (F("label") == x) & (F(eval_key) == "fp")
+                    view = eval_view.filter_labels(
+                        pred_field, expr, only_matches=True
+                    )
+                elif x == missing:
+                    # False negatives of class `y`
+                    expr = (F("label") == y) & (F(eval_key) == "fn")
+                    view = eval_view.filter_labels(
+                        gt_field, expr, only_matches=True
+                    )
+                else:
+                    # All class `y` GT and class `x` predictions in same sample
+                    view = eval_view.filter_labels(
+                        gt_field, F("label") == y, only_matches=False
+                    )
+                    expr = F(gt_root).length() > 0
+                    view = view.filter_labels(
+                        pred_field, F("label") == x, only_matches=False
+                    )
+                    expr &= F(pred_root).length() > 0
+                    view = view.match(expr)
+            elif view_type == "field":
+                if field == "tp":
+                    # All true positives
+                    view = eval_view.filter_labels(
+                        gt_field, F(eval_key) == field, only_matches=False
+                    )
+                    view = view.filter_labels(
+                        pred_field, F(eval_key) == field, only_matches=True
+                    )
+                elif field == "fn":
+                    # All false negatives
+                    view = eval_view.filter_labels(
+                        gt_field, F(eval_key) == field, only_matches=True
+                    )
+                else:
+                    # All false positives
+                    view = eval_view.filter_labels(
+                        pred_field, F(eval_key) == field, only_matches=True
+                    )
 
         if view is not None:
             ctx.ops.set_view(view)

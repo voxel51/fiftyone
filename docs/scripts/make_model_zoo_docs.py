@@ -173,6 +173,15 @@ _MODEL_TEMPLATE = """
     model = foz.load_zoo_model("{{ name }}")
 
     embeddings = dataset.compute_embeddings(model)
+{% elif 'zero-shot' in name and 'transformer' in name %}
+    model = foz.load_zoo_model(
+        "{{ name }}",
+        classes=["person", "dog", "cat", "bird", "car", "tree", "chair"],
+    )
+
+    dataset.apply_model(model, label_field="predictions")
+
+    session = fo.launch_app(dataset)
 {% else %}
     model = foz.load_zoo_model("{{ name }}")
 

@@ -10662,9 +10662,7 @@ class SampleCollection(object):
         db_fields_map = self._get_db_fields_map(frames=frames)
         return [db_fields_map.get(p, p) for p in paths]
 
-    def _get_media_fields(
-        self, include_filepath=True, whitelist=None, frames=False
-    ):
+    def _get_media_fields(self, whitelist=None, blacklist=None, frames=False):
         media_fields = {}
 
         if frames:
@@ -10674,13 +10672,13 @@ class SampleCollection(object):
             schema = self.get_field_schema(flat=True)
             app_media_fields = set(self._dataset.app_config.media_fields)
 
-            if include_filepath:
-                # 'filepath' should already be in set, but add it just in case
-                app_media_fields.add("filepath")
-            else:
-                app_media_fields.discard("filepath")
+            # 'filepath' should already be in set, but add it just in case
+            app_media_fields.add("filepath")
 
         for field_name, field in schema.items():
+            while isinstance(field, fof.ListField):
+                field = field.field
+
             if field_name in app_media_fields:
                 media_fields[field_name] = None
             elif isinstance(field, fof.EmbeddedDocumentField) and issubclass(
@@ -10695,14 +10693,28 @@ class SampleCollection(object):
                 whitelist = {whitelist}
 
             media_fields = {
-                k: v for k, v in media_fields.items() if k in whitelist
+                k: v
+                for k, v in media_fields.items()
+                if any(w == k or k.startswith(w + ".") for w in whitelist)
+            }
+
+        if blacklist is not None:
+            if etau.is_container(blacklist):
+                blacklist = set(blacklist)
+            else:
+                blacklist = {blacklist}
+
+            media_fields = {
+                k: v
+                for k, v in media_fields.items()
+                if not any(w == k or k.startswith(w + ".") for w in blacklist)
             }
 
         return media_fields
 
-    def _resolve_media_field(self, media_field):
+    def _parse_media_field(self, media_field):
         if media_field in self._dataset.app_config.media_fields:
-            return media_field
+            return media_field, None
 
         _media_field, is_frame_field = self._handle_frame_field(media_field)
 
@@ -10711,12 +10723,20 @@ class SampleCollection(object):
             if leaf is not None:
                 leaf = root + "." + leaf
 
-            if _media_field in (root, leaf):
+            if _media_field in (root, leaf) or root.startswith(
+                _media_field + "."
+            ):
                 _resolved_field = leaf if leaf is not None else root
                 if is_frame_field:
                     _resolved_field = self._FRAMES_PREFIX + _resolved_field
 
-                return _resolved_field
+                _list_fields = self._parse_field_name(
+                    _resolved_field, auto_unwind=False
+                )[-2]
+                if _list_fields:
+                    return _resolved_field, _list_fields[0]
+
+                return _resolved_field, None
 
         raise ValueError("'%s' is not a valid media field" % media_field)
 

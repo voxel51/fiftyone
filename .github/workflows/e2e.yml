@@ -68,8 +68,13 @@ jobs:
           python tests/utils/setup_config.py
           python tests/utils/github_actions_flags.py
 
-      - name: FFmpeg
-        uses: FedericoCarboni/setup-ffmpeg@v3
+      # - name: Setup FFmpeg (with retries)
+      #   uses: FedericoCarboni/setup-ffmpeg@v3
+
+      # Use this until https://github.com/federicocarboni/setup-ffmpeg/pull/23
+      # is merged or the maintainer addresses the root issue.
+      - name: Setup FFmpeg (with retries)
+        uses: afoley587/setup-ffmpeg@main
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache
