@@ -1,4 +1,3 @@
-# placeholder
 """
 Builtin operators.
 
