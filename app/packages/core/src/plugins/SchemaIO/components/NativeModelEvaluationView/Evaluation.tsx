@@ -415,6 +415,13 @@ export default function Evaluation(props: EvaluationProps) {
       hide: !isObjectDetection,
     },
     {
+      id: "mAR",
+      property: "mAR",
+      value: evaluationMetrics.mAR,
+      compareValue: compareEvaluationMetrics.mAR,
+      hide: !isObjectDetection,
+    },
+    {
       id: "tp",
       property: "True Positives",
       value: evaluationMetrics.tp,
