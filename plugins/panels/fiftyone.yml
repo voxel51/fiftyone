@@ -9,5 +9,10 @@ operators:
   - lens_list_lens_configs
   - lens_upsert_lens_config
   - lens_delete_lens_config
+  - create_index_or_summary_field
+  - index_field_removal_confirmation
+  - get_query_performance_config_confirmation
+  - summary_field_update_operator
 panels:
   - model_evaluation_panel_builtin
+  - query_performance_panel

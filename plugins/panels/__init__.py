@@ -13,6 +13,7 @@ from .data_lens import (
     DeleteLensConfigOperator,
 )
 from .model_evaluation import EvaluationPanel
+from .query_performance import QueryPerformancePanel
 
 
 def register(p):
@@ -21,3 +22,4 @@ def register(p):
     p.register(ListLensConfigsOperator)
     p.register(UpsertLensConfigOperator)
     p.register(DeleteLensConfigOperator)
+    p.register(QueryPerformancePanel)
