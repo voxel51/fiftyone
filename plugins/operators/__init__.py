@@ -2436,6 +2436,7 @@ def register(p):
     p.register(SaveView)
     p.register(EditSavedViewInfo)
     p.register(DeleteSavedView)
+    p.register(ListDatasets)
     p.register(ListWorkspaces)
     p.register(LoadWorkspace)
     p.register(SaveWorkspace)

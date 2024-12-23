@@ -30,6 +30,7 @@ operators:
   - save_view
   - edit_saved_view_info
   - delete_saved_view
+  - list_datasets
   - list_workspaces
   - load_workspace
   - save_workspace

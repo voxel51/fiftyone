@@ -6,8 +6,18 @@ Builtin panels.
 |
 """
 
+from .data_lens import (
+    DatasourceConnectorOperator,
+    ListLensConfigsOperator,
+    UpsertLensConfigOperator,
+    DeleteLensConfigOperator,
+)
 from .model_evaluation import EvaluationPanel
 
 
 def register(p):
     p.register(EvaluationPanel)
+    p.register(DatasourceConnectorOperator)
+    p.register(ListLensConfigsOperator)
+    p.register(UpsertLensConfigOperator)
+    p.register(DeleteLensConfigOperator)

@@ -4,5 +4,10 @@ version: 1.0.0
 fiftyone:
   version: "*"
 url: https://github.com/voxel51/fiftyone/plugins/panels
+operators:
+  - lens_datasource_connector
+  - lens_list_lens_configs
+  - lens_upsert_lens_config
+  - lens_delete_lens_config
 panels:
   - model_evaluation_panel_builtin
