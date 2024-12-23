@@ -44,9 +44,10 @@ test("grid tagging", async ({ fiftyoneLoader, grid, page, sidebar }) => {
   await sidebar.clickFieldCheckbox("filepath");
   await sidebar.clickFieldCheckbox("tags");
   await grid.scrollBottom();
-  await expect(await grid.locator).toHaveScreenshot("grid-untagged.png", {
-    animations: "allow",
-  });
+  for (let i = 31; i <= 54; i++) {
+    const locator = grid.locator.getByText(`/tmp/${i}.png`);
+    await expect(locator).toBeVisible();
+  }
 
   await grid.run(async () => {
     await grid.actionsRow.toggleTagSamplesOrLabels();
@@ -54,7 +55,11 @@ test("grid tagging", async ({ fiftyoneLoader, grid, page, sidebar }) => {
     await grid.tagger.addNewTag("sample", "grid-test");
   });
 
-  await expect(await grid.locator).toHaveScreenshot("grid-tagged.png", {
-    animations: "allow",
-  });
+  for (let i = 31; i <= 54; i++) {
+    const locator = grid.locator.getByText(`/tmp/${i}.png`);
+    await expect(locator).toBeVisible();
+    await expect(
+      locator.locator("..").getByTestId("tag-tags-grid-test")
+    ).toBeVisible();
+  }
 });

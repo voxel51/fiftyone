@@ -32,7 +32,7 @@ export default class SegmentationOverlay<State extends BaseState>
   implements Overlay<State>
 {
   readonly field: string;
-  private label: SegmentationLabel;
+  readonly label: SegmentationLabel;
   private targets?: TypedArray;
 
   private isRgbMaskTargets = false;
@@ -293,9 +293,7 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   public cleanup(): void {
-    if (this.label.mask?.bitmap) {
-      this.label.mask?.bitmap.close();
-    }
+    this.label.mask?.bitmap?.close();
   }
 }
 

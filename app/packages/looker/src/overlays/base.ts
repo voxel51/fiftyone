@@ -68,6 +68,7 @@ export interface Overlay<State extends Partial<BaseState>> {
   draw(ctx: CanvasRenderingContext2D, state: State): void;
   isShown(state: Readonly<State>): boolean;
   field?: string;
+  label?: BaseLabel;
   containsPoint(state: Readonly<State>): CONTAINS;
   getMouseDistance(state: Readonly<State>): number;
   getPointInfo(state: Readonly<State>): any;
@@ -83,7 +84,7 @@ export abstract class CoordinateOverlay<
 > implements Overlay<State>
 {
   readonly field: string;
-  protected label: Label;
+  readonly label: Label;
 
   constructor(field: string, label: Label) {
     this.field = field;

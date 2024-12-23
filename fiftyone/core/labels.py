@@ -412,7 +412,8 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
             its bounding box, which should be a 2D binary or 0/1 integer numpy
             array
         mask_path (None):  the absolute path to the instance segmentation image
-            on disk
+            on disk, which should be a single-channel PNG image where any
+            non-zero values represent the instance's extent
         confidence (None): a confidence in ``[0, 1]`` for the detection
         index (None): an index for the object
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
@@ -574,8 +575,8 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
         """
         if not self.has_mask:
             raise ValueError(
-                "Only detections with their `mask` or `mask_path` can be "
-                "converted to panoptic segmentations"
+                "Only detections with their `mask` or `mask_path` attribute "
+                "populated can be converted to segmentations"
             )
 
         mask, target = _parse_segmentation_target(
