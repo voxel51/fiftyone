@@ -16,9 +16,6 @@ import fiftyone.operators as foo
 import fiftyone.operators.types as types
 from fiftyone.core.odm.workspace import default_workspace_factory
 
-# pylint: disable=no-name-in-module
-from fiftyone.operators.builtins.panels.model_evaluation import EvaluationPanel
-
 
 class EditFieldInfo(foo.Operator):
     @property
@@ -2373,39 +2370,36 @@ def _parse_spaces(ctx, spaces):
     return fo.Space.from_dict(spaces)
 
 
-BUILTIN_OPERATORS = [
-    EditFieldInfo(_builtin=True),
-    CloneSelectedSamples(_builtin=True),
-    CloneSampleField(_builtin=True),
-    CloneFrameField(_builtin=True),
-    RenameSampleField(_builtin=True),
-    RenameFrameField(_builtin=True),
-    ClearSampleField(_builtin=True),
-    ClearFrameField(_builtin=True),
-    DeleteSelectedSamples(_builtin=True),
-    DeleteSelectedLabels(_builtin=True),
-    DeleteSampleField(_builtin=True),
-    DeleteFrameField(_builtin=True),
-    CreateIndex(_builtin=True),
-    DropIndex(_builtin=True),
-    CreateSummaryField(_builtin=True),
-    UpdateSummaryField(_builtin=True),
-    DeleteSummaryField(_builtin=True),
-    AddGroupSlice(_builtin=True),
-    RenameGroupSlice(_builtin=True),
-    DeleteGroupSlice(_builtin=True),
-    ListSavedViews(_builtin=True),
-    LoadSavedView(_builtin=True),
-    SaveView(_builtin=True),
-    EditSavedViewInfo(_builtin=True),
-    DeleteSavedView(_builtin=True),
-    ListWorkspaces(_builtin=True),
-    LoadWorkspace(_builtin=True),
-    SaveWorkspace(_builtin=True),
-    EditWorkspaceInfo(_builtin=True),
-    DeleteWorkspace(_builtin=True),
-    SyncLastModifiedAt(_builtin=True),
-    ListFiles(_builtin=True),
-]
-
-BUILTIN_PANELS = [EvaluationPanel(_builtin=True)]
+def register(p):
+    p.register(EditFieldInfo)
+    p.register(CloneSelectedSamples)
+    p.register(CloneSampleField)
+    p.register(CloneFrameField)
+    p.register(RenameSampleField)
+    p.register(RenameFrameField)
+    p.register(ClearSampleField)
+    p.register(ClearFrameField)
+    p.register(DeleteSelectedSamples)
+    p.register(DeleteSelectedLabels)
+    p.register(DeleteSampleField)
+    p.register(DeleteFrameField)
+    p.register(CreateIndex)
+    p.register(DropIndex)
+    p.register(CreateSummaryField)
+    p.register(UpdateSummaryField)
+    p.register(DeleteSummaryField)
+    p.register(AddGroupSlice)
+    p.register(RenameGroupSlice)
+    p.register(DeleteGroupSlice)
+    p.register(ListSavedViews)
+    p.register(LoadSavedView)
+    p.register(SaveView)
+    p.register(EditSavedViewInfo)
+    p.register(DeleteSavedView)
+    p.register(ListWorkspaces)
+    p.register(LoadWorkspace)
+    p.register(SaveWorkspace)
+    p.register(EditWorkspaceInfo)
+    p.register(DeleteWorkspace)
+    p.register(SyncLastModifiedAt)
+    p.register(ListFiles)

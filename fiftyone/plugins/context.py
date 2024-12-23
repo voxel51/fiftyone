@@ -35,7 +35,7 @@ def build_plugin_contexts(enabled=True):
         a list of :class:`PluginContext` instances
     """
     plugin_contexts = []
-    for pd in fop.list_plugins(enabled=enabled):
+    for pd in fop.list_plugins(enabled=enabled, include_builtin=True):
         pctx = PluginContext(pd)
         pctx.register_all()
         plugin_contexts.append(pctx)
@@ -96,10 +96,10 @@ class PluginContext(object):
             Any errors are logged rather than being raised.
 
         Args:
-            cls: an :class:`fiftyone.operators.operator.Operator` class
+            cls: an :class:`fiftyone.operators.operator.Operator` or :class:`fiftyone.operators.panel.Panel` class
         """
         try:
-            instance = cls()
+            instance = cls(_builtin=self.plugin_definition.builtin)
             if self.can_register(instance):
                 instance.plugin_name = self.name
                 if self.secrets:
