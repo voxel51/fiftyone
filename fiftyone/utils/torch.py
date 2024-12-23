@@ -1473,6 +1473,7 @@ class FiftyOneTorchDataset(Dataset):
     Args:
         - samples: a :class:`fo.core.collections.SampleCollection`
         - get_item: a `Callable[:class:`fo.core.sample.SampleView`, Any]`
+            Must be a serializable function.
         - cache_fields (None): a list of strings. Fields to cache in memory. If this
             argument is passed, get_item should be from from a dict with keys and values
             corresponding to the sample's fields and values to the model input.
@@ -1489,6 +1490,12 @@ class FiftyOneTorchDataset(Dataset):
         General:
         - This only works with persistent datasets.
             In order to make a dataset persistent, do `dataset.persistent = True`
+        - This only works with the 'spawn' and 'forkserver' start methods for processes.
+            This is for the following reasons:
+            1. Compatability with windows
+            2. fork is unstable w/ threaded code
+            3. spawn will become default in 3.14
+            4. CUDA is not fork compatible, the default in torch is spawn
         - Make sure to not touch `self.samples` or subscript this object until after
             all workers are initialized. This will help you avoid unnecessary memory
             usage. If you're using DDP, this will help your code not crash.
