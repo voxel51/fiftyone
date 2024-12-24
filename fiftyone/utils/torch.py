@@ -1496,6 +1496,11 @@ class FiftyOneTorchDataset(Dataset):
             2. fork is unstable w/ threaded code
             3. spawn will become default in 3.14
             4. CUDA is not fork compatible, the default in torch is spawn
+
+            you can easily set the start method for all of your torch code
+            with the following command:
+            `torch.multiprocessing.set_start_method('forkserver')`
+
         - Make sure to not touch `self.samples` or subscript this object until after
             all workers are initialized. This will help you avoid unnecessary memory
             usage. If you're using DDP, this will help your code not crash.
