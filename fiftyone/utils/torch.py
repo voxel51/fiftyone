@@ -1617,7 +1617,7 @@ class FiftyOneTorchDataset(Dataset):
 
         if self.cached_fields is None:
             # pylint: disable=unsubscriptable-object
-            sample = self._samples[self.ids[index].decode()]
+            sample = self._dataset[self.ids[index].decode()]
             return self.get_item(sample)
 
         else:
