@@ -163,7 +163,10 @@ def annotate(
             attributes)
         mask_targets (None): a dict mapping pixel values to semantic label
             strings. Only applicable when annotating semantic segmentations.
-            Must specify if the field does not exist prior to annotation.
+            All new label fields must have mask targets provided via one of the
+            supported methods. For existing label fields, if mask targets are
+            not provided by this argument nor ``label_schema``, any applicable
+            mask targets stored on your dataset will be used, if available
         allow_additions (True): whether to allow new labels to be added. Only
             applicable when editing existing label fields
         allow_deletions (True): whether to allow labels to be deleted. Only
@@ -848,38 +851,24 @@ def _parse_classes_dict(
 
 def _get_mask_targets(
     samples,
-    mask_targets: dict,
-    label_field: str,
-    label_info: dict,
-    existing_field: bool,
-) -> tuple[dict[int, str], list[str]]:
-    """Returns mask targets for a semantic segmentation field
-
-    Args:
-        samples: The sample collection that is being annotated
-        mask_targets: A dictionary mapping pixel values to semantic labels, 0 is reserved for the background
-        label_field: The name of the field where the semantic segmentation masks will be stored
-        label_info: The label schema information for the field
-        existing_field: Whether the field already exists in the dataset
-
-    Returns:
-        A tuple containing the mask targets dictionary {1: "label1", 2: "label2", ...} and a list of class names ["label1", "label2", ...]
-    """
-    # We have defined mask targets for this field
+    mask_targets,
+    label_field,
+    label_info,
+    existing_field,
+):
     if "mask_targets" in label_info:
         mask_targets = label_info["mask_targets"]
 
     if mask_targets is None:
-        # If this is a new field, users must define mask targets
         if not existing_field:
             raise ValueError(
-                f"Must specify mask_targets argument or in schema for new segmentations field '{label_field}'"
+                "You must provide mask targets for new label field '%s'"
+                % label_field
             )
 
-        # Attempt to find mask targets, otherwise bail and use a default set
         if label_field in samples.mask_targets:
             mask_targets = samples.mask_targets[label_field]
-        elif samples.default_mask_targets != {}:
+        elif samples.default_mask_targets:
             mask_targets = samples.default_mask_targets
         else:
             mask_targets = {i: str(i) for i in range(1, 256)}
