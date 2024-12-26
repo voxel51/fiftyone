@@ -1587,21 +1587,21 @@ class CVATImage(object):
         )
 
 
-class HasCVATBinMask:
+class HasCVATBinaryMask(object):
+    """Mixin for CVAT annotations that store RLE format instance masks."""
+
     @staticmethod
-    def rle_to_binary_image_mask(rle, mask_width, mask_height) -> np.ndarray:
+    def _rle_to_binary_image_mask(rle, mask_width, mask_height):
         mask = np.zeros(mask_width * mask_height, dtype=np.uint8)
         counter = 0
-
         for i, val in enumerate(rle):
             if i % 2 == 1:
                 mask[counter : counter + val] = 1
             counter += val
-
         return mask.reshape(mask_height, mask_width)
 
     @staticmethod
-    def mask_to_cvat_rle(binary_mask: np.ndarray) -> np.array:
+    def _mask_to_cvat_rle(binary_mask):
         counts = []
         for i, (value, elements) in enumerate(
             itertools.groupby(binary_mask.ravel(order="C"))
@@ -5946,7 +5946,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label = cvat_shape.to_detection()
             elif shape_type == "mask":
                 label_type = "detections"
-                label = cvat_shape.to_instance_detection()
+                label = cvat_shape.to_instance()
             elif shape_type == "polygon":
                 if expected_label_type == "segmentation":
                     # A piece of a segmentation mask
@@ -6457,29 +6457,57 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             elif label_type in ("instance", "instances"):
                 if det.has_mask is None:
                     continue
-                x, y, _, _ = det.bounding_box
-                frame_width, frame_height = frame_size
-                mask_height, mask_width = det.mask.shape
-                xtl, ytl = round(x * frame_width), round(y * frame_height)
-                xbr, ybr = xtl + mask_width, ytl + mask_height
 
-                rle = HasCVATBinMask.mask_to_cvat_rle(det.mask)
-                rle.extend(  # Necessary as per CVAT API
-                    [xtl, ytl, xbr - 1, ybr - 1]
-                )
-                curr_shapes.append(
-                    {
-                        "type": "mask",
-                        "occluded": is_occluded,
-                        "z_order": 0,
-                        "points": rle,
-                        "label_id": class_name,
-                        "group": group_id,
-                        "frame": frame_id,
-                        "source": "manual",
-                        "attributes": deepcopy(attributes),
-                    }
-                )
+                if self._server_version >= Version("2.3"):
+                    x, y, _, _ = det.bounding_box
+                    frame_width, frame_height = frame_size
+                    mask_height, mask_width = det.mask.shape
+                    xtl, ytl = round(x * frame_width), round(y * frame_height)
+                    xbr, ybr = xtl + mask_width, ytl + mask_height
+
+                    # -1 to convert from CVAT indexing
+                    rle = HasCVATBinaryMask._mask_to_cvat_rle(det.mask)
+                    rle.extend([xtl, ytl, xbr - 1, ybr - 1])
+
+                    curr_shapes.append(
+                        {
+                            "type": "mask",
+                            "occluded": is_occluded,
+                            "z_order": 0,
+                            "points": rle,
+                            "label_id": class_name,
+                            "group": group_id,
+                            "frame": frame_id,
+                            "source": "manual",
+                            "attributes": deepcopy(attributes),
+                        }
+                    )
+                else:
+                    polygon = det.to_polyline()
+                    for points in polygon.points:
+                        if len(points) < 3:
+                            continue  # CVAT polygons must contain >= 3 points
+
+                        abs_points = HasCVATPoints._to_abs_points(
+                            points, frame_size
+                        )
+                        flattened_points = list(
+                            itertools.chain.from_iterable(abs_points)
+                        )
+
+                        curr_shapes.append(
+                            {
+                                "type": "polygon",
+                                "occluded": is_occluded,
+                                "z_order": 0,
+                                "points": flattened_points,
+                                "label_id": class_name,
+                                "group": group_id,
+                                "frame": frame_id,
+                                "source": "manual",
+                                "attributes": deepcopy(attributes),
+                            }
+                        )
 
             if not curr_shapes:
                 continue
@@ -7128,9 +7156,9 @@ class CVATShape(CVATLabel):
         self._set_attributes(label)
         return label
 
-    def to_instance_detection(self):
-        """Converts this shape to a :class:`fiftyone.core.labels.Detection`.
-        Special case where we also have a mask
+    def to_instance(self):
+        """Converts this shape to a :class:`fiftyone.core.labels.Detection`
+        with instance mask.
 
         Returns:
             a :class:`fiftyone.core.labels.Detection`
@@ -7138,13 +7166,13 @@ class CVATShape(CVATLabel):
         xtl, ytl, xbr, ybr = self.points[-4:]
         rel = np.array(self.points[:-4], dtype=int)
         frame_width, frame_height = self.frame_size
-        mask_w, mask_h = (
-            round(xbr - xtl) + 1,
-            round(ybr - ytl) + 1,
-        )  # We need to add 1 because cvat uses - 1
-        mask = HasCVATBinMask.rle_to_binary_image_mask(
+
+        # +1 to convert from CVAT indexing
+        mask_w, mask_h = round(xbr - xtl) + 1, round(ybr - ytl) + 1
+        mask = HasCVATBinaryMask._rle_to_binary_image_mask(
             rel, mask_height=mask_h, mask_width=mask_w
         )
+
         bbox = [
             xtl / frame_width,
             ytl / frame_height,
