@@ -36,6 +36,28 @@ def get_item_quickstart(sample):
     return image, res
 
 
+def get_item_cached_quickstart(sample_dict):
+    res = {}
+    image = Image.open(sample_dict["filepath"])
+    og_wh = np.array([image.width, image.height])
+    image = tv_tensors.Image(image)
+    detections = sample_dict["ground_truth.detections.bounding_box"]
+    detections_tensor = (
+        torch.tensor(detections)
+        if len(detections) > 0
+        else torch.zeros((0, 4))
+    )
+    res["box"] = tv_tensors.BoundingBoxes(
+        detections_tensor * torch.tensor([*og_wh, *og_wh]),
+        format=tv_tensors.BoundingBoxFormat("XYWH"),
+        canvas_size=image.shape[-2:],
+    )
+    res["label"] = sample_dict["ground_truth.detections.label"]
+    res["id"] = sample_dict["id"]
+    image, res = augmentations_quickstart(image, res)
+    return image, res
+
+
 def simple_collate_fn(batch):
     return tuple(zip(*batch))
 
