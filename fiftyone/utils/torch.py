@@ -1490,12 +1490,13 @@ class FiftyOneTorchDataset(Dataset):
         General:
         - This only works with persistent datasets.
             In order to make a dataset persistent, do `dataset.persistent = True`
-        - This only works with the 'spawn' and 'forkserver' start methods for processes.
-            This is for the following reasons:
-            1. Compatability with windows
-            2. fork is unstable w/ threaded code
-            3. spawn will become default in 3.14
-            4. CUDA is not fork compatible, the default in torch is spawn
+        - Process start methods
+            It is recommended to use the 'spawn' and 'forkserver' start methods over 'fork'
+            - Spawn and forkserver are safer when dealing with code that may be threaded (which a lot of code is, for example NumPy).
+            - MongoDB, which backs FiftyOne's database, is not fork safe. In theory nothing here should be breaking, but you will see a lot of warnings.
+            - When using persistent_workers=True, the overhead of 'spawn' and 'forkserver' is low.
+            - When using Jupyter notebooks, if you want all of your code to be in the notebook, rather than calling it from a python file, you'll have
+                to use fork. Do so at your own risk.
 
             you can easily set the start method for all of your torch code
             with the following command:
