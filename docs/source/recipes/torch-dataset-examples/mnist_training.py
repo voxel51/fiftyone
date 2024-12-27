@@ -83,6 +83,7 @@ def train_epoch(model, dataloader, loss_function, optimizer):
     return cummulative_loss / (batch_num + 1)
 
 
+@torch.no_grad()
 def validation(model, dataloader, dataset, loss_function, save_results=False):
     model.eval()
 
