@@ -22,6 +22,7 @@ import eta.core.web as etaw
 import fiftyone as fo
 import fiftyone.constants as foc
 from fiftyone.core.config import locate_app_config
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 from fiftyone.plugins.definitions import PluginDefinition
 from fiftyone.utils.github import GitHubRepository
@@ -172,6 +173,8 @@ def download_plugin(url_or_gh_repo, plugin_names=None, overwrite=False):
                 ``https://github.com/<user>/<repo>/tree/<branch>`` or
                 ``https://github.com/<user>/<repo>/commit/<commit>``
             -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+            -   a GitHub tree path like
+                ``https://github.com/<user>/<repo>/tree/<branch>/<path>``
             -   a publicly accessible URL of an archive (eg zip or tar) file
 
         plugin_names (None): a plugin name or iterable of plugin names to
@@ -186,11 +189,11 @@ def download_plugin(url_or_gh_repo, plugin_names=None, overwrite=False):
     repo = None
     if etaw.is_url(url_or_gh_repo):
         if "github" in url_or_gh_repo:
-            repo = GitHubRepository(url_or_gh_repo)
+            repo = GitHubRepository(url_or_gh_repo, safe=True)
         else:
             url = url_or_gh_repo
     else:
-        repo = GitHubRepository(url_or_gh_repo)
+        repo = GitHubRepository(url_or_gh_repo, safe=True)
 
     if etau.is_str(plugin_names):
         plugin_names = {plugin_names}
@@ -201,18 +204,33 @@ def download_plugin(url_or_gh_repo, plugin_names=None, overwrite=False):
 
     downloaded_plugins = {}
     with etau.TempDir() as tmpdir:
+        root_dir = tmpdir
+
         if repo is not None:
             logger.info(f"Downloading {repo.identifier}...")
             repo.download(tmpdir)
+
+            # Limit search to tree path if requested
+            if repo.safe_path is not None:
+                # There should be exactly one subdir; if there's not then
+                # something is wrong and we better not limit the search tree
+                subdirs = fos.list_subdirs(root_dir)
+                if len(subdirs) == 1:
+                    root_dir = os.path.join(
+                        root_dir,
+                        subdirs[0],
+                        *repo.safe_path.split("/"),
+                    )
         else:
             logger.info(f"Downloading {url}...")
             _download_archive(url, tmpdir)
 
         metadata_paths = list(
-            _iter_plugin_metadata_files(root_dir=tmpdir, strict=True)
+            _iter_plugin_metadata_files(root_dir=root_dir, strict=True)
         )
         if not metadata_paths:
-            logger.info(f"No plugin YAML files found in {url}")
+            src = repo.identifier if repo is not None else url
+            logger.info(f"No plugin YAML files found in {src}")
 
         for metadata_path in metadata_paths:
             try:
