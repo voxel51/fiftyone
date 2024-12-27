@@ -366,7 +366,12 @@ for more information.
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> **key features** 🔑
 
 - **[Visualize Complex Datasets:](https://docs.voxel51.com/user_guide/app.html)** Easily explore images, videos, and associated labels in a powerful visual interface.
+
+https://github.com/user-attachments/assets/af8cd626-57b7-4f2a-96bf-1c8a513c2e2b
+
 - **[Explore Embeddings:](https://docs.voxel51.com/user_guide/app.html#embeddings-panel)** Select points of interest and view the corresponding samples/labels.
+
+https://github.com/user-attachments/assets/d119de24-fc44-40bc-83ff-ddfdd4329977
 
 - **[Analyze and Improve Models:](https://docs.voxel51.com/user_guide/evaluation.html)** Evaluate model performance, identify failure modes, and fine-tune your models.
 
