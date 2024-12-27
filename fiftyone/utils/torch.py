@@ -2384,3 +2384,20 @@ def _get_global_gloo_group():
         return dist.new_group(backend="gloo")
     else:
         return dist.group.WORLD
+
+
+# see https://github.com/ppwwyyxx/RAM-multiprocess-dataloader/issues/5
+def local_broadcast_process_authkey(local_process_group):
+    if int(os.environ["LOCAL_WORLD_SIZE"]) == 1:
+        return
+    local_rank = get_local_rank(local_process_group)
+    authkey = bytes(torch.multiprocessing.current_process().authkey)
+    all_keys = all_gather(authkey, local_process_group)
+    local_leader_key = all_keys[int(os.environ["RANK"]) - local_rank]
+    if authkey != local_leader_key:
+        print(
+            "Process authkey is different from the key of local leader. This might happen when "
+            "workers are launched independently."
+        )
+        print("Overwriting local authkey ...")
+        multiprocessing.current_process().authkey = local_leader_key
