@@ -24,6 +24,9 @@ import { Events } from "../elements/base";
 import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
 import { CONTAINS, LabelMask, Overlay } from "../overlays/base";
+import DetectionOverlay from "../overlays/detection";
+import HeatmapOverlay from "../overlays/heatmap";
+import SegmentationOverlay from "../overlays/segmentation";
 import processOverlays from "../processOverlays";
 import {
   BaseState,
@@ -528,15 +531,13 @@ export abstract class AbstractLooker<
     for (const overlay of this.pluckedOverlays ?? []) {
       let overlayData: LabelMask = null;
 
-      console.log(overlay);
-      if (!overlay.label) {
-        continue;
-      }
-
-      if ("mask" in overlay.label) {
-        overlayData = overlay.label.mask as LabelMask;
-      } else if ("map" in overlay.label) {
-        overlayData = overlay.label.map as LabelMask;
+      if (
+        overlay instanceof DetectionOverlay ||
+        overlay instanceof SegmentationOverlay
+      ) {
+        overlayData = overlay.label.mask;
+      } else if (overlay instanceof HeatmapOverlay) {
+        overlayData = overlay.label.map;
       }
 
       const buffer = overlayData?.data?.buffer;
@@ -551,9 +552,9 @@ export abstract class AbstractLooker<
         if (buffer.detached) {
           // most likely sample is already being processed, skip update
           return;
-        } else {
-          arrayBuffers.push(buffer);
         }
+
+        arrayBuffers.push(buffer);
       } else if (buffer.byteLength) {
         // hope we don't run into this edge case (old browser)
         // sometimes detached buffers have bytelength > 0
