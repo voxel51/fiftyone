@@ -430,7 +430,7 @@ class SimpleEvaluation(SegmentationEvaluation):
         else:
             missing = None
 
-        res = SegmentationResults(
+        return SegmentationResults(
             samples,
             self.config,
             eval_key,
@@ -441,7 +441,6 @@ class SimpleEvaluation(SegmentationEvaluation):
             missing=missing,
             backend=self,
         )
-        return res
 
 
 class SegmentationResults(BaseEvaluationResults):
