@@ -349,6 +349,8 @@ class SimpleEvaluation(SegmentationEvaluation):
 
         nc = len(values)
         confusion_matrix = np.zeros((nc, nc), dtype=int)
+        ypred_ids = {}
+        ytrue_ids = {}
 
         bandwidth = self.config.bandwidth
         average = self.config.average
@@ -390,6 +392,16 @@ class SimpleEvaluation(SegmentationEvaluation):
                     bandwidth=bandwidth,
                 )
                 sample_conf_mat += image_conf_mat
+                non_zero_indexes = np.nonzero(sample_conf_mat)
+                for index in zip(*non_zero_indexes):
+                    if index not in ypred_ids:
+                        ypred_ids[index] = [pred_seg.id]
+                    else:
+                        ypred_ids[index].append(pred_seg.id)
+                    if index not in ytrue_ids:
+                        ytrue_ids[index] = [gt_seg.id]
+                    else:
+                        ytrue_ids[index].append(gt_seg.id)
 
                 if processing_frames and save:
                     facc, fpre, frec = _compute_accuracy_precision_recall(
@@ -418,15 +430,18 @@ class SimpleEvaluation(SegmentationEvaluation):
         else:
             missing = None
 
-        return SegmentationResults(
+        res = SegmentationResults(
             samples,
             self.config,
             eval_key,
             confusion_matrix,
             classes,
+            ypred_ids=ypred_ids,
+            ytrue_ids=ytrue_ids,
             missing=missing,
             backend=self,
         )
+        return res
 
 
 class SegmentationResults(BaseEvaluationResults):
@@ -449,12 +464,14 @@ class SegmentationResults(BaseEvaluationResults):
         eval_key,
         pixel_confusion_matrix,
         classes,
+        ypred_ids=None,
+        ytrue_ids=None,
         missing=None,
         backend=None,
     ):
         pixel_confusion_matrix = np.asarray(pixel_confusion_matrix)
-        ytrue, ypred, weights = self._parse_confusion_matrix(
-            pixel_confusion_matrix, classes
+        ytrue, ypred, weights, ytrue_ids, ypred_ids = self._parse_confusion_matrix(
+            pixel_confusion_matrix, classes, ypred_ids, ytrue_ids
         )
 
         super().__init__(
@@ -464,6 +481,8 @@ class SegmentationResults(BaseEvaluationResults):
             ytrue,
             ypred,
             weights=weights,
+            ytrue_ids=ytrue_ids,
+            ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
             backend=backend,
@@ -495,21 +514,34 @@ class SegmentationResults(BaseEvaluationResults):
         )
 
     @staticmethod
-    def _parse_confusion_matrix(confusion_matrix, classes):
+    def _parse_confusion_matrix(confusion_matrix, classes, ytrue_ids_dict, ypred_ids_dict):
         ytrue = []
         ypred = []
         weights = []
+        ytrue_ids = None
+        ypred_ids = None
+        if ytrue_ids_dict is not None and ypred_ids_dict is not None:
+            ytrue_ids = []
+            ypred_ids = []
         nrows, ncols = confusion_matrix.shape
         for i in range(nrows):
             for j in range(ncols):
+                index = (i, j)
                 cij = confusion_matrix[i, j]
                 if cij > 0:
-                    ytrue.append(classes[i])
-                    ypred.append(classes[j])
-                    weights.append(cij)
-
-        return ytrue, ypred, weights
-
+                    if ytrue_ids_dict is not None and ypred_ids_dict is not None:
+                        ytrue_ids+= ytrue_ids_dict[index]
+                        ypred_ids+= ypred_ids_dict[index]
+                        ytrue_multiplier = len(ytrue_ids_dict[index])
+                    else:
+                        ytrue_multiplier = 1
+                    for p in range(ytrue_multiplier):
+                        ytrue.append(classes[i])
+                        ypred.append(classes[j])
+                        weights.append(cij/ytrue_multiplier)
+                    #Note: The weights aren't equally divided by the different ytrue_ids, but it works out for the confusion matrix calculations.
+                    
+        return ytrue, ypred, weights, ytrue_ids, ypred_ids
 
 def _parse_config(pred_field, gt_field, method, **kwargs):
     if method is None:
