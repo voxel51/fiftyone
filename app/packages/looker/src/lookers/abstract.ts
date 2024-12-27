@@ -528,6 +528,11 @@ export abstract class AbstractLooker<
     for (const overlay of this.pluckedOverlays ?? []) {
       let overlayData: LabelMask = null;
 
+      console.log(overlay);
+      if (!overlay.label) {
+        continue;
+      }
+
       if ("mask" in overlay.label) {
         overlayData = overlay.label.mask as LabelMask;
       } else if ("map" in overlay.label) {
@@ -743,7 +748,7 @@ export abstract class AbstractLooker<
 
   protected cleanOverlays() {
     for (const overlay of this.sampleOverlays ?? []) {
-      overlay.cleanup();
+      overlay.cleanup?.();
     }
   }
 
