@@ -1497,14 +1497,25 @@ class FiftyOneTorchDataset(Dataset):
             - When using persistent_workers=True, the overhead of 'spawn' and 'forkserver' is low.
             - When using Jupyter notebooks, if you want all of your code to be in the notebook, rather than calling it from a python file, you'll have
                 to use fork. Do so at your own risk.
-
-            you can easily set the start method for all of your torch code
-            with the following command:
-            `torch.multiprocessing.set_start_method('forkserver')`
-
+                You can easily set the start method for all of your torch code with the following command:
+                `torch.multiprocessing.set_start_method('forkserver')`
         - Make sure to not touch `self.samples` or subscript this object until after
             all workers are initialized. This will help you avoid unnecessary memory
             usage. If you're using DDP, this will help your code not crash.
+
+        DDP:
+        - When training with DDP, make sure to synchronously load your FiftyOne dataset
+            in your main training script. This is done to avoid competition over the
+            same port of the backing dataset server. This can be easily done by setting
+            up a loop over the local world size with a barrier in the end:
+            for i in range(world_size):
+                if get_local_rank(local_process_group) == i:
+                    dataset = fo.load_dataset(dataset_name)
+                torch.distributed.barrier(local_process_group)
+        - torchrun doesn't natively allow for the inter-process communcation required for
+            the cach_fields argument to work. When using it, call the function
+            `local_broadcast_process_authkey` on each local process group to facilitate
+            the communcation.
 
         torch.utils.data.Dataloader use:
         - DO NOT use torch.Tensor.to in this function, do so in the train loop, or use
