@@ -1,8 +1,8 @@
 {
     "compilerOptions": {
-        "target": "ES2023",
+        "target": "ES2024",
         "module": "ES2022",
-        "lib": ["ES2023", "DOM", "DOM.Iterable"],
+        "lib": ["ES2024", "DOM", "DOM.Iterable"],
         "moduleResolution": "Node",
         "sourceMap": true,
         "resolveJsonModule": true,
