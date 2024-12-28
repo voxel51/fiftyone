@@ -5277,6 +5277,7 @@ class SampleCollection(object):
         min_distance=None,
         max_distance=None,
         query=None,
+        create_index=True,
     ):
         """Sorts the samples in the collection by their proximity to a
         specified geolocation.
@@ -5359,6 +5360,8 @@ class SampleCollection(object):
             query (None): an optional dict defining a
                 `MongoDB read query <https://docs.mongodb.com/manual/tutorial/query-documents/#read-operations-query-argument>`_
                 that samples must match in order to be included in this view
+            create_index (True): whether to create the required spherical
+                index, if necessary
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -5370,11 +5373,18 @@ class SampleCollection(object):
                 min_distance=min_distance,
                 max_distance=max_distance,
                 query=query,
+                create_index=create_index,
             )
         )
 
     @view_stage
-    def geo_within(self, boundary, location_field=None, strict=True):
+    def geo_within(
+        self,
+        boundary,
+        location_field=None,
+        strict=True,
+        create_index=True,
+    ):
         """Filters the samples in this collection to only include samples whose
         geolocation is within a specified boundary.
 
@@ -5420,13 +5430,18 @@ class SampleCollection(object):
             strict (True): whether a sample's location data must strictly fall
                 within boundary (True) in order to match, or whether any
                 intersection suffices (False)
+            create_index (True): whether to create the required spherical
+                index, if necessary
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
             fos.GeoWithin(
-                boundary, location_field=location_field, strict=strict
+                boundary,
+                location_field=location_field,
+                strict=strict,
+                create_index=create_index,
             )
         )
 
