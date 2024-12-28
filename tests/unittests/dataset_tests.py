@@ -671,7 +671,7 @@ class DatasetTests(unittest.TestCase):
             dataset.create_index("non_existent_field")
 
     @drop_datasets
-    def test_index_sizes(self):
+    def test_index_stats(self):
         gt = fo.Detections(detections=[fo.Detection(label="foo")])
         sample = fo.Sample(filepath="video.mp4", gt=gt)
         sample.frames[1] = fo.Frame(gt=gt)
@@ -700,7 +700,9 @@ class DatasetTests(unittest.TestCase):
         self.assertSetEqual(set(dataset.list_indexes()), indexes)
         self.assertSetEqual(set(info.keys()), indexes)
         for d in info.values():
-            self.assertTrue(d.get("size") is not None)
+            self.assertTrue(d["size"] is not None)
+            self.assertTrue("ops" in d["accesses"])
+            self.assertTrue("since" in d["accesses"])
 
     @drop_datasets
     def test_index_in_progress(self):
