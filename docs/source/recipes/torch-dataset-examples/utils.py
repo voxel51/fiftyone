@@ -101,9 +101,7 @@ def mnist_index_to_label_string(index):
 
 
 convert_and_normalize = transforms.Compose(
-    [
-        transforms.ToTensor(),
-    ]
+    [transforms.ToImage(), transforms.ToDtype(torch.float32, scale=True)]
 )
 
 
@@ -142,7 +140,7 @@ def create_dataloaders(
 def setup_model(num_classes, weights_path=None):
     model = resnet18(weights=ResNet18_Weights.DEFAULT)
     linear_head = torch.nn.Linear(512, num_classes)
-    torch.nn.init.xavier_uniform(linear_head.weight)
+    torch.nn.init.xavier_uniform_(linear_head.weight)
     model.fc = linear_head
     if weights_path is not None:
         model.load_state_dict(torch.load(weights_path, weights_only=True))
@@ -152,6 +150,39 @@ def setup_model(num_classes, weights_path=None):
 def setup_optim(model, lr=0.01, l2=0.00001):
     optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=l2)
     return optimizer
+
+
+### DDP utils ###
+
+
+def setup_ddp_model(**kwargs):
+    model = setup_model(**kwargs)
+    model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+    return model
+
+
+def create_dataloaders_ddp(
+    dataset, get_item, cache_fields=None, local_process_group=None, **kwargs
+):
+    split_tags = ["train", "validation", "test"]
+    dataloaders = {}
+    for split_tag in split_tags:
+        split = dataset.match_tags(split_tag).to_torch(
+            get_item,
+            cache_fields=cache_fields,
+            local_process_group=local_process_group,
+        )
+        shuffle = True if split_tag == "train" else False
+        dataloader = torch.utils.data.DataLoader(
+            split,
+            worker_init_fn=FiftyOneTorchDataset.worker_init,
+            sampler=torch.utils.data.DistributedSampler(
+                split, shuffle=shuffle
+            ),
+            **kwargs,
+        )
+        dataloaders[split_tag] = dataloader
+    return dataloaders
 
 
 if __name__ == "__main__":
