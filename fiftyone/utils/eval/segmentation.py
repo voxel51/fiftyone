@@ -423,15 +423,14 @@ class SimpleEvaluation(SegmentationEvaluation):
             missing = classes[0] if values[0] in (0, "#000000") else None
         else:
             missing = None
-        if len(matches) == 0:
-            matches = None
+            
         return SegmentationResults(
             samples,
             self.config,
             eval_key,
             confusion_matrix,
             classes,
-            matches=matches,
+            matches=None if len(matches) == 0 else matches,
             missing=missing,
             backend=self,
         )
