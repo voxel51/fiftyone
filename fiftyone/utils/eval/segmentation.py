@@ -509,7 +509,7 @@ class SegmentationResults(BaseEvaluationResults):
         )
 
     @staticmethod
-    def _parse_confusion_matrix(confusion_matrix, classes, ytrue_ids_dict, ypred_ids_dict):
+    def _parse_confusion_matrix(confusion_matrix, classes):
         ytrue = []
         ypred = []
         weights = []
