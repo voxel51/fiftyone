@@ -8,6 +8,7 @@ Segmentation evaluation.
 from copy import deepcopy
 import logging
 import inspect
+import itertools
 import warnings
 
 import numpy as np
@@ -487,9 +488,6 @@ class SegmentationResults(BaseEvaluationResults):
 
         self.pixel_confusion_matrix = pixel_confusion_matrix
 
-    def attributes(self):
-        return ["cls", "pixel_confusion_matrix", "classes", "missing"]
-
     def dice_score(self):
         """Computes the Dice score across all samples in the evaluation.
 
@@ -500,12 +498,27 @@ class SegmentationResults(BaseEvaluationResults):
 
     @classmethod
     def _from_dict(cls, d, samples, config, eval_key, **kwargs):
+        ytrue = d["ytrue"]
+        ypred = d["ypred"]
+        weights = d["weights"]
+
+        ytrue_ids = d.get("ytrue_ids", None)
+        if ytrue_ids is None:
+            ytrue_ids = itertools.repeat(None)
+
+        ypred_ids = d.get("ypred_ids", None)
+        if ypred_ids is None:
+            ypred_ids = itertools.repeat(None)
+
+        matches = list(zip(ytrue, ypred, weights, ytrue_ids, ypred_ids))
+
         return cls(
             samples,
             config,
             eval_key,
             d["pixel_confusion_matrix"],
             d["classes"],
+            matches=matches,
             missing=d.get("missing", None),
             **kwargs,
         )
