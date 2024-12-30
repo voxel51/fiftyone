@@ -423,7 +423,8 @@ class SimpleEvaluation(SegmentationEvaluation):
             missing = classes[0] if values[0] in (0, "#000000") else None
         else:
             missing = None
-
+        if len(matches) == 0:
+            matches = None
         return SegmentationResults(
             samples,
             self.config,
