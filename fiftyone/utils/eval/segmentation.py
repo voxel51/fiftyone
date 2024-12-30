@@ -390,11 +390,13 @@ class SimpleEvaluation(SegmentationEvaluation):
                     values,
                     bandwidth=bandwidth,
                 )
-                sample_conf_mat += image_conf_mat
+                
                 non_zero_indexes = np.nonzero(image_conf_mat)
                 for index in zip(*non_zero_indexes):
                     matches.append((classes[index[0]], classes[index[1]], image_conf_mat[index[0], index[1]], gt_seg.id, pred_seg.id))
 
+                sample_conf_mat += image_conf_mat
+                
                 if processing_frames and save:
                     facc, fpre, frec = _compute_accuracy_precision_recall(
                         image_conf_mat, values, average
