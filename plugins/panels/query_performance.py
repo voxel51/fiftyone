@@ -17,17 +17,16 @@ from fiftyone.operators.categories import Categories
 import fiftyone.operators.types as types
 from fiftyone.operators.utils import is_new
 
-from ..types import (
+from fiftyone.operators.types import (
     GridView,
-    Notice,
     Object,
     PromptView,
     Property,
     RadioGroup,
     TableView,
 )
-from ..operator import Operator, OperatorConfig
-from ..panel import Panel, PanelConfig
+from fiftyone.operators.operator import Operator, OperatorConfig
+from fiftyone.operators.panel import Panel, PanelConfig
 
 NOT_PERMITTED_TEXT = "You do not have sufficient permission."
 

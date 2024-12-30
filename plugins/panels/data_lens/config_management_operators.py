@@ -10,8 +10,12 @@ from dataclasses import asdict
 import fiftyone.operators as foo
 from fiftyone.operators.data_lens.config_manager import ConfigManager
 from fiftyone.operators.data_lens.models import (
-    UpsertConfigRequest, DeleteConfigRequest, ListConfigsResponse, LensConfig, UpsertConfigResponse,
-    DeleteConfigResponse
+    UpsertConfigRequest,
+    DeleteConfigRequest,
+    ListConfigsResponse,
+    LensConfig,
+    UpsertConfigResponse,
+    DeleteConfigResponse,
 )
 from fiftyone.operators.data_lens.utils import filter_fields_for_type
 
@@ -22,8 +26,8 @@ class ListLensConfigsOperator(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
-            name='lens_list_lens_configs',
-            label='List Data Lens Configs',
+            name="lens_list_lens_configs",
+            label="List Data Lens Configs",
             unlisted=True,
         )
 
@@ -33,10 +37,7 @@ class ListLensConfigsOperator(foo.Operator):
 
             return asdict(
                 ListConfigsResponse(
-                    configs=[
-                        asdict(config)
-                        for config in configs
-                    ],
+                    configs=[asdict(config) for config in configs],
                 )
             )
 
@@ -54,8 +55,8 @@ class UpsertLensConfigOperator(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
-            name='lens_upsert_lens_config',
-            label='Upsert Data Lens Config',
+            name="lens_upsert_lens_config",
+            label="Upsert Data Lens Config",
             unlisted=True,
         )
 
@@ -93,8 +94,8 @@ class DeleteLensConfigOperator(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
-            name='lens_delete_lens_config',
-            label='Delete Data Lens Config',
+            name="lens_delete_lens_config",
+            label="Delete Data Lens Config",
             unlisted=True,
         )
 
@@ -106,9 +107,7 @@ class DeleteLensConfigOperator(foo.Operator):
 
             ConfigManager().delete_config(request.id)
 
-            return asdict(
-                DeleteConfigResponse()
-            )
+            return asdict(DeleteConfigResponse())
 
         except Exception as e:
             return asdict(

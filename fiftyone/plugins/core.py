@@ -25,7 +25,7 @@ from fiftyone.core.config import locate_app_config
 import fiftyone.core.utils as fou
 from fiftyone.plugins.definitions import PluginDefinition
 from fiftyone.utils.github import GitHubRepository
-
+import fiftyone.plugins.constants as constants
 
 PLUGIN_METADATA_FILENAMES = ("fiftyone.yml", "fiftyone.yaml")
 
@@ -48,12 +48,13 @@ class PluginPackage:
         return f"Plugin(name={self.name}, path={self.path})"
 
 
-def list_plugins(enabled=True):
-    """Returns the definitions of downloaded plugins.
+def list_plugins(enabled=True, include_builtin=False):
+    """Returns the definitions of available plugins.
 
     Args:
         enabled (True): whether to include only enabled plugins (True) or only
             disabled plugins (False) or all plugins ("all")
+        include_builtin (False): whether to include built-in plugins
 
     Returns:
         a list of :class:`PluginDefinition` instances
@@ -62,7 +63,7 @@ def list_plugins(enabled=True):
         enabled = None
 
     plugins = []
-    for p in _list_plugins(enabled=enabled):
+    for p in _list_plugins(enabled=enabled, include_builtin=include_builtin):
         try:
             plugins.append(_load_plugin_definition(p))
         except:
@@ -488,9 +489,18 @@ def _parse_plugin_metadata(metadata_path):
     return PluginPackage(plugin_name, plugin_path)
 
 
-def _list_plugins(enabled=None):
+def _list_plugins(enabled=None, include_builtin=False):
     plugins = []
-    for metadata_path in _iter_plugin_metadata_files():
+    external_plugin_paths = list(_iter_plugin_metadata_files())
+    builtin_plugin_paths = list(
+        _iter_plugin_metadata_files(constants.BUILTIN_PLUGINS_DIR)
+    )
+    all_plugin_paths = (
+        (external_plugin_paths + builtin_plugin_paths)
+        if include_builtin
+        else external_plugin_paths
+    )
+    for metadata_path in all_plugin_paths:
         try:
             plugin = _parse_plugin_metadata(metadata_path)
             plugins.append(plugin)

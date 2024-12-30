@@ -84,6 +84,7 @@ class PluginDefinition {
   serverPath: string;
   hasPy: boolean;
   hasJS: boolean;
+  builtin: boolean;
 
   constructor(json: any) {
     const serverPathPrefix = fou.getFetchPathPrefix();
@@ -102,6 +103,7 @@ class PluginDefinition {
     this.hasPy = json.has_py;
     this.hasJS = json.has_js;
     this.serverPath = `${serverPathPrefix}${json.server_path}`;
+    this.builtin = json.builtin;
   }
 }
 

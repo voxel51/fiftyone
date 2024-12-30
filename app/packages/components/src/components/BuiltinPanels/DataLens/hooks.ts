@@ -76,7 +76,7 @@ export const useLensConfigs = (): {
   const [error, setError] = useState(null);
 
   const listConfigsOperator = useOperatorExecutor(
-    "@voxel51/operators/lens_list_lens_configs"
+    "@voxel51/panel/lens_list_lens_configs"
   );
 
   // Load configs on initial render
