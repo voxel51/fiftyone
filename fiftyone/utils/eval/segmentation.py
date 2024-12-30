@@ -466,7 +466,7 @@ class SegmentationResults(BaseEvaluationResults):
             ytrue, ypred, weights, ytrue_ids, ypred_ids = zip(*matches)
         else:
             ytrue, ypred, weights = self._parse_confusion_matrix(
-                pixel_confusion_matrix, classes, ypred_ids, ytrue_ids
+                pixel_confusion_matrix, classes
             )
 
         super().__init__(
