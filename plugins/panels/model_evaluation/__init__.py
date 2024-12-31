@@ -10,9 +10,11 @@ from collections import defaultdict, Counter
 import os
 import traceback
 
+from bson import ObjectId
 import numpy as np
 
 from fiftyone import ViewField as F
+import fiftyone.core.fields as fof
 from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
 from fiftyone.core.plots.plotly import _to_log_colorscale
@@ -331,6 +333,26 @@ class EvaluationPanel(Panel):
 
         return None
 
+    def get_classes_map(self, dataset, results, gt_field):
+        classes = results.classes
+
+        #
+        # `results.classes` could contain any of the following:
+        #  1. stringified pixel values
+        #  2. RGB hex strings
+        #  3. label strings
+        #
+        # If mask targets are available, then App callbacks will use label
+        # strings, so we convert to label strings here
+        #
+        mask_targets = self.get_mask_targets(dataset, gt_field)
+        if mask_targets is not None:
+            # `str()` handles cases 1 and 2, and `.get(c, c)` handles case 3
+            mask_targets = {str(k): v for k, v in mask_targets.items()}
+            classes = [mask_targets.get(c, c) for c in classes]
+
+        return {c: i for i, c in enumerate(classes)}
+
     def load_evaluation(self, ctx):
         view_state = ctx.panel.get_state("view") or {}
         eval_key = view_state.get("key")
@@ -480,15 +502,18 @@ class EvaluationPanel(Panel):
         info = ctx.dataset.get_evaluation_info(eval_key)
         pred_field = info.config.pred_field
         gt_field = info.config.gt_field
+        mask_targets = self.get_mask_targets(ctx.dataset, gt_field)
 
         eval_key2 = view_state.get("compareKey", None)
         pred_field2 = None
         gt_field2 = None
+        mask_targets2 = mask_targets
         if eval_key2:
             info2 = ctx.dataset.get_evaluation_info(eval_key2)
             pred_field2 = info2.config.pred_field
             if info2.config.gt_field != gt_field:
                 gt_field2 = info2.config.gt_field
+                mask_targets2 = self.get_mask_targets(ctx.dataset, gt_field2)
 
         x = view_options.get("x", None)
         y = view_options.get("y", None)
@@ -592,6 +617,89 @@ class EvaluationPanel(Panel):
                     view = eval_view.filter_labels(
                         pred_field, F(eval_key) == field, only_matches=True
                     )
+        elif info.config.type == "segmentation":
+            results = ctx.dataset.load_evaluation_results(eval_key)
+            classes_map = self.get_classes_map(ctx.dataset, results, gt_field)
+            if (
+                results.ytrue_ids_dict is None
+                or results.ypred_ids_dict is None
+            ):
+                # legacy segmentation evaluation
+                return
+
+            if eval_key2:
+                if gt_field2 is None:
+                    gt_field2 = gt_field
+
+                results2 = ctx.dataset.load_evaluation_results(eval_key2)
+                classes_map2 = self.get_classes_map(
+                    ctx.dataset, results2, gt_field2
+                )
+                if (
+                    results2.ytrue_ids_dict is None
+                    or results2.ypred_ids_dict is None
+                ):
+                    # legacy segmentation evaluation
+                    return
+            else:
+                results2 = None
+
+            _, gt_id = ctx.dataset._get_label_field_path(gt_field, "_id")
+            _, pred_id = ctx.dataset._get_label_field_path(pred_field, "_id")
+            if gt_field2 is not None:
+                _, gt_id2 = ctx.dataset._get_label_field_path(gt_field2, "_id")
+            if pred_field2 is not None:
+                _, pred_id2 = ctx.dataset._get_label_field_path(
+                    pred_field2, "_id"
+                )
+
+            if view_type == "class":
+                # All GT/predictions that contain class `x`
+                k = classes_map[x]
+                ytrue_ids, ypred_ids = _get_ids_slice(results, k)
+                expr = F(gt_id).is_in(ytrue_ids)
+                expr |= F(pred_id).is_in(ypred_ids)
+                if results2 is not None:
+                    k2 = classes_map2[x]
+                    ytrue_ids2, ypred_ids2 = _get_ids_slice(results2, k2)
+                    expr |= F(gt_id2).is_in(ytrue_ids2)
+                    expr |= F(pred_id2).is_in(ypred_ids2)
+
+                view = eval_view.match(expr)
+            elif view_type == "matrix":
+                # Specific confusion matrix cell
+                i = classes_map[x]
+                j = classes_map[y]
+                ytrue_ids = _to_object_ids(
+                    results.ytrue_ids_dict.get((i, j), [])
+                )
+                ypred_ids = _to_object_ids(
+                    results.ypred_ids_dict.get((i, j), [])
+                )
+                expr = F(gt_id).is_in(ytrue_ids)
+                expr &= F(pred_id).is_in(ypred_ids)
+                view = eval_view.match(expr)
+            elif view_type == "field":
+                if field == "tp":
+                    # All true positives
+                    inds = results.ytrue == results.ypred
+                    ytrue_ids = _to_object_ids(results.ytrue_ids[inds])
+                    ypred_ids = _to_object_ids(results.ypred_ids[inds])
+                    expr = F(gt_id).is_in(ytrue_ids)
+                    expr &= F(pred_id).is_in(ypred_ids)
+                    view = eval_view.match(expr)
+                elif field == "fn":
+                    # All false negatives
+                    inds = results.ypred == missing
+                    ytrue_ids = _to_object_ids(results.ytrue_ids[inds])
+                    expr = F(gt_id).is_in(ytrue_ids)
+                    view = eval_view.match(expr)
+                else:
+                    # All false positives
+                    inds = results.ytrue == missing
+                    ypred_ids = _to_object_ids(results.ypred_ids[inds])
+                    expr = F(pred_id).is_in(ypred_ids)
+                    view = eval_view.match(expr)
 
         if view is not None:
             ctx.ops.set_view(view)
@@ -612,3 +720,25 @@ class EvaluationPanel(Panel):
                 load_view=self.load_view,
             ),
         )
+
+
+def _to_object_ids(ids):
+    return [ObjectId(_id) for _id in ids]
+
+
+def _get_ids_slice(results, k):
+    nrows, ncols = results.pixel_confusion_matrix.shape
+
+    ytrue_ids = []
+    for j in range(ncols):
+        _ytrue_ids = results.ytrue_ids_dict.get((k, j), None)
+        if _ytrue_ids is not None:
+            ytrue_ids.extend(_ytrue_ids)
+
+    ypred_ids = []
+    for i in range(nrows):
+        _ypred_ids = results.ypred_ids_dict.get((i, k), None)
+        if _ypred_ids is not None:
+            ypred_ids.extend(_ypred_ids)
+
+    return _to_object_ids(ytrue_ids), _to_object_ids(ypred_ids)
