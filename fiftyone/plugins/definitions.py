@@ -44,7 +44,7 @@ class PluginDefinition(object):
     @property
     def builtin(self):
         """Whether the plugin is a builtin plugin."""
-        self.directory.startswith(constants.BUILTIN_PLUGINS_DIR)
+        return self.directory.startswith(constants.BUILTIN_PLUGINS_DIR)
 
     @property
     def author(self):
