@@ -333,7 +333,7 @@ class SimpleEvaluation(SegmentationEvaluation):
         if mask_targets is not None:
             if fof.is_rgb_mask_targets(mask_targets):
                 mask_targets = {
-                    _hex_to_int(k): v for k, v in mask_targets.items()
+                    fof.hex_to_int(k): v for k, v in mask_targets.items()
                 }
 
             values, classes = zip(*sorted(mask_targets.items()))
@@ -349,8 +349,9 @@ class SimpleEvaluation(SegmentationEvaluation):
 
         nc = len(values)
         confusion_matrix = np.zeros((nc, nc), dtype=int)
-        ypred_ids = {}
-        ytrue_ids = {}
+        weights_dict = {}
+        ytrue_ids_dict = {}
+        ypred_ids_dict = {}
 
         bandwidth = self.config.bandwidth
         average = self.config.average
@@ -392,16 +393,19 @@ class SimpleEvaluation(SegmentationEvaluation):
                     bandwidth=bandwidth,
                 )
                 sample_conf_mat += image_conf_mat
-                non_zero_indexes = np.nonzero(sample_conf_mat)
-                for index in zip(*non_zero_indexes):
-                    if index not in ypred_ids:
-                        ypred_ids[index] = [pred_seg.id]
-                    else:
-                        ypred_ids[index].append(pred_seg.id)
-                    if index not in ytrue_ids:
-                        ytrue_ids[index] = [gt_seg.id]
-                    else:
-                        ytrue_ids[index].append(gt_seg.id)
+
+                for index in zip(*np.nonzero(image_conf_mat)):
+                    if index not in weights_dict:
+                        weights_dict[index] = []
+                    weights_dict[index].append(int(image_conf_mat[index]))
+
+                    if index not in ytrue_ids_dict:
+                        ytrue_ids_dict[index] = []
+                    ytrue_ids_dict[index].append(gt_seg.id)
+
+                    if index not in ypred_ids_dict:
+                        ypred_ids_dict[index] = []
+                    ypred_ids_dict[index].append(pred_seg.id)
 
                 if processing_frames and save:
                     facc, fpre, frec = _compute_accuracy_precision_recall(
@@ -436,8 +440,9 @@ class SimpleEvaluation(SegmentationEvaluation):
             eval_key,
             confusion_matrix,
             classes,
-            ypred_ids=ypred_ids,
-            ytrue_ids=ytrue_ids,
+            weights_dict=weights_dict,
+            ytrue_ids_dict=ytrue_ids_dict,
+            ypred_ids_dict=ypred_ids_dict,
             missing=missing,
             backend=self,
         )
@@ -452,6 +457,11 @@ class SegmentationResults(BaseEvaluationResults):
         eval_key: the evaluation key
         pixel_confusion_matrix: a pixel value confusion matrix
         classes: a list of class labels corresponding to the confusion matrix
+        weights_dict (None): a dict mapping ``(i, j)`` tuples to pixel counts
+        ytrue_ids_dict (None): a dict mapping ``(i, j)`` tuples to lists of
+            ground truth IDs
+        ypred_ids_dict (None): a dict mapping ``(i, j)`` tuples to lists of
+            predicted label IDs
         missing (None): a missing (background) class
         backend (None): a :class:`SegmentationEvaluation` backend
     """
@@ -463,14 +473,26 @@ class SegmentationResults(BaseEvaluationResults):
         eval_key,
         pixel_confusion_matrix,
         classes,
-        ypred_ids=None,
-        ytrue_ids=None,
+        weights_dict=None,
+        ytrue_ids_dict=None,
+        ypred_ids_dict=None,
         missing=None,
         backend=None,
     ):
         pixel_confusion_matrix = np.asarray(pixel_confusion_matrix)
-        ytrue, ypred, weights, ytrue_ids, ypred_ids = self._parse_confusion_matrix(
-            pixel_confusion_matrix, classes, ypred_ids, ytrue_ids
+
+        (
+            ytrue,
+            ypred,
+            weights,
+            ytrue_ids,
+            ypred_ids,
+        ) = self._parse_confusion_matrix(
+            pixel_confusion_matrix,
+            classes,
+            weights_dict=weights_dict,
+            ytrue_ids_dict=ytrue_ids_dict,
+            ypred_ids_dict=ypred_ids_dict,
         )
 
         super().__init__(
@@ -488,9 +510,20 @@ class SegmentationResults(BaseEvaluationResults):
         )
 
         self.pixel_confusion_matrix = pixel_confusion_matrix
+        self.weights_dict = weights_dict
+        self.ytrue_ids_dict = ytrue_ids_dict
+        self.ypred_ids_dict = ypred_ids_dict
 
     def attributes(self):
-        return ["cls", "pixel_confusion_matrix", "classes", "missing"]
+        return [
+            "cls",
+            "pixel_confusion_matrix",
+            "classes",
+            "weights_dict",
+            "ytrue_ids_dict",
+            "ypred_ids_dict",
+            "missing",
+        ]
 
     def dice_score(self):
         """Computes the Dice score across all samples in the evaluation.
@@ -508,39 +541,65 @@ class SegmentationResults(BaseEvaluationResults):
             eval_key,
             d["pixel_confusion_matrix"],
             d["classes"],
+            weights_dict=_parse_index_dict(d.get("weights_dict", None)),
+            ytrue_ids_dict=_parse_index_dict(d.get("ytrue_ids_dict", None)),
+            ypred_ids_dict=_parse_index_dict(d.get("ypred_ids_dict", None)),
             missing=d.get("missing", None),
             **kwargs,
         )
 
     @staticmethod
-    def _parse_confusion_matrix(confusion_matrix, classes, ytrue_ids_dict, ypred_ids_dict):
+    def _parse_confusion_matrix(
+        confusion_matrix,
+        classes,
+        weights_dict=None,
+        ytrue_ids_dict=None,
+        ypred_ids_dict=None,
+    ):
+        have_ids = ytrue_ids_dict is not None and ypred_ids_dict is not None
+
         ytrue = []
         ypred = []
         weights = []
-        ytrue_ids = None
-        ypred_ids = None
-        if ytrue_ids_dict is not None and ypred_ids_dict is not None:
+        if have_ids:
             ytrue_ids = []
             ypred_ids = []
+        else:
+            ytrue_ids = None
+            ypred_ids = None
+
         nrows, ncols = confusion_matrix.shape
         for i in range(nrows):
             for j in range(ncols):
-                index = (i, j)
                 cij = confusion_matrix[i, j]
                 if cij > 0:
-                    if ytrue_ids_dict is not None and ypred_ids_dict is not None:
-                        ytrue_ids+= ytrue_ids_dict[index]
-                        ypred_ids+= ypred_ids_dict[index]
-                        ytrue_multiplier = len(ytrue_ids_dict[index])
+                    if have_ids:
+                        index = (i, j)
+                        classi = classes[i]
+                        classj = classes[j]
+                        for weight, ytrue_id, ypred_id in zip(
+                            weights_dict[index],
+                            ytrue_ids_dict[index],
+                            ypred_ids_dict[index],
+                        ):
+                            ytrue.append(classi)
+                            ypred.append(classj)
+                            weights.append(weight)
+                            ytrue_ids.append(ytrue_id)
+                            ypred_ids.append(ypred_id)
                     else:
-                        ytrue_multiplier = 1
-                    for p in range(ytrue_multiplier):
                         ytrue.append(classes[i])
                         ypred.append(classes[j])
-                        weights.append(cij/ytrue_multiplier)
-                    #Note: The weights aren't equally divided by the different ytrue_ids, but it works out for the confusion matrix calculations.
-                    
+                        weights.append(cij)
+
         return ytrue, ypred, weights, ytrue_ids, ypred_ids
+
+
+def _parse_index_dict(d):
+    import ast
+
+    return {ast.literal_eval(k): v for k, v in d.items()}
+
 
 def _parse_config(pred_field, gt_field, method, **kwargs):
     if method is None:
@@ -580,10 +639,10 @@ def _compute_pixel_confusion_matrix(
     pred_mask, gt_mask, values, bandwidth=None
 ):
     if pred_mask.ndim == 3:
-        pred_mask = _rgb_array_to_int(pred_mask)
+        pred_mask = fof.rgb_array_to_int(pred_mask)
 
     if gt_mask.ndim == 3:
-        gt_mask = _rgb_array_to_int(gt_mask)
+        gt_mask = fof.rgb_array_to_int(gt_mask)
 
     if pred_mask.shape != gt_mask.shape:
         msg = (
@@ -656,37 +715,15 @@ def _get_mask_values(samples, pred_field, gt_field, progress=None):
                     mask = seg.get_mask()
                     if mask.ndim == 3:
                         is_rgb = True
-                        mask = _rgb_array_to_int(mask)
+                        mask = fof.rgb_array_to_int(mask)
 
                     values.update(mask.ravel())
 
     values = sorted(values)
 
     if is_rgb:
-        classes = [_int_to_hex(v) for v in values]
+        classes = [fof.int_to_hex(v) for v in values]
     else:
         classes = [str(v) for v in values]
 
     return values, classes
-
-
-def _rgb_array_to_int(mask):
-    return (
-        np.left_shift(mask[:, :, 0], 16, dtype=int)
-        + np.left_shift(mask[:, :, 1], 8, dtype=int)
-        + mask[:, :, 2]
-    )
-
-
-def _hex_to_int(hex_str):
-    r = int(hex_str[1:3], 16)
-    g = int(hex_str[3:5], 16)
-    b = int(hex_str[5:7], 16)
-    return (r << 16) + (g << 8) + b
-
-
-def _int_to_hex(value):
-    r = (value >> 16) & 255
-    g = (value >> 8) & 255
-    b = value & 255
-    return "#%02x%02x%02x" % (r, g, b)
