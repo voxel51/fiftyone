@@ -325,7 +325,7 @@ class EvaluationPanel(Panel):
 
         return None
     
-    def get_segmentation_label_mapping(self, results, ctx, mask_targets):
+    def set_segmentation_label_mapping(self, results, ctx, mask_targets):
         label_mapping = defaultdict(list)
         ytrue = results.ytrue
         ypred = results.ypred
@@ -368,7 +368,7 @@ class EvaluationPanel(Panel):
             results = ctx.dataset.load_evaluation_results(computed_eval_key)
             if evaluation_type == "segmentation":
                 mask_targets = self.get_mask_targets(ctx.dataset, gt_field)
-                self.get_segmentation_label_mapping(results, ctx, mask_targets)
+                self.set_segmentation_label_mapping(results, ctx, mask_targets)
             else:
                 mask_targets = None
             metrics = results.metrics()
