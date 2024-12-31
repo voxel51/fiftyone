@@ -324,6 +324,25 @@ class EvaluationPanel(Panel):
             return dataset.default_mask_targets
 
         return None
+    
+    def get_segmentation_label_mapping(self, results, ctx, mask_targets):
+        label_mapping = defaultdict(list)
+        ytrue = results.ytrue
+        ypred = results.ypred
+        ytrue_ids = results.ytrue_ids
+        ypred_ids = results.ypred_ids
+        if ytrue_ids is not None:
+            for yt, yp, ytid, ypid in zip(ytrue, ypred, ytrue_ids, ypred_ids):
+                if mask_targets is not None:
+                    index = (mask_targets[int(yt)], mask_targets[int(yp)])
+                else:
+                    index = (yt, yp)
+                label_mapping[str(index)].append(ytid)
+                label_mapping[str(index)].append(ypid)
+        if len(label_mapping) > 0:
+            ctx.panel.set_state("label_mapping", label_mapping)
+        ctx.panel.set_state("classes", results.classes.tolist())
+        ctx.panel.set_state("mask_targets", mask_targets)
 
     def load_evaluation(self, ctx):
         view_state = ctx.panel.get_state("view") or {}
@@ -346,12 +365,12 @@ class EvaluationPanel(Panel):
                 )
                 return
             gt_field = info.config.gt_field
-            mask_targets = (
-                self.get_mask_targets(ctx.dataset, gt_field)
-                if evaluation_type == "segmentation"
-                else None
-            )
             results = ctx.dataset.load_evaluation_results(computed_eval_key)
+            if evaluation_type == "segmentation":
+                mask_targets = self.get_mask_targets(ctx.dataset, gt_field)
+                self.get_segmentation_label_mapping(results, ctx, mask_targets)
+            else:
+                mask_targets = None
             metrics = results.metrics()
             per_class_metrics = self.get_per_class_metrics(info, results)
             metrics["average_confidence"] = self.get_avg_confidence(
@@ -585,6 +604,25 @@ class EvaluationPanel(Panel):
                     view = eval_view.filter_labels(
                         pred_field, F(eval_key) == field, only_matches=True
                     )
+        elif info.config.type == "segmentation":
+            label_mapping = ctx.panel.get_state("label_mapping")
+            if view_type == "matrix":
+                view = eval_view.select_labels(ids = label_mapping.get(str((y, x)), []))
+            elif view_type == "class":
+                mask_targets = ctx.panel.get_state("mask_targets")
+                classes = ctx.panel.get_state("classes")
+                label_ids_list = []
+                for c in classes:
+                    if mask_targets is not None:
+                        index_1 = (mask_targets[c], x)
+                        index_2 = (x, mask_targets[c])
+                    else:
+                        index_1 = (c, x)
+                        index_2 = (x, c)
+                    label_ids_list.extend(label_mapping.get(str(index_1), []))
+                    label_ids_list.extend(label_mapping.get(str(index_2), []))
+
+                view = eval_view.select_labels(ids = label_ids_list)                
 
         if view is not None:
             ctx.ops.set_view(view)
