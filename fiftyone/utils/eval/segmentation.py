@@ -8,7 +8,6 @@ Segmentation evaluation.
 from copy import deepcopy
 import logging
 import inspect
-import itertools
 import warnings
 
 import numpy as np
@@ -350,7 +349,6 @@ class SimpleEvaluation(SegmentationEvaluation):
 
         nc = len(values)
         confusion_matrix = np.zeros((nc, nc), dtype=int)
-        matches = []
 
         bandwidth = self.config.bandwidth
         average = self.config.average
@@ -391,13 +389,8 @@ class SimpleEvaluation(SegmentationEvaluation):
                     values,
                     bandwidth=bandwidth,
                 )
-                
-                non_zero_indexes = np.nonzero(image_conf_mat)
-                for index in zip(*non_zero_indexes):
-                    matches.append((classes[index[0]], classes[index[1]], image_conf_mat[index[0], index[1]], gt_seg.id, pred_seg.id))
-
                 sample_conf_mat += image_conf_mat
-                
+
                 if processing_frames and save:
                     facc, fpre, frec = _compute_accuracy_precision_recall(
                         image_conf_mat, values, average
@@ -424,14 +417,13 @@ class SimpleEvaluation(SegmentationEvaluation):
             missing = classes[0] if values[0] in (0, "#000000") else None
         else:
             missing = None
-            
+
         return SegmentationResults(
             samples,
             self.config,
             eval_key,
             confusion_matrix,
             classes,
-            matches=None if len(matches) == 0 else matches,
             missing=missing,
             backend=self,
         )
@@ -446,7 +438,6 @@ class SegmentationResults(BaseEvaluationResults):
         eval_key: the evaluation key
         pixel_confusion_matrix: a pixel value confusion matrix
         classes: a list of class labels corresponding to the confusion matrix
-        matches: a list of tuples containing (true_class, pred_class, weight, gt_id, pred_id)
         missing (None): a missing (background) class
         backend (None): a :class:`SegmentationEvaluation` backend
     """
@@ -458,20 +449,13 @@ class SegmentationResults(BaseEvaluationResults):
         eval_key,
         pixel_confusion_matrix,
         classes,
-        matches=None,
         missing=None,
         backend=None,
     ):
         pixel_confusion_matrix = np.asarray(pixel_confusion_matrix)
-        ytrue_ids = None
-        ypred_ids = None
-
-        if matches is not None:
-            ytrue, ypred, weights, ytrue_ids, ypred_ids = zip(*matches)
-        else:
-            ytrue, ypred, weights = self._parse_confusion_matrix(
-                pixel_confusion_matrix, classes
-            )
+        ytrue, ypred, weights = self._parse_confusion_matrix(
+            pixel_confusion_matrix, classes
+        )
 
         super().__init__(
             samples,
@@ -480,14 +464,15 @@ class SegmentationResults(BaseEvaluationResults):
             ytrue,
             ypred,
             weights=weights,
-            ytrue_ids=ytrue_ids,
-            ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
             backend=backend,
         )
 
         self.pixel_confusion_matrix = pixel_confusion_matrix
+
+    def attributes(self):
+        return ["cls", "pixel_confusion_matrix", "classes", "missing"]
 
     def dice_score(self):
         """Computes the Dice score across all samples in the evaluation.
@@ -499,27 +484,12 @@ class SegmentationResults(BaseEvaluationResults):
 
     @classmethod
     def _from_dict(cls, d, samples, config, eval_key, **kwargs):
-        ytrue = d["ytrue"]
-        ypred = d["ypred"]
-        weights = d["weights"]
-
-        ytrue_ids = d.get("ytrue_ids", None)
-        if ytrue_ids is None:
-            ytrue_ids = itertools.repeat(None)
-
-        ypred_ids = d.get("ypred_ids", None)
-        if ypred_ids is None:
-            ypred_ids = itertools.repeat(None)
-
-        matches = list(zip(ytrue, ypred, weights, ytrue_ids, ypred_ids))
-
         return cls(
             samples,
             config,
             eval_key,
             d["pixel_confusion_matrix"],
             d["classes"],
-            matches=matches,
             missing=d.get("missing", None),
             **kwargs,
         )
@@ -539,6 +509,7 @@ class SegmentationResults(BaseEvaluationResults):
                     weights.append(cij)
 
         return ytrue, ypred, weights
+
 
 def _parse_config(pred_field, gt_field, method, **kwargs):
     if method is None:
