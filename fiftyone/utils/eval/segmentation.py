@@ -446,6 +446,7 @@ class SegmentationResults(BaseEvaluationResults):
         eval_key: the evaluation key
         pixel_confusion_matrix: a pixel value confusion matrix
         classes: a list of class labels corresponding to the confusion matrix
+        matches: a list of tuples containing (true_class, pred_class, weight, gt_id, pred_id)
         missing (None): a missing (background) class
         backend (None): a :class:`SegmentationEvaluation` backend
     """
