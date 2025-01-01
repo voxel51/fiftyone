@@ -333,26 +333,6 @@ class EvaluationPanel(Panel):
 
         return None
 
-    def get_classes_map(self, dataset, results, gt_field):
-        classes = results.classes
-
-        #
-        # `results.classes` could contain any of the following:
-        #  1. stringified pixel values
-        #  2. RGB hex strings
-        #  3. label strings
-        #
-        # If mask targets are available, then App callbacks will use label
-        # strings, so we convert to label strings here
-        #
-        mask_targets = self.get_mask_targets(dataset, gt_field)
-        if mask_targets is not None:
-            # `str()` handles cases 1 and 2, and `.get(c, c)` handles case 3
-            mask_targets = {str(k): v for k, v in mask_targets.items()}
-            classes = [mask_targets.get(c, c) for c in classes]
-
-        return {c: i for i, c in enumerate(classes)}
-
     def load_evaluation(self, ctx):
         view_state = ctx.panel.get_state("view") or {}
         eval_key = view_state.get("key")
@@ -373,13 +353,15 @@ class EvaluationPanel(Panel):
                     {"error": "unsupported", "info": serialized_info},
                 )
                 return
-            gt_field = info.config.gt_field
-            mask_targets = (
-                self.get_mask_targets(ctx.dataset, gt_field)
-                if evaluation_type == "segmentation"
-                else None
-            )
+
             results = ctx.dataset.load_evaluation_results(computed_eval_key)
+            gt_field = info.config.gt_field
+            mask_targets = None
+
+            if evaluation_type == "segmentation":
+                mask_targets = self.get_mask_targets(ctx.dataset, gt_field)
+                _init_segmentation_results(results, mask_targets)
+
             metrics = results.metrics()
             per_class_metrics = self.get_per_class_metrics(info, results)
             metrics["average_confidence"] = self.get_avg_confidence(
@@ -502,18 +484,15 @@ class EvaluationPanel(Panel):
         info = ctx.dataset.get_evaluation_info(eval_key)
         pred_field = info.config.pred_field
         gt_field = info.config.gt_field
-        mask_targets = self.get_mask_targets(ctx.dataset, gt_field)
 
         eval_key2 = view_state.get("compareKey", None)
         pred_field2 = None
         gt_field2 = None
-        mask_targets2 = mask_targets
         if eval_key2:
             info2 = ctx.dataset.get_evaluation_info(eval_key2)
             pred_field2 = info2.config.pred_field
             if info2.config.gt_field != gt_field:
                 gt_field2 = info2.config.gt_field
-                mask_targets2 = self.get_mask_targets(ctx.dataset, gt_field2)
 
         x = view_options.get("x", None)
         y = view_options.get("y", None)
@@ -619,12 +598,8 @@ class EvaluationPanel(Panel):
                     )
         elif info.config.type == "segmentation":
             results = ctx.dataset.load_evaluation_results(eval_key)
-            classes_map = self.get_classes_map(ctx.dataset, results, gt_field)
-            if (
-                results.ytrue_ids_dict is None
-                or results.ypred_ids_dict is None
-            ):
-                # legacy segmentation evaluation
+            if results.ytrue_ids is None or results.ypred_ids is None:
+                # Legacy format segmentations
                 return
 
             if eval_key2:
@@ -632,14 +607,8 @@ class EvaluationPanel(Panel):
                     gt_field2 = gt_field
 
                 results2 = ctx.dataset.load_evaluation_results(eval_key2)
-                classes_map2 = self.get_classes_map(
-                    ctx.dataset, results2, gt_field2
-                )
-                if (
-                    results2.ytrue_ids_dict is None
-                    or results2.ypred_ids_dict is None
-                ):
-                    # legacy segmentation evaluation
+                if results2.ytrue_ids is None or results2.ypred_ids is None:
+                    # Legacy format segmentations
                     return
             else:
                 results2 = None
@@ -655,26 +624,21 @@ class EvaluationPanel(Panel):
 
             if view_type == "class":
                 # All GT/predictions that contain class `x`
-                k = classes_map[x]
-                ytrue_ids, ypred_ids = _get_ids_slice(results, k)
+                ytrue_ids, ypred_ids = _get_segmentation_class_ids(results, x)
                 expr = F(gt_id).is_in(ytrue_ids)
                 expr |= F(pred_id).is_in(ypred_ids)
                 if results2 is not None:
-                    k2 = classes_map2[x]
-                    ytrue_ids2, ypred_ids2 = _get_ids_slice(results2, k2)
+                    ytrue_ids2, ypred_ids2 = _get_segmentation_class_ids(
+                        results2, x
+                    )
                     expr |= F(gt_id2).is_in(ytrue_ids2)
                     expr |= F(pred_id2).is_in(ypred_ids2)
 
                 view = eval_view.match(expr)
             elif view_type == "matrix":
                 # Specific confusion matrix cell
-                i = classes_map[x]
-                j = classes_map[y]
-                ytrue_ids = _to_object_ids(
-                    results.ytrue_ids_dict.get((i, j), [])
-                )
-                ypred_ids = _to_object_ids(
-                    results.ypred_ids_dict.get((i, j), [])
+                ytrue_ids, ypred_ids = _get_segmentation_conf_mat_ids(
+                    results, x, y
                 )
                 expr = F(gt_id).is_in(ytrue_ids)
                 expr &= F(pred_id).is_in(ypred_ids)
@@ -682,22 +646,24 @@ class EvaluationPanel(Panel):
             elif view_type == "field":
                 if field == "tp":
                     # All true positives
-                    inds = results.ytrue == results.ypred
-                    ytrue_ids = _to_object_ids(results.ytrue_ids[inds])
-                    ypred_ids = _to_object_ids(results.ypred_ids[inds])
+                    ytrue_ids, ypred_ids = _get_segmentation_tp_fp_fn_ids(
+                        results, field
+                    )
                     expr = F(gt_id).is_in(ytrue_ids)
                     expr &= F(pred_id).is_in(ypred_ids)
                     view = eval_view.match(expr)
                 elif field == "fn":
                     # All false negatives
-                    inds = results.ypred == missing
-                    ytrue_ids = _to_object_ids(results.ytrue_ids[inds])
+                    ytrue_ids, _ = _get_segmentation_tp_fp_fn_ids(
+                        results, field
+                    )
                     expr = F(gt_id).is_in(ytrue_ids)
                     view = eval_view.match(expr)
                 else:
                     # All false positives
-                    inds = results.ytrue == missing
-                    ypred_ids = _to_object_ids(results.ypred_ids[inds])
+                    _, ypred_ids = _get_segmentation_tp_fp_fn_ids(
+                        results, field
+                    )
                     expr = F(pred_id).is_in(ypred_ids)
                     view = eval_view.match(expr)
 
@@ -722,23 +688,100 @@ class EvaluationPanel(Panel):
         )
 
 
-def _to_object_ids(ids):
-    return [ObjectId(_id) for _id in ids]
+def _init_segmentation_results(results, mask_targets):
+    if results.ytrue_ids is None or results.ypred_ids is None:
+        # Legacy format segmentations
+        return
+
+    #
+    # `results.classes` and App callbacks could contain any of the
+    # following:
+    #  1. stringified pixel values
+    #  2. RGB hex strings
+    #  3. label strings
+    #
+    # so we must construct `classes_map` that can map any of these possible
+    # values to integer indexes
+    #
+    classes_map = {c: i for i, c in enumerate(results.classes)}
+
+    if mask_targets is not None:
+        # `str()` handles cases 1 and 2, and `.get(c, c)` handles case 3
+        mask_targets = {str(k): v for k, v in mask_targets.items()}
+        classes = [mask_targets.get(c, c) for c in results.classes]
+        classes_map.update({c: i for i, c in enumerate(classes)})
+
+    #
+    # Generate mapping from `(i, j)` to ID lists for use in App callbacks
+    #
+
+    ytrue_ids_dict = {}
+    ypred_ids_dict = {}
+    for ytrue, ypred, ytrue_id, ypred_id in zip(
+        results.ytrue, results.ypred, results.ytrue_ids, results.ypred_ids
+    ):
+        i = classes_map[ytrue]
+        j = classes_map[ypred]
+        index = (i, j)
+
+        if index not in ytrue_ids_dict:
+            ytrue_ids_dict[index] = []
+        ytrue_ids_dict[index].append(ytrue_id)
+
+        if index not in ypred_ids_dict:
+            ypred_ids_dict[index] = []
+        ypred_ids_dict[index].append(ypred_id)
+
+    results._classes_map = classes_map
+    results._ytrue_ids_dict = ytrue_ids_dict
+    results._ypred_ids_dict = ypred_ids_dict
 
 
-def _get_ids_slice(results, k):
+def _get_segmentation_class_ids(results, x):
+    k = results._classes_map[x]
     nrows, ncols = results.pixel_confusion_matrix.shape
 
     ytrue_ids = []
     for j in range(ncols):
-        _ytrue_ids = results.ytrue_ids_dict.get((k, j), None)
+        _ytrue_ids = results._ytrue_ids_dict.get((k, j), None)
         if _ytrue_ids is not None:
             ytrue_ids.extend(_ytrue_ids)
 
     ypred_ids = []
     for i in range(nrows):
-        _ypred_ids = results.ypred_ids_dict.get((i, k), None)
+        _ypred_ids = results._ypred_ids_dict.get((i, k), None)
         if _ypred_ids is not None:
             ypred_ids.extend(_ypred_ids)
 
     return _to_object_ids(ytrue_ids), _to_object_ids(ypred_ids)
+
+
+def _get_segmentation_conf_mat_ids(results, x, y):
+    i = results._classes_map[x]
+    j = results._classes_map[y]
+    ytrue_ids = _to_object_ids(results._ytrue_ids_dict.get((i, j), []))
+    ypred_ids = _to_object_ids(results._ypred_ids_dict.get((i, j), []))
+    return ytrue_ids, ypred_ids
+
+
+def _get_segmentation_tp_fp_fn_ids(results, field):
+    if field == "tp":
+        # True positives
+        inds = results.ytrue == results.ypred
+        ytrue_ids = _to_object_ids(results.ytrue_ids[inds])
+        ypred_ids = _to_object_ids(results.ypred_ids[inds])
+        return ytrue_ids, ypred_ids
+    elif field == "fn":
+        # False negatives
+        inds = results.ypred == results.missing
+        ytrue_ids = _to_object_ids(results.ytrue_ids[inds])
+        return ytrue_ids, None
+    else:
+        # False positives
+        inds = results.ytrue == results.missing
+        ypred_ids = _to_object_ids(results.ypred_ids[inds])
+        return None, ypred_ids
+
+
+def _to_object_ids(ids):
+    return [ObjectId(_id) for _id in ids]
