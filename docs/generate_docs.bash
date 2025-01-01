@@ -103,10 +103,16 @@ sphinx-apidoc --force --no-toc --separate --follow-links \
     --templatedir=docs/templates/apidoc \
     -o docs/source/api fiftyone \
         fiftyone/brain/internal/models \
+        fiftyone/constants \
+        fiftyone/internal \
         fiftyone/server \
         fiftyone/service \
         fiftyone/management \
         fiftyone/api
+
+sphinx-apidoc --force --no-toc --separate --follow-links \
+    --templatedir=docs/templates/apidoc \
+    -o docs/source/plugins/api plugins
 
 # Remove symlink
 unlink fiftyone/brain

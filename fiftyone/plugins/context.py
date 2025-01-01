@@ -35,7 +35,7 @@ def build_plugin_contexts(enabled=True):
         a list of :class:`PluginContext` instances
     """
     plugin_contexts = []
-    for pd in fop.list_plugins(enabled=enabled, include_builtin=True):
+    for pd in fop.list_plugins(enabled=enabled, builtin="all"):
         pctx = PluginContext(pd)
         pctx.register_all()
         plugin_contexts.append(pctx)
@@ -63,7 +63,9 @@ class PluginContext(object):
 
     @property
     def secrets(self):
-        """List of keys for required secrets as specified in the plugin definition."""
+        """List of keys for required secrets as specified in the plugin
+        definition.
+        """
         return self.plugin_definition.secrets
 
     def has_errors(self):
@@ -96,7 +98,8 @@ class PluginContext(object):
             Any errors are logged rather than being raised.
 
         Args:
-            cls: an :class:`fiftyone.operators.operator.Operator` or :class:`fiftyone.operators.panel.Panel` class
+            cls: an :class:`fiftyone.operators.operator.Operator` or
+                :class:`fiftyone.operators.panel.Panel` class
         """
         try:
             instance = cls(_builtin=self.plugin_definition.builtin)
