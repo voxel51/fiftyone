@@ -85,8 +85,7 @@ more complex workflows such as requesting annotation of samples from a
 configurable backend. Operators can even be composed of other operators or be
 used to add functionality to custom panels.
 
-FiftyOne comes with a number of builtin
-:mod:`Python <fiftyone.operators.builtin.operations>` and
+FiftyOne comes with a number of builtin :mod:`Python <plugins.operators>` and
 `JavaScript <https://github.com/voxel51/fiftyone/blob/develop/app/packages/operators/src/built-in-operators.ts>`_
 operators for common tasks that are intended for either user-facing or internal
 plugin use.
@@ -676,7 +675,7 @@ outputs. They can be :ref:`executed <using-operators>` by users in the App or
 triggered internally by other operators.
 
 Operators can be defined in either Python or JS, and FiftyOne comes with a
-number of builtin :mod:`Python <fiftyone.operators.builtin>` and
+number of builtin :mod:`Python <plugins.operators>` and
 `JS <https://github.com/voxel51/fiftyone/blob/develop/app/packages/operators/src/built-in-operators.ts>`_
 operators for common tasks.
 
@@ -1405,11 +1404,10 @@ method via :meth:`ctx.ops <fiftyone.operators.operations.Operations>` and
 :meth:`ctx.trigger <fiftyone.operators.executor.ExecutionContext.trigger>`.
 
 The :meth:`ctx.ops <fiftyone.operators.operations.Operations>` property of an
-execution context exposes all builtin
-:mod:`Python <fiftyone.operators.builtin>` and
+execution context exposes all builtin :mod:`Python <plugins.operators>` and
 `JavaScript <https://github.com/voxel51/fiftyone/blob/develop/app/packages/operators/src/built-in-operators.ts>`_
-in a conveniently documented functional interface. For example, many operations
-involve updating the current state of the App:
+operators in a conveniently documented functional interface. For example, many
+operations involve updating the current state of the App:
 
 .. code-block:: python
     :linenos:

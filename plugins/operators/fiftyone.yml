@@ -3,7 +3,7 @@ description: Core FiftyOne operators
 version: 1.0.0
 fiftyone:
   version: "*"
-url: https://github.com/voxel51/fiftyone/fiftyone/builtins/operators
+url: https://github.com/voxel51/fiftyone/plugins/operators
 operators:
   - edit_field_info
   - clone_selected_samples
