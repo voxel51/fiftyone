@@ -731,7 +731,7 @@ class QueryPerformancePanel(Panel):
     def create_index_or_summary_field(self, ctx):
         if _has_edit_permission(ctx):
             ctx.prompt(
-                "create_index_or_summary_field",
+                "@voxel51/panels/create_index_or_summary_field",
                 on_success=self.refresh,
             )
         else:
