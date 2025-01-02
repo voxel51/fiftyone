@@ -12,6 +12,7 @@ import PanelSkeleton from "./PanelSkeleton";
 import { StyledPanel } from "./StyledElements";
 
 function Panel(props: PanelProps) {
+  console.log("panel props", props);
   const { node, isModalPanel } = props;
   const panelName = node.type as string;
   const panel = useReactivePanel(panelName);

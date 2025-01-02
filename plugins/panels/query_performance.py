@@ -42,6 +42,10 @@ def _has_edit_permission(ctx):
 
 
 def _get_existing_indexes(ctx):
+    print(
+        "ctx.dataset.get_index_information(include_stats=True)",
+        ctx.dataset.get_index_information(include_stats=True),
+    )
     return ctx.dataset.get_index_information(include_stats=True)
 
 
@@ -595,6 +599,7 @@ class QueryPerformancePanel(Panel):
             allow_multiple=False,
             category=Categories.IMPORT,
             is_new=is_new("2024-11-07"),
+            _builtin=True,
         )
 
     def _get_index_table_data(self, ctx):
@@ -609,18 +614,22 @@ class QueryPerformancePanel(Panel):
                 if index_info.get("in_progress")
                 else etau.to_human_bytes_str(index_info.get("size", 0))
             )
+            ops = index_info.get("ops", 0)
 
             types = ["Index"]
             if default:
                 types.append("Default")
             if _is_unique(name, index_info):
                 types.append("Unique")
+            if index_info.get("compound"):
+                types.append("Compound")
 
             rows.append(
                 {
                     "Field": name,
                     "Size": str(size),
                     "Type": ", ".join(types),
+                    "Usage": ops,
                 }
             )
 
@@ -640,12 +649,15 @@ class QueryPerformancePanel(Panel):
                         "Field": name,
                         "Size": "-",
                         "Type": "Summary",
+                        "Usage": "-",
                     }
                 )
 
         table_data = {
-            "rows": [[r["Field"], r["Size"], r["Type"]] for r in rows],
-            "columns": ["Field", "Size", "Type"],
+            "rows": [
+                [r["Field"], r["Size"], r["Type"], r["Usage"]] for r in rows
+            ],
+            "columns": ["Field", "Size", "Type", "Usage"],
         }
         return table_data
 
@@ -912,6 +924,7 @@ class QueryPerformancePanel(Panel):
             table.add_column("Field", label="Field")
             table.add_column("Size", label="Size")
             table.add_column("Type", label="Type")
+            table.add_column("Usage", label="Usage")
 
             # add tooltips for summary field size
             for row in range(

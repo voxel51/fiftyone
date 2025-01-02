@@ -113,6 +113,7 @@ class Panel(Operator):
         return types.Property(inputs)
 
     def on_startup(self, ctx):
+        print("on_startup ctx", ctx)
         panel_config = {
             "name": self.config.name,
             "label": self.config.label,
@@ -126,7 +127,7 @@ class Panel(Operator):
             "beta": self.config.beta,
             "is_new": self.config.is_new,
             "priority": self.config.priority,
-            "_builtin": self._builtin,
+            "_builtin": self.config.builtin,
         }
         methods = ["on_load", "on_unload", "on_change"]
         ctx_change_events = [

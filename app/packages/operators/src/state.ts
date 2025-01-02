@@ -21,18 +21,18 @@ import {
 } from "recoil";
 import {
   BROWSER_CONTROL_KEYS,
+  LAST_USED_ORCHESTRATOR,
   RESOLVE_INPUT_VALIDATION_TTL,
   RESOLVE_TYPE_TTL,
-  LAST_USED_ORCHESTRATOR,
 } from "./constants";
 import {
-  ExecutionContext,
-  InvocationRequestQueue,
-  OperatorResult,
   executeOperatorWithContext,
+  ExecutionContext,
   getInvocationRequestQueue,
   getLocalOrRemoteOperator,
+  InvocationRequestQueue,
   listLocalAndRemoteOperators,
+  OperatorResult,
   resolveExecutionOptions,
   resolveOperatorURI,
 } from "./operators";
@@ -103,6 +103,7 @@ const globalContextSelector = selector({
     const extendedSelection = get(fos.extendedSelection);
     const groupSlice = get(fos.groupSlice);
     const queryPerformance = get(fos.queryPerformance);
+    console.log("queryPerformance", queryPerformance);
     const spaces = get(fos.sessionSpaces);
     const workspaceName = spaces?._name;
 

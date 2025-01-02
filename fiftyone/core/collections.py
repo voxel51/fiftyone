@@ -10232,6 +10232,7 @@ class SampleCollection(object):
         # Sample-level indexes
         fields_map = self._get_db_fields_map(reverse=True)
         sample_info = self._dataset._sample_collection.index_information()
+        print("sample_info get_index_information", sample_info)
 
         if include_stats:
             cs = self._dataset._sample_collstats()
@@ -10246,6 +10247,7 @@ class SampleCollection(object):
             for d in self._dataset._sample_collection.aggregate(
                 [{"$indexStats": {}}]
             ):
+                print("index_stats", d)
                 key = d["name"]
                 if key in sample_info:
                     sample_info[key]["accesses"] = d["accesses"]
@@ -10285,7 +10287,7 @@ class SampleCollection(object):
                     key = fields_map.get(field, field)
 
                 index_info[self._FRAMES_PREFIX + key] = info
-
+        print("final index_info get_index_information", index_info)
         return index_info
 
     # Indexes don't count as mutation because they only exist in-memory
