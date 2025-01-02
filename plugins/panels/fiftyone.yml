@@ -13,6 +13,13 @@ operators:
   - index_field_removal_confirmation
   - get_query_performance_config_confirmation
   - summary_field_update_operator
+  - compute_blurriness
+  - compute_brightness
+  - compute_aspect_ratio
+  - compute_entropy
+  - compute_exact_duplicates
+  - compute_near_duplicates
 panels:
   - model_evaluation_panel_builtin
   - query_performance_panel
+  - data_quality_panel

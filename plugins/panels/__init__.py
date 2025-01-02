@@ -20,6 +20,15 @@ from .query_performance import (
     QueryPerformancePanel,
     SummaryFieldUpdateOperator,
 )
+from .data_quality import DataQualityPanel
+from .data_quality.operators import (
+    ComputeBlurriness,
+    ComputeBrightness,
+    ComputeAspectRatio,
+    ComputeEntropy,
+    ComputeExactDuplicates,
+    ComputeNearDuplicates,
+)
 
 
 def register(p):
@@ -33,3 +42,10 @@ def register(p):
     p.register(IndexFieldRemovalConfirmationOperator)
     p.register(GetQueryPerformanceConfigConfirmationOperator)
     p.register(SummaryFieldUpdateOperator)
+    p.register(DataQualityPanel)
+    p.register(ComputeBlurriness)
+    p.register(ComputeBrightness)
+    p.register(ComputeAspectRatio)
+    p.register(ComputeEntropy)
+    p.register(ComputeExactDuplicates)
+    p.register(ComputeNearDuplicates)
