@@ -1,5 +1,10 @@
 import { OverlayMask } from "../numpy";
 
+const offScreenCanvas = new OffscreenCanvas(1, 1);
+const offScreenCanvasCtx = offScreenCanvas.getContext("2d", {
+  willReadFrequently: true,
+})!;
+
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 /**
  * Reads the PNG's image header chunk to determine the color type.
@@ -53,12 +58,14 @@ export const decodeWithCanvas = async (blob: Blob) => {
   const imageBitmap = await createImageBitmap(blob);
   const { width, height } = imageBitmap;
 
-  const canvas = new OffscreenCanvas(width, height);
-  const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(imageBitmap, 0, 0);
+  offScreenCanvas.width = width;
+  offScreenCanvas.height = height;
+
+  offScreenCanvasCtx.drawImage(imageBitmap, 0, 0);
+
   imageBitmap.close();
 
-  const imageData = ctx.getImageData(0, 0, width, height);
+  const imageData = offScreenCanvasCtx.getImageData(0, 0, width, height);
 
   if (channels === 1) {
     // get rid of the G, B, and A channels, new buffer will be 1/4 the size
