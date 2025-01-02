@@ -26,7 +26,7 @@ import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 from fiftyone.plugins.definitions import PluginDefinition
 from fiftyone.utils.github import GitHubRepository
-import fiftyone.plugins.constants as constants
+import fiftyone.plugins.constants as fpc
 
 PLUGIN_METADATA_FILENAMES = ("fiftyone.yml", "fiftyone.yaml")
 
@@ -545,7 +545,7 @@ def _list_plugins(enabled=None, builtin=None):
 
     if builtin in (True, None):
         plugin_paths.extend(
-            _iter_plugin_metadata_files(constants.BUILTIN_PLUGINS_DIR)
+            _iter_plugin_metadata_files(fpc.BUILTIN_PLUGINS_DIR)
         )
 
     if builtin in (False, None):
