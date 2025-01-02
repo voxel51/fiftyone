@@ -11,6 +11,7 @@ import {
   EMBEDDED_DOCUMENT,
   HEATMAP,
   LABEL_LIST,
+  PANOPTIC_SEGMENTATION,
   SEGMENTATION,
   VALID_LABEL_TYPES,
   getCls,
@@ -29,7 +30,6 @@ import type {
   Sample,
 } from "../state";
 import decodeImages from "./decoders";
-import { DeserializerFactory } from "./deserializer";
 import { painter, resolveColor } from "./painters";
 import type { ResolveColor, ResolveColorMethod } from "./painters/utils";
 import { getOverlayFieldFromCls, mapId } from "./shared";
@@ -99,10 +99,6 @@ const processLabels = async (
         );
       }
 
-      if (cls in DeserializerFactory) {
-        DeserializerFactory[cls](label, maskTargetsBuffers);
-      }
-
       if ([EMBEDDED_DOCUMENT, DYNAMIC_EMBEDDED_DOCUMENT].includes(cls)) {
         const [moreBitmapPromises, moreMaskTargetsBuffers] =
           await processLabels(
@@ -162,6 +158,7 @@ const processLabels = async (
         selectedLabelTags,
       };
       let promise: Promise<void>;
+
       switch (cls) {
         case DETECTION:
           promise = painter.Detection(params);
@@ -171,6 +168,9 @@ const processLabels = async (
           break;
         case HEATMAP:
           promise = painter.Heatmap(params);
+          break;
+        case PANOPTIC_SEGMENTATION:
+          promise = painter.PanopticSegmentation(params);
           break;
         case SEGMENTATION:
           promise = painter.Segmentation(params);

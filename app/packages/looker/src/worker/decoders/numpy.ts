@@ -4,42 +4,7 @@
 
 import { Buffer } from "buffer";
 import pako from "./pako.js";
-
-export { deserialize };
-
-export const ARRAY_TYPES = {
-  Uint8Array,
-  Uint8ClampedArray,
-  Int8Array,
-  Uint16Array,
-  Int16Array,
-  Uint32Array,
-  Int32Array,
-  Float32Array,
-  Float64Array,
-  BigUint64Array,
-  BigInt64Array,
-};
-
-export type TypedArray =
-  | Uint8Array
-  | Uint8ClampedArray
-  | Int8Array
-  | Uint16Array
-  | Int16Array
-  | Uint32Array
-  | Int32Array
-  | Float32Array
-  | Float64Array
-  | BigUint64Array
-  | BigInt64Array;
-
-export interface OverlayMask {
-  buffer: ArrayBuffer;
-  shape: [number, number];
-  channels: number;
-  arrayType: keyof typeof ARRAY_TYPES;
-}
+import type { OverlayMask } from "./types.js";
 
 const DATA_TYPES = {
   // < = little-endian, > = big-endian, | = host architecture
@@ -146,6 +111,6 @@ function parse(array: Uint8Array): OverlayMask {
 /**
  * Deserializes and parses a base64 encoded numpy array
  */
-function deserialize(compressedBase64Array: string): OverlayMask {
+export function deserialize(compressedBase64Array: string): OverlayMask {
   return parse(pako.inflate(Buffer.from(compressedBase64Array, "base64")));
 }

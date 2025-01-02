@@ -1,5 +1,5 @@
+import { get32BitColor } from "@fiftyone/utilities";
 import colorString from "color-string";
-import type { TypedArray } from "../../numpy";
 import type { RegularLabel } from "../../overlays/base";
 import type {
   Coloring,
@@ -7,7 +7,9 @@ import type {
   CustomizeColor,
   LabelTagColor,
   MaskColorInput,
+  MaskTargets,
 } from "../../state";
+import type { IntermediateMask, TypedArray } from "../decoders/types";
 import type { ReaderMethod } from "../types";
 
 export type Painter<Label extends RegularLabel> = (params: {
@@ -15,7 +17,7 @@ export type Painter<Label extends RegularLabel> = (params: {
   colorscale: Colorscale;
   customizeColorSetting: CustomizeColor[];
   field: string;
-  label: Label;
+  label: Label & { mask: IntermediateMask };
   labelTagColors: LabelTagColor;
   selectedLabelTags: string[];
 }) => Promise<void>;
@@ -55,8 +57,19 @@ export const convertMaskColorsToObject = (array: MaskColorInput[]) => {
   return result;
 };
 
-export const isFloatArray = (arr) =>
-  arr instanceof Float32Array || arr instanceof Float64Array;
+export const getFieldColor = async (
+  field: string,
+  coloring: Coloring,
+  setting: CustomizeColor
+) => {
+  // if field color has valid custom settings, use the custom field color
+  // convert the color into hex code, since it could be a color name
+  // (e.g. yellowgreen)
+  const fieldColorString = setting?.fieldColor
+    ? setting.fieldColor
+    : await requestColor(coloring.pool, coloring.seed, field);
+  return get32BitColor(convertToHex(fieldColorString));
+};
 
 export const getRgbFromMaskData = (
   maskTypedArray: TypedArray,
@@ -69,6 +82,22 @@ export const getRgbFromMaskData = (
 
   return [r, g, b] as [number, number, number];
 };
+
+export const getTargets = (field: string, coloring: Coloring) => {
+  // each field may have its own target map
+  let maskTargets: MaskTargets = coloring.maskTargets[field];
+
+  // or, in the absence of field specific targets, use default mask targets
+  // that are dataset scoped
+  if (!maskTargets) {
+    maskTargets = coloring.defaultMaskTargets;
+  }
+
+  return maskTargets;
+};
+
+export const isFloatArray = (arr) =>
+  arr instanceof Float32Array || arr instanceof Float64Array;
 
 export const [requestColor, resolveColor] = ((): [
   (

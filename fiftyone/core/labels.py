@@ -675,7 +675,7 @@ class Detections(_HasLabelList, Label):
 
         index_map = defaultdict(lambda: 1)
         # pylint: disable=not-an-iterable
-        for detection in self.detections:
+        for idx, detection in enumerate(self.detections):
             if not detection.has_mask:
                 msg = "Skipping detection(s) with no instance mask"
                 warnings.warn(msg)
@@ -691,6 +691,7 @@ class Detections(_HasLabelList, Label):
             _render_instance(mask, detection, target)
 
             index = detection.index
+
             if index is None:
                 index = index_map[detection.label]
                 index_map[detection.label] = index + 1
@@ -1374,6 +1375,18 @@ class _BaseSegmentation(_HasID, _HasMedia, Label):
 
         return mask
 
+
+class Segmentation(_BaseSegmentation):
+    """A semantic segmentation for an image.
+
+    Provide either the ``mask`` or ``mask_path`` argument to define the
+    segmentation.
+
+    Args:
+        mask (None): a numpy array with integer values encoding the labels
+        mask_path (None): the absolute path to the segmentation image on disk
+    """
+
     def to_detections(
         self,
         mask_targets=None,
@@ -1435,75 +1448,6 @@ class _BaseSegmentation(_HasID, _HasMedia, Label):
         )
         return Detections(detections=detections)
 
-    def to_polylines(
-        self,
-        mask_targets=None,
-        mask_types=None,
-        tolerance=2,
-    ):
-        """Returns a :class:`Polylines` representation of this instance.
-
-        Each ``"stuff"`` class will be converted to a single :class:`Polyline`
-        that may contain multiple disjoint shapes capturing the class.
-
-        Each ``"thing"`` class will result in one :class:`Polyline` instance
-        per connected region of that class.
-
-        Args:
-            mask_targets (None): a dict mapping integer pixel values (2D masks)
-                or RGB hex strings (3D masks) to label strings defining which
-                classes to generate detections for. If omitted, all labels are
-                assigned to their pixel values
-            mask_types (None): whether the classes are ``"stuff"``
-                (amorphous regions of pixels) or ``"thing"`` (connected
-                regions, each representing an instance of the thing). Can be
-                any of the following:
-
-                -   ``"stuff"`` if all classes are stuff classes
-                -   ``"thing"`` if all classes are thing classes. Panoptic
-                    instances are handled first, then any remaining labels
-                    are separated into connected components.
-                -   ``"panoptic"`` if all instances are thing classes and all
-                    remaining are stuff classes.
-                -   ``"object"``: only keep panoptic object instances
-                -   a dict mapping pixel values (2D masks) or RGB hex strings
-                    (3D masks) to ``"stuff"``, ``"thing"``, ``"object"``,
-                    or ``"panoptic"`` for each class
-
-                Defaults to ``"stuff"`` for semantic segmentations and
-                ``"panoptic"`` for panoptic segmentations.
-
-            tolerance (2): a tolerance, in pixels, when generating approximate
-                polylines for each region. Typical values are 1-3 pixels
-
-        Returns:
-            a :class:`Polylines`
-
-        """
-        if mask_types is None:
-            mask_types = (
-                "panoptic"
-                if isinstance(self, PanopticSegmentation)
-                else "stuff"
-            )
-
-        polylines = _segmentation_to_polylines(
-            self, mask_targets, mask_types, tolerance
-        )
-        return Polylines(polylines=polylines)
-
-
-class Segmentation(_BaseSegmentation):
-    """A semantic segmentation for an image.
-
-    Provide either the ``mask`` or ``mask_path`` argument to define the
-    segmentation.
-
-    Args:
-        mask (None): a numpy array with integer values encoding the labels
-        mask_path (None): the absolute path to the segmentation image on disk
-    """
-
     def to_panoptic_segmentation(self, mask_types="thing"):
         """Returns a :class:`PanopticSegmentation` representation of this
         segmentation.
@@ -1534,6 +1478,44 @@ class Segmentation(_BaseSegmentation):
         mask = _mask_to_panoptic(self.get_mask(), mask_types)
         return PanopticSegmentation(mask=mask)
 
+    def to_polylines(
+        self,
+        mask_targets=None,
+        mask_types="stuff",
+        tolerance=2,
+    ):
+        """Returns a :class:`Polylines` representation of this instance.
+
+        Each ``"stuff"`` class will be converted to a single :class:`Polyline`
+        that may contain multiple disjoint shapes capturing the class.
+
+        Each ``"thing"`` class will result in one :class:`Polyline` instance
+        per connected region of that class.
+
+        Args:
+            mask_targets (None): a dict mapping integer pixel values (2D masks)
+                or RGB hex strings (3D masks) to label strings defining which
+                classes to generate detections for. If omitted, all labels are
+                assigned to their pixel values
+            mask_types ("stuff"):
+                -   ``"stuff"`` if all classes are stuff classes
+                -   ``"thing"`` if all classes are thing classes. Labels are
+                    separated into connected components
+                -   a dict mapping pixel values (2D masks) or RGB hex strings
+                    (3D masks) to ``"stuff"`` and ``"thing"``
+
+            tolerance (2): a tolerance, in pixels, when generating approximate
+                polylines for each region. Typical values are 1-3 pixels
+
+        Returns:
+            a :class:`Polylines`
+
+        """
+        polylines = _segmentation_to_polylines(
+            self, mask_targets, mask_types, tolerance
+        )
+        return Polylines(polylines=polylines)
+
 
 class PanopticSegmentation(_BaseSegmentation):
     """A segmentation that encodes both class and instance labels
@@ -1544,6 +1526,91 @@ class PanopticSegmentation(_BaseSegmentation):
     To store a two channel via :attr:`mask_path`, a ".tif" or ".tiff" filepath
     is required.
     """
+
+    def to_detections(
+        self,
+        mask_targets=None,
+        mask_types="panoptic",
+    ):
+        """Returns a :class:`Detections` representation of this instance with
+        instance masks populated.
+
+        Each ``"stuff"`` class will be converted to a single :class:`Detection`
+        whose instance mask spans all region(s) of the class.
+
+        Each "thing" class is a separate detection. Any pixels with that class
+        but without an instance label are processed according to connected
+        regions.
+
+        Args:
+            mask_targets (None): a dict mapping integer pixel values (2D masks)
+                or RGB hex strings (3D masks) to label strings defining which
+                classes to generate detections for. If omitted, all labels are
+                assigned to their pixel values
+            mask_types ("panoptic"):
+                -   ``"panoptic"`` if all panoptic instances are thing classes
+                     and all remaining are stuff classes
+                -   ``"stuff"`` if all classes are stuff classes. Ignores
+                    panoptic intances
+                -   ``"thing"`` if all classes are thing classes. Panoptic
+                    instances are handled first, then any remaining labels
+                    are separated into connected components
+                -   ``"object"``: only keep panoptic object instances
+                -   a dict mapping pixel values (2D masks) or RGB hex strings
+                    (3D masks) to ``"stuff"``, ``"thing"``, ``"panoptic"``,
+                    or ``"object"`` for each class
+
+        Returns:
+            a :class:`Detections`
+
+        """
+        detections = _segmentation_to_detections(
+            self, mask_targets, mask_types
+        )
+        return Detections(detections=detections)
+
+    def to_polylines(
+        self,
+        mask_targets=None,
+        mask_types="panoptic",
+        tolerance=2,
+    ):
+        """Returns a :class:`Polylines` representation of this instance.
+
+        Each ``"stuff"`` class will be converted to a single :class:`Polyline`
+        that may contain multiple disjoint shapes capturing the class.
+
+        Each ``"thing"`` class will result in one :class:`Polyline` instance
+        per connected region of that class.
+
+        Args:
+            mask_targets (None): a dict mapping integer pixel values (2D masks)
+                or RGB hex strings (3D masks) to label strings defining which
+                classes to generate detections for. If omitted, all labels are
+                assigned to their pixel values
+            mask_types ("panoptic"):
+                -   ``"panoptic"`` if all instances are thing classes and all
+                    remaining are stuff classes
+                -   ``"stuff"`` if all classes are stuff classes
+                -   ``"thing"`` if all classes are thing classes. Panoptic
+                    instances are handled first, then any remaining labels
+                    are separated into connected components
+                -   ``"object"``: only keep panoptic object instances
+                -   a dict mapping pixel values (2D masks) or RGB hex strings
+                    (3D masks) to ``"stuff"``, ``"thing"``, ``"object"``,
+                    or ``"panoptic"`` for each class
+
+            tolerance (2): a tolerance, in pixels, when generating approximate
+                polylines for each region. Typical values are 1-3 pixels
+
+        Returns:
+            a :class:`Polylines`
+
+        """
+        polylines = _segmentation_to_polylines(
+            self, mask_targets, mask_types, tolerance
+        )
+        return Polylines(polylines=polylines)
 
     def to_segmentation(self, to_rgb=False):
         """Convert panoptic segmentation to semantic segmentation.
@@ -1865,8 +1932,10 @@ def _get_uint_dtype(maxval):
         return np.uint16
     elif maxval < 2**32:
         return np.uint32
+    elif maxval < 2**64:
+        return np.uint64
 
-    raise ValueError(f"max value of {maxval} exceeds upper limit of 2^32")
+    raise ValueError(f"max value of {maxval} exceeds upper limit of 2^64")
 
 
 def _mask_to_image(mask):
@@ -1880,7 +1949,7 @@ def _mask_to_image(mask):
     if not shape_is_valid:
         raise ValueError("unsupported detection mask shape: {mask.shape}")
 
-    allowed_types = (np.uint8, np.uint16, np.uint32, np.uint64, np.int64)
+    allowed_types = (np.uint8, np.uint16, np.uint32, np.uint64)
 
     if mask.dtype not in allowed_types:
         raise ValueError(f"unsupported detection mask dtype: {mask.dtype}")
@@ -1925,7 +1994,8 @@ def _write_mask(mask, mask_path):
     extension = _get_extension(mask_path)
     mask = _mask_to_image(mask)
     if extension in (".tif", ".tiff"):
-        tifffile.imwrite(mask_path, mask, compression="zlib")
+        bigtiff = mask.dtype == np.uint64
+        tifffile.imwrite(mask_path, mask, bigtiff=bigtiff, compression="zlib")
     else:
         if mask.ndim == 3 and mask.shape[-1] == 2:
             # add empty third channel
@@ -2110,7 +2180,7 @@ def _render_polyline(mask, polyline, target, thickness):
 
 def _find_slices(mask):
     """Return slices that tightly bound each unique object in `mask`."""
-    relabeled, forward, backward = sks.relabel_sequential(mask)
+    relabeled, _, backward = sks.relabel_sequential(mask)
     slices = spn.find_objects(relabeled)
     return dict((backward[idx + 1], slc) for idx, slc in enumerate(slices))
 
@@ -2359,22 +2429,11 @@ def _hex_to_rgb(hex_str):
     return (r, g, b)
 
 
-def _rgb_to_hex(rgb):
-    return "#%02x%02x%02x" % tuple(rgb)
-
-
 def _hex_to_int(hex_str):
     r = int(hex_str[1:3], 16)
     g = int(hex_str[3:5], 16)
     b = int(hex_str[5:7], 16)
     return (r << 16) + (g << 8) + b
-
-
-def _int_to_hex(value):
-    r = (value >> 16) & 255
-    g = (value >> 8) & 255
-    b = value & 255
-    return "#%02x%02x%02x" % (r, g, b)
 
 
 def _rgb_array_to_int(mask):
@@ -2421,16 +2480,6 @@ def _parse_stuff_instance(mask, offset=None, frame_size=None):
 
 
 def _parse_thing_instances(mask, offset=None, frame_size=None):
-    if offset is None:
-        x_offset, y_offset = (0, 0)
-    else:
-        x_offset, y_offset = offset
-
-    if frame_size is None:
-        height, width = mask.shape
-    else:
-        width, height = frame_size
-
     labeled = skm.label(mask)
     objects = _find_slices(labeled)
     instances = []

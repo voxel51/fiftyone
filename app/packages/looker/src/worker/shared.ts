@@ -6,12 +6,16 @@ import { HEATMAP } from "@fiftyone/utilities";
 export const mapId = (obj) => {
   if (obj && obj._id !== undefined) {
     obj.id = obj._id;
-    delete obj._id;
+    obj._id = undefined;
   }
   return obj;
 };
 
-export const getOverlayFieldFromCls = (cls: string) => {
+export const getOverlayFieldFromCls = (
+  cls: string
+):
+  | { canonical: "map"; disk: "map_path" }
+  | { canonical: "mask"; disk: "mask_path" } => {
   switch (cls) {
     case HEATMAP:
       return { canonical: "map", disk: "map_path" };

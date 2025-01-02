@@ -1,37 +1,13 @@
 import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import { DETECTION, DETECTIONS } from "@fiftyone/utilities";
 import type { Coloring, CustomizeColor } from "../..";
-import type { OverlayMask } from "../../numpy";
 import type { Colorscale } from "../../state";
+import { enqueueFetch } from "../pooled-fetch";
 import { getOverlayFieldFromCls } from "../shared";
 import decodeCanvas from "./canvas";
+import decodeInline from "./inline";
 import decodeTiff from "./tiff";
-
-type Decoder = (url: string) => Promise<OverlayMask>;
-
-const IMAGE_DECODERS: { [key: string]: Decoder } = {
-  jpeg: decodeCanvas,
-  jpg: decodeCanvas,
-  png: decodeCanvas,
-  tif: decodeTiff,
-  tiff: decodeTiff,
-};
-
-async function decodeImage(url: string) {
-  const extension = url.split(".").slice(-1)[0];
-  return IMAGE_DECODERS[extension](url);
-}
-
-export type IntermediateMask = {
-  data: OverlayMask;
-  image: ArrayBuffer;
-};
-
-interface Decodeable {
-  mask_path?: string;
-  map_path?: string;
-  detections?: { mask_path?: string }[];
-}
+import type { BlobDecoder, Decodeables } from "./types";
 
 interface DecodeParameters {
   cls: string;
@@ -39,12 +15,20 @@ interface DecodeParameters {
   colorscale: Colorscale;
   customizeColorSetting: CustomizeColor[];
   field: string;
-  label: Decodeable;
+  label: Decodeables;
   maskPathDecodingPromises?: Promise<void>[];
   maskTargetsBuffers?: ArrayBuffer[];
   overlayCollectionProcessingParams?: { idx: number; cls: string };
   sources: { [path: string]: string };
 }
+
+const IMAGE_DECODERS: { [key: string]: BlobDecoder } = {
+  jpeg: decodeCanvas,
+  jpg: decodeCanvas,
+  png: decodeCanvas,
+  tif: decodeTiff,
+  tiff: decodeTiff,
+};
 
 /**
  * Some label types (example: segmentation, heatmap) can have their overlay
@@ -74,21 +58,31 @@ const decode = async ({ field, label, ...params }: DecodeParameters) => {
   const overlayPathField = overlayFields.disk;
   const overlayField = overlayFields.canonical;
 
+  const data = label[overlayField];
+  if (typeof data === "string") {
+    const intermediate = decodeInline(data);
+    if (!intermediate) {
+      return;
+    }
+
+    params.maskTargetsBuffers.push(intermediate.data.buffer);
+    label[overlayField] = intermediate;
+    return;
+  }
+
   if (!Object.hasOwn(label, overlayPathField)) {
     return;
   }
 
-  // it's possible we're just re-coloring, in which case re-init mask image
-  // and set bitmap to null
-  if (label[overlayField]?.bitmap && !label[overlayField]?.image) {
+  if (data?.bitmap && !data?.image) {
     const height = label[overlayField].bitmap.height;
     const width = label[overlayField].bitmap.width;
 
     // close the copied bitmap
-    label[overlayField].bitmap.close();
-    label[overlayField].bitmap = null;
+    data.bitmap.close();
+    data.bitmap = null;
 
-    label[overlayField].image = new ArrayBuffer(height * width * 4);
+    data.image = new ArrayBuffer(height * width * 4);
     return;
   }
 
@@ -110,7 +104,13 @@ const decode = async ({ field, label, ...params }: DecodeParameters) => {
 
   // convert absolute file path to a URL that we can "fetch" from
   const overlayImageUrl = getSampleSrc(source || label[overlayPathField]);
-  const overlayMask = await decodeImage(overlayImageUrl);
+  const overlayImageFetchResponse = await enqueueFetch({
+    url: overlayImageUrl,
+    options: { priority: "low" },
+  });
+  const blob = await overlayImageFetchResponse.blob();
+  const extension = overlayImageUrl.split(".").slice(-1)[0];
+  const overlayMask = await IMAGE_DECODERS[extension](blob);
   const [overlayHeight, overlayWidth] = overlayMask.shape;
 
   // set the `mask` property for this label
@@ -120,7 +120,7 @@ const decode = async ({ field, label, ...params }: DecodeParameters) => {
   label[overlayField] = {
     data: overlayMask,
     image: new ArrayBuffer(overlayWidth * overlayHeight * 4),
-  } as IntermediateMask;
+  };
 
   // no need to transfer image's buffer
   // since we'll be constructing ImageBitmap and transfering that

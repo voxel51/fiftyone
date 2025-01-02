@@ -1,5 +1,4 @@
-import type { OverlayMask } from "../../numpy";
-import { enqueueFetch } from "../pooled-fetch";
+import type { OverlayMask } from "./types";
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 /**
@@ -34,13 +33,7 @@ const getPngcolorType = async (blob: Blob): Promise<number | undefined> => {
   return colorType;
 };
 
-const decodeWithCanvas = async (url: string): Promise<OverlayMask> => {
-  const overlayImageFetchResponse = await enqueueFetch({
-    url,
-    options: { priority: "low" },
-  });
-  const blob = await overlayImageFetchResponse.blob();
-
+const decodeWithCanvas = async (blob: Blob): Promise<OverlayMask> => {
   let channels = 4;
 
   if (blob.type === "image/png") {

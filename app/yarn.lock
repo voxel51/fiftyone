@@ -2103,23 +2103,29 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/looker@workspace:packages/looker"
   dependencies:
+    "@jimp/tiff": ^0.22.12
     "@rollup/plugin-inject": ^5.0.2
     "@types/color-string": ^1.5.0
     "@types/lru-cache": ^7.10.10
+    "@types/utif": ^3.0.5
     "@types/uuid": ^8.3.0
     "@ungap/event-target": ^0.2.2
     "@xmldom/xmldom": ^0.8.6
     buffer: ^6.0.3
     copy-to-clipboard: ^3.3.1
     decode-tiff: ^0.2.1
+    geotiff: ^2.1.3
     immutable: ^4.0.0-rc.12
     lodash: ^4.17.21
     lru-cache: ^11.0.1
     mime: ^2.5.2
     monotone-convex-hull-2d: ^1.0.1
     prettier: ^2.7.1
+    tiff: ^6.1.1
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^5.1.0
+    utif: ^3.1.0
+    utif2: ^4.1.0
     uuid: ^8.3.2
     vite: ^5.2.14
   peerDependencies:
@@ -2634,6 +2640,17 @@ __metadata:
     "@types/yargs": ^17.0.8
     chalk: ^4.0.0
   checksum: a0bcf15dbb0eca6bdd8ce61a3fb055349d40268622a7670a3b2eb3c3dbafe9eb26af59938366d520b86907b9505b0f9b29b85cec11579a9e580694b87cd90fcc
+  languageName: node
+  linkType: hard
+
+"@jimp/tiff@npm:^0.22.12":
+  version: 0.22.12
+  resolution: "@jimp/tiff@npm:0.22.12"
+  dependencies:
+    utif2: ^4.0.1
+  peerDependencies:
+    "@jimp/custom": ">=0.3.5"
+  checksum: 1b9995364a91bab7a96ec3c5d5f0ac3de3ecc8950ca9abe2c1d66495bc776446348938117e288cdea1b43210aca5f38dd37cb8ea7e9d70e0a8178b7f81ac73ff
   languageName: node
   linkType: hard
 
@@ -3330,6 +3347,13 @@ __metadata:
   dependencies:
     semver: ^7.3.5
   checksum: a50a6818de5fc557d0b0e6f50ec780a7a02ab8ad07e5ac8b16bf519e0ad60a144ac64f97d05c443c3367235d337182e1d012bbac0eb8dbae8dc7b40b193efd0e
+  languageName: node
+  linkType: hard
+
+"@petamoriken/float16@npm:^3.4.7":
+  version: 3.9.0
+  resolution: "@petamoriken/float16@npm:3.9.0"
+  checksum: 5242e9e5b630d05a368a0cd9f0b7309d5b9cb12d5ca7d14bf2f761b1c88a65cbfd7e50fb7fd5a7eb4068d310438d5c0ed016748d6c12c244cc7e3d0954113490
   languageName: node
   linkType: hard
 
@@ -5245,6 +5269,15 @@ __metadata:
   version: 2.0.10
   resolution: "@types/unist@npm:2.0.10"
   checksum: e2924e18dedf45f68a5c6ccd6015cd62f1643b1b43baac1854efa21ae9e70505db94290434a23da1137d9e31eb58e54ca175982005698ac37300a1c889f6c4aa
+  languageName: node
+  linkType: hard
+
+"@types/utif@npm:^3.0.5":
+  version: 3.0.5
+  resolution: "@types/utif@npm:3.0.5"
+  dependencies:
+    "@types/node": "*"
+  checksum: dcf759815e1de0cd60849d76f77dc18be172d740fc56af6f57b350874c6b74cdd8ddef09e2af0b3825a0d07c7da8e461af99f20caffe381778fd1d1f2c821105
   languageName: node
   linkType: hard
 
@@ -9566,6 +9599,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"geotiff@npm:^2.1.3":
+  version: 2.1.3
+  resolution: "geotiff@npm:2.1.3"
+  dependencies:
+    "@petamoriken/float16": ^3.4.7
+    lerc: ^3.0.0
+    pako: ^2.0.4
+    parse-headers: ^2.0.2
+    quick-lru: ^6.1.1
+    web-worker: ^1.2.0
+    xml-utils: ^1.0.2
+    zstddec: ^0.1.0
+  checksum: e966c735339fe121d7cf22fad71c68dbe5f6c88c252baed40bc596c662829bdc6df1c2463855c2dfc5453d191425f6151945b2ad063837cb82a99fe3eb482b50
+  languageName: node
+  linkType: hard
+
 "get-caller-file@npm:^2.0.5":
   version: 2.0.5
   resolution: "get-caller-file@npm:2.0.5"
@@ -10472,6 +10521,13 @@ __metadata:
   dependencies:
     loose-envify: ^1.0.0
   checksum: cc3182d793aad82a8d1f0af697b462939cb46066ec48bbf1707c150ad5fad6406137e91a262022c269702e01621f35ef60269f6c0d7fd178487959809acdfb14
+  languageName: node
+  linkType: hard
+
+"iobuffer@npm:^5.3.2":
+  version: 5.3.2
+  resolution: "iobuffer@npm:5.3.2"
+  checksum: 9ae2a7dc7ffa8dbb6c6b230a42b028804ba6ee31fbe86d638fdcde941f3c28fc3472659f3fbaa7916357eb78c9512382f73cd4735de01c4f14a0e8cf166ec6ac
   languageName: node
   linkType: hard
 
@@ -11902,6 +11958,13 @@ __metadata:
   version: 4.1.5
   resolution: "kleur@npm:4.1.5"
   checksum: 1dc476e32741acf0b1b5b0627ffd0d722e342c1b0da14de3e8ae97821327ca08f9fb944542fb3c126d90ac5f27f9d804edbe7c585bf7d12ef495d115e0f22c12
+  languageName: node
+  linkType: hard
+
+"lerc@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "lerc@npm:3.0.0"
+  checksum: 637699a1359cd80e581bac4bd66dd7ac09e6681fe97346c97939abdbc0170deac1b79ea00a17e334ef5d9d510973ca382abb43c39c8294788dd8391daeb75c32
   languageName: node
   linkType: hard
 
@@ -13707,6 +13770,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"pako@npm:^1.0.11, pako@npm:^1.0.5":
+  version: 1.0.11
+  resolution: "pako@npm:1.0.11"
+  checksum: 1be2bfa1f807608c7538afa15d6f25baa523c30ec870a3228a89579e474a4d992f4293859524e46d5d87fd30fa17c5edf34dbef0671251d9749820b488660b16
+  languageName: node
+  linkType: hard
+
+"pako@npm:^2.0.4, pako@npm:^2.1.0":
+  version: 2.1.0
+  resolution: "pako@npm:2.1.0"
+  checksum: 71666548644c9a4d056bcaba849ca6fd7242c6cf1af0646d3346f3079a1c7f4a66ffec6f7369ee0dc88f61926c10d6ab05da3e1fca44b83551839e89edd75a3e
+  languageName: node
+  linkType: hard
+
 "parent-module@npm:^1.0.0":
   version: 1.0.1
   resolution: "parent-module@npm:1.0.1"
@@ -13734,6 +13811,13 @@ __metadata:
     is-decimal: ^1.0.0
     is-hexadecimal: ^1.0.0
   checksum: 7addfd3e7d747521afac33c8121a5f23043c6973809756920d37e806639b4898385d386fcf4b3c8e2ecf1bc28aac5ae97df0b112d5042034efbe80f44081ebce
+  languageName: node
+  linkType: hard
+
+"parse-headers@npm:^2.0.2":
+  version: 2.0.5
+  resolution: "parse-headers@npm:2.0.5"
+  checksum: 3e97f01e4c7f960bfbfd0ee489f0bd8d3c72b6c814f1f79b66abec2cca8eaf8e4ecd89deba0b6e61266469aed87350bc932001181c01ff8c29a59e696abe251f
   languageName: node
   linkType: hard
 
@@ -14400,6 +14484,13 @@ __metadata:
   version: 1.2.3
   resolution: "queue-microtask@npm:1.2.3"
   checksum: b676f8c040cdc5b12723ad2f91414d267605b26419d5c821ff03befa817ddd10e238d22b25d604920340fd73efd8ba795465a0377c4adf45a4a41e4234e42dc4
+  languageName: node
+  linkType: hard
+
+"quick-lru@npm:^6.1.1":
+  version: 6.1.2
+  resolution: "quick-lru@npm:6.1.2"
+  checksum: 0491a24dcd39b8a325e9d3ae719fad7690a1da7a0dbfa8f16613663dc7d262d08b565005ce16a04497ed4700f1f477b8e06cd46e10a7a112a481a18d056c38f7
   languageName: node
   linkType: hard
 
@@ -16719,6 +16810,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tiff@npm:^6.1.1":
+  version: 6.1.1
+  resolution: "tiff@npm:6.1.1"
+  dependencies:
+    iobuffer: ^5.3.2
+    pako: ^2.1.0
+  checksum: f600d08b0321f87445f03df33e5ac3e687e83b9a6bee3b848d67dc994c395f68273767147c69883531a0f6a28456127fcd5499b488f98758e28d87fbc0d0d0e7
+  languageName: node
+  linkType: hard
+
 "tiny-invariant@npm:1.2.0":
   version: 1.2.0
   resolution: "tiny-invariant@npm:1.2.0"
@@ -17606,6 +17707,24 @@ __metadata:
   languageName: node
   linkType: hard
 
+"utif2@npm:^4.0.1, utif2@npm:^4.1.0":
+  version: 4.1.0
+  resolution: "utif2@npm:4.1.0"
+  dependencies:
+    pako: ^1.0.11
+  checksum: b8a7ba68c503c95dd3137eb20c677553dab7641f4539a75dacc2a94ad7e3d1b5b62b547daa559b07cbeb4b9e2f54c15130ced97667775e320bfdccfba9843edd
+  languageName: node
+  linkType: hard
+
+"utif@npm:^3.1.0":
+  version: 3.1.0
+  resolution: "utif@npm:3.1.0"
+  dependencies:
+    pako: ^1.0.5
+  checksum: 03abe9e04fa50588ae67077ced2e89c869c0c140442a0c5d8cfb559bf587a692a7c92187d49ab1c7e852eae78ff40a298b1325c2461ab7e51c4a0a6ae7ec74e3
+  languageName: node
+  linkType: hard
+
 "util-deprecate@npm:^1.0.2, util-deprecate@npm:~1.0.1":
   version: 1.0.2
   resolution: "util-deprecate@npm:1.0.2"
@@ -17947,6 +18066,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"web-worker@npm:^1.2.0":
+  version: 1.3.0
+  resolution: "web-worker@npm:1.3.0"
+  checksum: ed1f869aefd1d81a43d0fbfe7b315a65beb6d7d2486b378c436a7047eed4216be34b2e6afca738b6fa95d016326b765f5f816355db33267dbf43b2b8a1837c0c
+  languageName: node
+  linkType: hard
+
 "webgl-constants@npm:^1.1.1":
   version: 1.1.1
   resolution: "webgl-constants@npm:1.1.1"
@@ -18189,6 +18315,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"xml-utils@npm:^1.0.2":
+  version: 1.10.1
+  resolution: "xml-utils@npm:1.10.1"
+  checksum: 60a312734f93a98b9c6cc97a9f7d2a14b315ad1528e8c55f44c2d7d0af6eee61255d0aafd6589b41b72fe6e9f6e9727a51c4ab42cfa24f8616724c741cc151ef
+  languageName: node
+  linkType: hard
+
 "xmlchars@npm:^2.2.0":
   version: 2.2.0
   resolution: "xmlchars@npm:2.2.0"
@@ -18271,6 +18404,13 @@ __metadata:
   version: 0.1.0
   resolution: "yocto-queue@npm:0.1.0"
   checksum: f77b3d8d00310def622123df93d4ee654fc6a0096182af8bd60679ddcdfb3474c56c6c7190817c84a2785648cdee9d721c0154eb45698c62176c322fb46fc700
+  languageName: node
+  linkType: hard
+
+"zstddec@npm:^0.1.0":
+  version: 0.1.0
+  resolution: "zstddec@npm:0.1.0"
+  checksum: 76113b43ec4031f9a120285c830e43bafae4c25c0a72f7a9e228af815c3e52432a8414c5d4eb6cfd3282443a4a3d2bc18b445dd702e770b1e330b6e39081750f
   languageName: node
   linkType: hard
 

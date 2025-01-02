@@ -1,8 +1,8 @@
 import { COLOR_BY, get32BitColor } from "@fiftyone/utilities";
 import colorString from "color-string";
-import { ARRAY_TYPES } from "../../numpy";
 import type { DetectionLabel } from "../../overlays/detection";
 import { getHashLabel, shouldShowLabelTag } from "../../overlays/util";
+import { ARRAY_TYPES } from "../decoders/types";
 import type { Painter } from "./utils";
 import { requestColor } from "./utils";
 
@@ -75,7 +75,7 @@ const detection: Painter<DetectionLabel> = async ({
         const valueColor = setting?.valueColors?.find((l) => {
           if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
             return typeof label[key] === "string"
-              ? l.value?.toLowerCase === label[key]
+              ? l.value?.toLowerCase() === label[key]
               : !label[key];
           }
           if (["True", "False"].includes(l.value?.toString())) {
