@@ -38,7 +38,7 @@ def list_operators(enabled=True, builtin="all", type=None):
     Args:
         enabled (True): whether to include only enabled operators (True) or
             only disabled operators (False) or all operators ("all")
-        builtin (None): whether to include only builtin operators (True) or
+        builtin ("all"): whether to include only builtin operators (True) or
             only non-builtin operators (False) or all operators ("all")
         type (None): whether to include only ``"panel"`` or ``"operator"`` type
             operators
