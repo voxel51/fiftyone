@@ -69,11 +69,20 @@ export const decodeWithCanvas = async (blob: Blob) => {
 
   if (channels === 1) {
     // get rid of the G, B, and A channels, new buffer will be 1/4 the size
-    const data = new Uint8ClampedArray(width * height);
-    for (let i = 0; i < data.length; i++) {
-      data[i] = imageData.data[i * 4];
+    const rawBuffer = imageData.data;
+    const totalPixels = width * height;
+
+    let read = 0;
+    let write = 0;
+
+    while (write < totalPixels) {
+      rawBuffer[write++] = rawBuffer[read];
+      // skip "G,B,A"
+      read += 4;
     }
-    imageData.data.set(data);
+
+    const grayScaleData = rawBuffer.slice(0, totalPixels);
+    rawBuffer.set(grayScaleData);
   }
 
   return {
