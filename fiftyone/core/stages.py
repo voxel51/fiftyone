@@ -3021,6 +3021,7 @@ class _GeoStage(ViewStage):
         self._location_field = location_field
         self._location_key = None
         self._create_index = create_index
+        self._index_spec = None
 
     @property
     def location_field(self):
@@ -3047,7 +3048,7 @@ class _GeoStage(ViewStage):
 
         if self._create_index:
             # These operations require a spherical index
-            sample_collection.create_index([(self._location_key, "2dsphere")])
+            self._index_spec = [(self._location_key, "2dsphere")]
 
 
 class GeoNear(_GeoStage):
@@ -3177,7 +3178,11 @@ class GeoNear(_GeoStage):
         """A query dict specifying a match condition."""
         return self._query
 
-    def to_mongo(self, _, **__):
+    def to_mongo(self, sample_collection, **__):
+        if self._index_spec is not None:
+            sample_collection.create_index(self._index_spec)
+            self._index_spec = None
+
         distance_field = self._location_field + "._distance"
 
         geo_near_expr = {
@@ -3452,6 +3457,7 @@ class GroupBy(ViewStage):
         self._match_expr = match_expr
         self._sort_expr = sort_expr
         self._create_index = create_index
+        self._index_spec = None
         self._sort_stage = None
 
     @property
@@ -3502,6 +3508,10 @@ class GroupBy(ViewStage):
                 "`validate()` must be called before using a %s stage"
                 % self.__class__
             )
+
+        if self._index_spec is not None:
+            sample_collection.create_index(self._index_spec)
+            self._index_spec = None
 
         if self._flat:
             return self._make_flat_pipeline(sample_collection)
@@ -3734,13 +3744,11 @@ class GroupBy(ViewStage):
         elif not self._create_index:
             return
         elif etau.is_str(field_or_expr):
-            index_spec = field_or_expr.lstrip("$")
-            sample_collection.create_index(index_spec)
+            self._index_spec = field_or_expr.lstrip("$")
         elif isinstance(field_or_expr, (list, tuple)) and all(
             etau.is_str(f) for f in field_or_expr
         ):
-            index_spec = [(f.lstrip("$"), 1) for f in field_or_expr]
-            sample_collection.create_index(index_spec)
+            self._index_spec = [(f.lstrip("$"), 1) for f in field_or_expr]
 
 
 class Flatten(ViewStage):
@@ -7025,6 +7033,7 @@ class SortBy(ViewStage):
         self._field_or_expr = field_or_expr
         self._reverse = reverse
         self._create_index = create_index
+        self._index_spec = None
 
     @property
     def field_or_expr(self):
@@ -7042,6 +7051,10 @@ class SortBy(ViewStage):
         return self._create_index
 
     def to_mongo(self, sample_collection):
+        if self._index_spec is not None:
+            sample_collection.create_index(self._index_spec)
+            self._index_spec = None
+
         field_or_expr = self._get_mongo_field_or_expr()
 
         if not isinstance(field_or_expr, (list, tuple)):
@@ -7149,13 +7162,11 @@ class SortBy(ViewStage):
         field_or_expr = self._get_mongo_field_or_expr()
 
         if etau.is_str(field_or_expr):
-            index_spec = field_or_expr.lstrip("$")
-            sample_collection.create_index(index_spec)
+            self._index_spec = field_or_expr.lstrip("$")
         elif isinstance(field_or_expr, (list, tuple)) and all(
             etau.is_str(i[0]) for i in field_or_expr
         ):
-            index_spec = [(f.lstrip("$"), d) for f, d in field_or_expr]
-            sample_collection.create_index(index_spec)
+            self._index_spec = [(f.lstrip("$"), d) for f, d in field_or_expr]
 
 
 def _serialize_sort_expr(field_or_expr):
