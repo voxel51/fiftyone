@@ -263,6 +263,7 @@ export default class SegmentationOverlay<State extends BaseState>
 
   public cleanup(): void {
     this.label.mask?.bitmap?.close();
+    this.targets = null;
   }
 }
 
