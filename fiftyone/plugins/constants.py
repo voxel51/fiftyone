@@ -7,6 +7,6 @@ FiftyOne plugins constants.
 """
 import os
 
-BUILTIN_PLUGINS_DIR = os.path.join(
-    os.path.dirname(__file__), "..", "..", "plugins"
+BUILTIN_PLUGINS_DIR = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "plugins")
 )

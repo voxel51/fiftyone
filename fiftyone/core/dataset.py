@@ -1359,21 +1359,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return stats
 
     def _sample_collstats(self):
-        conn = foo.get_db_conn()
-        return conn.command(
-            "collstats",
-            self._sample_collection_name,
-        )
+        return _get_collstats(self._sample_collection)
 
     def _frame_collstats(self):
         if self._frame_collection_name is None:
             return None
 
-        conn = foo.get_db_conn()
-        return conn.command(
-            "collstats",
-            self._frame_collection_name,
-        )
+        return _get_collstats(self._frame_collection)
 
     def first(self):
         """Returns the first sample in the dataset.
@@ -8008,15 +8000,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_collection_name, write_concern=write_concern
         )
 
-    @property
-    def _frame_indexes(self):
-        frame_collection = self._frame_collection
-        if frame_collection is None:
-            return None
-
-        index_info = frame_collection.index_information()
-        return [k["key"][0][0] for k in index_info.values()]
-
     def _apply_sample_field_schema(self, schema):
         for field_name, field_or_str in schema.items():
             kwargs = foo.get_field_kwargs(field_or_str)
@@ -9342,6 +9325,14 @@ def _get_single_index_map(coll):
         for k, v in coll.index_information().items()
         if len(v["key"]) == 1
     }
+
+
+def _get_collstats(coll):
+    pipeline = [
+        {"$collStats": {"storageStats": {}}},
+        {"$replaceRoot": {"newRoot": "$storageStats"}},
+    ]
+    return next(coll.aggregate(pipeline))
 
 
 def _add_collection_with_new_ids(

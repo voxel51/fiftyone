@@ -1109,6 +1109,11 @@ class ExecutionContext(contextlib.AbstractContextManager):
         dataset_id = self.dataset._doc.id
         return ExecutionStore.create(store_name, dataset_id)
 
+    def _get_serialized_request_params(self):
+        request_params_copy = self.request_params.copy()
+        request_params_copy.get("params", {}).pop("panel_state", None)
+        return request_params_copy
+
     def serialize(self):
         """Serializes the execution context.
 

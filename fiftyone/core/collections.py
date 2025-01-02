@@ -10221,8 +10221,8 @@ class SampleCollection(object):
         details on the structure of this dictionary.
 
         Args:
-            include_stats (False): whether to include the size and build status
-                of each index
+            include_stats (False): whether to include the size, usage, and
+                build status of each index
 
         Returns:
             a dict mapping index names to info dicts
@@ -10242,6 +10242,13 @@ class SampleCollection(object):
             for key in cs.get("indexBuilds", []):
                 if key in sample_info:
                     sample_info[key]["in_progress"] = True
+
+            for d in self._dataset._sample_collection.aggregate(
+                [{"$indexStats": {}}]
+            ):
+                key = d["name"]
+                if key in sample_info:
+                    sample_info[key]["accesses"] = d["accesses"]
 
         for key, info in sample_info.items():
             if len(info["key"]) == 1:
@@ -10264,6 +10271,13 @@ class SampleCollection(object):
                 for key in cs.get("indexBuilds", []):
                     if key in frame_info:
                         frame_info[key]["in_progress"] = True
+
+                for d in self._dataset._frame_collection.aggregate(
+                    [{"$indexStats": {}}]
+                ):
+                    key = d["name"]
+                    if key in frame_info:
+                        frame_info[key]["accesses"] = d["accesses"]
 
             for key, info in frame_info.items():
                 if len(info["key"]) == 1:
