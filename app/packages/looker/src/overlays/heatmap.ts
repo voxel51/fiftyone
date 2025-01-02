@@ -208,6 +208,7 @@ export default class HeatmapOverlay<State extends BaseState>
 
   public cleanup(): void {
     this.label.map?.bitmap?.close();
+    this.targets = null;
   }
 }
 
