@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ClassificationsOverlay } from "../overlays";
+import { TemporalDetectionOverlay } from "../overlays/classifications";
 import DetectionOverlay from "../overlays/detection";
 import HeatmapOverlay from "../overlays/heatmap";
 import KeypointOverlay from "../overlays/keypoint";
@@ -58,6 +59,10 @@ describe("looker utilities", () => {
       retrieveArrayBuffers([
         new SegmentationOverlay("ground_truth", { id: "", tags: [] }),
       ])
+    ).toStrictEqual([]);
+
+    expect(
+      retrieveArrayBuffers([new TemporalDetectionOverlay([])])
     ).toStrictEqual([]);
   });
 });
