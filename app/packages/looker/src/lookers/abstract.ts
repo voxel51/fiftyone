@@ -23,10 +23,7 @@ import {
 import { Events } from "../elements/base";
 import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
-import { CONTAINS, LabelMask, Overlay } from "../overlays/base";
-import DetectionOverlay from "../overlays/detection";
-import HeatmapOverlay from "../overlays/heatmap";
-import SegmentationOverlay from "../overlays/segmentation";
+import { CONTAINS, Overlay } from "../overlays/base";
 import processOverlays from "../processOverlays";
 import {
   BaseState,
@@ -47,6 +44,7 @@ import {
 } from "../util";
 import { ProcessSample } from "../worker";
 import { LookerUtils } from "./shared";
+import { retrieveArrayBuffers } from "./utils";
 
 const LABEL_LISTS_PATH = new Set(withPath(LABELS_PATH, LABEL_LISTS));
 const LABEL_LIST_KEY = Object.fromEntries(
@@ -524,47 +522,7 @@ export abstract class AbstractLooker<
   abstract updateOptions(options: Partial<State["options"]>): void;
 
   updateSample(sample: Sample) {
-    // collect any mask targets array buffer that overlays might have
-    // we'll transfer that to the worker instead of copying it
-    const arrayBuffers: ArrayBuffer[] = [];
-
-    for (const overlay of this.sampleOverlays ?? []) {
-      let overlayData: LabelMask = null;
-
-      if (
-        overlay instanceof DetectionOverlay ||
-        overlay instanceof SegmentationOverlay
-      ) {
-        overlayData = overlay.label.mask;
-      } else if (overlay instanceof HeatmapOverlay) {
-        overlayData = overlay.label.map;
-      }
-
-      const buffer = overlayData?.data?.buffer;
-
-      if (!buffer) {
-        continue;
-      }
-
-      // check for detached buffer (happens if user is switching colors too fast)
-      // note: ArrayBuffer.prototype.detached is a new browser API
-      if (typeof buffer.detached !== "undefined") {
-        if (buffer.detached) {
-          // most likely sample is already being processed, skip update
-          return;
-        }
-
-        arrayBuffers.push(buffer);
-      } else if (buffer.byteLength) {
-        // hope we don't run into this edge case (old browser)
-        // sometimes detached buffers have bytelength > 0
-        // if we run into this case, we'll just attempt to transfer the buffer
-        // might get a DataCloneError if user is switching colors too fast
-        arrayBuffers.push(buffer);
-      }
-    }
-
-    this.loadSample(sample, arrayBuffers.flat());
+    this.loadSample(sample, retrieveArrayBuffers(this.sampleOverlays));
   }
 
   getSample(): Promise<Sample> {
