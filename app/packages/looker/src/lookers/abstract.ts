@@ -528,7 +528,7 @@ export abstract class AbstractLooker<
     // we'll transfer that to the worker instead of copying it
     const arrayBuffers: ArrayBuffer[] = [];
 
-    for (const overlay of this.pluckedOverlays ?? []) {
+    for (const overlay of this.sampleOverlays ?? []) {
       let overlayData: LabelMask = null;
 
       if (
