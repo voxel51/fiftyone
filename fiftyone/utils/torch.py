@@ -1448,6 +1448,32 @@ def recommend_num_workers():
         return 4
 
 
+def get_prefetch_buffer_size(batch_size, num_workers, data_loader):
+    """Prefetch buffer size when running a MultiProcess Dataloader.
+    This is necessary because pytorch's multiprocess dataloader
+    will prefetch and process batches in advance.
+    :class:`torch:torch.utils.data._MultiProcessingDataLoaderIter`.
+
+    Args:
+        batch_size: number of items to return in a given batch
+            this should be the same as the dataloader batch size.
+        num_workers: number of workers in the dataloader.
+        data_loader: the torch dataloader instance.
+
+    Returns:
+        the recommended prefetch buffer size
+        num_workers * batch_size * prefetch_factor (default 2)
+    """
+    batch_size = batch_size if batch_size else 1
+    num_workers = num_workers if num_workers else recommend_num_workers()
+    prefetch_factor = (
+        getattr(data_loader, "prefetch_factor", None) or 0
+        if data_loader
+        else 0
+    )
+    return batch_size * num_workers * prefetch_factor
+
+
 def _to_bytes_array(strs):
     # Variation of idea below that handles non-ASCII strings
     # https://github.com/pytorch/pytorch/issues/13246#issuecomment-715050814

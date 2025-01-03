@@ -12,7 +12,6 @@ from datetime import datetime
 import fnmatch
 import itertools
 import logging
-import numbers
 import os
 import random
 import string
@@ -116,6 +115,10 @@ class DownloadContext(object):
             of any downloads (True/False), use the default value
             ``fiftyone.config.show_progress_bars`` (None), or a progress
             callback function to invoke instead
+        prefetch_buffer_size (0): the number of samples to prefetch in
+            advance. This is necessary when running pytorch in multiprocessing
+            mode because it will pull and process batches in advance that need
+            to be downloaded otherwise you will receive exceptions.
     """
 
     def __init__(
@@ -130,6 +133,7 @@ class DownloadContext(object):
         skip_failures=True,
         clear=False,
         progress=None,
+        prefetch_buffer_size=0,
         **kwargs,
     ):
         if batch_size is None and target_size_bytes is None:
@@ -148,13 +152,14 @@ class DownloadContext(object):
         self.skip_failures = skip_failures
         self.clear = clear
         self.progress = progress
+        self.prefetch_buffer_size = prefetch_buffer_size
 
         self._filepaths = None
-        self._offset = None
         self._batch_sizes = None
         self._iter_batch_sizes = None
-        self._last_batch_size = None
-        self._curr_count = None
+        self._total_loaded = 0
+        self._curr_count = 0
+        self._downloading_complete = False
 
     def __enter__(self):
         self.sample_collection._download_context = self
@@ -186,12 +191,13 @@ class DownloadContext(object):
         else:
             batch_sizes = itertools.repeat(self.batch_size)
 
-        self._offset = 0
         self._batch_sizes = batch_sizes
         self._iter_batch_sizes = iter(batch_sizes)
-        self._last_batch_size = 0
+        self._total_loaded = 0
         self._curr_count = 0
-
+        self._downloading_complete = False
+        if self.prefetch_buffer_size > 0:
+            self._batch_until_target(self.prefetch_buffer_size)
         return self
 
     def __exit__(self, *args):
@@ -204,32 +210,33 @@ class DownloadContext(object):
             self._clear_media()
 
     def next(self):
+        self._batch_until_target(self._curr_count + self.prefetch_buffer_size)
+        self._curr_count += 1
+
+    def _batch_until_target(self, target):
         if self._batch_sizes is None:
             return
 
-        if self._curr_count >= self._last_batch_size:
+        while target >= self._total_loaded and not self._downloading_complete:
             batch_size = next(self._iter_batch_sizes, None)
+
             if batch_size is None:
+                self._downloading_complete = True
                 return
 
-            self._download_batch(batch_size)
-            self._last_batch_size = batch_size
-            self._curr_count = 0
-
-        self._curr_count += 1
-        self._offset += 1
+            self._downloading_complete = self._download_batch(batch_size)
 
     def _download_batch(self, batch_size):
-        i = self._offset or 0
-        j = i + batch_size if batch_size is not None else None
+        start = self._total_loaded or 0
+        end = start + batch_size if batch_size is not None else None
         filepaths = [
             f
-            for f in itertools.chain.from_iterable(self._filepaths[i:j])
+            for f in itertools.chain.from_iterable(self._filepaths[start:end])
             if f is not None
         ]
 
         if not filepaths:
-            return
+            return True
 
         if self.update:
             foc.media_cache.update(
@@ -244,6 +251,8 @@ class DownloadContext(object):
                 skip_failures=self.skip_failures,
                 progress=self.progress,
             )
+        self._total_loaded += len(filepaths)
+        return False
 
     def _clear_media(self):
         filepaths = itertools.chain.from_iterable(self._filepaths)
@@ -1448,6 +1457,7 @@ class SampleCollection(object):
         skip_failures=True,
         clear=False,
         progress=None,
+        prefetch_buffer_size=0,
     ):
         """Returns a context that can be used to pre-download media in batches
         when iterating over samples in this collection.
@@ -1507,6 +1517,10 @@ class SampleCollection(object):
                 progress of any downloads (True/False), use the default value
                 ``fiftyone.config.show_progress_bars`` (None), or a progress
                 callback function to invoke instead
+            prefetch_buffer_size (0): the number of samples to prefetch in
+                advance. This is necessary when running pytorch in multiprocessing
+                mode because it will pull and process batches in advance that need
+                to be downloaded otherwise you will receive exceptions.
 
         Returns:
             a :class:`DownloadContext`
@@ -1522,6 +1536,7 @@ class SampleCollection(object):
             skip_failures=skip_failures,
             clear=clear,
             progress=progress,
+            prefetch_buffer_size=prefetch_buffer_size,
         )
 
     @requires_can_edit
