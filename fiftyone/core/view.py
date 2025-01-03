@@ -1346,8 +1346,8 @@ class DatasetView(foc.SampleCollection):
         self._dataset._keep_fields(view=self)
 
     def keep_frames(self):
-        """For each sample in the view, deletes all frames labels that are
-        **not** in the view from the underlying dataset.
+        """For each sample in the view, deletes all frames that are **not** in
+        the view from the underlying dataset.
 
         .. note::
 

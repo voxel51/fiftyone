@@ -11,6 +11,7 @@ from bson import ObjectId
 
 import eta.core.utils as etau
 
+import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
@@ -35,10 +36,13 @@ class MaterializedSampleView(fos.SampleView):
     """
 
     def _save(self, deferred=False):
-        sample_ops, frame_ops = super()._save(deferred=deferred)
+        sample_ops, frame_ops = super()._save(deferred=True)
 
         if not deferred:
-            self._view._sync_source_sample(self)
+            self._view._save_sample(
+                self, sample_ops=sample_ops, frame_ops=frame_ops
+            )
+            return None, []
 
         return sample_ops, frame_ops
 
@@ -151,22 +155,20 @@ class MaterializedView(fov.DatasetView):
     def _set_media_type(self, media_type):
         self.__media_type = media_type
 
-    def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
-        ids, label_ids = super()._tag_labels(
-            tags, label_field, ids=ids, label_ids=label_ids
+    def _edit_sample_tags(self, update, ids=None):
+        ids = super()._edit_sample_tags(update, ids=ids)
+
+        self._source_collection._edit_sample_tags(update, ids=ids)
+
+    def _edit_label_tags(
+        self, update_fcn, label_field, ids=None, label_ids=None
+    ):
+        ids, label_ids = super()._edit_label_tags(
+            update_fcn, label_field, ids=ids, label_ids=label_ids
         )
 
-        self._source_collection._tag_labels(
-            tags, label_field, ids=ids, label_ids=label_ids
-        )
-
-    def _untag_labels(self, tags, label_field, ids=None, label_ids=None):
-        ids, label_ids = super()._untag_labels(
-            tags, label_field, ids=ids, label_ids=label_ids
-        )
-
-        self._source_collection._untag_labels(
-            tags, label_field, ids=ids, label_ids=label_ids
+        self._source_collection._edit_label_tags(
+            update_fcn, label_field, ids=ids, label_ids=label_ids
         )
 
     def set_values(self, field_name, *args, **kwargs):
@@ -244,6 +246,20 @@ class MaterializedView(fov.DatasetView):
 
         super().keep_fields()
 
+    def keep_frames(self):
+        """For each sample in the view, deletes all frames that are **not** in
+        the view from the underlying dataset.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+        """
+        self._sync_source_keep_frames()
+
+        super().keep_frames()
+
     def reload(self):
         """Reloads the view.
 
@@ -275,15 +291,88 @@ class MaterializedView(fov.DatasetView):
 
         self._source_collection._delete_labels(ids, fields=fields)
 
-    def _sync_source_sample(self, sample):
+    def _bulk_write(
+        self,
+        ops,
+        ids=None,
+        sample_ids=None,
+        frames=False,
+        ordered=False,
+        batcher=None,
+        progress=False,
+    ):
+        res = self._materialized_dataset._bulk_write(
+            ops,
+            ids=ids,
+            sample_ids=sample_ids,
+            frames=frames,
+            ordered=ordered,
+            batcher=batcher,
+            progress=progress,
+        )
+
         self._sync_source_schema()
 
-        dst_dataset = self._source_collection._root_dataset
+        self._source_collection._bulk_write(
+            ops,
+            ids=ids,
+            sample_ids=sample_ids,
+            frames=frames,
+            ordered=ordered,
+            batcher=batcher,
+            progress=progress,
+        )
 
-        match = {"_id": sample._id}
-        updates = sample.to_mongo_dict()
+        return res
 
-        dst_dataset._sample_collection.update_one(match, {"$set": updates})
+    def _save_sample(self, sample, sample_ops=None, frame_ops=None):
+        if sample_ops:
+            foo.bulk_write(
+                sample_ops, self._materialized_dataset._sample_collection
+            )
+
+        if frame_ops:
+            foo.bulk_write(
+                frame_ops, self._materialized_dataset._frame_collection
+            )
+
+        self._sync_source_sample(
+            sample, sample_ops=sample_ops, frame_ops=frame_ops
+        )
+
+    def _sync_source_sample(self, sample, sample_ops=None, frame_ops=None):
+        self._sync_source_schema()
+
+        if sample_ops is None and frame_ops is None:
+            dst_dataset = self._source_collection._root_dataset
+
+            match = {"_id": sample._id}
+            updates = sample.to_mongo_dict()
+            dst_dataset._sample_collection.update_one(match, {"$set": updates})
+
+            if sample.media_type == fom.VIDEO:
+                src_coll = self._materialized_dataset._frame_collection
+                dst_coll_name = dst_dataset._frame_collection_name
+                pipeline = [
+                    {"$match": {"_sample_id": sample._id}},
+                    {
+                        "$merge": {
+                            "into": dst_coll_name,
+                            "whenMatched": "replace",
+                        }
+                    },
+                ]
+                foo.aggregate(src_coll, pipeline)
+        else:
+            if sample_ops:
+                self._source_collection._bulk_write(
+                    sample_ops, ids=[sample.id]
+                )
+
+            if frame_ops:
+                self._source_collection._bulk_write(
+                    frame_ops, sample_ids=[sample.id], frames=True
+                )
 
     def _sync_source(self, fields=None, ids=None, update=True, delete=False):
         has_frame_fields = self._has_frame_fields()
@@ -365,8 +454,9 @@ class MaterializedView(fov.DatasetView):
                 )
 
         if delete:
-            sample_ids = self._materialized_dataset.exclude(self).values("id")
-            dst_dataset._clear(sample_ids=sample_ids)
+            # It's okay to pass a materialized view to `dst_dataset` because
+            # they share sample IDs
+            dst_dataset._keep(view=self)
 
     def _sync_source_field_schema(self, path):
         field = self.get_field(path)
@@ -488,6 +578,12 @@ class MaterializedView(fov.DatasetView):
         del_fields = set(src_schema.keys()) - set(schema.keys())
         if del_fields:
             self._source_collection.exclude_fields(del_fields).keep_fields()
+
+    def _sync_source_keep_frames(self):
+        # It's okay to pass a materialized view to `dst_dataset` because they
+        # share sample IDs and frame numbers
+        dst_dataset = self._source_collection._dataset
+        dst_dataset._keep_frames(view=self)
 
 
 def materialize_view(sample_collection, name=None, persistent=False):

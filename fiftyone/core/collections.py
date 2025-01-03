@@ -115,14 +115,9 @@ class SaveContext(object):
         self.batch_size = batch_size
 
         self._dataset = sample_collection._dataset
-        self._sample_coll = sample_collection._dataset._sample_collection
-        self._frame_coll = sample_collection._dataset._frame_collection
-        self._is_generated = sample_collection._is_generated
-
         self._sample_ops = []
         self._frame_ops = []
         self._batch_ids = []
-        self._reload_parents = []
 
         self._batching_strategy = batching_strategy
         self._curr_batch_size = None
@@ -157,7 +152,6 @@ class SaveContext(object):
             )
 
         sample_ops, frame_ops = sample._save(deferred=True)
-        updated = sample_ops or frame_ops
 
         if sample_ops:
             self._sample_ops.extend(sample_ops)
@@ -165,11 +159,8 @@ class SaveContext(object):
         if frame_ops:
             self._frame_ops.extend(frame_ops)
 
-        if updated and self._is_generated:
+        if sample_ops or frame_ops:
             self._batch_ids.append(sample.id)
-
-        if updated and isinstance(sample, fosa.SampleView):
-            self._reload_parents.append(sample)
 
         if self._batching_strategy == "static":
             self._curr_batch_size += 1
@@ -200,10 +191,11 @@ class SaveContext(object):
 
     def _save_batch(self):
         encoded_size = -1
+
         if self._sample_ops:
-            res = foo.bulk_write(
+            res = self.sample_collection._bulk_write(
                 self._sample_ops,
-                self._sample_coll,
+                ids=self._batch_ids,
                 ordered=False,
                 batcher=False,
             )[0]
@@ -211,27 +203,23 @@ class SaveContext(object):
             self._sample_ops.clear()
 
         if self._frame_ops:
-            res = foo.bulk_write(
-                self._frame_ops, self._frame_coll, ordered=False, batcher=False
-            )[0]
+            res = self.sample_collection._bulk_write(
+                self._frame_ops,
+                sample_ids=self._batch_ids,
+                frames=True,
+                ordered=False,
+                batcher=False,
+            )
             encoded_size += res.bulk_api_result.get("nBytes", 0)
             self._frame_ops.clear()
+
+        self._batch_ids.clear()
 
         self._encoding_ratio = (
             self._curr_batch_size_bytes / encoded_size
             if encoded_size > 0 and self._curr_batch_size_bytes
             else 1.0
         )
-
-        if self._batch_ids and self._is_generated:
-            self.sample_collection._sync_source(ids=self._batch_ids)
-            self._batch_ids.clear()
-
-        if self._reload_parents:
-            for sample in self._reload_parents:
-                sample._reload_parents()
-
-            self._reload_parents.clear()
 
 
 class SampleCollection(object):
@@ -1964,9 +1952,14 @@ class SampleCollection(object):
         view = self.match_tags(tags)
         view._edit_sample_tags(update)
 
-    def _edit_sample_tags(self, update):
+    def _edit_sample_tags(self, update, ids=None):
         if self._is_read_only_field("tags"):
             raise ValueError("Cannot edit read-only field 'tags'")
+
+        if ids is None:
+            _ids = self.values("_id")
+        else:
+            _ids = [ObjectId(_id) for _id in ids]
 
         update["$set"] = {"last_modified_at": datetime.utcnow()}
 
@@ -1975,12 +1968,14 @@ class SampleCollection(object):
         batch_size = fou.recommend_batch_size_for_value(
             ObjectId(), max_size=100000
         )
-        for _ids in fou.iter_batches(self.values("_id"), batch_size):
-            ids.extend(_ids)
-            ops.append(UpdateMany({"_id": {"$in": _ids}}, update))
+        for _batch_ids in fou.iter_batches(_ids, batch_size):
+            ids.extend(_batch_ids)
+            ops.append(UpdateMany({"_id": {"$in": _batch_ids}}, update))
 
         if ops:
             self._dataset._bulk_write(ops, ids=ids)
+
+        return ids
 
     def count_sample_tags(self):
         """Counts the occurrences of sample tags in this collection.
@@ -2114,8 +2109,8 @@ class SampleCollection(object):
             if ids is None or label_ids is None:
                 if is_frame_field:
                     ids, label_ids = self.values(["frames._id", id_path])
-                    ids = itertools.chain.from_iterable(ids)
-                    label_ids = itertools.chain.from_iterable(label_ids)
+                    ids = list(itertools.chain.from_iterable(ids))
+                    label_ids = list(itertools.chain.from_iterable(label_ids))
                 else:
                     ids, label_ids = self.values(["_id", id_path])
 
@@ -3473,6 +3468,26 @@ class SampleCollection(object):
             results.append([d.get(v, None) for v in in_values])
 
         return tuple(results) if len(results) > 1 else results[0]
+
+    def _bulk_write(
+        self,
+        ops,
+        ids=None,
+        sample_ids=None,
+        frames=False,
+        ordered=False,
+        batcher=None,
+        progress=False,
+    ):
+        return self._dataset._bulk_write(
+            ops,
+            ids=ids,
+            sample_ids=sample_ids,
+            frames=frames,
+            ordered=ordered,
+            batcher=batcher,
+            progress=progress,
+        )
 
     def compute_metadata(
         self,
