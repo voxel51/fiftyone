@@ -21,7 +21,15 @@ import {
   renderSegmentationMask,
 } from "./painter-gpu";
 
-const pipeline = initSegmentationPipeline(getColorForCategoryTesting);
+const pipeline = (() => {
+  // if OffscreenCanvas is not supported,
+  // means we're in testing env (or old browsers, but we don't support those)
+  if (!("OffscreenCanvas" in self)) {
+    return null;
+  }
+
+  return initSegmentationPipeline(getColorForCategoryTesting);
+})();
 
 export const PainterFactory = (requestColor) => ({
   Detection: async (
