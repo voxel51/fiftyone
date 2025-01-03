@@ -11,7 +11,7 @@ import logging
 import os
 
 from bson import ObjectId
-from pymongo import UpdateOne
+from pymongo import UpdateOne, UpdateMany
 
 import eta.core.utils as etau
 
@@ -54,10 +54,13 @@ class FrameView(fos.SampleView):
         return ObjectId(self._doc.sample_id)
 
     def _save(self, deferred=False):
-        sample_ops, frame_ops = super()._save(deferred=deferred)
+        sample_ops, frame_ops = super()._save(deferred=True)
 
         if not deferred:
-            self._view._sync_source_sample(self)
+            self._view._save_sample(
+                self, sample_ops=sample_ops, frame_ops=frame_ops
+            )
+            return None, []
 
         return sample_ops, frame_ops
 
@@ -327,29 +330,98 @@ class FramesView(fov.DatasetView):
 
         self._source_collection._delete_labels(ids, fields=frame_fields)
 
-    def _sync_source_sample(self, sample):
-        self._sync_source_schema()
-
-        dst_dataset = self._source_collection._root_dataset
+    def _prune_sample_only_field_updates(self, ops):
         sample_only_fields = self._get_sample_only_fields(
             include_private=True, use_db_fields=True
         )
 
-        updates = {
-            k: v
-            for k, v in sample.to_mongo_dict().items()
-            if k not in sample_only_fields
-        }
+        for op in ops:
+            if isinstance(op, (UpdateOne, UpdateMany)):
+                sets = op._doc.get("$set", None)
+                if sets:
+                    for f in sample_only_fields:
+                        sets.pop(f, None)
 
-        if not updates:
-            return
+                unsets = op._doc.get("$unset", None)
+                if unsets:
+                    for f in sample_only_fields:
+                        unsets.pop(f, None)
 
-        match = {
-            "_sample_id": sample._sample_id,
-            "frame_number": sample.frame_number,
-        }
+    def _bulk_write(
+        self,
+        ops,
+        ids=None,
+        sample_ids=None,
+        frames=False,
+        ordered=False,
+        batcher=None,
+        progress=False,
+    ):
+        res = self._frames_dataset._bulk_write(
+            ops,
+            ids=ids,
+            sample_ids=sample_ids,
+            frames=frames,
+            ordered=ordered,
+            batcher=batcher,
+            progress=progress,
+        )
 
-        dst_dataset._frame_collection.update_one(match, {"$set": updates})
+        self._sync_source_schema()
+        self._prune_sample_only_field_updates(ops)
+
+        self._source_collection._bulk_write(
+            ops,
+            ids=ids,
+            sample_ids=sample_ids,
+            frames=True,
+            ordered=ordered,
+            batcher=batcher,
+            progress=progress,
+        )
+
+        return res
+
+    def _save_sample(self, sample, sample_ops=None, frame_ops=None):
+        if sample_ops:
+            foo.bulk_write(sample_ops, self._frames_dataset._sample_collection)
+
+        self._sync_source_sample(
+            sample, sample_ops=sample_ops, frame_ops=frame_ops
+        )
+
+    def _sync_source_sample(self, sample, sample_ops=None, frame_ops=None):
+        self._sync_source_schema()
+
+        if sample_ops is None:
+            dst_dataset = self._source_collection._root_dataset
+            sample_only_fields = self._get_sample_only_fields(
+                include_private=True, use_db_fields=True
+            )
+
+            updates = {
+                k: v
+                for k, v in sample.to_mongo_dict().items()
+                if k not in sample_only_fields
+            }
+
+            if not updates:
+                return
+
+            match = {
+                "_sample_id": sample._sample_id,
+                "frame_number": sample.frame_number,
+            }
+
+            dst_dataset._frame_collection.update_one(match, {"$set": updates})
+        else:
+            self._prune_sample_only_field_updates(sample_ops)
+
+            self._source_collection._bulk_write(
+                sample_ops,
+                sample_ids=[sample.id],
+                frames=True,
+            )
 
     def _sync_source(self, fields=None, ids=None, update=True, delete=False):
         dst_dataset = self._source_collection._root_dataset
