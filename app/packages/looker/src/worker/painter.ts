@@ -15,6 +15,10 @@ import {
   MaskTargets,
   RgbMaskTargets,
 } from "../state";
+import {
+  getColorForCategoryTESTING,
+  renderSegmentationMask,
+} from "./painter-gpu";
 
 export const PainterFactory = (requestColor) => ({
   Detection: async (
@@ -319,76 +323,82 @@ export const PainterFactory = (requestColor) => ({
       // discard the buffer values of other channels
       maskData.buffer = maskData.buffer.slice(0, overlay.length);
     } else {
-      const cache = {};
-
-      let color;
-      const setting = customizeColorSetting.find((x) => x.path === field);
-      if (
-        coloring.by === COLOR_BY.FIELD ||
-        (maskTargets && Object.keys(maskTargets).length === 1)
-      ) {
-        let fieldColor;
-
-        // if field color has valid custom settings, use the custom field color
-        // convert the color into hex code, since it could be a color name (e.g. yellowgreen)
-        fieldColor = setting?.fieldColor
-          ? setting.fieldColor
-          : await requestColor(coloring.pool, coloring.seed, field);
-        color = get32BitColor(convertToHex(fieldColor));
-      }
-
-      const getColor = (i: number) => {
-        if (!(i in cache)) {
-          cache[i] = get32BitColor(
-            convertToHex(
-              coloring.targets[
-                Math.round(Math.abs(i)) % coloring.targets.length
-              ]
-            )
-          );
-        }
-
-        return cache[i];
-      };
-
-      // convert the defaultMaskTargetsColors and fields maskTargetsColors into objects to improve performance
-      const defaultSetting = convertMaskColorsToObject(
-        coloring.defaultMaskTargetsColors
+      const gpuResult = renderSegmentationMask(
+        maskData,
+        getColorForCategoryTESTING
       );
-      const fieldSetting = convertMaskColorsToObject(
-        setting?.maskTargetsColors
-      );
+      overlay.set(new Uint32Array(gpuResult.buffer));
 
-      // these for loops must be fast. no "in" or "of" syntax
-      for (let i = 0; i < overlay.length; i++) {
-        if (targets[i] !== 0) {
-          if (
-            !(targets[i] in maskTargets) &&
-            !isMaskTargetsEmpty &&
-            !isRgbMaskTargets_
-          ) {
-            targets[i] = 0;
-          } else {
-            if (coloring.by == COLOR_BY.VALUE) {
-              // Attempt to find a color in the fields mask target color settings
-              // If not found, attempt to find a color in the default mask target colors.
+      // const cache = {};
 
-              const target = targets[i].toString();
-              const customColor =
-                fieldSetting?.[target] || defaultSetting?.[target];
+      // let color;
+      // const setting = customizeColorSetting.find((x) => x.path === field);
+      // if (
+      //   coloring.by === COLOR_BY.FIELD ||
+      //   (maskTargets && Object.keys(maskTargets).length === 1)
+      // ) {
+      //   let fieldColor;
 
-              // If a customized color setting is found, get the 32-bit color representation.
-              if (customColor) {
-                color = get32BitColor(convertToHex(customColor));
-              } else {
-                color = getColor(targets[i]);
-              }
-            }
+      //   // if field color has valid custom settings, use the custom field color
+      //   // convert the color into hex code, since it could be a color name (e.g. yellowgreen)
+      //   fieldColor = setting?.fieldColor
+      //     ? setting.fieldColor
+      //     : await requestColor(coloring.pool, coloring.seed, field);
+      //   color = get32BitColor(convertToHex(fieldColor));
+      // }
 
-            overlay[i] = color ? color : getColor(targets[i]);
-          }
-        }
-      }
+      // const getColor = (i: number) => {
+      //   if (!(i in cache)) {
+      //     cache[i] = get32BitColor(
+      //       convertToHex(
+      //         coloring.targets[
+      //           Math.round(Math.abs(i)) % coloring.targets.length
+      //         ]
+      //       )
+      //     );
+      //   }
+
+      //   return cache[i];
+      // };
+
+      // // convert the defaultMaskTargetsColors and fields maskTargetsColors into objects to improve performance
+      // const defaultSetting = convertMaskColorsToObject(
+      //   coloring.defaultMaskTargetsColors
+      // );
+      // const fieldSetting = convertMaskColorsToObject(
+      //   setting?.maskTargetsColors
+      // );
+
+      // // these for loops must be fast. no "in" or "of" syntax
+      // for (let i = 0; i < overlay.length; i++) {
+      //   if (targets[i] !== 0) {
+      //     if (
+      //       !(targets[i] in maskTargets) &&
+      //       !isMaskTargetsEmpty &&
+      //       !isRgbMaskTargets_
+      //     ) {
+      //       targets[i] = 0;
+      //     } else {
+      //       if (coloring.by == COLOR_BY.VALUE) {
+      //         // Attempt to find a color in the fields mask target color settings
+      //         // If not found, attempt to find a color in the default mask target colors.
+
+      //         const target = targets[i].toString();
+      //         const customColor =
+      //           fieldSetting?.[target] || defaultSetting?.[target];
+
+      //         // If a customized color setting is found, get the 32-bit color representation.
+      //         if (customColor) {
+      //           color = get32BitColor(convertToHex(customColor));
+      //         } else {
+      //           color = getColor(targets[i]);
+      //         }
+      //       }
+
+      //       overlay[i] = color ? color : getColor(targets[i]);
+      //     }
+      //   }
+      // }
     }
   },
 });
