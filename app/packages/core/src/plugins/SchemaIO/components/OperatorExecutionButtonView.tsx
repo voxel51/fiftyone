@@ -8,12 +8,17 @@ import { getColorByCode, getComponentProps, getDisabledColors } from "../utils";
 import { ViewPropsType } from "../utils/types";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import TooltipProvider from "./TooltipProvider";
-import { OperatorExecutionOption } from "@fiftyone/operators/src/state";
+import {
+  OperatorExecutionOption,
+  operatorPromptCloseState,
+} from "@fiftyone/operators/src/state";
 import {
   ExecutionCallback,
   ExecutionErrorCallback,
 } from "@fiftyone/operators/src/types-internal";
 import { OperatorResult } from "@fiftyone/operators/src/operators";
+import { useEffect } from "react";
+import { useRecoilValue } from "recoil";
 
 export default function OperatorExecutionButtonView(props: ViewPropsType) {
   const { schema, path } = props;
@@ -25,11 +30,13 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
     label,
     operator,
     params = {},
+    prompt,
     title,
     disabled = false,
     on_error,
     on_success,
     on_option_selected,
+    on_close,
   } = view;
   const panelId = usePanelId();
   const variant = getVariant(props);
@@ -82,9 +89,20 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
         params: {
           selected_option: option,
         },
+        prompt,
       });
     }
   };
+
+  const closeState = useRecoilValue(operatorPromptCloseState);
+
+  useEffect(() => {
+    if (on_close) {
+      triggerEvent(panelId, {
+        operator: on_close,
+      });
+    }
+  }, [closeState]);
 
   return (
     <Box {...getComponentProps(props, "container")}>
