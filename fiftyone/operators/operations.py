@@ -680,6 +680,18 @@ class Operations(object):
         """Closes the App's sample modal."""
         return self._ctx.trigger("close_sample")
 
+    def show_sidebar(self):
+        """Show the App's sidebar."""
+        return self._ctx.trigger("show_sidebar")
+
+    def hide_sidebar(self):
+        """Hide the App's sidebar."""
+        return self._ctx.trigger("hide_sidebar")
+
+    def toggle_sidebar(self):
+        """Toggle the visibility of the App's sidebar."""
+        return self._ctx.trigger("toggle_sidebar")
+
 
 def _serialize_view(view):
     return json.loads(json_util.dumps(view._serialize()))

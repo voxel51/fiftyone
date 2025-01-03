@@ -444,7 +444,11 @@ more details:
     :meth:`Dataset.classes <fiftyone.core.dataset.Dataset.classes>` or
     :meth:`Dataset.default_classes <fiftyone.core.dataset.Dataset.default_classes>`
 -   **mask_targets** (*None*): a dict mapping pixel values to semantic label
-    strings. Only applicable when annotating semantic segmentations
+    strings. Only applicable when annotating semantic segmentations. All new
+    label fields must have mask targets provided via one of the supported
+    methods. For existing label fields, if mask targets are not provided by
+    this argument nor `label_schema`, any applicable mask targets stored on
+    your dataset will be used, if available
 
 |br|
 In addition, the following Label Studio-specific parameters from
@@ -519,11 +523,8 @@ FiftyOne can infer the appropriate values to use:
 
 -   **label_type**: if omitted, the |Label| type of the field will be used to
     infer the appropriate value for this parameter
--   **classes**: if omitted for a non-semantic segmentation field, the class
-    lists from the :meth:`classes <fiftyone.core.dataset.Dataset.classes>` or
-    :meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
-    properties of your dataset will be used, if available. Otherwise, the
-    observed labels on your dataset will be used to construct a classes list
+-   **classes**: if omitted, the observed labels on your dataset will be used
+    to construct a classes list
 -   **mask_targets**: if omitted for a semantic segmentation field, the mask
     targets from the
     :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` or

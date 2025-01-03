@@ -1,0 +1,39 @@
+name: "@voxel51/operators"
+description: Core FiftyOne operators
+version: 1.0.0
+fiftyone:
+  version: "*"
+url: https://github.com/voxel51/fiftyone/plugins/operators
+operators:
+  - edit_field_info
+  - clone_selected_samples
+  - clone_sample_field
+  - clone_frame_field
+  - rename_sample_field
+  - rename_frame_field
+  - clear_sample_field
+  - clear_frame_field
+  - delete_selected_samples
+  - delete_selected_labels
+  - delete_sample_field
+  - delete_frame_field
+  - create_index
+  - drop_index
+  - create_summary_field
+  - update_summary_field
+  - delete_summary_field
+  - add_group_slice
+  - rename_group_slice
+  - delete_group_slice
+  - list_saved_views
+  - load_saved_view
+  - save_view
+  - edit_saved_view_info
+  - delete_saved_view
+  - list_workspaces
+  - load_workspace
+  - save_workspace
+  - edit_workspace_info
+  - delete_workspace
+  - sync_last_modified_at
+  - list_files

@@ -10,7 +10,7 @@ from fiftyone.operators.executor import (
     ExecutionContext,
 )
 from fiftyone.operators import OperatorConfig
-import fiftyone.operators.builtin as builtin
+import fiftyone.operators.registry as registry
 
 
 ECHO_URI = "@voxel51/operators/echo"
@@ -31,7 +31,7 @@ class EchoOperator(Operator):
 
 
 # Force registration of the operator for testing
-builtin.BUILTIN_OPERATORS.append(EchoOperator(_builtin=True))
+registry._EXTRA_OPERATORS.append(EchoOperator(_builtin=True))
 
 
 @pytest.mark.asyncio
