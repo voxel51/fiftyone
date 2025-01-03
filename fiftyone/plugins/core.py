@@ -22,10 +22,11 @@ import eta.core.web as etaw
 import fiftyone as fo
 import fiftyone.constants as foc
 from fiftyone.core.config import locate_app_config
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 from fiftyone.plugins.definitions import PluginDefinition
 from fiftyone.utils.github import GitHubRepository
-
+import fiftyone.plugins.constants as fpc
 
 PLUGIN_METADATA_FILENAMES = ("fiftyone.yml", "fiftyone.yaml")
 
@@ -48,12 +49,14 @@ class PluginPackage:
         return f"Plugin(name={self.name}, path={self.path})"
 
 
-def list_plugins(enabled=True):
-    """Returns the definitions of downloaded plugins.
+def list_plugins(enabled=True, builtin=False):
+    """Returns the definitions of available plugins.
 
     Args:
         enabled (True): whether to include only enabled plugins (True) or only
             disabled plugins (False) or all plugins ("all")
+        builtin (False): whether to include only builtin plugins (True) or only
+            non-builtin plugins (False) or all plugins ("all")
 
     Returns:
         a list of :class:`PluginDefinition` instances
@@ -61,8 +64,11 @@ def list_plugins(enabled=True):
     if enabled == "all":
         enabled = None
 
+    if builtin == "all":
+        builtin = None
+
     plugins = []
-    for p in _list_plugins(enabled=enabled):
+    for p in _list_plugins(enabled=enabled, builtin=builtin):
         try:
             plugins.append(_load_plugin_definition(p))
         except:
@@ -71,21 +77,47 @@ def list_plugins(enabled=True):
     return plugins
 
 
-def enable_plugin(plugin_name):
+def enable_plugin(plugin_name, _allow_missing=False):
     """Enables the given plugin.
 
     Args:
         plugin_name: the plugin name
     """
+    try:
+        plugin = get_plugin(plugin_name)
+    except ValueError:
+        if not _allow_missing:
+            raise
+
+        plugin = None
+
+    if plugin is not None and plugin.builtin:
+        raise ValueError(
+            f"Cannot change enablement of builtin plugin '{plugin_name}'"
+        )
+
     _update_plugin_settings(plugin_name, enabled=True)
 
 
-def disable_plugin(plugin_name):
+def disable_plugin(plugin_name, _allow_missing=False):
     """Disables the given plugin.
 
     Args:
         plugin_name: the plugin name
     """
+    try:
+        plugin = get_plugin(plugin_name)
+    except ValueError:
+        if not _allow_missing:
+            raise
+
+        plugin = None
+
+    if plugin is not None and plugin.builtin:
+        raise ValueError(
+            f"Cannot change enablement of builtin plugin '{plugin_name}'"
+        )
+
     _update_plugin_settings(plugin_name, enabled=False)
 
 
@@ -95,9 +127,12 @@ def delete_plugin(plugin_name):
     Args:
         plugin_name: the plugin name
     """
-    plugin = _get_plugin(plugin_name)
+    plugin = get_plugin(plugin_name)
+    if plugin.builtin:
+        raise ValueError(f"Cannot delete builtin plugin '{plugin_name}'")
+
     _update_plugin_settings(plugin_name, delete=True)
-    etau.delete_dir(plugin.path)
+    etau.delete_dir(plugin.directory)
 
 
 def list_downloaded_plugins():
@@ -106,7 +141,7 @@ def list_downloaded_plugins():
     Returns:
         a list of plugin names
     """
-    return _list_plugins_by_name()
+    return _list_plugins_by_name(builtin=False)
 
 
 def list_enabled_plugins():
@@ -115,7 +150,7 @@ def list_enabled_plugins():
     Returns:
         a list of plugin names
     """
-    return _list_plugins_by_name(enabled=True)
+    return _list_plugins_by_name(enabled=True, builtin=False)
 
 
 def list_disabled_plugins():
@@ -124,7 +159,7 @@ def list_disabled_plugins():
     Returns:
         a list of plugin names
     """
-    return _list_plugins_by_name(enabled=False)
+    return _list_plugins_by_name(enabled=False, builtin=False)
 
 
 def get_plugin(name):
@@ -171,6 +206,8 @@ def download_plugin(url_or_gh_repo, plugin_names=None, overwrite=False):
                 ``https://github.com/<user>/<repo>/tree/<branch>`` or
                 ``https://github.com/<user>/<repo>/commit/<commit>``
             -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+            -   a GitHub tree path like
+                ``https://github.com/<user>/<repo>/tree/<branch>/<path>``
             -   a publicly accessible URL of an archive (eg zip or tar) file
 
         plugin_names (None): a plugin name or iterable of plugin names to
@@ -185,11 +222,11 @@ def download_plugin(url_or_gh_repo, plugin_names=None, overwrite=False):
     repo = None
     if etaw.is_url(url_or_gh_repo):
         if "github" in url_or_gh_repo:
-            repo = GitHubRepository(url_or_gh_repo)
+            repo = GitHubRepository(url_or_gh_repo, safe=True)
         else:
             url = url_or_gh_repo
     else:
-        repo = GitHubRepository(url_or_gh_repo)
+        repo = GitHubRepository(url_or_gh_repo, safe=True)
 
     if etau.is_str(plugin_names):
         plugin_names = {plugin_names}
@@ -200,18 +237,33 @@ def download_plugin(url_or_gh_repo, plugin_names=None, overwrite=False):
 
     downloaded_plugins = {}
     with etau.TempDir() as tmpdir:
+        root_dir = tmpdir
+
         if repo is not None:
             logger.info(f"Downloading {repo.identifier}...")
             repo.download(tmpdir)
+
+            # Limit search to tree path if requested
+            if repo.safe_path is not None:
+                # There should be exactly one subdir; if there's not then
+                # something is wrong and we better not limit the search tree
+                subdirs = fos.list_subdirs(root_dir)
+                if len(subdirs) == 1:
+                    root_dir = os.path.join(
+                        root_dir,
+                        subdirs[0],
+                        *repo.safe_path.split("/"),
+                    )
         else:
             logger.info(f"Downloading {url}...")
             _download_archive(url, tmpdir)
 
         metadata_paths = list(
-            _iter_plugin_metadata_files(root_dir=tmpdir, strict=True)
+            _iter_plugin_metadata_files(root_dir=root_dir, strict=True)
         )
         if not metadata_paths:
-            logger.info(f"No plugin YAML files found in {url}")
+            src = repo.identifier if repo is not None else url
+            logger.info(f"No plugin YAML files found in {src}")
 
         for metadata_path in metadata_paths:
             try:
@@ -488,9 +540,19 @@ def _parse_plugin_metadata(metadata_path):
     return PluginPackage(plugin_name, plugin_path)
 
 
-def _list_plugins(enabled=None):
+def _list_plugins(enabled=None, builtin=None):
+    plugin_paths = []
+
+    if builtin in (True, None):
+        plugin_paths.extend(
+            _iter_plugin_metadata_files(fpc.BUILTIN_PLUGINS_DIR)
+        )
+
+    if builtin in (False, None):
+        plugin_paths.extend(_iter_plugin_metadata_files())
+
     plugins = []
-    for metadata_path in _iter_plugin_metadata_files():
+    for metadata_path in plugin_paths:
         try:
             plugin = _parse_plugin_metadata(metadata_path)
             plugins.append(plugin)
@@ -509,8 +571,12 @@ def _list_plugins(enabled=None):
     return plugins
 
 
-def _list_plugins_by_name(enabled=None, check_for_duplicates=True):
-    plugin_names = [p.name for p in _list_plugins(enabled=enabled)]
+def _list_plugins_by_name(
+    enabled=None, builtin=None, check_for_duplicates=True
+):
+    plugin_names = [
+        p.name for p in _list_plugins(enabled=enabled, builtin=builtin)
+    ]
 
     if check_for_duplicates:
         dups = [n for n, c in Counter(plugin_names).items() if c > 1]
@@ -555,9 +621,9 @@ def _iter_plugin_metadata_files(root_dir=None, strict=False):
                 break
 
 
-def _get_plugin(name, enabled=None, check_for_duplicates=True):
+def _get_plugin(name, enabled=None, builtin=None, check_for_duplicates=True):
     plugin = None
-    for _plugin in _list_plugins(enabled=enabled):
+    for _plugin in _list_plugins(enabled=enabled, builtin=builtin):
         if _plugin.name == name:
             if check_for_duplicates and plugin is not None:
                 raise ValueError(f"Multiple plugins found with name '{name}'")
@@ -623,9 +689,6 @@ def _recommend_label(name):
 
 
 def _update_plugin_settings(plugin_name, enabled=None, delete=False, **kwargs):
-    # This would ensure that the plugin actually exists
-    # _get_plugin(plugin_name)
-
     # Plugins are enabled by default, so if we can't read the App config or it
     # doesn't exist, don't do anything
     okay_missing = enabled in (True, None) and not kwargs
@@ -664,7 +727,7 @@ def _update_plugin_settings(plugin_name, enabled=None, delete=False, **kwargs):
         plugin_settings = plugins[plugin_name]
 
         if enabled in (True, None):
-            # Plugins are enabled by default, so just remove the entry altogether
+            # Plugins are enabled by default, so just remove entry altogether
             plugin_settings.pop("enabled", None)
             if not plugin_settings:
                 plugins.pop(plugin_name)

@@ -51,6 +51,7 @@ import { formatValue, getNumericDifference, useTriggerEvent } from "./utils";
 const KEY_COLOR = "#ff6d04";
 const COMPARE_KEY_COLOR = "#03a9f4";
 const DEFAULT_BAR_CONFIG = { sortBy: "default" };
+const NONE_CLASS = "(none)";
 
 export default function Evaluation(props: EvaluationProps) {
   const {
@@ -414,6 +415,13 @@ export default function Evaluation(props: EvaluationProps) {
       hide: !isObjectDetection,
     },
     {
+      id: "mAR",
+      property: "mAR",
+      value: evaluationMetrics.mAR,
+      compareValue: compareEvaluationMetrics.mAR,
+      hide: !isObjectDetection,
+    },
+    {
       id: "tp",
       property: "True Positives",
       value: evaluationMetrics.tp,
@@ -611,20 +619,26 @@ export default function Evaluation(props: EvaluationProps) {
       <Card sx={{ p: 2 }}>
         <Stack direction="row" sx={{ justifyContent: "space-between" }}>
           <Typography color="secondary">Evaluation notes</Typography>
-          {can_edit_note && (
-            <Box>
-              <IconButton
-                size="small"
-                color="secondary"
-                sx={{ borderRadius: 16 }}
-                onClick={() => {
-                  setEditNoteState((note) => ({ ...note, open: true }));
-                }}
-              >
-                <EditNote />
-              </IconButton>
-            </Box>
-          )}
+          <Box
+            title={
+              can_edit_note
+                ? ""
+                : "You do not have permission to edit evaluation notes"
+            }
+            sx={{ cursor: can_edit_note ? "pointer" : "not-allowed" }}
+          >
+            <IconButton
+              size="small"
+              color="secondary"
+              sx={{ borderRadius: 16 }}
+              onClick={() => {
+                setEditNoteState((note) => ({ ...note, open: true }));
+              }}
+              disabled={!can_edit_note}
+            >
+              <EditNote />
+            </IconButton>
+          </Box>
         </Stack>
         <EvaluationNotes notes={evaluationNotes} variant="details" />
       </Card>
@@ -1656,12 +1670,23 @@ function getMatrix(matrices, config, maskTargets, compareMaskTargets?) {
   if (!matrices) return;
   const { sortBy = "az", limit } = config;
   const parsedLimit = typeof limit === "number" ? limit : undefined;
-  const classes = matrices[`${sortBy}_classes`].slice(0, parsedLimit);
-  const matrix = matrices[`${sortBy}_matrix`].slice(0, parsedLimit);
+  const originalClasses = matrices[`${sortBy}_classes`];
+  const originalMatrix = matrices[`${sortBy}_matrix`];
+  const classes = originalClasses.slice(0, parsedLimit);
+  const matrix = originalMatrix.slice(0, parsedLimit);
   const colorscale = matrices[`${sortBy}_colorscale`];
   const labels = classes.map((c) => {
     return compareMaskTargets?.[c] || maskTargets?.[c] || c;
   });
+  const noneIndex = originalClasses.indexOf(NONE_CLASS);
+  if (parsedLimit < originalClasses.length) {
+    labels.push(
+      compareMaskTargets?.[NONE_CLASS] ||
+        maskTargets?.[NONE_CLASS] ||
+        NONE_CLASS
+    );
+    matrix.push(originalMatrix[noneIndex]);
+  }
   return { labels, matrix, colorscale };
 }
 
@@ -1687,7 +1712,7 @@ function useActiveFilter(evaluation, compareEvaluation) {
     const { _cls, kwargs } = stage;
     if (_cls.endsWith("FilterLabels")) {
       const [_, filter] = kwargs;
-      const filterEq = filter[1].$eq;
+      const filterEq = filter[1].$eq || [];
       const [filterEqLeft, filterEqRight] = filterEq;
       if (filterEqLeft === "$$this.label") {
         return { type: "label", value: filterEqRight };

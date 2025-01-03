@@ -13,6 +13,7 @@ import yaml
 import eta.core.serial as etas
 
 import fiftyone as fo
+import fiftyone.plugins.constants as fpc
 
 
 class PluginDefinition(object):
@@ -39,6 +40,11 @@ class PluginDefinition(object):
     def directory(self):
         """The directory containing the plugin."""
         return self._directory
+
+    @property
+    def builtin(self):
+        """Whether the plugin is a builtin plugin."""
+        return self.directory.startswith(fpc.BUILTIN_PLUGINS_DIR)
 
     @property
     def author(self):
@@ -205,6 +211,7 @@ class PluginDefinition(object):
             "has_js": self.has_js,
             "server_path": self.server_path,
             "secrets": self.secrets,
+            "builtin": self.builtin,
         }
 
     @classmethod

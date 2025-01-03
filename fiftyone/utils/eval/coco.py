@@ -5,6 +5,7 @@ COCO-style detection evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 from collections import defaultdict
 
@@ -50,7 +51,7 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         tolerance (None): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels
         compute_mAP (False): whether to perform the necessary computations so
-            that mAP and PR curves can be generated
+            that mAP, mAR, and PR curves can be generated
         iou_threshs (None): a list of IoU thresholds to use when computing mAP
             and PR curves. Only applicable when ``compute_mAP`` is True
         max_preds (None): the maximum number of predicted objects to evaluate
@@ -218,6 +219,7 @@ class COCOEvaluation(DetectionEvaluation):
             thresholds,
             iou_threshs,
             classes,
+            recall_sweep,
         ) = _compute_pr_curves(
             samples, self.config, classes=classes, progress=progress
         )
@@ -231,6 +233,7 @@ class COCOEvaluation(DetectionEvaluation):
             recall,
             iou_threshs,
             classes,
+            recall_sweep=recall_sweep,
             thresholds=thresholds,
             missing=missing,
             backend=self,
@@ -253,6 +256,8 @@ class COCODetectionResults(DetectionResults):
         recall: an array of recall values
         iou_threshs: an array of IoU thresholds
         classes: the list of possible classes
+        recall_sweep (None): an array of recall values of shape
+            ``num_iou x num_classes``
         thresholds (None): an optional array of decision thresholds of shape
             ``num_iou_threshs x num_classes x num_recall``
         missing (None): a missing label string. Any unmatched objects are
@@ -270,6 +275,7 @@ class COCODetectionResults(DetectionResults):
         recall,
         iou_threshs,
         classes,
+        recall_sweep=None,
         thresholds=None,
         missing=None,
         backend=None,
@@ -287,11 +293,15 @@ class COCODetectionResults(DetectionResults):
         self.precision = np.asarray(precision)
         self.recall = np.asarray(recall)
         self.iou_threshs = np.asarray(iou_threshs)
+        self.recall_sweep = recall_sweep
         self.thresholds = (
             np.asarray(thresholds) if thresholds is not None else None
         )
 
         self._classwise_AP = np.mean(precision, axis=(0, 2))
+        self._classwise_AR = (
+            np.mean(recall_sweep, axis=0) if recall_sweep is not None else None
+        )
 
     def plot_pr_curves(
         self, classes=None, iou_thresh=None, backend="plotly", **kwargs
@@ -376,6 +386,36 @@ class COCODetectionResults(DetectionResults):
 
         return np.mean(classwise_AP)
 
+    def mAR(self, classes=None):
+        """Computes COCO-style mean average recall (mAR) for the specified
+        classes.
+
+        See `this page <https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py>`_
+        for more details about COCO-style mAR.
+
+        Args:
+            classes (None): a list of classes for which to compute mAR
+
+        Returns:
+            the mAR in ``[0, 1]``
+        """
+        if self._classwise_AR is None:
+            raise Exception(
+                "Classwise AR is not available. mAR can't be computed."
+            )
+
+        if classes is not None:
+            class_inds = np.array([self._get_class_index(c) for c in classes])
+            classwise_AR = self._classwise_AR[class_inds]
+        else:
+            classwise_AR = self._classwise_AR
+
+        classwise_AR = classwise_AR[classwise_AR > -1]
+        if classwise_AR.size == 0:
+            return -1
+
+        return np.mean(classwise_AR)
+
     def _get_iou_thresh_inds(self, iou_thresh=None):
         if iou_thresh is None:
             return np.arange(len(self.iou_threshs))
@@ -410,6 +450,7 @@ class COCODetectionResults(DetectionResults):
         precision = d["precision"]
         recall = d["recall"]
         iou_threshs = d["iou_threshs"]
+        recall_sweep = d.get("recall_sweep", None)
         thresholds = d.get("thresholds", None)
         return super()._from_dict(
             d,
@@ -419,6 +460,7 @@ class COCODetectionResults(DetectionResults):
             precision=precision,
             recall=recall,
             iou_threshs=iou_threshs,
+            recall_sweep=recall_sweep,
             thresholds=thresholds,
             **kwargs,
         )
@@ -713,6 +755,7 @@ def _compute_pr_curves(samples, config, classes=None, progress=None):
     precision = -np.ones((num_threshs, num_classes, 101))
     thresholds = -np.ones((num_threshs, num_classes, 101))
     recall = np.linspace(0, 1, 101)
+    recall_sweep = -np.ones((num_threshs, num_classes))
     for idx, _thresh_matches in enumerate(thresh_matches):
         for c, matches in _thresh_matches.items():
             c_idx = class_idx_map.get(c, None)
@@ -760,8 +803,9 @@ def _compute_pr_curves(samples, config, classes=None, progress=None):
 
             precision[idx][c_idx] = q
             thresholds[idx][c_idx] = t
+            recall_sweep[idx][c_idx] = rec[-1]
 
-    return precision, recall, thresholds, iou_threshs, classes
+    return precision, recall, thresholds, iou_threshs, classes, recall_sweep
 
 
 def _copy_labels(labels):

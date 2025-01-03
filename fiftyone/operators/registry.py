@@ -9,8 +9,6 @@ FiftyOne operator registry.
 from fiftyone.operators.panel import Panel
 import fiftyone.plugins.context as fopc
 
-from .builtin import BUILTIN_OPERATORS, BUILTIN_PANELS
-
 
 def get_operator(operator_uri, enabled=True):
     """Gets the operator with the given URI.
@@ -34,20 +32,25 @@ def get_operator(operator_uri, enabled=True):
     return operator
 
 
-def list_operators(enabled=True, type=None):
+def list_operators(enabled=True, builtin="all", type=None):
     """Returns all available operators.
 
     Args:
         enabled (True): whether to include only enabled operators (True) or
             only disabled operators (False) or all operators ("all")
+        builtin ("all"): whether to include only builtin operators (True) or
+            only non-builtin operators (False) or all operators ("all")
         type (None): whether to include only ``"panel"`` or ``"operator"`` type
             operators
 
     Returns:
         a list of :class:`fiftyone.operators.Operator` instances
     """
+    if builtin == "all":
+        builtin = None
+
     registry = OperatorRegistry(enabled=enabled)
-    return registry.list_operators(include_builtin=enabled != False, type=type)
+    return registry.list_operators(builtin=builtin, type=type)
 
 
 def operator_exists(operator_uri, enabled=True):
@@ -65,6 +68,9 @@ def operator_exists(operator_uri, enabled=True):
     return registry.operator_exists(operator_uri)
 
 
+_EXTRA_OPERATORS = []
+
+
 class OperatorRegistry(object):
     """Operator registry.
 
@@ -75,11 +81,12 @@ class OperatorRegistry(object):
     def __init__(self, enabled=True):
         self.plugin_contexts = fopc.build_plugin_contexts(enabled=enabled)
 
-    def list_operators(self, include_builtin=True, type=None):
+    def list_operators(self, builtin=None, type=None):
         """Lists the available FiftyOne operators.
 
         Args:
-            include_builtin (True): whether to include builtin operators
+            builtin (None): whether to include only builtin operators (True) or
+                only non-builtin operators (False)
             type (None): whether to include only ``"panel"`` or ``"operator"``
                 type operators
 
@@ -87,12 +94,14 @@ class OperatorRegistry(object):
             a list of :class:`fiftyone.operators.Operator` instances
         """
         operators = []
+        operators.extend(_EXTRA_OPERATORS)
         for pctx in self.plugin_contexts:
             operators.extend(pctx.instances)
 
-        if include_builtin:
-            operators.extend(BUILTIN_OPERATORS)
-            operators.extend(BUILTIN_PANELS)
+        if builtin is True:
+            operators = [op for op in operators if op._builtin is True]
+        elif builtin is False:
+            operators = [op for op in operators if op._builtin is False]
 
         if type == "panel":
             operators = [op for op in operators if isinstance(op, Panel)]
