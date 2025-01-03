@@ -437,6 +437,11 @@ export const useOperatorExecutionOptions = ({
   };
 };
 
+export const operatorPromptCloseState = atom({
+  key: "operatorPromptCloseState",
+  default: 0,
+});
+
 export const useOperatorPrompt = () => {
   const [promptingOperator, setPromptingOperator] = useRecoilState(
     promptingOperatorState
@@ -579,11 +584,18 @@ export const useOperatorPrompt = () => {
     },
     [operator, promptingOperator, cachedResolvedInput]
   );
+
+  const setOperatorPromptCloseState = useSetRecoilState(
+    operatorPromptCloseState
+  );
+
   const close = () => {
     setPromptingOperator(null);
     setInputFields(null);
     setOutputFields(null);
     executor.clear();
+
+    setOperatorPromptCloseState((prev) => prev + 1);
   };
 
   const autoExec = async () => {
