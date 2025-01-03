@@ -94,7 +94,7 @@ class EvaluateModelAsync(foo.Operator):
         if ctx.delegated:
             return self.em.execute(ctx)
 
-        ctx.trigger("@voxel51/operators/evaluate_model", params=ctx.params)
+        ctx.trigger("@voxel51/panels/evaluate_model", params=ctx.params)
         return {"eval_key": eval_key}
 
 

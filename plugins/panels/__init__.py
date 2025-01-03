@@ -6,13 +6,17 @@ Builtin panels.
 |
 """
 
+from .model_evaluation import EvaluationPanel
+
+### TEAMS-ONLY below
+from .model_evaluation.evaluation import EvaluateModelAsync, EvaluateModel
+
 from .data_lens import (
     DatasourceConnectorOperator,
     ListLensConfigsOperator,
     UpsertLensConfigOperator,
     DeleteLensConfigOperator,
 )
-from .model_evaluation import EvaluationPanel
 from .query_performance import (
     CreateIndexOrSummaryFieldOperator,
     IndexFieldRemovalConfirmationOperator,
@@ -33,6 +37,9 @@ from .data_quality.operators import (
 
 def register(p):
     p.register(EvaluationPanel)
+    ### TEAMS-ONLY below
+    p.register(EvaluateModelAsync)
+    p.register(EvaluateModel)
     p.register(DatasourceConnectorOperator)
     p.register(ListLensConfigsOperator)
     p.register(UpsertLensConfigOperator)

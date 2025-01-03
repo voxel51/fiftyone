@@ -19,6 +19,8 @@ operators:
   - compute_entropy
   - compute_exact_duplicates
   - compute_near_duplicates
+  - evaluate_model
+  - evaluate_model_async
 panels:
   - model_evaluation_panel_builtin
   - query_performance_panel
