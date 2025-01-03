@@ -16,9 +16,12 @@ import {
   RgbMaskTargets,
 } from "../state";
 import {
-  getColorForCategoryTESTING,
+  getColorForCategoryTesting,
+  initSegmentationPipeline,
   renderSegmentationMask,
 } from "./painter-gpu";
+
+const pipeline = initSegmentationPipeline(getColorForCategoryTesting);
 
 export const PainterFactory = (requestColor) => ({
   Detection: async (
@@ -323,10 +326,7 @@ export const PainterFactory = (requestColor) => ({
       // discard the buffer values of other channels
       maskData.buffer = maskData.buffer.slice(0, overlay.length);
     } else {
-      const gpuResult = renderSegmentationMask(
-        maskData,
-        getColorForCategoryTESTING
-      );
+      const gpuResult = renderSegmentationMask(pipeline, maskData);
       overlay.set(new Uint32Array(gpuResult.buffer));
 
       // const cache = {};
