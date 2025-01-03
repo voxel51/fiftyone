@@ -689,14 +689,7 @@ class Detections(_HasLabelList, Label):
                 target = 255
 
             _render_instance(mask, detection, target)
-
-            index = detection.index
-
-            if index is None:
-                index = index_map[detection.label]
-                index_map[detection.label] = index + 1
-
-            _render_instance(instance_mask, detection, index)
+            _render_instance(instance_mask, detection, idx + 1)
 
         mask = np.stack([mask, instance_mask], axis=-1)
         return PanopticSegmentation(mask=mask)
@@ -1148,7 +1141,7 @@ class Polylines(_HasLabelList, Label):
 
         index_map = defaultdict(lambda: 1)
         # pylint: disable=not-an-iterable
-        for polyline in self.polylines:
+        for idx, polyline in enumerate(self.polylines):
             if labels_to_targets is not None:
                 target = labels_to_targets.get(polyline.label, None)
                 if target is None:
@@ -1157,12 +1150,7 @@ class Polylines(_HasLabelList, Label):
                 target = 255
 
             _render_polyline(mask, polyline, target, thickness)
-            index = polyline.index
-            if index is None:
-                index = index_map[polyline.label]
-                index_map[polyline.label] = index + 1
-
-            _render_polyline(instance_mask, polyline, index + 1, index)
+            _render_polyline(instance_mask, polyline, idx + 1, thickness)
 
         mask = np.stack([mask, instance_mask], axis=-1)
         return PanopticSegmentation(mask=mask)
