@@ -9,27 +9,14 @@ Data quality panel.
 import asyncio
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
-import math
 import uuid
-
 import bson
-import numpy as np
 
 import fiftyone.operators as foo
 from fiftyone.operators import Panel, PanelConfig
 from fiftyone.operators.delegated import DelegatedOperationService
 import fiftyone.operators.types as types
 from fiftyone import ViewField as F
-
-# pylint:disable=no-name-in-module
-from fiftyone.operators.builtins.operators.data_quality import (
-    ComputeAspectRatio,
-    ComputeBlurriness,
-    ComputeBrightness,
-    ComputeEntropy,
-    ComputeNearDuplicates,
-    ComputeExactDuplicates,
-)
 
 from .constants import (
     ISSUE_TYPES,
@@ -46,12 +33,12 @@ from .constants import (
 )
 
 
-BRIGHTNESS_OPERATOR = "@voxel51/operators/compute_brightness"
-BLURRINESS_OPERATOR = "@voxel51/operators/compute_blurriness"
-ASPECT_RATIO_OPERATOR = "@voxel51/operators/compute_aspect_ratio"
-ENTROPY_OPERATOR = "@voxel51/operators/compute_entropy"
-NEAR_DUPLICATES_OPERATOR = "@voxel51/operators/compute_near_duplicates"
-EXACT_DUPLICATES_OPERATOR = "@voxel51/operators/compute_exact_duplicates"
+BRIGHTNESS_OPERATOR = "@voxel51/panels/compute_brightness"
+BLURRINESS_OPERATOR = "@voxel51/panels/compute_blurriness"
+ASPECT_RATIO_OPERATOR = "@voxel51/panels/compute_aspect_ratio"
+ENTROPY_OPERATOR = "@voxel51/panels/compute_entropy"
+NEAR_DUPLICATES_OPERATOR = "@voxel51/panels/compute_near_duplicates"
+EXACT_DUPLICATES_OPERATOR = "@voxel51/panels/compute_exact_duplicates"
 
 ICON_PATH = "troubleshoot"
 NOT_PERMITTED_TEXT = "You do not have sufficient permission."
@@ -2441,14 +2428,3 @@ class DataQualityPanel(Panel):
                         )
 
         return types.Property(panel, view=types.GridView(gap=1.5, px=2, py=2))
-
-
-PANELS = [DataQualityPanel(_builtin=True)]
-OPERATORS = [
-    ComputeBrightness(_builtin=True),
-    ComputeBlurriness(_builtin=True),
-    ComputeEntropy(_builtin=True),
-    ComputeAspectRatio(_builtin=True),
-    ComputeNearDuplicates(_builtin=True),
-    ComputeExactDuplicates(_builtin=True),
-]

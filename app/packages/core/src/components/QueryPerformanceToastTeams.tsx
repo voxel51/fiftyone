@@ -28,7 +28,7 @@ const QueryPerformanceToastTeams = () => {
     spaces.setNodeActive(openedPanel);
     if (path) {
       promptForOperator(
-        "create_index_or_summary_field",
+        "@voxel51/panels/create_index_or_summary_field",
         { path: path },
         {
           callback: () => {

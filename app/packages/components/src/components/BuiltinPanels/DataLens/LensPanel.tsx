@@ -144,7 +144,7 @@ export const LensPanel = ({
   }
 
   const searchOperator = useOperatorExecutor(
-    "@voxel51/operators/lens_datasource_connector"
+    "@voxel51/panels/lens_datasource_connector"
   );
 
   const openDatasetOperator = useOperatorExecutor(

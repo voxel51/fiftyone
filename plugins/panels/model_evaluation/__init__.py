@@ -149,6 +149,12 @@ class EvaluationPanel(Panel):
         except Exception as e:
             return None
 
+    def get_mar(self, results):
+        try:
+            return results.mAR()
+        except Exception as e:
+            return None
+
     def set_status(self, ctx):
         if not self.can_edit_status(ctx):
             ctx.ops.notify(
@@ -364,6 +370,7 @@ class EvaluationPanel(Panel):
                 info, results
             )
             metrics["mAP"] = self.get_map(results)
+            metrics["mAR"] = self.get_mar(results)
             evaluation_data = {
                 "metrics": metrics,
                 "info": serialized_info,
@@ -454,7 +461,7 @@ class EvaluationPanel(Panel):
             return
         # Called when you click the "Evaluate Model" button
         ctx.prompt(
-            "@voxel51/operators/evaluate_model_async",
+            "@voxel51/panels/evaluate_model_async",
             on_success=self.on_evaluate_model_success,
         )
         # ctx.panel.state.view = "eval"

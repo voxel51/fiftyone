@@ -17,17 +17,16 @@ from fiftyone.operators.categories import Categories
 import fiftyone.operators.types as types
 from fiftyone.operators.utils import is_new
 
-from ..types import (
+from fiftyone.operators.types import (
     GridView,
-    Notice,
     Object,
     PromptView,
     Property,
     RadioGroup,
     TableView,
 )
-from ..operator import Operator, OperatorConfig
-from ..panel import Panel, PanelConfig
+from fiftyone.operators.operator import Operator, OperatorConfig
+from fiftyone.operators.panel import Panel, PanelConfig
 
 NOT_PERMITTED_TEXT = "You do not have sufficient permission."
 
@@ -700,7 +699,7 @@ class QueryPerformancePanel(Panel):
                 params["field_type"] = "index_field"
 
             ctx.prompt(
-                "index_field_removal_confirmation",
+                "@voxel51/panels/index_field_removal_confirmation",
                 on_success=self.refresh,
                 params=params,
             )
@@ -712,13 +711,15 @@ class QueryPerformancePanel(Panel):
             row_data = self._get_clicked_row(ctx)
             field_name = row_data[0]
             params = {"field_to_update": field_name}
-            ctx.prompt("summary_field_update_operator", params=params)
+            ctx.prompt(
+                "@voxel51/panels/summary_field_update_operator", params=params
+            )
         else:
             ctx.ops.notify("You do not have edit permissions", variant="error")
 
     def qp_setting(self, ctx):
         ctx.prompt(
-            "get_query_performance_config_confirmation",
+            "@voxel51/panels/get_query_performance_config_confirmation",
         )
 
     def refresh(self, ctx):
@@ -732,7 +733,7 @@ class QueryPerformancePanel(Panel):
     def create_index_or_summary_field(self, ctx):
         if _has_edit_permission(ctx):
             ctx.prompt(
-                "create_index_or_summary_field",
+                "@voxel51/panels/create_index_or_summary_field",
                 on_success=self.refresh,
             )
         else:

@@ -62,6 +62,12 @@ def resolve_dataset_name(request_params: dict):
     return request_params.get("dataset_name", None)
 
 
+def get_operators(registry: PermissionedOperatorRegistry):
+    operators = registry.list_operators(type="operator")
+    panels = registry.list_operators(type="panel")
+    return operators + panels
+
+
 class ListOperators(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):

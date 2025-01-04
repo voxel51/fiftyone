@@ -15,8 +15,6 @@ from PIL import Image
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
-import fiftyone.core.media as fom
-import fiftyone.core.patches as fop
 import fiftyone.core.utils as fou
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
