@@ -1006,6 +1006,143 @@ contains duplicate sample IDs:
     The :ref:`FiftyOne App <fiftyone-app>` is not designed to display views
     with duplicate sample IDs.
 
+.. _materializing-views:
+
+Materializing views
+___________________
+
+You can use
+:meth:`materialize() <fiftyone.core.collections.SampleCollection.materialize>`
+to cache any view as a temporary database collection.
+
+Materialized views are identical in content and function to their source views,
+but since their contents have been precomputed and cached in the database,
+computing/iterating over them is as fast as possible.
+
+Applying this stage to an expensive view like an unindexed filtering/sorting
+operation on a large dataset can be helpful if you plan to perform multiple
+downstream operations on the view.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # A complex view that involves filtering/sorting
+    view = (
+        dataset
+        .filter_labels("ground_truth", F("label") == "person")
+        .sort_by(F("ground_truth.detections.label").length(), reverse=True)
+        .limit(10)
+    )
+
+    # Materialize the view
+    materialized_view = view.materialize()
+
+    # The materialized view's contents are identical to the input view
+    assert len(view) == len(materialized_view)
+
+    # but it doesn't require aggregation to serve its contents
+    assert view._pipeline() != []
+    assert materialized_view._pipeline() == []
+
+    # so downstream tasks like statistics are more efficient
+    print(view.count_values("ground_truth.detections.label"))
+    print(materialized_view.count_values("ground_truth.detections.label"))
+    # {'person': 140}
+    # {'person': 140}
+
+.. note::
+
+    Like :ref:`non-persistent datasets <dataset-persistence>`, the temporary
+    collections created by materializing views are automatically deleted when
+    all active FiftyOne sessions are closed.
+
+Materialized views are fully-compliant with the |DatasetView| interface, so you
+are free to chain additional view stages as usual:
+
+.. code-block:: python
+    :linenos:
+
+    complex_view = materialized_view.to_patches("ground_truth").limit(50)
+    print(complex_view.count_values("ground_truth.label"))
+    # {'person': 50}
+
+You can even store them as :ref:`saved views <saving-views>` on your dataset
+so you can load them later:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.save_view("most_people", materialized_view)
+
+    # later in another session...
+
+    same_materialized_view = dataset.load_saved_view("most_people")
+
+    print(same_materialized_view.count_values("ground_truth.detections.label"))
+    # {'person': 140}
+
+.. note::
+
+    When you load a saved materialized view, if the view's cached data has been
+    deleted, the collection(s) will be automatically regenerated from the
+    underlying dataset when the saved materialized view is loaded.
+
+Note that, since materialized views are served from a cache, their contents
+are not immediately affected if the source dataset is edited. To pull in
+changes, you can call
+:meth:`reload() <fiftyone.core.materialize.MaterializedView.reload>` to
+rehydrate an existing view, or you can use
+:meth:`materialize() <fiftyone.core.collections.SampleCollection.materialize>`
+to create a new materalized view:
+
+.. code-block:: python
+    :linenos:
+
+    # Delete the 10 samples with the most people from the dataset
+    dataset.delete_samples(view[:10])
+
+    # Existing materialized view does not yet reflect the changes
+    print(view.count_values("ground_truth.detections.label"))
+    print(materialized_view.count_values("ground_truth.detections.label"))
+    # {'person': 101}
+    # {'person': 140}
+
+    # Option 1: reload an existing materialized view
+    materialized_view.reload()
+
+    # Option 2: create a new materialized view
+    also_materialized_view = view.materialize()
+
+    print(materialized_view.count_values("ground_truth.detections.label"))
+    print(also_materialized_view.count_values("ground_truth.detections.label"))
+    # {'person': 101}
+    # {'person': 101}
+
+Materialized views also behave just like any other views in the sense that:
+
+-   Any modifications to the samples that you make by iterating over the
+    contents of the materialized view or calling methods like
+    :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+    will be reflected on the source dataset
+-   Any modifications to sample or label tags that you make via the App's
+    :ref:`tagging menu <app-tagging>` or via API methods like
+    :meth:`tag_samples() <fiftyone.core.collections.SampleCollection.tag_samples>`
+    and
+    :meth:`tag_labels() <fiftyone.core.collections.SampleCollection.tag_labels>`
+    will be reflected on the source dataset
+-   Calling other methods like
+    :meth:`save() <fiftyone.core.materialize.MaterializedView.save>`,
+    :meth:`keep() <fiftyone.core.materialize.MaterializedView.keep>`, and
+    :meth:`keep_fields() <fiftyone.core.materialize.MaterializedView.keep_fields>`
+    on the materialized view that edit the underlying dataset's contents will
+    autoatically be reflected on the source dataset
+
 .. _date-views:
 
 Date-based views
