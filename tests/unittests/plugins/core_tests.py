@@ -150,8 +150,9 @@ def test_find_plugin_error_duplicate_name(mocker, fiftyone_plugins_dir):
         pd = {k: plugin_name + "-" + k for k in _REQUIRED_YML_KEYS}
         f.write(yaml.dump(pd))
 
-    with pytest.raises(ValueError):
-        _ = fop.find_plugin("test-plugin1-name")
+    # Should NOT raise errors
+    _ = fop.find_plugin("test-plugin1-name")
+    _ = fop.get_plugin("test-plugin1-name")
 
 
 def test_github_repository_parse_url():
