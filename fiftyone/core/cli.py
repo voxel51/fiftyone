@@ -3596,7 +3596,9 @@ class PluginsListCommand(Command):
 
 
 def _print_plugins_list(enabled, builtin, names_only):
-    plugin_defintions = fop.list_plugins(enabled=enabled, builtin=builtin)
+    plugin_defintions = fop.list_plugins(
+        enabled=enabled, builtin=builtin, shadowed="all"
+    )
 
     if names_only:
         for pd in plugin_defintions:
@@ -3606,18 +3608,36 @@ def _print_plugins_list(enabled, builtin, names_only):
 
     enabled_plugins = set(fop.list_enabled_plugins())
 
-    headers = ["plugin", "version", "enabled", "builtin", "directory"]
+    shadowed_paths = set()
+    for pd in plugin_defintions:
+        if pd.shadow_paths:
+            shadowed_paths.update(pd.shadow_paths)
+
+    headers = [
+        "plugin",
+        "version",
+        "enabled",
+        "builtin",
+        "shadowed",
+        "directory",
+    ]
     rows = []
     for pd in plugin_defintions:
+        shadowed = pd.directory in shadowed_paths
+        enabled = (pd.builtin or pd.name in enabled_plugins) and not shadowed
         rows.append(
             {
                 "plugin": pd.name,
                 "version": pd.version or "",
-                "enabled": pd.builtin or pd.name in enabled_plugins,
+                "enabled": enabled,
                 "builtin": pd.builtin,
+                "shadowed": shadowed,
                 "directory": pd.directory,
             }
         )
+
+    if not shadowed_paths:
+        headers.remove("shadowed")
 
     records = [tuple(_format_cell(r[key]) for key in headers) for r in rows]
 
@@ -3632,22 +3652,35 @@ class PluginsInfoCommand(Command):
 
         # Prints information about a plugin
         fiftyone plugins info <name>
+
+        # Prints information about a plugin in a given directory
+        fiftyone plugins info <dir>
     """
 
     @staticmethod
     def setup(parser):
-        parser.add_argument("name", metavar="NAME", help="the plugin name")
+        parser.add_argument(
+            "name_or_dir",
+            metavar="NAME_OR_DIR",
+            help="the plugin name or directory",
+        )
 
     @staticmethod
     def execute(parser, args):
-        _print_plugin_info(args.name)
+        _print_plugin_info(args.name_or_dir)
 
 
-def _print_plugin_info(name):
-    plugin_defintion = fop.get_plugin(name)
+def _print_plugin_info(name_or_dir):
+    try:
+        pd = fop.get_plugin(name_or_dir)
+    except:
+        if os.path.isdir(name_or_dir):
+            pd = fop.get_plugin(plugin_dir=name_or_dir)
+        else:
+            raise
 
-    d = plugin_defintion.to_dict()
-    d["directory"] = plugin_defintion.directory
+    d = pd.to_dict()
+    d["directory"] = pd.directory
     _print_dict_as_table(d)
 
 
