@@ -29,14 +29,23 @@ export default function useRefreshers() {
   );
   const view = fos.filterView(useRecoilValue(fos.view));
 
+  const labelsToggleTracker = useRecoilValue(fos.labelsToggleTracker);
+
   // only reload, attempt to return to the last grid location
   const layoutReset = useMemo(() => {
     cropToContent;
     fieldVisibilityStage;
+    labelsToggleTracker;
     mediaField;
     refresher;
     return uuid();
-  }, [cropToContent, fieldVisibilityStage, mediaField, refresher]);
+  }, [
+    cropToContent,
+    fieldVisibilityStage,
+    labelsToggleTracker,
+    mediaField,
+    refresher,
+  ]);
 
   // the values reset the page, i.e. return to the top
   const pageReset = useMemo(() => {
@@ -64,18 +73,20 @@ export default function useRefreshers() {
     return uuid();
   }, [layoutReset, pageReset]);
 
-  useEffect(
-    () =>
-      subscribe(({ event }, { reset }) => {
-        if (event === "fieldVisibility") return;
+  useEffect(() => {
+    const unsubscribe = subscribe(({ event }, { reset }) => {
+      if (event === "fieldVisibility") return;
 
-        // if not a modal page change, reset the grid location
-        reset(gridAt);
-        reset(gridPage);
-        reset(gridOffset);
-      }),
-    []
-  );
+      // if not a modal page change, reset the grid location
+      reset(gridAt);
+      reset(gridPage);
+      reset(gridOffset);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   const lookerStore = useMemo(() => {
     /** LOOKER STORE REFRESHER */
