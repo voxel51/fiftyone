@@ -23,7 +23,7 @@ script will continue running in the background and keep the child process alive
 until all registered clients, including the original parent process, have
 exited.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """

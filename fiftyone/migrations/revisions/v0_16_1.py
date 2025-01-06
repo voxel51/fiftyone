@@ -5,7 +5,7 @@ This revision is identical to v0.16.0 except it does not affect
 app sidebar groups and it fixes label list fields, e.g. Detections,
 which were skipped in v0.16.0
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
