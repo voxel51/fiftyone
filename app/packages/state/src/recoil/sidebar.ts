@@ -29,6 +29,7 @@ import type { VariablesOf } from "react-relay";
 import { commitMutation } from "react-relay";
 import {
   DefaultValue,
+  atom,
   atomFamily,
   selector,
   selectorFamily,
@@ -71,6 +72,9 @@ import {
   unsupportedMatcher,
 } from "./utils";
 import * as viewAtoms from "./view";
+
+type GridPageNumber = number;
+type SidebarEntriesSet = Set<string>;
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -904,6 +908,11 @@ export const groupShown = selectorFamily<
         )
       );
     },
+});
+
+export const labelsToggleTracker = atom({
+  key: "labelsToggleTracker",
+  default: new Map<GridPageNumber, SidebarEntriesSet>(),
 });
 
 export const textFilter = atomFamily<string, boolean>({
