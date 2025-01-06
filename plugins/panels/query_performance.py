@@ -598,9 +598,7 @@ class QueryPerformancePanel(Panel):
         default_indexes = set(_get_default_indexes(ctx))
         rows = []
         for name in sorted(indexes):
-            print("_get_index_table_data name=", name)
             index_info = indexes[name]
-            print("index_info=", index_info)
 
             default = name in default_indexes
             size = (
