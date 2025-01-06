@@ -103,7 +103,6 @@ const globalContextSelector = selector({
     const extendedSelection = get(fos.extendedSelection);
     const groupSlice = get(fos.groupSlice);
     const queryPerformance = get(fos.queryPerformance);
-    console.log("queryPerformance", queryPerformance);
     const spaces = get(fos.sessionSpaces);
     const workspaceName = spaces?._name;
 

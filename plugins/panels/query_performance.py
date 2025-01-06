@@ -41,14 +41,6 @@ def _has_edit_permission(ctx):
     ]
 
 
-def _get_existing_indexes(ctx):
-    print(
-        "ctx.dataset.get_index_information(include_stats=True)",
-        ctx.dataset.get_index_information(include_stats=True),
-    )
-    return ctx.dataset.get_index_information(include_stats=True)
-
-
 def _get_default_indexes(ctx):
     index_names = ctx.dataset._get_default_indexes()
     if ctx.dataset._has_frame_fields():
@@ -599,30 +591,30 @@ class QueryPerformancePanel(Panel):
             allow_multiple=False,
             category=Categories.IMPORT,
             is_new=is_new("2024-11-07"),
-            _builtin=True,
         )
 
     def _get_index_table_data(self, ctx):
-        indexes = _get_existing_indexes(ctx)
+        indexes = ctx.dataset.get_index_information(include_stats=True)
         default_indexes = set(_get_default_indexes(ctx))
         rows = []
         for name in sorted(indexes):
+            print("_get_index_table_data name=", name)
             index_info = indexes[name]
+            print("index_info=", index_info)
+
             default = name in default_indexes
             size = (
                 "In progress"
                 if index_info.get("in_progress")
                 else etau.to_human_bytes_str(index_info.get("size", 0))
             )
-            ops = index_info.get("ops", 0)
+            ops = index_info.get("accesses", {}).get("ops", 0)
 
             types = ["Index"]
             if default:
                 types.append("Default")
             if _is_unique(name, index_info):
                 types.append("Unique")
-            if index_info.get("compound"):
-                types.append("Compound")
 
             rows.append(
                 {
