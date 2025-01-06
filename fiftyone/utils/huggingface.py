@@ -1,7 +1,7 @@
 """
 Utilities for working with `Hugging Face <https://huggingface.co>`_.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
