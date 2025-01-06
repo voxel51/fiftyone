@@ -47,5 +47,14 @@ class TestOperatorRegistry(unittest.TestCase):
         self.assertEqual(len(operators), 2)
 
     def test_list_invalid_type_raises_error(self):
-        with self.assertRaises(ValueError):
-            self.registry.list_operators(type="invalid")
+        for operator_type in ["invalid", "", 1]:
+            with self.assertRaises(ValueError):
+                self.registry.list_operators(type=operator_type)
+
+    def test_list_operators_empty_contexts(self):
+        with patch(
+                'fiftyone.plugins.context.build_plugin_contexts') as mock_build:
+            mock_build.return_value = []
+            registry = OperatorRegistry()
+            operators = registry.list_operators()
+            self.assertEqual(len(operators), 0)
