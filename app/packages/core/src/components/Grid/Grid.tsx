@@ -13,6 +13,7 @@ import React, {
 import { useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
+import { useOnSidebarSelectionChange } from "../Sidebar/useOnSidebarSelectionChange";
 import { gridCrop, gridSpacing, pageParameters } from "./recoil";
 import useAt from "./useAt";
 import useEscape from "./useEscape";
@@ -45,6 +46,8 @@ function Grid() {
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
   const setSample = fos.useExpandSample(store);
   const getFontSize = useFontSize(id);
+
+  useOnSidebarSelectionChange();
 
   const spotlight = useMemo(() => {
     /** SPOTLIGHT REFRESHER */
