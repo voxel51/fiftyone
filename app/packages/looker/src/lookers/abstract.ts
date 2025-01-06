@@ -23,7 +23,7 @@ import {
 import { Events } from "../elements/base";
 import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
-import { CONTAINS, Overlay } from "../overlays/base";
+import { Overlay } from "../overlays/base";
 import processOverlays from "../processOverlays";
 import {
   BaseState,
@@ -311,9 +311,10 @@ export abstract class AbstractLooker<
           this.pluckedOverlays
         );
 
-        this.state.mouseIsOnOverlay =
-          Boolean(this.currentOverlays.length) &&
-          this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
+        // todo: fix me
+        // this.state.mouseIsOnOverlay =
+        //   Boolean(this.currentOverlays.length) &&
+        //   this.currentOverlays[0].containsPoint(this.state) > CONTAINS.NONE;
 
         postUpdate?.(this.state, this.currentOverlays, this.sample);
 
@@ -518,6 +519,10 @@ export abstract class AbstractLooker<
 
   updateSample(sample: Sample) {
     this.loadSample(sample, retrieveArrayBuffers(this.sampleOverlays));
+  }
+
+  refreshSample() {
+    this.updateSample(this.sample);
   }
 
   getSample(): Promise<Sample> {
@@ -742,6 +747,7 @@ export abstract class AbstractLooker<
       sources: this.state.config.sources,
       schema: this.state.config.fieldSchema,
       uuid: messageUUID,
+      activePaths: this.state.options.activePaths,
     } as ProcessSample;
 
     try {
