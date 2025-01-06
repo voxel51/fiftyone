@@ -1,16 +1,13 @@
 import pytest
-from unittest.mock import MagicMock, patch
-from starlette.exceptions import HTTPException
+from unittest.mock import patch
 
 import fiftyone.operators.types as types
 from fiftyone.operators.operator import Operator
 from fiftyone.operators.executor import (
     execute_or_delegate_operator,
     ExecutionResult,
-    ExecutionContext,
 )
 from fiftyone.operators import OperatorConfig
-import fiftyone.operators.registry as registry
 
 
 ECHO_URI = "@voxel51/operators/echo"
@@ -30,12 +27,11 @@ class EchoOperator(Operator):
         return {"message": ctx.params.get("message", None)}
 
 
-# Force registration of the operator for testing
-registry._EXTRA_OPERATORS.append(EchoOperator(_builtin=True))
-
-
 @pytest.mark.asyncio
-async def test_execute_or_delegate_operator():
+@patch("fiftyone.operators.registry.OperatorRegistry.list_operators")
+async def test_execute_or_delegate_operator(list_operators):
+    list_operators.return_value = [EchoOperator(_builtin=True)]
+
     request_params = {
         "dataset_name": "test_dataset",
         "operator_uri": ECHO_URI,
