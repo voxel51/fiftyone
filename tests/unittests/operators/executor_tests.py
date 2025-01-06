@@ -7,6 +7,7 @@ Unit tests for operators utilities.
 """
 
 import unittest
+import unittest.mock
 
 from fiftyone.operators.executor import ExecutionContext, ExecutionContextUser
 import pytest
@@ -20,6 +21,7 @@ from fiftyone.operators.executor import (
 )
 from fiftyone.operators import OperatorConfig
 import fiftyone.operators.registry as registry
+import fiftyone.internal.api_requests as far
 
 
 class TestOperatorExecutionContext(unittest.TestCase):
@@ -127,7 +129,10 @@ class EchoOperator(Operator):
         return types.Property(inputs)
 
     def execute(self, ctx):
-        return {"message": ctx.params.get("message", None)}
+        return {
+            "message": ctx.params.get("message", None),
+            "user_name": ctx.user.name,
+        }
 
 
 # Force registration of the operator for testing
@@ -135,17 +140,25 @@ registry._EXTRA_OPERATORS.append(EchoOperator(_builtin=True))
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="Needs modification to run in FOT")
 async def test_execute_or_delegate_operator():
-    # TODO: mock the resolve_operation_user() function
-    request_params = {
-        "dataset_name": "test_dataset",
-        "operator_uri": ECHO_URI,
-        "params": {"message": "Hello, World!"},
-    }
+    mock_resolve_user_return = {"id": "123", "name": "test_user"}
+    with unittest.mock.patch(
+        "fiftyone.internal.api_requests.resolve_user",
+        unittest.mock.AsyncMock(return_value=mock_resolve_user_return),
+    ) as mock_resolve_user:
+        request_params = {
+            "dataset_name": "test_dataset",
+            "operator_uri": ECHO_URI,
+            "params": {"message": "Hello, World!"},
+        }
 
-    result = await execute_or_delegate_operator(ECHO_URI, request_params)
+        result = await execute_or_delegate_operator(ECHO_URI, request_params)
 
-    assert isinstance(result, ExecutionResult)
-    json_result = result.to_json()
-    assert json_result["result"]["message"] == "Hello, World!"
+        assert isinstance(result, ExecutionResult)
+        json_result = result.to_json()
+        assert json_result["result"]["message"] == "Hello, World!"
+        assert (
+            json_result["result"]["user_name"]
+            == mock_resolve_user_return["name"]
+        )
+        mock_resolve_user.assert_called_once()
