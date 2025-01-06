@@ -1,14 +1,9 @@
 import { OverlayMask } from "../numpy";
 
-let offScreenCanvas: OffscreenCanvas | null = null;
-if (typeof OffscreenCanvas === "undefined") {
-  console.error("OffscreenCanvas not supported");
-} else {
-  offScreenCanvas = new OffscreenCanvas(1, 1);
-}
-const offScreenCanvasCtx = offScreenCanvas?.getContext("2d", {
+const offScreenCanvas = new OffscreenCanvas(1, 1);
+const offScreenCanvasCtx = offScreenCanvas.getContext("2d", {
   willReadFrequently: true,
-});
+})!;
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 /**
@@ -63,10 +58,10 @@ export const decodeWithCanvas = async (blob: Blob) => {
   const imageBitmap = await createImageBitmap(blob);
   const { width, height } = imageBitmap;
 
-  offScreenCanvas!.width = width;
-  offScreenCanvas!.height = height;
+  offScreenCanvas.width = width;
+  offScreenCanvas.height = height;
 
-  offScreenCanvasCtx!.drawImage(imageBitmap, 0, 0);
+  offScreenCanvasCtx.drawImage(imageBitmap, 0, 0);
 
   imageBitmap.close();
 
