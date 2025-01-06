@@ -122,7 +122,8 @@ class DelegatedOperationDocument(object):
         d = self.__dict__
         if self.context:
             d["context"] = {
-                "request_params": self.context._get_serialized_request_params()
+                "request_params": self.context._get_serialized_request_params(),
+                "user": self.context.user.id,
             }
         d.pop("_doc")
         d.pop("id")
