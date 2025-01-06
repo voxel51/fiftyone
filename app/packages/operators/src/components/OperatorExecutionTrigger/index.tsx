@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { Box } from "@mui/material";
+import { Box, Button } from "@mui/material";
 import { OperatorExecutionMenu } from "../OperatorExecutionMenu";
 import {
   ExecutionCallback,
@@ -10,6 +10,7 @@ import {
   OperatorExecutionOption,
   useOperatorExecutionOptions,
   useOperatorExecutor,
+  usePromptOperatorInput,
 } from "../../state";
 
 /**
@@ -38,12 +39,8 @@ import {
  * @param disabled If true, context menu will never open
  */
 export const OperatorExecutionTrigger = ({
-  operatorUri,
   onClick,
-  onSuccess,
-  onError,
-  executionParams,
-  executorOptions,
+  executionOptions,
   onOptionSelected,
   disabled,
   children,
@@ -54,39 +51,17 @@ export const OperatorExecutionTrigger = ({
   onClick?: () => void;
   onSuccess?: ExecutionCallback;
   onError?: ExecutionErrorCallback;
+  onCancel?: () => void;
+  prompt?: boolean;
   executionParams?: object;
   executorOptions?: OperatorExecutorOptions;
+  executionOptions?: OperatorExecutionOption[];
   onOptionSelected?: (option: OperatorExecutionOption) => void;
   disabled?: boolean;
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   // Anchor to use for context menu
   const containerRef = useRef(null);
-
-  // Pass onSuccess and onError through to the operator executor.
-  // These will be invoked on operator completion.
-  const operatorHandlers = useMemo(() => {
-    return { onSuccess, onError };
-  }, [onSuccess, onError]);
-  const operator = useOperatorExecutor(operatorUri, operatorHandlers);
-
-  // This callback will be invoked when an execution target option is clicked
-  const onExecute = useCallback(
-    (options?: OperatorExecutorOptions) => {
-      const resolvedOptions = {
-        ...executorOptions,
-        ...options,
-      };
-
-      return operator.execute(executionParams ?? {}, resolvedOptions);
-    },
-    [executorOptions, operator, executionParams]
-  );
-
-  const { executionOptions } = useOperatorExecutionOptions({
-    operatorUri,
-    onExecute,
-  });
 
   // Click handler controls the state of the context menu.
   const clickHandler = useCallback(() => {
