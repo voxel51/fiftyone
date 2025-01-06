@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2024, Voxel51, Inc.
+ * Copyright 2017-2025, Voxel51, Inc.
  */
 
 import { getColor, sizeBytesEstimate } from "@fiftyone/utilities";
@@ -263,6 +263,7 @@ export default class SegmentationOverlay<State extends BaseState>
 
   public cleanup(): void {
     this.label.mask?.bitmap?.close();
+    this.targets = null;
   }
 }
 

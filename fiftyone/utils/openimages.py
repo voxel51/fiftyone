@@ -3,7 +3,7 @@ Utilities for working with the
 `Open Images <https://storage.googleapis.com/openimages/web/index.html>`
 dataset.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
