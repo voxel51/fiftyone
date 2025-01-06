@@ -31,15 +31,6 @@ const processOverlays = <State extends BaseState>(
       continue;
     }
 
-    // skip if mask_path is present but mask is not (segmentations)
-    if (overlay.label.mask_path && !overlay.label.mask) {
-      continue;
-    }
-    // for heatmaps
-    if (overlay.label.map_path && !overlay.label.map) {
-      continue;
-    }
-
     if (!(overlay.field && overlay.field in bins)) continue;
 
     // todo: find a better approach / place for this.
