@@ -1,27 +1,32 @@
 /**
  * Copyright 2017-2024, Voxel51, Inc.
  */
+import type { Schema } from "@fiftyone/utilities";
 import {
   DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
+  LABEL_LISTS_MAP,
   getCls,
   getFieldInfo,
-  LABEL_LISTS_MAP,
-  Schema,
 } from "@fiftyone/utilities";
 import { LABEL_TAGS_CLASSES } from "../constants";
-import { BaseState } from "../state";
-import { Overlay } from "./base";
-import {
+import type { BaseState } from "../state";
+import type { Overlay } from "./base";
+import type {
   ClassificationLabel,
-  ClassificationsOverlay,
   Labels,
   TemporalDetectionLabel,
+} from "./classifications";
+import {
+  ClassificationsOverlay,
   TemporalDetectionOverlay,
 } from "./classifications";
 import DetectionOverlay, { getDetectionPoints } from "./detection";
 import HeatmapOverlay, { getHeatmapPoints } from "./heatmap";
 import KeypointOverlay, { getKeypointPoints } from "./keypoint";
+import PanopticSegmentationOverlay, {
+  getPanopticSegmentationPoints,
+} from "./panoptic";
 import PolylineOverlay, { getPolylinePoints } from "./polyline";
 import SegmentationOverlay, { getSegmentationPoints } from "./segmentation";
 
@@ -41,6 +46,7 @@ export const FROM_FO = {
   Heatmap: fromLabel(HeatmapOverlay),
   Keypoint: fromLabel(KeypointOverlay),
   Keypoints: fromLabelList(KeypointOverlay, "keypoints"),
+  PanopticSegmentation: fromLabel(PanopticSegmentationOverlay),
   Polyline: fromLabel(PolylineOverlay),
   Polylines: fromLabelList(PolylineOverlay, "polylines"),
   Segmentation: fromLabel(SegmentationOverlay),
@@ -52,9 +58,10 @@ export const POINTS_FROM_FO = {
   Heatmap: (label) => getHeatmapPoints(label ? [label] : []),
   Keypoint: (label) => getKeypointPoints(label ? [label] : []),
   Keypoints: (label) => getKeypointPoints(label?.keypoints ?? []),
+  PanopticSegmentation: (label) => getSegmentationPoints(label ? [label] : []),
   Polyline: (label) => getPolylinePoints(label ? [label] : []),
   Poylines: (label) => getPolylinePoints(label?.polylines ?? []),
-  Segmentation: (label) => getSegmentationPoints(label ? [label] : []),
+  Segmentation: (label) => getPanopticSegmentationPoints(label ? [label] : []),
 };
 
 const LABEL_LISTS = LABEL_LISTS_MAP;

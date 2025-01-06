@@ -17,7 +17,10 @@ export type Painter<Label extends RegularLabel> = (params: {
   colorscale: Colorscale;
   customizeColorSetting: CustomizeColor[];
   field: string;
-  label: Label & { mask: IntermediateMask };
+  label: Omit<Omit<Label, "map">, "mask"> & {
+    map?: IntermediateMask;
+    mask?: IntermediateMask;
+  };
   labelTagColors: LabelTagColor;
   selectedLabelTags: string[];
 }) => Promise<void>;

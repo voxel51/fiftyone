@@ -1,7 +1,7 @@
 import { COLOR_BY, get32BitColor } from "@fiftyone/utilities";
 import type { RGB } from "../..";
-import { ARRAY_TYPES } from "../../numpy";
 import type { HeatmapLabel } from "../../overlays/heatmap";
+import { ARRAY_TYPES } from "../decoders/types";
 import type { Painter } from "./utils";
 import {
   clampedIndex,

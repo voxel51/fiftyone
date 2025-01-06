@@ -2,7 +2,6 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 import { NONFINITES } from "@fiftyone/utilities";
-
 import { INFO_COLOR } from "../constants";
 import type { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
 import { distanceFromLineSegment } from "../util";

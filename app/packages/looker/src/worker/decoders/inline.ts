@@ -1,7 +1,7 @@
 import { deserialize } from "./numpy";
-import type { InlineDecodeable, IntermediateMask } from "./types";
+import type { InlineDecodeable, OverlayMask } from "./types";
 
-export default (inline: InlineDecodeable): IntermediateMask | null => {
+export default (inline: InlineDecodeable): OverlayMask | null => {
   let base64: string;
   if (typeof inline === "string") {
     base64 = inline;
@@ -13,11 +13,5 @@ export default (inline: InlineDecodeable): IntermediateMask | null => {
     return null;
   }
 
-  const data = deserialize(base64);
-  const [height, width] = data.shape;
-
-  return {
-    data,
-    image: new ArrayBuffer(width * height * 4),
-  };
+  return deserialize(base64);
 };

@@ -8,10 +8,10 @@ import {
   getRGBAColor,
   sizeBytesEstimate,
 } from "@fiftyone/utilities";
-import type { TypedArray } from "../numpy";
-import { ARRAY_TYPES } from "../numpy";
 import type { BaseState, Coordinates } from "../state";
 import { isFloatArray } from "../util";
+import type { TypedArray } from "../worker/decoders/types";
+import { ARRAY_TYPES } from "../worker/decoders/types";
 import { clampedIndex } from "../worker/painters/utils";
 import type {
   BaseLabel,

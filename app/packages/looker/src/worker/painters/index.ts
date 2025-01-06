@@ -9,7 +9,7 @@ import { requestColor, resolveColor } from "./utils";
 
 type Detections = (request: typeof requestColor) => (
   params: Omit<Parameters<Painter<DetectionLabel>>[0], "label"> & {
-    label: { detections: (DetectionLabel & { mask: IntermediateMask })[] };
+    label: { detections: (DetectionLabel & { mask?: IntermediateMask })[] };
   }
 ) => Promise<void>;
 

@@ -2103,7 +2103,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/looker@workspace:packages/looker"
   dependencies:
-    "@jimp/tiff": ^0.22.12
     "@rollup/plugin-inject": ^5.0.2
     "@types/color-string": ^1.5.0
     "@types/lru-cache": ^7.10.10
@@ -2121,11 +2120,8 @@ __metadata:
     mime: ^2.5.2
     monotone-convex-hull-2d: ^1.0.1
     prettier: ^2.7.1
-    tiff: ^6.1.1
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^5.1.0
-    utif: ^3.1.0
-    utif2: ^4.1.0
     uuid: ^8.3.2
     vite: ^5.2.14
   peerDependencies:
@@ -2640,17 +2636,6 @@ __metadata:
     "@types/yargs": ^17.0.8
     chalk: ^4.0.0
   checksum: a0bcf15dbb0eca6bdd8ce61a3fb055349d40268622a7670a3b2eb3c3dbafe9eb26af59938366d520b86907b9505b0f9b29b85cec11579a9e580694b87cd90fcc
-  languageName: node
-  linkType: hard
-
-"@jimp/tiff@npm:^0.22.12":
-  version: 0.22.12
-  resolution: "@jimp/tiff@npm:0.22.12"
-  dependencies:
-    utif2: ^4.0.1
-  peerDependencies:
-    "@jimp/custom": ">=0.3.5"
-  checksum: 1b9995364a91bab7a96ec3c5d5f0ac3de3ecc8950ca9abe2c1d66495bc776446348938117e288cdea1b43210aca5f38dd37cb8ea7e9d70e0a8178b7f81ac73ff
   languageName: node
   linkType: hard
 
@@ -10524,13 +10509,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"iobuffer@npm:^5.3.2":
-  version: 5.3.2
-  resolution: "iobuffer@npm:5.3.2"
-  checksum: 9ae2a7dc7ffa8dbb6c6b230a42b028804ba6ee31fbe86d638fdcde941f3c28fc3472659f3fbaa7916357eb78c9512382f73cd4735de01c4f14a0e8cf166ec6ac
-  languageName: node
-  linkType: hard
-
 "ip-address@npm:^9.0.5":
   version: 9.0.5
   resolution: "ip-address@npm:9.0.5"
@@ -13770,14 +13748,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pako@npm:^1.0.11, pako@npm:^1.0.5":
-  version: 1.0.11
-  resolution: "pako@npm:1.0.11"
-  checksum: 1be2bfa1f807608c7538afa15d6f25baa523c30ec870a3228a89579e474a4d992f4293859524e46d5d87fd30fa17c5edf34dbef0671251d9749820b488660b16
-  languageName: node
-  linkType: hard
-
-"pako@npm:^2.0.4, pako@npm:^2.1.0":
+"pako@npm:^2.0.4":
   version: 2.1.0
   resolution: "pako@npm:2.1.0"
   checksum: 71666548644c9a4d056bcaba849ca6fd7242c6cf1af0646d3346f3079a1c7f4a66ffec6f7369ee0dc88f61926c10d6ab05da3e1fca44b83551839e89edd75a3e
@@ -16810,16 +16781,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tiff@npm:^6.1.1":
-  version: 6.1.1
-  resolution: "tiff@npm:6.1.1"
-  dependencies:
-    iobuffer: ^5.3.2
-    pako: ^2.1.0
-  checksum: f600d08b0321f87445f03df33e5ac3e687e83b9a6bee3b848d67dc994c395f68273767147c69883531a0f6a28456127fcd5499b488f98758e28d87fbc0d0d0e7
-  languageName: node
-  linkType: hard
-
 "tiny-invariant@npm:1.2.0":
   version: 1.2.0
   resolution: "tiny-invariant@npm:1.2.0"
@@ -17704,24 +17665,6 @@ __metadata:
   peerDependencies:
     react: ^16.8.0 || ^17.0.0 || ^18.0.0
   checksum: 5c639e0f8da3521d605f59ce5be9e094ca772bd44a4ce7322b055a6f58eeed8dda3c94cabd90c7a41fb6fa852210092008afe48f7038792fd47501f33299116a
-  languageName: node
-  linkType: hard
-
-"utif2@npm:^4.0.1, utif2@npm:^4.1.0":
-  version: 4.1.0
-  resolution: "utif2@npm:4.1.0"
-  dependencies:
-    pako: ^1.0.11
-  checksum: b8a7ba68c503c95dd3137eb20c677553dab7641f4539a75dacc2a94ad7e3d1b5b62b547daa559b07cbeb4b9e2f54c15130ced97667775e320bfdccfba9843edd
-  languageName: node
-  linkType: hard
-
-"utif@npm:^3.1.0":
-  version: 3.1.0
-  resolution: "utif@npm:3.1.0"
-  dependencies:
-    pako: ^1.0.5
-  checksum: 03abe9e04fa50588ae67077ced2e89c869c0c140442a0c5d8cfb559bf587a692a7c92187d49ab1c7e852eae78ff40a298b1325c2461ab7e51c4a0a6ae7ec74e3
   languageName: node
   linkType: hard
 

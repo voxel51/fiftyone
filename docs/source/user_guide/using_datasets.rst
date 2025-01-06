@@ -581,7 +581,7 @@ All |Dataset| instances have
 :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` and
 :meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
 properties that you can use to store label strings for the pixel values of
-|Segmentation| field masks.
+|Segmentation| and |PanopticSegmentation| field masks.
 
 The :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` property
 is a dictionary mapping field names to target dicts, each of which is a

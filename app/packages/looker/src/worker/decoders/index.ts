@@ -60,13 +60,17 @@ const decode = async ({ field, label, ...params }: DecodeParameters) => {
 
   const data = label[overlayField];
   if (typeof data === "string") {
-    const intermediate = decodeInline(data);
-    if (!intermediate) {
+    const mask = decodeInline(data);
+    if (!mask) {
       return;
     }
 
-    params.maskTargetsBuffers.push(intermediate.data.buffer);
-    label[overlayField] = intermediate;
+    params.maskTargetsBuffers.push(mask.buffer);
+    const [height, width] = mask.shape;
+    label[overlayField] = {
+      data: mask,
+      image: new ArrayBuffer(height * width * 4),
+    };
     return;
   }
 

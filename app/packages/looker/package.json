@@ -18,7 +18,6 @@
         "README.md"
     ],
     "dependencies": {
-        "@jimp/tiff": "^0.22.12",
         "@ungap/event-target": "^0.2.2",
         "@xmldom/xmldom": "^0.8.6",
         "copy-to-clipboard": "^3.3.1",
@@ -29,9 +28,6 @@
         "lru-cache": "^11.0.1",
         "mime": "^2.5.2",
         "monotone-convex-hull-2d": "^1.0.1",
-        "tiff": "^6.1.1",
-        "utif": "^3.1.0",
-        "utif2": "^4.1.0",
         "uuid": "^8.3.2"
     },
     "devDependencies": {

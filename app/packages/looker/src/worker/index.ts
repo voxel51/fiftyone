@@ -2,7 +2,7 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import type { Schema, Stage } from "@fiftyone/utilities";
+import type { Sample, Schema, Stage } from "@fiftyone/utilities";
 import {
   DENSE_LABELS,
   DETECTION,
@@ -27,7 +27,6 @@ import type {
   FrameChunk,
   FrameSample,
   LabelTagColor,
-  Sample,
 } from "../state";
 import decodeImages from "./decoders";
 import { painter, resolveColor } from "./painters";
