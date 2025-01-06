@@ -2,7 +2,7 @@
 `Segment Anything 2 <https://github.com/facebookresearch/segment-anything-2>`_
 wrapper for the FiftyOne Model Zoo.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
