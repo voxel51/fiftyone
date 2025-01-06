@@ -1,16 +1,11 @@
 import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
-import {
-  DETECTION,
-  DETECTIONS,
-  HEATMAP,
-  SEGMENTATION,
-} from "@fiftyone/utilities";
+import { DETECTION, DETECTIONS } from "@fiftyone/utilities";
 import { Coloring, CustomizeColor } from "..";
 import { OverlayMask } from "../numpy";
 import { Colorscale } from "../state";
-import { decodeWithCanvas, recastBufferToMonoChannel } from "./canvas-decoder";
+import { decodeWithCanvas } from "./canvas-decoder";
 import { enqueueFetch } from "./pooled-fetch";
-import { getOverlayFieldFromCls } from "./shared";
+import { DenseLabelRenderStatus, getOverlayFieldFromCls } from "./shared";
 
 export type IntermediateMask = {
   data: OverlayMask;
@@ -135,6 +130,8 @@ export const decodeOverlayOnDisk = async (
     data: overlayMask,
     image: new ArrayBuffer(overlayWidth * overlayHeight * 4),
   } as IntermediateMask;
+
+  label.renderStatus = "decoded" as DenseLabelRenderStatus;
 
   // no need to transfer image's buffer
   //since we'll be constructing ImageBitmap and transfering that
