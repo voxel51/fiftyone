@@ -1,7 +1,7 @@
 """
 Plugin definitions.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -13,7 +13,7 @@ import yaml
 import eta.core.serial as etas
 
 import fiftyone as fo
-import fiftyone.plugins.constants as constants
+import fiftyone.plugins.constants as fpc
 
 
 class PluginDefinition(object):
@@ -44,7 +44,7 @@ class PluginDefinition(object):
     @property
     def builtin(self):
         """Whether the plugin is a builtin plugin."""
-        return self.directory.startswith(constants.BUILTIN_PLUGINS_DIR)
+        return self.directory.startswith(fpc.BUILTIN_PLUGINS_DIR)
 
     @property
     def author(self):

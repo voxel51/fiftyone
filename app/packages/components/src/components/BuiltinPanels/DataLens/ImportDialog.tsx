@@ -51,7 +51,7 @@ export const ImportDialog = ({
   onCancel: () => void;
 }) => {
   const operatorUri = useMemo(
-    () => "@voxel51/panel/lens_datasource_connector",
+    () => "@voxel51/panels/lens_datasource_connector",
     []
   );
   const activeDataset: string = useRecoilValue(fosDatasetName);

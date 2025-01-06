@@ -2,7 +2,7 @@
 Utilities for working with the
 `Cityscapes dataset <https://www.cityscapes-dataset.com>`_.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """

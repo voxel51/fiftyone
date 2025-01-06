@@ -1,7 +1,7 @@
 """
 Model evaluation panel.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -461,7 +461,7 @@ class EvaluationPanel(Panel):
             return
         # Called when you click the "Evaluate Model" button
         ctx.prompt(
-            "@voxel51/operators/evaluate_model_async",
+            "@voxel51/panels/evaluate_model_async",
             on_success=self.on_evaluate_model_success,
         )
         # ctx.panel.state.view = "eval"

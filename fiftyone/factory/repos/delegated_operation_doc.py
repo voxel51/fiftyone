@@ -1,7 +1,7 @@
 """
 FiftyOne delegated operation repository document.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -122,7 +122,9 @@ class DelegatedOperationDocument(object):
         d = self.__dict__
         if self.context:
             d["context"] = {
-                "request_params": self.context._get_serialized_request_params()
+                "request_params": self.context._get_serialized_request_params(),
+                "user": self.context.user.id if self.context.user else None
+                # user may be none if triggered outside the api
             }
         d.pop("_doc")
         d.pop("id")

@@ -2,7 +2,7 @@
 Utilities for working with the
 `Places dataset <http://places2.csail.mit.edu/index.html>`_.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """

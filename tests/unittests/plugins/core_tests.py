@@ -1,7 +1,7 @@
 """
 FiftyOne plugin core tests.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -50,19 +50,19 @@ def fiftyone_plugins_dir(tmp_path_factory):
     return fn
 
 
+def test_disable_plugin(app_config_path):
+    fop.disable_plugin("my-plugin", _allow_missing=True)
+    with open(app_config_path, "r") as f:
+        config = json.load(f)
+    assert config["plugins"]["my-plugin"]["enabled"] == False
+
+
 def test_enable_plugin(app_config_path):
-    fop.enable_plugin("my-plugin")
+    fop.enable_plugin("my-plugin", _allow_missing=True)
     with open(app_config_path, "r") as f:
         config = json.load(f)
 
     assert config["plugins"].get("my-plugin", {}).get("enabled", True) == True
-
-
-def test_disable_plugin(app_config_path):
-    fop.disable_plugin("my-plugin")
-    with open(app_config_path, "r") as f:
-        config = json.load(f)
-    assert config["plugins"]["my-plugin"]["enabled"] == False
 
 
 def test_delete_plugin_success(mocker, fiftyone_plugins_dir):

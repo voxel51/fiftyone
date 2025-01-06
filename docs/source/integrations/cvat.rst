@@ -457,7 +457,11 @@ details:
     attributes are included for all fields that do not explicitly define their
     per-field attributes (in addition to any per-class attributes)
 -   **mask_targets** (*None*): a dict mapping pixel values to semantic label
-    strings. Only applicable when annotating semantic segmentations
+    strings. Only applicable when annotating semantic segmentations. All new
+    label fields must have mask targets provided via one of the supported
+    methods. For existing label fields, if mask targets are not provided by
+    this argument nor `label_schema`, any applicable mask targets stored on
+    your dataset will be used, if available
 -   **allow_additions** (*True*): whether to allow new labels to be added. Only
     applicable when editing existing label fields
 -   **allow_deletions** (*True*): whether to allow labels to be deleted. Only
@@ -678,8 +682,13 @@ FiftyOne can infer the appropriate values to use:
 
 -   **label_type**: if omitted, the |Label| type of the field will be used to
     infer the appropriate value for this parameter
--   **classes**: if omitted for a non-semantic segmentation field, the observed
-    labels on your dataset will be used to construct a classes list
+-   **classes**: if omitted, the observed labels on your dataset will be used
+    to construct a classes list
+-   **mask_targets**: if omitted for a semantic segmentation field, the mask
+    targets from the
+    :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` or
+    :meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
+    properties of your dataset will be used, if available
 
 .. _cvat-label-attributes:
 
