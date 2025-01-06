@@ -40,14 +40,6 @@ interface ResolveColor {
   color: string;
 }
 
-type DecodeLabelOverlayArgs = {
-  cls: string;
-  fieldName: string;
-  label: Record<string, any>;
-  // comes from sample.urls, also known as "sources" elsewhere
-  urlOverrides?: { [key: string]: string };
-};
-
 type ResolveColorMethod = ReaderMethod & ResolveColor;
 
 const [requestColor, resolveColor] = colorResolve();
@@ -55,52 +47,6 @@ const [requestColor, resolveColor] = colorResolve();
 const painterFactory = PainterFactory(requestColor);
 
 const ALL_VALID_LABELS = new Set(VALID_LABEL_TYPES);
-
-const decodeLabelOverlay = async ({
-  cls,
-  fieldName,
-  label,
-  urlOverrides,
-}: DecodeLabelOverlayArgs) => {
-  const promises = [];
-
-  if (cls === DETECTIONS) {
-    const promises: Promise<void>[] = [];
-    for (const detection of label.detections) {
-      promises.push(
-        decodeLabelOverlay({
-          fieldName,
-          urlOverrides,
-          cls: DETECTION,
-          label: detection,
-        })
-      );
-    }
-    await Promise.all(promises);
-    return;
-  }
-
-  const overlayFields = getOverlayFieldFromCls(cls);
-  const overlayPathField = overlayFields.disk;
-  const overlayField = overlayFields.canonical;
-
-  if (Boolean(label[overlayField]) || !Object.hasOwn(label, overlayPathField)) {
-    // it's possible we're just re-coloring, in which case re-init mask image and set bitmap to null
-    if (
-      label[overlayField] &&
-      label[overlayField].bitmap &&
-      !label[overlayField].image
-    ) {
-      const height = label[overlayField].bitmap.height;
-      const width = label[overlayField].bitmap.width;
-      label[overlayField].image = new ArrayBuffer(height * width * 4);
-      label[overlayField].bitmap.close();
-      label[overlayField].bitmap = null;
-    }
-    // nothing to be done
-    return;
-  }
-};
 
 /**
  * This function processes labels in active paths in a recursive manner. It follows the following steps:
@@ -690,9 +636,6 @@ if (typeof onmessage !== "undefined") {
         return;
       case "processSample":
         processSample(args as ProcessSample);
-        return;
-      case "decodeLabelOverlay":
-        decodeLabelOverlay(args as DecodeLabelOverlayArgs);
         return;
       case "requestFrameChunk":
         requestFrameChunk(args as RequestFrameChunk);

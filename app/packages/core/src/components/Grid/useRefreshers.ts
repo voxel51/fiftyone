@@ -35,17 +35,10 @@ export default function useRefreshers() {
   const layoutReset = useMemo(() => {
     cropToContent;
     fieldVisibilityStage;
-    labelsToggleTracker;
     mediaField;
     refresher;
     return uuid();
-  }, [
-    cropToContent,
-    fieldVisibilityStage,
-    labelsToggleTracker,
-    mediaField,
-    refresher,
-  ]);
+  }, [cropToContent, fieldVisibilityStage, mediaField, refresher]);
 
   // the values reset the page, i.e. return to the top
   const pageReset = useMemo(() => {
@@ -101,6 +94,13 @@ export default function useRefreshers() {
       noDisposeOnSet: true,
     });
   }, [reset]);
+
+  useEffect(() => {
+    console.log(">>>sashank")
+    lookerStore.forEach((looker) => {
+      looker.refreshSample();
+    });
+  }, [labelsToggleTracker]);
 
   return {
     lookerStore,
