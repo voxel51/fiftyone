@@ -1,9 +1,11 @@
 /**
- * Copyright 2017-2024, Voxel51, Inc.
+ * Copyright 2017-2025, Voxel51, Inc.
  */
 
 import { CONTAINS, Overlay } from "./overlays/base";
 import { ClassificationsOverlay } from "./overlays/classifications";
+import HeatmapOverlay from "./overlays/heatmap";
+import SegmentationOverlay from "./overlays/segmentation";
 import { BaseState } from "./state";
 import { rotate } from "./util";
 
@@ -29,6 +31,25 @@ const processOverlays = <State extends BaseState>(
     }
 
     if (!(overlay.field && overlay.field in bins)) continue;
+
+    // todo: find a better approach / place for this.
+    // for instance, this won't work in detection overlay, where
+    // we might want the bounding boxes but masks might not have been loaded
+    if (
+      overlay instanceof SegmentationOverlay &&
+      overlay.label.mask_path &&
+      !overlay.label.mask
+    ) {
+      continue;
+    }
+
+    if (
+      overlay instanceof HeatmapOverlay &&
+      overlay.label.map_path &&
+      !overlay.label.map
+    ) {
+      continue;
+    }
 
     if (!overlay.isShown(state)) continue;
 
