@@ -123,7 +123,8 @@ class DelegatedOperationDocument(object):
         if self.context:
             d["context"] = {
                 "request_params": self.context._get_serialized_request_params(),
-                "user": self.context.user.id,
+                "user": self.context.user.id if self.context.user else None
+                # user may be none if triggered outside the api
             }
         d.pop("_doc")
         d.pop("id")
