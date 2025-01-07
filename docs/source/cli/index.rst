@@ -1239,14 +1239,14 @@ List plugins that are installed locally.
 
 .. code-block:: text
 
-    fiftyone plugins info [-h] NAME
+    fiftyone plugins info [-h] NAME_OR_DIR
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      NAME        the plugin name
+      NAME_OR_DIR  the plugin name or directory
 
     optional arguments:
       -h, --help  show this help message and exit
@@ -1257,6 +1257,9 @@ List plugins that are installed locally.
 
     # Prints information about a plugin
     fiftyone plugins info <name>
+
+    # Prints information about a plugin in a given directory
+    fiftyone plugins info <dir>
 
 .. _cli-fiftyone-plugins-download:
 

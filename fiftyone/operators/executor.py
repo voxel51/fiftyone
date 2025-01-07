@@ -964,6 +964,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
         params=None,
         on_success=None,
         on_error=None,
+        on_cancel=None,
         skip_prompt=False,
     ):
         """Prompts the user to execute the operator with the given URI.
@@ -974,6 +975,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
             on_success (None): a callback to invoke if the user successfully
                 executes the operator
             on_error (None): a callback to invoke if the execution fails
+            on_cancel (None): a callback to invoke if the user cancels the prompt
             skip_prompt (False): whether to skip the prompt
 
         Returns:
@@ -989,6 +991,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
                     "params": params,
                     "on_success": on_success,
                     "on_error": on_error,
+                    "on_cancel": on_cancel,
                     "skip_prompt": skip_prompt,
                 }
             ),

@@ -22,13 +22,16 @@ class PluginDefinition(object):
     Args:
         directory: the directory containing the plugin
         metadata: a plugin metadata dict
+        shadow_paths (None): a list of plugin directories that this plugin
+            shadows
     """
 
     _REQUIRED_METADATA_KEYS = ["name"]
 
-    def __init__(self, directory, metadata):
+    def __init__(self, directory, metadata, shadow_paths=None):
         self._directory = directory
         self._metadata = metadata
+        self._shadow_paths = shadow_paths
         self._validate()
 
     @property
@@ -45,6 +48,11 @@ class PluginDefinition(object):
     def builtin(self):
         """Whether the plugin is a builtin plugin."""
         return self.directory.startswith(fpc.BUILTIN_PLUGINS_DIR)
+
+    @property
+    def shadow_paths(self):
+        """A list of plugin directories that this plugin shadows."""
+        return self._shadow_paths
 
     @property
     def author(self):
@@ -194,6 +202,7 @@ class PluginDefinition(object):
         """
         return {
             "name": self.name,
+            "builtin": self.builtin,
             "author": self.author,
             "version": self.version,
             "url": self.url,
@@ -211,15 +220,17 @@ class PluginDefinition(object):
             "has_js": self.has_js,
             "server_path": self.server_path,
             "secrets": self.secrets,
-            "builtin": self.builtin,
+            "shadow_paths": self.shadow_paths,
         }
 
     @classmethod
-    def from_disk(cls, metadata_path):
+    def from_disk(cls, metadata_path, shadow_paths=None):
         """Creates a :class:`PluginDefinition` for the given metadata file.
 
         Args:
             metadata_path: the path to a plugin ``.yaml`` file
+            shadow_paths (None): a list of plugin directories that this plugin
+                shadows
 
         Returns:
             a :class:`PluginDefinition`
@@ -228,7 +239,7 @@ class PluginDefinition(object):
         with open(metadata_path, "r") as f:
             metadata = yaml.safe_load(f)
 
-        return cls(dirpath, metadata)
+        return cls(dirpath, metadata, shadow_paths=shadow_paths)
 
     def _validate(self):
         missing = [
