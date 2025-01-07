@@ -261,9 +261,12 @@ export default class SegmentationOverlay<State extends BaseState>
     return sizeBytesEstimate(this.label);
   }
 
-  public cleanup(): void {
+  public cleanup(setTargetsToNull = false): void {
     this.label.mask?.bitmap?.close();
-    this.targets = null;
+
+    if (setTargetsToNull) {
+      this.label.mask = null;
+    }
   }
 }
 
