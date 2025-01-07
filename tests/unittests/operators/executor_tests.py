@@ -18,6 +18,7 @@ from fiftyone.operators.operator import Operator
 from fiftyone.operators.executor import (
     execute_or_delegate_operator,
     ExecutionResult,
+    ExecutionContext,
 )
 from fiftyone.operators import OperatorConfig
 
