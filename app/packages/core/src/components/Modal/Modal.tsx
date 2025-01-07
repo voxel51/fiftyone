@@ -1,12 +1,13 @@
 import { HelpPanel, JSONPanel } from "@fiftyone/components";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ModalActionsRow } from "../Actions";
 import Sidebar from "../Sidebar";
+import { useOnSidebarSelectionChange } from "../Sidebar/useOnSidebarSelectionChange";
 import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
 import { TooltipInfo } from "./TooltipInfo";
@@ -177,6 +178,12 @@ const Modal = () => {
   }, [isFullScreen]);
 
   const activeLookerRef = useRef<fos.Lookers>();
+
+  const labelsToggleTracker = useOnSidebarSelectionChange({ modal: true });
+
+  useEffect(() => {
+    activeLookerRef.current?.refreshSample();
+  }, [labelsToggleTracker]);
 
   const addTooltipEventHandler = useTooltipEventHandler();
   const removeTooltipEventHanlderRef = useRef<ReturnType<
