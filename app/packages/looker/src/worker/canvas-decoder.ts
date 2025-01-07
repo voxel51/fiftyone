@@ -2,7 +2,7 @@ import { HEATMAP } from "@fiftyone/utilities";
 import { OverlayMask } from "../numpy";
 
 const canvasAndCtx = (() => {
-  if ("OffscreenCanvas" in self) {
+  if (typeof OffscreenCanvas !== "undefined") {
     const offScreenCanvas = new OffscreenCanvas(1, 1);
     const offScreenCanvasCtx = offScreenCanvas.getContext("2d", {
       willReadFrequently: true,
