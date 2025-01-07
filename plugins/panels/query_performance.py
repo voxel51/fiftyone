@@ -30,6 +30,8 @@ from fiftyone.operators.panel import Panel, PanelConfig
 
 NOT_PERMITTED_TEXT = "You do not have sufficient permission."
 
+all_indexes = None
+
 
 def _has_edit_permission(ctx):
     if ctx.user is None:
@@ -580,6 +582,10 @@ class SummaryFieldUpdateOperator(foo.Operator):
 
 
 class QueryPerformancePanel(Panel):
+
+    _index_data = {}
+    _tooltip_data = {}
+
     @property
     def config(self):
         return PanelConfig(
@@ -594,10 +600,12 @@ class QueryPerformancePanel(Panel):
         )
 
     def _get_index_table_data(self, ctx):
+
         indexes = ctx.dataset.get_index_information(include_stats=True)
         default_indexes = set(_get_default_indexes(ctx))
         rows = []
-        for name in sorted(indexes):
+        tooltip_data = {"Usage": {}}
+        for i, name in enumerate(sorted(indexes)):
             index_info = indexes[name]
 
             default = name in default_indexes
@@ -607,6 +615,7 @@ class QueryPerformancePanel(Panel):
                 else etau.to_human_bytes_str(index_info.get("size", 0))
             )
             ops = index_info.get("accesses", {}).get("ops", 0)
+            ops_since = index_info.get("accesses", {}).get("since", 0)
 
             types = ["Index"]
             if default:
@@ -622,6 +631,7 @@ class QueryPerformancePanel(Panel):
                     "Usage": ops,
                 }
             )
+            tooltip_data["Usage"][i] = humanize.naturaltime(ops_since)
 
         # sort the rows, with default field first and then alphabetical order
         rows = sorted(
@@ -649,6 +659,7 @@ class QueryPerformancePanel(Panel):
             ],
             "columns": ["Field", "Size", "Type", "Usage"],
         }
+        self._tooltip_data = tooltip_data
         return table_data
 
     def on_change_query_performance(self, ctx):
@@ -660,7 +671,8 @@ class QueryPerformancePanel(Panel):
         ctx.panel.set_data("event_data", event)
 
     def _build_view(self, ctx):
-        ctx.panel.set_data("table", self._get_index_table_data(ctx))
+        self._index_data = self._get_index_table_data(ctx)
+        ctx.panel.set_data("table", self._index_data)
 
     def on_refresh_button_click(self, ctx):
         self.refresh(ctx)
@@ -746,8 +758,16 @@ class QueryPerformancePanel(Panel):
 
     def render(self, ctx):
         panel = Object()
-        droppable_index = _get_droppable_indexes(ctx)
-        summary_fields = _get_summary_fields(ctx)
+        all_indices = self._index_data.get("rows", [])
+        droppable_index = []
+        summary_fields = []
+        for row in all_indices:
+            row_types = row[2].split(", ")
+            if "Summary" in row_types:
+                summary_fields.append(row)
+                continue
+            if "Default" not in row_types:
+                droppable_index.append(row)
 
         if not (droppable_index or summary_fields):
             lightning_path = "/panels/lightning_path.png"
@@ -842,9 +862,10 @@ class QueryPerformancePanel(Panel):
                 ),
             )
         else:
-            all_indices = ctx.dataset.list_indexes()
+            summary_field_count = len(summary_fields)
+            index_field_count = len(all_indices) - summary_field_count
             if all_indices and summary_fields:
-                message = f"{len(all_indices)} Indexes and {len(summary_fields)} Summary Fields"
+                message = f"{index_field_count} Indexes and {summary_field_count} Summary Fields"
             else:
                 message = f"{len(all_indices)} Indexes"
 
@@ -918,10 +939,15 @@ class QueryPerformancePanel(Panel):
             table.add_column("Type", label="Type")
             table.add_column("Usage", label="Usage")
 
-            # add tooltips for summary field size
-            for row in range(
-                len(all_indices), len(all_indices) + len(summary_fields)
-            ):
+            # add tooltips for summary field size and usage
+            for row in range(index_field_count + summary_field_count):
+                if row < index_field_count:
+                    ops_since = self._tooltip_data["Usage"].get(row)
+                    if ops_since:
+                        table.add_tooltip(  # pylint: disable=E1101
+                            row, 3, "Operations since " + ops_since
+                        )
+                    continue
                 table.add_tooltip(  # pylint: disable=E1101
                     row, 1, "Summary field size is not available"
                 )
@@ -930,20 +956,25 @@ class QueryPerformancePanel(Panel):
                 # Calculating row conditionality for the update button
                 if summary_fields:
                     self._add_summary_field_action(
-                        table, all_indices, summary_fields
+                        table, index_field_count, summary_field_count
                     )
 
                 # Calculating row conditionality for the delete button
                 self._add_delete_index(
-                    table, all_indices, droppable_index, summary_fields
+                    table,
+                    index_field_count,
+                    len(droppable_index),
+                    summary_field_count,
                 )
 
             panel.list("table", Object(), view=table)
 
         return Property(panel, view=GridView(pad=3, gap=3))
 
-    def _add_summary_field_action(self, table, all_indices, summary_fields):
-        rows = [False] * len(all_indices) + [True] * len(summary_fields)
+    def _add_summary_field_action(
+        self, table, index_fields_count, summary_fields_count
+    ):
+        rows = [False] * index_fields_count + [True] * summary_fields_count
         table.add_row_action(
             "update_summary_field",
             self.on_click_update,
@@ -954,12 +985,16 @@ class QueryPerformancePanel(Panel):
         )
 
     def _add_delete_index(
-        self, table, all_indices, droppable_index, summary_fields
+        self,
+        table,
+        index_fields_count,
+        droppable_index_count,
+        summary_fields_count,
     ):
         rows = (
-            [False] * (len(all_indices) - len(droppable_index))
-            + [True] * len(droppable_index)
-            + [False] * len(summary_fields)
+            [False] * (index_fields_count - droppable_index_count)
+            + [True] * droppable_index_count
+            + [False] * summary_fields_count
         )
         table.add_row_action(
             "delete_index",
@@ -970,7 +1005,7 @@ class QueryPerformancePanel(Panel):
             tooltip="Delete index",
         )
 
-        rows = [False] * len(all_indices) + [True] * len(summary_fields)
+        rows = [False] * index_fields_count + [True] * summary_fields_count
         table.add_row_action(
             "delete_summary_field",
             self.on_click_delete,
