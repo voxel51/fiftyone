@@ -2,11 +2,15 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { BufferManager } from "@fiftyone/utilities";
-import { ImaVidFramesController } from "./lookers/imavid/controller";
-import { Overlay } from "./overlays/base";
-
-import { AppError, COLOR_BY, Schema, Stage } from "@fiftyone/utilities";
+import type {
+  AppError,
+  BufferManager,
+  COLOR_BY,
+  Schema,
+  Stage,
+} from "@fiftyone/utilities";
+import type { ImaVidFramesController } from "./lookers/imavid/controller";
+import type { Overlay } from "./overlays/base";
 
 export type Optional<T> = {
   [P in keyof T]?: Optional<T[P]>;
@@ -33,7 +37,7 @@ export type ColorscaleInput = {
   path?: string;
   name?: string;
   list?: [];
-  rgb?: [RGB[]];
+  rgb?: RGB[];
 };
 
 export type Colorscale = {
@@ -69,27 +73,6 @@ export type OrthogrpahicProjectionMetadata = {
   max_bound: [number, number, number];
   normal: [number, number, number];
 };
-
-export type GenericLabel = {
-  [labelKey: string]: {
-    [field: string]: unknown;
-  };
-  // todo: add other label types
-};
-
-export type Sample = {
-  metadata: {
-    width: number;
-    height: number;
-    mime_type?: string;
-  };
-  _id: string;
-  id: string;
-  filepath: string;
-  tags: string[];
-  _label_tags: string[];
-  _media_type: "image" | "video" | "point-cloud" | "3d";
-} & GenericLabel;
 
 export interface LabelData {
   labelId: string;
@@ -127,8 +110,8 @@ export type Action<State extends BaseState> = (
 ) => void;
 
 export enum ControlEventKeyType {
-  HOLD,
-  KEY_DOWN,
+  HOLD = "HOLD",
+  KEY_DOWN = "KEY_DOWN",
 }
 export interface Control<State extends BaseState = BaseState> {
   eventKeys?: string | string[];

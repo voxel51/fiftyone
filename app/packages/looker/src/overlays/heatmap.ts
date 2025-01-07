@@ -8,22 +8,22 @@ import {
   getRGBAColor,
   sizeBytesEstimate,
 } from "@fiftyone/utilities";
-import { ARRAY_TYPES, TypedArray } from "../numpy";
-import { BaseState, Coordinates } from "../state";
+import type { BaseState, Coordinates } from "../state";
 import { isFloatArray } from "../util";
-import { clampedIndex } from "../worker/painter";
-import {
+import type { TypedArray } from "../worker/decoders/types";
+import { ARRAY_TYPES } from "../worker/decoders/types";
+import { clampedIndex } from "../worker/painters/utils";
+import type {
   BaseLabel,
-  CONTAINS,
   LabelMask,
   Overlay,
   PointInfo,
   SelectData,
-  isShown,
 } from "./base";
+import { CONTAINS, isShown } from "./base";
 import { strokeCanvasRect, t } from "./util";
 
-interface HeatmapLabel extends BaseLabel {
+export interface HeatmapLabel extends BaseLabel {
   map?: LabelMask;
   range?: [number, number];
 }
@@ -103,7 +103,7 @@ export default class HeatmapOverlay<State extends BaseState>
     if (this.containsPoint(state)) {
       return 0;
     }
-    return Infinity;
+    return Number.Infinity;
   }
 
   getPointInfo(state: Readonly<State>): PointInfo<HeatmapInfo> {
@@ -212,7 +212,7 @@ export default class HeatmapOverlay<State extends BaseState>
   }
 }
 
-export const getHeatmapPoints = (labels: HeatmapLabel[]): Coordinates[] => {
+export const getHeatmapPoints = (_: HeatmapLabel[]): Coordinates[] => {
   return [
     [0, 0],
     [0, 1],

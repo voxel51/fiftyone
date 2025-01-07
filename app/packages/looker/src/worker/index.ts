@@ -2,22 +2,24 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import type { Sample, Schema, Stage } from "@fiftyone/utilities";
 import {
   DENSE_LABELS,
   DETECTION,
   DETECTIONS,
   DYNAMIC_EMBEDDED_DOCUMENT,
   EMBEDDED_DOCUMENT,
+  HEATMAP,
   LABEL_LIST,
-  Schema,
-  Stage,
+  PANOPTIC_SEGMENTATION,
+  SEGMENTATION,
   VALID_LABEL_TYPES,
   getCls,
   getFetchFunction,
   setFetchFunction,
 } from "@fiftyone/utilities";
 import { CHUNK_SIZE } from "../constants";
-import {
+import type {
   BaseConfig,
   Coloring,
   Colorscale,
@@ -25,76 +27,20 @@ import {
   FrameChunk,
   FrameSample,
   LabelTagColor,
-  Sample,
 } from "../state";
-import { DeserializerFactory } from "./deserializer";
-import { decodeOverlayOnDisk } from "./disk-overlay-decoder";
-import { PainterFactory } from "./painter";
+import decodeImages from "./decoders";
+import { painter, resolveColor } from "./painters";
+import type { ResolveColor, ResolveColorMethod } from "./painters/utils";
 import { getOverlayFieldFromCls, mapId } from "./shared";
 import { process3DLabels } from "./threed-label-processor";
-
-interface ResolveColor {
-  key: string | number;
-  seed: number;
-  color: string;
-}
-
-type ResolveColorMethod = ReaderMethod & ResolveColor;
-
-const [requestColor, resolveColor] = ((): [
-  (pool: string[], seed: number, key: string | number) => Promise<string>,
-  (result: ResolveColor) => void
-] => {
-  const cache = {};
-  const requests = {};
-  const promises = {};
-
-  return [
-    (pool, seed, key) => {
-      if (!(seed in cache)) {
-        cache[seed] = {};
-      }
-
-      const colors = cache[seed];
-
-      if (!(key in colors)) {
-        if (!(seed in requests)) {
-          requests[seed] = {};
-          promises[seed] = {};
-        }
-
-        const seedRequests = requests[seed];
-        const seedPromises = promises[seed];
-
-        if (!(key in seedRequests)) {
-          seedPromises[key] = new Promise((resolve) => {
-            seedRequests[key] = resolve;
-            postMessage({
-              method: "requestColor",
-              key,
-              seed,
-              pool,
-            });
-          });
-        }
-
-        return seedPromises[key];
-      }
-
-      return Promise.resolve(colors[key]);
-    },
-    ({ key, seed, color }) => {
-      requests[seed][key](color);
-    },
-  ];
-})();
-
-const painterFactory = PainterFactory(requestColor);
+import type { ReaderMethod } from "./types";
 
 const ALL_VALID_LABELS = new Set(VALID_LABEL_TYPES);
 
 /**
- * This function processes labels in a recursive manner. It follows the following steps:
+ * This function processes labels in a recursive manner.
+ *
+ * It has the following steps:
  * 1. Deserialize masks. Accumulate promises.
  * 2. Await mask path decoding to finish.
  * 3. Start painting overlays. Accumulate promises.
@@ -106,7 +52,7 @@ const ALL_VALID_LABELS = new Set(VALID_LABEL_TYPES);
 const processLabels = async (
   sample: ProcessSample["sample"],
   coloring: ProcessSample["coloring"],
-  prefix = "",
+  prefix: string,
   sources: { [key: string]: string },
   customizeColorSetting: ProcessSample["customizeColorSetting"],
   colorscale: ProcessSample["colorscale"],
@@ -125,8 +71,8 @@ const processLabels = async (
     if (!Array.isArray(labels)) {
       labels = [labels];
     }
-    const cls = getCls(`${prefix ? prefix : ""}${field}`, schema);
 
+    const cls = getCls(`${prefix ? prefix : ""}${field}`, schema);
     if (!cls) {
       continue;
     }
@@ -138,22 +84,18 @@ const processLabels = async (
 
       if (DENSE_LABELS.has(cls)) {
         maskPathDecodingPromises.push(
-          decodeOverlayOnDisk(
-            `${prefix || ""}${field}`,
-            label,
-            coloring,
-            customizeColorSetting,
-            colorscale,
-            sources,
+          decodeImages({
             cls,
+            coloring,
+            colorscale,
+            customizeColorSetting,
+            field: `${prefix || ""}${field}`,
+            label,
+            sources,
             maskPathDecodingPromises,
-            maskTargetsBuffers
-          )
+            maskTargetsBuffers,
+          })
         );
-      }
-
-      if (cls in DeserializerFactory) {
-        DeserializerFactory[cls](label, maskTargetsBuffers);
       }
 
       if ([EMBEDDED_DOCUMENT, DYNAMIC_EMBEDDED_DOCUMENT].includes(cls)) {
@@ -196,7 +138,6 @@ const processLabels = async (
     }
 
     const cls = getCls(`${prefix ? prefix : ""}${field}`, schema);
-
     if (!cls) {
       continue;
     }
@@ -205,19 +146,37 @@ const processLabels = async (
       if (!label) {
         continue;
       }
-      if (painterFactory[cls]) {
-        painterPromises.push(
-          painterFactory[cls](
-            prefix ? prefix + field : field,
-            label,
-            coloring,
-            customizeColorSetting,
-            colorscale,
-            labelTagColors,
-            selectedLabelTags
-          )
-        );
+
+      const params = {
+        field: prefix ? prefix + field : field,
+        label,
+        coloring,
+        customizeColorSetting,
+        colorscale,
+        labelTagColors,
+        selectedLabelTags,
+      };
+      let promise: Promise<void>;
+
+      switch (cls) {
+        case DETECTION:
+          promise = painter.Detection(params);
+          break;
+        case DETECTIONS:
+          promise = painter.Detections(params);
+          break;
+        case HEATMAP:
+          promise = painter.Heatmap(params);
+          break;
+        case PANOPTIC_SEGMENTATION:
+          promise = painter.PanopticSegmentation(params);
+          break;
+        case SEGMENTATION:
+          promise = painter.Segmentation(params);
+          break;
       }
+
+      painterPromises.push(promise);
     }
   }
 
@@ -251,9 +210,9 @@ const processLabels = async (
 
 const collectBitmapPromises = (label, cls, bitmapPromises) => {
   if (cls === DETECTIONS) {
-    label?.detections?.forEach((detection) =>
-      collectBitmapPromises(detection, DETECTION, bitmapPromises)
-    );
+    for (const detection of label?.detections ?? []) {
+      collectBitmapPromises(detection, DETECTION, bitmapPromises);
+    }
     return;
   }
 
@@ -298,10 +257,6 @@ let streamId: string | null = null;
 
 /** END GLOBALS */
 
-interface ReaderMethod {
-  method: string;
-}
-
 export interface ProcessSample {
   uuid: string;
   sample: Sample & FrameSample;
@@ -330,7 +285,7 @@ const processSample = async ({
   mapId(sample);
 
   const imageBitmapPromises: Promise<ImageBitmap[]>[] = [];
-  let maskTargetsBuffers: ArrayBuffer[] = [];
+  const maskTargetsBuffers: ArrayBuffer[] = [];
 
   if (sample?._media_type === "point-cloud" || sample?._media_type === "3d") {
     process3DLabels(schema, sample);
@@ -517,7 +472,9 @@ const createReader = ({
     frameNumber,
     chunkSize,
     reader: privateStream.getReader(),
-    cancel: () => (cancelled = true),
+    cancel: () => {
+      cancelled = true;
+    },
   };
 };
 
@@ -545,17 +502,17 @@ const getSendChunk =
         .filter((result) => result.status === "fulfilled")
         .map((result) => result.value);
 
-      const allBuffers = allLabelsResults.map((result) => result[1]).flat();
+      const allBuffers = allLabelsResults.flatMap((result) => result[1]);
 
-      const allBitmapsPromises = allLabelsResults
-        .map((result) => result[0])
-        .flat();
+      const allBitmapsPromises = allLabelsResults.flatMap(
+        (result) => result[0]
+      );
 
       const bitmapPromiseResults = (
         await Promise.allSettled(allBitmapsPromises)
-      )
-        .map((result) => (result.status === "fulfilled" ? result.value : []))
-        .flat();
+      ).flatMap((result) =>
+        result.status === "fulfilled" ? result.value : []
+      );
 
       const transferables = [...bitmapPromiseResults, ...allBuffers];
       postMessage(
@@ -616,7 +573,7 @@ const setStream = ({
   group,
   schema,
 }: SetStream) => {
-  stream && stream.cancel();
+  stream?.cancel();
   streamId = uuid;
 
   stream = createReader({

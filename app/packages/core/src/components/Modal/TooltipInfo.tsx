@@ -645,6 +645,58 @@ const KeypointInfo = ({ detail }) => {
   );
 };
 
+const PanopticSegmentationInfo = ({ detail }) => {
+  console.log(detail);
+  const targetValue = useTarget(detail.field, detail.target);
+  const hideTargetValue = detail.color === undefined;
+
+  return (
+    <AttrBlock style={{ borderColor: detail.color }}>
+      {!hideTargetValue &&
+        (targetValue ? (
+          <ContentItem
+            key={"target-value"}
+            field={detail.field}
+            name={"label"}
+            value={targetValue}
+          />
+        ) : (
+          <ContentItem
+            key={"pixel-value"}
+            field={detail.field}
+            name={"pixel"}
+            value={detail.target}
+          />
+        ))}
+      {detail.instance > 0 && (
+        <ContentItem
+          key={"instance-value"}
+          field={detail.field}
+          name={"instance"}
+          value={detail.instance}
+        />
+      )}
+      <AttrInfo
+        field={detail.field}
+        label={detail.label}
+        labelType={detail.type}
+      />
+    </AttrBlock>
+  );
+};
+
+const PolylineInfo = ({ detail }) => {
+  return (
+    <AttrBlock style={{ borderColor: detail.color }}>
+      <AttrInfo
+        field={detail.field}
+        label={detail.label}
+        labelType={detail.type}
+      />
+    </AttrBlock>
+  );
+};
+
 const RegressionInfo = ({ detail }) => {
   return (
     <AttrBlock style={{ borderColor: detail.color }}>
@@ -679,18 +731,14 @@ const SegmentationInfo = ({ detail }) => {
             value={detail.target}
           />
         ))}
-      <AttrInfo
-        field={detail.field}
-        label={detail.label}
-        labelType={detail.type}
-      />
-    </AttrBlock>
-  );
-};
-
-const PolylineInfo = ({ detail }) => {
-  return (
-    <AttrBlock style={{ borderColor: detail.color }}>
+      {detail.instance > 0 && (
+        <ContentItem
+          key={"instance-value"}
+          field={detail.field}
+          name={"instance"}
+          value={detail.instance}
+        />
+      )}
       <AttrInfo
         field={detail.field}
         label={detail.label}
@@ -705,6 +753,7 @@ const OVERLAY_INFO = {
   Detection: DetectionInfo,
   Heatmap: HeatmapInfo,
   Keypoint: KeypointInfo,
+  PanopticSegmentation: PanopticSegmentationInfo,
   Polyline: PolylineInfo,
   Regression: RegressionInfo,
   Segmentation: SegmentationInfo,
@@ -715,6 +764,7 @@ const HIDDEN_LABELS = {
   Detection: ["bounding_box", "mask"],
   Heatmap: ["map"],
   Keypoint: ["points", "occluded", "confidence"],
+  PanopticSegmentation: ["mask"],
   Polyline: ["points"],
   Regression: [],
   Segmentation: ["mask"],

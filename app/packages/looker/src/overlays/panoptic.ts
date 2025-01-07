@@ -1,9 +1,9 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
 import { getColor, sizeBytesEstimate } from "@fiftyone/utilities";
-import type { BaseState, Coordinates, MaskTargets } from "../state";
+import type { BaseState, Coordinates } from "../state";
 import type { TypedArray } from "../worker/decoders/types";
 import { ARRAY_TYPES } from "../worker/decoders/types";
 import type {
@@ -14,35 +14,27 @@ import type {
   SelectData,
 } from "./base";
 import { CONTAINS, isShown } from "./base";
-import { isRgbMaskTargets, strokeCanvasRect, t } from "./util";
+import { strokeCanvasRect, t } from "./util";
 
-export interface SegmentationLabel extends BaseLabel {
+export interface PanopticSegmentationLabel extends BaseLabel {
   mask?: LabelMask;
 }
 
-interface SegmentationInfo extends BaseLabel {
+interface PanopticSegmentationInfo extends BaseLabel {
+  instance?: number;
   mask?: {
     shape: [number, number];
   };
 }
 
-export default class SegmentationOverlay<State extends BaseState>
+export default class PanopticSegmentationOverlay<State extends BaseState>
   implements Overlay<State>
 {
   readonly field: string;
-  readonly label: SegmentationLabel;
+  readonly label: PanopticSegmentationLabel;
   private targets?: TypedArray;
 
-  private isRgbMaskTargets = false;
-
-  private rgbMaskTargetsReverseMap?: {
-    [intTarget: number]: {
-      label: string;
-      color: string;
-    };
-  };
-
-  constructor(field: string, label: SegmentationLabel) {
+  constructor(field: string, label: PanopticSegmentationLabel) {
     this.field = field;
     this.label = label;
 
@@ -103,29 +95,12 @@ export default class SegmentationOverlay<State extends BaseState>
     if (this.containsPoint(state)) {
       return 0;
     }
-    return Infinity;
+    return Number.Infinity;
   }
 
-  initRgbMaskTargetsCache(rgbMaskTargets: MaskTargets) {
-    if (!this.isRgbMaskTargets && isRgbMaskTargets(rgbMaskTargets)) {
-      this.isRgbMaskTargets = true;
-    }
-
-    if (this.rgbMaskTargetsReverseMap) {
-      return;
-    }
-
-    this.rgbMaskTargetsReverseMap = {};
-
-    Object.entries(rgbMaskTargets).map(([color, intTargetAndLabel]) => {
-      this.rgbMaskTargetsReverseMap[intTargetAndLabel.intTarget] = {
-        color,
-        label: intTargetAndLabel.label,
-      };
-    });
-  }
-
-  getPointInfo(state: Readonly<State>): Partial<PointInfo<SegmentationInfo>> {
+  getPointInfo(
+    state: Readonly<State>
+  ): Partial<PointInfo<PanopticSegmentationInfo>> {
     const coloring = state.options.coloring;
     let maskTargets = coloring.maskTargets[this.field];
     if (maskTargets) {
@@ -137,68 +112,29 @@ export default class SegmentationOverlay<State extends BaseState>
     }
 
     const target = this.getTarget(state);
-    const response = { field: this.field, target, type: "Segmentation" };
-
-    if (this.label.mask.data.channels === 1) {
-      return {
-        color:
-          maskTargets && Object.keys(maskTargets).length === 1
-            ? getColor(
-                state.options.coloring.pool,
-                state.options.coloring.seed,
-                this.field
-              )
-            : coloring.targets[
-                Math.round(Math.abs(target)) % coloring.targets.length
-              ],
-        label: {
-          ...this.label,
-          mask: {
-            shape: this.label.mask.data.shape
-              ? this.label.mask.data.shape
-              : null,
-          },
-        },
-      };
-    }
-
-    const rgbSegmentationInfoWithoutColor: Omit<
-      PointInfo<SegmentationInfo>,
-      "color"
-    > = {
-      label: {
-        ...this.label,
-        mask: {
-          shape: this.label.mask.data.shape ? this.label.mask.data.shape : null,
-        },
-      },
-      ...response,
-    };
-
-    this.initRgbMaskTargetsCache(maskTargets);
-
-    if (!this.isRgbMaskTargets) {
-      // getting color here is computationally inefficient, return no tooltip
-      // ribbon color for this edge case
-      return rgbSegmentationInfoWithoutColor;
-    }
-
-    if (
-      !this.rgbMaskTargetsReverseMap ||
-      !this.rgbMaskTargetsReverseMap[target]
-    ) {
-      return undefined;
-    }
 
     return {
-      color: this.rgbMaskTargetsReverseMap[target].color,
+      color:
+        maskTargets && Object.keys(maskTargets).length === 1
+          ? getColor(
+              state.options.coloring.pool,
+              state.options.coloring.seed,
+              this.field
+            )
+          : coloring.targets[
+              Math.round(Math.abs(target)) % coloring.targets.length
+            ],
+      field: this.field,
       label: {
         ...this.label,
         mask: {
           shape: this.label.mask.data.shape ? this.label.mask.data.shape : null,
         },
       },
-      ...response,
+
+      instance: this.getInstance(state),
+      target,
+      type: "PanopticSegmentation",
     };
   }
 
@@ -218,15 +154,7 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   getPoints(): Coordinates[] {
-    return getSegmentationPoints([]);
-  }
-
-  private getIndex(state: Readonly<State>): number {
-    const [sx, sy] = this.getMaskCoordinates(state);
-    if (sx < 0 || sy < 0) {
-      return -1;
-    }
-    return this.label.mask.data.shape[1] * sy + sx;
+    return getPanopticSegmentationPoints([]);
   }
 
   private getMaskCoordinates({
@@ -239,13 +167,34 @@ export default class SegmentationOverlay<State extends BaseState>
     return [sx, sy];
   }
 
-  private getTarget(state: Readonly<State>): number {
-    const index = this.getIndex(state);
-
-    if (index < 0 || !this.targets || index >= this.targets.length) {
+  private getInstance(state: Readonly<State>): number | null {
+    const [sx, sy] = this.getMaskCoordinates(state);
+    if (sx < 0 || sy < 0) {
       return null;
     }
-    return this.targets[index];
+
+    const [height] = this.label.mask.data.shape;
+    const offset = height * 2 * sx + height + sy;
+    if (offset >= this.targets.length) {
+      return null;
+    }
+
+    return Number(this.targets[offset]);
+  }
+
+  private getTarget(state: Readonly<State>): number {
+    const [sx, sy] = this.getMaskCoordinates(state);
+    if (sx < 0 || sy < 0) {
+      return null;
+    }
+
+    const [height] = this.label.mask.data.shape;
+    const offset = height * 2 * sx + sy;
+    if (offset >= this.targets.length) {
+      return null;
+    }
+
+    return Number(this.targets[offset]);
   }
 
   getSizeBytes(): number {
@@ -254,12 +203,11 @@ export default class SegmentationOverlay<State extends BaseState>
 
   public cleanup(): void {
     this.label.mask?.bitmap?.close();
-    this.targets = null;
   }
 }
 
-export const getSegmentationPoints = (
-  labels: SegmentationLabel[]
+export const getPanopticSegmentationPoints = (
+  _: PanopticSegmentationLabel[]
 ): Coordinates[] => {
   return [
     [0, 0],

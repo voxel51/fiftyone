@@ -96,6 +96,7 @@ from .core.labels import (
     Classifications,
     Detection,
     Detections,
+    PanopticSegmentation,
     Polyline,
     Polylines,
     Keypoint,

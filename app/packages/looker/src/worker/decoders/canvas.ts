@@ -1,4 +1,4 @@
-import { OverlayMask } from "../numpy";
+import type { OverlayMask } from "./types";
 
 const offScreenCanvas = new OffscreenCanvas(1, 1);
 const offScreenCanvasCtx = offScreenCanvas.getContext("2d", {
@@ -14,9 +14,13 @@ const getPngcolorType = async (blob: Blob): Promise<number | undefined> => {
   // https://www.w3.org/TR/2003/REC-PNG-20031110/#11IHDR
 
   // PNG signature is 8 bytes
-  // IHDR (image header): length(4 bytes), chunk type(4 bytes), then data(13 bytes)
+  // IHDR (image header): length(4 bytes), chunk type(4 bytes),
+  // then data(13 bytes)
+  //
   // data layout of IHDR: width(4), height(4), bit depth(1), color type(1), ...
-  // color type is at offset: 8(signature) + 4(length) + 4(chunk type) + 8(width+height) + 1(bit depth)
+  //
+  // color type is at offset:
+  // 8(signature) + 4(length) + 4(chunk type) + 8(width+height) + 1(bit depth)
   // = 8 + 4 + 4 + 8 + 1 = 25 (0-based index)
 
   const header = new Uint8Array(await blob.slice(0, 26).arrayBuffer());
@@ -34,8 +38,8 @@ const getPngcolorType = async (blob: Blob): Promise<number | undefined> => {
   return colorType;
 };
 
-export const decodeWithCanvas = async (blob: Blob) => {
-  let channels: number = 4;
+const decodeWithCanvas = async (blob: Blob): Promise<OverlayMask> => {
+  let channels = 4;
 
   if (blob.type === "image/png") {
     const colorType = await getPngcolorType(blob);
@@ -86,9 +90,11 @@ export const decodeWithCanvas = async (blob: Blob) => {
   }
 
   return {
-    buffer: imageData.data.buffer,
-    channels,
     arrayType: "Uint8ClampedArray",
+    buffer: imageData.data.buffer as ArrayBuffer,
+    channels,
     shape: [height, width],
-  } as OverlayMask;
+  };
 };
+
+export default decodeWithCanvas;
