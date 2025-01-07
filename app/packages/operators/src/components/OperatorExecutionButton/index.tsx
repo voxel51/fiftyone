@@ -1,17 +1,18 @@
+import TooltipProvider from "@fiftyone/core/src/plugins/SchemaIO/components/TooltipProvider";
 import { Button } from "@mui/material";
-import { OperatorExecutionTrigger } from "../OperatorExecutionTrigger";
 import React, { useCallback, useMemo } from "react";
-import {
-  ExecutionCallback,
-  ExecutionErrorCallback,
-  OperatorExecutorOptions,
-} from "../../types-internal";
 import {
   OperatorExecutionOption,
   useOperatorExecutionOptions,
   useOperatorExecutor,
   usePromptOperatorInput,
 } from "../../state";
+import {
+  ExecutionCallback,
+  ExecutionErrorCallback,
+  OperatorExecutorOptions,
+} from "../../types-internal";
+import { OperatorExecutionTrigger } from "../OperatorExecutionTrigger";
 
 /**
  * Button which acts as a trigger for opening an `OperatorExecutionMenu`.
@@ -84,10 +85,23 @@ export const OperatorExecutionButton = ({
     [executorOptions, operator, executionParams]
   );
 
-  const { executionOptions } = useOperatorExecutionOptions({
-    operatorUri,
-    onExecute,
-  });
+  const { executionOptions, warningMessage, showWarning, isLoading } =
+    useOperatorExecutionOptions({
+      operatorUri,
+      onExecute,
+    });
+
+  if (isLoading) return null;
+
+  if (showWarning) {
+    return (
+      <TooltipProvider title={warningMessage}>
+        <Button disabled={true} variant={props.variant}>
+          {children}
+        </Button>
+      </TooltipProvider>
+    );
+  }
 
   if (prompt) {
     return (
@@ -107,6 +121,7 @@ export const OperatorExecutionButton = ({
       prompt={prompt}
       executionParams={executionParams}
       onOptionSelected={onOptionSelected}
+      executionOptions={executionOptions}
       disabled={disabled}
     >
       <Button disabled={disabled} {...props}>
