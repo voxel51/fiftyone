@@ -1906,11 +1906,17 @@ class TableView(View):
         self.row_actions.append(row_action)
         return row_action
 
-    def add_tooltip(self, row, column, value, **kwargs):
+    def add_tooltip(self, row, column, value, overwrite=True, **kwargs):
         if (row, column) in self._tooltip_map:
-            raise ValueError(
-                f"Tooltip for row '{row}' and column '{column}' already exists"
-            )
+            if overwrite:
+                tooltip = self._tooltip_map[(row, column)]
+                tooltip.value = value
+                tooltip.__dict__.update(kwargs)
+                return tooltip
+            else:
+                raise ValueError(
+                    f"Tooltip for row '{row}' and column '{column}' already exists"
+                )
 
         tooltip = Tooltip(row=row, column=column, value=value, **kwargs)
         self.tooltips.append(tooltip)

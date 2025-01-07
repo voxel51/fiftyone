@@ -43,4 +43,7 @@ class TableViewTests(unittest.TestCase):
         table.add_tooltip(1, 2, "Tooltip 2")
 
         with self.assertRaises(ValueError):
-            table.add_tooltip(1, 1, "Tooltip 3")
+            table.add_tooltip(1, 1, "Tooltip 3", overwrite=False)
+
+        table.add_tooltip(1, 1, "Tooltip 3")
+
