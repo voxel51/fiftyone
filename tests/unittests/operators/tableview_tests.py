@@ -46,4 +46,7 @@ class TableViewTests(unittest.TestCase):
             table.add_tooltip(1, 1, "Tooltip 3", overwrite=False)
 
         table.add_tooltip(1, 1, "Tooltip 3")
-
+        self.assertEqual(
+            set([tooltip.value for tooltip in table.tooltips]),
+            {"Tooltip 2", "Tooltip 3"},
+        )
