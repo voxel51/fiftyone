@@ -29,7 +29,6 @@ import type { VariablesOf } from "react-relay";
 import { commitMutation } from "react-relay";
 import {
   DefaultValue,
-  atom,
   atomFamily,
   selector,
   selectorFamily,
@@ -910,7 +909,10 @@ export const groupShown = selectorFamily<
     },
 });
 
-export const labelsToggleTracker = atom({
+export const labelsToggleTracker = atomFamily<
+  Map<GridPageNumber, SidebarEntriesSet>,
+  boolean
+>({
   key: "labelsToggleTracker",
   default: new Map<GridPageNumber, SidebarEntriesSet>(),
 });

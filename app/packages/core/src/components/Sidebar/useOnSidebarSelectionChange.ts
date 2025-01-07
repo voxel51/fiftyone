@@ -8,22 +8,20 @@ import { gridPage } from "../Grid/recoil";
  * selection of labels in the sidebar. We keep a map of grid page to the active
  * label fields for that page.
  */
-export const useOnSidebarSelectionChange = () => {
-  const activeLabelFieldsValue = useRecoilValue(
-    activeLabelFields({ modal: false })
-  );
+export const useOnSidebarSelectionChange = ({ modal }: { modal: boolean }) => {
+  const activeLabelFieldsValue = useRecoilValue(activeLabelFields({ modal }));
   const gridPageValue = useRecoilValue(gridPage);
 
   const gridPageValueRef = useRef(gridPageValue);
 
   gridPageValueRef.current = gridPageValue;
 
-  const setSidebarTracker = useSetRecoilState(labelsToggleTracker);
+  const setSidebarTracker = useSetRecoilState(labelsToggleTracker(modal));
 
-  const debugSidebarTracker = useRecoilValue(labelsToggleTracker);
+  const sidebarTracker = useRecoilValue(labelsToggleTracker(modal));
 
   useEffect(() => {
-    const thisPageActiveFields = debugSidebarTracker.get(gridPageValue);
+    const thisPageActiveFields = sidebarTracker.get(gridPageValue);
 
     const currentActiveLabelFields = new Set(activeLabelFieldsValue);
 
@@ -50,7 +48,7 @@ export const useOnSidebarSelectionChange = () => {
     }
 
     const newTracker = new Map([
-      ...debugSidebarTracker,
+      ...sidebarTracker,
       [gridPageValueRef.current, new Set(activeLabelFieldsValue)],
     ]);
 
@@ -59,5 +57,7 @@ export const useOnSidebarSelectionChange = () => {
     }
 
     setSidebarTracker(newTracker);
-  }, [activeLabelFieldsValue, debugSidebarTracker]);
+  }, [activeLabelFieldsValue, sidebarTracker]);
+
+  return sidebarTracker;
 };
