@@ -140,7 +140,7 @@ def mock_plugin_package_name(plugin_name, plugin_path):
     return fop.core.PluginPackage(plugin_name, plugin_path)
 
 
-def test_find_plugin_error_duplicate_name(mocker, fiftyone_plugins_dir):
+def test_duplicate_plugins(mocker, fiftyone_plugins_dir):
     mocker.patch("fiftyone.config.plugins_dir", fiftyone_plugins_dir)
 
     plugin_name = "test-plugin1"
@@ -150,8 +150,17 @@ def test_find_plugin_error_duplicate_name(mocker, fiftyone_plugins_dir):
         pd = {k: plugin_name + "-" + k for k in _REQUIRED_YML_KEYS}
         f.write(yaml.dump(pd))
 
-    with pytest.raises(ValueError):
-        _ = fop.find_plugin("test-plugin1-name")
+    plugin_names = [p.name for p in fop.list_plugins()]
+    assert plugin_names.count("test-plugin1-name") == 1
+
+    plugin_names = [p.name for p in fop.list_plugins(shadowed="all")]
+    assert plugin_names.count("test-plugin1-name") == 2
+
+    # Should NOT raise errors
+    fop.disable_plugin("test-plugin1-name")
+    fop.enable_plugin("test-plugin1-name")
+    _ = fop.find_plugin("test-plugin1-name")
+    _ = fop.get_plugin("test-plugin1-name")
 
 
 def test_github_repository_parse_url():
