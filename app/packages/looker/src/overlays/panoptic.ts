@@ -20,8 +20,8 @@ export interface PanopticSegmentationLabel extends BaseLabel {
   mask?: LabelMask;
 }
 
-interface SegmentationInfo extends BaseLabel {
-  instance?: number | bigint;
+interface PanopticSegmentationInfo extends BaseLabel {
+  instance?: number;
   mask?: {
     shape: [number, number];
   };
@@ -51,7 +51,6 @@ export default class PanopticSegmentationOverlay<State extends BaseState>
     this.targets = new ARRAY_TYPES[this.label.mask.data.arrayType](
       this.label.mask.data.buffer
     );
-    console.log(this.targets);
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
@@ -99,7 +98,9 @@ export default class PanopticSegmentationOverlay<State extends BaseState>
     return Number.Infinity;
   }
 
-  getPointInfo(state: Readonly<State>): Partial<PointInfo<SegmentationInfo>> {
+  getPointInfo(
+    state: Readonly<State>
+  ): Partial<PointInfo<PanopticSegmentationInfo>> {
     const coloring = state.options.coloring;
     let maskTargets = coloring.maskTargets[this.field];
     if (maskTargets) {
@@ -112,7 +113,7 @@ export default class PanopticSegmentationOverlay<State extends BaseState>
 
     const target = this.getTarget(state);
 
-    const result = {
+    return {
       color:
         maskTargets && Object.keys(maskTargets).length === 1
           ? getColor(
@@ -123,29 +124,18 @@ export default class PanopticSegmentationOverlay<State extends BaseState>
           : coloring.targets[
               Math.round(Math.abs(target)) % coloring.targets.length
             ],
+      field: this.field,
       label: {
         ...this.label,
         mask: {
           shape: this.label.mask.data.shape ? this.label.mask.data.shape : null,
         },
       },
-      field: this.field,
+
+      instance: this.getInstance(state),
       target,
-      type: "Segmentation",
+      type: "PanopticSegmentation",
     };
-
-    if (this.label.mask.data.channels === 2) {
-      console.log({
-        ...result,
-        instance: this.getInstance(state),
-      });
-      return {
-        ...result,
-        instance: this.getInstance(state),
-      };
-    }
-
-    return result;
   }
 
   getSelectData(): SelectData {
@@ -167,20 +157,6 @@ export default class PanopticSegmentationOverlay<State extends BaseState>
     return getPanopticSegmentationPoints([]);
   }
 
-  private getIndex(state: Readonly<State>): number {
-    const [sx, sy] = this.getMaskCoordinates(state);
-    if (sx < 0 || sy < 0) {
-      return -1;
-    }
-
-    let mulitplier = 1;
-    if (this.label.is_panoptic) {
-      mulitplier = this.label.mask?.data?.channels;
-    }
-
-    return mulitplier * (this.label.mask.data.shape[1] * sy + sx);
-  }
-
   private getMaskCoordinates({
     pixelCoordinates: [x, y],
     dimensions: [mw, mh],
@@ -191,23 +167,34 @@ export default class PanopticSegmentationOverlay<State extends BaseState>
     return [sx, sy];
   }
 
-  private getInstance(state: Readonly<State>): number {
-    const index = this.getIndex(state);
-
-    if (index < 0 || !this.targets || index >= this.targets.length) {
+  private getInstance(state: Readonly<State>): number | null {
+    const [sx, sy] = this.getMaskCoordinates(state);
+    if (sx < 0 || sy < 0) {
       return null;
     }
 
-    return Number(this.targets[index + 1]);
+    const [height] = this.label.mask.data.shape;
+    const offset = height * 2 * sx + height + sy;
+    if (offset >= this.targets.length) {
+      return null;
+    }
+
+    return Number(this.targets[offset]);
   }
 
   private getTarget(state: Readonly<State>): number {
-    const index = this.getIndex(state);
-    if (index < 0) {
+    const [sx, sy] = this.getMaskCoordinates(state);
+    if (sx < 0 || sy < 0) {
       return null;
     }
 
-    return Number(this.targets[index]);
+    const [height] = this.label.mask.data.shape;
+    const offset = height * 2 * sx + sy;
+    if (offset >= this.targets.length) {
+      return null;
+    }
+
+    return Number(this.targets[offset]);
   }
 
   getSizeBytes(): number {

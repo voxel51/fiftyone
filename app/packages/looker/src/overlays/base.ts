@@ -3,8 +3,8 @@
  */
 
 import { getCls, sizeBytesEstimate } from "@fiftyone/utilities";
-import { OverlayMask } from "../numpy";
 import type { BaseState, Coordinates, NONFINITE } from "../state";
+import type { OverlayMask } from "../worker/decoders/types";
 import { getLabelColor, shouldShowLabelTag } from "./util";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
