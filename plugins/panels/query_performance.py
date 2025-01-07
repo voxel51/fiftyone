@@ -30,12 +30,9 @@ from fiftyone.operators.panel import Panel, PanelConfig
 
 NOT_PERMITTED_TEXT = "You do not have sufficient permission."
 
-all_indexes = None
-
 
 # todo: optimize more by minimizing the number of calls to the backend via ctx.dataset.<method> by consolidating data
-#  requests
-#  in build_view and reusing it in other methods
+#  requests in build_view and reusing it in other methods
 
 
 def _has_edit_permission(ctx):
