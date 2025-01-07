@@ -958,9 +958,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def default_mask_targets(self):
         """A dict defining a default mapping between pixel values (2D masks) or
         RGB hex strings (3D masks) and label strings for the segmentation masks
-        of all :class:`fiftyone.core.labels.Segmentation` fields of this
-        dataset that do not have customized mask targets defined in
-        :meth:`mask_targets`.
+        of all :class:`fiftyone.core.labels.PanopticSegmentation` and
+        :class:`fiftyone.core.labels.Segmentation` fields of this dataset that
+        do not have customized mask targets defined in :meth:`mask_targets`.
+
+        Note that RGB hex strings are ignored for
+        :class:`fiftyone.core.labels.PanopticSegmentation` fields.
 
         Examples::
 

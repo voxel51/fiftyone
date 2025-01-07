@@ -586,24 +586,27 @@ properties that you can use to store label strings for the pixel values of
 The :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` property
 is a dictionary mapping field names to target dicts, each of which is a
 dictionary defining the mapping between pixel values (2D masks) or RGB hex
-strings (3D masks) and label strings for the |Segmentation| masks in the
-specified field of the dataset.
+strings (3D masks) and label strings for |Segmentation| masks and first channel
+values and label strings for |PanopticSegmentation| masks in the specified
+field of the dataset.
 
-If all |Segmentation| fields in your dataset have the same semantics, you can
-store a single target dictionary in the
+If all |PanopticSegmentation| and |Segmentation| fields in your dataset have
+the same semantics, you can store a single target dictionary in the
 :meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
 property of your dataset.
 
-When you load datasets with |Segmentation| fields in the App that have
-corresponding mask targets, the label strings will appear in the App's tooltip
-when you hover over pixels.
+When you load datasets with |Segmentation| and |PanopticSegmentation| fields in
+the App that have corresponding mask targets, the label strings will appear in
+the App's tooltip when you hover over pixels. |PanopticSegmentation| tooltips
+will also contain instance values when applicable.
 
 You can also pass your mask targets to methods such as
 :meth:`evaluate_segmentations() <fiftyone.core.collections.SampleCollection.evaluate_segmentations>`
 and :meth:`export() <fiftyone.core.collections.SampleCollection.export>` that
 require knowledge of the mask targets for a dataset or field(s).
 
-If you are working with 2D segmentation masks, specify target keys as integers:
+If you are working with 2D segmentation masks or panoptic segmentation masks,
+specify target keys as integers:
 
 .. code-block:: python
     :linenos:
@@ -3174,6 +3177,162 @@ colors are always used.
     values not present in the targets are also rendered as invisible in the
     App.
 
+
+.. _panoptic-segmentation:
+
+Panoptic segmentation
+---------------------
+
+The |PanopticSegmentation| class represents a panoptic segmentation mask for an
+image with first channel integer values encoding the semantic labels and second
+channel values encoding an instance id integer for each pixel of the image.
+
+The mask can either be stored on disk and referenced via the
+:attr:`mask_path <fiftyone.core.labels.PanopticSegmentation.mask_path>` attribute or
+stored directly in the database via the
+:attr:`mask <fiftyone.core.labels.PanopticSegmentation.mask>` attribute.
+
+.. note::
+
+    It is recommended to store panoptic segmentations on disk and reference
+    them via the
+    :attr:`mask_path <fiftyone.core.labels.PanopticSegmentation.mask_path>`
+    attribute, for efficiency.
+
+    Note that
+    :attr:`mask_path <fiftyone.core.labels.PanopticSegmentation.mask_path>`
+    must contain the **absolute path** to the mask on disk in order to use the
+    dataset from different current working directories in the future.
+
+Panoptic segmentation masks can be stored in either of these formats:
+
+-   Two channel 8-bit or 16-bit images or numpy arrays
+-   3D 8-bit RGB images or numpy arrays
+
+Only two channel TIFF image files are supported by
+:attr:`mask_path <fiftyone.core.labels.PanopticSegmentation.mask_path>` in the
+format output by `tifffile.imwrite <https://pypi.org/project/tifffile/>`_. This
+output is handled automatically by
+:meth:`PanopticSegmentation.export_mask() <fiftyone.core.labels.PanopticSegmentation.export_mask>`
+
+Panoptic segmentation masks can have any size; they are stretched as necessary
+to fit the image's extent when visualizing in the App.
+
+.. code-block:: python
+    :linenos:
+
+    import numpy as np
+    import tifffile
+
+    import fiftyone as fo
+
+    # Example segmentation mask
+    mask_path = "/tmp/segmentation.tiff"
+    mask = np.random.randint(10, size=(128, 128, 2), dtype=np.uint8)
+     # optional zlib compression
+    tifffile.imwrite(mask_path, mask, compression="zlib")
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+    sample["panoptic1"] = fo.PanopticSegmentation(mask_path=mask_path)
+    sample["panoptic2"] = fo.PanopticSegmentation(mask=mask)
+
+    print(sample)
+
+.. code-block:: text
+
+<Sample: {
+    'id': None,
+    'media_type': 'image',
+    'filepath': '/path/to/image.png',
+    'tags': [],
+    'metadata': None,
+    'created_at': None,
+    'last_modified_at': None,
+    'panoptic1': <PanopticSegmentation: {
+        'id': '677c6b40147b20ac8f271e08',
+        'tags': [],
+        'mask': None,
+        'mask_path': '/tmp/segmentation.tiff',
+    }>,
+    'panoptic2': <PanopticSegmentation: {
+        'id': '677c6b40147b20ac8f271e09',
+        'tags': [],
+        'mask': array([[[2, 8],
+                [1, 5],
+                [3, 5],
+                ...,
+                [8, 8],
+                [2, 1],
+                [1, 4]],
+        
+               [[1, 2],
+                [1, 9],
+                [6, 2],
+                ...,
+                [3, 2],
+                [5, 3],
+                [0, 4]],
+        
+               [[7, 9],
+                [4, 8],
+                [2, 7],
+                ...,
+                [0, 3],
+                [1, 9],
+                [1, 6]],
+        
+               ...,
+        
+               [[9, 8],
+                [3, 1],
+                [7, 7],
+                ...,
+                [7, 9],
+                [3, 0],
+                [0, 1]],
+        
+               [[2, 5],
+                [4, 8],
+                [8, 5],
+                ...,
+                [4, 5],
+                [2, 9],
+                [8, 4]],
+        
+               [[0, 5],
+                [4, 5],
+                [4, 4],
+                ...,
+                [3, 7],
+                [7, 6],
+                [7, 4]]], dtype=uint8),
+        'mask_path': None,
+    }>,
+}>
+
+When you load datasets with |PanopticSegmentation| fields containing 2D masks
+in the App, each pixel value is rendered as a different color (if possible)
+from the App's color pool. When you view RGB segmentation masks in the App, the
+mask colors are always used.
+
+.. note::
+
+    Did you know? You can :ref:`store semantic labels <storing-mask-targets>`
+    for your segmentation fields on your dataset. Then, when you view the
+    dataset in the App, label strings will appear in the App's tooltip when you
+    hover over pixels.
+
+.. note::
+
+    The first channel class value of `0` is reserved for "background" classes
+    that are always rendered as invisible in the App. The second channel
+    instance value of `0` is reserved for "background" and "stuff" classes
+    (classes values with an associated instance)
+
+    If :ref:`mask targets <storing-mask-targets>` are provided, all observed
+    values not present in the targets are also rendered as invisible in the
+    App.
+
 .. _heatmaps:
 
 Heatmaps
@@ -3970,6 +4129,14 @@ Methods such as
 :meth:`Segmentation.to_detections() <fiftyone.core.labels.Segmentation.to_detections>`
 and :meth:`Segmentation.to_polylines() <fiftyone.core.labels.Segmentation.to_polylines>`
 also exist to transform semantic segmentations back into individual shapes.
+Similarly, there are
+:meth:`PanopticSegmentation.to_detections() <fiftyone.core.labels.PanopticSegmentation.to_detections>`
+and
+:meth:`PanopticSegmentation.to_polylines() <fiftyone.core.labels.PanopticSegmentation.to_polylines>`.
+And
+:meth:`Segmentation.to_panoptic_segmentation() <fiftyone.core.labels.PanopticSegmentation.to_segmentation>`
+are available to convert semantic segmentations and panoptic segmenations and
+vice versa.
 
 In addition, the :mod:`fiftyone.utils.labels` module contains a variety of
 utility methods for converting entire collections' labels between common
