@@ -124,10 +124,247 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
             unlisted=True,
         )
 
+    def _create_index_or_summary_field_inputs(self, ctx, inputs):
+        schema = ctx.dataset.get_field_schema(flat=True)
+        if ctx.dataset._has_frame_fields():
+            frame_schema = ctx.dataset.get_frame_field_schema(flat=True)
+            schema.update(
+                {
+                    ctx.dataset._FRAMES_PREFIX + path: field
+                    for path, field in frame_schema.items()
+                }
+            )
+
+        categorical_field_types = (
+            fo.StringField,
+            fo.BooleanField,
+            fo.ObjectIdField,
+        )
+        numeric_field_types = (
+            fo.FloatField,
+            fo.IntField,
+            fo.DateField,
+            fo.DateTimeField,
+        )
+        valid_field_types = categorical_field_types + numeric_field_types
+
+        field_keys = [
+            p
+            for p, f in schema.items()
+            if (
+                isinstance(f, valid_field_types)
+                or (
+                    isinstance(f, fo.ListField)
+                    and isinstance(f.field, valid_field_types)
+                )
+            )
+        ]
+
+        path = ctx.params.get("field_path", None)
+
+        if path and ctx.dataset._is_frame_field(path):
+            default_type = "SUMMARY"
+        else:
+            default_type = "INDEX"
+
+        field_type = ctx.params.get("field_type", default_type)
+
+        if field_type == "INDEX":
+            existing = set(ctx.dataset.list_indexes())
+
+            path_description = "Select a field to index"
+            type_description = (
+                "Indexing a field can significantly optimize query times "
+                "for large datasets"
+            )
+        else:
+            existing = set(ctx.dataset._get_summarized_fields_map())
+
+            path_description = "Select a field to summarize"
+            type_description = (
+                "Create a summary field to aggregate values from multiple records "
+                "into a single sample-level field to enable fast filtering"
+            )
+
+        path_keys = [p for p in field_keys if p not in existing]
+        path_selector = types.AutocompleteView()
+        for key in path_keys:
+            path_selector.add_choice(key, label=key)
+
+        inputs.enum(
+            "field_path",
+            path_selector.values(),
+            label="Select field",
+            description=path_description,
+            view=path_selector,
+            required=True,
+        )
+
+        if path in existing:
+            if field_type == "INDEX":
+                label = (
+                    f"The '{path}' field is already indexed. Please choose "
+                    "another field"
+                )
+            else:
+                label = (
+                    f"The '{path}' field is already summarized. Please choose "
+                    "another field"
+                )
+
+            prop = inputs.str("msg", label=label, view=types.Warning())
+            prop.error_message = label
+            prop.invalid = True
+
+        if path is None or path not in field_keys:
+            return field_type
+
+        field_types = types.RadioGroup()
+        field_types.add_choice("INDEX", label="Index")
+        field_types.add_choice("SUMMARY", label="Summary field")
+
+        inputs.enum(
+            "field_type",
+            field_types.values(),
+            label="Field type",
+            description=type_description,
+            default=default_type,
+            view=field_types,
+            required=True,
+        )
+
+        if field_type == "INDEX":
+            inputs.bool(
+                "unique",
+                default=False,
+                required=False,
+                label="Unique",
+                description="Whether to add a uniqueness constraint to the index",
+            )
+
+            if ctx.dataset.media_type == fom.GROUP:
+                inputs.bool(
+                    "group_index",
+                    default=True,
+                    required=False,
+                    label="Group index",
+                    description=(
+                        "Whether to also add a compound group index. This "
+                        "optimizes sidebar queries when viewing specific group "
+                        "slice(s)"
+                    ),
+                )
+
+            return field_type
+
+        prop_name, field_name = _get_dynamic(
+            ctx.params, "field_name", path, None
+        )
+        if field_name is None:
+            default_field_name = ctx.dataset._get_default_summary_field_name(
+                path
+            )
+        else:
+            default_field_name = field_name
+
+        prop = inputs.str(
+            prop_name,
+            required=False,
+            label="Summary field",
+            description="The sample field in which to store the summary data",
+            default=default_field_name,
+        )
+
+        if field_name and field_name in schema:
+            prop.invalid = True
+            prop.error_message = f"Field '{field_name}' already exists"
+            inputs.str(
+                "error",
+                label="Error",
+                view=types.Error(
+                    label="Field already exists",
+                    description=f"Field '{field_name}' already exists",
+                ),
+            )
+            return field_type
+
+        if ctx.dataset.app_config.sidebar_groups is not None:
+            sidebar_group_selector = types.AutocompleteView()
+            for group in ctx.dataset.app_config.sidebar_groups:
+                sidebar_group_selector.add_choice(group.name, label=group.name)
+        else:
+            sidebar_group_selector = None
+
+        inputs.str(
+            "sidebar_group",
+            default="summaries",
+            required=False,
+            label="Sidebar group",
+            description=(
+                "The name of an "
+                "[App sidebar group](https://docs.voxel51.com/user_guide/app.html#sidebar-groups) "
+                "to which to add the summary field"
+            ),
+            view=sidebar_group_selector,
+        )
+
+        field = schema.get(path, None)
+        if isinstance(field, categorical_field_types):
+            inputs.bool(
+                "include_counts",
+                label="Include counts",
+                description=(
+                    "Whether to include per-value counts when summarizing the "
+                    "categorical field"
+                ),
+                default=False,
+            )
+        elif isinstance(field, numeric_field_types):
+            group_prefix = path.rsplit(".", 1)[0] + "."
+            group_by_keys = [
+                p for p in field_keys if p.startswith(group_prefix)
+            ]
+            group_by_selector = types.AutocompleteView()
+            for group in group_by_keys:
+                group_by_selector.add_choice(group, label=group)
+
+            inputs.enum(
+                "group_by",
+                group_by_selector.values(),
+                default=None,
+                required=False,
+                label="Group by",
+                description=(
+                    "An optional attribute to group by when to generate "
+                    "per-attribute `[min, max]` ranges"
+                ),
+                view=group_by_selector,
+            )
+
+        inputs.bool(
+            "read_only",
+            default=True,
+            required=False,
+            label="Read-only",
+            description="Whether to mark the summary field as read-only",
+        )
+
+        inputs.bool(
+            "create_index",
+            default=True,
+            required=False,
+            label="Create index",
+            description=(
+                "Whether to create database index(es) for the summary field"
+            ),
+        )
+
+        return field_type
+
     def resolve_input(self, ctx):
         inputs = types.Object()
 
-        field_type = _create_index_or_summary_field_inputs(ctx, inputs)
+        field_type = self._create_index_or_summary_field_inputs(ctx, inputs)
 
         if field_type == "INDEX":
             label = "Create Index"
@@ -199,238 +436,6 @@ def _get_dynamic(params, key, ref_path, default=None):
     dynamic_key = key + "|" + ref_path.replace(".", "_")
     value = params.get(dynamic_key, default)
     return dynamic_key, value
-
-
-def _create_index_or_summary_field_inputs(ctx, inputs):
-    schema = ctx.dataset.get_field_schema(flat=True)
-    if ctx.dataset._has_frame_fields():
-        frame_schema = ctx.dataset.get_frame_field_schema(flat=True)
-        schema.update(
-            {
-                ctx.dataset._FRAMES_PREFIX + path: field
-                for path, field in frame_schema.items()
-            }
-        )
-
-    categorical_field_types = (
-        fo.StringField,
-        fo.BooleanField,
-        fo.ObjectIdField,
-    )
-    numeric_field_types = (
-        fo.FloatField,
-        fo.IntField,
-        fo.DateField,
-        fo.DateTimeField,
-    )
-    valid_field_types = categorical_field_types + numeric_field_types
-
-    field_keys = [
-        p
-        for p, f in schema.items()
-        if (
-            isinstance(f, valid_field_types)
-            or (
-                isinstance(f, fo.ListField)
-                and isinstance(f.field, valid_field_types)
-            )
-        )
-    ]
-
-    path = ctx.params.get("path", None)
-
-    if path and ctx.dataset._is_frame_field(path):
-        default_type = "SUMMARY"
-    else:
-        default_type = "INDEX"
-
-    field_type = ctx.params.get("field_type", default_type)
-
-    if field_type == "INDEX":
-        existing = set(ctx.dataset.list_indexes())
-
-        path_description = "Select a field to index"
-        type_description = (
-            "Indexing a field can signficantly optimize query times "
-            "for large datasets"
-        )
-    else:
-        existing = set(ctx.dataset._get_summarized_fields_map())
-
-        path_description = "Select a field to summarize"
-        type_description = (
-            "Create a summary field to aggregate values from multiple records "
-            "into a single sample-level field to enable fast filtering"
-        )
-
-    path_keys = [p for p in field_keys if p not in existing]
-    path_selector = types.AutocompleteView()
-    for key in path_keys:
-        path_selector.add_choice(key, label=key)
-
-    inputs.enum(
-        "path",
-        path_selector.values(),
-        label="Select field",
-        description=path_description,
-        view=path_selector,
-        required=True,
-    )
-
-    if path in existing:
-        if field_type == "INDEX":
-            label = (
-                f"The '{path}' field is already indexed. Please choose "
-                "another field"
-            )
-        else:
-            label = (
-                f"The '{path}' field is already summarized. Please choose "
-                "another field"
-            )
-
-        prop = inputs.str("msg", label=label, view=types.Warning())
-        prop.error_message = label
-        prop.invalid = True
-
-    if path is None or path not in field_keys:
-        return field_type
-
-    field_types = types.RadioGroup()
-    field_types.add_choice("INDEX", label="Index")
-    field_types.add_choice("SUMMARY", label="Summary field")
-
-    inputs.enum(
-        "field_type",
-        field_types.values(),
-        label="Field type",
-        description=type_description,
-        default=default_type,
-        view=field_types,
-        required=True,
-    )
-
-    if field_type == "INDEX":
-        inputs.bool(
-            "unique",
-            default=False,
-            required=False,
-            label="Unique",
-            description="Whether to add a uniqueness constraint to the index",
-        )
-
-        if ctx.dataset.media_type == fom.GROUP:
-            inputs.bool(
-                "group_index",
-                default=True,
-                required=False,
-                label="Group index",
-                description=(
-                    "Whether to also add a compound group index. This "
-                    "optimizes sidebar queries when viewing specific group "
-                    "slice(s)"
-                ),
-            )
-
-        return field_type
-
-    prop_name, field_name = _get_dynamic(ctx.params, "field_name", path, None)
-    if field_name is None:
-        default_field_name = ctx.dataset._get_default_summary_field_name(path)
-    else:
-        default_field_name = field_name
-
-    prop = inputs.str(
-        prop_name,
-        required=False,
-        label="Summary field",
-        description="The sample field in which to store the summary data",
-        default=default_field_name,
-    )
-
-    if field_name and field_name in schema:
-        prop.invalid = True
-        prop.error_message = f"Field '{field_name}' already exists"
-        inputs.str(
-            "error",
-            label="Error",
-            view=types.Error(
-                label="Field already exists",
-                description=f"Field '{field_name}' already exists",
-            ),
-        )
-        return field_type
-
-    if ctx.dataset.app_config.sidebar_groups is not None:
-        sidebar_group_selector = types.AutocompleteView()
-        for group in ctx.dataset.app_config.sidebar_groups:
-            sidebar_group_selector.add_choice(group.name, label=group.name)
-    else:
-        sidebar_group_selector = None
-
-    inputs.str(
-        "sidebar_group",
-        default="summaries",
-        required=False,
-        label="Sidebar group",
-        description=(
-            "The name of an "
-            "[App sidebar group](https://docs.voxel51.com/user_guide/app.html#sidebar-groups) "
-            "to which to add the summary field"
-        ),
-        view=sidebar_group_selector,
-    )
-
-    field = schema.get(path, None)
-    if isinstance(field, categorical_field_types):
-        inputs.bool(
-            "include_counts",
-            label="Include counts",
-            description=(
-                "Whether to include per-value counts when summarizing the "
-                "categorical field"
-            ),
-            default=False,
-        )
-    elif isinstance(field, numeric_field_types):
-        group_prefix = path.rsplit(".", 1)[0] + "."
-        group_by_keys = [p for p in field_keys if p.startswith(group_prefix)]
-        group_by_selector = types.AutocompleteView()
-        for group in group_by_keys:
-            group_by_selector.add_choice(group, label=group)
-
-        inputs.enum(
-            "group_by",
-            group_by_selector.values(),
-            default=None,
-            required=False,
-            label="Group by",
-            description=(
-                "An optional attribute to group by when to generate "
-                "per-attribute `[min, max]` ranges"
-            ),
-            view=group_by_selector,
-        )
-
-    inputs.bool(
-        "read_only",
-        default=True,
-        required=False,
-        label="Read-only",
-        description="Whether to mark the summary field as read-only",
-    )
-
-    inputs.bool(
-        "create_index",
-        default=True,
-        required=False,
-        label="Create index",
-        description=(
-            "Whether to create database index(es) for the summary field"
-        ),
-    )
-
-    return field_type
 
 
 class IndexFieldRemovalConfirmationOperator(Operator):
@@ -600,48 +605,47 @@ class QueryPerformancePanel(Panel):
         )
 
     def _get_index_table_data(self, ctx):
+        if not self._index_data:
+            print("@" * 180)
 
-        indexes = ctx.dataset.get_index_information(include_stats=True)
-        default_indexes = set(_get_default_indexes(ctx))
-        rows = []
-        tooltip_data = {"Usage": {}}
-        for i, name in enumerate(sorted(indexes)):
-            index_info = indexes[name]
+            indexes = ctx.dataset.get_index_information(include_stats=True)
+            default_indexes = set(_get_default_indexes(ctx))
+            rows = []
+            tooltip_data = {"Usage": {}}
+            for i, name in enumerate(sorted(indexes)):
+                index_info = indexes[name]
 
-            default = name in default_indexes
-            size = (
-                "In progress"
-                if index_info.get("in_progress")
-                else etau.to_human_bytes_str(index_info.get("size", 0))
+                default = name in default_indexes
+                size = (
+                    "In progress"
+                    if index_info.get("in_progress")
+                    else etau.to_human_bytes_str(index_info.get("size", 0))
+                )
+                ops = index_info.get("accesses", {}).get("ops", 0)
+                ops_since = index_info.get("accesses", {}).get("since", 0)
+
+                types = ["Index"]
+                if default:
+                    types.append("Default")
+                if _is_unique(name, index_info):
+                    types.append("Unique")
+
+                rows.append(
+                    {
+                        "Field": name,
+                        "Size": str(size),
+                        "Type": ", ".join(types),
+                        "Usage": ops,
+                    }
+                )
+                tooltip_data["Usage"][i] = humanize.naturaltime(ops_since)
+
+            # sort the rows, with default field first and then alphabetical order
+            rows = sorted(
+                rows, key=lambda x: ("Default" not in x["Type"], x["Field"])
             )
-            ops = index_info.get("accesses", {}).get("ops", 0)
-            ops_since = index_info.get("accesses", {}).get("since", 0)
 
-            types = ["Index"]
-            if default:
-                types.append("Default")
-            if _is_unique(name, index_info):
-                types.append("Unique")
-
-            rows.append(
-                {
-                    "Field": name,
-                    "Size": str(size),
-                    "Type": ", ".join(types),
-                    "Usage": ops,
-                }
-            )
-            tooltip_data["Usage"][i] = humanize.naturaltime(ops_since)
-
-        # sort the rows, with default field first and then alphabetical order
-        rows = sorted(
-            rows, key=lambda x: ("Default" not in x["Type"], x["Field"])
-        )
-
-        # add summary fields
-        summary_field_supported = hasattr(ctx.dataset, "list_summary_fields")
-
-        if summary_field_supported:
+            # add summary fields
             summary_fields = _get_summary_fields(ctx)
             for name in sorted(summary_fields):
                 rows.append(
@@ -653,14 +657,16 @@ class QueryPerformancePanel(Panel):
                     }
                 )
 
-        table_data = {
-            "rows": [
-                [r["Field"], r["Size"], r["Type"], r["Usage"]] for r in rows
-            ],
-            "columns": ["Field", "Size", "Type", "Usage"],
-        }
-        self._tooltip_data = tooltip_data
-        return table_data
+            table_data = {
+                "rows": [
+                    [r["Field"], r["Size"], r["Type"], r["Usage"]]
+                    for r in rows
+                ],
+                "columns": ["Field", "Size", "Type", "Usage"],
+            }
+            self._tooltip_data = tooltip_data
+            self._index_data = table_data
+        return self._index_data
 
     def on_change_query_performance(self, ctx):
         event = {
@@ -671,8 +677,10 @@ class QueryPerformancePanel(Panel):
         ctx.panel.set_data("event_data", event)
 
     def _build_view(self, ctx):
-        self._index_data = self._get_index_table_data(ctx)
-        ctx.panel.set_data("table", self._index_data)
+        self._get_index_table_data(ctx)
+        ctx.params["index_data"] = self._index_data
+        if self._index_data:
+            ctx.panel.set_data("table", self._index_data)
 
     def on_refresh_button_click(self, ctx):
         self.refresh(ctx)
@@ -737,10 +745,12 @@ class QueryPerformancePanel(Panel):
         )
 
     def refresh(self, ctx):
+        self._index_data = {}
         self._build_view(ctx)
         ctx.trigger("reload_dataset")
 
     def reload(self, ctx):
+        self._index_data = {}
         self._build_view(ctx)
         ctx.ops.clear_sidebar_filters()
 
@@ -757,7 +767,9 @@ class QueryPerformancePanel(Panel):
             )
 
     def render(self, ctx):
-        panel = Object()
+        panel = Object()  # if not ctx.panel else ctx.panel
+        if not self._index_data:
+            self._index_data = ctx.params.get("index_data", {})
         all_indices = self._index_data.get("rows", [])
         droppable_index = []
         summary_fields = []
@@ -846,7 +858,8 @@ class QueryPerformancePanel(Panel):
             card_content.btn(
                 "add_btn",
                 label="Create index",
-                on_click=self.create_index_or_summary_field,
+                on_click="@voxel51/panels/create_index_or_summary_field",
+                prompt=True,
                 variant="contained",
                 padding=1,
                 disabled=not _has_edit_permission(ctx),
@@ -926,7 +939,8 @@ class QueryPerformancePanel(Panel):
                 button_menu.btn(
                     "add_btn",
                     label="Create Index",
-                    on_click=self.create_index_or_summary_field,
+                    on_click="@voxel51/panels/create_index_or_summary_field",
+                    prompt=True,
                     variant="contained",
                     componentsProps={
                         "button": {"sx": {"whiteSpace": "nowrap"}}
