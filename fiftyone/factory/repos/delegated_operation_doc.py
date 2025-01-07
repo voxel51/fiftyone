@@ -1,7 +1,7 @@
 """
 FiftyOne delegated operation repository document.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -24,17 +24,19 @@ class DelegatedOperationDocument(object):
         self,
         operator: str = None,
         delegation_target: str = None,
-        context: dict = None,
+        context: ExecutionContext = None,
         is_remote: bool = False,
     ):
         self.operator = operator
         self.label = None
         self.delegation_target = delegation_target
-        self.context = (
-            context.to_dict()
-            if isinstance(context, ExecutionContext)
-            else context
-        )
+        if isinstance(context, ExecutionContext) or context is None:
+            pass
+        else:
+            raise AttributeError(
+                "context must be an instance of ExecutionContext"
+            )
+        self.context = context
         self.run_state = (
             ExecutionRunState.SCHEDULED
             if is_remote
@@ -111,11 +113,10 @@ class DelegatedOperationDocument(object):
 
     def to_pymongo(self) -> dict:
         d = self.__dict__
-        d["context"] = (
-            d["context"].to_dict()
-            if isinstance(d["context"], ExecutionContext)
-            else d["context"]
-        )
+        if self.context:
+            d["context"] = {
+                "request_params": self.context._get_serialized_request_params()
+            }
         d.pop("_doc")
         d.pop("id")
         return d

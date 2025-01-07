@@ -1,7 +1,7 @@
 """
 View stages.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -3017,14 +3017,20 @@ def _extract_filter_field(val):
 
 
 class _GeoStage(ViewStage):
-    def __init__(self, location_field):
+    def __init__(self, location_field=None, create_index=True):
         self._location_field = location_field
         self._location_key = None
+        self._create_index = create_index
 
     @property
     def location_field(self):
         """The location field."""
         return self._location_field
+
+    @property
+    def create_index(self):
+        """Whether to create the required spherical index, if necessary."""
+        return self._create_index
 
     def validate(self, sample_collection):
         if self._location_field is None:
@@ -3039,8 +3045,9 @@ class _GeoStage(ViewStage):
             # Assume the user directly specified the subfield to use
             self._location_key = self._location_field
 
-        # These operations require a spherical index
-        sample_collection.create_index([(self._location_key, "2dsphere")])
+        if self._create_index:
+            # These operations require a spherical index
+            sample_collection.create_index([(self._location_key, "2dsphere")])
 
 
 class GeoNear(_GeoStage):
@@ -3128,6 +3135,8 @@ class GeoNear(_GeoStage):
         query (None): an optional dict defining a
             `MongoDB read query <https://docs.mongodb.com/manual/tutorial/query-documents/#read-operations-query-argument>`_
             that samples must match in order to be included in this view
+        create_index (True): whether to create the required spherical index,
+            if necessary
     """
 
     def __init__(
@@ -3137,8 +3146,12 @@ class GeoNear(_GeoStage):
         min_distance=None,
         max_distance=None,
         query=None,
+        create_index=True,
     ):
-        super().__init__(location_field)
+        super().__init__(
+            location_field=location_field,
+            create_index=create_index,
+        )
         self._point = foug.parse_point(point)
         self._min_distance = min_distance
         self._max_distance = max_distance
@@ -3195,6 +3208,7 @@ class GeoNear(_GeoStage):
             ["min_distance", self._min_distance],
             ["max_distance", self._max_distance],
             ["query", self._query],
+            ["create_index", self._create_index],
         ]
 
     @classmethod
@@ -3224,6 +3238,12 @@ class GeoNear(_GeoStage):
                 "type": "NoneType|dict",
                 "placeholder": "",
                 "default": "None",
+            },
+            {
+                "name": "create_index",
+                "type": "bool",
+                "default": "True",
+                "placeholder": "create_index (default=True)",
             },
         ]
 
@@ -3275,10 +3295,20 @@ class GeoWithin(_GeoStage):
         strict (True): whether a sample's location data must strictly fall
             within boundary (True) in order to match, or whether any
             intersection suffices (False)
+
     """
 
-    def __init__(self, boundary, location_field=None, strict=True):
-        super().__init__(location_field)
+    def __init__(
+        self,
+        boundary,
+        location_field=None,
+        strict=True,
+        create_index=True,
+    ):
+        super().__init__(
+            location_field=location_field,
+            create_index=create_index,
+        )
         self._boundary = foug.parse_polygon(boundary)
         self._strict = strict
 
@@ -3307,6 +3337,7 @@ class GeoWithin(_GeoStage):
             ["boundary", self._boundary],
             ["location_field", self._location_field],
             ["strict", self._strict],
+            ["create_index", self._create_index],
         ]
 
     @classmethod
@@ -3324,6 +3355,12 @@ class GeoWithin(_GeoStage):
                 "type": "bool",
                 "default": "True",
                 "placeholder": "strict (default=True)",
+            },
+            {
+                "name": "create_index",
+                "type": "bool",
+                "default": "True",
+                "placeholder": "create_index (default=True)",
             },
         ]
 

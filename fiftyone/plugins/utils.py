@@ -1,7 +1,7 @@
 """
 FiftyOne plugin utilities.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -79,6 +79,12 @@ def find_plugins(gh_repo, path=None, info=False):
         plugins = fopu.find_plugins("https://github.com/voxel51/fiftyone-plugins")
         print(plugins)
 
+        # Search a specific tree root
+        plugins = fopu.find_plugins(
+            "https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/annotation"
+        )
+        print(plugins)
+
         # Search a specific branch + subdirectory
         plugins = fopu.find_plugins(
             "https://github.com/voxel51/fiftyone-plugins/tree/main",
@@ -87,16 +93,19 @@ def find_plugins(gh_repo, path=None, info=False):
         print(plugins)
 
     Args:
-        gh_repo: the GitHub repository or identifier, which can be:
+        gh_repo: the GitHub repository, identifier, or tree path, which can be:
 
             -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
             -   a GitHub ref like
                 ``https://github.com/<user>/<repo>/tree/<branch>`` or
                 ``https://github.com/<user>/<repo>/commit/<commit>``
             -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+            -   a GitHub tree path like
+                ``https://github.com/<user>/<repo>/tree/<branch>/<path>``
 
         path (None): an optional subdirectory of the repository to which to
-            restrict the search
+            restrict the search. If ``gh_repo`` also contains a ``<path>``, it
+            is prepended to this value
         info (False): whether to retrieve full plugin info for each plugin
             (True) or just return paths to the fiftyone YAML files (False)
 
@@ -104,7 +113,13 @@ def find_plugins(gh_repo, path=None, info=False):
         a list of paths to fiftyone YAML files or plugin info dicts
     """
     root = path
-    repo = GitHubRepository(gh_repo)
+    repo = GitHubRepository(gh_repo, safe=True)
+
+    if repo.safe_path is not None:
+        if path is not None:
+            root = repo.safe_path + "/" + path
+        else:
+            root = repo.safe_path
 
     paths = []
     for d in repo.list_repo_contents(recursive=True):

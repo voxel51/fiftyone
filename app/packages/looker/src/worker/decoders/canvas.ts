@@ -1,5 +1,10 @@
 import type { OverlayMask } from "./types";
 
+const offScreenCanvas = new OffscreenCanvas(1, 1);
+const offScreenCanvasCtx = offScreenCanvas.getContext("2d", {
+  willReadFrequently: true,
+})!;
+
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 /**
  * Reads the PNG's image header chunk to determine the color type.
@@ -57,25 +62,36 @@ const decodeWithCanvas = async (blob: Blob): Promise<OverlayMask> => {
   const imageBitmap = await createImageBitmap(blob);
   const { width, height } = imageBitmap;
 
-  const canvas = new OffscreenCanvas(width, height);
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(imageBitmap, 0, 0);
+  offScreenCanvas.width = width;
+  offScreenCanvas.height = height;
+
+  offScreenCanvasCtx.drawImage(imageBitmap, 0, 0);
+
   imageBitmap.close();
 
-  const imageData = ctx.getImageData(0, 0, width, height);
+  const imageData = offScreenCanvasCtx.getImageData(0, 0, width, height);
 
   if (channels === 1) {
     // get rid of the G, B, and A channels, new buffer will be 1/4 the size
-    const data = new Uint8ClampedArray(width * height);
-    for (let i = 0; i < data.length; i++) {
-      data[i] = imageData.data[i * 4];
+    const rawBuffer = imageData.data;
+    const totalPixels = width * height;
+
+    let read = 0;
+    let write = 0;
+
+    while (write < totalPixels) {
+      rawBuffer[write++] = rawBuffer[read];
+      // skip "G,B,A"
+      read += 4;
     }
-    imageData.data.set(data);
+
+    const grayScaleData = rawBuffer.slice(0, totalPixels);
+    rawBuffer.set(grayScaleData);
   }
 
   return {
     arrayType: "Uint8ClampedArray",
-    buffer: imageData.data.buffer,
+    buffer: imageData.data.buffer as ArrayBuffer,
     channels,
     shape: [height, width],
   };

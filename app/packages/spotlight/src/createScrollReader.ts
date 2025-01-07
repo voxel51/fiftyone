@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2024, Voxel51, Inc.
+ * Copyright 2017-2025, Voxel51, Inc.
  */
 
 import { ZOOM_TIMEOUT } from "./constants";
@@ -9,6 +9,7 @@ export default function createScrollReader(
   render: (zooming: boolean, dispatchOffset?: boolean) => void,
   getScrollSpeedThreshold: () => number
 ) {
+  let animationFrameId: ReturnType<typeof requestAnimationFrame>;
   let destroyed = false;
   let prior: number;
   let scrolling = false;
@@ -63,7 +64,7 @@ export default function createScrollReader(
       updateScrollStatus();
     }
 
-    requestAnimationFrame(animate);
+    animationFrameId = requestAnimationFrame(animate);
   };
 
   animate();
@@ -73,6 +74,14 @@ export default function createScrollReader(
       destroyed = true;
       element.removeEventListener("scroll", scroll);
       element.removeEventListener("scrollend", scrollEnd);
+
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
     },
     zooming: () => zooming,
   };

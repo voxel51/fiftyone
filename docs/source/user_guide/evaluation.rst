@@ -13,7 +13,7 @@ When you evaluate a model in FiftyOne, you get access to the standard aggregate
 metrics such as classification reports, confusion matrices, and PR curves
 for your model. In addition, FiftyOne can also record fine-grained statistics
 like accuracy and false positive counts at the sample-level, which you can
-:ref:`interactively explore <model-evaluation-panel>` in the App to diagnose
+:ref:`interactively explore <app-model-evaluation-panel>` in the App to diagnose
 the strengths and weaknesses of your models on individual data samples.
 
 Sample-level analysis often leads to critical insights that will help you

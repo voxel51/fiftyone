@@ -57,7 +57,7 @@ export const stringifyObj = (obj) => {
   );
 };
 
-export const filterView = (stages) =>
+export const filterView = (stages: State.Stage[]) =>
   JSON.stringify(
     stages.map(({ kwargs, _cls }) => ({
       kwargs: kwargs.filter((ka) => !ka[0].startsWith("_")),
@@ -65,7 +65,18 @@ export const filterView = (stages) =>
     }))
   );
 
-export const viewsAreEqual = (viewOne, viewTwo) => {
+export const viewsAreEqual = (
+  viewOne?: string | State.Stage[],
+  viewTwo?: string | State.Stage[]
+) => {
+  if (viewOne === viewTwo) {
+    return true;
+  }
+
+  if (!Array.isArray(viewOne) || !Array.isArray(viewTwo)) {
+    return false;
+  }
+
   return filterView(viewOne) === filterView(viewTwo);
 };
 

@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2024, Voxel51, Inc.
+ * Copyright 2017-2025, Voxel51, Inc.
  */
 import {
   get32BitColor,
@@ -208,6 +208,7 @@ export default class HeatmapOverlay<State extends BaseState>
 
   public cleanup(): void {
     this.label.map?.bitmap?.close();
+    this.targets = null;
   }
 }
 

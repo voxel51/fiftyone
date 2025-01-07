@@ -1,7 +1,7 @@
 """
 GitHub utilities.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -34,9 +34,13 @@ class GitHubRepository(object):
                 ``https://github.com/<user>/<repo>/tree/<branch>`` or
                 ``https://github.com/<user>/<repo>/commit/<commit>``
             -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+        safe (False): whether to allow ``repo`` to contain a tree path like
+            ``https://github.com/<user>/<repo>/tree/<branch>/<path>``. If
+            ``safe=True`` and a ``<path>`` is found, it is extracted and stored
+            in the :meth:`safe_path` property
     """
 
-    def __init__(self, repo):
+    def __init__(self, repo, safe=False):
         if etaw.is_url(repo):
             params = self.parse_url(repo)
         else:
@@ -45,7 +49,40 @@ class GitHubRepository(object):
         self._user = params.get("user")
         self._repo = params.get("repo")
         self._ref = params.get("ref", None)
+        self._safe_path = None
         self._session = None
+
+        if safe:
+            self._handle_safe_path()
+
+    def _handle_safe_path(self):
+        if self._ref is None or "/" not in self._ref:
+            return
+
+        api_root = f"https://api.github.com/repos/{self.user}/{self.repo}"
+
+        # Unfortunately, branch/tag names may contain slashes, so the only way
+        # to disambiguate <ref>/<path> is to query the API to see what exists
+        chunks = self._ref.split("/")
+        for i in range(len(chunks), 0, -1):
+            ref = "/".join(chunks[:i])
+            urls = [
+                f"{api_root}/git/ref/heads/{ref}",  # branch
+                f"{api_root}/git/ref/tags/{ref}",  # tag
+            ]
+            if "/" not in ref:
+                urls.append(f"{api_root}/commits/{ref}")  # commit
+
+            for url in urls:
+                try:
+                    _ = self._get(url)
+                    if ref != self._ref:
+                        self._ref = ref
+                        self._safe_path = "/".join(chunks[i:])
+
+                    return
+                except:
+                    pass
 
     @property
     def user(self):
@@ -62,9 +99,10 @@ class GitHubRepository(object):
         """The ref (e.g. branch, tag, commit hash), if any."""
         return self._ref
 
-    @ref.setter
-    def ref(self, ref):
-        self._ref = ref
+    @property
+    def safe_path(self):
+        """The path that was extracted from the provided ref, if any."""
+        return self._safe_path
 
     @property
     def identifier(self):
@@ -183,24 +221,28 @@ class GitHubRepository(object):
 
     def _make_session(self):
         session = requests.Session()
-        token = os.environ.get("GITHUB_TOKEN", None)
+        token = self._get_token()
         if token:
             logger.debug("Using GitHub token as authorization")
             session.headers.update({"Authorization": "token " + token})
 
         return session
 
+    def _get_token(self):
+        return os.environ.get("GITHUB_TOKEN", None)
+
     def _get(self, url, json=True):
         try:
             resp = self._get_session().get(url)
             resp.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            if e.response.status_code in (403, 404):
+            if e.response.status_code in (403, 404) and not self._get_token():
                 raise requests.exceptions.HTTPError(
                     (
-                        "You can interact with private repositories and avoid "
-                        "rate limit errors by providing a personal access "
-                        "token via the 'GITHUB_TOKEN' environment variable"
+                        f"{e}.\n\nDid you know? You can interact with private "
+                        "repositories and avoid rate limit errors by "
+                        "providing a personal access token via the "
+                        "'GITHUB_TOKEN' environment variable"
                     ),
                     response=e.response,
                 )

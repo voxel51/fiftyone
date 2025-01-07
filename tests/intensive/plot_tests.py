@@ -5,7 +5,7 @@ You must run these tests interactively as follows::
 
     pytest tests/intensive/plot_tests.py -s -k <test_case>
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """

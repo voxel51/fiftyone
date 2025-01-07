@@ -128,4 +128,5 @@ App? Just open the :ref:`Embeddings panel <app-embeddings-panel>`:
    Overview <self>
    Using plugins <using_plugins>
    Developing plugins <developing_plugins>
+   API reference <api/plugins>
    TypeScript API reference <ts-api>
