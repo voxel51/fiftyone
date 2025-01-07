@@ -9,8 +9,9 @@ Unit tests for operators utilities.
 import unittest
 import unittest.mock
 
-from fiftyone.operators.executor import ExecutionContext, ExecutionContextUser
+from fiftyone.operators.executor import ExecutionContextUser
 import pytest
+from unittest.mock import patch
 
 import fiftyone.operators.types as types
 from fiftyone.operators.operator import Operator
@@ -20,8 +21,6 @@ from fiftyone.operators.executor import (
     ExecutionContext,
 )
 from fiftyone.operators import OperatorConfig
-import fiftyone.operators.registry as registry
-import fiftyone.internal.api_requests as far
 
 
 class TestOperatorExecutionContext(unittest.TestCase):
@@ -135,12 +134,11 @@ class EchoOperator(Operator):
         }
 
 
-# Force registration of the operator for testing
-registry._EXTRA_OPERATORS.append(EchoOperator(_builtin=True))
-
-
 @pytest.mark.asyncio
-async def test_execute_or_delegate_operator():
+@patch("fiftyone.operators.registry.OperatorRegistry.list_operators")
+async def test_execute_or_delegate_operator(list_operators):
+    list_operators.return_value = [EchoOperator(_builtin=True)]
+
     mock_resolve_user_return = {"id": "123", "name": "test_user"}
     with unittest.mock.patch(
         "fiftyone.internal.api_requests.resolve_user",
