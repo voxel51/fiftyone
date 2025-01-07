@@ -1,17 +1,12 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
-import { Box, Button } from "@mui/material";
+import React, { useCallback, useRef, useState } from "react";
+import { Box } from "@mui/material";
 import { OperatorExecutionMenu } from "../OperatorExecutionMenu";
 import {
   ExecutionCallback,
   ExecutionErrorCallback,
   OperatorExecutorOptions,
 } from "../../types-internal";
-import {
-  OperatorExecutionOption,
-  useOperatorExecutionOptions,
-  useOperatorExecutor,
-  usePromptOperatorInput,
-} from "../../state";
+import { OperatorExecutionOption } from "../../state";
 
 /**
  * Component which acts as a trigger for opening an `OperatorExecutionMenu`.
