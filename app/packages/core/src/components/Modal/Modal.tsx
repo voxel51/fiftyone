@@ -179,11 +179,11 @@ const Modal = () => {
 
   const activeLookerRef = useRef<fos.Lookers>();
 
-  const labelsToggleTracker = useOnSidebarSelectionChange({ modal: true });
+  const modalLabelsToggleTracker = useOnSidebarSelectionChange({ modal: true });
 
   useEffect(() => {
     activeLookerRef.current?.refreshSample();
-  }, [labelsToggleTracker]);
+  }, [modalLabelsToggleTracker]);
 
   const addTooltipEventHandler = useTooltipEventHandler();
   const removeTooltipEventHanlderRef = useRef<ReturnType<
