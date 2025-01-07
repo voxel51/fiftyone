@@ -9,6 +9,8 @@ from copy import deepcopy
 import inspect
 import itertools
 import logging
+from functools import lru_cache
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import numpy as np
 
@@ -41,6 +43,8 @@ def evaluate_detections(
     classwise=True,
     dynamic=True,
     progress=None,
+    num_workers=4,
+    batch_size=100,
     **kwargs,
 ):
     """Evaluates the predicted detections in the given samples with respect to
@@ -135,6 +139,10 @@ def evaluate_detections(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
+        num_workers (4): the number of processes to use to perform the
+            evaluation
+        batch_size (100): the batch size at which to process samples. If
+            ``eval_key`` is provided, this parameter is ignored
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
 
@@ -157,16 +165,22 @@ def evaluate_detections(
     else:
         kwargs.update(dict(use_masks=use_masks, use_boxes=use_boxes))
 
-    config = _parse_config(
-        pred_field,
-        gt_field,
-        method,
-        is_temporal,
-        iou=iou,
-        classwise=classwise,
-        **kwargs,
-    )
+    # Cache config creation since it might be reused with same parameters
+    @lru_cache(maxsize=32)
+    def get_cached_config(
+            pred_field, gt_field, method, is_temporal, iou, classwise):
+        return _parse_config(
+            pred_field,
+            gt_field,
+            method,
+            is_temporal,
+            iou=iou,
+            classwise=classwise,
+            **kwargs,
+        )
 
+    config = get_cached_config(pred_field, gt_field, method, is_temporal, iou,
+                               classwise)
     eval_method = config.build()
     eval_method.ensure_requirements()
 
@@ -186,35 +200,65 @@ def evaluate_detections(
     else:
         _samples = samples.select_fields([gt_field, pred_field])
 
+    # Process samples in batches using ThreadPoolExecutor
+    def process_batch(batch_samples):
+        batch_matches = []
+        batch_results = []
+
+        for sample in batch_samples:
+            if processing_frames:
+                docs = sample.frames.values()
+            else:
+                docs = [sample]
+
+            sample_tp = 0
+            sample_fp = 0
+            sample_fn = 0
+
+            for doc in docs:
+                doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
+                batch_matches.extend(doc_matches)
+                tp, fp, fn = _tally_matches(doc_matches)
+                sample_tp += tp
+                sample_fp += fp
+                sample_fn += fn
+
+                if processing_frames and save:
+                    doc[tp_field] = tp
+                    doc[fp_field] = fp
+                    doc[fn_field] = fn
+
+            if save:
+                sample[tp_field] = sample_tp
+                sample[fp_field] = sample_fp
+                sample[fn_field] = sample_fn
+
+            batch_results.append((sample, batch_matches))
+
+        return batch_results
+
+    # Create batches of samples
+    all_samples = list(_samples)
+    batches = [all_samples[i:i + batch_size] for i in
+               range(0, len(all_samples), batch_size)]
+
     matches = []
     logger.info("Evaluating detections...")
-    for sample in _samples.iter_samples(progress=progress, autosave=save):
-        if processing_frames:
-            docs = sample.frames.values()
-        else:
-            docs = [sample]
 
-        sample_tp = 0
-        sample_fp = 0
-        sample_fn = 0
-        for doc in docs:
-            doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
-            matches.extend(doc_matches)
-            tp, fp, fn = _tally_matches(doc_matches)
-            sample_tp += tp
-            sample_fp += fp
-            sample_fn += fn
+    with ThreadPoolExecutor(max_workers=num_workers) as executor:
+        future_to_batch = {
+            executor.submit(process_batch, batch): batch
+            for batch in batches
+        }
 
-            if processing_frames and save:
-                doc[tp_field] = tp
-                doc[fp_field] = fp
-                doc[fn_field] = fn
+        for future in as_completed(future_to_batch):
+            batch_results = future.result()
+            for sample, batch_matches in batch_results:
+                matches.extend(batch_matches)
+                if save:
+                    sample.save()
 
-        if save:
-            sample[tp_field] = sample_tp
-            sample[fp_field] = sample_fp
-            sample[fn_field] = sample_fn
-
+    # Use numpy for faster results generation
     results = eval_method.generate_results(
         samples,
         matches,
