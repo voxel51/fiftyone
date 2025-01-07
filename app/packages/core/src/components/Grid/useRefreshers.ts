@@ -1,9 +1,10 @@
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { LRUCache } from "lru-cache";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
+import { useOnSidebarSelectionChange } from "../Sidebar/useOnSidebarSelectionChange";
 import { gridAt, gridOffset, gridPage } from "./recoil";
 
 const MAX_LRU_CACHE_ITEMS = 510;
@@ -28,8 +29,6 @@ export default function useRefreshers() {
     fos.shouldRenderImaVidLooker(false)
   );
   const view = fos.filterView(useRecoilValue(fos.view));
-
-  const labelsToggleTracker = useRecoilValue(fos.labelsToggleTracker);
 
   // only reload, attempt to return to the last grid location
   const layoutReset = useMemo(() => {
@@ -95,12 +94,19 @@ export default function useRefreshers() {
     });
   }, [reset]);
 
+  const lookerStoreRef = useRef(lookerStore);
+  lookerStoreRef.current = lookerStore;
+
+  const gridLabelsToggleTracker = useOnSidebarSelectionChange({ modal: false });
+
+  /**
+   * Refresh all lookers when the labels toggle tracker changes
+   */
   useEffect(() => {
-    console.log(">>>sashank")
-    lookerStore.forEach((looker) => {
+    lookerStoreRef.current?.forEach((looker) => {
       looker.refreshSample();
     });
-  }, [labelsToggleTracker]);
+  }, [gridLabelsToggleTracker]);
 
   return {
     lookerStore,
