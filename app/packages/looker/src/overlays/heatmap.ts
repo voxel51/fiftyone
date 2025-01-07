@@ -206,9 +206,12 @@ export default class HeatmapOverlay<State extends BaseState>
     return sizeBytesEstimate(this.label);
   }
 
-  public cleanup(): void {
+  public cleanup(setTargetsToNull = false): void {
     this.label.map?.bitmap?.close();
-    this.targets = null;
+
+    if (setTargetsToNull) {
+      this.targets = null;
+    }
   }
 }
 

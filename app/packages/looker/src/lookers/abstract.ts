@@ -46,6 +46,8 @@ import { ProcessSample } from "../worker";
 import { LookerUtils } from "./shared";
 import { retrieveArrayBuffers } from "./utils";
 
+const UPDATING_SAMPLES_IDS = new Set();
+
 const LABEL_LISTS_PATH = new Set(withPath(LABELS_PATH, LABEL_LISTS));
 const LABEL_LIST_KEY = Object.fromEntries(
   Object.entries(LABEL_LISTS_MAP).map(([k, v]) => [withPath(LABELS_PATH, k), v])
@@ -518,6 +520,14 @@ export abstract class AbstractLooker<
   abstract updateOptions(options: Partial<State["options"]>): void;
 
   updateSample(sample: Sample) {
+    if (UPDATING_SAMPLES_IDS.has(sample.id)) {
+      UPDATING_SAMPLES_IDS.delete(sample.id);
+      this.cleanOverlays(true);
+      queueMicrotask(() => this.updateSample(sample));
+      return;
+    }
+
+    UPDATING_SAMPLES_IDS.add(sample.id);
     this.loadSample(sample, retrieveArrayBuffers(this.sampleOverlays));
   }
 
@@ -706,9 +716,9 @@ export abstract class AbstractLooker<
     );
   }
 
-  protected cleanOverlays() {
+  protected cleanOverlays(setTargetsToNull = false) {
     for (const overlay of this.sampleOverlays ?? []) {
-      overlay.cleanup?.();
+      overlay.cleanup?.(setTargetsToNull);
     }
   }
 
@@ -731,6 +741,8 @@ export abstract class AbstractLooker<
           reloading: false,
         });
         labelsWorker.removeEventListener("message", listener);
+
+        UPDATING_SAMPLES_IDS.delete(sample.id);
       }
     };
 
