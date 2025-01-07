@@ -14,7 +14,6 @@ export default function useSelect(
 
   const selected = useRecoilValue(fos.selectedSamples);
   useEffect(() => {
-    console.log(">>>ben");
     deferred(() => {
       const fontSize = getFontSize();
       const retained = new Set<string>();
