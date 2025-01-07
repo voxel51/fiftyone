@@ -606,8 +606,6 @@ class QueryPerformancePanel(Panel):
 
     def _get_index_table_data(self, ctx):
         if not self._index_data:
-            print("@" * 180)
-
             indexes = ctx.dataset.get_index_information(include_stats=True)
             default_indexes = set(_get_default_indexes(ctx))
             rows = []
