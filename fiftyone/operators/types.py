@@ -1912,12 +1912,12 @@ class TableView(View):
         self.row_actions.append(row_action)
         return row_action
 
-    def add_tooltip(self, row, column, value, overwrite=True, **kwargs):
+    def add_tooltip(self, row, column, value, overwrite=False, **kwargs):
         if (row, column) in self._tooltip_map:
             if overwrite:
                 tooltip = self._tooltip_map[(row, column)]
                 tooltip.value = value
-                tooltip.__dict__.update(kwargs)
+                tooltip._kwargs = kwargs
                 return tooltip
             else:
                 raise ValueError(

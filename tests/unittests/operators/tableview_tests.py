@@ -43,10 +43,18 @@ class TableViewTests(unittest.TestCase):
         table.add_tooltip(1, 2, "Tooltip 2")
 
         with self.assertRaises(ValueError):
-            table.add_tooltip(1, 1, "Tooltip 3", overwrite=False)
+            table.add_tooltip(1, 1, "Tooltip 3")
 
-        table.add_tooltip(1, 1, "Tooltip 3")
+        table.add_tooltip(1, 1, "Tooltip 3", arg1=1, arg2=2, overwrite=True)
         self.assertEqual(
             set([tooltip.value for tooltip in table.tooltips]),
             {"Tooltip 2", "Tooltip 3"},
         )
+
+        tooltip = table._tooltip_map[(1, 1)]
+        self.assertEqual(tooltip.value, "Tooltip 3")
+        self.assertEqual(tooltip._kwargs, {"arg1": 1, "arg2": 2})
+
+        result = tooltip.to_json()
+        for key, value in {"value": "Tooltip 3", "arg1": 1, "arg2": 2}.items():
+            self.assertEqual(result[key], value)
