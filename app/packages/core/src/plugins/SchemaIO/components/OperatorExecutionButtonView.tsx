@@ -11,6 +11,7 @@ import TooltipProvider from "./TooltipProvider";
 import { OperatorExecutionOption } from "@fiftyone/operators/src/state";
 import {
   ExecutionCallback,
+  ExecutionCancelCallback,
   ExecutionErrorCallback,
 } from "@fiftyone/operators/src/types-internal";
 import { OperatorResult } from "@fiftyone/operators/src/operators";
@@ -30,6 +31,8 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
     on_error,
     on_success,
     on_option_selected,
+    on_cancel,
+    prompt,
   } = view;
   const panelId = usePanelId();
   const variant = getVariant(props);
@@ -75,6 +78,13 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
       });
     }
   };
+  const handleOnCancel: ExecutionCancelCallback = () => {
+    if (on_cancel) {
+      triggerEvent(panelId, {
+        operator: on_cancel,
+      });
+    }
+  };
   const handleOnOptionSelected = (option: OperatorExecutionOption) => {
     if (on_option_selected) {
       triggerEvent(panelId, {
@@ -86,6 +96,13 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
     }
   };
 
+  const iconProps = prompt
+    ? {}
+    : {
+        startIcon: icon_position === "left" ? Icon : undefined,
+        endIcon: icon_position === "right" ? Icon : undefined,
+      };
+
   return (
     <Box {...getComponentProps(props, "container")}>
       <TooltipProvider title={title} {...getComponentProps(props, "tooltip")}>
@@ -94,11 +111,12 @@ export default function OperatorExecutionButtonView(props: ViewPropsType) {
           onSuccess={handleOnSuccess}
           onError={handleOnError}
           onOptionSelected={handleOnOptionSelected}
+          prompt={prompt}
+          onCancel={handleOnCancel}
           executionParams={computedParams}
           variant={variant}
           disabled={disabled}
-          startIcon={icon_position === "left" ? Icon : undefined}
-          endIcon={icon_position === "right" ? Icon : undefined}
+          {...iconProps}
           title={description}
           {...getComponentProps(props, "button", getButtonProps(props))}
         >
