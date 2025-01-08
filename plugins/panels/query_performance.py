@@ -953,7 +953,7 @@ class QueryPerformancePanel(Panel):
             table.add_column("Type", label="Type")
             table.add_column("Usage", label="Usage")
 
-            # add tooltips for summary field size and usage
+            # add tooltips for index usage and summary field size
             for row in range(index_field_count + summary_field_count):
                 if row < index_field_count:
                     ops_since = self._tooltip_data["Usage"].get(row)
