@@ -10,6 +10,11 @@ import mongoengine
 from .document import DynamicMixin, MongoEngineBaseDocument
 
 
+class FiftyoneDocumentException(Exception):
+    """Exception raised when an error occurs in a document operation."""
+    pass
+
+
 class BaseEmbeddedDocument(MongoEngineBaseDocument):
     """Base class for documents that are embedded within other documents and
     therefore are not stored in their own collection in the database.
@@ -40,11 +45,18 @@ class DynamicEmbeddedDocument(
     database.
 
     Dynamic documents can have arbitrary fields added to them.
+
+    Raises FiftyoneDocumentException if a kwarg attribute is reserved.
     """
 
     meta = {"abstract": True, "allow_inheritance": True}
 
     def __init__(self, *args, **kwargs):
+        for key, value in kwargs.items():
+            # Check if the key exists and is a property
+            if hasattr(self.__class__, key) and isinstance(getattr(self.__class__, key), property):
+               raise FiftyoneDocumentException(f"Attribute {key} already exists for {self.__class__.__name__}")
+
         super().__init__(*args, **kwargs)
         self.validate()
 
