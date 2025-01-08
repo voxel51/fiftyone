@@ -53,6 +53,10 @@ class DynamicEmbeddedDocument(
 
     def __init__(self, *args, **kwargs):
         for key, value in kwargs.items():
+            # Skip MongoDB internal fields
+            if key.startswith('_'):
+                continue
+
             # Check if the key exists and is a property
             if hasattr(self.__class__, key) and isinstance(getattr(self.__class__, key), property):
                raise FiftyoneDocumentException(f"Attribute {key} already exists for {self.__class__.__name__}")
