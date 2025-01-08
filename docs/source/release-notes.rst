@@ -3,6 +3,12 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 2.4.0
+--------------------
+*Released January 9, 2025*
+
+- Added ability to set a user-specific auth header when making media queries.
+
 FiftyOne Teams 2.3.0
 --------------------
 *Released December 20, 2024*
