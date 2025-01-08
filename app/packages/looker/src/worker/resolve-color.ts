@@ -1,3 +1,7 @@
+import { LRUCache } from "lru-cache";
+
+const MAX_COLOR_CACHE_SIZE = 1000;
+
 export interface ResolveColor {
   key: string | number;
   seed: number;
@@ -8,13 +12,16 @@ export default (): [
   (pool: string[], seed: number, key: string | number) => Promise<string>,
   (result: ResolveColor) => void
 ] => {
-  const cache = {};
+  const cache = new LRUCache<number, {}>({
+    max: MAX_COLOR_CACHE_SIZE,
+  });
+
   const requests = {};
   const promises = {};
 
   return [
     (pool, seed, key) => {
-      if (!(seed in cache)) {
+      if (!cache.has(seed)) {
         cache[seed] = {};
       }
 
