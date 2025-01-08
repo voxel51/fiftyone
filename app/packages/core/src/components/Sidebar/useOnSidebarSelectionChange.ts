@@ -1,7 +1,12 @@
-import { activeLabelFields, labelsToggleTracker } from "@fiftyone/state";
+import { activeLabelFields } from "@fiftyone/state";
 import { useEffect, useRef } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { atomFamily, useRecoilState, useRecoilValue } from "recoil";
 import { gridPage } from "../Grid/recoil";
+
+const labelsToggleTracker = atomFamily<Map<number, Set<string>>, boolean>({
+  key: "labelsToggleTracker",
+  default: new Map<number, Set<string>>(),
+});
 
 /**
  * This hook is used to update the sidebar tracker when the user changes the
@@ -16,9 +21,9 @@ export const useOnSidebarSelectionChange = ({ modal }: { modal: boolean }) => {
 
   gridPageValueRef.current = gridPageValue;
 
-  const setSidebarTracker = useSetRecoilState(labelsToggleTracker(modal));
-
-  const sidebarTracker = useRecoilValue(labelsToggleTracker(modal));
+  const [sidebarTracker, setSidebarTracker] = useRecoilState(
+    labelsToggleTracker(modal)
+  );
 
   useEffect(() => {
     const thisPageActiveFields = sidebarTracker.get(gridPageValue);
