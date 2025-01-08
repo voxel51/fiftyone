@@ -72,9 +72,6 @@ import {
 } from "./utils";
 import * as viewAtoms from "./view";
 
-type GridPageNumber = number;
-type SidebarEntriesSet = Set<string>;
-
 export enum EntryKind {
   EMPTY = "EMPTY",
   GROUP = "GROUP",
@@ -907,14 +904,6 @@ export const groupShown = selectorFamily<
         )
       );
     },
-});
-
-export const labelsToggleTracker = atomFamily<
-  Map<GridPageNumber, SidebarEntriesSet>,
-  boolean
->({
-  key: "labelsToggleTracker",
-  default: new Map<GridPageNumber, SidebarEntriesSet>(),
 });
 
 export const textFilter = atomFamily<string, boolean>({
