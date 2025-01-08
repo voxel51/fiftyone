@@ -767,7 +767,7 @@ class QueryPerformancePanel(Panel):
             )
 
     def render(self, ctx):
-        panel = Object()  # if not ctx.panel else ctx.panel
+        panel = Object()
         if not self._index_data:
             self._index_data = ctx.params.get("index_data", {})
         all_indices = self._index_data.get("rows", [])
