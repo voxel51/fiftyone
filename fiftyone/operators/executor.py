@@ -1,7 +1,7 @@
 """
 FiftyOne operator execution.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -744,6 +744,7 @@ class ExecutionContext(object):
         params=None,
         on_success=None,
         on_error=None,
+        on_cancel=None,
         skip_prompt=False,
     ):
         """Prompts the user to execute the operator with the given URI.
@@ -754,6 +755,7 @@ class ExecutionContext(object):
             on_success (None): a callback to invoke if the user successfully
                 executes the operator
             on_error (None): a callback to invoke if the execution fails
+            on_cancel (None): a callback to invoke if the user cancels the prompt
             skip_prompt (False): whether to skip the prompt
 
         Returns:
@@ -769,6 +771,7 @@ class ExecutionContext(object):
                     "params": params,
                     "on_success": on_success,
                     "on_error": on_error,
+                    "on_cancel": on_cancel,
                     "skip_prompt": skip_prompt,
                 }
             ),
@@ -888,6 +891,11 @@ class ExecutionContext(object):
         """
         dataset_id = self.dataset._doc.id
         return ExecutionStore.create(store_name, dataset_id)
+
+    def _get_serialized_request_params(self):
+        request_params_copy = self.request_params.copy()
+        request_params_copy.get("params", {}).pop("panel_state", None)
+        return request_params_copy
 
     def serialize(self):
         """Serializes the execution context.

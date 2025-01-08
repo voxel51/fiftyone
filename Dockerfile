@@ -1,4 +1,4 @@
-# Copyright 2017-2024, Voxel51, Inc.
+# Copyright 2017-2025, Voxel51, Inc.
 # voxel51.com
 #
 # Dockerfile for building an image with source FiftyOne atop a Python 3.11

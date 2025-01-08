@@ -1,7 +1,7 @@
 """
 COCO-style detection evaluation.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -13,6 +13,7 @@ import numpy as np
 
 import eta.core.utils as etau
 
+import fiftyone.core.labels as fol
 import fiftyone.core.plots as fop
 import fiftyone.utils.iou as foui
 
@@ -552,6 +553,11 @@ def _coco_evaluation_setup(
             label = obj.label if classwise else "all"
             cats[label]["preds"].append(obj)
 
+    if isinstance(preds, fol.Keypoints):
+        sort_key = lambda p: np.nanmean(p.confidence) if p.confidence else -1
+    else:
+        sort_key = lambda p: p.confidence or -1
+
     # Compute IoUs within each category
     pred_ious = {}
     for objects in cats.values():
@@ -559,7 +565,7 @@ def _coco_evaluation_setup(
         preds = objects["preds"]
 
         # Highest confidence predictions first
-        preds = sorted(preds, key=lambda p: p.confidence or -1, reverse=True)
+        preds = sorted(preds, key=sort_key, reverse=True)
 
         if max_preds is not None:
             preds = preds[:max_preds]
@@ -587,6 +593,13 @@ def _compute_matches(
 
         # Match each prediction to the highest available IoU ground truth
         for pred in objects["preds"]:
+            if isinstance(pred, fol.Keypoint):
+                pred_conf = (
+                    np.nanmean(pred.confidence) if pred.confidence else None
+                )
+            else:
+                pred_conf = pred.confidence
+
             if pred.id in pred_ious:
                 best_match = None
                 best_match_iou = iou_thresh
@@ -638,7 +651,7 @@ def _compute_matches(
                             gt.label,
                             pred.label,
                             best_match_iou,
-                            pred.confidence,
+                            pred_conf,
                             gt.id,
                             pred.id,
                             iscrowd(gt),
@@ -651,7 +664,7 @@ def _compute_matches(
                             None,
                             pred.label,
                             None,
-                            pred.confidence,
+                            pred_conf,
                             None,
                             pred.id,
                             None,
@@ -665,7 +678,7 @@ def _compute_matches(
                         None,
                         pred.label,
                         None,
-                        pred.confidence,
+                        pred_conf,
                         None,
                         pred.id,
                         None,

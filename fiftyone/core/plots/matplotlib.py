@@ -1,7 +1,7 @@
 """
 Matplotlib plots.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -14,7 +14,6 @@ from matplotlib.widgets import Button, LassoSelector
 from matplotlib.path import Path
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from mpl_toolkits.axes_grid1.inset_locator import InsetPosition
 from mpl_toolkits.mplot3d import Axes3D  # pylint: disable=unused-import
 import sklearn.metrics.pairwise as skp
 import sklearn.metrics as skm
@@ -1166,8 +1165,7 @@ class InteractiveCollection(InteractiveMatplotlibPlot):
 
         self._buttons = []
         for i, (label, icon_img, callback) in enumerate(button_defs):
-            bax = self.ax.figure.add_axes([0, 0, 1, 1], label=label)
-            bax.set_axes_locator(InsetPosition(self.ax, _button_pos(i)))
+            bax = self.ax.inset_axes(_button_pos(i), label=label)
             button = Button(
                 bax, "", color=color, hovercolor=hovercolor, image=icon_img
             )

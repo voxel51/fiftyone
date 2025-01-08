@@ -1,4 +1,16 @@
+import { HEATMAP } from "@fiftyone/utilities";
 import { OverlayMask } from "../numpy";
+
+const canvasAndCtx = (() => {
+  if (typeof OffscreenCanvas !== "undefined") {
+    const offScreenCanvas = new OffscreenCanvas(1, 1);
+    const offScreenCanvasCtx = offScreenCanvas.getContext("2d", {
+      willReadFrequently: true,
+    })!;
+
+    return { canvas: offScreenCanvas, ctx: offScreenCanvasCtx };
+  }
+})();
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 /**
@@ -29,7 +41,33 @@ const getPngcolorType = async (blob: Blob): Promise<number | undefined> => {
   return colorType;
 };
 
-export const decodeWithCanvas = async (blob: Blob) => {
+/**
+ * Sets the buffer in place to grayscale by removing the G, B, and A channels.
+ *
+ * This is meant for images that are packed like the following, since the other channels are storing redundant data:
+ *
+ * X, X, X, 255, Y, Y, Y, 255, Z, Z, Z, 255, ...
+ */
+export const recastBufferToMonoChannel = (
+  uint8Array: Uint8ClampedArray,
+  width: number,
+  height: number,
+  stride: number
+) => {
+  const totalPixels = width * height;
+
+  let read = 0;
+  let write = 0;
+
+  while (write < totalPixels) {
+    uint8Array[write++] = uint8Array[read];
+    read += stride;
+  }
+
+  return uint8Array.slice(0, totalPixels).buffer;
+};
+
+export const decodeWithCanvas = async (blob: Blob, cls: string) => {
   let channels: number = 4;
 
   if (blob.type === "image/png") {
@@ -53,24 +91,38 @@ export const decodeWithCanvas = async (blob: Blob) => {
   const imageBitmap = await createImageBitmap(blob);
   const { width, height } = imageBitmap;
 
-  const canvas = new OffscreenCanvas(width, height);
-  const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(imageBitmap, 0, 0);
+  const { canvas: offScreenCanvas, ctx: offScreenCanvasCtx } = canvasAndCtx!;
+
+  offScreenCanvas.width = width;
+  offScreenCanvas.height = height;
+
+  offScreenCanvasCtx.drawImage(imageBitmap, 0, 0);
+
   imageBitmap.close();
 
-  const imageData = ctx.getImageData(0, 0, width, height);
+  const imageData = offScreenCanvasCtx.getImageData(0, 0, width, height);
+
+  let targetsBuffer = imageData.data.buffer;
 
   if (channels === 1) {
-    // get rid of the G, B, and A channels, new buffer will be 1/4 the size
-    const data = new Uint8ClampedArray(width * height);
-    for (let i = 0; i < data.length; i++) {
-      data[i] = imageData.data[i * 4];
-    }
-    imageData.data.set(data);
+    // recasting because we know from png header that it's grayscale,
+    // but when we decoded using canvas, it's RGBA
+    targetsBuffer = recastBufferToMonoChannel(imageData.data, width, height, 4);
+  }
+
+  if (cls === HEATMAP && channels > 1) {
+    // recast to mono channel because we don't need the other channels
+    targetsBuffer = recastBufferToMonoChannel(
+      imageData.data,
+      width,
+      height,
+      channels
+    );
+    channels = 1;
   }
 
   return {
-    buffer: imageData.data.buffer,
+    buffer: targetsBuffer,
     channels,
     arrayType: "Uint8ClampedArray",
     shape: [height, width],
