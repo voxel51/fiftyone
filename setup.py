@@ -149,9 +149,9 @@ setup(
             "eta",
             "package",
             "requirements",
+            "teams-app",
             "tests",
-            "tools",
-            "teams-app"]
+            "tools"]
     ),
     install_requires=get_install_requirements(
         INSTALL_REQUIRES, CHOOSE_INSTALL_REQUIRES
