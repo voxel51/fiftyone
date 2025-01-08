@@ -8,6 +8,7 @@ COCO-style detection evaluation.
 
 import logging
 from collections import defaultdict
+from typing import Dict, Callable
 
 import numpy as np
 
@@ -583,115 +584,138 @@ def _coco_evaluation_setup(
 
 
 def _compute_matches(
-    cats, pred_ious, iou_thresh, iscrowd, eval_key, id_key, iou_key
+    cats: Dict,
+    pred_ious: Dict,
+    iou_thresh: float,
+    iscrowd: Callable,
+    eval_key: str,
+    id_key: str,
+    iou_key: str
 ):
     matches = []
 
-    # Match preds to GT, highest confidence first
     for cat, objects in cats.items():
-        gt_map = {gt.id: gt for gt in objects["gts"]}
-
-        # Match each prediction to the highest available IoU ground truth
-        for pred in objects["preds"]:
-            if isinstance(pred, fol.Keypoint):
-                pred_conf = (
-                    np.nanmean(pred.confidence) if pred.confidence else None
-                )
-            else:
-                pred_conf = pred.confidence
-
-            if pred.id in pred_ious:
-                best_match = None
-                best_match_iou = iou_thresh
-                for gt_id, iou in pred_ious[pred.id]:
-                    gt = gt_map[gt_id]
-                    gt_iscrowd = iscrowd(gt)
-
-                    # Only iscrowd GTs can have multiple matches
-                    if gt[id_key] != _NO_MATCH_ID and not gt_iscrowd:
-                        continue
-
-                    # If matching classwise=False
-                    # Only objects with the same class can match a crowd
-                    if gt_iscrowd and gt.label != pred.label:
-                        continue
-
-                    # Crowds are last in order of GTs
-                    # If we already matched a non-crowd and are on a crowd,
-                    # then break
-                    if (
-                        best_match
-                        and not iscrowd(gt_map[best_match])
-                        and gt_iscrowd
-                    ):
-                        break
-
-                    if iou < best_match_iou:
-                        continue
-
-                    best_match_iou = iou
-                    best_match = gt_id
-
-                if best_match:
-                    gt = gt_map[best_match]
-
-                    # For crowd GTs, record info for first (highest confidence)
-                    # matching prediction on the GT object
-                    if gt[id_key] == _NO_MATCH_ID:
-                        gt[eval_key] = "tp" if gt.label == pred.label else "fn"
-                        gt[id_key] = pred.id
-                        gt[iou_key] = best_match_iou
-
-                    pred[eval_key] = "tp" if gt.label == pred.label else "fp"
-                    pred[id_key] = best_match
-                    pred[iou_key] = best_match_iou
-
-                    matches.append(
-                        (
-                            gt.label,
-                            pred.label,
-                            best_match_iou,
-                            pred_conf,
-                            gt.id,
-                            pred.id,
-                            iscrowd(gt),
-                        )
-                    )
-                else:
-                    pred[eval_key] = "fp"
-                    matches.append(
-                        (
-                            None,
-                            pred.label,
-                            None,
-                            pred_conf,
-                            None,
-                            pred.id,
-                            None,
-                        )
-                    )
-
-            elif pred.label == cat:
-                pred[eval_key] = "fp"
-                matches.append(
-                    (
-                        None,
-                        pred.label,
-                        None,
-                        pred_conf,
-                        None,
-                        pred.id,
-                        None,
-                    )
-                )
-
-        # Leftover GTs are false negatives
-        for gt in objects["gts"]:
-            if gt[id_key] == _NO_MATCH_ID:
+        if not objects["preds"] or not objects["gts"]:
+            # Handle empty cases
+            for gt in objects["gts"]:
                 gt[eval_key] = "fn"
                 matches.append(
-                    (gt.label, None, None, None, gt.id, None, iscrowd(gt))
-                )
+                    (gt.label, None, None, None, gt.id, None, iscrowd(gt)))
+            for pred in objects["preds"]:
+                if pred.label == cat:
+                    pred[eval_key] = "fp"
+                    matches.append((None, pred.label, None, pred.confidence,
+                                    None, pred.id, None))
+            continue
+
+        gt_map = {gt.id: gt for gt in objects["gts"]}
+
+        # Keep original objects in lists
+        gts = objects["gts"]
+        preds = [p for p in objects["preds"] if p.id in pred_ious]
+
+        if len(preds) == 0:
+            # Handle case with no valid predictions
+            for gt in gts:
+                gt[eval_key] = "fn"
+                matches.append(
+                    (gt.label, None, None, None, gt.id, None, iscrowd(gt)))
+            continue
+
+        # Create IoU matrix
+        n_preds = len(preds)
+        n_gts = len(gts)
+        iou_matrix = np.zeros((n_preds, n_gts))
+        gt_is_crowd = np.array([iscrowd(gt) for gt in gts])
+
+        # Fill IoU matrix
+        for i, pred in enumerate(preds):
+            for gt_id, iou in pred_ious[pred.id]:
+                if gt_id in gt_map:
+                    j = [idx for idx, gt in enumerate(gts) if gt.id == gt_id][
+                        0]
+                    iou_matrix[i, j] = iou
+
+        # Mask invalid matches
+        valid_mask = iou_matrix >= iou_thresh
+
+        # Handle class matching constraints
+        for i, pred in enumerate(preds):
+            for j, gt in enumerate(gts):
+                if gt_is_crowd[j] and gt.label != pred.label:
+                    valid_mask[i, j] = False
+
+        # Find best matches
+        while True:
+            if not valid_mask.any():
+                break
+
+            # Get highest remaining IoU
+            i, j = np.unravel_index(np.argmax(iou_matrix * valid_mask),
+                                    iou_matrix.shape)
+
+            if iou_matrix[i, j] < iou_thresh:
+                break
+
+            pred = preds[i]
+            gt = gts[j]
+
+            # Record match
+            is_correct = gt.label == pred.label
+
+            if gt[id_key] == _NO_MATCH_ID:
+                gt[eval_key] = "tp" if is_correct else "fn"
+                gt[id_key] = pred.id
+                gt[iou_key] = iou_matrix[i, j]
+
+            pred[eval_key] = "tp" if is_correct else "fp"
+            pred[id_key] = gt.id
+            pred[iou_key] = iou_matrix[i, j]
+
+            matches.append((
+                gt.label,
+                pred.label,
+                iou_matrix[i, j],
+                pred.confidence,
+                gt.id,
+                pred.id,
+                iscrowd(gt)
+            ))
+
+            # Remove this match from consideration
+            if not iscrowd(gt):
+                valid_mask[i, :] = False
+                valid_mask[:, j] = False
+            else:
+                valid_mask[i, j] = False
+
+        # Handle unmatched predictions
+        for pred in preds:
+            if pred[eval_key] not in ["tp", "fp"]:
+                pred[eval_key] = "fp"
+                matches.append((
+                    None,
+                    pred.label,
+                    None,
+                    pred.confidence,
+                    None,
+                    pred.id,
+                    None
+                ))
+
+        # Handle remaining unmatched ground truths
+        for gt in gts:
+            if gt[id_key] == _NO_MATCH_ID:
+                gt[eval_key] = "fn"
+                matches.append((
+                    gt.label,
+                    None,
+                    None,
+                    None,
+                    gt.id,
+                    None,
+                    iscrowd(gt)
+                ))
 
     return matches
 
