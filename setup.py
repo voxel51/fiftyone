@@ -144,7 +144,14 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(
-        exclude=["app", "eta", "package", "requirements", "tests", "tools"]
+        exclude=[
+            "app",
+            "eta",
+            "package",
+            "requirements",
+            "tests",
+            "teams-app",
+            "tools"]
     ),
     install_requires=get_install_requirements(
         INSTALL_REQUIRES, CHOOSE_INSTALL_REQUIRES
