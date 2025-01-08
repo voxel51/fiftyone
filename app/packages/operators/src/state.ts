@@ -21,18 +21,18 @@ import {
 } from "recoil";
 import {
   BROWSER_CONTROL_KEYS,
-  LAST_USED_ORCHESTRATOR,
   RESOLVE_INPUT_VALIDATION_TTL,
   RESOLVE_TYPE_TTL,
+  LAST_USED_ORCHESTRATOR,
 } from "./constants";
 import {
-  executeOperatorWithContext,
   ExecutionContext,
+  InvocationRequestQueue,
+  OperatorResult,
+  executeOperatorWithContext,
   getInvocationRequestQueue,
   getLocalOrRemoteOperator,
-  InvocationRequestQueue,
   listLocalAndRemoteOperators,
-  OperatorResult,
   resolveExecutionOptions,
   resolveOperatorURI,
 } from "./operators";
