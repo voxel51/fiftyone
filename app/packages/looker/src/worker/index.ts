@@ -171,18 +171,24 @@ const processLabels = async (
       if (!label) {
         continue;
       }
-      if (painterFactory[cls]) {
-        painterPromises.push(
-          painterFactory[cls](
-            prefix ? prefix + field : field,
-            label,
-            coloring,
-            customizeColorSetting,
-            colorscale,
-            labelTagColors,
-            selectedLabelTags
-          )
-        );
+
+      if (
+        activePaths.length &&
+        activePaths.includes(`${prefix ?? ""}${field}`)
+      ) {
+        if (painterFactory[cls]) {
+          painterPromises.push(
+            painterFactory[cls](
+              prefix ? prefix + field : field,
+              label,
+              coloring,
+              customizeColorSetting,
+              colorscale,
+              labelTagColors,
+              selectedLabelTags
+            )
+          );
+        }
       }
     }
   }
