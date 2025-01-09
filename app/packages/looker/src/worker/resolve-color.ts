@@ -21,11 +21,12 @@ export default (): [
 
   return [
     (pool, seed, key) => {
-      if (!cache.has(seed)) {
-        cache[seed] = {};
-      }
+      let colors = cache.get(seed);
 
-      const colors = cache[seed];
+      if (!colors) {
+        colors = {};
+        cache.set(seed, colors);
+      }
 
       if (!(key in colors)) {
         if (!(seed in requests)) {
