@@ -5,13 +5,15 @@ Base classes for documents that back dataset contents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import re
 import mongoengine
 
 from .document import DynamicMixin, MongoEngineBaseDocument
 
 
-class FiftyoneDocumentException(Exception):
+class FiftyOneDynamicDocumentException(Exception):
     """Exception raised when an error occurs in a document operation."""
+
     pass
 
 
@@ -52,17 +54,30 @@ class DynamicEmbeddedDocument(
     meta = {"abstract": True, "allow_inheritance": True}
 
     def __init__(self, *args, **kwargs):
-        for key, value in kwargs.items():
-            # Skip MongoDB internal fields
-            if key.startswith('_'):
-                continue
+        try:
+            super().__init__(*args, **kwargs)
+            self.validate()
+        except AttributeError as e:
+            # Two possible patterns for the error message
+            pattern = (
+                r"(?:property '(?P<attribute1>\w+)' of '[^']+' object has no setter|"
+                r"can't set attribute '(?P<attribute2>\w+)')"
+            )
+            match = re.match(pattern, str(e))
 
-            # Check if the key exists and is a property
-            if hasattr(self.__class__, key) and isinstance(getattr(self.__class__, key), property):
-               raise FiftyoneDocumentException(f"Attribute {key} already exists for {self.__class__.__name__}")
-
-        super().__init__(*args, **kwargs)
-        self.validate()
+            if match:
+                key = match.group("attribute1") or match.group("attribute2")
+                # Check if the key exists and is a property
+                if (
+                    key is not None
+                    and hasattr(self.__class__, key)
+                    and isinstance(getattr(self.__class__, key), property)
+                ):
+                    raise FiftyOneDynamicDocumentException(
+                        f"Attribute {key} already exists for {self.__class__.__name__}"
+                    )
+            # If the error is not due to a reserved attribute, raise the original error
+            raise e
 
     def __hash__(self):
         return hash(str(self))

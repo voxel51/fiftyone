@@ -15,7 +15,7 @@ from mongoengine import EmbeddedDocument
 from mongoengine.errors import ValidationError
 from fiftyone.core.fields import EmbeddedDocumentListField
 from fiftyone.core.odm.dataset import SampleFieldDocument
-from fiftyone.core.odm import FiftyoneDocumentException
+from fiftyone.core.odm import FiftyOneDynamicDocumentException
 import fiftyone as fo
 
 
@@ -69,7 +69,7 @@ class TestDetection(unittest.TestCase):
     def test_reserved_attribute_raises_exception(self):
         """Test that attempting to set a reserved property raises FiftyoneDocumentException."""
         # has_mask is a known property of Detection
-        with self.assertRaises(FiftyoneDocumentException) as context:
+        with self.assertRaises(FiftyOneDynamicDocumentException) as context:
             fo.Detection(has_mask=True)
 
         self.assertTrue(
@@ -77,7 +77,7 @@ class TestDetection(unittest.TestCase):
 
     def test_multiple_reserved_attributes(self):
         """Test that attempting to set multiple reserved properties raises FiftyoneDocumentException."""
-        with self.assertRaises(FiftyoneDocumentException) as context:
+        with self.assertRaises(FiftyOneDynamicDocumentException) as context:
             fo.Detection(
                 has_mask=True,
                 bounding_box=[0.1, 0.1, 0.2, 0.2],

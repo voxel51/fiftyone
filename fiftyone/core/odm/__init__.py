@@ -64,7 +64,7 @@ from .embedded_document import (
     BaseEmbeddedDocument,
     DynamicEmbeddedDocument,
     EmbeddedDocument,
-    FiftyoneDocumentException,
+    FiftyOneDynamicDocumentException,
 )
 from .frame import (
     DatasetFrameDocument,
