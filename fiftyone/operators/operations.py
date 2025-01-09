@@ -1,7 +1,7 @@
 """
 FiftyOne operator execution.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -664,6 +664,33 @@ class Operations(object):
             slice: the group slice to activate
         """
         return self._ctx.trigger("set_group_slice", {"slice": slice})
+
+    def open_sample(self, id=None, group_id=None):
+        """Opens the specified sample or group in the App's sample modal.
+
+        Args:
+            id (None): a sample ID to open in the modal
+            group_id (None): a group ID to open in the modal
+        """
+        return self._ctx.trigger(
+            "open_sample", {"id": id, "group_id": group_id}
+        )
+
+    def close_sample(self):
+        """Closes the App's sample modal."""
+        return self._ctx.trigger("close_sample")
+
+    def show_sidebar(self):
+        """Show the App's sidebar."""
+        return self._ctx.trigger("show_sidebar")
+
+    def hide_sidebar(self):
+        """Hide the App's sidebar."""
+        return self._ctx.trigger("hide_sidebar")
+
+    def toggle_sidebar(self):
+        """Toggle the visibility of the App's sidebar."""
+        return self._ctx.trigger("toggle_sidebar")
 
 
 def _serialize_view(view):

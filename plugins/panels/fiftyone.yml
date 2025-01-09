@@ -1,0 +1,8 @@
+name: "@voxel51/panels"
+description: Core FiftyOne panels
+version: 1.0.0
+fiftyone:
+  version: "*"
+url: https://github.com/voxel51/fiftyone/plugins/panels
+panels:
+  - model_evaluation_panel_builtin

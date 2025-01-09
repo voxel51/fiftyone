@@ -1,7 +1,7 @@
 """
 FiftyOne Server ``/embeddings`` route.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -51,12 +51,18 @@ class OnPlotLoad(HTTPEndpoint):
 
         try:
             results = dataset.load_brain_results(brain_key)
-            assert results is not None
         except:
             msg = (
                 "Failed to load results for brain run with key '%s'. Try "
                 "regenerating the results"
             ) % brain_key
+            return {"error": msg}
+
+        if results is None:
+            msg = (
+                "Results for brain run with key '%s' are not yet available"
+                % brain_key
+            )
             return {"error": msg}
 
         view = fosv.get_view(

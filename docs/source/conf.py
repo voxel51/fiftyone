@@ -4,7 +4,7 @@ Sphinx configuration file.
 For a full list of available options, see:
 https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -210,6 +210,7 @@ html_context = {
     "link_voxel51_facebook": "https://www.facebook.com/voxel51/",
     "link_voxel51_github": "https://github.com/voxel51/",
     "link_voxel51_linkedin": "https://www.linkedin.com/company/voxel51/",
+    "link_voxel51_discord": "https://community.voxel51.com",
     "link_voxel51_slack": "https://slack.voxel51.com",
     "link_voxel51_twitter": "https://twitter.com/voxel51",
     "link_voxel51_blog": "https://voxel51.com/blog/",

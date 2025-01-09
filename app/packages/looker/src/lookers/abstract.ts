@@ -44,6 +44,7 @@ import {
 } from "../util";
 import { ProcessSample } from "../worker";
 import { LookerUtils } from "./shared";
+import { retrieveArrayBuffers } from "./utils";
 
 const LABEL_LISTS_PATH = new Set(withPath(LABELS_PATH, LABEL_LISTS));
 const LABEL_LIST_KEY = Object.fromEntries(
@@ -464,13 +465,18 @@ export abstract class AbstractLooker<
   /**
    * Attaches the instance to the provided HTMLElement and adds event listeners
    */
-  attach(element: HTMLElement | string, dimensions?: Dimensions): void {
+  attach(
+    element: HTMLElement | string,
+    dimensions?: Dimensions,
+    fontSize?: number
+  ): void {
     if (typeof element === "string") {
       element = document.getElementById(element);
     }
 
     if (element === this.lookerElement.element.parentElement) {
-      this.state.disabled && this.updater({ disabled: false });
+      this.state.disabled &&
+        this.updater({ disabled: false, options: { fontSize } });
       return;
     }
 
@@ -486,6 +492,7 @@ export abstract class AbstractLooker<
     this.updater({
       windowBBox: dimensions ? [0, 0, ...dimensions] : getElementBBox(element),
       disabled: false,
+      options: { fontSize },
     });
     element.appendChild(this.lookerElement.element);
     !dimensions && this.resizeObserver.observe(element);
@@ -510,7 +517,7 @@ export abstract class AbstractLooker<
   abstract updateOptions(options: Partial<State["options"]>): void;
 
   updateSample(sample: Sample) {
-    this.loadSample(sample);
+    this.loadSample(sample, retrieveArrayBuffers(this.sampleOverlays));
   }
 
   getSample(): Promise<Sample> {
@@ -561,6 +568,7 @@ export abstract class AbstractLooker<
     this.detach();
     this.abortController.abort();
     this.updater({ destroyed: true });
+    this.sampleOverlays?.forEach((overlay) => overlay.cleanup?.());
   }
 
   disable() {
@@ -693,13 +701,22 @@ export abstract class AbstractLooker<
     );
   }
 
-  private loadSample(sample: Sample) {
+  protected cleanOverlays() {
+    for (const overlay of this.sampleOverlays ?? []) {
+      overlay.cleanup?.();
+    }
+  }
+
+  private loadSample(sample: Sample, transfer: Transferable[] = []) {
     const messageUUID = uuid();
 
     const labelsWorker = getLabelsWorker();
 
     const listener = ({ data: { sample, coloring, uuid } }) => {
       if (uuid === messageUUID) {
+        // we paint overlays again, so cleanup the old ones
+        // this helps prevent memory leaks from, for instance, dangling ImageBitmaps
+        this.cleanOverlays();
         this.sample = sample;
         this.state.options.coloring = coloring;
         this.loadOverlays(sample);
@@ -714,7 +731,7 @@ export abstract class AbstractLooker<
 
     labelsWorker.addEventListener("message", listener);
 
-    labelsWorker.postMessage({
+    const workerArgs = {
       sample: sample as ProcessSample["sample"],
       method: "processSample",
       coloring: this.state.options.coloring,
@@ -725,7 +742,20 @@ export abstract class AbstractLooker<
       sources: this.state.config.sources,
       schema: this.state.config.fieldSchema,
       uuid: messageUUID,
-    } as ProcessSample);
+    } as ProcessSample;
+
+    try {
+      labelsWorker.postMessage(workerArgs, transfer);
+    } catch (error) {
+      // rarely we'll get a DataCloneError
+      // if one of the buffers is detached and we didn't catch it
+      // try again without transferring the buffers (copying them)
+      if (error.name === "DataCloneError") {
+        labelsWorker.postMessage(workerArgs);
+      } else {
+        throw error;
+      }
+    }
   }
 }
 

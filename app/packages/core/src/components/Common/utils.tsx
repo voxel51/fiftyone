@@ -68,13 +68,14 @@ export const getFormatter = (fieldType: string, timeZone: string, bounds) => {
         );
       }
 
-      return numeral(v).format(
+      const str = numeral(v).format(
         [INT_FIELD, FRAME_NUMBER_FIELD, FRAME_SUPPORT_FIELD].includes(fieldType)
           ? "0a"
           : bounds[1] - bounds[0] < 0.1
           ? "0.0000a"
           : "0.00a"
       );
+      return str === "NaN" ? v.toString() : str;
     },
   };
 };

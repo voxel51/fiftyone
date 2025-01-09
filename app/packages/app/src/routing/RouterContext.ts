@@ -1,22 +1,21 @@
+import { viewsAreEqual } from "@fiftyone/state";
+import { NotFoundError, Resource, isNotebook } from "@fiftyone/utilities";
 import type { Action, Location } from "history";
+import { createBrowserHistory, createMemoryHistory } from "history";
+import React from "react";
 import type { PreloadedQuery } from "react-relay";
+import { loadQuery } from "react-relay";
 import type {
   ConcreteRequest,
   Environment,
   OperationType,
   VariablesOf,
 } from "relay-runtime";
+import { fetchQuery } from "relay-runtime";
 import type { Route } from ".";
 import type { Queries } from "../makeRoutes";
 import type RouteDefinition from "./RouteDefinition";
 import type { LocationState, MatchPathResult } from "./matchPath";
-
-import { viewsAreEqual } from "@fiftyone/state";
-import { NotFoundError, Resource, isNotebook } from "@fiftyone/utilities";
-import { createBrowserHistory, createMemoryHistory } from "history";
-import React from "react";
-import { loadQuery } from "react-relay";
-import { fetchQuery } from "relay-runtime";
 import { matchPath } from "./matchPath";
 
 export interface RouteData<T extends OperationType> {

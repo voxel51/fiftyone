@@ -1,7 +1,7 @@
 """
 Core utilities.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -972,19 +972,6 @@ class ProgressBar(etau.ProgressBar):
 
         self._progress = progress
         self._callback = callback
-
-    def __call__(self, iterable):
-        # Ensure that `len(iterable)` is not computed unnecessarily
-        no_len = self._quiet and self._total is None
-        if no_len:
-            self._total = -1
-
-        super().__call__(iterable)
-
-        if no_len:
-            self._total = None
-
-        return self
 
     def set_iteration(self, *args, **kwargs):
         super().set_iteration(*args, **kwargs)

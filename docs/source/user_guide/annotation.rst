@@ -357,13 +357,15 @@ settings that you declare in this way will be passed as keyword arguments to
 methods like
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
 whenever the corresponding backend is in use. For example, you can configure
-the URL, username, and password of your CVAT server as follows:
+the URL, username, password, and email (if applicable) of your CVAT server as
+follows:
 
 .. code-block:: shell
 
     export FIFTYONE_CVAT_URL=http://localhost:8080
     export FIFTYONE_CVAT_USERNAME=...
     export FIFTYONE_CVAT_PASSWORD=...
+    export FIFTYONE_CVAT_EMAIL=...  # if applicable
 
 The `FIFTYONE_ANNOTATION_BACKENDS` environment variable can be set to a
 `list,of,backends` that you want to expose in your session, which may exclude
@@ -508,7 +510,11 @@ more details:
     attributes are included for all fields that do not explicitly define their
     per-field attributes (in addition to any per-class attributes)
 -   **mask_targets** (*None*): a dict mapping pixel values to semantic label
-    strings. Only applicable when annotating semantic segmentations
+    strings. Only applicable when annotating semantic segmentations. All new
+    label fields must have mask targets provided via one of the supported
+    methods. For existing label fields, if mask targets are not provided by
+    this argument nor `label_schema`, any applicable mask targets stored on
+    your dataset will be used, if available
 -   **allow_additions** (*True*): whether to allow new labels to be added. Only
     applicable when editing existing label fields
 -   **allow_deletions** (*True*): whether to allow labels to be deleted. Only
@@ -667,8 +673,13 @@ FiftyOne can infer the appropriate values to use:
 
 -   **label_type**: if omitted, the |Label| type of the field will be used to
     infer the appropriate value for this parameter
--   **classes**: if omitted for a non-semantic segmentation field, the observed
-    labels on your dataset will be used to construct a classes list
+-   **classes**: if omitted, the observed labels on your dataset will be used
+    to construct a classes list
+-   **mask_targets**: if omitted for a semantic segmentation field, the mask
+    targets from the
+    :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` or
+    :meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
+    properties of your dataset will be used, if available
 
 .. _annotation-label-attributes:
 

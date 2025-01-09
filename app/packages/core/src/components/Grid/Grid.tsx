@@ -70,10 +70,11 @@ function Grid() {
       retainItems: true,
       rowAspectRatioThreshold: threshold,
       get: (next) => page(next),
-      render: (id, element, dimensions, soft, hide) => {
+      render: (id, element, dimensions, zooming) => {
         if (lookerStore.has(id.description)) {
-          const looker = lookerStore.get(id.description);
-          hide ? looker?.disable() : looker?.attach(element, dimensions);
+          lookerStore
+            .get(id.description)
+            ?.attach(element, dimensions, getFontSize());
 
           return;
         }
@@ -84,7 +85,7 @@ function Grid() {
           throw new Error("bad data");
         }
 
-        if (soft) {
+        if (zooming) {
           // we are scrolling fast, skip creation
           return;
         }

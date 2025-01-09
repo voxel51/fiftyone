@@ -1,7 +1,7 @@
 """
 FiftyOne operator execution.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -261,12 +261,13 @@ async def execute_or_delegate_operator(
             ctx.request_params["delegated"] = True
             metadata = {"inputs_schema": None, "outputs_schema": None}
 
-            try:
-                metadata["inputs_schema"] = inputs.to_json()
-            except Exception as e:
-                logger.warning(
-                    f"Failed to resolve inputs schema for the operation: {str(e)}"
-                )
+            if inputs is not None:
+                try:
+                    metadata["inputs_schema"] = inputs.to_json()
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to resolve inputs schema for the operation: {str(e)}"
+                    )
 
             op = DelegatedOperationService().queue_operation(
                 operator=operator.uri,
@@ -379,31 +380,28 @@ async def resolve_type(registry, operator_uri, request_params):
         required_secrets=operator._plugin_secrets,
     )
     await ctx.resolve_secret_values(operator._plugin_secrets)
-    try:
-        return operator.resolve_type(
-            ctx, request_params.get("target", "inputs")
-        )
-    except Exception as e:
-        return ExecutionResult(error=traceback.format_exc())
+
+    return await resolve_type_with_context(operator, ctx)
 
 
-async def resolve_type_with_context(request_params, target=None):
+async def resolve_type_with_context(operator, context):
     """Resolves the "inputs" or "outputs" schema of an operator with the given
     context.
 
     Args:
-        request_params: a dictionary of request parameters
-        target (None): the target schema ("inputs" or "outputs")
+        operator: the :class:`fiftyone.operators.Operator`
+        context: the :class:`ExecutionContext` of an operator
 
     Returns:
-        the schema of "inputs" or "outputs"
+        the "inputs" or "outputs" schema
         :class:`fiftyone.operators.types.Property` of an operator, or None
     """
-    computed_target = target or request_params.get("target", None)
-    computed_request_params = {**request_params, "target": computed_target}
-    operator_uri = request_params.get("operator_uri", None)
-    registry = OperatorRegistry()
-    return await resolve_type(registry, operator_uri, computed_request_params)
+    try:
+        return operator.resolve_type(
+            context, context.request_params.get("target", "inputs")
+        )
+    except Exception as e:
+        return ExecutionResult(error=traceback.format_exc())
 
 
 async def resolve_execution_options(registry, operator_uri, request_params):
@@ -746,6 +744,7 @@ class ExecutionContext(object):
         params=None,
         on_success=None,
         on_error=None,
+        on_cancel=None,
         skip_prompt=False,
     ):
         """Prompts the user to execute the operator with the given URI.
@@ -756,6 +755,7 @@ class ExecutionContext(object):
             on_success (None): a callback to invoke if the user successfully
                 executes the operator
             on_error (None): a callback to invoke if the execution fails
+            on_cancel (None): a callback to invoke if the user cancels the prompt
             skip_prompt (False): whether to skip the prompt
 
         Returns:
@@ -771,6 +771,7 @@ class ExecutionContext(object):
                     "params": params,
                     "on_success": on_success,
                     "on_error": on_error,
+                    "on_cancel": on_cancel,
                     "skip_prompt": skip_prompt,
                 }
             ),
@@ -890,6 +891,11 @@ class ExecutionContext(object):
         """
         dataset_id = self.dataset._doc.id
         return ExecutionStore.create(store_name, dataset_id)
+
+    def _get_serialized_request_params(self):
+        request_params_copy = self.request_params.copy()
+        request_params_copy.get("params", {}).pop("panel_state", None)
+        return request_params_copy
 
     def serialize(self):
         """Serializes the execution context.

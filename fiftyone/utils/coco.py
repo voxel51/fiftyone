@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `COCO format <https://cocodataset.org/#format-data>`_.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1304,7 +1304,7 @@ class COCOObject(object):
             x, y, w, h = label.bounding_box
             bbox = [x * width, y * height, w * width, h * height]
 
-            if label.mask is not None:
+            if label.has_mask is not None:
                 segmentation = _instance_to_coco_segmentation(
                     label, frame_size, iscrowd=iscrowd, tolerance=tolerance
                 )
@@ -2116,7 +2116,7 @@ def _coco_objects_to_detections(
         )
 
         if detection is not None and (
-            not load_segmentations or detection.mask is not None
+            not load_segmentations or detection.has_mask is not None
         ):
             detections.append(detection)
 

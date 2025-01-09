@@ -1,7 +1,7 @@
 """
 FiftyOne operator server.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -27,8 +27,8 @@ from .operator import Operator
 
 
 def get_operators(registry: PermissionedOperatorRegistry):
-    operators = registry.list_operators(True, "operator")
-    panels = registry.list_operators(True, "panel")
+    operators = registry.list_operators(type="operator")
+    panels = registry.list_operators(type="panel")
     return operators + panels
 
 

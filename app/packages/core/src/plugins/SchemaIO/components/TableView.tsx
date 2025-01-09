@@ -194,6 +194,7 @@ export default function TableView(props: ViewPropsType) {
                             background: isSelected
                               ? selectedCellColor
                               : "unset",
+                            fontSize: "1rem",
                           }}
                           onClick={() => {
                             handleCellClick(rowIndex, columnIndex);
@@ -220,14 +221,17 @@ export default function TableView(props: ViewPropsType) {
                           background: isRowSelected
                             ? selectedCellColor
                             : "unset",
+                          fontSize: "1rem",
                         }}
                       >
-                        {currentRowHasActions && (
+                        {currentRowHasActions ? (
                           <ActionsMenu
                             actions={getRowActions(rowIndex)}
                             size={size}
                             maxInline={max_inline_actions}
                           />
+                        ) : (
+                          <Box sx={{ minHeight: "32px" }} />
                         )}
                       </TableCell>
                     )}

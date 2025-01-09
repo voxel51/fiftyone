@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `KITTI format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`_.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """

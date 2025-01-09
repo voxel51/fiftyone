@@ -1,10 +1,11 @@
 """
 Labels stored in dataset samples.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from functools import partial
 import itertools
 import warnings
@@ -38,6 +39,12 @@ class _NoDefault(object):
 
 
 no_default = _NoDefault()
+
+
+class _HasMedia(object):
+    """Mixin for :class:`Label` classes that contain a media field."""
+
+    _MEDIA_FIELD = None
 
 
 class Label(DynamicEmbeddedDocument):
@@ -388,7 +395,7 @@ class Classifications(_HasLabelList, Label):
     logits = fof.VectorField()
 
 
-class Detection(_HasAttributesDict, _HasID, Label):
+class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
     """An object detection.
 
     Args:
@@ -401,17 +408,74 @@ class Detection(_HasAttributesDict, _HasID, Label):
         mask (None): an instance segmentation mask for the detection within
             its bounding box, which should be a 2D binary or 0/1 integer numpy
             array
+        mask_path (None):  the absolute path to the instance segmentation image
+            on disk, which should be a single-channel PNG image where any
+            non-zero values represent the instance's extent
         confidence (None): a confidence in ``[0, 1]`` for the detection
         index (None): an index for the object
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """
 
+    _MEDIA_FIELD = "mask_path"
+
     label = fof.StringField()
     bounding_box = fof.ListField(fof.FloatField())
     mask = fof.ArrayField()
+    mask_path = fof.StringField()
     confidence = fof.FloatField()
     index = fof.IntField()
+
+    @property
+    def has_mask(self):
+        """Whether this instance has a mask."""
+        return self.mask is not None or self.mask_path is not None
+
+    def get_mask(self):
+        """Returns the detection mask for this instance.
+
+        Returns:
+            a numpy array, or ``None``
+        """
+        if self.mask is not None:
+            return self.mask
+
+        if self.mask_path is not None:
+            return _read_mask(self.mask_path)
+
+        return None
+
+    def import_mask(self, update=False):
+        """Imports this instance's mask from disk to its :attr:`mask`
+        attribute.
+
+        Args:
+            update (False): whether to clear this instance's :attr:`mask_path`
+                attribute after importing
+        """
+        if self.mask_path is not None:
+            self.mask = _read_mask(self.mask_path)
+
+            if update:
+                self.mask_path = None
+
+    def export_mask(self, outpath, update=False):
+        """Exports this instance's mask to the given path.
+
+        Args:
+            outpath: the path to write the mask
+            update (False): whether to clear this instance's :attr:`mask`
+                attribute and set its :attr:`mask_path` attribute when
+                exporting in-database segmentations
+        """
+        if self.mask_path is not None:
+            etau.copy_file(self.mask_path, outpath)
+        else:
+            _write_mask(self.mask, outpath)
+
+            if update:
+                self.mask = None
+                self.mask_path = outpath
 
     def to_polyline(self, tolerance=2, filled=True):
         """Returns a :class:`Polyline` representation of this instance.
@@ -467,10 +531,10 @@ class Detection(_HasAttributesDict, _HasID, Label):
         Returns:
             a :class:`Segmentation`
         """
-        if self.mask is None:
+        if not self.has_mask:
             raise ValueError(
-                "Only detections with their `mask` attributes populated can "
-                "be converted to segmentations"
+                "Only detections with their `mask` or `mask_path` attribute "
+                "populated can be converted to segmentations"
             )
 
         mask, target = _parse_segmentation_target(mask, frame_size, target)
@@ -586,7 +650,7 @@ class Detections(_HasLabelList, Label):
 
         # pylint: disable=not-an-iterable
         for detection in self.detections:
-            if detection.mask is None:
+            if not detection.has_mask:
                 msg = "Skipping detection(s) with no instance mask"
                 warnings.warn(msg)
                 continue
@@ -997,12 +1061,6 @@ class Keypoints(_HasLabelList, Label):
     keypoints = fof.ListField(fof.EmbeddedDocumentField(Keypoint))
 
 
-class _HasMedia(object):
-    """Mixin for :class:`Label` classes that contain a media field."""
-
-    _MEDIA_FIELD = None
-
-
 class Segmentation(_HasID, _HasMedia, Label):
     """A semantic segmentation for an image.
 
@@ -1044,7 +1102,6 @@ class Segmentation(_HasID, _HasMedia, Label):
         attribute.
 
         Args:
-            outpath: the path to write the map
             update (False): whether to clear this instance's :attr:`mask_path`
                 attribute after importing
         """

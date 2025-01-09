@@ -1,7 +1,7 @@
 """
 Base evaluation methods.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -333,15 +333,17 @@ class BaseEvaluationResults(foe.EvaluationResults):
             # Omit `(other, other)`
             i = labels.index(other_label)
             cmat[i, i] = 0
-            ids[i, i] = []
+            if tabulate_ids:
+                ids[i, i] = []
 
             if added_missing:
                 # Omit `(other, missing)` and `(missing, other)`
                 j = labels.index(self.missing)
                 cmat[i, j] = 0
                 cmat[j, i] = 0
-                ids[i, j] = []
-                ids[j, i] = []
+                if tabulate_ids:
+                    ids[i, j] = []
+                    ids[j, i] = []
 
         rm_inds = []
 
@@ -357,7 +359,10 @@ class BaseEvaluationResults(foe.EvaluationResults):
 
         if rm_inds:
             cmat = np.delete(np.delete(cmat, rm_inds, axis=0), rm_inds, axis=1)
-            ids = np.delete(np.delete(ids, rm_inds, axis=0), rm_inds, axis=1)
+            if tabulate_ids:
+                ids = np.delete(
+                    np.delete(ids, rm_inds, axis=0), rm_inds, axis=1
+                )
             labels = [l for i, l in enumerate(labels) if i not in rm_inds]
 
         return cmat, labels, ids

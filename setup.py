@@ -2,7 +2,7 @@
 """
 Installs FiftyOne.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -13,7 +13,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "1.1.0"
+VERSION = "1.3.0"
 
 
 def get_version():
@@ -46,8 +46,8 @@ INSTALL_REQUIRES = [
     # https://plotly.com/python/static-image-export/
     "kaleido!=0.2.1.post1",
     "matplotlib",
-    "mongoengine==0.24.2",
-    "motor>=2.5",
+    "mongoengine~=0.29.1",
+    "motor~=3.6.0",
     "numpy",
     "packaging",
     "pandas",
@@ -55,7 +55,7 @@ INSTALL_REQUIRES = [
     "plotly>=4.14",
     "pprintpp",
     "psutil",
-    "pymongo>=3.12,<4.9",
+    "pymongo~=4.9.2",
     "pytz",
     "PyYAML",
     "regex",
@@ -74,9 +74,9 @@ INSTALL_REQUIRES = [
     "universal-analytics-python3>=1.0.1,<2",
     "pydash",
     # internal packages
-    "fiftyone-brain>=0.17.0,<0.18",
+    "fiftyone-brain>=0.18.2,<0.19",
     "fiftyone-db>=0.4,<2.0",
-    "voxel51-eta>=0.13.0,<0.14",
+    "voxel51-eta>=0.13.1,<0.14",
 ]
 
 

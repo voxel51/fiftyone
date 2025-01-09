@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2024, Voxel51, Inc.
+ * Copyright 2017-2025, Voxel51, Inc.
  */
 
 export interface At {
@@ -38,8 +38,7 @@ export type Render = (
   id: ID,
   element: HTMLDivElement,
   dimensions: [number, number],
-  soft: boolean,
-  disable: boolean
+  zooming: boolean
 ) => void;
 
 export interface Response<K, V> {

@@ -1,7 +1,7 @@
 """
 Annotation utilities.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -162,7 +162,11 @@ def annotate(
             define their per-field attributes (in addition to any per-class
             attributes)
         mask_targets (None): a dict mapping pixel values to semantic label
-            strings. Only applicable when annotating semantic segmentations
+            strings. Only applicable when annotating semantic segmentations.
+            All new label fields must have mask targets provided via one of the
+            supported methods. For existing label fields, if mask targets are
+            not provided by this argument nor ``label_schema``, any applicable
+            mask targets stored on your dataset will be used, if available
         allow_additions (True): whether to allow new labels to be added. Only
             applicable when editing existing label fields
         allow_deletions (True): whether to allow labels to be deleted. Only
@@ -468,7 +472,11 @@ def _build_label_schema(
 
         if _label_type == "segmentation":
             _mask_targets, _classes = _get_mask_targets(
-                samples, mask_targets, _label_field, _label_info
+                samples,
+                mask_targets,
+                _label_field,
+                _label_info,
+                _existing_field,
             )
         else:
             _mask_targets = None
@@ -841,13 +849,30 @@ def _parse_classes_dict(
     return {"classes": classes, "attributes": attributes}
 
 
-def _get_mask_targets(samples, mask_targets, label_field, label_info):
+def _get_mask_targets(
+    samples,
+    mask_targets,
+    label_field,
+    label_info,
+    existing_field,
+):
     if "mask_targets" in label_info:
         mask_targets = label_info["mask_targets"]
 
     if mask_targets is None:
-        mask_targets = {i: str(i) for i in range(1, 256)}
-        mask_targets[0] = "background"
+        if not existing_field:
+            raise ValueError(
+                "You must provide mask targets for new label field '%s'"
+                % label_field
+            )
+
+        if label_field in samples.mask_targets:
+            mask_targets = samples.mask_targets[label_field]
+        elif samples.default_mask_targets:
+            mask_targets = samples.default_mask_targets
+        else:
+            mask_targets = {i: str(i) for i in range(1, 256)}
+            mask_targets[0] = "background"
 
     classes = [c for v, c in mask_targets.items() if v != 0]
 

@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2024, Voxel51, Inc.
+ * Copyright 2017-2025, Voxel51, Inc.
  */
 import copy from "copy-to-clipboard";
 
@@ -103,12 +103,11 @@ export class ErrorElement<State extends BaseState> extends BaseElement<State> {
       }
     }
 
+    if (!error && this.errorElement) {
+      this.errorElement.remove();
+      this.errorElement = null;
+    }
+
     return this.errorElement;
   }
 }
-
-const onClick = (href) => {
-  let openExternal;
-
-  return null;
-};

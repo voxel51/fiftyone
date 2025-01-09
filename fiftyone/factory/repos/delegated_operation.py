@@ -1,7 +1,7 @@
 """
 FiftyOne delegated operation repository.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -177,15 +177,15 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 raise ValueError("Missing required property '%s'" % prop)
             setattr(op, prop, kwargs.get(prop))
 
-        # also set the delegation target (not required)
         delegation_target = kwargs.get("delegation_target", None)
         if delegation_target:
             setattr(op, "delegation_target", delegation_target)
 
-        # also set the metadata (not required)
         metadata = kwargs.get("metadata", None)
         if metadata:
             setattr(op, "metadata", metadata)
+        else:
+            setattr(op, "metadata", {})
 
         context = None
         if isinstance(op.context, dict):
@@ -214,6 +214,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             context.request_params["dataset_id"] = str(op.dataset_id)
             context.request_params["dataset_name"] = context.dataset.name
 
+        op.context = context
         doc = self._collection.insert_one(op.to_pymongo())
         op.id = doc.inserted_id
         return DelegatedOperationDocument().from_pymongo(op.__dict__)
@@ -262,8 +263,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             else None
         )
 
-        needs_pipeline_update = False
-
         if run_state == ExecutionRunState.COMPLETED:
             update = {
                 "$set": {
@@ -278,7 +277,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 update["$set"]["metadata.outputs_schema"] = (
                     outputs_schema or {}
                 )
-                needs_pipeline_update = True
 
         elif run_state == ExecutionRunState.FAILED:
             update = {
@@ -327,12 +325,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         collection_filter = {"_id": _id}
         if required_state is not None:
             collection_filter["run_state"] = required_state
-
-        # Using pipeline update instead of a single update doc fixes a case
-        #   where `metadata` is null and so accessing the dotted field
-        #   `metadata.output_schema` creates the document instead of erroring.
-        if needs_pipeline_update:
-            update = [update]
 
         doc = self._collection.find_one_and_update(
             filter=collection_filter,

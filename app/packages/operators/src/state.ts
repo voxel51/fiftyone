@@ -246,6 +246,7 @@ export type OperatorExecutionOption = {
   default?: boolean;
   selected?: boolean;
   onSelect?: () => void;
+  isDisabledSchedule?: boolean;
 };
 
 const useOperatorPromptSubmitOptions = (
@@ -346,6 +347,7 @@ const useOperatorPromptSubmitOptions = (
       id: "disabled-schedule",
       description: markdownDesc,
       isDelegated: true,
+      isDisabledSchedule: true,
     });
   }
 
@@ -420,6 +422,10 @@ export const useOperatorExecutionOptions = ({
   onExecute: (opts: OperatorExecutorOptions) => void;
 }): {
   executionOptions: OperatorExecutionOption[];
+  hasOptions: boolean;
+  warningMessage: React.ReactNode;
+  showWarning: boolean;
+  isLoading: boolean;
 } => {
   const ctx = useExecutionContext(operatorUri);
   const { isRemote } = getLocalOrRemoteOperator(operatorUri);
@@ -432,6 +438,10 @@ export const useOperatorExecutionOptions = ({
 
   return {
     executionOptions: submitOptions.options,
+    hasOptions: submitOptions.hasOptions,
+    warningMessage: submitOptions.warningMessage,
+    showWarning: submitOptions.showWarning,
+    isLoading: execDetails.isLoading,
   };
 };
 
@@ -577,6 +587,11 @@ export const useOperatorPrompt = () => {
     },
     [operator, promptingOperator, cachedResolvedInput]
   );
+  const onCancel = promptingOperator.options?.onCancel;
+  const cancel = () => {
+    if (onCancel) onCancel();
+    close();
+  };
   const close = () => {
     setPromptingOperator(null);
     setInputFields(null);
@@ -654,7 +669,7 @@ export const useOperatorPrompt = () => {
     isExecuting,
     hasResultOrError,
     close,
-    cancel: close,
+    cancel,
     validationErrors,
     validate,
     validateThrottled,
@@ -849,6 +864,7 @@ export function useOperatorBrowser() {
   const choices = useRecoilValue(operatorBrowserChoices);
   const promptForInput = usePromptOperatorInput();
   const isOperatorPaletteOpened = useRecoilValue(operatorPaletteOpened);
+  const editingField = useRecoilValue(fos.editingFieldAtom);
 
   const selectedValue = useMemo(() => {
     return selected ?? defaultSelected;
@@ -911,7 +927,8 @@ export function useOperatorBrowser() {
     (e) => {
       if (e.key !== "`" && !isVisible) return;
       if (e.key === "`" && isOperatorPaletteOpened) return;
-      if (BROWSER_CONTROL_KEYS.includes(e.key)) e.preventDefault();
+      if (BROWSER_CONTROL_KEYS.includes(e.key) && !editingField)
+        e.preventDefault();
       switch (e.key) {
         case "ArrowDown":
           selectNext();
@@ -920,7 +937,7 @@ export function useOperatorBrowser() {
           selectPrevious();
           break;
         case "`":
-          if (isOperatorPaletteOpened) break;
+          if (isOperatorPaletteOpened || editingField) break;
           if (isVisible) {
             close();
           } else {

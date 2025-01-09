@@ -1,7 +1,7 @@
 """
 FiftyOne delegated operations.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -53,7 +53,6 @@ class DelegatedOperationService(object):
             metadata (None): an optional metadata dict containing properties below:
                 - inputs_schema: the schema of the operator's inputs
                 - outputs_schema: the schema of the operator's outputs
-
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
@@ -514,11 +513,12 @@ class DelegatedOperationService(object):
         result = await do_execute_operator(operator, ctx, exhaust=True)
 
         outputs_schema = None
-        request_params = {**context.request_params, "results": result}
         try:
-            outputs = await resolve_type_with_context(
-                request_params, "outputs"
-            )
+            # Resolve output types now
+            ctx.request_params["target"] = "outputs"
+            ctx.request_params["results"] = result
+
+            outputs = await resolve_type_with_context(operator, ctx)
             if outputs is not None:
                 outputs_schema = outputs.to_json()
         except (AttributeError, Exception):

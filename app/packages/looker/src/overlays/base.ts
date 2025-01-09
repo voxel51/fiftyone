@@ -1,8 +1,9 @@
 /**
- * Copyright 2017-2024, Voxel51, Inc.
+ * Copyright 2017-2025, Voxel51, Inc.
  */
 
 import { getCls, sizeBytesEstimate } from "@fiftyone/utilities";
+import { OverlayMask } from "../numpy";
 import type { BaseState, Coordinates, NONFINITE } from "../state";
 import { getLabelColor, shouldShowLabelTag } from "./util";
 
@@ -39,6 +40,11 @@ export interface SelectData {
   frameNumber?: number;
 }
 
+export type LabelMask = {
+  bitmap?: ImageBitmap;
+  data?: OverlayMask;
+};
+
 export interface RegularLabel extends BaseLabel {
   _id?: string;
   label?: string;
@@ -61,12 +67,14 @@ export interface Overlay<State extends Partial<BaseState>> {
   draw(ctx: CanvasRenderingContext2D, state: State): void;
   isShown(state: Readonly<State>): boolean;
   field?: string;
+  label?: BaseLabel;
   containsPoint(state: Readonly<State>): CONTAINS;
   getMouseDistance(state: Readonly<State>): number;
   getPointInfo(state: Readonly<State>): any;
   getPoints(state: Readonly<State>): Coordinates[];
   getSelectData(state: Readonly<State>): SelectData;
   getSizeBytes(): number;
+  cleanup?(): void;
 }
 
 export abstract class CoordinateOverlay<
@@ -75,7 +83,7 @@ export abstract class CoordinateOverlay<
 > implements Overlay<State>
 {
   readonly field: string;
-  protected label: Label;
+  readonly label: Label;
 
   constructor(field: string, label: Label) {
     this.field = field;

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Generates documentation for FiftyOne.
 #
-# Copyright 2017-2024, Voxel51, Inc.
+# Copyright 2017-2025, Voxel51, Inc.
 # voxel51.com
 #
 
@@ -102,11 +102,17 @@ echo "Generating API docs"
 sphinx-apidoc --force --no-toc --separate --follow-links \
     --templatedir=docs/templates/apidoc \
     -o docs/source/api fiftyone \
-        fiftyone/brain/internal \
+        fiftyone/brain/internal/models \
+        fiftyone/constants \
+        fiftyone/internal \
         fiftyone/server \
         fiftyone/service \
         fiftyone/management \
         fiftyone/api
+
+sphinx-apidoc --force --no-toc --separate --follow-links \
+    --templatedir=docs/templates/apidoc \
+    -o docs/source/plugins/api plugins
 
 # Remove symlink
 unlink fiftyone/brain
