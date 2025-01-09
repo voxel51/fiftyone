@@ -323,19 +323,12 @@ class FiftyOneTransformerConfig(Config, HasZooModel):
     def __init__(self, d):
         self.model = self.parse_raw(d, "model", default=None)
         self.name_or_path = self.parse_string(d, "name_or_path", default=None)
-        self.device = self.parse_string(d, "device", default=None)
+        self.device = self.parse_string(
+            d, "device", default="cuda" if torch.cuda.is_available() else "cpu"
+        )
         if etau.is_str(self.model):
             self.name_or_path = self.model
             self.model = None
-            if self.device is None:
-                self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        else:
-            # model already loaded, keep device if not specified
-            self.device = (
-                next(self.model.parameters()).device
-                if self.device is None
-                else self.device
-            )
 
 
 class FiftyOneZeroShotTransformerConfig(FiftyOneTransformerConfig):
