@@ -80,13 +80,20 @@ class MongoOrchestratorRepo(OrchestratorRepo):
 
     def _create_indexes(self):
         indices = self._collection.list_indexes()
-        index_names = [index["name"] for index in indices]
+        index_names = []
+        for index in indices:
+            if index["name"] == "instance_id_1" and "unique" not in index:
+                self._migrate_legacy_orchestrators()
+            else:
+                index_names.append(index["name"])
+
         indices_to_create = []
         if "instance_id_1" not in index_names:
             indices_to_create.append(
                 IndexModel(
                     [("instance_id", pymongo.ASCENDING)],
                     name="instance_id_1",
+                    unique=True,
                 )
             )
         if "updated_at_1" not in index_names:
@@ -98,6 +105,19 @@ class MongoOrchestratorRepo(OrchestratorRepo):
 
         if indices_to_create:
             self._collection.create_indexes(indices_to_create)
+
+    def _migrate_legacy_orchestrators(self):
+        orcs = self._collection.find().sort({"updated_at": -1})
+        seen = set()
+        for orc in orcs:
+            if orc["instance_id"] in seen:
+                self._collection.delete_one({"_id": orc["_id"]})
+            else:
+                seen.add(orc["instance_id"])
+        try:
+            self._collection.drop_index("instance_id_1")
+        except pymongo.errors.OperationFailure:
+            logger.warning("Failed to drop legacy index")
 
     def upsert(
         self,
