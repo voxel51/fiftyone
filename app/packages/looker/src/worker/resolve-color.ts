@@ -12,7 +12,7 @@ export default (): [
   (pool: string[], seed: number, key: string | number) => Promise<string>,
   (result: ResolveColor) => void
 ] => {
-  const cache = new LRUCache<number, {}>({
+  const cache = new LRUCache<number, Record<string | number, string>>({
     max: MAX_COLOR_CACHE_SIZE,
   });
 
