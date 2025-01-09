@@ -99,12 +99,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
   imageSource: HTMLCanvasElement | HTMLImageElement;
 
-  constructor() {
-    super();
-    this.canvas = document.createElement("canvas");
-    this.ctx = this.canvas.getContext("2d");
-  }
-
   getEvents(): Events<ImaVidState> {
     return {
       load: () => {
