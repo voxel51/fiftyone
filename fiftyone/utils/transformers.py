@@ -323,9 +323,18 @@ class FiftyOneTransformerConfig(Config, HasZooModel):
     def __init__(self, d):
         self.model = self.parse_raw(d, "model", default=None)
         self.name_or_path = self.parse_string(d, "name_or_path", default=None)
+        self.device = self.parse_string(d, "device", default=None)
         if etau.is_str(self.model):
             self.name_or_path = self.model
             self.model = None
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            # model already loaded, keep device if not specified
+            self.device = (
+                next(self.model.parameters()).device
+                if self.device is None
+                else self.device
+            )
 
 
 class FiftyOneZeroShotTransformerConfig(FiftyOneTransformerConfig):
@@ -451,7 +460,8 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, Model):
     def __init__(self, config):
         self.config = config
         self.model = self._load_model(config)
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = torch.device(self.config.device)
+        self.model.to(self.device)
         self.image_processor = self._load_image_processor()
 
     @property
@@ -496,7 +506,8 @@ class FiftyOneZeroShotTransformer(
         self.config = config
         self.classes = config.classes
         self.model = self._load_model(config)
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = torch.device(self.config.device)
+        self.model.to(self.device)
         self.processor = self._load_processor()
         self._text_prompts = None
 
@@ -748,7 +759,8 @@ class FiftyOneZeroShotTransformerForObjectDetection(
         self.classes = config.classes
         self.processor = self._load_processor(config)
         self.model = self._load_model(config)
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = torch.device(self.config.device)
+        self.model.to(self.device)
         self._text_prompts = None
 
     def _load_processor(self, config):
