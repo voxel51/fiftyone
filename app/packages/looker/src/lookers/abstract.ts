@@ -519,14 +519,15 @@ export abstract class AbstractLooker<
   abstract updateOptions(options: Partial<State["options"]>): void;
 
   updateSample(sample: Sample) {
-    if (UPDATING_SAMPLES_IDS.has(sample.id)) {
-      UPDATING_SAMPLES_IDS.delete(sample.id);
+    const id = sample.id ?? sample._id;
+    if (UPDATING_SAMPLES_IDS.has(id)) {
+      UPDATING_SAMPLES_IDS.delete(id);
       this.cleanOverlays(true);
       queueMicrotask(() => this.updateSample(sample));
       return;
     }
 
-    UPDATING_SAMPLES_IDS.add(sample.id);
+    UPDATING_SAMPLES_IDS.add(id);
     this.loadSample(sample, retrieveArrayBuffers(this.sampleOverlays));
   }
 
@@ -741,7 +742,7 @@ export abstract class AbstractLooker<
         });
         labelsWorker.removeEventListener("message", listener);
 
-        UPDATING_SAMPLES_IDS.delete(sample.id);
+        UPDATING_SAMPLES_IDS.delete(sample.id ?? sample._id);
       }
     };
 
