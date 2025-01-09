@@ -74,7 +74,7 @@ class DynamicEmbeddedDocument(
                     and isinstance(getattr(self.__class__, key), property)
                 ):
                     raise FiftyOneDynamicDocumentException(
-                        f"Attribute {key} already exists for {self.__class__.__name__}"
+                        f"Invalid attribute name '{key}'. '{key}' is a reserved keyword for {self.__class__.__name__} objects"
                     )
             # If the error is not due to a reserved attribute, raise the original error
             raise e

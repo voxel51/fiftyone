@@ -9,6 +9,7 @@ To run the unit tests, use the following command:
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+# pylint: disable=no-member
 
 import unittest
 from mongoengine import EmbeddedDocument
@@ -56,7 +57,7 @@ class TestDetection(unittest.TestCase):
         self.valid_detection = {
             "label": "car",
             "bounding_box": [0.1, 0.1, 0.2, 0.2],
-            "confidence": 0.95
+            "confidence": 0.95,
         }
 
     def test_valid_detection_creation(self):
@@ -73,7 +74,8 @@ class TestDetection(unittest.TestCase):
             fo.Detection(has_mask=True)
 
         self.assertTrue(
-            "Attribute has_mask already exists" in str(context.exception))
+            "Invalid attribute name 'has_mask'" in str(context.exception)
+        )
 
     def test_multiple_reserved_attributes(self):
         """Test that attempting to set multiple reserved properties raises FiftyoneDocumentException."""
@@ -81,11 +83,11 @@ class TestDetection(unittest.TestCase):
             fo.Detection(
                 has_mask=True,
                 bounding_box=[0.1, 0.1, 0.2, 0.2],
-                is_ground_truth=False  # Assuming this is another property
+                is_ground_truth=False,  # Assuming this is another property
             )
 
         # Should fail on the first reserved property it encounters
-        self.assertTrue("already exists" in str(context.exception))
+        self.assertTrue("Invalid attribute name" in str(context.exception))
 
     def test_dynamic_attribute_allowed(self):
         """Test that setting a new, non-reserved attribute is allowed."""
