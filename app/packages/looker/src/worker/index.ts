@@ -394,6 +394,7 @@ interface FrameStream {
 }
 
 interface FrameChunkResponse extends FrameChunk {
+  activePaths: string[];
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
   colorscale: Colorscale;
@@ -416,7 +417,9 @@ const createReader = ({
   view,
   group,
   schema,
+  activePaths,
 }: {
+  activePaths: string[];
   chunkSize: number;
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
@@ -462,6 +465,7 @@ const createReader = ({
             const { frames, range } = await call();
 
             controller.enqueue({
+              activePaths,
               frames,
               range,
               coloring,
@@ -513,7 +517,8 @@ const getSendChunk =
             value.colorscale,
             value.labelTagColors,
             value.selectedLabelTags,
-            value.schema
+            value.schema,
+            value.activePaths
           )
         )
       );
@@ -561,6 +566,7 @@ const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
 };
 
 interface SetStream {
+  activePaths: string[];
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
   colorscale: Colorscale;
@@ -592,6 +598,7 @@ const setStream = ({
   view,
   group,
   schema,
+  activePaths,
 }: SetStream) => {
   stream && stream.cancel();
   streamId = uuid;
@@ -610,6 +617,7 @@ const setStream = ({
     view,
     group,
     schema,
+    activePaths,
   });
 
   stream.reader.read().then(getSendChunk(uuid));
