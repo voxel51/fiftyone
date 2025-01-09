@@ -4,7 +4,6 @@
 
 import {
   BUFFERING_PAUSE_TIMEOUT,
-  DEFAULT_FRAME_RATE,
   DEFAULT_PLAYBACK_RATE,
   LOOK_AHEAD_MULTIPLIER,
 } from "../../lookers/imavid/constants";
@@ -80,9 +79,9 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private playBackRate = DEFAULT_PLAYBACK_RATE;
-  // adding a new state to track it because we want to compute it conditionally in renderSelf and not drawFrame
-  private setTimeoutDelay = getMillisecondsFromPlaybackRate(this.playBackRate);
   private frameNumber = 1;
+  private setTimeoutDelay: number;
+  private targetFrameRate: number;
   private isThumbnail: boolean;
   private thumbnailSrc: string;
   /**
@@ -99,6 +98,12 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   public framesController: ImaVidFramesController;
 
   imageSource: HTMLCanvasElement | HTMLImageElement;
+
+  constructor() {
+    super();
+    this.canvas = document.createElement("canvas");
+    this.ctx = this.canvas.getContext("2d");
+  }
 
   getEvents(): Events<ImaVidState> {
     return {
@@ -298,6 +303,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         });
       }
 
+      console.log("delay", this.setTimeoutDelay);
       setTimeout(() => {
         requestAnimationFrame(() => {
           const next = frameNumberToDraw + 1;
@@ -349,7 +355,9 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     const offset = this.isSeeking
       ? 2
-      : DEFAULT_FRAME_RATE * LOOK_AHEAD_MULTIPLIER * frameCountMultiplierWeight;
+      : this.targetFrameRate *
+        LOOK_AHEAD_MULTIPLIER *
+        frameCountMultiplierWeight;
 
     const frameRangeMax = Math.min(
       Math.trunc(currentFrameNumber + offset),
@@ -425,7 +433,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   renderSelf(state: Readonly<ImaVidState>) {
     const {
       options: { playbackRate, loop },
-      config: { thumbnail, src: thumbnailSrc },
+      config: { thumbnail, src: thumbnailSrc, frameRate },
       currentFrameNumber,
       seeking,
       hovering,
@@ -447,10 +455,14 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     this.isSeeking = seeking;
     this.isThumbnail = thumbnail;
     this.frameNumber = currentFrameNumber;
+    this.targetFrameRate = frameRate;
 
-    if (this.playBackRate !== playbackRate) {
+    if (this.playBackRate !== playbackRate || !this.setTimeoutDelay) {
       this.playBackRate = playbackRate;
-      this.setTimeoutDelay = getMillisecondsFromPlaybackRate(playbackRate);
+      this.setTimeoutDelay = getMillisecondsFromPlaybackRate(
+        frameRate,
+        playbackRate
+      );
     }
 
     // `destroyed` is called when looker is reset
