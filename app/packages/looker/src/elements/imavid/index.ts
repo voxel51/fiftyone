@@ -297,7 +297,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         });
       }
 
-      console.log("delay", this.setTimeoutDelay);
       setTimeout(() => {
         requestAnimationFrame(() => {
           const next = frameNumberToDraw + 1;
