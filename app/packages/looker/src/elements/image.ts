@@ -10,7 +10,9 @@ const MAX_IMAGE_LOAD_RETRIES = 10;
 
 export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
   // Teams only
-  private allowAnonymousOrigin: boolean;
+  // For matching the url to determine if we should add crossOrigin="Anonymous"
+  // which is required for fetching images with service-worker injected custom credentials
+  private customCredentialsAudience: string | null = null;
 
   private src = "";
   protected imageSource: HTMLImageElement;
@@ -20,7 +22,12 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
 
   constructor() {
     super();
-    this.allowAnonymousOrigin = window.LOOKER_CROSS_ORIGIN_MEDIA;
+    const customCredentialsAudience = sessionStorage.getItem(
+      "customCredentialsAudience"
+    );
+    if (customCredentialsAudience) {
+      this.customCredentialsAudience = customCredentialsAudience;
+    }
   }
 
   getEvents(): Events<ImageState> {
@@ -62,9 +69,6 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
 
   createHTMLElement() {
     const element = new Image();
-    if (this.allowAnonymousOrigin) {
-      element.crossOrigin = "Anonymous";
-    }
     element.loading = "eager";
     return element;
   }
@@ -76,6 +80,12 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
       if (this.timeoutId !== null) {
         window.clearTimeout(this.timeoutId);
         this.timeoutId = null;
+      }
+      if (
+        this.customCredentialsAudience &&
+        src.includes(this.customCredentialsAudience)
+      ) {
+        this.element.setAttribute("crossOrigin", "Anonymous");
       }
       this.element.setAttribute("src", src);
     }
