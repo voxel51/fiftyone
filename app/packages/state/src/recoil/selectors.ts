@@ -147,7 +147,7 @@ export const defaultVisibilityLabels =
     key: "defaultVisibilityLabels",
     get: ({ get }) => {
       return get(datasetAppConfig)
-        .defaultVisibilityLabels as State.DefaultVisibilityLabelsConfig | null;
+        ?.defaultVisibilityLabels as State.DefaultVisibilityLabelsConfig | null;
     },
   });
 
