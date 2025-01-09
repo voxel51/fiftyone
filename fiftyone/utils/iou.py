@@ -554,16 +554,10 @@ def _dense_iou(gt, pred, gt_crowd=False):
     gt_mask_full = np.zeros((gt_img_h, gt_img_w))
     pred_mask_full = np.zeros((pred_img_h, pred_img_w))
 
-    x1 = round(gt_bb[0] * gt_img_w)
-    y1 = round(gt_bb[1] * gt_img_h)
-    x2 = round(x1 + (gt_bb[2] * gt_img_w))
-    y2 = round(y1 + (gt_bb[3] * gt_img_h))
+    x1, x2, y1, y2 = _float_to_pixel(gt_bb, gt_img_w, gt_img_h)
     gt_mask_full[y1:y2, x1:x2] = gt_mask
 
-    x1 = round(pred_bb[0] * pred_img_w)
-    y1 = round(pred_bb[1] * pred_img_h)
-    x2 = round(x1 + (pred_bb[2] * pred_img_w))
-    y2 = round(y1 + (pred_bb[3] * pred_img_h))
+    x1, x2, y1, y2 = _float_to_pixel(pred_bb, pred_img_w, pred_img_h)
     pred_mask_full[y1:y2, x1:x2] = pred_mask
 
     if gt_img_w != pred_img_w or gt_img_h != pred_img_h:
@@ -660,6 +654,7 @@ def _compute_bbox_ious(
 
     for i, pred in enumerate(preds):
         box = _get_detection_box(pred, dimension=index_property.dimension)
+        # pylint: disable=no-value-for-parameter
         indices = rtree_index.intersection(box)
         for j in indices:  # pylint: disable=not-an-iterable
             gt = gts[j]
@@ -690,7 +685,6 @@ def _compute_dense_mask_ious(
     error_level,
     iscrowd=None,
     classwise=False,
-    gt_crowds=None,
     sparse=False,
 ):
     is_symmetric = preds is gts
@@ -716,6 +710,7 @@ def _compute_dense_mask_ious(
 
     for i, pred in enumerate(preds):
         box = _get_mask_box(pred)
+        # pylint: disable=no-value-for-parameter
         indices = rtree_index.intersection(box)
         for j in indices:  # pylint: disable=not-an-iterable
             gt = gts[j]
@@ -790,6 +785,7 @@ def _compute_polygon_ious(
             zip(preds, pred_polys, pred_labels, pred_areas)
         ):
             box = _get_poly_box(pred)
+            # pylint: disable=no-value-for-parameter
             indices = rtree_index.intersection(box)
             for j in indices:  # pylint: disable=not-an-iterable
                 gt = gts[j]
@@ -893,7 +889,6 @@ def _compute_mask_ious(
             gts,
             error_level,
             classwise=classwise,
-            gt_crowds=gt_crowds,
             sparse=sparse,
         )
     else:
@@ -1033,6 +1028,14 @@ def _compute_object_keypoint_similarity(gtp, predp):
     # object keypoint similarity with kappa == 1
     # https://cocodataset.org/#keypoints-eval
     return np.sum(np.exp(-(dists**2) / (2 * (scale**2)))) / n
+
+
+def _float_to_pixel(gt_bb, img_w, img_h):
+    x1 = round(gt_bb[0] * img_w)
+    y1 = round(gt_bb[1] * img_h)
+    x2 = round(x1 + (gt_bb[2] * img_w))
+    y2 = round(y1 + (gt_bb[3] * img_h))
+    return x1, y1, x2, y2
 
 
 def _polylines_to_detections(polylines):
