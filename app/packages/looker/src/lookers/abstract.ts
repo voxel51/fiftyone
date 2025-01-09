@@ -520,6 +520,7 @@ export abstract class AbstractLooker<
 
   updateSample(sample: Sample) {
     const id = sample.id ?? sample._id;
+
     if (UPDATING_SAMPLES_IDS.has(id)) {
       UPDATING_SAMPLES_IDS.delete(id);
       this.cleanOverlays(true);
@@ -528,6 +529,7 @@ export abstract class AbstractLooker<
     }
 
     UPDATING_SAMPLES_IDS.add(id);
+
     this.loadSample(sample, retrieveArrayBuffers(this.sampleOverlays));
   }
 
