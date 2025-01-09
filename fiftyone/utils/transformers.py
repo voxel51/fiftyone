@@ -327,7 +327,8 @@ class FiftyOneTransformerConfig(Config, HasZooModel):
         if etau.is_str(self.model):
             self.name_or_path = self.model
             self.model = None
-            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            if self.device is None:
+                self.device = "cuda" if torch.cuda.is_available() else "cpu"
         else:
             # model already loaded, keep device if not specified
             self.device = (
