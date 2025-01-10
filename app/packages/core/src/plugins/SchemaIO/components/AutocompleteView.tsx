@@ -22,7 +22,7 @@ export default function AutocompleteView(props) {
         autoHighlight
         clearOnBlur={multiple}
         defaultValue={getDefaultValue(data, choices)}
-        freeSolo
+        freeSolo={view.allow_user_input !== false}
         size="small"
         onChange={(e, choice) => {
           onChange(path, choice?.value || choice);
