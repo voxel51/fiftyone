@@ -11,7 +11,7 @@ data directory whenever performing a database upgrade.
     the pre-packaged Fiftyone MongoDB instance. If you utilize
     a :ref:`custom/shared MongoDB database <configuring-mongodb-connection>`,
     follow the upgrade path advised by your database provider.
-    
+
 .. _mongodb-7-to-8:
 
 Upgrading Mongodb 7 to Mongodb 8
