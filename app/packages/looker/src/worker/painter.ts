@@ -119,6 +119,7 @@ export const PainterFactory = (requestColor) => ({
       label.mask.data.buffer
     );
     const bitColor = get32BitColor(color);
+    const maskThreshold = coloring.maskThreshold ?? 0;
 
     if (label.mask_path) {
       // putImageData results in an UInt8ClampedArray,
@@ -129,14 +130,14 @@ export const PainterFactory = (requestColor) => ({
       // for non-grayscale masks, we can check every nth byte,
       // where n = numChannels, to check for whether or not the pixel is part of the mask
       for (let i = 0; i < targets.length; i += numChannels) {
-        if (targets[i]) {
+        if (targets[i] > maskThreshold) {
           const overlayIndex = i / numChannels;
           overlay[overlayIndex] = bitColor;
         }
       }
     } else {
       for (let i = 0; i < overlay.length; i++) {
-        if (targets[i]) {
+        if (targets[i] > maskThreshold) {
           overlay[i] = bitColor;
         }
       }

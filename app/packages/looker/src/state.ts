@@ -25,6 +25,7 @@ export interface Coloring {
   maskTargets: {
     [field: string]: MaskTargets;
   };
+  maskThreshold?: number;
   points: boolean;
   targets: string[];
 }

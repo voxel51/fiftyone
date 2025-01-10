@@ -477,6 +477,32 @@ You can disable frame filtering for a video dataset as follows:
     Did you know? You can also globally disable frame filtering for all video
     datasets via your :ref:`App config <configuring-fiftyone-app>`.
 
+.. _dataset-app-config-detection-mask-threshold:
+
+Configure detection mask threshold
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, detection masks are rendered for all pixels where the mask value is
+non-zero.
+
+For non-binary detection masks, you can configure the threshold value at which
+the mask should be rendered:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("non-binary-masks")
+
+    print(dataset.app_config.mask_threshold)  # 0 by default
+
+    # Set the threshold to 16; detection masks will only render for pixels with mask value > 16
+    dataset.app_config.mask_threshold = 16
+    dataset.save()
+
+    session.refresh()
+
 .. _dataset-app-config-reset:
 
 Resetting a dataset's App config
