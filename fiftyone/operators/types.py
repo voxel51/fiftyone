@@ -1595,6 +1595,7 @@ class AutocompleteView(Choices):
         choices (None): a list of :class:`Choice` instances
         read_only (False): whether the view is read-only
         allow_user_input (True): when True the user input is bound to the provided choices
+        values_only (False): use the ``choice.value`` instead of the :class:`Choice` object
     """
 
     def __init__(self, **kwargs):
