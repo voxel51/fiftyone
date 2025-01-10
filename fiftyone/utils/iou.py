@@ -554,10 +554,10 @@ def _dense_iou(gt, pred, gt_crowd=False):
     gt_mask_full = np.zeros((gt_img_h, gt_img_w))
     pred_mask_full = np.zeros((pred_img_h, pred_img_w))
 
-    x1, x2, y1, y2 = _float_to_pixel(gt_bb, gt_img_w, gt_img_h)
+    x1, y1, x2, y2 = _float_to_pixel(gt_bb, gt_img_w, gt_img_h)
     gt_mask_full[y1:y2, x1:x2] = gt_mask
 
-    x1, x2, y1, y2 = _float_to_pixel(pred_bb, pred_img_w, pred_img_h)
+    x1, y1, x2, y2 = _float_to_pixel(pred_bb, pred_img_w, pred_img_h)
     pred_mask_full[y1:y2, x1:x2] = pred_mask
 
     if gt_img_w != pred_img_w or gt_img_h != pred_img_h:
@@ -565,11 +565,17 @@ def _dense_iou(gt, pred, gt_crowd=False):
         pred_size = pred_img_w * pred_img_h
         if gt_size > pred_size:
             pred_mask_full = etai.resize(
-                pred_mask_full, height=gt_img_h, width=gt_img_w
+                pred_mask_full,
+                height=gt_img_h,
+                width=gt_img_w,
+                interpolation=0,  # equivalent to cv2.INTER_NEAREST
             )
         else:
             gt_mask_full = etai.resize(
-                gt_mask_full, height=pred_img_h, width=pred_img_w
+                gt_mask_full,
+                height=pred_img_h,
+                width=pred_img_w,
+                interpolation=0,  # equivalent to cv2.INTER_NEAREST
             )
 
     inter = np.logical_and(gt_mask_full, pred_mask_full).sum()
