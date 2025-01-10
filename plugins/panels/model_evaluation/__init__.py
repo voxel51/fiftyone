@@ -323,16 +323,6 @@ class EvaluationPanel(Panel):
             "lc_colorscale": lc_colorscale,
         }
 
-    def get_mask_targets(self, dataset, gt_field):
-        mask_targets = dataset.mask_targets.get(gt_field, None)
-        if mask_targets:
-            return mask_targets
-
-        if dataset.default_mask_targets:
-            return dataset.default_mask_targets
-
-        return None
-
     def load_evaluation(self, ctx):
         view_state = ctx.panel.get_state("view") or {}
         eval_key = view_state.get("key")
@@ -359,8 +349,8 @@ class EvaluationPanel(Panel):
             mask_targets = None
 
             if evaluation_type == "segmentation":
-                mask_targets = self.get_mask_targets(ctx.dataset, gt_field)
-                _init_segmentation_results(results, mask_targets)
+                mask_targets = _get_mask_targets(ctx.dataset, gt_field)
+                _init_segmentation_results(ctx.dataset, results, gt_field)
 
             metrics = results.metrics()
             per_class_metrics = self.get_per_class_metrics(info, results)
@@ -598,6 +588,7 @@ class EvaluationPanel(Panel):
                     )
         elif info.config.type == "segmentation":
             results = ctx.dataset.load_evaluation_results(eval_key)
+            _init_segmentation_results(ctx.dataset, results, gt_field)
             if results.ytrue_ids is None or results.ypred_ids is None:
                 # Legacy format segmentations
                 return
@@ -607,6 +598,7 @@ class EvaluationPanel(Panel):
                     gt_field2 = gt_field
 
                 results2 = ctx.dataset.load_evaluation_results(eval_key2)
+                _init_segmentation_results(ctx.dataset, results2, gt_field2)
                 if results2.ytrue_ids is None or results2.ypred_ids is None:
                     # Legacy format segmentations
                     return
@@ -688,10 +680,34 @@ class EvaluationPanel(Panel):
         )
 
 
-def _init_segmentation_results(results, mask_targets):
+def _get_mask_targets(dataset, gt_field):
+    mask_targets = dataset.mask_targets.get(gt_field, None)
+    if mask_targets:
+        return mask_targets
+
+    if dataset.default_mask_targets:
+        return dataset.default_mask_targets
+
+    return None
+
+
+def _init_segmentation_results(dataset, results, gt_field):
     if results.ytrue_ids is None or results.ypred_ids is None:
         # Legacy format segmentations
         return
+
+    if getattr(results, "_classes_map", None):
+        # Already initialized
+        return
+
+    #
+    # Ensure the dataset singleton is cached so that subsequent callbacks on
+    # this panel will use the same `dataset` and hence `results`
+    #
+
+    import fiftyone.server.utils as fosu
+
+    fosu.cache_dataset(dataset)
 
     #
     # `results.classes` and App callbacks could contain any of the
@@ -705,6 +721,7 @@ def _init_segmentation_results(results, mask_targets):
     #
     classes_map = {c: i for i, c in enumerate(results.classes)}
 
+    mask_targets = _get_mask_targets(dataset, gt_field)
     if mask_targets is not None:
         # `str()` handles cases 1 and 2, and `.get(c, c)` handles case 3
         mask_targets = {str(k): v for k, v in mask_targets.items()}
