@@ -322,64 +322,59 @@ export const dbPath = selectorFamily({
     },
 });
 
-export const defaultLabels = selectorFamily<string[], { space?: State.SPACE }>({
-  key: "defaultLabels",
-  get:
-    ({ space }) =>
-    ({ get }) => {
-      const schema = get(fieldSchema({ space }));
-      const denseLabels = getDenseLabelNames(schema);
-      const allLabels = get(labelFields({ space }));
+export const defaultVisibleLabels = selector({
+  key: "defaultVisibleLabels",
+  get: ({ get }) => {
+    const sampleSchema = get(fieldSchema({ space: State.SPACE.SAMPLE }));
+    const frameSchema = get(fieldSchema({ space: State.SPACE.FRAME }));
 
-      const defaultVisibleLabelsConfig = get(defaultVisibilityLabels);
+    const denseLabelsSamples = getDenseLabelNames(sampleSchema);
+    const denseLabelsFrames = getDenseLabelNames(frameSchema).map(
+      (l) => `frames.${l}`
+    );
 
-      if (
-        !defaultVisibleLabelsConfig?.include &&
-        !defaultVisibleLabelsConfig?.exclude
-      ) {
-        // todo: frames
-        return allLabels.filter((label) => !denseLabels.includes(label));
-      }
+    const denseLabels = [...denseLabelsSamples, ...denseLabelsFrames];
 
-      if (
-        defaultVisibleLabelsConfig.include &&
-        !defaultVisibleLabelsConfig.exclude
-      ) {
-        return allLabels.filter((label) =>
-          defaultVisibleLabelsConfig.include.includes(label)
-        );
-      }
+    const allSampleLabels = get(labelFields({ space: State.SPACE.SAMPLE }));
+    const allFrameLabels = get(labelFields({ space: State.SPACE.FRAME }));
+    const allLabels = [...allSampleLabels, ...allFrameLabels];
 
-      if (
-        !defaultVisibleLabelsConfig.include &&
-        defaultVisibleLabelsConfig.exclude
-      ) {
-        return allLabels.filter(
-          (label) => !defaultVisibleLabelsConfig.exclude.includes(label)
-        );
-      }
+    const defaultVisibleLabelsConfig = get(defaultVisibilityLabels);
 
-      // is in both include and exclude
-      const includeList = new Set(defaultVisibleLabelsConfig.include);
-      const excludeList = new Set(defaultVisibleLabelsConfig.exclude);
-      // resolved = set(include) - set(exclude)
-      const resolved = new Set(
-        [...includeList].filter((x) => !excludeList.has(x))
+    if (
+      !defaultVisibleLabelsConfig?.include &&
+      !defaultVisibleLabelsConfig?.exclude
+    ) {
+      return allLabels.filter((label) => !denseLabels.includes(label));
+    }
+
+    if (
+      defaultVisibleLabelsConfig.include &&
+      !defaultVisibleLabelsConfig.exclude
+    ) {
+      return allLabels.filter((label) =>
+        defaultVisibleLabelsConfig.include.includes(label)
       );
-      return allLabels.filter((label) => resolved.has(label));
+    }
 
-      // todo: frames
-      if (space) {
-        return space === State.SPACE.FRAME
-          ? getLabelFields(get(atoms.frameFields), "frames.")
-          : getLabelFields(get(atoms.sampleFields));
-      }
+    if (
+      !defaultVisibleLabelsConfig.include &&
+      defaultVisibleLabelsConfig.exclude
+    ) {
+      return allLabels.filter(
+        (label) => !defaultVisibleLabelsConfig.exclude.includes(label)
+      );
+    }
 
-      return [
-        ...getLabelFields(get(atoms.sampleFields)),
-        ...getLabelFields(get(atoms.frameFields), "frames."),
-      ];
-    },
+    // is in both include and exclude
+    const includeList = new Set(defaultVisibleLabelsConfig.include);
+    const excludeList = new Set(defaultVisibleLabelsConfig.exclude);
+    // resolved = set(include) - set(exclude)
+    const resolved = new Set(
+      [...includeList].filter((x) => !excludeList.has(x))
+    );
+    return allLabels.filter((label) => resolved.has(label));
+  },
 });
 
 export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
@@ -575,7 +570,7 @@ export const activeFields = selectorFamily<string[], { modal: boolean }>({
     ({ modal }) =>
     ({ get }) => {
       return filterPaths(
-        get(_activeFields({ modal })) || get(defaultLabels({})),
+        get(_activeFields({ modal })) || get(defaultVisibleLabels),
         buildSchema(get(atoms.sampleFields), get(atoms.frameFields))
       );
     },
