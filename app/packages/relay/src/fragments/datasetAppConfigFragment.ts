@@ -11,5 +11,6 @@ export default graphql`
     modalMediaField
     mediaFallback
     plugins
+    maskThreshold
   }
 `;

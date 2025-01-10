@@ -56,6 +56,7 @@ export const coloring = selector<Coloring>({
       defaultMaskTargets: get(selectors.defaultTargets),
       defaultMaskTargetsColors: colorScheme.defaultMaskTargetsColors,
       maskTargets: get(selectors.targets).fields,
+      maskThreshold: get(selectors.maskThreshold),
       targets: new Array(colorScheme.colorPool.length)
         .fill(0)
         .map((_, i) => getColor(colorScheme.colorPool, seed, i)),

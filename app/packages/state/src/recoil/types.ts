@@ -123,6 +123,7 @@ export namespace State {
     modalMediaField?: string;
     mediaFields?: string[];
     plugins?: PluginConfig;
+    maskThreshold?: number;
   }
 
   /**

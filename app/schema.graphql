@@ -255,6 +255,7 @@ type DatasetAppConfig {
   plugins: JSON
   sidebarGroups: [SidebarGroup!]
   spaces: JSON
+  maskThreshold: Int
 }
 
 type DatasetStrConnection {

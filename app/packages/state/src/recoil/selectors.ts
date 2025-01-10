@@ -142,6 +142,13 @@ export const datasetAppConfig = graphQLSyncFragmentAtom<
   }
 );
 
+export const maskThreshold = selector<number>({
+  key: "maskThreshold",
+  get: ({ get }) => {
+    return get(datasetAppConfig)?.maskThreshold ?? 0;
+  },
+});
+
 export const disableFrameFiltering = selector<boolean>({
   key: "disableFrameFiltering",
   get: ({ get }) => {

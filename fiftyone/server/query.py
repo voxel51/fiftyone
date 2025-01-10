@@ -218,6 +218,7 @@ class DatasetAppConfig:
     plugins: t.Optional[JSON]
     sidebar_groups: t.Optional[t.List[SidebarGroup]]
     spaces: t.Optional[JSON]
+    mask_threshold: int = 0
 
 
 @gql.type

@@ -538,6 +538,8 @@ class DatasetAppConfig(EmbeddedDocument):
         sidebar_groups (None): an optional list of
             :class:`SidebarGroupDocument` describing sidebar groups to use in
             the App
+        mask_threshold (0): the threshold value for masks to be rendered;
+            only applicable for non-binary masks
     """
 
     # strict=False lets this class ignore unknown fields from other versions
@@ -553,6 +555,7 @@ class DatasetAppConfig(EmbeddedDocument):
     sidebar_groups = ListField(
         EmbeddedDocumentField(SidebarGroupDocument), default=None
     )
+    mask_threshold = IntField(default=0)
 
     @staticmethod
     def default_sidebar_groups(sample_collection):

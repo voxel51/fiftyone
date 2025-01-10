@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ce94cdb41613bcba236c9582707cacaf>>
+ * @generated SignedSource<<a8256bdb700a212f19a7919e09638ed0>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,6 +16,7 @@ export type datasetAppConfigFragment$data = {
   } | null;
   readonly disableFrameFiltering: boolean | null;
   readonly gridMediaField: string;
+  readonly maskThreshold: number | null;
   readonly mediaFallback: boolean;
   readonly mediaFields: ReadonlyArray<string> | null;
   readonly modalMediaField: string;
@@ -90,12 +91,19 @@ const node: ReaderFragment = {
       "kind": "ScalarField",
       "name": "plugins",
       "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "maskThreshold",
+      "storageKey": null
     }
   ],
   "type": "DatasetAppConfig",
   "abstractKey": null
 };
 
-(node as any).hash = "67a2528b02fd534bfb7a4824d234fe41";
+(node as any).hash = "034a12cf2d1c1d721e41f964d7d7d918";
 
 export default node;
