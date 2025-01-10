@@ -157,6 +157,13 @@ export const disableFrameFiltering = selector<boolean>({
   },
 });
 
+export const dynamicGroupsTargetFrameRate = selector<number>({
+  key: "dynamicGroupsTargetFrameRate",
+  get: ({ get }) => {
+    return get(datasetAppConfig)?.dynamicGroupsTargetFrameRate ?? 30;
+  },
+});
+
 export const defaultTargets = selector({
   key: "defaultTargets",
   get: ({ get }) => {
