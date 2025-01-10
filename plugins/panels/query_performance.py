@@ -172,7 +172,7 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
         field_type = ctx.params.get("field_type", default_type)
 
         if field_type == "INDEX":
-            existing = set(ctx.dataset.list_indexes())
+            existing = set(ctx.dataset.list_indexes())  # get from ctx.params?
 
             path_description = "Select a field to index"
             type_description = (
@@ -364,6 +364,8 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
         return field_type
 
     def resolve_input(self, ctx):
+        print("create_index_or_summary_field resolve_input called")
+        print("ctx", ctx.__dict__)
         inputs = types.Object()
 
         field_type = self._create_index_or_summary_field_inputs(ctx, inputs)
@@ -407,6 +409,10 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
                 ctx.dataset.create_index(index_spec, unique=unique, wait=False)
 
             ctx.dataset.create_index(path, unique=unique, wait=False)
+            print(
+                "create_index_or_summary_field execute called for index path=",
+                path,
+            )
         else:
             _, field_name = _get_dynamic(ctx.params, "field_name", path, None)
             sidebar_group = ctx.params.get("sidebar_group", None)
@@ -676,9 +682,17 @@ class QueryPerformancePanel(Panel):
 
     def _build_view(self, ctx):
         self._index_data = self._get_index_table_data(ctx)
-        ctx.params["index_data"] = self._index_data
+        ctx.params["panel_state"] = (
+            ctx.params.get("panel_state", {})
+            if ctx.params.get("panel_state") is not None
+            else {}
+        ).update({"index_data": self._index_data})
         if self._index_data:
+            print(
+                '_build_view calling ctx.panel.set_data("table", self._index_data)'
+            )
             ctx.panel.set_data("table", self._index_data)
+        print("_build view done, returning self._index_data")
         return self._index_data
 
     def on_refresh_button_click(self, ctx):
@@ -686,6 +700,7 @@ class QueryPerformancePanel(Panel):
         ctx.ops.notify("Query Performance panel refreshed")
 
     def on_load(self, ctx):
+        print("on_load called")
         self._build_view(ctx)
         ctx.ops.track_event("query_performance_panel")
 
@@ -744,25 +759,38 @@ class QueryPerformancePanel(Panel):
         )
 
     def refresh(self, ctx):
-        self._index_data = {}
+        # self._index_data = {}
         self._build_view(ctx)
 
+    def _update_index_data(self, ctx):
+        print("_update_index_data called")
+        self.refresh(ctx)
+        print("_update index data refreshed")
+        ctx.panel.set_data("table", self._index_data)
+        print('_update index data finish set_data("table", self._index_data)')
+
     def create_index_or_summary_field(self, ctx):
-        if _has_edit_permission(ctx):
-            ctx.prompt(
-                "@voxel51/panels/create_index_or_summary_field",
-                on_success=self.refresh,
-            )
-        else:
-            ctx.ops.notify(
-                "You do not have permission to create an index",
-                variant="error",
-            )
+        print("create_index_or_summary_field called")
+        print("ctx", ctx.__dict__)
+        ctx.prompt(
+            "@voxel51/panels/create_index_or_summary_field",
+            on_success=self.refresh,
+            params={"index_data": self._index_data},
+        )
 
     def render(self, ctx):
         panel = Object()
         if not self._index_data:
+            print("no index data, checking ctx")
             self._index_data = ctx.params.get("index_data", {})
+            if not self._index_data:
+                print("sto;; index data does not exist, building it")
+                self._build_view(ctx)
+        else:
+            print("index data already exists, reusing it")
+        ctx.params["panel_state"] = (
+            ctx.params.get("panel_state", {}) or {}
+        ).update({"index_data": self._index_data})
         all_indices = self._index_data.get("rows", [])
         droppable_index = []
         summary_fields = []
@@ -851,8 +879,7 @@ class QueryPerformancePanel(Panel):
             card_content.btn(
                 "add_btn",
                 label="Create index",
-                on_click="@voxel51/panels/create_index_or_summary_field",
-                prompt=True,
+                on_click=self.create_index_or_summary_field(ctx),
                 variant="contained",
                 padding=1,
                 disabled=not _has_edit_permission(ctx),
@@ -932,8 +959,8 @@ class QueryPerformancePanel(Panel):
                 button_menu.btn(
                     "add_btn",
                     label="Create Index",
-                    on_click="@voxel51/panels/create_index_or_summary_field",
-                    prompt=True,
+                    on_click=self.create_index_or_summary_field(ctx),
+                    # prompt=True,
                     variant="contained",
                     componentsProps={
                         "button": {"sx": {"whiteSpace": "nowrap"}}
