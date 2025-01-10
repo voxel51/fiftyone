@@ -2,11 +2,15 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-import { BufferManager } from "@fiftyone/utilities";
+import {
+  AppError,
+  BufferManager,
+  COLOR_BY,
+  Schema,
+  Stage,
+} from "@fiftyone/utilities";
 import { ImaVidFramesController } from "./lookers/imavid/controller";
 import { Overlay } from "./overlays/base";
-
-import { AppError, COLOR_BY, Schema, Stage } from "@fiftyone/utilities";
 
 export type Optional<T> = {
   [P in keyof T]?: Optional<T[P]>;

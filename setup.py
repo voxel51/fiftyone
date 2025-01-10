@@ -13,7 +13,7 @@ from importlib import metadata
 
 from setuptools import find_packages, setup
 
-VERSION = "2.3.0"
+VERSION = "2.4.0"
 
 
 def get_version():
@@ -134,7 +134,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone",
-    version="2.3.0",
+    version="2.4.0",
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"
@@ -144,7 +144,14 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(
-        exclude=["app", "eta", "package", "requirements", "tests", "tools"]
+        exclude=[
+            "app",
+            "eta",
+            "package",
+            "requirements",
+            "tests",
+            "teams-app",
+            "tools"]
     ),
     install_requires=get_install_requirements(
         INSTALL_REQUIRES, CHOOSE_INSTALL_REQUIRES

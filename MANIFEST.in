@@ -3,14 +3,15 @@ global-exclude *.py[cod]
 
 prune .*
 prune app
+prune dist
 prune e2e
 prune e2e-pw
 prune eta
 prune package
 prune requirements
-prune tools
+prune teams-app
 prune tests
-prune dist
+prune tools
 
 global-exclude .*
 exclude TEAMS.md
