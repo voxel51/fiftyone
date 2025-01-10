@@ -12,6 +12,7 @@ export default function AutocompleteView(props) {
   const { choices = [], readOnly } = view;
 
   const multiple = schema.type === "array";
+  const allowDups = view.allow_duplicates !== false;
   const [key, setUserChanged] = useKey(path, schema, data, true);
 
   return (
@@ -25,7 +26,13 @@ export default function AutocompleteView(props) {
         freeSolo={view.allow_user_input !== false}
         size="small"
         onChange={(e, choice) => {
-          onChange(path, choice?.value || choice);
+          const changedValue = multiple
+            ? choice.map((c) => {
+                if (view.value_only) return c.value || c;
+                return c;
+              })
+            : choice?.value || choice;
+          onChange(path, changedValue);
           setUserChanged();
         }}
         options={choices.map((choice) => ({
@@ -50,9 +57,13 @@ export default function AutocompleteView(props) {
             setUserChanged();
           }
         }}
-        isOptionEqualToValue={() => false} // allow duplicates
+        isOptionEqualToValue={(option, value) => {
+          if (allowDups) return false;
+          return option.id == value.id;
+        }} // allow duplicates
         multiple={multiple}
         renderOption={(props, option) => {
+          console.log(props, option);
           return (
             <MenuItem
               {...props}
