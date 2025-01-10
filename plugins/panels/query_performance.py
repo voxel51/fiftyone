@@ -393,7 +393,7 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
     """
 
     def execute(self, ctx):
-        path = ctx.params["path"]
+        path = ctx.params["field_path"]
         field_type = ctx.params["field_type"]
 
         if field_type == "INDEX":
@@ -430,8 +430,6 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
                 read_only=read_only,
                 create_index=create_index,
             )
-
-        ctx.trigger("reload_dataset")
 
 
 def _get_dynamic(params, key, ref_path, default=None):
@@ -677,10 +675,11 @@ class QueryPerformancePanel(Panel):
         ctx.panel.set_data("event_data", event)
 
     def _build_view(self, ctx):
-        self._get_index_table_data(ctx)
+        self._index_data = self._get_index_table_data(ctx)
         ctx.params["index_data"] = self._index_data
         if self._index_data:
             ctx.panel.set_data("table", self._index_data)
+        return self._index_data
 
     def on_refresh_button_click(self, ctx):
         self.refresh(ctx)
@@ -747,12 +746,6 @@ class QueryPerformancePanel(Panel):
     def refresh(self, ctx):
         self._index_data = {}
         self._build_view(ctx)
-        ctx.trigger("reload_dataset")
-
-    def reload(self, ctx):
-        self._index_data = {}
-        self._build_view(ctx)
-        ctx.ops.clear_sidebar_filters()
 
     def create_index_or_summary_field(self, ctx):
         if _has_edit_permission(ctx):
