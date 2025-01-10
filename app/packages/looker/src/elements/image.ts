@@ -82,6 +82,12 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
       ) {
         this.element.setAttribute("crossOrigin", "Anonymous");
       }
+      if (
+        this.customCredentialsAudience &&
+        src.includes(this.customCredentialsAudience)
+      ) {
+        this.element.setAttribute("crossOrigin", "Anonymous");
+      }
       this.element.setAttribute("src", src);
     }
     return null;

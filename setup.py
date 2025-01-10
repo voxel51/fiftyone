@@ -151,7 +151,8 @@ setup(
             "requirements",
             "teams-app",
             "tests",
-            "tools"]
+            "tools"
+        ]
     ),
     install_requires=get_install_requirements(
         INSTALL_REQUIRES, CHOOSE_INSTALL_REQUIRES
