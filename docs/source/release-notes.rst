@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Teams 2.4.0
 --------------------
-*Released January 9, 2025*
+*Released January 10, 2025*
 
 - Added ability to set a user-specific auth header when making media queries.
 
