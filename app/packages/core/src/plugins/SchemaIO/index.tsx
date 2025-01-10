@@ -66,7 +66,7 @@ export function SchemaIOComponent(props) {
 
 function coerceValue(value, schema) {
   // coerce the value to None if it is an empty string or empty array
-  if (schema.type === "list" && Array.isArray(value) && value.length === 0) {
+  if (schema.type === "array" && Array.isArray(value) && value.length === 0) {
     return null;
   }
   if (schema.type === "string" && value === "") {
