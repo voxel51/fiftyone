@@ -1594,6 +1594,7 @@ class AutocompleteView(Choices):
     Args:
         choices (None): a list of :class:`Choice` instances
         read_only (False): whether the view is read-only
+        allow_user_input (True): when True the user input is bound to the provided choices
     """
 
     def __init__(self, **kwargs):
@@ -1924,7 +1925,7 @@ class TableView(View):
         clone.tooltips = [tooltip.clone() for tooltip in self.tooltips]
         clone._tooltip_map = {
             (tooltip.row, tooltip.column): tooltip
-            for tooltip in clone.tooltips
+            for tooltip in clone.tooltips  # pylint: disable=no-member
         }
         return clone
 
