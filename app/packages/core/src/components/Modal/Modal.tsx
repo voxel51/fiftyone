@@ -7,7 +7,6 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ModalActionsRow } from "../Actions";
 import Sidebar from "../Sidebar";
-import { useOnSidebarSelectionChange } from "../Sidebar/useOnSidebarSelectionChange";
 import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
 import { TooltipInfo } from "./TooltipInfo";
