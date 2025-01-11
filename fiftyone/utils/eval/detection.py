@@ -5,7 +5,6 @@ Detection evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import contextlib
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from copy import deepcopy
 import inspect
@@ -202,51 +201,43 @@ def evaluate_detections(
     )
 
     matches = []
-    with contextlib.ExitStack() as stack:
-        if use_masks:
-            stack.enter_context(
-                _samples.download_context(
-                    media_fields=[gt_field, pred_field], progress=progress
-                )
+    # Create a pool of workers
+    executor_cls = (
+        ProcessPoolExecutor
+        if executor_type == "process"
+        else ThreadPoolExecutor
+    )
+    with executor_cls(max_workers=num_workers) as executor:
+        futures = []
+
+        # Submit batches of samples to the worker pool
+        for sample in _samples.iter_samples(
+            progress=progress, batch_size=batch_size, autosave=save
+        ):
+            if processing_frames:
+                docs = sample.frames.values()
+            else:
+                docs = [sample]
+
+            future = executor.submit(
+                _process_sample,
+                docs,
+                eval_method,
+                eval_key,
+                processing_frames,
             )
+            futures.append((future, sample))
 
-        # Create a pool of workers
-        executor_cls = (
-            ProcessPoolExecutor
-            if executor_type == "process"
-            else ThreadPoolExecutor
-        )
-        with executor_cls(max_workers=num_workers) as executor:
-            futures = []
+        # Collect results
+        for future, sample in futures:
+            sample_matches, sample_stats = future.result()
+            matches.extend(sample_matches)
 
-            # Submit batches of samples to the worker pool
-            for batch in _samples.iter_samples(
-                progress=progress, batch_size=batch_size, autosave=save
-            ):
-                if processing_frames:
-                    docs = batch.frames.values()
-                else:
-                    docs = [batch]
-
-                future = executor.submit(
-                    _process_sample,
-                    docs,
-                    eval_method,
-                    eval_key,
-                    processing_frames,
-                )
-                futures.append((future, batch))
-
-            # Collect results
-            for future, sample in futures:
-                batch_matches, batch_stats = future.result()
-                matches.extend(batch_matches)
-
-                if save:
-                    sample_tp, sample_fp, sample_fn = batch_stats
-                    sample[f"{eval_key}_tp"] = sample_tp
-                    sample[f"{eval_key}_fp"] = sample_fp
-                    sample[f"{eval_key}_fn"] = sample_fn
+            if save:
+                sample_tp, sample_fp, sample_fn = sample_stats
+                sample[f"{eval_key}_tp"] = sample_tp
+                sample[f"{eval_key}_fp"] = sample_fp
+                sample[f"{eval_key}_fn"] = sample_fn
 
     # Generate and save final results
     results = eval_method.generate_results(
