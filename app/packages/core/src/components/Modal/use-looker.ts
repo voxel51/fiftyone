@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
+import { useShouldReloadSampleOnActiveFieldsChange } from "../Sidebar/useShouldReloadSample";
 import { useClearSelectedLabels, useShowOverlays } from "./ModalLooker";
 import { useLookerOptionsUpdate, useModalContext } from "./hooks";
 import useKeyEvents from "./use-key-events";
@@ -50,6 +51,20 @@ function useLooker<L extends fos.Lookers>({
   useEffect(() => {
     !initialRef.current && looker.updateOptions(lookerOptions);
   }, [looker, lookerOptions]);
+
+  const shouldRefresh = useShouldReloadSampleOnActiveFieldsChange({
+    modal: true,
+  });
+
+  useEffect(() => {
+    if (!looker) {
+      return;
+    }
+
+    if (shouldRefresh(id)) {
+      looker?.refreshSample();
+    }
+  }, [id, lookerOptions.activePaths, looker]);
 
   useEffect(() => {
     /** start refreshers */

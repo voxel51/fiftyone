@@ -9,11 +9,11 @@ import { CachedLabels, LookerId } from "./useShouldReloadSample";
  *
  * @returns whether or not looker should be refreshed (true) or not (false)
  */
-export function syncAndCheckRefreshNeeded(
+export const syncAndCheckRefreshNeeded = (
   lookerId: string,
   lut: Map<LookerId, CachedLabels>,
   currentActiveLabelFields: Set<string>
-): boolean {
+) => {
   // if no active fields, no refresh is needed
   if (currentActiveLabelFields.size === 0) {
     return false;
@@ -48,4 +48,4 @@ export function syncAndCheckRefreshNeeded(
   );
 
   return true;
-}
+};
