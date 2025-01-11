@@ -38,6 +38,10 @@ Upgrading Mongodb 7 to Mongodb 8
 
 2. Upgrade Fiftyone to 1.3.0+ and Fiftyone-db to 1.2.0+
 
+    .. code-block:: shell
+
+        pip install --upgrade fiftyone fiftyone[db]
+
 3. Relaunch Fiftyone
 
 4. `Install mongosh <https://www.mongodb.com/docs/mongodb-shell/install/>`_
