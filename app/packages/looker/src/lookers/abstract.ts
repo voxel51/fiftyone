@@ -534,7 +534,12 @@ export abstract class AbstractLooker<
   }
 
   refreshSample() {
-    this.updateSample(this.sample);
+    // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
+    // this crashes the app. this is a bug and should be fixed
+
+    if (this.sample) {
+      this.updateSample(this.sample);
+    }
   }
 
   getSample(): Promise<Sample> {
