@@ -176,6 +176,7 @@ const processLabels = async (
         activePaths.length &&
         activePaths.includes(`${prefix ?? ""}${field}`)
       ) {
+        console.log(">>>painting ", `${prefix ?? ""}${field}`);
         if (painterFactory[cls]) {
           painterPromises.push(
             painterFactory[cls](

@@ -1,10 +1,10 @@
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { LRUCache } from "lru-cache";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
-import { useOnSidebarSelectionChange } from "../Sidebar/useOnSidebarSelectionChange";
+import { gridActivePathsLUT } from "../Sidebar/useShouldReloadSample";
 import { gridAt, gridOffset, gridPage } from "./recoil";
 
 const MAX_LRU_CACHE_ITEMS = 510;
@@ -86,27 +86,14 @@ export default function useRefreshers() {
     /** LOOKER STORE REFRESHER */
 
     return new LRUCache<string, fos.Lookers>({
-      dispose: (looker) => {
+      dispose: (looker, id) => {
         looker.destroy();
+        gridActivePathsLUT.delete(id);
       },
       max: MAX_LRU_CACHE_ITEMS,
       noDisposeOnSet: true,
     });
   }, [reset]);
-
-  const lookerStoreRef = useRef(lookerStore);
-  lookerStoreRef.current = lookerStore;
-
-  const gridLabelsToggleTracker = useOnSidebarSelectionChange({ modal: false });
-
-  /**
-   * Refresh all lookers when the labels toggle tracker changes
-   */
-  useEffect(() => {
-    lookerStoreRef.current?.forEach((looker) => {
-      looker.refreshSample();
-    });
-  }, [gridLabelsToggleTracker]);
 
   return {
     lookerStore,
