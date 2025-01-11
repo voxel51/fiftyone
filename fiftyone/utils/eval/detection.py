@@ -5,7 +5,7 @@ Detection evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 import inspect
 import itertools
@@ -45,7 +45,6 @@ def evaluate_detections(
     progress=None,
     batch_size=None,
     num_workers=None,
-    executor_type="process",
     **kwargs,
 ):
     """Evaluates the predicted detections in the given samples with respect to
@@ -143,9 +142,6 @@ def evaluate_detections(
         batch_size (None): the batch size at which to process samples. By
             default, all samples are processed in a single (1) batch
         num_workers (None): number of parallel workers. Defaults to CPU count - 1
-        executor_type ('process'): type of parallel executor to use:
-            - 'process': ProcessPoolExecutor for CPU-bound tasks
-            - 'thread': ThreadPoolExecutor for I/O-bound tasks
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
 
@@ -201,16 +197,11 @@ def evaluate_detections(
     )
 
     matches = []
-    # Create a pool of workers
-    executor_cls = (
-        ProcessPoolExecutor
-        if executor_type == "process"
-        else ThreadPoolExecutor
-    )
-    with executor_cls(max_workers=num_workers) as executor:
+    # Create a thread pool
+    with ThreadPoolExecutor(max_workers=num_workers) as executor:
         futures = []
 
-        # Submit batches of samples to the worker pool
+        # Submit samples to the worker pool
         for sample in _samples.iter_samples(
             progress=progress, batch_size=batch_size, autosave=save
         ):
@@ -220,11 +211,7 @@ def evaluate_detections(
                 docs = [sample]
 
             future = executor.submit(
-                _process_sample,
-                docs,
-                eval_method,
-                eval_key,
-                processing_frames,
+                _process_sample, docs, eval_method, eval_key, processing_frames
             )
             futures.append((future, sample))
 
