@@ -117,6 +117,9 @@ def _calculate_time_delta(ctx, summary_field):
 
 
 class CreateIndexOrSummaryFieldOperator(foo.Operator):
+    _existing_indexes = []
+    _existing_summaries = []
+
     @property
     def config(self):
         return foo.OperatorConfig(
@@ -170,9 +173,20 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
             default_type = "INDEX"
 
         field_type = ctx.params.get("field_type", default_type)
+        # If called from the Query Performance panel, the index_data is passed from the panel
+        index_data = ctx.params.get("index_data")
 
         if field_type == "INDEX":
-            existing = set(ctx.dataset.list_indexes())  # get from ctx.params?
+            if not self._existing_indexes:
+                if index_data:
+                    existing = [
+                        i[0] for i in index_data["rows"] if i[2] != "Summary"
+                    ]
+                else:
+                    existing = set(ctx.dataset.list_indexes())
+                self._existing_indexes = existing
+            else:
+                existing = self._existing_indexes
 
             path_description = "Select a field to index"
             type_description = (
@@ -180,7 +194,16 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
                 "for large datasets"
             )
         else:
-            existing = set(ctx.dataset._get_summarized_fields_map())
+            if not self._existing_summaries:
+                if index_data:
+                    existing = [
+                        i[0] for i in index_data["rows"] if i[2] == "Summary"
+                    ]
+                else:
+                    existing = set(ctx.dataset._get_summarized_fields_map())
+                self._existing_summaries = existing
+            else:
+                existing = self._existing_summaries
 
             path_description = "Select a field to summarize"
             type_description = (
@@ -364,8 +387,6 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
         return field_type
 
     def resolve_input(self, ctx):
-        print("create_index_or_summary_field resolve_input called")
-        print("ctx", ctx.__dict__)
         inputs = types.Object()
 
         field_type = self._create_index_or_summary_field_inputs(ctx, inputs)
@@ -383,17 +404,6 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
             ),
         )
 
-    """
-    def resolve_execution_options(self, ctx):
-        field_type = ctx.params.get("field_type", None)
-        allow_delegated_execution = field_type == "SUMMARY"
-        return foo.ExecutionOptions(
-            allow_immediate_execution=True,
-            allow_delegated_execution=allow_delegated_execution,
-            default_choice_to_delegated=allow_delegated_execution,
-        )
-    """
-
     def execute(self, ctx):
         path = ctx.params["field_path"]
         field_type = ctx.params["field_type"]
@@ -409,10 +419,7 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
                 ctx.dataset.create_index(index_spec, unique=unique, wait=False)
 
             ctx.dataset.create_index(path, unique=unique, wait=False)
-            print(
-                "create_index_or_summary_field execute called for index path=",
-                path,
-            )
+
         else:
             _, field_name = _get_dynamic(ctx.params, "field_name", path, None)
             sidebar_group = ctx.params.get("sidebar_group", None)
@@ -436,6 +443,8 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
                 read_only=read_only,
                 create_index=create_index,
             )
+            # Might want to make this optional in the future in case loading the view is slow
+            ctx.ops.clear_sidebar_filters()
 
 
 def _get_dynamic(params, key, ref_path, default=None):
@@ -682,17 +691,8 @@ class QueryPerformancePanel(Panel):
 
     def _build_view(self, ctx):
         self._index_data = self._get_index_table_data(ctx)
-        ctx.params["panel_state"] = (
-            ctx.params.get("panel_state", {})
-            if ctx.params.get("panel_state") is not None
-            else {}
-        ).update({"index_data": self._index_data})
         if self._index_data:
-            print(
-                '_build_view calling ctx.panel.set_data("table", self._index_data)'
-            )
             ctx.panel.set_data("table", self._index_data)
-        print("_build view done, returning self._index_data")
         return self._index_data
 
     def on_refresh_button_click(self, ctx):
@@ -700,7 +700,6 @@ class QueryPerformancePanel(Panel):
         ctx.ops.notify("Query Performance panel refreshed")
 
     def on_load(self, ctx):
-        print("on_load called")
         self._build_view(ctx)
         ctx.ops.track_event("query_performance_panel")
 
@@ -724,7 +723,11 @@ class QueryPerformancePanel(Panel):
             if field_type == "Summary":
                 params["field_type"] = "summary_field"
             else:
-                default_indexes = set(_get_default_indexes(ctx))
+                default_indexes = [
+                    i[0]
+                    for i in ctx.params.get("index_data", {}).get("rows", [])
+                    if len(i) > 2 and "Default" in i[2]
+                ]
                 if field_name in default_indexes:
                     ctx.ops.notify(
                         f"Cannot drop default index `{field_name}`",
@@ -747,7 +750,7 @@ class QueryPerformancePanel(Panel):
             row_data = self._get_clicked_row(ctx)
             field_name = row_data[0]
             params = {"field_to_update": field_name}
-            ctx.prompt(
+            ctx.trigger(
                 "@voxel51/panels/summary_field_update_operator", params=params
             )
         else:
@@ -759,38 +762,28 @@ class QueryPerformancePanel(Panel):
         )
 
     def refresh(self, ctx):
-        # self._index_data = {}
+        self._index_data = {}
+        self._tooltip_data = {}
         self._build_view(ctx)
 
-    def _update_index_data(self, ctx):
-        print("_update_index_data called")
-        self.refresh(ctx)
-        print("_update index data refreshed")
-        ctx.panel.set_data("table", self._index_data)
-        print('_update index data finish set_data("table", self._index_data)')
-
     def create_index_or_summary_field(self, ctx):
-        print("create_index_or_summary_field called")
-        print("ctx", ctx.__dict__)
         ctx.prompt(
             "@voxel51/panels/create_index_or_summary_field",
             on_success=self.refresh,
-            params={"index_data": self._index_data},
+            params={
+                "index_data": self._index_data,
+                "tooltip_data": self._tooltip_data,
+            },
         )
 
     def render(self, ctx):
         panel = Object()
         if not self._index_data:
-            print("no index data, checking ctx")
             self._index_data = ctx.params.get("index_data", {})
+            self._tooltip_data = ctx.params.get("tooltip_data", {})
             if not self._index_data:
-                print("sto;; index data does not exist, building it")
                 self._build_view(ctx)
-        else:
-            print("index data already exists, reusing it")
-        ctx.params["panel_state"] = (
-            ctx.params.get("panel_state", {}) or {}
-        ).update({"index_data": self._index_data})
+
         all_indices = self._index_data.get("rows", [])
         droppable_index = []
         summary_fields = []
@@ -878,8 +871,12 @@ class QueryPerformancePanel(Panel):
 
             card_content.btn(
                 "add_btn",
-                label="Create index",
-                on_click=self.create_index_or_summary_field(ctx),
+                label="Create index or Summary Field",
+                on_click=self.create_index_or_summary_field,
+                params={
+                    "index_data": self._index_data,
+                    "tooltip_data": self._tooltip_data,
+                },
                 variant="contained",
                 padding=1,
                 disabled=not _has_edit_permission(ctx),
@@ -958,9 +955,12 @@ class QueryPerformancePanel(Panel):
             if _has_edit_permission(ctx):
                 button_menu.btn(
                     "add_btn",
-                    label="Create Index",
-                    on_click=self.create_index_or_summary_field(ctx),
-                    # prompt=True,
+                    label="Create Index or Summary Field",
+                    on_click=self.create_index_or_summary_field,
+                    params={
+                        "index_data": self._index_data,
+                        "tooltip_data": self._tooltip_data,
+                    },
                     variant="contained",
                     componentsProps={
                         "button": {"sx": {"whiteSpace": "nowrap"}}
@@ -976,7 +976,11 @@ class QueryPerformancePanel(Panel):
             # add tooltips for index usage and summary field size
             for row in range(index_field_count + summary_field_count):
                 if row < index_field_count:
-                    ops_since = self._tooltip_data["Usage"].get(row)
+                    ops_since = (
+                        self._tooltip_data["Usage"].get(row)
+                        if "Usage" in self._tooltip_data
+                        else None
+                    )
                     if ops_since:
                         table.add_tooltip(  # pylint: disable=E1101
                             row, 3, "Operations since " + ops_since
