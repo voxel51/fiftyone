@@ -99,3 +99,29 @@ class TestDetection(unittest.TestCase):
 
         self.assertEqual(detection.custom_field, "test")
         self.assertEqual(detection.another_custom_field, 123)
+
+    def test_detection_setattr(self):
+        """Test setting attributes on Detection instances."""
+
+        detection = fo.Detection()
+
+        # Test case 1: Setting a normal attribute (should succeed)
+        detection.custom_field = "value"
+        assert detection.custom_field == "value"
+
+        # Test case 2: Setting reserved properties (should raise exception)
+        with self.assertRaises(FiftyOneDynamicDocumentException) as context:
+            detection.has_mask = "new_label"
+
+    def test_extract_attribute_from_error(self):
+        # Test property setter pattern
+        error_msg1 = "property 'name' of 'MyDoc' object has no setter"
+        assert fo.Detection._extract_attribute_from_error(error_msg1) == "name"
+
+        # Test can't set attribute pattern
+        error_msg2 = "can't set attribute 'age'"
+        assert fo.Detection._extract_attribute_from_error(error_msg2) == "age"
+
+        # Test no match
+        error_msg3 = "some other error"
+        assert fo.Detection._extract_attribute_from_error(error_msg3) is None

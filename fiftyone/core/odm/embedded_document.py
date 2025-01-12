@@ -58,29 +58,62 @@ class DynamicEmbeddedDocument(
             super().__init__(*args, **kwargs)
             self.validate()
         except AttributeError as e:
-            # Two possible patterns for the error message
-            pattern = (
-                r"(?:property '(?P<attribute1>\w+)' of '[^']+' object has no setter|"
-                r"can't set attribute '(?P<attribute2>\w+)')"
-            )
-            match = re.match(pattern, str(e))
+            self._check_reserved_attribute(str(e))
+            raise e
 
-            if match:
-                key = match.group("attribute1") or match.group("attribute2")
-                # Check if the key exists and is a property
-                if (
-                    key is not None
-                    and hasattr(self.__class__, key)
-                    and isinstance(getattr(self.__class__, key), property)
-                ):
-                    raise FiftyOneDynamicDocumentException(
-                        f"Invalid attribute name '{key}'. '{key}' is a reserved keyword for {self.__class__.__name__} objects"
-                    )
-            # If the error is not due to a reserved attribute, raise the original error
+    def __setattr__(self, name, value):
+        try:
+            super().__setattr__(name, value)
+        except AttributeError as e:
+            self._check_reserved_attribute(str(e))
             raise e
 
     def __hash__(self):
         return hash(str(self))
+
+    @staticmethod
+    def _extract_attribute_from_error(error_message):
+        """Extract the attribute name from an AttributeError message.
+
+        Args:
+            error_message (str): The error message from AttributeError
+
+        Returns:
+            str or None: The extracted attribute name, or None if no match found
+        """
+        pattern = (
+            r"(?:property '(?P<attribute1>\w+)' of '[^']+' object has no setter|"
+            r"can't set attribute '(?P<attribute2>\w+)')"
+        )
+        match = re.match(pattern, error_message)
+
+        if match:
+            return match.group("attribute1") or match.group("attribute2")
+        return None
+
+    def _check_reserved_attribute(self, exception_message):
+        """Check if the message is about a reserved attribute and raise an exception if it is.
+
+        Args:
+            exception_message (str): The message from the AttributeError
+
+        Raises:
+            FiftyOneDynamicDocumentException: If the attribute is reserved
+        """
+        key = self._extract_attribute_from_error(exception_message)
+        if key is not None:
+            if hasattr(self.__class__, key) and isinstance(
+                getattr(self.__class__, key), property
+            ):
+                raise FiftyOneDynamicDocumentException(
+                    f"Invalid attribute name '{key}'. '{key}' is a reserved keyword for {self.__class__.__name__} objects"
+                )
+        elif "can't set attribute" in exception_message:
+            # If the attribute name is not in the message
+            raise FiftyOneDynamicDocumentException(
+                f"One or more attributes are reserved keywords for `{self.__class__.__name__}` objects"
+            )
+        return
 
     def _get_field(self, field_name, allow_missing=False):
         # pylint: disable=no-member
