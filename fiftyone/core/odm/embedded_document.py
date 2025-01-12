@@ -11,12 +11,6 @@ import mongoengine
 from .document import DynamicMixin, MongoEngineBaseDocument
 
 
-class FiftyOneDynamicDocumentException(Exception):
-    """Exception raised when an error occurs in a document operation."""
-
-    pass
-
-
 class BaseEmbeddedDocument(MongoEngineBaseDocument):
     """Base class for documents that are embedded within other documents and
     therefore are not stored in their own collection in the database.
@@ -37,6 +31,12 @@ class EmbeddedDocument(BaseEmbeddedDocument, mongoengine.EmbeddedDocument):
         self.validate()
 
 
+class DynamicEmbeddedDocumentException(Exception):
+    """Exception raised when an error occurs in a dynamic document operation."""
+
+    pass
+
+
 class DynamicEmbeddedDocument(
     DynamicMixin,
     BaseEmbeddedDocument,
@@ -47,8 +47,6 @@ class DynamicEmbeddedDocument(
     database.
 
     Dynamic documents can have arbitrary fields added to them.
-
-    Raises FiftyoneDocumentException if a kwarg attribute is reserved.
     """
 
     meta = {"abstract": True, "allow_inheritance": True}
@@ -56,64 +54,47 @@ class DynamicEmbeddedDocument(
     def __init__(self, *args, **kwargs):
         try:
             super().__init__(*args, **kwargs)
-            self.validate()
         except AttributeError as e:
-            self._check_reserved_attribute(str(e))
+            self._raise_reserved_attribute_exception(e)
             raise e
+
+        self.validate()
 
     def __setattr__(self, name, value):
         try:
             super().__setattr__(name, value)
         except AttributeError as e:
-            self._check_reserved_attribute(str(e))
+            self._raise_reserved_attribute_exception(e)
             raise e
 
     def __hash__(self):
         return hash(str(self))
 
+    def _raise_reserved_attribute_exception(self, e):
+        key = self._extract_attribute_from_exception(e)
+        if key is not None:
+            if isinstance(getattr(self.__class__, key, None), property):
+                raise DynamicEmbeddedDocumentException(
+                    f"Invalid attribute name '{key}'. '{key}' is a reserved keyword for {self.__class__.__name__} objects"
+                )
+
+        if "can't set attribute" in str(e):
+            raise DynamicEmbeddedDocumentException(
+                f"One or more attributes are reserved keywords for `{self.__class__.__name__}` objects"
+            )
+
     @staticmethod
-    def _extract_attribute_from_error(error_message):
-        """Extract the attribute name from an AttributeError message.
-
-        Args:
-            error_message (str): The error message from AttributeError
-
-        Returns:
-            str or None: The extracted attribute name, or None if no match found
-        """
+    def _extract_attribute_from_exception(e):
         pattern = (
             r"(?:property '(?P<attribute1>\w+)' of '[^']+' object has no setter|"
             r"can't set attribute '(?P<attribute2>\w+)')"
         )
-        match = re.match(pattern, error_message)
+        match = re.match(pattern, str(e))
 
         if match:
             return match.group("attribute1") or match.group("attribute2")
+
         return None
-
-    def _check_reserved_attribute(self, exception_message):
-        """Check if the message is about a reserved attribute and raise an exception if it is.
-
-        Args:
-            exception_message (str): The message from the AttributeError
-
-        Raises:
-            FiftyOneDynamicDocumentException: If the attribute is reserved
-        """
-        key = self._extract_attribute_from_error(exception_message)
-        if key is not None:
-            if hasattr(self.__class__, key) and isinstance(
-                getattr(self.__class__, key), property
-            ):
-                raise FiftyOneDynamicDocumentException(
-                    f"Invalid attribute name '{key}'. '{key}' is a reserved keyword for {self.__class__.__name__} objects"
-                )
-        elif "can't set attribute" in exception_message:
-            # If the attribute name is not in the message
-            raise FiftyOneDynamicDocumentException(
-                f"One or more attributes are reserved keywords for `{self.__class__.__name__}` objects"
-            )
-        return
 
     def _get_field(self, field_name, allow_missing=False):
         # pylint: disable=no-member

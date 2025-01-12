@@ -9,15 +9,17 @@ To run the unit tests, use the following command:
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-# pylint: disable=no-member
-
 import unittest
+
 from mongoengine import EmbeddedDocument
 from mongoengine.errors import ValidationError
-from fiftyone.core.fields import EmbeddedDocumentListField
-from fiftyone.core.odm.dataset import SampleFieldDocument
-from fiftyone.core.odm import FiftyOneDynamicDocumentException
+
 import fiftyone as fo
+from fiftyone.core.fields import EmbeddedDocumentListField
+from fiftyone.core.odm import (
+    SampleFieldDocument,
+    DynamicEmbeddedDocumentException,
+)
 
 
 class MockEmbeddedDocument(EmbeddedDocument):
@@ -52,76 +54,61 @@ class TestEmbeddedDocumentListField(unittest.TestCase):
 
 
 class TestDetection(unittest.TestCase):
-    def setUp(self):
-        # Set up any necessary test fixtures
-        self.valid_detection = {
-            "label": "car",
-            "bounding_box": [0.1, 0.1, 0.2, 0.2],
-            "confidence": 0.95,
-        }
-
     def test_valid_detection_creation(self):
-        """Test that a Detection can be created with valid parameters."""
-        detection = fo.Detection(**self.valid_detection)
+        detection = fo.Detection(
+            label="car",
+            bounding_box=[0.1, 0.1, 0.2, 0.2],
+            confidence=0.95,
+            custom_attr="test",
+            another_custom_attr=123,
+        )
+
         self.assertEqual(detection.label, "car")
-        self.assertEqual(detection.confidence, 0.95)
         self.assertEqual(detection.bounding_box, [0.1, 0.1, 0.2, 0.2])
+        self.assertEqual(detection.confidence, 0.95)
+
+        # pylint: disable=no-member
+        self.assertEqual(detection.custom_attr, "test")
+        self.assertEqual(detection.another_custom_attr, 123)
+
+        detection.custom_attr = "value"
+        self.assertEqual(detection.custom_attr, "value")
 
     def test_reserved_attribute_raises_exception(self):
-        """Test that attempting to set a reserved property raises FiftyoneDocumentException."""
-        # has_mask is a known property of Detection
-        with self.assertRaises(FiftyOneDynamicDocumentException) as context:
-            fo.Detection(has_mask=True)
+        # `has_mask` is a property of `Detection`
 
-        self.assertTrue(
-            "Invalid attribute name 'has_mask'" in str(context.exception)
-        )
+        with self.assertRaises(DynamicEmbeddedDocumentException):
+            fo.Detection(has_mask="not allowed")
 
-    def test_multiple_reserved_attributes(self):
-        """Test that attempting to set multiple reserved properties raises FiftyoneDocumentException."""
-        with self.assertRaises(FiftyOneDynamicDocumentException) as context:
+        with self.assertRaises(DynamicEmbeddedDocumentException):
             fo.Detection(
-                has_mask=True,
+                label="car",
                 bounding_box=[0.1, 0.1, 0.2, 0.2],
-                is_ground_truth=False,  # Assuming this is another property
+                confidence=0.95,
+                has_mask="not allowed",
+                custom_attr="foo",
+                another_custom_attr=123,
             )
-
-        # Should fail on the first reserved property it encounters
-        self.assertTrue("Invalid attribute name" in str(context.exception))
-
-    def test_dynamic_attribute_allowed(self):
-        """Test that setting a new, non-reserved attribute is allowed."""
-        detection = fo.Detection(
-            **self.valid_detection,
-            custom_field="test",
-            another_custom_field=123
-        )
-
-        self.assertEqual(detection.custom_field, "test")
-        self.assertEqual(detection.another_custom_field, 123)
-
-    def test_detection_setattr(self):
-        """Test setting attributes on Detection instances."""
 
         detection = fo.Detection()
 
-        # Test case 1: Setting a normal attribute (should succeed)
-        detection.custom_field = "value"
-        assert detection.custom_field == "value"
+        with self.assertRaises(DynamicEmbeddedDocumentException):
+            detection.has_mask = "not allowed"
 
-        # Test case 2: Setting reserved properties (should raise exception)
-        with self.assertRaises(FiftyOneDynamicDocumentException) as context:
-            detection.has_mask = "new_label"
-
-    def test_extract_attribute_from_error(self):
+    def test_extract_attribute_from_exception(self):
         # Test property setter pattern
-        error_msg1 = "property 'name' of 'MyDoc' object has no setter"
-        assert fo.Detection._extract_attribute_from_error(error_msg1) == "name"
+        exception1 = AttributeError(
+            "property 'name' of 'MyDoc' object has no setter"
+        )
+        attr1 = fo.Detection._extract_attribute_from_exception(exception1)
+        self.assertEqual(attr1, "name")
 
         # Test can't set attribute pattern
-        error_msg2 = "can't set attribute 'age'"
-        assert fo.Detection._extract_attribute_from_error(error_msg2) == "age"
+        exception2 = AttributeError("can't set attribute 'age'")
+        attr2 = fo.Detection._extract_attribute_from_exception(exception2)
+        self.assertEqual(attr2, "age")
 
         # Test no match
-        error_msg3 = "some other error"
-        assert fo.Detection._extract_attribute_from_error(error_msg3) is None
+        exception3 = AttributeError("some other error")
+        attr3 = fo.Detection._extract_attribute_from_exception(exception3)
+        self.assertIsNone(attr3)

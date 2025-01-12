@@ -63,8 +63,8 @@ from .document import (
 from .embedded_document import (
     BaseEmbeddedDocument,
     DynamicEmbeddedDocument,
+    DynamicEmbeddedDocumentException,
     EmbeddedDocument,
-    FiftyOneDynamicDocumentException,
 )
 from .frame import (
     DatasetFrameDocument,
