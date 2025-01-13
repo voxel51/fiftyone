@@ -1153,7 +1153,7 @@ def _drop_index_inputs(ctx, inputs):
 
     indexes = [i for i in indexes if i not in default_indexes]
 
-    index_selector = types.DropdownView()
+    index_selector = types.DropdownView(multiple=True)
     for key in indexes:
         index_selector.add_choice(key, label=key)
 
@@ -1465,7 +1465,7 @@ def _delete_summary_field_inputs(ctx, inputs):
         prop.invalid = True
         return
 
-    field_selector = types.DropdownView()
+    field_selector = types.DropdownView(multiple=True)
     for key in summary_fields:
         field_selector.add_choice(key, label=key)
 
@@ -1646,7 +1646,7 @@ def _delete_group_slice_inputs(ctx, inputs):
         prop.invalid = True
         return
 
-    slice_selector = types.DropdownView()
+    slice_selector = types.DropdownView(multiple=True)
     for key in ctx.dataset.group_slices:
         slice_selector.add_choice(key, label=key)
 
@@ -1920,7 +1920,7 @@ def _delete_saved_view_inputs(ctx, inputs):
         prop.invalid = True
         return
 
-    saved_view_selector = types.DropdownView()
+    saved_view_selector = types.DropdownView(multiple=True)
     for key in saved_views:
         saved_view_selector.add_choice(key, label=key)
 
@@ -2211,7 +2211,7 @@ def _delete_workspace_inputs(ctx, inputs):
         prop.invalid = True
         return
 
-    workspace_selector = types.DropdownView()
+    workspace_selector = types.DropdownView(multiple=True)
     for key in workspaces:
         workspace_selector.add_choice(key, label=key)
 
