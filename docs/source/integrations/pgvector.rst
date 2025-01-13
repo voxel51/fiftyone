@@ -124,7 +124,7 @@ Once the similarity index has been generated, we can query our data in FiftyOne 
 Setup
 _____
 
-In order to get started, you must set up both a PostgreSQL instance and PGVector alongside it.
+In order to get started, you must set up both a PostgreSQL instance with the PGVector extension installed.
 
 There are many different ways to deploy PostgreSQL no matter whether you're considering on-prem, containers, or self hosted vs. managed deployments across any cloud provider or operating system. Find the generalized `PostgreSQL installation instructions on the official PostgreSQL.org site, here <https://www.postgresql.org/download/>`_.
 
@@ -206,17 +206,6 @@ For detailed information on these parameters, see the
 You can specify these parameters via any of the strategies described in the
 previous section. Here's an example of a :ref:`brain config <brain-config>`:
 
-
-            connection_string=os.getenv("PGVECTOR_CONNECTION_STRING"),
-            metric="cosine",  # You can change this to "dotproduct" or "euclidean" for testing.
-            work_mem="64MB",  # Example dynamic memory tuning for performance.
-            index_name="custom_hnsw_index",  # User-specified index name
-            embedding_column="custom_embedding_column",  # User-specified embedding column
-
- config = PgVectorSimilarityConfig(
-
-
-
 .. code-block:: json
 
     {
@@ -227,9 +216,10 @@ previous section. Here's an example of a :ref:`brain config <brain-config>`:
                 "work_mem": "64MB", # Example dynamic memory tuning for performance
                 "index_name": "custom_hnsw_index", # User-specified index name
                 "embedding_column": "custom_embedding_column", # User-specified embedding column
-                "ssl_cert": None,
-                "ssl_key": None,
-                "ssl_root_cert": None
+                "ssl_cert": "/path/to/client-cert.pem", # Client certificate file
+                "ssl_key": "/path/to/client-key.pem", # Client private key file
+                "ssl_root_cert": "/path/to/ca.pem", # Root certificate file
+                "ssl_mode": "verify-full" # Strongest SSL protection
             }
         }
     }
