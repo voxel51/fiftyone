@@ -484,7 +484,7 @@ method.
 .. code-block:: python
     :linenos:
 
-    def resolve_input(self):
+    def resolve_input(self, ctx):
         # We define our inputs as an object.
         # We'll add specific fields to this object which represent a single input.
         inputs = types.Object()
