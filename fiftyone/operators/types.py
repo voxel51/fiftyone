@@ -1594,8 +1594,8 @@ class AutocompleteView(Choices):
     Args:
         choices (None): a list of :class:`Choice` instances
         read_only (False): whether the view is read-only
-        allow_user_input (True): when True the user input is bound to the provided choices
-        value_only (False): use the ``choice.value`` instead of the :class:`Choice` object
+        allow_user_input (True): when True the user can input a value that is not in the choices
+        allow_duplicates (True): when True the user can select the same choice multiple times
     """
 
     def __init__(self, **kwargs):
