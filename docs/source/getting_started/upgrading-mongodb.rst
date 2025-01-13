@@ -76,3 +76,6 @@ Upgrading Mongodb 7 to Mongodb 8
             setFeatureCompatibilityVersion: "8.0", 
             confirm: true 
         })
+
+        // Verify the upgrade
+        db.adminCommand({ getParameter: 1, featureCompatibilityVersion: 1 })
