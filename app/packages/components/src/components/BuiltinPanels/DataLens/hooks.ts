@@ -208,7 +208,7 @@ const formatSchema = (schema: { [k: string]: any }) => {
  * Hook which generates a looker-compatible field schema based on one generated
  * by the SDK.
  */
-const useSampleSchemaGenerator = ({
+export const useSampleSchemaGenerator = ({
   baseSchema,
 }: {
   baseSchema: { [k: string]: any };

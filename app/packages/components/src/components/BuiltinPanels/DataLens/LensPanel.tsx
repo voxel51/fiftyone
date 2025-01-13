@@ -1,22 +1,5 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { OperatorResult } from "@fiftyone/operators/src/operators";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
-  Box,
-  Button,
-  CircularProgress,
-  FormControl,
-  MenuItem,
-  Select,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
 import React, {
   Fragment,
   useCallback,
@@ -25,13 +8,16 @@ import React, {
   useRef,
   useState,
 } from "react";
-import IconButton from "../../IconButton";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import {
+  Box,
+  CircularProgress,
+  MenuItem,
+  Select,
+  Typography,
+} from "@mui/material";
 import { ImportDialog } from "./ImportDialog";
-import { Lens } from "./Lens";
-import { FormState, OperatorConfigurator } from "./OperatorConfigurator";
-import { SelectLabels } from "./controls/SelectLabels";
-import { ViewToggler } from "./controls/ViewToggler";
-import { ZoomSlider } from "./controls/ZoomSlider";
+import { FormState } from "./OperatorConfigurator";
 import { useDatasets, useSampleSchemaGenerator } from "./hooks";
 import {
   ImportRequest,
@@ -40,6 +26,10 @@ import {
   PreviewRequest,
   PreviewResponse,
 } from "./models";
+import { LensQuery } from "./LensQuery";
+import { LensPreview } from "./LensPreview";
+import { FooterVariant, LensFooter } from "./LensFooter";
+import { LensImport } from "./LensImport";
 
 // Internal state.
 type PanelState = {
@@ -152,18 +142,6 @@ export const LensPanel = ({
     }
   }
 
-  const searchOperator = useOperatorExecutor(
-    "@voxel51/panels/lens_datasource_connector"
-  );
-
-  const openDatasetOperator = useOperatorExecutor(
-    "@voxel51/operators/open_dataset"
-  );
-
-  const reloadDatasetOperator = useOperatorExecutor(
-    "@voxel51/operators/reload_dataset"
-  );
-
   // Keep track of the average sample size of our current preview.
   // This will allow us to calculate a reasonable batch size for imports.
   const averageSampleSize = useMemo(() => {
@@ -196,6 +174,10 @@ export const LensPanel = ({
       resetPanelState();
     }
   };
+
+  const searchOperator = useOperatorExecutor(
+    "@voxel51/panels/lens_datasource_connector"
+  );
 
   // Callback which handles executing a search and parsing the response.
   const doSearch = async () => {
@@ -280,15 +262,6 @@ export const LensPanel = ({
     }
   };
 
-  // Callback which opens the target dataset.
-  const openDataset = async () => {
-    if (destDatasetName === activeDataset) {
-      await reloadDatasetOperator.execute({});
-    } else {
-      await openDatasetOperator.execute({ dataset: destDatasetName });
-    }
-  };
-
   // Callback which opens the import dialog.
   const openImportDialog = () => {
     setIsImportDialogOpen(true);
@@ -316,328 +289,76 @@ export const LensPanel = ({
     </Box>
   );
 
-  // Operator (search) configuration.
+  // Query parameters.
   const queryOperatorContent = (
-    <Box sx={{ mt: 4 }}>
-      <Accordion expanded={panelState.isQueryExpanded}>
-        <AccordionSummary
-          expandIcon={
-            isOperatorConfigReady ? (
-              <ExpandMoreIcon />
-            ) : (
-              <CircularProgress size="1.5rem" />
-            )
-          }
-          onClick={() =>
-            dispatchPanelUpdate({
-              isQueryExpanded: !panelState.isQueryExpanded,
-              isImportShown: false,
-            })
-          }
-        >
-          <Stack direction="row" alignItems="center" spacing={2}>
-            <Typography variant="h6">Query parameters</Typography>
-            <Typography>&bull;</Typography>
-            <Typography color="secondary">
-              {Object.keys(formState)
-                .map((k) => (formState[k] || formState[k] === 0 ? 1 : 0))
-                .reduce((l, r) => l + r, 0)}{" "}
-              filters applied
-            </Typography>
-          </Stack>
-        </AccordionSummary>
-        <AccordionDetails>
-          <OperatorConfigurator
-            operator={activeConfig?.operator_uri}
-            formState={formState}
-            onStateChange={handleFormStateChange}
-            onReadyChange={setIsOperatorConfigReady}
-          />
-        </AccordionDetails>
-      </Accordion>
-    </Box>
+    <LensQuery
+      expanded={panelState.isQueryExpanded}
+      expandIcon={
+        isOperatorConfigReady ? (
+          <ExpandMoreIcon />
+        ) : (
+          <CircularProgress size="1.5rem" />
+        )
+      }
+      operatorUri={activeConfig.operator_uri}
+      formState={formState}
+      onHeaderClick={() =>
+        dispatchPanelUpdate({
+          isQueryExpanded: !panelState.isQueryExpanded,
+          isImportShown: false,
+        })
+      }
+      onStateChange={handleFormStateChange}
+      onReadyChange={setIsOperatorConfigReady}
+    />
   );
-
-  // Additional search controls.
-  const getSearchControls = () => {
-    const isPreviewButtonEnabled =
-      isFormValid && !isPreviewLoading && maxSamples > 0;
-
-    const numSamplesInput = (
-      <FormControl>
-        <TextField
-          label="Number of preview samples"
-          value={maxSamples}
-          onChange={(e) =>
-            setMaxSamples(
-              isNaN(Number.parseInt(e.target.value))
-                ? 25
-                : Number.parseInt(e.target.value)
-            )
-          }
-        />
-      </FormControl>
-    );
-
-    if (panelState.isImportShown) {
-      // Show new query button
-      return (
-        <Button
-          fullWidth
-          variant="contained"
-          onClick={resetPanelState}
-          disabled={isImportLoading}
-        >
-          Start a new query
-        </Button>
-      );
-    } else if (isImportEnabled) {
-      // Import button as main CTA, preview button as secondary
-      return (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <Stack direction="row" spacing={2} alignItems="center">
-            {numSamplesInput}
-
-            <Button
-              variant="outlined"
-              color="secondary"
-              sx={{ height: "fit-content" }}
-              disabled={!isPreviewButtonEnabled}
-              onClick={doSearch}
-            >
-              Preview data
-            </Button>
-          </Stack>
-
-          <Button variant="contained" onClick={openImportDialog}>
-            Import data
-          </Button>
-        </Box>
-      );
-    } else {
-      // In query/preview mode; preview button as main CTA
-      return (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <Typography color="secondary">
-            Try a preview &rarr; import unlimited samples
-          </Typography>
-
-          <Stack direction="row" spacing={2} alignItems="center">
-            {numSamplesInput}
-
-            <Button
-              variant="contained"
-              sx={{ height: "fit-content" }}
-              disabled={!isPreviewButtonEnabled}
-              onClick={doSearch}
-            >
-              Preview data
-            </Button>
-          </Stack>
-        </Box>
-      );
-    }
-  };
-
-  const searchControls = <Box sx={{ m: 2 }}>{getSearchControls()}</Box>;
 
   // Sample preview.
-  const previewContent = searchResponse ? (
-    <Box>
-      <Accordion expanded={panelState.isPreviewExpanded}>
-        <Box sx={{ my: 2, pt: 2, mx: 2 }}>
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            spacing="auto"
-            width="100%"
-          >
-            <Stack direction="row" alignItems="center" spacing={2}>
-              <Typography variant="h6">Preview</Typography>
-              <Typography>&bull;</Typography>
-              <Typography color="secondary">
-                {(previewTime / 1000).toLocaleString(undefined, {
-                  minimumFractionDigits: 1,
-                  maximumFractionDigits: 1,
-                })}{" "}
-                seconds
-              </Typography>
-            </Stack>
-            <Stack direction="row" alignItems="center" spacing={2}>
-              {panelState.isPreviewExpanded && (
-                <>
-                  <ZoomSlider />
-                  <ViewToggler />
-                  <SelectLabels schema={cleanedSchema} />
-                </>
-              )}
-              <IconButton
-                sx={{ p: 0 }}
-                onClick={() =>
-                  dispatchPanelUpdate({
-                    isPreviewExpanded: !panelState.isPreviewExpanded,
-                    isImportShown: false,
-                  })
-                }
-              >
-                {panelState.isPreviewExpanded ? (
-                  <ExpandLessIcon />
-                ) : (
-                  <ExpandMoreIcon />
-                )}
-              </IconButton>
-            </Stack>
-          </Stack>
-        </Box>
-        <AccordionDetails>
-          {searchResponse.result_count > 0 ? (
-            <Box sx={{ my: 2 }}>
-              <Lens
-                samples={searchResponse.query_result}
-                sampleSchema={cleanedSchema}
-              />
-            </Box>
-          ) : (
-            <Box>
-              <Typography textAlign="center" color="secondary">
-                No results found
-              </Typography>
-            </Box>
-          )}
-        </AccordionDetails>
-      </Accordion>
-    </Box>
-  ) : isPreviewLoading ? (
-    <Box sx={{ mt: 4 }}>
-      <Accordion expanded={panelState.isPreviewExpanded}>
-        <AccordionSummary
-          expandIcon={<CircularProgress size="1.5rem" />}
-          onClick={() =>
-            dispatchPanelUpdate({
-              isPreviewExpanded: !panelState.isPreviewExpanded,
-              isImportShown: false,
-            })
-          }
-        >
-          <Typography variant="h6">Preview</Typography>
-        </AccordionSummary>
-        <AccordionDetails></AccordionDetails>
-      </Accordion>
-    </Box>
-  ) : (
-    <Fragment />
+  const previewContent = (
+    <LensPreview
+      expanded={panelState.isPreviewExpanded}
+      onHeaderClick={() =>
+        dispatchPanelUpdate({
+          isPreviewExpanded: !panelState.isPreviewExpanded,
+          isImportShown: false,
+        })
+      }
+      loading={isPreviewLoading}
+      previewTime={previewTime}
+      searchResponse={searchResponse}
+      schema={cleanedSchema}
+    />
   );
 
-  const importDetails = (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}
-    >
-      {isDelegatedImport ? (
-        <>
-          <Box
-            sx={{
-              borderLeft: "3px solid var(--fo-palette-primary-main)",
-              display: "flex",
-              alignItems: "center",
-              pl: 1,
-            }}
-          >
-            <Typography color="secondary">
-              You've scheduled an import to {destDatasetName}.
-            </Typography>
-          </Box>
-
-          <Button
-            variant="outlined"
-            color="secondary"
-            href={`/datasets/${activeDataset}/runs`}
-          >
-            View status
-          </Button>
-        </>
-      ) : (
-        <>
-          <Box
-            sx={{
-              borderLeft: "3px solid var(--fo-palette-success-main)",
-              display: "flex",
-              alignItems: "center",
-              pl: 1,
-            }}
-          >
-            <CheckCircleOutlineIcon sx={{ mr: 1 }} color="success" />
-            <Typography color="secondary">
-              Samples were added to {destDatasetName}
-            </Typography>
-          </Box>
-
-          <Button variant="outlined" color="secondary" onClick={openDataset}>
-            View samples
-          </Button>
-        </>
-      )}
-    </Box>
-  );
-
-  // Import status
+  // Sample import status.
   const importContent =
     panelState.isImportShown && (isImportLoading || importTime > 0) ? (
-      <Box sx={{ mt: 4 }}>
-        <Accordion expanded={panelState.isImportExpanded}>
-          <AccordionSummary
-            expandIcon={
-              isImportLoading ? (
-                <CircularProgress size="1.5rem" />
-              ) : (
-                <ExpandMoreIcon />
-              )
-            }
-            onClick={() =>
-              dispatchPanelUpdate({
-                isImportExpanded: !panelState.isImportExpanded,
-              })
-            }
-          >
-            {isImportLoading ? (
-              <Typography variant="h6">Importing data</Typography>
-            ) : (
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <Typography variant="h6">
-                  Data import {isDelegatedImport ? "scheduled" : "complete"}
-                </Typography>
-                <Typography>&bull;</Typography>
-                <Typography color="secondary">
-                  {(importTime / 1000).toLocaleString(undefined, {
-                    minimumFractionDigits: 1,
-                    maximumFractionDigits: 1,
-                  })}{" "}
-                  seconds
-                </Typography>
-              </Stack>
-            )}
-          </AccordionSummary>
-          <AccordionDetails>{importTime > 0 && importDetails}</AccordionDetails>
-        </Accordion>
-      </Box>
+      <LensImport
+        expanded={panelState.isImportExpanded}
+        loading={isImportLoading}
+        onHeaderClick={() =>
+          dispatchPanelUpdate({
+            isImportExpanded: !panelState.isImportExpanded,
+          })
+        }
+        isDelegated={isDelegatedImport}
+        importTime={importTime}
+        activeDatasetName={activeDataset}
+        destinationDatasetName={destDatasetName}
+      />
     ) : (
       <Fragment />
     );
+
+  const getFooterVariant = (): FooterVariant => {
+    if (panelState.isImportShown) {
+      return "reset";
+    } else if (isImportEnabled) {
+      return "import-cta";
+    } else {
+      return "preview-cta";
+    }
+  };
 
   // All content.
   return (
@@ -661,7 +382,16 @@ export const LensPanel = ({
           background: "var(--fo-palette-background-level2)",
         }}
       >
-        {searchControls}
+        <LensFooter
+          variant={getFooterVariant()}
+          loading={isPreviewLoading || isImportLoading}
+          isPreviewEnabled={isFormValid && !isPreviewLoading && maxSamples > 0}
+          maxSamples={maxSamples}
+          onMaxSamplesChange={(v) => v && setMaxSamples(parseInt(v))}
+          onResetClick={resetPanelState}
+          onPreviewClick={doSearch}
+          onImportClick={openImportDialog}
+        />
       </Box>
 
       {/*Placement of this dialog doesn't matter; just needs to be part of the DOM*/}
