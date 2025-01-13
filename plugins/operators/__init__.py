@@ -643,7 +643,7 @@ def _clear_sample_field_inputs(ctx, inputs):
 
     field_names = ctx.params.get("field_names", None) or []
 
-    field_choices = types.AutocompleteView(multiple=True)
+    field_choices = types.AutocompleteView(allow_duplicates=False)
     for key in schema.keys():
         if not any(key.startswith(f + ".") for f in field_names):
             field_choices.add_choice(key, label=key)
@@ -751,7 +751,7 @@ def _clear_frame_field_inputs(ctx, inputs):
 
     field_names = ctx.params.get("field_names", None) or []
 
-    field_choices = types.AutocompleteView(multiple=True)
+    field_choices = types.AutocompleteView(allow_duplicates=False)
     for key in schema.keys():
         if not any(key.startswith(f + ".") for f in field_names):
             field_choices.add_choice(key, label=key)
@@ -903,7 +903,7 @@ def _delete_sample_field_inputs(ctx, inputs):
 
     field_names = ctx.params.get("field_names", None) or []
 
-    field_choices = types.AutocompleteView(multiple=True)
+    field_choices = types.AutocompleteView(allow_duplicates=False)
     for key in schema.keys():
         if not any(key.startswith(f + ".") for f in field_names):
             field_choices.add_choice(key, label=key)
@@ -978,7 +978,7 @@ def _delete_frame_field_inputs(ctx, inputs):
 
     field_names = ctx.params.get("field_names", None) or []
 
-    field_choices = types.AutocompleteView(multiple=True)
+    field_choices = types.AutocompleteView(allow_duplicates=False)
     for key in schema.keys():
         if not any(key.startswith(f + ".") for f in field_names):
             field_choices.add_choice(key, label=key)
