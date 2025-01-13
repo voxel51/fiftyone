@@ -269,7 +269,7 @@ abstract method that we'll implement.
             self,
             request: DataLensSearchRequest,
             ctx: foo.ExecutionContext
-        ) -> Generator[DataLensSearchResponse, None, None]
+        ) -> Generator[DataLensSearchResponse, None, None]:
             # We'll implement our logic here
             pass
 
@@ -320,7 +320,7 @@ provides configuration options for your operator.
         self,
         request: DataLensSearchRequest,
         ctx: foo.ExecutionContext
-    ) -> Generator[DataLensSearchResponse, None, None]
+    ) -> Generator[DataLensSearchResponse, None, None]:
         pass
 
 The
@@ -400,7 +400,7 @@ sample.
         self,
         request: DataLensSearchRequest,
         ctx: foo.ExecutionContext
-    ) -> Generator[DataLensSearchResponse, None, None]
+    ) -> Generator[DataLensSearchResponse, None, None]:
         # We'll use a placeholder image for our synthetic data
         image_url = "https://placehold.co/150x150"
 
@@ -436,7 +436,7 @@ Let's modify our operator to incorporate the `request.batch_size` property.
         self,
         request: DataLensSearchRequest,
         ctx: foo.ExecutionContext
-    ) -> Generator[DataLensSearchResponse, None, None]
+    ) -> Generator[DataLensSearchResponse, None, None]:
         samples = []
 
         # Generate number of samples equal to request.batch_size
@@ -516,7 +516,7 @@ logic to integrate `sample_text` into our operator.
         self,
         request: DataLensSearchRequest,
         ctx: foo.ExecutionContext
-    ) -> Generator[DataLensSearchResponse, None, None]
+    ) -> Generator[DataLensSearchResponse, None, None]:
         # Retrieve our "sample_text" input from request.search_params.
         # These parameter names should match those used in resolve_input().
         sample_text = request.search_params.get("sample_text", "")
