@@ -71,11 +71,9 @@ function Grid() {
       rowAspectRatioThreshold: threshold,
       get: (next) => page(next),
       render: (id, element, dimensions, zooming) => {
-        if (lookerStore.has(id.description)) {
-          lookerStore
-            .get(id.description)
-            ?.attach(element, dimensions, getFontSize());
-
+        const cached = lookerStore.get(id.description);
+        if (cached) {
+          cached?.attach(element, dimensions, getFontSize());
           return;
         }
 

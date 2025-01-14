@@ -1,13 +1,13 @@
 import type Spotlight from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import type { LRUCache } from "lru-cache";
 import { useEffect } from "react";
 import { useRecoilValue } from "recoil";
+import type useRefreshers from "./useRefreshers";
 
 export default function useSelect(
   getFontSize: () => number,
   options: ReturnType<typeof fos.useLookerOptions>,
-  store: LRUCache<string, fos.Lookers>,
+  store: ReturnType<typeof useRefreshers>["lookerStore"],
   spotlight?: Spotlight<number, fos.Sample>
 ) {
   const { init, deferred } = fos.useDeferrer();

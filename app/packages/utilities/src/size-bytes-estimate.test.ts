@@ -15,6 +15,14 @@ describe("sizeBytesEstimate tests", () => {
     expect(sizeBytesEstimate(false)).toBe(8);
   });
 
+  test("ImageBitmap returns w x h x 4", () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 51;
+    canvas.height = 51;
+    const bitmap = createImageBitmap(canvas);
+    expect(sizeBytesEstimate(bitmap)).toBe(51 * 51 * 4);
+  });
+
   test("null and undefined return 1", () => {
     expect(sizeBytesEstimate(null)).toBe(1);
     expect(sizeBytesEstimate(undefined)).toBe(1);
