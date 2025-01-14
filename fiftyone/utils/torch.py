@@ -1472,11 +1472,11 @@ class FiftyOneTorchDataset(Dataset):
     """A class that accepts a FO dataset and creates a corresponding torch.utils.data.Dataset
 
     Args:
-        - samples: a :class:`fo.core.collections.SampleCollection`
-        - get_item: a `Callable[:class:`fo.core.sample.SampleView`, Any]`
+        samples: a :class:`fo.core.collections.SampleCollection`
+        get_item: a `Callable[:class:`fo.core.sample.SampleView`, Any]`
             Must be a serializable function.
-        - cache_fields (None): a list of strings. Fields to cache in memory. If this
-            argument is passed, get_item should be from from a dict with keys and values
+        cache_fields (None): a list of strings. Fields to cache in memory. If this
+            argument is passed, get_item should be from a dict with keys and values
             corresponding to the sample's fields and values to the model input.
             This argument is highly recommended, as it offers a significant performance
             boost.
@@ -1486,7 +1486,7 @@ class FiftyOneTorchDataset(Dataset):
                             functionality of the original field value that you would need
                             in your get_item function.
 
-        - local_process_group (None) - only pass if running Distributed Data Parallel (DDP).
+        local_process_group (None) - only pass if running Distributed Data Parallel (DDP).
             The process group with each of the processes running the main train script
             on the machine this object is on.
 
@@ -2247,7 +2247,7 @@ class NumpySerializedList:
             buffer = pickle.dumps(data, protocol=-1)
             return np.frombuffer(buffer, dtype=np.uint8)
 
-        print(
+        logger.info(
             "Serializing {} elements to byte tensors and concatenating them all ...".format(
                 len(lst)
             )
@@ -2256,7 +2256,7 @@ class NumpySerializedList:
         self._addr = np.asarray([len(x) for x in self._lst], dtype=np.int64)
         self._addr = np.cumsum(self._addr)
         self._lst = np.concatenate(self._lst)
-        print(
+        logger.info(
             "Serialized dataset takes {:.2f} MiB".format(
                 len(self._lst) / 1024**2
             )
@@ -2311,7 +2311,7 @@ class TorchShmSerializedList(TorchSerializedList):
                 self._addr,
                 self._lst,
             ) = multiprocessing.reduction.ForkingPickler.loads(handle)
-            print(
+            logger.info(
                 f"Worker {get_rank()} obtains a dataset of length="
                 f"{len(self)} from its local leader."
             )
@@ -2426,9 +2426,9 @@ def local_broadcast_process_authkey(local_process_group):
     all_keys = all_gather(authkey, local_process_group)
     local_leader_key = all_keys[int(os.environ["RANK"]) - local_rank]
     if authkey != local_leader_key:
-        print(
+        logger.info(
             "Process authkey is different from the key of local leader. This might happen when "
             "workers are launched independently."
         )
-        print("Overwriting local authkey ...")
+        logger.info("Overwriting local authkey ...")
         multiprocessing.current_process().authkey = local_leader_key
