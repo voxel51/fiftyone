@@ -124,6 +124,7 @@ async def aggregate_resolver(
     if form.mixed and "" in form.paths:
         slice_view = await _load_view(form, [form.slice])
 
+    optimize_frames = not True
     if form.sample_ids:
         view = fov.make_optimized_select_view(view, form.sample_ids)
 
@@ -149,13 +150,9 @@ async def aggregate_resolver(
     )
     counts = [len(a) for a in aggregations]
     flattened = [item for sublist in aggregations for item in sublist]
-
-    # TODO: stop aggregate resolver from being called for non-existent fields,
-    #  but fail silently for now by just returning empty results
-    try:
-        result = await view._async_aggregate(flattened)
-    except:
-        return []
+    result = await view._async_aggregate(
+        flattened, optimize_frames=optimize_frames
+    )
 
     results = []
     offset = 0

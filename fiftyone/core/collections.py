@@ -19,6 +19,7 @@ import string
 import timeit
 import warnings
 
+import asyncio
 from bson import ObjectId
 from pymongo import InsertOne, UpdateOne, UpdateMany, WriteConcern
 
@@ -10087,7 +10088,9 @@ class SampleCollection(object):
             pipelines.append(pipeline)
 
         # Build facet-able pipelines
-        compiled_facet_aggs, facet_pipelines = self._build_facets(facet_aggs)
+        compiled_facet_aggs, facet_pipelines, _ = self._build_facets(
+            facet_aggs
+        )
         for idx, pipeline in facet_pipelines.items():
             idx_map[idx] = len(pipelines)
             pipelines.append(pipeline)
@@ -10121,7 +10124,7 @@ class SampleCollection(object):
 
         return results[0] if scalar_result else results
 
-    async def _async_aggregate(self, aggregations):
+    async def _async_aggregate(self, aggregations, optimize_frames=False):
         if not aggregations:
             return []
 
@@ -10142,17 +10145,25 @@ class SampleCollection(object):
 
         if facet_aggs:
             # Build facet-able pipelines
-            compiled_facet_aggs, facet_pipelines = self._build_facets(
-                facet_aggs
-            )
+            (
+                compiled_facet_aggs,
+                facet_pipelines,
+                is_frames,
+            ) = self._build_facets(facet_aggs, optimize_frames=optimize_frames)
+            dataset = self._root_dataset
+            conn = foo.get_async_db_conn()
+            frame_coll = conn[dataset._frame_collection_name]
+            sample_coll = conn[dataset._sample_collection_name]
+            collections = []
             for idx, pipeline in facet_pipelines.items():
                 idx_map[idx] = len(pipelines)
                 pipelines.append(pipeline)
+                collections.append(
+                    frame_coll if is_frames[idx] else sample_coll
+                )
 
             # Run all aggregations
-            coll_name = self._dataset._sample_collection_name
-            collection = foo.get_async_db_conn()[coll_name]
-            _results = await foo.aggregate(collection, pipelines)
+            _results = await foo.aggregate(collections, pipelines)
 
             # Parse facet-able results
             for idx, aggregation in compiled_facet_aggs.items():
@@ -10224,7 +10235,7 @@ class SampleCollection(object):
             group_slices=aggregation._needs_group_slices(self),
         )
 
-    def _build_facets(self, aggs_map):
+    def _build_facets(self, aggs_map, optimize_frames=True):
         compiled = {}
         facetable = defaultdict(dict)
         for idx, aggregation in aggs_map.items():
@@ -10267,15 +10278,26 @@ class SampleCollection(object):
                 idx, (_, aggregation) = next(iter(aggregations.items()))
                 compiled[idx] = aggregation
 
+        is_frame_collection = {}
         pipelines = {}
         for idx, aggregation in compiled.items():
+            if optimize_frames:
+                pipeline, is_frames = aggregation.to_mongo(
+                    self, optimize_frames=True
+                )
+            else:
+                is_frames = False
+                pipeline = aggregation.to_mongo(self)
+
+            is_frame_collection[idx] = is_frames
             pipelines[idx] = self._pipeline(
-                pipeline=aggregation.to_mongo(self),
+                pipeline=pipeline,
                 attach_frames=aggregation._needs_frames(self),
                 group_slices=aggregation._needs_group_slices(self),
+                optimize_frames=optimize_frames,
             )
 
-        return compiled, pipelines
+        return compiled, pipelines, is_frame_collection
 
     def _parse_big_result(self, aggregation, result):
         if result:
@@ -10302,6 +10324,7 @@ class SampleCollection(object):
         detach_groups=False,
         groups_only=False,
         manual_group_select=False,
+        optimize_frames=False,
         post_pipeline=None,
     ):
         """Returns the MongoDB aggregation pipeline for the collection.
@@ -10333,6 +10356,8 @@ class SampleCollection(object):
             manual_group_select (False): whether the pipeline has manually
                 handled the initial group selection. Only applicable to grouped
                 collections
+            optimize_frames (None): optimize the pipeline for a direct frame
+                collection call, when possible
             post_pipeline (None): a MongoDB aggregation pipeline (list of
                 dicts) to append to the very end of the pipeline, after all
                 other arguments are applied

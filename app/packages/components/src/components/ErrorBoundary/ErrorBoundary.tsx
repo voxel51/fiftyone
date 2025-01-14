@@ -1,3 +1,4 @@
+import { useTrackEvent } from "@fiftyone/analytics";
 import { useClearModal } from "@fiftyone/state";
 import {
   GraphQLError,
@@ -18,7 +19,6 @@ import { scrollable } from "../../scrollable.module.css";
 import CodeBlock from "../CodeBlock";
 import Loading from "../Loading";
 import style from "./ErrorBoundary.module.css";
-import { useTrackEvent } from "@fiftyone/analytics";
 
 type AppError = GraphQLError | NetworkError | NotFoundError | ServerError;
 
@@ -34,7 +34,8 @@ const Errors = (onReset?: () => void, disableReset?: boolean) => {
     const clearModal = useClearModal();
     useLayoutEffect(() => {
       clearModal();
-    }, []);
+      document.getElementById("modal")?.classList.remove("modalon");
+    }, [clearModal]);
 
     if (error instanceof NotFoundError) {
       return <Loading>{error.message}</Loading>;
