@@ -8,7 +8,6 @@ import {
 import { PythonRunner } from "src/shared/python-runner/python-runner";
 import kill from "tree-kill";
 import waitOn from "wait-on";
-import { POPUP_DISMISS_TIMEOUT } from "../constants";
 import { Duration } from "../utils";
 
 type WebServerProcessConfig = {
@@ -134,6 +133,13 @@ export class OssLoader extends AbstractFiftyoneLoader {
       withGrid: true,
     };
 
+    await page.addInitScript(() => {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore injecting IS_PLAYWRIGHT into window so that
+      // we can disable 1) analytics, and 2) QA performance toast banners
+      window.IS_PLAYWRIGHT = true;
+    });
+
     const forceDatasetFromSelector = async () => {
       await page.goto("/");
       await page.getByTestId("selector-Select dataset").click();
@@ -213,22 +219,5 @@ export class OssLoader extends AbstractFiftyoneLoader {
       {},
       { timeout: Duration.Seconds(10) }
     );
-
-    // close all pop-ups (cookies, new feature annoucement, etc.)
-    try {
-      await page
-        .getByTestId("btn-dismiss-query-performance-toast")
-        .click({ timeout: POPUP_DISMISS_TIMEOUT });
-    } catch {
-      console.log("No query performance toast to dismiss");
-    }
-
-    try {
-      await page
-        .getByTestId("btn-disable-cookies")
-        .click({ timeout: POPUP_DISMISS_TIMEOUT });
-    } catch {
-      console.log("No cookies button to disable");
-    }
   }
 }
