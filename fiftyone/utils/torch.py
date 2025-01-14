@@ -1528,10 +1528,6 @@ class FiftyOneTorchDataset(Dataset):
             :method:`fo.utils.torch.FiftyOneTorchDataset.worker_init` to the argument `worker_init_fn`.
             This class will not work otherwise.
         - Using `persistent_workers=True` is a good idea.
-        - this has only been tested for the default linux `multiprocessing_context`
-            use in other environments at your own peril. In theory any mechanism that
-            will allow child workers to connect and query to your database backend
-            should work.
 
         On reading and writing to the FO object during training:
         - Reading
@@ -1552,6 +1548,17 @@ class FiftyOneTorchDataset(Dataset):
         local_process_group=None,
     ):
         super().__init__()
+
+        if samples._dataset.persistent is False:
+            raise ValueError(
+                "This class only works with persistent datasets. Please set your dataset to be persistent."
+            )
+
+        start_method = multiprocessing.get_start_method(allow_none=True)
+        if start_method not in ["spawn", "forkserver"]:
+            warnings.warn(
+                f"Your start method is {start_method}. It is recommended to use 'spawn' or 'forkserver' with this class."
+            )
 
         self.name = samples._dataset.name
         # either a whole dataset or a view
@@ -1614,6 +1621,15 @@ class FiftyOneTorchDataset(Dataset):
     @staticmethod
     def worker_init(worker_id):
         torch_dataset_object = torch.utils.data.get_worker_info().dataset
+
+        # if the samples are already loaded, fail loudly
+        if torch_dataset_object._samples is not None:
+            raise ValueError(
+                "Worker init called after samples have been loaded. This should not happen. "
+                "This will fail anyways if using 'spawn' or 'forkserver' and can lead"
+                " to unexpected behavior if using 'fork'."
+            )
+
         torch_dataset_object._load_samples()
 
     def _load_samples(self):
