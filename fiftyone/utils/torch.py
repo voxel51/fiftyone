@@ -1486,9 +1486,9 @@ class FiftyOneTorchDataset(Dataset):
                             functionality of the original field value that you would need
                             in your get_item function.
 
-        - local_process_group (None) - only pass if running DDP. The process group with
-            each of the processes running the main train script on the machine this
-            object is on.
+        - local_process_group (None) - only pass if running Distributed Data Parallel (DDP).
+            The process group with each of the processes running the main train script
+            on the machine this object is on.
 
     Notes:
         General:
