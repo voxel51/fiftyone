@@ -23,11 +23,11 @@ import {
   StrictField,
   VALID_NUMERIC_TYPES,
   VALID_PRIMITIVE_TYPES,
-  getDenseLabelNames,
   meetsFieldType,
   withPath,
 } from "@fiftyone/utilities";
 import { RecoilState, selector, selectorFamily } from "recoil";
+import { computeDefaultVisibleLabels } from "../labelsVisibility";
 import * as atoms from "./atoms";
 import { dataset as datasetAtom } from "./dataset";
 import { activeModalSample } from "./groups";
@@ -322,58 +322,24 @@ export const dbPath = selectorFamily({
     },
 });
 
-export const defaultVisibleLabels = selector({
+export const defaultVisibleLabels = selector<string[]>({
   key: "defaultVisibleLabels",
   get: ({ get }) => {
     const sampleSchema = get(fieldSchema({ space: State.SPACE.SAMPLE }));
     const frameSchema = get(fieldSchema({ space: State.SPACE.FRAME }));
 
-    const denseLabelsSamples = getDenseLabelNames(sampleSchema);
-    const denseLabelsFrames = getDenseLabelNames(frameSchema).map(
-      (l) => `frames.${l}`
-    );
-
-    const denseLabels = [...denseLabelsSamples, ...denseLabelsFrames];
-
     const allSampleLabels = get(labelFields({ space: State.SPACE.SAMPLE }));
     const allFrameLabels = get(labelFields({ space: State.SPACE.FRAME }));
-    const allLabels = [...allSampleLabels, ...allFrameLabels];
 
     const defaultVisibleLabelsConfig = get(defaultVisibilityLabels);
 
-    if (
-      !defaultVisibleLabelsConfig?.include &&
-      !defaultVisibleLabelsConfig?.exclude
-    ) {
-      return allLabels.filter((label) => !denseLabels.includes(label));
-    }
-
-    if (
-      defaultVisibleLabelsConfig.include &&
-      !defaultVisibleLabelsConfig.exclude
-    ) {
-      return allLabels.filter((label) =>
-        defaultVisibleLabelsConfig.include.includes(label)
-      );
-    }
-
-    if (
-      !defaultVisibleLabelsConfig.include &&
-      defaultVisibleLabelsConfig.exclude
-    ) {
-      return allLabels.filter(
-        (label) => !defaultVisibleLabelsConfig.exclude.includes(label)
-      );
-    }
-
-    // is in both include and exclude
-    const includeList = new Set(defaultVisibleLabelsConfig.include);
-    const excludeList = new Set(defaultVisibleLabelsConfig.exclude);
-    // resolved = set(include) - set(exclude)
-    const resolved = new Set(
-      [...includeList].filter((x) => !excludeList.has(x))
+    return computeDefaultVisibleLabels(
+      sampleSchema,
+      frameSchema,
+      allSampleLabels,
+      allFrameLabels,
+      defaultVisibleLabelsConfig
     );
-    return allLabels.filter((label) => resolved.has(label));
   },
 });
 
