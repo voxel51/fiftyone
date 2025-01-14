@@ -1552,6 +1552,7 @@ class DatasetView(foc.SampleCollection):
         detach_groups=False,
         groups_only=False,
         manual_group_select=False,
+        optimize_frames=False,
         post_pipeline=None,
     ):
         _pipelines = []
@@ -1637,6 +1638,11 @@ class DatasetView(foc.SampleCollection):
         #######################################################################
         # Insert frame lookup pipeline(s) if needed
         #######################################################################
+
+        if optimize_frames:
+            _attach_frames_idx = None
+            _attach_frames_idx0 = None
+            _attach_frames_idx1 = None
 
         if _attach_frames_idx1 is not None and _attach_frames_idx is not None:
             _attach_frames_idx = _attach_frames_idx1
@@ -1936,6 +1942,7 @@ def make_optimized_select_view(
     ordered=False,
     groups=False,
     flatten=False,
+    optimize_frames=False,
 ):
     """Returns a view that selects the provided sample IDs that is optimized
     to reduce the document list as early as possible in the pipeline.
@@ -1981,7 +1988,10 @@ def make_optimized_select_view(
                 if type(stage) in fost._STAGES_THAT_SELECT_FIRST:
                     view = view._add_view_stage(stage, validate=False)
 
-        view = view.select(sample_ids, ordered=ordered)
+        if optimize_frames:
+            view = view.match({"_sample_id": ObjectId(sample_ids[0])})
+        else:
+            view = view.select(sample_ids, ordered=ordered)
 
     #
     # Selecting the samples of interest first can be significantly faster than

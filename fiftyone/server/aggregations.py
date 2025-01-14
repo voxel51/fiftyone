@@ -117,33 +117,24 @@ async def aggregate_resolver(
     if not form.paths:
         return []
 
-    view = await _load_view(form, form.slices)
+    optimize_frames = (
+        not form.view and form.sample_ids and len(form.sample_ids) == 1
+    )
+    view = await _load_view(form, form.slices, optimize_frames=optimize_frames)
 
     slice_view = None
 
     if form.mixed and "" in form.paths:
         slice_view = await _load_view(form, [form.slice])
 
-    optimize_frames = not True
     if form.sample_ids:
-        view = fov.make_optimized_select_view(view, form.sample_ids)
+        view = fov.make_optimized_select_view(
+            view, form.sample_ids, optimize_frames=optimize_frames
+        )
 
     if form.mixed and view.media_type == fom.GROUP and view.group_slices:
         view = view.select_group_slices(_force_mixed=True)
         view = fosv.get_extended_view(view, form.filters)
-
-    if form.hidden_labels:
-        view = view.exclude_labels(
-            [
-                {
-                    "sample_id": l.sample_id,
-                    "field": l.field,
-                    "label_id": l.label_id,
-                    "frame_number": l.frame_number,
-                }
-                for l in form.hidden_labels
-            ]
-        )
 
     aggregations, deserializers = zip(
         *[_resolve_path_aggregation(path, view) for path in form.paths]
@@ -189,7 +180,9 @@ RESULT_MAPPING = {
 }
 
 
-async def _load_view(form: AggregationForm, slices: t.List[str]):
+async def _load_view(
+    form: AggregationForm, slices: t.List[str], optimize_frames=False
+):
     return await fosv.get_view(
         form.dataset,
         view_name=form.view_name or None,
@@ -206,6 +199,7 @@ async def _load_view(form: AggregationForm, slices: t.List[str]):
             )
         ),
         awaitable=True,
+        optimize_frames=optimize_frames,
     )
 
 

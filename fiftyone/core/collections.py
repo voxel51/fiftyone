@@ -10294,7 +10294,7 @@ class SampleCollection(object):
                 pipeline=pipeline,
                 attach_frames=aggregation._needs_frames(self),
                 group_slices=aggregation._needs_group_slices(self),
-                optimize_frames=optimize_frames,
+                optimize_frames=is_frames,
             )
 
         return compiled, pipelines, is_frame_collection
