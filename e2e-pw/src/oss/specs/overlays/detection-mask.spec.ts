@@ -95,6 +95,9 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
         samples.append(goodDetectionMaskPathSample)
         
         dataset.add_samples(samples)
+
+        dataset.app_config.default_visibility_labels = {"include": ["ground_truth", "prediction"]}
+        dataset.save()
         `
   );
 });
