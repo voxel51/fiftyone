@@ -20,6 +20,11 @@ export namespace State {
    * configuration for that plugin.
    */
   export type PluginConfig = { [pluginName: string]: object };
+
+  export type DefaultVisibilityLabelsConfig = {
+    include?: string[];
+    exclude?: string[];
+  };
   export interface Config {
     colorPool: string[];
     customizedColors: CustomizeColorInput[];
@@ -119,6 +124,7 @@ export namespace State {
   }
 
   export interface DatasetAppConfig {
+    defaultVisibilityLabels?: DefaultVisibilityLabelsConfig;
     dynamicGroupsTargetFrameRate: number;
     gridMediaField?: string;
     modalMediaField?: string;

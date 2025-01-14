@@ -12,5 +12,12 @@
             "trailingCommas": "es5"
         },
         "jsxRuntime": "reactClassic"
+    },
+    "linter": {
+        "rules": {
+            "complexity": {
+              "useLiteralKeys": "warn"
+            }
+          }
     }
 }

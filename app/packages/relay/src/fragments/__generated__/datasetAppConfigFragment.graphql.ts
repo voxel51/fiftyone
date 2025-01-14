@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<67543879e3e2987632bd17a53759bb4f>>
+ * @generated SignedSource<<6d98ce427e7903abab6b8c839b2a8f9a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,6 +13,10 @@ import { FragmentRefs } from "relay-runtime";
 export type datasetAppConfigFragment$data = {
   readonly colorScheme: {
     readonly " $fragmentSpreads": FragmentRefs<"colorSchemeFragment">;
+  } | null;
+  readonly defaultVisibilityLabels: {
+    readonly exclude: ReadonlyArray<string> | null;
+    readonly include: ReadonlyArray<string> | null;
   } | null;
   readonly disableFrameFiltering: boolean | null;
   readonly dynamicGroupsTargetFrameRate: number;
@@ -46,6 +50,31 @@ const node: ReaderFragment = {
           "args": null,
           "kind": "FragmentSpread",
           "name": "colorSchemeFragment"
+        }
+      ],
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "FieldVisibilityConfig",
+      "kind": "LinkedField",
+      "name": "defaultVisibilityLabels",
+      "plural": false,
+      "selections": [
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "include",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "exclude",
+          "storageKey": null
         }
       ],
       "storageKey": null
@@ -104,6 +133,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "ee329c6ed9452236fb9ea680bea410e3";
+(node as any).hash = "575efb48b8c550944ea2223802d85123";
 
 export default node;

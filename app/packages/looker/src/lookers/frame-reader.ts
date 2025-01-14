@@ -32,6 +32,7 @@ export interface Frame {
 }
 
 interface AcquireReaderOptions {
+  activePaths: string[];
   addFrame: (frameNumber: number, frame: Frame) => void;
   addFrameBuffers: (range: [number, number]) => void;
   coloring: Coloring;
@@ -88,6 +89,7 @@ export const { acquireReader, clearReader } = (() => {
     view,
     group,
     schema,
+    activePaths,
   }: AcquireReaderOptions): string => {
     nextRange = [frameNumber, Math.min(frameCount, CHUNK_SIZE + frameNumber)];
     const subscription = uuid();
@@ -130,6 +132,7 @@ export const { acquireReader, clearReader } = (() => {
     requestingFrames = true;
     frameReader.postMessage({
       method: "setStream",
+      activePaths,
       sampleId,
       frameCount,
       frameNumber,
