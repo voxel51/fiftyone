@@ -13,6 +13,7 @@ import sys
 from typing import Callable, Any, Optional, List
 import pickle
 import functools
+import warnings
 
 import cv2
 import numpy as np
@@ -1479,9 +1480,12 @@ class FiftyOneTorchDataset(Dataset):
             corresponding to the sample's fields and values to the model input.
             This argument is highly recommended, as it offers a significant performance
             boost.
-            IMPORTANT:  For proper functionality, the field type must be serializable.
-                        DO NOT PASS OBJECT FIELDS. This will cause memory usage of this object
-                        to multiply by (num dataloaders * num gpus + num gpus).
+            Please note :   the field values must be pickle serializable i.e.
+                            `pickle.dumps(field_value)` should not raise an error.
+                            `pickle.loads(pickle.dumps(field_value))` should have all of the
+                            functionality of the original field value that you would need
+                            in your get_item function.
+
         - local_process_group (None) - only pass if running DDP. The process group with
             each of the processes running the main train script on the machine this
             object is on.
