@@ -20,13 +20,13 @@ export function SchemaIOComponent(props) {
 
   const onIOChange = useCallback(
     (path, value, schema, ancestors) => {
-      value = coerceValue(value, schema);
+      const computedValue = coerceValue(value, schema);
       const currentState = stateRef.current;
       const updatedState = cloneDeep(currentState);
-      set(updatedState, path, cloneDeep(value));
+      set(updatedState, path, cloneDeep(computedValue));
       stateRef.current = updatedState;
       if (onPathChange) {
-        onPathChange(path, value, schema, updatedState);
+        onPathChange(path, computedValue, schema, updatedState);
       }
       if (onChange) {
         onChange(updatedState);
