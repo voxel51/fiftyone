@@ -2404,7 +2404,7 @@ class FilterLabels(ViewStage):
         else:
             label_filter = self._filter
 
-        if is_frame_field:
+        if is_frame_field and not self._frames:
             if self._is_labels_list_field:
                 _make_filter_pipeline = _get_filter_frames_list_field_pipeline
             else:

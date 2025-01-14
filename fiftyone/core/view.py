@@ -1720,6 +1720,7 @@ class DatasetView(foc.SampleCollection):
             detach_groups=detach_groups,
             groups_only=groups_only,
             manual_group_select=manual_group_select,
+            optimize_frames=optimize_frames,
             post_pipeline=post_pipeline,
         )
 
