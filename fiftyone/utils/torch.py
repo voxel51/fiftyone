@@ -1475,7 +1475,7 @@ class FiftyOneTorchDataset(Dataset):
         samples: a :class:`fo.core.collections.SampleCollection`
         get_item: a `Callable[:class:`fo.core.sample.SampleView`, Any]`
             Must be a serializable function.
-        cache_fields (None): a list of strings. Fields to cache in memory. If this
+        cache_field_names (None): a list of strings. Fields to cache in memory. If this
             argument is passed, get_item should be from a dict with keys and values
             corresponding to the sample's fields and values to the model input.
             This argument is highly recommended, as it offers a significant performance
@@ -1544,7 +1544,7 @@ class FiftyOneTorchDataset(Dataset):
         self,
         samples: focol.SampleCollection,
         get_item: Callable[fos.SampleView, Any],
-        cache_fields: list[str] = None,
+        cache_field_names: list[str] = None,
         local_process_group=None,
     ):
         super().__init__()
@@ -1574,20 +1574,24 @@ class FiftyOneTorchDataset(Dataset):
         self.ids = _to_bytes_array(samples.values("id"))
 
         self.cached_fields = None
-        self.cache_fields = cache_fields
-        self._load_cached_fields(samples, cache_fields, local_process_group)
+        self.cache_field_names = cache_field_names
+        self._load_cached_fields(
+            samples, cache_field_names, local_process_group
+        )
 
         # initialized in worker
         self._dataset = None
         self._samples = None
 
     # need a better solution
-    def _load_cached_fields(self, samples, cache_fields, local_process_group):
-        if cache_fields is None:
+    def _load_cached_fields(
+        self, samples, cache_field_names, local_process_group
+    ):
+        if cache_field_names is None:
             return
 
         self.cached_fields = {}
-        for field_name in cache_fields:
+        for field_name in cache_field_names:
             if not samples.has_field(field_name):
                 raise ValueError(
                     f'Can\'t find field with name "{field_name}" in samples passed.'
@@ -1659,7 +1663,8 @@ class FiftyOneTorchDataset(Dataset):
 
         else:
             sample_dict = {
-                fn: self.cached_fields[fn][index] for fn in self.cache_fields
+                fn: self.cached_fields[fn][index]
+                for fn in self.cache_field_names
             }
             return self.get_item(sample_dict)
 
