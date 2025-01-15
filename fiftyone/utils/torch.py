@@ -2289,7 +2289,6 @@ class TorchShmSerializedList(TorchSerializedList):
     def __init__(self, lst: list, local_process_group):
         if get_local_rank(local_process_group) == 0:
             super().__init__(lst)
-        if get_local_rank(local_process_group) == 0:
             # Move data to shared memory, obtain a handle to send to each local worker.
             # This is cheap because a tensor will only be moved to shared memory once.
             handles = [None] + [
