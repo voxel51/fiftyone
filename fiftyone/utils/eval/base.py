@@ -49,8 +49,6 @@ class BaseEvaluationMethod(foe.EvaluationMethod):
         return self.config.custom_metrics
 
     def compute_custom_metrics(self, samples, eval_key, results):
-        results.custom_metrics = {}
-
         for metric, kwargs in self._get_custom_metrics().items():
             try:
                 operator = foo.get_operator(metric)
@@ -58,6 +56,9 @@ class BaseEvaluationMethod(foe.EvaluationMethod):
                     samples, eval_key, results, **kwargs or {}
                 )
                 if value is not None:
+                    if results.custom_metrics is None:
+                        results.custom_metrics = {}
+
                     results.custom_metrics[operator.config.label] = value
             except Exception as e:
                 logger.warning(
