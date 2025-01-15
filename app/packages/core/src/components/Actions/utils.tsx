@@ -31,7 +31,11 @@ export const SwitchDiv = animated(styled.div`
   text-transform: capitalize;
 `);
 
-export const useHighlightHover = (disabled, override = null, color = null) => {
+export const useHighlightHover = (
+  disabled: boolean,
+  override: null | boolean = null,
+  color: null | string = null
+) => {
   const [hovering, setHovering] = useState(false);
   const theme = useTheme();
   const on =
