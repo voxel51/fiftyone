@@ -19,7 +19,9 @@ def get_item_quickstart(sample):
     image = Image.open(sample["filepath"])
     og_wh = np.array([image.width, image.height])
     image = tv_tensors.Image(image)
-    detections = sample["ground_truth.detections"]
+    detections = sample["detections.detections"]
+    if detections is None:
+        detections = []
     detections_tensor = (
         torch.tensor([detection["bounding_box"] for detection in detections])
         if len(detections) > 0
