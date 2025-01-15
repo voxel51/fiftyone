@@ -119,6 +119,13 @@ export default class Row<K, V> {
     return this.#row[this.#row.length - ONE].item.id;
   }
 
+  get sizeBytes() {
+    let size = 0;
+    for (const item of this.#row)
+      size += this.#config.getItemSizeBytes(item.item.id);
+    return size;
+  }
+
   destroy(destroyItems = false) {
     this.#destroyItems(destroyItems);
     this.#aborter.abort();

@@ -59,7 +59,9 @@ export interface SpotlightConfig<K, V> {
   destroy?: (id: ID) => void;
   detach?: (id: ID) => void;
   get: Get<K, V>;
+  getItemSizeBytes?: (id: ID) => number;
   key: K;
+  maxItemSizeBytes?: number;
   offset?: number;
   onItemClick?: ItemClick<K, V>;
   render: Render;

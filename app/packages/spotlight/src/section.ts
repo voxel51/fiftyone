@@ -126,12 +126,14 @@ export default class Section<K, V> {
 
   render({
     config,
+    sizeBytes = 0,
     target,
     threshold,
     top,
     zooming,
   }: {
     config: SpotlightConfig<K, V>;
+    sizeBytes?: number;
     target: number;
     threshold: (n: number) => boolean;
     top: number;
@@ -179,6 +181,8 @@ export default class Section<K, V> {
         if (!threshold(current)) {
           break;
         }
+
+        sizeBytes += row.sizeBytes;
 
         row.show(
           this.#container,
