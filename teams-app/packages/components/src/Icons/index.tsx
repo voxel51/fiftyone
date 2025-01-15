@@ -6,3 +6,4 @@ export { default as AzureIcon } from "./Azure";
 export { default as MinIOIcon } from "./MinIO";
 export { default as ExportIcon } from "./Export";
 export { default as ExternalLinkIcon } from "./ExternalLink";
+export { default as SearchIcon } from "./Search";
