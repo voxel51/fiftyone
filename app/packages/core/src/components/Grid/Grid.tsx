@@ -26,6 +26,7 @@ import useThreshold from "./useThreshold";
 
 function Grid() {
   const id = useMemo(() => uuid(), []);
+  const pixels = useMemo(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
   const selectSample = useRef<ReturnType<typeof useSelectSample>>();
   const { lookerStore, pageReset, reset } = useRefreshers();
@@ -136,6 +137,7 @@ function Grid() {
     }, QP_WAIT);
     const mount = () => {
       clearTimeout(timeout);
+      document.getElementById(pixels)?.classList.add(styles.hidden);
       document.dispatchEvent(new CustomEvent("grid-mount"));
     };
 
@@ -149,9 +151,10 @@ function Grid() {
       spotlight.removeEventListener("load", mount);
       spotlight.removeEventListener("rowchange", set);
       spotlight.destroy();
+      document.getElementById(pixels)?.classList.remove(styles.hidden);
       document.dispatchEvent(new CustomEvent("grid-unmount"));
     };
-  }, [id, resizing, set, spotlight]);
+  }, [id, pixels, resizing, set, spotlight]);
 
   useEffect(() => {
     let width: number;
@@ -191,7 +194,12 @@ function Grid() {
 
   useEscape();
 
-  return <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />;
+  return (
+    <div className={styles.gridContainer}>
+      <div id={id} className={styles.spotlightGrid} data-cy="fo-grid" />
+      <div id={pixels} className={styles.fallingPixels} />
+    </div>
+  );
 }
 
 export default React.memo(Grid);

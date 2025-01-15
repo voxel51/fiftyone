@@ -110,7 +110,6 @@ export default class Spotlight<K, V> extends EventTarget {
 
     this.#backward?.destroy(!this.#config.retainItems);
     this.#forward?.destroy(!this.#config.retainItems);
-    this.#element?.classList.remove(styles.spotlightLoaded);
     this.#element?.remove();
     this.#scrollReader?.destroy();
   }
@@ -155,6 +154,14 @@ export default class Spotlight<K, V> extends EventTarget {
 
   get #width() {
     return this.#rect.width - SCROLLBAR_WIDTH * TWO;
+  }
+
+  #attachScrollReader() {
+    this.#scrollReader = createScrollReader(
+      this.#element,
+      (zooming, dispatchOffset) => this.#render({ dispatchOffset, zooming }),
+      () => this.#zooming()
+    );
   }
 
   async #next(render = true) {
@@ -314,35 +321,14 @@ export default class Spotlight<K, V> extends EventTarget {
 
     await this.#previous(false);
 
-    requestAnimationFrame(() => {
-      this.#render({
-        zooming: false,
-        offset: -this.#pivot,
-        at: this.#config.at,
-      });
-
-      requestAnimationFrame(() => {
-        this.#scrollReader = createScrollReader(
-          this.#element,
-          (zooming, dispatchOffset) =>
-            this.#render({ dispatchOffset, zooming }),
-          () => {
-            return (
-              (this.#width /
-                (this.#height *
-                  Math.max(
-                    this.#config.rowAspectRatioThreshold(this.#width),
-                    ONE
-                  ))) *
-              ZOOMING_COEFFICIENT
-            );
-          }
-        );
-      });
-
-      this.dispatchEvent(new Load(this.#config.key));
-      this.#element.classList.add(styles.spotlightLoaded);
+    this.#render({
+      zooming: false,
+      offset: -this.#pivot,
+      at: this.#config.at,
     });
+
+    this.#attachScrollReader();
+    this.dispatchEvent(new Load(this.#config.key));
   }
 
   async #get(key: K): Promise<Response<K, V>> {
@@ -469,5 +455,14 @@ export default class Spotlight<K, V> extends EventTarget {
 
     if (!zooming && backward.more) this.#previous();
     if (!zooming && forward.more) this.#next();
+  }
+
+  #zooming() {
+    return (
+      (this.#width /
+        (this.#height *
+          Math.max(this.#config.rowAspectRatioThreshold(this.#width), ONE))) *
+      ZOOMING_COEFFICIENT
+    );
   }
 }
