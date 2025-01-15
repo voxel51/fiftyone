@@ -324,6 +324,7 @@ class Operations(object):
         on_change_query_performance=None,
         allow_duplicates=False,
         priority=None,
+        reset_state=False,
         _builtin=False,
     ):
         """Registers a panel with the given name and lifecycle callbacks.
@@ -371,6 +372,8 @@ class Operations(object):
                 the panel to the opened
             priority (None): the priority of the panel, used for sort order
             _builtin (False): whether the panel is a builtin panel
+            reset_state (False): whether to reset the state of the panel prior to on load
+
         """
         params = {
             "panel_name": name,
@@ -398,6 +401,7 @@ class Operations(object):
             "on_change_query_performance": on_change_query_performance,
             "allow_duplicates": allow_duplicates,
             "priority": priority,
+            "reset_state": reset_state,
             "_builtin": _builtin,
         }
         return self._ctx.trigger("register_panel", params=params)

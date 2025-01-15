@@ -1,22 +1,24 @@
+import { useTrackEvent } from "@fiftyone/analytics";
 import { CenteredStack, CodeBlock, scrollable } from "@fiftyone/components";
+import LoadingSpinner from "@fiftyone/components/src/components/Loading/LoadingSpinner";
 import { clearUseKeyStores } from "@fiftyone/core/src/plugins/SchemaIO/hooks";
 import {
   PanelSkeleton,
   usePanelLoading,
+  usePanelState,
   useSetPanelCloseEffect,
 } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
+import { isNullish } from "@fiftyone/utilities";
 import { Box, Typography } from "@mui/material";
-import { useEffect } from "react";
+import { styled } from "@mui/system";
+import { useEffect, useRef } from "react";
 import OperatorIO from "./OperatorIO";
 import { PANEL_LOAD_TIMEOUT } from "./constants";
 import { useActivePanelEventsCount } from "./hooks";
 import { Property } from "./types";
 import { CustomPanelProps, useCustomPanelHooks } from "./useCustomPanelHooks";
-import { useTrackEvent } from "@fiftyone/analytics";
 import usePanelEvent from "./usePanelEvent";
-import LoadingSpinner from "@fiftyone/components/src/components/Loading/LoadingSpinner";
-import { styled } from "@mui/system";
 
 const SpinnerContainer = styled(Box)`
   display: flex;
@@ -25,7 +27,7 @@ const SpinnerContainer = styled(Box)`
 `;
 
 export function CustomPanel(props: CustomPanelProps) {
-  const { panelId, dimensions, panelName, panelLabel, isModalPanel } = props;
+  const { panelId, dimensions, panelName, isModalPanel } = props;
   const { height, width } = dimensions?.bounds || {};
   const { count } = useActivePanelEventsCount(panelId);
   const [_, setLoading] = usePanelLoading(panelId);
@@ -111,6 +113,7 @@ export function CustomPanel(props: CustomPanelProps) {
             onPathChange={handlePanelStatePathChange}
             shouldClearUseKeyStores={false}
             isModalPanel={isModalPanel}
+            updatableDefaultValue={false}
           />
         </DimensionRefresher>
       </Box>
@@ -144,9 +147,24 @@ export function defineCustomPanel({
   on_change_spaces,
   panel_name,
   panel_label,
+  reset_state,
 }) {
   return (props) => {
     const { dimensions, panelNode, isModalPanel } = props;
+    const [state, setState] = usePanelState();
+    const [localState] = usePanelState(null, null, true);
+    const hasState = !isNullish(state?.state);
+    const isLoaded = localState?.loaded;
+    const isReset = useRef(false);
+
+    if (!isLoaded && hasState && reset_state) {
+      if (!isReset.current) {
+        setState({});
+        isReset.current = true;
+      }
+      return null;
+    }
+
     return (
       <CustomPanel
         panelId={panelNode?.id}
