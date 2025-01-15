@@ -1508,18 +1508,10 @@ class FiftyOneTorchDataset(Dataset):
             usage. If you're using DDP, this will help your code not crash.
 
         DDP:
-        - When training with DDP, make sure to synchronously load your FiftyOne dataset
-            in your main training script. This is done to avoid competition over the
-            same port of the backing dataset server. This can be easily done by setting
-            up a loop over the local world size with a barrier in the end:
-            for i in range(world_size):
-                if get_local_rank(local_process_group) == i:
-                    dataset = fo.load_dataset(dataset_name)
-                torch.distributed.barrier(local_process_group)
-        - torchrun doesn't natively allow for the inter-process communcation required for
-            the cach_fields argument to work. When using it, call the function
-            `local_broadcast_process_authkey` on each local process group to facilitate
-            the communcation.
+        - A helper function ::method:`distributed_init` is provided to be called by each
+            trainer process in the beginning of DDP training. This function:
+            - Safely creates a database connection for each trainer
+            - Shares an authkey between all local processes to ensure they can communicate
 
         torch.utils.data.Dataloader use:
         - DO NOT use torch.Tensor.to in this function, do so in the train loop, or use
@@ -1635,6 +1627,36 @@ class FiftyOneTorchDataset(Dataset):
             )
 
         torch_dataset_object._load_samples()
+
+    @staticmethod
+    def distributed_init(dataset_name, local_process_group, view_name=None):
+        """Function to be called by each trainer process in DDP training.
+        Facilitates communication between processes. Safely creates database connection for each trainer.
+
+        This function should be called at the beginning of the training script.
+
+        Args:
+            dataset_name: the name of the dataset to load
+            local_process_group: the process group with all the processes running the main training script
+            view_name (None): the name of the view to load. If None, the whole dataset is loaded.
+
+        Returns:
+            The loaded :class:`fiftyone.core.dataset.Dataset` or :class:`fiftyone.core.view.DatasetView`
+        """
+        import fiftyone as fo
+
+        # make sure all processes have the same authkey
+        local_broadcast_process_authkey(local_process_group)
+
+        for i in range(get_local_size(local_process_group)):
+            if get_local_rank(local_process_group) == i:
+                # load the dataset
+                dataset = fo.load_dataset(dataset_name)
+                if view_name is not None:
+                    dataset = dataset.load_saved_view(view_name)
+                torch.distributed.barrier(local_process_group)
+
+        return dataset
 
     def _load_samples(self):
         import fiftyone as fo
