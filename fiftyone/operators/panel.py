@@ -33,6 +33,7 @@ class PanelConfig(OperatorConfig):
             tooltip
         category (Category): the category id of the panel
         priority (None): the priority of the panel for sorting in the UI
+        reset_state (False): whether to reset the state of the panel prior to on load
     """
 
     def __init__(
@@ -49,6 +50,7 @@ class PanelConfig(OperatorConfig):
         allow_multiple=False,
         surfaces: PANEL_SURFACE = "grid",
         priority=None,
+        reset_state=False,
         **kwargs
     ):
         super().__init__(name)
@@ -66,6 +68,7 @@ class PanelConfig(OperatorConfig):
         self.beta = beta
         self.is_new = is_new
         self.priority = priority
+        self.reset_state = reset_state
         self.kwargs = kwargs  # unused, placeholder for future extensibility
 
     def to_json(self):
@@ -84,6 +87,7 @@ class PanelConfig(OperatorConfig):
             "unlisted": self.unlisted,
             "surfaces": self.surfaces,
             "priority": self.priority,
+            "reset_state": self.reset_state,
         }
 
 
@@ -126,6 +130,7 @@ class Panel(Operator):
             "beta": self.config.beta,
             "is_new": self.config.is_new,
             "priority": self.config.priority,
+            "reset_state": self.config.reset_state,
             "_builtin": self._builtin,
         }
         methods = ["on_load", "on_unload", "on_change"]
