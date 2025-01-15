@@ -167,7 +167,7 @@ To use the MongoDB backend, simply set the optional `backend` parameter of
 
     fob.compute_similarity(..., backend="mongodb", ...)
 
-Alternatively, you can permanently configure FiftyOne to use the MonogDB
+Alternatively, you can permanently configure FiftyOne to use the MongoDB
 backend by setting the following environment variable:
 
 .. code-block:: shell
@@ -459,10 +459,10 @@ You can use
 :meth:`add_to_index() <fiftyone.brain.similarity.SimilarityIndex.add_to_index>`
 and
 :meth:`remove_from_index() <fiftyone.brain.similarity.SimilarityIndex.remove_from_index>`
-to add and remove embeddings from an existing Mongodb index.
+to add and remove embeddings from an existing MongoDB index.
 
 These methods can come in handy if you modify your FiftyOne dataset and need
-to update the Mongodb index to reflect these changes:
+to update the MongoDB index to reflect these changes:
 
 .. code:: python
     :linenos:
@@ -510,7 +510,7 @@ Retrieve embeddings from an index
 
 You can use
 :meth:`get_embeddings() <fiftyone.brain.similarity.SimilarityIndex.get_embeddings>`
-to retrieve embeddings from a Mongodb index by ID:
+to retrieve embeddings from a MongoDB index by ID:
 
 .. code:: python
     :linenos:
