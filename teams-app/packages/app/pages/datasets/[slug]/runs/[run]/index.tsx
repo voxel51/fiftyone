@@ -39,6 +39,8 @@ import getTimestamp from "../utils/getTimestamp";
 import isUrl from "../utils/isUrl";
 import RunIO, { IOType } from "./components/RunIO";
 import RunView from "./components/RunView";
+import isUrl from "../utils/isUrl";
+import Logs from "../components/Logs";
 
 const { QUEUED, SCHEDULED, RUNNING, COMPLETED, FAILED } = OPERATOR_RUN_STATES;
 
@@ -224,6 +226,7 @@ function Run(props) {
           {runState === FAILED && (
             <Tab label="Errors" value="errors" sx={TAB_SX} />
           )}
+          <Tab label="Logs" value="logs" sx={TAB_SX} />
           <Tab label="View" value="view" sx={TAB_SX} />
         </Tabs>
       </Box>
@@ -245,6 +248,7 @@ function Run(props) {
           />
         )}
         {tab === "errors" && runErrorData && <CodeBlock text={runErrorData} />}
+        {tab === "logs" && <Logs />}
         {tab === "view" && (
           <RunView
             view={omit(ctxData, ["operator_uri", "params", "dataset_name"])}
