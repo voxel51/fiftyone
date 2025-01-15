@@ -1678,7 +1678,7 @@ function getMatrix(matrices, config, maskTargets, compareMaskTargets?) {
     return compareMaskTargets?.[c] || maskTargets?.[c] || c;
   });
   const noneIndex = originalClasses.indexOf(NONE_CLASS);
-  if (parsedLimit < originalClasses.length) {
+  if (parsedLimit < originalClasses.length && noneIndex > -1) {
     labels.push(
       compareMaskTargets?.[NONE_CLASS] ||
         maskTargets?.[NONE_CLASS] ||
