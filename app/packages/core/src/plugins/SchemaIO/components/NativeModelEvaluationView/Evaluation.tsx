@@ -465,6 +465,12 @@ export default function Evaluation(props: EvaluationProps) {
           : false,
       hide: !showTpFpFn,
     },
+    {
+      id: "custom_metrics",
+      property: "Custom Metrics",
+      value: evaluationMetrics.custom_metrics,
+      compareValue: compareEvaluationMetrics.custom_metrics,
+    },
   ];
 
   const perClassPerformance = {};
