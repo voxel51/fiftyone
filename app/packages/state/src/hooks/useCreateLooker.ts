@@ -151,7 +151,7 @@ export default <T extends AbstractLooker<BaseState>>(
           shouldHandleKeyEvents: isModal,
         };
 
-        let sampleMediaFilePath = urls[mediaField];
+        let sampleMediaFilePath = urls[mediaField] ?? urls.filepath;
         if (isNullish(sampleMediaFilePath) && options.mediaFallback === true) {
           sampleMediaFilePath = urls.filepath;
         }
