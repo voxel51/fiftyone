@@ -7,11 +7,11 @@ Model evaluation panel.
 """
 
 from collections import defaultdict, Counter
+import json
 import os
 import traceback
 
 import numpy as np
-import json
 from fiftyone import ViewField as F
 from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
@@ -147,7 +147,10 @@ class EvaluationPanel(Panel):
             return None
 
     def get_custom_metrics(self, results):
-        return results.custom_metrics
+        custom_metrics = results.custom_metrics
+        if custom_metrics:
+            return custom_metrics
+        return {}
 
     def set_status(self, ctx):
         if not self.can_edit_status(ctx):
