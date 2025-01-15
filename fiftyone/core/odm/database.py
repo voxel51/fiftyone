@@ -5,6 +5,7 @@ Database utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import atexit
 import dataclasses
 from datetime import datetime
@@ -336,13 +337,17 @@ def aggregate(collection, pipelines):
         pipelines = [pipelines]
 
     num_pipelines = len(pipelines)
-    if isinstance(collection, mtr.AsyncIOMotorCollection):
+    first = collection[0] if isinstance(collection, list) else collection
+    if isinstance(first, mtr.AsyncIOMotorCollection):
         if num_pipelines == 1 and not is_list:
-            return collection.aggregate(pipelines[0], allowDiskUse=True)
+            return first.aggregate(pipelines[0], allowDiskUse=True)
 
         return _do_async_pooled_aggregate(collection, pipelines)
 
     if num_pipelines == 1:
+        if isinstance(collection, list):
+            collection = collection[0]
+
         result = collection.aggregate(pipelines[0], allowDiskUse=True)
         return [result] if is_list else result
 
@@ -361,8 +366,16 @@ def _do_pooled_aggregate(collection, pipelines):
 
 
 async def _do_async_pooled_aggregate(collection, pipelines):
+    if not isinstance(collection, list):
+        collection = [collection] * len(pipelines)
+
+    for p in pipelines:
+        fo.pprint(p)
     return await asyncio.gather(
-        *[_do_async_aggregate(collection, pipeline) for pipeline in pipelines]
+        *[
+            _do_async_aggregate(coll, pipeline)
+            for coll, pipeline in zip(collection, pipelines)
+        ]
     )
 
 

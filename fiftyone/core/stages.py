@@ -2321,11 +2321,13 @@ class FilterLabels(ViewStage):
         filter,
         only_matches=True,
         trajectories=False,
+        _frames=False,
         _new_field=None,
         _validate=True,
     ):
         self._field = field
         self._filter = filter
+        self._frames = _frames
         self._only_matches = only_matches
         self._trajectories = trajectories
         self._new_field = _new_field or field
@@ -2402,7 +2404,7 @@ class FilterLabels(ViewStage):
         else:
             label_filter = self._filter
 
-        if is_frame_field:
+        if is_frame_field and not self._frames:
             if self._is_labels_list_field:
                 _make_filter_pipeline = _get_filter_frames_list_field_pipeline
             else:
@@ -2448,9 +2450,8 @@ class FilterLabels(ViewStage):
 
         if self._is_frame_field:
             filter_field = self._field.split(".", 1)[1]  # remove `frames`
-            return _get_field_mongo_filter(
-                self._filter, prefix="$frame." + filter_field
-            )
+            prefix = filter_field if self._frames else "$frame." + filter_field
+            return _get_field_mongo_filter(self._filter, prefix=prefix)
 
         return _get_field_mongo_filter(self._filter, prefix=self._field)
 
