@@ -36,7 +36,12 @@ export default function DynamicIO(props: ViewPropsType) {
       if (isComposite) {
         computedAncestors[currentPath] = computedSchema;
       }
-      onChange(path, value, schema ?? subSchema, computedAncestors);
+      onChange(
+        path,
+        value,
+        schema ?? subSchema ?? computedSchema,
+        computedAncestors
+      );
     };
   }, [onChange, computedSchema, props.path]);
 
