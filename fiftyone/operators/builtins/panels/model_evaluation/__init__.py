@@ -368,11 +368,9 @@ class EvaluationPanel(Panel):
             )
             metrics["mAP"] = self.get_map(results)
             metrics["mAR"] = self.get_mar(results)
-            metrics["custom_metrics"] = json.dumps(
-                self.get_custom_metrics(results)
-            )
             evaluation_data = {
                 "metrics": metrics,
+                "custom_metrics": self.get_custom_metrics(results),
                 "info": serialized_info,
                 "confusion_matrices": self.get_confusion_matrices(results),
                 "per_class_metrics": per_class_metrics,
