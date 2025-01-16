@@ -1793,7 +1793,7 @@ function formatCustomMetricRows(evluationMetrics, comparisonMetrics) {
       `custom_metrics.${operatorName}.value`,
       null
     );
-    const hasComparisonValue = compareValue !== null;
+    const hasOneValue = customMetric.value !== null || compareValue !== null;
 
     results.push({
       id: operatorName,
@@ -1803,7 +1803,7 @@ function formatCustomMetricRows(evluationMetrics, comparisonMetrics) {
       lesserIsBetter: true, // TODO - this needs to be provided from the customMetrics object
       filterable: false,
       active: false,
-      hide: !hasComparisonValue,
+      hide: !hasOneValue,
     });
   }
   return results;
