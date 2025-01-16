@@ -5,6 +5,7 @@ Regression evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 import inspect
 import itertools
@@ -425,6 +426,8 @@ class RegressionResults(BaseEvaluationResults):
         self.ids = ids
         self.missing = missing
         self.custom_metrics = custom_metrics
+        # Stores configs for custom metrics with a return value (used by the model evaluation panel).
+        self.custom_metrics_config = []
 
     def metrics(self, weights=None):
         """Computes various popular regression metrics for the results.
