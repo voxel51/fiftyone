@@ -141,7 +141,9 @@ class DataQualityPanel(Panel):
 
             results = content.get("results", SAMPLE_STORE.get("results"))
 
-        # async checks
+        self.scan_for_new_samples(ctx, results)
+
+    def scan_for_new_samples(self, ctx, results):
         # format: [new_samples_count, check ran, rescan completed]
         ctx.panel.state.new_samples = {
             "brightness": [0, False, False],
@@ -430,8 +432,6 @@ class DataQualityPanel(Panel):
             ctx.panel.state.hist_lower_thresh = default_lower
             ctx.panel.state.hist_upper_thresh = default_upper
 
-            self.change_view(ctx, issue_type)
-
             # reset counts for home page based on default threshold
             field = FIELD_NAME[issue_type]
             view = ctx.dataset.match(
@@ -447,6 +447,8 @@ class DataQualityPanel(Panel):
                 f"{issue_type}_analysis.{issue_type}_analysis_content.double_slider_{issue_type}",
                 [default_lower, default_upper],
             )
+
+            self.change_view(ctx, issue_type)
 
     def change_view(self, ctx, issue_type):
         """Updates the view based on the histogram bounds."""
@@ -511,12 +513,14 @@ class DataQualityPanel(Panel):
 
         if issue_type == "exact_duplicates" and ctx.dataset.has_field(field):
             dup_filehashes = content["results"][issue_type]["dup_filehash"]
-            filehash_ids = content["results"][issue_type]["dup_sample_ids"]
             num_duplicates = content["counts"][issue_type]
 
             exact_dup_view = ctx.dataset.match(
                 F("filehash").is_in(dup_filehashes)
-            ).sort_by("filehash", create_index=False)
+            )
+            exact_dup_view = exact_dup_view.sort_by(
+                "filehash", create_index=False
+            )
 
             ctx.panel.state.issue_counts[issue_type] = num_duplicates
             counts[issue_type] = num_duplicates
