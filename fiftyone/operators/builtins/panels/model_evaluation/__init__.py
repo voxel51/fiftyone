@@ -7,7 +7,6 @@ Model evaluation panel.
 """
 
 from collections import defaultdict, Counter
-import json
 import os
 import traceback
 
