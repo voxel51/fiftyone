@@ -88,7 +88,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         (
             self._model,
             _,
-            self.preprocess,
+            self._preprocess,
         ) = open_clip.create_model_and_transforms(
             config.clip_model,
             pretrained=config.pretrained,
@@ -134,7 +134,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
 
     def _predict_all(self, imgs):
         if self._preprocess:
-            imgs = [self._preprocess(img).unsqueeze(0) for img in imgs]
+            imgs = [self._preprocess(img) for img in imgs]
 
         if isinstance(imgs, (list, tuple)):
             imgs = torch.stack(imgs)
