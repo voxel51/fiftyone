@@ -1763,6 +1763,7 @@ type PLOT_CONFIG_DIALOG_TYPE = PLOT_CONFIG_TYPE & {
 type CustomMetric = {
   label: string;
   value: any;
+  lower_is_better: boolean;
 };
 
 type CustomMetrics = {
@@ -1800,7 +1801,7 @@ function formatCustomMetricRows(evaluationMetrics, comparisonMetrics) {
       property: customMetric.label,
       value: customMetric.value,
       compareValue,
-      lesserIsBetter: true, // TODO - this needs to be provided from the customMetrics object
+      lesserIsBetter: customMetric.lower_is_better,
       filterable: false,
       active: false,
       hide: !hasOneValue,
