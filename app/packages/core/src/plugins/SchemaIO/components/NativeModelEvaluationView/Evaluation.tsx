@@ -1,3 +1,4 @@
+import _ from "lodash";
 import { Dialog } from "@fiftyone/components";
 import { editingFieldAtom, view } from "@fiftyone/state";
 import {
@@ -196,7 +197,6 @@ export default function Evaluation(props: EvaluationProps) {
   const evaluationTimestamp = evaluationInfo.timestamp;
   const evaluationConfig = evaluationInfo.config;
   const evaluationMetrics = evaluation.metrics;
-  const evaluationCustomMetrics = evaluation.custom_metrics;
   const evaluationType = evaluationConfig.type;
   const evaluationMethod = evaluationConfig.method;
   const compareEvaluationInfo = compareEvaluation?.info || {};
@@ -204,8 +204,6 @@ export default function Evaluation(props: EvaluationProps) {
   const compareEvaluationTimestamp = compareEvaluationInfo?.timestamp;
   const compareEvaluationConfig = compareEvaluationInfo?.config || {};
   const compareEvaluationMetrics = compareEvaluation?.metrics || {};
-  const compareEvaluationCustomMetrics =
-    compareEvaluation?.custom_metrics || {};
   const compareEvaluationType = compareEvaluationConfig.type;
   const isObjectDetection = evaluationType === "detection";
   const isClassification = evaluationType === "classification";
@@ -468,21 +466,8 @@ export default function Evaluation(props: EvaluationProps) {
           : false,
       hide: !showTpFpFn,
     },
+    ...formatCustomMetricRows(evaluation, compareEvaluation),
   ];
-
-  for (const key in evaluationCustomMetrics) {
-    const cm_keys = Object.keys(evaluationCustomMetrics[key]);
-    summaryRows.push({
-      id: key,
-      property: evaluationCustomMetrics[key][cm_keys[0]].toString(),
-      value: evaluationCustomMetrics[key][cm_keys[1]],
-      compareValue: compareEvaluationCustomMetrics[key][cm_keys[1]],
-      lesserIsBetter: true,
-      filterable: false,
-      active: false,
-      hide: false,
-    });
-  }
 
   const perClassPerformance = {};
   for (const key in evaluation?.per_class_metrics) {
@@ -1774,3 +1759,52 @@ type PLOT_CONFIG_TYPE = {
 type PLOT_CONFIG_DIALOG_TYPE = PLOT_CONFIG_TYPE & {
   open?: boolean;
 };
+
+type CustomMetric = {
+  label: string;
+  value: any;
+};
+
+type CustomMetrics = {
+  [operatorName: string]: CustomMetric;
+};
+
+type SummaryRow = {
+  id: string;
+  property: string;
+  value: any;
+  compareValue: any;
+  lesserIsBetter: boolean;
+  filterable: boolean;
+  active: boolean;
+  hide: boolean;
+};
+
+function formatCustomMetricRows(evluationMetrics, comparisonMetrics) {
+  const results = [] as SummaryRow[];
+  const customMetrics = _.get(
+    evluationMetrics,
+    "custom_metrics",
+    {}
+  ) as CustomMetrics;
+  for (const [operatorName, customMetric] of Object.entries(customMetrics)) {
+    const compareValue = _.get(
+      comparisonMetrics,
+      `custom_metrics.${operatorName}.value`,
+      null
+    );
+    const hasComparisonValue = compareValue !== null;
+
+    results.push({
+      id: operatorName,
+      property: customMetric.label,
+      value: customMetric.value,
+      compareValue,
+      lesserIsBetter: true, // TODO - this needs to be provided from the customMetrics object
+      filterable: false,
+      active: false,
+      hide: !hasComparisonValue,
+    });
+  }
+  return results;
+}
