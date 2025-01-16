@@ -196,6 +196,7 @@ export default function Evaluation(props: EvaluationProps) {
   const evaluationTimestamp = evaluationInfo.timestamp;
   const evaluationConfig = evaluationInfo.config;
   const evaluationMetrics = evaluation.metrics;
+  const evaluationCustomMetrics = evaluation.custom_metrics;
   const evaluationType = evaluationConfig.type;
   const evaluationMethod = evaluationConfig.method;
   const compareEvaluationInfo = compareEvaluation?.info || {};
@@ -203,6 +204,8 @@ export default function Evaluation(props: EvaluationProps) {
   const compareEvaluationTimestamp = compareEvaluationInfo?.timestamp;
   const compareEvaluationConfig = compareEvaluationInfo?.config || {};
   const compareEvaluationMetrics = compareEvaluation?.metrics || {};
+  const compareEvaluationCustomMetrics =
+    compareEvaluation?.custom_metrics || {};
   const compareEvaluationType = compareEvaluationConfig.type;
   const isObjectDetection = evaluationType === "detection";
   const isClassification = evaluationType === "classification";
@@ -465,13 +468,20 @@ export default function Evaluation(props: EvaluationProps) {
           : false,
       hide: !showTpFpFn,
     },
-    {
-      id: "custom_metrics",
-      property: "Custom Metrics",
-      value: evaluationMetrics.custom_metrics,
-      compareValue: compareEvaluationMetrics.custom_metrics,
-    },
   ];
+
+  for (const key in evaluationCustomMetrics) {
+    summaryRows.push({
+      id: key,
+      property: evaluationCustomMetrics[key].label.toString(),
+      value: evaluationCustomMetrics[key].value,
+      compareValue: compareEvaluationCustomMetrics[key].value,
+      lesserIsBetter: true,
+      filterable: true,
+      active: false,
+      hide: false,
+    });
+  }
 
   const perClassPerformance = {};
   for (const key in evaluation?.per_class_metrics) {

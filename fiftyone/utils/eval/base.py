@@ -5,6 +5,7 @@ Base evaluation methods.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import itertools
 import logging
 
@@ -58,7 +59,10 @@ class BaseEvaluationMethod(foe.EvaluationMethod):
                     samples, eval_key, results, **kwargs or {}
                 )
                 if value is not None:
-                    results.custom_metrics[operator.config.label] = value
+                    results.custom_metrics[operator.config.name] = {
+                        "label": operator.config.label,
+                        "value": value,
+                    }
             except Exception as e:
                 logger.warning(
                     "Failed to compute metric '%s': Reason: %s",
@@ -180,6 +184,16 @@ class BaseClassificationResults(BaseEvaluationResults):
         self.classes = np.asarray(classes)
         self.missing = missing
         self.custom_metrics = custom_metrics
+
+    @property
+    def additional_metrics(self):
+        if not self.custom_metrics:
+            return None
+        metrics = {}
+        for d in self.custom_metrics.values():
+            label, value = list(d.values())
+            metrics[label] = value
+        return metrics
 
     def report(self, classes=None):
         """Generates a classification report for the results via
