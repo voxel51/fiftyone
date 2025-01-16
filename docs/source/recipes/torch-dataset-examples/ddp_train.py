@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 import os
 
 import fiftyone as fo
-from fiftyone.utils.torch import all_gather, local_broadcast_process_authkey
+from fiftyone.utils.torch import all_gather, FiftyOneTorchDataset
 
 import torch
 from tqdm import tqdm
@@ -15,18 +15,14 @@ def main(local_rank, dataset_name, num_classes, num_epochs, save_dir):
 
     torch.distributed.init_process_group()
 
-    # setup local groups
-    local_group = None
-    for n in range(
-        int(
-            int(os.environ["WORLD_SIZE"]) / int(os.environ["LOCAL_WORLD_SIZE"])
-        )
-    ):
-        aux = torch.distributed.new_group()
-        torch.distributed.barrier()
-        if int(os.environ["RANK"]) // int(os.environ["LOCAL_WORLD_SIZE"]) == n:
-            local_group = aux
-    local_broadcast_process_authkey(local_group)
+    #### START FIFTYONE DISTRIBUTED INIT CODE ####
+    local_group = torch.distributed.new_group()
+    torch.distributed.barrier()
+
+    dataset = FiftyOneTorchDataset.distributed_init(
+        dataset_name, local_process_group=local_group
+    )
+    #### END FIFTYONE DISTRIBUTED INIT CODE ####
 
     model = utils.setup_ddp_model(num_classes=num_classes)
     model.to(DEVICES[local_rank])
@@ -35,13 +31,6 @@ def main(local_rank, dataset_name, num_classes, num_epochs, save_dir):
     )
 
     loss_function = torch.nn.CrossEntropyLoss(reduction="none")
-
-    dataset = None
-    # synchronously load dataset in each trainer
-    for r in range(int(os.environ["LOCAL_WORLD_SIZE"])):
-        if local_rank == r:
-            dataset = fo.load_dataset(dataset_name)
-        torch.distributed.barrier(local_group)
 
     dataloaders = utils.create_dataloaders_ddp(
         dataset,
@@ -116,7 +105,8 @@ def main(local_rank, dataset_name, num_classes, num_epochs, save_dir):
         print(f"Loss = {test_loss}")
         results.print_report(classes=classes)
 
-    torch.distributed.destroy_process_group(torch.distributed.group.WORLD)
+    torch.distributed.destroy_process_group(local_group)
+    torch.distributed.destroy_process_group()
 
 
 def train_epoch(local_rank, model, dataloader, loss_function, optimizer):
@@ -200,10 +190,10 @@ def validation(
 
 if __name__ == "__main__":
 
-    # run with
-    # torchrun --nnodes=1 --nproc-per-node=6 \
-    # PATH/TO/YOUR/ddp_train.py -d mnist -n 10 -e 3 \
-    # -s /PATH/TO/SAVE/WEIGHTS --devices 2 3 4 5 6 7
+    """run with
+    torchrun --nnodes=1 --nproc-per-node=6 \
+    PATH/TO/YOUR/ddp_train.py -d mnist -n 10 -e 3 \
+    -s /PATH/TO/SAVE/WEIGHTS --devices 2 3 4 5 6 7"""
 
     argparser = ArgumentParser()
     argparser.add_argument(

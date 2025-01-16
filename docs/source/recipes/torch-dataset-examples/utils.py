@@ -120,14 +120,18 @@ def mnist_get_item(sample):
 
 
 def create_dataloaders(
-    dataset, get_item, cache_fields=None, local_process_group=None, **kwargs
+    dataset,
+    get_item,
+    cache_field_names=None,
+    local_process_group=None,
+    **kwargs,
 ):
     split_tags = ["train", "validation", "test"]
     dataloaders = {}
     for split_tag in split_tags:
         split = dataset.match_tags(split_tag).to_torch(
             get_item,
-            cache_fields=cache_fields,
+            cache_field_names=cache_field_names,
             local_process_group=local_process_group,
         )
         shuffle = True if split_tag == "train" else False
@@ -166,14 +170,18 @@ def setup_ddp_model(**kwargs):
 
 
 def create_dataloaders_ddp(
-    dataset, get_item, cache_fields=None, local_process_group=None, **kwargs
+    dataset,
+    get_item,
+    cache_field_names=None,
+    local_process_group=None,
+    **kwargs,
 ):
     split_tags = ["train", "validation", "test"]
     dataloaders = {}
     for split_tag in split_tags:
         split = dataset.match_tags(split_tag).to_torch(
             get_item,
-            cache_fields=cache_fields,
+            cache_field_names=cache_field_names,
             local_process_group=local_process_group,
         )
         shuffle = True if split_tag == "train" else False
