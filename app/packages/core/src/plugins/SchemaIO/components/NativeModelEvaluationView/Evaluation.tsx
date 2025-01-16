@@ -471,13 +471,14 @@ export default function Evaluation(props: EvaluationProps) {
   ];
 
   for (const key in evaluationCustomMetrics) {
+    const cm_keys = Object.keys(evaluationCustomMetrics[key]);
     summaryRows.push({
       id: key,
-      property: evaluationCustomMetrics[key].label.toString(),
-      value: evaluationCustomMetrics[key].value,
-      compareValue: compareEvaluationCustomMetrics[key].value,
+      property: evaluationCustomMetrics[key][cm_keys[0]].toString(),
+      value: evaluationCustomMetrics[key][cm_keys[1]],
+      compareValue: compareEvaluationCustomMetrics[key][cm_keys[1]],
       lesserIsBetter: true,
-      filterable: true,
+      filterable: false,
       active: false,
       hide: false,
     });
