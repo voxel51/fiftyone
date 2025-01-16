@@ -1780,10 +1780,10 @@ type SummaryRow = {
   hide: boolean;
 };
 
-function formatCustomMetricRows(evluationMetrics, comparisonMetrics) {
+function formatCustomMetricRows(evaluationMetrics, comparisonMetrics) {
   const results = [] as SummaryRow[];
   const customMetrics = _.get(
-    evluationMetrics,
+    evaluationMetrics,
     "custom_metrics",
     {}
   ) as CustomMetrics;
