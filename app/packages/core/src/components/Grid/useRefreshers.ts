@@ -25,7 +25,7 @@ export default function useRefreshers() {
   const shouldRenderImaVidLooker = useRecoilValue(
     fos.shouldRenderImaVidLooker(false)
   );
-  const view = fos.filterView(useRecoilValue(fos.view));
+  const view = fos.filterView(useRecoilValue(fos.view) ?? []);
 
   // only reload, attempt to return to the last grid location
   const layoutReset = useMemo(() => {
@@ -76,7 +76,7 @@ export default function useRefreshers() {
   );
 
   return {
-    lookerStore: useLookerCache(reset),
+    lookerCache: useLookerCache(reset),
     pageReset,
     reset,
   };

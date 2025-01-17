@@ -21,11 +21,11 @@ import {
   ZOOMING_COEFFICIENT,
 } from "./constants";
 import createScrollReader from "./createScrollReader";
-import { Load, RowChange } from "./events";
+import { Load, Rejected, RowChange } from "./events";
 import Section from "./section";
 import { create } from "./utilities";
 
-export { Load, RowChange } from "./events";
+export { Load, Rejected, RowChange } from "./events";
 export * from "./types";
 
 export default class Spotlight<K, V> extends EventTarget {
@@ -57,6 +57,7 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   addEventListener(type: "load", callback: EventCallback<Load<K>>): void;
+  addEventListener(type: "rejected", callback: EventCallback<Rejected>): void;
   addEventListener(
     type: "rowchange",
     callback: EventCallback<RowChange<K>>
@@ -69,6 +70,10 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   removeEventListener(type: "load", callback: EventCallback<Load<K>>): void;
+  removeEventListener(
+    type: "rejected",
+    callback: EventCallback<Rejected>
+  ): void;
   removeEventListener(
     type: "rowchange",
     callback: EventCallback<RowChange<K>>
@@ -94,10 +99,9 @@ export default class Spotlight<K, V> extends EventTarget {
 
     const observer = new ResizeObserver(() => {
       this.#rect = this.#element.getBoundingClientRect();
-      this.attached &&
-        requestAnimationFrame(() =>
-          this.#forward ? this.#render({}) : this.#fill()
-        );
+      if (this.attached) {
+        this.#forward ? this.#render({}) : this.#fill();
+      }
     });
     observer.observe(this.#element);
   }
@@ -108,8 +112,8 @@ export default class Spotlight<K, V> extends EventTarget {
       return;
     }
 
-    this.#backward?.destroy(!this.#config.retainItems);
-    this.#forward?.destroy(!this.#config.retainItems);
+    this.#backward?.destroy();
+    this.#forward?.destroy();
     this.#element?.remove();
     this.#scrollReader?.destroy();
   }
@@ -152,6 +156,10 @@ export default class Spotlight<K, V> extends EventTarget {
     return this.#height;
   }
 
+  get #recommendedRowAspectRatioThreshold() {
+    return 10;
+  }
+
   get #width() {
     return this.#rect.width - SCROLLBAR_WIDTH * TWO;
   }
@@ -162,6 +170,185 @@ export default class Spotlight<K, V> extends EventTarget {
       (zooming, dispatchOffset) => this.#render({ dispatchOffset, zooming }),
       () => this.#zooming()
     );
+  }
+
+  async #render({
+    at,
+    dispatchOffset = false,
+    go = true,
+    offset = false,
+    reject,
+    zooming,
+  }: {
+    at?: At;
+    dispatchOffset?: boolean;
+    go?: boolean;
+    offset?: number | false;
+    reject?: (sizeBytes: number) => void;
+    zooming?: boolean;
+  }) {
+    if (go && offset !== false) {
+      this.#forward.top = this.#pivot + this.#config.offset;
+      this.#backward.top = this.#config.offset;
+    }
+
+    let top = this.#element.scrollTop - (offset === false ? ZERO : offset);
+    if (at) {
+      const row = this.#forward.find(at.description);
+      if (row) {
+        top = this.#backward.height + row.from - at.offset;
+      }
+    }
+
+    const backward = await this.#backward.render({
+      config: this.#config,
+      reject,
+      target: top + this.#height + this.#padding,
+      threshold: (n) => {
+        return n > top - this.#padding;
+      },
+      top: top + this.#config.offset,
+      updater: (id) => this.#updater(id),
+      zooming,
+    });
+
+    const forwardReject = reject
+      ? (sizeBytes: number) => reject(backward.loaded + sizeBytes)
+      : undefined;
+    const forward = await this.#forward.render({
+      config: this.#config,
+      reject: forwardReject,
+      target: top - this.#padding - this.#backward.height,
+      threshold: (n) => {
+        return n < top + this.#height + this.#padding - this.#backward.height;
+      },
+      top: top - this.#backward.height + this.#config.offset,
+      updater: (id) => this.#updater(id),
+      zooming,
+    });
+
+    if (dispatchOffset || at) {
+      let item = forward.match?.row.first;
+      let delta = forward.match?.delta;
+
+      if (!item || (backward.match && backward.match.delta < delta)) {
+        item = backward.match?.row.first;
+        delta = backward.match?.delta;
+      }
+
+      this.#keys.has(item) &&
+        this.dispatchEvent(
+          new RowChange(item, this.#keys.get(item), Math.abs(delta))
+        );
+    }
+
+    if (!go && offset !== false) {
+      this.#forward.top = this.#pivot + this.#config.offset;
+      this.#backward.top = this.#config.offset;
+    }
+
+    if (at) {
+      const row = this.#forward.find(at.description);
+      if (row) {
+        this.#element.scrollTo(
+          ZERO,
+          this.#backward.height + row.from - at.offset
+        );
+      } else {
+        const row = this.#backward.find(at.description);
+        if (row) {
+          this.#element.scrollTo(
+            ZERO,
+            this.#backward.height - row.from - row.height
+          );
+        }
+      }
+    } else if (offset !== false && top) {
+      this.#element.scrollTo(ZERO, top);
+    }
+
+    if (!zooming && backward.more) this.#previous();
+    if (!zooming && forward.more) this.#next();
+  }
+
+  #zooming() {
+    return (
+      (this.#width /
+        (this.#height *
+          Math.max(this.#config.rowAspectRatioThreshold(this.#width), ONE))) *
+      ZOOMING_COEFFICIENT
+    );
+  }
+
+  async #fill() {
+    this.#forward = new Section({
+      at: this.#config.at?.description,
+      config: this.#config,
+      direction: DIRECTION.FORWARD,
+      edge: { key: this.#config.key, remainder: [] },
+      width: this.#width,
+    });
+    this.#forward.attach(this.#element);
+
+    await this.#next(false);
+
+    while (this.#containerHeight < this.#height && !this.#forward.finished) {
+      await this.#next(false);
+    }
+
+    await this.#previous(false);
+
+    this.#attachScrollReader();
+    await this.#render({
+      at: this.#config.at,
+      offset: -this.#pivot,
+      reject: (bytes) => {
+        if (bytes > this.#config.maxItemsSizeBytes) {
+          this.dispatchEvent(
+            new Rejected(this.#recommendedRowAspectRatioThreshold)
+          );
+          throw bytes;
+        }
+      },
+      zooming: false,
+    });
+
+    this.dispatchEvent(new Load(this.#config.key));
+  }
+
+  async #get(key: K): Promise<Response<K, V>> {
+    if (key === null) {
+      return { items: [], next: null, previous: null };
+    }
+    const result = await this.#config.get(key);
+    for (const { id } of result.items) {
+      this.#keys.set(id, key);
+    }
+
+    if (!this.#backward) {
+      let remainder = [];
+      const hasAt = result.items
+        .map((item) => item.id.description)
+        .indexOf(this.#config.at?.description);
+
+      if (hasAt >= ZERO) {
+        remainder = result.items.slice(ZERO, hasAt).reverse();
+        result.items = result.items.slice(hasAt);
+      }
+
+      this.#backward = new Section({
+        config: this.#config,
+        direction: DIRECTION.BACKWARD,
+        edge:
+          result.previous !== null
+            ? { key: result.previous, remainder }
+            : { key: null, remainder },
+        width: this.#width,
+      });
+      this.#backward.attach(this.#element);
+    }
+
+    return result;
   }
 
   async #next(render = true) {
@@ -300,169 +487,6 @@ export default class Spotlight<K, V> extends EventTarget {
         }
         return result;
       }
-    );
-  }
-
-  async #fill() {
-    this.#forward = new Section({
-      at: this.#config.at?.description,
-      config: this.#config,
-      direction: DIRECTION.FORWARD,
-      edge: { key: this.#config.key, remainder: [] },
-      width: this.#width,
-    });
-    this.#forward.attach(this.#element);
-
-    await this.#next(false);
-
-    while (this.#containerHeight < this.#height && !this.#forward.finished) {
-      await this.#next(false);
-    }
-
-    await this.#previous(false);
-
-    this.#render({
-      zooming: false,
-      offset: -this.#pivot,
-      at: this.#config.at,
-    });
-
-    this.#attachScrollReader();
-    this.dispatchEvent(new Load(this.#config.key));
-  }
-
-  async #get(key: K): Promise<Response<K, V>> {
-    if (key === null) {
-      return { items: [], next: null, previous: null };
-    }
-    const result = await this.#config.get(key);
-    for (const { id } of result.items) {
-      this.#keys.set(id, key);
-    }
-
-    if (!this.#backward) {
-      let remainder = [];
-      const hasAt = result.items
-        .map((item) => item.id.description)
-        .indexOf(this.#config.at?.description);
-      if (hasAt >= ZERO) {
-        remainder = result.items.slice(ZERO, hasAt).reverse();
-        result.items = result.items.slice(hasAt);
-      }
-
-      this.#backward = new Section({
-        config: this.#config,
-        direction: DIRECTION.BACKWARD,
-        edge:
-          result.previous !== null
-            ? { key: result.previous, remainder }
-            : { key: null, remainder },
-        width: this.#width,
-      });
-      this.#backward.attach(this.#element);
-    }
-
-    return result;
-  }
-
-  #render({
-    at,
-    dispatchOffset = false,
-    go = true,
-    offset = false,
-    zooming,
-  }: {
-    at?: At;
-    dispatchOffset?: boolean;
-    go?: boolean;
-    offset?: number | false;
-    zooming?: boolean;
-  }) {
-    if (go && offset !== false) {
-      this.#forward.top = this.#pivot + this.#config.offset;
-      this.#backward.top = this.#config.offset;
-    }
-
-    let top = this.#element.scrollTop - (offset === false ? ZERO : offset);
-    if (at) {
-      const row = this.#forward.find(at.description);
-      if (row) {
-        top = this.#backward.height + row.from - at.offset;
-      }
-    }
-
-    const backward = this.#backward.render({
-      config: this.#config,
-      target: top + this.#height + this.#padding,
-      threshold: (n) => {
-        return n > top - this.#padding;
-      },
-      top: top + this.#config.offset,
-      updater: (id) => this.#updater(id),
-      zooming,
-    });
-
-    const forward = this.#forward.render({
-      config: this.#config,
-      target: top - this.#padding - this.#backward.height,
-      threshold: (n) => {
-        return n < top + this.#height + this.#padding - this.#backward.height;
-      },
-      top: top - this.#backward.height + this.#config.offset,
-      updater: (id) => this.#updater(id),
-      zooming,
-    });
-
-    if (dispatchOffset || at) {
-      let item = forward.match?.row.first;
-      let delta = forward.match?.delta;
-
-      if (!item || (backward.match && backward.match.delta < delta)) {
-        item = backward.match?.row.first;
-        delta = backward.match?.delta;
-      }
-
-      this.#keys.has(item) &&
-        this.dispatchEvent(
-          new RowChange(item, this.#keys.get(item), Math.abs(delta))
-        );
-    }
-
-    if (!go && offset !== false) {
-      this.#forward.top = this.#pivot + this.#config.offset;
-      this.#backward.top = this.#config.offset;
-    }
-
-    if (at) {
-      const row = this.#forward.find(at.description);
-      if (row) {
-        this.#element.scrollTo(
-          ZERO,
-          this.#backward.height + row.from - at.offset
-        );
-      } else {
-        const row = this.#backward.find(at.description);
-        if (row) {
-          this.#element.scrollTo(
-            ZERO,
-            this.#backward.height - row.from - row.height
-          );
-        }
-      }
-    } else if (offset !== false && top) {
-      this.#element.scrollTo(ZERO, top);
-    }
-
-    if (!zooming && backward.more) this.#previous();
-    if (!zooming && forward.more) this.#next();
-  }
-
-  #zooming() {
-    return (
-      (this.#width /
-        (this.#height *
-          Math.max(this.#config.rowAspectRatioThreshold(this.#width), ONE))) *
-      ZOOMING_COEFFICIENT
     );
   }
 }

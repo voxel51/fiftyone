@@ -1,4 +1,4 @@
-import * as fos from "@fiftyone/state";
+import type * as fos from "@fiftyone/state";
 import { LRUCache } from "lru-cache";
 import { useMemo } from "react";
 

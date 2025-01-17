@@ -9,3 +9,6 @@ export const create = <K extends keyof HTMLElementTagNameMap>(
 ): HTMLElementTagNameMap[K] => {
   return document.createElement(tagName);
 };
+
+export const sum = (values: number[]) =>
+  values.reduce((sum, next) => sum + next, 0);

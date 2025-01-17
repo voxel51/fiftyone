@@ -108,9 +108,9 @@ export default class Section<K, V> {
       : element.appendChild(this.#section);
   }
 
-  destroy(destroyItems = false) {
+  destroy() {
     this.#section.remove();
-    for (const row of this.#rows) row.destroy(destroyItems);
+    for (const row of this.#rows) row.destroy();
     this.#rows = [];
   }
 
@@ -124,16 +124,16 @@ export default class Section<K, V> {
     return null;
   }
 
-  render({
+  async render({
     config,
-    sizeBytes = 0,
+    reject,
     target,
     threshold,
     top,
     zooming,
   }: {
     config: SpotlightConfig<K, V>;
-    sizeBytes?: number;
+    reject: (sizeyBytes: number) => void;
     target: number;
     threshold: (n: number) => boolean;
     top: number;
@@ -150,9 +150,7 @@ export default class Section<K, V> {
     const match = closest(
       this.#rows,
       this.#direction === DIRECTION.BACKWARD ? this.height - target : target,
-      (row) => {
-        return row.from + row.height;
-      }
+      (row) => row.from + row.height
     );
 
     let pageRow: Row<K, V>;
@@ -164,6 +162,7 @@ export default class Section<K, V> {
         : (row) =>
             this.#height - row.from - top + this.#config.offset - row.height;
 
+    let sum = 0;
     if (match) {
       index = match.index;
       while (this.#rows[index]) {
@@ -182,14 +181,13 @@ export default class Section<K, V> {
           break;
         }
 
-        sizeBytes += row.sizeBytes;
-
-        row.show(
+        sum += await row.show(
           this.#container,
           this.#direction === DIRECTION.FORWARD ? TOP : BOTTOM,
           zooming,
           config
         );
+        reject(sum);
 
         this.#shown.add(row);
         hide.delete(row);
@@ -215,8 +213,9 @@ export default class Section<K, V> {
 
     this.#container.style.height = `${this.height}px`;
     return {
-      more: requestMore && this.ready,
+      loaded: sum,
       match: pageRow ? { row: pageRow, delta } : undefined,
+      more: requestMore && this.ready,
     };
   }
 

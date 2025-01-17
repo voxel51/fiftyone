@@ -233,8 +233,9 @@ export abstract class AbstractLooker<
       this.dispatchEvent("options", { showJSON: next.options.showJSON });
     }
 
-    const wasLoaded = previous.overlaysPrepared && previous.dimensions;
-    const isLoaded = next.overlaysPrepared && next.dimensions;
+    const wasLoaded =
+      previous.overlaysPrepared && previous.dimensions && previous.loaded;
+    const isLoaded = next.overlaysPrepared && next.dimensions && next.loaded;
 
     if (!wasLoaded && isLoaded) {
       this.dispatchEvent("load", undefined);

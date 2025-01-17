@@ -6,7 +6,7 @@ const MIN = 10;
 const SCALE_FACTOR = 0.09;
 
 export default (id: string) => {
-  const threshold = useThreshold();
+  const { threshold } = useThreshold();
 
   return useCallback(() => {
     const width = document.getElementById(id)?.getBoundingClientRect().width;

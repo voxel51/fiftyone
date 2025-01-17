@@ -126,8 +126,7 @@ export default class Row<K, V> {
     return size;
   }
 
-  destroy(destroyItems = false) {
-    this.#destroyItems(destroyItems);
+  destroy() {
     this.#aborter.abort();
   }
 
@@ -145,19 +144,19 @@ export default class Row<K, V> {
       throw new Error("row is not attached");
     }
 
-    if (!this.#config.retainItems) {
-      this.#destroyItems();
+    for (const { item } of this.#row) {
+      this.#config.hideItem(item.id);
     }
 
     this.#container.remove();
   }
 
-  show(
+  async show(
     element: HTMLDivElement,
     attr: typeof BOTTOM | typeof TOP,
     zooming: boolean,
     config: SpotlightConfig<K, V>
-  ): void {
+  ): Promise<number> {
     if (!this.attached) {
       this.#container.style[attr] = `${this.#from}px`;
       this.#container.style[attr === BOTTOM ? TOP : BOTTOM] = UNSET;
@@ -168,10 +167,19 @@ export default class Row<K, V> {
       return;
     }
 
+    let sum = 0;
     for (const { element, item } of this.#row) {
       const width = item.aspectRatio * this.height;
-      config.render(item.id, element, [width, this.height], zooming);
+
+      sum += await config.showItem(
+        item.id,
+        element,
+        [width, this.height],
+        zooming
+      );
     }
+
+    return sum;
   }
 
   switch(attr) {
@@ -228,25 +236,5 @@ export default class Row<K, V> {
   get #singleAspectRatio() {
     const set = new Set(this.#row.map(({ item }) => item.aspectRatio));
     return set.size === ONE ? this.#row[ZERO].item.aspectRatio : null;
-  }
-
-  #destroyItems(destroyItems = false) {
-    const destroy = destroyItems ? this.#config.destroy : this.#config.detach;
-    if (!destroy) {
-      return;
-    }
-
-    const errors = [];
-    for (const item of this.#row) {
-      try {
-        destroy(item.item.id);
-      } catch (e) {
-        errors.push(e);
-      }
-    }
-
-    if (errors.length > 0) {
-      console.error("Errors occurred during row destruction:", errors);
-    }
   }
 }

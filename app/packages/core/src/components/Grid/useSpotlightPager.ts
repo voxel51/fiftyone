@@ -18,6 +18,8 @@ import type { Records } from "./useRecords";
 
 export const PAGE_SIZE = 20;
 
+export type SampleStore = WeakMap<ID, { sample: fos.Sample; index: number }>;
+
 const processSamplePageData = (
   page: number,
   store: WeakMap<ID, object>,
@@ -63,10 +65,7 @@ const useSpotlightPager = ({
   const pager = useRecoilValue(pageSelector);
   const zoom = useRecoilValue(zoomSelector);
   const handleError = useErrorHandler();
-  const store = useMemo(
-    () => new WeakMap<ID, { sample: fos.Sample; index: number }>(),
-    []
-  );
+  const store: SampleStore = useMemo(() => new WeakMap(), []);
 
   const keys = useRef(new Set<string>());
 
