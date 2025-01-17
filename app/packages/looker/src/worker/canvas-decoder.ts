@@ -1,5 +1,7 @@
-import { HEATMAP } from "@fiftyone/utilities";
+import { HEATMAP, SEGMENTATION } from "@fiftyone/utilities";
+import { Coloring } from "..";
 import { OverlayMask } from "../numpy";
+import { isRgbMaskTargets } from "../overlays/util";
 
 const canvasAndCtx = (() => {
   if (typeof OffscreenCanvas !== "undefined") {
@@ -67,7 +69,12 @@ export const recastBufferToMonoChannel = (
   return uint8Array.slice(0, totalPixels).buffer;
 };
 
-export const decodeWithCanvas = async (blob: Blob, cls: string) => {
+export const decodeWithCanvas = async (
+  blob: Blob,
+  cls: string,
+  field: string,
+  coloring: Coloring
+) => {
   let channels: number = 4;
 
   if (blob.type === "image/png") {
@@ -119,6 +126,31 @@ export const decodeWithCanvas = async (blob: Blob, cls: string) => {
       channels
     );
     channels = 1;
+  }
+
+  // if it's segmentation, we need to recast according to whether or not this field is mapped to RGB targets
+  if (cls === SEGMENTATION) {
+    let maskTargets = coloring.maskTargets[field];
+    if (!maskTargets) {
+      maskTargets = coloring.defaultMaskTargets;
+    }
+    const isRgbMaskTargets_ = isRgbMaskTargets(maskTargets);
+
+    if (!isRgbMaskTargets_ && channels > 1) {
+      // recast to mono channel because we don't need the other channels
+      targetsBuffer = recastBufferToMonoChannel(
+        imageData.data,
+        width,
+        height,
+        channels
+      );
+      channels = 1;
+    }
+
+    // note: for JPG segmentations with RGB mask targets, we don't need to recast
+    // although depending on the JPG compression, we might have some artifacts.
+    // even the slightest change in color can cause the mask to be rendered as
+    // background color (transparent) instead of the actual mask color
   }
 
   return {
