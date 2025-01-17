@@ -6,6 +6,23 @@ import type useLookerCache from "./useLookerCache";
 import useSelectSample from "./useSelectSample";
 import type { SampleStore } from "./useSpotlightPager";
 
+
+const resolveSize = (looker: fos.Lookers) => {
+  if (looker.loaded) {
+    return looker.getSizeBytesEstimate();
+  }
+
+  return new Promise<void>((resolve) => {
+    const load = () => {
+      looker.removeEventListener("load", load)
+      resolve();
+    }
+
+    looker.addEventListener("load", load)
+  })
+
+}
+
 export default function ({
   cache,
   id,
@@ -25,12 +42,12 @@ export default function ({
   const visible = useMemo(() => new Map<string, fos.Lookers>(), [])
 
   const hideItem = useCallback((id: ID) => {
-    const looker = visible.get(id.description);
-    if (!looker) {
-      throw new Error("Error")
+    const instance = visible.get(id.description);
+    if (!instance) {
+      return;
     }
     visible.delete(id.description)
-    cache.set(id.description, looker)
+    cache.set(id.description, {dispose: true, instance});
   }, [cache, visible]);
 
   const showItem = useCallback(
@@ -39,11 +56,18 @@ export default function ({
       element: HTMLDivElement,
       dimensions: [number, number],
       zooming: boolean
-    ): Promise<number> => {
-      const cached = cache.get(id.description);
-      if (cached) {
-        cached?.attach(element, dimensions, getFontSize());
-        return Promise.resolve(cached.getSizeBytesEstimate());
+    ): number | Promise<void> => {
+      const shown = visible.get(id.description)
+      if (shown) {
+        return resolveSize(shown)
+      }
+
+      const entry = cache.get(id.description);
+ 
+      if (entry) {
+        entry.instance.attach(element, dimensions, getFontSize());
+        cache.delete(id.description);
+        return resolveSize(entry.instance);
       }
 
       const result = store.get(id);
@@ -54,10 +78,10 @@ export default function ({
 
       if (zooming) {
         // we are scrolling fast, skip creation
-        return Promise.resolve(0);
+        return 0;
       }
 
-      const looker = createLooker.current?.(
+      const looker: fos.Lookers = createLooker.current?.(
         { ...result, symbol: id },
         {
           fontSize: getFontSize(),
@@ -66,16 +90,10 @@ export default function ({
       looker.addEventListener("selectthumbnail", ({ detail }) =>
         selectSample.current?.(detail)
       );
-      cache.set(id.description, looker);
+      visible.set(id.description, looker)
       looker.attach(element, dimensions);
 
-      return new Promise((resolve) => {
-        const listener = () => {
-          resolve(looker.getSizeBytesEstimate());
-          looker.removeEventListener("load", listener);
-        };
-        looker.addEventListener("load", listener);
-      });
+      return resolveSize(looker)
     },
     [cache, createLooker, getFontSize, selectSample, store, visible]
   );

@@ -7,7 +7,14 @@ import "@af-utils/scrollend-polyfill";
 import styles from "./styles.module.css";
 
 import type { EventCallback } from "./events";
-import type { At, ID, Response, SpotlightConfig, Updater } from "./types";
+import type {
+  At,
+  ID,
+  Measure,
+  Response,
+  SpotlightConfig,
+  Updater,
+} from "./types";
 
 import {
   DEFAULT_OFFSET,
@@ -21,9 +28,15 @@ import {
   ZOOMING_COEFFICIENT,
 } from "./constants";
 import createScrollReader from "./createScrollReader";
-import { Load, Rejected, RowChange } from "./events";
+import type { RowChange } from "./events";
+import { Load, Rejected } from "./events";
 import Section from "./section";
-import { create } from "./utilities";
+import {
+  create,
+  findTop,
+  handleRowChange,
+  scrollToPosition,
+} from "./utilities";
 
 export { Load, Rejected, RowChange } from "./events";
 export * from "./types";
@@ -160,6 +173,12 @@ export default class Spotlight<K, V> extends EventTarget {
     return 10;
   }
 
+  get #sections() {
+    const forward = this.#forward;
+    const backward = this.#backward;
+    return { backward, forward };
+  }
+
   get #width() {
     return this.#rect.width - SCROLLBAR_WIDTH * TWO;
   }
@@ -172,19 +191,19 @@ export default class Spotlight<K, V> extends EventTarget {
     );
   }
 
-  async #render({
+  #render({
     at,
     dispatchOffset = false,
     go = true,
+    measure = () => undefined,
     offset = false,
-    reject,
     zooming,
   }: {
     at?: At;
     dispatchOffset?: boolean;
     go?: boolean;
     offset?: number | false;
-    reject?: (sizeBytes: number) => void;
+    measure?: Measure;
     zooming?: boolean;
   }) {
     if (go && offset !== false) {
@@ -192,54 +211,47 @@ export default class Spotlight<K, V> extends EventTarget {
       this.#backward.top = this.#config.offset;
     }
 
-    let top = this.#element.scrollTop - (offset === false ? ZERO : offset);
-    if (at) {
-      const row = this.#forward.find(at.description);
-      if (row) {
-        top = this.#backward.height + row.from - at.offset;
-      }
-    }
+    const top = findTop({
+      at,
+      offset,
+      scrollTop: this.#element.scrollTop,
+      ...this.#sections,
+    });
 
-    const backward = await this.#backward.render({
+    const params = {
       config: this.#config,
-      reject,
+      measure,
+      updater: (id) => this.#updater(id),
+      zooming,
+    };
+
+    const backwardResult = this.#backward.render({
       target: top + this.#height + this.#padding,
-      threshold: (n) => {
-        return n > top - this.#padding;
-      },
+      threshold: (n) => n > top - this.#padding,
       top: top + this.#config.offset,
-      updater: (id) => this.#updater(id),
-      zooming,
+      ...params,
     });
 
-    const forwardReject = reject
-      ? (sizeBytes: number) => reject(backward.loaded + sizeBytes)
-      : undefined;
-    const forward = await this.#forward.render({
-      config: this.#config,
-      reject: forwardReject,
+    const forwardResult = this.#forward.render({
       target: top - this.#padding - this.#backward.height,
-      threshold: (n) => {
-        return n < top + this.#height + this.#padding - this.#backward.height;
-      },
+      threshold: (n) =>
+        n < top + this.#height + this.#padding - this.#backward.height,
       top: top - this.#backward.height + this.#config.offset,
-      updater: (id) => this.#updater(id),
-      zooming,
+      ...params,
     });
 
-    if (dispatchOffset || at) {
-      let item = forward.match?.row.first;
-      let delta = forward.match?.delta;
+    const rowChange = handleRowChange({
+      at,
+      dispatchOffset,
+      keys: this.#keys,
+      matches: {
+        backward: backwardResult?.match,
+        forward: forwardResult?.match,
+      },
+    });
 
-      if (!item || (backward.match && backward.match.delta < delta)) {
-        item = backward.match?.row.first;
-        delta = backward.match?.delta;
-      }
-
-      this.#keys.has(item) &&
-        this.dispatchEvent(
-          new RowChange(item, this.#keys.get(item), Math.abs(delta))
-        );
+    if (rowChange) {
+      this.dispatchEvent(rowChange);
     }
 
     if (!go && offset !== false) {
@@ -247,28 +259,10 @@ export default class Spotlight<K, V> extends EventTarget {
       this.#backward.top = this.#config.offset;
     }
 
-    if (at) {
-      const row = this.#forward.find(at.description);
-      if (row) {
-        this.#element.scrollTo(
-          ZERO,
-          this.#backward.height + row.from - at.offset
-        );
-      } else {
-        const row = this.#backward.find(at.description);
-        if (row) {
-          this.#element.scrollTo(
-            ZERO,
-            this.#backward.height - row.from - row.height
-          );
-        }
-      }
-    } else if (offset !== false && top) {
-      this.#element.scrollTo(ZERO, top);
-    }
+    scrollToPosition({ at, el: this.#element, offset, top, ...this.#sections });
 
-    if (!zooming && backward.more) this.#previous();
-    if (!zooming && forward.more) this.#next();
+    if (!zooming && backwardResult.more) this.#previous();
+    if (!zooming && forwardResult.more) this.#next();
   }
 
   #zooming() {
@@ -299,19 +293,41 @@ export default class Spotlight<K, V> extends EventTarget {
     await this.#previous(false);
 
     this.#attachScrollReader();
-    await this.#render({
-      at: this.#config.at,
-      offset: -this.#pivot,
-      reject: (bytes) => {
-        if (bytes > this.#config.maxItemsSizeBytes) {
+
+    let bytes = 0;
+    let loading = true;
+    while (loading) {
+      try {
+        this.#render({
+          at: this.#config.at,
+          offset: -this.#pivot,
+          measure: (next: Promise<void> | number) => {
+            if (next instanceof Promise) {
+              throw next;
+            }
+            console.log(next);
+
+            bytes += next;
+
+            if (bytes > this.#config.maxItemsSizeBytes) {
+              throw bytes;
+            }
+          },
+          zooming: false,
+        });
+        loading = false;
+      } catch (promiseOrBytes) {
+        if (promiseOrBytes instanceof Promise) {
+          await promiseOrBytes;
+        } else if (typeof promiseOrBytes === "number") {
           this.dispatchEvent(
             new Rejected(this.#recommendedRowAspectRatioThreshold)
           );
-          throw bytes;
+        } else {
+          console.error(promiseOrBytes);
         }
-      },
-      zooming: false,
-    });
+      }
+    }
 
     this.dispatchEvent(new Load(this.#config.key));
   }

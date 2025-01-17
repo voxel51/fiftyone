@@ -4,14 +4,13 @@
 import styles from "./styles.module.css";
 
 import type Iter from "./iter";
-import type { Focus, ID, ItemData, SpotlightConfig } from "./types";
+import type { Focus, ID, ItemData, Measure, SpotlightConfig } from "./types";
 
 import { BOTTOM, DIV, ONE, TOP, UNSET, ZERO } from "./constants";
 import { create, pixels } from "./utilities";
 
 export default class Row<K, V> {
   #from: number;
-  #hidden: boolean;
 
   readonly #aborter: AbortController = new AbortController();
   readonly #config: SpotlightConfig<K, V>;
@@ -140,10 +139,6 @@ export default class Row<K, V> {
   }
 
   hide(): void {
-    if (!this.attached) {
-      throw new Error("row is not attached");
-    }
-
     for (const { item } of this.#row) {
       this.#config.hideItem(item.id);
     }
@@ -151,35 +146,29 @@ export default class Row<K, V> {
     this.#container.remove();
   }
 
-  async show(
-    element: HTMLDivElement,
-    attr: typeof BOTTOM | typeof TOP,
-    zooming: boolean,
-    config: SpotlightConfig<K, V>
-  ): Promise<number> {
+  show({
+    attr,
+    element,
+    measure,
+    zooming,
+  }: {
+    attr: typeof BOTTOM | typeof TOP;
+    element: HTMLDivElement;
+    measure: Measure;
+    zooming: boolean;
+  }) {
     if (!this.attached) {
       this.#container.style[attr] = `${this.#from}px`;
       this.#container.style[attr === BOTTOM ? TOP : BOTTOM] = UNSET;
       element.appendChild(this.#container);
     }
 
-    if (this.#hidden) {
-      return;
-    }
-
-    let sum = 0;
     for (const { element, item } of this.#row) {
       const width = item.aspectRatio * this.height;
-
-      sum += await config.showItem(
-        item.id,
-        element,
-        [width, this.height],
-        zooming
+      measure(
+        this.#config.showItem(item.id, element, [width, this.height], zooming)
       );
     }
-
-    return sum;
   }
 
   switch(attr) {

@@ -10,6 +10,11 @@ interface Lookers extends EventTarget {
   getSizeBytesEstimate: () => number;
 }
 
+interface Entry<T extends Lookers | fos.Lookers = fos.Lookers> {
+  instance: T;
+  dispose: boolean;
+}
+
 export default function useLookerCache<
   T extends Lookers | fos.Lookers = fos.Lookers
 >(reset: string) {
@@ -18,18 +23,20 @@ export default function useLookerCache<
     reset;
     /** CLEAR CACHE WHEN reset CHANGES */
 
-    const loaded = new LRUCache<string, T>({
-      dispose: (looker) => looker.destroy(),
+    const loaded = new LRUCache<string, Entry<T>>({
+      dispose: (looker) => {
+        looker.dispose && looker.instance.destroy();
+      },
       max: MAX_LRU_CACHE_ITEMS,
       maxSize: MAX_LRU_CACHE_SIZE,
       noDisposeOnSet: true,
-      sizeCalculation: (looker) => looker.getSizeBytesEstimate(),
+      sizeCalculation: (looker) => looker.instance.getSizeBytesEstimate(),
       updateAgeOnGet: true,
     });
 
     // an intermediate mapping until the "load" event
     // "load" must occur before requesting the size bytes estimate
-    const loading = new Map<string, T>();
+    const loading = new Map<string, Entry<T>>();
 
     return {
       delete: (key: string) => {
@@ -47,15 +54,15 @@ export default function useLookerCache<
       },
       loadingSize: () => loading.size,
       loadedSize: () => loaded.size,
-      set: (key: string, looker: T) => {
+      set: (key: string, entry: Entry<T>) => {
         const onReady = () => {
-          loaded.set(key, looker);
+          loaded.set(key, entry);
           loading.delete(key);
-          looker.removeEventListener("load", onReady);
+          entry.instance.removeEventListener("load", onReady);
         };
 
-        looker.addEventListener("load", onReady);
-        loading.set(key, looker);
+        entry.instance.addEventListener("load", onReady);
+        loading.set(key, entry);
       },
       sizeEstimate: () => loaded.calculatedSize,
     };

@@ -8,6 +8,7 @@ import type {
   Edge,
   ID,
   ItemData,
+  Measure,
   Request,
   SpotlightConfig,
   Updater,
@@ -124,16 +125,14 @@ export default class Section<K, V> {
     return null;
   }
 
-  async render({
-    config,
-    reject,
+  render({
+    measure,
     target,
     threshold,
     top,
     zooming,
   }: {
-    config: SpotlightConfig<K, V>;
-    reject: (sizeyBytes: number) => void;
+    measure: Measure;
     target: number;
     threshold: (n: number) => boolean;
     top: number;
@@ -162,7 +161,6 @@ export default class Section<K, V> {
         : (row) =>
             this.#height - row.from - top + this.#config.offset - row.height;
 
-    let sum = 0;
     if (match) {
       index = match.index;
       while (this.#rows[index]) {
@@ -181,13 +179,12 @@ export default class Section<K, V> {
           break;
         }
 
-        sum += await row.show(
-          this.#container,
-          this.#direction === DIRECTION.FORWARD ? TOP : BOTTOM,
+        row.show({
+          attr: this.#direction === DIRECTION.FORWARD ? TOP : BOTTOM,
+          element: this.#container,
+          measure,
           zooming,
-          config
-        );
-        reject(sum);
+        });
 
         this.#shown.add(row);
         hide.delete(row);
@@ -201,6 +198,8 @@ export default class Section<K, V> {
       }
     }
 
+    for (const row of hide) row.hide();
+
     if (
       index >= this.#rows.length - ONE &&
       this.#end &&
@@ -209,11 +208,8 @@ export default class Section<K, V> {
       requestMore = true;
     }
 
-    for (const row of hide) row.hide();
-
     this.#container.style.height = `${this.height}px`;
     return {
-      loaded: sum,
       match: pageRow ? { row: pageRow, delta } : undefined,
       more: requestMore && this.ready,
     };

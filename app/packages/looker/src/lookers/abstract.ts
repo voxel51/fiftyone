@@ -159,6 +159,11 @@ export abstract class AbstractLooker<
     this.init();
   }
 
+  get loaded() {
+    const state = this.state;
+    return state.overlaysPrepared && state.dimensions && state.loaded;
+  }
+
   protected init() {}
 
   public subscribeToState(
