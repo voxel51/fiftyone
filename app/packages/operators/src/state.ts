@@ -579,11 +579,6 @@ export const useOperatorPrompt = () => {
     },
     [operator, promptingOperator, cachedResolvedInput]
   );
-  const onCancel = promptingOperator.options?.onCancel;
-  const cancel = () => {
-    if (onCancel) onCancel();
-    close();
-  };
   const close = () => {
     setPromptingOperator(null);
     setInputFields(null);
@@ -661,7 +656,7 @@ export const useOperatorPrompt = () => {
     isExecuting,
     hasResultOrError,
     close,
-    cancel,
+    cancel: close,
     validationErrors,
     validate,
     validateThrottled,
