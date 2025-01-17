@@ -13,6 +13,7 @@ export const config = {
     bodyParser: {
       sizeLimit: "64mb",
     },
+    responseLimit: false
   },
 };
 
