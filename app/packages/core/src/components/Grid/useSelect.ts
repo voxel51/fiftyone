@@ -31,7 +31,7 @@ export default function useSelect(
         });
       });
 
-      for (const id of store.keys()) {
+      for (const id of store.hidden()) {
         if (retained.has(id)) continue;
         store.delete(id);
       }

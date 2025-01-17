@@ -126,6 +126,7 @@ export default class Row<K, V> {
   }
 
   destroy() {
+    this.hide();
     this.#aborter.abort();
   }
 

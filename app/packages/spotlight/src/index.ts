@@ -305,7 +305,6 @@ export default class Spotlight<K, V> extends EventTarget {
             if (next instanceof Promise) {
               throw next;
             }
-            console.log(next);
 
             bytes += next;
 
@@ -325,6 +324,7 @@ export default class Spotlight<K, V> extends EventTarget {
           );
         } else {
           console.error(promiseOrBytes);
+          break;
         }
       }
     }
