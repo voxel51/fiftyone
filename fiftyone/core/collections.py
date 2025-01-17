@@ -924,9 +924,12 @@ class SampleCollection(object):
             field = "_id"
         pipeline.insert(0, {"$sort": {field: direction}})
 
-        return self._aggregate(
+        cursor = self._aggregate(
             [{"$sort": {"_id": 1}}, {"$limit": limit if limit else 1}],
         )
+        if not cursor.alive:
+            raise ValueError("%s is empty" % self.__class__.__name__)
+        return cursor
 
     def first(self):
         """Returns the first sample in the collection.
@@ -935,11 +938,7 @@ class SampleCollection(object):
             a :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView`
         """
-        try:
-            return next(self._get_first())
-
-        except StopIteration:
-            raise ValueError("%s is empty" % self.__class__.__name__)
+        return next(self._get_first())
 
     def last(self):
         """Returns the last sample in the collection.
@@ -948,7 +947,8 @@ class SampleCollection(object):
             a :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView`
         """
-        return self._get_first(reverse=True)
+
+        return next(self._get_first(reverse=True))
 
     def head(self, num_samples=3):
         """Returns a list of the first few samples in the collection.
