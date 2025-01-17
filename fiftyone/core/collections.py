@@ -7726,6 +7726,20 @@ class SampleCollection(object):
         Returns:
             the count
         """
+
+        # Optimization: use estimated document count when possible
+        if (
+            isinstance(self, fod.Dataset)
+            and expr is None
+            and (
+                field_or_expr is None
+                or (field_or_expr == "frames" and self._has_frame_fields())
+            )
+        ):
+            frames = field_or_expr == "frames"
+            # pylint: disable=no-member
+            return self._estimated_count(frames=frames)
+
         make = lambda field_or_expr: foa.Count(
             field_or_expr, expr=expr, safe=safe
         )
