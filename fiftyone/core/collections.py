@@ -917,16 +917,15 @@ class SampleCollection(object):
         return {str(r["_id"]): r["size_bytes"] for r in results}
 
     def _get_first(self, limit=None, field=None, reverse=False):
-        pipeline = [{"$limit": 1}]
+        pipeline = [{"$limit": limit if limit else 1}]
         direction = -1 if reverse else 1
         if field is None:
             # Sort by _id if no field is specified to ensure first is deterministic
             field = "_id"
         pipeline.insert(0, {"$sort": {field: direction}})
 
-        cursor = self._aggregate(
-            [{"$sort": {"_id": 1}}, {"$limit": limit if limit else 1}],
-        )
+        cursor = self._aggregate(pipeline=pipeline)
+
         if not cursor.alive:
             raise ValueError("%s is empty" % self.__class__.__name__)
         return cursor
