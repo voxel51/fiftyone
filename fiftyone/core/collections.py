@@ -916,6 +916,16 @@ class SampleCollection(object):
         results = self._aggregate(pipeline=pipeline, attach_frames=True)
         return {str(r["_id"]): r["size_bytes"] for r in results}
 
+    def _get_first(self, field=None, reverse=False):
+        pipeline = [{"$limit": 1}]
+        direction = -1 if reverse else 1
+        if field is None:
+            # Sort by _id if no field is specified to ensure first is deterministic
+            field = "_id"
+        pipeline.insert(0, {"$sort": {field: direction}})
+
+        return self._aggregate([{"$sort": {"_id": 1}}, {"$limit": 1}])
+
     def first(self):
         """Returns the first sample in the collection.
 
@@ -924,7 +934,8 @@ class SampleCollection(object):
             :class:`fiftyone.core.sample.SampleView`
         """
         try:
-            return next(iter(self))
+            return next(self._get_first())
+
         except StopIteration:
             raise ValueError("%s is empty" % self.__class__.__name__)
 
@@ -935,7 +946,7 @@ class SampleCollection(object):
             a :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView`
         """
-        return self[-1:].first()
+        return self._get_first(reverse=True)
 
     def head(self, num_samples=3):
         """Returns a list of the first few samples in the collection.

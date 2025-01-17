@@ -1216,7 +1216,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`fiftyone.core.sample.Sample`
         """
-        return super().first()
+        doc = super().first()
+        return fos.Sample.from_dict(doc)
 
     def last(self):
         """Returns the last sample in the dataset.
@@ -1224,12 +1225,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`fiftyone.core.sample.Sample`
         """
-        try:
-            sample_view = self[-1:].first()
-        except ValueError:
-            raise ValueError("%s is empty" % self.__class__.__name__)
-
-        return fos.Sample.from_doc(sample_view._doc, dataset=self)
+        doc = super().first()
+        return fos.Sample.from_dict(doc)
 
     def head(self, num_samples=3):
         """Returns a list of the first few samples in the dataset.
