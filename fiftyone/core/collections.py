@@ -916,7 +916,7 @@ class SampleCollection(object):
         results = self._aggregate(pipeline=pipeline, attach_frames=True)
         return {str(r["_id"]): r["size_bytes"] for r in results}
 
-    def _get_first(self, field=None, reverse=False):
+    def _get_first(self, limit=None, field=None, reverse=False):
         pipeline = [{"$limit": 1}]
         direction = -1 if reverse else 1
         if field is None:
@@ -924,7 +924,9 @@ class SampleCollection(object):
             field = "_id"
         pipeline.insert(0, {"$sort": {field: direction}})
 
-        return self._aggregate([{"$sort": {"_id": 1}}, {"$limit": 1}])
+        return self._aggregate(
+            [{"$sort": {"_id": 1}}, {"$limit": limit if limit else 1}],
+        )
 
     def first(self):
         """Returns the first sample in the collection.
@@ -960,7 +962,7 @@ class SampleCollection(object):
         Returns:
             a list of :class:`fiftyone.core.sample.Sample` objects
         """
-        return [s for s in self[:num_samples]]
+        return [s for s in self._get_first(limit=num_samples)]
 
     def tail(self, num_samples=3):
         """Returns a list of the last few samples in the collection.
@@ -974,7 +976,7 @@ class SampleCollection(object):
         Returns:
             a list of :class:`fiftyone.core.sample.Sample` objects
         """
-        return [s for s in self[-num_samples:]]
+        return [s for s in self._get_first(limit=num_samples, reverse=True)]
 
     def one(self, expr, exact=False):
         """Returns a single sample in this collection matching the expression.

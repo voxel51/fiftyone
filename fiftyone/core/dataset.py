@@ -1225,7 +1225,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`fiftyone.core.sample.Sample`
         """
-        doc = super().first()
+        doc = super().last()
         return fos.Sample.from_dict(doc)
 
     def head(self, num_samples=3):
@@ -1240,10 +1240,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of :class:`fiftyone.core.sample.Sample` objects
         """
-        return [
-            fos.Sample.from_doc(sv._doc, dataset=self)
-            for sv in self[:num_samples]
-        ]
+        return [fos.Sample.from_dict(doc) for doc in super().head(num_samples)]
 
     def tail(self, num_samples=3):
         """Returns a list of the last few samples in the dataset.
@@ -1257,10 +1254,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of :class:`fiftyone.core.sample.Sample` objects
         """
-        return [
-            fos.Sample.from_doc(sv._doc, dataset=self)
-            for sv in self[-num_samples:]
-        ]
+        return [fos.Sample.from_dict(doc) for doc in super().tail(num_samples)]
 
     def one(self, expr, exact=False):
         """Returns a single sample in this dataset matching the expression.
