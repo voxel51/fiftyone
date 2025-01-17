@@ -422,10 +422,6 @@ export const useOperatorExecutionOptions = ({
   onExecute: (opts: OperatorExecutorOptions) => void;
 }): {
   executionOptions: OperatorExecutionOption[];
-  hasOptions: boolean;
-  warningMessage: React.ReactNode;
-  showWarning: boolean;
-  isLoading: boolean;
 } => {
   const ctx = useExecutionContext(operatorUri);
   const { isRemote } = getLocalOrRemoteOperator(operatorUri);
@@ -438,10 +434,6 @@ export const useOperatorExecutionOptions = ({
 
   return {
     executionOptions: submitOptions.options,
-    hasOptions: submitOptions.hasOptions,
-    warningMessage: submitOptions.warningMessage,
-    showWarning: submitOptions.showWarning,
-    isLoading: execDetails.isLoading,
   };
 };
 
