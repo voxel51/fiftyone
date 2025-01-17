@@ -6,7 +6,7 @@ export default function TooltipProvider(props: TooltipProps) {
   if (!title) return children;
   return (
     <Tooltip title={title} {...tooltipProps}>
-      <Box component="span">{children}</Box>
+      <Box>{children}</Box>
     </Tooltip>
   );
 }
