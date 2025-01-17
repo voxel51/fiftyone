@@ -9,7 +9,6 @@ export type ExecutionErrorCallback = (
   error: OperatorResult,
   options: ExecutionCallbackOptions
 ) => void;
-export type ExecutionCancelCallback = () => void;
 
 export type OperatorExecutorOptions = {
   delegationTarget?: string;

@@ -1037,7 +1037,6 @@ class PromptUserForOperation extends Operator {
     inputs.obj("params", { label: "Params" });
     inputs.str("on_success", { label: "On success" });
     inputs.str("on_error", { label: "On error" });
-    inputs.str("on_cancel", { label: "On cancel" });
     inputs.bool("skip_prompt", { label: "Skip prompt", default: false });
     return new types.Property(inputs);
   }
@@ -1046,8 +1045,7 @@ class PromptUserForOperation extends Operator {
     return { triggerEvent };
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    const { params, operator_uri, on_success, on_error, on_cancel } =
-      ctx.params;
+    const { params, operator_uri, on_success, on_error } = ctx.params;
     const { triggerEvent } = ctx.hooks;
     const panelId = ctx.getCurrentPanelId();
     const shouldPrompt = !ctx.params.skip_prompt;
@@ -1056,14 +1054,6 @@ class PromptUserForOperation extends Operator {
       operator: operator_uri,
       params,
       prompt: shouldPrompt,
-      onCancel: () => {
-        if (on_cancel) {
-          triggerEvent(panelId, {
-            operator: on_cancel,
-            params: { operator_uri },
-          });
-        }
-      },
       callback: (result: OperatorResult, opts: { ctx: ExecutionContext }) => {
         const ctx = opts.ctx;
         if (result.error) {
