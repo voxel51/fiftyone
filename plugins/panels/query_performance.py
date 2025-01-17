@@ -443,8 +443,6 @@ class CreateIndexOrSummaryFieldOperator(foo.Operator):
                 read_only=read_only,
                 create_index=create_index,
             )
-            # Might want to make this optional in the future in case loading is slow and disruptive
-            ctx.trigger("reload_dataset")
 
 
 def _get_dynamic(params, key, ref_path, default=None):
@@ -765,6 +763,10 @@ class QueryPerformancePanel(Panel):
         self._table_data = {}
         self._tooltip_data = {}
         self._build_view(ctx)
+        # Might want to make this optional or figure out how to update the sidebar independently
+        # because reloading can be slow and disruptive,
+        # but currently called to remove the lightning bolt from the sidebar
+        ctx.trigger("reload_dataset")
 
     def create_index_or_summary_field(self, ctx):
         ctx.prompt(
