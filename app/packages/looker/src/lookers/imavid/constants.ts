@@ -1,4 +1,3 @@
-export const DEFAULT_FRAME_RATE = 30;
 export const DEFAULT_PLAYBACK_RATE = 1.5;
 export const BUFFERING_PAUSE_TIMEOUT = 250;
 export const BUFFERS_REFRESH_TIMEOUT_YIELD = 500;

@@ -6,6 +6,7 @@ export default graphql`
       ...colorSchemeFragment
     }
     disableFrameFiltering
+    dynamicGroupsTargetFrameRate
     gridMediaField
     mediaFields
     modalMediaField

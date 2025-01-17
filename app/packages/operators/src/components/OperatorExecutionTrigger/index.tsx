@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Box } from "@mui/material";
 import { OperatorExecutionMenu } from "../OperatorExecutionMenu";
 import {
@@ -6,7 +6,11 @@ import {
   ExecutionErrorCallback,
   OperatorExecutorOptions,
 } from "../../types-internal";
-import { OperatorExecutionOption } from "../../state";
+import {
+  OperatorExecutionOption,
+  useOperatorExecutionOptions,
+  useOperatorExecutor,
+} from "../../state";
 
 /**
  * Component which acts as a trigger for opening an `OperatorExecutionMenu`.
@@ -34,8 +38,12 @@ import { OperatorExecutionOption } from "../../state";
  * @param disabled If true, context menu will never open
  */
 export const OperatorExecutionTrigger = ({
+  operatorUri,
   onClick,
-  executionOptions,
+  onSuccess,
+  onError,
+  executionParams,
+  executorOptions,
   onOptionSelected,
   disabled,
   children,
@@ -46,16 +54,39 @@ export const OperatorExecutionTrigger = ({
   onClick?: () => void;
   onSuccess?: ExecutionCallback;
   onError?: ExecutionErrorCallback;
-  prompt?: boolean;
   executionParams?: object;
   executorOptions?: OperatorExecutorOptions;
-  executionOptions?: OperatorExecutionOption[];
   onOptionSelected?: (option: OperatorExecutionOption) => void;
   disabled?: boolean;
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   // Anchor to use for context menu
   const containerRef = useRef(null);
+
+  // Pass onSuccess and onError through to the operator executor.
+  // These will be invoked on operator completion.
+  const operatorHandlers = useMemo(() => {
+    return { onSuccess, onError };
+  }, [onSuccess, onError]);
+  const operator = useOperatorExecutor(operatorUri, operatorHandlers);
+
+  // This callback will be invoked when an execution target option is clicked
+  const onExecute = useCallback(
+    (options?: OperatorExecutorOptions) => {
+      const resolvedOptions = {
+        ...executorOptions,
+        ...options,
+      };
+
+      return operator.execute(executionParams ?? {}, resolvedOptions);
+    },
+    [executorOptions, operator, executionParams]
+  );
+
+  const { executionOptions } = useOperatorExecutionOptions({
+    operatorUri,
+    onExecute,
+  });
 
   // Click handler controls the state of the context menu.
   const clickHandler = useCallback(() => {

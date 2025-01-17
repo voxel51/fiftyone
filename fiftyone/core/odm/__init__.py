@@ -65,6 +65,7 @@ from .document import (
 from .embedded_document import (
     BaseEmbeddedDocument,
     DynamicEmbeddedDocument,
+    DynamicEmbeddedDocumentException,
     EmbeddedDocument,
 )
 from .frame import (
