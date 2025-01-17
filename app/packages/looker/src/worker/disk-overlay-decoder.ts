@@ -115,7 +115,12 @@ export const decodeOverlayOnDisk = async (
   let overlayMask: OverlayMask;
 
   try {
-    overlayMask = await decodeMaskOnDisk(overlayImageBlob, cls);
+    overlayMask = await decodeMaskOnDisk(
+      overlayImageBlob,
+      cls,
+      field,
+      coloring
+    );
 
     if (!overlayMask) {
       console.error("Overlay mask decoding failed");
