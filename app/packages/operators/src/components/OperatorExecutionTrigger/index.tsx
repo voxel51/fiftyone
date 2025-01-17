@@ -46,6 +46,7 @@ export const OperatorExecutionTrigger = ({
   onClick?: () => void;
   onSuccess?: ExecutionCallback;
   onError?: ExecutionErrorCallback;
+  onCancel?: () => void;
   prompt?: boolean;
   executionParams?: object;
   executorOptions?: OperatorExecutorOptions;
