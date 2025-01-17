@@ -147,20 +147,7 @@ class EvaluationPanel(Panel):
 
     def get_custom_metrics(self, results):
         try:
-            metrics = results.custom_metrics
-            metrics_config = results.custom_metrics_config
-            custom_metrics = {}
-            for config in metrics_config:
-                name = config["name"]
-                label = config["label"]
-                value = metrics[label]
-                lower_is_better = config["lower_is_better"]
-                custom_metrics[name] = {
-                    "label": label,
-                    "value": value,
-                    "lower_is_better": lower_is_better,
-                }
-            return custom_metrics
+            return results.custom_metrics
         except Exception:
             return None
 
@@ -380,7 +367,6 @@ class EvaluationPanel(Panel):
             )
             metrics["mAP"] = self.get_map(results)
             metrics["mAR"] = self.get_mar(results)
-            metrics["custom_metrics"] = self.get_custom_metrics(results)
             evaluation_data = {
                 "metrics": metrics,
                 "custom_metrics": self.get_custom_metrics(results),

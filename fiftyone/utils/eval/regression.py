@@ -426,8 +426,6 @@ class RegressionResults(BaseEvaluationResults):
         self.ids = ids
         self.missing = missing
         self.custom_metrics = custom_metrics
-        # Stores configs for custom metrics with a return value (used by the model evaluation panel).
-        self.custom_metrics_config = []
 
     def metrics(self, weights=None):
         """Computes various popular regression metrics for the results.
@@ -492,6 +490,14 @@ class RegressionResults(BaseEvaluationResults):
         """
         metrics = self.metrics(weights=weights)
         _print_dict_as_table(metrics, digits)
+
+    def custom_metrics_report(self):
+        """Generates a report for the custom metrics."""
+        if self.custom_metrics:
+            report = {}
+            for metric in self.custom_metrics.values():
+                report[metric["label"]] = metric["value"]
+            return report
 
     def plot_results(
         self, labels=None, sizes=None, backend="plotly", **kwargs

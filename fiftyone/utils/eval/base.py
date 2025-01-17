@@ -60,15 +60,13 @@ class BaseEvaluationMethod(foe.EvaluationMethod):
                     if results.custom_metrics is None:
                         results.custom_metrics = {}
 
-                    results.custom_metrics[operator.config.label] = value
-                    config = {
-                        "name": operator.config.name,
+                    results.custom_metrics[operator.config.name] = {
+                        "value": value,
                         "label": operator.config.label,
                         "lower_is_better": operator.config.kwargs.get(
                             "lower_is_better", True
                         ),
                     }
-                    results.custom_metrics_config.append(config)
             except Exception as e:
                 logger.warning(
                     "Failed to compute metric '%s': Reason: %s",
@@ -190,8 +188,6 @@ class BaseClassificationResults(BaseEvaluationResults):
         self.classes = np.asarray(classes)
         self.missing = missing
         self.custom_metrics = custom_metrics
-        # Stores configs for custom metrics with a return value (used by the model evaluation panel).
-        self.custom_metrics_config = []
 
     def report(self, classes=None):
         """Generates a classification report for the results via
@@ -409,6 +405,14 @@ class BaseClassificationResults(BaseEvaluationResults):
             backend=backend,
             **kwargs,
         )
+
+    def custom_metrics_report(self):
+        """Generates a report for the custom metrics."""
+        if self.custom_metrics:
+            report = {}
+            for metric in self.custom_metrics.values():
+                report[metric["label"]] = metric["value"]
+            return report
 
     def _parse_classes(self, classes):
         if classes is not None:
