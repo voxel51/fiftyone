@@ -623,11 +623,6 @@ def _compute_accuracy_precision_recall(confusion_matrix, values, average):
 
 def _get_mask_values(samples, pred_field, gt_field, progress=None):
     _samples = samples.select_fields([gt_field, pred_field])
-    pred_field, processing_frames = samples._handle_frame_field(pred_field)
-    gt_field, _ = samples._handle_frame_field(gt_field)
-
-    values = set()
-    is_rgb = False
 
     with contextlib.ExitStack() as context:
         context.enter_context(
@@ -635,6 +630,12 @@ def _get_mask_values(samples, pred_field, gt_field, progress=None):
                 media_fields=[gt_field, pred_field], progress=progress
             )
         )
+
+        pred_field, processing_frames = samples._handle_frame_field(pred_field)
+        gt_field, _ = samples._handle_frame_field(gt_field)
+
+        values = set()
+        is_rgb = False
 
         for sample in _samples.iter_samples(progress=progress):
             if processing_frames:
