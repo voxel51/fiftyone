@@ -916,19 +916,13 @@ class SampleCollection(object):
         results = self._aggregate(pipeline=pipeline, attach_frames=True)
         return {str(r["_id"]): r["size_bytes"] for r in results}
 
-    def _get_first(self, limit=None, field=None, reverse=False):
-        pipeline = [{"$limit": limit if limit else 1}]
+    def _get_first(self, limit=1, field="_id", reverse=False):
         direction = -1 if reverse else 1
-        if field is None:
-            # Sort by _id if no field is specified to ensure first is deterministic
-            field = "_id"
-        pipeline.insert(0, {"$sort": {field: direction}})
+        pipeline = [{"$sort": {field: direction}}, {"$limit": limit}]
 
-        cursor = self._aggregate(pipeline=pipeline)
-
-        if not cursor.alive:
-            raise ValueError("%s is empty" % self.__class__.__name__)
-        return cursor
+        return self._aggregate(
+            pipeline=pipeline, detach_frames=True, detach_groups=True
+        )
 
     def first(self):
         """Returns the first sample in the collection.
@@ -937,7 +931,14 @@ class SampleCollection(object):
             a :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView`
         """
-        return next(self._get_first())
+        cursor = self._get_first()
+
+        try:
+            d = next(cursor)
+        except StopIteration:
+            raise ValueError("%s is empty" % self.__class__.__name__)
+
+        return self._make_sample(d)
 
     def last(self):
         """Returns the last sample in the collection.
@@ -946,8 +947,14 @@ class SampleCollection(object):
             a :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView`
         """
+        cursor = self._get_first(reverse=True)
 
-        return next(self._get_first(reverse=True))
+        try:
+            d = next(cursor)
+        except StopIteration:
+            raise ValueError("%s is empty" % self.__class__.__name__)
+
+        return self._make_sample(d)
 
     def head(self, num_samples=3):
         """Returns a list of the first few samples in the collection.
@@ -959,9 +966,11 @@ class SampleCollection(object):
             num_samples (3): the number of samples
 
         Returns:
-            a list of :class:`fiftyone.core.sample.Sample` objects
+            a list of :class:`fiftyone.core.sample.Sample` or
+            :class:`fiftyone.core.sample.SampleView` objects
         """
-        return [s for s in self._get_first(limit=num_samples)]
+        cursor = self._get_first(limit=num_samples)
+        return [self._make_sample(d) for d in cursor]
 
     def tail(self, num_samples=3):
         """Returns a list of the last few samples in the collection.
@@ -973,9 +982,13 @@ class SampleCollection(object):
             num_samples (3): the number of samples
 
         Returns:
-            a list of :class:`fiftyone.core.sample.Sample` objects
+            a list of :class:`fiftyone.core.sample.Sample` or
+            :class:`fiftyone.core.sample.SampleView` objects
         """
-        return [s for s in self._get_first(limit=num_samples, reverse=True)]
+        cursor = self._get_first(reverse=True, limit=num_samples)
+        samples = [self._make_sample(d) for d in cursor]
+        samples.reverse()
+        return samples
 
     def one(self, expr, exact=False):
         """Returns a single sample in this collection matching the expression.
@@ -1006,7 +1019,7 @@ class SampleCollection(object):
             sample = dataset.one(F("filepath").ends_with(".jpg"))
 
             # Raises an error since there are multiple JPEGs
-            dataset.one(F("filepath").ends_with(".jpg"), exact=True)
+            _ = dataset.one(F("filepath").ends_with(".jpg"), exact=True)
 
         Args:
             expr: a :class:`fiftyone.core.expressions.ViewExpression` or
@@ -1020,13 +1033,15 @@ class SampleCollection(object):
             and multiple samples match the expression
 
         Returns:
-            a :class:`fiftyone.core.sample.SampleView`
+            a class:`fiftyone.core.sample.Sample` or
+            :class:`fiftyone.core.sample.SampleView`
         """
-        view = self.match(expr)
-        matches = iter(view)
+        limit = 2 if exact else 1
+        view = self.match(expr).limit(limit)
+        matches = iter(view._aggregate(detach_frames=True, detach_groups=True))
 
         try:
-            sample = next(matches)
+            d = next(matches)
         except StopIteration:
             raise ValueError("No samples match the given expression")
 
@@ -1034,13 +1049,12 @@ class SampleCollection(object):
             try:
                 next(matches)
                 raise ValueError(
-                    "Expected one matching sample, but found %d matches"
-                    % len(view)
+                    "Expected one matching sample, but found multiple"
                 )
             except StopIteration:
                 pass
 
-        return sample
+        return self._make_sample(d)
 
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
@@ -1050,6 +1064,12 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         raise NotImplementedError("Subclass must implement view()")
+
+    def _make_sample(self, d):
+        raise NotImplementedError("Subclass must implement _make_sample()")
+
+    def _make_frame(self, d):
+        raise NotImplementedError("Subclass must implement _make_frame()")
 
     def iter_samples(
         self,
