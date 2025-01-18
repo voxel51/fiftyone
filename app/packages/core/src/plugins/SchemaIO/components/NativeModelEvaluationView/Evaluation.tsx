@@ -1059,18 +1059,16 @@ export default function Evaluation(props: EvaluationProps) {
                         );
                       })}
                     </Select>
-                    {classMode === "chart" && (
-                      <IconButton
-                        onClick={() => {
-                          setClassPerformanceDialogConfig((state) => ({
-                            ...state,
-                            open: true,
-                          }));
-                        }}
-                      >
-                        <Settings />
-                      </IconButton>
-                    )}
+                    <IconButton
+                      onClick={() => {
+                        setClassPerformanceDialogConfig((state) => ({
+                          ...state,
+                          open: true,
+                        }));
+                      }}
+                    >
+                      <Settings />
+                    </IconButton>
                   </Stack>
                 </Stack>
                 {classMode === "chart" && (
@@ -1654,9 +1652,10 @@ function formatPerClassPerformance(perClassPerformance, barConfig) {
         return b.value - a.value;
       } else if (sortBy === "worst") {
         return a.value - b.value;
-      } else {
-        return b.property.localeCompare(a.property);
+      } else if (sortBy === "az") {
+        return a.property.localeCompare(b.property);
       }
+      return b.property.localeCompare(a.property);
     });
   }
 
@@ -1679,7 +1678,7 @@ function getMatrix(matrices, config, maskTargets, compareMaskTargets?) {
     return compareMaskTargets?.[c] || maskTargets?.[c] || c;
   });
   const noneIndex = originalClasses.indexOf(NONE_CLASS);
-  if (parsedLimit < originalClasses.length) {
+  if (parsedLimit < originalClasses.length && noneIndex > -1) {
     labels.push(
       compareMaskTargets?.[NONE_CLASS] ||
         maskTargets?.[NONE_CLASS] ||

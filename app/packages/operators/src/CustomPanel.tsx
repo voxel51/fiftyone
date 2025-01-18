@@ -38,7 +38,9 @@ export function CustomPanel(props: CustomPanelProps) {
     setPanelCloseEffect(() => {
       clearUseKeyStores(panelId);
       trackEvent("close_panel", { panel: panelName });
-      triggerPanelEvent(panelId, { operator: props.onUnLoad });
+      if (props.onUnLoad) {
+        triggerPanelEvent(panelId, { operator: props.onUnLoad });
+      }
     });
   }, []);
 
