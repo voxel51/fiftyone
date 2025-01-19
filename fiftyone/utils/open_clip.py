@@ -57,6 +57,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
     def __init__(self, config):
         super().__init__(config)
         self._text_features = None
+        self.preprocess = self._preprocess_aux
 
     @property
     def can_embed_prompts(self):
@@ -88,7 +89,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         (
             self._model,
             _,
-            self._preprocess,
+            self._preprocess_aux,
         ) = open_clip.create_model_and_transforms(
             config.clip_model,
             pretrained=config.pretrained,
