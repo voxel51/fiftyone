@@ -109,7 +109,6 @@ export abstract class AbstractLooker<
     config: State["config"],
     options: Partial<State["options"]> = {}
   ) {
-    console.log("CREATE");
     this.abortController = new AbortController();
     this.eventTarget = new EventTarget();
     this.subscriptions = {};

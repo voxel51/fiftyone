@@ -27,10 +27,10 @@ const resolveSize = <T extends Lookers | fos.Lookers = fos.Lookers>(
     return looker.getSizeBytesEstimate();
   }
 
-  return new Promise<void>((resolve) => {
+  return new Promise<number>((resolve) => {
     const load = () => {
       looker.removeEventListener("load", load);
-      resolve();
+      resolve(looker.getSizeBytesEstimate());
     };
 
     looker.addEventListener("load", load);
@@ -59,6 +59,36 @@ export default function useLookerCache<
     // an intermediate mapping until the "load" event
     // "load" must occur before requesting the size bytes estimate
     const loading = new Map<string, Entry<T>>();
+
+    // visible items are excluded from LRU cache
+    const visible = new Map<string, T>();
+
+    const get = (key: string) => {
+      const instance = visible.get(key);
+      if (instance) {
+        return { dispose: false, instance };
+      }
+
+      return loaded.get(key) ?? loading.get(key);
+    };
+    const hide = (key?: string) => {
+      if (!key) {
+        for (const key of visible.keys()) hide(key);
+        return;
+      }
+
+      const instance = visible.get(key);
+      if (!instance) {
+        throw new Error("visible instance not found");
+      }
+      visible.delete(key);
+      const entry = { dispose: true, instance };
+      instance.loaded ? loaded.set(key, entry) : setLoading(key, entry);
+    };
+    const remove = (key: string) => {
+      loading.delete(key);
+      loaded.delete(key);
+    };
     const setLoading = (key: string, entry: Entry<T>) => {
       const onReady = () => {
         loaded.set(key, entry);
@@ -68,22 +98,6 @@ export default function useLookerCache<
 
       entry.instance.addEventListener("load", onReady);
       loading.set(key, entry);
-    };
-
-    // visible items are excluded from LRU cache
-    const visible = new Map<string, T>();
-
-    const remove = (key: string) => {
-      loading.delete(key);
-      loaded.delete(key);
-    };
-    const get = (key: string) => {
-      const instance = visible.get(key);
-      if (instance) {
-        return { dispose: false, instance };
-      }
-
-      return loaded.get(key) ?? loading.get(key);
     };
 
     const assertedGet = (key: string) => {
@@ -106,15 +120,7 @@ export default function useLookerCache<
           yield it;
         }
       },
-      hide: (key: string) => {
-        const instance = visible.get(key);
-        if (!instance) {
-          throw new Error("visible instance not found");
-        }
-        visible.delete(key);
-        const entry = { dispose: true, instance };
-        instance.loaded ? loaded.set(key, entry) : setLoading(key, entry);
-      },
+      hide,
       loadingSize: () => loading.size,
       loadedSize: () => loaded.size,
       set: (key: string, instance: T) => visible.set(key, instance),

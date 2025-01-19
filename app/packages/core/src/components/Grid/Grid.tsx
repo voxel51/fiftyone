@@ -68,7 +68,7 @@ function Grid() {
   }, [get, page, renderer, reset, resizing, setSample, spacing, threshold]);
 
   useEscape();
-  useEvents({ id, pixels, resizing, set, setMinimum, spotlight });
+  useEvents({ id, lookerCache, pixels, resizing, set, setMinimum, spotlight });
   useSelect(getFontSize, lookerOptions, lookerCache, spotlight);
   useResize(id, setResizing);
 

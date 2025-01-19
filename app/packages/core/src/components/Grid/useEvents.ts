@@ -1,14 +1,17 @@
 import styles from "./Grid.module.css";
 
 import { freeVideos } from "@fiftyone/looker";
-import Spotlight, { Rejected } from "@fiftyone/spotlight";
+import type Spotlight from "@fiftyone/spotlight";
+import type { Rejected } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { useLayoutEffect } from "react";
 import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
 import { AtInterface } from "./useAt";
+import useRefreshers from "./useRefreshers";
 
 export default ({
   id,
+  lookerCache,
   pixels,
   resizing,
   set,
@@ -16,6 +19,7 @@ export default ({
   spotlight,
 }: {
   id: string;
+  lookerCache: ReturnType<typeof useRefreshers>["lookerCache"];
   pixels: string;
   resizing: boolean;
   set: (at: AtInterface) => void;
@@ -60,8 +64,9 @@ export default ({
       spotlight.removeEventListener("load", mount);
       spotlight.removeEventListener("rowchange", set);
       spotlight.destroy();
+      lookerCache.hide();
       document.getElementById(pixels)?.classList.remove(styles.hidden);
       document.dispatchEvent(new CustomEvent("grid-unmount"));
     };
-  }, [id, pixels, resizing, set, setMinimum, spotlight]);
+  }, [id, lookerCache, pixels, resizing, set, setMinimum, spotlight]);
 };

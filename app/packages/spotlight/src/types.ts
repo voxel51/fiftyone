@@ -34,14 +34,14 @@ export interface ItemData<K, V> {
   key: K;
 }
 
-export type Measure = (sizeBytes: number | Promise<void>) => void;
+export type Measure = (id: ID, sizeBytes: number | Promise<number>) => void;
 
 export type Show = (
   id: ID,
   element: HTMLDivElement,
   dimensions: [number, number],
   zooming: boolean
-) => number | Promise<void>;
+) => number | Promise<number>;
 
 export interface Response<K, V> {
   items: ItemData<K, V>[];

@@ -126,7 +126,6 @@ export default class Row<K, V> {
   }
 
   destroy() {
-    this.hide();
     this.#aborter.abort();
   }
 
@@ -167,6 +166,7 @@ export default class Row<K, V> {
     for (const { element, item } of this.#row) {
       const width = item.aspectRatio * this.height;
       measure(
+        item.id,
         this.#config.showItem(item.id, element, [width, this.height], zooming)
       );
     }

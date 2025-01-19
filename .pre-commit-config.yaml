@@ -32,7 +32,7 @@ repos:
         entry: jupyter nbconvert --clear-output --ClearOutputPreprocessor.enabled=True
         args: ["--log-level=ERROR"]
   - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v3.4.1
+    rev: v2.6.2
     hooks:
       - id: prettier
         exclude: ^docs/theme/

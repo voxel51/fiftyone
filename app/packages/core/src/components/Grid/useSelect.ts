@@ -7,7 +7,7 @@ import type useRefreshers from "./useRefreshers";
 export default function useSelect(
   getFontSize: () => number,
   options: ReturnType<typeof fos.useLookerOptions>,
-  store: ReturnType<typeof useRefreshers>["lookerStore"],
+  store: ReturnType<typeof useRefreshers>["lookerCache"],
   spotlight?: Spotlight<number, fos.Sample>
 ) {
   const { init, deferred } = fos.useDeferrer();
@@ -16,15 +16,13 @@ export default function useSelect(
   useEffect(() => {
     deferred(() => {
       const fontSize = getFontSize();
-      const retained = new Set<string>();
       spotlight?.updateItems((id) => {
-        const instance = store.get(id.description);
-        if (!instance) {
+        const entry = store.get(id.description);
+        if (!entry) {
           return;
         }
 
-        retained.add(id.description);
-        instance.updateOptions({
+        entry.instance.updateOptions({
           ...options,
           fontSize,
           selected: selected.has(id.description),
@@ -32,8 +30,7 @@ export default function useSelect(
       });
 
       for (const id of store.hidden()) {
-        if (retained.has(id)) continue;
-        store.delete(id);
+        store.remove(id);
       }
     });
   }, [deferred, getFontSize, options, selected, spotlight, store]);

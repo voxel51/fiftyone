@@ -1,13 +1,10 @@
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import useFontSize from "./useFontSize";
-import type useLookerCache from "./useLookerCache";
+import useRefreshers from "./useRefreshers";
 import useSelectSample from "./useSelectSample";
 import type { SampleStore } from "./useSpotlightPager";
-
-
-
 
 export default function ({
   cache,
@@ -15,7 +12,7 @@ export default function ({
   records,
   store,
 }: {
-  cache: ReturnType<typeof useLookerCache<fos.Lookers>>;
+  cache: ReturnType<typeof useRefreshers>["lookerCache"];
   id: string;
   records: Map<string, number>;
   store: SampleStore;
@@ -25,22 +22,27 @@ export default function ({
   const getFontSize = useFontSize(id);
   const selectSample = useSelectSample(records);
 
+  const hideItem = useCallback(
+    (id: ID) => {
+      if (!cache.isShown(id.description)) {
+        throw new Error("not shown");
+      }
+      cache.isShown(id.description) && cache.hide(id.description);
+    },
+    [cache]
+  );
 
-  const hideItem = useCallback((id: ID) => {
-    cache.isShown(id.description) && cache.hide(id.description);
-  }, [cache]);
   const showItem = useCallback(
     (
       id: ID,
       element: HTMLDivElement,
       dimensions: [number, number],
       zooming: boolean
-    ): number | Promise<void> => {
+    ): number | Promise<number> => {
       const key = id.description;
       if (cache.isShown(key)) {
         return cache.sizeOf(key);
       }
-
       const entry = cache.get(key);
       if (entry) {
         entry.instance.attach(element, dimensions, getFontSize());
@@ -68,9 +70,9 @@ export default function ({
       looker.addEventListener("selectthumbnail", ({ detail }) =>
         selectSample.current?.(detail)
       );
-      cache.set(key, looker)
+      cache.set(key, looker);
       looker.attach(element, dimensions);
-      return cache.sizeOf(key)
+      return cache.sizeOf(key);
     },
     [cache, createLooker, getFontSize, selectSample, store]
   );
@@ -78,9 +80,12 @@ export default function ({
   return {
     getFontSize,
     lookerOptions,
-    renderer: {
-      hideItem,
-      showItem,
-    },
+    renderer: useMemo(
+      () => ({
+        hideItem,
+        showItem,
+      }),
+      [hideItem, showItem]
+    ),
   };
 }

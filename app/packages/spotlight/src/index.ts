@@ -49,6 +49,7 @@ export default class Spotlight<K, V> extends EventTarget {
   #backward: Section<K, V>;
   #focused?: ID;
   #forward: Section<K, V>;
+  #loaded = false;
   #rect?: DOMRect;
   #scrollReader?: ReturnType<typeof createScrollReader>;
   #updater?: Updater;
@@ -67,6 +68,10 @@ export default class Spotlight<K, V> extends EventTarget {
 
   get attached() {
     return Boolean(this.#element.parentElement);
+  }
+
+  get loaded() {
+    return this.#loaded;
   }
 
   addEventListener(type: "load", callback: EventCallback<Load<K>>): void;
@@ -112,11 +117,11 @@ export default class Spotlight<K, V> extends EventTarget {
 
     const observer = new ResizeObserver(() => {
       this.#rect = this.#element.getBoundingClientRect();
-      if (this.attached) {
-        this.#forward ? this.#render({}) : this.#fill();
-      }
+      this.attached && this.loaded && this.#render({ ...this.#race() });
     });
     observer.observe(this.#element);
+    this.#rect = this.#element.getBoundingClientRect();
+    this.#fill();
   }
 
   destroy(): void {
@@ -186,16 +191,39 @@ export default class Spotlight<K, V> extends EventTarget {
   #attachScrollReader() {
     this.#scrollReader = createScrollReader(
       this.#element,
-      (zooming, dispatchOffset) => this.#render({ dispatchOffset, zooming }),
+      (zooming, dispatchOffset) =>
+        this.#render({ dispatchOffset, zooming, ...this.#race() }),
       () => this.#zooming()
     );
+  }
+
+  #race() {
+    let bytes = 0;
+    const measure = (add: number) => {
+      bytes += add;
+      if (bytes >= this.#config.maxItemsSizeBytes) {
+        this.dispatchEvent(
+          new Rejected(this.#recommendedRowAspectRatioThreshold)
+        );
+      }
+    };
+    return {
+      measure: (id: ID, add: number | Promise<number>) => {
+        if (add instanceof Promise) {
+          add.then(measure);
+          return;
+        }
+
+        measure(add);
+      },
+    };
   }
 
   #render({
     at,
     dispatchOffset = false,
     go = true,
-    measure = () => undefined,
+    measure,
     offset = false,
     zooming,
   }: {
@@ -203,7 +231,7 @@ export default class Spotlight<K, V> extends EventTarget {
     dispatchOffset?: boolean;
     go?: boolean;
     offset?: number | false;
-    measure?: Measure;
+    measure: Measure;
     zooming?: boolean;
   }) {
     if (go && offset !== false) {
@@ -292,19 +320,22 @@ export default class Spotlight<K, V> extends EventTarget {
 
     await this.#previous(false);
 
-    this.#attachScrollReader();
-
     let bytes = 0;
-    let loading = true;
-    while (loading) {
+    const keys = new Set<string>();
+    while (!this.#loaded) {
       try {
         this.#render({
           at: this.#config.at,
           offset: -this.#pivot,
-          measure: (next: Promise<void> | number) => {
+          measure: (id, next) => {
             if (next instanceof Promise) {
               throw next;
             }
+
+            if (keys.has(id.description)) {
+              return;
+            }
+            keys.add(id.description);
 
             bytes += next;
 
@@ -314,22 +345,27 @@ export default class Spotlight<K, V> extends EventTarget {
           },
           zooming: false,
         });
-        loading = false;
-      } catch (promiseOrBytes) {
-        if (promiseOrBytes instanceof Promise) {
-          await promiseOrBytes;
-        } else if (typeof promiseOrBytes === "number") {
+        this.#loaded = true;
+      } catch (response) {
+        if (response instanceof Promise) {
+          await response;
+          continue;
+        }
+
+        if (typeof response === "number") {
           this.dispatchEvent(
             new Rejected(this.#recommendedRowAspectRatioThreshold)
           );
-        } else {
-          console.error(promiseOrBytes);
           break;
         }
+
+        console.error(response);
+        break;
       }
     }
 
-    this.dispatchEvent(new Load(this.#config.key));
+    this.#loaded && this.dispatchEvent(new Load(this.#config.key));
+    this.#attachScrollReader();
   }
 
   async #get(key: K): Promise<Response<K, V>> {
@@ -379,6 +415,7 @@ export default class Spotlight<K, V> extends EventTarget {
 
           this.#render({
             at: { description: this.#focused.description, offset: ZERO },
+            ...this.#race(),
           });
           return this.#focused;
         },
@@ -419,7 +456,12 @@ export default class Spotlight<K, V> extends EventTarget {
               offset = before - this.#containerHeight + this.#config.spacing;
             }
 
-            this.#render({ zooming: false, offset, go: false });
+            this.#render({
+              go: false,
+              offset,
+              zooming: false,
+              ...this.#race(),
+            });
           });
 
         run();
@@ -447,6 +489,7 @@ export default class Spotlight<K, V> extends EventTarget {
 
           this.#render({
             at: { description: this.#focused.description, offset: ZERO },
+            ...this.#race(),
           });
           return this.#focused;
         },
@@ -490,6 +533,7 @@ export default class Spotlight<K, V> extends EventTarget {
               go: false,
               offset: typeof offset === "number" ? -offset : false,
               zooming: false,
+              ...this.#race(),
             });
           });
 
