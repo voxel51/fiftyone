@@ -5,6 +5,7 @@ CLIP model wrapper for the FiftyOne Model Zoo.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import contextlib
 import logging
 
 import fiftyone.core.models as fom
@@ -143,12 +144,15 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         height, width = imgs.size()[-2:]
         frame_size = (width, height)
 
-        if self._using_gpu:
-            imgs = imgs.to(self.device)
+        with torch.no_grad(), contextlib.ExitStack() as ctx:
+            if self._using_gpu:
+                imgs = imgs.to(self.device)
 
-        with torch.no_grad(), torch.amp.autocast(
-            device_type=self.device.type if self._using_gpu else "cpu"
-        ):
+                # https://github.com/voxel51/fiftyone/pull/5395#issuecomment-2601055784
+                ctx.enter_context(
+                    torch.amp.autocast(device_type=self.device.type)
+                )
+
             image_features = self._model.encode_image(imgs)
             text_features = self._get_text_features()
 
