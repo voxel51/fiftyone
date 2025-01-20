@@ -1210,6 +1210,141 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return _get_collstats(self._frame_collection)
 
+    def _get_first(self, limit=1, reverse=False):
+        direction = -1 if reverse else 1
+        pipeline = [{"$sort": {"_id": direction}}, {"$limit": limit}]
+
+        return self._aggregate(
+            pipeline=pipeline, detach_frames=True, detach_groups=True
+        )
+
+    def first(self):
+        """Returns the first sample in the dataset.
+
+        Returns:
+            a :class:`fiftyone.core.sample.Sample`
+        """
+        cursor = self._get_first()
+
+        try:
+            d = next(cursor)
+        except StopIteration:
+            raise ValueError("%s is empty" % self.__class__.__name__)
+
+        return self._make_sample(d)
+
+    def last(self):
+        """Returns the last sample in the dataset.
+
+        Returns:
+            a :class:`fiftyone.core.sample.Sample`
+        """
+        cursor = self._get_first(reverse=True)
+
+        try:
+            d = next(cursor)
+        except StopIteration:
+            raise ValueError("%s is empty" % self.__class__.__name__)
+
+        return self._make_sample(d)
+
+    def head(self, num_samples=3):
+        """Returns a list of the first few samples in the dataset.
+
+        If fewer than ``num_samples`` samples are in the dataset, only the
+        available samples are returned.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a list of :class:`fiftyone.core.sample.Sample` objects
+        """
+        cursor = self._get_first(limit=num_samples)
+        return [self._make_sample(d) for d in cursor]
+
+    def tail(self, num_samples=3):
+        """Returns a list of the last few samples in the dataset.
+
+        If fewer than ``num_samples`` samples are in the dataset, only the
+        available samples are returned.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a list of :class:`fiftyone.core.sample.Sample` objects
+        """
+        cursor = self._get_first(reverse=True, limit=num_samples)
+        samples = [self._make_sample(d) for d in cursor]
+        samples.reverse()
+        return samples
+
+    def one(self, expr, exact=False):
+        """Returns a single sample in this dataset matching the expression.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            #
+            # Get a sample by filepath
+            #
+
+            # A random filepath in the dataset
+            filepath = dataset.take(1).first().filepath
+
+            # Get sample by filepath
+            sample = dataset.one(F("filepath") == filepath)
+
+            #
+            # Dealing with multiple matches
+            #
+
+            # Get a sample whose image is JPEG
+            sample = dataset.one(F("filepath").ends_with(".jpg"))
+
+            # Raises an error since there are multiple JPEGs
+            _ = dataset.one(F("filepath").ends_with(".jpg"), exact=True)
+
+        Args:
+            expr: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that evaluates to ``True`` for the sample to match
+            exact (False): whether to raise an error if multiple samples match
+                the expression
+
+        Raises:
+            ValueError: if no samples match the expression or if ``exact=True``
+            and multiple samples match the expression
+
+        Returns:
+            a :class:`fiftyone.core.sample.Sample`
+        """
+        limit = 2 if exact else 1
+        view = self.match(expr).limit(limit)
+        matches = iter(view._aggregate(detach_frames=True, detach_groups=True))
+
+        try:
+            d = next(matches)
+        except StopIteration:
+            raise ValueError("No samples match the given expression")
+
+        if exact:
+            try:
+                next(matches)
+                raise ValueError(
+                    "Expected one matching sample, but found multiple"
+                )
+            except StopIteration:
+                pass
+
+        return self._make_sample(d)
+
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
         entire dataset.

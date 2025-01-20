@@ -916,14 +916,6 @@ class SampleCollection(object):
         results = self._aggregate(pipeline=pipeline, attach_frames=True)
         return {str(r["_id"]): r["size_bytes"] for r in results}
 
-    def _get_first(self, limit=1, field="_id", reverse=False):
-        direction = -1 if reverse else 1
-        pipeline = [{"$sort": {field: direction}}, {"$limit": limit}]
-
-        return self._aggregate(
-            pipeline=pipeline, detach_frames=True, detach_groups=True
-        )
-
     def first(self):
         """Returns the first sample in the collection.
 
@@ -931,14 +923,7 @@ class SampleCollection(object):
             a :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView`
         """
-        cursor = self._get_first()
-
-        try:
-            d = next(cursor)
-        except StopIteration:
-            raise ValueError("%s is empty" % self.__class__.__name__)
-
-        return self._make_sample(d)
+        raise NotImplementedError("Subclass must implement first()")
 
     def last(self):
         """Returns the last sample in the collection.
@@ -947,14 +932,7 @@ class SampleCollection(object):
             a :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView`
         """
-        cursor = self._get_first(reverse=True)
-
-        try:
-            d = next(cursor)
-        except StopIteration:
-            raise ValueError("%s is empty" % self.__class__.__name__)
-
-        return self._make_sample(d)
+        raise NotImplementedError("Subclass must implement last()")
 
     def head(self, num_samples=3):
         """Returns a list of the first few samples in the collection.
@@ -969,8 +947,7 @@ class SampleCollection(object):
             a list of :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView` objects
         """
-        cursor = self._get_first(limit=num_samples)
-        return [self._make_sample(d) for d in cursor]
+        raise NotImplementedError("Subclass must implement head()")
 
     def tail(self, num_samples=3):
         """Returns a list of the last few samples in the collection.
@@ -985,41 +962,10 @@ class SampleCollection(object):
             a list of :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView` objects
         """
-        cursor = self._get_first(reverse=True, limit=num_samples)
-        samples = [self._make_sample(d) for d in cursor]
-        samples.reverse()
-        return samples
+        raise NotImplementedError("Subclass must implement tail()")
 
     def one(self, expr, exact=False):
         """Returns a single sample in this collection matching the expression.
-
-        Examples::
-
-            import fiftyone as fo
-            import fiftyone.zoo as foz
-            from fiftyone import ViewField as F
-
-            dataset = foz.load_zoo_dataset("quickstart")
-
-            #
-            # Get a sample by filepath
-            #
-
-            # A random filepath in the dataset
-            filepath = dataset.take(1).first().filepath
-
-            # Get sample by filepath
-            sample = dataset.one(F("filepath") == filepath)
-
-            #
-            # Dealing with multiple matches
-            #
-
-            # Get a sample whose image is JPEG
-            sample = dataset.one(F("filepath").ends_with(".jpg"))
-
-            # Raises an error since there are multiple JPEGs
-            _ = dataset.one(F("filepath").ends_with(".jpg"), exact=True)
 
         Args:
             expr: a :class:`fiftyone.core.expressions.ViewExpression` or
@@ -1033,28 +979,10 @@ class SampleCollection(object):
             and multiple samples match the expression
 
         Returns:
-            a class:`fiftyone.core.sample.Sample` or
+            a :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView`
         """
-        limit = 2 if exact else 1
-        view = self.match(expr).limit(limit)
-        matches = iter(view._aggregate(detach_frames=True, detach_groups=True))
-
-        try:
-            d = next(matches)
-        except StopIteration:
-            raise ValueError("No samples match the given expression")
-
-        if exact:
-            try:
-                next(matches)
-                raise ValueError(
-                    "Expected one matching sample, but found multiple"
-                )
-            except StopIteration:
-                pass
-
-        return self._make_sample(d)
+        raise NotImplementedError("Subclass must implement one()")
 
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
@@ -1064,12 +992,6 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         raise NotImplementedError("Subclass must implement view()")
-
-    def _make_sample(self, d):
-        raise NotImplementedError("Subclass must implement _make_sample()")
-
-    def _make_frame(self, d):
-        raise NotImplementedError("Subclass must implement _make_frame()")
 
     def iter_samples(
         self,
