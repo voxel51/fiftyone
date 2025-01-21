@@ -10,6 +10,7 @@ import type { EventCallback } from "./events";
 import type {
   At,
   ID,
+  ItemData,
   Measure,
   Response,
   SpotlightConfig,
@@ -31,11 +32,13 @@ import createScrollReader from "./createScrollReader";
 import type { RowChange } from "./events";
 import { Load, Rejected } from "./events";
 import Section from "./section";
+import tile from "./tile";
 import {
   create,
   findTop,
   handleRowChange,
   scrollToPosition,
+  sum,
 } from "./utilities";
 
 export { Load, Rejected, RowChange } from "./events";
@@ -162,6 +165,14 @@ export default class Spotlight<K, V> extends EventTarget {
     return base;
   }
 
+  get #aspectRatio() {
+    return this.#width / this.#height;
+  }
+
+  get #sizeThreshold() {
+    return this.#config.maxItemsSizeBytes ?? TWO / TWO;
+  }
+
   get #containerHeight() {
     return this.#forward.height + this.#pivot;
   }
@@ -174,8 +185,38 @@ export default class Spotlight<K, V> extends EventTarget {
     return this.#height;
   }
 
-  get #recommendedRowAspectRatioThreshold() {
-    return 10;
+  #recommendedRowAspectRatioThreshold(
+    items: ItemData<K, V>[],
+    map: Map<string, number>
+  ) {
+    let bytes = 0;
+    const threshold = this.#sizeThreshold;
+    const use: typeof items = [];
+    for (const item of items) {
+      bytes += map.get(item.id.description);
+      use.push(item);
+      if (bytes >= threshold) {
+        break;
+      }
+    }
+
+    let aspectRatio = this.#config.rowAspectRatioThreshold(this.#width);
+    const itemAspectRatios = items.map(({ aspectRatio }) => aspectRatio);
+    let tiledAspectRatio: number;
+    do {
+      aspectRatio -= ONE / TWO;
+      const breakpoints = tile(itemAspectRatios, aspectRatio, true);
+      const rows: number[] = [];
+      let start = 0;
+      for (const end of breakpoints) {
+        rows.push(ONE / sum(itemAspectRatios.slice(start, end)));
+        start = end;
+      }
+
+      tiledAspectRatio = sum(rows);
+    } while (tiledAspectRatio > this.#aspectRatio && tiledAspectRatio > ONE);
+
+    return 11 - aspectRatio;
   }
 
   get #sections() {
@@ -199,22 +240,26 @@ export default class Spotlight<K, V> extends EventTarget {
 
   #race() {
     let bytes = 0;
-    const measure = (add: number) => {
+    const items: ItemData<K, V>[] = [];
+    const map = new Map<string, number>();
+    const measure = (item: ItemData<K, V>, add: number) => {
+      items.push(item);
+      map.set(item.id.description, add);
       bytes += add;
       if (bytes >= this.#config.maxItemsSizeBytes) {
         this.dispatchEvent(
-          new Rejected(this.#recommendedRowAspectRatioThreshold)
+          new Rejected(this.#recommendedRowAspectRatioThreshold(items, map))
         );
       }
     };
     return {
-      measure: (id: ID, add: number | Promise<number>) => {
+      measure: (item: ItemData<K, V>, add: number | Promise<number>) => {
         if (add instanceof Promise) {
-          add.then(measure);
+          add.then((add) => measure(item, add));
           return;
         }
 
-        measure(add);
+        measure(item, add);
       },
     };
   }
@@ -231,7 +276,7 @@ export default class Spotlight<K, V> extends EventTarget {
     dispatchOffset?: boolean;
     go?: boolean;
     offset?: number | false;
-    measure: Measure;
+    measure: Measure<K, V>;
     zooming?: boolean;
   }) {
     if (go && offset !== false) {
@@ -247,7 +292,6 @@ export default class Spotlight<K, V> extends EventTarget {
     });
 
     const params = {
-      config: this.#config,
       measure,
       updater: (id) => this.#updater(id),
       zooming,
@@ -321,22 +365,23 @@ export default class Spotlight<K, V> extends EventTarget {
     await this.#previous(false);
 
     let bytes = 0;
-    const keys = new Set<string>();
+    const items: ItemData<K, V>[] = [];
+    const map = new Map<string, number>();
     while (!this.#loaded) {
       try {
         this.#render({
           at: this.#config.at,
           offset: -this.#pivot,
-          measure: (id, next) => {
+          measure: (item, next) => {
             if (next instanceof Promise) {
               throw next;
             }
 
-            if (keys.has(id.description)) {
+            if (map.has(item.id.description)) {
               return;
             }
-            keys.add(id.description);
-
+            items.push(item);
+            map.set(item.id.description, next);
             bytes += next;
 
             if (bytes > this.#config.maxItemsSizeBytes) {
@@ -354,7 +399,7 @@ export default class Spotlight<K, V> extends EventTarget {
 
         if (typeof response === "number") {
           this.dispatchEvent(
-            new Rejected(this.#recommendedRowAspectRatioThreshold)
+            new Rejected(this.#recommendedRowAspectRatioThreshold(items, map))
           );
           break;
         }

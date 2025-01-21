@@ -154,7 +154,7 @@ export default class Row<K, V> {
   }: {
     attr: typeof BOTTOM | typeof TOP;
     element: HTMLDivElement;
-    measure: Measure;
+    measure: Measure<K, V>;
     zooming: boolean;
   }) {
     if (!this.attached) {
@@ -166,7 +166,7 @@ export default class Row<K, V> {
     for (const { element, item } of this.#row) {
       const width = item.aspectRatio * this.height;
       measure(
-        item.id,
+        item,
         this.#config.showItem(item.id, element, [width, this.height], zooming)
       );
     }

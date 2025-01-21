@@ -34,7 +34,10 @@ export interface ItemData<K, V> {
   key: K;
 }
 
-export type Measure = (id: ID, sizeBytes: number | Promise<number>) => void;
+export type Measure<K, V> = (
+  id: ItemData<K, V>,
+  sizeBytes: number | Promise<number>
+) => void;
 
 export type Show = (
   id: ID,
