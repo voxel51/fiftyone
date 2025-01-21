@@ -182,7 +182,12 @@ class BaseEvaluationResults(foe.EvaluationResults):
         )
         print(report_str)
 
-    def confusion_matrix(self, classes=None, include_other=False):
+    def confusion_matrix(
+        self,
+        classes=None,
+        include_other=False,
+        include_missing=False,
+    ):
         """Generates a confusion matrix for the results via
         :func:`sklearn:sklearn.metrics.confusion_matrix`.
 
@@ -191,17 +196,23 @@ class BaseEvaluationResults(foe.EvaluationResults):
 
         Args:
             classes (None): an optional list of classes to include in the
-                confusion matrix. Include ``self.missing`` in this list if you
-                would like to include a row/column for unmatched examples
+                confusion matrix
             include_other (False): whether to include an extra row/column at
                 the end of the matrix for labels that do not appear in
                 ``classes``. Only applicable if ``classes`` are provided
+            include_missing (False): whether to include a row/column at the end
+                of the matrix for unmatched labels. Only applicable if
+                ``self.missing`` does not already appear in ``classes``. If
+                both "other" and "missing" rows/columns are requested, this one
+                is last
 
         Returns:
             a ``num_classes x num_classes`` confusion matrix
         """
         confusion_matrix, _, _ = self._confusion_matrix(
-            classes=classes, include_other=include_other, include_missing=False
+            classes=classes,
+            include_other=include_other,
+            include_missing=include_missing,
         )
         return confusion_matrix
 
