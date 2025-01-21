@@ -8,9 +8,11 @@ Base evaluation methods.
 
 import itertools
 import logging
+import numbers
 
 import numpy as np
 import sklearn.metrics as skm
+from tabulate import tabulate
 
 import fiftyone.core.evaluation as foe
 import fiftyone.core.plots as fop
@@ -53,14 +55,12 @@ class BaseEvaluationMethod(foe.EvaluationMethod):
         for metric, kwargs in self._get_custom_metrics().items():
             try:
                 operator = foo.get_operator(metric)
-                value = operator.compute(
-                    samples, eval_key, results, **kwargs or {}
-                )
+                value = operator.compute(samples, results, **kwargs or {})
                 if value is not None:
                     if results.custom_metrics is None:
                         results.custom_metrics = {}
 
-                    results.custom_metrics[operator.config.name] = {
+                    results.custom_metrics[operator.uri] = {
                         "value": value,
                         "label": operator.config.label,
                         "lower_is_better": operator.config.kwargs.get(
@@ -70,7 +70,7 @@ class BaseEvaluationMethod(foe.EvaluationMethod):
             except Exception as e:
                 logger.warning(
                     "Failed to compute metric '%s': Reason: %s",
-                    operator.uri,
+                    metric,
                     e,
                 )
 
@@ -80,11 +80,13 @@ class BaseEvaluationMethod(foe.EvaluationMethod):
         for metric in self._get_custom_metrics().keys():
             try:
                 operator = foo.get_operator(metric)
-                fields.extend(operator.get_fields(samples, eval_key))
+                fields.extend(
+                    operator.get_fields(samples, self.config.eval_key)
+                )
             except Exception as e:
                 logger.warning(
                     "Failed to get fields for metric '%s': Reason: %s",
-                    operator.uri,
+                    metric,
                     e,
                 )
 
@@ -94,11 +96,11 @@ class BaseEvaluationMethod(foe.EvaluationMethod):
         for metric in self._get_custom_metrics().keys():
             try:
                 operator = foo.get_operator(metric)
-                operator.rename(samples, eval_key, new_eval_key)
+                operator.rename(samples, self.config, eval_key, new_eval_key)
             except Exception as e:
                 logger.warning(
                     "Failed to rename fields for metric '%s': Reason: %s",
-                    operator.uri,
+                    metric,
                     e,
                 )
 
@@ -106,11 +108,11 @@ class BaseEvaluationMethod(foe.EvaluationMethod):
         for metric in self._get_custom_metrics().keys():
             try:
                 operator = foo.get_operator(metric)
-                operator.cleanup(samples, eval_key)
+                operator.cleanup(samples, self.config, eval_key)
             except Exception as e:
                 logger.warning(
                     "Failed to cleanup metric '%s': Reason: %s",
-                    operator.uri,
+                    metric,
                     e,
                 )
 
@@ -122,10 +124,38 @@ class BaseEvaluationResults(foe.EvaluationResults):
         samples: the :class:`fiftyone.core.collections.SampleCollection` used
         config: the :class:`BaseEvaluationMethodConfig` used
         eval_key: the evaluation key
+        custom_metrics (None): an optional dict of custom metrics
         backend (None): an :class:`EvaluationMethod` backend
     """
 
-    pass
+    def __init__(
+        self,
+        samples,
+        config,
+        eval_key,
+        custom_metrics=None,
+        backend=None,
+    ):
+        super().__init__(samples, config, eval_key, backend=backend)
+        self.custom_metrics = custom_metrics
+
+    def _get_custom_metrics(self):
+        if not self.custom_metrics:
+            return {}
+
+        metrics = {}
+
+        try:
+            for uri, metric in self.custom_metrics.items():
+                name = uri.rsplit("/", 1)[-1]
+                metrics[name] = metric["value"]
+        except Exception as e:
+            logger.warning("Failed to parse custom metrics. Reason: %s", e)
+
+        return metrics
+
+    def _print_metrics(self, metrics, digits=2):
+        _print_dict_as_table(metrics, digits)
 
 
 class BaseClassificationResults(BaseEvaluationResults):
@@ -168,7 +198,13 @@ class BaseClassificationResults(BaseEvaluationResults):
         custom_metrics=None,
         backend=None,
     ):
-        super().__init__(samples, config, eval_key, backend=backend)
+        super().__init__(
+            samples,
+            config,
+            eval_key,
+            custom_metrics=custom_metrics,
+            backend=backend,
+        )
 
         if missing is None:
             missing = "(none)"
@@ -187,7 +223,6 @@ class BaseClassificationResults(BaseEvaluationResults):
         )
         self.classes = np.asarray(classes)
         self.missing = missing
-        self.custom_metrics = custom_metrics
 
     def report(self, classes=None):
         """Generates a classification report for the results via
@@ -229,12 +264,39 @@ class BaseClassificationResults(BaseEvaluationResults):
             zero_division=0,
         )
 
+    def print_report(self, classes=None, digits=2):
+        """Prints a classification report for the results via
+        :func:`sklearn:sklearn.metrics.classification_report`.
+
+        Args:
+            classes (None): an optional list of classes to include in the
+                report
+            digits (2): the number of digits of precision to print
+        """
+        labels = self._parse_classes(classes)
+
+        if labels.size == 0:
+            print("No classes to analyze")
+            return
+
+        report_str = skm.classification_report(
+            self.ytrue,
+            self.ypred,
+            labels=labels,
+            digits=digits,
+            sample_weight=self.weights,
+            zero_division=0,
+        )
+        print(report_str)
+
     def metrics(self, classes=None, average="micro", beta=1.0):
         """Computes classification metrics for the results, including accuracy,
         precision, recall, and F-beta score.
 
         See :func:`sklearn:sklearn.metrics.precision_recall_fscore_support` for
         details.
+
+        Also includes any custom metrics from :attr:`custom_metrics`.
 
         Args:
             classes (None): an optional list of classes to include in the
@@ -265,7 +327,7 @@ class BaseClassificationResults(BaseEvaluationResults):
             self.ytrue, labels=labels, weights=self.weights
         )
 
-        return {
+        metrics = {
             "accuracy": accuracy,
             "precision": precision,
             "recall": recall,
@@ -273,30 +335,22 @@ class BaseClassificationResults(BaseEvaluationResults):
             "support": support,
         }
 
-    def print_report(self, classes=None, digits=2):
-        """Prints a classification report for the results via
-        :func:`sklearn:sklearn.metrics.classification_report`.
+        metrics.update(self._get_custom_metrics())
+
+        return metrics
+
+    def print_metrics(self, classes=None, average="micro", beta=1.0, digits=2):
+        """Prints the metrics computed via :meth:`metrics`.
 
         Args:
             classes (None): an optional list of classes to include in the
-                report
+                calculations
+            average ("micro"): the averaging strategy to use
+            beta (1.0): the F-beta value to use
             digits (2): the number of digits of precision to print
         """
-        labels = self._parse_classes(classes)
-
-        if labels.size == 0:
-            print("No classes to analyze")
-            return
-
-        report_str = skm.classification_report(
-            self.ytrue,
-            self.ypred,
-            labels=labels,
-            digits=digits,
-            sample_weight=self.weights,
-            zero_division=0,
-        )
-        print(report_str)
+        metrics = self.metrics(classes=classes, average=average, beta=beta)
+        self._print_metrics(metrics, digits=digits)
 
     def confusion_matrix(
         self,
@@ -405,14 +459,6 @@ class BaseClassificationResults(BaseEvaluationResults):
             backend=backend,
             **kwargs,
         )
-
-    def custom_metrics_report(self):
-        """Generates a report for the custom metrics."""
-        if self.custom_metrics:
-            report = {}
-            for metric in self.custom_metrics.values():
-                report[metric["label"]] = metric["value"]
-            return report
 
     def _parse_classes(self, classes):
         if classes is not None:
@@ -654,3 +700,20 @@ def _compute_confusion_matrix(
             ids[yt, yp].append(ip)
 
     return confusion_matrix, ids
+
+
+def _print_dict_as_table(d, digits):
+    fmt = "%%.%df" % digits
+    records = []
+    for k, v in d.items():
+        k = k.replace("_", " ")
+        if isinstance(v, numbers.Integral):
+            v = str(v)
+        elif isinstance(v, numbers.Number):
+            v = fmt % v
+        else:
+            v = str(v)
+
+        records.append((k, v))
+
+    print(tabulate(records, tablefmt="plain", numalign="left"))

@@ -10,11 +10,9 @@ from copy import deepcopy
 import inspect
 import itertools
 import logging
-import numbers
 
 import numpy as np
 import sklearn.metrics as skm
-from tabulate import tabulate
 
 import eta.core.utils as etau
 
@@ -414,7 +412,13 @@ class RegressionResults(BaseEvaluationResults):
         custom_metrics=None,
         backend=None,
     ):
-        super().__init__(samples, config, eval_key, backend=backend)
+        super().__init__(
+            samples,
+            config,
+            eval_key,
+            custom_metrics=custom_metrics,
+            backend=backend,
+        )
 
         ytrue, ypred, confs, ids = _parse_values(
             ytrue, ypred, confs, ids, missing=missing
@@ -425,7 +429,6 @@ class RegressionResults(BaseEvaluationResults):
         self.confs = confs
         self.ids = ids
         self.missing = missing
-        self.custom_metrics = custom_metrics
 
     def metrics(self, weights=None):
         """Computes various popular regression metrics for the results.
@@ -440,6 +443,8 @@ class RegressionResults(BaseEvaluationResults):
         -   Explained variance score: :func:`sklearn:sklearn.metrics.explained_variance_score`
         -   Max error: :func:`sklearn:sklearn.metrics.max_error`
         -   Support: the number of examples
+
+        Also includes any custom metrics from :attr:`custom_metrics`.
 
         Args:
             weights (None): an optional list of weights for each example
@@ -470,7 +475,7 @@ class RegressionResults(BaseEvaluationResults):
             max_error = 0.0
             support = 0
 
-        return {
+        metrics = {
             "mean_squared_error": mse,
             "root_mean_squared_error": rmse,
             "mean_absolute_error": mae,
@@ -481,23 +486,19 @@ class RegressionResults(BaseEvaluationResults):
             "support": support,
         }
 
+        metrics.update(self._get_custom_metrics())
+
+        return metrics
+
     def print_metrics(self, weights=None, digits=2):
-        """Prints the regression metrics computed via :meth:`metrics`.
+        """Prints the metrics computed via :meth:`metrics`.
 
         Args:
             weights (None): an optional list of weights for each example
             digits (2): the number of digits of precision to print
         """
         metrics = self.metrics(weights=weights)
-        _print_dict_as_table(metrics, digits)
-
-    def custom_metrics_report(self):
-        """Generates a report for the custom metrics."""
-        if self.custom_metrics:
-            report = {}
-            for metric in self.custom_metrics.values():
-                report[metric["label"]] = metric["value"]
-            return report
+        self._print_metrics(metrics, digits=digits)
 
     def plot_results(
         self, labels=None, sizes=None, backend="plotly", **kwargs
@@ -667,18 +668,3 @@ def _parse_values(ytrue, ypred, *args, missing=None):
         args = [np.asarray(a) if a is not None else a for a in args]
 
     return (_ytrue, _ypred, *args)
-
-
-def _print_dict_as_table(d, digits):
-    fmt = "%%.%df" % digits
-    records = []
-    for k, v in d.items():
-        k = k.replace("_", " ")
-        if isinstance(v, numbers.Integral):
-            v = str(v)
-        else:
-            v = fmt % v
-
-        records.append((k, v))
-
-    print(tabulate(records, tablefmt="plain", numalign="left"))

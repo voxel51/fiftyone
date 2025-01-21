@@ -11,6 +11,7 @@ import os
 import traceback
 
 import numpy as np
+
 from fiftyone import ViewField as F
 from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig

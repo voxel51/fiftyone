@@ -1766,7 +1766,7 @@ type CustomMetric = {
 };
 
 type CustomMetrics = {
-  [operatorName: string]: CustomMetric;
+  [operatorUri: string]: CustomMetric;
 };
 
 type SummaryRow = {
@@ -1787,16 +1787,16 @@ function formatCustomMetricRows(evaluationMetrics, comparisonMetrics) {
     "custom_metrics",
     {}
   ) as CustomMetrics;
-  for (const [operatorName, customMetric] of Object.entries(customMetrics)) {
+  for (const [operatorUri, customMetric] of Object.entries(customMetrics)) {
     const compareValue = _.get(
       comparisonMetrics,
-      `custom_metrics.${operatorName}.value`,
+      `custom_metrics.${operatorUri}.value`,
       null
     );
     const hasOneValue = customMetric.value !== null || compareValue !== null;
 
     results.push({
-      id: operatorName,
+      id: operatorUri,
       property: customMetric.label,
       value: customMetric.value,
       compareValue,
