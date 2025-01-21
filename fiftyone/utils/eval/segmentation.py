@@ -623,28 +623,36 @@ def _compute_accuracy_precision_recall(confusion_matrix, values, average):
 
 def _get_mask_values(samples, pred_field, gt_field, progress=None):
     _samples = samples.select_fields([gt_field, pred_field])
-    pred_field, processing_frames = samples._handle_frame_field(pred_field)
-    gt_field, _ = samples._handle_frame_field(gt_field)
 
-    values = set()
-    is_rgb = False
+    with contextlib.ExitStack() as context:
+        context.enter_context(
+            _samples.download_context(
+                media_fields=[gt_field, pred_field], progress=progress
+            )
+        )
 
-    for sample in _samples.iter_samples(progress=progress):
-        if processing_frames:
-            images = sample.frames.values()
-        else:
-            images = [sample]
+        pred_field, processing_frames = samples._handle_frame_field(pred_field)
+        gt_field, _ = samples._handle_frame_field(gt_field)
 
-        for image in images:
-            for field in (pred_field, gt_field):
-                seg = image[field]
-                if seg is not None and seg.has_mask:
-                    mask = seg.get_mask()
-                    if mask.ndim == 3:
-                        is_rgb = True
-                        mask = _rgb_array_to_int(mask)
+        values = set()
+        is_rgb = False
 
-                    values.update(mask.ravel())
+        for sample in _samples.iter_samples(progress=progress):
+            if processing_frames:
+                images = sample.frames.values()
+            else:
+                images = [sample]
+
+            for image in images:
+                for field in (pred_field, gt_field):
+                    seg = image[field]
+                    if seg is not None and seg.has_mask:
+                        mask = seg.get_mask()
+                        if mask.ndim == 3:
+                            is_rgb = True
+                            mask = _rgb_array_to_int(mask)
+
+                        values.update(mask.ravel())
 
     values = sorted(values)
 
