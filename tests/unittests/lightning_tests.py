@@ -1204,6 +1204,18 @@ class TestObjectIdLightningQueries(unittest.IsolatedAsyncioTestCase):
                     path["values"], ["000000000000000000000000"]
                 )
 
+        result = await _execute(
+            query,
+            dataset,
+            fo.ObjectIdField,
+            keys,
+            frames=False,
+            search="Z" * 25,
+        )
+
+        for path in result.data["lightning"]:
+            self.assertListEqual(path["values"], [])
+
 
 def _add_samples(dataset: fo.Dataset, *sample_data: t.List[t.Dict]):
     samples = []
