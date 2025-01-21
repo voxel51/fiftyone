@@ -130,8 +130,8 @@ export const decodeWithCanvas = async (
 
   // if it's segmentation, we need to recast according to whether or not this field is mapped to RGB targets
   if (cls === SEGMENTATION) {
-    let maskTargets = coloring.maskTargets[field];
-    if (!maskTargets) {
+    let maskTargets = coloring.maskTargets?.[field];
+    if (maskTargets === undefined) {
       maskTargets = coloring.defaultMaskTargets;
     }
     const isRgbMaskTargets_ = isRgbMaskTargets(maskTargets);
