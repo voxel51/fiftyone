@@ -1,3 +1,4 @@
+import _ from "lodash";
 import { Dialog } from "@fiftyone/components";
 import { editingFieldAtom, view } from "@fiftyone/state";
 import {
@@ -465,6 +466,7 @@ export default function Evaluation(props: EvaluationProps) {
           : false,
       hide: !showTpFpFn,
     },
+    ...formatCustomMetricRows(evaluation, compareEvaluation),
   ];
 
   const perClassPerformance = {};
@@ -1756,3 +1758,53 @@ type PLOT_CONFIG_TYPE = {
 type PLOT_CONFIG_DIALOG_TYPE = PLOT_CONFIG_TYPE & {
   open?: boolean;
 };
+
+type CustomMetric = {
+  label: string;
+  value: any;
+  lower_is_better: boolean;
+};
+
+type CustomMetrics = {
+  [operatorUri: string]: CustomMetric;
+};
+
+type SummaryRow = {
+  id: string;
+  property: string;
+  value: any;
+  compareValue: any;
+  lesserIsBetter: boolean;
+  filterable: boolean;
+  active: boolean;
+  hide: boolean;
+};
+
+function formatCustomMetricRows(evaluationMetrics, comparisonMetrics) {
+  const results = [] as SummaryRow[];
+  const customMetrics = _.get(
+    evaluationMetrics,
+    "custom_metrics",
+    {}
+  ) as CustomMetrics;
+  for (const [operatorUri, customMetric] of Object.entries(customMetrics)) {
+    const compareValue = _.get(
+      comparisonMetrics,
+      `custom_metrics.${operatorUri}.value`,
+      null
+    );
+    const hasOneValue = customMetric.value !== null || compareValue !== null;
+
+    results.push({
+      id: operatorUri,
+      property: customMetric.label,
+      value: customMetric.value,
+      compareValue,
+      lesserIsBetter: customMetric.lower_is_better,
+      filterable: false,
+      active: false,
+      hide: !hasOneValue,
+    });
+  }
+  return results;
+}
