@@ -134,8 +134,8 @@ export const tagStats = selectorFamily<
       const data = Object.keys(
         get(
           labels
-            ? fos.labelTagCounts({ modal: false, extended: false })
-            : fos.sampleTagCounts({ modal: false, extended: false })
+            ? fos.labelTagCounts({ modal, extended: false })
+            : fos.sampleTagCounts({ modal, extended: false })
         )
       ).map((t) => [t, 0]);
 

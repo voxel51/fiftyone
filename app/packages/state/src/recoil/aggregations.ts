@@ -150,15 +150,22 @@ export const modalAggregationPaths = selectorFamily({
       const isFramesPath = frames.some((p) => params.path.startsWith(p));
       let paths = isFramesPath
         ? frames
-        : get(schemaAtoms.labelFields({ space: State.SPACE.SAMPLE })).map(
-            (path) => get(schemaAtoms.expandPath(path))
-          );
+        : [
+            ...get(schemaAtoms.labelFields({ space: State.SPACE.SAMPLE })).map(
+              (path) => get(schemaAtoms.expandPath(path))
+            ),
+          ];
 
       paths = paths
         .sort()
         .flatMap((p) => get(schemaAtoms.modalFilterFields(p)));
 
       const numeric = get(schemaAtoms.isNumericField(params.path));
+      if (!isFramesPath && !numeric) {
+        // the modal currently requires a 'tags' aggregation
+        paths = ["tags", ...paths];
+      }
+
       if (params.mixed || get(groupId)) {
         paths = [
           ...paths.filter((p) => {
@@ -166,11 +173,6 @@ export const modalAggregationPaths = selectorFamily({
             return numeric ? n : !n;
           }),
         ];
-
-        if (!numeric && !isFramesPath) {
-          // the modal currently requires a 'tags' aggregation
-          paths = ["tags", ...paths];
-        }
       }
 
       return paths;
