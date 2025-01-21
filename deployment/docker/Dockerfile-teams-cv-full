@@ -1,0 +1,75 @@
+# If you are using the `Building and Deploying FiftyOne Teams (internal use)` doc
+# https://docs.google.com/document/d/1Tn-gf4XKKF3P2fUIVPF0xGDuidbI04WvKmnPlPKTVSQ
+# Then `TORCH_IMAGE_NAME` should already be set, just reuse it here...
+ARG TORCH_IMAGE_NAME
+ARG PYTHON_VERSION=3.11
+
+FROM python:${PYTHON_VERSION} AS wheelhouse
+ARG PIP_INDEX_URL=https://pypi.org/simple
+
+# Requirements for pip wheel
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        gdal-bin \
+        libgdal-dev \
+        python3-dev \
+        protobuf-compiler && \
+    rm -rf /var/lib/apt/lists/*
+
+# pycocotools==2.0.8  seems required for super-gradients
+RUN pip wheel --wheel-dir=/tmp/wheels \
+        open3d \
+        open_clip_torch \
+        pycocotools==2.0.8 \
+        pydicom \
+        pyproj \
+        rasterio \
+        segment-anything \
+        super-gradients \
+        shapely \
+        transformers \
+        ultralytics>=8.3.0 \
+        umap-learn>=0.5
+
+# non-pipable
+RUN git clone https://github.com/facebookresearch/sam2.git && \
+	cd sam2 && \
+	pip wheel --wheel-dir=/tmp/wheels .
+
+FROM ${TORCH_IMAGE_NAME} AS teamscvfullrelease
+
+USER root 
+
+# Some dependenices require GDAL headers
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        gdal-bin \
+        libgdal-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# run as the voxel51 user
+USER 1000:1000
+
+RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
+    pip --no-cache-dir install -q --no-index \
+    --find-links=/wheelhouse/tmp/wheels \
+    open3d \
+    open_clip_torch \
+    pycocotools \
+    pydicom \
+    pyproj \
+    rasterio \
+    SAM_2 \
+    segment-anything \
+    shapely \
+    super-gradients \
+    transformers \
+    ultralytics>=8.3.0 \
+    umap-learn>=0.5
+
+#
+# Serve the app
+#
+CMD hypercorn fiftyone.teams.app:app --bind "${FIFTYONE_DEFAULT_APP_ADDRESS:-0.0.0.0}":"${FIFTYONE_DEFAULT_APP_PORT:-5151}" --workers "${HYPERCORN_WORKERS:-4}"
