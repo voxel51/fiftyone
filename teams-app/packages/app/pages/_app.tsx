@@ -78,6 +78,7 @@ function MyApp({ Component, ...props }: AppProps) {
               </Box>
               <AnalyticsConsent />
               {!hideFooter && <Footer />}
+              <AppAlert {...props} showInFooterOnly />
             </MainColumn>
           </MainLayout>
         </AppContainer>
