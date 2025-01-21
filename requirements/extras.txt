@@ -1,7 +1,7 @@
 google-api-python-client>=1.6.5
 google-cloud-storage>=1.36
 httplib2<=0.15
-ipywidgets>=7.5,<8
+ipywidgets>=7.5
 notebook>=5.3
 pydicom>=2.2.0
 shapely>=1.7.1
