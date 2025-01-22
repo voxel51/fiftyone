@@ -15,7 +15,7 @@ import {
 } from "@mui/material";
 import { useMemo, useState } from "react";
 
-type OverflowMenuItemProps = ItemWithPermission & {
+export type OverflowMenuItemProps = ItemWithPermission & {
   primaryText?: string | React.ReactNode; // only optional for dividers
   IconComponent?: React.ReactNode;
   secondaryText?: string;
@@ -24,6 +24,7 @@ type OverflowMenuItemProps = ItemWithPermission & {
   title?: string;
   hoverText?: string;
   isDivider?: boolean;
+  iconPosition?: "left" | "right";
 };
 
 type OverflowMenuProps = {
@@ -113,6 +114,7 @@ export default function OverflowMenu({
             onClick,
             primaryText,
             secondaryText,
+            iconPosition = "left",
             title,
             hoverText,
           } = item;
@@ -130,13 +132,25 @@ export default function OverflowMenu({
                 handleClose(e);
                 if (onClick) onClick(e);
               }}
+              sx={{
+                display: "flex",
+                justifyContent:
+                  iconPosition === "right" ? "space-between" : "flex-start",
+              }}
             >
-              {IconComponent && <ListItemIcon>{IconComponent}</ListItemIcon>}
+              {iconPosition === "left" && IconComponent && (
+                <ListItemIcon>{IconComponent}</ListItemIcon>
+              )}
               <ListItemText>{primaryText}</ListItemText>
               {secondaryText && (
                 <Typography variant="body2" color="text.secondary">
                   {secondaryText}
                 </Typography>
+              )}
+              {iconPosition === "right" && IconComponent && (
+                <Box component="span" ml={2}>
+                  {IconComponent}
+                </Box>
               )}
             </MenuItem>
           );
