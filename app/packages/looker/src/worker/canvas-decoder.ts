@@ -12,37 +12,6 @@ const canvasAndCtx = (() => {
   }
 })();
 
-const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-/**
- * Reads the PNG's image header chunk to determine the color type.
- * Returns the color type if valid PNG, otherwise undefined.
- */
-const getMaybePngcolorType = async (
-  blob: Blob
-): Promise<number | undefined> => {
-  // https://www.w3.org/TR/2003/REC-PNG-20031110/#11IHDR
-
-  // PNG signature is 8 bytes
-  // IHDR (image header): length(4 bytes), chunk type(4 bytes), then data(13 bytes)
-  // data layout of IHDR: width(4), height(4), bit depth(1), color type(1), ...
-  // color type is at offset: 8(signature) + 4(length) + 4(chunk type) + 8(width+height) + 1(bit depth)
-  // = 8 + 4 + 4 + 8 + 1 = 25 (0-based index)
-
-  const header = new Uint8Array(await blob.slice(0, 26).arrayBuffer());
-
-  // check PNG signature
-  for (let i = 0; i < PNG_SIGNATURE.length; i++) {
-    if (header[i] !== PNG_SIGNATURE[i]) {
-      // not a PNG
-      return undefined;
-    }
-  }
-
-  // color type at byte 25 (0-based)
-  const colorType = header[25];
-  return colorType;
-};
-
 /**
  * Sets the buffer in place to grayscale by removing the G, B, and A channels.
  *
@@ -69,27 +38,12 @@ export const recastBufferToMonoChannel = (
   return uint8Array.slice(0, totalPixels).buffer;
 };
 
-export const decodeWithCanvas = async (blob: Blob, cls: string) => {
-  let channels: number = 4;
-
-  if (blob.type !== "image/jpg" && blob.type !== "image/jpeg") {
-    // note that the following function doesn't rely on MIME type and instead reads the file header
-    const colorType = await getMaybePngcolorType(blob);
-    if (colorType !== undefined) {
-      // according to PNG specs:
-      // 0: Grayscale          => 1 channel
-      // 2: Truecolor (RGB)   => (would be 3 channels, but we can safely use 4)
-      // 3: Indexed-color     => (palette-based, treat as non-grayscale => 4)
-      // 4: Grayscale+Alpha    => Grayscale image (so treat as grayscale => 1)
-      // 6: RGBA               => non-grayscale => 4
-      if (colorType === 0 || colorType === 4) {
-        channels = 1;
-      } else {
-        channels = 4;
-      }
-    }
-  }
-  // if not PNG, use 4 channels
+export const decodeWithCanvas = async (
+  blob: Blob,
+  cls: string,
+  numOriginalChannels: number
+) => {
+  let channels: number = numOriginalChannels;
 
   const imageBitmap = await createImageBitmap(blob);
   const { width, height } = imageBitmap;
