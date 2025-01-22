@@ -5,3 +5,4 @@ export { default as AWSIcon } from "./AWS";
 export { default as AzureIcon } from "./Azure";
 export { default as MinIOIcon } from "./MinIO";
 export { default as ExportIcon } from "./Export";
+export { default as ExternalLinkIcon } from "./ExternalLink";

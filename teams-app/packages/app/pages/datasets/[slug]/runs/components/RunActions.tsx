@@ -3,7 +3,8 @@ import {
   useCurrentUser,
   useMutation,
 } from "@fiftyone/hooks";
-import { OverflowMenu } from "@fiftyone/teams-components";
+import { ExternalLinkIcon, OverflowMenu } from "@fiftyone/teams-components";
+import { OverflowMenuItemProps } from "@fiftyone/teams-components/src/OverflowMenu";
 import {
   CAN_MANAGE_ANY_RUN,
   runsDeleteRunMutation,
@@ -12,7 +13,7 @@ import {
   runsReRunMutation,
 } from "@fiftyone/teams-state";
 import { OPERATOR_RUN_STATES } from "@fiftyone/teams-state/src/constants";
-import { DeleteOutline } from "@mui/icons-material";
+import { DeleteOutline, DownloadOutlined } from "@mui/icons-material";
 import ReplayIcon from "@mui/icons-material/Replay";
 import SettingsSystemDaydreamOutlinedIcon from "@mui/icons-material/SettingsSystemDaydreamOutlined";
 import StopCircleOutlinedIcon from "@mui/icons-material/StopCircleOutlined";
@@ -45,7 +46,7 @@ export default function RunActions(props: RunActionsPropsType) {
   const hasLogSetup = true;
   const hasLogUrl = true;
 
-  const items = [
+  const items: OverflowMenuItemProps[] = [
     {
       primaryText: "Re-run",
       IconComponent: <ReplayIcon color="secondary" />,
@@ -84,19 +85,20 @@ export default function RunActions(props: RunActionsPropsType) {
   }
 
   // download logs
-  items.push({
-    primaryText: <Typography color="error">Delete</Typography>,
-    IconComponent: <DeleteOutline color="error" />,
-    onClick() {
-      deleteRun({
-        variables: { operationId: id },
-        successMessage: "Successfully deleted an operation",
-        onSuccess: refresh,
-      });
-    },
-    disabled: isRunning,
-    title: isRunning ? "Cannot delete running operation" : undefined,
-  });
+  if (hasLogSetup)
+    items.push({
+      primaryText: <Typography>Download Logs</Typography>,
+      IconComponent: <DownloadOutlined />,
+      onClick() {
+        // deleteRun({
+        //   variables: { operationId: id },
+        //   successMessage: "Successfully downloaded logs",
+        //   onSuccess: refresh,
+        // });
+      },
+      disabled: !hasLogUrl,
+      title: !hasLogUrl ? "Log not available" : undefined,
+    });
   // delete button
   items.push({
     primaryText: <Typography color="error">Delete</Typography>,
@@ -113,6 +115,25 @@ export default function RunActions(props: RunActionsPropsType) {
   });
 
   // config logs
+  if (!hasLogSetup) {
+    items.push({
+      isDivider: true,
+    });
+    items.push({
+      primaryText: <Typography color="secondary">Configure logs </Typography>,
+      IconComponent: (
+        <ExternalLinkIcon color="secondary" width={17} height={17} />
+      ),
+      iconPosition: "right",
+      onClick() {
+        deleteRun({
+          variables: { operationId: id },
+          successMessage: "Successfully deleted an operation",
+          onSuccess: refresh,
+        });
+      },
+    });
+  }
 
   return (
     <OverflowMenu
