@@ -1,11 +1,11 @@
-import { Layout, TabConfig } from "./Layout";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { EmptyState } from "./EmptyState";
+import Error from "./Error";
+import { useLensConfigs } from "./hooks";
+import { Layout, TabConfig } from "./Layout";
 import { LensConfigManager } from "./LensConfigManager";
 import { LensPanel } from "./LensPanel";
 import { LensConfig } from "./models";
-import { useLensConfigs } from "./hooks";
-import Error from "./Error";
 
 type ExtendedTabConfig = TabConfig & {
   isVisible: boolean;
@@ -22,6 +22,7 @@ type TabId = "empty-state" | "query-data" | "manage-datasources";
 export const MainPanel = () => {
   const [errorMessage, setErrorMessage] = useState(null);
   const [activeTab, setActiveTab] = useState<TabId>("empty-state");
+  const [hasDefaultTabBeenSet, setHasDefaultTabBeenSet] = useState(false);
   const {
     lensConfigs,
     setLensConfigs,
@@ -55,6 +56,18 @@ export const MainPanel = () => {
     configs.sort((a, b) => a.name.localeCompare(b.name));
     setLensConfigs(configs);
   };
+
+  useEffect(() => {
+    if (hasDefaultTabBeenSet) {
+      return;
+    }
+
+    // if we have lens configs, show the query data tab by default
+    if (lensConfigs.length > 0) {
+      setActiveTab("query-data");
+      setHasDefaultTabBeenSet(true);
+    }
+  }, [lensConfigs, hasDefaultTabBeenSet]);
 
   tabs.push(
     ...[
