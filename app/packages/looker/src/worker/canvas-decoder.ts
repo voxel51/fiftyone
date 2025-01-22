@@ -15,9 +15,11 @@ const canvasAndCtx = (() => {
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 /**
  * Reads the PNG's image header chunk to determine the color type.
- * Returns the color type if PNG, otherwise undefined.
+ * Returns the color type if valid PNG, otherwise undefined.
  */
-const getPngcolorType = async (blob: Blob): Promise<number | undefined> => {
+const getMaybePngcolorType = async (
+  blob: Blob
+): Promise<number | undefined> => {
   // https://www.w3.org/TR/2003/REC-PNG-20031110/#11IHDR
 
   // PNG signature is 8 bytes
@@ -70,8 +72,9 @@ export const recastBufferToMonoChannel = (
 export const decodeWithCanvas = async (blob: Blob, cls: string) => {
   let channels: number = 4;
 
-  if (blob.type === "image/png") {
-    const colorType = await getPngcolorType(blob);
+  if (blob.type !== "image/jpg" && blob.type !== "image/jpeg") {
+    // note that the following function doesn't rely on MIME type and instead reads the file header
+    const colorType = await getMaybePngcolorType(blob);
     if (colorType !== undefined) {
       // according to PNG specs:
       // 0: Grayscale          => 1 channel
