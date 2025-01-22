@@ -1233,10 +1233,7 @@ class SampleCollection(object):
             a :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView`
         """
-        try:
-            return next(iter(self))
-        except StopIteration:
-            raise ValueError("%s is empty" % self.__class__.__name__)
+        raise NotImplementedError("Subclass must implement first()")
 
     def last(self):
         """Returns the last sample in the collection.
@@ -1245,7 +1242,7 @@ class SampleCollection(object):
             a :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView`
         """
-        return self[-1:].first()
+        raise NotImplementedError("Subclass must implement last()")
 
     def head(self, num_samples=3):
         """Returns a list of the first few samples in the collection.
@@ -1257,9 +1254,10 @@ class SampleCollection(object):
             num_samples (3): the number of samples
 
         Returns:
-            a list of :class:`fiftyone.core.sample.Sample` objects
+            a list of :class:`fiftyone.core.sample.Sample` or
+            :class:`fiftyone.core.sample.SampleView` objects
         """
-        return [s for s in self[:num_samples]]
+        raise NotImplementedError("Subclass must implement head()")
 
     def tail(self, num_samples=3):
         """Returns a list of the last few samples in the collection.
@@ -1271,40 +1269,13 @@ class SampleCollection(object):
             num_samples (3): the number of samples
 
         Returns:
-            a list of :class:`fiftyone.core.sample.Sample` objects
+            a list of :class:`fiftyone.core.sample.Sample` or
+            :class:`fiftyone.core.sample.SampleView` objects
         """
-        return [s for s in self[-num_samples:]]
+        raise NotImplementedError("Subclass must implement tail()")
 
     def one(self, expr, exact=False):
         """Returns a single sample in this collection matching the expression.
-
-        Examples::
-
-            import fiftyone as fo
-            import fiftyone.zoo as foz
-            from fiftyone import ViewField as F
-
-            dataset = foz.load_zoo_dataset("quickstart")
-
-            #
-            # Get a sample by filepath
-            #
-
-            # A random filepath in the dataset
-            filepath = dataset.take(1).first().filepath
-
-            # Get sample by filepath
-            sample = dataset.one(F("filepath") == filepath)
-
-            #
-            # Dealing with multiple matches
-            #
-
-            # Get a sample whose image is JPEG
-            sample = dataset.one(F("filepath").ends_with(".jpg"))
-
-            # Raises an error since there are multiple JPEGs
-            dataset.one(F("filepath").ends_with(".jpg"), exact=True)
 
         Args:
             expr: a :class:`fiftyone.core.expressions.ViewExpression` or
@@ -1318,27 +1289,10 @@ class SampleCollection(object):
             and multiple samples match the expression
 
         Returns:
-            a :class:`fiftyone.core.sample.SampleView`
+            a :class:`fiftyone.core.sample.Sample` or
+            :class:`fiftyone.core.sample.SampleView`
         """
-        view = self.match(expr)
-        matches = iter(view)
-
-        try:
-            sample = next(matches)
-        except StopIteration:
-            raise ValueError("No samples match the given expression")
-
-        if exact:
-            try:
-                next(matches)
-                raise ValueError(
-                    "Expected one matching sample, but found %d matches"
-                    % len(view)
-                )
-            except StopIteration:
-                pass
-
-        return sample
+        raise NotImplementedError("Subclass must implement one()")
 
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
@@ -8436,6 +8390,22 @@ class SampleCollection(object):
         Returns:
             the count
         """
+
+        # Optimization: use estimated document count when possible
+        if self._is_full_collection() and (
+            expr is None
+            and (
+                field_or_expr is None
+                or (
+                    etau.is_str(field_or_expr)
+                    and field_or_expr == "frames"
+                    and self._has_frame_fields()
+                )
+            )
+        ):
+            frames = field_or_expr == "frames"
+            return self._dataset._estimated_count(frames=frames)
+
         make = lambda field_or_expr: foa.Count(
             field_or_expr, expr=expr, safe=safe
         )
@@ -11341,6 +11311,22 @@ class SampleCollection(object):
 
     def _handle_id_fields(self, field_name):
         return _handle_id_fields(self, field_name)
+
+    def _is_full_collection(self):
+        if isinstance(self, fod.Dataset) and self.media_type != fom.GROUP:
+            return True
+
+        # pylint:disable=no-member
+        if (
+            isinstance(self, fov.DatasetView)
+            and self._dataset.media_type == fom.GROUP
+            and len(self._stages) == 1
+            and isinstance(self._stages[0], fos.SelectGroupSlices)
+            and self._pipeline() == []
+        ):
+            return True
+
+        return False
 
     def _is_label_field(self, field_name, label_type_or_types):
         try:

@@ -469,6 +469,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def __len__(self):
         return self.count()
 
+    def _estimated_count(self, frames=False):
+        if frames:
+            if self._frame_collection is None:
+                return None
+
+            return self._frame_collection.estimated_document_count()
+
+        return self._sample_collection.estimated_document_count()
+
     def __getitem__(self, id_filepath_slice):
         if isinstance(id_filepath_slice, numbers.Integral):
             raise ValueError(
@@ -1367,13 +1376,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return _get_collstats(self._frame_collection)
 
+    def _get_first(self, limit=1, reverse=False):
+        direction = -1 if reverse else 1
+        pipeline = [{"$sort": {"_id": direction}}, {"$limit": limit}]
+
+        return self._aggregate(
+            pipeline=pipeline, detach_frames=True, detach_groups=True
+        )
+
     def first(self):
         """Returns the first sample in the dataset.
 
         Returns:
             a :class:`fiftyone.core.sample.Sample`
         """
-        return super().first()
+        cursor = self._get_first()
+
+        try:
+            d = next(cursor)
+        except StopIteration:
+            raise ValueError("%s is empty" % self.__class__.__name__)
+
+        return self._make_sample(d)
 
     def last(self):
         """Returns the last sample in the dataset.
@@ -1381,12 +1405,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`fiftyone.core.sample.Sample`
         """
+        cursor = self._get_first(reverse=True)
+
         try:
-            sample_view = self[-1:].first()
-        except ValueError:
+            d = next(cursor)
+        except StopIteration:
             raise ValueError("%s is empty" % self.__class__.__name__)
 
-        return fos.Sample.from_doc(sample_view._doc, dataset=self)
+        return self._make_sample(d)
 
     def head(self, num_samples=3):
         """Returns a list of the first few samples in the dataset.
@@ -1400,10 +1426,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of :class:`fiftyone.core.sample.Sample` objects
         """
-        return [
-            fos.Sample.from_doc(sv._doc, dataset=self)
-            for sv in self[:num_samples]
-        ]
+        cursor = self._get_first(limit=num_samples)
+        return [self._make_sample(d) for d in cursor]
 
     def tail(self, num_samples=3):
         """Returns a list of the last few samples in the dataset.
@@ -1417,10 +1441,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of :class:`fiftyone.core.sample.Sample` objects
         """
-        return [
-            fos.Sample.from_doc(sv._doc, dataset=self)
-            for sv in self[-num_samples:]
-        ]
+        cursor = self._get_first(reverse=True, limit=num_samples)
+        samples = [self._make_sample(d) for d in cursor]
+        samples.reverse()
+        return samples
 
     def one(self, expr, exact=False):
         """Returns a single sample in this dataset matching the expression.
@@ -1451,7 +1475,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample = dataset.one(F("filepath").ends_with(".jpg"))
 
             # Raises an error since there are multiple JPEGs
-            dataset.one(F("filepath").ends_with(".jpg"), exact=True)
+            _ = dataset.one(F("filepath").ends_with(".jpg"), exact=True)
 
         Args:
             expr: a :class:`fiftyone.core.expressions.ViewExpression` or
@@ -1460,11 +1484,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             exact (False): whether to raise an error if multiple samples match
                 the expression
 
+        Raises:
+            ValueError: if no samples match the expression or if ``exact=True``
+            and multiple samples match the expression
+
         Returns:
             a :class:`fiftyone.core.sample.Sample`
         """
-        view = self.match(expr)
-        matches = iter(view._aggregate())
+        limit = 2 if exact else 1
+        view = self.match(expr).limit(limit)
+        matches = iter(view._aggregate(detach_frames=True, detach_groups=True))
 
         try:
             d = next(matches)
@@ -1475,8 +1504,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             try:
                 next(matches)
                 raise ValueError(
-                    "Expected one matching sample, but found %d matches"
-                    % len(view)
+                    "Expected one matching sample, but found multiple"
                 )
             except StopIteration:
                 pass
@@ -2097,8 +2125,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             _id = "_id"
 
-        if list_fields:
-            pipeline.append({"$unwind": "$" + list_fields[0]})
+        for list_field in list_fields:
+            pipeline.append({"$unwind": "$" + list_field})
 
         if field_type == "categorical":
             if include_counts:
