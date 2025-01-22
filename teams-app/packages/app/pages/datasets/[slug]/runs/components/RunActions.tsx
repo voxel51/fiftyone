@@ -43,8 +43,17 @@ export default function RunActions(props: RunActionsPropsType) {
   const isRunning = runState === OPERATOR_RUN_STATES.RUNNING;
   const canViewInOrchestrator =
     runLink && isUrl(runLink) && !hideViewInOrchestrator;
+
+  // TO UPDATE:
   const hasLogSetup = true;
   const hasLogUrl = true;
+
+  // TODO: update the url and move it to Constants.ts
+  const logDocUrl = "https://docs.voxel51.com/teams/teams_plugins.html";
+
+  const handleButtonClick = (url: string) => {
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
 
   const items: OverflowMenuItemProps[] = [
     {
@@ -87,18 +96,13 @@ export default function RunActions(props: RunActionsPropsType) {
   // download logs
   if (hasLogSetup)
     items.push({
-      primaryText: <Typography>Download Logs</Typography>,
+      primaryText: <Typography>Download logs</Typography>,
       IconComponent: <DownloadOutlined />,
-      onClick() {
-        // deleteRun({
-        //   variables: { operationId: id },
-        //   successMessage: "Successfully downloaded logs",
-        //   onSuccess: refresh,
-        // });
-      },
+      onClick() {},
       disabled: !hasLogUrl,
       title: !hasLogUrl ? "Log not available" : undefined,
     });
+
   // delete button
   items.push({
     primaryText: <Typography color="error">Delete</Typography>,
@@ -126,11 +130,7 @@ export default function RunActions(props: RunActionsPropsType) {
       ),
       iconPosition: "right",
       onClick() {
-        deleteRun({
-          variables: { operationId: id },
-          successMessage: "Successfully deleted an operation",
-          onSuccess: refresh,
-        });
+        handleButtonClick(logDocUrl);
       },
     });
   }
