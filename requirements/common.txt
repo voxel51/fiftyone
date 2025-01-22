@@ -2,7 +2,7 @@ aiofiles==0.7.0
 aiohttp
 argcomplete==1.11.0
 backoff==1.11.1
-boto3==1.17.36
+boto3==1.36.2
 cachetools==5.2.0
 dacite==1.6.0
 Deprecated==1.2.11

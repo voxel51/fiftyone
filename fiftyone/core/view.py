@@ -475,6 +475,119 @@ class DatasetView(foc.SampleCollection):
             ]
         )
 
+    def first(self):
+        """Returns the first sample in the view.
+
+        Returns:
+            a :class:`fiftyone.core.sample.SampleView`
+        """
+        try:
+            return next(iter(self))
+        except StopIteration:
+            raise ValueError("%s is empty" % self.__class__.__name__)
+
+    def last(self):
+        """Returns the last sample in the view.
+
+        Returns:
+            a :class:`fiftyone.core.sample.SampleView`
+        """
+        return self[-1:].first()
+
+    def head(self, num_samples=3):
+        """Returns a list of the first few samples in the view.
+
+        If fewer than ``num_samples`` samples are in the view, only
+        the available samples are returned.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a list of :class:`fiftyone.core.sample.SampleView` objects
+        """
+        return [s for s in self[:num_samples]]
+
+    def tail(self, num_samples=3):
+        """Returns a list of the last few samples in the view.
+
+        If fewer than ``num_samples`` samples are in the view, only
+        the available samples are returned.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a list of :class:`fiftyone.core.sample.SampleView` objects
+        """
+        return [s for s in self[-num_samples:]]
+
+    def one(self, expr, exact=False):
+        """Returns a single sample in this view matching the expression.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            view = dataset.select_fields()
+
+            #
+            # Get a sample by filepath
+            #
+
+            # A random filepath in the view
+            filepath = view.take(1).first().filepath
+
+            # Get sample by filepath
+            sample = view.one(F("filepath") == filepath)
+
+            #
+            # Dealing with multiple matches
+            #
+
+            # Get a sample whose image is JPEG
+            sample = view.one(F("filepath").ends_with(".jpg"))
+
+            # Raises an error since there are multiple JPEGs
+            _ = view.one(F("filepath").ends_with(".jpg"), exact=True)
+
+        Args:
+            expr: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that evaluates to ``True`` for the sample to match
+            exact (False): whether to raise an error if multiple samples match
+                the expression
+
+        Raises:
+            ValueError: if no samples match the expression or if ``exact=True``
+            and multiple samples match the expression
+
+        Returns:
+            a :class:`fiftyone.core.sample.SampleView`
+        """
+        limit = 2 if exact else 1
+        view = self.match(expr).limit(limit)
+        matches = iter(view._aggregate(detach_frames=True, detach_groups=True))
+
+        try:
+            d = next(matches)
+        except StopIteration:
+            raise ValueError("No samples match the given expression")
+
+        if exact:
+            try:
+                next(matches)
+                raise ValueError(
+                    "Expected one matching sample, but found multiple"
+                )
+            except StopIteration:
+                pass
+
+        return self._make_sample(d)
+
     def view(self):
         """Returns a copy of this view.
 
