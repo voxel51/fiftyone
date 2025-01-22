@@ -28,6 +28,7 @@ export default function RunActions(props: RunActionsPropsType) {
     runBy,
     runState,
     runLink,
+    signedUrl,
     hideViewInOrchestrator,
   } = props;
   const [reRun] = useMutation(runsReRunMutation);
@@ -46,7 +47,7 @@ export default function RunActions(props: RunActionsPropsType) {
 
   // TO UPDATE:
   const hasLogSetup = true;
-  const hasLogUrl = true;
+  const hasLogUrl = signedUrl !== null;
 
   // TODO: update the url and move it to Constants.ts
   const logDocUrl = "https://docs.voxel51.com/teams/teams_plugins.html";
@@ -98,7 +99,16 @@ export default function RunActions(props: RunActionsPropsType) {
     items.push({
       primaryText: <Typography>Download logs</Typography>,
       IconComponent: <DownloadOutlined />,
-      onClick() {},
+      onClick() {
+        if (hasLogUrl) {
+          const link = document.createElement("a");
+          link.href = signedUrl;
+          link.download = "logs.txt";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      },
       disabled: !hasLogUrl,
       title: !hasLogUrl ? "Log not available" : undefined,
     });
