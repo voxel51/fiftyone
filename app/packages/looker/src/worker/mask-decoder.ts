@@ -2,11 +2,12 @@ import { decodeWithCanvas } from "./canvas-decoder";
 import { customDecode16BitPng } from "./custom-16-bit-png-decoder";
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
 /**
  * Reads the PNG's image header chunk to get bit depth & color type.
  * Returns undefined if not a PNG.
  */
-const getPngHeader = async (
+const getMaybePngHeader = async (
   blob: Blob
 ): Promise<{ bitDepth: number; colorType: number } | undefined> => {
   // https://www.w3.org/TR/2003/REC-PNG-20031110/#11IHDR
@@ -35,8 +36,8 @@ const getPngHeader = async (
 export const decodeMaskOnDisk = async (blob: Blob, cls: string) => {
   let channels: number = 4;
 
-  if (blob.type === "image/png") {
-    const headerInfo = await getPngHeader(blob);
+  if (blob.type !== "image/jpg" && blob.type !== "image/jpeg") {
+    const headerInfo = await getMaybePngHeader(blob);
 
     if (!headerInfo) {
       console.warn("blob type is image/png but not a PNG file");
