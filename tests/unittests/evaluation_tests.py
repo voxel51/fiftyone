@@ -6,6 +6,7 @@ FiftyOne evaluation-related unit tests.
 |
 """
 import os
+import pytest
 import random
 import string
 import sys
@@ -1269,6 +1270,8 @@ class DetectionsTests(unittest.TestCase):
         return dataset
 
     def _evaluate_coco(self, dataset, kwargs):
+        bulk = kwargs.pop("bulk", False)
+
         _, gt_eval_field = dataset._get_label_field_path(
             "ground_truth", "eval"
         )
@@ -1287,6 +1290,7 @@ class DetectionsTests(unittest.TestCase):
             eval_key="eval",
             method="coco",
             compute_mAP=True,
+            bulk=bulk,
             **kwargs,
         )
 
@@ -1323,6 +1327,7 @@ class DetectionsTests(unittest.TestCase):
             method="coco",
             compute_mAP=True,
             classwise=True,  # don't allow matches w/ different classes
+            bulk=bulk,
             **kwargs,
         )
 
@@ -1452,6 +1457,7 @@ class DetectionsTests(unittest.TestCase):
             method="coco",
             compute_mAP=True,
             classwise=False,  # allow matches w/ different classes
+            bulk=bulk,
             **kwargs,
         )
 
@@ -1468,15 +1474,24 @@ class DetectionsTests(unittest.TestCase):
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
-        # temporarily change from None to []
-        self.assertListEqual(
-            dataset.values(gt_eval_field),
-            [[], ["fn"], [], ["tp"], ["fn"]],
-        )
-        self.assertListEqual(
-            dataset.values(pred_eval_field),
-            [[], [], ["fp"], ["tp"], ["fp"]],
-        )
+        if bulk:
+            self.assertListEqual(
+                dataset.values(gt_eval_field),
+                [[], ["fn"], [], ["tp"], ["fn"]],
+            )
+            self.assertListEqual(
+                dataset.values(pred_eval_field),
+                [[], [], ["fp"], ["tp"], ["fp"]],
+            )
+        else:
+            self.assertListEqual(
+                dataset.values(gt_eval_field),
+                [None, ["fn"], None, ["tp"], ["fn"]],
+            )
+            self.assertListEqual(
+                dataset.values(pred_eval_field),
+                [None, None, ["fp"], ["tp"], ["fp"]],
+            )
         self.assertListEqual(dataset.values("eval_tp"), [0, 0, 0, 1, 0])
         self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 1])
         self.assertListEqual(dataset.values("eval_fn"), [0, 1, 0, 0, 1])
@@ -1694,7 +1709,12 @@ class DetectionsTests(unittest.TestCase):
     def test_evaluate_detections_coco(self):
         dataset = self._make_detections_dataset()
         kwargs = {}
+        self._evaluate_coco(dataset, kwargs)
 
+    @drop_datasets
+    def test_evaluate_detections_coco_bulk(self):
+        dataset = self._make_detections_dataset()
+        kwargs = {"bulk": True}
         self._evaluate_coco(dataset, kwargs)
 
     @drop_datasets

@@ -310,6 +310,11 @@ def evaluate_detections(
         )
         id_field = "id"
 
+        if processing_frames:
+            raise ValueError(
+                "Frame-level updates not supported for bulk evaluation"
+            )
+
         if save:
             # Update the dataset with the appropriate fields
             for (field_name, key) in [
@@ -328,7 +333,6 @@ def evaluate_detections(
             (_, ground_truths, predictions) = docs
             samples.set_values(gt_field, ground_truths, key_field=id_field)
             samples.set_values(pred_field, predictions, key_field=id_field)
-
     else:
         logger.info("Evaluating detections...")
         for sample in _samples.iter_samples(progress=progress, autosave=save):
