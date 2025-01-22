@@ -292,7 +292,6 @@ def handle_group_filter(
 
     media_types = None
     if dataset.group_media_types:
-        print(dataset.group_media_types[s] for s in filter.slices)
         media_types = (
             set(dataset.group_media_types[s] for s in filter.slices)
             if filter.slices

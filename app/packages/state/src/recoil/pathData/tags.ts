@@ -1,6 +1,6 @@
 import { selectorFamily } from "recoil";
 import { aggregation } from "../aggregations";
-import { groupId } from "../groups";
+import { groupStatistics } from "../groups";
 import * as schemaAtoms from "../schema";
 
 export const labelTagCounts = selectorFamily<
@@ -17,7 +17,7 @@ export const labelTagCounts = selectorFamily<
             extended,
             modal,
             path: `${path}.tags`,
-            mixed: Boolean(get(groupId)),
+            mixed: get(groupStatistics(modal)) === "group",
           })
         )
       );
@@ -57,7 +57,7 @@ export const sampleTagCounts = selectorFamily<
         aggregation({
           ...params,
           path: "tags",
-          mixed: Boolean(get(groupId)),
+          mixed: get(groupStatistics(params.modal)) === "group",
         })
       );
       if (data.__typename !== "StringAggregation") {
