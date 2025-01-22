@@ -969,6 +969,84 @@ class DatasetTests(unittest.TestCase):
         self.assertFalse("frames_gt_confidence_by_label.max" in db_indexes)
 
     @drop_datasets
+    def test_first_last_head_tail(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image%d.jpg" % i, index=i)
+                for i in range(1, 52)
+            ]
+        )
+
+        sample = dataset.first()
+        self.assertIsInstance(sample, fo.Sample)
+        self.assertEqual(sample.index, 1)
+
+        sample = dataset.last()
+        self.assertIsInstance(sample, fo.Sample)
+        self.assertEqual(sample.index, 51)
+
+        samples = dataset.head()
+        self.assertIsInstance(samples, list)
+        self.assertIsInstance(samples[0], fo.Sample)
+        self.assertListEqual([s.index for s in samples], [1, 2, 3])
+
+        samples = dataset.tail()
+        self.assertIsInstance(samples, list)
+        self.assertIsInstance(samples[0], fo.Sample)
+        self.assertListEqual([s.index for s in samples], [49, 50, 51])
+
+        view = dataset.select_fields("index")
+
+        sample = view.first()
+        self.assertIsInstance(sample, fo.SampleView)
+        self.assertEqual(sample.index, 1)
+
+        sample = view.last()
+        self.assertIsInstance(sample, fo.SampleView)
+        self.assertEqual(sample.index, 51)
+
+        samples = view.head()
+        self.assertIsInstance(samples, list)
+        self.assertIsInstance(samples[0], fo.SampleView)
+        self.assertListEqual([s.index for s in samples], [1, 2, 3])
+
+        samples = view.tail()
+        self.assertIsInstance(samples, list)
+        self.assertIsInstance(samples[0], fo.SampleView)
+        self.assertListEqual([s.index for s in samples], [49, 50, 51])
+
+    @drop_datasets
+    def test_first_last_head_tail_empty(self):
+        dataset = fo.Dataset()
+
+        with self.assertRaises(ValueError):
+            _ = dataset.first()
+
+        with self.assertRaises(ValueError):
+            _ = dataset.last()
+
+        samples = dataset.head()
+        self.assertListEqual(samples, [])
+
+        samples = dataset.tail()
+        self.assertListEqual(samples, [])
+
+        view = dataset.select_fields()
+
+        with self.assertRaises(ValueError):
+            _ = view.first()
+
+        with self.assertRaises(ValueError):
+            _ = view.last()
+
+        samples = view.head()
+        self.assertListEqual(samples, [])
+
+        samples = view.tail()
+        self.assertListEqual(samples, [])
+
+    @drop_datasets
     def test_iter_samples(self):
         dataset = fo.Dataset()
         dataset.add_samples(
