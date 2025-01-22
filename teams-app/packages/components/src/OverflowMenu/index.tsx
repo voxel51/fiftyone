@@ -11,17 +11,19 @@ import {
   MenuItem,
   Typography,
   Tooltip,
+  Divider,
 } from "@mui/material";
 import { useMemo, useState } from "react";
 
 type OverflowMenuItemProps = ItemWithPermission & {
-  primaryText: string | React.ReactNode;
+  primaryText?: string | React.ReactNode; // only optional for dividers
   IconComponent?: React.ReactNode;
   secondaryText?: string;
   onClick?: Function;
   disabled?: boolean;
   title?: string;
   hoverText?: string;
+  isDivider?: boolean;
 };
 
 type OverflowMenuProps = {
@@ -39,6 +41,7 @@ export default function OverflowMenu({
 }: OverflowMenuProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
+
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     if (constrainEvent) {
       event.preventDefault();
@@ -47,6 +50,7 @@ export default function OverflowMenu({
     const selectedItem = event.currentTarget;
     setAnchorEl(selectedItem);
   };
+
   const handleClose = (e) => {
     if (constrainEvent) {
       e.preventDefault();
@@ -99,6 +103,10 @@ export default function OverflowMenu({
         onClose={handleClose}
       >
         {permissionedItems.map((item, i) => {
+          if (item.isDivider) {
+            return <Divider key={`divider-${i}`} />;
+          }
+
           const {
             IconComponent,
             disabled,
@@ -147,7 +155,7 @@ export default function OverflowMenu({
             );
           }
 
-          if (!text) {
+          if (text) {
             return (
               <Tooltip
                 title={text}
