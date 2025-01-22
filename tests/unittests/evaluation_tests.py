@@ -1705,6 +1705,46 @@ class DetectionsTests(unittest.TestCase):
         self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 1])
         self.assertListEqual(dataset.values("eval_fn"), [0, 1, 0, 0, 1])
 
+    def _evaluate_activitynet(self, dataset, kwargs):
+        _, gt_eval_field = dataset._get_label_field_path(
+            "ground_truth", "eval"
+        )
+        _, pred_eval_field = dataset._get_label_field_path(
+            "predictions", "eval"
+        )
+
+        # Test empty view
+
+        empty_view = dataset.limit(0)
+        self.assertEqual(len(empty_view), 0)
+
+        results = empty_view.evaluate_detections(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval",
+            method="open-images",
+            **kwargs,
+        )
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("eval_tp", schema)
+        self.assertIn("eval_fp", schema)
+        self.assertIn("eval_fn", schema)
+        self.assertIn(gt_eval_field, schema)
+
+        empty_view.load_evaluation_view("eval")
+        empty_view.get_evaluation_info("eval")
+
+        results.report()
+        results.print_report()
+        results.mAP()
+
+        metrics = results.metrics()
+        self.assertEqual(metrics["support"], 0)
+
+        actual = results.confusion_matrix()
+        self.assertEqual(actual.shape, (0, 0))
+
     @drop_datasets
     def test_evaluate_detections_coco(self):
         dataset = self._make_detections_dataset()
@@ -1751,6 +1791,20 @@ class DetectionsTests(unittest.TestCase):
         kwargs = {}
 
         self._evaluate_open_images(dataset, kwargs)
+
+    @drop_datasets
+    def test_evaluate_detections_activitynet(self):
+        dataset = self._make_detections_dataset()
+        kwargs = {}
+
+        self._evaluate_activitynet(dataset, kwargs)
+
+    @drop_datasets
+    def test_evaluate_detections_activitynet_bulk(self):
+        dataset = self._make_detections_dataset()
+        kwargs = {"bulk": True}
+
+        self._evaluate_activitynet(dataset, kwargs)
 
     @drop_datasets
     def test_load_evaluation_view_select_fields(self):

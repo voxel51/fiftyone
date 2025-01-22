@@ -295,6 +295,11 @@ def evaluate_detections(
     matches = []
 
     if bulk:
+        if processing_frames:
+            raise ValueError(
+                "Frame-level updates not supported for bulk evaluation"
+            )
+
         (
             matches,
             docs,
@@ -309,11 +314,6 @@ def evaluate_detections(
             eval_key,
         )
         id_field = "id"
-
-        if processing_frames:
-            raise ValueError(
-                "Frame-level updates not supported for bulk evaluation"
-            )
 
         if save:
             # Update the dataset with the appropriate fields
