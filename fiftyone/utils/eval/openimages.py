@@ -155,6 +155,9 @@ class OpenImagesEvaluation(DetectionEvaluation):
                 "Open Images evaluation"
             )
 
+    def _evaluate(self, gts, preds, eval_key=None):
+        raise NotImplementedError("Use `evaluate` method instead")
+
     def evaluate(self, sample_or_frame, eval_key=None):
         """Performs Open Images-style evaluation on the given image.
 

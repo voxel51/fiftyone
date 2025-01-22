@@ -239,6 +239,8 @@ def evaluate_detections(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
+        bulk (False): whether to use bulk evaluation, which can be faster for
+            large datasets
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
 
@@ -291,7 +293,7 @@ def evaluate_detections(
         _samples = samples.select_fields([gt_field, pred_field])
 
     matches = []
-    bulk = True
+
     if bulk:
         (
             matches,

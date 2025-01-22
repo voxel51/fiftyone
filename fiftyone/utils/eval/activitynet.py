@@ -89,6 +89,17 @@ class ActivityNetEvaluation(DetectionEvaluation):
                 "ActivityNet evaluation"
             )
 
+    def _evaluate(self, gts, preds, eval_key=None):
+        if eval_key is None:
+            # Don't save results on user's data
+            eval_key = "eval"
+            gts = _copy_labels(gts)
+            preds = _copy_labels(preds)
+
+        return _activitynet_evaluation_single_iou(
+            gts, preds, eval_key, self.config
+        )
+
     def evaluate(self, sample, eval_key=None):
         """Performs ActivityNet-style evaluation on the given video.
 
@@ -112,15 +123,7 @@ class ActivityNetEvaluation(DetectionEvaluation):
         gts = sample[self.gt_field]
         preds = sample[self.pred_field]
 
-        if eval_key is None:
-            # Don't save results on user's data
-            eval_key = "eval"
-            gts = _copy_labels(gts)
-            preds = _copy_labels(preds)
-
-        return _activitynet_evaluation_single_iou(
-            gts, preds, eval_key, self.config
-        )
+        return self._evaluate(gts, preds, eval_key=eval_key)
 
     def generate_results(
         self,
