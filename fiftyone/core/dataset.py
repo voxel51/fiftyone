@@ -360,6 +360,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def __len__(self):
         return self.count()
 
+    def _estimated_count(self, frames=False):
+        if frames:
+            if self._frame_collection is None:
+                return None
+
+            return self._frame_collection.estimated_document_count()
+
+        return self._sample_collection.estimated_document_count()
+
     def __getitem__(self, id_filepath_slice):
         if isinstance(id_filepath_slice, numbers.Integral):
             raise ValueError(
