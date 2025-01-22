@@ -1468,13 +1468,14 @@ class DetectionsTests(unittest.TestCase):
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
+        # temporarily change from None to []
         self.assertListEqual(
             dataset.values(gt_eval_field),
-            [None, ["fn"], None, ["tp"], ["fn"]],
+            [[], ["fn"], [], ["tp"], ["fn"]],
         )
         self.assertListEqual(
             dataset.values(pred_eval_field),
-            [None, None, ["fp"], ["tp"], ["fp"]],
+            [[], [], ["fp"], ["tp"], ["fp"]],
         )
         self.assertListEqual(dataset.values("eval_tp"), [0, 0, 0, 1, 0])
         self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 1])

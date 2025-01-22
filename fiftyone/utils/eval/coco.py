@@ -132,6 +132,15 @@ class COCOEvaluation(DetectionEvaluation):
                 "evaluation"
             )
 
+    def _evaluate(self, gts, preds, eval_key=None):
+        if eval_key is None:
+            # Don't save results on user's data
+            eval_key = "eval"
+            gts = _copy_labels(gts)
+            preds = _copy_labels(preds)
+
+        return _coco_evaluation_single_iou(gts, preds, eval_key, self.config)
+
     def evaluate(self, sample_or_frame, eval_key=None):
         """Performs COCO-style evaluation on the given image.
 
@@ -160,13 +169,7 @@ class COCOEvaluation(DetectionEvaluation):
         gts = sample_or_frame[self.gt_field]
         preds = sample_or_frame[self.pred_field]
 
-        if eval_key is None:
-            # Don't save results on user's data
-            eval_key = "eval"
-            gts = _copy_labels(gts)
-            preds = _copy_labels(preds)
-
-        return _coco_evaluation_single_iou(gts, preds, eval_key, self.config)
+        return self._evaluate(gts, preds, eval_key=eval_key)
 
     def generate_results(
         self,

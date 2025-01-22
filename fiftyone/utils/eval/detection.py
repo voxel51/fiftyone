@@ -27,6 +27,109 @@ from .base import BaseEvaluationResults
 logger = logging.getLogger(__name__)
 
 
+def _evaluate_detections(
+    _samples,
+    progress,
+    save,
+    processing_frames,
+    eval_method,
+    eval_key,
+    tp_field,
+    fp_field,
+    fn_field,
+):
+    matches = []
+    for sample in _samples.iter_samples(progress=progress, autosave=save):
+        if processing_frames:
+            docs = sample.frames.values()
+        else:
+            docs = [sample]
+
+        sample_tp = 0
+        sample_fp = 0
+        sample_fn = 0
+        for doc in docs:
+            doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
+            matches.extend(doc_matches)
+            tp, fp, fn = _tally_matches(doc_matches)
+            sample_tp += tp
+            sample_fp += fp
+            sample_fn += fn
+
+            if processing_frames and save:
+                doc[tp_field] = tp
+                doc[fp_field] = fp
+                doc[fn_field] = fn
+
+        if save:
+            sample[tp_field] = sample_tp
+            sample[fp_field] = sample_fp
+            sample[fn_field] = sample_fn
+    return matches
+
+
+def _evaluate_detections_bulk(
+    _samples, gt_field, pred_field, processing_frames, eval_method, eval_key
+):
+    matches = []
+    id_field = "id"
+
+    print("Retrieving values from collection")
+    if processing_frames:
+        frame_gt_field = "frames." + gt_field
+        frame_pred_field = "frames." + pred_field
+        frame_id_field = "frames." + id_field
+        ids, frame_ids, ground_truths, predictions = _samples.values(
+            [id_field, frame_id_field, frame_gt_field, frame_pred_field]
+        )
+    else:
+        ids, ground_truths, predictions = _samples.values(
+            [id_field, gt_field, pred_field]
+        )
+    print("Finished retrieving values from collection")
+
+    if len(ids) != len(ground_truths) or len(ids) != len(predictions):
+        raise ValueError(
+            "Mismatched number of ground truth and prediction samples"
+        )
+
+    sample_updates = {"sample_tp": {}, "sample_fp": {}, "sample_fn": {}}
+    frame_updates = []
+
+    for idx in range(len(ids)):
+        id = ids[idx]
+        gt = ground_truths[idx]
+        pred = predictions[idx]
+
+        if processing_frames:
+            # need to retrieve frame ground truth and predictions
+            frame_id = frame_ids[idx]
+        else:
+            docs = [(gt, pred)]
+
+        sample_tp = 0
+        sample_fp = 0
+        sample_fn = 0
+        for (gt, pred) in docs:
+            doc_matches = eval_method._evaluate(gt, pred, eval_key=eval_key)
+            matches.extend(doc_matches)
+            tp, fp, fn = _tally_matches(doc_matches)
+            sample_tp += tp
+            sample_fp += fp
+            sample_fn += fn
+
+            if processing_frames:
+                frame_id = frame_ids[idx]
+                frame_updates.append((frame_id, tp, fp, fn))
+
+        sample_updates["sample_tp"][id] = sample_tp
+        sample_updates["sample_fp"][id] = sample_fp
+        sample_updates["sample_fn"][id] = sample_fn
+
+    docs = (ids, ground_truths, predictions)
+    return matches, docs, sample_updates, frame_updates
+
+
 def evaluate_detections(
     samples,
     pred_field,
@@ -41,6 +144,7 @@ def evaluate_detections(
     classwise=True,
     dynamic=True,
     progress=None,
+    bulk=False,
     **kwargs,
 ):
     """Evaluates the predicted detections in the given samples with respect to
@@ -187,33 +291,70 @@ def evaluate_detections(
         _samples = samples.select_fields([gt_field, pred_field])
 
     matches = []
-    logger.info("Evaluating detections...")
-    for sample in _samples.iter_samples(progress=progress, autosave=save):
-        if processing_frames:
-            docs = sample.frames.values()
-        else:
-            docs = [sample]
-
-        sample_tp = 0
-        sample_fp = 0
-        sample_fn = 0
-        for doc in docs:
-            doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
-            matches.extend(doc_matches)
-            tp, fp, fn = _tally_matches(doc_matches)
-            sample_tp += tp
-            sample_fp += fp
-            sample_fn += fn
-
-            if processing_frames and save:
-                doc[tp_field] = tp
-                doc[fp_field] = fp
-                doc[fn_field] = fn
+    bulk = True
+    if bulk:
+        (
+            matches,
+            docs,
+            sample_updates,
+            frame_updates,
+        ) = _evaluate_detections_bulk(
+            _samples,
+            gt_field,
+            pred_field,
+            processing_frames,
+            eval_method,
+            eval_key,
+        )
+        id_field = "id"
 
         if save:
-            sample[tp_field] = sample_tp
-            sample[fp_field] = sample_fp
-            sample[fn_field] = sample_fn
+            # Update the dataset with the appropriate fields
+            for (field_name, key) in [
+                (tp_field, "sample_tp"),
+                (fp_field, "sample_fp"),
+                (fn_field, "sample_fn"),
+            ]:
+                if len(sample_updates[key]) > 0:
+                    field_values = list(sample_updates[key].values())
+                    # samples._dataset.add_field(field_name, fof.IntField)
+                    samples.set_values(
+                        field_name, field_values, key_field=id_field
+                    )
+
+            # Update ground_truth and predictions with the appropriate fields
+            (_, ground_truths, predictions) = docs
+            samples.set_values(gt_field, ground_truths, key_field=id_field)
+            samples.set_values(pred_field, predictions, key_field=id_field)
+
+    else:
+        logger.info("Evaluating detections...")
+        for sample in _samples.iter_samples(progress=progress, autosave=save):
+            if processing_frames:
+                docs = sample.frames.values()
+            else:
+                docs = [sample]
+
+            sample_tp = 0
+            sample_fp = 0
+            sample_fn = 0
+            for doc in docs:
+                doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
+                matches.extend(doc_matches)
+                tp, fp, fn = _tally_matches(doc_matches)
+                sample_tp += tp
+                sample_fp += fp
+                sample_fn += fn
+
+                if processing_frames and save:
+                    doc[tp_field] = tp
+                    doc[fp_field] = fp
+                    doc[fn_field] = fn
+
+            if save:
+                sample[tp_field] = sample_tp
+                sample[fp_field] = sample_fp
+                sample[fn_field] = sample_fn
 
     results = eval_method.generate_results(
         samples,
