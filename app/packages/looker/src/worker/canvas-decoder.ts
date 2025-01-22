@@ -73,6 +73,7 @@ export const decodeWithCanvas = async (blob: Blob, cls: string) => {
   let channels: number = 4;
 
   if (blob.type !== "image/jpg" && blob.type !== "image/jpeg") {
+    // note that the following function doesn't rely on MIME type and instead reads the file header
     const colorType = await getMaybePngcolorType(blob);
     if (colorType !== undefined) {
       // according to PNG specs:
