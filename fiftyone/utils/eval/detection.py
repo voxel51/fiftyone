@@ -27,47 +27,6 @@ from .base import BaseEvaluationResults
 logger = logging.getLogger(__name__)
 
 
-def _evaluate_detections(
-    _samples,
-    progress,
-    save,
-    processing_frames,
-    eval_method,
-    eval_key,
-    tp_field,
-    fp_field,
-    fn_field,
-):
-    matches = []
-    for sample in _samples.iter_samples(progress=progress, autosave=save):
-        if processing_frames:
-            docs = sample.frames.values()
-        else:
-            docs = [sample]
-
-        sample_tp = 0
-        sample_fp = 0
-        sample_fn = 0
-        for doc in docs:
-            doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
-            matches.extend(doc_matches)
-            tp, fp, fn = _tally_matches(doc_matches)
-            sample_tp += tp
-            sample_fp += fp
-            sample_fn += fn
-
-            if processing_frames and save:
-                doc[tp_field] = tp
-                doc[fp_field] = fp
-                doc[fn_field] = fn
-
-        if save:
-            sample[tp_field] = sample_tp
-            sample[fp_field] = sample_fp
-            sample[fn_field] = sample_fn
-    return matches
-
-
 def _evaluate_detections_bulk(
     _samples, gt_field, pred_field, processing_frames, eval_method, eval_key
 ):
