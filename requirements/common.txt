@@ -1,6 +1,6 @@
 aiofiles==0.7.0
 argcomplete==1.11.0
-boto3==1.17.36
+boto3==1.36.2
 cachetools==5.2.0
 dacite==1.6.0
 Deprecated==1.2.11
@@ -27,6 +27,6 @@ setuptools>=45.2.0,<71
 sseclient-py>=1.7.2
 sse-starlette>=0.10.3
 starlette==0.40.0
-strawberry-graphql==0.243.0
+strawberry-graphql==0.257.0
 tabulate==0.8.10
 xmltodict==0.12.0
