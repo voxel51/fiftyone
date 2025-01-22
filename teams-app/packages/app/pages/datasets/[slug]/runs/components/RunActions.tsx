@@ -47,7 +47,7 @@ export default function RunActions(props: RunActionsPropsType) {
 
   // TO UPDATE:
   const hasLogSetup = true;
-  const hasLogUrl = signedUrl !== null;
+  const hasLogUrl = Boolean(signedUrl);
 
   // TODO: update the url and move it to Constants.ts
   const logDocUrl = "https://docs.voxel51.com/teams/teams_plugins.html";
@@ -101,12 +101,18 @@ export default function RunActions(props: RunActionsPropsType) {
       IconComponent: <DownloadOutlined />,
       onClick() {
         if (hasLogUrl) {
-          const link = document.createElement("a");
-          link.href = signedUrl;
-          link.download = "logs.txt";
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          if (runLink?.startsWith("http")) {
+            // when signedUrl is also a url link
+            window.open(signedUrl, "_blank", "noopener,noreferrer");
+          } else if (signedUrl) {
+            // Download the content using the signedUrl
+            const link = document.createElement("a");
+            link.href = signedUrl;
+            link.download = "logs.txt";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
         }
       },
       disabled: !hasLogUrl,
