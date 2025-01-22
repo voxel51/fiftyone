@@ -35,19 +35,11 @@ const processOverlays = <State extends BaseState>(
     // todo: find a better approach / place for this.
     // for instance, this won't work in detection overlay, where
     // we might want the bounding boxes but masks might not have been loaded
-    if (
-      overlay instanceof SegmentationOverlay &&
-      overlay.label.mask_path &&
-      !overlay.label.mask
-    ) {
+    if (overlay instanceof SegmentationOverlay && !overlay.label.mask) {
       continue;
     }
 
-    if (
-      overlay instanceof HeatmapOverlay &&
-      overlay.label.map_path &&
-      !overlay.label.map
-    ) {
+    if (overlay instanceof HeatmapOverlay && !overlay.label.map) {
       continue;
     }
 
