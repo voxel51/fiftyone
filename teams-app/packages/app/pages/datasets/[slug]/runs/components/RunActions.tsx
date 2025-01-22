@@ -40,62 +40,83 @@ export default function RunActions(props: RunActionsPropsType) {
   if (!canManageRun) return null;
 
   const isRunning = runState === OPERATOR_RUN_STATES.RUNNING;
+  const canViewInOrchestrator =
+    runLink && isUrl(runLink) && !hideViewInOrchestrator;
+  const hasLogSetup = true;
+  const hasLogUrl = true;
+
+  const items = [
+    {
+      primaryText: "Re-run",
+      IconComponent: <ReplayIcon color="secondary" />,
+      onClick() {
+        reRun({
+          variables: { operationId: id },
+          successMessage: "Successfully triggered a re-run",
+          onSuccess: refresh,
+        });
+      },
+    },
+    {
+      primaryText: "Mark as failed",
+      IconComponent: <StopCircleOutlinedIcon color="secondary" />,
+      onClick() {
+        markFailed({
+          variables: { operationId: id },
+          successMessage: "Successfully marked the run as failed",
+        });
+      },
+      disabled: !isRunning,
+      title: !isRunning
+        ? "Cannot mark non-running operation as failed"
+        : undefined,
+    },
+  ];
+  // view in orchestrator button
+  if (canViewInOrchestrator) {
+    items.push({
+      primaryText: "View in orchestrator",
+      IconComponent: <SettingsSystemDaydreamOutlinedIcon color="secondary" />,
+      onClick() {
+        window.open(runLink); // todo: add support for link
+      },
+    });
+  }
+
+  // download logs
+  items.push({
+    primaryText: <Typography color="error">Delete</Typography>,
+    IconComponent: <DeleteOutline color="error" />,
+    onClick() {
+      deleteRun({
+        variables: { operationId: id },
+        successMessage: "Successfully deleted an operation",
+        onSuccess: refresh,
+      });
+    },
+    disabled: isRunning,
+    title: isRunning ? "Cannot delete running operation" : undefined,
+  });
+  // delete button
+  items.push({
+    primaryText: <Typography color="error">Delete</Typography>,
+    IconComponent: <DeleteOutline color="error" />,
+    onClick() {
+      deleteRun({
+        variables: { operationId: id },
+        successMessage: "Successfully deleted an operation",
+        onSuccess: refresh,
+      });
+    },
+    disabled: isRunning,
+    title: isRunning ? "Cannot delete running operation" : undefined,
+  });
+
+  // config logs
 
   return (
     <OverflowMenu
-      items={[
-        {
-          primaryText: "Re-run",
-          IconComponent: <ReplayIcon color="secondary" />,
-          onClick() {
-            reRun({
-              variables: { operationId: id },
-              successMessage: "Successfully triggered a re-run",
-              onSuccess: refresh,
-            });
-          },
-        },
-        {
-          primaryText: "Mark as failed",
-          IconComponent: <StopCircleOutlinedIcon color="secondary" />,
-          onClick() {
-            markFailed({
-              variables: { operationId: id },
-              successMessage: "Successfully marked the run as failed",
-            });
-          },
-          disabled: !isRunning,
-          title: !isRunning
-            ? "Cannot mark non-running operation as failed"
-            : undefined,
-        },
-        ...(runLink && isUrl(runLink) && !hideViewInOrchestrator
-          ? [
-              {
-                primaryText: "View in orchestrator",
-                IconComponent: (
-                  <SettingsSystemDaydreamOutlinedIcon color="secondary" />
-                ),
-                onClick() {
-                  window.open(runLink); // todo: add support for link
-                },
-              },
-            ]
-          : []),
-        {
-          primaryText: <Typography color="error">Delete</Typography>,
-          IconComponent: <DeleteOutline color="error" />,
-          onClick() {
-            deleteRun({
-              variables: { operationId: id },
-              successMessage: "Successfully deleted an operation",
-              onSuccess: refresh,
-            });
-          },
-          disabled: isRunning,
-          title: isRunning ? "Cannot delete running operation" : undefined,
-        },
-      ]}
+      items={items}
       containerProps={{ textAlign: "right" }}
       constrainEvent
     />
