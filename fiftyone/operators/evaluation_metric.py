@@ -40,7 +40,7 @@ class EvaluationMetric(Operator):
     """Base class for evaluation metric operators."""
 
     def get_parameters(self, ctx, inputs):
-        """Defines any necessary properties to collect this evaluaiton metric's
+        """Defines any necessary properties to collect this evaluation metric's
         parameters from a user during prompting.
 
         Args:
