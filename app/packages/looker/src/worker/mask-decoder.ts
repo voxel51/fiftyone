@@ -40,7 +40,7 @@ export const decodeMaskOnDisk = async (blob: Blob, cls: string) => {
     const headerInfo = await getMaybePngHeader(blob);
 
     if (!headerInfo) {
-      console.warn("blob type is image/png but not a PNG file");
+      // ambiguous mask type, default to canvas decoding
       return decodeWithCanvas(blob, cls, channels);
     }
 
