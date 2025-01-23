@@ -5,7 +5,7 @@ FiftyOne singleton implementations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
+import logging
 from collections import defaultdict
 import weakref
 
@@ -336,6 +336,10 @@ class FrameSingleton(DocumentSingleton):
         -   Frames whose frame numbers are not in ``frame_numbers`` are reset
         """
         if collection_name not in cls._instances:
+            logging.warning(
+                "Cannot sync frames to corresponding sample collection `%s` ",
+                collection_name,
+            )
             return
 
         samples = cls._instances[collection_name]

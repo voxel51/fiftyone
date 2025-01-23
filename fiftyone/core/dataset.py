@@ -3374,19 +3374,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._make_dict(sample, created_at=now, last_modified_at=now)
             for sample in samples
         ]
+        new_ids = []
 
         try:
             # adds `_id` to each dict
-            self._sample_collection.insert_many(dicts)
+            res = self._sample_collection.insert_many(dicts)
+            new_ids = res.inserted_ids
+
         except BulkWriteError as bwe:
             msg = bwe.details["writeErrors"][0]["errmsg"]
             raise ValueError(msg) from bwe
 
-        for sample, d in zip(samples, dicts):
+        if len(new_ids) != len(samples):
+            raise BulkWriteError("Failed to insert all samples")
+
+        for i, d in enumerate(dicts):
+            d["_id"] = new_ids[i]
             doc = self._sample_dict_to_doc(d)
-            sample._set_backing_doc(doc, dataset=self)
-            if sample.media_type == fom.VIDEO:
-                sample.frames.save()
+            samples[i]._set_backing_doc(doc, dataset=self)
+            if samples[i].media_type == fom.VIDEO:
+                samples[i].frames.save()
 
         if batcher is not None and batcher.manual_backpressure:
             # @todo can we infer content size from insert_many() above?
