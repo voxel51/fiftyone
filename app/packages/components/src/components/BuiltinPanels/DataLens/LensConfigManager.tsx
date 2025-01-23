@@ -236,18 +236,18 @@ export const LensConfigManager = ({
       <Table>
         <TableHead>
           <TableCell>
-            <Typography variant="h6" color="secondary">
-              DATA SOURCE NAME
+            <Typography variant="subtitle1" color="secondary">
+              Data Source Name
             </Typography>
           </TableCell>
           <TableCell>
-            <Typography variant="h6" color="secondary">
-              OPERATOR
+            <Typography variant="subtitle1" color="secondary">
+              Operator
             </Typography>
           </TableCell>
           <TableCell>
-            <Typography variant="h6" color="secondary">
-              ACTION
+            <Typography variant="subtitle1" color="secondary">
+              Actions
             </Typography>
           </TableCell>
         </TableHead>

@@ -1,6 +1,5 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { OperatorResult } from "@fiftyone/operators/src/operators";
-import { Schema } from "@fiftyone/utilities";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -641,7 +640,7 @@ export const LensPanel = ({
 
   // All content.
   return (
-    <Box sx={{ minWidth: "750px", m: "auto" }}>
+    <Box sx={{ minWidth: "450px", m: "auto" }}>
       <Box ref={mainContentRef} sx={{ m: "auto", mb: 16 }}>
         {lensConfigContent}
         {queryOperatorContent}
