@@ -1221,10 +1221,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _get_first(self, limit=1, reverse=False):
         direction = -1 if reverse else 1
-        if direction == -1:
-            pipeline = [{"$sort": {"_id": direction}}, {"$limit": limit}]
-        else:
-            pipeline = [{"$limit": limit}]
+        pipeline = [{"$sort": {"_id": direction}}, {"$limit": limit}]
 
         return self._aggregate(
             pipeline=pipeline, detach_frames=True, detach_groups=True

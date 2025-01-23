@@ -2571,6 +2571,7 @@ class DatasetTests(unittest.TestCase):
         sample1 = fo.Sample(filepath="image.jpg", foo="bar")
         dataset1 = fo.Dataset()
         dataset1.add_sample(sample1)
+        dataset1.save()
 
         # Merge dataset
         dataset = dataset1.clone()
@@ -2599,8 +2600,8 @@ class DatasetTests(unittest.TestCase):
 
         self.assertEqual(len(dataset), 2)
         self.assertEqual(len(set(dataset.values("id"))), 2)
-        self.assertEqual(dataset.first()["foo"], "bar")
-        self.assertIsNone(dataset.last()["foo"])
+        self.assertEqual(dataset.values("foo")[0], "bar")
+        self.assertIsNone(dataset.values("foo")[1])
         self.assertEqual(created_at1[0], created_at2[0])
         self.assertEqual(last_modified_at1[0], last_modified_at2[0])
         self.assertTrue(created_at2[1] > sample1.created_at)
