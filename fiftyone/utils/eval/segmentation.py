@@ -18,13 +18,16 @@ import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
-from .base import BaseEvaluationResults
+from .base import (
+    BaseEvaluationMethod,
+    BaseEvaluationMethodConfig,
+    BaseClassificationResults,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -37,6 +40,7 @@ def evaluate_segmentations(
     eval_key=None,
     mask_targets=None,
     method=None,
+    custom_metrics=None,
     progress=None,
     **kwargs,
 ):
@@ -88,6 +92,8 @@ def evaluate_segmentations(
             supported values are
             ``fo.evaluation_config.segmentation_backends.keys()`` and the
             default is ``fo.evaluation_config.default_segmentation_backend``
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -102,7 +108,13 @@ def evaluate_segmentations(
         samples, (pred_field, gt_field), fol.Segmentation, same_type=True
     )
 
-    config = _parse_config(pred_field, gt_field, method, **kwargs)
+    config = _parse_config(
+        pred_field,
+        gt_field,
+        method,
+        custom_metrics=custom_metrics,
+        **kwargs,
+    )
     eval_method = config.build()
     eval_method.ensure_requirements()
 
@@ -115,12 +127,13 @@ def evaluate_segmentations(
         mask_targets=mask_targets,
         progress=progress,
     )
+    eval_method.compute_custom_metrics(samples, eval_key, results)
     eval_method.save_run_results(samples, eval_key, results)
 
     return results
 
 
-class SegmentationEvaluationConfig(foe.EvaluationMethodConfig):
+class SegmentationEvaluationConfig(BaseEvaluationMethodConfig):
     """Base class for configuring :class:`SegmentationEvaluation` instances.
 
     Args:
@@ -130,20 +143,30 @@ class SegmentationEvaluationConfig(foe.EvaluationMethodConfig):
             :class:`fiftyone.core.labels.Segmentation` instances
         compute_dice (False): whether to compute the Dice coefficient for each
             sample
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
     """
 
-    def __init__(self, pred_field, gt_field, compute_dice=False, **kwargs):
+    def __init__(
+        self,
+        pred_field,
+        gt_field,
+        compute_dice=False,
+        custom_metrics=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.pred_field = pred_field
         self.gt_field = gt_field
         self.compute_dice = compute_dice
+        self.custom_metrics = custom_metrics
 
     @property
     def type(self):
         return "segmentation"
 
 
-class SegmentationEvaluation(foe.EvaluationMethod):
+class SegmentationEvaluation(BaseEvaluationMethod):
     """Base class for segmentation evaluation methods.
 
     Args:
@@ -233,6 +256,8 @@ class SegmentationEvaluation(foe.EvaluationMethod):
             if self.config.compute_dice:
                 fields.append("%s_dice" % prefix)
 
+        fields.extend(self.get_custom_metric_fields(samples, eval_key))
+
         return fields
 
     def rename(self, samples, eval_key, new_eval_key):
@@ -254,6 +279,8 @@ class SegmentationEvaluation(foe.EvaluationMethod):
             fields = dict(zip(in_frame_fields, out_frame_fields))
             dataset.rename_frame_fields(fields)
 
+        self.rename_custom_metrics(samples, eval_key, new_eval_key)
+
     def cleanup(self, samples, eval_key):
         dataset = samples._dataset
         processing_frames = samples._is_frame_field(self.config.gt_field)
@@ -271,6 +298,8 @@ class SegmentationEvaluation(foe.EvaluationMethod):
 
         if processing_frames:
             dataset.delete_frame_fields(fields, error_level=1)
+
+        self.cleanup_custom_metrics(samples, eval_key)
 
     def _validate_run(self, samples, eval_key, existing_info):
         self._validate_fields_match(eval_key, "pred_field", existing_info)
@@ -293,6 +322,8 @@ class SimpleEvaluationConfig(SegmentationEvaluationConfig):
             default, the entire masks are evaluated
         average ("micro"): the averaging strategy to use when populating
             precision and recall numbers on each sample
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
     """
 
     def __init__(
@@ -302,10 +333,15 @@ class SimpleEvaluationConfig(SegmentationEvaluationConfig):
         compute_dice=False,
         bandwidth=None,
         average="micro",
+        custom_metrics=None,
         **kwargs,
     ):
         super().__init__(
-            pred_field, gt_field, compute_dice=compute_dice, **kwargs
+            pred_field,
+            gt_field,
+            compute_dice=compute_dice,
+            custom_metrics=custom_metrics,
+            **kwargs,
         )
         self.bandwidth = bandwidth
         self.average = average
@@ -446,7 +482,7 @@ class SimpleEvaluation(SegmentationEvaluation):
         )
 
 
-class SegmentationResults(BaseEvaluationResults):
+class SegmentationResults(BaseClassificationResults):
     """Class that stores the results of a segmentation evaluation.
 
     Args:
@@ -456,6 +492,7 @@ class SegmentationResults(BaseEvaluationResults):
         pixel_confusion_matrix: a pixel value confusion matrix
         classes: a list of class labels corresponding to the confusion matrix
         missing (None): a missing (background) class
+        custom_metrics (None): an optional dict of custom metrics
         backend (None): a :class:`SegmentationEvaluation` backend
     """
 
@@ -467,6 +504,7 @@ class SegmentationResults(BaseEvaluationResults):
         pixel_confusion_matrix,
         classes,
         missing=None,
+        custom_metrics=None,
         backend=None,
     ):
         pixel_confusion_matrix = np.asarray(pixel_confusion_matrix)
@@ -483,13 +521,20 @@ class SegmentationResults(BaseEvaluationResults):
             weights=weights,
             classes=classes,
             missing=missing,
+            custom_metrics=custom_metrics,
             backend=backend,
         )
 
         self.pixel_confusion_matrix = pixel_confusion_matrix
 
     def attributes(self):
-        return ["cls", "pixel_confusion_matrix", "classes", "missing"]
+        return [
+            "cls",
+            "pixel_confusion_matrix",
+            "classes",
+            "missing",
+            "custom_metrics",
+        ]
 
     def dice_score(self):
         """Computes the Dice score across all samples in the evaluation.
@@ -508,6 +553,7 @@ class SegmentationResults(BaseEvaluationResults):
             d["pixel_confusion_matrix"],
             d["classes"],
             missing=d.get("missing", None),
+            custom_metrics=d.get("custom_metrics", None),
             **kwargs,
         )
 
@@ -531,6 +577,10 @@ class SegmentationResults(BaseEvaluationResults):
 def _parse_config(pred_field, gt_field, method, **kwargs):
     if method is None:
         method = fo.evaluation_config.default_segmentation_backend
+
+    custom_metrics = kwargs.get("custom_metrics", None)
+    if etau.is_str(custom_metrics):
+        kwargs["custom_metrics"] = [custom_metrics]
 
     if inspect.isclass(method):
         return method(pred_field, gt_field, **kwargs)

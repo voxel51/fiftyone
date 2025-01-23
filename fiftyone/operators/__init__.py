@@ -13,6 +13,7 @@ from .registry import (
     list_operators,
     operator_exists,
 )
+from .evaluation_metric import EvaluationMetricConfig, EvaluationMetric
 from .executor import (
     execute_operator,
     ExecutionContext,
