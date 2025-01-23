@@ -7,41 +7,63 @@ FiftyOne Release Notes
 
 FiftyOne 1.3.0
 --------------
-*Released January 22, 2025*
+*Released January 23, 2025*
 
- - Added `device` parameter for all Torch models
- - Added COCO-styled Mean Average Recall (mAR) metric to `evaluate_detections()`
- - Added a dataset app config property `dynamicGroupsTargetFrameRate` which
-   allows overriding the default 30 framerate for ImaVid on a dataset.
- - Added index usage info to `get_index_information(include_stats=True)`
- - Added `include_missing` argument to `confusion_matrix()`
- - GitHub paths for subdirectories are now supported by the `download_plugin()`
-   method
- - Added ability to export a fiftyone mask to CVAT as a pixel mask
- - When annotating existing semantic segmentation fields, added fallback to 
-   `mask_targets`
- - Added DINOv2 with registers to the model zoo
- - Added operators to show, hide, and toggle visibility of the sidebar.
- - Improved media field support when using ImaVid
- - Improved usability for AutoComplete and DropDown operator
- - Improved error messaging when attempting to set a reserved attribute on
-   FiftyOne objects (e.g. Detection)
- - Improved memory usage for heatmaps by 4x
- - Added a `create_index` kwarg to `GeoNear` and `GeoWithin` stages, for
-   consistency with the `SortBy` and `GroupBy` stages.
- - Fixed a bug where the `@voxel51/plugins/install_plugin` operator didn't
-   work correctly with GitHub paths.
- - Fixed a bug where disabled buttons would still try to load an operator
- - Fixed bug #5328 where a random tag from the tag list would be selected
- - Fixed a bug where sorting would sometimes not be respected in the Model
-   Evaluation panel for table and chart views
- - Fixed a bug with detecting offscreen canvas availability
- - Fixed a bug where `evaluate_detections()` would fail when applied to Keypoints fields
- - Fixed bug #5317: The ClassificationsOverlay did not have a label attribute.
+- Added `device` parameter for all Torch models
+- Added COCO-styled Mean Average Recall (mAR) metric to `evaluate_detections()`
+- Added a dataset app config property `dynamicGroupsTargetFrameRate` which
+  allows overriding the default 30 framerate for ImaVid on a dataset.
+- Added index usage info to `get_index_information(include_stats=True)`
+- Added `include_missing` argument to `confusion_matrix()`
+- GitHub paths for subdirectories are now supported by the `download_plugin()`
+  method
+- Added ability to export a fiftyone mask to CVAT as a pixel mask
+- When annotating existing semantic segmentation fields, added fallback to 
+  `mask_targets`
+- Added DINOv2 with registers to the model zoo
+- Added operators to show, hide, and toggle visibility of the sidebar.
+- Improved media field support when using ImaVid
+- Improved usability for AutoComplete and DropDown operator
+- Improved error messaging when attempting to set a reserved attribute on
+  FiftyOne objects (e.g. Detection)
+- Improved memory usage for heatmaps by 4x
+- Added a `create_index` kwarg to `GeoNear` and `GeoWithin` stages, for
+  consistency with the `SortBy` and `GroupBy` stages.
+- Added support to many builtin operators for users to act on multiple fields/
+  entities at once
+- Optimized `dataset.first()` , `dataset.head()`, `dataset.last()`,
+  `dataset.tail()`, `dataset.count()`, and `dataset.count("frames")`
+- Fixed a bug where the `@voxel51/plugins/install_plugin` operator didn't
+  work correctly with GitHub paths.
+- Fixed a bug where disabled buttons would still try to load an operator
+- Fixed bug #5328 where a random tag from the tag list would be selected
+- Fixed a bug where sorting would sometimes not be respected in the Model
+  Evaluation panel for table and chart views
+- Fixed a bug with detecting offscreen canvas availability
+- Fixed a bug where `evaluate_detections()` would fail when applied to Keypoints
+  fields
+- Fixed bug #5317: The ClassificationsOverlay did not have a label attribute
+- Fixed a bug where a missing mime-type would confuse mask decoding
+- Fixed bug #5363 where uint16 semantic segmentation masks failed to render
 
 Brain
 
- - TODO
+- Added support for arbitrary URIs to LanceDB integration
+
+ETA
+
+- Fixed bug [#641](https://github.com/voxel51/eta/issues/641) where empty
+  polylines were not handled properly
+
+FiftyOne Teams 2.5.0
+--------------------
+*Released January 23, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.3.0 <release-notes-v1.3.0>`, plus:
+
+- Fixed a bug which prevented very large media from being fetched
+- Fixed a race condition which prevented downloading initial batches of cloud
+  media
 
 FiftyOne Teams 2.4.0
 --------------------
