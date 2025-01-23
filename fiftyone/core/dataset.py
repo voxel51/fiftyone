@@ -3369,6 +3369,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if sample.media_type == fom.VIDEO:
                 sample.frames.save()
 
+        if batcher and batcher.manual_backpressure:
+            batcher.apply_backpressure(dicts)
+
         return [str(d["_id"]) for d in dicts]
 
     def _upsert_samples(
@@ -3431,6 +3434,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             if sample.media_type == fom.VIDEO:
                 sample.frames.save()
+
+        if batcher and batcher.manual_backpressure:
+            batcher.apply_backpressure(dicts)
 
     def _make_dict(
         self,
