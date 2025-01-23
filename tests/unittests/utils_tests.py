@@ -461,14 +461,14 @@ class ConfigTests(unittest.TestCase):
             # Add some duplicate documents
             db.config.insert_one(
                 {
-                    "_id": ObjectId.from_datetime(datetime(2022, 1, 1)),
+                    "_id": new_config_ids[0],
                     "version": "0.14.4",
                     "type": "fiftyone",
                 }
             )
             db.config.insert_one(
                 {
-                    "_id": ObjectId.from_datetime(datetime(2023, 1, 1)),
+                    "_id": new_config_ids[1],
                     "version": "0.1.4",
                     "type": "fiftyone",
                 }
