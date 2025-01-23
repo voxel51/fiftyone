@@ -3,6 +3,16 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 2.5.0
+--------------------
+*Released January 23, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.3.0 <release-notes-v1.3.0>`, plus:
+
+- Fixed a bug which prevented very large media from being fetched
+- Fixed a race condition which prevented downloading initial batches of cloud
+  media
+
 .. _release-notes-v1.3.0:
 
 FiftyOne 1.3.0
@@ -54,16 +64,6 @@ ETA
 
 - Fixed bug `#641 <https://github.com/voxel51/eta/issues/641>`_ where empty
   polylines were not handled properly
-
-FiftyOne Teams 2.5.0
---------------------
-*Released January 23, 2025*
-
-Includes all updates from :ref:`FiftyOne 1.3.0 <release-notes-v1.3.0>`, plus:
-
-- Fixed a bug which prevented very large media from being fetched
-- Fixed a race condition which prevented downloading initial batches of cloud
-  media
 
 FiftyOne Teams 2.4.0
 --------------------
