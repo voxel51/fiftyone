@@ -6,12 +6,7 @@ import { useAtom, useAtomValue } from "jotai";
 import React, { useMemo, useRef, useState } from "react";
 import IconButton from "../../../IconButton";
 import Popout from "../../../Popout";
-import {
-  checkedFieldsAtom,
-  currentViewAtom,
-  isLabelTagsCheckedAtom,
-  isSampleTagsCheckedAtom,
-} from "../state";
+import { checkedFieldsAtom, currentViewAtom } from "../state";
 
 interface SelectLabelsProps {
   schema: Schema;
@@ -26,12 +21,6 @@ const SelectLabelsList = ({
   anchorRef: React.RefObject<HTMLDivElement>;
   dismiss: () => void;
 }) => {
-  const [isSampleTagsChecked, setIsSampleTagsChecked] = useAtom(
-    isSampleTagsCheckedAtom
-  );
-  const [isLabelTagsChecked, setIsLabelTagsChecked] = useAtom(
-    isLabelTagsCheckedAtom
-  );
   const [checkedFields, setCheckedFields] =
     useAtom<string[]>(checkedFieldsAtom);
 
@@ -52,10 +41,20 @@ const SelectLabelsList = ({
           control={
             <Checkbox
               size="small"
-              checked={isSampleTagsChecked && isLabelTagsChecked}
+              checked={
+                checkedFields.includes("tags") &&
+                checkedFields.includes("_label_tags")
+              }
               onChange={(e) => {
-                setIsSampleTagsChecked(e.target.checked);
-                setIsLabelTagsChecked(e.target.checked);
+                if (e.target.checked) {
+                  setCheckedFields([...checkedFields, "tags", "_label_tags"]);
+                } else {
+                  setCheckedFields(
+                    checkedFields.filter(
+                      (f) => f !== "tags" && f !== "_label_tags"
+                    )
+                  );
+                }
               }}
             />
           }
@@ -65,19 +64,28 @@ const SelectLabelsList = ({
           control={
             <Checkbox
               size="small"
-              checked={isSampleTagsChecked}
-              onChange={(e) => setIsSampleTagsChecked(e.target.checked)}
+              checked={checkedFields.includes("tags")}
+              onChange={(e) =>
+                e.target.checked
+                  ? setCheckedFields([...checkedFields, "tags"])
+                  : setCheckedFields(checkedFields.filter((f) => f !== "tags"))
+              }
             />
           }
           label={"Sample Tags"}
-          value={isSampleTagsChecked}
         />
         <FormControlLabel
           control={
             <Checkbox
               size="small"
-              checked={isLabelTagsChecked}
-              onChange={(e) => setIsLabelTagsChecked(e.target.checked)}
+              checked={checkedFields.includes("_label_tags")}
+              onChange={(e) =>
+                e.target.checked
+                  ? setCheckedFields([...checkedFields, "_label_tags"])
+                  : setCheckedFields(
+                      checkedFields.filter((f) => f !== "_label_tags")
+                    )
+              }
             />
           }
           label={"Label Tags"}
@@ -160,7 +168,7 @@ function getTopLevelFields(schema: Schema): string[] {
   const nonSpecialFields: string[] = [];
 
   for (const [key, value] of Object.entries(schema)) {
-    // skip "tags"
+    // skip "tags", prepended elsewhere
     if (key === "tags") continue;
 
     // if it's metadata, expand subfields
