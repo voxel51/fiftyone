@@ -1482,10 +1482,10 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(dataset.count("frames"), 2)
         self.assertEqual(len(set(dataset.values("id"))), 2)
         self.assertEqual(len(set(dataset.values("frames.id", unwind=True))), 2)
-        self.assertEqual(dataset.first()["foo"], "bar")
-        self.assertEqual(dataset.first().frames.first()["foo"], "bar")
-        self.assertIsNone(dataset.last()["foo"])
-        self.assertIsNone(dataset.last().frames.last()["foo"])
+        self.assertEqual(dataset.values("foo")[0], "bar")
+        self.assertEqual(dataset.values("frames.foo")[0][0], "bar")
+        self.assertIsNone(dataset.values("foo")[-1])
+        self.assertIsNone(dataset.values("frames.foo")[-1][0])
 
     @drop_datasets
     def test_to_clips(self):
