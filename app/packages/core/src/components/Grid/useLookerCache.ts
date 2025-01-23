@@ -79,7 +79,8 @@ export default function useLookerCache<
 
       const instance = visible.get(key);
       if (!instance) {
-        throw new Error("visible instance not found");
+        console.warn("instance not found");
+        return;
       }
       visible.delete(key);
       const entry = { dispose: true, instance };

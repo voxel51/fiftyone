@@ -5,9 +5,11 @@ import type Spotlight from "@fiftyone/spotlight";
 import type { Rejected } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { useLayoutEffect } from "react";
+import { useSetRecoilState } from "recoil";
 import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
-import { AtInterface } from "./useAt";
-import useRefreshers from "./useRefreshers";
+import { gridZoomRange } from "./recoil";
+import type { AtInterface } from "./useAt";
+import type useRefreshers from "./useRefreshers";
 
 export default ({
   id,
@@ -26,6 +28,8 @@ export default ({
   setMinimum: (min: number) => void;
   spotlight?: Spotlight<number, fos.Sample>;
 }) => {
+  const setRange = useSetRecoilState(gridZoomRange);
+  const handleError = useSetRecoilState(fos.snackbarErrors);
   useLayoutEffect(() => {
     if (resizing || !spotlight) {
       return undefined;
@@ -50,7 +54,12 @@ export default ({
 
     const rejected = (event: Rejected) => {
       clearTimeout(timeout);
-      setMinimum(event.recommendedRowAspectRatioThreshold);
+      setMinimum(11 - event.recommendedRowAspectRatioThreshold);
+      setRange(([_, max]) => [
+        11 - event.recommendedRowAspectRatioThreshold,
+        max,
+      ]);
+      handleError(["sample density too high, grid resized"]);
     };
 
     element && spotlight.attach(element);
@@ -68,5 +77,15 @@ export default ({
       document.getElementById(pixels)?.classList.remove(styles.hidden);
       document.dispatchEvent(new CustomEvent("grid-unmount"));
     };
-  }, [id, lookerCache, pixels, resizing, set, setMinimum, spotlight]);
+  }, [
+    id,
+    handleError,
+    lookerCache,
+    pixels,
+    resizing,
+    set,
+    setMinimum,
+    setRange,
+    spotlight,
+  ]);
 };

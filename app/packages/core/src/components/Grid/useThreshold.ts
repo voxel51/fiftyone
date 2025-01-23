@@ -1,15 +1,10 @@
 import { useCallback } from "react";
-import { atom, useRecoilState, useRecoilValue } from "recoil";
-import { gridZoom } from "./recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
+import { gridZoom, gridZoomMin } from "./recoil";
 
 const WIDEST = 1200;
 const WIDE = 1000;
 const NORMAL = 800;
-
-const gridZoomMin = atom<number | null>({
-  key: "gridZoomMin",
-  default: null,
-});
 
 /**
  * Determines a maximium aspect ratio threshold for grid rows based on the

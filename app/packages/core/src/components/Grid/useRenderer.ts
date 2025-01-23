@@ -24,10 +24,11 @@ export default function ({
 
   const hideItem = useCallback(
     (id: ID) => {
-      if (!cache.isShown(id.description)) {
-        throw new Error("not shown");
+      if (cache.isShown(id.description)) {
+        cache.hide(id.description);
       }
-      cache.isShown(id.description) && cache.hide(id.description);
+      console.warn("not shown");
+      return;
     },
     [cache]
   );

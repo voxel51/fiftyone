@@ -1,5 +1,6 @@
 import { atom, selector } from "recoil";
 
+import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 
 export const defaultGridZoom = selector<number>({
@@ -39,9 +40,15 @@ export const gridZoom = atom<number>({
   ],
 });
 
+export const gridZoomMin = atom<number | null>({
+  key: "gridZoomMin",
+  default: null,
+});
+
 export const gridZoomRange = atom<[number, number]>({
   key: "gridZoomRange",
   default: [-5, 10],
+  effects: [() => subscribe((_, { reset }) => reset(gridZoomRange))],
 });
 
 export const gridCropCallback = selector({

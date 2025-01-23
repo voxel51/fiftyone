@@ -133,7 +133,7 @@ export default class Section<K, V> {
     top,
     zooming,
   }: {
-    measure: Measure;
+    measure: Measure<K, V>;
     target: number;
     threshold: (n: number) => boolean;
     top: number;

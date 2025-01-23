@@ -64,7 +64,7 @@ export const handleRowChange = <K, V>({
   let item = forward?.row.first;
   let delta = forward?.delta;
 
-  if (!item || (backward && backward.delta < delta)) {
+  if (backward && (!item || backward.delta < delta)) {
     item = backward.row.first;
     delta = backward.delta;
   }
@@ -105,6 +105,21 @@ export const scrollToPosition = <K, V>({
     }
   } else if (offset !== false && top) {
     el.scrollTo(ZERO, top);
+  }
+};
+
+export const runWhileWithHandler = async <T>(
+  run: () => void,
+  guard: () => boolean,
+  handler: (response: T) => Promise<boolean>
+) => {
+  while (guard()) {
+    try {
+      run();
+    } catch (response) {
+      if (await handler(response)) continue;
+      break;
+    }
   }
 };
 

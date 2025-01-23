@@ -17,6 +17,8 @@ import useSelect from "./useSelect";
 import useSpotlightPager from "./useSpotlightPager";
 import useThreshold from "./useThreshold";
 
+const MAX_SHOWN_SIZE_BYTES = 1e9;
+
 function Grid() {
   const id = useMemo(() => uuid(), []);
   const pixels = useMemo(() => uuid(), []);
@@ -57,7 +59,7 @@ function Grid() {
       ...get(),
       ...renderer,
 
-      maxItemsSizeBytes: 5e8,
+      maxItemsSizeBytes: MAX_SHOWN_SIZE_BYTES,
       scrollbar: true,
       spacing,
 

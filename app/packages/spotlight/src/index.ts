@@ -37,6 +37,7 @@ import {
   create,
   findTop,
   handleRowChange,
+  runWhileWithHandler,
   scrollToPosition,
   sum,
 } from "./utilities";
@@ -45,6 +46,7 @@ export { Load, Rejected, RowChange } from "./events";
 export * from "./types";
 
 export default class Spotlight<K, V> extends EventTarget {
+  readonly #aborter = new AbortController();
   readonly #config: SpotlightConfig<K, V>;
   readonly #element = create(DIV);
   readonly #keys = new WeakMap<ID, K>();
@@ -73,10 +75,6 @@ export default class Spotlight<K, V> extends EventTarget {
     return Boolean(this.#element.parentElement);
   }
 
-  get loaded() {
-    return this.#loaded;
-  }
-
   addEventListener(type: "load", callback: EventCallback<Load<K>>): void;
   addEventListener(type: "rejected", callback: EventCallback<Rejected>): void;
   addEventListener(
@@ -87,7 +85,7 @@ export default class Spotlight<K, V> extends EventTarget {
     type: string,
     callback: EventListenerOrEventListenerObject
   ): void {
-    super.addEventListener(type, callback);
+    super.addEventListener(type, callback, { signal: this.#aborter.signal });
   }
 
   removeEventListener(type: "load", callback: EventCallback<Load<K>>): void;
@@ -119,8 +117,7 @@ export default class Spotlight<K, V> extends EventTarget {
     element.appendChild(this.#element);
 
     const observer = new ResizeObserver(() => {
-      this.#rect = this.#element.getBoundingClientRect();
-      this.attached && this.loaded && this.#render({ ...this.#race() });
+      this.attached && this.#loaded && this.#render({ ...this.#race() });
     });
     observer.observe(this.#element);
     this.#rect = this.#element.getBoundingClientRect();
@@ -133,6 +130,7 @@ export default class Spotlight<K, V> extends EventTarget {
       return;
     }
 
+    this.#aborter.abort();
     this.#backward?.destroy();
     this.#forward?.destroy();
     this.#element?.remove();
@@ -170,7 +168,7 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   get #sizeThreshold() {
-    return this.#config.maxItemsSizeBytes ?? TWO / TWO;
+    return this.#config.maxItemsSizeBytes / 2;
   }
 
   get #containerHeight() {
@@ -189,34 +187,38 @@ export default class Spotlight<K, V> extends EventTarget {
     items: ItemData<K, V>[],
     map: Map<string, number>
   ) {
-    let bytes = 0;
+    let bytes = ZERO;
     const threshold = this.#sizeThreshold;
-    const use: typeof items = [];
+    let use: typeof items = [];
     for (const item of items) {
       bytes += map.get(item.id.description);
       use.push(item);
+
       if (bytes >= threshold) {
         break;
       }
     }
 
+    use = use.slice(ZERO, use.length - ONE);
     let aspectRatio = this.#config.rowAspectRatioThreshold(this.#width);
-    const itemAspectRatios = items.map(({ aspectRatio }) => aspectRatio);
+    const itemAspectRatios = use.map(({ aspectRatio }) => aspectRatio);
     let tiledAspectRatio: number;
+
     do {
       aspectRatio -= ONE / TWO;
+
       const breakpoints = tile(itemAspectRatios, aspectRatio, true);
       const rows: number[] = [];
-      let start = 0;
+      let start = ZERO;
       for (const end of breakpoints) {
         rows.push(ONE / sum(itemAspectRatios.slice(start, end)));
         start = end;
       }
 
-      tiledAspectRatio = sum(rows);
-    } while (tiledAspectRatio > this.#aspectRatio && tiledAspectRatio > ONE);
+      tiledAspectRatio = ONE / sum(rows);
+    } while (tiledAspectRatio > this.#aspectRatio / TWO);
 
-    return 11 - aspectRatio;
+    return Math.max(aspectRatio, ONE);
   }
 
   get #sections() {
@@ -230,6 +232,9 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   #attachScrollReader() {
+    if (this.#scrollReader) {
+      return;
+    }
     this.#scrollReader = createScrollReader(
       this.#element,
       (zooming, dispatchOffset) =>
@@ -239,14 +244,17 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   #race() {
-    let bytes = 0;
+    let bytes = ZERO;
     const items: ItemData<K, V>[] = [];
     const map = new Map<string, number>();
     const measure = (item: ItemData<K, V>, add: number) => {
       items.push(item);
       map.set(item.id.description, add);
       bytes += add;
-      if (bytes >= this.#config.maxItemsSizeBytes) {
+      if (
+        bytes >= this.#config.maxItemsSizeBytes &&
+        this.#config.rowAspectRatioThreshold(this.#width) > ONE
+      ) {
         this.dispatchEvent(
           new Rejected(this.#recommendedRowAspectRatioThreshold(items, map))
         );
@@ -333,6 +341,7 @@ export default class Spotlight<K, V> extends EventTarget {
 
     scrollToPosition({ at, el: this.#element, offset, top, ...this.#sections });
 
+    this.#attachScrollReader();
     if (!zooming && backwardResult.more) this.#previous();
     if (!zooming && forwardResult.more) this.#next();
   }
@@ -364,11 +373,11 @@ export default class Spotlight<K, V> extends EventTarget {
 
     await this.#previous(false);
 
-    let bytes = 0;
+    let bytes = ZERO;
     const items: ItemData<K, V>[] = [];
     const map = new Map<string, number>();
-    while (!this.#loaded) {
-      try {
+    await runWhileWithHandler(
+      () => {
         this.#render({
           at: this.#config.at,
           offset: -this.#pivot,
@@ -380,37 +389,44 @@ export default class Spotlight<K, V> extends EventTarget {
             if (map.has(item.id.description)) {
               return;
             }
+
             items.push(item);
             map.set(item.id.description, next);
             bytes += next;
 
-            if (bytes > this.#config.maxItemsSizeBytes) {
+            if (
+              bytes >= this.#config.maxItemsSizeBytes &&
+              this.#config.rowAspectRatioThreshold(this.#width) > ONE
+            ) {
               throw bytes;
             }
           },
           zooming: false,
         });
         this.#loaded = true;
-      } catch (response) {
+      },
+      () => !this.#loaded,
+      async (response) => {
         if (response instanceof Promise) {
           await response;
-          continue;
+          return true;
         }
 
         if (typeof response === "number") {
           this.dispatchEvent(
             new Rejected(this.#recommendedRowAspectRatioThreshold(items, map))
           );
-          break;
+          return false;
         }
 
         console.error(response);
-        break;
+        return false;
       }
-    }
+    );
 
-    this.#loaded && this.dispatchEvent(new Load(this.#config.key));
-    this.#attachScrollReader();
+    if (this.#loaded) {
+      this.dispatchEvent(new Load(this.#config.key));
+    }
   }
 
   async #get(key: K): Promise<Response<K, V>> {

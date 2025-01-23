@@ -119,7 +119,7 @@ export default class Row<K, V> {
   }
 
   get sizeBytes() {
-    let size = 0;
+    let size = ZERO;
     for (const item of this.#row)
       size += this.#config.getItemSizeBytes(item.item.id);
     return size;
