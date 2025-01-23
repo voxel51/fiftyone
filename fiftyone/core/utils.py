@@ -1460,6 +1460,7 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
             total=total,
         )
         self._last_batch_content_size = 0
+        self._manually_applied_backpressure = True
 
     def apply_backpressure(self, batch_or_size):
         if isinstance(batch_or_size, numbers.Number):
@@ -1584,12 +1585,14 @@ class ContentSizeBatcher(Batcher):
         iterable,
         size_calculation_fn,
         target_size=2**20,
+        max_batch_size=None,
         progress=False,
         total=None,
     ):
         super().__init__(
             iterable, return_views=False, progress=progress, total=total
         )
+        self.max_batch_size = max_batch_size
         self.target_size = target_size
         self._prev_element = None
         self._size_calculation_fn = size_calculation_fn
@@ -1605,10 +1608,14 @@ class ContentSizeBatcher(Batcher):
         return self
 
     def __next__(self):
+        if self._render_progress and self._last_batch_size:
+            self._pb.update(count=self._last_batch_size)
+
         if self._prev_element is None:
             raise StopIteration()
 
-        curr_batch_size = self._size_calculation_fn(self._prev_element)
+        batch_content_size = self._size_calculation_fn(self._prev_element)
+        curr_batch_size = 1
         curr_batch = [self._prev_element]
 
         while True:
@@ -1617,14 +1624,20 @@ class ContentSizeBatcher(Batcher):
                 next_element_size = self._size_calculation_fn(
                     self._prev_element
                 )
-                if curr_batch_size + next_element_size > self.target_size:
+                if (
+                    self.max_batch_size 
+                    and curr_batch_size >= self.max_batch_size
+                ) or (
+                    curr_batch_size + next_element_size > self.target_size
+                ):
                     break
-                curr_batch_size += next_element_size
+                curr_batch_size += 1
+                batch_content_size += next_element_size
                 curr_batch.append(self._prev_element)
             except StopIteration:
                 self._prev_element = None
                 break
-
+        self._last_batch_size = batch_content_size
         return curr_batch
     
 
