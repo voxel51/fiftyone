@@ -108,6 +108,8 @@ export type OperatorResponse<T> = {
   error?: string;
 };
 
+export type LensViewMode = "grid" | "json";
+
 /**
  * Generic sample data.
  */
