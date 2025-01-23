@@ -5,6 +5,7 @@ FiftyOne video-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import uuid
 from copy import deepcopy
 from datetime import date, datetime
 
@@ -1454,11 +1455,11 @@ class VideoTests(unittest.TestCase):
     def test_add_collection_new_ids(self):
         sample1 = fo.Sample(filepath="video.mp4", foo="bar")
         sample1.frames[1] = fo.Frame(foo="bar")
-        dataset1 = fo.Dataset()
+        dataset1 = fo.Dataset(name=str(uuid.uuid4()))
         dataset1.add_sample(sample1)
 
         # Merge dataset
-        dataset = dataset1.clone()
+        dataset = dataset1.clone(name=str(uuid.uuid4()))
         dataset.add_collection(dataset, new_ids=True)
 
         self.assertEqual(len(dataset), 2)
@@ -1471,7 +1472,7 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(dataset.last().frames.last()["foo"], "bar")
 
         # Merge view
-        dataset = dataset1.clone()
+        dataset = dataset1.clone(name=str(uuid.uuid4()))
         dataset.add_collection(
             dataset.exclude_fields(["foo", "frames.foo"]),
             new_ids=True,
