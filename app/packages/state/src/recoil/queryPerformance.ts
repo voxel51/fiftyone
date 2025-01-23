@@ -219,15 +219,8 @@ export const defaultQueryPerformanceConfig = selector({
 
 export const queryPerformance = selector<boolean>({
   key: "queryPerformance",
-  get: ({ get }) => {
-    return get(queryPerformanceSetting) && get(isQueryPerformantView);
-  },
-  set: ({ get, set }, value) => {
-    set(
-      queryPerformanceStore(get(datasetId)),
-      value instanceof DefaultValue ? undefined : value
-    );
-  },
+  get: ({ get }) => get(queryPerformanceSetting) && get(isQueryPerformantView),
+  set: ({ set }, value) => set(queryPerformanceSetting, value),
 });
 
 export const queryPerformanceSetting = selector<boolean>({
