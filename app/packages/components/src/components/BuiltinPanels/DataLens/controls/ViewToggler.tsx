@@ -8,7 +8,6 @@ import { TwoIconButtonGroup } from "./shared/TwoIconButtonGroup";
 export const ViewToggler = () => {
   const [currentViewMode, setCurrentViewMode] = useAtom(currentViewAtom);
 
-  console.log("currentViewMode", currentViewMode);
   return (
     <TwoIconButtonGroup
       activeButton={currentViewMode === "grid" ? "left" : "right"}
