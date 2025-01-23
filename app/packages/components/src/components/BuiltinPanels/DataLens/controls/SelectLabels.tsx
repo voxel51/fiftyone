@@ -12,113 +12,108 @@ interface SelectLabelsProps {
   schema: Schema;
 }
 
-const SelectLabelsList = ({
+interface SelectLabelsListProps {
+  fields: string[];
+  anchorRef: React.RefObject<HTMLDivElement>;
+  dismiss: () => void;
+}
+
+const FieldCheckbox = ({ field, label }: { field: string; label?: string }) => {
+  const [checkedFields, setCheckedFields] = useAtom(checkedFieldsAtom);
+
+  const isChecked = checkedFields.includes(field);
+
+  const toggleField = () => {
+    const updatedFields = new Set(checkedFields);
+    isChecked ? updatedFields.delete(field) : updatedFields.add(field);
+    setCheckedFields(Array.from(updatedFields));
+  };
+
+  return (
+    <FormControlLabel
+      key={field}
+      control={
+        <Checkbox size="small" checked={isChecked} onChange={toggleField} />
+      }
+      label={label ?? field}
+    />
+  );
+};
+
+const AllTagsCheckbox = ({
+  checkedFields,
+  setCheckedFields,
+}: {
+  checkedFields: Set<string>;
+  setCheckedFields: (fields: Set<string>) => void;
+}) => {
+  const isAllTagsChecked =
+    checkedFields.has("tags") && checkedFields.has("_label_tags");
+
+  const toggleAllTags = () => {
+    const updatedFields = new Set(checkedFields);
+    if (isAllTagsChecked) {
+      updatedFields.delete("tags");
+      updatedFields.delete("_label_tags");
+    } else {
+      updatedFields.add("tags");
+      updatedFields.add("_label_tags");
+    }
+    setCheckedFields(updatedFields);
+  };
+
+  return (
+    <FormControlLabel
+      control={
+        <Checkbox
+          size="small"
+          checked={isAllTagsChecked}
+          onChange={toggleAllTags}
+        />
+      }
+      label="All Tags"
+    />
+  );
+};
+
+const SelectLabelsList: React.FC<SelectLabelsListProps> = ({
   fields,
   anchorRef,
   dismiss,
-}: {
-  fields: ReturnType<typeof getTopLevelFields>;
-  anchorRef: React.RefObject<HTMLDivElement>;
-  dismiss: () => void;
 }) => {
-  const [checkedFields, setCheckedFields] =
-    useAtom<string[]>(checkedFieldsAtom);
-
+  const [checkedFields, setCheckedFields] = useAtom(checkedFieldsAtom);
   const popOutRef = useRef<HTMLDivElement>(null);
 
   useOutsideClick(popOutRef, (e) => {
-    // if the click is on the cog icon, don't dismiss
-    // (because dismissal is handled by the cog icon)
     if (anchorRef.current?.contains(e.target as Node)) return;
-
     dismiss();
   });
+
+  const updateCheckedFields = (fields: Set<string>) =>
+    setCheckedFields(Array.from(fields));
 
   return (
     <Popout modal fixed anchorRef={anchorRef} ref={popOutRef}>
       <FormGroup>
-        <FormControlLabel
-          control={
-            <Checkbox
-              size="small"
-              checked={
-                checkedFields.includes("tags") &&
-                checkedFields.includes("_label_tags")
-              }
-              onChange={(e) => {
-                if (e.target.checked) {
-                  setCheckedFields([...checkedFields, "tags", "_label_tags"]);
-                } else {
-                  setCheckedFields(
-                    checkedFields.filter(
-                      (f) => f !== "tags" && f !== "_label_tags"
-                    )
-                  );
-                }
-              }}
-            />
-          }
-          label={"All Tags"}
+        <AllTagsCheckbox
+          checkedFields={new Set(checkedFields)}
+          setCheckedFields={updateCheckedFields}
         />
-        <FormControlLabel
-          control={
-            <Checkbox
-              size="small"
-              checked={checkedFields.includes("tags")}
-              onChange={(e) =>
-                e.target.checked
-                  ? setCheckedFields([...checkedFields, "tags"])
-                  : setCheckedFields(checkedFields.filter((f) => f !== "tags"))
-              }
-            />
-          }
-          label={"Sample Tags"}
-        />
-        <FormControlLabel
-          control={
-            <Checkbox
-              size="small"
-              checked={checkedFields.includes("_label_tags")}
-              onChange={(e) =>
-                e.target.checked
-                  ? setCheckedFields([...checkedFields, "_label_tags"])
-                  : setCheckedFields(
-                      checkedFields.filter((f) => f !== "_label_tags")
-                    )
-              }
-            />
-          }
-          label={"Label Tags"}
-        />
+        <FieldCheckbox field="tags" label="Sample Tags" />
+        <FieldCheckbox field="_label_tags" label="Label Tags" />
       </FormGroup>
       <FormGroup
         sx={{ borderTop: "1px solid var(--fo-palette-background-level1)" }}
       >
         {fields.map((field) => (
-          <FormControlLabel
-            key={field}
-            control={
-              <Checkbox
-                size="small"
-                checked={checkedFields.includes(field)}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setCheckedFields([...checkedFields, field]);
-                  } else {
-                    setCheckedFields(checkedFields.filter((f) => f !== field));
-                  }
-                }}
-              />
-            }
-            label={field}
-          />
+          <FieldCheckbox key={field} field={field} />
         ))}
       </FormGroup>
     </Popout>
   );
 };
 
-export const SelectLabels = ({ schema }: SelectLabelsProps) => {
+export const SelectLabels: React.FC<SelectLabelsProps> = ({ schema }) => {
   const viewMode = useAtomValue(currentViewAtom);
   const [isLabelSelectorOpen, setIsLabelSelectorOpen] = useState(false);
   const cogRef = useRef<HTMLDivElement>(null);
@@ -146,16 +141,13 @@ export const SelectLabels = ({ schema }: SelectLabelsProps) => {
         <SelectLabelsList
           fields={fields}
           anchorRef={cogRef}
-          dismiss={() => {
-            setIsLabelSelectorOpen(false);
-          }}
+          dismiss={() => setIsLabelSelectorOpen(false)}
         />
       )}
     </div>
   );
 };
 
-// todo: test with frame fields, add unit tests
 function getTopLevelFields(schema: Schema): string[] {
   const result: string[] = [];
   const specialFields = [
