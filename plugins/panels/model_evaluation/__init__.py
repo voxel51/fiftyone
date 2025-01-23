@@ -146,6 +146,12 @@ class EvaluationPanel(Panel):
         except Exception as e:
             return None
 
+    def get_custom_metrics(self, results):
+        try:
+            return results.custom_metrics
+        except Exception:
+            return None
+
     def set_status(self, ctx):
         if not self.can_edit_status(ctx):
             ctx.ops.notify(
@@ -364,6 +370,7 @@ class EvaluationPanel(Panel):
             metrics["mAR"] = self.get_mar(results)
             evaluation_data = {
                 "metrics": metrics,
+                "custom_metrics": self.get_custom_metrics(results),
                 "info": serialized_info,
                 "confusion_matrices": self.get_confusion_matrices(results),
                 "per_class_metrics": per_class_metrics,
