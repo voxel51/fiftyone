@@ -18,6 +18,10 @@ class EvaluationMetricConfig(OperatorConfig):
         description (None): a description of the evaluation metric
         eval_types (None): an optional list of evaluation method types that
             this metric supports
+        aggregate_key (None): an optional key under which to store the metric's
+            aggregate value. This is used, for example, by
+            :meth:`metrics() <fiftyone.utils.eval.base.BaseEvaluationResults.metrics>`.
+            By default, the metric's ``name`` is used as its key
         lower_is_better (True): whether lower values of the metric are better
         **kwargs: other kwargs for :class:`fiftyone.operators.OperatorConfig`
     """
@@ -28,11 +32,13 @@ class EvaluationMetricConfig(OperatorConfig):
         label=None,
         description=None,
         eval_types=None,
+        aggregate_key=None,
         lower_is_better=True,
         **kwargs,
     ):
         super().__init__(name, label=label, description=description, **kwargs)
         self.eval_types = eval_types
+        self.aggregate_key = aggregate_key
         self.lower_is_better = lower_is_better
 
 
