@@ -1625,10 +1625,10 @@ class ContentSizeBatcher(Batcher):
                     self._prev_element
                 )
                 if (
-                    self.max_batch_size 
+                    self.max_batch_size
                     and curr_batch_size >= self.max_batch_size
                 ) or (
-                    curr_batch_size + next_element_size > self.target_size
+                    batch_content_size + next_element_size > self.target_size
                 ):
                     break
                 curr_batch_size += 1
@@ -1637,20 +1637,27 @@ class ContentSizeBatcher(Batcher):
             except StopIteration:
                 self._prev_element = None
                 break
-        self._last_batch_size = batch_content_size
+        self._last_batch_size = curr_batch_size
         return curr_batch
-    
+
 
 def default_calculate_size(obj):
     try:
-        obj = obj.to_mongo_dict(include_id=True) if hasattr(obj, "to_mongo_dict") else obj
+        obj = (
+            obj.to_mongo_dict(include_id=True)
+            if hasattr(obj, "to_mongo_dict")
+            else obj
+        )
         return len(json_util.dumps(obj))
     except Exception:
-        return len(str(obj)) 
+        return len(str(obj))
 
 
 def get_default_batcher(
-    iterable, progress=False, total=None, size_calc_fn=default_calculate_size,
+    iterable,
+    progress=False,
+    total=None,
+    size_calc_fn=default_calculate_size,
 ):
     """Returns a :class:`Batcher` over ``iterable`` using defaults from your
     FiftyOne config.
