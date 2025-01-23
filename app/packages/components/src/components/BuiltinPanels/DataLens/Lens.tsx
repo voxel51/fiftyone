@@ -3,7 +3,6 @@ import { Box, useColorScheme } from "@mui/material";
 import { JsonViewer } from "@textea/json-viewer";
 import { useAtomValue } from "jotai";
 import React, { useLayoutEffect, useMemo, useState } from "react";
-import "react-json-view-lite/dist/index.css";
 import { v4 as uuid } from "uuid";
 import { MAX_ZOOM_LEVEL, MIN_ZOOM_LEVEL } from "./constants";
 import { useSpotlight } from "./hooks";
