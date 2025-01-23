@@ -2593,6 +2593,7 @@ class DatasetTests(unittest.TestCase):
 
         # Merge view
         dataset = dataset1.clone(name=str(uuid.uuid4()))
+        dataset.save()
         created_at1 = dataset.values("created_at")
         last_modified_at1 = dataset.values("last_modified_at")
         dataset.add_collection(dataset.exclude_fields("foo"), new_ids=True)
@@ -2601,8 +2602,8 @@ class DatasetTests(unittest.TestCase):
 
         self.assertEqual(len(dataset), 2)
         self.assertEqual(len(set(dataset.values("id"))), 2)
-        self.assertEqual(dataset.values("foo")[0], "bar")
-        self.assertIsNone(dataset.values("foo")[1])
+        self.assertEqual(dataset.first()["foo"], "bar")
+        self.assertIsNone(dataset.last()["foo"])
         self.assertEqual(created_at1[0], created_at2[0])
         self.assertEqual(last_modified_at1[0], last_modified_at2[0])
         self.assertTrue(created_at2[1] > sample1.created_at)
