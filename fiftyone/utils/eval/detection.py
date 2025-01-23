@@ -9,6 +9,9 @@ from copy import deepcopy
 import inspect
 import itertools
 import logging
+import sys
+import time
+import threading
 
 import numpy as np
 
@@ -27,19 +30,54 @@ from .base import BaseEvaluationResults
 logger = logging.getLogger(__name__)
 
 
+# Probably move this into the util library
+def spinner_decorator(enabled=True):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            if not enabled:
+                return func(*args, **kwargs)
+
+            spinner = itertools.cycle(
+                ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+            )
+            stop_spinner = False
+
+            def spin():
+                while not stop_spinner:
+                    sys.stdout.write(next(spinner))
+                    sys.stdout.flush()
+                    time.sleep(0.1)
+                    sys.stdout.write("\b")
+
+            spinner_thread = threading.Thread(target=spin)
+            spinner_thread.start()
+
+            result = func(*args, **kwargs)
+            stop_spinner = True
+            spinner_thread.join()
+
+            return result
+
+        return wrapper
+
+    return decorator
+
+
 def _evaluate_detections_bulk(
-    _samples, gt_field, pred_field, eval_method, eval_key
+    _samples, gt_field, pred_field, eval_method, eval_key, progress=True
 ):
     matches = []
     id_field = "id"
 
-    print(
+    logger.info(
         f"Retrieving values for {id_field}, {gt_field}, {pred_field} from collection"
     )
-    ids, ground_truths, predictions = _samples.values(
+
+    decorated_func = spinner_decorator(enabled=True)(_samples.values)
+
+    ids, ground_truths, predictions = decorated_func(
         [id_field, gt_field, pred_field]
     )
-    print("Finished retrieving values from collection")
 
     if len(ids) != len(ground_truths) or len(ids) != len(predictions):
         raise ValueError(
@@ -49,6 +87,8 @@ def _evaluate_detections_bulk(
     sample_updates = {"sample_tp": {}, "sample_fp": {}, "sample_fn": {}}
     frame_updates = []
 
+    logger.info("Evaluating detections...")
+    pb = fou.ProgressBar(total=len(ids), progress=progress)
     for idx in range(len(ids)):
         id = ids[idx]
         gt = ground_truths[idx]
@@ -61,6 +101,7 @@ def _evaluate_detections_bulk(
         sample_updates["sample_tp"][id] = tp
         sample_updates["sample_fp"][id] = fp
         sample_updates["sample_fn"][id] = fn
+        pb.update()
 
     docs = (ids, ground_truths, predictions)
     return matches, docs, sample_updates, frame_updates
@@ -247,10 +288,20 @@ def evaluate_detections(
             pred_field,
             eval_method,
             eval_key,
+            progress=progress,
         )
         id_field = "id"
 
         if save:
+            logger.info("Saving results...")
+
+            if progress is None:
+                progress = fo.config.show_progress_bars
+
+            decorated_set_values = spinner_decorator(enabled=progress)(
+                samples.set_values
+            )
+
             # Update the dataset with the appropriate fields
             for (field_name, key) in [
                 (tp_field, "sample_tp"),
@@ -260,14 +311,14 @@ def evaluate_detections(
                 if len(sample_updates[key]) > 0:
                     field_values = list(sample_updates[key].values())
                     # samples._dataset.add_field(field_name, fof.IntField)
-                    samples.set_values(
+                    decorated_set_values(
                         field_name, field_values, key_field=id_field
                     )
 
             # Update ground_truth and predictions with the appropriate fields
             (_, ground_truths, predictions) = docs
-            samples.set_values(gt_field, ground_truths, key_field=id_field)
-            samples.set_values(pred_field, predictions, key_field=id_field)
+            decorated_set_values(gt_field, ground_truths, key_field=id_field)
+            decorated_set_values(pred_field, predictions, key_field=id_field)
     else:
         logger.info("Evaluating detections...")
         for sample in _samples.iter_samples(progress=progress, autosave=save):
