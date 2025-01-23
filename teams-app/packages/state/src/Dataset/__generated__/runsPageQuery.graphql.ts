@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2052ae65f6202c5a92e239d7d8f615f6>>
+ * @generated SignedSource<<ad88b79c8838f642a6c952a863b10160>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -59,6 +59,7 @@ export type runsPageQuery$data = {
       readonly runLink: string | null;
       readonly runState: string;
       readonly scheduledAt: string | null;
+      readonly signedUrl: string | null;
       readonly startedAt: string | null;
       readonly status: any | null;
     }>;
@@ -242,6 +243,13 @@ v2 = [
             "alias": null,
             "args": null,
             "kind": "ScalarField",
+            "name": "signedUrl",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
             "name": "scheduledAt",
             "storageKey": null
           },
@@ -284,16 +292,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "541853798d4ba15d9994364eb3c89761",
+    "cacheID": "19d72becfb0a4519cd17ee8b44f60754",
     "id": null,
     "metadata": {},
     "name": "runsPageQuery",
     "operationKind": "query",
-    "text": "query runsPageQuery(\n  $filter: DelegatedOperationFilter = null\n  $order: DelegatedOperationOrderFieldsOrder = null\n  $page: Int!\n  $pageSize: Int!\n  $search: DelegatedOperationSearchFieldsSearch = null\n) {\n  delegatedOperationsPage(filter: $filter, order: $order, page: $page, pageSize: $pageSize, search: $search) {\n    nodeTotal\n    nodes {\n      operator\n      label\n      id\n      runState\n      startedAt\n      queuedAt\n      completedAt\n      failedAt\n      runBy {\n        name\n        id\n      }\n      pinned\n      runLink\n      scheduledAt\n      status\n    }\n    pageTotal\n  }\n}\n"
+    "text": "query runsPageQuery(\n  $filter: DelegatedOperationFilter = null\n  $order: DelegatedOperationOrderFieldsOrder = null\n  $page: Int!\n  $pageSize: Int!\n  $search: DelegatedOperationSearchFieldsSearch = null\n) {\n  delegatedOperationsPage(filter: $filter, order: $order, page: $page, pageSize: $pageSize, search: $search) {\n    nodeTotal\n    nodes {\n      operator\n      label\n      id\n      runState\n      startedAt\n      queuedAt\n      completedAt\n      failedAt\n      runBy {\n        name\n        id\n      }\n      pinned\n      runLink\n      signedUrl\n      scheduledAt\n      status\n    }\n    pageTotal\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d073322cced65929d7ca645ac32656ce";
+(node as any).hash = "07001676c1ca9410b8f5dd658d7e758a";
 
 export default node;
