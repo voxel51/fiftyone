@@ -80,8 +80,9 @@ export function EmbeddingsPlot({
         <Plot
           data={data}
           style={{ zIndex: 1 }}
-          onSelected={(selected, foo) => {
-            if (!selected || selected?.points?.length === 0) return;
+          onSelected={(selected) => {
+            // removed: since a selection point may not be inlcuded in the selected points and only in the lasso
+            // if (!selected || selected?.points?.length === 0) return;
 
             const result = {};
             const pointIds = [];
@@ -92,10 +93,10 @@ export function EmbeddingsPlot({
               result[p.fullData.name].push(p.id);
               pointIds.push(p.id);
             }
-            handleSelected(pointIds);
+            handleSelected(pointIds, selected.lassoPoints);
           }}
           onDeselect={() => {
-            handleSelected(null);
+            handleSelected(null, null);
           }}
           config={{
             scrollZoom: true,

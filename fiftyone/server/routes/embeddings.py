@@ -41,117 +41,137 @@ class OnPlotLoad(HTTPEndpoint):
         return await run_sync_task(self._post_sync, data)
 
     def _post_sync(self, data):
-        dataset_name = data["datasetName"]
-        brain_key = data["brainKey"]
-        stages = data["view"]
-        filters = data.get("filters", None)
-        label_field = data["labelField"]
-        slices = data["slices"]
-        dataset = fosu.load_and_cache_dataset(dataset_name)
+        return _post_sync(data)
 
-        try:
-            results = dataset.load_brain_results(brain_key)
-        except:
-            msg = (
-                "Failed to load results for brain run with key '%s'. Try "
-                "regenerating the results"
-            ) % brain_key
-            return {"error": msg}
 
+def _post_sync(data):
+    dataset = _load_dataset(data["datasetName"])
+    results, error = _load_brain_results(dataset, data["brainKey"])
+    if error:
+        return {"error": error}
+
+    view = _get_filtered_view(data, dataset)
+
+    index_size, available_count, missing_count = _compute_embedding_counts(
+        results, view
+    )
+
+    traces, style = _generate_traces(
+        view,
+        results,
+        data["labelField"],
+        data["slices"],
+        data.get("density", 0.05),
+    )
+
+    return {
+        "traces": traces,
+        "style": style,
+        "index_size": index_size,
+        "available_count": available_count,
+        "missing_count": missing_count,
+        "patches_field": results.config.patches_field,
+    }
+
+
+def _load_dataset(dataset_name):
+    return fosu.load_and_cache_dataset(dataset_name)
+
+
+def _load_brain_results(dataset, brain_key):
+    try:
+        results = dataset.load_brain_results(brain_key)
         if results is None:
-            msg = (
-                "Results for brain run with key '%s' are not yet available"
-                % brain_key
+            return (
+                None,
+                f"Results for brain run with key '{brain_key}' are not yet available",
             )
-            return {"error": msg}
-
-        view = fosv.get_view(
-            dataset_name,
-            stages=stages,
-            filters=filters,
-            sample_filter=get_sample_filter(slices),
+    except Exception:
+        return (
+            None,
+            f"Failed to load results for brain run with key '{brain_key}'. Try regenerating the results",
         )
 
-        is_patches_view = view._is_patches
+    return results, None
 
-        patches_field = results.config.patches_field
-        is_patches_plot = patches_field is not None
 
-        # Determines which points from `results` are in `view`, which are the
-        # only points we want to display in the embeddings plot
-        if view.view() != results.view.view():
-            results.use_view(view, allow_missing=True)
+def _get_filtered_view(data, dataset):
+    return fosv.get_view(
+        data["datasetName"],
+        stages=data["view"],
+        filters=data.get("filters", None),
+        sample_filter=get_sample_filter(data["slices"]),
+    )
 
-        # The total number of embeddings in `results`
-        index_size = results.total_index_size
 
-        # The number of embeddings in `results` that exist in `view`. Any
-        # operations that we do with `results` can only work with this data
-        available_count = results.index_size
+def _compute_embedding_counts(results, view):
+    if view.view() != results.view.view():
+        results.use_view(view, allow_missing=True)
 
-        # The number of samples/patches in `view` that `results` doesn't have
-        # embeddings for
-        missing_count = results.missing_size
+    return results.total_index_size, results.index_size, results.missing_size
 
-        points = results._curr_points
-        if is_patches_plot:
-            ids = results._curr_label_ids
-            sample_ids = results._curr_sample_ids
-        else:
-            ids = results._curr_sample_ids
-            sample_ids = itertools.repeat(None)
 
-        # Color by data
-        if label_field:
-            if is_patches_view and not is_patches_plot:
-                # Must use the root dataset in order to retrieve colors for the
-                # plot, which is linked to samples, not patches
-                view = view._root_dataset
+def _generate_traces(view, results, label_field, slices, density):
+    is_patches_plot = results.config.patches_field is not None
+    ids, sample_ids = _get_ids(results, is_patches_plot)
+    points, ids = _sub_sample(results._curr_points, ids, density)
 
-            if is_patches_view and is_patches_plot:
-                # `label_field` is always provided with respect to root
-                # dataset, so we must translate for patches views
-                _, root = dataset._get_label_field_path(patches_field)
-                leaf = label_field[len(root) + 1 :]
-                _, label_field = view._get_label_field_path(
-                    patches_field, leaf
-                )
+    labels, style = _get_label_data(
+        view, label_field, ids, is_patches_plot, results.config.patches_field
+    )
 
-            labels = view._get_values_by_id(
-                label_field, ids, link_field=patches_field
-            )
+    traces = {}
+    for data in zip(points, ids, sample_ids, labels, itertools.repeat(True)):
+        _add_to_trace(traces, style, *data)
 
-            field = view.get_field(label_field)
+    return traces, style
 
-            if isinstance(field, fof.ListField):
-                labels = [l[0] if l else None for l in labels]
-                field = field.field
 
-            if isinstance(field, fof.FloatField):
-                style = "continuous"
-            else:
-                if len(set(labels)) <= MAX_CATEGORIES:
-                    style = "categorical"
-                else:
-                    style = "continuous"
-        else:
-            labels = itertools.repeat(None)
-            style = "uncolored"
+def _get_ids(results, is_patches_plot):
+    if is_patches_plot:
+        return results._curr_label_ids, results._curr_sample_ids
+    return results._curr_sample_ids, itertools.repeat(None)
 
-        selected = itertools.repeat(True)
 
-        traces = {}
-        for data in zip(points, ids, sample_ids, labels, selected):
-            _add_to_trace(traces, style, *data)
+def _get_label_data(view, label_field, ids, is_patches_view, patches_field):
+    if not label_field:
+        return itertools.repeat(None), "uncolored"
 
-        return {
-            "traces": traces,
-            "style": style,
-            "index_size": index_size,
-            "available_count": available_count,
-            "missing_count": missing_count,
-            "patches_field": patches_field,
-        }
+    if is_patches_view:
+        view = view._root_dataset
+        _, root = view._get_label_field_path(patches_field)
+        leaf = label_field[len(root) + 1 :]
+        _, label_field = view._get_label_field_path(patches_field, leaf)
+
+    labels = view._get_values_by_id(label_field, ids, link_field=patches_field)
+    field = view.get_field(label_field)
+
+    if isinstance(field, fof.ListField):
+        labels = [l[0] if l else None for l in labels]
+        field = field.field
+
+    style = (
+        "continuous"
+        if isinstance(field, fof.FloatField)
+        else _determine_style(labels)
+    )
+    return labels, style
+
+
+def _determine_style(labels):
+    return (
+        "categorical" if len(set(labels)) <= MAX_CATEGORIES else "continuous"
+    )
+
+
+def _sub_sample(points, ids, density):
+    import random
+
+    sample_size = int(len(points) * density)
+    indices = random.sample(range(len(points)), sample_size)
+    sub_points = [points[i] for i in indices]
+    sub_ids = [ids[i] for i in indices]
+    return sub_points, sub_ids
 
 
 class EmbeddingsSelection(HTTPEndpoint):
@@ -170,6 +190,10 @@ class EmbeddingsSelection(HTTPEndpoint):
         slices = data["slices"]
         extended_stages = data["extended"]
         extended_selection = data["extendedSelection"]
+        lassoPoints = data["lassoPoints"]
+
+        print("EmbeddingsSelection lassoPoints")
+        print(lassoPoints)
 
         if not filters and not extended_stages and not extended_selection:
             return {"selected": None}
@@ -240,6 +264,35 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
         patches_field = data["patchesField"]  # patches field of plot, or None
         selected_ids = data["selection"]  # selected IDs in plot
         slices = data["slices"]
+        lassoPoints = data["lassoPoints"]
+
+        print("EmbeddingsExtendedStage lasso_points_as_tuples")
+        lasso_points_as_tuples = get_fiftyone_geowithin(lassoPoints)
+        print(lasso_points_as_tuples)
+
+        if lasso_points_as_tuples and len(lasso_points_as_tuples[0]) > 0:
+
+            stage = fos.Mongo(
+                [
+                    {
+                        "$match": {
+                            # TODO: can't hardcode "point"
+                            "point": {
+                                "$geoWithin": {
+                                    "$geometry": {
+                                        "type": "Polygon",
+                                        "coordinates": [
+                                            lasso_points_as_tuples
+                                        ],  # GeoJSON requires an array of linear rings
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ]
+            )
+            d = stage._serialize(include_uuid=False)
+            return {"_cls": d["_cls"], "kwargs": dict(d["kwargs"])}
 
         view = fosv.get_view(
             dataset_name,
@@ -267,6 +320,48 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
 
         d = stage._serialize(include_uuid=False)
         return {"_cls": d["_cls"], "kwargs": dict(d["kwargs"])}
+
+
+def get_fiftyone_geowithin(lasso_points):
+    """
+    Convert lasso points dictionary to the FiftyOne $geoWithin view stage format.
+
+    Args:
+        lasso_points (Dict[str, List[float]]): A dictionary containing 'x' and 'y' lists of coordinates.
+            Example input format:
+            {
+                'x': [-0.924, -0.982, -1.068, ...],
+                'y': [-0.075, -0.046, -0.028, ...]
+            }
+
+    Returns:
+        List[List[float]]: A list of coordinate pairs formatted for FiftyOne's $geoWithin view stage.
+            Example output format:
+            [
+                [-0.924, -0.075],
+                [-0.982, -0.046],
+                [-1.068, -0.028],
+                ...
+            ]
+    """
+    if "x" not in lasso_points or "y" not in lasso_points:
+        raise ValueError(
+            "Input dictionary must contain 'x' and 'y' keys with coordinate lists."
+        )
+
+    if len(lasso_points["x"]) != len(lasso_points["y"]):
+        raise ValueError("The 'x' and 'y' lists must have the same length.")
+
+    # Convert x and y coordinates to the required FiftyOne format
+    coordinates = [
+        [x, y] for x, y in zip(lasso_points["x"], lasso_points["y"])
+    ]
+
+    # If last point is not the same as first, add it
+    if coordinates[0] != coordinates[-1]:
+        coordinates.append(coordinates[0])
+
+    return coordinates
 
 
 class ColorByChoices(HTTPEndpoint):

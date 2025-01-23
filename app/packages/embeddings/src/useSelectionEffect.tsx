@@ -5,6 +5,7 @@ import { usePanelStatePartial } from "@fiftyone/spaces";
 import { useBrainResult } from "./useBrainResult";
 import { fetchUpdatedSelection } from "./fetch";
 import { usePlotSelection } from "./usePlotSelection";
+import { atoms as selectionAtoms } from "./usePlotSelection";
 
 export function useSelectionEffect() {
   const { setPlotSelection } = usePlotSelection();
@@ -17,6 +18,7 @@ export function useSelectionEffect() {
   const extended = useRecoilValue(fos.extendedStagesUnsorted);
   const { selection } = useRecoilValue(fos.extendedSelection);
   const slices = useRecoilValue(fos.currentSlices(false));
+  const lassoPoints = useRecoilValue(selectionAtoms.lassoPoints);
 
   // updated the selection when the extended view updates
   useEffect(() => {
@@ -30,6 +32,7 @@ export function useSelectionEffect() {
         extended: resolvedExtended,
         extendedSelection: selection,
         slices,
+        lassoPoints,
       }).then((res) => {
         let resolved = null;
         if (res.selected) {
