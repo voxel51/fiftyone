@@ -2570,12 +2570,12 @@ class DatasetTests(unittest.TestCase):
     @drop_datasets
     def test_add_collection_new_ids(self):
         sample1 = fo.Sample(filepath="image.jpg", foo="bar")
-        dataset1 = fo.Dataset(name=str(datetime.now()))
+        dataset1 = fo.Dataset(name=str(uuid.uuid4()))
         dataset1.add_sample(sample1)
         dataset1.save()
 
         # Merge dataset
-        dataset = dataset1.clone(name=str(datetime.now()))
+        dataset = dataset1.clone(name=str(uuid.uuid4()))
         created_at1 = dataset.values("created_at")
         last_modified_at1 = dataset.values("last_modified_at")
         dataset.add_collection(dataset, new_ids=True)
@@ -2592,7 +2592,7 @@ class DatasetTests(unittest.TestCase):
         self.assertTrue(last_modified_at2[1] > sample1.last_modified_at)
 
         # Merge view
-        dataset = dataset1.clone(name=str(datetime.now()))
+        dataset = dataset1.clone(name=str(uuid.uuid4()))
         created_at1 = dataset.values("created_at")
         last_modified_at1 = dataset.values("last_modified_at")
         dataset.add_collection(dataset.exclude_fields("foo"), new_ids=True)
