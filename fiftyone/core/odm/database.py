@@ -959,6 +959,8 @@ def insert_documents(docs, coll, ordered=False, progress=None, num_docs=None):
                 batch = list(batch)
                 coll.insert_many(batch, ordered=ordered)
                 ids.extend(b["_id"] for b in batch)
+                if batcher.manual_backpressure:
+                    batcher.apply_backpressure(batch)
 
     except BulkWriteError as bwe:
         msg = bwe.details["writeErrors"][0]["errmsg"]
@@ -985,6 +987,9 @@ def bulk_write(ops, coll, ordered=False, progress=False):
             for batch in batcher:
                 batch = list(batch)
                 coll.bulk_write(batch, ordered=ordered)
+                if batcher.manual_backpressure:
+                    content_size = sum(len(str(b)) for b in batch)
+                    batcher.apply_backpressure(content_size)
 
     except BulkWriteError as bwe:
         msg = bwe.details["writeErrors"][0]["errmsg"]
