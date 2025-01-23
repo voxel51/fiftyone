@@ -2573,12 +2573,16 @@ class DatasetTests(unittest.TestCase):
         dataset1 = fo.Dataset(name=str(uuid.uuid4()))
         dataset1.add_sample(sample1)
         dataset1.save()
+        print([s for s in dataset1.iter_samples()])
 
         # Merge dataset
         dataset = dataset1.clone(name=str(uuid.uuid4()))
+        print([s for s in dataset.iter_samples()])
         created_at1 = dataset.values("created_at")
         last_modified_at1 = dataset.values("last_modified_at")
         dataset.add_collection(dataset, new_ids=True)
+        print([s for s in dataset.iter_samples()])
+
         created_at2 = dataset.values("created_at")
         last_modified_at2 = dataset.values("last_modified_at")
 
@@ -2594,6 +2598,8 @@ class DatasetTests(unittest.TestCase):
         # Merge view
         dataset = dataset1.clone(name=str(uuid.uuid4()))
         dataset.save()
+        print([s for s in dataset1.iter_samples()])
+
         created_at1 = dataset.values("created_at")
         last_modified_at1 = dataset.values("last_modified_at")
         dataset.add_collection(dataset.exclude_fields("foo"), new_ids=True)
