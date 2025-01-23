@@ -19,6 +19,9 @@ import { datasetId, datasetName } from "./selectors";
 import { State } from "./types";
 import { view } from "./view";
 
+const SELECT_GROUP_SLICES = "fiftyone.core.stages.SelectGroupSlices";
+const VALID_QP_STAGES = new Set([SELECT_GROUP_SLICES]);
+
 export const lightningQuery = graphQLSelectorFamily<
   foq.lightningQuery$variables,
   foq.LightningInput["paths"],
@@ -188,6 +191,22 @@ export const indexedPaths = selectorFamily<Set<string>, string>({
     },
 });
 
+export const isQueryPerformantView = selector({
+  key: "isQueryPerformantView",
+  get: ({ get }) => {
+    const stages = get(view);
+    if (!stages?.length) {
+      return true;
+    }
+
+    if (stages.length === 1) {
+      return VALID_QP_STAGES.has(stages[0]._cls);
+    }
+
+    return false;
+  },
+});
+
 export const enableQueryPerformanceConfig = selector({
   key: "enableQueryPerformanceConfig",
   get: ({ get }) => get(config).enableQueryPerformance,
@@ -198,15 +217,17 @@ export const defaultQueryPerformanceConfig = selector({
   get: ({ get }) => get(config).defaultQueryPerformance,
 });
 
-const queryPerformanceStore = atomFamily<boolean, string>({
-  key: "queryPerformanceStore",
-  default: undefined,
-  effects: (datasetId) => [
-    getBrowserStorageEffectForKey(`queryPerformance-${datasetId}`, {
-      sessionStorage: true,
-      valueClass: "boolean",
-    }),
-  ],
+export const queryPerformance = selector<boolean>({
+  key: "queryPerformance",
+  get: ({ get }) => {
+    return get(queryPerformanceSetting) && get(isQueryPerformantView);
+  },
+  set: ({ get, set }, value) => {
+    set(
+      queryPerformanceStore(get(datasetId)),
+      value instanceof DefaultValue ? undefined : value
+    );
+  },
 });
 
 export const queryPerformanceSetting = selector<boolean>({
@@ -231,30 +252,13 @@ export const queryPerformanceSetting = selector<boolean>({
   },
 });
 
-export const queryPerformance = selector<boolean>({
-  key: "queryPerformance",
-  get: ({ get }) => {
-    return get(queryPerformanceSetting) && isQueryPerformantView(get(view));
-  },
-  set: ({ get, set }, value) => {
-    set(
-      queryPerformanceStore(get(datasetId)),
-      value instanceof DefaultValue ? undefined : value
-    );
-  },
+const queryPerformanceStore = atomFamily<boolean, string>({
+  key: "queryPerformanceStore",
+  default: undefined,
+  effects: (datasetId) => [
+    getBrowserStorageEffectForKey(`queryPerformance-${datasetId}`, {
+      sessionStorage: true,
+      valueClass: "boolean",
+    }),
+  ],
 });
-
-const SELECT_GROUP_SLICES = "fiftyone.core.stages.SelectGroupSlices";
-const VALID_QP_STAGES = new Set([SELECT_GROUP_SLICES]);
-
-const isQueryPerformantView = (view: State.Stage[]) => {
-  if (!view.length) {
-    return true;
-  }
-
-  if (view.length === 1) {
-    return VALID_QP_STAGES.has(view[0]._cls);
-  }
-
-  return false;
-};
