@@ -1069,6 +1069,9 @@ def _report_progress_dt(progress, dt):
 
 
 class Batcher(abc.ABC):
+
+    manual_backpressure = False
+
     def __init__(
         self, iterable, return_views=False, progress=False, total=None
     ):
@@ -1190,8 +1193,6 @@ class BaseDynamicBatcher(BaseBatcher):
     Concrete base classes define the target measurement and method of
     calculation.
     """
-
-    manual_backpressure = False
 
     def __init__(
         self,
@@ -1625,10 +1626,18 @@ class ContentSizeBatcher(Batcher):
                 break
 
         return curr_batch
+    
+
+def default_calculate_size(obj):
+    try:
+        obj = obj.to_mongo_dict(include_id=True) if hasattr(obj, "to_mongo_dict") else obj
+        return len(json_util.dumps(obj))
+    except Exception:
+        return len(str(obj)) 
 
 
 def get_default_batcher(
-    iterable, progress=False, total=None, size_calc_mode="json"
+    iterable, progress=False, total=None, size_calc_fn=default_calculate_size,
 ):
     """Returns a :class:`Batcher` over ``iterable`` using defaults from your
     FiftyOne config.
@@ -1664,15 +1673,15 @@ def get_default_batcher(
             total=total,
         )
     elif default_batcher == "size":
-        pass
-        # target_content_size = fo.config.batcher_target_size_bytes
-        # return ContentSizeBatcher(
-        #     iterable=iterable,
-        #     target_size=target_content_size,
-        #     max_batch_size=100000,
-        #     progress=progress,
-        #     total=total,
-        # )
+        target_content_size = fo.config.batcher_target_size_bytes
+        return ContentSizeBatcher(
+            iterable=iterable,
+            target_size=target_content_size,
+            max_batch_size=100000,
+            progress=progress,
+            size_calculation_fn=size_calc_fn,
+            total=total,
+        )
     elif default_batcher == "static":
         batch_size = fo.config.batcher_static_size
         return StaticBatcher(
