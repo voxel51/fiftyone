@@ -60,7 +60,12 @@ class BaseEvaluationMethod(foe.EvaluationMethod):
                     if results.custom_metrics is None:
                         results.custom_metrics = {}
 
+                    key = operator.config.aggregate_key
+                    if key is None:
+                        key = operator.config.name
+
                     results.custom_metrics[operator.uri] = {
+                        "key": key,
                         "value": value,
                         "label": operator.config.label,
                         "lower_is_better": operator.config.kwargs.get(
@@ -139,6 +144,31 @@ class BaseEvaluationResults(foe.EvaluationResults):
         super().__init__(samples, config, eval_key, backend=backend)
         self.custom_metrics = custom_metrics
 
+    def metrics(self, *args, **kwargs):
+        """Returns the metrics associated with this evaluation run.
+
+        Also includes any custom metrics from :attr:`custom_metrics`.
+
+        Args:
+            *args: subclass-specific positional arguments
+            **kwargs: subclass-specific keyword arguments
+
+        Returns:
+            a dict
+        """
+        return self._get_custom_metrics()
+
+    def print_metrics(self, *args, digits=2, **kwargs):
+        """Prints the metrics computed via :meth:`metrics`.
+
+        Args:
+            *args: subclass-specific positional arguments
+            digits (2): the number of digits of precision to print
+            **kwargs: subclass-specific keyword argument
+        """
+        metrics = self.metrics(*args, **kwargs)
+        self._print_metrics(metrics, digits=digits)
+
     def _get_custom_metrics(self):
         if not self.custom_metrics:
             return {}
@@ -147,8 +177,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
 
         try:
             for uri, metric in self.custom_metrics.items():
-                name = uri.rsplit("/", 1)[-1]
-                metrics[name] = metric["value"]
+                metrics[metric["key"]] = metric["value"]
         except Exception as e:
             logger.warning("Failed to parse custom metrics. Reason: %s", e)
 

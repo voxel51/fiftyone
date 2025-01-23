@@ -1761,6 +1761,7 @@ type PLOT_CONFIG_DIALOG_TYPE = PLOT_CONFIG_TYPE & {
 
 type CustomMetric = {
   label: string;
+  key: any;
   value: any;
   lower_is_better: boolean;
 };
