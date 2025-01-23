@@ -444,8 +444,18 @@ class MigrationTests(unittest.TestCase):
 
 class ConfigTests(unittest.TestCase):
     def test_multiple_config_cleanup(self):
+        # Note this is not a unit test and running this modifies the fiftyone config collection
         db = foo.get_db_conn()
         orig_config = foo.get_db_config()
+
+        # Add old configs so that they are cleaned up
+        new_config_ids = [
+            ObjectId.from_datetime(datetime(2022, 1, 1)),
+            ObjectId.from_datetime(datetime(2023, 1, 1)),
+        ]
+
+        # Ensure that the fake configs are not already in the database due to failed cleanup
+        db.config.delete_many({"_id": {"$in": new_config_ids}})
 
         # Add some duplicate documents
         db.config.insert_one(
@@ -463,11 +473,18 @@ class ConfigTests(unittest.TestCase):
             }
         )
 
-        # Ensure that duplicate documents are automatically cleaned up
         config = foo.get_db_config()
 
-        self.assertEqual(len(list(db.config.aggregate([]))), 1)
+        if fo.config.database_admin:
+            # Ensure that duplicate documents are automatically cleaned up if run by database admin
+            self.assertEqual(len(list(db.config.aggregate([]))), 1)
+        else:
+            # Otherwise, the duplicates are not cleaned up
+            self.assertEqual(len(list(db.config.aggregate([]))), 3)
         self.assertEqual(config, orig_config)
+
+        # Clean up the fake configs
+        db.config.delete_many({"_id": {"$in": new_config_ids}})
 
 
 class TestLoadDataset(unittest.TestCase):
