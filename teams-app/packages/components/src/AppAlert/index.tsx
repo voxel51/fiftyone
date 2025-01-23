@@ -84,6 +84,7 @@ function AlertInfo({
     ? {
         backgroundColor: overrideBgColor || "inherit",
         color: overrideTextColor || "inherit",
+        justifyContent: "center",
       }
     : {};
 
