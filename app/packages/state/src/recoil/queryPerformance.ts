@@ -209,13 +209,9 @@ const queryPerformanceStore = atomFamily<boolean, string>({
   ],
 });
 
-export const queryPerformance = selector<boolean>({
-  key: "queryPerformance",
+export const queryPerformanceSetting = selector<boolean>({
+  key: "queryPerformanceSetting",
   get: ({ get }) => {
-    if (get(view).length) {
-      return false;
-    }
-
     if (!get(enableQueryPerformanceConfig)) {
       return false;
     }
@@ -234,3 +230,31 @@ export const queryPerformance = selector<boolean>({
     );
   },
 });
+
+export const queryPerformance = selector<boolean>({
+  key: "queryPerformance",
+  get: ({ get }) => {
+    return get(queryPerformanceSetting) && isQueryPerformantView(get(view));
+  },
+  set: ({ get, set }, value) => {
+    set(
+      queryPerformanceStore(get(datasetId)),
+      value instanceof DefaultValue ? undefined : value
+    );
+  },
+});
+
+const SELECT_GROUP_SLICES = "fiftyone.core.stages.SelectGroupSlices";
+const VALID_QP_STAGES = new Set([SELECT_GROUP_SLICES]);
+
+const isQueryPerformantView = (view: State.Stage[]) => {
+  if (!view.length) {
+    return true;
+  }
+
+  if (view.length === 1) {
+    return VALID_QP_STAGES.has(view[0]._cls);
+  }
+
+  return false;
+};
