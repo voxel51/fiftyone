@@ -453,7 +453,7 @@ export const LensPanel = ({
   const previewContent = searchResponse ? (
     <Box>
       <Accordion expanded={panelState.isPreviewExpanded}>
-        <Box sx={{ my: 2, py: 2, mx: 2 }}>
+        <Box sx={{ my: 2, pt: 2, mx: 2 }}>
           <Stack
             direction="row"
             justifyContent="space-between"

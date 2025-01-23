@@ -2,18 +2,13 @@ import { Box } from "@mui/material";
 import { useAtomValue } from "jotai";
 import React, { useLayoutEffect, useMemo, useState } from "react";
 import { v4 as uuid } from "uuid";
+import JSONViewer from "../../JSONViewer";
 import { MAX_ZOOM_LEVEL, MIN_ZOOM_LEVEL } from "./constants";
 import { useSpotlight } from "./hooks";
 import type { LensSample } from "./models";
-import { zoomLevelAtom } from "./state";
+import { currentViewAtom, zoomLevelAtom } from "./state";
 
-/**
- * Component which handles rendering samples.
- *
- * This component makes use of the Spotlight and Looker components, which
- * do the heavy lifting of actually rendering the samples.
- */
-export const Lens = ({
+const SpotLightRenderer = ({
   samples,
   sampleSchema,
 }: {
@@ -23,6 +18,7 @@ export const Lens = ({
   const elementId = useMemo(() => uuid(), []);
 
   const [resizing, setResizing] = useState(false);
+
   const zoom = useAtomValue(zoomLevelAtom);
 
   const spotlight = useSpotlight({
@@ -80,4 +76,34 @@ export const Lens = ({
       </Box>
     </Box>
   );
+};
+
+const JsonRenderer = ({ samples }: { samples: LensSample[] }) => {
+  return (
+    <Box>
+      <JSONViewer value={samples as ReturnType<typeof JSON.parse>} />
+    </Box>
+  );
+};
+
+/**
+ * Component which handles rendering samples.
+ *
+ * This component makes use of the Spotlight and Looker components, which
+ * do the heavy lifting of actually rendering the samples.
+ */
+export const Lens = ({
+  samples,
+  sampleSchema,
+}: {
+  samples: LensSample[];
+  sampleSchema: object;
+}) => {
+  const viewMode = useAtomValue(currentViewAtom);
+
+  if (viewMode === "json") {
+    return <JsonRenderer samples={samples} />;
+  }
+
+  return <SpotLightRenderer samples={samples} sampleSchema={sampleSchema} />;
 };

@@ -1,7 +1,7 @@
 import { Slider } from "@mui/material";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import React from "react";
-import { zoomLevelAtom } from "../state";
+import { currentViewAtom, zoomLevelAtom } from "../state";
 import styles from "./styles.module.css";
 
 const MIN_ZOOM = 1;
@@ -9,6 +9,11 @@ const MAX_ZOOM = 11;
 
 export const ZoomSlider = () => {
   const [zoom, setZoom] = useAtom(zoomLevelAtom);
+  const viewMode = useAtomValue(currentViewAtom);
+
+  if (viewMode === "json") {
+    return null;
+  }
 
   return (
     <Slider
