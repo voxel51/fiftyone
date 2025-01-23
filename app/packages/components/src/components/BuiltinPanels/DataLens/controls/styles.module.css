@@ -7,26 +7,11 @@ This is a one-off solution to address this particular bug.
     height: 8px !important;
 }
 
-.thumb {
+.thumb,
+.thumb:hover,
+.thumb:active,
+.thumb:focus,
+.thumb:focus-visible,
+.thumb:focus-within {
     box-shadow: none !important;
-
-    &:hover {
-        box-shadow: none !important;
-    }
-
-    &:active {
-        box-shadow: none !important;
-    }
-
-    &:focus {
-        box-shadow: none !important;
-    }
-
-    &:focus-visible {
-        box-shadow: none !important;
-    }
-
-    &:focus-within {
-        box-shadow: none !important;
-    }
 }
