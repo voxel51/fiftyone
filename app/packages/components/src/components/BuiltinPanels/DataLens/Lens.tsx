@@ -1,3 +1,4 @@
+import { Schema } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import { useAtomValue } from "jotai";
 import React, { useLayoutEffect, useMemo, useState } from "react";
@@ -13,7 +14,7 @@ const SpotLightRenderer = ({
   sampleSchema,
 }: {
   samples: LensSample[];
-  sampleSchema: object;
+  sampleSchema: Schema;
 }) => {
   const elementId = useMemo(() => uuid(), []);
 
@@ -97,7 +98,7 @@ export const Lens = ({
   sampleSchema,
 }: {
   samples: LensSample[];
-  sampleSchema: object;
+  sampleSchema: Schema;
 }) => {
   const viewMode = useAtomValue(currentViewAtom);
 

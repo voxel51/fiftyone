@@ -1,6 +1,8 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { OperatorResult } from "@fiftyone/operators/src/operators";
+import { Schema } from "@fiftyone/utilities";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
   Accordion,
@@ -16,7 +18,6 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import React, {
   Fragment,
   useCallback,
@@ -25,13 +26,14 @@ import React, {
   useRef,
   useState,
 } from "react";
+import IconButton from "../../IconButton";
 import { ImportDialog } from "./ImportDialog";
 import { Lens } from "./Lens";
 import { FormState, OperatorConfigurator } from "./OperatorConfigurator";
 import { SelectLabels } from "./controls/SelectLabels";
 import { ViewToggler } from "./controls/ViewToggler";
 import { ZoomSlider } from "./controls/ZoomSlider";
-import { useDatasets } from "./hooks";
+import { useDatasets, useSampleSchemaGenerator } from "./hooks";
 import {
   ImportRequest,
   LensConfig,
@@ -39,7 +41,6 @@ import {
   PreviewRequest,
   PreviewResponse,
 } from "./models";
-import IconButton from "../../IconButton";
 
 // Internal state.
 type PanelState = {
@@ -117,6 +118,10 @@ export const LensPanel = ({
   const [isOperatorConfigReady, setIsOperatorConfigReady] = useState(false);
   const [previewTime, setPreviewTime] = useState(0);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+
+  const cleanedSchema = useSampleSchemaGenerator({
+    baseSchema: searchResponse?.field_schema ?? {},
+  });
 
   const resetPanelState = useCallback(() => {
     dispatchPanelStateUpdate({ type: "reset" });
@@ -476,7 +481,7 @@ export const LensPanel = ({
                 <>
                   <ZoomSlider />
                   <ViewToggler />
-                  <SelectLabels />
+                  <SelectLabels schema={cleanedSchema} />
                 </>
               )}
               <IconButton
@@ -501,7 +506,7 @@ export const LensPanel = ({
             <Box sx={{ my: 2 }}>
               <Lens
                 samples={searchResponse.query_result}
-                sampleSchema={searchResponse.field_schema}
+                sampleSchema={cleanedSchema}
               />
             </Box>
           ) : (
@@ -636,14 +641,12 @@ export const LensPanel = ({
 
   // All content.
   return (
-    <Box sx={{ m: 2 }}>
+    <Box sx={{ minWidth: "750px", m: "auto" }}>
       <Box ref={mainContentRef} sx={{ m: "auto", mb: 16 }}>
-        <Box sx={{ m: 2 }}>
-          {lensConfigContent}
-          {queryOperatorContent}
-          {previewContent}
-          {importContent}
-        </Box>
+        {lensConfigContent}
+        {queryOperatorContent}
+        {previewContent}
+        {importContent}
       </Box>
 
       {/*Sticky footer*/}

@@ -1,3 +1,17 @@
+import { OperatorConfig, useOperatorExecutor } from "@fiftyone/operators";
+import { getLocalOrRemoteOperator } from "@fiftyone/operators/src/operators";
+import Spotlight, { ID } from "@fiftyone/spotlight";
+import type { Sample } from "@fiftyone/state";
+import {
+  datasetName,
+  useLookerOptions as fosUseLookerOptions,
+  Lookers,
+  useCreateLooker,
+} from "@fiftyone/state";
+import { Schema } from "@fiftyone/utilities";
+import { Dispatch, useCallback, useEffect, useMemo, useState } from "react";
+import { useRecoilValue } from "recoil";
+import { v4 as uuid } from "uuid";
 import {
   LensConfig,
   LensSample,
@@ -5,20 +19,7 @@ import {
   ListLensConfigsResponse,
   OperatorResponse,
 } from "./models";
-import { Dispatch, useCallback, useEffect, useMemo, useState } from "react";
-import { OperatorConfig, useOperatorExecutor } from "@fiftyone/operators";
-import { useRecoilValue } from "recoil";
-import type { Sample } from "@fiftyone/state";
-import {
-  datasetName,
-  Lookers,
-  useCreateLooker,
-  useLookerOptions as fosUseLookerOptions,
-} from "@fiftyone/state";
-import { v4 as uuid } from "uuid";
-import Spotlight, { ID } from "@fiftyone/spotlight";
 import { findFields } from "./utils";
-import { getLocalOrRemoteOperator } from "@fiftyone/operators/src/operators";
 
 /**
  * Hook which provides the active dataset.
@@ -144,7 +145,11 @@ const useLookerOptions = ({ samples }: { samples: LensSample[] }) => {
  * Hook which generates a looker-compatible field schema based on one generated
  * by the SDK.
  */
-const useSampleSchemaGenerator = ({ baseSchema }: { baseSchema: object }) => {
+export const useSampleSchemaGenerator = ({
+  baseSchema,
+}: {
+  baseSchema: object;
+}) => {
   // Generate a valid field schema for use by the looker.
   return useMemo(() => {
     // Helper method for converting from snake_case to camelCase
@@ -202,7 +207,7 @@ const useSampleSchemaGenerator = ({ baseSchema }: { baseSchema: object }) => {
       }
     }
 
-    return formattedSchema;
+    return formattedSchema as Schema;
   }, [baseSchema]);
 };
 
@@ -270,7 +275,7 @@ export const useSpotlight = ({
   zoom,
 }: {
   samples: LensSample[];
-  sampleSchema: object;
+  sampleSchema: Schema;
   resizing: boolean;
   minZoomLevel: number;
   maxZoomLevel: number;
@@ -280,7 +285,6 @@ export const useSpotlight = ({
   const sampleStore = useMemo(() => new WeakMap<ID, SampleStoreEntry>(), []);
 
   const lookerOpts = useLookerOptions({ samples });
-  const cleanedSchema = useSampleSchemaGenerator({ baseSchema: sampleSchema });
 
   const createLooker = useCreateLooker(
     false,
@@ -288,7 +292,7 @@ export const useSpotlight = ({
     lookerOpts,
     undefined,
     undefined,
-    cleanedSchema
+    sampleSchema
   );
 
   const buildUrls = useCallback(
