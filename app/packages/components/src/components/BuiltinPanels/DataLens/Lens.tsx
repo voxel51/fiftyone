@@ -1,18 +1,11 @@
-import { useLayoutEffect, useMemo, useState } from "react";
+import { Box } from "@mui/material";
+import { useAtomValue } from "jotai";
+import React, { useLayoutEffect, useMemo, useState } from "react";
 import { v4 as uuid } from "uuid";
-import { Box, Slider, Typography } from "@mui/material";
+import { MAX_ZOOM_LEVEL, MIN_ZOOM_LEVEL } from "./constants";
 import { useSpotlight } from "./hooks";
 import type { LensSample } from "./models";
-
-/**
- * Minimum zoom level for rendered samples.
- */
-const minZoomLevel = 1;
-
-/**
- * Maximum zoom level for rendered samples.
- */
-const maxZoomLevel = 11;
+import { zoomLevelAtom } from "./state";
 
 /**
  * Component which handles rendering samples.
@@ -30,16 +23,14 @@ export const Lens = ({
   const elementId = useMemo(() => uuid(), []);
 
   const [resizing, setResizing] = useState(false);
-  const [zoom, setZoom] = useState(
-    Math.floor((minZoomLevel + maxZoomLevel) / 2)
-  );
+  const zoom = useAtomValue(zoomLevelAtom);
 
   const spotlight = useSpotlight({
     samples,
     sampleSchema,
     resizing,
-    minZoomLevel,
-    maxZoomLevel,
+    minZoomLevel: MIN_ZOOM_LEVEL,
+    maxZoomLevel: MAX_ZOOM_LEVEL,
     zoom,
   });
 
@@ -77,23 +68,6 @@ export const Lens = ({
 
   return (
     <Box>
-      {/*Controls*/}
-      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-        <Box sx={{ flex: "0 1 200px", mb: 2 }}>
-          <Typography color="secondary" gutterBottom>
-            Zoom level
-          </Typography>
-          <Slider
-            value={zoom}
-            onChange={(_, val) => setZoom(val instanceof Array ? val[0] : val)}
-            min={minZoomLevel}
-            max={maxZoomLevel}
-            step={1}
-            color="primary"
-          />
-        </Box>
-      </Box>
-
       {/*Spotlight container*/}
       <Box
         sx={{

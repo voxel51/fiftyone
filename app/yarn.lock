@@ -1861,6 +1861,7 @@ __metadata:
     typescript-plugin-css-modules: ^5.1.0
     vite: ^5.2.14
   peerDependencies:
+    jotai: "*"
     re-resizable: "*"
     react: "*"
     react-relay: "*"

@@ -1,13 +1,7 @@
-import React, {
-  Fragment,
-  useCallback,
-  useMemo,
-  useReducer,
-  useRef,
-  useState,
-} from "react";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { useOperatorExecutor } from "@fiftyone/operators";
+import { OperatorResult } from "@fiftyone/operators/src/operators";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
   Accordion,
   AccordionDetails,
@@ -22,8 +16,22 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import React, {
+  Fragment,
+  useCallback,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
+import { ImportDialog } from "./ImportDialog";
+import { Lens } from "./Lens";
 import { FormState, OperatorConfigurator } from "./OperatorConfigurator";
-import { useOperatorExecutor } from "@fiftyone/operators";
+import { SelectLabels } from "./controls/SelectLabels";
+import { ViewToggler } from "./controls/ViewToggler";
+import { ZoomSlider } from "./controls/ZoomSlider";
+import { useDatasets } from "./hooks";
 import {
   ImportRequest,
   LensConfig,
@@ -31,10 +39,7 @@ import {
   PreviewRequest,
   PreviewResponse,
 } from "./models";
-import { Lens } from "./Lens";
-import { ImportDialog } from "./ImportDialog";
-import { useDatasets } from "./hooks";
-import { OperatorResult } from "@fiftyone/operators/src/operators";
+import IconButton from "../../IconButton";
 
 // Internal state.
 type PanelState = {
@@ -446,32 +451,54 @@ export const LensPanel = ({
 
   // Sample preview.
   const previewContent = searchResponse ? (
-    <Box sx={{ mt: 4 }}>
+    <Box>
       <Accordion expanded={panelState.isPreviewExpanded}>
-        <AccordionSummary
-          expandIcon={<ExpandMoreIcon />}
-          onClick={() =>
-            dispatchPanelUpdate({
-              isPreviewExpanded: !panelState.isPreviewExpanded,
-              isImportShown: false,
-            })
-          }
-        >
-          <Stack direction="row" alignItems="center" spacing={2}>
-            <Typography variant="h6">Preview</Typography>
-            <Typography>&bull;</Typography>
-            <Typography color="secondary">
-              {(previewTime / 1000).toLocaleString(undefined, {
-                minimumFractionDigits: 1,
-                maximumFractionDigits: 1,
-              })}{" "}
-              seconds
-            </Typography>
+        <Box sx={{ my: 2, py: 2, mx: 2 }}>
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            spacing="auto"
+            width="100%"
+          >
+            <Stack direction="row" alignItems="center" spacing={2}>
+              <Typography variant="h6">Preview</Typography>
+              <Typography>&bull;</Typography>
+              <Typography color="secondary">
+                {(previewTime / 1000).toLocaleString(undefined, {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1,
+                })}{" "}
+                seconds
+              </Typography>
+            </Stack>
+            <Stack direction="row" alignItems="center" spacing={2}>
+              {panelState.isPreviewExpanded && (
+                <>
+                  <ZoomSlider />
+                  <ViewToggler />
+                  <SelectLabels />
+                </>
+              )}
+              <IconButton
+                onClick={() =>
+                  dispatchPanelUpdate({
+                    isPreviewExpanded: !panelState.isPreviewExpanded,
+                    isImportShown: false,
+                  })
+                }
+              >
+                {panelState.isPreviewExpanded ? (
+                  <ExpandLessIcon />
+                ) : (
+                  <ExpandMoreIcon />
+                )}
+              </IconButton>
+            </Stack>
           </Stack>
-        </AccordionSummary>
+        </Box>
         <AccordionDetails>
           {searchResponse.result_count > 0 ? (
-            <Box sx={{ m: 2 }}>
+            <Box sx={{ my: 2 }}>
               <Lens
                 samples={searchResponse.query_result}
                 sampleSchema={searchResponse.field_schema}
