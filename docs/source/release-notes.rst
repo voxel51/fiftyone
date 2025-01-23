@@ -42,9 +42,9 @@ FiftyOne 1.3.0
 - Fixed a bug with detecting offscreen canvas availability
 - Fixed a bug where `evaluate_detections()` would fail when applied to Keypoints
   fields
-- Fixed bug #5317: The ClassificationsOverlay did not have a label attribute
+- Fixed bug `#5317 <https://github.com/voxel51/fiftyone/issues/5317>`_: the `ClassificationsOverlay` did not have a label attribute
 - Fixed a bug where a missing mime-type would confuse mask decoding
-- Fixed bug #5363 where uint16 semantic segmentation masks failed to render
+- Fixed bug `#5363 <https://github.com/voxel51/fiftyone/issues/5363>`_ where uint16 semantic segmentation masks failed to render
 
 Brain
 
@@ -52,7 +52,7 @@ Brain
 
 ETA
 
-- Fixed bug [#641](https://github.com/voxel51/eta/issues/641) where empty
+- Fixed bug `#641 <https://github.com/voxel51/eta/issues/641>`_ where empty
   polylines were not handled properly
 
 FiftyOne Teams 2.5.0
