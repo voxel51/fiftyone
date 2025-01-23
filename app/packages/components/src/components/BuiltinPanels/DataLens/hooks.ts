@@ -7,8 +7,10 @@ import {
   useLookerOptions as fosUseLookerOptions,
   Lookers,
   useCreateLooker,
+  useDeferrer,
 } from "@fiftyone/state";
 import { Schema } from "@fiftyone/utilities";
+import { useAtom } from "jotai";
 import { Dispatch, useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
@@ -19,6 +21,7 @@ import {
   ListLensConfigsResponse,
   OperatorResponse,
 } from "./models";
+import { checkedFieldsAtom } from "./state";
 import { findFields } from "./utils";
 
 /**
@@ -116,8 +119,9 @@ const useLookerOptions = ({ samples }: { samples: LensSample[] }) => {
   // Use the same looker options as the Grid as a starting point.
   const baseOpts = fosUseLookerOptions(false);
 
-  // Augment the looker options with data specific to these samples.
-  return useMemo(() => {
+  const [checkedFields, setCheckedFields] = useAtom(checkedFieldsAtom);
+
+  const labelFields = useMemo(() => {
     // Detect presence of labels
     const labelFields = new Set<string>();
     samples.forEach((sample) => {
@@ -131,14 +135,20 @@ const useLookerOptions = ({ samples }: { samples: LensSample[] }) => {
         }
       }
     });
+    return labelFields;
+  }, [samples]);
 
+  useEffect(() => {
+    setCheckedFields(Array.from(labelFields));
+  }, [labelFields]);
+
+  return useMemo(() => {
     return {
       ...baseOpts,
-      // Render all labels
       filter: () => true,
-      activePaths: Array.from(labelFields.values()),
+      activePaths: checkedFields,
     };
-  }, [samples, baseOpts]);
+  }, [checkedFields, baseOpts]);
 };
 
 /**
@@ -258,6 +268,36 @@ type SampleStoreEntry = {
 const sampleMediaFields = ["filepath"];
 
 /**
+ * Hook to repaint lookers when the options change.
+ */
+const useRefresh = (
+  options: ReturnType<typeof useLookerOptions>,
+  store: WeakMap<ID, Lookers>,
+  spotlight?: Spotlight<number, Sample>
+) => {
+  const { init, deferred } = useDeferrer();
+
+  useEffect(() => {
+    deferred(() => {
+      spotlight?.updateItems((id) => {
+        const instance = store.get(id);
+        if (!instance) {
+          return;
+        }
+
+        instance.updateOptions({
+          ...options,
+        });
+      });
+    });
+  }, [deferred, options, spotlight, store]);
+
+  useEffect(() => {
+    return spotlight ? init() : undefined;
+  }, [spotlight, init]);
+};
+
+/**
  * Hook which manages a spotlight instance used to render samples.
  * @param samples Samples to render
  * @param sampleSchema Sample schema as returned by SDK
@@ -300,7 +340,7 @@ export const useSpotlight = ({
     []
   );
 
-  return useMemo(() => {
+  const spotlight = useMemo(() => {
     if (resizing) {
       return;
     }
@@ -403,6 +443,10 @@ export const useSpotlight = ({
       },
     });
   }, [lookerStore, sampleStore, createLooker, samples, resizing, zoom]);
+
+  useRefresh(lookerOpts, lookerStore, spotlight);
+
+  return spotlight;
 };
 
 /**
