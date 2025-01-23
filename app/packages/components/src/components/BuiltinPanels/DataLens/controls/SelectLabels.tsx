@@ -2,12 +2,13 @@ import { useOutsideClick } from "@fiftyone/state";
 import { Schema } from "@fiftyone/utilities";
 import CogIcon from "@mui/icons-material/Settings";
 import { Checkbox, FormControlLabel, FormGroup } from "@mui/material";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import React, { useMemo, useRef, useState } from "react";
 import IconButton from "../../../IconButton";
 import Popout from "../../../Popout";
 import {
   checkedFieldsAtom,
+  currentViewAtom,
   isLabelTagsCheckedAtom,
   isSampleTagsCheckedAtom,
 } from "../state";
@@ -110,10 +111,13 @@ const SelectLabelsList = ({
 };
 
 export const SelectLabels = ({ schema }: SelectLabelsProps) => {
+  const viewMode = useAtomValue(currentViewAtom);
   const [isLabelSelectorOpen, setIsLabelSelectorOpen] = useState(false);
   const cogRef = useRef<HTMLDivElement>(null);
 
   const fields = useMemo(() => getTopLevelFields(schema), [schema]);
+
+  if (viewMode === "json") return null;
 
   return (
     <div ref={cogRef}>
@@ -146,6 +150,14 @@ export const SelectLabels = ({ schema }: SelectLabelsProps) => {
 // todo: test with frame fields, add unit tests
 function getTopLevelFields(schema: Schema): string[] {
   const result: string[] = [];
+  const specialFields = [
+    "metadata",
+    "filepath",
+    "id",
+    "created_at",
+    "last_modified_at",
+  ];
+  const nonSpecialFields: string[] = [];
 
   for (const [key, value] of Object.entries(schema)) {
     // skip "tags"
@@ -156,44 +168,16 @@ function getTopLevelFields(schema: Schema): string[] {
       for (const subKey of Object.keys(value.fields)) {
         result.push(`metadata.${subKey}`);
       }
-    } else {
-      // otherwise, just add the top-level key
-      result.push(key);
+    } else if (!specialFields.includes(key)) {
+      nonSpecialFields.push(key);
     }
   }
 
-  // custom sort
-  // everything else (alphabetical) -> metadata -> filepath -> id -> created_at -> last_modified_at
-  const priorityOrder = [
-    "metadata",
-    "filepath",
-    "id",
-    "created_at",
-    "last_modified_at",
+  nonSpecialFields.sort();
+
+  return [
+    ...nonSpecialFields,
+    ...result,
+    ...specialFields.filter((field) => field !== "metadata"),
   ];
-
-  result.sort((a, b) => {
-    const idxA = priorityOrder.indexOf(a);
-    const idxB = priorityOrder.indexOf(b);
-
-    const inA = idxA !== -1;
-    const inB = idxB !== -1;
-
-    // if both in special list, compare by their index
-    if (inA && inB) {
-      return idxA - idxB;
-    }
-    // if only A is in list, B goes first
-    if (inA && !inB) {
-      return 1;
-    }
-    // if only B is in list, A goes first
-    if (!inA && inB) {
-      return -1;
-    }
-    // else neither is in special list: sort alphabetically
-    return a.localeCompare(b);
-  });
-
-  return result;
 }
