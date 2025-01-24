@@ -20,7 +20,12 @@ import motor.motor_asyncio as mtr
 
 from packaging.version import Version
 import pymongo
-from pymongo.errors import BulkWriteError, ServerSelectionTimeoutError
+from pymongo.errors import (
+    BulkWriteError,
+    OperationFailure,
+    PyMongoError,
+    ServerSelectionTimeoutError,
+)
 import pytz
 
 import eta.core.utils as etau
@@ -28,7 +33,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.migrations as fom
-from fiftyone.core.config import FiftyOneConfigError
+from fiftyone.core.config import FiftyOneConfig, FiftyOneConfigError
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 
@@ -208,6 +213,7 @@ def establish_db_conn(config):
         **_connection_kwargs, appname=foc.DATABASE_APPNAME
     )
     _validate_db_version(config, _client)
+    _update_fc_version(_client)
 
     # Register cleanup method
     atexit.register(_delete_non_persistent_datasets_if_allowed)
@@ -308,6 +314,70 @@ def _validate_db_version(config, client):
             "https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection "
             "for more information" % (version, foc.MIN_MONGODB_VERSION)
         )
+
+
+def _update_fc_version(client: pymongo.MongoClient):
+
+    try:
+        current_version = client.admin.command(
+            {"getParameter": 1, "featureCompatibilityVersion": 1}
+        )
+    except ServerSelectionTimeoutError as e:
+        raise ConnectionError("Could not connect to `mongod`") from e
+
+    current_fcv = Version(
+        current_version["featureCompatibilityVersion"]["version"]
+    )
+    server_version = Version(client.server_info()["version"])
+    max_allowable_diff = 2  # if greater than 2 major versions, issue warning
+
+    _logger = _get_logger()
+
+    if (current_fcv == foc.MIN_MONGODB_VERSION) and (
+        server_version == foc.MIN_MONGODB_VERSION
+    ):
+        _logger.warning(
+            "You are running the oldest supported version of mongo. "
+            "Please refer to https://deprecation.voxel51.com "
+            "for deprecation notices."
+        )
+
+    elif current_fcv.major > server_version.major:
+        _logger.warning(
+            "Your MongoDB feature compatability is greater than your "
+            "server version.  "
+            "This may result in unexpected consequences. "
+            "Please manually update your database's feature server version."
+        )
+
+    elif server_version.major - current_fcv.major >= max_allowable_diff:
+        _logger.warning(
+            "Your MongoDB server version is more than %s "
+            "ahead of your database's feature compatability version. "
+            "Please manually update your database's feature "
+            "compatability version." % str(max_allowable_diff)
+        )
+
+    elif server_version.major > current_fcv.major:
+        _logger.warning(
+            "Your MongoDB server version is newer than your feature "
+            "compatability number. "
+            "Attempting to bump the feature compatability version now."
+        )
+        bumped = Version(f"{server_version.major}.0.0")
+        try:
+            client.admin.command(
+                {
+                    "setFeatureCompatibilityVersion": bumped,
+                    "confirm": True,
+                }
+            )
+        except (OperationFailure, PyMongoError):
+            _logger.error(
+                "Could not automatically update your database's feature "
+                "compatability version. "
+                "Please set it to %s." % str(bumped)
+            )
 
 
 def aggregate(collection, pipelines):
