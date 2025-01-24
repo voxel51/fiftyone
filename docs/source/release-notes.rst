@@ -41,8 +41,6 @@ FiftyOne 1.3.0
   consistency with the `SortBy` and `GroupBy` stages.
 - Added support to many builtin operators for users to act on multiple fields/
   entities at once
-- Optimized `dataset.first()` , `dataset.head()`, `dataset.last()`,
-  `dataset.tail()`, `dataset.count()`, and `dataset.count("frames")`
 - Fixed a bug where the `@voxel51/plugins/install_plugin` operator didn't
   work correctly with GitHub paths.
 - Fixed a bug where disabled buttons would still try to load an operator
