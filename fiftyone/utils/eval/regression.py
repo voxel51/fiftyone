@@ -1,29 +1,33 @@
 """
 Regression evaluation.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 import inspect
 import itertools
 import logging
-import numbers
 
 import numpy as np
 import sklearn.metrics as skm
-from tabulate import tabulate
 
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.plots as fop
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
+
+from .base import (
+    BaseEvaluationMethodConfig,
+    BaseEvaluationMethod,
+    BaseEvaluationResults,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -36,6 +40,7 @@ def evaluate_regressions(
     eval_key=None,
     missing=None,
     method=None,
+    custom_metrics=None,
     progress=None,
     **kwargs,
 ):
@@ -75,6 +80,8 @@ def evaluate_regressions(
             supported values are
             ``fo.evaluation_config.regression_backends.keys()`` and the default
             is ``fo.evaluation_config.default_regression_backend``
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -89,7 +96,13 @@ def evaluate_regressions(
         samples, (pred_field, gt_field), fol.Regression, same_type=True
     )
 
-    config = _parse_config(pred_field, gt_field, method, **kwargs)
+    config = _parse_config(
+        pred_field,
+        gt_field,
+        method,
+        custom_metrics=custom_metrics,
+        **kwargs,
+    )
     eval_method = config.build()
     eval_method.ensure_requirements()
 
@@ -99,12 +112,13 @@ def evaluate_regressions(
     results = eval_method.evaluate_samples(
         samples, eval_key=eval_key, missing=missing, progress=progress
     )
+    eval_method.compute_custom_metrics(samples, eval_key, results)
     eval_method.save_run_results(samples, eval_key, results)
 
     return results
 
 
-class RegressionEvaluationConfig(foe.EvaluationMethodConfig):
+class RegressionEvaluationConfig(BaseEvaluationMethodConfig):
     """Base class for configuring :class:`RegressionEvaluation` instances.
 
     Args:
@@ -112,19 +126,22 @@ class RegressionEvaluationConfig(foe.EvaluationMethodConfig):
             :class:`fiftyone.core.labels.Regression` instances
         gt_field ("ground_truth"): the name of the field containing the ground
             truth :class:`fiftyone.core.labels.Regression` instances
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
     """
 
-    def __init__(self, pred_field, gt_field, **kwargs):
+    def __init__(self, pred_field, gt_field, custom_metrics=None, **kwargs):
         super().__init__(**kwargs)
         self.pred_field = pred_field
         self.gt_field = gt_field
+        self.custom_metrics = custom_metrics
 
     @property
     def type(self):
         return "regression"
 
 
-class RegressionEvaluation(foe.EvaluationMethod):
+class RegressionEvaluation(BaseEvaluationMethod):
     """Base class for regression evaluation methods.
 
     Args:
@@ -181,6 +198,8 @@ class RegressionEvaluation(foe.EvaluationMethod):
             prefix = samples._FRAMES_PREFIX + eval_key
             fields.append(prefix)
 
+        fields.extend(self.get_custom_metric_fields(samples, eval_key))
+
         return fields
 
     def rename(self, samples, eval_key, new_eval_key):
@@ -202,6 +221,8 @@ class RegressionEvaluation(foe.EvaluationMethod):
             fields = dict(zip(in_frame_fields, out_frame_fields))
             dataset.rename_frame_fields(fields)
 
+        self.rename_custom_metrics(samples, eval_key, new_eval_key)
+
     def cleanup(self, samples, eval_key):
         dataset = samples._dataset
 
@@ -210,6 +231,8 @@ class RegressionEvaluation(foe.EvaluationMethod):
         dataset.delete_sample_fields(fields, error_level=1)
         if dataset._is_frame_field(self.config.gt_field):
             dataset.delete_frame_fields(fields, error_level=1)
+
+        self.cleanup_custom_metrics(samples, eval_key)
 
     def _validate_run(self, samples, eval_key, existing_info):
         self._validate_fields_match(eval_key, "pred_field", existing_info)
@@ -228,10 +251,21 @@ class SimpleEvaluationConfig(RegressionEvaluationConfig):
             sample/frame-level error data. Supported values are
             ``("squared_error", "absolute_error")`` or any function that
             accepts two scalar arguments ``(ypred, ytrue)``
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
     """
 
-    def __init__(self, pred_field, gt_field, metric="squared_error", **kwargs):
-        super().__init__(pred_field, gt_field, **kwargs)
+    def __init__(
+        self,
+        pred_field,
+        gt_field,
+        metric="squared_error",
+        custom_metrics=None,
+        **kwargs,
+    ):
+        super().__init__(
+            pred_field, gt_field, custom_metrics=custom_metrics, **kwargs
+        )
         self._metric = metric
 
     @property
@@ -344,7 +378,7 @@ class SimpleEvaluation(RegressionEvaluation):
         return results
 
 
-class RegressionResults(foe.EvaluationResults):
+class RegressionResults(BaseEvaluationResults):
     """Class that stores the results of a regression evaluation.
 
     Args:
@@ -361,6 +395,7 @@ class RegressionResults(foe.EvaluationResults):
             regressions
         missing (None): a missing value. Any None-valued regressions are
             given this value for results purposes
+        custom_metrics (None): an optional dict of custom metrics
         backend (None): a :class:`RegressionEvaluation` backend
     """
 
@@ -374,9 +409,16 @@ class RegressionResults(foe.EvaluationResults):
         confs=None,
         ids=None,
         missing=None,
+        custom_metrics=None,
         backend=None,
     ):
-        super().__init__(samples, config, eval_key, backend=backend)
+        super().__init__(
+            samples,
+            config,
+            eval_key,
+            custom_metrics=custom_metrics,
+            backend=backend,
+        )
 
         ytrue, ypred, confs, ids = _parse_values(
             ytrue, ypred, confs, ids, missing=missing
@@ -401,6 +443,8 @@ class RegressionResults(foe.EvaluationResults):
         -   Explained variance score: :func:`sklearn:sklearn.metrics.explained_variance_score`
         -   Max error: :func:`sklearn:sklearn.metrics.max_error`
         -   Support: the number of examples
+
+        Also includes any custom metrics from :attr:`custom_metrics`.
 
         Args:
             weights (None): an optional list of weights for each example
@@ -431,7 +475,7 @@ class RegressionResults(foe.EvaluationResults):
             max_error = 0.0
             support = 0
 
-        return {
+        metrics = {
             "mean_squared_error": mse,
             "root_mean_squared_error": rmse,
             "mean_absolute_error": mae,
@@ -442,15 +486,19 @@ class RegressionResults(foe.EvaluationResults):
             "support": support,
         }
 
+        metrics.update(self._get_custom_metrics())
+
+        return metrics
+
     def print_metrics(self, weights=None, digits=2):
-        """Prints the regression metrics computed via :meth:`metrics`.
+        """Prints the metrics computed via :meth:`metrics`.
 
         Args:
             weights (None): an optional list of weights for each example
             digits (2): the number of digits of precision to print
         """
         metrics = self.metrics(weights=weights)
-        _print_dict_as_table(metrics, digits)
+        self._print_metrics(metrics, digits=digits)
 
     def plot_results(
         self, labels=None, sizes=None, backend="plotly", **kwargs
@@ -517,6 +565,7 @@ class RegressionResults(foe.EvaluationResults):
         confs = d.get("confs", None)
         ids = d.get("ids", None)
         missing = d.get("missing", None)
+        custom_metrics = d.get("custom_metrics", None)
         return cls(
             samples,
             config,
@@ -526,6 +575,7 @@ class RegressionResults(foe.EvaluationResults):
             confs=confs,
             ids=ids,
             missing=missing,
+            custom_metrics=custom_metrics,
             **kwargs,
         )
 
@@ -533,6 +583,10 @@ class RegressionResults(foe.EvaluationResults):
 def _parse_config(pred_field, gt_field, method, **kwargs):
     if method is None:
         method = fo.evaluation_config.default_regression_backend
+
+    custom_metrics = kwargs.get("custom_metrics", None)
+    if etau.is_str(custom_metrics):
+        kwargs["custom_metrics"] = [custom_metrics]
 
     if inspect.isclass(method):
         return method(pred_field, gt_field, **kwargs)
@@ -614,18 +668,3 @@ def _parse_values(ytrue, ypred, *args, missing=None):
         args = [np.asarray(a) if a is not None else a for a in args]
 
     return (_ytrue, _ypred, *args)
-
-
-def _print_dict_as_table(d, digits):
-    fmt = "%%.%df" % digits
-    records = []
-    for k, v in d.items():
-        k = k.replace("_", " ")
-        if isinstance(v, numbers.Integral):
-            v = str(v)
-        else:
-            v = fmt % v
-
-        records.append((k, v))
-
-    print(tabulate(records, tablefmt="plain", numalign="left"))

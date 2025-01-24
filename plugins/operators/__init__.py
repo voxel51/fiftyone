@@ -1,7 +1,7 @@
 """
 Builtin operators.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -15,9 +15,6 @@ import fiftyone.core.storage as fos
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 from fiftyone.core.odm.workspace import default_workspace_factory
-
-# pylint: disable=no-name-in-module
-from fiftyone.operators.builtins.panels.model_evaluation import EvaluationPanel
 
 
 class EditFieldInfo(foo.Operator):
@@ -247,30 +244,28 @@ def _clone_sample_field_inputs(ctx, inputs):
     for key in field_keys:
         field_selector.add_choice(key, label=key)
 
-    inputs.enum(
+    field_prop = inputs.str(
         "field_name",
-        field_selector.values(),
         label="Sample field",
-        description=(
-            "The field to copy. You can use `embedded.field.name` to clone "
-            "embedded fields"
-        ),
+        description="The field to clone",
         view=field_selector,
         required=True,
     )
 
     field_name = ctx.params.get("field_name", None)
-    if field_name not in schema:
+    if field_name is None:
+        return
+
+    if field_name not in schema and "." not in field_name:
+        field_prop.invalid = True
+        field_prop.error_message = f"Field '{field_name}' does not exist"
         return
 
     new_field_prop = inputs.str(
         "new_field_name",
         required=True,
         label="New sample field",
-        description=(
-            "The new field to create. You can use `embedded.field.name` to "
-            "create embedded fields"
-        ),
+        description="The new field to create",
         default=f"{field_name}_copy",
     )
 
@@ -280,14 +275,6 @@ def _clone_sample_field_inputs(ctx, inputs):
         new_field_prop.invalid = True
         new_field_prop.error_message = (
             f"Field '{new_field_name}' already exists"
-        )
-        inputs.str(
-            "error",
-            label="Error",
-            view=types.Error(
-                label="Field already exists",
-                description=f"Field '{new_field_name}' already exists",
-            ),
         )
 
 
@@ -375,30 +362,28 @@ def _clone_frame_field_inputs(ctx, inputs):
     for key in field_keys:
         field_selector.add_choice(key, label=key)
 
-    inputs.enum(
+    field_prop = inputs.str(
         "field_name",
-        field_selector.values(),
         label="Frame field",
-        description=(
-            "The frame field to copy. You can use `embedded.field.name` to "
-            "clone embedded frame fields"
-        ),
+        description="The frame field to copy",
         view=field_selector,
         required=True,
     )
 
     field_name = ctx.params.get("field_name", None)
-    if field_name not in schema:
+    if field_name is None:
+        return
+
+    if field_name not in schema and "." not in field_name:
+        field_prop.invalid = True
+        field_prop.error_message = f"Frame field '{field_name}' does not exist"
         return
 
     new_field_prop = inputs.str(
         "new_field_name",
         required=True,
         label="New frame field",
-        description=(
-            "The new frame field to create. You can use `embedded.field.name` "
-            "to create embedded frame fields"
-        ),
+        description="The new frame field to create",
         default=f"{field_name}_copy",
     )
 
@@ -408,14 +393,6 @@ def _clone_frame_field_inputs(ctx, inputs):
         new_field_prop.invalid = True
         new_field_prop.error_message = (
             f"Frame field '{new_field_name}' already exists"
-        )
-        inputs.str(
-            "error",
-            label="Error",
-            view=types.Error(
-                label="Frame field already exists",
-                description=f"Frame field '{new_field_name}' already exists",
-            ),
         )
 
 
@@ -462,9 +439,8 @@ def _rename_sample_field_inputs(ctx, inputs):
     for key in field_keys:
         field_selector.add_choice(key, label=key)
 
-    field_prop = inputs.enum(
+    field_prop = inputs.str(
         "field_name",
-        field_selector.values(),
         label="Sample field",
         description="The sample field to rename",
         view=field_selector,
@@ -472,7 +448,12 @@ def _rename_sample_field_inputs(ctx, inputs):
     )
 
     field_name = ctx.params.get("field_name", None)
-    if field_name not in schema:
+    if field_name is None:
+        return
+
+    if field_name not in schema and "." not in field_name:
+        field_prop.invalid = True
+        field_prop.error_message = f"Field '{field_name}' does not exist"
         return
 
     field = ctx.dataset.get_field(field_name)
@@ -495,14 +476,6 @@ def _rename_sample_field_inputs(ctx, inputs):
         new_field_prop.invalid = True
         new_field_prop.error_message = (
             f"Field '{new_field_name}' already exists"
-        )
-        inputs.str(
-            "error",
-            label="Error",
-            view=types.Error(
-                label="Field already exists",
-                description=f"Field '{new_field_name}' already exists",
-            ),
         )
 
 
@@ -558,9 +531,8 @@ def _rename_frame_field_inputs(ctx, inputs):
     for key in field_keys:
         field_selector.add_choice(key, label=key)
 
-    field_prop = inputs.enum(
+    field_prop = inputs.str(
         "field_name",
-        field_selector.values(),
         label="Frame field",
         description="The frame field to rename",
         view=field_selector,
@@ -568,7 +540,12 @@ def _rename_frame_field_inputs(ctx, inputs):
     )
 
     field_name = ctx.params.get("field_name", None)
-    if field_name not in schema:
+    if field_name is None:
+        return
+
+    if field_name not in schema and "." not in field_name:
+        field_prop.invalid = True
+        field_prop.error_message = f"Frame field '{field_name}' does not exist"
         return
 
     field = ctx.dataset.get_field(ctx.dataset._FRAMES_PREFIX + field_name)
@@ -592,14 +569,6 @@ def _rename_frame_field_inputs(ctx, inputs):
         new_field_prop.error_message = (
             f"Frame field '{new_field_name}' already exists"
         )
-        inputs.str(
-            "error",
-            label="Error",
-            view=types.Error(
-                label="Frame field already exists",
-                description=f"Frame field '{new_field_name}' already exists",
-            ),
-        )
 
 
 class ClearSampleField(foo.Operator):
@@ -621,12 +590,12 @@ class ClearSampleField(foo.Operator):
         )
 
     def execute(self, ctx):
-        field_name = ctx.params["field_name"]
+        field_names = ctx.params["field_names"]
         target = ctx.params.get("target", None)
 
         target_view = _get_target_view(ctx, target)
 
-        target_view.clear_sample_field(field_name)
+        target_view.clear_sample_fields(field_names)
         ctx.trigger("reload_dataset")
 
 
@@ -639,14 +608,14 @@ def _clear_sample_field_inputs(ctx, inputs):
         target_choices.add_choice(
             "DATASET",
             label="Entire dataset",
-            description="Clear sample field for the entire dataset",
+            description="Clear sample field(s) for the entire dataset",
         )
 
         if has_view:
             target_choices.add_choice(
                 "CURRENT_VIEW",
                 label="Current view",
-                description="Clear sample field for the current view",
+                description="Clear sample field(s) for the current view",
             )
             default_target = "CURRENT_VIEW"
 
@@ -654,7 +623,7 @@ def _clear_sample_field_inputs(ctx, inputs):
             target_choices.add_choice(
                 "SELECTED_SAMPLES",
                 label="Selected samples",
-                description="Clear sample field for the selected samples",
+                description="Clear sample field(s) for the selected samples",
             )
             default_target = "SELECTED_SAMPLES"
 
@@ -672,28 +641,33 @@ def _clear_sample_field_inputs(ctx, inputs):
     schema.pop("id", None)
     schema.pop("filepath", None)
 
-    field_keys = list(schema.keys())
-    field_selector = types.AutocompleteView()
-    for key in field_keys:
-        field_selector.add_choice(key, label=key)
+    field_names = ctx.params.get("field_names", None) or []
 
-    field_prop = inputs.enum(
-        "field_name",
-        field_selector.values(),
+    field_choices = types.AutocompleteView(allow_duplicates=False)
+    for key in schema.keys():
+        if not any(key.startswith(f + ".") for f in field_names):
+            field_choices.add_choice(key, label=key)
+
+    field_prop = inputs.list(
+        "field_names",
+        types.String(),
         label="Sample field",
-        description="The sample field to clear",
-        view=field_selector,
+        description="The sample field(s) to clear",
         required=True,
+        view=field_choices,
     )
 
-    field_name = ctx.params.get("field_name", None)
-    if field_name not in schema:
-        return
+    for field_name in field_names:
+        if field_name not in schema and "." not in field_name:
+            field_prop.invalid = True
+            field_prop.error_message = f"Field '{field_name}' does not exist"
+            return
 
-    field = ctx.dataset.get_field(field_name)
-    if field is not None and field.read_only:
-        field_prop.invalid = True
-        field_prop.error_message = f"Field '{field_name}' is read-only"
+        field = ctx.dataset.get_field(field_name)
+        if field is not None and field.read_only:
+            field_prop.invalid = True
+            field_prop.error_message = f"Field '{field_name}' is read-only"
+            return
 
 
 class ClearFrameField(foo.Operator):
@@ -715,12 +689,12 @@ class ClearFrameField(foo.Operator):
         )
 
     def execute(self, ctx):
-        field_name = ctx.params["field_name"]
+        field_names = ctx.params["field_names"]
         target = ctx.params.get("target", None)
 
         target_view = _get_target_view(ctx, target)
 
-        target_view.clear_frame_field(field_name)
+        target_view.clear_frame_fields(field_names)
         ctx.trigger("reload_dataset")
 
 
@@ -742,14 +716,14 @@ def _clear_frame_field_inputs(ctx, inputs):
         target_choices.add_choice(
             "DATASET",
             label="Entire dataset",
-            description="Clear frame field for the entire dataset",
+            description="Clear frame field(s) for the entire dataset",
         )
 
         if has_view:
             target_choices.add_choice(
                 "CURRENT_VIEW",
                 label="Current view",
-                description="Clear frame field for the current view",
+                description="Clear frame field(s) for the current view",
             )
             default_target = "CURRENT_VIEW"
 
@@ -757,7 +731,7 @@ def _clear_frame_field_inputs(ctx, inputs):
             target_choices.add_choice(
                 "SELECTED_SAMPLES",
                 label="Selected samples",
-                description="Clear frame field for the selected samples",
+                description="Clear frame field(s) for the selected samples",
             )
             default_target = "SELECTED_SAMPLES"
 
@@ -775,28 +749,37 @@ def _clear_frame_field_inputs(ctx, inputs):
     schema.pop("id", None)
     schema.pop("frame_number", None)
 
-    field_keys = list(schema.keys())
-    field_selector = types.AutocompleteView()
-    for key in field_keys:
-        field_selector.add_choice(key, label=key)
+    field_names = ctx.params.get("field_names", None) or []
 
-    field_prop = inputs.enum(
-        "field_name",
-        field_selector.values(),
+    field_choices = types.AutocompleteView(allow_duplicates=False)
+    for key in schema.keys():
+        if not any(key.startswith(f + ".") for f in field_names):
+            field_choices.add_choice(key, label=key)
+
+    field_prop = inputs.list(
+        "field_names",
+        types.String(),
         label="Frame field",
-        description="The frame field to clear",
-        view=field_selector,
+        description="The frame field(s) to clear",
         required=True,
+        view=field_choices,
     )
 
-    field_name = ctx.params.get("field_name", None)
-    if field_name not in schema:
-        return
+    for field_name in field_names:
+        if field_name not in schema and "." not in field_name:
+            field_prop.invalid = True
+            field_prop.error_message = (
+                f"Frame field '{field_name}' does not exist"
+            )
+            return
 
-    field = ctx.dataset.get_field(ctx.dataset._FRAMES_PREFIX + field_name)
-    if field is not None and field.read_only:
-        field_prop.invalid = True
-        field_prop.error_message = f"Frame field '{field_name}' is read-only"
+        field = ctx.dataset.get_field(ctx.dataset._FRAMES_PREFIX + field_name)
+        if field is not None and field.read_only:
+            field_prop.invalid = True
+            field_prop.error_message = (
+                f"Frame field '{field_name}' is read-only"
+            )
+            return
 
 
 class DeleteSelectedSamples(foo.Operator):
@@ -900,9 +883,9 @@ class DeleteSampleField(foo.Operator):
         )
 
     def execute(self, ctx):
-        field_name = ctx.params["field_name"]
+        field_names = ctx.params["field_names"]
 
-        ctx.dataset.delete_sample_field(field_name)
+        ctx.dataset.delete_sample_fields(field_names)
         ctx.trigger("reload_dataset")
 
 
@@ -918,28 +901,33 @@ def _delete_sample_field_inputs(ctx, inputs):
         prop.invalid = True
         return
 
-    field_keys = list(schema.keys())
-    field_selector = types.AutocompleteView()
-    for key in field_keys:
-        field_selector.add_choice(key, label=key)
+    field_names = ctx.params.get("field_names", None) or []
 
-    field_prop = inputs.enum(
-        "field_name",
-        field_selector.values(),
+    field_choices = types.AutocompleteView(allow_duplicates=False)
+    for key in schema.keys():
+        if not any(key.startswith(f + ".") for f in field_names):
+            field_choices.add_choice(key, label=key)
+
+    field_prop = inputs.list(
+        "field_names",
+        types.String(),
         label="Sample field",
-        description="The sample field to delete",
-        view=field_selector,
+        description="The sample field(s) to delete",
         required=True,
+        view=field_choices,
     )
 
-    field_name = ctx.params.get("field_name", None)
-    if field_name not in schema:
-        return
+    for field_name in field_names:
+        if field_name not in schema and "." not in field_name:
+            field_prop.invalid = True
+            field_prop.error_message = f"Field '{field_name}' does not exist"
+            return
 
-    field = ctx.dataset.get_field(field_name)
-    if field is not None and field.read_only:
-        field_prop.invalid = True
-        field_prop.error_message = f"Field '{field_name}' is read-only"
+        field = ctx.dataset.get_field(field_name)
+        if field is not None and field.read_only:
+            field_prop.invalid = True
+            field_prop.error_message = f"Field '{field_name}' is read-only"
+            return
 
 
 class DeleteFrameField(foo.Operator):
@@ -961,9 +949,9 @@ class DeleteFrameField(foo.Operator):
         )
 
     def execute(self, ctx):
-        field_name = ctx.params["field_name"]
+        field_names = ctx.params["field_names"]
 
-        ctx.dataset.delete_frame_field(field_name)
+        ctx.dataset.delete_frame_fields(field_names)
         ctx.trigger("reload_dataset")
 
 
@@ -988,28 +976,37 @@ def _delete_frame_field_inputs(ctx, inputs):
         prop.invalid = True
         return
 
-    field_keys = list(schema.keys())
-    field_selector = types.AutocompleteView()
-    for key in field_keys:
-        field_selector.add_choice(key, label=key)
+    field_names = ctx.params.get("field_names", None) or []
 
-    field_prop = inputs.enum(
-        "field_name",
-        field_selector.values(),
+    field_choices = types.AutocompleteView(allow_duplicates=False)
+    for key in schema.keys():
+        if not any(key.startswith(f + ".") for f in field_names):
+            field_choices.add_choice(key, label=key)
+
+    field_prop = inputs.list(
+        "field_names",
+        types.String(),
         label="Frame field",
-        description="The frame field to delete",
-        view=field_selector,
+        description="The frame field(s) to delete",
         required=True,
+        view=field_choices,
     )
 
-    field_name = ctx.params.get("field_name", None)
-    if field_name not in schema:
-        return
+    for field_name in field_names:
+        if field_name not in schema and "." not in field_name:
+            field_prop.invalid = True
+            field_prop.error_message = (
+                f"Frame field '{field_name}' does not exist"
+            )
+            return
 
-    field = ctx.dataset.get_field(ctx.dataset._FRAMES_PREFIX + field_name)
-    if field is not None and field.read_only:
-        field_prop.invalid = True
-        field_prop.error_message = f"Frame field '{field_name}' is read-only"
+        field = ctx.dataset.get_field(ctx.dataset._FRAMES_PREFIX + field_name)
+        if field is not None and field.read_only:
+            field_prop.invalid = True
+            field_prop.error_message = (
+                f"Frame field '{field_name}' is read-only"
+            )
+            return
 
 
 class CreateIndex(foo.Operator):
@@ -1124,44 +1121,50 @@ class DropIndex(foo.Operator):
     def resolve_input(self, ctx):
         inputs = types.Object()
 
-        indexes = ctx.dataset.list_indexes()
-
-        default_indexes = set(ctx.dataset._get_default_indexes())
-        if ctx.dataset._has_frame_fields():
-            default_indexes.update(
-                ctx.dataset._FRAMES_PREFIX + path
-                for path in ctx.dataset._get_default_indexes(frames=True)
-            )
-
-        indexes = [i for i in indexes if i not in default_indexes]
-
-        if indexes:
-            index_selector = types.AutocompleteView()
-            for key in indexes:
-                index_selector.add_choice(key, label=key)
-
-            inputs.enum(
-                "index_name",
-                index_selector.values(),
-                required=True,
-                label="Index name",
-                description="The index to drop",
-                view=index_selector,
-            )
-        else:
-            prop = inputs.str(
-                "index_name",
-                label="This dataset has no non-default indexes",
-                view=types.Warning(),
-            )
-            prop.invalid = True
+        _drop_index_inputs(ctx, inputs)
 
         return types.Property(inputs, view=types.View(label="Drop index"))
 
     def execute(self, ctx):
-        index_name = ctx.params["index_name"]
+        index_names = ctx.params["index_names"]
 
-        ctx.dataset.drop_index(index_name)
+        for index_name in index_names:
+            ctx.dataset.drop_index(index_name)
+
+
+def _drop_index_inputs(ctx, inputs):
+    indexes = ctx.dataset.list_indexes()
+
+    if not indexes:
+        prop = inputs.str(
+            "index_name",
+            label="This dataset has no non-default indexes",
+            view=types.Warning(),
+        )
+        prop.invalid = True
+        return
+
+    default_indexes = set(ctx.dataset._get_default_indexes())
+    if ctx.dataset._has_frame_fields():
+        default_indexes.update(
+            ctx.dataset._FRAMES_PREFIX + path
+            for path in ctx.dataset._get_default_indexes(frames=True)
+        )
+
+    indexes = [i for i in indexes if i not in default_indexes]
+
+    index_selector = types.DropdownView()
+    for key in indexes:
+        index_selector.add_choice(key, label=key)
+
+    inputs.list(
+        "index_names",
+        types.String(),
+        label="Index",
+        description="The index(es) to drop",
+        view=index_selector,
+        required=True,
+    )
 
 
 class CreateSummaryField(foo.Operator):
@@ -1289,14 +1292,6 @@ def _create_summary_field_inputs(ctx, inputs):
     if field_name and field_name in schema:
         prop.invalid = True
         prop.error_message = f"Field '{field_name}' already exists"
-        inputs.str(
-            "error",
-            label="Error",
-            view=types.Error(
-                label="Field already exists",
-                description=f"Field '{field_name}' already exists",
-            ),
-        )
         return
 
     if ctx.dataset.app_config.sidebar_groups is not None:
@@ -1445,38 +1440,43 @@ class DeleteSummaryField(foo.Operator):
     def resolve_input(self, ctx):
         inputs = types.Object()
 
-        summary_fields = ctx.dataset.list_summary_fields()
-
-        if summary_fields:
-            field_selector = types.AutocompleteView()
-            for key in summary_fields:
-                field_selector.add_choice(key, label=key)
-
-            inputs.enum(
-                "field_name",
-                field_selector.values(),
-                required=True,
-                label="Summary field",
-                description="The summary field to delete",
-                view=field_selector,
-            )
-        else:
-            prop = inputs.str(
-                "field_name",
-                label="This dataset does not have summary fields",
-                view=types.Warning(),
-            )
-            prop.invalid = True
+        _delete_summary_field_inputs(ctx, inputs)
 
         return types.Property(
             inputs, view=types.View(label="Delete summary field")
         )
 
     def execute(self, ctx):
-        field_name = ctx.params["field_name"]
+        field_names = ctx.params["field_names"]
 
-        ctx.dataset.delete_summary_field(field_name)
+        ctx.dataset.delete_summary_fields(field_names)
         ctx.trigger("reload_dataset")
+
+
+def _delete_summary_field_inputs(ctx, inputs):
+    summary_fields = ctx.dataset.list_summary_fields()
+
+    if not summary_fields:
+        prop = inputs.str(
+            "field_name",
+            label="This dataset does not have summary fields",
+            view=types.Warning(),
+        )
+        prop.invalid = True
+        return
+
+    field_selector = types.DropdownView()
+    for key in summary_fields:
+        field_selector.add_choice(key, label=key)
+
+    inputs.list(
+        "field_names",
+        types.String(),
+        label="Summary field",
+        description="The summary field(s) to delete",
+        view=field_selector,
+        required=True,
+    )
 
 
 class AddGroupSlice(foo.Operator):
@@ -1616,41 +1616,48 @@ class DeleteGroupSlice(foo.Operator):
     def resolve_input(self, ctx):
         inputs = types.Object()
 
-        if ctx.dataset.media_type != fom.GROUP:
-            prop = inputs.str(
-                "msg",
-                label="This dataset does not contain groups",
-                view=types.Warning(),
-            )
-            prop.invalid = True
-        else:
-            slice_selector = types.AutocompleteView()
-            group_slices = ctx.dataset.group_slices
-            for key in group_slices:
-                slice_selector.add_choice(key, label=key)
-
-            inputs.enum(
-                "name",
-                slice_selector.values(),
-                default=ctx.group_slice,
-                required=True,
-                label="Group slice",
-                description="The group slice to delete",
-                view=slice_selector,
-            )
+        _delete_group_slice_inputs(ctx, inputs)
 
         return types.Property(
             inputs, view=types.View(label="Delete group slice")
         )
 
     def execute(self, ctx):
-        name = ctx.params["name"]
+        names = ctx.params["names"]
 
-        ctx.dataset.delete_group_slice(name)
-        if ctx.group_slice == name:
+        curr_slice = False
+        for name in names:
+            curr_slice |= name == ctx.group_slice
+            ctx.dataset.delete_group_slice(name)
+
+        if curr_slice:
             ctx.ops.set_group_slice(ctx.dataset.default_group_slice)
 
         ctx.ops.reload_dataset()
+
+
+def _delete_group_slice_inputs(ctx, inputs):
+    if ctx.dataset.media_type != fom.GROUP:
+        prop = inputs.str(
+            "msg",
+            label="This dataset does not contain groups",
+            view=types.Warning(),
+        )
+        prop.invalid = True
+        return
+
+    slice_selector = types.DropdownView()
+    for key in ctx.dataset.group_slices:
+        slice_selector.add_choice(key, label=key)
+
+    inputs.list(
+        "names",
+        types.String(),
+        label="Group slice",
+        description="The group slice(s) to delete",
+        view=slice_selector,
+        required=True,
+    )
 
 
 class ListSavedViews(foo.Operator):
@@ -1778,6 +1785,9 @@ class SaveView(foo.Operator):
             overwrite=True,
         )
 
+        # @todo fix App bug so that this works
+        # ctx.ops.set_view(name=name)
+
 
 class EditSavedViewInfo(foo.Operator):
     @property
@@ -1885,38 +1895,43 @@ class DeleteSavedView(foo.Operator):
     def resolve_input(self, ctx):
         inputs = types.Object()
 
-        saved_views = ctx.dataset.list_saved_views()
-
-        if saved_views:
-            saved_view_selector = types.AutocompleteView()
-            for key in saved_views:
-                saved_view_selector.add_choice(key, label=key)
-
-            inputs.enum(
-                "name",
-                saved_view_selector.values(),
-                default=None,
-                required=True,
-                label="Saved view",
-                description="The saved view to delete",
-                view=saved_view_selector,
-            )
-        else:
-            prop = inputs.str(
-                "msg",
-                label="This dataset has no saved views",
-                view=types.Warning(),
-            )
-            prop.invalid = True
+        _delete_saved_view_inputs(ctx, inputs)
 
         return types.Property(
             inputs, view=types.View(label="Delete saved view")
         )
 
     def execute(self, ctx):
-        name = ctx.params["name"]
+        names = ctx.params["names"]
 
-        ctx.dataset.delete_saved_view(name)
+        for name in names:
+            ctx.dataset.delete_saved_view(name)
+
+
+def _delete_saved_view_inputs(ctx, inputs):
+    saved_views = ctx.dataset.list_saved_views()
+
+    if not saved_views:
+        prop = inputs.str(
+            "msg",
+            label="This dataset has no saved views",
+            view=types.Warning(),
+        )
+        prop.invalid = True
+        return
+
+    saved_view_selector = types.DropdownView()
+    for key in saved_views:
+        saved_view_selector.add_choice(key, label=key)
+
+    inputs.list(
+        "names",
+        types.String(),
+        label="Saved view",
+        description="The saved view(s) to delete",
+        view=saved_view_selector,
+        required=True,
+    )
 
 
 class ListWorkspaces(foo.Operator):
@@ -2166,42 +2181,48 @@ class DeleteWorkspace(foo.Operator):
     def resolve_input(self, ctx):
         inputs = types.Object()
 
-        workspaces = ctx.dataset.list_workspaces()
-
-        if workspaces:
-            workspace_selector = types.AutocompleteView()
-            for key in workspaces:
-                workspace_selector.add_choice(key, label=key)
-
-            inputs.enum(
-                "name",
-                workspace_selector.values(),
-                default=ctx.spaces.name,
-                required=True,
-                label="Workspace",
-                description="The workspace to delete",
-                view=workspace_selector,
-            )
-        else:
-            prop = inputs.str(
-                "msg",
-                label="This dataset has no saved workspaces",
-                view=types.Warning(),
-            )
-            prop.invalid = True
+        _delete_workspace_inputs(ctx, inputs)
 
         return types.Property(
             inputs, view=types.View(label="Delete workspace")
         )
 
     def execute(self, ctx):
-        name = ctx.params["name"]
+        names = ctx.params["names"]
 
-        curr_spaces = name == ctx.spaces.name
-        ctx.dataset.delete_workspace(name)
+        curr_spaces = False
+        for name in names:
+            curr_spaces |= name == ctx.spaces.name
+            ctx.dataset.delete_workspace(name)
 
         if curr_spaces:
             ctx.ops.set_spaces(spaces=default_workspace_factory())
+
+
+def _delete_workspace_inputs(ctx, inputs):
+    workspaces = ctx.dataset.list_workspaces()
+
+    if not workspaces:
+        prop = inputs.str(
+            "msg",
+            label="This dataset has no saved workspaces",
+            view=types.Warning(),
+        )
+        prop.invalid = True
+        return
+
+    workspace_selector = types.DropdownView()
+    for key in workspaces:
+        workspace_selector.add_choice(key, label=key)
+
+    inputs.list(
+        "names",
+        types.String(),
+        label="Workspace",
+        description="The workspace(s) to delete",
+        view=workspace_selector,
+        required=True,
+    )
 
 
 class SyncLastModifiedAt(foo.Operator):
@@ -2373,39 +2394,36 @@ def _parse_spaces(ctx, spaces):
     return fo.Space.from_dict(spaces)
 
 
-BUILTIN_OPERATORS = [
-    EditFieldInfo(_builtin=True),
-    CloneSelectedSamples(_builtin=True),
-    CloneSampleField(_builtin=True),
-    CloneFrameField(_builtin=True),
-    RenameSampleField(_builtin=True),
-    RenameFrameField(_builtin=True),
-    ClearSampleField(_builtin=True),
-    ClearFrameField(_builtin=True),
-    DeleteSelectedSamples(_builtin=True),
-    DeleteSelectedLabels(_builtin=True),
-    DeleteSampleField(_builtin=True),
-    DeleteFrameField(_builtin=True),
-    CreateIndex(_builtin=True),
-    DropIndex(_builtin=True),
-    CreateSummaryField(_builtin=True),
-    UpdateSummaryField(_builtin=True),
-    DeleteSummaryField(_builtin=True),
-    AddGroupSlice(_builtin=True),
-    RenameGroupSlice(_builtin=True),
-    DeleteGroupSlice(_builtin=True),
-    ListSavedViews(_builtin=True),
-    LoadSavedView(_builtin=True),
-    SaveView(_builtin=True),
-    EditSavedViewInfo(_builtin=True),
-    DeleteSavedView(_builtin=True),
-    ListWorkspaces(_builtin=True),
-    LoadWorkspace(_builtin=True),
-    SaveWorkspace(_builtin=True),
-    EditWorkspaceInfo(_builtin=True),
-    DeleteWorkspace(_builtin=True),
-    SyncLastModifiedAt(_builtin=True),
-    ListFiles(_builtin=True),
-]
-
-BUILTIN_PANELS = [EvaluationPanel(_builtin=True)]
+def register(p):
+    p.register(EditFieldInfo)
+    p.register(CloneSelectedSamples)
+    p.register(CloneSampleField)
+    p.register(CloneFrameField)
+    p.register(RenameSampleField)
+    p.register(RenameFrameField)
+    p.register(ClearSampleField)
+    p.register(ClearFrameField)
+    p.register(DeleteSelectedSamples)
+    p.register(DeleteSelectedLabels)
+    p.register(DeleteSampleField)
+    p.register(DeleteFrameField)
+    p.register(CreateIndex)
+    p.register(DropIndex)
+    p.register(CreateSummaryField)
+    p.register(UpdateSummaryField)
+    p.register(DeleteSummaryField)
+    p.register(AddGroupSlice)
+    p.register(RenameGroupSlice)
+    p.register(DeleteGroupSlice)
+    p.register(ListSavedViews)
+    p.register(LoadSavedView)
+    p.register(SaveView)
+    p.register(EditSavedViewInfo)
+    p.register(DeleteSavedView)
+    p.register(ListWorkspaces)
+    p.register(LoadWorkspace)
+    p.register(SaveWorkspace)
+    p.register(EditWorkspaceInfo)
+    p.register(DeleteWorkspace)
+    p.register(SyncLastModifiedAt)
+    p.register(ListFiles)

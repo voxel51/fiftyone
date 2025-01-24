@@ -119,6 +119,7 @@ export namespace State {
   }
 
   export interface DatasetAppConfig {
+    dynamicGroupsTargetFrameRate: number;
     gridMediaField?: string;
     modalMediaField?: string;
     mediaFields?: string[];

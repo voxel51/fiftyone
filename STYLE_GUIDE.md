@@ -97,7 +97,7 @@ For example, an import block might look like this:
 """
 Module docstring.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -184,7 +184,7 @@ Short module description here (generally one sentence max).
 
 A longer section can also be added here as appropriate.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """

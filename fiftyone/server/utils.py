@@ -1,7 +1,7 @@
 """
 FiftyOne Server utils.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -47,6 +47,21 @@ def load_and_cache_dataset(name):
     _cache[name] = dataset
 
     return dataset
+
+
+def cache_dataset(dataset):
+    """Caches the given dataset.
+
+    This method ensures that subsequent calls to
+    :func:`fiftyone.core.dataset.load_dataset` in async calls will return this
+    dataset singleton.
+
+    See :meth:`load_and_cache_dataset` for additional details.
+
+    Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset`
+    """
+    _cache[dataset.name] = dataset
 
 
 def change_sample_tags(sample_collection, changes):

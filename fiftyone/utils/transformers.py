@@ -2,20 +2,20 @@
 Utilities for working with
 `Hugging Face Transformers <https://huggingface.co/docs/transformers>`_.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 
+import eta.core.utils as etau
 import numpy as np
 
-import eta.core.utils as etau
-
-from fiftyone.core.config import Config
 import fiftyone.core.labels as fol
-from fiftyone.core.models import Model, EmbeddingsMixin, PromptMixin
 import fiftyone.core.utils as fou
+from fiftyone.core.config import Config
+from fiftyone.core.models import EmbeddingsMixin, Model, PromptMixin
 from fiftyone.zoo.models import HasZooModel
 
 torch = fou.lazy_import("torch")
@@ -323,6 +323,9 @@ class FiftyOneTransformerConfig(Config, HasZooModel):
     def __init__(self, d):
         self.model = self.parse_raw(d, "model", default=None)
         self.name_or_path = self.parse_string(d, "name_or_path", default=None)
+        self.device = self.parse_string(
+            d, "device", default="cuda" if torch.cuda.is_available() else "cpu"
+        )
         if etau.is_str(self.model):
             self.name_or_path = self.model
             self.model = None
@@ -451,9 +454,8 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, Model):
     def __init__(self, config):
         self.config = config
         self.model = self._load_model(config)
-        self.device = (
-            "cuda" if next(self.model.parameters()).is_cuda else "cpu"
-        )
+        self.device = torch.device(self.config.device)
+        self.model.to(self.device)
         self.image_processor = self._load_image_processor()
 
     @property
@@ -498,9 +500,8 @@ class FiftyOneZeroShotTransformer(
         self.config = config
         self.classes = config.classes
         self.model = self._load_model(config)
-        self.device = (
-            "cuda" if next(self.model.parameters()).is_cuda else "cpu"
-        )
+        self.device = torch.device(self.config.device)
+        self.model.to(self.device)
         self.processor = self._load_processor()
         self._text_prompts = None
 
@@ -585,7 +586,10 @@ class FiftyOneZeroShotTransformerForImageClassification(
         if config.model is not None:
             return config.model
 
-        model = transformers.AutoModel.from_pretrained(config.name_or_path)
+        device = torch.device(config.device)
+        model = transformers.AutoModel.from_pretrained(config.name_or_path).to(
+            device
+        )
         if _has_image_text_retrieval(model):
             model = _get_model_for_image_text_retrieval(
                 model, config.name_or_path
@@ -642,7 +646,7 @@ class FiftyOneZeroShotTransformerForImageClassification(
         with torch.no_grad():
             for text_prompt in text_prompts:
                 inputs = self.processor(arg, text_prompt, return_tensors="pt")
-                outputs = self.model(**inputs.to(self.device))
+                outputs = self.model(**(inputs.to(self.device)))
                 logits.append(outputs.logits[0, :].item())
 
         logits = np.array(logits)
@@ -694,14 +698,14 @@ class FiftyOneTransformerForImageClassification(FiftyOneTransformer):
     def _load_model(self, config):
         if config.model is not None:
             return config.model
-
+        device = torch.device(config.device)
         return transformers.AutoModelForImageClassification.from_pretrained(
             config.name_or_path
-        )
+        ).to(device)
 
     def _predict(self, inputs):
         with torch.no_grad():
-            results = self.model(**inputs.to(self.device))
+            results = self.model(**(inputs.to(self.device)))
         return to_classification(results, self.model.config.id2label)
 
     def predict(self, arg):
@@ -749,9 +753,8 @@ class FiftyOneZeroShotTransformerForObjectDetection(
         self.classes = config.classes
         self.processor = self._load_processor(config)
         self.model = self._load_model(config)
-        self.device = (
-            "cuda" if next(self.model.parameters()).is_cuda else "cpu"
-        )
+        self.device = torch.device(self.config.device)
+        self.model.to(self.device)
         self._text_prompts = None
 
     def _load_processor(self, config):
@@ -771,7 +774,9 @@ class FiftyOneZeroShotTransformerForObjectDetection(
         if config.model is not None:
             return config.model
         else:
-            return _get_detector_from_processor(self.processor, name_or_path)
+            return _get_detector_from_processor(
+                self.processor, name_or_path
+            ).to(config.device)
 
     def _process_inputs(self, args):
         text_prompts = self._get_text_prompts()
@@ -782,7 +787,7 @@ class FiftyOneZeroShotTransformerForObjectDetection(
 
     def _predict(self, inputs, target_sizes):
         with torch.no_grad():
-            outputs = self.model(**inputs.to(self.device))
+            outputs = self.model(**(inputs.to(self.device)))
 
         results = self.processor.image_processor.post_process_object_detection(
             outputs, target_sizes=target_sizes
@@ -822,10 +827,9 @@ class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
     def _load_model(self, config):
         if config.model is not None:
             return config.model
-
         return transformers.AutoModelForObjectDetection.from_pretrained(
             config.name_or_path
-        )
+        ).to(config.device)
 
     def _predict(self, inputs, target_sizes):
         with torch.no_grad():
@@ -879,7 +883,7 @@ class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
             model = (
                 transformers.AutoModelForSemanticSegmentation.from_pretrained(
                     config.name_or_path
-                )
+                ).to(config.device)
             )
 
         self.mask_targets = model.config.id2label
@@ -929,10 +933,9 @@ class FiftyOneTransformerForDepthEstimation(FiftyOneTransformer):
     def _load_model(self, config):
         if config.model is not None:
             return config.model
-
         return transformers.AutoModelForDepthEstimation.from_pretrained(
             config.name_or_path
-        )
+        ).to(config.device)
 
     def _predict(self, inputs, target_sizes):
         with torch.no_grad():
@@ -1034,7 +1037,8 @@ def _get_model_for_image_text_retrieval(base_model, model_name_or_path):
         __import__(module_name, fromlist=[itr_class_name]),
         itr_class_name,
     )
-    return itr_class.from_pretrained(model_name_or_path)
+
+    return itr_class.from_pretrained(model_name_or_path).to(base_model.device)
 
 
 def _get_image_processor_fallback(model):

@@ -1,7 +1,7 @@
 """
 CLIP model wrapper for the FiftyOne Model Zoo.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -187,7 +187,7 @@ class TorchCLIPModel(fout.TorchImageModel, fom.PromptMixin):
         frame_size = (width, height)
 
         if self._using_gpu:
-            imgs = imgs.cuda()
+            imgs = imgs.to(self.device)
 
         text_features = self._get_text_features()
         image_features = self._model.encode_image(imgs)

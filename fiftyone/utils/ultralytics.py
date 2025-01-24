@@ -2,7 +2,7 @@
 Utilities for working with
 `Ultralytics <https://github.com/ultralytics/ultralytics>`_.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -20,6 +20,7 @@ import fiftyone.core.utils as fou
 import fiftyone.zoo.models as fozm
 
 ultralytics = fou.lazy_import("ultralytics")
+torch = fou.lazy_import("torch")
 
 
 def convert_ultralytics_model(model):
@@ -378,6 +379,9 @@ class FiftyOneYOLOModelConfig(Config, fozm.HasZooModel):
         self.model_name = self.parse_raw(d, "model_name", default=None)
         self.model_path = self.parse_raw(d, "model_path", default=None)
         self.classes = self.parse_array(d, "classes", default=None)
+        self.device = self.parse_string(
+            d, "device", default="cuda" if torch.cuda.is_available() else "cpu"
+        )
 
 
 class FiftyOneYOLOModel(Model):
@@ -390,6 +394,8 @@ class FiftyOneYOLOModel(Model):
     def __init__(self, config):
         self.config = config
         self.model = self._load_model(config)
+        self.device = torch.device(config.device)
+        self.model.to(self.device)
 
     def _load_model(self, config):
         if config.model is not None:

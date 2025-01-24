@@ -1,7 +1,7 @@
 """
 FiftyOne Server queries.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -211,6 +211,7 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 class DatasetAppConfig:
     color_scheme: t.Optional[ColorScheme]
     disable_frame_filtering: t.Optional[bool] = None
+    dynamic_groups_target_frame_rate: int = 30
     grid_media_field: str = "filepath"
     media_fields: t.Optional[t.List[str]]
     modal_media_field: str = "filepath"

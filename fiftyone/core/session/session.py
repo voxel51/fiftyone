@@ -1,17 +1,15 @@
 """
 Session class for interacting with the FiftyOne App.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
 from collections import defaultdict
 from functools import wraps
-from importlib import metadata
 import logging
 import os
-from packaging.requirements import Requirement
 import time
 import typing as t
 from uuid import uuid4
@@ -34,7 +32,6 @@ from fiftyone.core.config import AppConfig
 import fiftyone.core.context as focx
 import fiftyone.core.plots as fop
 import fiftyone.core.service as fos
-import fiftyone.core.sample as fosa
 from fiftyone.core.state import build_color_scheme, StateDescription
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov

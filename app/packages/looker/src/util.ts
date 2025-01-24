@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2024, Voxel51, Inc.
+ * Copyright 2017-2025, Voxel51, Inc.
  */
 import { mergeWith } from "immutable";
 import mime from "mime";
@@ -22,7 +22,6 @@ import {
   ServerError,
   getFetchParameters,
 } from "@fiftyone/utilities";
-import { DEFAULT_FRAME_RATE } from "./lookers/imavid/constants";
 import LookerWorker from "./worker/index.ts?worker&inline";
 
 /**
@@ -254,11 +253,12 @@ export const ensureCanvasSize = (
 };
 
 export const getMillisecondsFromPlaybackRate = (
+  frameRate: number,
   playbackRate: number
 ): number => {
   const normalizedPlaybackRate =
     playbackRate > 1 ? playbackRate * 1.5 : playbackRate;
-  return 1000 / (DEFAULT_FRAME_RATE * normalizedPlaybackRate);
+  return 1000 / (frameRate * normalizedPlaybackRate);
 };
 
 /**

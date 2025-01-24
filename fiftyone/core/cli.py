@@ -1,7 +1,7 @@
 """
 Definition of the `fiftyone` command-line interface (CLI).
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -2905,7 +2905,7 @@ class OperatorsCommand(Command):
 
 
 class OperatorsListCommand(Command):
-    """List operators and panels that you've installed locally.
+    """List operators and panels that are installed locally.
 
     Examples::
 
@@ -2918,7 +2918,10 @@ class OperatorsListCommand(Command):
         # List disabled operators and panels
         fiftyone operators list --disabled
 
-        # Only list panels
+        # List non-builtin operators and panels
+        fiftyone operators list --no-builtins
+
+        # List panels
         fiftyone operators list --panels-only
     """
 
@@ -2939,11 +2942,25 @@ class OperatorsListCommand(Command):
             help="only show disabled operators and panels",
         )
         parser.add_argument(
+            "-b",
+            "--builtins-only",
+            action="store_true",
+            default=None,
+            help="only show builtin operators and panels",
+        )
+        parser.add_argument(
+            "-c",
+            "--no-builtins",
+            action="store_true",
+            default=None,
+            help="only show non-builtin operators and panels",
+        )
+        parser.add_argument(
             "-o",
             "--operators-only",
             action="store_true",
             default=None,
-            help="only show operators",
+            help="only show non-panel operators",
         )
         parser.add_argument(
             "-p",
@@ -2968,6 +2985,13 @@ class OperatorsListCommand(Command):
         else:
             enabled = "all"
 
+        if args.builtins_only:
+            builtin = True
+        elif args.no_builtins:
+            builtin = False
+        else:
+            builtin = "all"
+
         if args.operators_only:
             type = "operator"
         elif args.panels_only:
@@ -2975,11 +2999,11 @@ class OperatorsListCommand(Command):
         else:
             type = None
 
-        _print_operators_list(enabled, type, args.names_only)
+        _print_operators_list(enabled, builtin, type, args.names_only)
 
 
-def _print_operators_list(enabled, type, names_only):
-    operators = foo.list_operators(enabled=enabled, type=type)
+def _print_operators_list(enabled, builtin, type, names_only):
+    operators = foo.list_operators(enabled=enabled, builtin=builtin, type=type)
 
     if names_only:
         operators_map = defaultdict(list)
@@ -3016,7 +3040,7 @@ def _print_operators_list(enabled, type, names_only):
 
 
 class OperatorsInfoCommand(Command):
-    """Prints info about operators and panels that you've installed locally.
+    """Prints info about operators and panels that are installed locally.
 
     Examples::
 
@@ -3498,7 +3522,7 @@ class PluginsCommand(Command):
 
 
 class PluginsListCommand(Command):
-    """List plugins that you've installed locally.
+    """List plugins that are installed locally.
 
     Examples::
 
@@ -3510,6 +3534,9 @@ class PluginsListCommand(Command):
 
         # List disabled plugins
         fiftyone plugins list --disabled
+
+        # List non-builtin plugins
+        fiftyone plugins list --no-builtins
     """
 
     @staticmethod
@@ -3529,6 +3556,20 @@ class PluginsListCommand(Command):
             help="only show disabled plugins",
         )
         parser.add_argument(
+            "-b",
+            "--builtins-only",
+            action="store_true",
+            default=None,
+            help="only show builtin plugins",
+        )
+        parser.add_argument(
+            "-c",
+            "--no-builtins",
+            action="store_true",
+            default=None,
+            help="only show non-builtin plugins",
+        )
+        parser.add_argument(
             "-n",
             "--names-only",
             action="store_true",
@@ -3544,11 +3585,20 @@ class PluginsListCommand(Command):
         else:
             enabled = "all"
 
-        _print_plugins_list(enabled, args.names_only)
+        if args.builtins_only:
+            builtin = True
+        elif args.no_builtins:
+            builtin = False
+        else:
+            builtin = "all"
+
+        _print_plugins_list(enabled, builtin, args.names_only)
 
 
-def _print_plugins_list(enabled, names_only):
-    plugin_defintions = fop.list_plugins(enabled=enabled)
+def _print_plugins_list(enabled, builtin, names_only):
+    plugin_defintions = fop.list_plugins(
+        enabled=enabled, builtin=builtin, shadowed="all"
+    )
 
     if names_only:
         for pd in plugin_defintions:
@@ -3558,17 +3608,36 @@ def _print_plugins_list(enabled, names_only):
 
     enabled_plugins = set(fop.list_enabled_plugins())
 
-    headers = ["plugin", "version", "enabled", "directory"]
+    shadowed_paths = set()
+    for pd in plugin_defintions:
+        if pd.shadow_paths:
+            shadowed_paths.update(pd.shadow_paths)
+
+    headers = [
+        "plugin",
+        "version",
+        "enabled",
+        "builtin",
+        "shadowed",
+        "directory",
+    ]
     rows = []
     for pd in plugin_defintions:
+        shadowed = pd.directory in shadowed_paths
+        enabled = (pd.builtin or pd.name in enabled_plugins) and not shadowed
         rows.append(
             {
                 "plugin": pd.name,
                 "version": pd.version or "",
-                "enabled": pd.name in enabled_plugins,
+                "enabled": enabled,
+                "builtin": pd.builtin,
+                "shadowed": shadowed,
                 "directory": pd.directory,
             }
         )
+
+    if not shadowed_paths:
+        headers.remove("shadowed")
 
     records = [tuple(_format_cell(r[key]) for key in headers) for r in rows]
 
@@ -3577,28 +3646,41 @@ def _print_plugins_list(enabled, names_only):
 
 
 class PluginsInfoCommand(Command):
-    """Prints info about plugins that you've installed locally.
+    """Prints info about plugins that are installed locally.
 
     Examples::
 
         # Prints information about a plugin
         fiftyone plugins info <name>
+
+        # Prints information about a plugin in a given directory
+        fiftyone plugins info <dir>
     """
 
     @staticmethod
     def setup(parser):
-        parser.add_argument("name", metavar="NAME", help="the plugin name")
+        parser.add_argument(
+            "name_or_dir",
+            metavar="NAME_OR_DIR",
+            help="the plugin name or directory",
+        )
 
     @staticmethod
     def execute(parser, args):
-        _print_plugin_info(args.name)
+        _print_plugin_info(args.name_or_dir)
 
 
-def _print_plugin_info(name):
-    plugin_defintion = fop.get_plugin(name)
+def _print_plugin_info(name_or_dir):
+    try:
+        pd = fop.get_plugin(name_or_dir)
+    except:
+        if os.path.isdir(name_or_dir):
+            pd = fop.get_plugin(plugin_dir=name_or_dir)
+        else:
+            raise
 
-    d = plugin_defintion.to_dict()
-    d["directory"] = plugin_defintion.directory
+    d = pd.to_dict()
+    d["directory"] = pd.directory
     _print_dict_as_table(d)
 
 

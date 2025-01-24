@@ -1,7 +1,7 @@
 """
 FiftyOne operator execution.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -679,6 +679,18 @@ class Operations(object):
     def close_sample(self):
         """Closes the App's sample modal."""
         return self._ctx.trigger("close_sample")
+
+    def show_sidebar(self):
+        """Show the App's sidebar."""
+        return self._ctx.trigger("show_sidebar")
+
+    def hide_sidebar(self):
+        """Hide the App's sidebar."""
+        return self._ctx.trigger("hide_sidebar")
+
+    def toggle_sidebar(self):
+        """Toggle the visibility of the App's sidebar."""
+        return self._ctx.trigger("toggle_sidebar")
 
 
 def _serialize_view(view):

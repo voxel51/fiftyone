@@ -5,7 +5,7 @@ All of these tests are designed to be run manually via::
 
     pytest tests/intensive/merge_tests.py -s -k test_<name>
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """

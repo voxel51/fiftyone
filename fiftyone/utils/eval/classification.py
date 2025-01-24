@@ -1,7 +1,7 @@
 """
 Classification evaluation.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -16,7 +16,6 @@ import sklearn.metrics as skm
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.evaluation as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -24,7 +23,11 @@ import fiftyone.core.plots as fop
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
-from .base import BaseEvaluationResults
+from .base import (
+    BaseEvaluationMethod,
+    BaseEvaluationMethodConfig,
+    BaseClassificationResults,
+)
 
 
 def evaluate_classifications(
@@ -35,6 +38,7 @@ def evaluate_classifications(
     classes=None,
     missing=None,
     method=None,
+    custom_metrics=None,
     progress=None,
     **kwargs,
 ):
@@ -82,6 +86,8 @@ def evaluate_classifications(
             supported values are
             ``fo.evaluation_config.classification_backends.keys()`` and the
             default is ``fo.evaluation_config.default_classification_backend``
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -96,7 +102,13 @@ def evaluate_classifications(
         samples, (pred_field, gt_field), fol.Classification, same_type=True
     )
 
-    config = _parse_config(pred_field, gt_field, method, **kwargs)
+    config = _parse_config(
+        pred_field,
+        gt_field,
+        method,
+        custom_metrics=custom_metrics,
+        **kwargs,
+    )
     eval_method = config.build()
     eval_method.ensure_requirements()
 
@@ -110,12 +122,13 @@ def evaluate_classifications(
         missing=missing,
         progress=progress,
     )
+    eval_method.compute_custom_metrics(samples, eval_key, results)
     eval_method.save_run_results(samples, eval_key, results)
 
     return results
 
 
-class ClassificationEvaluationConfig(foe.EvaluationMethodConfig):
+class ClassificationEvaluationConfig(BaseEvaluationMethodConfig):
     """Base class for configuring :class:`ClassificationEvaluation`
     instances.
 
@@ -124,19 +137,22 @@ class ClassificationEvaluationConfig(foe.EvaluationMethodConfig):
             :class:`fiftyone.core.labels.Classification` instances
         gt_field: the name of the field containing the ground truth
             :class:`fiftyone.core.labels.Classification` instances
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
     """
 
-    def __init__(self, pred_field, gt_field, **kwargs):
+    def __init__(self, pred_field, gt_field, custom_metrics=None, **kwargs):
         super().__init__(**kwargs)
         self.pred_field = pred_field
         self.gt_field = gt_field
+        self.custom_metrics = custom_metrics
 
     @property
     def type(self):
         return "classification"
 
 
-class ClassificationEvaluation(foe.EvaluationMethod):
+class ClassificationEvaluation(BaseEvaluationMethod):
     """Base class for classification evaluation methods.
 
     Args:
@@ -187,6 +203,8 @@ class ClassificationEvaluation(foe.EvaluationMethod):
         if is_frame_field:
             fields.append(samples._FRAMES_PREFIX + eval_key)
 
+        fields.extend(self.get_custom_metric_fields(samples, eval_key))
+
         return fields
 
     def rename(self, samples, eval_key, new_eval_key):
@@ -208,6 +226,8 @@ class ClassificationEvaluation(foe.EvaluationMethod):
             fields = dict(zip(in_frame_fields, out_frame_fields))
             dataset.rename_frame_fields(fields)
 
+        self.rename_custom_metrics(samples, eval_key, new_eval_key)
+
     def cleanup(self, samples, eval_key):
         dataset = samples._dataset
         is_frame_field = samples._is_frame_field(self.config.gt_field)
@@ -216,6 +236,8 @@ class ClassificationEvaluation(foe.EvaluationMethod):
 
         if is_frame_field:
             dataset.delete_frame_field(eval_key, error_level=1)
+
+        self.cleanup_custom_metrics(samples, eval_key)
 
     def _validate_run(self, samples, eval_key, existing_info):
         self._validate_fields_match(eval_key, "pred_field", existing_info)
@@ -230,6 +252,8 @@ class SimpleEvaluationConfig(ClassificationEvaluationConfig):
             :class:`fiftyone.core.labels.Classification` instances
         gt_field: the name of the field containing the ground truth
             :class:`fiftyone.core.labels.Classification` instances
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
     """
 
     @property
@@ -337,10 +361,16 @@ class TopKEvaluationConfig(ClassificationEvaluationConfig):
         gt_field: the name of the field containing the ground truth
             :class:`fiftyone.core.labels.Classification` instances
         k (5): the top-k value to use when assessing accuracy
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
     """
 
-    def __init__(self, pred_field, gt_field, k=5, **kwargs):
-        super().__init__(pred_field, gt_field, **kwargs)
+    def __init__(
+        self, pred_field, gt_field, k=5, custom_metrics=None, **kwargs
+    ):
+        super().__init__(
+            pred_field, gt_field, custom_metrics=custom_metrics, **kwargs
+        )
         self.k = k
 
     @property
@@ -535,6 +565,8 @@ class BinaryEvaluationConfig(ClassificationEvaluationConfig):
         pred_field: the name of the field containing the predicted
             :class:`fiftyone.core.labels.Classification` instances
         gt_field: the name of the field containing the ground truth
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
     """
 
     @property
@@ -678,7 +710,7 @@ class BinaryEvaluation(ClassificationEvaluation):
         return results
 
 
-class ClassificationResults(BaseEvaluationResults):
+class ClassificationResults(BaseClassificationResults):
     """Class that stores the results of a classification evaluation.
 
     Args:
@@ -695,6 +727,7 @@ class ClassificationResults(BaseEvaluationResults):
             observed ground truth/predicted labels are used
         missing (None): a missing label string. Any None-valued labels are
             given this label for evaluation purposes
+        custom_metrics (None): an optional dict of custom metrics
         backend (None): a :class:`ClassificationEvaluation` backend
     """
 
@@ -718,6 +751,7 @@ class BinaryClassificationResults(ClassificationResults):
         weights (None): an optional list of sample weights
         ytrue_ids (None): a list of IDs for the ground truth labels
         ypred_ids (None): a list of IDs for the predicted labels
+        custom_metrics (None): an optional dict of custom metrics
         backend (None): a :class:`ClassificationEvaluation` backend
     """
 
@@ -733,6 +767,7 @@ class BinaryClassificationResults(ClassificationResults):
         weights=None,
         ytrue_ids=None,
         ypred_ids=None,
+        custom_metrics=None,
         backend=None,
     ):
         super().__init__(
@@ -747,6 +782,7 @@ class BinaryClassificationResults(ClassificationResults):
             ypred_ids=ypred_ids,
             classes=classes,
             missing=classes[0],
+            custom_metrics=custom_metrics,
             backend=backend,
         )
 
@@ -866,6 +902,7 @@ class BinaryClassificationResults(ClassificationResults):
         weights = d.get("weights", None)
         ytrue_ids = d.get("ytrue_ids", None)
         ypred_ids = d.get("ypred_ids", None)
+        custom_metrics = d.get("custom_metrics", None)
         return cls(
             samples,
             config,
@@ -877,6 +914,7 @@ class BinaryClassificationResults(ClassificationResults):
             weights=weights,
             ytrue_ids=ytrue_ids,
             ypred_ids=ypred_ids,
+            custom_metrics=custom_metrics,
             **kwargs,
         )
 
@@ -884,6 +922,10 @@ class BinaryClassificationResults(ClassificationResults):
 def _parse_config(pred_field, gt_field, method, **kwargs):
     if method is None:
         method = fo.evaluation_config.default_classification_backend
+
+    custom_metrics = kwargs.get("custom_metrics", None)
+    if etau.is_str(custom_metrics):
+        kwargs["custom_metrics"] = [custom_metrics]
 
     if inspect.isclass(method):
         return method(pred_field, gt_field, **kwargs)

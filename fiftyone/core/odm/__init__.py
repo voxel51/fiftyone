@@ -1,7 +1,7 @@
 """
 ODM package declaration.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -63,6 +63,7 @@ from .document import (
 from .embedded_document import (
     BaseEmbeddedDocument,
     DynamicEmbeddedDocument,
+    DynamicEmbeddedDocumentException,
     EmbeddedDocument,
 )
 from .frame import (

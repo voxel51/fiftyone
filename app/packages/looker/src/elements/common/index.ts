@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2024, Voxel51, Inc.
+ * Copyright 2017-2025, Voxel51, Inc.
  */
 
 export { COMMON_SHORTCUTS, VIDEO_SHORTCUTS } from "./actions";

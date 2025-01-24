@@ -15,7 +15,7 @@ import {
   modalGroupSlice,
 } from "./groups";
 import { modalLooker, modalSample } from "./modal";
-import { dynamicGroupsViewMode } from "./options";
+import { dynamicGroupsViewMode, selectedMediaField } from "./options";
 import { fieldPaths, fieldSchema } from "./schema";
 import { datasetName, parentMediaTypeSelector } from "./selectors";
 import { State } from "./types";
@@ -289,8 +289,9 @@ export const imaVidStoreKey = selectorFamily<
     ({ get }) => {
       const { groupBy, orderBy } = get(dynamicGroupParameters);
       const slice = get(currentSlice(modal)) ?? "UNSLICED";
+      const mediaField = get(selectedMediaField(modal));
 
-      return `$${groupBy}-${orderBy}-${groupByFieldValue}-${slice}`;
+      return `$${groupBy}-${orderBy}-${groupByFieldValue}-${slice}-${mediaField}`;
     },
 });
 

@@ -2,7 +2,7 @@
 Utilities for working with
 `SuperGradients <https://github.com/Deci-AI/super-gradients>`_.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -96,7 +96,7 @@ class TorchYoloNasModel(fout.TorchImageModel):
             )
 
         if self._using_gpu:
-            model = model.cuda()
+            model = model.to(self.device)
 
         return model
 

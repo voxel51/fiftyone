@@ -1,7 +1,7 @@
 """
 Dataset sample fields.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1618,6 +1618,68 @@ def is_rgb_target(target):
     return (
         isinstance(target, str)
         and re.search(r"^#(?:[0-9a-fA-F]{6})$", target) is not None
+    )
+
+
+def hex_to_int(hex_str):
+    """Converts a hex string like `"#ff6d04"` to a hex integer.
+
+    Args:
+        hex_str: a hex string
+
+    Returns:
+        an integer
+    """
+    r = int(hex_str[1:3], 16)
+    g = int(hex_str[3:5], 16)
+    b = int(hex_str[5:7], 16)
+    return (r << 16) + (g << 8) + b
+
+
+def int_to_hex(value):
+    """Converts an RRGGBB integer value to hex string like `"#ff6d04"`.
+
+    Args:
+        value: an integer value
+
+    Returns:
+        a hex string
+    """
+    r = (value >> 16) & 255
+    g = (value >> 8) & 255
+    b = value & 255
+    return "#%02x%02x%02x" % (r, g, b)
+
+
+def rgb_array_to_int(mask):
+    """Converts an RGB mask array to a 2D hex integer mask array.
+
+    Args:
+        mask: an RGB mask array
+
+    Returns:
+        a 2D integer mask array
+    """
+    return (
+        np.left_shift(mask[:, :, 0], 16, dtype=int)
+        + np.left_shift(mask[:, :, 1], 8, dtype=int)
+        + mask[:, :, 2]
+    )
+
+
+def int_array_to_rgb(mask):
+    """Converts a 2D hex integer mask array to an RGB mask array.
+
+    Args:
+        mask: a 2D integer mask array
+
+    Returns:
+        an RGB mask array
+    """
+    return np.stack(
+        [(mask >> 16) & 255, (mask >> 8) & 255, mask & 255],
+        axis=2,
+        dtype=np.uint8,
     )
 
 

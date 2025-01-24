@@ -1,7 +1,7 @@
 """
 Documents that track datasets and their sample schemas in the database.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -527,6 +527,8 @@ class DatasetAppConfig(EmbeddedDocument):
             menus
         modal_media_field ("filepath"): the default sample field from which to
             serve media in the App's modal view
+        dynamic_groups_target_frame_rate (30): the target frame rate when
+            rendering ordered dynamic groups of images as videos
         plugins ({}): an optional dict mapping plugin names to plugin
             configuration dicts. Builtin plugins include:
 
@@ -545,6 +547,7 @@ class DatasetAppConfig(EmbeddedDocument):
 
     color_scheme = EmbeddedDocumentField(ColorScheme, default=None)
     disable_frame_filtering = BooleanField(default=None)
+    dynamic_groups_target_frame_rate = IntField(default=30)
     grid_media_field = StringField(default="filepath")
     media_fallback = BooleanField(default=False)
     media_fields = ListField(StringField(), default=["filepath"])

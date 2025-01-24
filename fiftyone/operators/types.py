@@ -1,7 +1,7 @@
 """
 FiftyOne operator types.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1594,6 +1594,8 @@ class AutocompleteView(Choices):
     Args:
         choices (None): a list of :class:`Choice` instances
         read_only (False): whether the view is read-only
+        allow_user_input (True): when True the user can input a value that is not in the choices
+        allow_duplicates (True): when True the user can select the same choice multiple times
     """
 
     def __init__(self, **kwargs):
@@ -1924,7 +1926,7 @@ class TableView(View):
         clone.tooltips = [tooltip.clone() for tooltip in self.tooltips]
         clone._tooltip_map = {
             (tooltip.row, tooltip.column): tooltip
-            for tooltip in clone.tooltips
+            for tooltip in clone.tooltips  # pylint: disable=no-member
         }
         return clone
 
