@@ -1995,8 +1995,8 @@ You can also view frame-level evaluation results as
 
 .. _custom-metrics:
 
-Using custom metrics for evaluation
------------------------------------
+Custom metrics for evaluation
+-----------------------------
 
 If you want to add custom metrics to your evaluation run, it is possible to do so
 in FiftyOne. Some examples of custom metrics are available in
@@ -2005,7 +2005,8 @@ in FiftyOne. Some examples of custom metrics are available in
 Custom metrics are supported by all FiftyOne evaluation methods. You may compute custom metrics
 via the SDK or the App. In the App, custom metrics can be computed using the `evaluate_model` operator
 from the `Operator Browser <using-operators>`. The code below shows how to add a custom metric to
-`evaluate_detections` via the SDK:
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+via the SDK:
 
 .. code-block:: python
     :linenos:
@@ -2026,13 +2027,6 @@ from the `Operator Browser <using-operators>`. The code below shows how to add a
         custom_metrics={metric_uri: metric_kwargs},
     )
 
-    # NOTE: When using metric operators without kwargs,
-    # you may pass a list of operator URI's.
-    # results = dataset.evaluate_detections(
-    #         ...
-    #         custom_metrics=[metric_uri_1, metric_uri_2],
-    #     )
-
     # Print evaluation metrics, including custom metrics
     results.print_metrics()
 
@@ -2045,9 +2039,28 @@ from the `Operator Browser <using-operators>`. The code below shows how to add a
     # If you open the Model Evaluation panel, you can see "Example metric"
     # added to the Summary table.
 
+    # Deleting an evaluation will also delete the custom metric eval fields.
+    dataset.delete_evaluation("eval")
+
 .. image:: /images/app/model-evaluation-custom-metric.png
     :alt: model-evaluation-compare
     :align: center
+
+.. note::
+
+    When using metric operators without kwargs, you may pass a list of operator
+    URI's to the `custom_metrics` parameter.
+    .. code-block:: python
+        results = dataset.evaluate_regressions(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval",
+            custom_metrics=[
+                "@voxel51/metric-examples/absolute_error",
+                "@voxel51/metric-examples/squared_error",
+            ],
+        )
+
 
 Developing custom metrics
 ~~~~~~~~~~~~~~~~~~~~~~~~~
