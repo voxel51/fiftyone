@@ -139,8 +139,8 @@ def evaluate_detections(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
-        batch_size (None): the batch size at which to process samples. By
-            default, all samples are processed in a single (1) batch
+        batch_size (None): the batch size at which to process samples. If None,
+            use the default batching strategy (usually latency)
         num_workers (None): number of parallel workers. Defaults to CPU count - 1
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
