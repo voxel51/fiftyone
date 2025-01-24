@@ -1783,11 +1783,8 @@ type SummaryRow = {
 
 function formatCustomMetricRows(evaluationMetrics, comparisonMetrics) {
   const results = [] as SummaryRow[];
-  const customMetrics = _.get(
-    evaluationMetrics,
-    "custom_metrics",
-    {}
-  ) as CustomMetrics;
+  const customMetrics = (_.get(evaluationMetrics, "custom_metrics", null) ||
+    {}) as CustomMetrics;
   for (const [operatorUri, customMetric] of Object.entries(customMetrics)) {
     const compareValue = _.get(
       comparisonMetrics,
