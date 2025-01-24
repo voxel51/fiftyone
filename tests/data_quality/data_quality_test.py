@@ -1,7 +1,11 @@
 import pytest
 from unittest.mock import MagicMock
-from .. import DataQualityPanel
-from ..constants import STATUS, SAMPLE_STORE, DEFAULT_ISSUE_COUNTS
+from plugins.panels import DataQualityPanel
+from plugins.panels.data_quality import (
+    STATUS,
+    SAMPLE_STORE,
+    DEFAULT_ISSUE_COUNTS,
+)
 from datetime import datetime, timedelta
 from collections import defaultdict
 

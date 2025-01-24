@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from .. import DataQualityPanel
-from ..constants import (
+from plugins.panels import DataQualityPanel
+from plugins.panels.data_quality import (
     DEFAULT_ISSUE_CONFIG,
     DEFAULT_ISSUE_COUNTS,
     DEFAULT_COMPUTING,
