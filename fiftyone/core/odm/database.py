@@ -362,12 +362,12 @@ def _update_fc_version(client: pymongo.MongoClient):
             "for deprecation notices."
         )
 
-    elif current_fcv.major > server_version.major:
+    elif current_fcv > server_version:
         _logger.warning(
             "Your MongoDB feature compatability is greater than your "
             "server version.  "
             "This may result in unexpected consequences. "
-            "Please manually update your database's feature server version."
+            "Please manually update your databases feature server version."
         )
 
     elif server_version.major - current_fcv.major >= max_allowable_diff:
