@@ -54,7 +54,7 @@ export default function RunActions(props: RunActionsPropsType) {
   const logDocUrl = "https://docs.voxel51.com/teams/teams_plugins.html";
 
   // when operation expired, we won't be able to download the logs from the url
-  const hasLogUrl = Boolean(signedUrl) && !isExpired;
+  const canDownloadLogs = Boolean(signedUrl) && !isExpired;
 
   const handleButtonClick = (url: string) => {
     window.open(url, "_blank", "noopener,noreferrer");
@@ -104,11 +104,11 @@ export default function RunActions(props: RunActionsPropsType) {
       primaryText: <Typography>Download logs</Typography>,
       IconComponent: <DownloadOutlined />,
       onClick() {
-        if (hasLogUrl) {
+        if (canDownloadLogs && signedUrl) {
           if (runLink?.startsWith("http")) {
             // when signedUrl is also a url link
             window.open(signedUrl, "_blank", "noopener,noreferrer");
-          } else if (signedUrl) {
+          } else {
             // Download the content using the signedUrl
             const link = document.createElement("a");
             link.href = signedUrl;
@@ -119,8 +119,8 @@ export default function RunActions(props: RunActionsPropsType) {
           }
         }
       },
-      disabled: !hasLogUrl,
-      title: !hasLogUrl ? "Log not available" : undefined,
+      disabled: !canDownloadLogs,
+      title: !canDownloadLogs ? "Log not available" : undefined,
     });
 
   // delete button
