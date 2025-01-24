@@ -2043,7 +2043,7 @@ via the SDK:
     dataset.delete_evaluation("eval")
 
 .. image:: /images/app/model-evaluation-custom-metric.png
-    :alt: model-evaluation-compare
+    :alt: model-evaluation-custom-metric
     :align: center
 
 .. note::
