@@ -29,6 +29,7 @@ export default function RunActions(props: RunActionsPropsType) {
     runState,
     runLink,
     signedUrl,
+    result,
     hideViewInOrchestrator,
   } = props;
   const [reRun] = useMutation(runsReRunMutation);
@@ -45,12 +46,15 @@ export default function RunActions(props: RunActionsPropsType) {
   const canViewInOrchestrator =
     runLink && isUrl(runLink) && !hideViewInOrchestrator;
 
+  const isExpired = result.includes("expired");
+
   // TO UPDATE:
   const hasLogSetup = true;
-  const hasLogUrl = Boolean(signedUrl);
-
   // TODO: update the url and move it to Constants.ts
   const logDocUrl = "https://docs.voxel51.com/teams/teams_plugins.html";
+
+  // when operation expired, we won't be able to download the logs from the url
+  const hasLogUrl = Boolean(signedUrl) && !isExpired;
 
   const handleButtonClick = (url: string) => {
     window.open(url, "_blank", "noopener,noreferrer");
