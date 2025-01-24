@@ -369,8 +369,6 @@ async def _do_async_pooled_aggregate(collection, pipelines):
     if not isinstance(collection, list):
         collection = [collection] * len(pipelines)
 
-    for p in pipelines:
-        fo.pprint(p)
     return await asyncio.gather(
         *[
             _do_async_aggregate(coll, pipeline)
