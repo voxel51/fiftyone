@@ -213,7 +213,6 @@ def establish_db_conn(config):
         **_connection_kwargs, appname=foc.DATABASE_APPNAME
     )
     _validate_db_version(config, _client)
-    _update_fc_version(_client)
 
     # Register cleanup method
     atexit.register(_delete_non_persistent_datasets_if_allowed)
@@ -228,6 +227,10 @@ def establish_db_conn(config):
         )
 
     if os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
+        if _db_service is not None and db_config.type == foc.CLIENT_TYPE:
+            # if this is a fiftyone-managed database and the database type
+            # is fiftyone, try to upgrade the feature compatability version
+            _update_fc_version(_client)
         fom.migrate_database_if_necessary(config=db_config)
 
 
@@ -317,6 +320,23 @@ def _validate_db_version(config, client):
 
 
 def _update_fc_version(client: pymongo.MongoClient):
+    """Updates a databases feature compatability version (FCV) if possible
+
+    Tries to see if a database's FCV needs to be updated via the following
+    logic: If both the server's version and FCV are the oldest supported
+    version, warn the user about any upcoming deprecations. If the FCV
+    is greater than the server version, issue a warning to the user as this is
+    an unexpected state. If the major versions between server and FCV is
+    greater than we can handle, issue a warning to the user as this is an
+    unexpected state. Otherwise, we will attempt to bump the FCV to match
+    the server version in accordance with MongoDB docs.
+
+    Args:
+        client: a ``pymongo.MongoClient`` to connect to the database.
+
+    Raises:
+        ConnectionError: if a connection to ``mongod`` could not be established
+    """
 
     try:
         current_version = client.admin.command(
@@ -364,7 +384,7 @@ def _update_fc_version(client: pymongo.MongoClient):
             "compatability number. "
             "Attempting to bump the feature compatability version now."
         )
-        bumped = Version(f"{server_version.major}.0.0")
+        bumped = f"{server_version.major}.0"
         try:
             client.admin.command(
                 {
@@ -372,11 +392,11 @@ def _update_fc_version(client: pymongo.MongoClient):
                     "confirm": True,
                 }
             )
-        except (OperationFailure, PyMongoError):
+        except (OperationFailure, PyMongoError) as e:
             _logger.error(
                 "Could not automatically update your database's feature "
-                "compatability version. "
-                "Please set it to %s." % str(bumped)
+                "compatability version - %s. "
+                "Please set it to %s." % (str(e), bumped)
             )
 
 
