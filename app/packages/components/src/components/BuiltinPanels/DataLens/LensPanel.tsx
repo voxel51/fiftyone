@@ -484,6 +484,7 @@ export const LensPanel = ({
                 </>
               )}
               <IconButton
+                sx={{ p: 0 }}
                 onClick={() =>
                   dispatchPanelUpdate({
                     isPreviewExpanded: !panelState.isPreviewExpanded,
