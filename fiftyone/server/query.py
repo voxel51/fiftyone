@@ -611,9 +611,11 @@ async def serialize_dataset(
         data.view_cls = None
         data.view_name = view_name
         data.saved_view_slug = saved_view_slug
+
+        group_media_types = view._get_group_media_types() or {}
         data.group_media_types = [
             Group(name=name, media_type=media_type)
-            for name, media_type in view._get_group_media_types().items()
+            for name, media_type in group_media_types.items()
         ]
 
         collection = dataset.view()
