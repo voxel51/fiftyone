@@ -117,7 +117,7 @@ class TestUpdateFCV(unittest.TestCase):
         # Check that the warning is triggered for FCV greater than server version
         mock_logger.warning.assert_any_call(
             "Your MongoDB feature compatability is greater than your "
-            "server version.  "
+            "server version. "
             "This may result in unexpected consequences. "
             "Please manually update your databases feature server version."
         )
