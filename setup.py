@@ -2,7 +2,7 @@
 """
 Installs FiftyOne Teams.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -13,7 +13,7 @@ from importlib import metadata
 
 from setuptools import find_packages, setup
 
-VERSION = "2.4.0"
+VERSION = "2.5.0"
 
 
 def get_version():
@@ -89,9 +89,9 @@ INSTALL_REQUIRES = [
     "yarl",
     "wcmatch",
     # internal packages
-    "fiftyone-brain>=0.18.2,<0.19",
+    "fiftyone-brain>=0.19.0,<0.20",
     "fiftyone-db~=0.4",  # pinned to legacy db, do not remove
-    "voxel51-eta>=0.13.1,<0.14",
+    "voxel51-eta>=0.14.0,<0.15",
 ]
 
 
@@ -134,7 +134,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone",
-    version="2.4.0",
+    version="2.5.0",
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"
@@ -149,9 +149,10 @@ setup(
             "eta",
             "package",
             "requirements",
-            "tests",
             "teams-app",
-            "tools"]
+            "tests",
+            "tools",
+        ]
     ),
     install_requires=get_install_requirements(
         INSTALL_REQUIRES, CHOOSE_INSTALL_REQUIRES

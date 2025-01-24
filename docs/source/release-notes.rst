@@ -3,6 +3,12 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 2.4.0
+--------------------
+*Released January 10, 2025*
+
+- Added ability to set a user-specific auth header when making media queries.
+
 FiftyOne Teams 2.3.0
 --------------------
 *Released December 20, 2024*
@@ -31,7 +37,7 @@ Includes all updates from :ref:`FiftyOne 1.2.0 <release-notes-v1.2.0>`, plus:
 
 FiftyOne 1.2.0
 --------------
-*Released December 30, 2024*
+*Released December 20, 2024*
 
 App
 
@@ -163,13 +169,13 @@ SDK
 - Improved support for creating summary fields and indexes
   `#5091 <https://github.com/voxel51/fiftyone/pull/5091>`_
 - Added support for creating compound indexes when using the builtin
-  :class:`create_index <fiftyone.operators.builtin.CreateIndex>` operator that
+  :class:`create_index <plugins.operators.CreateIndex>` operator that
   optimize sidebar queries for group datasets
   `#5174 <https://github.com/voxel51/fiftyone/pull/5174>`_
 - The builtin
-  :class:`clear_sample_field <fiftyone.operators.builtin.ClearSampleField>`
+  :class:`clear_sample_field <plugins.operators.ClearSampleField>`
   and
-  :class:`clear_frame_field <fiftyone.operators.builtin.ClearFrameField>`
+  :class:`clear_frame_field <plugins.operators.ClearFrameField>`
   operators now support clearing fields of views, in addition to full datasets
   `#5122 <https://github.com/voxel51/fiftyone/pull/5122>`_
 - Fixed a bug that prevented users with `pydantic` installed from loading the

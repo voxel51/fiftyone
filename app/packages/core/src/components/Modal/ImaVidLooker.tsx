@@ -37,6 +37,9 @@ export const ImaVidLookerReact = React.memo(
   ({ sample: sampleDataWithExtraParams }: ImaVidLookerReactProps) => {
     const [id] = useState(() => uuid());
     const colorScheme = useRecoilValue(fos.colorScheme);
+    const dynamicGroupsTargetFrameRate = useRecoilValue(
+      fos.dynamicGroupsTargetFrameRate
+    );
 
     const { sample } = sampleDataWithExtraParams;
 
@@ -192,8 +195,7 @@ export const ImaVidLookerReact = React.memo(
 
           window.addEventListener(
             "fetchMore",
-            fetchMoreListener as EventListener,
-            { once: true }
+            fetchMoreListener as EventListener
           );
         });
       },
@@ -219,8 +221,9 @@ export const ImaVidLookerReact = React.memo(
       }
 
       return {
-        totalFrames: totalFrameCount,
         loop: (looker as ImaVidLooker).options.loop,
+        targetFrameRate: dynamicGroupsTargetFrameRate,
+        totalFrames: totalFrameCount,
       } as FoTimelineConfig;
     }, [totalFrameCount, (looker as ImaVidLooker).options.loop]);
 

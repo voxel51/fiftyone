@@ -1,7 +1,7 @@
 """
 Data quality operators.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -15,8 +15,6 @@ from PIL import Image
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
-import fiftyone.core.media as fom
-import fiftyone.core.patches as fop
 import fiftyone.core.utils as fou
 import fiftyone.operators as foo
 import fiftyone.operators.types as types

@@ -30,12 +30,11 @@ const CheckboxTextDiv = styled.span`
 
 interface CheckProps {
   name: string;
-  count: number;
+  count: null | number;
   onCheck: () => void;
-  active: string;
+  active: null | string;
   checkmark: CheckState | null;
-  edited: boolean;
-  setActive: (name: string) => void;
+  setActive: (name: null | string) => void;
   disabled: boolean;
 }
 
@@ -46,7 +45,6 @@ const Check = ({
   onCheck,
   active,
   setActive,
-  edited,
   disabled,
 }: CheckProps) => {
   const theme = useTheme();
@@ -54,7 +52,7 @@ const Check = ({
     false,
     active === name
   );
-  const ref = useRef<HTMLButtonElement>();
+  const ref = useRef<HTMLButtonElement>(null);
 
   return (
     <CheckboxDiv
@@ -66,7 +64,9 @@ const Check = ({
       style={style}
       onClick={(e) =>
         !disabled &&
-        !(e.target === ref.current || ref.current.contains(e.target)) &&
+        !(
+          e.target === ref.current || ref.current?.contains(e.target as Node)
+        ) &&
         onCheck()
       }
     >
@@ -94,7 +94,7 @@ const Check = ({
           {name}
         </CheckboxTextDiv>
         <CheckboxTextDiv>
-          {count > 0 ? numeral(count).format("0,0") : "0"}
+          {(count ?? 0) > 0 ? numeral(count).format("0,0") : "0"}
         </CheckboxTextDiv>
       </CheckboxContentDiv>
     </CheckboxDiv>
@@ -151,13 +151,14 @@ const createSubmit = ({ name, items, changes, count, setChange, value }) => {
 };
 
 interface CheckerProps {
-  items: { [key: string]: number };
-  setChange: (name: string, state: CheckState, canSubmit: boolean) => void;
+  active: null | string;
   changes: { [key: string]: CheckState };
-  setActive: (name: string) => void;
+  clear: () => void;
   count: number;
-  active: string;
   disabled: boolean;
+  items: { [key: string]: number };
+  setActive: (name: null | string) => void;
+  setChange: (name: string, state: CheckState, canSubmit: boolean) => void;
 }
 
 const Checker = ({
@@ -168,6 +169,7 @@ const Checker = ({
   active,
   setActive,
   disabled,
+  clear,
 }: CheckerProps) => {
   const sorted = Object.entries({ ...items, ...changes }).sort(([a], [b]) =>
     a < b ? -1 : 1
@@ -177,19 +179,19 @@ const Checker = ({
 
   useKeydownHandler((e) => {
     if (names.length === 0) return;
-    let index = null;
+    let index: null | number = null;
     if (e.key === "ArrowDown") {
       index = active === null ? 0 : names.indexOf(active) + 1;
     } else if (e.key === "ArrowUp") {
       index = active === null ? names.length - 1 : names.indexOf(active) - 1;
     }
-    if (index < 0) {
-      index = names.length - 1;
-    } else if (index > names.length - 1) {
-      index = 0;
-    }
 
-    if (index !== null) {
+    if (typeof index === "number") {
+      if (index < 0) {
+        index = names.length - 1;
+      } else if (index > names.length - 1) {
+        index = 0;
+      }
       setActive(names[index]);
     }
 
@@ -202,6 +204,7 @@ const Checker = ({
         value: sorted.filter(([n]) => n === active)[0][1],
         setChange,
       })();
+      clear();
     }
   });
 
@@ -236,7 +239,6 @@ const Checker = ({
                 ? CheckState.REMOVE
                 : null
             }
-            edited={name in changes}
             setActive={setActive}
             key={name}
           />

@@ -37,14 +37,6 @@ export const OperatorExecutionButton = ({
   disabled?: boolean;
   children: React.ReactNode;
 }) => {
-  if (disabled) {
-    return (
-      <Button disabled {...props}>
-        {children}
-      </Button>
-    );
-  }
-
   return (
     <OperatorExecutionTrigger
       operatorUri={operatorUri}

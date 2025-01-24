@@ -1,7 +1,7 @@
 """
 FiftyOne operators.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -13,6 +13,7 @@ from .registry import (
     list_operators,
     operator_exists,
 )
+from .evaluation_metric import EvaluationMetricConfig, EvaluationMetric
 from .executor import (
     execute_operator,
     ExecutionContext,

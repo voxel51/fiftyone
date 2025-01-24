@@ -64,4 +64,4 @@ the event.
 
 ## Copyright
 
-Copyright 2017-2024, Voxel51, Inc.<br> voxel51.com
+Copyright 2017-2025, Voxel51, Inc.<br> voxel51.com

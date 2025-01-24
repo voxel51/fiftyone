@@ -1,11 +1,12 @@
 import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
-import { DETECTIONS, HEATMAP } from "@fiftyone/utilities";
+import { DETECTIONS, HEATMAP, SEGMENTATION } from "@fiftyone/utilities";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Coloring, CustomizeColor } from "..";
 import { LabelMask } from "../overlays/base";
 import type { Colorscale } from "../state";
-import { decodeWithCanvas } from "./canvas-decoder";
+import { recastBufferToMonoChannel } from "./canvas-decoder";
 import { decodeOverlayOnDisk, IntermediateMask } from "./disk-overlay-decoder";
+import { decodeMaskOnDisk } from "./mask-decoder";
 import { enqueueFetch } from "./pooled-fetch";
 
 vi.mock("@fiftyone/state/src/recoil/utils", () => ({
@@ -16,8 +17,8 @@ vi.mock("./pooled-fetch", () => ({
   enqueueFetch: vi.fn(),
 }));
 
-vi.mock("./canvas-decoder", () => ({
-  decodeWithCanvas: vi.fn(),
+vi.mock("./mask-decoder", () => ({
+  decodeMaskOnDisk: vi.fn(),
 }));
 
 const COLORING = {} as Coloring;
@@ -67,7 +68,7 @@ describe("decodeOverlayOnDisk", () => {
     vi.mocked(enqueueFetch).mockResolvedValue({
       blob: () => Promise.resolve(mockBlob),
     } as Response);
-    vi.mocked(decodeWithCanvas).mockResolvedValue(overlayMask);
+    vi.mocked(decodeMaskOnDisk).mockResolvedValue(overlayMask);
 
     await decodeOverlayOnDisk(
       field,
@@ -85,7 +86,7 @@ describe("decodeOverlayOnDisk", () => {
       url: sampleSrcUrl,
       options: { priority: "low" },
     });
-    expect(decodeWithCanvas).toHaveBeenCalledWith(mockBlob);
+    expect(decodeMaskOnDisk).toHaveBeenCalledWith(mockBlob, SEGMENTATION);
     expect(label.mask).toBeDefined();
     expect(label.mask.data).toBe(overlayMask);
     expect(label.mask.image).toBeInstanceOf(ArrayBuffer);
@@ -103,7 +104,7 @@ describe("decodeOverlayOnDisk", () => {
     const overlayMask = { shape: [100, 200] };
 
     vi.mocked(getSampleSrc).mockReturnValue(sampleSrcUrl);
-    vi.mocked(decodeWithCanvas).mockResolvedValue(overlayMask);
+    vi.mocked(decodeMaskOnDisk).mockResolvedValue(overlayMask);
 
     await decodeOverlayOnDisk(
       field,
@@ -121,7 +122,7 @@ describe("decodeOverlayOnDisk", () => {
       url: sampleSrcUrl,
       options: { priority: "low" },
     });
-    expect(decodeWithCanvas).toHaveBeenCalledWith(mockBlob);
+    expect(decodeMaskOnDisk).toHaveBeenCalledWith(mockBlob, HEATMAP);
     expect(label.map).toBeDefined();
     expect(label.map.data).toBe(overlayMask);
     expect(label.map.image).toBeInstanceOf(ArrayBuffer);
@@ -147,7 +148,7 @@ describe("decodeOverlayOnDisk", () => {
     vi.mocked(getSampleSrc)
       .mockReturnValueOnce(sampleSrcUrl1)
       .mockReturnValueOnce(sampleSrcUrl2);
-    vi.mocked(decodeWithCanvas)
+    vi.mocked(decodeMaskOnDisk)
       .mockResolvedValueOnce(overlayMask1)
       .mockResolvedValueOnce(overlayMask2);
 
@@ -199,7 +200,81 @@ describe("decodeOverlayOnDisk", () => {
       url: sampleSrcUrl,
       options: { priority: "low" },
     });
-    expect(decodeWithCanvas).not.toHaveBeenCalled();
+    expect(decodeMaskOnDisk).not.toHaveBeenCalled();
     expect(label.mask).toBeNull();
+  });
+});
+
+describe("recastBufferToMonoChannel", () => {
+  it("should handle a single grayscale pixel without alpha (stride=1)", () => {
+    const input = new Uint8ClampedArray([128]);
+    const width = 1;
+    const height = 1;
+    const stride = 1;
+
+    const resultBuffer = recastBufferToMonoChannel(
+      input,
+      width,
+      height,
+      stride
+    );
+    const resultArray = new Uint8Array(resultBuffer);
+
+    expect(resultArray).toEqual(new Uint8Array([128]));
+  });
+
+  it("should handle stride=4 (e.g., RGBA)", () => {
+    // two pixels, each RGBA For example:
+    //  pixel 1: R=10, G=10, B=10, A=255
+    //  pixel 2: R=40, G=40, B=40, A=255
+    const input = new Uint8ClampedArray([10, 10, 10, 255, 40, 40, 40, 255]);
+    const width = 2;
+    const height = 1;
+    const stride = 4;
+
+    const resultBuffer = recastBufferToMonoChannel(
+      input,
+      width,
+      height,
+      stride
+    );
+    const resultArray = new Uint8Array(resultBuffer);
+    expect(resultArray).toEqual(new Uint8Array([10, 40]));
+  });
+
+  it("should handle stride=3 (e.g., RGB without alpha)", () => {
+    // two pixels, each RGB (no alpha). For example:
+    //  pixel 1: R=10, G=10, B=10
+    //  pixel 2: R=40, G=40, B=40
+    const input = new Uint8ClampedArray([10, 10, 10, 40, 40, 40]);
+    const width = 2;
+    const height = 1;
+    const stride = 3;
+
+    const resultBuffer = recastBufferToMonoChannel(
+      input,
+      width,
+      height,
+      stride
+    );
+    const resultArray = new Uint8Array(resultBuffer);
+    expect(resultArray).toEqual(new Uint8Array([10, 40]));
+  });
+
+  it("should return an empty buffer if width or height is zero", () => {
+    const input = new Uint8ClampedArray([1, 2, 3, 4]);
+    const width = 0;
+    const height = 1;
+    const stride = 4;
+
+    const resultBuffer = recastBufferToMonoChannel(
+      input,
+      width,
+      height,
+      stride
+    );
+    const resultArray = new Uint8Array(resultBuffer);
+
+    expect(resultArray.length).toBe(0);
   });
 });

@@ -1,7 +1,7 @@
 """
 Embeddings operators.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 """
 from datetime import datetime
@@ -46,8 +46,8 @@ class ComputeVisualization(foo.Operator):
         num_workers = ctx.params.get("num_workers", None)
         skip_failures = ctx.params.get("skip_failures", True)
 
-        # @todo how can we only set to 0 for immediate execution?
-        if num_workers is None:
+        # No multiprocessing allowed when running synchronously
+        if not ctx.delegated:
             num_workers = 0
 
         target_view = _get_target_view(ctx, target)

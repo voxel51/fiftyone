@@ -1,10 +1,11 @@
 """
 Context utilities.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import json
 import os
 import typing as t
@@ -140,6 +141,18 @@ def _get_context():
     return _context
 
 
+def _requires_http_polling():
+    ### SSE is unreliable in GitHub Codespaces
+    if os.environ.get("CODESPACES", None) == "true":
+        return True
+
+    # SSE does not work in Colab
+    if _get_context() == _COLAB:
+        return True
+
+    return False
+
+
 def get_url(
     address: str,
     port: int,
@@ -153,7 +166,6 @@ def get_url(
         from google.colab.output import eval_js
 
         _url = eval_js(f"google.colab.kernel.proxyPort({port})")
-        kwargs["polling"] = "true"
     elif _context == _DATABRICKS:
         _url = _get_databricks_proxy_url(port)
         kwargs["proxy"] = _get_databricks_proxy(port)
@@ -166,7 +178,7 @@ def get_url(
     else:
         _url = f"http://{address}:{port}/"
 
-    if "proxy" in kwargs:
+    if "proxy" in kwargs or _requires_http_polling():
         kwargs["polling"] = "true"
 
     params = "&".join([f"{k}={v}" for k, v in kwargs.items()])

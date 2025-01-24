@@ -31,7 +31,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-latest-m
+          - ubuntu-20.04-m
           - windows-latest
         python:
           - "3.9"

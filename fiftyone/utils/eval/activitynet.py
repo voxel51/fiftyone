@@ -1,7 +1,7 @@
 """
 ActivityNet-style temporal detection evaluation.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -40,6 +40,8 @@ class ActivityNetEvaluationConfig(DetectionEvaluationConfig):
             that mAP and PR curves can be generated
         iou_threshs (None): a list of IoU thresholds to use when computing mAP
             and PR curves. Only applicable when ``compute_mAP`` is True
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
     """
 
     def __init__(
@@ -50,10 +52,16 @@ class ActivityNetEvaluationConfig(DetectionEvaluationConfig):
         classwise=None,
         compute_mAP=False,
         iou_threshs=None,
+        custom_metrics=None,
         **kwargs,
     ):
         super().__init__(
-            pred_field, gt_field, iou=iou, classwise=classwise, **kwargs
+            pred_field,
+            gt_field,
+            iou=iou,
+            classwise=classwise,
+            custom_metrics=custom_metrics,
+            **kwargs,
         )
 
         if compute_mAP and iou_threshs is None:
@@ -323,6 +331,7 @@ class ActivityNetDetectionResults(DetectionResults):
             ``num_iou_threshs x num_classes x num_recall``
         missing (None): a missing label string. Any unmatched segments are
             given this label for evaluation purposes
+        custom_metrics (None): an optional dict of custom metrics
         backend (None): a :class:`ActivityNetEvaluation` backend
     """
 
@@ -339,6 +348,7 @@ class ActivityNetDetectionResults(DetectionResults):
         classes,
         thresholds=None,
         missing=None,
+        custom_metrics=None,
         backend=None,
     ):
         super().__init__(
@@ -348,6 +358,7 @@ class ActivityNetDetectionResults(DetectionResults):
             matches,
             classes=classes,
             missing=missing,
+            custom_metrics=custom_metrics,
             backend=backend,
         )
 

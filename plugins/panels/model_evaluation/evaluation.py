@@ -1,7 +1,7 @@
 """
 Evaluation operators.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -39,6 +39,7 @@ class EvaluateModel(foo.Operator):
         gt_field = kwargs.pop("gt_field")
         eval_key = kwargs.pop("eval_key")
         method = kwargs.pop("method")
+        metrics = kwargs.pop("metrics", None)
 
         target_view = _get_target_view(ctx, target)
         _, eval_type, _ = _get_evaluation_type(target_view, pred_field)
@@ -56,6 +57,18 @@ class EvaluateModel(foo.Operator):
             eval_fcn = target_view.evaluate_detections
         elif eval_type == "segmentation":
             eval_fcn = target_view.evaluate_segmentations
+
+        # Parse custom metrics
+        if metrics:
+            custom_metrics = {}
+            for metric in metrics:
+                operator = foo.get_operator(metric)
+                kwargs.pop(f"header|{metric}", None)
+                params = kwargs.pop(f"parameters|{metric}", None)
+                operator.parse_parameters(ctx, params)
+                custom_metrics[metric] = params
+
+            kwargs["custom_metrics"] = custom_metrics
 
         eval_fcn(
             pred_field,
@@ -94,7 +107,7 @@ class EvaluateModelAsync(foo.Operator):
         if ctx.delegated:
             return self.em.execute(ctx)
 
-        ctx.trigger("@voxel51/operators/evaluate_model", params=ctx.params)
+        ctx.trigger("@voxel51/panels/evaluate_model", params=ctx.params)
         return {"eval_key": eval_key}
 
 
@@ -199,6 +212,8 @@ def evaluate_model(ctx, inputs):
 
     _get_evaluation_method(eval_type, method).get_parameters(ctx, inputs)
 
+    _add_custom_metrics(ctx, inputs, eval_type, method)
+
     return True
 
 
@@ -233,6 +248,51 @@ def _get_evaluation_type(view, pred_field):
         methods = ["simple"]
 
     return label_type, eval_type, methods
+
+
+def _add_custom_metrics(ctx, inputs, eval_type, method):
+    supported_metrics = []
+    for operator in foo.list_operators(type=foo.EvaluationMetric):
+        eval_types = getattr(operator.config, "eval_types", None)
+        if eval_types is None or eval_type in eval_types:
+            supported_metrics.append(operator)
+
+    if not supported_metrics:
+        return
+
+    metric_choices = types.DropdownView(multiple=True)
+    for operator in supported_metrics:
+        metric_choices.add_choice(
+            operator.uri,
+            label=operator.config.label,
+            description=operator.config.description,
+        )
+
+    inputs.list(
+        "metrics",
+        types.String(),
+        required=False,
+        default=None,
+        label="Custom metrics",
+        description="Optional custom metric(s) to compute",
+        view=metric_choices,
+    )
+
+    metrics = ctx.params.get("metrics", None) or []
+
+    for metric in metrics:
+        operator = foo.get_operator(metric)
+        obj = types.Object()
+        obj.view(
+            f"header|{metric}",
+            types.Header(
+                label=f"{operator.config.label} parameters",
+                divider=True,
+            ),
+        )
+        operator.get_parameters(ctx, obj)
+        if len(obj.properties) > 1:
+            inputs.define_property(f"parameters|{metric}", obj)
 
 
 def _get_evaluation_method(eval_type, method):

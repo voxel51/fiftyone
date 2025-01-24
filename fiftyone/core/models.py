@@ -1,7 +1,7 @@
 """
 FiftyOne models.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -435,12 +435,16 @@ def _apply_image_model_data_loader(
     data_loader = _make_data_loader(
         samples, model, batch_size, num_workers, skip_failures
     )
+    prefetch_buffer_size = fout.get_prefetch_buffer_size(
+        batch_size, num_workers, data_loader
+    )
 
     with contextlib.ExitStack() as context:
         context.enter_context(
             samples.download_context(
                 media_fields="filepath",
                 skip_failures=skip_failures,
+                prefetch_buffer_size=prefetch_buffer_size,
             )
         )
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
@@ -1118,7 +1122,9 @@ def _compute_image_embeddings_data_loader(
     data_loader = _make_data_loader(
         samples, model, batch_size, num_workers, skip_failures
     )
-
+    prefetch_buffer_size = fout.get_prefetch_buffer_size(
+        batch_size, num_workers, data_loader
+    )
     embeddings = []
     errors = False
 
@@ -1129,6 +1135,7 @@ def _compute_image_embeddings_data_loader(
             samples.download_context(
                 media_fields="filepath",
                 skip_failures=skip_failures,
+                prefetch_buffer_size=prefetch_buffer_size,
             )
         )
         pb = context.enter_context(fou.ProgressBar(samples, progress=progress))

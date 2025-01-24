@@ -1,7 +1,7 @@
 """
 FiftyOne operator server.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -60,6 +60,12 @@ def resolve_dataset_name(request_params: dict):
         return head_name
 
     return request_params.get("dataset_name", None)
+
+
+def get_operators(registry: PermissionedOperatorRegistry):
+    operators = registry.list_operators(type="operator")
+    panels = registry.list_operators(type="panel")
+    return operators + panels
 
 
 class ListOperators(HTTPEndpoint):

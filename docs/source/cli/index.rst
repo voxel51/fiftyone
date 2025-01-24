@@ -830,19 +830,19 @@ Tools for working with FiftyOne operators and panels.
 
     available commands:
       {list,info}
-        list       List operators and panels that you've installed locally.
-        info       Prints information about operators and panels that you've installed locally.
+        list       List operators and panels that are installed locally.
+        info       Prints information about operators and panels that are installed locally.
 
 .. _cli-fiftyone-operators-list:
 
 List operators
 ~~~~~~~~~~~~~~
 
-List operators and panels that you've installed locally.
+List operators and panels that are installed locally.
 
 .. code-block:: text
 
-    fiftyone operators list [-h] [-e] [-d] [-o] [-p] [-n]
+    fiftyone operators list [-h] [-e] [-d] [-b] [-c] [-o] [-p] [-n]
 
 **Arguments**
 
@@ -852,6 +852,8 @@ List operators and panels that you've installed locally.
       -h, --help            show this help message and exit
       -e, --enabled         only show enabled operators and panels
       -d, --disabled        only show disabled operators and panels
+      -b, --builtins-only   only show builtin operators and panels
+      -c, --no-builtins     only show non-builtin operators and panels
       -o, --operators-only  only show operators
       -p, --panels-only     only show panels
       -n, --names-only      only show names
@@ -875,7 +877,12 @@ List operators and panels that you've installed locally.
 
 .. code-block:: shell
 
-    # Only list panels
+    # List non-builtin operators and panels
+    fiftyone operators list --no-builtins
+
+.. code-block:: shell
+
+    # List panels
     fiftyone operators list --panels-only
 
 .. _cli-fiftyone-operators-info:
@@ -883,7 +890,7 @@ List operators and panels that you've installed locally.
 Operator info
 ~~~~~~~~~~~~~
 
-Prints information about operators and panels that you've installed locally.
+Prints information about operators and panels that are installed locally.
 
 .. code-block:: text
 
@@ -1169,8 +1176,8 @@ Tools for working with FiftyOne plugins.
 
     available commands:
       {list,info,download,requirements,create,enable,disable,delete}
-        list                List plugins that you've downloaded or created locally.
-        info                Prints information about plugins that you've downloaded or created
+        list                List plugins that are installed locally.
+        info                Prints information about plugins that are installed locally.
         download            Download plugins from the web.
         requirements        Handles package requirements for plugins.
         create              Creates or initializes a plugin.
@@ -1183,21 +1190,23 @@ Tools for working with FiftyOne plugins.
 List plugins
 ~~~~~~~~~~~~
 
-List plugins that you've downloaded or created locally.
+List plugins that are installed locally.
 
 .. code-block:: text
 
-    fiftyone plugins list [-h] [-e] [-d] [-n]
+    fiftyone plugins list [-h] [-e] [-d] [-b] [-c] [-n]
 
 **Arguments**
 
 .. code-block:: text
 
     optional arguments:
-      -h, --help        show this help message and exit
-      -e, --enabled     only show enabled plugins
-      -d, --disabled    only show disabled plugins
-      -n, --names-only  only show plugin names
+      -h, --help           show this help message and exit
+      -e, --enabled        only show enabled plugins
+      -d, --disabled       only show disabled plugins
+      -b, --builtins-only  only show builtin plugins
+      -c, --no-builtins    only show non-builtin plugins
+      -n, --names-only     only show plugin names
 
 **Examples**
 
@@ -1216,23 +1225,28 @@ List plugins that you've downloaded or created locally.
     # List disabled plugins
     fiftyone plugins list --disabled
 
+.. code-block:: shell
+
+    # List non-builtin plugins
+    fiftyone plugins list --no-builtins
+
 .. _cli-fiftyone-plugins-info:
 
 Plugin info
 ~~~~~~~~~~~
 
-List plugins that you've downloaded or created locally.
+List plugins that are installed locally.
 
 .. code-block:: text
 
-    fiftyone plugins info [-h] NAME
+    fiftyone plugins info [-h] NAME_OR_DIR
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      NAME        the plugin name
+      NAME_OR_DIR  the plugin name or directory
 
     optional arguments:
       -h, --help  show this help message and exit
@@ -1243,6 +1257,9 @@ List plugins that you've downloaded or created locally.
 
     # Prints information about a plugin
     fiftyone plugins info <name>
+
+    # Prints information about a plugin in a given directory
+    fiftyone plugins info <dir>
 
 .. _cli-fiftyone-plugins-download:
 

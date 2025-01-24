@@ -1,7 +1,7 @@
 """
 FiftyOne utilities unit tests.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -444,30 +444,50 @@ class MigrationTests(unittest.TestCase):
 
 class ConfigTests(unittest.TestCase):
     def test_multiple_config_cleanup(self):
+        # Note this is not a unit test and running this modifies the fiftyone config collection
+
         db = foo.get_db_conn()
         orig_config = foo.get_db_config()
 
-        # Add some duplicate documents
-        db.config.insert_one(
-            {
-                "_id": ObjectId.from_datetime(datetime(2022, 1, 1)),
-                "version": "0.14.4",
-                "type": "fiftyone",
-            }
-        )
-        db.config.insert_one(
-            {
-                "_id": ObjectId.from_datetime(datetime(2023, 1, 1)),
-                "version": "0.1.4",
-                "type": "fiftyone",
-            }
-        )
+        # Add old configs so that they are cleaned up
+        new_config_ids = [
+            ObjectId.from_datetime(datetime(2022, 1, 1)),
+            ObjectId.from_datetime(datetime(2023, 1, 1)),
+        ]
+        try:
+            # Ensure that the fake configs are not already in the database due to failed cleanup
+            db.config.delete_many({"_id": {"$in": new_config_ids}})
 
-        # Ensure that duplicate documents are automatically cleaned up
-        config = foo.get_db_config()
+            # Add some duplicate documents
+            db.config.insert_one(
+                {
+                    "_id": new_config_ids[0],
+                    "version": "0.14.4",
+                    "type": "fiftyone",
+                }
+            )
+            db.config.insert_one(
+                {
+                    "_id": new_config_ids[1],
+                    "version": "0.1.4",
+                    "type": "fiftyone",
+                }
+            )
 
-        self.assertEqual(len(list(db.config.aggregate([]))), 1)
-        self.assertEqual(config, orig_config)
+            config = foo.get_db_config()
+
+            if fo.config.database_admin:
+                # Ensure that duplicate documents are automatically cleaned up if run by database admin
+                self.assertEqual(len(list(db.config.aggregate([]))), 1)
+            else:
+                # Otherwise, the duplicates are not cleaned up
+                self.assertEqual(len(list(db.config.aggregate([]))), 3)
+
+            # Regardless, the config should be the same
+            self.assertEqual(config, orig_config)
+        finally:
+            # Clean up the fake configs
+            db.config.delete_many({"_id": {"$in": new_config_ids}})
 
 
 class TestLoadDataset(unittest.TestCase):

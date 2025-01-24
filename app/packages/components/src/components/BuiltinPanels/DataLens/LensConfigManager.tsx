@@ -62,10 +62,10 @@ export const LensConfigManager = ({
   const { activeDataset } = useActiveDataset();
 
   const upsertConfigOperator = useOperatorExecutor(
-    "@voxel51/operators/lens_upsert_lens_config"
+    "@voxel51/panels/lens_upsert_lens_config"
   );
   const deleteConfigOperator = useOperatorExecutor(
-    "@voxel51/operators/lens_delete_lens_config"
+    "@voxel51/panels/lens_delete_lens_config"
   );
 
   // Callback which handles upserting a LensConfig.

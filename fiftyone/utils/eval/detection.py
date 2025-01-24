@@ -1,7 +1,7 @@
 """
 Detection evaluation.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -16,13 +16,16 @@ import numpy as np
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
-from .base import BaseEvaluationResults
+from .base import (
+    BaseEvaluationMethod,
+    BaseEvaluationMethodConfig,
+    BaseClassificationResults,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -41,6 +44,7 @@ def evaluate_detections(
     use_boxes=False,
     classwise=True,
     dynamic=True,
+    custom_metrics=None,
     progress=None,
     **kwargs,
 ):
@@ -133,6 +137,8 @@ def evaluate_detections(
             label (True) or allow matches between classes (False)
         dynamic (True): whether to declare the dynamic object-level attributes
             that are populated on the dataset's schema
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -165,6 +171,7 @@ def evaluate_detections(
         is_temporal,
         iou=iou,
         classwise=classwise,
+        custom_metrics=custom_metrics,
         **kwargs,
     )
 
@@ -232,12 +239,13 @@ def evaluate_detections(
         missing=missing,
         progress=progress,
     )
+    eval_method.compute_custom_metrics(samples, eval_key, results)
     eval_method.save_run_results(samples, eval_key, results)
 
     return results
 
 
-class DetectionEvaluationConfig(foe.EvaluationMethodConfig):
+class DetectionEvaluationConfig(BaseEvaluationMethodConfig):
     """Base class for configuring :class:`DetectionEvaluation` instances.
 
     Args:
@@ -252,16 +260,25 @@ class DetectionEvaluationConfig(foe.EvaluationMethodConfig):
         iou (None): the IoU threshold to use to determine matches
         classwise (None): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
     """
 
     def __init__(
-        self, pred_field, gt_field, iou=None, classwise=None, **kwargs
+        self,
+        pred_field,
+        gt_field,
+        iou=None,
+        classwise=None,
+        custom_metrics=None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.pred_field = pred_field
         self.gt_field = gt_field
         self.iou = iou
         self.classwise = classwise
+        self.custom_metrics = custom_metrics
 
     @property
     def type(self):
@@ -279,7 +296,7 @@ class DetectionEvaluationConfig(foe.EvaluationMethodConfig):
         return False
 
 
-class DetectionEvaluation(foe.EvaluationMethod):
+class DetectionEvaluation(BaseEvaluationMethod):
     """Base class for detection evaluation methods.
 
     Args:
@@ -451,6 +468,8 @@ class DetectionEvaluation(foe.EvaluationMethod):
                 ["%s_tp" % prefix, "%s_fp" % prefix, "%s_fn" % prefix]
             )
 
+        fields.extend(self.get_custom_metric_fields(samples, eval_key))
+
         return fields
 
     def rename(self, samples, eval_key, new_eval_key):
@@ -471,6 +490,8 @@ class DetectionEvaluation(foe.EvaluationMethod):
         if in_frame_fields:
             fields = dict(zip(in_frame_fields, out_frame_fields))
             dataset.rename_frame_fields(fields)
+
+        self.rename_custom_metrics(samples, eval_key, new_eval_key)
 
     def cleanup(self, samples, eval_key):
         dataset = samples._dataset
@@ -516,12 +537,14 @@ class DetectionEvaluation(foe.EvaluationMethod):
         else:
             dataset.delete_sample_fields(fields, error_level=1)
 
+        self.cleanup_custom_metrics(samples, eval_key)
+
     def _validate_run(self, samples, eval_key, existing_info):
         self._validate_fields_match(eval_key, "pred_field", existing_info)
         self._validate_fields_match(eval_key, "gt_field", existing_info)
 
 
-class DetectionResults(BaseEvaluationResults):
+class DetectionResults(BaseClassificationResults):
     """Class that stores the results of a detection evaluation.
 
     Args:
@@ -536,6 +559,7 @@ class DetectionResults(BaseEvaluationResults):
             observed ground truth/predicted labels are used
         missing (None): a missing label string. Any unmatched objects are given
             this label for evaluation purposes
+        custom_metrics (None): an optional dict of custom metrics
         backend (None): a :class:`DetectionEvaluation` backend
     """
 
@@ -547,6 +571,7 @@ class DetectionResults(BaseEvaluationResults):
         matches,
         classes=None,
         missing=None,
+        custom_metrics=None,
         backend=None,
     ):
         if matches:
@@ -572,6 +597,7 @@ class DetectionResults(BaseEvaluationResults):
             ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
+            custom_metrics=custom_metrics,
             backend=backend,
         )
 
@@ -597,6 +623,7 @@ class DetectionResults(BaseEvaluationResults):
 
         classes = d.get("classes", None)
         missing = d.get("missing", None)
+        custom_metrics = d.get("custom_metrics", None)
 
         matches = list(zip(ytrue, ypred, ious, confs, ytrue_ids, ypred_ids))
 
@@ -607,6 +634,7 @@ class DetectionResults(BaseEvaluationResults):
             matches,
             classes=classes,
             missing=missing,
+            custom_metrics=custom_metrics,
             **kwargs,
         )
 
@@ -618,6 +646,10 @@ def _parse_config(pred_field, gt_field, method, is_temporal, **kwargs):
             method = "activitynet"
         else:
             method = fo.evaluation_config.default_detection_backend
+
+    custom_metrics = kwargs.get("custom_metrics", None)
+    if etau.is_str(custom_metrics):
+        kwargs["custom_metrics"] = [custom_metrics]
 
     if inspect.isclass(method):
         return method(pred_field, gt_field, **kwargs)

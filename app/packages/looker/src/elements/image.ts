@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2024, Voxel51, Inc.
+ * Copyright 2017-2025, Voxel51, Inc.
  */
 
 import type { ImageState } from "../state";
@@ -76,10 +76,11 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
   renderSelf({ config: { src } }: Readonly<ImageState>) {
     if (this.src !== src) {
       this.src = src;
-      this.retryCount = 0;
-      if (this.timeoutId !== null) {
-        window.clearTimeout(this.timeoutId);
-        this.timeoutId = null;
+      if (
+        this.customCredentialsAudience &&
+        src.includes(this.customCredentialsAudience)
+      ) {
+        this.element.setAttribute("crossOrigin", "Anonymous");
       }
       if (
         this.customCredentialsAudience &&

@@ -1,7 +1,7 @@
 """
 Mixins and helpers for dataset backing documents.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -670,6 +670,8 @@ class DatasetMixin(object):
         """
         is_dataset = isinstance(sample_collection, fod.Dataset)
 
+        paths = _remove_nested_paths(paths)
+
         simple_paths = []
         coll_paths = []
 
@@ -715,6 +717,8 @@ class DatasetMixin(object):
         dataset_doc = dataset._doc
         media_type = dataset.media_type
         is_frame_field = cls._is_frames_doc
+
+        paths = _remove_nested_paths(paths)
 
         del_paths = []
         del_schema_paths = []
@@ -818,6 +822,8 @@ class DatasetMixin(object):
         """
         dataset = cls._dataset
         dataset_doc = dataset._doc
+
+        paths = _remove_nested_paths(paths)
 
         del_paths = []
 
@@ -1861,6 +1867,14 @@ def _split_path(path):
         return None, path
 
     return chunks[0], chunks[1]
+
+
+def _remove_nested_paths(paths):
+    return [
+        path
+        for path in paths
+        if not any(path.startswith(p + ".") for p in paths)
+    ]
 
 
 def _add_field_doc(field_docs, root_doc, field_or_doc):

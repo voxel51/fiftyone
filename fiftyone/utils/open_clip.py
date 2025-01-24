@@ -1,10 +1,11 @@
 """
 CLIP model wrapper for the FiftyOne Model Zoo.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import contextlib
 import logging
 
 import fiftyone.core.models as fom
@@ -57,6 +58,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
     def __init__(self, config):
         super().__init__(config)
         self._text_features = None
+        self.preprocess = self._preprocess_aux
 
     @property
     def can_embed_prompts(self):
@@ -88,7 +90,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         (
             self._model,
             _,
-            self.preprocess,
+            self._preprocess_aux,
         ) = open_clip.create_model_and_transforms(
             config.clip_model,
             pretrained=config.pretrained,
@@ -106,7 +108,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
             # Tokenize text
             text = self._tokenizer(prompts)
             if self._using_gpu:
-                text = text.cuda()
+                text = text.to(self.device)
             self._text_features = self._model.encode_text(text)
 
         return self._text_features
@@ -118,7 +120,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         # Tokenize text
         text = self._tokenizer(formatted_prompts)
         if self._using_gpu:
-            text = text.cuda()
+            text = text.to(self.device)
         return self._model.encode_text(text)
 
     def _get_class_logits(self, text_features, image_features):
@@ -134,7 +136,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
 
     def _predict_all(self, imgs):
         if self._preprocess:
-            imgs = [self._preprocess(img).unsqueeze(0) for img in imgs]
+            imgs = [self._preprocess(img) for img in imgs]
 
         if isinstance(imgs, (list, tuple)):
             imgs = torch.stack(imgs)
@@ -142,10 +144,15 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         height, width = imgs.size()[-2:]
         frame_size = (width, height)
 
-        if self._using_gpu:
-            imgs = imgs.cuda()
+        with torch.no_grad(), contextlib.ExitStack() as ctx:
+            if self._using_gpu:
+                imgs = imgs.to(self.device)
 
-        with torch.no_grad(), torch.amp.autocast("cuda"):
+                # https://github.com/voxel51/fiftyone/pull/5395#issuecomment-2601055784
+                ctx.enter_context(
+                    torch.amp.autocast(device_type=self.device.type)
+                )
+
             image_features = self._model.encode_image(imgs)
             text_features = self._get_text_features()
 

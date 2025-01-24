@@ -1,7 +1,7 @@
 """
 Interface for sample collections.
 
-| Copyright 2017-2024, Voxel51, Inc.
+| Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -12,7 +12,6 @@ from datetime import datetime
 import fnmatch
 import itertools
 import logging
-import numbers
 import os
 import random
 import string
@@ -116,6 +115,10 @@ class DownloadContext(object):
             of any downloads (True/False), use the default value
             ``fiftyone.config.show_progress_bars`` (None), or a progress
             callback function to invoke instead
+        prefetch_buffer_size (0): the number of samples to prefetch in
+            advance. This is necessary when running pytorch in multiprocessing
+            mode because it will pull and process batches in advance that need
+            to be downloaded otherwise you will receive exceptions.
     """
 
     def __init__(
@@ -130,6 +133,7 @@ class DownloadContext(object):
         skip_failures=True,
         clear=False,
         progress=None,
+        prefetch_buffer_size=0,
         **kwargs,
     ):
         if batch_size is None and target_size_bytes is None:
@@ -148,13 +152,14 @@ class DownloadContext(object):
         self.skip_failures = skip_failures
         self.clear = clear
         self.progress = progress
+        self.prefetch_buffer_size = prefetch_buffer_size
 
         self._filepaths = None
-        self._offset = None
         self._batch_sizes = None
         self._iter_batch_sizes = None
-        self._last_batch_size = None
-        self._curr_count = None
+        self._total_loaded = 0
+        self._curr_count = 0
+        self._downloading_complete = False
 
     def __enter__(self):
         self.sample_collection._download_context = self
@@ -186,12 +191,13 @@ class DownloadContext(object):
         else:
             batch_sizes = itertools.repeat(self.batch_size)
 
-        self._offset = 0
         self._batch_sizes = batch_sizes
         self._iter_batch_sizes = iter(batch_sizes)
-        self._last_batch_size = 0
+        self._total_loaded = 0
         self._curr_count = 0
-
+        self._downloading_complete = False
+        if self.prefetch_buffer_size > 0:
+            self._batch_until_target(self.prefetch_buffer_size)
         return self
 
     def __exit__(self, *args):
@@ -204,32 +210,33 @@ class DownloadContext(object):
             self._clear_media()
 
     def next(self):
+        self._batch_until_target(self._curr_count + self.prefetch_buffer_size)
+        self._curr_count += 1
+
+    def _batch_until_target(self, target):
         if self._batch_sizes is None:
             return
 
-        if self._curr_count >= self._last_batch_size:
+        while target >= self._total_loaded and not self._downloading_complete:
             batch_size = next(self._iter_batch_sizes, None)
+
             if batch_size is None:
+                self._downloading_complete = True
                 return
 
-            self._download_batch(batch_size)
-            self._last_batch_size = batch_size
-            self._curr_count = 0
-
-        self._curr_count += 1
-        self._offset += 1
+            self._downloading_complete = self._download_batch(batch_size)
 
     def _download_batch(self, batch_size):
-        i = self._offset or 0
-        j = i + batch_size if batch_size is not None else None
+        start = self._total_loaded or 0
+        end = start + batch_size if batch_size is not None else None
         filepaths = [
             f
-            for f in itertools.chain.from_iterable(self._filepaths[i:j])
+            for f in itertools.chain.from_iterable(self._filepaths[start:end])
             if f is not None
         ]
 
         if not filepaths:
-            return
+            return True
 
         if self.update:
             foc.media_cache.update(
@@ -244,6 +251,8 @@ class DownloadContext(object):
                 skip_failures=self.skip_failures,
                 progress=self.progress,
             )
+        self._total_loaded += len(filepaths)
+        return False
 
     def _clear_media(self):
         filepaths = itertools.chain.from_iterable(self._filepaths)
@@ -1448,6 +1457,7 @@ class SampleCollection(object):
         skip_failures=True,
         clear=False,
         progress=None,
+        prefetch_buffer_size=0,
     ):
         """Returns a context that can be used to pre-download media in batches
         when iterating over samples in this collection.
@@ -1507,6 +1517,10 @@ class SampleCollection(object):
                 progress of any downloads (True/False), use the default value
                 ``fiftyone.config.show_progress_bars`` (None), or a progress
                 callback function to invoke instead
+            prefetch_buffer_size (0): the number of samples to prefetch in
+                advance. This is necessary when running pytorch in multiprocessing
+                mode because it will pull and process batches in advance that need
+                to be downloaded otherwise you will receive exceptions.
 
         Returns:
             a :class:`DownloadContext`
@@ -1522,6 +1536,7 @@ class SampleCollection(object):
             skip_failures=skip_failures,
             clear=clear,
             progress=progress,
+            prefetch_buffer_size=prefetch_buffer_size,
         )
 
     @requires_can_edit
@@ -5964,6 +5979,7 @@ class SampleCollection(object):
         min_distance=None,
         max_distance=None,
         query=None,
+        create_index=True,
     ):
         """Sorts the samples in the collection by their proximity to a
         specified geolocation.
@@ -6046,6 +6062,8 @@ class SampleCollection(object):
             query (None): an optional dict defining a
                 `MongoDB read query <https://docs.mongodb.com/manual/tutorial/query-documents/#read-operations-query-argument>`_
                 that samples must match in order to be included in this view
+            create_index (True): whether to create the required spherical
+                index, if necessary
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -6057,11 +6075,18 @@ class SampleCollection(object):
                 min_distance=min_distance,
                 max_distance=max_distance,
                 query=query,
+                create_index=create_index,
             )
         )
 
     @view_stage
-    def geo_within(self, boundary, location_field=None, strict=True):
+    def geo_within(
+        self,
+        boundary,
+        location_field=None,
+        strict=True,
+        create_index=True,
+    ):
         """Filters the samples in this collection to only include samples whose
         geolocation is within a specified boundary.
 
@@ -6107,13 +6132,18 @@ class SampleCollection(object):
             strict (True): whether a sample's location data must strictly fall
                 within boundary (True) in order to match, or whether any
                 intersection suffices (False)
+            create_index (True): whether to create the required spherical
+                index, if necessary
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
             fos.GeoWithin(
-                boundary, location_field=location_field, strict=strict
+                boundary,
+                location_field=location_field,
+                strict=strict,
+                create_index=create_index,
             )
         )
 
@@ -8406,6 +8436,22 @@ class SampleCollection(object):
         Returns:
             the count
         """
+
+        # Optimization: use estimated document count when possible
+        if self._is_full_collection() and (
+            expr is None
+            and (
+                field_or_expr is None
+                or (
+                    etau.is_str(field_or_expr)
+                    and field_or_expr == "frames"
+                    and self._has_frame_fields()
+                )
+            )
+        ):
+            frames = field_or_expr == "frames"
+            return self._dataset._estimated_count(frames=frames)
+
         make = lambda field_or_expr: foa.Count(
             field_or_expr, expr=expr, safe=safe
         )
@@ -10221,8 +10267,8 @@ class SampleCollection(object):
         details on the structure of this dictionary.
 
         Args:
-            include_stats (False): whether to include the size and build status
-                of each index
+            include_stats (False): whether to include the size, usage, and
+                build status of each index
 
         Returns:
             a dict mapping index names to info dicts
@@ -10242,6 +10288,13 @@ class SampleCollection(object):
             for key in cs.get("indexBuilds", []):
                 if key in sample_info:
                     sample_info[key]["in_progress"] = True
+
+            for d in self._dataset._sample_collection.aggregate(
+                [{"$indexStats": {}}]
+            ):
+                key = d["name"]
+                if key in sample_info:
+                    sample_info[key]["accesses"] = d["accesses"]
 
         for key, info in sample_info.items():
             if len(info["key"]) == 1:
@@ -10264,6 +10317,13 @@ class SampleCollection(object):
                 for key in cs.get("indexBuilds", []):
                     if key in frame_info:
                         frame_info[key]["in_progress"] = True
+
+                for d in self._dataset._frame_collection.aggregate(
+                    [{"$indexStats": {}}]
+                ):
+                    key = d["name"]
+                    if key in frame_info:
+                        frame_info[key]["accesses"] = d["accesses"]
 
             for key, info in frame_info.items():
                 if len(info["key"]) == 1:
@@ -11297,6 +11357,22 @@ class SampleCollection(object):
 
     def _handle_id_fields(self, field_name):
         return _handle_id_fields(self, field_name)
+
+    def _is_full_collection(self):
+        if isinstance(self, fod.Dataset) and self.media_type != fom.GROUP:
+            return True
+
+        # pylint:disable=no-member
+        if (
+            isinstance(self, fov.DatasetView)
+            and self._dataset.media_type == fom.GROUP
+            and len(self._stages) == 1
+            and isinstance(self._stages[0], fos.SelectGroupSlices)
+            and self._pipeline() == []
+        ):
+            return True
+
+        return False
 
     def _is_label_field(self, field_name, label_type_or_types):
         try:
