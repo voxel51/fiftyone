@@ -250,7 +250,8 @@ def handle_group_filter(
     group_field = dataset.group_field
 
     unselected = not any(
-        isinstance(stage, fosg.SelectGroupSlices) for stage in stages
+        isinstance(stage, (fosg.ExcludeGroupSlices, fosg.SelectGroupSlices))
+        for stage in stages
     )
     group_by = any(isinstance(stage, fosg.GroupBy) for stage in stages)
 
