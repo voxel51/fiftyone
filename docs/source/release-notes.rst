@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Teams 2.5.0
 --------------------
-*Released January 23, 2025*
+*Released January 24, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.3.0 <release-notes-v1.3.0>`, plus:
 
@@ -17,7 +17,7 @@ Includes all updates from :ref:`FiftyOne 1.3.0 <release-notes-v1.3.0>`, plus:
 
 FiftyOne 1.3.0
 --------------
-*Released January 23, 2025*
+*Released January 24, 2025*
 
 - Added `device` parameter for all Torch models
 - Added COCO-styled Mean Average Recall (mAR) metric to `evaluate_detections()`
