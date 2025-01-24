@@ -11,7 +11,6 @@ type HandlerOptions = {
   prompt?: boolean;
   panelId: string;
   callback?: ExecutionCallback;
-  onCancel?: () => void;
   currentPanelState?: any; // most current panel state
 };
 
@@ -21,7 +20,7 @@ export default function usePanelEvent() {
   const { increment, decrement } = useActivePanelEventsCount("");
   return usePanelStateByIdCallback((panelId, panelState, args) => {
     const options = args[0] as HandlerOptions;
-    const { params, operator, prompt, currentPanelState, onCancel } = options;
+    const { params, operator, prompt, currentPanelState } = options;
 
     if (!operator) {
       notify({
@@ -50,10 +49,7 @@ export default function usePanelEvent() {
     };
 
     if (prompt) {
-      promptForOperator(operator, actualParams, {
-        callback: eventCallback,
-        onCancel,
-      });
+      promptForOperator(operator, actualParams, { callback: eventCallback });
     } else {
       increment(panelId);
       executeOperator(operator, actualParams, { callback: eventCallback });
