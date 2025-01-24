@@ -348,7 +348,7 @@ def _get_fcv_and_version(
         raise ConnectionError("Could not connect to `mongod`") from e
 
 
-def _is_fc_upgradeable(fc_version: Version, server_version: Version) -> bool:
+def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
     """Tests to see if feature compatability version (FCV) upgrade is possible.
 
     Tries to see if a database's FCV needs to be updated via the following
@@ -425,7 +425,7 @@ def _update_fc_version(client: pymongo.MongoClient):
 
     _logger = _get_logger()
 
-    if _is_fc_upgradeable(fc_version, server_version):
+    if _is_fcv_upgradeable(fc_version, server_version):
         bumped = f"{server_version.major}.0"
 
         try:
