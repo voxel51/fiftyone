@@ -334,7 +334,6 @@ def _get_fcv_and_version(
 
     Raises:
         ConnectionError: if a connection to ``mongod`` could not be established
-
     """
     try:
         current_version = client.admin.command(
@@ -386,7 +385,7 @@ def _is_fc_upgradeable(fc_version: Version, server_version: Version) -> bool:
     elif fc_version > server_version:
         _logger.warning(
             "Your MongoDB feature compatability is greater than your "
-            "server version.  "
+            "server version. "
             "This may result in unexpected consequences. "
             "Please manually update your databases feature server version."
         )
@@ -420,7 +419,6 @@ def _update_fc_version(client: pymongo.MongoClient):
 
     Args:
         client: a ``pymongo.MongoClient`` to connect to the database.
-
     """
 
     fc_version, server_version = _get_fcv_and_version(client)
