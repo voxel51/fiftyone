@@ -60,10 +60,13 @@ export const MainPanel = () => {
   // If the panel was just opened and we have lens configs available, we want
   //   to default to the "query-data" tab rather than the "empty-state".
   useEffect(() => {
-    // Don't switch more than once and only switch from the empty state.
-    // This prevents switching when a configuration is added from the
-    //.  data source management tab.
-    if (hasDefaultTabBeenSet || activeTab !== "empty-state") {
+    if (hasDefaultTabBeenSet) {
+      return;
+    }
+
+    if (activeTab !== "empty-state") {
+      // We've already switched tabs; don't override the user's actions.
+      setHasDefaultTabBeenSet(true);
       return;
     }
 
