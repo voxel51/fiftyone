@@ -9,6 +9,7 @@ import contextlib
 from copy import deepcopy
 import logging
 import inspect
+import itertools
 import warnings
 
 import numpy as np
@@ -370,7 +371,7 @@ class SimpleEvaluation(SegmentationEvaluation):
         if mask_targets is not None:
             if fof.is_rgb_mask_targets(mask_targets):
                 mask_targets = {
-                    _hex_to_int(k): v for k, v in mask_targets.items()
+                    fof.hex_to_int(k): v for k, v in mask_targets.items()
                 }
 
             values, classes = zip(*sorted(mask_targets.items()))
@@ -396,6 +397,7 @@ class SimpleEvaluation(SegmentationEvaluation):
 
             nc = len(values)
             confusion_matrix = np.zeros((nc, nc), dtype=int)
+            matches = []
 
             bandwidth = self.config.bandwidth
             average = self.config.average
@@ -440,6 +442,17 @@ class SimpleEvaluation(SegmentationEvaluation):
                     )
                     sample_conf_mat += image_conf_mat
 
+                    for i, j in zip(*np.nonzero(image_conf_mat)):
+                        matches.append(
+                            (
+                                classes[i],
+                                classes[j],
+                                int(image_conf_mat[i, j]),
+                                gt_seg.id,
+                                pred_seg.id,
+                            )
+                        )
+
                     if processing_frames and save:
                         facc, fpre, frec = _compute_accuracy_precision_recall(
                             image_conf_mat, values, average
@@ -477,6 +490,7 @@ class SimpleEvaluation(SegmentationEvaluation):
             eval_key,
             confusion_matrix,
             classes,
+            matches=matches,
             missing=missing,
             backend=self,
         )
@@ -491,6 +505,9 @@ class SegmentationResults(BaseClassificationResults):
         eval_key: the evaluation key
         pixel_confusion_matrix: a pixel value confusion matrix
         classes: a list of class labels corresponding to the confusion matrix
+        matches (None): a list of
+            ``(gt_label, pred_label, pixel_count, gt_id, pred_id)``
+            matches
         missing (None): a missing (background) class
         custom_metrics (None): an optional dict of custom metrics
         backend (None): a :class:`SegmentationEvaluation` backend
@@ -503,14 +520,23 @@ class SegmentationResults(BaseClassificationResults):
         eval_key,
         pixel_confusion_matrix,
         classes,
+        matches=None,
         missing=None,
         custom_metrics=None,
         backend=None,
     ):
         pixel_confusion_matrix = np.asarray(pixel_confusion_matrix)
-        ytrue, ypred, weights = self._parse_confusion_matrix(
-            pixel_confusion_matrix, classes
-        )
+
+        if matches is None:
+            ytrue, ypred, weights = self._parse_confusion_matrix(
+                pixel_confusion_matrix, classes
+            )
+            ytrue_ids = None
+            ypred_ids = None
+        elif matches:
+            ytrue, ypred, weights, ytrue_ids, ypred_ids = zip(*matches)
+        else:
+            ytrue, ypred, weights, ytrue_ids, ypred_ids = [], [], [], [], []
 
         super().__init__(
             samples,
@@ -519,6 +545,8 @@ class SegmentationResults(BaseClassificationResults):
             ytrue,
             ypred,
             weights=weights,
+            ytrue_ids=ytrue_ids,
+            ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
             custom_metrics=custom_metrics,
@@ -526,15 +554,6 @@ class SegmentationResults(BaseClassificationResults):
         )
 
         self.pixel_confusion_matrix = pixel_confusion_matrix
-
-    def attributes(self):
-        return [
-            "cls",
-            "pixel_confusion_matrix",
-            "classes",
-            "missing",
-            "custom_metrics",
-        ]
 
     def dice_score(self):
         """Computes the Dice score across all samples in the evaluation.
@@ -546,12 +565,31 @@ class SegmentationResults(BaseClassificationResults):
 
     @classmethod
     def _from_dict(cls, d, samples, config, eval_key, **kwargs):
+        ytrue = d.get("ytrue", None)
+        ypred = d.get("ypred", None)
+        weights = d.get("weights", None)
+        ytrue_ids = d.get("ytrue_ids", None)
+        ypred_ids = d.get("ypred_ids", None)
+
+        if ytrue is not None and ypred is not None and weights is not None:
+            if ytrue_ids is None:
+                ytrue_ids = itertools.repeat(None)
+
+            if ypred_ids is None:
+                ypred_ids = itertools.repeat(None)
+
+            matches = list(zip(ytrue, ypred, weights, ytrue_ids, ypred_ids))
+        else:
+            # Legacy format segmentations
+            matches = None
+
         return cls(
             samples,
             config,
             eval_key,
             d["pixel_confusion_matrix"],
             d["classes"],
+            matches=matches,
             missing=d.get("missing", None),
             custom_metrics=d.get("custom_metrics", None),
             **kwargs,
@@ -616,10 +654,10 @@ def _compute_pixel_confusion_matrix(
     pred_mask, gt_mask, values, bandwidth=None
 ):
     if pred_mask.ndim == 3:
-        pred_mask = _rgb_array_to_int(pred_mask)
+        pred_mask = fof.rgb_array_to_int(pred_mask)
 
     if gt_mask.ndim == 3:
-        gt_mask = _rgb_array_to_int(gt_mask)
+        gt_mask = fof.rgb_array_to_int(gt_mask)
 
     if pred_mask.shape != gt_mask.shape:
         msg = (
@@ -700,37 +738,15 @@ def _get_mask_values(samples, pred_field, gt_field, progress=None):
                         mask = seg.get_mask()
                         if mask.ndim == 3:
                             is_rgb = True
-                            mask = _rgb_array_to_int(mask)
+                            mask = fof.rgb_array_to_int(mask)
 
                         values.update(mask.ravel())
 
     values = sorted(values)
 
     if is_rgb:
-        classes = [_int_to_hex(v) for v in values]
+        classes = [fof.int_to_hex(v) for v in values]
     else:
         classes = [str(v) for v in values]
 
     return values, classes
-
-
-def _rgb_array_to_int(mask):
-    return (
-        np.left_shift(mask[:, :, 0], 16, dtype=int)
-        + np.left_shift(mask[:, :, 1], 8, dtype=int)
-        + mask[:, :, 2]
-    )
-
-
-def _hex_to_int(hex_str):
-    r = int(hex_str[1:3], 16)
-    g = int(hex_str[3:5], 16)
-    b = int(hex_str[5:7], 16)
-    return (r << 16) + (g << 8) + b
-
-
-def _int_to_hex(value):
-    r = (value >> 16) & 255
-    g = (value >> 8) & 255
-    b = value & 255
-    return "#%02x%02x%02x" % (r, g, b)
