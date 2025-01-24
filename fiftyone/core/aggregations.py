@@ -580,7 +580,8 @@ class Count(Aggregation):
 
     def to_mongo(self, sample_collection, context=None, optimize_frames=False):
         if self._field_name is None and self._expr is None:
-            return [{"$count": "count"}]
+            pipeline = [{"$count": "count"}]
+            return pipeline, False if optimize_frames else pipeline
 
         path, pipeline, _, _, _, is_frame_field = _parse_field_and_expr(
             sample_collection,
@@ -771,7 +772,7 @@ class CountValues(Aggregation):
             _,
             id_to_str,
             field_type,
-            if_frame_field,
+            is_frame_field,
         ) = _parse_field_and_expr(
             sample_collection,
             self._field_name,
@@ -793,14 +794,19 @@ class CountValues(Aggregation):
         ]
 
         if self._first is None:
-            return pipeline + [
-                {
-                    "$group": {
-                        "_id": None,
-                        "result": {"$push": {"k": "$_id", "count": "$count"}},
+            pipeline.append(
+                [
+                    {
+                        "$group": {
+                            "_id": None,
+                            "result": {
+                                "$push": {"k": "$_id", "count": "$count"}
+                            },
+                        }
                     }
-                }
-            ]
+                ]
+            )
+            return pipeline, is_frame_field if optimize_frames else pipeline
 
         exprs = []
         if self._search:
