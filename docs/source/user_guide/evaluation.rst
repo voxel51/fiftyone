@@ -2045,7 +2045,7 @@ from the `Operator Browser <using-operators>`. The code below shows how to add a
     # If you open the Model Evaluation panel, you can see "Example metric"
     # added to the Summary table.
 
-.. image:: /images/app/model-evaluation-compare.gif
+.. image:: /images/app/model-evaluation-custom-metric.png
     :alt: model-evaluation-compare
     :align: center
 
