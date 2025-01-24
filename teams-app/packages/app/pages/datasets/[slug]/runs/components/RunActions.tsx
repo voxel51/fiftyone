@@ -43,10 +43,8 @@ export default function RunActions(props: RunActionsPropsType) {
   if (!canManageRun) return null;
 
   const isRunning = runState === OPERATOR_RUN_STATES.RUNNING;
-  const canViewInOrchestrator =
-    runLink && isUrl(runLink) && !hideViewInOrchestrator;
 
-  const isExpired = result.includes("expired");
+  const isExpired = result?.includes("expired");
 
   // TO UPDATE:
   const hasLogSetup = true;
@@ -87,16 +85,6 @@ export default function RunActions(props: RunActionsPropsType) {
         : undefined,
     },
   ];
-  // view in orchestrator button
-  if (canViewInOrchestrator) {
-    items.push({
-      primaryText: "View in orchestrator",
-      IconComponent: <SettingsSystemDaydreamOutlinedIcon color="secondary" />,
-      onClick() {
-        window.open(runLink); // todo: add support for link
-      },
-    });
-  }
 
   // download logs
   if (hasLogSetup)
