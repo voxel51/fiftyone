@@ -85,7 +85,6 @@ def _evaluate_detections_bulk(
         )
 
     sample_updates = {"sample_tp": {}, "sample_fp": {}, "sample_fn": {}}
-    frame_updates = []
 
     logger.info("Evaluating detections...")
     pb = fou.ProgressBar(total=len(ids), progress=progress)
@@ -104,7 +103,7 @@ def _evaluate_detections_bulk(
         pb.update()
 
     docs = (ids, ground_truths, predictions)
-    return matches, docs, sample_updates, frame_updates
+    return matches, docs, sample_updates
 
 
 def evaluate_detections(
@@ -277,12 +276,8 @@ def evaluate_detections(
                 "Frame-level updates not supported for bulk evaluation"
             )
 
-        (
-            matches,
-            docs,
-            sample_updates,
-            frame_updates,
-        ) = _evaluate_detections_bulk(
+        start_time = time.time()
+        (matches, docs, sample_updates) = _evaluate_detections_bulk(
             _samples,
             gt_field,
             pred_field,
@@ -290,9 +285,13 @@ def evaluate_detections(
             eval_key,
             progress=progress,
         )
-        id_field = "id"
+        end_time = time.time()
+        logger.info(
+            f"Finished bulk evaluation in {end_time - start_time:.2f} seconds"
+        )
 
         if save:
+            id_field = "id"
             logger.info("Saving results...")
 
             if progress is None:
