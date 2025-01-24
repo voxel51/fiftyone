@@ -2004,7 +2004,7 @@ in FiftyOne. Some examples of custom metrics are available in
 
 Custom metrics are supported by all FiftyOne evaluation methods. You may compute custom metrics
 via the SDK or the App. In the App, custom metrics can be computed using the `evaluate_model` operator
-from the `Operator Browser <using-operators>`. The code below shows how to add a custom metric to
+from the :ref:`Operator Browser <using-operators>`. The code below shows how to add a custom metric to
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
 via the SDK:
 
