@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7fd17269366b874b2f748f05cece89e1>>
+ * @generated SignedSource<<488d913bab9fcb3144db4b1f41eb29b0>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -32,6 +32,7 @@ export type runsItemQuery$data = {
     readonly runLink: string | null;
     readonly runState: string;
     readonly scheduledAt: string | null;
+    readonly signedUrl: string | null;
     readonly startedAt: string | null;
     readonly status: any | null;
   };
@@ -193,6 +194,13 @@ v2 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "signedUrl",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "metadata",
         "storageKey": null
       }
@@ -218,16 +226,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "0693cbcb58319e82a72d55434b87e2dc",
+    "cacheID": "26ba76f6a32776ae3df983d324752b13",
     "id": null,
     "metadata": {},
     "name": "runsItemQuery",
     "operationKind": "query",
-    "text": "query runsItemQuery(\n  $run: String!\n) {\n  delegatedOperation(operationId: $run) {\n    completedAt\n    context\n    datasetId\n    failedAt\n    id\n    operator\n    label\n    pinned\n    queuedAt\n    result\n    runBy {\n      name\n      id\n    }\n    runState\n    scheduledAt\n    startedAt\n    status\n    runLink\n    metadata\n  }\n}\n"
+    "text": "query runsItemQuery(\n  $run: String!\n) {\n  delegatedOperation(operationId: $run) {\n    completedAt\n    context\n    datasetId\n    failedAt\n    id\n    operator\n    label\n    pinned\n    queuedAt\n    result\n    runBy {\n      name\n      id\n    }\n    runState\n    scheduledAt\n    startedAt\n    status\n    runLink\n    signedUrl\n    metadata\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "dab09503d352326ffa176013e32cfc5f";
+(node as any).hash = "725cad871b7a80ad4c3ba8b6fe1da357";
 
 export default node;

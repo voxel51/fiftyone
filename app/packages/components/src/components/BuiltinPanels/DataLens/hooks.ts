@@ -323,13 +323,21 @@ export const useSpotlight = ({
           (page + 1) * pageSize
         );
 
+        const getAspectRatio = (s: LensSample): number => {
+          if (s.metadata?.width > 0 && s.metadata?.height > 0) {
+            return s.metadata.width / s.metadata.height;
+          }
+
+          return 1;
+        };
+
         const mappedSamples: SampleMetadata[] = samplePage.map((s) => {
           const id = uuid();
           const urls = buildUrls(s);
 
           return {
             key: page,
-            aspectRatio: 1,
+            aspectRatio: getAspectRatio(s),
             id: {
               description: id,
             },

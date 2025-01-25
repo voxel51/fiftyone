@@ -15,8 +15,9 @@ import {
   useRelayEnvironment,
 } from "react-relay";
 import { useCurrentUser } from "../user";
+import useStaticBannerInfo from "./useStaticBannerInfo";
 
-export default function useAppNotification() {
+export default function useAppNotification({ showInFooterOnly = false }) {
   const environment = useRelayEnvironment();
   const query = useMemo(
     () => loadQuery<NotificationQuery>(environment, getNotificationsQuery, {}),
@@ -52,5 +53,11 @@ export default function useAppNotification() {
       }
     });
 
-  return notifications;
+  const staticBannerInfo = useStaticBannerInfo();
+
+  if (showInFooterOnly) {
+    return staticBannerInfo;
+  }
+
+  return [...notifications, ...staticBannerInfo];
 }

@@ -63,6 +63,7 @@ export const runsPageQuery = graphql`
         }
         pinned
         runLink
+        signedUrl
         scheduledAt
         status
       }
@@ -139,6 +140,7 @@ export const runsItemQuery = graphql`
       startedAt
       status
       runLink
+      signedUrl
       metadata
     }
   }
