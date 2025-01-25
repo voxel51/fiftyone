@@ -9,6 +9,7 @@ import contextlib
 from copy import deepcopy
 import logging
 import inspect
+import itertools
 import warnings
 
 import numpy as np
@@ -18,13 +19,16 @@ import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
-from .base import BaseEvaluationResults
+from .base import (
+    BaseEvaluationMethod,
+    BaseEvaluationMethodConfig,
+    BaseClassificationResults,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -37,6 +41,7 @@ def evaluate_segmentations(
     eval_key=None,
     mask_targets=None,
     method=None,
+    custom_metrics=None,
     progress=None,
     **kwargs,
 ):
@@ -88,6 +93,8 @@ def evaluate_segmentations(
             supported values are
             ``fo.evaluation_config.segmentation_backends.keys()`` and the
             default is ``fo.evaluation_config.default_segmentation_backend``
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -102,7 +109,13 @@ def evaluate_segmentations(
         samples, (pred_field, gt_field), fol.Segmentation, same_type=True
     )
 
-    config = _parse_config(pred_field, gt_field, method, **kwargs)
+    config = _parse_config(
+        pred_field,
+        gt_field,
+        method,
+        custom_metrics=custom_metrics,
+        **kwargs,
+    )
     eval_method = config.build()
     eval_method.ensure_requirements()
 
@@ -115,12 +128,13 @@ def evaluate_segmentations(
         mask_targets=mask_targets,
         progress=progress,
     )
+    eval_method.compute_custom_metrics(samples, eval_key, results)
     eval_method.save_run_results(samples, eval_key, results)
 
     return results
 
 
-class SegmentationEvaluationConfig(foe.EvaluationMethodConfig):
+class SegmentationEvaluationConfig(BaseEvaluationMethodConfig):
     """Base class for configuring :class:`SegmentationEvaluation` instances.
 
     Args:
@@ -130,20 +144,30 @@ class SegmentationEvaluationConfig(foe.EvaluationMethodConfig):
             :class:`fiftyone.core.labels.Segmentation` instances
         compute_dice (False): whether to compute the Dice coefficient for each
             sample
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
     """
 
-    def __init__(self, pred_field, gt_field, compute_dice=False, **kwargs):
+    def __init__(
+        self,
+        pred_field,
+        gt_field,
+        compute_dice=False,
+        custom_metrics=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.pred_field = pred_field
         self.gt_field = gt_field
         self.compute_dice = compute_dice
+        self.custom_metrics = custom_metrics
 
     @property
     def type(self):
         return "segmentation"
 
 
-class SegmentationEvaluation(foe.EvaluationMethod):
+class SegmentationEvaluation(BaseEvaluationMethod):
     """Base class for segmentation evaluation methods.
 
     Args:
@@ -233,6 +257,8 @@ class SegmentationEvaluation(foe.EvaluationMethod):
             if self.config.compute_dice:
                 fields.append("%s_dice" % prefix)
 
+        fields.extend(self.get_custom_metric_fields(samples, eval_key))
+
         return fields
 
     def rename(self, samples, eval_key, new_eval_key):
@@ -254,6 +280,8 @@ class SegmentationEvaluation(foe.EvaluationMethod):
             fields = dict(zip(in_frame_fields, out_frame_fields))
             dataset.rename_frame_fields(fields)
 
+        self.rename_custom_metrics(samples, eval_key, new_eval_key)
+
     def cleanup(self, samples, eval_key):
         dataset = samples._dataset
         processing_frames = samples._is_frame_field(self.config.gt_field)
@@ -271,6 +299,8 @@ class SegmentationEvaluation(foe.EvaluationMethod):
 
         if processing_frames:
             dataset.delete_frame_fields(fields, error_level=1)
+
+        self.cleanup_custom_metrics(samples, eval_key)
 
     def _validate_run(self, samples, eval_key, existing_info):
         self._validate_fields_match(eval_key, "pred_field", existing_info)
@@ -293,6 +323,8 @@ class SimpleEvaluationConfig(SegmentationEvaluationConfig):
             default, the entire masks are evaluated
         average ("micro"): the averaging strategy to use when populating
             precision and recall numbers on each sample
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
     """
 
     def __init__(
@@ -302,10 +334,15 @@ class SimpleEvaluationConfig(SegmentationEvaluationConfig):
         compute_dice=False,
         bandwidth=None,
         average="micro",
+        custom_metrics=None,
         **kwargs,
     ):
         super().__init__(
-            pred_field, gt_field, compute_dice=compute_dice, **kwargs
+            pred_field,
+            gt_field,
+            compute_dice=compute_dice,
+            custom_metrics=custom_metrics,
+            **kwargs,
         )
         self.bandwidth = bandwidth
         self.average = average
@@ -334,7 +371,7 @@ class SimpleEvaluation(SegmentationEvaluation):
         if mask_targets is not None:
             if fof.is_rgb_mask_targets(mask_targets):
                 mask_targets = {
-                    _hex_to_int(k): v for k, v in mask_targets.items()
+                    fof.hex_to_int(k): v for k, v in mask_targets.items()
                 }
 
             values, classes = zip(*sorted(mask_targets.items()))
@@ -360,6 +397,7 @@ class SimpleEvaluation(SegmentationEvaluation):
 
             nc = len(values)
             confusion_matrix = np.zeros((nc, nc), dtype=int)
+            matches = []
 
             bandwidth = self.config.bandwidth
             average = self.config.average
@@ -404,6 +442,17 @@ class SimpleEvaluation(SegmentationEvaluation):
                     )
                     sample_conf_mat += image_conf_mat
 
+                    for i, j in zip(*np.nonzero(image_conf_mat)):
+                        matches.append(
+                            (
+                                classes[i],
+                                classes[j],
+                                int(image_conf_mat[i, j]),
+                                gt_seg.id,
+                                pred_seg.id,
+                            )
+                        )
+
                     if processing_frames and save:
                         facc, fpre, frec = _compute_accuracy_precision_recall(
                             image_conf_mat, values, average
@@ -441,12 +490,13 @@ class SimpleEvaluation(SegmentationEvaluation):
             eval_key,
             confusion_matrix,
             classes,
+            matches=matches,
             missing=missing,
             backend=self,
         )
 
 
-class SegmentationResults(BaseEvaluationResults):
+class SegmentationResults(BaseClassificationResults):
     """Class that stores the results of a segmentation evaluation.
 
     Args:
@@ -455,7 +505,11 @@ class SegmentationResults(BaseEvaluationResults):
         eval_key: the evaluation key
         pixel_confusion_matrix: a pixel value confusion matrix
         classes: a list of class labels corresponding to the confusion matrix
+        matches (None): a list of
+            ``(gt_label, pred_label, pixel_count, gt_id, pred_id)``
+            matches
         missing (None): a missing (background) class
+        custom_metrics (None): an optional dict of custom metrics
         backend (None): a :class:`SegmentationEvaluation` backend
     """
 
@@ -466,13 +520,23 @@ class SegmentationResults(BaseEvaluationResults):
         eval_key,
         pixel_confusion_matrix,
         classes,
+        matches=None,
         missing=None,
+        custom_metrics=None,
         backend=None,
     ):
         pixel_confusion_matrix = np.asarray(pixel_confusion_matrix)
-        ytrue, ypred, weights = self._parse_confusion_matrix(
-            pixel_confusion_matrix, classes
-        )
+
+        if matches is None:
+            ytrue, ypred, weights = self._parse_confusion_matrix(
+                pixel_confusion_matrix, classes
+            )
+            ytrue_ids = None
+            ypred_ids = None
+        elif matches:
+            ytrue, ypred, weights, ytrue_ids, ypred_ids = zip(*matches)
+        else:
+            ytrue, ypred, weights, ytrue_ids, ypred_ids = [], [], [], [], []
 
         super().__init__(
             samples,
@@ -481,15 +545,15 @@ class SegmentationResults(BaseEvaluationResults):
             ytrue,
             ypred,
             weights=weights,
+            ytrue_ids=ytrue_ids,
+            ypred_ids=ypred_ids,
             classes=classes,
             missing=missing,
+            custom_metrics=custom_metrics,
             backend=backend,
         )
 
         self.pixel_confusion_matrix = pixel_confusion_matrix
-
-    def attributes(self):
-        return ["cls", "pixel_confusion_matrix", "classes", "missing"]
 
     def dice_score(self):
         """Computes the Dice score across all samples in the evaluation.
@@ -501,13 +565,33 @@ class SegmentationResults(BaseEvaluationResults):
 
     @classmethod
     def _from_dict(cls, d, samples, config, eval_key, **kwargs):
+        ytrue = d.get("ytrue", None)
+        ypred = d.get("ypred", None)
+        weights = d.get("weights", None)
+        ytrue_ids = d.get("ytrue_ids", None)
+        ypred_ids = d.get("ypred_ids", None)
+
+        if ytrue is not None and ypred is not None and weights is not None:
+            if ytrue_ids is None:
+                ytrue_ids = itertools.repeat(None)
+
+            if ypred_ids is None:
+                ypred_ids = itertools.repeat(None)
+
+            matches = list(zip(ytrue, ypred, weights, ytrue_ids, ypred_ids))
+        else:
+            # Legacy format segmentations
+            matches = None
+
         return cls(
             samples,
             config,
             eval_key,
             d["pixel_confusion_matrix"],
             d["classes"],
+            matches=matches,
             missing=d.get("missing", None),
+            custom_metrics=d.get("custom_metrics", None),
             **kwargs,
         )
 
@@ -531,6 +615,10 @@ class SegmentationResults(BaseEvaluationResults):
 def _parse_config(pred_field, gt_field, method, **kwargs):
     if method is None:
         method = fo.evaluation_config.default_segmentation_backend
+
+    custom_metrics = kwargs.get("custom_metrics", None)
+    if etau.is_str(custom_metrics):
+        kwargs["custom_metrics"] = [custom_metrics]
 
     if inspect.isclass(method):
         return method(pred_field, gt_field, **kwargs)
@@ -566,10 +654,10 @@ def _compute_pixel_confusion_matrix(
     pred_mask, gt_mask, values, bandwidth=None
 ):
     if pred_mask.ndim == 3:
-        pred_mask = _rgb_array_to_int(pred_mask)
+        pred_mask = fof.rgb_array_to_int(pred_mask)
 
     if gt_mask.ndim == 3:
-        gt_mask = _rgb_array_to_int(gt_mask)
+        gt_mask = fof.rgb_array_to_int(gt_mask)
 
     if pred_mask.shape != gt_mask.shape:
         msg = (
@@ -623,56 +711,42 @@ def _compute_accuracy_precision_recall(confusion_matrix, values, average):
 
 def _get_mask_values(samples, pred_field, gt_field, progress=None):
     _samples = samples.select_fields([gt_field, pred_field])
-    pred_field, processing_frames = samples._handle_frame_field(pred_field)
-    gt_field, _ = samples._handle_frame_field(gt_field)
 
-    values = set()
-    is_rgb = False
+    with contextlib.ExitStack() as context:
+        context.enter_context(
+            _samples.download_context(
+                media_fields=[gt_field, pred_field], progress=progress
+            )
+        )
 
-    for sample in _samples.iter_samples(progress=progress):
-        if processing_frames:
-            images = sample.frames.values()
-        else:
-            images = [sample]
+        pred_field, processing_frames = samples._handle_frame_field(pred_field)
+        gt_field, _ = samples._handle_frame_field(gt_field)
 
-        for image in images:
-            for field in (pred_field, gt_field):
-                seg = image[field]
-                if seg is not None and seg.has_mask:
-                    mask = seg.get_mask()
-                    if mask.ndim == 3:
-                        is_rgb = True
-                        mask = _rgb_array_to_int(mask)
+        values = set()
+        is_rgb = False
 
-                    values.update(mask.ravel())
+        for sample in _samples.iter_samples(progress=progress):
+            if processing_frames:
+                images = sample.frames.values()
+            else:
+                images = [sample]
+
+            for image in images:
+                for field in (pred_field, gt_field):
+                    seg = image[field]
+                    if seg is not None and seg.has_mask:
+                        mask = seg.get_mask()
+                        if mask.ndim == 3:
+                            is_rgb = True
+                            mask = fof.rgb_array_to_int(mask)
+
+                        values.update(mask.ravel())
 
     values = sorted(values)
 
     if is_rgb:
-        classes = [_int_to_hex(v) for v in values]
+        classes = [fof.int_to_hex(v) for v in values]
     else:
         classes = [str(v) for v in values]
 
     return values, classes
-
-
-def _rgb_array_to_int(mask):
-    return (
-        np.left_shift(mask[:, :, 0], 16, dtype=int)
-        + np.left_shift(mask[:, :, 1], 8, dtype=int)
-        + mask[:, :, 2]
-    )
-
-
-def _hex_to_int(hex_str):
-    r = int(hex_str[1:3], 16)
-    g = int(hex_str[3:5], 16)
-    b = int(hex_str[5:7], 16)
-    return (r << 16) + (g << 8) + b
-
-
-def _int_to_hex(value):
-    r = (value >> 16) & 255
-    g = (value >> 8) & 255
-    b = value & 255
-    return "#%02x%02x%02x" % (r, g, b)

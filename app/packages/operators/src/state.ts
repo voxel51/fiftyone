@@ -433,10 +433,6 @@ export const useOperatorExecutionOptions = ({
   onExecute: (opts: OperatorExecutorOptions) => void;
 }): {
   executionOptions: OperatorExecutionOption[];
-  hasOptions: boolean;
-  warningMessage: React.ReactNode;
-  showWarning: boolean;
-  isLoading: boolean;
 } => {
   const ctx = useExecutionContext(operatorUri);
   const { isRemote } = getLocalOrRemoteOperator(operatorUri);
@@ -449,10 +445,6 @@ export const useOperatorExecutionOptions = ({
 
   return {
     executionOptions: submitOptions.options,
-    hasOptions: submitOptions.hasOptions,
-    warningMessage: submitOptions.warningMessage,
-    showWarning: submitOptions.showWarning,
-    isLoading: execDetails.isLoading,
   };
 };
 
@@ -598,11 +590,6 @@ export const useOperatorPrompt = () => {
     },
     [operator, promptingOperator, cachedResolvedInput]
   );
-  const onCancel = promptingOperator.options?.onCancel;
-  const cancel = () => {
-    if (onCancel) onCancel();
-    close();
-  };
   const close = () => {
     setPromptingOperator(null);
     setInputFields(null);
@@ -684,7 +671,7 @@ export const useOperatorPrompt = () => {
     isExecuting,
     hasResultOrError,
     close,
-    cancel,
+    cancel: close,
     validationErrors,
     validate,
     validateThrottled,

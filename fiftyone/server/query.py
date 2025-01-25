@@ -209,6 +209,7 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 class DatasetAppConfig:
     color_scheme: t.Optional[ColorScheme]
     disable_frame_filtering: t.Optional[bool] = None
+    dynamic_groups_target_frame_rate: int = 30
     grid_media_field: str = "filepath"
     media_fields: t.Optional[t.List[str]]
     modal_media_field: str = "filepath"

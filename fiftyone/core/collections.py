@@ -8436,6 +8436,22 @@ class SampleCollection(object):
         Returns:
             the count
         """
+
+        # Optimization: use estimated document count when possible
+        if self._is_full_collection() and (
+            expr is None
+            and (
+                field_or_expr is None
+                or (
+                    etau.is_str(field_or_expr)
+                    and field_or_expr == "frames"
+                    and self._has_frame_fields()
+                )
+            )
+        ):
+            frames = field_or_expr == "frames"
+            return self._dataset._estimated_count(frames=frames)
+
         make = lambda field_or_expr: foa.Count(
             field_or_expr, expr=expr, safe=safe
         )
@@ -11341,6 +11357,22 @@ class SampleCollection(object):
 
     def _handle_id_fields(self, field_name):
         return _handle_id_fields(self, field_name)
+
+    def _is_full_collection(self):
+        if isinstance(self, fod.Dataset) and self.media_type != fom.GROUP:
+            return True
+
+        # pylint:disable=no-member
+        if (
+            isinstance(self, fov.DatasetView)
+            and self._dataset.media_type == fom.GROUP
+            and len(self._stages) == 1
+            and isinstance(self._stages[0], fos.SelectGroupSlices)
+            and self._pipeline() == []
+        ):
+            return True
+
+        return False
 
     def _is_label_field(self, field_name, label_type_or_types):
         try:
