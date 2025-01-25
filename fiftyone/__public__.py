@@ -163,7 +163,7 @@ from .core.runs import (
     Run,
     RunResults,
 )
-from .core.sample import Sample, SampleView
+from .core.sample import Sample
 from .core.threed import (
     BoxGeometry,
     CylinderGeometry,
