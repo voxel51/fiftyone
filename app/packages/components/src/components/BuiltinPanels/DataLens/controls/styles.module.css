@@ -1,0 +1,17 @@
+/**
+MUI is overwriting styles, so we're having to use !important to override them.
+This is a one-off solution to address this particular bug.
+*/
+
+.root {
+    height: 8px !important;
+}
+
+.thumb,
+.thumb:hover,
+.thumb:active,
+.thumb:focus,
+.thumb:focus-visible,
+.thumb:focus-within {
+    box-shadow: none !important;
+}

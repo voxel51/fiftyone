@@ -1913,6 +1913,7 @@ __metadata:
     typescript-plugin-css-modules: "npm:^5.1.0"
     vite: "npm:^5.2.14"
   peerDependencies:
+    jotai: "*"
     re-resizable: "*"
     react: "*"
     react-relay: "*"

@@ -1,15 +1,13 @@
 import { Dialog } from "@fiftyone/components";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { getFetchFunction } from "@fiftyone/utilities";
-import React, { Fragment, useState } from "react";
-import {
-  DeleteLensConfigRequest,
-  DeleteLensConfigResponse,
-  LensConfig,
-  OperatorResponse,
-  UpsertLensConfigRequest,
-  UpsertLensConfigResponse,
-} from "./models";
+import AddIcon from "@mui/icons-material/Add";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import DeleteIcon from "@mui/icons-material/DeleteOutlined";
+import EditIcon from "@mui/icons-material/Edit";
+import ErrorIcon from "@mui/icons-material/Error";
+import HubIcon from "@mui/icons-material/HubOutlined";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import {
   Box,
   Button,
@@ -30,14 +28,16 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/DeleteOutlined";
-import ErrorIcon from "@mui/icons-material/Error";
-import AddIcon from "@mui/icons-material/Add";
-import HubIcon from "@mui/icons-material/HubOutlined";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import React, { Fragment, useState } from "react";
 import { useActiveDataset } from "./hooks";
+import {
+  DeleteLensConfigRequest,
+  DeleteLensConfigResponse,
+  LensConfig,
+  OperatorResponse,
+  UpsertLensConfigRequest,
+  UpsertLensConfigResponse,
+} from "./models";
 
 /**
  * Component responsible for handling LensConfig management.
@@ -236,18 +236,18 @@ export const LensConfigManager = ({
       <Table>
         <TableHead>
           <TableCell>
-            <Typography variant="h6" color="secondary">
-              DATA SOURCE NAME
+            <Typography variant="subtitle1" color="secondary">
+              Data Source Name
             </Typography>
           </TableCell>
           <TableCell>
-            <Typography variant="h6" color="secondary">
-              OPERATOR
+            <Typography variant="subtitle1" color="secondary">
+              Operator
             </Typography>
           </TableCell>
           <TableCell>
-            <Typography variant="h6" color="secondary">
-              ACTION
+            <Typography variant="subtitle1" color="secondary">
+              Actions
             </Typography>
           </TableCell>
         </TableHead>
@@ -370,8 +370,9 @@ export const LensConfigManager = ({
             mb: 4,
           }}
         >
-          <Typography variant="h4">{configs.length} Data sources</Typography>
-
+          <Typography variant="h5">
+            {configs.length} Data Source{`${configs.length > 1 ? "s" : ""}`}
+          </Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}

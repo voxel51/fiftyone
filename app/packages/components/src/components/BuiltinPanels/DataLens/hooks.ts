@@ -1,3 +1,19 @@
+import { OperatorConfig, useOperatorExecutor } from "@fiftyone/operators";
+import { getLocalOrRemoteOperator } from "@fiftyone/operators/src/operators";
+import Spotlight, { ID } from "@fiftyone/spotlight";
+import type { Sample } from "@fiftyone/state";
+import {
+  datasetName,
+  useLookerOptions as fosUseLookerOptions,
+  Lookers,
+  useCreateLooker,
+  useDeferrer,
+} from "@fiftyone/state";
+import { Schema } from "@fiftyone/utilities";
+import { useAtom } from "jotai";
+import { Dispatch, useCallback, useEffect, useMemo, useState } from "react";
+import { useRecoilValue } from "recoil";
+import { v4 as uuid } from "uuid";
 import {
   LensConfig,
   LensSample,
@@ -5,20 +21,8 @@ import {
   ListLensConfigsResponse,
   OperatorResponse,
 } from "./models";
-import { Dispatch, useCallback, useEffect, useMemo, useState } from "react";
-import { OperatorConfig, useOperatorExecutor } from "@fiftyone/operators";
-import { useRecoilValue } from "recoil";
-import type { Sample } from "@fiftyone/state";
-import {
-  datasetName,
-  Lookers,
-  useCreateLooker,
-  useLookerOptions as fosUseLookerOptions,
-} from "@fiftyone/state";
-import { v4 as uuid } from "uuid";
-import Spotlight, { ID } from "@fiftyone/spotlight";
+import { checkedFieldsAtom } from "./state";
 import { findFields } from "./utils";
-import { getLocalOrRemoteOperator } from "@fiftyone/operators/src/operators";
 
 /**
  * Hook which provides the active dataset.
@@ -115,8 +119,9 @@ const useLookerOptions = ({ samples }: { samples: LensSample[] }) => {
   // Use the same looker options as the Grid as a starting point.
   const baseOpts = fosUseLookerOptions(false);
 
-  // Augment the looker options with data specific to these samples.
-  return useMemo(() => {
+  const [checkedFields, setCheckedFields] = useAtom(checkedFieldsAtom);
+
+  const labelFields = useMemo(() => {
     // Detect presence of labels
     const labelFields = new Set<string>();
     samples.forEach((sample) => {
@@ -130,21 +135,31 @@ const useLookerOptions = ({ samples }: { samples: LensSample[] }) => {
         }
       }
     });
+    return labelFields;
+  }, [samples]);
 
+  useEffect(() => {
+    setCheckedFields(Array.from(labelFields));
+  }, [labelFields]);
+
+  return useMemo(() => {
     return {
       ...baseOpts,
-      // Render all labels
       filter: () => true,
-      activePaths: Array.from(labelFields.values()),
+      activePaths: checkedFields,
     };
-  }, [samples, baseOpts]);
+  }, [checkedFields, baseOpts]);
 };
 
 /**
  * Hook which generates a looker-compatible field schema based on one generated
  * by the SDK.
  */
-const useSampleSchemaGenerator = ({ baseSchema }: { baseSchema: object }) => {
+export const useSampleSchemaGenerator = ({
+  baseSchema,
+}: {
+  baseSchema: object;
+}) => {
   // Generate a valid field schema for use by the looker.
   return useMemo(() => {
     // Helper method for converting from snake_case to camelCase
@@ -202,7 +217,7 @@ const useSampleSchemaGenerator = ({ baseSchema }: { baseSchema: object }) => {
       }
     }
 
-    return formattedSchema;
+    return formattedSchema as Schema;
   }, [baseSchema]);
 };
 
@@ -253,6 +268,36 @@ type SampleStoreEntry = {
 const sampleMediaFields = ["filepath"];
 
 /**
+ * Hook to repaint lookers when the options change.
+ */
+const useRefresh = (
+  options: ReturnType<typeof useLookerOptions>,
+  store: WeakMap<ID, Lookers>,
+  spotlight?: Spotlight<number, Sample>
+) => {
+  const { init, deferred } = useDeferrer();
+
+  useEffect(() => {
+    deferred(() => {
+      spotlight?.updateItems((id) => {
+        const instance = store.get(id);
+        if (!instance) {
+          return;
+        }
+
+        instance.updateOptions({
+          ...options,
+        });
+      });
+    });
+  }, [deferred, options, spotlight, store]);
+
+  useEffect(() => {
+    return spotlight ? init() : undefined;
+  }, [spotlight, init]);
+};
+
+/**
  * Hook which manages a spotlight instance used to render samples.
  * @param samples Samples to render
  * @param sampleSchema Sample schema as returned by SDK
@@ -270,7 +315,7 @@ export const useSpotlight = ({
   zoom,
 }: {
   samples: LensSample[];
-  sampleSchema: object;
+  sampleSchema: Schema;
   resizing: boolean;
   minZoomLevel: number;
   maxZoomLevel: number;
@@ -280,7 +325,6 @@ export const useSpotlight = ({
   const sampleStore = useMemo(() => new WeakMap<ID, SampleStoreEntry>(), []);
 
   const lookerOpts = useLookerOptions({ samples });
-  const cleanedSchema = useSampleSchemaGenerator({ baseSchema: sampleSchema });
 
   const createLooker = useCreateLooker(
     false,
@@ -288,7 +332,7 @@ export const useSpotlight = ({
     lookerOpts,
     undefined,
     undefined,
-    cleanedSchema
+    sampleSchema
   );
 
   const buildUrls = useCallback(
@@ -296,7 +340,7 @@ export const useSpotlight = ({
     []
   );
 
-  return useMemo(() => {
+  const spotlight = useMemo(() => {
     if (resizing) {
       return;
     }
@@ -399,6 +443,10 @@ export const useSpotlight = ({
       },
     });
   }, [lookerStore, sampleStore, createLooker, samples, resizing, zoom]);
+
+  useRefresh(lookerOpts, lookerStore, spotlight);
+
+  return spotlight;
 };
 
 /**
