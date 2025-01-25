@@ -30,12 +30,73 @@ activateEvent();
 
 const supportedDestinations = ["image", "video"];
 
+// note that we don't include video extensions here, since we expecte that to be handled through destinations
+// we're include image extensions because we use `fetch()` to load images for masks and destinations might not be set
+const supportedExtensions = [
+  // masks
+  "jpg",
+  "jpeg",
+  "png",
+  // 3d related
+  "pcd",
+  "fo3d",
+  "obj",
+  "mtl",
+  "stl",
+  "ply",
+  "fbx",
+  "gltf",
+  "glb",
+  "bmp",
+  "bin",
+];
+
 const authHeaderProps = {
   token: "",
   audience: "",
   authHeader: "Authorization",
   authPrefix: "Bearer",
   headerOverrides: {},
+};
+
+/**
+ * We return true if any one of the following conditions are met, checked in order:
+ * 1. If request.destination is in supportedDestinations
+ * 2. If request.url.pathname ends with "pcd" | "jpg" | "jpeg" | "png" | "bmp" | "bin" | "fo3d" | "obj" | "mtl" | "stl" | "ply" | "fbx" | "gltf" | "glb"
+ * 3. If request.url.searchParams has "filepath" key, and filepath ends with any of the extension above
+ *
+ * Note that (2) will work for signed URLs, whereas (3) for local URLs.
+ */
+const isRequestToBeModified = (request) => {
+  // case 1
+  if (supportedDestinations.includes(request.destination)) {
+    return true;
+  }
+
+  const url = new URL(request.url);
+  const pathname = url.pathname;
+
+  // case 2
+  const hasValidExtension = (str) => {
+    return supportedExtensions.some((ext) =>
+      str.toLowerCase().endsWith(`.${ext}`)
+    );
+  };
+
+  if (hasValidExtension(pathname)) {
+    return true;
+  }
+
+  // case 3
+  if (url.searchParams.has("filepath")) {
+    const filepath = url.searchParams.get("filepath") || "";
+
+    if (hasValidExtension(filepath)) {
+      return true;
+    }
+  }
+
+  return false;
 };
 
 const messageEvent = () => {
@@ -63,17 +124,16 @@ const fetchEvent = () => {
   self.addEventListener("fetch", async (event) => {
     try {
       const request = event.request;
-      const requestUrl = event.request.url;
-      const isImageOrVideoRequest = supportedDestinations.includes(
-        event.request.destination
-      );
+      const requestUrlStr = event.request.url;
+
+      const shouldModifyRequest = isRequestToBeModified(request);
 
       const { token, audience, authHeader, authPrefix } = authHeaderProps;
       const urlMatchesAudience =
-        audience && audience.length > 0 && requestUrl.includes(audience);
+        audience && audience.length > 0 && requestUrlStr.includes(audience);
 
       // Only modify external requests if token is available and the url matches the audience
-      if (token && isImageOrVideoRequest && urlMatchesAudience) {
+      if (token && shouldModifyRequest && urlMatchesAudience) {
         // Create new request using the current request with modified headers for auth
 
         const modifiedHeaders = new Headers(event.request.headers);
