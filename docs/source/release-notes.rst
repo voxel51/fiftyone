@@ -85,8 +85,9 @@ Annotation
 
 Evaluation
 
-- Added support for defining custom evaluation metrics and applying them when
-  evaluating models
+- Added support for defining
+  :ref:`custom evaluation metrics <custom-evaluation-metrics>` and applying
+  them when evaluating models
   `#5279 <https://github.com/voxel51/fiftyone/pull/5279>`_
 - Added COCO-style Mean Average Recall (mAR) to
   :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
