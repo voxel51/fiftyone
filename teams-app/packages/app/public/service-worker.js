@@ -30,8 +30,8 @@ activateEvent();
 
 const supportedDestinations = ["image", "video"];
 
-// note that we don't include video extensions here, since we expecte that to be handled through destinations
-// we're include image extensions because we use `fetch()` to load images for masks and destinations might not be set
+// note that we don't include video extensions here, since we expect that to be handled through destinations
+// we include image extensions because we use `fetch()` to load images for masks and destinations might not be set
 const supportedExtensions = [
   // masks
   "jpg",
@@ -62,8 +62,8 @@ const authHeaderProps = {
 /**
  * We return true if any one of the following conditions are met, checked in order:
  * 1. If request.destination is in supportedDestinations
- * 2. If request.url.pathname ends with "pcd" | "jpg" | "jpeg" | "png" | "bmp" | "bin" | "fo3d" | "obj" | "mtl" | "stl" | "ply" | "fbx" | "gltf" | "glb"
- * 3. If request.url.searchParams has "filepath" key, and filepath ends with any of the extension above
+ * 2. If request.url.pathname ends with one of the supportedExtensions
+ * 3. If request.url.searchParams has "filepath" key, and filepath ends with one of the supportedExtensions
  *
  * Note that (2) will work for signed URLs, whereas (3) for local URLs.
  */
