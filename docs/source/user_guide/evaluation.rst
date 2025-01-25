@@ -2085,6 +2085,7 @@ When using metric operators without custom parameters, you can also pass a list
 of operator URI's to the `custom_metrics` parameter:
 
 .. code-block:: python
+    :linenos:
 
     # Apply two custom metrics to a regression evaluation
     results = dataset.evaluate_regressions(
@@ -2095,6 +2096,23 @@ of operator URI's to the `custom_metrics` parameter:
             "@voxel51/metric-examples/absolute_error",
             "@voxel51/metric-examples/squared_error",
         ],
+    )
+
+You can also add custom metrics to an existing evaluation at any time via
+:meth:`add_custom_metrics() <fiftyone.utils.eval.base.BaseEvaluationResults.add_custom_metrics>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Load an existing evaluation run
+    results = dataset.load_evaluation_results("eval")
+
+    # Add some custom metrics
+    results.add_custom_metrics(
+        [
+            "@voxel51/metric-examples/absolute_error",
+            "@voxel51/metric-examples/squared_error",
+        ]
     )
 
 Developing custom metrics
