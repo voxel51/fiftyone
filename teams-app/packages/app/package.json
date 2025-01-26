@@ -17,7 +17,7 @@
         "global-agent": "^3.0.0",
         "jose": "^5.2.0",
         "lodash": "^4.17.21",
-        "next": "^12.2.3",
+        "next": "^15.1.6",
         "notistack": "^3.0.1",
         "react-loading-skeleton": "^3.1.0",
         "react-relay": "^16.2.0",
