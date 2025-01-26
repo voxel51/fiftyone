@@ -15,6 +15,7 @@ import { Property } from "./types";
 import { CustomPanelProps, useCustomPanelHooks } from "./useCustomPanelHooks";
 import { useTrackEvent } from "@fiftyone/analytics";
 import usePanelEvent from "./usePanelEvent";
+import LoadingSpinner from "@fiftyone/components/src/components/Loading/LoadingSpinner";
 
 export function CustomPanel(props: CustomPanelProps) {
   const { panelId, dimensions, panelName, panelLabel, isModalPanel } = props;
@@ -23,14 +24,14 @@ export function CustomPanel(props: CustomPanelProps) {
   const [_, setLoading] = usePanelLoading(panelId);
   const triggerPanelEvent = usePanelEvent();
 
-  const {
+  let {
     handlePanelStateChange,
     handlePanelStatePathChange,
     panelSchema,
     data,
     onLoadError,
   } = useCustomPanelHooks(props);
-  const pending = fos.useTimeout(PANEL_LOAD_TIMEOUT);
+  let pending = fos.useTimeout(PANEL_LOAD_TIMEOUT);
   const setPanelCloseEffect = useSetPanelCloseEffect();
   const trackEvent = useTrackEvent();
 
@@ -48,6 +49,10 @@ export function CustomPanel(props: CustomPanelProps) {
     setLoading(count > 0);
   }, [setLoading, count]);
 
+  // remove this
+  panelSchema = null;
+  pending = false;
+
   if (pending && !panelSchema && !onLoadError) {
     return <PanelSkeleton />;
   }
@@ -55,15 +60,17 @@ export function CustomPanel(props: CustomPanelProps) {
   if (!panelSchema)
     return (
       <CenteredStack spacing={1}>
-        <Typography variant="h4">{panelLabel || "Operator Panel"}</Typography>
-        <Typography color="text.secondary">
-          Operator panel &quot;
-          <Typography component="span">{panelName}</Typography>&quot; is not
-          configured yet.
-        </Typography>
-        <Typography component="pre" color="text.tertiary">
-          {panelId}
-        </Typography>
+        {!onLoadError && (
+          <>
+            <Typography variant="h4">
+              <LoadingSpinner />
+              Still loading...
+            </Typography>
+            <Typography color="text.secondary">
+              This panel is taking longer than expected to load.
+            </Typography>
+          </>
+        )}
         {onLoadError && (
           <Box maxWidth="95%">
             <CodeBlock text={onLoadError} />
