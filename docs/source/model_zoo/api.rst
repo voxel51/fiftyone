@@ -120,6 +120,9 @@ Getting information about zoo models
         print("***** Model description *****")
         print(zoo_model.description)
 
+        print("\n***** License *****")
+        print(zoo_model.license)
+
         print("\n***** Tags *****")
         print(zoo_model.tags)
 
@@ -130,6 +133,9 @@ Getting information about zoo models
 
         ***** Model description *****
         Faster R-CNN model with ResNet-50 FPN backbone trained on COCO. Source: https://pytorch.org/docs/stable/torchvision/models.html
+
+        ***** License *****
+        BSD 3-Clause
 
         ***** Tags *****
         ['detection', 'coco', 'torch']
@@ -180,8 +186,13 @@ Getting information about zoo models
         {
             "base_name": "faster-rcnn-resnet50-fpn-coco-torch",
             "base_filename": "fasterrcnn_resnet50_fpn_coco-258fb6c6.pth",
+            "author": "Shaoqing Ren, et al.",
             "version": null,
-            "description": "Faster R-CNN model with ResNet-50 FPN backbone trained on COCO. Source: https://pytorch.org/docs/stable/torchvision/models.html",
+            "url": null,
+            "source": "https://pytorch.org/vision/main/models.html",
+            "license": "BSD 3-Clause",
+            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with ResNet-50 FPN backbone trained on COCO",
+            "size_bytes": 167502836,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -193,10 +204,11 @@ Getting information about zoo models
                 "config": {
                     "entrypoint_fcn": "torchvision.models.detection.faster_rcnn.fasterrcnn_resnet50_fpn",
                     "entrypoint_args": {
-                        "pretrained": true
+                        "weights": "FasterRCNN_ResNet50_FPN_Weights.DEFAULT"
                     },
                     "output_processor_cls": "fiftyone.utils.torch.DetectorOutputProcessor",
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                    "confidence_thresh": 0.3
                 }
             },
             "requirements": {
@@ -214,7 +226,9 @@ Getting information about zoo models
             "tags": [
                 "detection",
                 "coco",
-                "torch"
+                "torch",
+                "faster-rcnn",
+                "resnet"
             ],
             "date_added": "2020-12-11T13:45:51"
         }

@@ -130,6 +130,7 @@ version of the dataset.
 
 -   Dataset name: ``activitynet-100``
 -   Dataset source: http://activity-net.org/index.html
+-   Dataset license: CC-BY-4.0
 -   Dataset size: 223 GB
 -   Tags: ``video, classification, action-recognition, temporal-detection``
 -   Supported splits: ``train, validation, test``
@@ -339,6 +340,7 @@ version of the dataset.
 
 -   Dataset name: ``activitynet-200``
 -   Dataset source: http://activity-net.org/index.html
+-   Dataset license: CC-BY-4.0
 -   Dataset size: 500 GB
 -   Tags: ``video, classification, action-recognition, temporal-detection``
 -   Supported splits: ``train, validation, test``
@@ -563,6 +565,7 @@ detection, and segmentation labels.
 
 -   Dataset name: ``bdd100k``
 -   Dataset source: https://bdd-data.berkeley.edu
+-   Dataset license: https://doc.bdd100k.com/license.html
 -   Dataset size: 7.10 GB
 -   Tags: ``image, multilabel, automotive, manual``
 -   Supported splits: ``train, validation, test``
@@ -627,6 +630,7 @@ pixels. This version contains image-level labels only.
 
 -   Dataset name: ``caltech101``
 -   Dataset source: https://data.caltech.edu/records/mzrjq-6wc02
+-   Dataset license: CC-BY-4.0
 -   Dataset size: 138.60 MB
 -   Tags: ``image, classification``
 -   Supported splits: ``N/A``
@@ -679,6 +683,7 @@ Images are of variable sizes, with typical edge lengths of 80-800 pixels.
 
 -   Dataset name: ``caltech256``
 -   Dataset source: https://data.caltech.edu/records/nyy15-4j048
+-   Dataset license: CC-BY-4.0
 -   Dataset size: 1.16 GB
 -   Tags: ``image, classification``
 -   Supported splits: ``N/A``
@@ -864,6 +869,7 @@ The dataset is intended for:
 
 -   Dataset name: ``cityscapes``
 -   Dataset source: https://www.cityscapes-dataset.com
+-   Dataset license: https://www.cityscapes-dataset.com/license
 -   Dataset size: 11.80 GB
 -   Tags: ``image, multilabel, automotive, manual``
 -   Supported splits: ``train, validation, test``
@@ -940,6 +946,7 @@ version of the dataset.
 
 -   Dataset name: ``coco-2014``
 -   Dataset source: http://cocodataset.org/#home
+-   Dataset license: CC-BY-4.0
 -   Dataset size: 37.57 GB
 -   Tags: ``image, detection, segmentation``
 -   Supported splits: ``train, validation, test``
@@ -1176,6 +1183,7 @@ version of the dataset.
 
 -   Dataset name: ``coco-2017``
 -   Dataset source: http://cocodataset.org/#home
+-   Dataset license: CC-BY-4.0
 -   Dataset size: 25.20 GB
 -   Tags: ``image, detection, segmentation``
 -   Supported splits: ``train, validation, test``
@@ -1395,6 +1403,7 @@ There are 60,000 training images and 10,000 test images.
 
 -   Dataset name: ``fashion-mnist``
 -   Dataset source: https://github.com/zalandoresearch/fashion-mnist
+-   Dataset license: MIT
 -   Dataset size: 36.42 MB
 -   Tags: ``image, classification``
 -   Supported splits: ``train, test``
@@ -1537,6 +1546,7 @@ benchmarks, and more), see the recent journal:
 
 -   Dataset name: ``fiw``
 -   Dataset source: https://web.northeastern.edu/smilelab/fiw/
+-   Dataset license: https://fulab.sites.northeastern.edu/fiw-download
 -   Dataset size: 173.00 MB
 -   Tags: ``image, kinship, verification, classification, search-and-retrieval, facial-recognition``
 -   Supported splits: ``test, val, train``
@@ -1591,6 +1601,7 @@ clips distributed across 51 action classes.
 
 -   Dataset name: ``hmdb51``
 -   Dataset source: https://serre-lab.clps.brown.edu/resource/hmdb-a-large-human-motion-database
+-   Dataset license: CC-BY-4.0
 -   Dataset size: 2.16 GB
 -   Tags: ``video, action-recognition``
 -   Supported splits: ``train, test, other``
@@ -1676,6 +1687,7 @@ training and validation sets are provided.
 
 -   Dataset name: ``imagenet-2012``
 -   Dataset source: http://image-net.org
+-   Dataset license: https://image-net.org/download
 -   Dataset size: 144.02 GB
 -   Tags: ``image, classification, manual``
 -   Supported splits: ``train, validation``
@@ -1781,6 +1793,7 @@ These images are provided according to the terms below.
 
 -   Dataset name: ``imagenet-sample``
 -   Dataset source: http://image-net.org
+-   Dataset license: https://image-net.org/download
 -   Dataset size: 98.26 MB
 -   Tags: ``image, classification``
 -   Supported splits: ``N/A``
@@ -2533,6 +2546,7 @@ object development kit on the KITTI homepage.
 
 -   Dataset name: ``kitti``
 -   Dataset source: http://www.cvlibs.net/datasets/kitti
+-   Dataset license: CC-BY-NC-SA-3.0
 -   Dataset size: 12.57 GB
 -   Tags: ``image, detection``
 -   Supported splits: ``train, test``
@@ -2591,6 +2605,7 @@ object development kit on the KITTI homepage.
 
 -   Dataset name: ``kitti-multiview``
 -   Dataset source: http://www.cvlibs.net/datasets/kitti
+-   Dataset license: CC-BY-NC-SA-3.0
 -   Dataset size: 53.34 GB
 -   Tags: ``image, point-cloud, detection``
 -   Supported splits: ``train, test``
@@ -2691,6 +2706,7 @@ There are 60,000 training images and 10,000 test images.
 
 -   Dataset name: ``mnist``
 -   Dataset source: http://yann.lecun.com/exdb/mnist
+-   Dataset license: CC-BY-SA-3.0
 -   Dataset size: 21.00 MB
 -   Tags: ``image, classification``
 -   Supported splits: ``train, test``
@@ -2758,6 +2774,7 @@ and visual relationship tasks for the 600 boxable classes.
 
 -   Dataset name: ``open-images-v6``
 -   Dataset source: https://storage.googleapis.com/openimages/web/index.html
+-   Dataset license: CC-BY-2.0
 -   Dataset size: 561 GB
 -   Tags: ``image, detection, segmentation, classification``
 -   Supported splits: ``train, test, validation``
@@ -2997,6 +3014,7 @@ keypoints, and visual relationship tasks for the 600 boxable classes.
 
 -   Dataset name: ``open-images-v7``
 -   Dataset source: https://storage.googleapis.com/openimages/web/index.html
+-   Dataset license: CC-BY-2.0
 -   Dataset size: 561 GB
 -   Tags: ``image, detection, segmentation, classification, keypoint``
 -   Supported splits: ``train, test, validation``
@@ -3282,6 +3300,7 @@ from
 
 -   Dataset name: ``quickstart``
 -   Dataset size: 23.40 MB
+-   Dataset license: CC-BY-4.0
 -   Tags: ``image, quickstart``
 -   Supported splits: ``N/A``
 -   ZooDataset class:
@@ -3376,6 +3395,7 @@ generated by human annotators.
 
 -   Dataset name: ``quickstart-video``
 -   Dataset size: 35.20 MB
+-   Dataset license: CC-BY-4.0
 -   Tags: ``video, quickstart``
 -   Supported splits: ``N/A``
 -   ZooDataset class:
@@ -3429,6 +3449,7 @@ annotation data.
 
 -   Dataset name: ``quickstart-groups``
 -   Dataset size: 516.3 MB
+-   Dataset license: CC-BY-NC-SA-3.0
 -   Tags: ``image, point-cloud, quickstart``
 -   Supported splits: ``N/A``
 -   ZooDataset class:
@@ -3480,6 +3501,7 @@ Objects have been rescaled and recentered from the original dataset.
 
 -   Dataset name: ``quickstart-3d``
 -   Dataset size: 215.7 MB
+-   Dataset license: https://modelnet.cs.princeton.edu
 -   Tags: ``3d, point-cloud, mesh, quickstart``
 -   Supported splits: ``N/A``
 -   ZooDataset class:
@@ -3537,6 +3559,7 @@ by Sama.
 
 -   Dataset name: ``sama-coco``
 -   Dataset source: https://www.sama.com/sama-coco-dataset/
+-   Dataset license: CC-BY-4.0
 -   Dataset size: 25.67 GB
 -   Tags: ``image, detection, segmentation``
 -   Supported splits: ``train, validation, test``
@@ -3769,6 +3792,7 @@ viewpoint, etc.
 
 -   Dataset name: ``ucf101``
 -   Dataset source: https://www.crcv.ucf.edu/research/data-sets/ucf101
+-   Dataset license: CC0-1.0
 -   Dataset size: 6.48 GB
 -   Tags: ``video, action-recognition``
 -   Supported splits: ``train, test``

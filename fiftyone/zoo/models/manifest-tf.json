@@ -6,6 +6,8 @@
             "version": null,
             "description": "DeepLabv3+ semantic segmentation model from `Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation <https://arxiv.org/abs/1802.02611>`_ with Xception backbone trained on the Cityscapes dataset",
             "source": "https://github.com/tensorflow/models/blob/master/research/deeplab/g3doc/model_zoo.md",
+            "author": "Liang-Chieh Chen, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 165712950,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -46,6 +48,8 @@
             "version": null,
             "description": "DeepLabv3+ semantic segmentation model from `Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation <https://arxiv.org/abs/1802.02611>`_ with MobileNetV2 backbone trained on the Cityscapes dataset",
             "source": "https://github.com/tensorflow/models/blob/master/research/deeplab/g3doc/model_zoo.md",
+            "author": "Liang-Chieh Chen, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 8771639,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -86,6 +90,8 @@
             "version": null,
             "description": "EfficientDet-D0 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
             "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
+            "author": "Mingxing Tan, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 40058880,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -125,6 +131,8 @@
             "version": null,
             "description": "EfficientDet-D1 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
             "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
+            "author": "Mingxing Tan, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 64638976,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -164,6 +172,8 @@
             "version": null,
             "description": "EfficientDet-D2 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
             "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
+            "author": "Mingxing Tan, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 77598720,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -203,6 +213,8 @@
             "version": null,
             "description": "EfficientDet-D3 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
             "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
+            "author": "Mingxing Tan, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 111607808,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -242,6 +254,8 @@
             "version": null,
             "description": "EfficientDet-D4 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
             "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
+            "author": "Mingxing Tan, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 183848960,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -281,6 +295,8 @@
             "version": null,
             "description": "EfficientDet-D5 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
             "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
+            "author": "Mingxing Tan, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 289206272,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -320,6 +336,8 @@
             "version": null,
             "description": "EfficientDet-D6 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
             "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
+            "author": "Mingxing Tan, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 436658176,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -359,6 +377,8 @@
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ atrous version with Inception backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "author": "Shaoqing Ren, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 245851264,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -404,6 +424,8 @@
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ atrous version with low-proposals and Inception backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "author": "Shaoqing Ren, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 245851253,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -449,6 +471,8 @@
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with Inception v2 backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "author": "Shaoqing Ren, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 55542502,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -487,6 +511,8 @@
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with NAS-net backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "author": "Shaoqing Ren, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 424621069,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -525,6 +551,8 @@
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with low-proposals and NAS-net backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "author": "Shaoqing Ren, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 424548921,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -563,6 +591,8 @@
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with ResNet-101 backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "author": "Shaoqing Ren, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 195464472,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -601,6 +631,8 @@
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with low-proposals and ResNet-101 backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "author": "Shaoqing Ren, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 195464472,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -639,6 +671,8 @@
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with ResNet-50 backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "author": "Shaoqing Ren, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 119089545,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -677,6 +711,8 @@
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with low-proposals and ResNet-50 backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "author": "Shaoqing Ren, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 119089545,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -715,6 +751,8 @@
             "version": null,
             "description": "Inception v2 model from `Rethinking the Inception Architecture for Computer Vision <https://arxiv.org/abs/1512.00567>`_ trained on ImageNet",
             "source": "https://github.com/tensorflow/models/tree/archive/research/slim#pre-trained-models",
+            "author": "Christian Szegedy, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 224198038,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -761,6 +799,8 @@
             "version": null,
             "description": "Inception v4 model from `Inception-v4, Inception-ResNet and the Impact of Residual Connections on Learning <https://arxiv.org/abs/1602.07261>`_ trained on ImageNet",
             "source": "https://github.com/tensorflow/models/tree/archive/research/slim#pre-trained-models",
+            "author": "Christian Szegedy, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 171242881,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -806,6 +846,8 @@
             "version": null,
             "description": "Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous version with Inception backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "author": "Kaiming He, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 266873310,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -851,6 +893,8 @@
             "version": null,
             "description": "Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with Inception backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "author": "Kaiming He, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 67138064,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -889,6 +933,8 @@
             "version": null,
             "description": "Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous version with ResNet-101 backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "author": "Kaiming He, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 221832819,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -927,6 +973,8 @@
             "version": null,
             "description": "Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous version with ResNet-50 backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "author": "Kaiming He, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 145011833,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -964,6 +1012,9 @@
             "base_filename": "mobilenet-v2-imagenet.pb",
             "version": null,
             "description": "MobileNetV2 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <https://arxiv.org/abs/1801.04381>`_ trained on ImageNet",
+            "source": "https://github.com/tensorflow/models/tree/archive/research/slim#pre-trained-models",
+            "author": "Mark Sandler, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 14297900,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1009,6 +1060,8 @@
             "version": null,
             "description": "ResNet-50 v1 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
             "source": "https://github.com/tensorflow/models/tree/archive/research/slim#pre-trained-models",
+            "author": "Kaiming He, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 102591940,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1054,6 +1107,8 @@
             "version": null,
             "description": "ResNet-50 v2 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
             "source": "https://github.com/tensorflow/models/tree/archive/research/slim#pre-trained-models",
+            "author": "Kaiming He, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 102614513,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1099,6 +1154,8 @@
             "version": null,
             "description": "R-FCN object detection model from `R-FCN: Object Detection via Region-based Fully Convolutional Networks <https://arxiv.org/abs/1605.06409>`_ with ResNet-101 backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "author": "Jifeng Dai, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 218274055,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1137,6 +1194,8 @@
             "version": null,
             "description": "Inception Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "author": "Wei Liu, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 102241138,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1175,6 +1234,8 @@
             "version": null,
             "description": "Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ with MobileNetV1 backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "author": "Wei Liu, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 29185289,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1213,6 +1274,8 @@
             "version": null,
             "description": "FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ with MobileNetV1 backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "author": "Wei Liu, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 51346898,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1251,6 +1314,8 @@
             "version": null,
             "description": "FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ with ResNet-50 backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "author": "Wei Liu, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 134294086,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1289,6 +1354,8 @@
             "version": null,
             "description": "VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ trained on ImageNet",
             "source": "https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md",
+            "author": "Karen Simonyan, et al.",
+            "license": "CC-BY-4.0",
             "size_bytes": 553436134,
             "manager": {
                 "config": {
@@ -1333,6 +1400,8 @@
             "version": null,
             "description": "YOLOv2 model from `YOLO9000: Better, Faster, Stronger <https://arxiv.org/abs/1612.08242>`_ trained on COCO",
             "source": "https://github.com/thtrieu/darkflow",
+            "author": "Joseph Redmon, et al.",
+            "license": "GPL-3.0",
             "size_bytes": 203934260,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1370,6 +1439,8 @@
             "version": null,
             "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the Hourglass-104 backbone trained on COCO resized to 512x512",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "author": "Xingyi Zhou, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 1600851968,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1410,6 +1481,8 @@
             "version": null,
             "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the Hourglass-104 backbone trained on COCO resized to 1024x1024",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "author": "Xingyi Zhou, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 1426460092,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1450,6 +1523,8 @@
             "version": null,
             "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the ResNet-50-v1 backbone + FPN trained on COCO resized to 512x512",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "author": "Xingyi Zhou, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 204067969,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1490,6 +1565,8 @@
             "version": null,
             "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the ResNet-101v1 backbone + FPN trained on COCO resized to 512x512",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "author": "Xingyi Zhou, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 345992335,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1530,6 +1607,8 @@
             "version": null,
             "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the ResNet-50v2 backbone trained on COCO resized to 512x512",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "author": "Xingyi Zhou, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 237977273,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1570,6 +1649,8 @@
             "version": null,
             "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the MobileNetV2 backbone trained on COCO resized to 512x512",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "author": "Xingyi Zhou, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 44016454,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1610,6 +1691,8 @@
             "version": null,
             "description": "EfficientDet-D0 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 512x512",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "author": "Mingxing Tan, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 30736482,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1650,6 +1733,8 @@
             "version": null,
             "description": "EfficientDet-D1 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 640x640",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "author": "Mingxing Tan, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 51839363,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1690,6 +1775,8 @@
             "version": null,
             "description": "EfficientDet-D2 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 768x768",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "author": "Mingxing Tan, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 62929273,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1730,6 +1817,8 @@
             "version": null,
             "description": "EfficientDet-D3 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 896x896",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "author": "Mingxing Tan, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 92858658,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1770,6 +1859,8 @@
             "version": null,
             "description": "EfficientDet-D4 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 1024x1024",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "author": "Mingxing Tan, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 158496448,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1810,6 +1901,8 @@
             "version": null,
             "description": "EfficientDet-D5 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 1280x1280",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "author": "Mingxing Tan, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 256286417,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1850,6 +1943,8 @@
             "version": null,
             "description": "EfficientDet-D6 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 1280x1280",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "author": "Mingxing Tan, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 393872877,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1890,6 +1985,8 @@
             "version": null,
             "description": "EfficientDet-D7 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO resized to 1536x1536",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "author": "Mingxing Tan, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 394474998,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1930,6 +2027,8 @@
             "version": null,
             "description": "MobileNetV2 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <https://arxiv.org/pdf/1801.04381.pdf>`_ resized to 320x320",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "author": "Mark Sandler, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 46042990,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1970,6 +2069,8 @@
             "version": null,
             "description": "MobileNetV1 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <https://arxiv.org/pdf/1801.04381.pdf>`_ resized to 640x640",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "author": "Mark Sandler, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 46042990,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
