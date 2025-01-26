@@ -183,6 +183,10 @@ class ActivityNet100Dataset(FiftyOneDataset):
         return "activitynet-100"
 
     @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
     def tags(self):
         return (
             "video",
@@ -362,6 +366,10 @@ class ActivityNet200Dataset(FiftyOneDataset):
         return "activitynet-200"
 
     @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
     def tags(self):
         return (
             "video",
@@ -470,6 +478,10 @@ class BDD100KDataset(FiftyOneDataset):
         return "bdd100k"
 
     @property
+    def license(self):
+        return "https://doc.bdd100k.com/license.html"
+
+    @property
     def tags(self):
         return ("image", "multilabel", "automotive", "manual")
 
@@ -544,6 +556,10 @@ class Caltech101Dataset(FiftyOneDataset):
         return "caltech101"
 
     @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
     def tags(self):
         return ("image", "classification")
 
@@ -612,6 +628,10 @@ class Caltech256Dataset(FiftyOneDataset):
     @property
     def name(self):
         return "caltech256"
+
+    @property
+    def license(self):
+        return "CC-BY-4.0"
 
     @property
     def tags(self):
@@ -743,6 +763,10 @@ class CityscapesDataset(FiftyOneDataset):
     @property
     def name(self):
         return "cityscapes"
+
+    @property
+    def license(self):
+        return "https://www.cityscapes-dataset.com/license"
 
     @property
     def tags(self):
@@ -930,6 +954,10 @@ class COCO2014Dataset(FiftyOneDataset):
     @property
     def name(self):
         return "coco-2014"
+
+    @property
+    def license(self):
+        return "CC-BY-4.0"
 
     @property
     def tags(self):
@@ -1124,6 +1152,10 @@ class COCO2017Dataset(FiftyOneDataset):
     @property
     def name(self):
         return "coco-2017"
+
+    @property
+    def license(self):
+        return "CC-BY-4.0"
 
     @property
     def tags(self):
@@ -1321,6 +1353,10 @@ class SamaCOCODataset(FiftyOneDataset):
         return "sama-coco"
 
     @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
     def tags(self):
         return ("image", "detection", "segmentation")
 
@@ -1487,6 +1523,10 @@ class FIWDataset(FiftyOneDataset):
         return "fiw"
 
     @property
+    def license(self):
+        return "https://fulab.sites.northeastern.edu/fiw-download"
+
+    @property
     def tags(self):
         return (
             "image",
@@ -1550,6 +1590,10 @@ class HMDB51Dataset(FiftyOneDataset):
     @property
     def name(self):
         return "hmdb51"
+
+    @property
+    def license(self):
+        return "CC-BY-4.0"
 
     @property
     def tags(self):
@@ -1656,6 +1700,10 @@ class ImageNetSampleDataset(FiftyOneDataset):
     @property
     def name(self):
         return "imagenet-sample"
+
+    @property
+    def license(self):
+        return "https://image-net.org/download"
 
     @property
     def tags(self):
@@ -1801,6 +1849,10 @@ class Kinetics400Dataset(FiftyOneDataset):
     @property
     def name(self):
         return "kinetics-400"
+
+    @property
+    def license(self):
+        return None
 
     @property
     def tags(self):
@@ -1958,6 +2010,10 @@ class Kinetics600Dataset(FiftyOneDataset):
         return "kinetics-600"
 
     @property
+    def license(self):
+        return None
+
+    @property
     def tags(self):
         return (
             "video",
@@ -2105,6 +2161,10 @@ class Kinetics700Dataset(FiftyOneDataset):
     @property
     def name(self):
         return "kinetics-700"
+
+    @property
+    def license(self):
+        return None
 
     @property
     def tags(self):
@@ -2263,6 +2323,10 @@ class Kinetics7002020Dataset(FiftyOneDataset):
         return "kinetics-700-2020"
 
     @property
+    def license(self):
+        return None
+
+    @property
     def tags(self):
         return (
             "video",
@@ -2333,6 +2397,10 @@ class KITTIDataset(FiftyOneDataset):
         return "kitti"
 
     @property
+    def license(self):
+        return "CC-BY-NC-SA-3.0"
+
+    @property
     def tags(self):
         return ("image", "detection")
 
@@ -2395,6 +2463,10 @@ class KITTIMultiviewDataset(FiftyOneDataset):
     @property
     def name(self):
         return "kitti-multiview"
+
+    @property
+    def license(self):
+        return "CC-BY-NC-SA-3.0"
 
     @property
     def tags(self):
@@ -2467,6 +2539,10 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
     @property
     def name(self):
         return "lfw"
+
+    @property
+    def license(self):
+        return None
 
     @property
     def tags(self):
@@ -2652,6 +2728,10 @@ class OpenImagesV6Dataset(FiftyOneDataset):
     @property
     def name(self):
         return "open-images-v6"
+
+    @property
+    def license(self):
+        return "CC-BY-2.0"
 
     @property
     def tags(self):
@@ -2845,6 +2925,10 @@ class OpenImagesV7Dataset(FiftyOneDataset):
         return "open-images-v7"
 
     @property
+    def license(self):
+        return "CC-BY-2.0"
+
+    @property
     def tags(self):
         return (
             "image",
@@ -2919,6 +3003,10 @@ class PlacesDataset(FiftyOneDataset):
         return "places"
 
     @property
+    def license(self):
+        return None
+
+    @property
     def tags(self):
         return ("image", "classification")
 
@@ -2978,6 +3066,10 @@ class QuickstartDataset(FiftyOneDataset):
         return "quickstart"
 
     @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
     def tags(self):
         return ("image", "quickstart")
 
@@ -3031,6 +3123,10 @@ class QuickstartGeoDataset(FiftyOneDataset):
     @property
     def name(self):
         return "quickstart-geo"
+
+    @property
+    def license(self):
+        return "https://doc.bdd100k.com/license.html"
 
     @property
     def tags(self):
@@ -3087,6 +3183,10 @@ class QuickstartVideoDataset(FiftyOneDataset):
         return "quickstart-video"
 
     @property
+    def license(self):
+        return "CC-BY-4.0"
+
+    @property
     def tags(self):
         return ("video", "quickstart")
 
@@ -3140,6 +3240,10 @@ class QuickstartGroupsDataset(FiftyOneDataset):
     @property
     def name(self):
         return "quickstart-groups"
+
+    @property
+    def license(self):
+        return "CC-BY-NC-SA-3.0"
 
     @property
     def tags(self):
@@ -3212,6 +3316,10 @@ class Quickstart3DDataset(FiftyOneDataset):
         return "quickstart-3d"
 
     @property
+    def license(self):
+        return "https://modelnet.cs.princeton.edu"
+
+    @property
     def tags(self):
         return ("3d", "point-cloud", "mesh", "quickstart")
 
@@ -3282,6 +3390,10 @@ class UCF101Dataset(FiftyOneDataset):
     @property
     def name(self):
         return "ucf101"
+
+    @property
+    def license(self):
+        return "CC0-1.0"
 
     @property
     def tags(self):
