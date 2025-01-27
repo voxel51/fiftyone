@@ -8,6 +8,7 @@ import { tracesToData } from "./tracesToData";
 import { useKeyDown } from "./useKeyDown";
 import { usePlot } from "./usePlot";
 import { useResetPlotZoom, useZoomRevision } from "./useResetPlotZoom";
+import useCurrentPlotWindow from "./useCurrentPlotWindow";
 
 export function EmbeddingsPlot({
   labelSelectorLoading,
@@ -57,6 +58,7 @@ export function EmbeddingsPlot({
     },
     [hasSelection]
   );
+  const currentPlotWindow = useCurrentPlotWindow();
 
   if (error) {
     return <Loading>{error.message}</Loading>;
@@ -78,6 +80,9 @@ export function EmbeddingsPlot({
     <div style={{ height: "100%" }} data-cy="embeddings-plot-container">
       {bounds?.width && (
         <Plot
+          onRelayout={(event) => {
+            currentPlotWindow.updateBounds(event);
+          }}
           data={data}
           style={{ zIndex: 1 }}
           onSelected={(selected) => {

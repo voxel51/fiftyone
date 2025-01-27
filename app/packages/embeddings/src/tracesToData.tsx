@@ -48,14 +48,16 @@ export function tracesToData(
         type: "scattergl",
         mode: "markers",
         marker: {
+          symbol: "square",
           autocolorscale: !isContinuous, // isCategorical || isUncolored,
           colorscale: mappedColorscale,
-          color: isCategorical
-            ? color.toCSSRGBString()
-            : isUncolored
-            ? null
-            : trace.map((d) => d.label),
-          size: 6,
+          // color: isCategorical
+          //   ? color.toCSSRGBString()
+          //   : isUncolored
+          //   ? null
+          //   : trace.map((d) => d.label),
+          color: "red", // TODO: fix color with new plot style
+          size: 3,
           colorbar:
             isCategorical || isUncolored
               ? undefined
@@ -70,7 +72,7 @@ export function tracesToData(
         selected: {
           marker: {
             opacity: 1,
-            size: selectionStyle === "selected" ? 10 : 6,
+            size: selectionStyle === "selected" ? 6 : 3,
             color: selectionStyle === "selected" ? "orange" : undefined,
           },
         },

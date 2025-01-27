@@ -2,10 +2,11 @@ import { usePanelStatePartial } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
-import { fetchPlot } from "./fetch";
+import { fetchOnChangeBounds, fetchPlot } from "./fetch";
 import { useBrainResult } from "./useBrainResult";
 import { useColorByField } from "./useLabelSelector";
 import { useWarnings } from "./useWarnings";
+import useCurrentPlotWindow from "./useCurrentPlotWindow";
 
 export function useViewChangeEffect() {
   const colorSeed = useRecoilValue(fos.colorSeed);
@@ -17,6 +18,11 @@ export function useViewChangeEffect() {
   const filters = useRecoilValue(fos.filters);
   const [loadedPlot, setLoadedPlot] = usePanelStatePartial(
     "loadedPlot",
+    null,
+    true
+  );
+  const [augmentedPlot, setAugmentedPlot] = usePanelStatePartial(
+    "augmentedPlot",
     null,
     true
   );
@@ -34,11 +40,20 @@ export function useViewChangeEffect() {
     fos.extendedSelectionOverrideStage
   );
   const warnings = useWarnings();
+  const currentPlotWindow = useCurrentPlotWindow();
 
   useEffect(() => {
     setOverrideStage(null);
     setLoadingPlot(true);
-    fetchPlot({ datasetName, filters, brainKey, view, labelField, slices })
+    fetchPlot({
+      datasetName,
+      filters,
+      brainKey,
+      view,
+      labelField,
+      slices,
+      plotBounds: currentPlotWindow.bounds,
+    })
       .catch((err) => {
         setLoadingPlotError(err);
         // setBrainKey(null);
@@ -75,4 +90,25 @@ export function useViewChangeEffect() {
       })
       .finally(() => setLoadingPlot(false));
   }, [datasetName, brainKey, labelField, view, colorSeed, slices, filters]);
+
+  useEffect(() => {
+    console.log("zoom change", currentPlotWindow.bounds);
+    fetchOnChangeBounds({
+      datasetName,
+      brainKey,
+      view,
+      labelField,
+      slices,
+      plotBounds: currentPlotWindow.bounds,
+    })
+      .catch((err) => {
+        setLoadingPlotError(err);
+        // setBrainKey(null);
+      })
+      .then((res) => {
+        setLoadingPlotError(null);
+        setAugmentedPlot(res);
+        console.log("zoom change response", res);
+      });
+  }, [currentPlotWindow.bounds]);
 }

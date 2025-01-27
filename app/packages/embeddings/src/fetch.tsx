@@ -35,6 +35,25 @@ export async function fetchPlot({
   return handleErrors(res);
 }
 
+export async function fetchOnChangeBounds({
+  datasetName,
+  brainKey,
+  view,
+  labelField,
+  slices,
+  plotBounds,
+}) {
+  const res = await getFetchFunction()("POST", "/embeddings/bounds-change", {
+    datasetName,
+    brainKey,
+    view,
+    labelField,
+    slices,
+    plotBounds,
+  });
+  return handleErrors(res);
+}
+
 function handleErrors(res) {
   if (!res || !res.error) {
     return res;

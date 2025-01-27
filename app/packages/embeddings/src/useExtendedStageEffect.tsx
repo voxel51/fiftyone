@@ -4,6 +4,7 @@ import * as fos from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { fetchExtendedStage } from "./fetch";
 import { atoms as selectionAtoms } from "./usePlotSelection";
+import useCurrentPlotWindow from "./useCurrentPlotWindow";
 
 export default function useExtendedStageEffect() {
   const datasetName = useRecoilValue(fos.datasetName);
@@ -18,7 +19,7 @@ export default function useExtendedStageEffect() {
   });
   const slices = useRecoilValue(fos.currentSlices(false));
   const lassoPoints = useRecoilValue(selectionAtoms.lassoPoints);
-  console.log({ lassoPoints });
+  const currentPlotWindow = useCurrentPlotWindow();
 
   useEffect(() => {
     if (loadedPlot && Array.isArray(selection)) {
@@ -29,6 +30,7 @@ export default function useExtendedStageEffect() {
         selection,
         slices,
         lassoPoints,
+        plotBounds: currentPlotWindow.bounds,
       }).then(async (res) => {
         const currentDataset = await getCurrentDataset();
         if (currentDataset !== datasetName) return;

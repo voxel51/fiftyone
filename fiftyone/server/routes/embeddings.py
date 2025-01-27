@@ -41,10 +41,40 @@ class OnPlotLoad(HTTPEndpoint):
         return await run_sync_task(self._post_sync, data)
 
     def _post_sync(self, data):
-        return _post_sync(data)
+        return _on_plot_load(data)
 
 
-def _post_sync(data):
+def _on_plot_load(data):
+    dataset = _load_dataset(data["datasetName"])
+
+    view = _get_filtered_view(data, dataset)
+    point_field = "point"  # TODO: move to dynamic data["pointField"]
+
+    sub_view = view.mongo(
+        [
+            {
+                "$sample": {"size": 1000}
+            }  # TODO: make this a parameter or constant, remove hardcoded value
+        ]
+    )
+
+    # sub_view = view.limit(1000) # hmm faster?
+
+    traces, style = _generate_traces_for_point_field(
+        sub_view, point_field, data["labelField"]
+    )
+
+    return {
+        "traces": traces,
+        "style": style,
+        "index_size": 42,  # TODO: implement this
+        "available_count": 42,  # TODO: implement this
+        "missing_count": 0,
+        "patches_field": None,
+    }
+
+
+def _on_plot_load_OLD(data):
     dataset = _load_dataset(data["datasetName"])
     results, error = _load_brain_results(dataset, data["brainKey"])
     if error:
@@ -72,6 +102,56 @@ def _post_sync(data):
         "missing_count": missing_count,
         "patches_field": results.config.patches_field,
     }
+
+
+class OnPlotBoundsChange(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> dict:
+        """Loads additional points for the embeddings plot based on the current bounds."""
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
+        return _on_bounds_change(data)
+
+
+def _on_bounds_change(data):
+    dataset = _load_dataset(data["datasetName"])
+
+    view = _get_filtered_view(data, dataset)
+    point_field = "point"  # TODO: move to dynamic data["pointField"]
+    bounds = data["plotBounds"]
+    min_x, min_y = bounds["a"]
+    max_x, max_y = bounds["b"]
+
+    # skip adding points if the bounds are too large
+    # need something like percentCovered = area(currentBounds) / area(totalBounds)
+
+    # OR just only allow a max of 10k points to be augmented
+
+    # filter only points within bounds:
+    # TODO: "point" should be dynamic and provided via the brain_key
+    view = view.mongo(
+        [
+            {
+                "$match": {
+                    "point": {
+                        "$geoWithin": {
+                            "$box": [[min_x, min_y], [max_x, max_y]]
+                        }
+                    }
+                }
+            }
+        ]
+    )
+    view = view.mongo(
+        [{"$sample": {"size": 10_000}}]
+    )  # TODO: make this a parameter or constant, remove hardcoded value
+
+    traces, style = _generate_traces_for_point_field(
+        view, point_field, data["labelField"]
+    )
+
+    return {"traces": traces}
 
 
 def _load_dataset(dataset_name):
@@ -127,6 +207,43 @@ def _generate_traces(view, results, label_field, slices, density):
     return traces, style
 
 
+def _generate_traces_for_point_field(view, point_field, label_field):
+    # TODO: support patches views
+
+    # labels = set([sample.get(label_field, None) for sample in view]) # TODO: optimize this!
+    labels = []  # TODO: implement this
+    style = "continuous"  # _get_style_for_field(view, label_field, labels)
+    traces = {}
+
+    if not label_field:
+        style = "continuous"
+
+    print("style", style)
+
+    for sample in view:
+        if point_field not in sample:
+            raise ValueError(
+                f"Point field '{point_field}' not found in sample"
+            )
+
+        if label_field in sample:
+            label_value = sample[label_field]
+        else:
+            label_value = None
+
+        _add_to_trace(
+            traces,
+            style,
+            sample[point_field],
+            sample["id"],  # TODO: should be patch id for patches
+            sample["id"],
+            label_value,
+            True,
+        )
+
+    return traces, style
+
+
 def _get_ids(results, is_patches_plot):
     if is_patches_plot:
         return results._curr_label_ids, results._curr_sample_ids
@@ -150,12 +267,18 @@ def _get_label_data(view, label_field, ids, is_patches_view, patches_field):
         labels = [l[0] if l else None for l in labels]
         field = field.field
 
+    style = _get_style_for_field(view, field, labels)
+    return labels, style
+
+
+def _get_style_for_field(view, field, labels):
     style = (
         "continuous"
         if isinstance(field, fof.FloatField)
+        or isinstance(field, fof.IntField)  # TODO: is this correct?
         else _determine_style(labels)
     )
-    return labels, style
+    return style
 
 
 def _determine_style(labels):
@@ -279,18 +402,14 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
                             # TODO: can't hardcode "point"
                             "point": {
                                 "$geoWithin": {
-                                    "$geometry": {
-                                        "type": "Polygon",
-                                        "coordinates": [
-                                            lasso_points_as_tuples
-                                        ],  # GeoJSON requires an array of linear rings
-                                    }
+                                    "$polygon": lasso_points_as_tuples
                                 }
                             }
                         }
                     }
                 ]
             )
+            # stage = fos.Limit(10)
             d = stage._serialize(include_uuid=False)
             return {"_cls": d["_cls"], "kwargs": dict(d["kwargs"])}
 
@@ -414,6 +533,7 @@ EmbeddingsRoutes = [
     ("/embeddings/selection", EmbeddingsSelection),
     ("/embeddings/extended-stage", EmbeddingsExtendedStage),
     ("/embeddings/color-by-choices", ColorByChoices),
+    ("/embeddings/bounds-change", OnPlotBoundsChange),
 ]
 
 
