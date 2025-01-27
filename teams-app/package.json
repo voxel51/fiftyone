@@ -37,6 +37,7 @@
         "recoil": "^0.7.7"
     },
     "devDependencies": {
+        "@types/case-sensitive-paths-webpack-plugin": "^2.1.9",
         "concurrently": "^8.2.2",
         "husky": "^8.0.1",
         "prettier": "^2.7.1",
