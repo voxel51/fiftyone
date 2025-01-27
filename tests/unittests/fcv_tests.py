@@ -83,7 +83,7 @@ class TestUpdateFCV(unittest.TestCase):
 
         # Check that the warning is triggered due to a large version difference
         mock_logger.warning.assert_any_call(
-            "Your MongoDB server version is more than 2 "
+            "Your MongoDB server version is more than 1 "
             "ahead of your database's feature compatability version. "
             "Please manually update your database's feature "
             "compatability version."
@@ -152,4 +152,66 @@ class TestUpdateFCV(unittest.TestCase):
             "You are running the oldest supported version of mongo. "
             "Please refer to https://deprecation.voxel51.com "
             "for deprecation notices."
+        )
+
+    @patch("pymongo.MongoClient")
+    @patch("fiftyone.core.odm.database._get_logger")
+    def test_update_fc_version_operation_failure(
+        self, mock_get_logger, mock_client
+    ):
+        # Set up the mock client and server info
+        server_version = Version(f"{foc.MIN_MONGODB_VERSION.major + 1}.0.0")
+        fc_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.0.0")
+        mock_admin = MagicMock()
+        mock_client.admin = mock_admin
+        mock_client.server_info.return_value = {"version": str(server_version)}
+
+        mock_get_logger.return_value = MagicMock()
+        mock_logger = mock_get_logger.return_value
+
+        mock_admin.command.side_effect = [
+            {"featureCompatibilityVersion": {"version": str(fc_version)}},
+            OperationFailure("Could not update FCV", 100),
+        ]
+
+        # Call the function
+
+        _update_fc_version(mock_client)
+
+        # Check that the warning is triggered for the oldest supported version
+        mock_logger.error.assert_any_call(
+            "Operation failed while updating database's feature "
+            "compatibility version - Could not update FCV. "
+            f"Please manually set it to {foc.MIN_MONGODB_VERSION.major + 1}.0."
+        )
+
+    @patch("pymongo.MongoClient")
+    @patch("fiftyone.core.odm.database._get_logger")
+    def test_update_fc_version_pymongo_failure(
+        self, mock_get_logger, mock_client
+    ):
+        # Set up the mock client and server info
+        server_version = Version(f"{foc.MIN_MONGODB_VERSION.major + 1}.0.0")
+        fc_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.0.0")
+        mock_admin = MagicMock()
+        mock_client.admin = mock_admin
+        mock_client.server_info.return_value = {"version": str(server_version)}
+
+        mock_get_logger.return_value = MagicMock()
+        mock_logger = mock_get_logger.return_value
+
+        mock_admin.command.side_effect = [
+            {"featureCompatibilityVersion": {"version": str(fc_version)}},
+            PyMongoError("Could not update FCV"),
+        ]
+
+        # Call the function
+
+        _update_fc_version(mock_client)
+
+        # Check that the warning is triggered for the oldest supported version
+        mock_logger.error.assert_any_call(
+            "MongoDB error while updating database's feature "
+            "compatibility version - Could not update FCV. "
+            f"Please manually set it to {foc.MIN_MONGODB_VERSION.major + 1}.0."
         )

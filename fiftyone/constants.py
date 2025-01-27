@@ -102,6 +102,7 @@ MIGRATIONS_REVISIONS_DIR = os.path.join(
 )
 
 MIN_MONGODB_VERSION = Version("4.4")
+MAX_ALLOWABLE_FCV_DELTA = 1
 DATABASE_APPNAME = "fiftyone"
 
 # Server setup

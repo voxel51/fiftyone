@@ -369,9 +369,6 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
         possible: a ``bool`` indicating if a version upgrade is possible
     """
 
-    max_allowable_major_diff = (
-        2  # if greater than 2 major versions, issue warning
-    )
     _logger = _get_logger()
 
     if (fc_version == foc.MIN_MONGODB_VERSION) and (
@@ -393,12 +390,12 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
         )
         return False
 
-    elif server_version.major - fc_version.major >= max_allowable_major_diff:
+    elif server_version.major - fc_version.major > foc.MAX_ALLOWABLE_FCV_DELTA:
         _logger.warning(
             "Your MongoDB server version is more than %s "
             "ahead of your database's feature compatability version. "
             "Please manually update your database's feature "
-            "compatability version." % str(max_allowable_major_diff)
+            "compatability version." % str(foc.MAX_ALLOWABLE_FCV_DELTA)
         )
         return False
 
@@ -439,11 +436,18 @@ def _update_fc_version(client: pymongo.MongoClient):
                     "confirm": True,
                 }
             )
-        except (OperationFailure, PyMongoError) as e:
+        except OperationFailure as e:
             _logger.error(
-                "Could not automatically update your database's feature "
-                "compatability version - %s. "
-                "Please set it to %s." % (str(e), bumped)
+                "Operation failed while updating database's feature "
+                "compatibility version - %s. "
+                "Please manually set it to %s." % (str(e), bumped)
+            )
+
+        except PyMongoError as e:
+            _logger.error(
+                "MongoDB error while updating database's feature "
+                "compatibility version - %s. "
+                "Please manually set it to %s." % (str(e), bumped)
             )
 
 
