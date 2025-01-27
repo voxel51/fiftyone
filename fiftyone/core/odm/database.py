@@ -390,7 +390,8 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
             "Your MongoDB feature compatibility is greater than your "
             "server version. "
             "This may result in unexpected consequences. "
-            "Please manually update your databases feature server version."
+            "Please manually update your database's feature compatibility "
+            "version."
         )
         return False
 
@@ -410,7 +411,7 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
 
 
 def _update_fc_version(client: pymongo.MongoClient):
-    """Updates a databases feature compatibility version (FCV) if possible.
+    """Updates a database's feature compatibility version (FCV) if possible.
 
     Checks to see if a version upgrade for the FCV is required and possible.
     If it is, issue an upgrade and log as a warning.

@@ -119,7 +119,8 @@ class TestUpdateFCV(unittest.TestCase):
             "Your MongoDB feature compatibility is greater than your "
             "server version. "
             "This may result in unexpected consequences. "
-            "Please manually update your databases feature server version."
+            "Please manually update your database's feature compatibility "
+            "version."
         )
 
     @patch("pymongo.MongoClient")
