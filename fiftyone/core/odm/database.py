@@ -358,7 +358,9 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
     an unexpected state. If the major versions between server and FCV is
     greater than we can handle, issue a warning to the user as this is an
     unexpected state. Otherwise, we can attempt to bump the FCV to match
-    the server version in accordance with MongoDB docs.
+    the server version in accordance with MongoDB docs. Note: MongoDB should
+    fail to initialize if the server version and fcv differ by 2 or more major
+    versions, so the check may be redundant.
 
     Args:
         client: a ``pymongo.MongoClient`` to connect to the database.
@@ -415,7 +417,9 @@ def _update_fc_version(client: pymongo.MongoClient):
     """Updates a databases feature compatability version (FCV) if possible.
 
     Checks to see if a version upgrade for the FCV is required and possible.
-    If it is, issue an upgrade and alert the user.
+    If it is, issue an upgrade and alert the user. Note: MongoDB should
+    fail to initialize if the server version and fcv differ by 2 or more major
+    versions, so the check may be redundant.
 
     Args:
         client: a ``pymongo.MongoClient`` to connect to the database.
