@@ -371,7 +371,8 @@ class FiftyOneYOLOModelConfig(Config, fozm.HasZooModel):
         model (None): an ``ultralytics.YOLO`` model to use
         model_name (None): the name of an ``ultralytics.YOLO`` model to load
         model_path (None): the path to an ``ultralytics.YOLO`` model checkpoint
-        classes (None): an optional list of classes
+        classes (None): an optional list of classes to use for zero-shot
+            prediction
     """
 
     def __init__(self, d):
