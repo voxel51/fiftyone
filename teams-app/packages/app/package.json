@@ -21,7 +21,7 @@
         "notistack": "^3.0.1",
         "react-loading-skeleton": "^3.1.0",
         "react-relay": "^16.2.0",
-        "recoil": "^0.7.6",
+        "recoil": "^0.7.7",
         "recoil-relay": "^0.1.0",
         "relay-nextjs": "^0.8.0",
         "relay-runtime": "^16.2.0",
