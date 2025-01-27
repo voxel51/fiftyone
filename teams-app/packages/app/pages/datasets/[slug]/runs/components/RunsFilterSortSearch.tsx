@@ -111,16 +111,21 @@ export default function RunsFilterSortSearch() {
           labelPrefix="Status: "
           value={statusSelections}
         />
-        <RadioGroup
-          defaultValue="all"
+
+        <Selection
           items={[
-            { value: "all", label: "All runs" },
-            { value: "my", label: "My runs" },
+            { id: "all", label: "All runs" },
+            { id: "my", label: "My runs" },
           ]}
-          onChange={(e, value) => {
+          defaultValue="all"
+          selectProps={{
+            sx: {
+              color: (theme) => theme.palette.text.secondary,
+            },
+          }}
+          onChange={(value) => {
             setFilter({ ...filter, runBy: value === "my" ? { eq: id } : null });
           }}
-          row
         />
       </Stack>
       <Stack direction="row">

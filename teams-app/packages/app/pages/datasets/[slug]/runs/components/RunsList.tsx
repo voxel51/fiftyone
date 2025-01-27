@@ -44,7 +44,7 @@ function RunsListWithQuery(props) {
     FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS_ENV_KEY
   );
 
-  const { nodes, pageTotal } = result.delegatedOperationsPage;
+  const { nodes, pageTotal } = addMockData(result.delegatedOperationsPage);
   const hasRunningRuns = nodes.some(
     (node) => node.runState === OPERATOR_RUN_STATES.RUNNING
   );
@@ -68,6 +68,7 @@ function RunsListWithQuery(props) {
     return {
       id,
       link: `${asPath}/${id}`,
+      newWindow: true,
       onHover: (e, row, hovered) => {
         if (hovered) setHovered(row.id);
         else setHovered("");
@@ -102,8 +103,13 @@ function RunsListWithQuery(props) {
             <RunStatus
               status={runState}
               progress={showProgress ? status : undefined}
+              position={node.position}
             />
           ),
+        },
+        {
+          id: `${id}-dataset`,
+          value: node.dataset.name,
         },
         {
           id: `${id}-timestamp`,
@@ -129,7 +135,10 @@ function RunsListWithQuery(props) {
 
   return (
     <Stack>
-      <BasicTable rows={rows} />
+      <BasicTable
+        rows={rows}
+        columns={["Operator", "Status", "Dataset", "Updated", "Run by", ""]}
+      />
       <Pagination
         page={vars.page}
         count={pageTotal}
@@ -190,4 +199,23 @@ export default function RunsList() {
       />
     </Suspense>
   );
+}
+
+// todo@im: remove
+function addMockData(data = {}) {
+  const dataWithMockData = { ...data };
+  const nodes = dataWithMockData.nodes;
+  if (!Array.isArray(nodes)) return dataWithMockData;
+  const scheduledCount = nodes.filter(
+    (node) => node.runState === "scheduled"
+  ).length;
+  let position = 1;
+  dataWithMockData.nodes = dataWithMockData.nodes.map((node) => {
+    const updatedNode = { ...node, dataset: { name: "quickstart" } };
+    if (node.runState === "scheduled") {
+      updatedNode.position = `${position++}/${scheduledCount}`;
+    }
+    return updatedNode;
+  });
+  return dataWithMockData;
 }
