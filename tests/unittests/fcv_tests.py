@@ -44,8 +44,8 @@ class TestUpdateFCV(unittest.TestCase):
         )
         mock_logger.warning.assert_any_call(
             "Your MongoDB server version is newer than your feature "
-            "compatability number. "
-            "Attempting to bump the feature compatability version now."
+            "compatibility version. "
+            "Upgrading the feature compatibility version now."
         )
 
     @patch("pymongo.MongoClient")
@@ -84,9 +84,9 @@ class TestUpdateFCV(unittest.TestCase):
         # Check that the warning is triggered due to a large version difference
         mock_logger.warning.assert_any_call(
             "Your MongoDB server version is more than 1 "
-            "ahead of your database's feature compatability version. "
+            "ahead of your database's feature compatibility version. "
             "Please manually update your database's feature "
-            "compatability version."
+            "compatibility version."
         )
 
     @patch("pymongo.MongoClient")
@@ -116,7 +116,7 @@ class TestUpdateFCV(unittest.TestCase):
 
         # Check that the warning is triggered for FCV greater than server version
         mock_logger.warning.assert_any_call(
-            "Your MongoDB feature compatability is greater than your "
+            "Your MongoDB feature compatibility is greater than your "
             "server version. "
             "This may result in unexpected consequences. "
             "Please manually update your databases feature server version."

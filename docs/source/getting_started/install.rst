@@ -203,8 +203,8 @@ option to ``pip install``:
 
 .. note::
 
-  If you are working with a
-  :ref:`custom/shared MongoDB database <configuring-mongodb-connection>`, you
+  If you have a configured
+  :ref:`MongoDB connection <configuring-mongodb-connection>`, you
   can use :ref:`database admin privileges <database-migrations>` to control
   which clients are allowed to upgrade your FiftyOne deployment.
 
@@ -216,11 +216,11 @@ option to ``pip install``:
 
 .. note::
 
-  FiftyOne versions greater than 1.3.0 will manage the mongoDB feature 
-  compatability version if you are using the provided mongoDB database.
-  Because of this addition, Voxel51 recommends backing up your database
-  between upgrades. Alternatively, you can use
-  :ref:`custom/shared MongoDB database <configuring-mongodb-connection>`
+  FiftyOne versions greater than 1.3.0 will manage the MongoDB feature
+  compatibility version if you are using the default `fiftyone-db` database
+  binary. Because of this addition, Voxel51 recommends backing up your database
+  between upgrades. Alternatively, you can configure your own
+  :ref:`MongoDB conection <configuring-mongodb-connection>`
   outside of FiftyOnes administrative management.
 
 .. _downgrading-fiftyone:

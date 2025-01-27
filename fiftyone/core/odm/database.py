@@ -5,6 +5,7 @@ Database utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import atexit
 import dataclasses
 from datetime import datetime
@@ -230,7 +231,7 @@ def establish_db_conn(config):
     if os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
         if _db_service is not None and db_config.type == foc.CLIENT_TYPE:
             # if this is a fiftyone-managed database and the database type
-            # is fiftyone, try to upgrade the feature compatability version
+            # is fiftyone, try to upgrade the feature compatibility version
             _update_fc_version(_client)
         fom.migrate_database_if_necessary(config=db_config)
 
@@ -326,11 +327,13 @@ def _get_fcv_and_version(
     """Fetches the current FCV and server version.
 
     Args:
-        client: a ``pymongo.MongoClient`` to connect to the database.
+        client: a ``pymongo.MongoClient`` to connect to the database
 
     Returns:
-        versions: a ``Tuple[Version, Version]`` of the feature compatability
-                  version and the server version.
+        a tuple of
+
+        -   a ``Version`` of the FCV
+        -   a ``Version`` of the server version
 
     Raises:
         ConnectionError: if a connection to ``mongod`` could not be established
@@ -349,24 +352,25 @@ def _get_fcv_and_version(
 
 
 def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
-    """Tests to see if feature compatability version (FCV) upgrade is possible.
+    """Tests to see if feature compatibility version (FCV) upgrade is possible.
 
-    Tries to see if a database's FCV needs to be updated via the following
-    logic: If both the server's version and FCV are the oldest supported
-    version, warn the user about any upcoming deprecations. If the FCV
-    is greater than the server version, issue a warning to the user as this is
-    an unexpected state. If the major versions between server and FCV is
-    greater than we can handle, issue a warning to the user as this is an
-    unexpected state. Otherwise, we can attempt to bump the FCV to match
-    the server version in accordance with MongoDB docs. Note: MongoDB should
-    fail to initialize if the server version and fcv differ by 2 or more major
-    versions, so the check may be redundant.
+    The following conditions return ``False``:
+
+        -   If both the server's version and FCV are the oldest supported
+            version, warn about any upcoming deprecations
+        -   If the FCV isgreater than the server version, warn that this is an
+            unexpected
+        -   If the major versions between server and FCV is greater than we can
+            handle, warn that this is unexpected
+
+    Note that MongoDB will fail to initialize if the server version and FCV
+    differ by two or more major versions, so this check may be redundant.
 
     Args:
-        client: a ``pymongo.MongoClient`` to connect to the database.
+        client: a ``pymongo.MongoClient`` to connect to the database
 
     Returns:
-        possible: a ``bool`` indicating if a version upgrade is possible
+        whether a version upgrade is possible
     """
 
     _logger = _get_logger()
@@ -383,7 +387,7 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
 
     elif fc_version > server_version:
         _logger.warning(
-            "Your MongoDB feature compatability is greater than your "
+            "Your MongoDB feature compatibility is greater than your "
             "server version. "
             "This may result in unexpected consequences. "
             "Please manually update your databases feature server version."
@@ -393,43 +397,43 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
     elif server_version.major - fc_version.major > foc.MAX_ALLOWABLE_FCV_DELTA:
         _logger.warning(
             "Your MongoDB server version is more than %s "
-            "ahead of your database's feature compatability version. "
+            "ahead of your database's feature compatibility version. "
             "Please manually update your database's feature "
-            "compatability version." % str(foc.MAX_ALLOWABLE_FCV_DELTA)
+            "compatibility version." % str(foc.MAX_ALLOWABLE_FCV_DELTA)
         )
         return False
 
     elif server_version.major > fc_version.major:
-        _logger.warning(
-            "Your MongoDB server version is newer than your feature "
-            "compatability number. "
-            "Attempting to bump the feature compatability version now."
-        )
         return True
 
     return False
 
 
 def _update_fc_version(client: pymongo.MongoClient):
-    """Updates a databases feature compatability version (FCV) if possible.
+    """Updates a databases feature compatibility version (FCV) if possible.
 
     Checks to see if a version upgrade for the FCV is required and possible.
-    If it is, issue an upgrade and alert the user. Note: MongoDB should
-    fail to initialize if the server version and fcv differ by 2 or more major
-    versions, so the check may be redundant.
+    If it is, issue an upgrade and log as a warning.
+
+    Note that MongoDB will fail to initialize if the server version and FCV
+    differ by two or more major versions, so this check may be redundant.
 
     Args:
-        client: a ``pymongo.MongoClient`` to connect to the database.
+        client: a ``pymongo.MongoClient`` to connect to the database
     """
 
     fc_version, server_version = _get_fcv_and_version(client)
-
     _logger = _get_logger()
 
     if _is_fcv_upgradeable(fc_version, server_version):
         bumped = f"{server_version.major}.0"
 
         try:
+            _logger.warning(
+                "Your MongoDB server version is newer than your feature "
+                "compatibility version. "
+                "Upgrading the feature compatibility version now."
+            )
             client.admin.command(
                 {
                     "setFeatureCompatibilityVersion": bumped,
