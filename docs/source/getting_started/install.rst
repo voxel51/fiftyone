@@ -214,6 +214,15 @@ option to ``pip install``:
   you will need to 
   :ref:`upgrade your mongodb binaries <mongodb-7-to-8>`.
 
+.. note::
+
+  FiftyOne versions greater than 1.3.0 will manage the mongoDB feature 
+  compatability version if you are using the provided mongoDB database.
+  Because of this addition, Voxel51 recommends backing up your database
+  between upgrades. Alternatively, you can use
+  :ref:`custom/shared MongoDB database <configuring-mongodb-connection>`
+  outside of FiftyOnes administrative management.
+
 .. _downgrading-fiftyone:
 
 Downgrading FiftyOne
