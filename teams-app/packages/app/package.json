@@ -39,7 +39,6 @@
         "eslint-config-next": "^14.2.5",
         "file-loader": "^6.2.0",
         "graphql": "^16.5.0",
-        "next-transpile-modules": "^9.0.0",
         "prettier": "^2.7.1",
         "relay-compiler": "^14.0.0",
         "relay-compiler-language-typescript": "^15.0.1",

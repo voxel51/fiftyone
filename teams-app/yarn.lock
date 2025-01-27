@@ -2245,7 +2245,6 @@ __metadata:
     jose: "npm:^5.2.0"
     lodash: "npm:^4.17.21"
     next: "npm:^15.1.6"
-    next-transpile-modules: "npm:^9.0.0"
     notistack: "npm:^3.0.1"
     prettier: "npm:^2.7.1"
     react-loading-skeleton: "npm:^3.1.0"
@@ -10143,16 +10142,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"enhanced-resolve@npm:^5.10.0":
-  version: 5.12.0
-  resolution: "enhanced-resolve@npm:5.12.0"
-  dependencies:
-    graceful-fs: "npm:^4.2.4"
-    tapable: "npm:^2.2.0"
-  checksum: 10/ea5b49a0641827c6a083eaa3a625f953f4bd4e8f015bf70b9fb8cf60a35aaeb44e567df2da91ed28efaea3882845016e1d22a3152c2fdf773ea14f39cbe3d8a9
-  languageName: node
-  linkType: hard
-
 "enhanced-resolve@npm:^5.12.0":
   version: 5.17.1
   resolution: "enhanced-resolve@npm:5.17.1"
@@ -15445,16 +15434,6 @@ __metadata:
   version: 1.1.0
   resolution: "next-tick@npm:1.1.0"
   checksum: 10/83b5cf36027a53ee6d8b7f9c0782f2ba87f4858d977342bfc3c20c21629290a2111f8374d13a81221179603ffc4364f38374b5655d17b6a8f8a8c77bdea4fe8b
-  languageName: node
-  linkType: hard
-
-"next-transpile-modules@npm:^9.0.0":
-  version: 9.1.0
-  resolution: "next-transpile-modules@npm:9.1.0"
-  dependencies:
-    enhanced-resolve: "npm:^5.10.0"
-    escalade: "npm:^3.1.1"
-  checksum: 10/fc8fbc7c22c56ec55062e2cc3e05c1d098100ade3eb8907e7148ff0150cd2cfa60c4eac4dabd87cd6a50162e621fa3e480a9b264a2a2bae6f7a1d69e4d021b20
   languageName: node
   linkType: hard
 
