@@ -14,6 +14,13 @@ are hosted via GitHub repositories or public URLs.
     provide your GitHub personal access token by setting the ``GITHUB_TOKEN``
     environment variable.
 
+.. note::
+
+    Check out `voxel51/openai-clip <https://github.com/voxel51/openai-clip>`_
+    and
+    `voxel51/ultralytics-models <https://github.com/voxel51/ultralytics-models>`_
+    for examples of remote model sources.
+
 .. _model-zoo-remote-usage:
 
 Working with remotely-sourced models
@@ -207,6 +214,12 @@ A remote source of models is defined by a directory with the following contents:
             pass
 
         def load_model(model_name, model_path, **kwargs):
+            pass
+
+        def get_parameters(model_name, ctx, inputs):
+            pass
+
+        def parse_parameters(model_name, ctx, params):
             pass
 
 Each component is described in detail below.
@@ -415,7 +428,75 @@ When
 :meth:`load_zoo_model(name_or_url, ..., **kwargs) <fiftyone.zoo.models.load_zoo_model>`
 is called, any `kwargs` are passed through to ``load_model(..., **kwargs)``.
 
+.. _model-zoo-remote-get-parameters:
+
+Get parameters
+~~~~~~~~~~~~~~
+
+If a remote source contains model(s) that support custom parameters, then the
+``__init__.py`` file can define a ``get_parameters()`` method with the
+signature below that defines any necessary properties to collect the model's
+custom parameters from a user when the model is invoked
+:ref:`via an operator <using-operators>`:
+
+.. code-block:: python
+    :linenos:
+
+    def get_parameters(model_name, ctx, inputs):
+        """Defines any necessary properties to collect the model's custom
+        parameters from a user during prompting.
+
+        Args:
+            model_name: the name of the model, as declared by the ``base_name`` and
+                optional ``version`` fields of the manifest
+            ctx: an :class:`fiftyone.operators.ExecutionContext`
+            inputs: a :class:`fiftyone.operators.types.Property`
+        """
+        inputs.list(
+            "classes",
+            types.String(),
+            required=False,
+            default=None,
+            label="Zero shot classes",
+            description=(
+                "An optional list of custom classes for zero-shot prediction"
+            ),
+            view=types.AutocompleteView(),
+        )
+
 .. note::
 
-    Check out `voxel51/openai-clip <https://github.com/voxel51/openai-clip>`_
-    for an example of a remote model source.
+    Refer to :ref:`this section <operator-inputs>` for more information about
+    collecting user inputs for operators.
+
+.. _model-zoo-remote-parse-parameters:
+
+Parse parameters
+~~~~~~~~~~~~~~~~
+
+If a remote source contains model(s) that support custom parameters, then the
+``__init__.py`` file can define a ``parse_parameters()`` method with the
+signature below that performs any execution-time formatting to the model's
+custom parameters when the model is invoked
+:ref:`via an operator <using-operators>`:
+
+.. code-block:: python
+    :linenos:
+
+    def parse_parameters(model_name, ctx, params):
+        """Performs any execution-time formatting to the model's custom parameters.
+
+        Args:
+            model_name: the name of the model, as declared by the ``base_name`` and
+                optional ``version`` fields of the manifest
+            ctx: an :class:`fiftyone.operators.ExecutionContext`
+            params: a params dict
+        """
+        classes = params.get("classes", None)
+        if isinstance(classes, str):
+            params["classes"] = classes.split(",")
+
+.. note::
+
+    Refer to :ref:`this section <operator-inputs>` for more information about
+    collecting user inputs for operators.

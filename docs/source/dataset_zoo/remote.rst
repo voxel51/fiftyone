@@ -14,6 +14,12 @@ download/preparation methods are hosted via GitHub repositories or public URLs.
     provide your GitHub personal access token by setting the ``GITHUB_TOKEN``
     environment variable.
 
+.. note::
+
+    Check out `voxel51/coco-2017 <https://github.com/voxel51/coco-2017>`_ and
+    `voxel51/caltech101 <https://github.com/voxel51/caltech101>`_ for examples
+    of remotely-sourced datasets.
+
 .. _dataset-zoo-remote-usage:
 
 Working with remotely-sourced datasets
@@ -440,8 +446,3 @@ When
 :meth:`load_zoo_dataset(name_or_url, ..., **kwargs) <fiftyone.zoo.datasets.load_zoo_dataset>`
 is called, any `kwargs` declared by ``download_and_prepare()`` and
 ``load_dataset()`` are passed through to them, respectively.
-
-.. note::
-
-    Check out `voxel51/coco-2017 <https://github.com/voxel51/coco-2017>`_ for
-    an example of a remotely-sourced dataset that supports partial downloads.
