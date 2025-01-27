@@ -37,7 +37,10 @@ const SINGLE_INSTANCE_MODULES_2 = ["next", "notistack"]
   .reduce((el, acc) => ({ ...acc, ...el }));
 
 const nextConfig: NextConfig = {
-  reactStrictMode: getBoolean("REACT_STRICT_MODE", true),
+  // we need strict mode to be off
+  // because one of our dependencies (react-draggable) uses an API that is not supported in strict mode
+  // see https://github.com/react-grid-layout/react-draggable/blob/a61bd5feaee52f753375ab1955cafe3881b2bc14/lib/DraggableCore.js#L168
+  reactStrictMode: getBoolean("REACT_STRICT_MODE", false),
   output: "standalone",
 
   // note: next has built-in module transpilation
