@@ -22,16 +22,14 @@ export default function useSelect(
           return;
         }
 
-        entry.instance.updateOptions({
+        entry.updateOptions({
           ...options,
           fontSize,
           selected: selected.has(id.description),
         });
       });
 
-      for (const id of store.hidden()) {
-        store.remove(id);
-      }
+      store.empty();
     });
   }, [deferred, getFontSize, options, selected, spotlight, store]);
 

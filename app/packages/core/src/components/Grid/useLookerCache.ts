@@ -1,9 +1,11 @@
 import type * as fos from "@fiftyone/state";
 import { LRUCache } from "lru-cache";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
-const MAX_LRU_CACHE_ITEMS = 510;
-const MAX_LRU_CACHE_SIZE = 1e9;
+interface Entry<T extends Lookers | fos.Lookers = fos.Lookers> {
+  dispose: boolean;
+  instance: T;
+}
 
 interface Lookers extends EventTarget {
   loaded: boolean;
@@ -11,10 +13,9 @@ interface Lookers extends EventTarget {
   getSizeBytesEstimate: () => number;
 }
 
-interface Entry<T extends Lookers | fos.Lookers = fos.Lookers> {
-  dispose: boolean;
-  instance: T;
-}
+const MAX_LRU_CACHE_ITEMS = 510;
+// @ts-ignore
+const MAX_LRU_CACHE_SIZE = ((navigator.deviceMemory ?? 8) / 16) * 1e9;
 
 const resolveSize = <T extends Lookers | fos.Lookers = fos.Lookers>(
   looker?: T
@@ -40,100 +41,98 @@ const resolveSize = <T extends Lookers | fos.Lookers = fos.Lookers>(
 export default function useLookerCache<
   T extends Lookers | fos.Lookers = fos.Lookers
 >(reset: string) {
-  return useMemo(() => {
+  const cache = useMemo(() => {
     /** CLEAR CACHE WHEN reset CHANGES */
     reset;
     /** CLEAR CACHE WHEN reset CHANGES */
 
     const loaded = new LRUCache<string, Entry<T>>({
-      dispose: (looker) => {
-        looker.dispose && looker.instance.destroy();
-      },
+      dispose: (entry) => entry.dispose && entry.instance.destroy(),
       max: MAX_LRU_CACHE_ITEMS,
       maxSize: MAX_LRU_CACHE_SIZE,
       noDisposeOnSet: true,
-      sizeCalculation: (looker) => looker.instance.getSizeBytesEstimate(),
+      sizeCalculation: (entry) => entry.instance.getSizeBytesEstimate(),
       updateAgeOnGet: true,
     });
 
     // an intermediate mapping until the "load" event
     // "load" must occur before requesting the size bytes estimate
-    const loading = new Map<string, Entry<T>>();
+    const loading = new Map<string, T>();
 
     // visible items are excluded from LRU cache
     const visible = new Map<string, T>();
 
-    const get = (key: string) => {
-      const instance = visible.get(key);
-      if (instance) {
-        return { dispose: false, instance };
-      }
+    const get = (key: string) =>
+      visible.get(key) ?? loaded.get(key)?.instance ?? loading.get(key);
 
-      return loaded.get(key) ?? loading.get(key);
-    };
     const hide = (key?: string) => {
-      if (!key) {
-        for (const key of visible.keys()) hide(key);
+      if (key) {
+        const instance = get(key);
+        visible.delete(key);
+        instance?.loaded
+          ? loaded.set(key, { dispose: true, instance })
+          : instance && setLoading(key, instance);
         return;
       }
 
-      const instance = visible.get(key);
-      if (!instance) {
-        console.warn("instance not found");
-        return;
-      }
-      visible.delete(key);
-      const entry = { dispose: true, instance };
-      instance.loaded ? loaded.set(key, entry) : setLoading(key, entry);
+      for (const key of visible.keys()) hide(key);
     };
-    const remove = (key: string) => {
-      loading.delete(key);
-      loaded.delete(key);
-    };
-    const setLoading = (key: string, entry: Entry<T>) => {
+
+    const setLoading = (key: string, instance: T) => {
       const onReady = () => {
-        loaded.set(key, entry);
-        loading.delete(key);
-        entry.instance.removeEventListener("load", onReady);
+        if (loading.has(key)) {
+          loaded.set(key, { dispose: true, instance });
+          loading.delete(key);
+        }
+
+        instance.removeEventListener("load", onReady);
       };
 
-      entry.instance.addEventListener("load", onReady);
-      loading.set(key, entry);
-    };
-
-    const assertedGet = (key: string) => {
-      const entry = get(key);
-      if (!entry) {
-        throw new Error("not found");
-      }
-
-      return entry;
+      instance.addEventListener("load", onReady);
+      loading.set(key, instance);
     };
 
     return {
-      remove,
-      get,
-      hidden: function* () {
+      loaded,
+      loading,
+      visible,
+
+      delete: () => {
+        loaded.clear();
+        loading.clear();
+        visible.clear();
+      },
+      empty: () => {
         for (const it of loading.keys()) {
-          yield it;
+          loaded.delete(it);
+          loading.delete(it);
         }
         for (const it of loaded.keys()) {
-          yield it;
+          loaded.delete(it);
+          loading.delete(it);
         }
       },
+      get,
       hide,
-      loadingSize: () => loading.size,
-      loadedSize: () => loaded.size,
-      set: (key: string, instance: T) => visible.set(key, instance),
-      show: (key: string) => {
-        const entry = assertedGet(key);
-        entry.dispose = false;
-        remove(key);
-        visible.set(key, entry?.instance);
-      },
       isShown: (key: string) => visible.has(key),
-      sizeOf: (key: string) => resolveSize(assertedGet(key).instance),
-      sizeEstimate: () => loaded.calculatedSize,
+      set: (key: string, instance: T) => visible.set(key, instance),
+      sizeOf: (key: string) => resolveSize(get(key)),
+      show: (key: string) => {
+        const entry = loaded.get(key);
+        if (entry) {
+          entry.dispose = false;
+        }
+
+        const instance = get(key);
+        loading.delete(key);
+        loaded.delete(key);
+        instance && visible.set(key, instance);
+      },
     };
   }, [reset]);
+
+  // delete cache during cleanup
+  useEffect(() => () => cache.delete(), [cache]);
+
+  return cache;
 }

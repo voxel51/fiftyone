@@ -24,9 +24,9 @@ import {
   FIRST,
   LAST,
   ONE,
-  SECTION_ROW_LIMIT,
   SLOW_DOWN,
   TOP,
+  TWO,
   ZERO,
 } from "./constants";
 import Iter from "./iter";
@@ -333,7 +333,7 @@ export default class Section<K, V> {
         ZERO
       );
 
-      if (this.#rows.length < SECTION_ROW_LIMIT) {
+      if (this.#rows.length < this.#maxRows) {
         this.#end = newEnd;
         return { section: null, offset: height };
       }
@@ -363,6 +363,10 @@ export default class Section<K, V> {
     if (!this.#rows.length) return ZERO;
     const row = this.#rows[this.length - ONE];
     return row.from + row.height;
+  }
+
+  get #maxRows() {
+    return Math.floor(this.#config.maxRows / TWO);
   }
 
   #reverse() {

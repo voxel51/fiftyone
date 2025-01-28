@@ -2,7 +2,7 @@ import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { useCallback, useMemo } from "react";
 import useFontSize from "./useFontSize";
-import useRefreshers from "./useRefreshers";
+import type useRefreshers from "./useRefreshers";
 import useSelectSample from "./useSelectSample";
 import type { SampleStore } from "./useSpotlightPager";
 
@@ -22,16 +22,7 @@ export default function ({
   const getFontSize = useFontSize(id);
   const selectSample = useSelectSample(records);
 
-  const hideItem = useCallback(
-    (id: ID) => {
-      if (cache.isShown(id.description)) {
-        cache.hide(id.description);
-      }
-      console.warn("not shown");
-      return;
-    },
-    [cache]
-  );
+  const hideItem = useCallback((id: ID) => cache.hide(id.description), [cache]);
 
   const showItem = useCallback(
     (
@@ -44,9 +35,9 @@ export default function ({
       if (cache.isShown(key)) {
         return cache.sizeOf(key);
       }
-      const entry = cache.get(key);
-      if (entry) {
-        entry.instance.attach(element, dimensions, getFontSize());
+      const instance = cache.get(key);
+      if (instance) {
+        instance.attach(element, dimensions, getFontSize());
         cache.show(key);
         return cache.sizeOf(key);
       }

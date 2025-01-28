@@ -22,6 +22,7 @@ import {
   DEFAULT_SPACING,
   DIRECTION,
   DIV,
+  FOUR,
   ONE,
   SCROLLBAR_WIDTH,
   TWO,
@@ -56,6 +57,7 @@ export default class Spotlight<K, V> extends EventTarget {
   #forward: Section<K, V>;
   #loaded = false;
   #rect?: DOMRect;
+  #rejected = false;
   #scrollReader?: ReturnType<typeof createScrollReader>;
   #updater?: Updater;
 
@@ -73,6 +75,10 @@ export default class Spotlight<K, V> extends EventTarget {
 
   get attached() {
     return Boolean(this.#element.parentElement);
+  }
+
+  get loaded() {
+    return this.#loaded;
   }
 
   addEventListener(type: "load", callback: EventCallback<Load<K>>): void;
@@ -183,10 +189,7 @@ export default class Spotlight<K, V> extends EventTarget {
     return this.#height;
   }
 
-  #recommendedRowAspectRatioThreshold(
-    items: ItemData<K, V>[],
-    map: Map<string, number>
-  ) {
+  #handleHighMemoryUsage(items: ItemData<K, V>[], map: Map<string, number>) {
     let bytes = ZERO;
     const threshold = this.#sizeThreshold;
     let use: typeof items = [];
@@ -200,14 +203,19 @@ export default class Spotlight<K, V> extends EventTarget {
     }
 
     use = use.slice(ZERO, use.length - ONE);
-    let aspectRatio = this.#config.rowAspectRatioThreshold(this.#width);
+    const current = this.#config.rowAspectRatioThreshold(this.#width);
+    let proposed = current;
     const itemAspectRatios = use.map(({ aspectRatio }) => aspectRatio);
     let tiledAspectRatio: number;
 
     do {
-      aspectRatio -= ONE / TWO;
+      proposed -= ONE / TWO;
 
-      const breakpoints = tile(itemAspectRatios, aspectRatio, true);
+      if (proposed < ONE + ONE / TWO) {
+        break;
+      }
+
+      const breakpoints = tile(itemAspectRatios, proposed, true);
       const rows: number[] = [];
       let start = ZERO;
       for (const end of breakpoints) {
@@ -216,9 +224,14 @@ export default class Spotlight<K, V> extends EventTarget {
       }
 
       tiledAspectRatio = ONE / sum(rows);
-    } while (tiledAspectRatio > this.#aspectRatio / TWO);
+      console.log(tiledAspectRatio, this.#aspectRatio / FOUR);
+    } while (tiledAspectRatio > this.#aspectRatio / FOUR);
 
-    return Math.max(aspectRatio, ONE);
+    proposed = Math.max(proposed, ONE + ONE / TWO);
+    if (!this.#rejected && proposed < current) {
+      this.#rejected = true;
+      this.dispatchEvent(new Rejected(proposed));
+    }
   }
 
   get #sections() {
@@ -248,6 +261,10 @@ export default class Spotlight<K, V> extends EventTarget {
     const items: ItemData<K, V>[] = [];
     const map = new Map<string, number>();
     const measure = (item: ItemData<K, V>, add: number) => {
+      if (!this.#config.maxItemsSizeBytes) {
+        return;
+      }
+
       items.push(item);
       map.set(item.id.description, add);
       bytes += add;
@@ -255,9 +272,7 @@ export default class Spotlight<K, V> extends EventTarget {
         bytes >= this.#config.maxItemsSizeBytes &&
         this.#config.rowAspectRatioThreshold(this.#width) > ONE
       ) {
-        this.dispatchEvent(
-          new Rejected(this.#recommendedRowAspectRatioThreshold(items, map))
-        );
+        this.#handleHighMemoryUsage(items, map);
       }
     };
     return {
@@ -367,7 +382,10 @@ export default class Spotlight<K, V> extends EventTarget {
 
     await this.#next(false);
 
-    while (this.#containerHeight < this.#height && !this.#forward.finished) {
+    while (
+      this.#containerHeight < this.#height + this.#padding &&
+      !this.#forward.finished
+    ) {
       await this.#next(false);
     }
 
@@ -382,6 +400,10 @@ export default class Spotlight<K, V> extends EventTarget {
           at: this.#config.at,
           offset: -this.#pivot,
           measure: (item, next) => {
+            if (!this.#config.maxItemsSizeBytes) {
+              return;
+            }
+
             if (next instanceof Promise) {
               throw next;
             }
@@ -413,9 +435,7 @@ export default class Spotlight<K, V> extends EventTarget {
         }
 
         if (typeof response === "number") {
-          this.dispatchEvent(
-            new Rejected(this.#recommendedRowAspectRatioThreshold(items, map))
-          );
+          this.#handleHighMemoryUsage(items, map);
           return false;
         }
 

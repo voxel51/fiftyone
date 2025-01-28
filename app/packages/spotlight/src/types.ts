@@ -64,6 +64,7 @@ export interface SpotlightConfig<K, V> {
   spacing?: number;
   scrollbar?: boolean;
   key: K;
+  maxRows?: number;
   maxItemsSizeBytes?: number;
   offset?: number;
 

@@ -5,7 +5,12 @@ import * as fos from "@fiftyone/state";
 import React, { useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
-import { gridCrop, gridSpacing, pageParameters } from "./recoil";
+import {
+  gridCrop,
+  gridSpacing,
+  interevenedGridZoom,
+  pageParameters,
+} from "./recoil";
 import useAt from "./useAt";
 import useEscape from "./useEscape";
 import useEvents from "./useEvents";
@@ -17,7 +22,9 @@ import useSelect from "./useSelect";
 import useSpotlightPager from "./useSpotlightPager";
 import useThreshold from "./useThreshold";
 
-const MAX_SHOWN_SIZE_BYTES = 1e9;
+const MAX_ROWS = 5151;
+// @ts-ignore
+const MAX_SHOWN_SIZE_BYTES = ((navigator.deviceMemory ?? 8) / 16) * 1e9;
 
 function Grid() {
   const id = useMemo(() => uuid(), []);
@@ -25,7 +32,7 @@ function Grid() {
   const spacing = useRecoilValue(gridSpacing);
   const { lookerCache, pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
-  const { threshold, setMinimum } = useThreshold();
+  const threshold = useThreshold();
 
   const records = useRecords(pageReset);
 
@@ -45,6 +52,7 @@ function Grid() {
   const { get, set } = useAt(pageReset);
 
   const setSample = fos.useExpandSample(store);
+  const disableSizing = !!useRecoilValue(interevenedGridZoom);
 
   const spotlight = useMemo(() => {
     /** SPOTLIGHT REFRESHER */
@@ -59,7 +67,8 @@ function Grid() {
       ...get(),
       ...renderer,
 
-      maxItemsSizeBytes: MAX_SHOWN_SIZE_BYTES,
+      maxRows: MAX_ROWS,
+      maxItemsSizeBytes: disableSizing ? undefined : MAX_SHOWN_SIZE_BYTES,
       scrollbar: true,
       spacing,
 
@@ -67,10 +76,20 @@ function Grid() {
       onItemClick: setSample,
       rowAspectRatioThreshold: threshold,
     });
-  }, [get, page, renderer, reset, resizing, setSample, spacing, threshold]);
+  }, [
+    disableSizing,
+    get,
+    page,
+    renderer,
+    reset,
+    resizing,
+    setSample,
+    spacing,
+    threshold,
+  ]);
 
   useEscape();
-  useEvents({ id, lookerCache, pixels, resizing, set, setMinimum, spotlight });
+  useEvents({ id, lookerCache, pixels, resizing, set, spotlight });
   useSelect(getFontSize, lookerOptions, lookerCache, spotlight);
   useResize(id, setResizing);
 

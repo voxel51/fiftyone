@@ -507,11 +507,12 @@ export abstract class AbstractLooker<
     if (element === this.lookerElement.element.parentElement) {
       this.state.disabled &&
         this.updater({ disabled: false, options: { fontSize } });
+      //this.resizeObserver.observe(element);
       return;
     }
 
     if (this.lookerElement.element.parentElement) {
-      console.warn("instance is already attached");
+      this.detach();
     }
 
     for (const eventType in this.rootEvents) {
@@ -538,7 +539,7 @@ export abstract class AbstractLooker<
    * Detaches the instance from the DOM
    */
   detach(): void {
-    this.resizeObserver.disconnect();
+    // this.resizeObserver.unobserve(this.lookerElement.element.parentNode);
     this.lookerElement.element.parentNode?.removeChild(
       this.lookerElement.element
     );

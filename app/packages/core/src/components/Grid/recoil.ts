@@ -1,4 +1,4 @@
-import { atom, selector } from "recoil";
+import { atom, DefaultValue, selector } from "recoil";
 
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
@@ -32,17 +32,25 @@ export const gridSpacing = atom({
   ],
 });
 
-export const gridZoom = atom<number>({
+export const gridZoom = selector<number>({
   key: "gridZoom",
-  default: defaultGridZoom,
-  effects: [
-    fos.getBrowserStorageEffectForKey("gridZoom", { valueClass: "number" }),
-  ],
-});
+  get: ({ get }) =>
+    get(interevenedGridZoom) ??
+    get(recommendedGridZoom) ??
+    get(storedGridZoom) ??
+    get(defaultGridZoom),
+  set: ({ get, set }, value) => {
+    let result = value;
+    if (value instanceof DefaultValue) {
+      result = get(defaultGridZoom);
+    }
 
-export const gridZoomMin = atom<number | null>({
-  key: "gridZoomMin",
-  default: null,
+    if (get(recommendedGridZoom)) {
+      set(interevenedGridZoom, result);
+    }
+
+    set(storedGridZoom, result);
+  },
 });
 
 export const gridZoomRange = atom<[number, number]>({
@@ -68,6 +76,19 @@ export const gridCrop = selector({
   get: ({ get }) => {
     return get(fos.isPatchesView) && get(fos.cropToContent(false));
   },
+});
+
+export const interevenedGridZoom = atom<number | null>({
+  key: "intervenedGridZoom",
+  default: null,
+  effects: [
+    subscribe(
+      ({ event }, { reset }, prev) =>
+        event !== "modal" &&
+        prev?.event !== "modal" &&
+        reset(interevenedGridZoom)
+    ),
+  ],
 });
 
 export const pageParameters = selector({
@@ -103,4 +124,25 @@ export const pageParameters = selector({
   },
 });
 
+export const recommendedGridZoom = atom<number | null>({
+  key: "recommendedGridZoom",
+  default: null,
+  effects: [
+    subscribe(
+      ({ event }, { reset }, prev) =>
+        event !== "modal" &&
+        prev?.event !== "modal" &&
+        reset(interevenedGridZoom)
+    ),
+  ],
+});
+
 export const showGridPixels = atom({ key: "showGridPixels", default: false });
+
+export const storedGridZoom = atom<number | null>({
+  key: "storedGridZoom",
+  default: null,
+  effects: [
+    fos.getBrowserStorageEffectForKey("gridZoom", { valueClass: "number" }),
+  ],
+});

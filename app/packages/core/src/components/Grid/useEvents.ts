@@ -7,7 +7,7 @@ import * as fos from "@fiftyone/state";
 import { useLayoutEffect } from "react";
 import { useSetRecoilState } from "recoil";
 import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
-import { gridZoomRange } from "./recoil";
+import { recommendedGridZoom } from "./recoil";
 import type { AtInterface } from "./useAt";
 import type useRefreshers from "./useRefreshers";
 
@@ -17,7 +17,6 @@ export default ({
   pixels,
   resizing,
   set,
-  setMinimum,
   spotlight,
 }: {
   id: string;
@@ -25,11 +24,10 @@ export default ({
   pixels: string;
   resizing: boolean;
   set: (at: AtInterface) => void;
-  setMinimum: (min: number) => void;
   spotlight?: Spotlight<number, fos.Sample>;
 }) => {
-  const setRange = useSetRecoilState(gridZoomRange);
   const handleError = useSetRecoilState(fos.snackbarErrors);
+  const setRecommendedGridZoomRange = useSetRecoilState(recommendedGridZoom);
   useLayoutEffect(() => {
     if (resizing || !spotlight) {
       return undefined;
@@ -54,12 +52,11 @@ export default ({
 
     const rejected = (event: Rejected) => {
       clearTimeout(timeout);
-      setMinimum(11 - event.recommendedRowAspectRatioThreshold);
-      setRange(([_, max]) => [
-        11 - event.recommendedRowAspectRatioThreshold,
-        max,
-      ]);
-      handleError(["sample density too high, grid resized"]);
+      setRecommendedGridZoomRange(
+        11 - event.recommendedRowAspectRatioThreshold
+      );
+      spotlight.loaded &&
+        handleError(["That's a lot of data! We've zoomed in a bit"]);
     };
 
     element && spotlight.attach(element);
@@ -70,10 +67,12 @@ export default ({
     return () => {
       clearTimeout(timeout);
       freeVideos();
+      document.getElementById(pixels)?.classList.remove(styles.hidden);
       spotlight.removeEventListener("load", mount);
       spotlight.removeEventListener("rowchange", set);
       spotlight.destroy();
       lookerCache.hide();
+
       document.getElementById(pixels)?.classList.remove(styles.hidden);
       document.dispatchEvent(new CustomEvent("grid-unmount"));
     };
@@ -84,8 +83,7 @@ export default ({
     pixels,
     resizing,
     set,
-    setMinimum,
-    setRange,
+    setRecommendedGridZoomRange,
     spotlight,
   ]);
 };
