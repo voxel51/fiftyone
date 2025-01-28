@@ -2,11 +2,13 @@ import { PopoutSectionTitle, TabOption, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { groupStatistics } from "@fiftyone/state";
 import type { RefObject } from "react";
-import { default as React, useMemo } from "react";
+import { default as React, useEffect, useMemo, useState } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { QP_MODE } from "../../utils/links";
 import Checkbox from "../Common/Checkbox";
+import Input from "../Common/Input";
 import RadioGroup from "../Common/RadioGroup";
+import { maxGridItemsSizeBytes } from "../Grid/recoil";
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
 
@@ -266,6 +268,43 @@ const ShowModalNav = () => {
   );
 };
 
+const GridCache = () => {
+  const [sizeBytes, setSizeBytes] = useRecoilState(maxGridItemsSizeBytes);
+  const [local, setLocal] = useState<number | "">("");
+  const theme = useTheme();
+  useEffect(() => {
+    setLocal(sizeBytes / 1e6);
+  }, [sizeBytes]);
+
+  return (
+    <>
+      <ActionOption
+        id="grid-cache"
+        text="Grid cache (MB)"
+        style={{
+          background: "unset",
+          color: theme.text.primary,
+          paddingTop: 0,
+          paddingBottom: 0,
+        }}
+        svgStyles={{ height: "1rem", marginTop: 7.5 }}
+      />
+      <Input
+        placeholder="Grid cache size (MB)"
+        onEnter={() =>
+          local ? setSizeBytes(local * 1e6) : setLocal(sizeBytes / 1e6)
+        }
+        setter={(v) => setLocal(v === "" ? v : Number.parseInt(v))}
+        value={(local ?? sizeBytes).toString()}
+        validator={(value) => {
+          const v = Number.parseInt(value);
+          return v * 1e6 < 1e10;
+        }}
+      />
+    </>
+  );
+};
+
 type OptionsProps = {
   modal?: boolean;
   anchorRef: RefObject<HTMLElement>;
@@ -286,6 +325,7 @@ const Options = ({ modal, anchorRef }: OptionsProps) => {
       <Patches modal={modal} />
       {!view?.length && <QueryPerformance />}
       <SortFilterResults modal={modal} />
+      {!modal && <GridCache />}
     </Popout>
   );
 };

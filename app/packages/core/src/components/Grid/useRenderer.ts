@@ -1,8 +1,8 @@
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { useCallback, useMemo } from "react";
+import type { LookerCache } from "./types";
 import useFontSize from "./useFontSize";
-import type useRefreshers from "./useRefreshers";
 import useSelectSample from "./useSelectSample";
 import type { SampleStore } from "./useSpotlightPager";
 
@@ -12,7 +12,7 @@ export default function ({
   records,
   store,
 }: {
-  cache: ReturnType<typeof useRefreshers>["lookerCache"];
+  cache: LookerCache;
   id: string;
   records: Map<string, number>;
   store: SampleStore;

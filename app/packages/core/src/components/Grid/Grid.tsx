@@ -9,11 +9,13 @@ import {
   gridCrop,
   gridSpacing,
   interevenedGridZoom,
+  maxGridItemsSizeBytes,
   pageParameters,
 } from "./recoil";
 import useAt from "./useAt";
 import useEscape from "./useEscape";
 import useEvents from "./useEvents";
+import useLookerCache from "./useLookerCache";
 import useRecords from "./useRecords";
 import useRefreshers from "./useRefreshers";
 import useRenderer from "./useRenderer";
@@ -22,19 +24,22 @@ import useSelect from "./useSelect";
 import useSpotlightPager from "./useSpotlightPager";
 import useThreshold from "./useThreshold";
 
+const MAX_INSTANCES = 5151;
 const MAX_ROWS = 5151;
-// @ts-ignore
-const MAX_SHOWN_SIZE_BYTES = ((navigator.deviceMemory ?? 8) / 16) * 1e9;
+const TWO = 2;
 
 function Grid() {
   const id = useMemo(() => uuid(), []);
   const pixels = useMemo(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
-  const { lookerCache, pageReset, reset } = useRefreshers();
+  const { pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
   const threshold = useThreshold();
 
   const records = useRecords(pageReset);
+
+  const maxBytes = useRecoilValue(maxGridItemsSizeBytes);
+  const cache = useLookerCache(reset, MAX_INSTANCES, maxBytes / TWO);
 
   const { page, store } = useSpotlightPager({
     clearRecords: pageReset,
@@ -44,7 +49,7 @@ function Grid() {
   });
 
   const { getFontSize, lookerOptions, renderer } = useRenderer({
-    cache: lookerCache,
+    cache,
     id,
     records,
     store,
@@ -68,7 +73,7 @@ function Grid() {
       ...renderer,
 
       maxRows: MAX_ROWS,
-      maxItemsSizeBytes: disableSizing ? undefined : MAX_SHOWN_SIZE_BYTES,
+      maxItemsSizeBytes: disableSizing ? 8e9 : maxBytes / 2,
       scrollbar: true,
       spacing,
 
@@ -79,6 +84,7 @@ function Grid() {
   }, [
     disableSizing,
     get,
+    maxBytes,
     page,
     renderer,
     reset,
@@ -89,8 +95,8 @@ function Grid() {
   ]);
 
   useEscape();
-  useEvents({ id, lookerCache, pixels, resizing, set, spotlight });
-  useSelect(getFontSize, lookerOptions, lookerCache, spotlight);
+  useEvents({ id, cache, pixels, resizing, set, spotlight });
+  useSelect(cache, getFontSize, lookerOptions, spotlight);
   useResize(id, setResizing);
 
   return (

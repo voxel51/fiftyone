@@ -1,4 +1,4 @@
-import { atom, DefaultValue, selector } from "recoil";
+import { DefaultValue, atom, selector } from "recoil";
 
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
@@ -89,6 +89,12 @@ export const interevenedGridZoom = atom<number | null>({
         reset(interevenedGridZoom)
     ),
   ],
+});
+
+export const maxGridItemsSizeBytes = atom({
+  key: "maxGridItemsSizeBytes",
+  // @ts-ignore
+  default: ((navigator.deviceMemory ?? 8) / 8) * 1e9,
 });
 
 export const pageParameters = selector({

@@ -224,7 +224,6 @@ export default class Spotlight<K, V> extends EventTarget {
       }
 
       tiledAspectRatio = ONE / sum(rows);
-      console.log(tiledAspectRatio, this.#aspectRatio / FOUR);
     } while (tiledAspectRatio > this.#aspectRatio / FOUR);
 
     proposed = Math.max(proposed, ONE + ONE / TWO);

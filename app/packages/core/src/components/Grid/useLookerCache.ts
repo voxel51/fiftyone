@@ -13,10 +13,6 @@ interface Lookers extends EventTarget {
   getSizeBytesEstimate: () => number;
 }
 
-const MAX_LRU_CACHE_ITEMS = 510;
-// @ts-ignore
-const MAX_LRU_CACHE_SIZE = ((navigator.deviceMemory ?? 8) / 16) * 1e9;
-
 const resolveSize = <T extends Lookers | fos.Lookers = fos.Lookers>(
   looker?: T
 ) => {
@@ -40,7 +36,7 @@ const resolveSize = <T extends Lookers | fos.Lookers = fos.Lookers>(
 
 export default function useLookerCache<
   T extends Lookers | fos.Lookers = fos.Lookers
->(reset: string) {
+>(reset: string, maxHiddenItems: number, maxHiddenItemsSizeBytes: number) {
   const cache = useMemo(() => {
     /** CLEAR CACHE WHEN reset CHANGES */
     reset;
@@ -48,8 +44,8 @@ export default function useLookerCache<
 
     const loaded = new LRUCache<string, Entry<T>>({
       dispose: (entry) => entry.dispose && entry.instance.destroy(),
-      max: MAX_LRU_CACHE_ITEMS,
-      maxSize: MAX_LRU_CACHE_SIZE,
+      max: maxHiddenItems,
+      maxSize: maxHiddenItemsSizeBytes,
       noDisposeOnSet: true,
       sizeCalculation: (entry) => entry.instance.getSizeBytesEstimate(),
       updateAgeOnGet: true,
@@ -97,26 +93,67 @@ export default function useLookerCache<
       loading,
       visible,
 
+      /**
+       * Delete all instances
+       */
       delete: () => {
         loaded.clear();
         loading.clear();
         visible.clear();
       },
+
+      /**
+       * Delete hidden instances
+       */
       empty: () => {
-        for (const it of loading.keys()) {
-          loaded.delete(it);
-          loading.delete(it);
-        }
-        for (const it of loaded.keys()) {
-          loaded.delete(it);
-          loading.delete(it);
-        }
+        for (const it of loading.keys()) loading.delete(it);
+        for (const it of loaded.keys()) loaded.delete(it);
       },
+
+      /**
+       * Get an instance
+       *
+       * @param {string} key - the instance key
+       */
       get,
+
+      /**
+       * Hide an instance. If a key is not provided, all instances are hidden
+       *
+       * @param {string=} key - an optional key
+       */
       hide,
+
+      /**
+       * Determine an instance's visibility
+       *
+       * @param {string} key - the instance key
+       * @returns {boolean} whether it is shown
+       */
       isShown: (key: string) => visible.has(key),
+
+      /**
+       * Set an instance. The initial state of the instance is always shown
+       *
+       * @param {string} key - the instance key
+       * @param {T} instance - the instance
+       * @returns {T} the instance
+       */
       set: (key: string, instance: T) => visible.set(key, instance),
+
+      /**
+       * Retrieves the size estimate of an instance in bytes
+       *
+       * @param {string} key - the instance key
+       * @returns {Promise<number>}
+       */
       sizeOf: (key: string) => resolveSize(get(key)),
+
+      /**
+       * Show an instance
+       *
+       * @param {string} key - the instance key
+       */
       show: (key: string) => {
         const entry = loaded.get(key);
         if (entry) {
@@ -129,7 +166,7 @@ export default function useLookerCache<
         instance && visible.set(key, instance);
       },
     };
-  }, [reset]);
+  }, [maxHiddenItems, maxHiddenItemsSizeBytes, reset]);
 
   // delete cache during cleanup
   useEffect(() => () => cache.delete(), [cache]);

@@ -4,7 +4,6 @@ import { useEffect, useMemo } from "react";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
 import { gridAt, gridOffset, gridPage } from "./recoil";
-import useLookerCache from "./useLookerCache";
 
 export default function useRefreshers() {
   const cropToContent = useRecoilValue(fos.cropToContent(false));
@@ -76,7 +75,6 @@ export default function useRefreshers() {
   );
 
   return {
-    lookerCache: useLookerCache(reset),
     pageReset,
     reset,
   };

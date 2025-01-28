@@ -8,19 +8,19 @@ import { useLayoutEffect } from "react";
 import { useSetRecoilState } from "recoil";
 import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
 import { recommendedGridZoom } from "./recoil";
+import type { LookerCache } from "./types";
 import type { AtInterface } from "./useAt";
-import type useRefreshers from "./useRefreshers";
 
 export default ({
   id,
-  lookerCache,
+  cache,
   pixels,
   resizing,
   set,
   spotlight,
 }: {
   id: string;
-  lookerCache: ReturnType<typeof useRefreshers>["lookerCache"];
+  cache: LookerCache;
   pixels: string;
   resizing: boolean;
   set: (at: AtInterface) => void;
@@ -71,7 +71,7 @@ export default ({
       spotlight.removeEventListener("load", mount);
       spotlight.removeEventListener("rowchange", set);
       spotlight.destroy();
-      lookerCache.hide();
+      cache.hide();
 
       document.getElementById(pixels)?.classList.remove(styles.hidden);
       document.dispatchEvent(new CustomEvent("grid-unmount"));
@@ -79,7 +79,7 @@ export default ({
   }, [
     id,
     handleError,
-    lookerCache,
+    cache,
     pixels,
     resizing,
     set,

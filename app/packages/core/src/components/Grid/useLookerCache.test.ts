@@ -11,7 +11,7 @@ class Looker extends EventTarget {
 describe("useLookerCache", () => {
   it("assert loaded, loading, and visible cache states and transitions", () => {
     const { result, rerender } = renderHook(
-      (reset) => useLookerCache<Looker>(reset),
+      (reset) => useLookerCache<Looker>(reset, 2, 2),
       {
         initialProps: "one",
       }
