@@ -430,7 +430,10 @@ def _update_fc_version(client: pymongo.MongoClient):
         bumped = f"{server_version.major}.0"
         cmd = {"setFeatureCompatibilityVersion": bumped}
 
-        if server_version.major >= 7:
+        if (
+            server_version.major
+            >= foc.MONGODB_SERVER_FCV_REQUIRED_CONFIRMATION.major
+        ):
             # Server version 7.0+ added the confirm flag
             cmd["confirm"] = True
 

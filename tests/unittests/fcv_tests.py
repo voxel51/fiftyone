@@ -6,6 +6,7 @@ from pymongo.errors import (
     PyMongoError,
 )
 from packaging.version import Version
+from typing import Dict, Union
 
 import fiftyone.constants as foc
 from fiftyone.core.odm.database import (
@@ -14,39 +15,62 @@ from fiftyone.core.odm.database import (
 
 
 class TestUpdateFCV(unittest.TestCase):
-    @patch("pymongo.MongoClient")
-    @patch("fiftyone.core.odm.database._get_logger")
-    def test_update_fcv_success(self, mock_get_logger, mock_client):
-        # Set up the mock client and server info
-        server_version = Version(f"{foc.MIN_MONGODB_VERSION.major + 1}.0.0")
-        fc_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.0.0")
-        mock_admin = MagicMock()
-        mock_client.admin = mock_admin
-        mock_client.server_info.return_value = {"version": str(server_version)}
+    def _get_expected_update_call(
+        self, version: Version
+    ) -> Dict[str, Union[str, bool]]:
+        expected = {"setFeatureCompatibilityVersion": f"{version.major}.0"}
 
-        mock_get_logger.return_value = MagicMock()
-        mock_logger = mock_get_logger.return_value
+        if version.major >= foc.MONGODB_SERVER_FCV_REQUIRED_CONFIRMATION.major:
+            expected["confirm"] = True
 
-        # Mock the command responses
-        mock_admin.command.return_value = {
-            "featureCompatibilityVersion": {"version": str(fc_version)}
-        }
+        return expected
 
-        # Call the function
-        _update_fc_version(mock_client)
+    def test_update_fcv_success(self):
+        test_cases = [
+            (Version("5.0.4"), Version("4.4")),
+            (Version("6.0.4"), Version("5.4")),
+            (Version("7.0.4"), Version("6.4")),
+            (Version("8.0.4"), Version("7.4")),
+        ]
 
-        # Check that the FCV update attempt was made with the correct version
-        mock_admin.command.assert_any_call(
-            {
-                "setFeatureCompatibilityVersion": f"{foc.MIN_MONGODB_VERSION.major + 1}.0",
-                "confirm": True,
-            }
-        )
-        mock_logger.warning.assert_any_call(
-            "Your MongoDB server version is newer than your feature "
-            "compatibility version. "
-            "Upgrading the feature compatibility version now."
-        )
+        for server_version, fc_version in test_cases:
+            with self.subTest(
+                server_version=server_version, fc_version=fc_version
+            ):
+                with patch("pymongo.MongoClient") as mock_client:
+                    with patch(
+                        "fiftyone.core.odm.database._get_logger"
+                    ) as mock_get_logger:
+                        mock_admin = MagicMock()
+                        mock_client.admin = mock_admin
+                        mock_client.server_info.return_value = {
+                            "version": str(server_version)
+                        }
+
+                        mock_get_logger.return_value = MagicMock()
+                        mock_logger = mock_get_logger.return_value
+
+                        # Mock the command responses
+                        mock_admin.command.return_value = {
+                            "featureCompatibilityVersion": {
+                                "version": str(fc_version)
+                            }
+                        }
+
+                        # Call the function to test
+                        _update_fc_version(mock_client)
+
+                        # Check that the FCV update attempt was made with the correct version
+                        expected_call = self._get_expected_update_call(
+                            Version(f"{server_version.major}.0")
+                        )
+                        mock_admin.command.assert_any_call(expected_call)
+
+                        mock_logger.warning.assert_any_call(
+                            "Your MongoDB server version is newer than your feature "
+                            "compatibility version. "
+                            "Upgrading the feature compatibility version now."
+                        )
 
     @patch("pymongo.MongoClient")
     def test_connection_error(self, mock_client):
