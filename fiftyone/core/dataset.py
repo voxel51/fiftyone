@@ -7,6 +7,7 @@ FiftyOne datasets.
 """
 
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 import contextlib
 from datetime import datetime
 import fnmatch
@@ -16,10 +17,11 @@ import numbers
 import os
 import random
 import string
+import multiprocessing as mp
+
 
 from bson import json_util, ObjectId, DBRef
 import cachetools
-from deprecated import deprecated
 import mongoengine.errors as moe
 from pymongo import (
     DeleteMany,
@@ -28,7 +30,6 @@ from pymongo import (
     UpdateMany,
     UpdateOne,
 )
-from pymongo.collection import Collection
 from pymongo.errors import CursorNotFound, BulkWriteError
 
 import eta.core.serial as etas
@@ -2883,6 +2884,70 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._group_slice = new_default
 
         self.save()
+
+    def map_samples(
+        self,
+        map_func,
+        map_func_args=None,
+        aggregate_func=None,
+        num_workers=4,
+        progress=False,
+        autosave=False,
+        batch_size=None,
+        batching_strategy=None,
+    ):
+        """Maps a function over the samples in the dataset.
+
+        Args:
+            map_func: a function that accepts a :class:`fiftyone.core.sample.Sample` as
+                an input and returns a result
+            map_func_args (None): additional arguments to pass to the map_func
+            aggregate_func (None): an optional function that accepts a list of
+                the results of the mapping operation and returns the final
+                result. By default, the results are returned as a list
+            num_workers (4): the number of processes to use
+            progress (False): whether to render a progress bar (True/False)
+            autosave (False): whether to automatically save the results
+            batch_size (None): the batch size to use when autosaving samples
+            batching_strategy (None): the batching strategy to use for each save
+
+        Returns:
+            the result of the mapping operation, which is a list of the results
+            if ``aggregate_func`` is not provided
+        """
+        if not callable(map_func):
+            raise ValueError("map_func must be callable")
+
+        # Create a thread pool
+        num_workers = min(num_workers, mp.cpu_count() - 1)
+        with ThreadPoolExecutor(max_workers=num_workers) as executor:
+            futures = []
+
+            # Submit samples to the worker pool
+            for sample in self.iter_samples(
+                progress=progress,
+                autosave=autosave,
+                batch_size=batch_size,
+                batching_strategy=batching_strategy,
+            ):
+                future = executor.submit(map_func, sample, map_func_args)
+                futures.append((future, sample))
+
+            if aggregate_func is not None:
+                if callable(aggregate_func):
+                    result = aggregate_func(
+                        [future.result() for future, _ in futures]
+                    )
+                else:
+                    raise ValueError("aggregate_func must be callable")
+            else:
+                result = []
+
+                # Collect results
+                for future, sample in futures:
+                    result.append(future.result())
+
+            return result
 
     def iter_samples(
         self,

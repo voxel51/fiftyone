@@ -30,6 +30,56 @@ from .base import (
 logger = logging.getLogger(__name__)
 
 
+def _process_sample(sample, args):
+    """Process a single sample or its frames."""
+    (
+        eval_method,
+        eval_key,
+        processing_frames,
+        save,
+        tp_field,
+        fp_field,
+        fn_field,
+    ) = args
+    if processing_frames:
+        docs = sample.frames.values()
+    else:
+        docs = [sample]
+
+    matches = []
+    sample_tp = sample_fp = sample_fn = 0
+
+    for doc in docs:
+        doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
+        matches.extend(doc_matches)
+        tp, fp, fn = _tally_matches(doc_matches)
+        sample_tp += tp
+        sample_fp += fp
+        sample_fn += fn
+
+        if processing_frames and eval_key is not None:
+            doc[f"{eval_key}_tp"] = tp
+            doc[f"{eval_key}_fp"] = fp
+            doc[f"{eval_key}_fn"] = fn
+
+    if save:
+        sample[tp_field] = sample_tp
+        sample[fp_field] = sample_fp
+        sample[fn_field] = sample_fn
+
+    return matches
+
+
+def _aggregate_results(results):
+    """Aggregate results from multiple samples."""
+    matches = []
+
+    for sample_matches in results:
+        matches.extend(sample_matches)
+
+    return matches
+
+
 def evaluate_detections(
     samples,
     pred_field,
@@ -45,6 +95,8 @@ def evaluate_detections(
     dynamic=True,
     custom_metrics=None,
     progress=None,
+    num_workers=None,
+    batch_size=None,
     **kwargs,
 ):
     """Evaluates the predicted detections in the given samples with respect to
@@ -141,6 +193,11 @@ def evaluate_detections(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
+        num_workers (None): the number of processes to use to compute the
+            evaluation. If none is provided, use single-threaded evaluation
+        batch_size (None): an optional batch size to use for adaptive batcher
+            for sample updates. If not provided, use the default batching
+            strategy.
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
 
@@ -183,44 +240,40 @@ def evaluate_detections(
     processing_frames = samples._is_frame_field(pred_field)
     save = eval_key is not None
 
-    if save:
-        tp_field = "%s_tp" % eval_key
-        fp_field = "%s_fp" % eval_key
-        fn_field = "%s_fn" % eval_key
+    tp_field = "%s_tp" % eval_key if save else None
+    fp_field = "%s_fp" % eval_key if save else None
+    fn_field = "%s_fn" % eval_key if save else None
 
     if config.requires_additional_fields:
         _samples = samples
     else:
         _samples = samples.select_fields([gt_field, pred_field])
 
-    matches = []
+    args = (
+        eval_method,
+        eval_key,
+        processing_frames,
+        save,
+        tp_field,
+        fp_field,
+        fn_field,
+    )
+
     logger.info("Evaluating detections...")
-    for sample in _samples.iter_samples(progress=progress, autosave=save):
-        if processing_frames:
-            docs = sample.frames.values()
-        else:
-            docs = [sample]
-
-        sample_tp = 0
-        sample_fp = 0
-        sample_fn = 0
-        for doc in docs:
-            doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
-            matches.extend(doc_matches)
-            tp, fp, fn = _tally_matches(doc_matches)
-            sample_tp += tp
-            sample_fp += fp
-            sample_fn += fn
-
-            if processing_frames and save:
-                doc[tp_field] = tp
-                doc[fp_field] = fp
-                doc[fn_field] = fn
-
-        if save:
-            sample[tp_field] = sample_tp
-            sample[fp_field] = sample_fp
-            sample[fn_field] = sample_fn
+    if num_workers:
+        matches = _samples.map_samples(
+            _process_sample,
+            map_func_args=args,
+            aggregate_func=_aggregate_results,
+            num_workers=num_workers,
+            progress=progress,
+            autosave=save,
+            batch_size=batch_size,
+        )
+    else:
+        matches = []
+        for sample in _samples.iter_samples(progress=progress, autosave=save):
+            matches.extend(_process_sample(sample, args))
 
     results = eval_method.generate_results(
         samples,
