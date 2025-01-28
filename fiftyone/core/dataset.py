@@ -2931,21 +2931,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 batching_strategy=batching_strategy,
             ):
                 future = executor.submit(map_func, sample, map_func_args)
-                futures.append((future, sample))
+                futures.append(future)
+
+            result = [future.result() for future in futures]
 
             if aggregate_func is not None:
                 if callable(aggregate_func):
-                    result = aggregate_func(
-                        [future.result() for future, _ in futures]
-                    )
+                    result = aggregate_func(result)
                 else:
                     raise ValueError("aggregate_func must be callable")
-            else:
-                result = []
-
-                # Collect results
-                for future, sample in futures:
-                    result.append(future.result())
 
             return result
 
