@@ -10,8 +10,9 @@ from concurrent.futures import ThreadPoolExecutor
 import contextlib
 from copy import copy, deepcopy
 import itertools
-import multiprocessing as mp
+import logging
 import numbers
+from queue import Queue
 
 
 from bson import ObjectId
@@ -30,6 +31,9 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 
 fost = fou.lazy_import("fiftyone.core.stages")
+
+
+logger = logging.getLogger(__name__)
 
 
 class DatasetView(foc.SampleCollection):
@@ -460,6 +464,8 @@ class DatasetView(foc.SampleCollection):
         autosave=False,
         batch_size=None,
         batching_strategy=None,
+        skip_failures=True,
+        warn_failures=False,
     ):
         """Maps a function over the samples in the dataset.
 
@@ -475,6 +481,10 @@ class DatasetView(foc.SampleCollection):
             autosave (False): whether to automatically save the results
             batch_size (None): the batch size to use when autosaving samples
             batching_strategy (None): the batching strategy to use for each save
+            skip_failures (True): whether to gracefully continue without raising an
+                error if processing fails for a sample
+            warn_failures (False): whether to log a warning if processing fails for
+                a sample
 
         Returns:
             the result of the mapping operation, which is a list of the results
@@ -484,10 +494,8 @@ class DatasetView(foc.SampleCollection):
             raise ValueError("map_func must be callable")
 
         # Create a thread pool
-        num_workers = min(num_workers, mp.cpu_count() - 1)
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
-            futures = []
-
+            futures_queue = Queue()
             # Submit samples to the worker pool
             for sample in self.iter_samples(
                 progress=progress,
@@ -496,9 +504,24 @@ class DatasetView(foc.SampleCollection):
                 batching_strategy=batching_strategy,
             ):
                 future = executor.submit(map_func, sample, map_func_args)
-                futures.append(future)
+                futures_queue.put(future)
 
-            result = [future.result() for future in futures]
+            # Process results
+            result = []
+            for _ in range(futures_queue.qsize()):
+                try:
+                    future = futures_queue.get()
+                    result.append(future.result())
+                except Exception as e:
+                    if not skip_failures:
+                        raise RuntimeError(
+                            "Worker failed while processing sample"
+                        ) from e
+
+                    if warn_failures:
+                        logger.warning("Error processing sample: %s", e)
+
+                    result.append(None)
 
             if aggregate_func is not None:
                 if callable(aggregate_func):
