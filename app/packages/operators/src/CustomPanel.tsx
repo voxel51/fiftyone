@@ -1,20 +1,22 @@
+import { useTrackEvent } from "@fiftyone/analytics";
 import { CenteredStack, CodeBlock, scrollable } from "@fiftyone/components";
 import { clearUseKeyStores } from "@fiftyone/core/src/plugins/SchemaIO/hooks";
 import {
   PanelSkeleton,
   usePanelLoading,
+  usePanelState,
   useSetPanelCloseEffect,
 } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import { Box, Typography } from "@mui/material";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import OperatorIO from "./OperatorIO";
 import { PANEL_LOAD_TIMEOUT } from "./constants";
 import { useActivePanelEventsCount } from "./hooks";
 import { Property } from "./types";
 import { CustomPanelProps, useCustomPanelHooks } from "./useCustomPanelHooks";
-import { useTrackEvent } from "@fiftyone/analytics";
 import usePanelEvent from "./usePanelEvent";
+import { isNullish } from "@fiftyone/utilities";
 
 export function CustomPanel(props: CustomPanelProps) {
   const { panelId, dimensions, panelName, panelLabel, isModalPanel } = props;
@@ -95,6 +97,7 @@ export function CustomPanel(props: CustomPanelProps) {
             onPathChange={handlePanelStatePathChange}
             shouldClearUseKeyStores={false}
             isModalPanel={isModalPanel}
+            updatableDefaultValue={false}
           />
         </DimensionRefresher>
       </Box>
@@ -128,9 +131,24 @@ export function defineCustomPanel({
   on_change_spaces,
   panel_name,
   panel_label,
+  reset_state,
 }) {
   return (props) => {
     const { dimensions, panelNode, isModalPanel } = props;
+    const [state, setState] = usePanelState();
+    const [localState] = usePanelState(null, null, true);
+    const hasState = !isNullish(state?.state);
+    const isLoaded = localState?.loaded;
+    const isReset = useRef(false);
+
+    if (!isLoaded && hasState && reset_state) {
+      if (!isReset.current) {
+        setState({});
+        isReset.current = true;
+      }
+      return null;
+    }
+
     return (
       <CustomPanel
         panelId={panelNode?.id}

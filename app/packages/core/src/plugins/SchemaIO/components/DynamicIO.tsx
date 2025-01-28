@@ -1,18 +1,17 @@
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
+import { useUnboundState } from "@fiftyone/state";
 import { isNullish } from "@fiftyone/utilities";
 import { get, isEqual, set } from "lodash";
-import { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { isPathUserChanged } from "../hooks";
 import {
   getComponent,
   getErrorsForView,
   isCompositeView,
-  isEditableView,
   isInitialized,
 } from "../utils";
 import { AncestorsType, SchemaType, ViewPropsType } from "../utils/types";
 import ContainerizedComponent from "./ContainerizedComponent";
-import { useUnboundState } from "@fiftyone/state";
 
 export default function DynamicIO(props: ViewPropsType) {
   const { schema, onChange } = props;
@@ -73,28 +72,31 @@ function useStateInitializer(props: ViewPropsType) {
   const computedSchema = getComputedSchema(props);
   const { default: defaultValue } = computedSchema;
   const shouldInitialize = useMemo(() => {
-    return !isCompositeView(computedSchema) && isEditableView(computedSchema);
+    return !isCompositeView(computedSchema);
   }, [computedSchema]);
   const basicData = useMemo(() => {
     if (shouldInitialize) {
       return data;
     }
   }, [shouldInitialize, data]);
-  const unboundState = useUnboundState({ computedSchema, props });
+  const unboundState = useUnboundState({ computedSchema, props, data });
 
   useEffect(() => {
     const { computedSchema, props } = unboundState;
-    const { data, path, root_id } = props || {};
+    const { data, path, root_id, otherProps = {} } = props || {};
+    const { updatableDefaultValue = true } = otherProps;
+    const updateToDefault = updatableDefaultValue ? true : isNullish(data);
     if (
       shouldInitialize &&
-      !isEqual(data, defaultValue) &&
-      !isPathUserChanged(path, root_id) &&
+      updateToDefault &&
       !isNullish(defaultValue) &&
-      !isInitialized(props)
+      !isPathUserChanged(path, root_id) &&
+      !isInitialized(props) &&
+      !isEqual(data, defaultValue)
     ) {
       onChange(path, defaultValue, computedSchema);
     }
-  }, [defaultValue, onChange, unboundState]);
+  }, [shouldInitialize, defaultValue, onChange, unboundState]);
 
   useEffect(() => {
     if (basicData) {
