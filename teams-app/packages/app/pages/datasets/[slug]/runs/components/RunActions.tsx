@@ -20,6 +20,7 @@ import StopCircleOutlinedIcon from "@mui/icons-material/StopCircleOutlined";
 import { Typography } from "@mui/material";
 import { noop } from "lodash";
 import isUrl from "../utils/isUrl";
+import { useCallback, useMemo } from "react";
 
 export default function RunActions(props: RunActionsPropsType) {
   const {
@@ -43,6 +44,8 @@ export default function RunActions(props: RunActionsPropsType) {
   if (!canManageRun) return null;
 
   const isRunning = runState === OPERATOR_RUN_STATES.RUNNING;
+  const canViewInOrchestrator =
+    runLink && isUrl(runLink) && !hideViewInOrchestrator;
 
   const isExpired = result?.includes("expired");
 
@@ -54,94 +57,126 @@ export default function RunActions(props: RunActionsPropsType) {
   // when operation expired, we won't be able to download the logs from the url
   const canDownloadLogs = Boolean(signedUrl) && !isExpired;
 
-  const handleButtonClick = (url: string) => {
+  const handleButtonClick = useCallback((url: string) => {
     window.open(url, "_blank", "noopener,noreferrer");
-  };
+  }, []);
 
-  const items: OverflowMenuItemProps[] = [
-    {
-      primaryText: "Re-run",
-      IconComponent: <ReplayIcon color="secondary" />,
+  const items: OverflowMenuItemProps[] = useMemo(() => {
+    const menuItems: OverflowMenuItemProps[] = [
+      {
+        primaryText: "Re-run",
+        IconComponent: <ReplayIcon color="secondary" />,
+        onClick() {
+          reRun({
+            variables: { operationId: id },
+            successMessage: "Successfully triggered a re-run",
+            onSuccess: refresh,
+          });
+        },
+      },
+      {
+        primaryText: "Mark as failed",
+        IconComponent: <StopCircleOutlinedIcon color="secondary" />,
+        onClick() {
+          markFailed({
+            variables: { operationId: id },
+            successMessage: "Successfully marked the run as failed",
+          });
+        },
+        disabled: !isRunning,
+        title: !isRunning
+          ? "Cannot mark non-running operation as failed"
+          : undefined,
+      },
+    ];
+
+    // view in orchestrator button
+    if (canViewInOrchestrator) {
+      items.push({
+        primaryText: "View in orchestrator",
+        IconComponent: <SettingsSystemDaydreamOutlinedIcon color="secondary" />,
+        onClick() {
+          window.open(runLink); // todo: add support for link
+        },
+      });
+    }
+
+    // download logs
+    if (hasLogSetup)
+      menuItems.push({
+        primaryText: <Typography>Download logs</Typography>,
+        IconComponent: <DownloadOutlined />,
+        onClick() {
+          if (canDownloadLogs && signedUrl) {
+            if (runLink?.startsWith("http")) {
+              // when signedUrl is also a url link
+              window.open(signedUrl, "_blank", "noopener,noreferrer");
+            } else {
+              // Download the content using the signedUrl
+              const link = document.createElement("a");
+              link.href = signedUrl;
+              const datetime =
+                new Date().toISOString().split("T")[0] +
+                "_" +
+                new Date().toISOString().split("T")[1].split(".")[0];
+              link.download = "logs_" + datetime + ".txt";
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }
+          }
+        },
+        disabled: !canDownloadLogs,
+        title: !canDownloadLogs ? "Log not available" : undefined,
+      });
+
+    // delete button
+    menuItems.push({
+      primaryText: <Typography color="error">Delete</Typography>,
+      IconComponent: <DeleteOutline color="error" />,
       onClick() {
-        reRun({
+        deleteRun({
           variables: { operationId: id },
-          successMessage: "Successfully triggered a re-run",
+          successMessage: "Successfully deleted an operation",
           onSuccess: refresh,
         });
       },
-    },
-    {
-      primaryText: "Mark as failed",
-      IconComponent: <StopCircleOutlinedIcon color="secondary" />,
-      onClick() {
-        markFailed({
-          variables: { operationId: id },
-          successMessage: "Successfully marked the run as failed",
-        });
-      },
-      disabled: !isRunning,
-      title: !isRunning
-        ? "Cannot mark non-running operation as failed"
-        : undefined,
-    },
-  ];
-
-  // download logs
-  if (hasLogSetup)
-    items.push({
-      primaryText: <Typography>Download logs</Typography>,
-      IconComponent: <DownloadOutlined />,
-      onClick() {
-        if (canDownloadLogs && signedUrl) {
-          if (runLink?.startsWith("http")) {
-            // when signedUrl is also a url link
-            window.open(signedUrl, "_blank", "noopener,noreferrer");
-          } else {
-            // Download the content using the signedUrl
-            const link = document.createElement("a");
-            link.href = signedUrl;
-            link.download = "logs.txt";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          }
-        }
-      },
-      disabled: !canDownloadLogs,
-      title: !canDownloadLogs ? "Log not available" : undefined,
+      disabled: isRunning,
+      title: isRunning ? "Cannot delete running operation" : undefined,
     });
 
-  // delete button
-  items.push({
-    primaryText: <Typography color="error">Delete</Typography>,
-    IconComponent: <DeleteOutline color="error" />,
-    onClick() {
-      deleteRun({
-        variables: { operationId: id },
-        successMessage: "Successfully deleted an operation",
-        onSuccess: refresh,
+    // config logs
+    if (!hasLogSetup) {
+      menuItems.push({
+        isDivider: true,
       });
-    },
-    disabled: isRunning,
-    title: isRunning ? "Cannot delete running operation" : undefined,
-  });
+      menuItems.push({
+        primaryText: <Typography color="secondary">Configure logs </Typography>,
+        IconComponent: (
+          <ExternalLinkIcon color="secondary" width={17} height={17} />
+        ),
+        iconPosition: "right",
+        onClick() {
+          handleButtonClick(logDocUrl);
+        },
+      });
+    }
 
-  // config logs
-  if (!hasLogSetup) {
-    items.push({
-      isDivider: true,
-    });
-    items.push({
-      primaryText: <Typography color="secondary">Configure logs </Typography>,
-      IconComponent: (
-        <ExternalLinkIcon color="secondary" width={17} height={17} />
-      ),
-      iconPosition: "right",
-      onClick() {
-        handleButtonClick(logDocUrl);
-      },
-    });
-  }
+    return menuItems;
+  }, [
+    reRun,
+    markFailed,
+    deleteRun,
+    id,
+    refresh,
+    isRunning,
+    hasLogSetup,
+    canDownloadLogs,
+    signedUrl,
+    runLink,
+    handleButtonClick,
+    logDocUrl,
+  ]);
 
   return (
     <OverflowMenu
