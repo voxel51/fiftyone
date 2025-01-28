@@ -428,6 +428,11 @@ def _update_fc_version(client: pymongo.MongoClient):
 
     if _is_fcv_upgradeable(fc_version, server_version):
         bumped = f"{server_version.major}.0"
+        cmd = {"setFeatureCompatibilityVersion": bumped}
+
+        if server_version.major >= 7:
+            # Server version 7.0+ added the confirm flag
+            cmd["confirm"] = True
 
         try:
             _logger.warning(
@@ -435,12 +440,8 @@ def _update_fc_version(client: pymongo.MongoClient):
                 "compatibility version. "
                 "Upgrading the feature compatibility version now."
             )
-            client.admin.command(
-                {
-                    "setFeatureCompatibilityVersion": bumped,
-                    "confirm": True,
-                }
-            )
+            client.admin.command(cmd)
+
         except OperationFailure as e:
             _logger.error(
                 "Operation failed while updating database's feature "
