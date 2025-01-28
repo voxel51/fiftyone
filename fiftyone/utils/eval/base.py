@@ -161,16 +161,15 @@ class BaseEvaluationResults(foe.EvaluationResults):
         super().__init__(samples, config, eval_key, backend=backend)
         self.custom_metrics = custom_metrics
 
-    def add_custom_metrics(self, custom_metrics):
+    def add_custom_metrics(self, custom_metrics, overwrite=True):
         """Computes the given custom metrics and adds them to these results.
 
         Args:
             custom_metrics: a list of custom metrics to compute or a dict
                 mapping metric names to kwargs dicts
+            overwrite (True): whether to recompute any custom metrics that
+                have already been applied
         """
-        if not custom_metrics:
-            return
-
         _custom_metrics = self.config.custom_metrics
 
         if _custom_metrics is None:
@@ -180,10 +179,19 @@ class BaseEvaluationResults(foe.EvaluationResults):
             _custom_metrics = {k: None for k in _custom_metrics}
 
         if isinstance(custom_metrics, list):
-            metric_uris = custom_metrics
             custom_metrics = {k: None for k in custom_metrics}
-        else:
-            metric_uris = list(custom_metrics.keys())
+
+        if not overwrite:
+            custom_metrics = {
+                k: v
+                for k, v in custom_metrics.items()
+                if k not in _custom_metrics
+            }
+
+        if not custom_metrics:
+            return
+
+        metric_uris = list(custom_metrics.keys())
 
         _custom_metrics.update(custom_metrics)
         if all(v is None for v in _custom_metrics.values()):
