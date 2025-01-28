@@ -48,13 +48,16 @@ export default function RunActions(props: RunActionsPropsType) {
     runLink && isUrl(runLink) && !hideViewInOrchestrator;
 
   const isExpired = result?.includes("expired");
-
-  // TO UPDATE:
-  const hasLogSetup = true;
+  const hasLogSetup = Boolean(signedUrl);
   // TODO: update the url and move it to Constants.ts
   const logDocUrl = "https://docs.voxel51.com/teams/teams_plugins.html";
 
-  // when operation expired, we won't be able to download the logs from the url
+  // success or fail: run_link is null = the user never configured their log location
+  // success or fail: run_link is present and log_status is null and the result field is not "expired" = we successfully published logs
+  // fail: run_link is present and log_status is null and result field is "expired" = DO executor failed to exit we can't promise logs were ever flushed
+  // success or fail: run_link is present and log_status is some exception = we failed to publish logs
+
+  // TODO: update this after backend adds log_status field
   const canDownloadLogs = Boolean(signedUrl) && !isExpired;
 
   const handleButtonClick = useCallback((url: string) => {
@@ -96,7 +99,7 @@ export default function RunActions(props: RunActionsPropsType) {
         primaryText: "View in orchestrator",
         IconComponent: <SettingsSystemDaydreamOutlinedIcon color="secondary" />,
         onClick() {
-          window.open(runLink); // todo: add support for link
+          window.open(runLink);
         },
       });
     }
