@@ -5702,7 +5702,7 @@ Core
 - Added support for :ref:`importing <VideoClassificationDirectoryTree-import>`
   and :ref:`exporting <VideoClassificationDirectoryTree-export>` video
   classification datasets organized as directory trees on disk
-- Added `BDD100K <https://bdd-data.berkeley.edu>`_,
+- Added `BDD100K <http://bdd-data.berkeley.edu>`_,
   `HMDB51 <https://serre-lab.clps.brown.edu/resource/hmdb-a-large-human-motion-database>`_,
   and `UCF101 <https://www.crcv.ucf.edu/research/data-sets/ucf101>`_ to
   the :ref:`Dataset Zoo <dataset-zoo>`
