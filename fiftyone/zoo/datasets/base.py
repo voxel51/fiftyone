@@ -437,7 +437,7 @@ class BDD100KDataset(FiftyOneDataset):
                     test/
                     val/
 
-    You can register at https://bdd-data.berkeley.edu in order to get links to
+    You can register at http://bdd-data.berkeley.edu in order to get links to
     download the data.
 
     Example usage::
@@ -460,7 +460,7 @@ class BDD100KDataset(FiftyOneDataset):
         7.10 GB
 
     Source
-        https://bdd-data.berkeley.edu
+        http://bdd-data.berkeley.edu
 
     Args:
         source_dir (None): the directory containing the manually downloaded
@@ -479,7 +479,7 @@ class BDD100KDataset(FiftyOneDataset):
 
     @property
     def license(self):
-        return "https://doc.bdd100k.com/license.html"
+        return "http://bdd-data.berkeley.edu/download.html"
 
     @property
     def tags(self):
@@ -3126,7 +3126,7 @@ class QuickstartGeoDataset(FiftyOneDataset):
 
     @property
     def license(self):
-        return "https://doc.bdd100k.com/license.html"
+        return "http://bdd-data.berkeley.edu/download.html"
 
     @property
     def tags(self):

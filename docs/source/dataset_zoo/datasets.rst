@@ -558,14 +558,14 @@ detection, and segmentation labels.
                     test/
                     val/
 
-    You can register at https://bdd-data.berkeley.edu in order to get links
+    You can register at http://bdd-data.berkeley.edu in order to get links
     to download the data.
 
 **Details**
 
 -   Dataset name: ``bdd100k``
--   Dataset source: https://bdd-data.berkeley.edu
--   Dataset license: https://bdd-data.berkeley.edu/download.html
+-   Dataset source: http://bdd-data.berkeley.edu
+-   Dataset license: http://bdd-data.berkeley.edu/download.html
 -   Dataset size: 7.10 GB
 -   Tags: ``image, multilabel, automotive, manual``
 -   Supported splits: ``train, validation, test``
