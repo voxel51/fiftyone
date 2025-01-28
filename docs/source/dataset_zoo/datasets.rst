@@ -565,7 +565,7 @@ detection, and segmentation labels.
 
 -   Dataset name: ``bdd100k``
 -   Dataset source: https://bdd-data.berkeley.edu
--   Dataset license: https://bdd-data.berkeley.edu
+-   Dataset license: https://bdd-data.berkeley.edu/download.html
 -   Dataset size: 7.10 GB
 -   Tags: ``image, multilabel, automotive, manual``
 -   Supported splits: ``train, validation, test``
