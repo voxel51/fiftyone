@@ -22,7 +22,10 @@ export default function ({
   const getFontSize = useFontSize(id);
   const selectSample = useSelectSample(records);
 
-  const hideItem = useCallback((id: ID) => cache.hide(id.description), [cache]);
+  const hideItem = useCallback(
+    (id: ID) => cache.isShown(id.description) && cache.hide(id.description),
+    [cache]
+  );
 
   const showItem = useCallback(
     (
@@ -35,22 +38,23 @@ export default function ({
       if (cache.isShown(key)) {
         return cache.sizeOf(key);
       }
+
       const instance = cache.get(key);
-      if (instance) {
+      if (instance && instance.loaded) {
         instance.attach(element, dimensions, getFontSize());
         cache.show(key);
         return cache.sizeOf(key);
+      }
+
+      if (zooming) {
+        // we are scrolling fast, skip creation
+        return 0;
       }
 
       const result = store.get(id);
 
       if (!createLooker.current || !result) {
         throw new Error("bad data");
-      }
-
-      if (zooming) {
-        // we are scrolling fast, skip creation
-        return 0;
       }
 
       const looker: fos.Lookers = createLooker.current?.(

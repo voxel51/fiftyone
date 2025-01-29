@@ -381,10 +381,7 @@ export default class Spotlight<K, V> extends EventTarget {
 
     await this.#next(false);
 
-    while (
-      this.#containerHeight < this.#height + this.#padding &&
-      !this.#forward.finished
-    ) {
+    while (this.#containerHeight < this.#height && !this.#forward.finished) {
       await this.#next(false);
     }
 

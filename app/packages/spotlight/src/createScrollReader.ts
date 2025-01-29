@@ -9,7 +9,6 @@ export default function createScrollReader(
   render: (zooming: boolean, dispatchOffset?: boolean) => void,
   getScrollSpeedThreshold: () => number
 ) {
-  let animationFrameId: ReturnType<typeof requestAnimationFrame>;
   let destroyed = false;
   let prior: number;
   let scrolling = false;
@@ -23,6 +22,7 @@ export default function createScrollReader(
 
   const scrollEnd = () => {
     scrolling = false;
+    zooming = false;
     requestAnimationFrame(() => render(zooming, true));
   };
 
@@ -59,12 +59,12 @@ export default function createScrollReader(
       return;
     }
 
-    if (element.parentElement) {
-      scrolling && prior && render(zooming);
+    if (element.parentElement && scrolling) {
+      prior && render(zooming);
       updateScrollStatus();
     }
 
-    animationFrameId = requestAnimationFrame(animate);
+    requestAnimationFrame(animate);
   };
 
   animate();
@@ -74,14 +74,6 @@ export default function createScrollReader(
       destroyed = true;
       element.removeEventListener("scroll", scroll);
       element.removeEventListener("scrollend", scrollEnd);
-
-      if (timeout) {
-        clearTimeout(timeout);
-      }
-
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
     },
     zooming: () => zooming,
   };
