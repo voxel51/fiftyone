@@ -10619,7 +10619,6 @@ class SampleCollection(object):
         return _handle_id_fields(self, field_name)
 
     def _is_full_collection(self):
-        """Checks if the current instance represents a full collection."""
         if isinstance(self, fod.Dataset) and self.media_type != fom.GROUP:
             return True
 
