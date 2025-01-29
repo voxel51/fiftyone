@@ -10625,7 +10625,7 @@ class SampleCollection(object):
         if isinstance(self, fov.DatasetView):
             if not (
                 self._pipeline()
-                or isinstance(self, fov.ClipsView)
+                or self._is_clips
                 or self._dataset.media_type == fom.GROUP
             ):
                 return True
