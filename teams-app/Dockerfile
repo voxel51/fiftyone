@@ -56,7 +56,7 @@ COPY --from=builder /opt/teams-app/packages/app/next.config.ts /opt/app/packages
 COPY --from=builder /opt/teams-app/packages/app/public /app/packages/app/public
 COPY --from=builder /opt/teams-app/package.json /app
 
-COPY --from=builder --chown=voxel51:voxel51 /opt/teams-app/packages/app/.next/standalone /app/packages/app
+COPY --from=builder --chown=voxel51:voxel51 /opt/teams-app/packages/app/.next/standalone/packages/app /app/packages/app
 COPY --from=builder --chown=voxel51:voxel51 /opt/teams-app/packages/app/.next/static /app/packages/app/.next/static
 COPY --from=builder --chown=voxel51:voxel51 /opt/teams-app/node_modules /app/packages/app/node_modules
 COPY --from=builder --chown=voxel51:voxel51 /opt/teams-app/packages/app/node_modules /app/packages/app/node_modules
@@ -65,4 +65,4 @@ USER 1001:1001
 
 EXPOSE 3000
 
-CMD ["node", "/app/packages/app/packages/app/server.js"]
+CMD ["node", "/app/packages/app/server.js"]
