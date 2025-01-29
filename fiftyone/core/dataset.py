@@ -2906,7 +2906,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             aggregate_func (None): an optional function that accepts a list of
                 the results of the mapping operation and returns the final
                 result. By default, the results are returned as a list
-            num_workers (4): the number of processes to use
+            num_workers (4): the number of worker threads to use
             progress (False): whether to render a progress bar (True/False)
             autosave (False): whether to automatically save the results
             batch_size (None): the batch size to use when autosaving samples
