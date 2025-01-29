@@ -5,14 +5,19 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import itertools
 import logging
+import os
+
 import numpy as np
 
 import fiftyone.core.dataset as fod
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
+os.environ["GRPC_VERBOSITY"] = "NONE"
 fou.ensure_import("apache_beam")
+tqdm = fou.lazy_import("tqdm")
 
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions
@@ -338,6 +343,130 @@ def beam_export(
             )
 
 
+def beam_map(
+    sample_collection,
+    map_fcn,
+    shard_size=None,
+    shard_method="id",
+    num_workers=None,
+    options=None,
+    progress=False,
+    verbose=False,
+):
+    """Applies the given function to each sample in the given collection via
+     `Apache Beam <https://beam.apache.org>`_ and saves any sample edits.
+
+    This function is a parallelized alternative to
+    :meth:`iter_samples(autosave=True) <fiftyone.core.collections.SampleCollection.iter_samples>`
+    that effectively performs the following operation in parallel::
+
+        for batch_view in fou.iter_batches(sample_collection, num_shards):
+            for sample in batch_view.iter_samples(autosave=True):
+                map_fcn(sample)
+
+    Example::
+
+        import fiftyone as fo
+        import fiftyone.utils.beam as foub
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("cifar10", split="train")
+        view = dataset.select_fields("ground_truth")
+
+        def map_fcn(sample):
+            sample["gt_label"] = sample.ground_truth.label.upper()
+
+        foub.beam_map(view, map_fcn, num_workers=8, progress=True)
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        map_fcn: a function to apply to each sample
+        shard_size (None): an optional number of samples to distribute to each
+            worker at a time. By default, samples are evenly distributed to
+            workers with one shard per worker
+        shard_method ("id"): whether to use IDs (``"id"``) or slices
+            (``"slice"``) to assign samples to workers
+        num_workers (None): the number of workers to use when no ``options``
+            are provided. The default is
+            :meth:`fiftyone.core.utils.recommend_process_pool_workers`
+        options (None): a
+            ``apache_beam.options.pipeline_options.PipelineOptions`` that
+            configures how to run the pipeline. By default, the pipeline will
+            be run via Beam's direct runner using multiprocessing with
+            ``num_workers`` workers
+        progress (False): whether to render progress bar(s) for each worker
+        verbose (False): whether to log the Beam pipeline's messages
+    """
+    if shard_method == "slice":
+        n = len(sample_collection)
+    else:
+        ids = sample_collection.values("id")
+        n = len(ids)
+
+    if num_workers is None:
+        num_workers = fou.recommend_process_pool_workers()
+
+    if shard_size is not None:
+        # Fixed size shards
+        edges = list(range(0, n + 1, shard_size))
+        if edges[-1] < n:
+            edges.append(n)
+    else:
+        # Split collection into exactly `num_workers` shards
+        edges = [int(round(b)) for b in np.linspace(0, n, num_workers + 1)]
+
+    if shard_method == "slice":
+        # Slice batches
+        slices = list(zip(edges[:-1], edges[1:]), 1)
+    else:
+        # ID batches
+        slices = [ids[i:j] for i, j in zip(edges[:-1], edges[1:])]
+
+    num_shards = len(slices)
+    batches = list(
+        zip(
+            range(num_shards),
+            itertools.repeat(num_shards),
+            slices,
+        )
+    )
+
+    if isinstance(sample_collection, fov.DatasetView):
+        dataset_name = sample_collection._root_dataset.name
+        view_stages = sample_collection._serialize()
+    else:
+        dataset_name = sample_collection.name
+        view_stages = None
+
+    map_batch = MapBatch(
+        dataset_name,
+        map_fcn,
+        view_stages=view_stages,
+        save=True,
+        progress=progress,
+    )
+
+    if options is None:
+        options = PipelineOptions(
+            runner="direct",
+            direct_num_workers=min(num_workers, num_shards),
+            direct_running_mode="multi_processing",
+        )
+
+    logger = logging.getLogger()
+    level = logger.level if verbose else logging.CRITICAL
+    with fou.SetAttributes(logger, level=level):
+        with beam.Pipeline(options=options) as pipeline:
+            _ = (
+                pipeline
+                | "InitMap" >> beam.Create(batches)
+                | "MapBatches" >> beam.ParDo(map_batch)
+            )
+
+    sample_collection.reload()
+
+
 class ImportBatch(beam.DoFn):
     def __init__(
         self,
@@ -514,6 +643,65 @@ class ExportBatch(beam.DoFn):
         kwargs["progress"] = False
 
         self._sample_collection[start:stop].export(**kwargs)
+
+
+class MapBatch(beam.DoFn):
+    def __init__(
+        self,
+        dataset_name,
+        map_fcn,
+        view_stages=None,
+        save=False,
+        progress=False,
+    ):
+        self.dataset_name = dataset_name
+        self.map_fcn = map_fcn
+        self.view_stages = view_stages
+        self.save = save
+        self.progress = progress
+
+        self._sample_collection = None
+
+    def setup(self):
+        import fiftyone as fo
+        import fiftyone.core.view as fov
+
+        dataset = fo.load_dataset(self.dataset_name)
+
+        if self.view_stages:
+            sample_collection = fov.DatasetView._build(
+                dataset, self.view_stages
+            )
+        else:
+            sample_collection = dataset
+
+        self._sample_collection = sample_collection
+
+    def process(self, element, **kwargs):
+        i, num_batches, batch = element
+
+        if isinstance(batch, tuple):
+            # Slice batches
+            start, stop = batch
+            total = stop - start
+            batch_view = self._sample_collection[start:stop]
+        else:
+            # ID batches
+            sample_ids = batch
+            total = len(sample_ids)
+            batch_view = fov.make_optimized_select_view(
+                self._sample_collection, sample_ids
+            )
+
+        if self.progress:
+            desc = f"Batch {i + 1:0{len(str(num_batches))}}/{num_batches}"
+            with tqdm.tqdm(total=total, desc=desc, position=i) as pbar:
+                for sample in batch_view.iter_samples(autosave=self.save):
+                    self.map_fcn(sample)
+                    pbar.update(1)
+        else:
+            for sample in batch_view.iter_samples(autosave=self.save):
+                self.map_fcn(sample)
 
 
 def _pop_first(x):
