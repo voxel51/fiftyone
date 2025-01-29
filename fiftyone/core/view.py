@@ -12,7 +12,8 @@ from copy import copy, deepcopy
 import itertools
 import logging
 import numbers
-
+import queue
+import threading
 
 from bson import ObjectId
 from pymongo.errors import CursorNotFound
@@ -466,65 +467,97 @@ class DatasetView(foc.SampleCollection):
         skip_failures=True,
         warn_failures=False,
     ):
-        """Maps a function over the samples in the dataset.
-
-        Args:
-            map_func: a function that accepts a :class:`fiftyone.core.sample.Sample` as
-                an input and returns a result
-            map_func_args (None): additional arguments to pass to the map_func
-            aggregate_func (None): an optional function that accepts a list of
-                the results of the mapping operation and returns the final
-                result. By default, the results are returned as a list
-            num_workers (4): the number of worker threads to use
-            progress (False): whether to render a progress bar (True/False)
-            autosave (False): whether to automatically save the results
-            batch_size (None): the batch size to use when autosaving samples
-            batching_strategy (None): the batching strategy to use for each save
-            skip_failures (True): whether to gracefully continue without raising an
-                error if processing fails for a sample
-            warn_failures (False): whether to log a warning if processing fails for
-                a sample
-
-        Returns:
-            the result of the mapping operation, which is a list of the results
-            if ``aggregate_func`` is not provided
-        """
         if not callable(map_func):
             raise ValueError("map_func must be callable")
 
-        # Create a thread pool
-        with ThreadPoolExecutor(max_workers=num_workers) as executor:
-            futures = []
-            result = []
-            max_queue = 10000
+        # Create shared queues with max size
+        MAX_QUEUE_SIZE = 10000
+        work_queue = queue.Queue(maxsize=MAX_QUEUE_SIZE)
+        result_queue = queue.Queue()
 
-            # Submit samples to the worker pool
+        def worker(thread_name):
+            """Worker thread function that processes samples from the queue"""
+            while True:
+                try:
+                    sample = work_queue.get_nowait()
+                    try:
+                        result = map_func(sample, map_func_args)
+                        result_queue.put(("success", result))
+                    except Exception as e:
+                        if skip_failures:
+                            if warn_failures:
+                                print(
+                                    f"Warning: Failed to process sample: {e}"
+                                )
+                            result_queue.put(("failure", None))
+                        else:
+                            result_queue.put(("error", e))
+                    work_queue.task_done()
+                except queue.Empty:
+                    print(f"Worker thread {thread_name} exiting")
+                    break
+
+        results = []
+        sample_count = 0
+        error_occurred = False
+        threads = []
+
+        try:
+            # Start worker threads
+            for i in range(num_workers):
+                thread = threading.Thread(
+                    target=worker,
+                    name=f"SampleMapper-{i}",
+                    args=(f"SampleMapper-{i}",),
+                    daemon=True,
+                )
+                thread.start()
+                threads.append(thread)
+
+            # Process samples
             for sample in self.iter_samples(
                 progress=progress,
                 autosave=autosave,
                 batch_size=batch_size,
                 batching_strategy=batching_strategy,
             ):
-                future = executor.submit(map_func, sample, map_func_args)
-                futures.append(future)
-                if len(futures) > max_queue:
-                    self._process_future_result(
-                        futures, result, skip_failures, warn_failures
-                    )
-                    futures = []
+                if error_occurred and not skip_failures:
+                    break
 
-            # Process remaining results
-            self._process_future_result(
-                futures, result, skip_failures, warn_failures
-            )
+                # Simply block until space is available in the queue
+                work_queue.put(sample)
+                sample_count += 1
 
-            if aggregate_func is not None:
-                if callable(aggregate_func):
-                    result = aggregate_func(result)
-                else:
-                    raise ValueError("aggregate_func must be callable")
+            # Collect all results
+            while not result_queue.empty():
+                status, result = result_queue.get()
+                if status == "error" and not skip_failures:
+                    raise result
+                elif status == "success":
+                    results.append(result)
 
-            return result
+        finally:
+            # Clean up threads
+            for thread in threads:
+                thread.join(timeout=1.0)
+
+        # Check result count
+        if len(results) != sample_count:
+            message = f"Worker threads did not process all samples, getting {len(results)} results out of {sample_count}"
+            if not skip_failures:
+                raise RuntimeError(message)
+            else:
+                if warn_failures:
+                    logger.warning(message)
+
+        # Apply aggregation if specified
+        if aggregate_func is not None:
+            if callable(aggregate_func):
+                results = aggregate_func(results)
+            else:
+                raise ValueError("aggregate_func must be callable")
+
+        return results
 
     def _process_future_result(
         self, futures, result, skip_failures, warn_failures
