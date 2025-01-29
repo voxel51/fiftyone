@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-teams-app-docker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     steps:
       - name: checkout-fiftyone-teams
         uses: actions/checkout@v4
