@@ -2111,6 +2111,7 @@ Let's look at an example evaluation metric operator:
     :linenos:
 
     import fiftyone.operators as foo
+    from fiftyone.operators import types
 
     class ExampleMetric(foo.EvaluationMetric):
         @property
@@ -2141,10 +2142,14 @@ Let's look at an example evaluation metric operator:
                 unlisted=True,  # required
             )
 
-        def get_parameters(self, ctx, inputs):
-            """You can implement this method to collect user input for the
-            metric's parameters in the App.
+        def resolve_input(self, ctx, inputs):
+            """You can optionally implement this method to collect user input
+            for the metric's parameters in the App.
+
+            Returns:
+                a :class:`fiftyone.operators.types.Property`, or None
             """
+            inputs = types.Object()
             inputs.str(
                 "value",
                 label="Example value",
@@ -2152,6 +2157,7 @@ Let's look at an example evaluation metric operator:
                 default="foo",
                 required=True,
             )
+            return types.Property(inputs)
 
         def compute(self, samples, results, value="foo"):
             """All metric operators must implement this method. It defines the
