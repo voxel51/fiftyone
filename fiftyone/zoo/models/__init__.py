@@ -302,7 +302,7 @@ def load_zoo_model(
     config_dict = deepcopy(model.default_deployment_config_dict)
 
     if isinstance(model, RemoteZooModel) and config_dict is None:
-        model = model._load_model(**kwargs)
+        model = model.load_model(**kwargs)
     else:
         model_path = model.get_path_in_dir(models_dir)
         model = fom.load_model(config_dict, model_path=model_path, **kwargs)
@@ -505,15 +505,15 @@ class RemoteZooModel(ZooModel):
     def _get_model_path(self):
         return self.get_path_in_dir(fo.config.model_zoo_dir)
 
-    def _load_model(self, **kwargs):
+    def load_model(self, **kwargs):
         model_path = self._get_model_path()
         return _load_remote_model(self.name, model_path, **kwargs)
 
-    def _get_parameters(self, ctx, inputs):
+    def resolve_input(self, ctx):
         model_path = self._get_model_path()
-        _get_remote_model_parameters(self.name, model_path, ctx, inputs)
+        return _resolve_remote_input(self.name, model_path, ctx)
 
-    def _parse_parameters(self, ctx, params):
+    def parse_parameters(self, ctx, params):
         model_path = self._get_model_path()
         _parse_remote_model_parameters(self.name, model_path, ctx, params)
 
@@ -551,20 +551,24 @@ def _load_remote_model(model_name, model_path, **kwargs):
     return module.load_model(model_name, model_path, **kwargs)
 
 
-def _get_remote_model_parameters(model_name, model_path, ctx, inputs):
+def _resolve_remote_input(model_name, model_path, ctx):
     model_dir = os.path.dirname(model_path)
 
     module = _import_zoo_module(model_dir)
-    if hasattr(module, "get_parameters"):
-        module.get_parameters(model_name, ctx, inputs)
+    if not hasattr(module, "resolve_input"):
+        return None
+
+    return module.resolve_input(model_name, ctx)
 
 
 def _parse_remote_model_parameters(model_name, model_path, ctx, params):
     model_dir = os.path.dirname(model_path)
 
     module = _import_zoo_module(model_dir)
-    if hasattr(module, "parse_parameters"):
-        module.parse_parameters(model_name, ctx, params)
+    if not hasattr(module, "parse_parameters"):
+        return
+
+    module.parse_parameters(model_name, ctx, params)
 
 
 def _import_zoo_module(model_dir):

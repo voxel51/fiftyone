@@ -1993,6 +1993,197 @@ You can also view frame-level evaluation results as
         1. ToFrames(config=None)
         2. ToEvaluationPatches(eval_key='eval', config=None)
 
+.. _custom-evaluation-metrics:
+
+Custom evaluation metrics
+_________________________
+
+You can add custom metrics to your evaluation runs in FiftyOne.
+
+Custom metrics are supported by all FiftyOne evaluation methods, and you can
+compute them via the SDK, or directly
+:ref:`from the App <model-evaluation-panel>` if you're running
+:ref:`FiftyOne Teams <fiftyone-teams>`.
+
+Using custom metrics
+--------------------
+
+The example below shows how to compute a custom metric from the
+`metric-examples <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/metric-examples>`_
+plugin when evaluating object detections:
+
+.. code-block:: shell
+
+    # Install the example metrics plugin
+    fiftyone plugins download \
+        https://github.com/voxel51/fiftyone-plugins \
+        --plugin-names @voxel51/metric-examples
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Custom metrics are specified via their operator URI
+    metric_uri = "@voxel51/metric-examples/example_metric"
+
+    # Custom metrics can optionally accept kwargs that configure their behavior
+    metric_kwargs = dict(value="spam")
+
+    results = dataset.evaluate_detections(
+        "predictions",
+        gt_field="ground_truth",
+        eval_key="eval",
+        custom_metrics={metric_uri: metric_kwargs},
+    )
+
+    # Custom metrics may populate new fields on each sample
+    dataset.count_values("eval_example_metric")
+    # {'spam': 200}
+
+    # Custom metrics may also compute an aggregate value, which is included in
+    # the run's metrics report
+    results.print_metrics()
+    """
+    accuracy   0.25
+    precision  0.26
+    recall     0.86
+    fscore     0.40
+    support    1735
+    example    spam  # the custom metric
+    """
+
+    #
+    # Launch the app
+    #
+    # Open the Model Evaluation panel and you'll see the "Example metric" in
+    # the Summary table
+    #
+    session = fo.launch_app(dataset)
+
+    # Deleting an evaluation automatically deletes any custom metrics
+    # associated with it
+    dataset.delete_evaluation("eval")
+    assert not dataset.has_field("eval_example_metric")
+
+.. image:: /images/evaluation/custom-evaluation-metric.png
+    :alt: custom-evaluation-metric
+    :align: center
+
+When using metric operators without custom parameters, you can also pass a list
+of operator URI's to the `custom_metrics` parameter:
+
+.. code-block:: python
+
+    # Apply two custom metrics to a regression evaluation
+    results = dataset.evaluate_regressions(
+        "predictions",
+        gt_field="ground_truth",
+        eval_key="eval",
+        custom_metrics=[
+            "@voxel51/metric-examples/absolute_error",
+            "@voxel51/metric-examples/squared_error",
+        ],
+    )
+
+Developing custom metrics
+-------------------------
+
+Each custom metric is implemented as an :ref:`operator <developing-operators>`
+that implements the
+:class:`EvaluationMetric <fiftyone.operators.evaluation_metric.EvaluationMetric>`
+interface.
+
+Let's look at an example evaluation metric operator:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.operators as foo
+    from fiftyone.operators import types
+
+    class ExampleMetric(foo.EvaluationMetric):
+        @property
+        def config(self):
+            return foo.EvaluationMetricConfig(
+                # The metric's URI: f"{plugin_name}/{name}"
+                name="example_metric",  # required
+
+                # The display name of the metric in the Summary table of the
+                # Model Evaluation panel
+                label="Example metric",  # required
+
+                # A description for the operator
+                description="An example evaluation metric",  # optional
+
+                # List of evaluation types that the metrics supports
+                # EG: ["regression", "classification", "detection", ...]
+                # If omitted, the metric may be applied to any evaluation
+                eval_types=None,  # optional
+
+                # An optional custom key under which the metric's aggregate
+                # value is stored and returned in methods like `metrics()`
+                # If omitted, the metric's `name` is used
+                aggregate_key="example",  # optional
+
+                # Metrics are generally not designed to be directly invoked
+                # via the Operator browser, so they should be unlisted
+                unlisted=True,  # required
+            )
+
+        def resolve_input(self, ctx, inputs):
+            """You can optionally implement this method to collect user input
+            for the metric's parameters in the App.
+
+            Returns:
+                a :class:`fiftyone.operators.types.Property`, or None
+            """
+            inputs = types.Object()
+            inputs.str(
+                "value",
+                label="Example value",
+                description="The example value to store/return",
+                default="foo",
+                required=True,
+            )
+            return types.Property(inputs)
+
+        def compute(self, samples, results, value="foo"):
+            """All metric operators must implement this method. It defines the
+            computation done by the metric and which per-frame and/or
+            per-sample fields store the computed value.
+
+            This method can return None or the aggregate metric value. The
+            aggregrate metric value is included in the result's `metrics()`
+            and displayed in the Summary table of the Model Evaluation panel.
+            """
+            dataset = samples._dataset
+            eval_key = results.key
+            metric_field = f"{eval_key}_{self.config.name}"
+            dataset.add_sample_field(metric_field, fo.StringField)
+            samples.set_field(metric_field, value).save()
+
+            return value
+
+        def get_fields(self, samples, config, eval_key):
+            """Lists the fields that were populated by the evaluation metric
+            with the given key, if any.
+            """
+            return [f"{eval_key}_{self.config.name}"]
+
+.. note::
+
+    By convention, evaluation metrics should include `f"{eval_key}"` in any
+    sample fields that they populate. If your metric populates fields whose
+    names do not contain the evaluation key, then you must also implement
+    :meth:`rename() <fiftyone.operators.evaluation_metric.EvaluationMetric.rename>`
+    and
+    :meth:`cleanup() <fiftyone.operators.evaluation_metric.EvaluationMetric.cleanup>`
+    so that they are properly handled when renaming/deleting evaluation runs.
+
 .. _custom-evaluation-backends:
 
 Custom evaluation backends

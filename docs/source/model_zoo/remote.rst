@@ -216,7 +216,7 @@ A remote source of models is defined by a directory with the following contents:
         def load_model(model_name, model_path, **kwargs):
             pass
 
-        def get_parameters(model_name, ctx, inputs):
+        def resolve_input(model_name, ctx):
             pass
 
         def parse_parameters(model_name, ctx, params):
@@ -428,13 +428,13 @@ When
 :meth:`load_zoo_model(name_or_url, ..., **kwargs) <fiftyone.zoo.models.load_zoo_model>`
 is called, any `kwargs` are passed through to ``load_model(..., **kwargs)``.
 
-.. _model-zoo-remote-get-parameters:
+.. _model-zoo-remote-resolve-input:
 
-Get parameters
-~~~~~~~~~~~~~~
+Resolve input
+~~~~~~~~~~~~~
 
 If a remote source contains model(s) that support custom parameters, then the
-``__init__.py`` file can define a ``get_parameters()`` method with the
+``__init__.py`` file can define a ``resolve_input()`` method with the
 signature below that defines any necessary properties to collect the model's
 custom parameters from a user when the model is invoked
 :ref:`via an operator <using-operators>`:
@@ -442,7 +442,9 @@ custom parameters from a user when the model is invoked
 .. code-block:: python
     :linenos:
 
-    def get_parameters(model_name, ctx, inputs):
+    from fiftyone.operators import types
+
+    def resolve_input(model_name, ctx):
         """Defines any necessary properties to collect the model's custom
         parameters from a user during prompting.
 
@@ -450,8 +452,11 @@ custom parameters from a user when the model is invoked
             model_name: the name of the model, as declared by the ``base_name`` and
                 optional ``version`` fields of the manifest
             ctx: an :class:`fiftyone.operators.ExecutionContext`
-            inputs: a :class:`fiftyone.operators.types.Property`
+
+        Returns:
+            a :class:`fiftyone.operators.types.Property`, or None
         """
+        inputs = types.Object()
         inputs.list(
             "classes",
             types.String(),
@@ -463,6 +468,7 @@ custom parameters from a user when the model is invoked
             ),
             view=types.AutocompleteView(),
         )
+        return types.Property(inputs)
 
 .. note::
 
