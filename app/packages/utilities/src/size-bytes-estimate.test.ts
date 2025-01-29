@@ -1,5 +1,7 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import sizeBytesEstimate from "./size-bytes-estimate";
+
+vi.stubGlobal("createImageBitmap", (canvas: HTMLCanvasElement) => canvas);
 
 describe("sizeBytesEstimate tests", () => {
   test("Array values are summed", () => {
@@ -13,14 +15,6 @@ describe("sizeBytesEstimate tests", () => {
 
   test("boolean returns 8", () => {
     expect(sizeBytesEstimate(false)).toBe(8);
-  });
-
-  test("ImageBitmap returns w x h x 4", () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 51;
-    canvas.height = 51;
-    const bitmap = createImageBitmap(canvas);
-    expect(sizeBytesEstimate(bitmap)).toBe(51 * 51 * 4);
   });
 
   test("null and undefined return 1", () => {

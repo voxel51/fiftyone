@@ -1,4 +1,4 @@
-import { DefaultValue, atom, selector } from "recoil";
+import { DefaultValue, atom, atomFamily, selector } from "recoil";
 
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
@@ -6,6 +6,23 @@ import * as fos from "@fiftyone/state";
 export const defaultGridZoom = selector<number>({
   key: "defaultGridZoom",
   get: ({ get }) => get(fos.config)?.gridZoom,
+});
+
+const gridAutosizingStore = atomFamily<boolean, string>({
+  key: "gridAutosizingStore",
+  default: true,
+  effects: (datasetId) => [
+    fos.getBrowserStorageEffectForKey(`gridAutosizing-${datasetId}`, {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const gridAutosizing = selector({
+  key: "gridAutosizing",
+  get: ({ get }) => get(gridAutosizingStore(get(fos.datasetId) ?? "")),
+  set: ({ get, set }, value) =>
+    set(gridAutosizingStore(get(fos.datasetId) ?? ""), value),
 });
 
 export const gridPage = atom({
@@ -34,11 +51,17 @@ export const gridSpacing = atom({
 
 export const gridZoom = selector<number>({
   key: "gridZoom",
-  get: ({ get }) =>
-    get(interevenedGridZoom) ??
-    get(recommendedGridZoom) ??
-    get(storedGridZoom) ??
-    get(defaultGridZoom),
+  get: ({ get }) => {
+    const intervened = get(interevenedGridZoom);
+
+    if (typeof intervened === "number") {
+      return intervened;
+    }
+
+    return (
+      get(recommendedGridZoom) ?? get(storedGridZoom) ?? get(defaultGridZoom)
+    );
+  },
   set: ({ get, set }, value) => {
     let result = value;
     if (value instanceof DefaultValue) {
@@ -46,6 +69,8 @@ export const gridZoom = selector<number>({
     }
 
     if (get(recommendedGridZoom)) {
+      set(fos.snackbarErrors, ["Grid autosizing disabled"]);
+      set(gridAutosizing, false);
       set(interevenedGridZoom, result);
     }
 
@@ -91,10 +116,14 @@ export const interevenedGridZoom = atom<number | null>({
   ],
 });
 
+// ensure navigator is defined
+const deviceMemory =
+  typeof navigator !== "undefined" ? navigator.deviceMemory : 8;
+
 export const maxGridItemsSizeBytes = atom({
   key: "maxGridItemsSizeBytes",
   // @ts-ignore
-  default: ((navigator.deviceMemory ?? 8) / 8) * 1e9,
+  default: (deviceMemory / 8) * 1e9,
 });
 
 export const pageParameters = selector({

@@ -94,16 +94,18 @@ export const scrollToPosition = <K, V>({
   top: number;
 }) => {
   if (at) {
-    const row = forward.find(at.description);
+    let row = forward.find(at.description);
     if (row) {
       el.scrollTo(ZERO, backward.height + row.from - at.offset);
-    } else {
-      const row = backward.find(at.description);
-      if (row) {
-        el.scrollTo(ZERO, backward.height - row.from - row.height);
-      }
+      return;
     }
-  } else if (offset !== false && top) {
+
+    row = backward.find(at.description);
+    row && el.scrollTo(ZERO, backward.height - row.from - row.height);
+    return;
+  }
+
+  if (offset !== false && top) {
     el.scrollTo(ZERO, top);
   }
 };

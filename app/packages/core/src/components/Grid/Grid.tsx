@@ -6,9 +6,9 @@ import React, { useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 import {
+  gridAutosizing,
   gridCrop,
   gridSpacing,
-  interevenedGridZoom,
   maxGridItemsSizeBytes,
   pageParameters,
 } from "./recoil";
@@ -57,7 +57,7 @@ function Grid() {
   const { get, set } = useAt(pageReset);
 
   const setSample = fos.useExpandSample(store);
-  const disableSizing = !!useRecoilValue(interevenedGridZoom);
+  const autosizing = useRecoilValue(gridAutosizing);
 
   const spotlight = useMemo(() => {
     /** SPOTLIGHT REFRESHER */
@@ -73,7 +73,7 @@ function Grid() {
       ...renderer,
 
       maxRows: MAX_ROWS,
-      maxItemsSizeBytes: disableSizing ? 8e9 : maxBytes / 2,
+      maxItemsSizeBytes: autosizing ? maxBytes / 2 : undefined,
       scrollbar: true,
       spacing,
 
@@ -82,7 +82,7 @@ function Grid() {
       rowAspectRatioThreshold: threshold,
     });
   }, [
-    disableSizing,
+    autosizing,
     get,
     maxBytes,
     page,

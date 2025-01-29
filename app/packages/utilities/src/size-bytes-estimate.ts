@@ -22,7 +22,7 @@ const sizer = (object: SizerTypes) => {
     return 1;
   }
 
-  if (object instanceof ImageBitmap) {
+  if (typeof ImageBitmap !== "undefined" && object instanceof ImageBitmap) {
     return object.height * object.width * 4;
   }
 

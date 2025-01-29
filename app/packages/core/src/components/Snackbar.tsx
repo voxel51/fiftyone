@@ -10,7 +10,17 @@ export default function Snackbar() {
   return snackErrors.length ? (
     <Toast
       duration={SNACK_VISIBLE_DURATION}
-      message={snackErrors}
+      layout={{
+        bottom: "50px !important",
+        vertical: "bottom",
+        horizontal: "center",
+      }}
+      message={
+        <>
+          <div>{snackErrors}</div>
+          <div></div>
+        </>
+      }
       onHandleClose={() => setSnackErrors([])}
     />
   ) : null;
