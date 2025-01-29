@@ -63,4 +63,4 @@ USER 1001:1001
 
 EXPOSE 3000
 
-CMD ["node", "/app/packages/app/server.js"]
+CMD ["node", "/app/packages/app/packages/app/server.js"]
