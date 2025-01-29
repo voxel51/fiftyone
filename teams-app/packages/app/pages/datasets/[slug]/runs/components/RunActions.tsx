@@ -2,6 +2,7 @@ import {
   useCurrentDatasetPermission,
   useCurrentUser,
   useMutation,
+  useNotification,
 } from "@fiftyone/hooks";
 import { ExternalLinkIcon, OverflowMenu } from "@fiftyone/teams-components";
 import { OverflowMenuItemProps } from "@fiftyone/teams-components/src/OverflowMenu";
@@ -19,8 +20,8 @@ import SettingsSystemDaydreamOutlinedIcon from "@mui/icons-material/SettingsSyst
 import StopCircleOutlinedIcon from "@mui/icons-material/StopCircleOutlined";
 import { Typography } from "@mui/material";
 import { noop } from "lodash";
-import isUrl from "../utils/isUrl";
 import { useCallback, useMemo } from "react";
+import isUrl from "../utils/isUrl";
 
 export default function RunActions(props: RunActionsPropsType) {
   const {
@@ -49,20 +50,28 @@ export default function RunActions(props: RunActionsPropsType) {
 
   const isExpired = result?.includes("expired");
   const hasLogSetup = Boolean(signedUrl);
+
   // TODO: update the url and move it to Constants.ts
   const logDocUrl = "https://docs.voxel51.com/teams/teams_plugins.html";
+  // TODO: update this after backend adds log_status field
+  const logStatus = null;
 
   // success or fail: run_link is null = the user never configured their log location
   // success or fail: run_link is present and log_status is null and the result field is not "expired" = we successfully published logs
   // fail: run_link is present and log_status is null and result field is "expired" = DO executor failed to exit we can't promise logs were ever flushed
   // success or fail: run_link is present and log_status is some exception = we failed to publish logs
 
-  // TODO: update this after backend adds log_status field
-  const canDownloadLogs = Boolean(signedUrl) && !isExpired;
+  const canDownloadLogs = Boolean(signedUrl) && logStatus == null && !isExpired;
+  const downloadDisabledTooltip = useMemo(() => {
+    if (isExpired) return "Delegated operation has expired";
+    if (logStatus) return logStatus;
+  }, [isExpired, signedUrl]);
 
   const handleButtonClick = useCallback((url: string) => {
     window.open(url, "_blank", "noopener,noreferrer");
   }, []);
+
+  const [_, sendNotification] = useNotification();
 
   const items: OverflowMenuItemProps[] = useMemo(() => {
     const menuItems: OverflowMenuItemProps[] = [
@@ -126,11 +135,15 @@ export default function RunActions(props: RunActionsPropsType) {
               document.body.appendChild(link);
               link.click();
               document.body.removeChild(link);
+              sendNotification({
+                msg: "Log downloaded successfully",
+                variant: "success",
+              });
             }
           }
         },
         disabled: !canDownloadLogs,
-        title: !canDownloadLogs ? "Log not available" : undefined,
+        title: !canDownloadLogs ? downloadDisabledTooltip : undefined,
       });
 
     // delete button
