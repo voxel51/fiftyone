@@ -24,6 +24,7 @@ RUN rm -f teams-app/packages/app/.env.local \
     cross-spawn \
     nodemon \
     vite-node \
+    vite \
     vitest \
     tsconfig-paths \
     esbuild" \
