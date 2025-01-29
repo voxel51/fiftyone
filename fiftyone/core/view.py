@@ -12,7 +12,6 @@ from copy import copy, deepcopy
 import itertools
 import logging
 import numbers
-from queue import Queue
 
 
 from bson import ObjectId
@@ -495,7 +494,10 @@ class DatasetView(foc.SampleCollection):
 
         # Create a thread pool
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
-            futures_queue = Queue()
+            futures = []
+            result = []
+            max_queue = 10000
+
             # Submit samples to the worker pool
             for sample in self.iter_samples(
                 progress=progress,
@@ -504,24 +506,17 @@ class DatasetView(foc.SampleCollection):
                 batching_strategy=batching_strategy,
             ):
                 future = executor.submit(map_func, sample, map_func_args)
-                futures_queue.put(future)
+                futures.append(future)
+                if len(futures) > max_queue:
+                    self._process_future_result(
+                        futures, result, skip_failures, warn_failures
+                    )
+                    futures = []
 
-            # Process results
-            result = []
-            for _ in range(futures_queue.qsize()):
-                try:
-                    future = futures_queue.get()
-                    result.append(future.result())
-                except Exception as e:
-                    if not skip_failures:
-                        raise RuntimeError(
-                            "Worker failed while processing sample"
-                        ) from e
-
-                    if warn_failures:
-                        logger.warning("Error processing sample: %s", e)
-
-                    result.append(None)
+            # Process remaining results
+            self._process_future_result(
+                futures, result, skip_failures, warn_failures
+            )
 
             if aggregate_func is not None:
                 if callable(aggregate_func):
@@ -530,6 +525,23 @@ class DatasetView(foc.SampleCollection):
                     raise ValueError("aggregate_func must be callable")
 
             return result
+
+    def _process_future_result(
+        self, futures, result, skip_failures, warn_failures
+    ):
+        for future in futures:
+            try:
+                result.append(future.result())
+            except Exception as e:
+                if not skip_failures:
+                    raise RuntimeError(
+                        "Worker failed while processing sample"
+                    ) from e
+
+                if warn_failures:
+                    logger.warning("Error processing sample: %s", e)
+
+                result.append(None)
 
     def iter_samples(
         self,
