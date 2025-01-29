@@ -59,7 +59,6 @@
         "micromatch": "^4.0.8",
         "postcss": "^8.4.31",
         "graphql": "^16.8.1",
-        "cross-spawn": "7.0.5",
         "ip": "^2.0.1",
         "es5-ext": "0.10.63"
     },

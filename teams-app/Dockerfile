@@ -21,6 +21,7 @@ RUN rm -f teams-app/packages/app/.env.local \
     @vitejs \
     @vitest \
     @types \
+    cross-spawn \
     nodemon \
     vite-node \
     vitest \
