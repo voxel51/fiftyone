@@ -50,7 +50,7 @@ RUN apt-get -qq -y update && apt-get -qq -y upgrade \
     && mkdir -p /app/packages/app/.next \
     && chown --silent --no-dereference --recursive voxel51:voxel51 /app
 
-COPY --from=builder /opt/teams-app/packages/app/next.config.js /opt/app/packages/app/package.json /app/packages/app
+COPY --from=builder /opt/teams-app/packages/app/next.config.ts /opt/app/packages/app/package.json /app/packages/app
 COPY --from=builder /opt/teams-app/packages/app/public /app/packages/app/public
 COPY --from=builder /opt/teams-app/package.json /app
 
