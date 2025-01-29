@@ -40,7 +40,9 @@ export function tracesToData(
           return [idx / (colorscale.length - 1), color.toCSSRGBString()];
         }
       );
-
+      // if (!trace?.points) {
+      //   throw new Error("points not found in trace");
+      // }
       return {
         x: trace.map((d) => d.points[0]),
         y: trace.map((d) => d.points[1]),

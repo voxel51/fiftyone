@@ -37,3 +37,4 @@ operators:
   - delete_workspace
   - sync_last_modified_at
   - list_files
+  - set_visualization_point_field

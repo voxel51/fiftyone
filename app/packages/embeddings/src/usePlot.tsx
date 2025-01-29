@@ -67,6 +67,7 @@ function combineTraces(
   if (!a) {
     return null;
   }
+  if (!b) return a;
   return Object.keys(a).reduce((acc, key) => {
     return {
       ...acc,

@@ -32,16 +32,17 @@ function convertPlotlyRelayoutEventToPlotBounds(
 export default function useCurrentPlotWindow() {
   const [bounds, setBounds] = useRecoilState(atoms.bounds);
 
-  const updateBounds = _.debounce((relayoutEvent: PlotlyRelayoutEvent) => {
+  const updateBounds = _.throttle((relayoutEvent: PlotlyRelayoutEvent) => {
     if (
       relayoutEvent.hasOwnProperty("xaxis.range[0]") &&
       relayoutEvent.hasOwnProperty("xaxis.range[1]") &&
       relayoutEvent.hasOwnProperty("yaxis.range[0]") &&
       relayoutEvent.hasOwnProperty("yaxis.range[1]")
     ) {
+      console.log("updating bounds", relayoutEvent);
       setBounds(convertPlotlyRelayoutEventToPlotBounds(relayoutEvent));
     }
-  }, 1000);
+  }, 100);
 
   const resetBounds = () => {
     setBounds(null);

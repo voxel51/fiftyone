@@ -5,6 +5,7 @@ import { usePanelStatePartial } from "@fiftyone/spaces";
 import { fetchExtendedStage } from "./fetch";
 import { atoms as selectionAtoms } from "./usePlotSelection";
 import useCurrentPlotWindow from "./useCurrentPlotWindow";
+import { useBrainResult } from "./useBrainResult";
 
 export default function useExtendedStageEffect() {
   const datasetName = useRecoilValue(fos.datasetName);
@@ -20,6 +21,7 @@ export default function useExtendedStageEffect() {
   const slices = useRecoilValue(fos.currentSlices(false));
   const lassoPoints = useRecoilValue(selectionAtoms.lassoPoints);
   const currentPlotWindow = useCurrentPlotWindow();
+  const [brainKey] = useBrainResult();
 
   useEffect(() => {
     if (loadedPlot && Array.isArray(selection)) {
@@ -31,6 +33,7 @@ export default function useExtendedStageEffect() {
         slices,
         lassoPoints,
         plotBounds: currentPlotWindow.bounds,
+        brainKey,
       }).then(async (res) => {
         const currentDataset = await getCurrentDataset();
         if (currentDataset !== datasetName) return;

@@ -46,9 +46,10 @@ class OnPlotLoad(HTTPEndpoint):
 
 def _on_plot_load(data):
     dataset = _load_dataset(data["datasetName"])
+    brain_key = data["brainKey"]
 
     view = _get_filtered_view(data, dataset)
-    point_field = "point"  # TODO: move to dynamic data["pointField"]
+    point_field = f"{brain_key}_point"  # TODO: refine this
 
     sub_view = view.mongo(
         [
@@ -116,9 +117,10 @@ class OnPlotBoundsChange(HTTPEndpoint):
 
 def _on_bounds_change(data):
     dataset = _load_dataset(data["datasetName"])
+    brain_key = data["brainKey"]
+    point_field = f"{brain_key}_point"  # TODO: refine this
 
     view = _get_filtered_view(data, dataset)
-    point_field = "point"  # TODO: move to dynamic data["pointField"]
     bounds = data["plotBounds"]
     min_x, min_y = bounds["a"]
     max_x, max_y = bounds["b"]
@@ -129,22 +131,25 @@ def _on_bounds_change(data):
     # OR just only allow a max of 10k points to be augmented
 
     # filter only points within bounds:
-    # TODO: "point" should be dynamic and provided via the brain_key
+    stage = {
+        "$match": {
+            point_field: {
+                "$geoWithin": {"$box": [[min_x, min_y], [max_x, max_y]]}
+            }
+        }
+    }
+    print(stage)
     view = view.mongo(
         [
-            {
-                "$match": {
-                    "point": {
-                        "$geoWithin": {
-                            "$box": [[min_x, min_y], [max_x, max_y]]
-                        }
-                    }
-                }
-            }
+            stage,
+            {"$sort": {"_id": 1}},
+            # {
+            #     "$limit": 1_000
+            # }
         ]
     )
     view = view.mongo(
-        [{"$sample": {"size": 10_000}}]
+        [{"$sample": {"size": 1000}}]
     )  # TODO: make this a parameter or constant, remove hardcoded value
 
     traces, style = _generate_traces_for_point_field(
@@ -388,6 +393,8 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
         selected_ids = data["selection"]  # selected IDs in plot
         slices = data["slices"]
         lassoPoints = data["lassoPoints"]
+        brain_key = data["brainKey"]
+        point_field = f"{brain_key}_point"  # TODO: refine this
 
         print("EmbeddingsExtendedStage lasso_points_as_tuples")
         lasso_points_as_tuples = get_fiftyone_geowithin(lassoPoints)
@@ -399,8 +406,7 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
                 [
                     {
                         "$match": {
-                            # TODO: can't hardcode "point"
-                            "point": {
+                            point_field: {
                                 "$geoWithin": {
                                     "$polygon": lasso_points_as_tuples
                                 }

@@ -2394,6 +2394,43 @@ def _parse_spaces(ctx, spaces):
     return fo.Space.from_dict(spaces)
 
 
+class SetVisualizationPointField(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="set_visualization_point_field",
+            label="Set visualization point field",
+            dynamic=False,  # faster rendering
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        brain_keys = ctx.dataset.list_brain_runs()
+
+        inputs.enum("brain_key", brain_keys, required=True, label="Brain Key")
+
+        return types.Property(
+            inputs, view=types.View(label="Set visualization point field")
+        )
+
+    def execute(self, ctx):
+        field_name = ctx.params["brain_key"]
+        viz_results = ctx.dataset.load_brain_results(field_name)
+        field_name = "point"  # TODO: f"{brain_key}_point"
+        try:
+            ctx.dataset.delete_sample_field(field_name)
+        except:
+            pass
+        ctx.dataset.add_sample_field(field_name, fo.ListField, fo.FloatField)
+        if not viz_results:
+            raise ValueError("No brain results found")
+        for point, id in zip(viz_results.points, viz_results.sample_ids):
+            sample = ctx.dataset[id]
+            sample[field_name] = list(point)
+            sample.save()
+
+
 def register(p):
     p.register(EditFieldInfo)
     p.register(CloneSelectedSamples)
@@ -2427,3 +2464,4 @@ def register(p):
     p.register(DeleteWorkspace)
     p.register(SyncLastModifiedAt)
     p.register(ListFiles)
+    p.register(SetVisualizationPointField)
