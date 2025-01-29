@@ -10623,14 +10623,14 @@ class SampleCollection(object):
             return True
 
         if isinstance(self, fov.DatasetView):
+            # pylint:disable=no-member
             if not (
-                self._pipeline()
+                len(self._stages)
                 or self._is_clips
                 or self._dataset.media_type == fom.GROUP
             ):
                 return True
 
-            # pylint:disable=no-member
             if (
                 self._dataset.media_type == fom.GROUP
                 and len(self._stages) == 1
