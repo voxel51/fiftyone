@@ -10619,18 +10619,22 @@ class SampleCollection(object):
         return _handle_id_fields(self, field_name)
 
     def _is_full_collection(self):
+        """Checks if the current instance represents a full collection."""
         if isinstance(self, fod.Dataset) and self.media_type != fom.GROUP:
             return True
 
-        # pylint:disable=no-member
-        if (
-            isinstance(self, fov.DatasetView)
-            and self._dataset.media_type == fom.GROUP
-            and len(self._stages) == 1
-            and isinstance(self._stages[0], fos.SelectGroupSlices)
-            and self._pipeline() == []
-        ):
-            return True
+        if isinstance(self, fov.DatasetView):
+            if not self._pipeline() and self._dataset.media_type != fom.GROUP:
+                return True
+
+            # pylint:disable=no-member
+            if (
+                self._dataset.media_type == fom.GROUP
+                and len(self._stages) == 1
+                and isinstance(self._stages[0], fos.SelectGroupSlices)
+                and not self._pipeline()
+            ):
+                return True
 
         return False
 
