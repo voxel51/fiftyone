@@ -7,7 +7,7 @@
         "oss/*"
     ],
     "main": "index.js",
-    "author": "Ritchie Martori <ritchie@voxel51.com>",
+    "author": "Voxel51, Inc.",
     "license": "MIT",
     "scripts": {
         "build": "cd packages/app && yarn build",
