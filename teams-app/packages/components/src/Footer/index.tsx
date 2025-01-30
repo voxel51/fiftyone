@@ -9,7 +9,7 @@ const {
   DOCUMENTATION_LINK,
   GITHUB_LINK,
   PRIVACY_POLICY_LINK,
-  SLACK_LINK,
+  DISCORD_LINK,
   TERMS_OF_SERVICE_LINK,
   COMPANY_NAME,
 } = CONSTANT_VARIABLES;
@@ -30,7 +30,7 @@ export default function Footer() {
       <Grid paddingBottom={2}>
         <FooterLink href={DOCUMENTATION_LINK}>Docs</FooterLink>
         <FooterLink href={CONTACT_LINK}>Support</FooterLink>
-        <FooterLink href={SLACK_LINK} external>
+        <FooterLink href={DISCORD_LINK} external>
           Slack
         </FooterLink>
         <FooterLink href={GITHUB_LINK} external>
