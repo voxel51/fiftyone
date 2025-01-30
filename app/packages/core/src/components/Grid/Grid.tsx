@@ -39,7 +39,7 @@ function Grid() {
   const records = useRecords(pageReset);
 
   const maxBytes = useRecoilValue(maxGridItemsSizeBytes);
-  const cache = useLookerCache(reset, MAX_INSTANCES, maxBytes / TWO);
+  const cache = useLookerCache(reset, MAX_INSTANCES, maxBytes);
 
   const { page, store } = useSpotlightPager({
     clearRecords: pageReset,
@@ -75,7 +75,7 @@ function Grid() {
       ...renderer,
 
       maxRows: MAX_ROWS,
-      maxItemsSizeBytes: autosizing ? maxBytes / 2 : undefined,
+      maxItemsSizeBytes: autosizing ? maxBytes : undefined,
       scrollbar: true,
       spacing,
 

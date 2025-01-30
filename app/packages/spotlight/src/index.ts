@@ -25,6 +25,7 @@ import {
   FOUR,
   ONE,
   SCROLLBAR_WIDTH,
+  THREE,
   TWO,
   ZERO,
   ZOOMING_COEFFICIENT,
@@ -388,7 +389,7 @@ export default class Spotlight<K, V> extends EventTarget {
 
     await this.#next(false);
 
-    while (this.#containerHeight < this.#height && !this.#forward.finished) {
+    while (!this.#forward.finished && this.#height > this.#forward.height) {
       await this.#next(false);
     }
 
@@ -421,7 +422,7 @@ export default class Spotlight<K, V> extends EventTarget {
             bytes += add;
 
             if (
-              bytes >= this.#config.maxItemsSizeBytes &&
+              bytes >= this.#config.maxItemsSizeBytes / THREE &&
               this.#config.rowAspectRatioThreshold(this.#width) > ONE
             ) {
               throw bytes;

@@ -110,7 +110,12 @@ const deviceMemory =
 export const maxGridItemsSizeBytes = atom({
   key: "maxGridItemsSizeBytes",
   // @ts-ignore
-  default: (deviceMemory / 8) * 1e9,
+  default: (deviceMemory / 16) * 1e9,
+  effects: [
+    fos.getBrowserStorageEffectForKey("maxGridItemsSizeBytes", {
+      valueClass: "number",
+    }),
+  ],
 });
 
 export const pageParameters = selector({
