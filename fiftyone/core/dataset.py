@@ -7486,6 +7486,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         media_type=None,
         attach_frames=False,
         detach_frames=False,
+        limit_frames=None,
         frames_only=False,
         support=None,
         group_slice=None,
@@ -7538,7 +7539,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _pipeline.extend(self._group_select_pipeline(group_slice))
 
         if attach_frames:
-            _pipeline.extend(self._attach_frames_pipeline(support=support))
+            _pipeline.extend(
+                self._attach_frames_pipeline(
+                    limit=limit_frames, support=support
+                )
+            )
 
         if pipeline is not None:
             _pipeline.extend(pipeline)
@@ -7560,7 +7565,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return _pipeline
 
-    def _attach_frames_pipeline(self, support=None):
+    def _attach_frames_pipeline(self, limit=None, support=None):
         """A pipeline that attaches the frame documents for each document."""
         if self._is_clips:
             first = {"$arrayElemAt": ["$support", 0]}
@@ -7591,15 +7596,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             let = {"sample_id": "$_id"}
             match_expr = {"$eq": ["$$sample_id", "$_sample_id"]}
 
+        pipeline = [
+            {"$match": {"$expr": match_expr}},
+            {"$sort": {"frame_number": 1}},
+        ]
+
+        if limit:
+            pipeline.append({"$limit": limit})
+
         return [
             {
                 "$lookup": {
                     "from": self._frame_collection_name,
                     "let": let,
-                    "pipeline": [
-                        {"$match": {"$expr": match_expr}},
-                        {"$sort": {"frame_number": 1}},
-                    ],
+                    "pipeline": pipeline,
                     "as": "frames",
                 }
             }

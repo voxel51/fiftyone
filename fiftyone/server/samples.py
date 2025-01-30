@@ -113,15 +113,12 @@ async def paginate_samples(
     pipeline = view._pipeline(
         attach_frames=has_frames,
         detach_frames=False,
+        limit_frames=1,
         manual_group_select=sample_filter
         and sample_filter.group
         and (sample_filter.group.id and not sample_filter.group.slices),
         support=support,
     )
-
-    # Only return the first frame of each video sample for the grid thumbnail
-    if has_frames:
-        pipeline.append({"$addFields": {"frames": {"$slice": ["$frames", 1]}}})
 
     samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
