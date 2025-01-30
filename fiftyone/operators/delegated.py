@@ -252,6 +252,19 @@ class DelegatedOperationService(object):
         """
         return self._repo.set_label(_id=doc_id, label=label)
 
+    def set_log_upload_error(self, doc_id, log_upload_error):
+        """Sets the log upload error for the given delegated operation.
+
+        Args:
+            doc_id: the ID of the delegated operation
+            log upload error: the error message if we failed to upload
+            logs for the given delegated operation.
+
+        Returns:
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+        """
+        return self._repo.set_log_upload_error(_id=doc_id, log_upload_error=log_upload_error)
+
     def delete_operation(self, doc_id):
         """Deletes the given delegated operation.
 

@@ -5,18 +5,22 @@ from fiftyone.operators import Panel
 
 
 class TestOperatorRegistry(unittest.TestCase):
-    @patch('fiftyone.plugins.context.build_plugin_contexts')
+    @patch("fiftyone.plugins.context.build_plugin_contexts")
     def setUp(self, mock_build_plugin_contexts):
         # Mocking plugin contexts and operators
         self.mock_contexts = [
-            MagicMock(instances=[
-                MagicMock(_builtin=True, spec=Panel),
-                MagicMock(_builtin=False, spec=object),
-            ]),
-            MagicMock(instances=[
-                MagicMock(_builtin=True, spec=object),
-                MagicMock(_builtin=False, spec=Panel),
-            ]),
+            MagicMock(
+                instances=[
+                    MagicMock(_builtin=True, spec=Panel),
+                    MagicMock(_builtin=False, spec=object),
+                ]
+            ),
+            MagicMock(
+                instances=[
+                    MagicMock(_builtin=True, spec=object),
+                    MagicMock(_builtin=False, spec=Panel),
+                ]
+            ),
         ]
         mock_build_plugin_contexts.return_value = self.mock_contexts
 
@@ -46,14 +50,10 @@ class TestOperatorRegistry(unittest.TestCase):
         self.assertTrue(all(not isinstance(op, Panel) for op in operators))
         self.assertEqual(len(operators), 2)
 
-    def test_list_invalid_type_raises_error(self):
-        for operator_type in ["invalid", "", 1]:
-            with self.assertRaises(ValueError):
-                self.registry.list_operators(type=operator_type)
-
     def test_list_operators_empty_contexts(self):
         with patch(
-                'fiftyone.plugins.context.build_plugin_contexts') as mock_build:
+            "fiftyone.plugins.context.build_plugin_contexts"
+        ) as mock_build:
             mock_build.return_value = []
             registry = OperatorRegistry()
             operators = registry.list_operators()

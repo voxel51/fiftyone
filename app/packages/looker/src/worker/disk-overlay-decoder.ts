@@ -3,7 +3,7 @@ import { DETECTION, DETECTIONS } from "@fiftyone/utilities";
 import { Coloring, CustomizeColor } from "..";
 import { OverlayMask } from "../numpy";
 import { Colorscale } from "../state";
-import { decodeWithCanvas } from "./canvas-decoder";
+import { decodeMaskOnDisk } from "./mask-decoder";
 import { enqueueFetch } from "./pooled-fetch";
 import { DenseLabelRenderStatus, getOverlayFieldFromCls } from "./shared";
 
@@ -114,7 +114,17 @@ export const decodeOverlayOnDisk = async (
   let overlayMask: OverlayMask;
 
   try {
-    overlayMask = await decodeWithCanvas(overlayImageBlob, cls);
+    overlayMask = await decodeMaskOnDisk(
+      overlayImageBlob,
+      cls,
+      field,
+      coloring
+    );
+
+    if (!overlayMask) {
+      console.error("Overlay mask decoding failed");
+      return;
+    }
   } catch (e) {
     console.error(e);
     return;

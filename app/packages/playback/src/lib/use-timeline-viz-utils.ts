@@ -52,5 +52,10 @@ export const convertFrameNumberToPercentage = (
   // offset by -1 since frame indexing is 1-based
   const numerator = frameNumber - 1;
   const denominator = totalFrames - 1;
+
+  if (denominator <= 0) {
+    return 0;
+  }
+
   return (numerator / denominator) * 100;
 };
