@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<22793d1276e0b7c1680ffc6d37ebb1bd>>
+ * @generated SignedSource<<3938562382b7c0d9008d983db65ec42a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -49,7 +49,7 @@ export type runsPageQuery$data = {
       readonly failedAt: string | null;
       readonly id: string;
       readonly label: string | null;
-      readonly logStatus: string | null;
+      readonly logUploadError: string | null;
       readonly operator: string;
       readonly pinned: boolean | null;
       readonly priority: number | null;
@@ -259,7 +259,7 @@ v2 = [
             "alias": null,
             "args": null,
             "kind": "ScalarField",
-            "name": "logStatus",
+            "name": "logUploadError",
             "storageKey": null
           },
           {
@@ -308,16 +308,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "1a38bc514499ac1be2720562497aadea",
+    "cacheID": "55e9eb667c311585b05ea18f732226f5",
     "id": null,
     "metadata": {},
     "name": "runsPageQuery",
     "operationKind": "query",
-    "text": "query runsPageQuery(\n  $filter: DelegatedOperationFilter = null\n  $order: DelegatedOperationOrderFieldsOrder = null\n  $page: Int!\n  $pageSize: Int!\n  $search: DelegatedOperationSearchFieldsSearch = null\n) {\n  delegatedOperationsPage(filter: $filter, order: $order, page: $page, pageSize: $pageSize, search: $search) {\n    nodeTotal\n    nodes {\n      operator\n      label\n      id\n      runState\n      startedAt\n      queuedAt\n      completedAt\n      failedAt\n      runBy {\n        name\n        id\n      }\n      pinned\n      runLink\n      signedUrl\n      priority\n      logStatus\n      scheduledAt\n      status\n    }\n    pageTotal\n  }\n}\n"
+    "text": "query runsPageQuery(\n  $filter: DelegatedOperationFilter = null\n  $order: DelegatedOperationOrderFieldsOrder = null\n  $page: Int!\n  $pageSize: Int!\n  $search: DelegatedOperationSearchFieldsSearch = null\n) {\n  delegatedOperationsPage(filter: $filter, order: $order, page: $page, pageSize: $pageSize, search: $search) {\n    nodeTotal\n    nodes {\n      operator\n      label\n      id\n      runState\n      startedAt\n      queuedAt\n      completedAt\n      failedAt\n      runBy {\n        name\n        id\n      }\n      pinned\n      runLink\n      signedUrl\n      priority\n      logUploadError\n      scheduledAt\n      status\n    }\n    pageTotal\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "664b65814e67b987bcaf8a3fedd7fc04";
+(node as any).hash = "c1da2d6feacdada169f223c918d0331e";
 
 export default node;
