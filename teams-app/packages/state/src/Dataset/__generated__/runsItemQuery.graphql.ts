@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<488d913bab9fcb3144db4b1f41eb29b0>>
+ * @generated SignedSource<<281cf46e977f8cd8356873e9ad9f1aaa>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -20,9 +20,11 @@ export type runsItemQuery$data = {
     readonly failedAt: string | null;
     readonly id: string;
     readonly label: string | null;
+    readonly logUploadError: string | null;
     readonly metadata: any | null;
     readonly operator: string;
     readonly pinned: boolean | null;
+    readonly priority: number | null;
     readonly queuedAt: string | null;
     readonly result: any | null;
     readonly runBy: {
@@ -201,6 +203,20 @@ v2 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "priority",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "logUploadError",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "metadata",
         "storageKey": null
       }
@@ -226,16 +242,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "26ba76f6a32776ae3df983d324752b13",
+    "cacheID": "6d94604296a4500a6d799dae21016862",
     "id": null,
     "metadata": {},
     "name": "runsItemQuery",
     "operationKind": "query",
-    "text": "query runsItemQuery(\n  $run: String!\n) {\n  delegatedOperation(operationId: $run) {\n    completedAt\n    context\n    datasetId\n    failedAt\n    id\n    operator\n    label\n    pinned\n    queuedAt\n    result\n    runBy {\n      name\n      id\n    }\n    runState\n    scheduledAt\n    startedAt\n    status\n    runLink\n    signedUrl\n    metadata\n  }\n}\n"
+    "text": "query runsItemQuery(\n  $run: String!\n) {\n  delegatedOperation(operationId: $run) {\n    completedAt\n    context\n    datasetId\n    failedAt\n    id\n    operator\n    label\n    pinned\n    queuedAt\n    result\n    runBy {\n      name\n      id\n    }\n    runState\n    scheduledAt\n    startedAt\n    status\n    runLink\n    signedUrl\n    priority\n    logUploadError\n    metadata\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "725cad871b7a80ad4c3ba8b6fe1da357";
+(node as any).hash = "d5dafb833ad165d6d1bbac8058334274";
 
 export default node;
