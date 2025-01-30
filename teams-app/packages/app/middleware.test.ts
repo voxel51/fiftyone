@@ -45,7 +45,7 @@ describe("middleware: path regexp", async () => {
   });
 
   it("redirects user to sign in if session is not found", async () => {
-    const mockGetCookie = getCookieMock(() => undefined);
+    const mockGetCookie = getCookieMock();
     const mockRequest = { ...baseMockRequest, cookies: { get: mockGetCookie } };
     await middleware(mockRequest);
     expect(mockRequest.cookies.get).toBeCalledWith(cookieName);
@@ -55,7 +55,7 @@ describe("middleware: path regexp", async () => {
   });
 
   it("redirects user to sign in if session is not valid", async () => {
-    const mockGetCookie = getCookieMock(() => "invalid-jwt");
+    const mockGetCookie = getCookieMock("invalid-jwt");
     const mockRequest = { ...baseMockRequest, cookies: { get: mockGetCookie } };
     await middleware(mockRequest);
     expect(mockRequest.cookies.get).toBeCalledWith(cookieName);
@@ -67,7 +67,7 @@ describe("middleware: path regexp", async () => {
   it("redirects user to sign in if session is expired", async () => {
     const newYearInSeconds = new Date("Jan 1 2024").getTime() / 1000;
     const jwt = await getJWT({ exp: newYearInSeconds });
-    const mockGetCookie = getCookieMock(() => jwt);
+    const mockGetCookie = getCookieMock(jwt);
     const mockRequest = { ...baseMockRequest, cookies: { get: mockGetCookie } };
     await middleware(mockRequest);
     expect(mockRequest.cookies.get).toBeCalledWith(cookieName);
@@ -78,7 +78,7 @@ describe("middleware: path regexp", async () => {
 
   it("allows user to pass-through to the endpoint if session is valid", async () => {
     const jwt = await getJWT({ exp: Date.now() + 3600 });
-    const mockGetCookie = getCookieMock(() => jwt);
+    const mockGetCookie = getCookieMock(jwt);
     const mockRequest = { ...baseMockRequest, cookies: { get: mockGetCookie } };
     await middleware(mockRequest);
     expect(mockRequest.cookies.get).toBeCalledWith(cookieName);
@@ -104,9 +104,12 @@ const unprotectedRoutes = [
   "favicon.ico",
 ];
 
-function getCookieMock(implementation) {
-  const defaultImplementation = () => undefined;
-  return vi.fn(implementation || defaultImplementation);
+function getCookieMock(mockResponse?: string) {
+  if (mockResponse) {
+    return vi.fn(() => ({ value: mockResponse }));
+  }
+
+  return vi.fn(() => undefined);
 }
 
 async function getJWT(payload: any) {

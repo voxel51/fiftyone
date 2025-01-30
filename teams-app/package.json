@@ -7,7 +7,7 @@
         "oss/*"
     ],
     "main": "index.js",
-    "author": "Ritchie Martori <ritchie@voxel51.com>",
+    "author": "Voxel51, Inc.",
     "license": "MIT",
     "scripts": {
         "build": "cd packages/app && yarn build",
@@ -30,13 +30,15 @@
         "@mui/material": "^5.9.0",
         "hsl-to-hex": "^1.0.0",
         "lodash": "^4.17.21",
-        "next": "^12.2.3",
+        "next": "^15.1.6",
         "next-http-proxy-middleware": "^1.2.6",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
-        "recoil": "^0.7.7"
+        "recoil": "^0.7.7",
+        "sharp": "^0.33.5"
     },
     "devDependencies": {
+        "@types/case-sensitive-paths-webpack-plugin": "^2.1.9",
         "concurrently": "^8.2.2",
         "husky": "^8.0.1",
         "prettier": "^2.7.1",
@@ -50,7 +52,6 @@
         "fast-loops": "^1.1.4",
         "@babel/traverse": "^7.24.7",
         "http-cache-semantics": "^4.1.1",
-        "semver": "^5.7.2",
         "dset": "^3.1.4",
         "word-wrap": "^1.2.4",
         "tar": "^6.2.1",
@@ -58,7 +59,6 @@
         "micromatch": "^4.0.8",
         "postcss": "^8.4.31",
         "graphql": "^16.8.1",
-        "cross-spawn": "7.0.5",
         "ip": "^2.0.1",
         "es5-ext": "0.10.63"
     },
