@@ -1,4 +1,4 @@
-FROM node:18 AS builder
+FROM node:22 AS builder
 WORKDIR /opt
 
 ENV HOME="/opt"
@@ -33,7 +33,7 @@ RUN rm -f teams-app/packages/app/.env.local \
     done
 
 
-FROM node:18-slim AS runner
+FROM node:22-slim AS runner
 WORKDIR /app
 
 # overridden during build process
