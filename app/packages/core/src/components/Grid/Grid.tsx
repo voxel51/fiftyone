@@ -20,9 +20,9 @@ import useRecords from "./useRecords";
 import useRefreshers from "./useRefreshers";
 import useRenderer from "./useRenderer";
 import useResize from "./useResize";
-import useSelect from "./useSelect";
 import useSpotlightPager from "./useSpotlightPager";
 import useThreshold from "./useThreshold";
+import useUpdates from "./useUpdates";
 
 const MAX_INSTANCES = 5151;
 const MAX_ROWS = 5151;
@@ -68,6 +68,8 @@ function Grid() {
       return undefined;
     }
 
+    cache.hide();
+
     return new Spotlight<number, fos.Sample>({
       ...get(),
       ...renderer,
@@ -82,6 +84,7 @@ function Grid() {
       rowAspectRatioThreshold: threshold,
     });
   }, [
+    cache,
     autosizing,
     get,
     maxBytes,
@@ -96,7 +99,7 @@ function Grid() {
 
   useEscape();
   useEvents({ id, cache, pixels, resizing, set, spotlight });
-  useSelect(cache, getFontSize, lookerOptions, spotlight);
+  useUpdates(cache, getFontSize, lookerOptions, spotlight);
   useResize(id, setResizing);
 
   return (

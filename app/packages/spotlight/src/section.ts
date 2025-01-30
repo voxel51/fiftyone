@@ -111,7 +111,6 @@ export default class Section<K, V> {
 
   destroy() {
     this.#section.remove();
-    for (const row of this.#shown) row.hide();
     for (const row of this.#rows) row.destroy();
     this.#rows = [];
   }

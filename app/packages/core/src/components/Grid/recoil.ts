@@ -52,26 +52,26 @@ export const gridSpacing = atom({
 export const gridZoom = selector<number>({
   key: "gridZoom",
   get: ({ get }) => {
-    const intervened = get(interevenedGridZoom);
-
-    if (typeof intervened === "number") {
-      return intervened;
+    const recommended = get(recommendedGridZoom);
+    const setting = get(storedGridZoom) ?? get(defaultGridZoom);
+    if (
+      get(gridAutosizing) &&
+      typeof recommended === "number" &&
+      recommended > setting
+    ) {
+      return recommended;
     }
 
-    return (
-      get(recommendedGridZoom) ?? get(storedGridZoom) ?? get(defaultGridZoom)
-    );
+    return setting;
   },
-  set: ({ get, set }, value) => {
-    let result = value;
-    if (value instanceof DefaultValue) {
-      result = get(defaultGridZoom);
-    }
+  set: ({ get, reset, set }, value) => {
+    const result = value instanceof DefaultValue ? get(defaultGridZoom) : value;
 
-    if (get(recommendedGridZoom)) {
+    const recommended = get(recommendedGridZoom);
+    if (typeof recommended === "number" && result < recommended) {
       set(fos.snackbarErrors, ["Grid autosizing disabled"]);
       set(gridAutosizing, false);
-      set(interevenedGridZoom, result);
+      reset(recommendedGridZoom);
     }
 
     set(storedGridZoom, result);
@@ -101,19 +101,6 @@ export const gridCrop = selector({
   get: ({ get }) => {
     return get(fos.isPatchesView) && get(fos.cropToContent(false));
   },
-});
-
-export const interevenedGridZoom = atom<number | null>({
-  key: "intervenedGridZoom",
-  default: null,
-  effects: [
-    subscribe(
-      ({ event }, { reset }, prev) =>
-        event !== "modal" &&
-        prev?.event !== "modal" &&
-        reset(interevenedGridZoom)
-    ),
-  ],
 });
 
 // ensure navigator is defined
@@ -167,7 +154,7 @@ export const recommendedGridZoom = atom<number | null>({
       ({ event }, { reset }, prev) =>
         event !== "modal" &&
         prev?.event !== "modal" &&
-        reset(interevenedGridZoom)
+        reset(recommendedGridZoom)
     ),
   ],
 });

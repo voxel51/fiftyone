@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import type { LookerCache } from "./types";
 
-export default function useSelect(
+export default function useUpdates(
   cache: LookerCache,
   getFontSize: () => number,
   options: ReturnType<typeof fos.useLookerOptions>,

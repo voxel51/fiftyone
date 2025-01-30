@@ -67,19 +67,16 @@ export default ({
     return () => {
       clearTimeout(timeout);
       freeVideos();
+      document.dispatchEvent(new CustomEvent("grid-unmount"));
       document.getElementById(pixels)?.classList.remove(styles.hidden);
       spotlight.removeEventListener("load", mount);
       spotlight.removeEventListener("rowchange", set);
       spotlight.destroy();
-      cache.hide();
-
-      document.getElementById(pixels)?.classList.remove(styles.hidden);
-      document.dispatchEvent(new CustomEvent("grid-unmount"));
     };
   }, [
+    cache,
     id,
     handleError,
-    cache,
     pixels,
     resizing,
     set,

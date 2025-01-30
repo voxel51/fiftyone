@@ -68,7 +68,6 @@ export default class Spotlight<K, V> extends EventTarget {
       spacing: DEFAULT_SPACING,
       ...config,
     };
-
     this.#element.classList.add(styles.spotlight);
     this.#config.scrollbar && this.#element.classList.add(styles.scrollbar);
   }
@@ -275,7 +274,15 @@ export default class Spotlight<K, V> extends EventTarget {
       }
     };
     return {
-      measure: (item: ItemData<K, V>, add: number | Promise<number>) => {
+      measure: (
+        item: ItemData<K, V>,
+        adder: () => number | Promise<number>
+      ) => {
+        if (this.#rejected) {
+          return;
+        }
+
+        const add = adder();
         if (add instanceof Promise) {
           add.then((add) => measure(item, add));
           return;
@@ -395,13 +402,14 @@ export default class Spotlight<K, V> extends EventTarget {
         this.#render({
           at: this.#config.at,
           offset: -this.#pivot,
-          measure: (item, next) => {
+          measure: (item, adder) => {
+            const add = adder();
             if (!this.#config.maxItemsSizeBytes) {
               return;
             }
 
-            if (next instanceof Promise) {
-              throw next;
+            if (add instanceof Promise) {
+              throw add;
             }
 
             if (map.has(item.id.description)) {
@@ -409,8 +417,8 @@ export default class Spotlight<K, V> extends EventTarget {
             }
 
             items.push(item);
-            map.set(item.id.description, next);
-            bytes += next;
+            map.set(item.id.description, add);
+            bytes += add;
 
             if (
               bytes >= this.#config.maxItemsSizeBytes &&

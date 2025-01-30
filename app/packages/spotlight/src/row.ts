@@ -126,6 +126,9 @@ export default class Row<K, V> {
   }
 
   destroy() {
+    for (const { item } of this.#row) {
+      this.#config.detachItem(item.id);
+    }
     this.#aborter.abort();
   }
 
@@ -165,9 +168,11 @@ export default class Row<K, V> {
 
     for (const { element, item } of this.#row) {
       const width = item.aspectRatio * this.height;
+      if (this.#aborter.signal.aborted) {
+        return;
+      }
 
-      measure(
-        item,
+      measure(item, () =>
         this.#config.showItem(item.id, element, [width, this.height], zooming)
       );
     }

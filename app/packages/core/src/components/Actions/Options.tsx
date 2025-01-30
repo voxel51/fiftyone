@@ -17,11 +17,7 @@ import {
 import { GRID_SETTINGS, QP_MODE } from "../../utils/links";
 import Checkbox from "../Common/Checkbox";
 import RadioGroup from "../Common/RadioGroup";
-import {
-  gridAutosizing,
-  interevenedGridZoom,
-  maxGridItemsSizeBytes,
-} from "../Grid/recoil";
+import { gridAutosizing, maxGridItemsSizeBytes } from "../Grid/recoil";
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
 
@@ -283,7 +279,6 @@ const ShowModalNav = () => {
 
 const Grid = () => {
   const [autosizing, setAutosizing] = useRecoilState(gridAutosizing);
-  const resetIntervenedThreshold = useResetRecoilState(interevenedGridZoom);
   const resetSizeBytes = useResetRecoilState(maxGridItemsSizeBytes);
   const [sizeBytes, setSizeBytes] = useRecoilState(maxGridItemsSizeBytes);
   const theme = useTheme();
@@ -301,7 +296,7 @@ const Grid = () => {
         }}
         svgStyles={{ height: "1rem", marginTop: 7.5 }}
         text="Grid settings"
-        title={"More on Query Performance mode"}
+        title={"More on grid settings"}
       />
       <div
         style={{
@@ -342,7 +337,6 @@ const Grid = () => {
         value={autosizing}
         setValue={(value) => {
           setAutosizing(value);
-          value && resetIntervenedThreshold();
         }}
       />
     </>

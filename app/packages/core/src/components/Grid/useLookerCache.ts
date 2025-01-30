@@ -48,7 +48,6 @@ export default function useLookerCache<
       maxSize: maxHiddenItemsSizeBytes,
       noDisposeOnSet: true,
       sizeCalculation: (entry) => entry.instance.getSizeBytesEstimate(),
-      updateAgeOnGet: true,
     });
 
     // an intermediate mapping until the "load" event
@@ -62,16 +61,23 @@ export default function useLookerCache<
       visible.get(key) ?? loaded.get(key)?.instance ?? loading.get(key);
 
     const hide = (key?: string) => {
-      if (key) {
-        const instance = get(key);
-        visible.delete(key);
-        instance?.loaded
-          ? loaded.set(key, { dispose: true, instance })
-          : instance && setLoading(key, instance);
+      if (!key) {
+        for (const key of visible.keys()) hide(key);
         return;
       }
 
-      for (const key of visible.keys()) hide(key);
+      const instance = get(key);
+      visible.delete(key);
+      if (!instance) {
+        return;
+      }
+
+      if (instance.loaded) {
+        !loaded.has(key) && loaded.set(key, { dispose: true, instance });
+        return;
+      }
+
+      instance && setLoading(key, instance);
     };
 
     const setLoading = (key: string, instance: T) => {
@@ -139,7 +145,9 @@ export default function useLookerCache<
        * @param {T} instance - the instance
        * @returns {T} the instance
        */
-      set: (key: string, instance: T) => visible.set(key, instance),
+      set: (key: string, instance: T) => {
+        visible.set(key, instance);
+      },
 
       /**
        * Retrieves the size estimate of an instance in bytes

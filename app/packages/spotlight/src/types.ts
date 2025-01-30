@@ -36,7 +36,7 @@ export interface ItemData<K, V> {
 
 export type Measure<K, V> = (
   id: ItemData<K, V>,
-  sizeBytes: number | Promise<number>
+  sizeBytes: () => number | Promise<number>
 ) => void;
 
 export type Show = (
@@ -68,7 +68,7 @@ export interface SpotlightConfig<K, V> {
   maxItemsSizeBytes?: number;
   offset?: number;
 
-  detach?: (id: ID) => void;
+  detachItem: (id: ID) => void;
   get: Get<K, V>;
   getItemSizeBytes?: (id: ID) => number;
   hideItem: (id: ID) => void;

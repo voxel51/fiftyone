@@ -507,7 +507,7 @@ export abstract class AbstractLooker<
     if (element === this.lookerElement.element.parentElement) {
       this.state.disabled &&
         this.updater({ disabled: false, options: { fontSize } });
-      this.resizeObserver.observe(element);
+      dimensions && this.resizeObserver.observe(element);
       return;
     }
 
@@ -525,7 +525,7 @@ export abstract class AbstractLooker<
       disabled: false,
       options: { fontSize },
     });
-    element.appendChild(this.lookerElement.element);
+    element.replaceChildren(this.lookerElement.element);
     !dimensions && this.resizeObserver.observe(element);
   }
 
@@ -540,10 +540,8 @@ export abstract class AbstractLooker<
    */
   detach() {
     const parent = this.lookerElement.element.parentElement;
-    if (parent) {
-      this.resizeObserver.unobserve(parent);
-      parent.removeChild(this.lookerElement.element);
-    }
+    this.resizeObserver.disconnect();
+    parent?.removeChild(this.lookerElement.element);
   }
 
   abstract updateOptions(options: Partial<State["options"]>): void;

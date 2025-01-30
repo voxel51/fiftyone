@@ -22,10 +22,12 @@ export default function ({
   const getFontSize = useFontSize(id);
   const selectSample = useSelectSample(records);
 
-  const hideItem = useCallback(
-    (id: ID) => cache.isShown(id.description) && cache.hide(id.description),
+  const detachItem = useCallback(
+    (id: ID) => cache.get(id.description)?.detach(),
     [cache]
   );
+
+  const hideItem = useCallback((id: ID) => cache.hide(id.description), [cache]);
 
   const showItem = useCallback(
     (
@@ -40,7 +42,7 @@ export default function ({
       }
 
       const instance = cache.get(key);
-      if (instance && instance.loaded) {
+      if (instance) {
         instance.attach(element, dimensions, getFontSize());
         cache.show(key);
         return cache.sizeOf(key);
@@ -78,10 +80,11 @@ export default function ({
     lookerOptions,
     renderer: useMemo(
       () => ({
+        detachItem,
         hideItem,
         showItem,
       }),
-      [hideItem, showItem]
+      [detachItem, hideItem, showItem]
     ),
   };
 }
