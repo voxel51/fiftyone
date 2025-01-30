@@ -30,6 +30,7 @@ export default function RunActions(props: RunActionsPropsType) {
     runBy,
     runState,
     runLink,
+    logUploadError,
     signedUrl,
     result,
     hideViewInOrchestrator,
@@ -53,8 +54,6 @@ export default function RunActions(props: RunActionsPropsType) {
 
   // TODO: update the url and move it to Constants.ts
   const logDocUrl = "https://docs.voxel51.com/teams/teams_plugins.html";
-  // TODO: update this after backend adds log_status field
-  const logStatus = null;
 
   // success or fail: run_link is null = the user never configured their log location
   // success or fail: run_link is present and log_status is null and the result field is not "expired" = we successfully published logs
@@ -64,7 +63,7 @@ export default function RunActions(props: RunActionsPropsType) {
 
   const canDownloadLogs =
     Boolean(signedUrl) &&
-    logStatus == null &&
+    logUploadError == null &&
     [OPERATOR_RUN_STATES.COMPLETED, OPERATOR_RUN_STATES.FAILED].includes(
       runState
     ) &&
@@ -80,7 +79,7 @@ export default function RunActions(props: RunActionsPropsType) {
       ].includes(runState)
     )
       return "Log is not available until the operation is completed";
-    if (logStatus) return logStatus;
+    if (logUploadError) return logUploadError;
   }, [isExpired, signedUrl]);
 
   const handleButtonClick = useCallback((url: string) => {
