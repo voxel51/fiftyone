@@ -17,7 +17,7 @@
     },
     "devDependencies": {
         "@types/sortablejs": "^1.15.0",
-        "vite": "^5.2.14"
+        "vite": "^5.4.12"
     },
     "dependencies": {
         "allotment": "^1.17.0",
