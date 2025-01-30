@@ -11,6 +11,7 @@ import os
 from unittest import mock
 from unittest.mock import patch
 from datetime import datetime
+from bson import ObjectId
 
 import fiftyone as fo
 import fiftyone.operators.delegated_executors as foodx
@@ -43,7 +44,7 @@ class ContinualExecutorTests(unittest.IsolatedAsyncioTestCase):
             self.assertIsNotNone(executor.temp_dir)
             self.assertIsNotNone(executor.log_path)
             self.assertTrue(fos.exists(executor.log_path))
-            executor.flush_logs(run_link)
+            executor.flush_logs(ObjectId(doc_id), run_link)
             now = datetime.utcnow()
             expected_run_link = fos.join(
                 run_link_path,
@@ -59,7 +60,7 @@ class ContinualExecutorTests(unittest.IsolatedAsyncioTestCase):
     def test_logging_disabled(self):
         doc_id = "test"
         run_link = self.executor.create_run_link(doc_id)
-        self.executor.flush_logs(run_link)
+        self.executor.flush_logs(ObjectId(doc_id), run_link)
         self.assertIsNone(self.executor.file_handler)
         self.assertIsNone(self.executor.temp_dir)
         self.assertIsNone(self.executor.log_path)
