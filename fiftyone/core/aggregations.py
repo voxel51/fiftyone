@@ -580,8 +580,10 @@ class Count(Aggregation):
 
     def to_mongo(self, sample_collection, context=None, optimize_frames=False):
         if self._field_name is None and self._expr is None:
-            pipeline = [{"$count": "count"}]
-            return pipeline, False if optimize_frames else pipeline
+            if not optimize_frames:
+                return [{"$count": "count"}]
+
+            return [{"$count": "count"}], False
 
         path, pipeline, _, _, _, is_frame_field = _parse_field_and_expr(
             sample_collection,
@@ -794,19 +796,18 @@ class CountValues(Aggregation):
         ]
 
         if self._first is None:
-            pipeline.append(
-                [
-                    {
-                        "$group": {
-                            "_id": None,
-                            "result": {
-                                "$push": {"k": "$_id", "count": "$count"}
-                            },
-                        }
+            pipeline += [
+                {
+                    "$group": {
+                        "_id": None,
+                        "result": {"$push": {"k": "$_id", "count": "$count"}},
                     }
-                ]
-            )
-            return pipeline, is_frame_field if optimize_frames else pipeline
+                }
+            ]
+            if optimize_frames:
+                return pipeline, is_frame_field
+
+            return pipeline
 
         exprs = []
         if self._search:
@@ -1179,9 +1180,16 @@ class FacetAggregations(Aggregation):
 
         facets = {}
         for key, agg in self._aggregations.items():
-            facets[self._get_key(key, agg)] = agg.to_mongo(
-                sample_collection, context=self.field_name
-            )
+            if optimize_frames and is_frame_field:
+                facets[self._get_key(key, agg)], is_frame_field = agg.to_mongo(
+                    sample_collection,
+                    context=self.field_name,
+                    optimize_frames=optimize_frames and is_frame_field,
+                )
+            else:
+                facets[self._get_key(key, agg)] = agg.to_mongo(
+                    sample_collection, context=self.field_name
+                )
 
         pipeline += [{"$facet": facets}]
 

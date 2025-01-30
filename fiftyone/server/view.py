@@ -100,6 +100,8 @@ def get_view(
             :class:`fiftyone.server.filters.SampleFilter`
         reload (True): whether to reload the dataset
         awaitable (False): whether to return an awaitable coroutine
+        optimize_frames (False): optimize the pipeline for a direct frame
+            collection call, when possible
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
@@ -127,8 +129,10 @@ def get_view(
                     dataset, view, sample_filter.group
                 )
 
-            elif sample_filter.id:
-                view = fov.make_optimized_select_view(view, sample_filter.id)
+            if sample_filter.id:
+                view = fov.make_optimized_select_view(
+                    view, [sample_filter.id], optimize_frames=optimize_frames
+                )
 
         if filters or extended_stages or pagination_data:
             view = get_extended_view(
@@ -164,6 +168,8 @@ def get_extended_view(
         extended_stages (None): extended view stages
         pagination_data (False): filters label data
         media_types (None): the media types to consider
+        optimize_frames (False): optimize the pipeline for a direct frame
+            collection call, when possible
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`

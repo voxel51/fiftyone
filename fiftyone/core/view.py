@@ -1963,6 +1963,8 @@ def make_optimized_select_view(
         groups (False): whether the IDs are group IDs, not sample IDs
         flatten (False): whether to flatten group datasets before selecting
             sample ids
+        optimize_frames (False): optimize the pipeline for a direct frame
+            collection call, when possible
 
     Returns:
         a :class:`DatasetView`

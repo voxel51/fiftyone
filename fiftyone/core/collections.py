@@ -10152,7 +10152,11 @@ class SampleCollection(object):
             ) = self._build_facets(facet_aggs, optimize_frames=optimize_frames)
             dataset = self._root_dataset
             conn = foo.get_async_db_conn()
-            frame_coll = conn[dataset._frame_collection_name]
+            frame_coll = (
+                conn[dataset._frame_collection_name]
+                if dataset._frame_collection_name
+                else None
+            )
             sample_coll = conn[dataset._sample_collection_name]
             collections = []
             for idx, pipeline in facet_pipelines.items():
@@ -10235,7 +10239,7 @@ class SampleCollection(object):
             group_slices=aggregation._needs_group_slices(self),
         )
 
-    def _build_facets(self, aggs_map, optimize_frames=True):
+    def _build_facets(self, aggs_map, optimize_frames=False):
         compiled = {}
         facetable = defaultdict(dict)
         for idx, aggregation in aggs_map.items():
@@ -10317,6 +10321,7 @@ class SampleCollection(object):
         media_type=None,
         attach_frames=False,
         detach_frames=False,
+        optimize_frames=False,
         frames_only=False,
         support=None,
         group_slice=None,
@@ -10324,7 +10329,6 @@ class SampleCollection(object):
         detach_groups=False,
         groups_only=False,
         manual_group_select=False,
-        optimize_frames=False,
         post_pipeline=None,
     ):
         """Returns the MongoDB aggregation pipeline for the collection.
@@ -10340,6 +10344,8 @@ class SampleCollection(object):
             detach_frames (False): whether to detach the frame documents at the
                 end of the pipeline. Only applicable to datasets that contain
                 videos
+            optimize_frames (False): optimize the pipeline for a direct frame
+                collection call, when possible
             frames_only (False): whether to generate a pipeline that contains
                 *only* the frames in the collection
             support (None): an optional ``[first, last]`` range of frames to
@@ -10356,8 +10362,6 @@ class SampleCollection(object):
             manual_group_select (False): whether the pipeline has manually
                 handled the initial group selection. Only applicable to grouped
                 collections
-            optimize_frames (None): optimize the pipeline for a direct frame
-                collection call, when possible
             post_pipeline (None): a MongoDB aggregation pipeline (list of
                 dicts) to append to the very end of the pipeline, after all
                 other arguments are applied
