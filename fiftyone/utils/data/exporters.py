@@ -1266,6 +1266,11 @@ class MediaExporter(object):
             if seen:
                 continue
 
+            if self.export_mode == "symlink":
+                absolute_asset_path, _ = fo.media_cache.use_cached_path(
+                    absolute_asset_path
+                )
+
             if not fos.is_local(absolute_asset_path) or not fos.is_local(
                 asset_output_path
             ):
@@ -1279,6 +1284,9 @@ class MediaExporter(object):
                 etau.symlink_file(absolute_asset_path, asset_output_path)
 
         is_scene_modified = scene.update_asset_paths(input_to_output_paths)
+
+        if self.export_mode == "symlink":
+            fo3d_path, _ = fo.media_cache.use_cached_path(fo3d_path)
 
         if is_scene_modified:
             if not fos.is_local(fo3d_path) or not fos.is_local(
@@ -1406,6 +1414,9 @@ class MediaExporter(object):
                 uuid = self._get_uuid(outpath)
 
             if not seen:
+                if self.export_mode == "symlink":
+                    media_path, _ = fo.media_cache.use_cached_path(media_path)
+
                 if self.export_mode == "manifest":
                     self._manifest[uuid] = media_path
                 elif media_path.endswith(".fo3d"):
