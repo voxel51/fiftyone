@@ -71,7 +71,6 @@ test.describe("date field and date time field can filter visibility", () => {
 
   test("change date field visibility works", async ({
     eventUtils,
-    grid,
     page,
     sidebar,
   }) => {
