@@ -40,11 +40,14 @@ async def dispatch_event(
     Args:
         subscription: the calling subscription id
         event: the event
+
+    Returns:
+        the dispatched event
     """
     state = get_state()
     if isinstance(event, CaptureNotebookCell) and focx.is_databricks_context():
         add_screenshot(event)
-        return
+        return event
 
     if isinstance(event, SelectLabels):
         state.selected_labels = event.labels
@@ -81,3 +84,5 @@ async def dispatch_event(
             continue
 
         listener.queue.put_nowait((datetime.now(), event))
+
+    return event
