@@ -1,7 +1,7 @@
 import { useCurrentOrganization, useCurrentUser } from "@fiftyone/hooks";
 import { CONSTANT_VARIABLES } from "@fiftyone/teams-state";
 import { InstallModal, UserCard } from "@fiftyone/teams-components";
-import SlackIcon from "@fiftyone/teams-components/src/Icons/Slack.icon";
+import DiscordIcon from "@fiftyone/teams-components/src/Icons/Discord.icon";
 import {
   ArrowCircleDown,
   CodeOutlined as CodeOutlinedIcon,
@@ -29,7 +29,7 @@ import { useRouter } from "next/router";
 import { deregisterAllServiceWorkers } from "lib/serviceWorkerUtils";
 import { casSignOut } from "@fiftyone/teams-utilities";
 
-const { DOCUMENTATION_LINK, CONTACT_LINK, SLACK_LINK, SIGN_OUT_PAGE } =
+const { DOCUMENTATION_LINK, CONTACT_LINK, DISCORD_LINK, SIGN_OUT_PAGE } =
   CONSTANT_VARIABLES;
 
 export default function ProfileMenu() {
@@ -145,13 +145,13 @@ export default function ProfileMenu() {
             Install FiftyOne
           </Box>
         </MenuItem>
-        <a href={SLACK_LINK} target="_blank">
+        <a href={DISCORD_LINK} target="_blank">
           <MenuItem>
             <Box display="flex">
               <ListItemIcon sx={{ display: "flex", justifyContent: "center" }}>
-                <SlackIcon />
+                <DiscordIcon />
               </ListItemIcon>
-              Join Slack community
+              Join Discord community
             </Box>
           </MenuItem>
         </a>
