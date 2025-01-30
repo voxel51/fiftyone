@@ -406,12 +406,12 @@ for more information.
     Easily explore images, videos, and associated labels in a powerful visual
     interface.
 
-https://github.com/user-attachments/assets/af8cd626-57b7-4f2a-96bf-1c8a513c2e2b
+https://github.com/user-attachments/assets/bd53e964-81a9-4e31-b719-28cf66dae19f
 
 -   **[Explore Embeddings:](https://docs.voxel51.com/user_guide/app.html#embeddings-panel)**
     Select points of interest and view the corresponding samples/labels.
 
-https://github.com/user-attachments/assets/d119de24-fc44-40bc-83ff-ddfdd4329977
+https://github.com/user-attachments/assets/7701deff-3317-410a-947c-b6cb293b8e7b
 
 -   **[Analyze and Improve Models:](https://docs.voxel51.com/user_guide/evaluation.html)**
     Evaluate model performance, identify failure modes, and fine-tune your
