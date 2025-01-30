@@ -60,10 +60,26 @@ export default function RunActions(props: RunActionsPropsType) {
   // success or fail: run_link is present and log_status is null and the result field is not "expired" = we successfully published logs
   // fail: run_link is present and log_status is null and result field is "expired" = DO executor failed to exit we can't promise logs were ever flushed
   // success or fail: run_link is present and log_status is some exception = we failed to publish logs
+  // when runstate is running, we can't download logs
 
-  const canDownloadLogs = Boolean(signedUrl) && logStatus == null && !isExpired;
+  const canDownloadLogs =
+    Boolean(signedUrl) &&
+    logStatus == null &&
+    [OPERATOR_RUN_STATES.COMPLETED, OPERATOR_RUN_STATES.FAILED].includes(
+      runState
+    ) &&
+    !isExpired;
+
   const downloadDisabledTooltip = useMemo(() => {
     if (isExpired) return "Delegated operation has expired";
+    if (
+      [
+        OPERATOR_RUN_STATES.QUEUED,
+        OPERATOR_RUN_STATES.RUNNING,
+        OPERATOR_RUN_STATES.SCHEDULED,
+      ].includes(runState)
+    )
+      return "Log is not available until the operation is completed";
     if (logStatus) return logStatus;
   }, [isExpired, signedUrl]);
 
@@ -127,11 +143,6 @@ export default function RunActions(props: RunActionsPropsType) {
               // Download the content using the signedUrl
               const link = document.createElement("a");
               link.href = signedUrl;
-              const datetime =
-                new Date().toISOString().split("T")[0] +
-                "_" +
-                new Date().toISOString().split("T")[1].split(".")[0];
-              link.download = "logs_" + datetime + ".txt";
               document.body.appendChild(link);
               link.click();
               document.body.removeChild(link);
