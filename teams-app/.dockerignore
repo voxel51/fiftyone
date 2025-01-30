@@ -1,3 +1,4 @@
 *
 !app/
 !teams-app/
+node_modules

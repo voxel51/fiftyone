@@ -11,7 +11,8 @@ const key = new TextEncoder().encode(secret);
 
 export async function middleware(request: NextRequest) {
   const cookieName = getSessionCookieName();
-  const jwt = request.cookies.get(cookieName) as string;
+  const jwt = request.cookies.get(cookieName)?.value as string;
+
   try {
     await jwtVerify(jwt, key, { requiredClaims: ["exp"] });
   } catch (e) {
