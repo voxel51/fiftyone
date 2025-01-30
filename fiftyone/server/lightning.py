@@ -427,8 +427,8 @@ async def _do_distinct_pipeline(
 
 def _add_search(query: DistinctQuery):
     # strip chars after 24
-    search = query.search[:_TWENTY_FOUR]
     if query.is_object_id_field:
+        search = query.search[:_TWENTY_FOUR]
         add = (_TWENTY_FOUR - len(search)) * "0"
         if add:
             search = f"{search}{add}"
