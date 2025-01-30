@@ -117,11 +117,11 @@ class DelegatedOperationRepo(object):
         """Sets the label for the delegated operation."""
         raise NotImplementedError("subclass must implement set_label()")
 
-    def set_log_status(
-        self, _id: ObjectId, log_status: str
+    def set_log_upload_error(
+        self, _id: ObjectId, log_upload_error: str
     ) -> DelegatedOperationDocument:
-        """Sets the log status for the delegated operation."""
-        raise NotImplementedError("subclass must implement set_log_status()")
+        """Sets the log upload error for the delegated operation."""
+        raise NotImplementedError("subclass must implement set_log_upload_error()")
 
     def get(self, _id: ObjectId) -> DelegatedOperationDocument:
         """Get an operation by id."""
@@ -252,12 +252,12 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         )
         return DelegatedOperationDocument().from_pymongo(doc)
 
-    def set_log_status(
-        self, _id: ObjectId, log_status: str
+    def set_log_upload_error(
+        self, _id: ObjectId, log_upload_error: str
     ) -> DelegatedOperationDocument:
         doc = self._collection.find_one_and_update(
             filter={"_id": _id},
-            update={"$set": {"log_status": log_status}},
+            update={"$set": {"log_upload_error": log_upload_error}},
             return_document=pymongo.ReturnDocument.AFTER,
         )
         return DelegatedOperationDocument().from_pymongo(doc)
