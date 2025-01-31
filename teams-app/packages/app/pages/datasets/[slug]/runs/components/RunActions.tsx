@@ -201,6 +201,7 @@ export default function RunActions(props: RunActionsPropsType) {
     refresh,
     isRunning,
     hasLogSetup,
+    runHasFinished,
     canDownloadLogs,
     signedUrl,
     runLink,
