@@ -32,7 +32,7 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test.describe("quickstart", () => {
+test.describe.serial("quickstart", () => {
   test("smoke", async ({ eventUtils, grid, modal, sidebar }) => {
     await grid.assert.isEntryCountTextEqualTo("5 samples");
 

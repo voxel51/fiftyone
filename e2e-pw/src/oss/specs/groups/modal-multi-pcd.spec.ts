@@ -47,7 +47,7 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test.describe("multi-pcd", () => {
+test.describe.serial("multi-pcd", () => {
   test("multi-pcd slice in modal", async ({ grid, modal }) => {
     await grid.openFirstSample();
 

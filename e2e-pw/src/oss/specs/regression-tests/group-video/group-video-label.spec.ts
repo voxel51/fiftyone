@@ -16,46 +16,46 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   },
 });
 
-test.describe("groups video labels", () => {
-  test.beforeAll(async ({ fiftyoneLoader, mediaFactory }) => {
-    [testVideoPath1, testVideoPath2].forEach(async (outputPath) => {
-      await mediaFactory.createBlankVideo({
-        outputPath,
-        duration: 3,
-        width: 100,
-        height: 100,
-        frameRate: 5,
-        color: "#000000",
-      });
+test.beforeAll(async ({ fiftyoneLoader, mediaFactory }) => {
+  [testVideoPath1, testVideoPath2].forEach(async (outputPath) => {
+    await mediaFactory.createBlankVideo({
+      outputPath,
+      duration: 3,
+      width: 100,
+      height: 100,
+      frameRate: 5,
+      color: "#000000",
     });
-
-    await fiftyoneLoader.executePythonCode(
-      `
-      import fiftyone as fo
-      dataset = fo.Dataset("${datasetName}")
-      dataset.persistent = True
-      dataset.add_group_field("group", default="v1")
-
-      group = fo.Group()
-      sample1 = fo.Sample(filepath="${testVideoPath1}", group=group.element("v1"))
-      sample2 = fo.Sample(filepath="${testVideoPath2}", group=group.element("v2"))
-      dataset.add_samples([sample1, sample2])
-
-      dataset.ensure_frames()
-
-      for _, frame in sample1.frames.items():
-        d1 = fo.Detection(bounding_box=[0.1, 0.1, 0.2, 0.2], label="s1d1")
-        frame["d1"] = d1
-      sample1.save()
-  
-      for _, frame in sample2.frames.items():
-        d2 = fo.Detection(bounding_box=[0.2, 0.2, 0.25, 0.25], label="s1d2")
-        frame["d2"] = d2
-      sample2.save() 
-      `
-    );
   });
 
+  await fiftyoneLoader.executePythonCode(
+    `
+    import fiftyone as fo
+    dataset = fo.Dataset("${datasetName}")
+    dataset.persistent = True
+    dataset.add_group_field("group", default="v1")
+
+    group = fo.Group()
+    sample1 = fo.Sample(filepath="${testVideoPath1}", group=group.element("v1"))
+    sample2 = fo.Sample(filepath="${testVideoPath2}", group=group.element("v2"))
+    dataset.add_samples([sample1, sample2])
+
+    dataset.ensure_frames()
+
+    for _, frame in sample1.frames.items():
+      d1 = fo.Detection(bounding_box=[0.1, 0.1, 0.2, 0.2], label="s1d1")
+      frame["d1"] = d1
+    sample1.save()
+
+    for _, frame in sample2.frames.items():
+      d2 = fo.Detection(bounding_box=[0.2, 0.2, 0.25, 0.25], label="s1d2")
+      frame["d2"] = d2
+    sample2.save() 
+    `
+  );
+});
+
+test.describe.serial("groups video labels", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });

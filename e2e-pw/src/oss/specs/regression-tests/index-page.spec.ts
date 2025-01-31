@@ -21,16 +21,18 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
   dataset.persistent = True`);
 });
 
-test("index page", async ({ pagePom, page }) => {
-  await pagePom.loadDataset();
-  await pagePom.assert.verifyPage("index");
-  await pagePom.assert.verifyPathname("/");
+test.describe.serial("index page", () => {
+  test("index page", async ({ pagePom, page }) => {
+    await pagePom.loadDataset();
+    await pagePom.assert.verifyPage("index");
+    await pagePom.assert.verifyPathname("/");
 
-  await pagePom.loadDataset(datasetName);
-  await pagePom.assert.verifyPage("dataset");
-  await pagePom.assert.verifyPathname(`/datasets/${datasetName}`);
+    await pagePom.loadDataset(datasetName);
+    await pagePom.assert.verifyPage("dataset");
+    await pagePom.assert.verifyPathname(`/datasets/${datasetName}`);
 
-  await page.goBack();
-  await pagePom.assert.verifyPage("index");
-  await pagePom.assert.verifyPathname("/");
+    await page.goBack();
+    await pagePom.assert.verifyPage("index");
+    await pagePom.assert.verifyPathname("/");
+  });
 });

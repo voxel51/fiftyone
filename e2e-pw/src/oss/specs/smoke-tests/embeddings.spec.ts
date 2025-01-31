@@ -46,7 +46,7 @@ test.beforeEach(async ({ fiftyoneLoader, page }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test.describe("embeddings on quickstart dataset", () => {
+test.describe.serial("embeddings on quickstart dataset", () => {
   test("embeddings panel opens", async ({
     embeddings,
     panel,

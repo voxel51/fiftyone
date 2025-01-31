@@ -27,17 +27,17 @@ const test = base.extend<{
   },
 });
 
-test.describe("tag", () => {
-  test.beforeAll(async ({ fiftyoneLoader }) => {
-    await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
-      max_samples: 5,
-    });
+test.beforeAll(async ({ fiftyoneLoader }) => {
+  await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
+    max_samples: 5,
   });
+});
 
-  test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  });
+test.beforeEach(async ({ page, fiftyoneLoader }) => {
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+});
 
+test.describe.serial("tag", () => {
   test("sample tag and label tag loads correct aggregation number on default view", async ({
     grid,
     tagger,

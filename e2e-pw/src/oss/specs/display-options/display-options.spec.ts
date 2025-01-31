@@ -20,15 +20,15 @@ const test = base.extend<{
   },
 });
 
-test.describe("Display Options", () => {
-  const datasetName = getUniqueDatasetNameWithPrefix("quickstart-groups");
+const datasetName = getUniqueDatasetNameWithPrefix("quickstart-groups");
 
-  test.beforeAll(async ({ fiftyoneLoader }) => {
-    await fiftyoneLoader.loadZooDataset("quickstart-groups", datasetName, {
-      max_samples: 12,
-    });
+test.beforeAll(async ({ fiftyoneLoader }) => {
+  await fiftyoneLoader.loadZooDataset("quickstart-groups", datasetName, {
+    max_samples: 12,
   });
+});
 
+test.describe.serial("Display Options", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
