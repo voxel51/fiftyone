@@ -207,7 +207,7 @@ function Run(props) {
                 </Link>
               ) : (
                 <Typography color="text.tertiary">
-                  {runLink.startsWith("http") ? "run link" : "log link"}:
+                  {runLink.startsWith("http") ? "Run link" : "Logs link"}:
                   {runLink}
                 </Typography>
               ))}
