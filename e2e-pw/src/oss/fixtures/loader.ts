@@ -163,7 +163,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
 
     const forceDatasetFromSelector = async () => {
       await page.goto("/");
-      await page.getByTestId("selector-Select dataset").click();
+      await page.getByTestId("selector-dataset").click();
 
       if (datasetName) {
         await page.getByTestId(`selector-result-${datasetName}`).click();
