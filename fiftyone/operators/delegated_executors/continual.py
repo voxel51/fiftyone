@@ -111,7 +111,10 @@ class ContinualExecutor:
             self.log_path = fos.join(
                 self.temp_dir, "fiftyone_delegated_executor.log"
             )
-            formatter = logging.Formatter(fmt="%(message)s")
+            formatter = logging.Formatter(
+                fmt="%(asctime)s - %(levelname)s - %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
             self.file_handler = logging.handlers.RotatingFileHandler(
                 filename=self.log_path, mode="w"
             )
