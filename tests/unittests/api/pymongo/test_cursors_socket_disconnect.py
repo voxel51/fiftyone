@@ -19,10 +19,7 @@ from fiftyone.api import client, socket, utils
 def fixture_api_client():
     """Mocked API client"""
     with mock.patch.object(client, "Client") as m:
-        api_client = mock.Mock(spec=client.Client)
-        api_client.socket = mock.Mock()
-        m.return_value = api_client
-        yield api_client
+        yield m.return_value
 
 
 @pytest.fixture(name="mongo_client")
