@@ -13,7 +13,13 @@ const groupDatasetName = getUniqueDatasetNameWithPrefix("group-linking");
 
 const id = "000000000000000000000000";
 
-test.beforeAll(async ({ fiftyoneLoader }) => {
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
+test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
+
   await fiftyoneLoader.executePythonCode(`
     from bson import ObjectId
 

@@ -2,6 +2,7 @@ import { test as base } from "@playwright/test";
 import { EventUtils } from "src/shared/event-utils";
 import { MediaFactory } from "src/shared/media-factory";
 import { AbstractFiftyoneLoader } from "../../shared/abstract-loader";
+import { FoWebServer } from "./foServer";
 import { OssLoader } from "./loader";
 
 // note: this difference between "with" and "without" is only for type safety
@@ -11,6 +12,7 @@ export type CustomFixturesWithoutPage = {
   fiftyoneLoader: AbstractFiftyoneLoader;
   fiftyoneServerPort: number;
   mediaFactory: typeof MediaFactory;
+  foWebServer: FoWebServer;
 };
 
 // these fixtures have access to the {page} fixture
@@ -26,27 +28,25 @@ const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
         return;
       }
 
-      await use(3050 + workerInfo.workerIndex);
+      await use(3050 + workerInfo.workerIndex + workerInfo.parallelIndex);
     },
     { scope: "worker" },
   ],
   fiftyoneLoader: [
-    async ({ fiftyoneServerPort }, use) => {
-      // setup
-      const loader = new OssLoader();
-      await loader.startWebServer(fiftyoneServerPort);
-
-      // yield loader
-      await use(loader);
-
-      // teardown
-      await loader.stopWebServer();
+    async ({}, use) => {
+      await use(new OssLoader());
     },
     { scope: "worker" },
   ],
   mediaFactory: [
     async ({}, use) => {
       await use(MediaFactory);
+    },
+    { scope: "worker" },
+  ],
+  foWebServer: [
+    async ({ fiftyoneServerPort }, use) => {
+      await use(new FoWebServer(fiftyoneServerPort));
     },
     { scope: "worker" },
   ],

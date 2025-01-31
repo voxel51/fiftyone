@@ -41,7 +41,13 @@ const writeImages = async () => {
   await Promise.all(createPromises);
 };
 
-test.beforeAll(async ({ fiftyoneLoader }) => {
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
+test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
+
   await writeImages();
 
   await fiftyoneLoader.executePythonCode(`
@@ -62,6 +68,11 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
   dataset.app_config.grid_media_field = "grid"
   dataset.app_config.modal_media_field = "modal"
   dataset.save()`);
+});
+
+test.afterEach(async ({ modal, page }) => {
+  await modal.close({ ignoreError: true });
+  await page.reload();
 });
 
 test.describe.serial("media field", () => {
