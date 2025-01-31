@@ -30,15 +30,20 @@ const test = base.extend<{
   },
 });
 
-test.describe("quickstart-groups", () => {
-  test.beforeAll(async ({ fiftyoneLoader }) => {
-    await fiftyoneLoader.loadZooDataset("quickstart-groups", datasetName, {
-      max_samples: 12,
-    });
+test.beforeAll(async ({ fiftyoneLoader }) => {
+  await fiftyoneLoader.loadZooDataset("quickstart-groups", datasetName, {
+    max_samples: 12,
   });
+});
 
+test.describe.serial("quickstart-groups", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  });
+
+  test.afterEach(async ({ page, modal }) => {
+    await modal.close({ ignoreError: true });
+    await page.reload();
   });
 
   test("should have four lookers with 'left' as default slice", async ({
