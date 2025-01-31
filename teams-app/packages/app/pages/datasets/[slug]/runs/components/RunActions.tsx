@@ -56,7 +56,7 @@ export default function RunActions(props: RunActionsPropsType) {
   const isExpired = result?.includes("expired");
   const hasLogSetup = Boolean(signedUrl);
 
-  // TODO: update the url and move it to Constants.ts
+  // TODO: update the url (when we have the actual link) and move it to Constants.ts
   const logDocUrl = "https://docs.voxel51.com/teams/teams_plugins.html";
 
   // success or fail: run_link is null = the user never configured their log location
