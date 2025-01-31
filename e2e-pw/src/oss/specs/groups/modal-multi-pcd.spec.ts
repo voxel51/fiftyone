@@ -17,7 +17,12 @@ const datasetName = getUniqueDatasetNameWithPrefix(`modal-multi-pcd`);
 const pcd1Path = `/tmp/test-pcd1-${datasetName}.pcd`;
 const pcd2Path = `/tmp/test-pcd2-${datasetName}.pcd`;
 
-test.beforeAll(async ({ fiftyoneLoader, mediaFactory }) => {
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
+test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
+  await foWebServer.startWebServer();
   mediaFactory.createPcd({
     outputPath: pcd1Path,
     shape: "cube",

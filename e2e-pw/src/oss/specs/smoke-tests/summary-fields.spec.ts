@@ -14,7 +14,13 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
 
 const datasetName = getUniqueDatasetNameWithPrefix("summary-fields");
 
-test.beforeAll(async ({ fiftyoneLoader }) => {
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
+test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
+
   await fiftyoneLoader.executePythonCode(`
         import fiftyone as fo
     

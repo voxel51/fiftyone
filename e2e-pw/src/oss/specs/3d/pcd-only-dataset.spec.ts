@@ -26,7 +26,13 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   },
 });
 
-test.beforeAll(async ({ fiftyoneLoader, mediaFactory }) => {
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
+test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
+  await foWebServer.startWebServer();
+
   mediaFactory.createPcd({
     outputPath: normalPcd,
     shape: "cube",

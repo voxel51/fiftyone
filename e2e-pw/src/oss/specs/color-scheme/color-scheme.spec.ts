@@ -32,7 +32,12 @@ const test = base.extend<{
 
 const datasetName = getUniqueDatasetNameWithPrefix("quickstart");
 
-test.beforeAll(async ({ fiftyoneLoader }) => {
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
+test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
   await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
     max_samples: 5,
   });

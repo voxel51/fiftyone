@@ -1,24 +1,46 @@
-import { createServer } from "net";
+import { createConnection } from "net";
 
+/**
+ * Checks if a port is available by trying to connect to it.
+ * Returns a Promise that resolves to true if the port appears available,
+ * or false if a connection can be made (indicating that the port is in use).
+ *
+ * @param port - The port number to check.
+ */
 async function checkPort(port: number): Promise<boolean> {
   return new Promise((resolve, reject) => {
-    const server = createServer();
+    const host = "127.0.0.1";
+    const socket = createConnection({ port, host });
+    let resolved = false;
 
-    server.once("error", (err: NodeJS.ErrnoException) => {
-      if (err.code === "EADDRINUSE") {
-        resolve(false);
+    // If a connection is established, then something is listening on that port.
+    socket.once("connect", () => {
+      resolved = true;
+      socket.destroy();
+      resolve(false); // Port is in use.
+    });
+
+    // If an error occurs, check its type.
+    socket.once("error", (err: { code: string }) => {
+      if (resolved) return;
+      // ECONNREFUSED means nothing is listening on that port.
+      if (err.code === "ECONNREFUSED") {
+        resolved = true;
+        resolve(true); // Port is available.
       } else {
+        resolved = true;
         reject(err);
       }
     });
 
-    server.once("listening", () => {
-      server.close(() => {
+    // In case the connection hangs, set a timeout.
+    socket.setTimeout(1000, () => {
+      if (!resolved) {
+        resolved = true;
+        socket.destroy();
         resolve(true);
-      });
+      }
     });
-
-    server.listen(port);
   });
 }
 
@@ -34,16 +56,23 @@ export async function assertPortAvailableOrWaitWithTimeout(
   port: number,
   timeout = 60000
 ): Promise<void> {
-  const start = Date.now();
-  const interval = 5000;
+  console.log("Checking port availability:", port, "timeout:", timeout);
+  const checkInterval = timeout > 5000 ? 5000 : timeout;
+  const startTime = Date.now();
 
-  while (Date.now() - start < timeout) {
+  while (true) {
     const available = await checkPort(port);
     if (available) {
-      return; // Resolve immediately if port is free
+      // Port appears available.
+      return;
     }
-    await new Promise((r) => setTimeout(r, interval));
-  }
 
-  throw new Error(`Port ${port} is still in use after ${timeout} ms`);
+    // If the overall timeout has been exceeded, reject.
+    if (Date.now() - startTime >= timeout) {
+      throw new Error(`Port ${port} is still in use after ${timeout} ms.`);
+    }
+
+    // Wait for the next check interval.
+    await new Promise((resolve) => setTimeout(resolve, checkInterval));
+  }
 }

@@ -20,7 +20,13 @@ const extensionDatasetNamePairs = ["mp4", "pcd", "png"].map(
     ] as const
 );
 
-test.beforeAll(async ({ fiftyoneLoader }) => {
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
+test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
+
   let pythonCode = `
       import fiftyone as fo
   `;
@@ -41,6 +47,11 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
       `;
   });
   await fiftyoneLoader.executePythonCode(pythonCode);
+});
+
+test.afterEach(async ({ modal, page }) => {
+  await modal.close({ ignoreError: true });
+  await page.reload();
 });
 
 test.describe.serial("grid selection", () => {
