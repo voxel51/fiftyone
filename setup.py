@@ -15,6 +15,7 @@ from setuptools import find_packages, setup
 
 VERSION = "2.6.0"
 
+
 def get_version():
     if "RELEASE_VERSION" in os.environ:
         version = os.environ["RELEASE_VERSION"]
@@ -133,7 +134,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone",
-    version="2.6.0rc0",
+    version="2.6.0rc2",
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"
