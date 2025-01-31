@@ -7,6 +7,7 @@
     "devDependencies": {
         "@eslint/js": "^9.19.0",
         "@playwright/test": "^1.50.0",
+        "@types/node": "^22.12.0",
         "@types/wait-on": "^5.3.4",
         "@typescript-eslint/eslint-plugin": "^8.22.0",
         "@typescript-eslint/parser": "^8.22.0",
@@ -14,6 +15,7 @@
         "eslint": "^9.19.0",
         "eslint-plugin-playwright": "^2.2.0",
         "jimp": "^1.6.0",
+        "mongodb": "^6.13.0",
         "tree-kill": "^1.2.2",
         "ts-dedent": "^2.2.0",
         "typescript": "^5.7.3",
