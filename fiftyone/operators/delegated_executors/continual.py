@@ -4,6 +4,7 @@ import logging.handlers
 import sys
 import random
 from datetime import datetime, timedelta
+from bson import ObjectId
 
 import fiftyone.internal.util as foiu
 import fiftyone as fo
@@ -69,7 +70,7 @@ class ContinualExecutor:
                 queued_op, log=True, run_link=run_link
             )
             if results:
-                self.flush_logs(run_link)
+                self.flush_logs(queued_op.id, run_link)
 
     def register(self):
         logger.info(f"Registering executor {self.instance_id}")
@@ -110,14 +111,17 @@ class ContinualExecutor:
             self.log_path = fos.join(
                 self.temp_dir, "fiftyone_delegated_executor.log"
             )
-            formatter = logging.Formatter(fmt="%(message)s")
+            formatter = logging.Formatter(
+                fmt="%(asctime)s - %(levelname)s - %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
             self.file_handler = logging.handlers.RotatingFileHandler(
                 filename=self.log_path, mode="w"
             )
             self.file_handler.setFormatter(formatter)
             root_logger.addHandler(self.file_handler)
 
-    def flush_logs(self, run_link: str = None):
+    def flush_logs(self, doc_id: ObjectId, run_link: str = None):
         if run_link:
             try:
                 logger.info(f"Flushing logs to {run_link}")
@@ -128,6 +132,7 @@ class ContinualExecutor:
                     run_link,
                     e,
                 )
+                self.do_svc.set_log_upload_error(doc_id, str(e))
             if not self.running:
                 self.file_handler.close()
                 fos.delete_dir(self.temp_dir)
