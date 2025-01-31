@@ -36,9 +36,9 @@ import RunStatus from "../components/RunStatus";
 import RunsPin from "../components/RunsPin";
 import formatCtx from "../utils/formatCtx";
 import getTimestamp from "../utils/getTimestamp";
+import isUrl from "../utils/isUrl";
 import RunIO, { IOType } from "./components/RunIO";
 import RunView from "./components/RunView";
-import isUrl from "../utils/isUrl";
 
 const { QUEUED, SCHEDULED, RUNNING, COMPLETED, FAILED } = OPERATOR_RUN_STATES;
 
@@ -206,7 +206,10 @@ function Run(props) {
                   {runLink}
                 </Link>
               ) : (
-                <Typography color="text.tertiary">Logs: {runLink}</Typography>
+                <Typography color="text.tertiary">
+                  {runLink.startsWith("http") ? "run link" : "log link"}:
+                  {runLink}
+                </Typography>
               ))}
           </Stack>
           <Box style={{ marginLeft: "auto" }}>
