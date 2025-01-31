@@ -38,24 +38,26 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
     group_dataset.add_sample(group_sample)`);
 });
 
-test(`sample linking`, async ({ page, fiftyoneLoader, modal }) => {
-  await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-    searchParams: new URLSearchParams({ id }),
+test.describe.serial("modal linking", () => {
+  test(`sample linking`, async ({ page, fiftyoneLoader, modal }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ id }),
+    });
+
+    await modal.waitForSampleLoadDomAttribute(true);
+
+    await modal.assert.isOpen();
+    await modal.sidebar.assert.verifySidebarEntryText("id", id);
   });
 
-  await modal.waitForSampleLoadDomAttribute(true);
+  test(`group linking`, async ({ page, fiftyoneLoader, modal }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, groupDatasetName, {
+      searchParams: new URLSearchParams({ groupId: id }),
+    });
 
-  await modal.assert.isOpen();
-  await modal.sidebar.assert.verifySidebarEntryText("id", id);
-});
+    await modal.waitForSampleLoadDomAttribute(true);
 
-test(`group linking`, async ({ page, fiftyoneLoader, modal }) => {
-  await fiftyoneLoader.waitUntilGridVisible(page, groupDatasetName, {
-    searchParams: new URLSearchParams({ groupId: id }),
+    await modal.assert.isOpen();
+    await modal.sidebar.assert.verifySidebarEntryText("group.id", id);
   });
-
-  await modal.waitForSampleLoadDomAttribute(true);
-
-  await modal.assert.isOpen();
-  await modal.sidebar.assert.verifySidebarEntryText("group.id", id);
 });

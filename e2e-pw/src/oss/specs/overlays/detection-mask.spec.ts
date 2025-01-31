@@ -101,7 +101,7 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test.describe("detection-mask", () => {
+test.describe.serial("detection-mask", () => {
   test("should load all masks fine", async ({ grid, modal }) => {
     await grid.assert.isEntryCountTextEqualTo("3 samples");
 

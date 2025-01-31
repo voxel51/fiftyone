@@ -64,20 +64,22 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
   dataset.save()`);
 });
 
-test("grid media field", async ({ fiftyoneLoader, grid, page }) => {
-  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await expect(grid.getNthLooker(0)).toHaveScreenshot("grid-media-field.png");
-});
+test.describe.serial("media field", () => {
+  test("grid media field", async ({ fiftyoneLoader, grid, page }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    await expect(grid.getNthLooker(0)).toHaveScreenshot("grid-media-field.png");
+  });
 
-test("modal media field", async ({ grid, fiftyoneLoader, modal, page }) => {
-  test.skip(
-    true,
-    "TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL"
-  );
-  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await grid.openFirstSample();
-  await modal.waitForSampleLoadDomAttribute();
-  // move off of looker to hide controls
-  await page.mouse.move(0, 0);
-  await expect(modal.looker).toHaveScreenshot("modal-media-field.png");
+  test("modal media field", async ({ grid, fiftyoneLoader, modal, page }) => {
+    test.skip(
+      true,
+      "TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL"
+    );
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    await grid.openFirstSample();
+    await modal.waitForSampleLoadDomAttribute();
+    // move off of looker to hide controls
+    await page.mouse.move(0, 0);
+    await expect(modal.looker).toHaveScreenshot("modal-media-field.png");
+  });
 });
