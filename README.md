@@ -422,15 +422,11 @@ https://github.com/user-attachments/assets/fc06d33d-8d17-4f67-af26-8c1a5abb5d9d
 -   **[Advanced Data Curation:](https://docs.voxel51.com/brain.html)** Quickly
     find and fix data issues, annotation errors, and edge cases.
 
-https://github.com/user-attachments/assets/8c4ff038-8926-4a42-b829-4f43bc2d8d6a
-
 https://github.com/user-attachments/assets/da97d84d-1213-40cf-a501-7a0d7efbe426
 
 -   **[Rich Integration:](https://docs.voxel51.com/integrations/index.html)**
     Works with popular deep learning libraries like TensorFlow, PyTorch, Keras,
     and more.
-
-https://github.com/user-attachments/assets/670a684a-0f6c-49cc-8f51-fbe15530c5e3
 
 -   **[Open and Extensible](https://docs.voxel51.com/plugins/index.html)**
     Customize and extend FiftyOne to fit your specific needs.
