@@ -422,7 +422,7 @@ https://github.com/user-attachments/assets/fc06d33d-8d17-4f67-af26-8c1a5abb5d9d
 -   **[Advanced Data Curation:](https://docs.voxel51.com/brain.html)** Quickly
     find and fix data issues, annotation errors, and edge cases.
 
-https://github.com/user-attachments/assets/da97d84d-1213-40cf-a501-7a0d7efbe426
+https://github.com/user-attachments/assets/f498673b-d860-4c61-b4e3-daca897aca97
 
 -   **[Rich Integration:](https://docs.voxel51.com/integrations/index.html)**
     Works with popular deep learning libraries like TensorFlow, PyTorch, Keras,
