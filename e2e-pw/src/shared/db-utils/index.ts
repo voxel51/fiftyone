@@ -6,7 +6,9 @@ import { MongoClient } from "mongodb";
 export async function deleteDatabase(dbName: string): Promise<void> {
   if (!dbName) return;
 
-  const client = new MongoClient("mongodb://127.0.0.1:27017");
+  const mongoUrl = process.env.MONGODB_URL || "mongodb://127.0.0.1:27017";
+  const client = new MongoClient(mongoUrl);
+
   try {
     await client.connect();
     await client.db(dbName).dropDatabase();
