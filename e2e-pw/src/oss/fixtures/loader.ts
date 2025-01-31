@@ -35,6 +35,9 @@ export class OssLoader extends AbstractFiftyoneLoader {
       const dbName = `PW-${process.env.FIFTYONE_DATABASE_NAME}-${port}`;
       process.env.FIFTYONE_DATABASE_NAME = dbName;
 
+      console.log(`Dropping database "${dbName}" for clean start`);
+      await deleteDatabase(dbName);
+
       console.log("Starting webserver on port", port, "with database", dbName);
 
       const mainPyPath = process.env.FIFTYONE_ROOT_DIR
@@ -47,11 +50,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
         "0.0.0.0",
         "--port",
         port.toString(),
-        "--clean_start",
       ]);
-
-      console.log(`Dropping database "${dbName}" for clean start`);
-      await deleteDatabase(dbName);
 
       const proc = spawn(procString, { shell: true });
 
