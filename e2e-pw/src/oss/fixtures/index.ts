@@ -57,8 +57,8 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
     await use(new EventUtils(page));
   },
   baseURL: async ({ fiftyoneServerPort }, use) => {
-    if (process.env.USE_DEV_BUILD) {
-      if (process.env.IS_UTILITY_DOCKER) {
+    if (process.env.USE_DEV_BUILD?.toLocaleLowerCase() === "true") {
+      if (process.env.IS_UTILITY_DOCKER?.toLocaleLowerCase() === "true") {
         await use(`http://host.docker.internal:5193`);
         return;
       }
@@ -71,4 +71,4 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
   },
 });
 
-export { Browser, Locator, Page, expect } from "@playwright/test";
+export { Browser, expect, Locator, Page } from "@playwright/test";

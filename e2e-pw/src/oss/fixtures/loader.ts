@@ -5,6 +5,8 @@ import {
   AbstractFiftyoneLoader,
   WaitUntilGridVisibleOptions,
 } from "src/shared/abstract-loader";
+import { deleteDatabase } from "src/shared/db-utils";
+import * as networkUtils from "src/shared/network-utils";
 import { PythonRunner } from "src/shared/python-runner/python-runner";
 import kill from "tree-kill";
 import waitOn from "wait-on";
@@ -22,52 +24,70 @@ export class OssLoader extends AbstractFiftyoneLoader {
     this.pythonRunner = new PythonRunner(getPythonCommand);
   }
 
-  async startWebServer(port: number) {
+  public async startWebServer(port: number) {
     if (!port) {
       throw new Error("port is required");
     }
 
-    console.log("starting webserver on port", port);
+    try {
+      await networkUtils.assertPortAvailableOrWaitWithTimeout(port);
 
-    process.env.FIFTYONE_DATABASE_NAME = `${process.env.FIFTYONE_DATABASE_NAME}-${port}`;
+      const dbName = `PW-${process.env.FIFTYONE_DATABASE_NAME}-${port}`;
+      process.env.FIFTYONE_DATABASE_NAME = dbName;
 
-    const mainPyPath = process.env.FIFTYONE_ROOT_DIR
-      ? `${process.env.FIFTYONE_ROOT_DIR}/fiftyone/server/main.py`
-      : "../fiftyone/server/main.py";
+      console.log("Starting webserver on port", port, "with database", dbName);
 
-    const procString = getPythonCommand([
-      mainPyPath,
-      "--address",
-      "0.0.0.0",
-      "--port",
-      port.toString(),
-      "--clean_start",
-    ]);
+      const mainPyPath = process.env.FIFTYONE_ROOT_DIR
+        ? `${process.env.FIFTYONE_ROOT_DIR}/fiftyone/server/main.py`
+        : "../fiftyone/server/main.py";
 
-    const proc = spawn(procString, { shell: true });
-    proc.stdout.pipe(process.stdout);
-    proc.stderr.pipe(process.stderr);
+      const procString = getPythonCommand([
+        mainPyPath,
+        "--address",
+        "0.0.0.0",
+        "--port",
+        port.toString(),
+        "--clean_start",
+      ]);
 
-    this.webserverProcessConfig = {
-      port,
-      processId: proc.pid,
-    };
+      console.log(`Dropping database "${dbName}" for clean start`);
+      await deleteDatabase(dbName);
 
-    console.log(
-      `waiting for webserver (procId = ${proc.pid}) to start on port ${port}...`
-    );
+      const proc = spawn(procString, { shell: true });
 
-    return waitOn({
-      resources: [`http://0.0.0.0:${port}`],
-      timeout: Duration.Seconds(30),
-    })
-      .then(() => {
-        console.log("webserver started");
-      })
-      .catch((err) => {
-        console.log("webserver failed to start, err = ", err);
-        throw err;
+      if (process.env.LOG_PROCESS_OUTPUT?.toLocaleLowerCase() === "true") {
+        proc.stdout.on("data", (data) => {
+          console.log(`stdout: ${data}`);
+        });
+
+        proc.stderr.on("data", (data) => {
+          console.error(`stderr: ${data}`);
+        });
+      }
+
+      this.webserverProcessConfig = {
+        port,
+        processId: proc.pid,
+      };
+
+      console.log(
+        `waiting for webserver (procId = ${proc.pid}) to start on port ${port}...`
+      );
+
+      await waitOn({
+        resources: [`http://0.0.0.0:${port}`],
+        timeout: Duration.Seconds(30),
       });
+      console.log("webserver started");
+    } catch (e) {
+      console.log(`webserver starting failed`, e);
+
+      try {
+        await this.stopWebServer();
+      } catch (stopErr) {
+        console.warn("Error stopping webserver:", stopErr);
+      }
+    }
   }
 
   async stopWebServer() {
@@ -81,7 +101,9 @@ export class OssLoader extends AbstractFiftyoneLoader {
           reject(err);
         }
 
-        console.log("webserver stopped");
+        console.log(
+          `webserver stopped on port ${this.webserverProcessConfig.port}`
+        );
         resolve();
       });
     });
