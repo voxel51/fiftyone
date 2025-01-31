@@ -1,6 +1,7 @@
 import { atom, useRecoilState } from "recoil";
 import { PlotlyRelayoutEvent } from "plotly.js-dist-min";
 import _ from "lodash";
+import { useMemo } from "react";
 
 type PlotBounds = {
   a: [number, number];
@@ -32,17 +33,21 @@ function convertPlotlyRelayoutEventToPlotBounds(
 export default function useCurrentPlotWindow() {
   const [bounds, setBounds] = useRecoilState(atoms.bounds);
 
-  const updateBounds = _.throttle((relayoutEvent: PlotlyRelayoutEvent) => {
-    if (
-      relayoutEvent.hasOwnProperty("xaxis.range[0]") &&
-      relayoutEvent.hasOwnProperty("xaxis.range[1]") &&
-      relayoutEvent.hasOwnProperty("yaxis.range[0]") &&
-      relayoutEvent.hasOwnProperty("yaxis.range[1]")
-    ) {
-      console.log("updating bounds", relayoutEvent);
-      setBounds(convertPlotlyRelayoutEventToPlotBounds(relayoutEvent));
-    }
-  }, 100);
+  const updateBounds = useMemo(
+    () =>
+      _.throttle((relayoutEvent: PlotlyRelayoutEvent) => {
+        if (
+          relayoutEvent.hasOwnProperty("xaxis.range[0]") &&
+          relayoutEvent.hasOwnProperty("xaxis.range[1]") &&
+          relayoutEvent.hasOwnProperty("yaxis.range[0]") &&
+          relayoutEvent.hasOwnProperty("yaxis.range[1]")
+        ) {
+          console.log("updating bounds", relayoutEvent);
+          setBounds(convertPlotlyRelayoutEventToPlotBounds(relayoutEvent));
+        }
+      }, 1000),
+    []
+  );
 
   const resetBounds = () => {
     setBounds(null);

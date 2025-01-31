@@ -47,9 +47,13 @@ class OnPlotLoad(HTTPEndpoint):
 def _on_plot_load(data):
     dataset = _load_dataset(data["datasetName"])
     brain_key = data["brainKey"]
-
+    dataset_id = dataset._doc.id
     view = _get_filtered_view(data, dataset)
+    view_is_dataset = dataset.view() == view
     point_field = f"{brain_key}_point"  # TODO: refine this
+    point_summary_field = f"{point_field}_in_summary"
+
+    summary_view = view.mongo([{"$match": {point_summary_field: True}}])
 
     sub_view = view.mongo(
         [
@@ -59,10 +63,11 @@ def _on_plot_load(data):
         ]
     )
 
-    # sub_view = view.limit(1000) # hmm faster?
+    has_summary = summary_view.count() > 0
+    trace_view = summary_view if has_summary else sub_view
 
     traces, style = _generate_traces_for_point_field(
-        sub_view, point_field, data["labelField"]
+        trace_view, point_field, data["labelField"]
     )
 
     return {

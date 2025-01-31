@@ -26,6 +26,7 @@ import { usePlotSelection } from "./usePlotSelection";
 import { useResetPlotZoom } from "./useResetPlotZoom";
 import { useWarnings } from "./useWarnings";
 import { Warnings } from "./Warnings";
+import Stats from "./Stats";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
@@ -152,6 +153,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
                 >
                   <Help />
                 </PlotOption>
+                <Stats />
               </Fragment>
             )}
             <OperatorPlacements place={types.Places.EMBEDDINGS_ACTIONS} />
