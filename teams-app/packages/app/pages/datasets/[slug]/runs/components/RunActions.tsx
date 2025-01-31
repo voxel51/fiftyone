@@ -46,6 +46,10 @@ export default function RunActions(props: RunActionsPropsType) {
   if (!canManageRun) return null;
 
   const isRunning = runState === OPERATOR_RUN_STATES.RUNNING;
+  const runHasFinished = [
+    OPERATOR_RUN_STATES.COMPLETED,
+    OPERATOR_RUN_STATES.FAILED,
+  ].includes(runState);
   const canViewInOrchestrator =
     runLink && isUrl(runLink) && !hideViewInOrchestrator;
 
@@ -172,7 +176,7 @@ export default function RunActions(props: RunActionsPropsType) {
     });
 
     // config logs
-    if (!hasLogSetup) {
+    if (!hasLogSetup && runHasFinished) {
       menuItems.push({
         isDivider: true,
       });
