@@ -21,7 +21,7 @@ export type CustomFixturesWithPage = {
 const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
   fiftyoneServerPort: [
     async ({}, use, workerInfo) => {
-      if (process.env.USE_DEV_BUILD) {
+      if (process.env.USE_DEV_BUILD?.toLocaleLowerCase() === "true") {
         await use(8787);
         return;
       }
