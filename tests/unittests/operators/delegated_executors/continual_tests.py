@@ -22,6 +22,9 @@ from fiftyone.operators.delegated import DelegatedOperationService
 from fiftyone.operators.executor import ExecutionResult
 
 
+DOC_ID = "6798fd25cc70090ac85e4104"
+
+
 class MockOperator:
     def __init__(self):
         self.id = "test"
@@ -35,16 +38,15 @@ class ContinualExecutorTests(unittest.IsolatedAsyncioTestCase):
 
     def test_logging_enabled(self):
         with tempfile.TemporaryDirectory() as run_link_path:
-            doc_id = "test"
             executor = foodx.ContinualExecutor(
                 self.do_svc, self.orch_svc, run_link_path=run_link_path
             )
-            run_link = executor.create_run_link(doc_id)
+            run_link = executor.create_run_link(DOC_ID)
             self.assertIsNotNone(executor.file_handler)
             self.assertIsNotNone(executor.temp_dir)
             self.assertIsNotNone(executor.log_path)
             self.assertTrue(fos.exists(executor.log_path))
-            executor.flush_logs(ObjectId(doc_id), run_link)
+            executor.flush_logs(ObjectId(DOC_ID), run_link)
             now = datetime.utcnow()
             expected_run_link = fos.join(
                 run_link_path,
@@ -52,15 +54,14 @@ class ContinualExecutorTests(unittest.IsolatedAsyncioTestCase):
                 str(now.year),
                 str(now.month),
                 str(now.day),
-                str(doc_id) + ".log",
+                str(DOC_ID) + ".log",
             )
             self.assertEqual(expected_run_link, run_link)
             self.assertTrue(fos.exists(expected_run_link))
 
     def test_logging_disabled(self):
-        doc_id = "test"
-        run_link = self.executor.create_run_link(doc_id)
-        self.executor.flush_logs(ObjectId(doc_id), run_link)
+        run_link = self.executor.create_run_link(DOC_ID)
+        self.executor.flush_logs(ObjectId(DOC_ID), run_link)
         self.assertIsNone(self.executor.file_handler)
         self.assertIsNone(self.executor.temp_dir)
         self.assertIsNone(self.executor.log_path)
