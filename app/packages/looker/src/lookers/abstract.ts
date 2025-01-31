@@ -123,14 +123,18 @@ export abstract class AbstractLooker<
     this.canvas = this.lookerElement.children[1].element as HTMLCanvasElement;
     this.ctx = this.canvas.getContext("2d");
 
-    this.resizeObserver = new ResizeObserver(() => {
-      const box = getElementBBox(this.lookerElement.element);
-      if (box[2] && box[3] && this.lookerElement) {
-        this.updater((s) => ({ ...s, windowBBox: box }));
-      } else {
-        this.updater({});
-      }
-    });
+    if (!this.state.config.thumbnail) {
+      // resize observer adds cost and is not for thumbnails
+      // instead, dimensions are provided when attached
+      this.resizeObserver = new ResizeObserver(() => {
+        const box = getElementBBox(this.lookerElement.element);
+        if (box[2] && box[3] && this.lookerElement) {
+          this.updater((s) => ({ ...s, windowBBox: box }));
+        } else {
+          this.updater({});
+        }
+      });
+    }
 
     this.rootEvents = {};
     const events = this.getRootEvents();
@@ -507,7 +511,7 @@ export abstract class AbstractLooker<
     if (element === this.lookerElement.element.parentElement) {
       this.state.disabled &&
         this.updater({ disabled: false, options: { fontSize } });
-      dimensions && this.resizeObserver.observe(element);
+      this.resizeObserver?.observe(element);
       return;
     }
 
@@ -526,7 +530,7 @@ export abstract class AbstractLooker<
       options: { fontSize },
     });
     element.replaceChildren(this.lookerElement.element);
-    !dimensions && this.resizeObserver.observe(element);
+    this.resizeObserver?.observe(element);
   }
 
   resize(dimensions: Dimensions): void {
@@ -540,7 +544,7 @@ export abstract class AbstractLooker<
    */
   detach() {
     const parent = this.lookerElement.element.parentElement;
-    this.resizeObserver.disconnect();
+    this.resizeObserver?.disconnect();
     parent?.removeChild(this.lookerElement.element);
   }
 
