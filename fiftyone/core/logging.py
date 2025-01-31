@@ -24,11 +24,7 @@ def init_logging():
 
     if handler is None:
         handler = logging.StreamHandler(stream=sys.stdout)
-        formatter = logging.Formatter(
-            fmt="%(asctime)s - %(levelname)s - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
-        handler.setFormatter(formatter)
+        handler.setFormatter(logging.Formatter(fmt="%(message)s"))
 
         for logger in _get_loggers():
             logger.addHandler(handler)
