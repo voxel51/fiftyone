@@ -5,6 +5,7 @@ FiftyOne aggregation-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from datetime import date, datetime, timedelta
 import math
 
@@ -107,6 +108,9 @@ class DatasetTests(unittest.TestCase):
         s[2]["value"] = "value"
         d.add_sample(s)
         self.assertEqual(d.count("frames"), 2)
+        self.assertEqual(
+            d.aggregate(fo.Count("frames"), optimize_frames=True), 2
+        )
 
     @drop_datasets
     def test_count_values(self):
@@ -169,8 +173,28 @@ class DatasetTests(unittest.TestCase):
             {"one": 1, "two": 2},
         )
         self.assertEqual(
+            d.aggregate(
+                fo.CountValues(
+                    F("frames[].classifications.classifications[].label")
+                ),
+                optimize_frames=True,
+            ),
+            {"one": 1, "two": 2},
+        )
+        self.assertEqual(
             d.count_values(
                 F("frames[].classifications.classifications[].label").upper()
+            ),
+            {"ONE": 1, "TWO": 2},
+        )
+        self.assertEqual(
+            d.aggregate(
+                fo.CountValues(
+                    F(
+                        "frames[].classifications.classifications[].label"
+                    ).upper()
+                ),
+                optimize_frames=True,
             ),
             {"ONE": 1, "TWO": 2},
         )
@@ -216,6 +240,13 @@ class DatasetTests(unittest.TestCase):
         s[1]["classification"] = fo.Classification(label="label", confidence=1)
         d.add_sample(s)
         self.assertEqual(d.distinct("frames.classification.label"), ["label"])
+        self.assertEqual(
+            d.aggregate(
+                fo.Distinct("frames.classification.label"),
+                optimize_frames=True,
+            ),
+            ["label"],
+        )
 
     @drop_datasets
     def test_sum(self):
@@ -275,6 +306,12 @@ class DatasetTests(unittest.TestCase):
         s[1]["detection"] = fo.Detection(label="label", confidence=1)
         d.add_sample(s)
         self.assertEqual(d.min("frames.detection.confidence"), 1)
+        self.assertEqual(
+            d.aggregate(
+                fo.Min("frames.detection.confidence"), optimize_frames=True
+            ),
+            1,
+        )
 
     @drop_datasets
     def test_max(self):
@@ -318,6 +355,12 @@ class DatasetTests(unittest.TestCase):
         s[1]["detection"] = fo.Detection(label="label", confidence=1)
         d.add_sample(s)
         self.assertEqual(d.max("frames.detection.confidence"), 1)
+        self.assertEqual(
+            d.aggregate(
+                fo.Max("frames.detection.confidence"), optimize_frames=True
+            ),
+            1,
+        )
 
     @drop_datasets
     def test_mean(self):

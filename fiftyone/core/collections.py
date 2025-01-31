@@ -10040,7 +10040,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
-    def aggregate(self, aggregations):
+    def aggregate(self, aggregations, optimize_frames=False):
         """Aggregates one or more
         :class:`fiftyone.core.aggregations.Aggregation` instances.
 
@@ -10052,6 +10052,8 @@ class SampleCollection(object):
             aggregations: an :class:`fiftyone.core.aggregations.Aggregation` or
                 iterable of :class:`fiftyone.core.aggregations.Aggregation`
                 instances
+            optimize_frames (False): optimize the pipeline for a direct frame
+                collection call, when possible
 
         Returns:
             an aggregation result or list of aggregation results corresponding
@@ -10073,6 +10075,7 @@ class SampleCollection(object):
         # Placeholder to store results
         results = [None] * len(aggregations)
 
+        collections = []
         idx_map = {}
         pipelines = []
 
@@ -10080,23 +10083,31 @@ class SampleCollection(object):
         if batch_aggs:
             pipeline = self._build_batch_pipeline(batch_aggs)
             pipelines.append(pipeline)
+            collections.append(self._dataset._sample_collection)
 
         # Build big pipelines
         for idx, aggregation in big_aggs.items():
-            pipeline = self._build_big_pipeline(aggregation)
+            pipeline, is_frames = self._build_big_pipeline(
+                aggregation, optimize_frames=optimize_frames
+            )
             idx_map[idx] = len(pipelines)
             pipelines.append(pipeline)
+            collections.append(
+                self._dataset._frame_collection
+                if is_frames
+                else self._dataset._sample_collection
+            )
 
         # Build facet-able pipelines
-        compiled_facet_aggs, facet_pipelines, _ = self._build_facets(
-            facet_aggs
+        compiled_facet_aggs, facet_pipelines, is_frames = self._build_facets(
+            facet_aggs, optimize_frames=optimize_frames
         )
-        for idx, pipeline in facet_pipelines.items():
-            idx_map[idx] = len(pipelines)
-            pipelines.append(pipeline)
+        self._resolve_collections(
+            collections, idx_map, facet_pipelines, pipelines, is_frames
+        )
 
         # Run all aggregations
-        _results = foo.aggregate(self._dataset._sample_collection, pipelines)
+        _results = foo.aggregate(collections, pipelines)
 
         # Parse batch results
         if batch_aggs:
@@ -10110,6 +10121,7 @@ class SampleCollection(object):
             results[idx] = self._parse_big_result(aggregation, result)
 
         # Parse facet-able results
+
         for idx, aggregation in compiled_facet_aggs.items():
             result = list(_results[idx_map[idx]])
             data = self._parse_faceted_result(aggregation, result)
@@ -10140,6 +10152,7 @@ class SampleCollection(object):
         # Placeholder to store results
         results = [None] * len(aggregations)
 
+        collections = []
         idx_map = {}
         pipelines = []
 
@@ -10150,21 +10163,15 @@ class SampleCollection(object):
                 facet_pipelines,
                 is_frames,
             ) = self._build_facets(facet_aggs, optimize_frames=optimize_frames)
-            dataset = self._root_dataset
-            conn = foo.get_async_db_conn()
-            frame_coll = (
-                conn[dataset._frame_collection_name]
-                if dataset._frame_collection_name
-                else None
+
+            self._resolve_collections(
+                collections,
+                idx_map,
+                facet_pipelines,
+                pipelines,
+                is_frames,
+                sync=False,
             )
-            sample_coll = conn[dataset._sample_collection_name]
-            collections = []
-            for idx, pipeline in facet_pipelines.items():
-                idx_map[idx] = len(pipelines)
-                pipelines.append(pipeline)
-                collections.append(
-                    frame_coll if is_frames[idx] else sample_coll
-                )
 
             # Run all aggregations
             _results = await foo.aggregate(collections, pipelines)
@@ -10232,11 +10239,18 @@ class SampleCollection(object):
             group_slices=group_slices,
         )
 
-    def _build_big_pipeline(self, aggregation):
-        return self._pipeline(
-            pipeline=aggregation.to_mongo(self, big_field="values"),
-            attach_frames=aggregation._needs_frames(self),
-            group_slices=aggregation._needs_group_slices(self),
+    def _build_big_pipeline(self, aggregation, optimize_frames=False):
+        pipeline, is_frames = self._resolve_aggregation(
+            aggregation, big_field="values", optimize_frames=optimize_frames
+        )
+        return (
+            self._pipeline(
+                pipeline=pipeline,
+                attach_frames=aggregation._needs_frames(self),
+                group_slices=aggregation._needs_group_slices(self),
+                optimize_frames=is_frames,
+            ),
+            is_frames,
         )
 
     def _build_facets(self, aggs_map, optimize_frames=False):
@@ -10285,14 +10299,9 @@ class SampleCollection(object):
         is_frame_collection = {}
         pipelines = {}
         for idx, aggregation in compiled.items():
-            if optimize_frames:
-                pipeline, is_frames = aggregation.to_mongo(
-                    self, optimize_frames=True
-                )
-            else:
-                is_frames = False
-                pipeline = aggregation.to_mongo(self)
-
+            pipeline, is_frames = self._resolve_aggregation(
+                aggregation, optimize_frames=optimize_frames
+            )
             is_frame_collection[idx] = is_frames
             pipelines[idx] = self._pipeline(
                 pipeline=pipeline,
@@ -10302,6 +10311,43 @@ class SampleCollection(object):
             )
 
         return compiled, pipelines, is_frame_collection
+
+    def _resolve_aggregation(
+        self, aggregation, optimize_frames=False, **kwargs
+    ):
+        if optimize_frames:
+            pipeline, is_frames = aggregation.to_mongo(
+                self, optimize_frames=True, **kwargs
+            )
+        else:
+            is_frames = False
+            pipeline = aggregation.to_mongo(self, **kwargs)
+
+        return pipeline, is_frames
+
+    def _resolve_collections(
+        self,
+        collections,
+        idx_map,
+        facet_pipelines,
+        pipelines,
+        is_frames,
+        sync=True,
+    ):
+        dataset = self._dataset
+        conn = foo.get_db_conn() if sync else foo.get_async_db_conn()
+        frame_coll = (
+            conn[dataset._frame_collection_name]
+            if dataset._frame_collection_name
+            else None
+        )
+        sample_coll = conn[dataset._sample_collection_name]
+        for idx, pipeline in facet_pipelines.items():
+            idx_map[idx] = len(pipelines)
+            pipelines.append(pipeline)
+            collections.append(frame_coll if is_frames[idx] else sample_coll)
+
+        return collections
 
     def _parse_big_result(self, aggregation, result):
         if result:
@@ -10988,6 +11034,7 @@ class SampleCollection(object):
         allow_missing=False,
         new_field=None,
         context=None,
+        optimize_frames=False,
     ):
         return _make_set_field_pipeline(
             self,
@@ -10997,6 +11044,7 @@ class SampleCollection(object):
             allow_missing=allow_missing,
             new_field=new_field,
             context=context,
+            optimize_frames=optimize_frames,
         )
 
     def _get_values_by_id(self, path_or_expr, ids, link_field=None):
@@ -11699,6 +11747,7 @@ def _make_set_field_pipeline(
     allow_missing=False,
     new_field=None,
     context=None,
+    optimize_frames=False,
 ):
     (
         path,
@@ -11720,7 +11769,7 @@ def _make_set_field_pipeline(
 
         list_fields = [f for f in list_fields if not context.startswith(f)]
 
-    if is_frame_field and path != "frames":
+    if is_frame_field and path != "frames" and not optimize_frames:
         path = sample_collection._FRAMES_PREFIX + path
         list_fields = ["frames"] + [
             sample_collection._FRAMES_PREFIX + lf for lf in list_fields

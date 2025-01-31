@@ -3195,6 +3195,7 @@ def _parse_field_and_expr(
             embedded_root=embedded_root,
             allow_missing=allow_missing,
             context=context,
+            optimize_frames=optimize_frames,
         )
     else:
         pipeline = []
