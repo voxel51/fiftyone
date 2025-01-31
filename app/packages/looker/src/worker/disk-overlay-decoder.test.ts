@@ -4,8 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Coloring, CustomizeColor } from "..";
 import { LabelMask } from "../overlays/base";
 import type { Colorscale } from "../state";
-import { decodeWithCanvas, recastBufferToMonoChannel } from "./canvas-decoder";
+import { recastBufferToMonoChannel } from "./canvas-decoder";
 import { decodeOverlayOnDisk, IntermediateMask } from "./disk-overlay-decoder";
+import { decodeMaskOnDisk } from "./mask-decoder";
 import { enqueueFetch } from "./pooled-fetch";
 
 vi.mock("@fiftyone/state/src/recoil/utils", () => ({
@@ -16,16 +17,9 @@ vi.mock("./pooled-fetch", () => ({
   enqueueFetch: vi.fn(),
 }));
 
-vi.mock("./canvas-decoder", async () => {
-  const actual = await vi.importActual<typeof import("./canvas-decoder")>(
-    "./canvas-decoder"
-  );
-
-  return {
-    ...actual,
-    decodeWithCanvas: vi.fn(),
-  };
-});
+vi.mock("./mask-decoder", () => ({
+  decodeMaskOnDisk: vi.fn(),
+}));
 
 const COLORING = {} as Coloring;
 const COLOR_SCALE = {} as Colorscale;
@@ -74,7 +68,7 @@ describe("decodeOverlayOnDisk", () => {
     vi.mocked(enqueueFetch).mockResolvedValue({
       blob: () => Promise.resolve(mockBlob),
     } as Response);
-    vi.mocked(decodeWithCanvas).mockResolvedValue(overlayMask);
+    vi.mocked(decodeMaskOnDisk).mockResolvedValue(overlayMask);
 
     await decodeOverlayOnDisk(
       field,
@@ -92,7 +86,12 @@ describe("decodeOverlayOnDisk", () => {
       url: sampleSrcUrl,
       options: { priority: "low" },
     });
-    expect(decodeWithCanvas).toHaveBeenCalledWith(mockBlob, SEGMENTATION);
+    expect(decodeMaskOnDisk).toHaveBeenCalledWith(
+      mockBlob,
+      SEGMENTATION,
+      field,
+      COLORING
+    );
     expect(label.mask).toBeDefined();
     expect(label.mask.data).toBe(overlayMask);
     expect(label.mask.image).toBeInstanceOf(ArrayBuffer);
@@ -110,7 +109,7 @@ describe("decodeOverlayOnDisk", () => {
     const overlayMask = { shape: [100, 200] };
 
     vi.mocked(getSampleSrc).mockReturnValue(sampleSrcUrl);
-    vi.mocked(decodeWithCanvas).mockResolvedValue(overlayMask);
+    vi.mocked(decodeMaskOnDisk).mockResolvedValue(overlayMask);
 
     await decodeOverlayOnDisk(
       field,
@@ -128,7 +127,12 @@ describe("decodeOverlayOnDisk", () => {
       url: sampleSrcUrl,
       options: { priority: "low" },
     });
-    expect(decodeWithCanvas).toHaveBeenCalledWith(mockBlob, HEATMAP);
+    expect(decodeMaskOnDisk).toHaveBeenCalledWith(
+      mockBlob,
+      HEATMAP,
+      field,
+      COLORING
+    );
     expect(label.map).toBeDefined();
     expect(label.map.data).toBe(overlayMask);
     expect(label.map.image).toBeInstanceOf(ArrayBuffer);
@@ -154,7 +158,7 @@ describe("decodeOverlayOnDisk", () => {
     vi.mocked(getSampleSrc)
       .mockReturnValueOnce(sampleSrcUrl1)
       .mockReturnValueOnce(sampleSrcUrl2);
-    vi.mocked(decodeWithCanvas)
+    vi.mocked(decodeMaskOnDisk)
       .mockResolvedValueOnce(overlayMask1)
       .mockResolvedValueOnce(overlayMask2);
 
@@ -206,7 +210,7 @@ describe("decodeOverlayOnDisk", () => {
       url: sampleSrcUrl,
       options: { priority: "low" },
     });
-    expect(decodeWithCanvas).not.toHaveBeenCalled();
+    expect(decodeMaskOnDisk).not.toHaveBeenCalled();
     expect(label.mask).toBeNull();
   });
 });

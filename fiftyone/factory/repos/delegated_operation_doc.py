@@ -56,6 +56,7 @@ class DelegatedOperationDocument(object):
         self.id = None
         self._doc = None
         self.metadata = None
+        self.log_upload_error = None
 
     def from_pymongo(self, doc: dict):
         # required fields
@@ -72,6 +73,7 @@ class DelegatedOperationDocument(object):
         self.pinned = doc.get("pinned", None)
         self.dataset_id = doc.get("dataset_id", None)
         self.run_link = doc.get("run_link", None)
+        self.log_upload_error = doc.get("log_upload_error", None)
         self.metadata = doc.get("metadata", None)
         self.label = doc.get("label", None)
         self.updated_at = doc.get("updated_at", None)
