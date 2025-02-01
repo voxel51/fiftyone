@@ -22,7 +22,11 @@ export class FoWebServer {
     try {
       await networkUtils.assertPortAvailableOrWaitWithTimeout(this.#port);
 
-      const dbName = `PW-${process.env.FIFTYONE_DATABASE_NAME}-${this.#port}`;
+      // note: hack. process.env.FIFTYONE_DATABASE_NAME keeps getting expanded
+      const dbName = `PW-${process.env.FIFTYONE_DATABASE_NAME.substring(
+        0,
+        5
+      )}-${this.#port}`;
       process.env.FIFTYONE_DATABASE_NAME = dbName;
 
       console.log(`Dropping database "${dbName}" for clean start`);
