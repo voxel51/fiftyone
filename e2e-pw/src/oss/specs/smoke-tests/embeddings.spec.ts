@@ -61,17 +61,6 @@ test.describe.serial("embeddings on quickstart dataset", () => {
   }) => {
     await panel.open("Embeddings");
     await embeddings.asserter.verifySelectorVisible();
-    await panel.close();
-  });
-
-  test("lasso samples work", async ({
-    embeddings,
-    panel,
-  }: {
-    embeddings: EmbeddingsPom;
-    panel: GridPanelPom;
-  }) => {
-    await panel.open("Embeddings");
     await embeddings.asserter.verifyLassoSelectsSamples();
     await panel.close();
   });
