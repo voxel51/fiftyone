@@ -73,19 +73,21 @@ test.describe.serial("groups video labels", () => {
     // compare screenshot for default slice (v1)
     await expect(grid.getNthLooker(0)).toHaveScreenshot("slice-v1.png");
 
-    const v2SampleLoadedPromise = page.evaluate((testVideoPath2_) => {
-      return new Promise<void>((resolve) => {
-        document.addEventListener("canvas-loaded", (e: CustomEvent) => {
-          if ((e.detail.sampleFilepath as string) === testVideoPath2_) {
-            resolve();
-          }
-        });
-      });
-    }, testVideoPath2);
+    // const v2SampleLoadedPromise = page.evaluate((testVideoPath2_) => {
+    //   return new Promise<void>((resolve) => {
+    //     document.addEventListener("canvas-loaded", (e: CustomEvent) => {
+    //       if ((e.detail.sampleFilepath as string) === testVideoPath2_) {
+    //         resolve();
+    //       }
+    //     });
+    //   });
+    // }, testVideoPath2);
 
     // compare screenshot for another slice (v2)
+    const gridRefresPromise = grid.getWaitForGridRefreshPromise();
     await grid.sliceSelector.selectSlice("v2");
-    await v2SampleLoadedPromise;
+    await gridRefresPromise;
+    // await v2SampleLoadedPromise;
 
     await expect(grid.getNthLooker(0)).toHaveScreenshot("slice-v2.png");
   });
@@ -95,6 +97,11 @@ test.describe.serial("groups video labels", () => {
     modal,
     eventUtils,
   }) => {
+    // reset to default slice
+    const gridRefresPromise = grid.getWaitForGridRefreshPromise();
+    await grid.sliceSelector.selectSlice("v1");
+    await gridRefresPromise;
+
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
 
