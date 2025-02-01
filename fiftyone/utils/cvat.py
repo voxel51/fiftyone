@@ -6441,12 +6441,14 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 xbr = float(round((x + w) * width))
                 ybr = float(round((y + h) * height))
                 bbox = [xtl, ytl, xbr, ybr]
+                rotation = det["rotation"] if "rotation" in det else 0.0 or 0.0
 
                 curr_shapes.append(
                     {
                         "type": "rectangle",
                         "occluded": is_occluded,
                         "points": bbox,
+                        "rotation": rotation,
                         "label_id": class_name,
                         "group": group_id,
                         "frame": frame_id,
