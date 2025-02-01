@@ -23,16 +23,18 @@ test.afterAll(async ({ foWebServer }) => {
 test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
   await foWebServer.startWebServer();
 
-  [testVideoPath1, testVideoPath2].forEach(async (outputPath) => {
-    await mediaFactory.createBlankVideo({
-      outputPath,
-      duration: 3,
-      width: 100,
-      height: 100,
-      frameRate: 5,
-      color: "#000000",
-    });
-  });
+  await Promise.all(
+    [testVideoPath1, testVideoPath2].map(async (outputPath) => {
+      mediaFactory.createBlankVideo({
+        outputPath,
+        duration: 3,
+        width: 100,
+        height: 100,
+        frameRate: 5,
+        color: "#000000",
+      });
+    })
+  );
 
   await fiftyoneLoader.executePythonCode(
     `
