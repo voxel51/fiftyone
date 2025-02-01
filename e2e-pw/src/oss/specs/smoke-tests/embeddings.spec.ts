@@ -2,7 +2,7 @@ import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { EmbeddingsPom } from "src/oss/poms/panels/embeddings-panel";
 import { GridPanelPom } from "src/oss/poms/panels/grid-panel";
-import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { Duration, getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
 
@@ -26,7 +26,10 @@ test.afterAll(async ({ foWebServer }) => {
   await foWebServer.stopWebServer();
 });
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+test.beforeAll(async ({ fiftyoneLoader, foWebServer }, testInfo) => {
+  // embeddings generation may take a while on slow computers
+  testInfo.setTimeout(Duration.Minutes(2));
+
   await foWebServer.startWebServer();
   await fiftyoneLoader.executePythonCode(
     `
@@ -47,7 +50,9 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   );
 });
 
-test.beforeEach(async ({ fiftyoneLoader, page }) => {
+test.beforeEach(async ({ fiftyoneLoader, page }, testInfo) => {
+  testInfo.setTimeout(Duration.Minutes(2));
+
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
