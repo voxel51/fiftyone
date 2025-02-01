@@ -49,17 +49,13 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await fiftyoneLoader.executePythonCode(pythonCode);
 });
 
-test.afterEach(async ({ modal, page }) => {
-  await modal.close({ ignoreError: true });
-  await page.reload();
-});
-
-test.describe.serial("grid selection", () => {
+test.describe.serial("selection", () => {
   extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
-    test(`${extension} grid selection`, async ({
+    test(`${extension} selection`, async ({
       page,
       fiftyoneLoader,
       grid,
+      modal,
     }) => {
       await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
       await grid.assert.isEntryCountTextEqualTo("5 samples");
@@ -77,14 +73,9 @@ test.describe.serial("grid selection", () => {
       await grid.assert.isSelectionCountEqualTo(1);
       await page.press("body", "Escape");
       await grid.assert.isSelectionCountEqualTo(0);
-    });
 
-    test(`${extension} modal selection`, async ({
-      fiftyoneLoader,
-      page,
-      modal,
-      grid,
-    }) => {
+      // check modal
+      await page.reload();
       const isPcd = extension === "pcd";
       await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
       await grid.toggleSelectFirstSample();
