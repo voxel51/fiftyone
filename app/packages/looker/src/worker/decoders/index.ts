@@ -6,7 +6,6 @@ import { enqueueFetch } from "../pooled-fetch";
 import { getOverlayFieldFromCls } from "../shared";
 import decodeCanvas from "./canvas";
 import decodeInline from "./inline";
-import decodeTiff from "./tiff";
 import type { BlobDecoder, Decodeables } from "./types";
 
 interface DecodeParameters {
@@ -26,8 +25,6 @@ const IMAGE_DECODERS: { [key: string]: BlobDecoder } = {
   jpeg: decodeCanvas,
   jpg: decodeCanvas,
   png: decodeCanvas,
-  tif: decodeTiff,
-  tiff: decodeTiff,
 };
 
 /**

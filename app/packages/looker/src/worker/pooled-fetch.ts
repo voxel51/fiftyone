@@ -1,4 +1,5 @@
-import { fetchWithLinearBackoff, RetryOptions } from "./decorated-fetch";
+import type { RetryOptions } from "./decorated-fetch";
+import { fetchWithLinearBackoff } from "./decorated-fetch";
 
 interface QueueItem {
   request: {
@@ -7,7 +8,7 @@ interface QueueItem {
     retryOptions?: RetryOptions;
   };
   resolve: (value: Response | PromiseLike<Response>) => void;
-  reject: (reason?: any) => void;
+  reject: (reason?: Error) => void;
 }
 
 // note: arbitrary number that seems to work well

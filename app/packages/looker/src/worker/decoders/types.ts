@@ -10,8 +10,6 @@ export const ARRAY_TYPES = {
   Int32Array,
   Float32Array,
   Float64Array,
-  BigUint64Array,
-  BigInt64Array,
 };
 
 export type TypedArray =
@@ -23,9 +21,7 @@ export type TypedArray =
   | Uint32Array
   | Int32Array
   | Float32Array
-  | Float64Array
-  | BigUint64Array
-  | BigInt64Array;
+  | Float64Array;
 
 export type Decodeables =
   | {

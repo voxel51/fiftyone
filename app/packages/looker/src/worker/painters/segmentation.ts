@@ -104,7 +104,7 @@ const segmentation: Painter<SegmentationLabel> = async ({
       targets[i] = zero;
     }
 
-    overlay[i] = colorer[colorBy](i, targets);
+    overlay[i] = colorer[colorBy](targets[i]);
   }
 };
 
