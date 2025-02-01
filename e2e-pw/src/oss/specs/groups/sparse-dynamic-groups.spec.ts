@@ -62,8 +62,9 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
 });
 
 test.describe.serial("sparse dynamic groups", () => {
-  test.afterEach(async ({ modal }) => {
-    modal.close({ ignoreError: true });
+  test.afterEach(async ({ modal, page }) => {
+    await modal.close({ ignoreError: true });
+    await page.reload();
   });
 
   test(`left slice (default)`, async ({
