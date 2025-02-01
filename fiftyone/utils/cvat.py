@@ -4406,6 +4406,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         has_ignored_attributes = False
         save_config = False
 
+        is_3d = samples.media_type == fom.THREE_D
+        media_field = config.media_field
+        if is_3d and media_field == "filepath":
+            raise ValueError(
+                "The `media_field` argument is required when annotating 3D "
+                "datasets. See the documentation for more details: "
+                "https://docs.voxel51.com/integrations/cvat.html#annotating-3d-data"
+            )
+
         # When using an existing project, we cannot support multiple label
         # fields of the same type, since it would not be clear which field
         # labels should be downloaded into
