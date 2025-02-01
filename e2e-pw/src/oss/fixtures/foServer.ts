@@ -27,9 +27,6 @@ export class FoWebServer {
       const dbName = `PW-${hash}-${this.#port}`;
       process.env.FIFTYONE_DATABASE_NAME = dbName;
 
-      console.log(`Dropping database "${dbName}" for clean start`);
-      await deleteDatabase(dbName);
-
       console.log(
         "Starting webserver on port",
         this.#port,
