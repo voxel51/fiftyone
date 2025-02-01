@@ -1,4 +1,5 @@
 import { spawn } from "child_process";
+import crypto from "node:crypto";
 import { getPythonCommand } from "src/oss/utils/commands";
 import { deleteDatabase } from "src/shared/db-utils";
 import * as networkUtils from "src/shared/network-utils";
@@ -22,11 +23,8 @@ export class FoWebServer {
     try {
       await networkUtils.assertPortAvailableOrWaitWithTimeout(this.#port);
 
-      // note: hack. process.env.FIFTYONE_DATABASE_NAME keeps getting expanded but can't be more than 63 chars
-      const dbName = `PW-${process.env.FIFTYONE_DATABASE_NAME.substring(
-        0,
-        10
-      )}-${this.#port}`;
+      const hash = crypto.randomBytes(10).toString("base64url");
+      const dbName = `PW-${hash}-${this.#port}`;
       process.env.FIFTYONE_DATABASE_NAME = dbName;
 
       console.log(`Dropping database "${dbName}" for clean start`);
@@ -89,20 +87,28 @@ export class FoWebServer {
     }
   }
 
-  async stopWebServer() {
+  async stopWebServer(timeoutMs = 10000): Promise<void> {
     if (!this.#webserverProcessConfig.processId) {
       throw new Error("webserver process not started");
     }
 
-    return new Promise<void>((resolve, reject) => {
+    const killPromise = new Promise<void>((resolve, reject) => {
       kill(this.#webserverProcessConfig.processId, "SIGTERM", (err) => {
         if (err) {
-          reject(err);
+          return reject(err);
         }
-
         console.log(`webserver stopped on port ${this.#port}`);
         resolve();
       });
     });
+
+    const timeoutPromise = new Promise<void>((_, reject) => {
+      setTimeout(
+        () => reject(new Error("Timeout stopping webserver")),
+        timeoutMs
+      );
+    });
+
+    return Promise.race([killPromise, timeoutPromise]);
   }
 }
