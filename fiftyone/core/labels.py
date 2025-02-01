@@ -18,7 +18,6 @@ import numpy as np
 import scipy.ndimage as spn
 import skimage.measure as skm
 import skimage.segmentation as sks
-import tifffile
 
 import eta.core.frameutils as etaf
 import eta.core.image as etai
@@ -1508,11 +1507,8 @@ class Segmentation(_BaseSegmentation):
 class PanopticSegmentation(_BaseSegmentation):
     """A segmentation that encodes both class and instance labels
 
-    The ``mask`` must have at least two channels. The first channel encodes the
-    class, and the second the instance.
-
-    To store a two channel via :attr:`mask_path`, a ".tif" or ".tiff" filepath
-    is required.
+    The ``mask`` must have two channels. The first channel encodes the class,
+    and the second the instance.
     """
 
     def to_detections(
@@ -1954,18 +1950,8 @@ def _mask_to_image(mask):
     return mask.astype(dtype)
 
 
-def _get_extension(path):
-    extension = pathlib.Path(path).suffix
-    return extension
-
-
 def _read_mask(mask_path, panoptic=False):
-    # pylint: disable=no-member
-    extension = _get_extension(mask_path)
-    if extension in (".tif", ".tiff"):
-        mask = tifffile.imread(mask_path)
-    else:
-        mask = foui.read(mask_path, flag=cv2.IMREAD_UNCHANGED)
+    mask = foui.read(mask_path, flag=cv2.IMREAD_UNCHANGED)
 
     # do this here even though we're not writing a mask because it
     # converts to smallest possible dtype, and also checks type
@@ -1979,18 +1965,11 @@ def _read_mask(mask_path, panoptic=False):
 
 
 def _write_mask(mask, mask_path):
-    extension = _get_extension(mask_path)
     mask = _mask_to_image(mask)
-    if extension in (".tif", ".tiff"):
-        bigtiff = mask.dtype == np.uint64
-        tifffile.imwrite(mask_path, mask, bigtiff=bigtiff, compression="zlib")
-    else:
-        if mask.ndim == 3 and mask.shape[-1] == 2:
-            # add empty third channel
-            mask = np.dstack(
-                (mask, np.zeros(mask.shape[:2], dtype=mask.dtype))
-            )
-        foui.write(mask, mask_path)
+    if mask.ndim == 3 and mask.shape[-1] == 2:
+        # add empty third channel
+        mask = np.dstack((mask, np.zeros(mask.shape[:2], dtype=mask.dtype)))
+    foui.write(mask, mask_path)
 
 
 def _transform_mask(in_mask, targets_map):
