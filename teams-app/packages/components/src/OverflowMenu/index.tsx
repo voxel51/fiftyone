@@ -11,17 +11,20 @@ import {
   MenuItem,
   Typography,
   Tooltip,
+  Divider,
 } from "@mui/material";
 import { useMemo, useState } from "react";
 
-type OverflowMenuItemProps = ItemWithPermission & {
-  primaryText: string | React.ReactNode;
+export type OverflowMenuItemProps = ItemWithPermission & {
+  primaryText?: string | React.ReactNode; // only optional for dividers
   IconComponent?: React.ReactNode;
   secondaryText?: string;
   onClick?: Function;
   disabled?: boolean;
   title?: string;
   hoverText?: string;
+  isDivider?: boolean;
+  iconPosition?: "left" | "right";
 };
 
 type OverflowMenuProps = {
@@ -39,6 +42,7 @@ export default function OverflowMenu({
 }: OverflowMenuProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
+
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     if (constrainEvent) {
       event.preventDefault();
@@ -47,6 +51,7 @@ export default function OverflowMenu({
     const selectedItem = event.currentTarget;
     setAnchorEl(selectedItem);
   };
+
   const handleClose = (e) => {
     if (constrainEvent) {
       e.preventDefault();
@@ -99,12 +104,17 @@ export default function OverflowMenu({
         onClose={handleClose}
       >
         {permissionedItems.map((item, i) => {
+          if (item.isDivider) {
+            return <Divider key={`divider-${i}`} />;
+          }
+
           const {
             IconComponent,
             disabled,
             onClick,
             primaryText,
             secondaryText,
+            iconPosition = "left",
             title,
             hoverText,
           } = item;
@@ -122,13 +132,25 @@ export default function OverflowMenu({
                 handleClose(e);
                 if (onClick) onClick(e);
               }}
+              sx={{
+                display: "flex",
+                justifyContent:
+                  iconPosition === "right" ? "space-between" : "flex-start",
+              }}
             >
-              {IconComponent && <ListItemIcon>{IconComponent}</ListItemIcon>}
+              {iconPosition === "left" && IconComponent && (
+                <ListItemIcon>{IconComponent}</ListItemIcon>
+              )}
               <ListItemText>{primaryText}</ListItemText>
               {secondaryText && (
                 <Typography variant="body2" color="text.secondary">
                   {secondaryText}
                 </Typography>
+              )}
+              {iconPosition === "right" && IconComponent && (
+                <Box component="span" ml={2}>
+                  {IconComponent}
+                </Box>
               )}
             </MenuItem>
           );
@@ -147,7 +169,7 @@ export default function OverflowMenu({
             );
           }
 
-          if (!text) {
+          if (text) {
             return (
               <Tooltip
                 title={text}
