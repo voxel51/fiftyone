@@ -3,6 +3,172 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 2.5.0
+--------------------
+*Released January 24, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.3.0 <release-notes-v1.3.0>`, plus:
+
+- Fixed a bug which prevented very large media from being fetched
+- Fixed a race condition which prevented downloading initial batches of cloud
+  media
+
+.. _release-notes-v1.3.0:
+
+FiftyOne 1.3.0
+--------------
+*Released January 24, 2025*
+
+App
+
+- Reduced memory requirements for :ref:`heatmap fields <heatmaps>` by 4x!
+  `#5340 <https://github.com/voxel51/fiftyone/pull/5340>`_
+- Optimized rendering of dense label masks like segmentations and heatmaps
+  `#5337 <https://github.com/voxel51/fiftyone/pull/5337>`_
+- Added support for rendering 16 bit PNG label masks
+  `#5413 <https://github.com/voxel51/fiftyone/pull/5413>`_
+- Added support for rendering JPG label masks
+  `#5406 <https://github.com/voxel51/fiftyone/pull/5406>`_
+- Improved robustness when label mask MIME type is missing
+  `#5419 <https://github.com/voxel51/fiftyone/pull/5419>`_
+- Added support for
+  :ref:`multiple media fields <dataset-app-config-media-fields>` when viewing
+  :ref:`dynamic groups <app-dynamic-groups>` of image frames
+  `#5394 <https://github.com/voxel51/fiftyone/pull/5394>`_
+- Improved stability of the :ref:`tagging menu <app-tagging>` when adding new
+  sample/label tags
+  `#5378 <https://github.com/voxel51/fiftyone/pull/5378>`_
+- Added a `dynamic_groups_target_frame_rate` setting to the
+  :ref:`dataset app config <dataset-app-config>` that allows users to configure
+  the target frame rate when animating
+  :ref:`dynamic groups <app-dynamic-groups>` in the modal
+  `#5368 <https://github.com/voxel51/fiftyone/pull/5368>`_
+- Fixed a bug that prevented expanding the `label tags` sidebar facet for
+  datasets that contain |Classifications| fields
+  `#5322 <https://github.com/voxel51/fiftyone/pull/5322>`_
+- Improved reliability when running the App in GitHub Codespaces
+  `#5349 <https://github.com/voxel51/fiftyone/pull/5349>`_
+
+SDK
+
+- Significantly optimized `len(dataset)` and
+  :meth:`dataset.count() <fiftyone.core.dataset.Dataset.count>` by using
+  estimated document counts when possible
+  `#5398 <https://github.com/voxel51/fiftyone/pull/5398>`_
+- Added index usage info to
+  :meth:`get_index_information() <fiftyone.core.collections.SampleCollection.get_index_information>`
+  `#5320 <https://github.com/voxel51/fiftyone/pull/5320>`_
+- Improved error messaging when attempting to add
+  :ref:`dynamic attributes <dynamic-attributes>` whose names clash with
+  reserved attributes
+  `#5357 <https://github.com/voxel51/fiftyone/pull/5357>`_
+- :meth:`Polyline.to_detection() <fiftyone.core.labels.Polyline.to_detection>`
+  now gracefully handles polylines with no vertices
+  `#642 <https://github.com/voxel51/eta/pull/642>`_
+- Added a `create_index` parameter to the
+  :meth:`geo_near() <fiftyone.core.collections.SampleCollection.geo_near>` and
+  :meth:`geo_within() <fiftyone.core.collections.SampleCollection.geo_within>`
+  view stages for consistency with
+  :meth:`sort_by() <fiftyone.core.collections.SampleCollection.sort_by>` and
+  :meth:`group_by() <fiftyone.core.collections.SampleCollection.group_by>`
+  `#5325 <https://github.com/voxel51/fiftyone/pull/5325>`_
+
+Annotation
+
+- A dataset's :ref:`mask targets <storing-mask-targets>` are now automatically
+  used by default when annotating existing segmentation fields
+  `#5318 <https://github.com/voxel51/fiftyone/pull/5318>`_
+- The :ref:`CVAT integration <cvat-integration>` now supports annotating
+  instance segmentations via the brush tool when connected to
+  `CVAT Server >=- 2.5 <https://github.com/cvat-ai/cvat/releases/tag/v2.3.0>`_
+  `#5319 <https://github.com/voxel51/fiftyone/pull/5319>`_
+
+Evaluation
+
+- Added support for defining
+  :ref:`custom evaluation metrics <custom-evaluation-metrics>` and applying
+  them when evaluating models
+  `#5279 <https://github.com/voxel51/fiftyone/pull/5279>`_
+- Added COCO-style Mean Average Recall (mAR) to
+  :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+  `#5274 <https://github.com/voxel51/fiftyone/pull/5274>`_
+- Clicking the class performance bars and confusion matrix cells in the
+  :ref:`Model Evaluation panel <app-model-evaluation-panel>` will now
+  automatically load the corresponding views in the samples panel for
+  :ref:`segmentation evaluations <evaluating-segmentations>`
+  `#5332 <https://github.com/voxel51/fiftyone/pull/5332>`_
+- Added a display options settings cog to the
+  :ref:`Model Evaluation panel <app-model-evaluation-panel>` when viewing
+  results in table view
+  `#5367 <https://github.com/voxel51/fiftyone/pull/5367>`_
+- Added an `include_missing=True` option to
+  :meth:`plot_confusion_matrix() <fiftyone.utils.eval.base.BaseClassificationResults.plot_confusion_matrix>`
+  `#5408 <https://github.com/voxel51/fiftyone/pull/5408>`_
+- Fixed a bug where
+  :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+  would fail when applied to :ref:`keypoint fields <keypoints>`
+  `#5344 <https://github.com/voxel51/fiftyone/pull/5344>`_
+
+Brain
+
+- Added support for cloud URIs to the
+  :ref:`LanceDB integration <lancedb-integration>`
+  `#228 <https://github.com/voxel51/fiftyone-brain/pull/228>`_
+- Removed usage of the deprecated `InsetPosition` class when
+  :ref:`visualizing embeddings <embeddings-plots>` via the `matplotlib` backend
+  `#5343 <https://github.com/voxel51/fiftyone/pull/5343>`_
+
+Zoo
+
+- Added :ref:`DINOv2 with registers <model-zoo-dinov2-vits14-reg-torch>` to the
+  model zoo!
+  `#5201 <https://github.com/voxel51/fiftyone/pull/5201>`_
+- All Torch models in the :ref:`Model Zoo <model-zoo>` will now automatically
+  use GPU resources when available
+  `#5026 <https://github.com/voxel51/fiftyone/pull/5026>`_
+
+Plugins
+
+- Upgraded all applicable :mod:`builtin operators <plugins.operators>` to
+  support bulk actions on multiple fields at once
+  `#5379 <https://github.com/voxel51/fiftyone/pull/5379>`_
+- Added
+  :meth:`show_sidebar() <fiftyone.operators.operations.Operations.show_sidebar>`,
+  :meth:`hide_sidebar() <fiftyone.operators.operations.Operations.hide_sidebar>`,
+  and
+  :meth:`toggle_sidebar() <fiftyone.operators.operations.Operations.toggle_sidebar>`
+  operations to programmatically show/hide/toggle the visibility of the App's
+  sidebar
+  `#5297 <https://github.com/voxel51/fiftyone/pull/5297>`_
+- Automatically coerce empty input fields back to `None` in
+  :meth:`str() <fiftyone.operators.types.Object.str>` and
+  :meth:`list() <fiftyone.operators.types.Object.list>`
+  properties
+  `#5375 <https://github.com/voxel51/fiftyone/pull/5375>`_
+- Improved default user interface of
+  :class:`DropdownView(multiple=True) <fiftyone.operators.types.DropdownView>`
+  views to support autocomplete, tag bubbles, and easy deletion via the `ESC`
+  keyboard shortcut
+  `#5375 <https://github.com/voxel51/fiftyone/pull/5375>`_
+- The :func:`download_plugin() <fiftyone.plugins.core.download_plugin>` method
+  and
+  `@voxel51/plugins/install_plugin <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/plugins>`_
+  operator now support installing plugins from GitHub branches that contain
+  slashes and/or nested tree paths
+  `#5324 <https://github.com/voxel51/fiftyone/pull/5324>`_
+
+CLI
+
+- Added metadata about builtin plugins to the
+  :ref:`fiftyone plugins list <cli-fiftyone-plugins-list>` command
+  `#5333 <https://github.com/voxel51/fiftyone/pull/5333>`_
+
+FiftyOne Teams 2.4.0
+--------------------
+*Released January 10, 2025*
+
+- Added ability to set a user-specific auth header when making media queries.
+
 FiftyOne Teams 2.3.0
 --------------------
 *Released December 20, 2024*

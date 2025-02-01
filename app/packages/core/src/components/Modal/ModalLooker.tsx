@@ -65,8 +65,10 @@ export const ModalLooker = React.memo(
     );
     const video = useRecoilValue(fos.isVideoDataset);
 
+    const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
+
     if (shouldRenderImavid) {
-      return <ImaVidLookerReact sample={sample} />;
+      return <ImaVidLookerReact sample={sample} key={modalMediaField} />;
     }
 
     if (video) {

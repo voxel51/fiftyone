@@ -10,6 +10,7 @@ from copy import deepcopy
 
 import numpy as np
 
+import fiftyone.core.labels as fol
 import fiftyone.core.plots as fop
 import fiftyone.utils.iou as foui
 
@@ -43,7 +44,8 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
             of the provided :class:`fiftyone.core.labels.Polyline` instances
             rather than using their actual geometries
         tolerance (None): a tolerance, in pixels, when generating approximate
-            polylines for instance masks. Typical values are 1-3 pixels
+            polylines for instance masks. Typical values are 1-3 pixels. By
+            default, IoUs are computed directly on the dense pixel masks
         max_preds (None): the maximum number of predicted objects to evaluate
             when computing mAP and PR curves
         error_level (1): the error level to use when manipulating instance
@@ -68,6 +70,8 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
             labels according to the provided ``hierarchy``
         expand_pred_hierarchy (False): whether to expand predicted objects and
             labels according to the provided ``hierarchy``
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
     """
 
     def __init__(
@@ -87,10 +91,16 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
         neg_label_field=None,
         expand_gt_hierarchy=True,
         expand_pred_hierarchy=False,
+        custom_metrics=None,
         **kwargs
     ):
         super().__init__(
-            pred_field, gt_field, iou=iou, classwise=classwise, **kwargs
+            pred_field,
+            gt_field,
+            iou=iou,
+            classwise=classwise,
+            custom_metrics=custom_metrics,
+            **kwargs,
         )
 
         self.iscrowd = iscrowd
@@ -286,6 +296,7 @@ class OpenImagesDetectionResults(DetectionResults):
         thresholds (None): an optional dict of per-class decision thresholds
         missing (None): a missing label string. Any unmatched objects are
             given this label for evaluation purposes
+        custom_metrics (None): an optional dict of custom metrics
         backend (None): a :class:`OpenImagesEvaluation` backend
     """
 
@@ -300,6 +311,7 @@ class OpenImagesDetectionResults(DetectionResults):
         classes,
         thresholds=None,
         missing=None,
+        custom_metrics=None,
         backend=None,
     ):
         super().__init__(
@@ -309,6 +321,7 @@ class OpenImagesDetectionResults(DetectionResults):
             matches,
             classes=classes,
             missing=missing,
+            custom_metrics=custom_metrics,
             backend=backend,
         )
 
@@ -545,6 +558,11 @@ def _open_images_evaluation_setup(
                 if config.expand_pred_hierarchy and label != "all":
                     _expand_detection_hierarchy(cats, obj, config, "preds")
 
+    if isinstance(preds, fol.Keypoints):
+        sort_key = lambda p: np.nanmean(p.confidence) if p.confidence else -1
+    else:
+        sort_key = lambda p: p.confidence or -1
+
     # Compute IoUs within each category
     pred_ious = {}
     for objects in cats.values():
@@ -552,7 +570,7 @@ def _open_images_evaluation_setup(
         preds = objects["preds"]
 
         # Highest confidence predictions first
-        preds = sorted(preds, key=lambda p: p.confidence or -1, reverse=True)
+        preds = sorted(preds, key=sort_key, reverse=True)
 
         if max_preds is not None:
             preds = preds[:max_preds]
@@ -583,6 +601,13 @@ def _compute_matches(
 
         # Match each prediction to the highest available IoU ground truth
         for pred in objects["preds"]:
+            if isinstance(pred, fol.Keypoint):
+                pred_conf = (
+                    np.nanmean(pred.confidence) if pred.confidence else None
+                )
+            else:
+                pred_conf = pred.confidence
+
             if pred.id in pred_ious:
                 best_match = None
                 best_match_iou = iou_thresh
@@ -667,7 +692,7 @@ def _compute_matches(
                                 gt.label,
                                 pred.label,
                                 best_match_iou,
-                                pred.confidence,
+                                pred_conf,
                                 gt.id,
                                 pred.id,
                             )
@@ -679,7 +704,7 @@ def _compute_matches(
                             None,
                             pred.label,
                             None,
-                            pred.confidence,
+                            pred_conf,
                             None,
                             pred.id,
                         )
@@ -687,7 +712,7 @@ def _compute_matches(
             elif pred.label == cat:
                 pred[eval_key] = "fp"
                 matches.append(
-                    (None, pred.label, None, pred.confidence, None, pred.id)
+                    (None, pred.label, None, pred_conf, None, pred.id)
                 )
 
         # Leftover GTs are false negatives

@@ -6,6 +6,8 @@ FiftyOne operator registry.
 |
 """
 
+import eta.core.utils as etau
+
 from fiftyone.operators.panel import Panel
 import fiftyone.plugins.context as fopc
 
@@ -41,7 +43,8 @@ def list_operators(enabled=True, builtin="all", type=None):
         builtin ("all"): whether to include only builtin operators (True) or
             only non-builtin operators (False) or all operators ("all")
         type (None): whether to include only ``"panel"`` or ``"operator"`` type
-            operators
+            operators, or a specific :class:`fiftyone.operators.Operator`
+            subclass to restrict to
 
     Returns:
         a list of :class:`fiftyone.operators.Operator` instances
@@ -85,7 +88,8 @@ class OperatorRegistry(object):
             builtin (None): whether to include only builtin operators (True) or
                 only non-builtin operators (False)
             type (None): whether to include only ``"panel"`` or ``"operator"``
-                type operators
+                type operators, or a specific
+                :class:`fiftyone.operators.Operator` subclass to restrict to
 
         Returns:
             a list of :class:`fiftyone.operators.Operator` instances
@@ -104,9 +108,10 @@ class OperatorRegistry(object):
         elif type == "operator":
             operators = [op for op in operators if not isinstance(op, Panel)]
         elif type is not None:
-            raise ValueError(
-                f"Unsupported type='{type}'. The supported values are ('panel', 'operator')"
-            )
+            if etau.is_str(type):
+                type = etau.get_class(type)
+
+            operators = [op for op in operators if isinstance(op, type)]
 
         return operators
 

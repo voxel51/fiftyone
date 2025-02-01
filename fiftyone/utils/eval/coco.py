@@ -13,6 +13,7 @@ import numpy as np
 
 import eta.core.utils as etau
 
+import fiftyone.core.labels as fol
 import fiftyone.core.plots as fop
 import fiftyone.utils.iou as foui
 
@@ -49,7 +50,8 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
             of the provided :class:`fiftyone.core.labels.Polyline` instances
             rather than using their actual geometries
         tolerance (None): a tolerance, in pixels, when generating approximate
-            polylines for instance masks. Typical values are 1-3 pixels
+            polylines for instance masks. Typical values are 1-3 pixels. By
+            default, IoUs are computed directly on the dense pixel masks
         compute_mAP (False): whether to perform the necessary computations so
             that mAP, mAR, and PR curves can be generated
         iou_threshs (None): a list of IoU thresholds to use when computing mAP
@@ -66,6 +68,8 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
 
             If ``error_level > 0``, any calculation that raises a geometric
             error will default to an IoU of 0
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
     """
 
     def __init__(
@@ -82,10 +86,16 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         iou_threshs=None,
         max_preds=None,
         error_level=1,
+        custom_metrics=None,
         **kwargs,
     ):
         super().__init__(
-            pred_field, gt_field, iou=iou, classwise=classwise, **kwargs
+            pred_field,
+            gt_field,
+            iou=iou,
+            classwise=classwise,
+            custom_metrics=custom_metrics,
+            **kwargs,
         )
 
         if compute_mAP and iou_threshs is None:
@@ -262,6 +272,7 @@ class COCODetectionResults(DetectionResults):
             ``num_iou_threshs x num_classes x num_recall``
         missing (None): a missing label string. Any unmatched objects are
             given this label for evaluation purposes
+        custom_metrics (None): an optional dict of custom metrics
         backend (None): a :class:`COCOEvaluation` backend
     """
 
@@ -278,6 +289,7 @@ class COCODetectionResults(DetectionResults):
         recall_sweep=None,
         thresholds=None,
         missing=None,
+        custom_metrics=None,
         backend=None,
     ):
         super().__init__(
@@ -287,6 +299,7 @@ class COCODetectionResults(DetectionResults):
             matches,
             classes=classes,
             missing=missing,
+            custom_metrics=custom_metrics,
             backend=backend,
         )
 
@@ -552,6 +565,11 @@ def _coco_evaluation_setup(
             label = obj.label if classwise else "all"
             cats[label]["preds"].append(obj)
 
+    if isinstance(preds, fol.Keypoints):
+        sort_key = lambda p: np.nanmean(p.confidence) if p.confidence else -1
+    else:
+        sort_key = lambda p: p.confidence or -1
+
     # Compute IoUs within each category
     pred_ious = {}
     for objects in cats.values():
@@ -559,7 +577,7 @@ def _coco_evaluation_setup(
         preds = objects["preds"]
 
         # Highest confidence predictions first
-        preds = sorted(preds, key=lambda p: p.confidence or -1, reverse=True)
+        preds = sorted(preds, key=sort_key, reverse=True)
 
         if max_preds is not None:
             preds = preds[:max_preds]
@@ -587,6 +605,13 @@ def _compute_matches(
 
         # Match each prediction to the highest available IoU ground truth
         for pred in objects["preds"]:
+            if isinstance(pred, fol.Keypoint):
+                pred_conf = (
+                    np.nanmean(pred.confidence) if pred.confidence else None
+                )
+            else:
+                pred_conf = pred.confidence
+
             if pred.id in pred_ious:
                 best_match = None
                 best_match_iou = iou_thresh
@@ -638,7 +663,7 @@ def _compute_matches(
                             gt.label,
                             pred.label,
                             best_match_iou,
-                            pred.confidence,
+                            pred_conf,
                             gt.id,
                             pred.id,
                             iscrowd(gt),
@@ -651,7 +676,7 @@ def _compute_matches(
                             None,
                             pred.label,
                             None,
-                            pred.confidence,
+                            pred_conf,
                             None,
                             pred.id,
                             None,
@@ -665,7 +690,7 @@ def _compute_matches(
                         None,
                         pred.label,
                         None,
-                        pred.confidence,
+                        pred_conf,
                         None,
                         pred.id,
                         None,

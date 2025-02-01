@@ -7,6 +7,7 @@ import { ViewPropsType } from "../utils/types";
 import AlertView from "./AlertView";
 import ChoiceMenuItemBody from "./ChoiceMenuItemBody";
 import FieldWrapper from "./FieldWrapper";
+import { AutocompleteView } from ".";
 
 // if we want to support more icons in the future, add them here
 const iconImports: {
@@ -154,6 +155,23 @@ export default function DropdownView(props: ViewPropsType) {
       </IconButton>
     );
   };
+
+  if (multiple) {
+    return (
+      <AutocompleteView
+        {...props}
+        schema={{
+          ...schema,
+          view: {
+            value_only: true,
+            allow_user_input: false,
+            allow_duplicates: false,
+            ...view,
+          },
+        }}
+      />
+    );
+  }
 
   return (
     <FieldWrapper {...props} hideHeader={compact}>

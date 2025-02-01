@@ -26,7 +26,7 @@ import { dynamicGroupsElementCount, selectedMediaField } from "../recoil";
 import { selectedSamples } from "../recoil/atoms";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as schemaAtoms from "../recoil/schema";
-import { datasetName } from "../recoil/selectors";
+import { datasetName, dynamicGroupsTargetFrameRate } from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
@@ -63,6 +63,9 @@ export default <T extends AbstractLooker<BaseState>>(
   );
 
   const isDynamicGroup = useRecoilValue(dynamicGroupAtoms.isDynamicGroup);
+  const dynamicGroupsTargetFrameRateValue = useRecoilValue(
+    dynamicGroupsTargetFrameRate
+  );
 
   // callback to get the latest promise inside another recoil callback
   // gets around the limitation of the fact that snapshot inside callback refs to the committed state at the time
@@ -221,13 +224,15 @@ export default <T extends AbstractLooker<BaseState>>(
             .valueOrThrow();
 
           const thisSampleId = sample._id as string;
-          if (!ImaVidFramesControllerStore.has(thisSampleId)) {
+          const imavidPartitionKey = `${thisSampleId}-${mediaField}`;
+          if (!ImaVidFramesControllerStore.has(imavidPartitionKey)) {
             ImaVidFramesControllerStore.set(
-              thisSampleId,
+              imavidPartitionKey,
               new ImaVidFramesController({
                 environment,
                 firstFrameNumber,
                 page,
+                targetFrameRate: dynamicGroupsTargetFrameRateValue,
                 totalFrameCountPromise,
                 key: imavidKey,
               })
@@ -236,8 +241,9 @@ export default <T extends AbstractLooker<BaseState>>(
 
           config = {
             ...config,
-            frameStoreController: ImaVidFramesControllerStore.get(thisSampleId),
-            frameRate: 24,
+            frameStoreController:
+              ImaVidFramesControllerStore.get(imavidPartitionKey),
+            frameRate: dynamicGroupsTargetFrameRateValue,
             firstFrameNumber: isModal
               ? snapshot
                   .getLoadable(

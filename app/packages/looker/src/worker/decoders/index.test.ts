@@ -1,14 +1,12 @@
 import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";
 import { DETECTIONS, HEATMAP } from "@fiftyone/utilities";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { IntermediateMask } from ".";
 import decode from ".";
-import type { Coloring, CustomizeColor } from "../..";
-import type { OverlayMask } from "../../numpy";
 import type { LabelMask } from "../../overlays/base";
-import type { Colorscale } from "../../state";
+import type { Coloring, Colorscale, CustomizeColor } from "../../state";
 import { enqueueFetch } from "../pooled-fetch";
-import canvas from "./canvas";
+import canvas, { recastBufferToMonoChannel } from "./canvas";
+import type { IntermediateMask, OverlayMask } from "./types";
 
 vi.mock("@fiftyone/state/src/recoil/utils", () => ({
   getSampleSrc: vi.fn(),
@@ -204,5 +202,79 @@ describe("decodeOverlayOnDisk", () => {
     });
     expect(canvas).not.toHaveBeenCalled();
     expect(label.mask).toBeNull();
+  });
+});
+
+describe("recastBufferToMonoChannel", () => {
+  it("should handle a single grayscale pixel without alpha (stride=1)", () => {
+    const input = new Uint8ClampedArray([128]);
+    const width = 1;
+    const height = 1;
+    const stride = 1;
+
+    const resultBuffer = recastBufferToMonoChannel(
+      input,
+      width,
+      height,
+      stride
+    );
+    const resultArray = new Uint8Array(resultBuffer);
+
+    expect(resultArray).toEqual(new Uint8Array([128]));
+  });
+
+  it("should handle stride=4 (e.g., RGBA)", () => {
+    // two pixels, each RGBA For example:
+    //  pixel 1: R=10, G=10, B=10, A=255
+    //  pixel 2: R=40, G=40, B=40, A=255
+    const input = new Uint8ClampedArray([10, 10, 10, 255, 40, 40, 40, 255]);
+    const width = 2;
+    const height = 1;
+    const stride = 4;
+
+    const resultBuffer = recastBufferToMonoChannel(
+      input,
+      width,
+      height,
+      stride
+    );
+    const resultArray = new Uint8Array(resultBuffer);
+    expect(resultArray).toEqual(new Uint8Array([10, 40]));
+  });
+
+  it("should handle stride=3 (e.g., RGB without alpha)", () => {
+    // two pixels, each RGB (no alpha). For example:
+    //  pixel 1: R=10, G=10, B=10
+    //  pixel 2: R=40, G=40, B=40
+    const input = new Uint8ClampedArray([10, 10, 10, 40, 40, 40]);
+    const width = 2;
+    const height = 1;
+    const stride = 3;
+
+    const resultBuffer = recastBufferToMonoChannel(
+      input,
+      width,
+      height,
+      stride
+    );
+    const resultArray = new Uint8Array(resultBuffer);
+    expect(resultArray).toEqual(new Uint8Array([10, 40]));
+  });
+
+  it("should return an empty buffer if width or height is zero", () => {
+    const input = new Uint8ClampedArray([1, 2, 3, 4]);
+    const width = 0;
+    const height = 1;
+    const stride = 4;
+
+    const resultBuffer = recastBufferToMonoChannel(
+      input,
+      width,
+      height,
+      stride
+    );
+    const resultArray = new Uint8Array(resultBuffer);
+
+    expect(resultArray.length).toBe(0);
   });
 });

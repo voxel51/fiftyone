@@ -10,9 +10,12 @@ import unittest
 
 import fiftyone as fo
 import fiftyone.core.state as fos
+
 import fiftyone.core.session.events as fose
-import fiftyone.server.events.initialize as fosi
+
 import fiftyone.server.events.dispatch as fosd
+import fiftyone.server.events.listener as fosl
+import fiftyone.server.events.initialize as fosi
 import fiftyone.server.events.state as foss
 
 from decorators import drop_datasets
@@ -95,3 +98,11 @@ class TestServerEvents(unittest.IsolatedAsyncioTestCase):
         state = fos.StateDescription()
         await fosd.dispatch_event(None, fose.StateUpdate(state))
         self.assertEqual(state, foss.get_state())
+
+
+class TestListenerDisconnect(unittest.IsolatedAsyncioTestCase):
+    async def test_listener_disconnect(self):
+        foss.increment_app_count()
+        self.assertIsInstance(
+            await fosl.disconnect(True, set()), fose.CloseSession
+        )
