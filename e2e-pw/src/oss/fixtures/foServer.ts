@@ -1,7 +1,6 @@
 import { spawn } from "child_process";
 import crypto from "node:crypto";
 import { getPythonCommand } from "src/oss/utils/commands";
-import { deleteDatabase } from "src/shared/db-utils";
 import * as networkUtils from "src/shared/network-utils";
 import kill from "tree-kill";
 import waitOn from "wait-on";

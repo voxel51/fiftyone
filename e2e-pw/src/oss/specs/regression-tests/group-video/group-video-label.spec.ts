@@ -68,7 +68,7 @@ test.describe.serial("groups video labels", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
-  test("correct thumbnails for both slices", async ({ grid, page }) => {
+  test("correct thumbnails for both slices", async ({ grid }) => {
     await grid.sliceSelector.assert.verifySliceSelectorIsAvailable();
     await grid.sliceSelector.assert.verifyHasSlices(["v1", "v2"]);
 
