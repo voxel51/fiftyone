@@ -21,7 +21,12 @@ const extensionDatasetNamePairs = ["mp4", "png"].map(
     ] as const
 );
 
-test.beforeAll(async ({ fiftyoneLoader }) => {
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
+test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
   let pythonCode = `
       import fiftyone as fo
   `;
@@ -52,42 +57,49 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
   await fiftyoneLoader.executePythonCode(pythonCode);
 });
 
-extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
-  test(`${extension} group carousel`, async ({
-    fiftyoneLoader,
-    page,
-    grid,
-    modal,
-  }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-    await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
-    await grid.openFirstSample();
-    await modal.sidebar.toggleSidebarGroup("GROUP");
-    await modal.sidebar.assert.verifySidebarEntryText("group.name", "0");
-    await modal.waitForCarouselToLoad();
-    await modal.scrollCarousel();
-    await modal.navigateSlice("group.name", "19", true);
-    await modal.sidebar.assert.verifySidebarEntryText("group.name", "19");
+test.afterEach(async ({ modal, page }) => {
+  await modal.close({ ignoreError: true });
+  await page.reload();
+});
 
-    await modal.scrollCarousel();
-    await modal.navigateSlice("group.name", "39", true);
-    await modal.sidebar.assert.verifySidebarEntryText("group.name", "39");
+test.describe.serial("group carousel", () => {
+  extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
+    test(`${extension} group carousel`, async ({
+      fiftyoneLoader,
+      page,
+      grid,
+      modal,
+    }) => {
+      await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+      await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
+      await grid.openFirstSample();
+      await modal.sidebar.toggleSidebarGroup("GROUP");
+      await modal.sidebar.assert.verifySidebarEntryText("group.name", "0");
+      await modal.waitForCarouselToLoad();
+      await modal.scrollCarousel();
+      await modal.navigateSlice("group.name", "19", true);
+      await modal.sidebar.assert.verifySidebarEntryText("group.name", "19");
 
-    await modal.scrollCarousel();
-    await modal.navigateSlice("group.name", "59", true);
-    await modal.sidebar.assert.verifySidebarEntryText("group.name", "59");
+      await modal.scrollCarousel();
+      await modal.navigateSlice("group.name", "39", true);
+      await modal.sidebar.assert.verifySidebarEntryText("group.name", "39");
 
-    await modal.scrollCarousel();
-    await modal.navigateSlice("group.name", "79", true);
-    await modal.sidebar.assert.verifySidebarEntryText("group.name", "79");
+      await modal.scrollCarousel();
+      await modal.navigateSlice("group.name", "59", true);
+      await modal.sidebar.assert.verifySidebarEntryText("group.name", "59");
 
-    await modal.scrollCarousel();
-    await modal.navigateSlice("group.name", "99", true);
-    await modal.sidebar.assert.verifySidebarEntryText("group.name", "99");
+      await modal.scrollCarousel();
+      await modal.navigateSlice("group.name", "79", true);
+      await modal.sidebar.assert.verifySidebarEntryText("group.name", "79");
 
-    await modal.scrollCarousel(0);
-    await modal.navigateSlice("group.name", "0", true);
-    await modal.sidebar.assert.verifySidebarEntryText("group.name", "0");
-    await modal.close();
+      await modal.scrollCarousel();
+      await modal.navigateSlice("group.name", "99", true);
+      await modal.sidebar.assert.verifySidebarEntryText("group.name", "99");
+
+      await modal.scrollCarousel(0);
+      await modal.navigateSlice("group.name", "0", true);
+      await modal.sidebar.assert.verifySidebarEntryText("group.name", "0");
+      await modal.close();
+    });
   });
 });
