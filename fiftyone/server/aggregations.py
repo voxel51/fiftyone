@@ -117,11 +117,12 @@ async def aggregate_resolver(
     if not form.paths:
         return []
 
-    optimize_frames = (
-        not form.view and form.sample_ids and len(form.sample_ids) == 1
+    optimize_frames = await _should_optimize_frames(form)
+    view = await _load_view(
+        form,
+        form.slices,
+        optimize_frames=optimize_frames,
     )
-    view = await _load_view(form, form.slices, optimize_frames=optimize_frames)
-
     slice_view = None
 
     if form.mixed and "" in form.paths:
@@ -134,7 +135,9 @@ async def aggregate_resolver(
 
     if form.mixed and view.media_type == fom.GROUP and view.group_slices:
         view = view.select_group_slices(_force_mixed=True)
-        view = fosv.get_extended_view(view, form.filters)
+        view = fosv.get_extended_view(
+            view, form.filters, optimize_frames=optimize_frames
+        )
 
     aggregations, deserializers = zip(
         *[_resolve_path_aggregation(path, view) for path in form.paths]
@@ -178,6 +181,32 @@ RESULT_MAPPING = {
     fof.ObjectIdField: StringAggregation,
     fof.StringField: StringAggregation,
 }
+
+
+class _CountExists(foa.Count):
+    """Named helper aggregation for counting existence"""
+
+    def __init__(self, field):
+        super().__init__(field, _unwind=False)
+
+
+def _count_expanded_fields(collection: foc.SampleCollection) -> int:
+    schema = collection._root_dataset.get_field_schema()
+    count = 0
+    for field in schema.values():
+        while isinstance(field, fof.ListField):
+            field = field.field
+
+        if (
+            isinstance(field, fof.EmbeddedDocumentField)
+            and field.document_type is not None
+            and not issubclass(field.document_type, fol.Label)
+        ):
+            count += len(field.fields)
+        else:
+            count += 1
+
+    return count
 
 
 async def _load_view(
@@ -295,27 +324,24 @@ def _resolve_path_aggregation(
     return aggregations, from_results
 
 
-class _CountExists(foa.Count):
-    """Named helper aggregation for counting existence"""
+async def _should_optimize_frames(form: AggregationForm):
+    if len(form.sample_ids) > 1:
+        return False
 
-    def __init__(self, field):
-        super().__init__(field, _unwind=False)
+    if not form.sample_ids and not form.group_id:
+        return False
 
+    view = await _load_view(form, [])
+    if view.get_frame_field_schema() is None:
+        return False
 
-def _count_expanded_fields(collection: foc.SampleCollection) -> int:
-    schema = collection._root_dataset.get_field_schema()
-    count = 0
-    for field in schema.values():
-        while isinstance(field, fof.ListField):
-            field = field.field
+    if form.view:
+        return False
 
-        if (
-            isinstance(field, fof.EmbeddedDocumentField)
-            and field.document_type is not None
-            and not issubclass(field.document_type, fol.Label)
-        ):
-            count += len(field.fields)
-        else:
-            count += 1
+    if not form.filters:
+        return False
 
-    return count
+    return all(
+        path.startswith(foc.SampleCollection._FRAMES_PREFIX)
+        for path in form.filters
+    )
