@@ -30,62 +30,68 @@ const test = base.extend<{
   },
 });
 
-test.describe("fo3d", () => {
-  test.beforeAll(async ({ fiftyoneLoader, mediaFactory }) => {
-    mediaFactory.createPcd({
-      outputPath: pcdPath,
-      shape: "cube",
-      numPoints: 100,
-    });
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
 
-    fs.writeFileSync(stlPath, getStlCube());
+test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
+  await foWebServer.startWebServer();
 
-    await fiftyoneLoader.executePythonCode(
-      `
-      import fiftyone as fo
-      import fiftyone.utils.utils3d as fou3d
-
-      dataset = fo.Dataset("${datasetName}")
-      dataset.persistent = True
-
-      scene = fo.Scene()
-      stl = fo.StlMesh("stl", "${stlPath}")
-      stl.default_material = fo.MeshBasicMaterial(color="red", opacity=0.7)
-      stl.scale = 0.4
-      stl.position = [1,1,0]
-      scene.add(stl)
-
-      pcd = fo.PointCloud("pcd", "${pcdPath}")
-      pcd.scale = 2
-      pcd.default_material.point_size = 7
-      pcd.position = [-1,0,0]
-      scene.add(pcd)
-      scene.write("${scenePath}")
-
-      sample1 = fo.Sample(filepath="${scenePath}", name="sample1")
-      sample2 = fo.Sample(filepath="${scenePath}", name="sample2")
-
-      points3d = [[[-5, -99, -2], [-8, 99, -2]], [[4, -99, -2], [1, 99, -2]]]
-      polyline = fo.Polyline(label="polylines", points3d=points3d)
-
-      location = [-0.4503350257873535, -21.61918580532074, 5.709099769592285]
-      rotation = [0.0, 0.0, 0.0]
-      dimensions = [50, 50.00003170967102, 50]
-      boundingBox = fo.Detection(label="cuboid", location=location, rotation=rotation, dimensions=dimensions)
-
-      sample1["polylines"] = fo.Polylines(polylines=[polyline])
-      sample1["bounding_box"] = fo.Detections(detections=[boundingBox])
-
-      sample2["polylines"] = fo.Polylines(polylines=[polyline])
-      sample2["bounding_box"] = fo.Detections(detections=[boundingBox])
-
-      dataset.add_samples([sample1, sample2])
-
-      fou3d.compute_orthographic_projection_images(dataset, (-1, 64), "/tmp/ortho/${datasetName}") 
-      `
-    );
+  mediaFactory.createPcd({
+    outputPath: pcdPath,
+    shape: "cube",
+    numPoints: 100,
   });
 
+  fs.writeFileSync(stlPath, getStlCube());
+
+  await fiftyoneLoader.executePythonCode(
+    `
+    import fiftyone as fo
+    import fiftyone.utils.utils3d as fou3d
+
+    dataset = fo.Dataset("${datasetName}")
+    dataset.persistent = True
+
+    scene = fo.Scene()
+    stl = fo.StlMesh("stl", "${stlPath}")
+    stl.default_material = fo.MeshBasicMaterial(color="red", opacity=0.7)
+    stl.scale = 0.4
+    stl.position = [1,1,0]
+    scene.add(stl)
+
+    pcd = fo.PointCloud("pcd", "${pcdPath}")
+    pcd.scale = 2
+    pcd.default_material.point_size = 7
+    pcd.position = [-1,0,0]
+    scene.add(pcd)
+    scene.write("${scenePath}")
+
+    sample1 = fo.Sample(filepath="${scenePath}", name="sample1")
+    sample2 = fo.Sample(filepath="${scenePath}", name="sample2")
+
+    points3d = [[[-5, -99, -2], [-8, 99, -2]], [[4, -99, -2], [1, 99, -2]]]
+    polyline = fo.Polyline(label="polylines", points3d=points3d)
+
+    location = [-0.4503350257873535, -21.61918580532074, 5.709099769592285]
+    rotation = [0.0, 0.0, 0.0]
+    dimensions = [50, 50.00003170967102, 50]
+    boundingBox = fo.Detection(label="cuboid", location=location, rotation=rotation, dimensions=dimensions)
+
+    sample1["polylines"] = fo.Polylines(polylines=[polyline])
+    sample1["bounding_box"] = fo.Detections(detections=[boundingBox])
+
+    sample2["polylines"] = fo.Polylines(polylines=[polyline])
+    sample2["bounding_box"] = fo.Detections(detections=[boundingBox])
+
+    dataset.add_samples([sample1, sample2])
+
+    fou3d.compute_orthographic_projection_images(dataset, (-1, 64), "/tmp/ortho/${datasetName}") 
+    `
+  );
+});
+
+test.describe.serial("fo3d", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
