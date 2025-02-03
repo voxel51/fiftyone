@@ -417,7 +417,7 @@ https://github.com/user-attachments/assets/261e2098-aace-4e5c-babb-d044d83a9a13
     Evaluate model performance, identify failure modes, and fine-tune your
     models.
 
-https://github.com/user-attachments/assets/00c38135-af81-4f6e-96f2-02523aa5d4ab
+https://github.com/user-attachments/assets/af2fb7ec-ec5b-4a3a-bb7b-6d0bd122f8ac
 
 -   **[Advanced Data Curation:](https://docs.voxel51.com/brain.html)** Quickly
     find and fix data issues, annotation errors, and edge cases.
