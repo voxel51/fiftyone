@@ -167,7 +167,7 @@ export const tagParameters = ({
   const shouldShowCurrentSample =
     params.modal && selectedSamples.size === 0 && hiddenLabels.length === 0;
   const groups = groupData?.mode === "group";
-  if (!groups) {
+  if (groupData && !groups) {
     groupData.slices = groupData.currentSlices;
   }
 
