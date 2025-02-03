@@ -19,8 +19,14 @@ import { datasetId, datasetName } from "./selectors";
 import { State } from "./types";
 import { view } from "./view";
 
+const EXCLUDE_FIELDS = "fiftyone.core.stages.ExcludedFields";
+const SELECT_FIELDS = "fiftyone.core.stages.SelectFields";
 const SELECT_GROUP_SLICES = "fiftyone.core.stages.SelectGroupSlices";
-const VALID_QP_STAGES = new Set([SELECT_GROUP_SLICES]);
+const VALID_QP_STAGES = new Set([
+  EXCLUDE_FIELDS,
+  SELECT_FIELDS,
+  SELECT_GROUP_SLICES,
+]);
 
 export const lightningQuery = graphQLSelectorFamily<
   foq.lightningQuery$variables,
@@ -199,11 +205,8 @@ export const isQueryPerformantView = selector({
       return true;
     }
 
-    if (stages.length === 1) {
-      return VALID_QP_STAGES.has(stages[0]._cls);
-    }
-
-    return false;
+    const stageClasses = [...new Set(stages.map(({ _cls }) => _cls))];
+    return stageClasses.every((cls) => VALID_QP_STAGES.has(cls));
   },
 });
 
