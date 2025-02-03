@@ -182,7 +182,7 @@ async def _create_sample_item(
 
 def get_samples_pipeline(
     view: SampleCollection,
-    filters: JSON,
+    filters: t.Optional[JSON],
     sample_filter: t.Optional[SampleFilter],
     stages: BSONArray,
 ):
@@ -199,7 +199,9 @@ def get_samples_pipeline(
     return pipeline
 
 
-def _handle_frames(view: SampleCollection, filters: JSON, stages: BSONArray):
+def _handle_frames(
+    view: SampleCollection, filters: t.Optional[JSON], stages: BSONArray
+):
     # check frame field schema explicitly, media type is not reliable for
     # groups
     attach_frames = view.get_frame_field_schema() is not None
@@ -216,7 +218,10 @@ def _handle_frames(view: SampleCollection, filters: JSON, stages: BSONArray):
     return dict(), []
 
 
-def _has_frame_filtering(filters):
+def _has_frame_filtering(filters: t.Optional[JSON]):
+    if not filters:
+        return False
+
     for path in filters:
         if path.startswith(SampleCollection._FRAMES_PREFIX):
             return True
