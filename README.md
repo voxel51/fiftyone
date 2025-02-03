@@ -431,7 +431,7 @@ https://github.com/user-attachments/assets/2e7e4046-5ec0-43b0-99c5-6cacd4743ed6
 -   **[Open and Extensible](https://docs.voxel51.com/plugins/index.html)**
     Customize and extend FiftyOne to fit your specific needs.
 
-https://github.com/user-attachments/assets/dd91272d-2808-4373-90c5-5e906a0b80f1
+https://github.com/user-attachments/assets/7aa906c9-aab3-45c7-bd66-f388cac343e0
 
 <div align="center">
 <p align="center">
