@@ -19,7 +19,7 @@ import { datasetId, datasetName } from "./selectors";
 import { State } from "./types";
 import { view } from "./view";
 
-const EXCLUDE_FIELDS = "fiftyone.core.stages.ExcludedFields";
+const EXCLUDE_FIELDS = "fiftyone.core.stages.ExcludeFields";
 const SELECT_FIELDS = "fiftyone.core.stages.SelectFields";
 const SELECT_GROUP_SLICES = "fiftyone.core.stages.SelectGroupSlices";
 const VALID_QP_STAGES = new Set([
