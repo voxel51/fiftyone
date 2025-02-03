@@ -14,14 +14,20 @@ const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
   },
 });
 
-test.describe("classification-sidebar-filter-visibility", () => {
-  test.beforeAll(async ({ fiftyoneLoader }) => {
-    await fiftyoneLoader.loadZooDataset("cifar10", datasetName, {
-      max_samples: 5,
-      split: "test",
-    });
-  });
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
 
+test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
+
+  await fiftyoneLoader.loadZooDataset("cifar10", datasetName, {
+    max_samples: 5,
+    split: "test",
+  });
+});
+
+test.describe.serial("classification-sidebar-filter-visibility", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });

@@ -5,21 +5,23 @@
     "type": "commonjs",
     "license": "MIT",
     "devDependencies": {
-        "@eslint/js": "^9.11.1",
-        "@playwright/test": "^1.47.2",
+        "@eslint/js": "^9.19.0",
+        "@playwright/test": "^1.50.1",
+        "@types/node": "^22.13.0",
         "@types/wait-on": "^5.3.4",
-        "@typescript-eslint/eslint-plugin": "^8.7.0",
-        "@typescript-eslint/parser": "^8.7.0",
-        "dotenv": "^16.4.5",
-        "eslint": "^9.11.1",
-        "eslint-plugin-playwright": "^1.6.2",
+        "@typescript-eslint/eslint-plugin": "^8.22.0",
+        "@typescript-eslint/parser": "^8.22.0",
+        "dotenv": "^16.4.7",
+        "eslint": "^9.19.0",
+        "eslint-plugin-playwright": "^2.2.0",
         "jimp": "^1.6.0",
+        "mongodb": "^6.13.0",
         "tree-kill": "^1.2.2",
         "ts-dedent": "^2.2.0",
-        "typescript": "^5.6.2",
-        "typescript-eslint": "^8.7.0",
-        "vitest": "^2.1.1",
-        "wait-on": "^8.0.1"
+        "typescript": "^5.7.3",
+        "typescript-eslint": "^8.22.0",
+        "vitest": "^3.0.4",
+        "wait-on": "^8.0.2"
     },
     "scripts": {
         "lint": "bash -c 'set +e; eslint ./src; set -e; tsc --skipLibCheck --noImplicitAny --sourceMap false'",
@@ -29,7 +31,8 @@
         "build-linux-screenshot-docker-image": "./scripts/generate-screenshots-docker-image/build-docker-image.sh",
         "e2e:ui": "playwright test --ui -c playwright.config.ts",
         "e2e": "playwright test -c playwright.config.ts",
-        "devserver": "VITE_API=http://localhost:8787 VITE_NO_STATE=true FIFTYONE_DEFAULT_APP_PORT=5193 && (cd ../app && yarn dev --host 0.0.0.0)"
+        "devserver": "VITE_API=http://localhost:8787 VITE_NO_STATE=true FIFTYONE_DEFAULT_APP_PORT=5193 && (cd ../app && yarn dev --host 0.0.0.0)",
+        "remove-pw-dbs": "./scripts/del-pw-dbs.sh"
     },
     "packageManager": "yarn@4.3.1"
 }
