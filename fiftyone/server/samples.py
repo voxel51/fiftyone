@@ -96,29 +96,13 @@ async def paginate_samples(
     except:
         view = await run_sync_task(run, True)
 
-    # check frame field schema explicitly, media type is not reliable for groups
-    has_frames = view.get_frame_field_schema() is not None
-
-    # TODO: Remove this once we have a better way to handle large videos. This
-    # is a temporary fix to reduce the $lookup overhead for sample frames on
-    # full datasets.
-    full_lookup = has_frames and (filters or stages)
-    support = [1, 1] if not full_lookup else None
     if after is None:
         after = "-1"
 
     if int(after) > -1:
         view = view.skip(int(after) + 1)
 
-    pipeline = view._pipeline(
-        attach_frames=has_frames,
-        detach_frames=False,
-        limit_frames=1,
-        manual_group_select=sample_filter
-        and sample_filter.group
-        and (sample_filter.group.id and not sample_filter.group.slices),
-        support=support,
-    )
+    pipeline = get_samples_pipeline(view, filters, sample_filter, stages)
 
     samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
@@ -194,3 +178,55 @@ async def _create_sample_item(
         _id = f"{_id}-modal"
 
     return from_dict(cls, {"id": _id, "sample": sample, **metadata})
+
+
+def get_samples_pipeline(
+    view: SampleCollection,
+    filters: JSON,
+    sample_filter: t.Optional[SampleFilter],
+    stages: BSONArray,
+):
+    frames, frames_pipeline = _handle_frames(view, filters, stages)
+    groups = _handle_groups(sample_filter)
+    pipeline = view._pipeline(
+        **groups,
+        **frames,
+    )
+
+    if frames_pipeline:
+        pipeline.extend(frames_pipeline)
+
+    return pipeline
+
+
+def _handle_frames(view: SampleCollection, filters: JSON, stages: BSONArray):
+    # check frame field schema explicitly, media type is not reliable for
+    # groups
+    attach_frames = view.get_frame_field_schema() is not None
+    full_lookup = attach_frames and (_has_frame_filtering(filters) or stages)
+
+    # Only return the first frame of each video sample for the grid thumbnail
+    if attach_frames:
+        return dict(
+            attach_frames=attach_frames,
+            detach_frames=False,
+            limit_frames=None if full_lookup else 1,
+        ), [{"$addFields": {"frames": {"$slice": ["$frames", 1]}}}]
+
+    return dict(), []
+
+
+def _has_frame_filtering(filters):
+    for path in filters:
+        if path.startswith(SampleCollection._FRAMES_PREFIX):
+            return True
+
+    return False
+
+
+def _handle_groups(sample_filter: t.Optional[SampleFilter]):
+    return dict(
+        manual_group_select=sample_filter
+        and sample_filter.group
+        and (sample_filter.group.id and not sample_filter.group.slices)
+    )
