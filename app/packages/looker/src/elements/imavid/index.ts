@@ -158,7 +158,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     );
 
     this.element = new Image();
-    this.element.crossOrigin = "Anonymous";
     this.element.loading = "eager";
 
     this.element.addEventListener("load", () => {

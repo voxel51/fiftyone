@@ -1,5 +1,7 @@
 import { HEATMAP } from "@fiftyone/utilities";
 
+export type DenseLabelRenderStatus = null | "painting" | "painted" | "decoded";
+
 /**
  * Map the _id field to id
  */

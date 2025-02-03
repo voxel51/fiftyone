@@ -34,8 +34,10 @@ test.describe("tag", () => {
     });
   });
 
-  test.beforeEach(async ({ page, fiftyoneLoader }) => {
+  test.beforeEach(async ({ page, fiftyoneLoader, sidebar }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    await sidebar.clickFieldCheckbox("ground_truth");
+    await sidebar.clickFieldCheckbox("predictions");
   });
 
   test("sample tag and label tag loads correct aggregation number on default view", async ({

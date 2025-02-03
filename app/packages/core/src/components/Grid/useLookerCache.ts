@@ -1,6 +1,9 @@
 import type * as fos from "@fiftyone/state";
+import { activeLabelFields } from "@fiftyone/state";
 import { LRUCache } from "lru-cache";
 import { useEffect, useMemo } from "react";
+import { useRecoilCallback } from "recoil";
+import { gridActivePathsLUT } from "../Sidebar/useShouldReloadSample";
 
 interface Entry<T extends Lookers | fos.Lookers = fos.Lookers> {
   dispose: boolean;
@@ -37,13 +40,27 @@ const resolveSize = <T extends Lookers | fos.Lookers = fos.Lookers>(
 export default function useLookerCache<
   T extends Lookers | fos.Lookers = fos.Lookers
 >(reset: string, maxHiddenItems: number, maxHiddenItemsSizeBytes: number) {
+  // initialize active paths tracker
+  const getCurrentActiveLabelFields = useRecoilCallback(
+    ({ snapshot }) =>
+      () => {
+        return snapshot
+          .getLoadable(activeLabelFields({ modal: false }))
+          .getValue();
+      }
+  );
+
   const cache = useMemo(() => {
     /** CLEAR CACHE WHEN reset CHANGES */
     reset;
     /** CLEAR CACHE WHEN reset CHANGES */
 
     const loaded = new LRUCache<string, Entry<T>>({
-      dispose: (entry) => entry.dispose && entry.instance.destroy(),
+      dispose: (entry, key) => {
+        if (!entry.dispose) return;
+        entry.instance.destroy();
+        gridActivePathsLUT.delete(key);
+      },
       max: maxHiddenItems,
       maxSize: maxHiddenItemsSizeBytes,
       noDisposeOnSet: true,
@@ -147,6 +164,10 @@ export default function useLookerCache<
        */
       set: (key: string, instance: T) => {
         visible.set(key, instance);
+        const currentActiveLabelFields = getCurrentActiveLabelFields();
+        if (currentActiveLabelFields && !gridActivePathsLUT.has(key)) {
+          gridActivePathsLUT.set(key, new Set(currentActiveLabelFields));
+        }
       },
 
       /**
@@ -174,7 +195,12 @@ export default function useLookerCache<
         instance && visible.set(key, instance);
       },
     };
-  }, [maxHiddenItems, maxHiddenItemsSizeBytes, reset]);
+  }, [
+    getCurrentActiveLabelFields,
+    maxHiddenItems,
+    maxHiddenItemsSizeBytes,
+    reset,
+  ]);
 
   // delete cache during cleanup
   useEffect(() => () => cache.delete(), [cache]);

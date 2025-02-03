@@ -26,7 +26,6 @@ import useUpdates from "./useUpdates";
 
 const MAX_INSTANCES = 5151;
 const MAX_ROWS = 5151;
-const TWO = 2;
 
 function Grid() {
   const id = useMemo(() => uuid(), []);

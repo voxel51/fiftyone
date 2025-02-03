@@ -61,18 +61,20 @@ export default function useRefreshers() {
     return uuid();
   }, [layoutReset, pageReset]);
 
-  useEffect(
-    () =>
-      subscribe(({ event }, { reset }) => {
-        if (event === "fieldVisibility") return;
+  useEffect(() => {
+    const unsubscribe = subscribe(({ event }, { reset }) => {
+      if (event === "fieldVisibility") return;
 
-        // if not a modal page change, reset the grid location
-        reset(gridAt);
-        reset(gridPage);
-        reset(gridOffset);
-      }),
-    []
-  );
+      // if not a modal page change, reset the grid location
+      reset(gridAt);
+      reset(gridPage);
+      reset(gridOffset);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   return {
     pageReset,

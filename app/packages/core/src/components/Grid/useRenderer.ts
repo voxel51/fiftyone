@@ -70,6 +70,7 @@ export default function ({
       );
       cache.set(key, looker);
       looker.attach(element, dimensions);
+
       return cache.sizeOf(key);
     },
     [cache, createLooker, getFontSize, selectSample, store]

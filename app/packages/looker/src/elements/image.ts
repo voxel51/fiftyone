@@ -54,7 +54,6 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
 
   createHTMLElement() {
     const element = new Image();
-    element.crossOrigin = "Anonymous";
     element.loading = "eager";
     return element;
   }
