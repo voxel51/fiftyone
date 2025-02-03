@@ -122,7 +122,7 @@ async def aggregate_resolver(
     slice_view = None
 
     if form.mixed and "" in form.paths:
-        slice_view = await _load_view(form, form.slices)
+        slice_view = await _load_view(form, [form.slice])
 
     if form.sample_ids:
         view = fov.make_optimized_select_view(view, form.sample_ids)
