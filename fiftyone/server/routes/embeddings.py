@@ -55,13 +55,14 @@ def _on_plot_load(data):
 
     summary_view = view.mongo([{"$match": {point_summary_field: True}}])
 
-    sub_view = view.mongo(
-        [
-            {
-                "$sample": {"size": 1000}
-            }  # TODO: make this a parameter or constant, remove hardcoded value
-        ]
-    )
+    # sub_view = view.mongo(
+    #     [
+    #         {
+    #             "$sample": {"size": 1000}
+    #         }  # TODO: make this a parameter or constant, remove hardcoded value
+    #     ]
+    # )
+    sub_view = view.take(10000, seed=51)
 
     has_summary = summary_view.count() > 0
     trace_view = summary_view if has_summary else sub_view
@@ -153,9 +154,10 @@ def _on_bounds_change(data):
             # }
         ]
     )
-    view = view.mongo(
-        [{"$sample": {"size": 1000}}]
-    )  # TODO: make this a parameter or constant, remove hardcoded value
+    # view = view.mongo(
+    #     [{"$sample": {"size": 1000}}]
+    # )  # TODO: make this a parameter or constant, remove hardcoded value
+    view = view.take(1000, seed=51)
 
     traces, style = _generate_traces_for_point_field(
         view, point_field, data["labelField"]

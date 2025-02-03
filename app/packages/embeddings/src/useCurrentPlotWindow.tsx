@@ -3,7 +3,7 @@ import { PlotlyRelayoutEvent } from "plotly.js-dist-min";
 import _ from "lodash";
 import { useMemo } from "react";
 
-type PlotBounds = {
+export type PlotBounds = {
   a: [number, number];
   b: [number, number];
 };
