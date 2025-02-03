@@ -417,12 +417,12 @@ https://github.com/user-attachments/assets/261e2098-aace-4e5c-babb-d044d83a9a13
     Evaluate model performance, identify failure modes, and fine-tune your
     models.
 
-https://github.com/user-attachments/assets/af2fb7ec-ec5b-4a3a-bb7b-6d0bd122f8ac
+https://github.com/user-attachments/assets/ef6ff28f-8f3e-4a0d-b172-07227559fa91
 
 -   **[Advanced Data Curation:](https://docs.voxel51.com/brain.html)** Quickly
     find and fix data issues, annotation errors, and edge cases.
 
-https://github.com/user-attachments/assets/f498673b-d860-4c61-b4e3-daca897aca97
+https://github.com/user-attachments/assets/2e7e4046-5ec0-43b0-99c5-6cacd4743ed6
 
 -   **[Rich Integration:](https://docs.voxel51.com/integrations/index.html)**
     Works with popular deep learning libraries like TensorFlow, PyTorch, Keras,
