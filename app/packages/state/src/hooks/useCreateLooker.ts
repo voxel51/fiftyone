@@ -224,9 +224,10 @@ export default <T extends AbstractLooker<BaseState>>(
             .valueOrThrow();
 
           const thisSampleId = sample._id as string;
-          if (!ImaVidFramesControllerStore.has(thisSampleId)) {
+          const imavidPartitionKey = `${thisSampleId}-${mediaField}`;
+          if (!ImaVidFramesControllerStore.has(imavidPartitionKey)) {
             ImaVidFramesControllerStore.set(
-              thisSampleId,
+              imavidPartitionKey,
               new ImaVidFramesController({
                 environment,
                 firstFrameNumber,
@@ -240,7 +241,8 @@ export default <T extends AbstractLooker<BaseState>>(
 
           config = {
             ...config,
-            frameStoreController: ImaVidFramesControllerStore.get(thisSampleId),
+            frameStoreController:
+              ImaVidFramesControllerStore.get(imavidPartitionKey),
             frameRate: dynamicGroupsTargetFrameRateValue,
             firstFrameNumber: isModal
               ? snapshot

@@ -195,8 +195,7 @@ export const ImaVidLookerReact = React.memo(
 
           window.addEventListener(
             "fetchMore",
-            fetchMoreListener as EventListener,
-            { once: true }
+            fetchMoreListener as EventListener
           );
         });
       },

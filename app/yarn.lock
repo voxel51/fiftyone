@@ -1825,7 +1825,7 @@ __metadata:
     lodash: ^4.17.21
     prettier: 2.2.1
     typescript: 4.2.4
-    vite: ^5.2.14
+    vite: ^5.4.12
   languageName: unknown
   linkType: soft
 
@@ -1880,7 +1880,7 @@ __metadata:
     typescript: ^5.3.2
     typescript-plugin-css-modules: ^5.0.2
     uuid: ^8.3.2
-    vite: ^5.2.14
+    vite: ^5.4.12
     vite-plugin-relay: ^1.0.7
     vite-plugin-rewrite-all: ^1.0.2
     vite-plugin-svgr: ^4.2.0
@@ -1914,8 +1914,9 @@ __metadata:
     react-use: ^17.5.1
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^5.1.0
-    vite: ^5.2.14
+    vite: ^5.4.12
   peerDependencies:
+    jotai: "*"
     re-resizable: "*"
     react: "*"
     react-relay: "*"
@@ -1988,7 +1989,7 @@ __metadata:
     typescript: ^5.4.5
     typescript-plugin-css-modules: ^5.1.0
     uuid: ^8.3.2
-    vite: ^5.2.14
+    vite: ^5.4.12
     vite-plugin-relay: ^1.0.7
     xstate: ^4.14.0
   peerDependencies:
@@ -2011,7 +2012,7 @@ __metadata:
     plotly.js: ^2.32.0
     typescript: ^4.7.4
     use-resize-observer: ^9.0.2
-    vite: ^5.2.14
+    vite: ^5.4.12
     vite-plugin-externals: ^0.5.0
   peerDependencies:
     "@mui/icons-material": "*"
@@ -2047,7 +2048,7 @@ __metadata:
     typedoc: ^0.23.21
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^5.0.2
-    vite: ^5.2.14
+    vite: ^5.4.12
     vite-plugin-eslint: ^1.8.1
     vite-plugin-relay: ^2.0.0
     vitest: ^2.0.5
@@ -2061,7 +2062,7 @@ __metadata:
     prettier: ^2.7.1
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^5.1.0
-    vite: ^5.2.14
+    vite: ^5.4.12
   languageName: unknown
   linkType: soft
 
@@ -2089,7 +2090,7 @@ __metadata:
     three: ^0.169.0
     tunnel-rat: ^0.1.2
     typescript: ^5.4.5
-    vite: ^5.2.14
+    vite: ^5.4.12
     vite-plugin-externals: ^0.5.0
   peerDependencies:
     "@mui/icons-material": "*"
@@ -2111,6 +2112,7 @@ __metadata:
     "@xmldom/xmldom": ^0.8.6
     buffer: ^6.0.3
     copy-to-clipboard: ^3.3.1
+    fast-png: ^6.2.0
     immutable: ^4.0.0-rc.12
     lodash: ^4.17.21
     lru-cache: ^11.0.1
@@ -2120,7 +2122,7 @@ __metadata:
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^5.1.0
     uuid: ^8.3.2
-    vite: ^5.2.14
+    vite: ^5.4.12
   peerDependencies:
     jotai: "*"
   languageName: unknown
@@ -2145,7 +2147,7 @@ __metadata:
     react-map-gl: ^7.0.18
     typescript: ^4.7.4
     use-resize-observer: ^9.0.2
-    vite: ^5.2.14
+    vite: ^5.4.12
     vite-plugin-externals: ^0.5.0
   peerDependencies:
     "@mui/icons-material": "*"
@@ -2164,7 +2166,7 @@ __metadata:
     jest: ^29.7.0
     prettier: 2.2.1
     typescript: 4.2.4
-    vite: ^5.2.14
+    vite: ^5.4.12
   peerDependencies:
     "@mui/icons-material": "*"
     "@mui/material": "*"
@@ -2185,7 +2187,7 @@ __metadata:
     prettier: ^3.3.3
     typescript: ^5.5.4
     typescript-eslint: ^7.17.0
-    vite: ^5.4.6
+    vite: ^5.4.12
     vite-plugin-svgr: ^4.2.0
   peerDependencies:
     "@fiftyone/spaces": "*"
@@ -2203,7 +2205,7 @@ __metadata:
     moment: ^2.29.4
     prettier: 2.2.1
     typescript: 4.2.4
-    vite: ^5.2.14
+    vite: ^5.4.12
   languageName: unknown
   linkType: soft
 
@@ -2219,7 +2221,7 @@ __metadata:
     relay-compiler-language-typescript: ^15.0.1
     relay-config: ^12.0.1
     typescript: ^4.7.4
-    vite: ^5.2.14
+    vite: ^5.4.12
   languageName: unknown
   linkType: soft
 
@@ -2231,7 +2233,7 @@ __metadata:
     allotment: ^1.17.0
     react-sortablejs: ^6.1.4
     sortablejs: ^1.15.0
-    vite: ^5.2.14
+    vite: ^5.4.12
   peerDependencies:
     "@mui/icons-material": "*"
     "@mui/material": "*"
@@ -2249,7 +2251,7 @@ __metadata:
     "@biomejs/biome": ^1.7.1
     typescript: ^5.4.5
     typescript-plugin-css-modules: ^5.1.0
-    vite: ^5.2.14
+    vite: ^5.4.12
   languageName: unknown
   linkType: soft
 
@@ -2267,7 +2269,7 @@ __metadata:
     lodash: ^4.17.21
     prettier: ^2.7.1
     typescript: ^4.7.4
-    vite: ^5.2.14
+    vite: ^5.4.12
   peerDependencies:
     react: "*"
     react-error-boundary: "*"
@@ -2289,7 +2291,7 @@ __metadata:
     prettier: ^2.7.1
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^5.1.0
-    vite: ^5.2.14
+    vite: ^5.4.12
   languageName: unknown
   linkType: soft
 
@@ -4972,6 +4974,13 @@ __metadata:
   version: 2019.7.3
   resolution: "@types/offscreencanvas@npm:2019.7.3"
   checksum: 53a394a65ae08eddff6e0a2a8db72abecc94f41fc8fee166e8900075d3c1ca32540ddf5b4836c37357d53a0253a03fea4d781b2db543e3f08bc1cdc2dc0fefb5
+  languageName: node
+  linkType: hard
+
+"@types/pako@npm:^2.0.0":
+  version: 2.0.3
+  resolution: "@types/pako@npm:2.0.3"
+  checksum: 0746dd5d29eccf5b2e6cceb3ccb093851219e78bd2e2e20d25757e247987139e061e5d4ba37cb5295493f06e3c683c74f8876011cd8a3f3748a09244fbc841d9
   languageName: node
   linkType: hard
 
@@ -9170,6 +9179,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fast-png@npm:^6.2.0":
+  version: 6.2.0
+  resolution: "fast-png@npm:6.2.0"
+  dependencies:
+    "@types/pako": ^2.0.0
+    iobuffer: ^5.3.2
+    pako: ^2.1.0
+  checksum: a3d004a20373f333ab1c00f4613034012e45074a3c0491685e7bae8959535e1ce64f478caa40cd57c392823f705647ef562f908d29d68b44a53973d6d704236d
+  languageName: node
+  linkType: hard
+
 "fast-shallow-equal@npm:^1.0.0":
   version: 1.0.0
   resolution: "fast-shallow-equal@npm:1.0.0"
@@ -10464,6 +10484,13 @@ __metadata:
   dependencies:
     loose-envify: ^1.0.0
   checksum: cc3182d793aad82a8d1f0af697b462939cb46066ec48bbf1707c150ad5fad6406137e91a262022c269702e01621f35ef60269f6c0d7fd178487959809acdfb14
+  languageName: node
+  linkType: hard
+
+"iobuffer@npm:^5.3.2":
+  version: 5.3.2
+  resolution: "iobuffer@npm:5.3.2"
+  checksum: 9ae2a7dc7ffa8dbb6c6b230a42b028804ba6ee31fbe86d638fdcde941f3c28fc3472659f3fbaa7916357eb78c9512382f73cd4735de01c4f14a0e8cf166ec6ac
   languageName: node
   linkType: hard
 
@@ -13696,6 +13723,13 @@ __metadata:
   version: 1.0.0
   resolution: "package-json-from-dist@npm:1.0.0"
   checksum: ac706ec856a5a03f5261e4e48fa974f24feb044d51f84f8332e2af0af04fbdbdd5bbbfb9cbbe354190409bc8307c83a9e38c6672c3c8855f709afb0006a009ea
+  languageName: node
+  linkType: hard
+
+"pako@npm:^2.1.0":
+  version: 2.1.0
+  resolution: "pako@npm:2.1.0"
+  checksum: 71666548644c9a4d056bcaba849ca6fd7242c6cf1af0646d3346f3079a1c7f4a66ffec6f7369ee0dc88f61926c10d6ab05da3e1fca44b83551839e89edd75a3e
   languageName: node
   linkType: hard
 
@@ -17797,9 +17831,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vite@npm:^5.0.0, vite@npm:^5.2.14, vite@npm:^5.4.6":
-  version: 5.4.6
-  resolution: "vite@npm:5.4.6"
+"vite@npm:^5.0.0, vite@npm:^5.4.12":
+  version: 5.4.14
+  resolution: "vite@npm:5.4.14"
   dependencies:
     esbuild: ^0.21.3
     fsevents: ~2.3.3
@@ -17836,7 +17870,7 @@ __metadata:
       optional: true
   bin:
     vite: bin/vite.js
-  checksum: ea293748f624b3bb53e68d30ddc55e7addeaa38bbcde06d900e6d476bef3d0550de2a67f5316680dbeae483afedd3e735fb91b65004659f62bece537ed038a59
+  checksum: 7360661da0415809454ff8809b6666e868ffc3e5ccfbd5fc17425341546cdc3dd3d37c68fcd6ed7305252aaecd0d251ede3745b57aaebd00b8aececc30b6697b
   languageName: node
   linkType: hard
 

@@ -50,7 +50,8 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
             of the provided :class:`fiftyone.core.labels.Polyline` instances
             rather than using their actual geometries
         tolerance (None): a tolerance, in pixels, when generating approximate
-            polylines for instance masks. Typical values are 1-3 pixels
+            polylines for instance masks. Typical values are 1-3 pixels. By
+            default, IoUs are computed directly on the dense pixel masks
         compute_mAP (False): whether to perform the necessary computations so
             that mAP, mAR, and PR curves can be generated
         iou_threshs (None): a list of IoU thresholds to use when computing mAP
@@ -67,6 +68,8 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
 
             If ``error_level > 0``, any calculation that raises a geometric
             error will default to an IoU of 0
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
     """
 
     def __init__(
@@ -83,10 +86,16 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         iou_threshs=None,
         max_preds=None,
         error_level=1,
+        custom_metrics=None,
         **kwargs,
     ):
         super().__init__(
-            pred_field, gt_field, iou=iou, classwise=classwise, **kwargs
+            pred_field,
+            gt_field,
+            iou=iou,
+            classwise=classwise,
+            custom_metrics=custom_metrics,
+            **kwargs,
         )
 
         if compute_mAP and iou_threshs is None:
@@ -263,6 +272,7 @@ class COCODetectionResults(DetectionResults):
             ``num_iou_threshs x num_classes x num_recall``
         missing (None): a missing label string. Any unmatched objects are
             given this label for evaluation purposes
+        custom_metrics (None): an optional dict of custom metrics
         backend (None): a :class:`COCOEvaluation` backend
     """
 
@@ -279,6 +289,7 @@ class COCODetectionResults(DetectionResults):
         recall_sweep=None,
         thresholds=None,
         missing=None,
+        custom_metrics=None,
         backend=None,
     ):
         super().__init__(
@@ -288,6 +299,7 @@ class COCODetectionResults(DetectionResults):
             matches,
             classes=classes,
             missing=missing,
+            custom_metrics=custom_metrics,
             backend=backend,
         )
 

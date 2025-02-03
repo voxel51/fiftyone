@@ -1,3 +1,4 @@
+import _ from "lodash";
 import { Dialog } from "@fiftyone/components";
 import { editingFieldAtom, view } from "@fiftyone/state";
 import {
@@ -210,6 +211,8 @@ export default function Evaluation(props: EvaluationProps) {
   const isBinaryClassification =
     evaluationType === "classification" && evaluationMethod === "binary";
   const showTpFpFn = isObjectDetection || isBinaryClassification;
+  const isNoneBinaryClassification =
+    isClassification && evaluationMethod !== "binary";
   const infoRows = [
     {
       id: "evaluation_key",
@@ -465,6 +468,25 @@ export default function Evaluation(props: EvaluationProps) {
           : false,
       hide: !showTpFpFn,
     },
+    {
+      id: true,
+      property: "Correct",
+      value: evaluationMetrics.num_correct,
+      compareValue: compareEvaluationMetrics.num_correct,
+      lesserIsBetter: false,
+      filterable: true,
+      hide: !isNoneBinaryClassification,
+    },
+    {
+      id: false,
+      property: "Incorrect",
+      value: evaluationMetrics.num_incorrect,
+      compareValue: compareEvaluationMetrics.num_incorrect,
+      lesserIsBetter: false,
+      filterable: true,
+      hide: !isNoneBinaryClassification,
+    },
+    ...formatCustomMetricRows(evaluation, compareEvaluation),
   ];
 
   const perClassPerformance = {};
@@ -1059,18 +1081,16 @@ export default function Evaluation(props: EvaluationProps) {
                         );
                       })}
                     </Select>
-                    {classMode === "chart" && (
-                      <IconButton
-                        onClick={() => {
-                          setClassPerformanceDialogConfig((state) => ({
-                            ...state,
-                            open: true,
-                          }));
-                        }}
-                      >
-                        <Settings />
-                      </IconButton>
-                    )}
+                    <IconButton
+                      onClick={() => {
+                        setClassPerformanceDialogConfig((state) => ({
+                          ...state,
+                          open: true,
+                        }));
+                      }}
+                    >
+                      <Settings />
+                    </IconButton>
                   </Stack>
                 </Stack>
                 {classMode === "chart" && (
@@ -1654,9 +1674,10 @@ function formatPerClassPerformance(perClassPerformance, barConfig) {
         return b.value - a.value;
       } else if (sortBy === "worst") {
         return a.value - b.value;
-      } else {
-        return b.property.localeCompare(a.property);
+      } else if (sortBy === "az") {
+        return a.property.localeCompare(b.property);
       }
+      return b.property.localeCompare(a.property);
     });
   }
 
@@ -1679,7 +1700,7 @@ function getMatrix(matrices, config, maskTargets, compareMaskTargets?) {
     return compareMaskTargets?.[c] || maskTargets?.[c] || c;
   });
   const noneIndex = originalClasses.indexOf(NONE_CLASS);
-  if (parsedLimit < originalClasses.length) {
+  if (parsedLimit < originalClasses.length && noneIndex > -1) {
     labels.push(
       compareMaskTargets?.[NONE_CLASS] ||
         maskTargets?.[NONE_CLASS] ||
@@ -1757,3 +1778,51 @@ type PLOT_CONFIG_TYPE = {
 type PLOT_CONFIG_DIALOG_TYPE = PLOT_CONFIG_TYPE & {
   open?: boolean;
 };
+
+type CustomMetric = {
+  label: string;
+  key: any;
+  value: any;
+  lower_is_better: boolean;
+};
+
+type CustomMetrics = {
+  [operatorUri: string]: CustomMetric;
+};
+
+type SummaryRow = {
+  id: string;
+  property: string;
+  value: any;
+  compareValue: any;
+  lesserIsBetter: boolean;
+  filterable: boolean;
+  active: boolean;
+  hide: boolean;
+};
+
+function formatCustomMetricRows(evaluationMetrics, comparisonMetrics) {
+  const results = [] as SummaryRow[];
+  const customMetrics = (_.get(evaluationMetrics, "custom_metrics", null) ||
+    {}) as CustomMetrics;
+  for (const [operatorUri, customMetric] of Object.entries(customMetrics)) {
+    const compareValue = _.get(
+      comparisonMetrics,
+      `custom_metrics.${operatorUri}.value`,
+      null
+    );
+    const hasOneValue = customMetric.value !== null || compareValue !== null;
+
+    results.push({
+      id: operatorUri,
+      property: customMetric.label,
+      value: customMetric.value,
+      compareValue,
+      lesserIsBetter: customMetric.lower_is_better,
+      filterable: false,
+      active: false,
+      hide: !hasOneValue,
+    });
+  }
+  return results;
+}

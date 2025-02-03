@@ -208,6 +208,12 @@ option to ``pip install``:
   can use :ref:`database admin privileges <database-migrations>` to control
   which clients are allowed to upgrade your FiftyOne deployment.
 
+.. note::
+
+  If you are a FiftyOne 1.2.0 or lower user with an Ubuntu 24 operating system, 
+  you will need to 
+  :ref:`upgrade your mongodb binaries <mongodb-7-to-8>`.
+
 .. _downgrading-fiftyone:
 
 Downgrading FiftyOne

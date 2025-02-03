@@ -1,4 +1,5 @@
 import { types } from "@fiftyone/operators";
+import { DropdownView } from "../../SchemaIO/components";
 
 const inputComponentsByType = {
   Object: "ObjectView",
