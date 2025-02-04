@@ -76,7 +76,7 @@ export function CustomPanel(props: CustomPanelProps) {
             >
               This panel is taking longer than expected to load.
               <br />
-              You can continue to work with other panels while this loads.
+              You can continue working in other panels while this loads.
             </Typography>
           </>
         )}
