@@ -36,7 +36,7 @@ ____________
 The basic workflow to use Mosaic to create a similarity index on your
 FiftyOne datasets and query your data is as follows:
 
-1)  Connect to you databricks workspace and `create a vector search endpoint <https://docs.databricks.com/en/generative-ai/create-query-vector-search.html#create-a-vector-search-endpoint>`_.
+1)  Connect to your databricks workspace and `create a vector search endpoint <https://docs.databricks.com/en/generative-ai/create-query-vector-search.html#create-a-vector-search-endpoint>`_.
 
 2)  Load a :ref:`dataset <loading-datasets>` into FiftyOne
 
