@@ -45,6 +45,7 @@ class DelegatedOperationRepo(object):
         run_state: ExecutionRunState,
         result: ExecutionResult = None,
         run_link: str = None,
+        log_path: str = None,
         progress: ExecutionProgress = None,
         required_state: ExecutionRunState = None,
     ) -> DelegatedOperationDocument:
@@ -280,6 +281,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         run_state: ExecutionRunState,
         result: ExecutionResult = None,
         run_link: str = None,
+        log_path: str = None,
         progress: ExecutionProgress = None,
         required_state: ExecutionRunState = None,
     ) -> DelegatedOperationDocument:
@@ -349,6 +351,9 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         if run_link is not None:
             update["$set"]["run_link"] = run_link
+
+        if log_path is not None:
+            update["$set"]["log_path"] = log_path
 
         if update is None:
             raise ValueError("Invalid run_state: {}".format(run_state))
