@@ -552,6 +552,7 @@ export abstract class AbstractLooker<
 
     if (!renderLabels?.length) {
       this.updateSample(this.sample);
+      return;
     }
 
     this.asyncLabelsRenderingManager
