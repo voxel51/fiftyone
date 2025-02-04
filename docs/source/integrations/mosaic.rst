@@ -263,7 +263,7 @@ Mosaic config parameters
 -------------------------------
 
 The Mosaic backend supports the following parameter
-used to customize your similarity queries. 
+to customize your similarity queries. 
 
 -   **index_name** (*None*): the name of the Mosaic vector search index
     to use or create. If not specified, a new unique name is generated automatically
@@ -282,7 +282,7 @@ that includes all of the available parameters:
         }
     }
 
-However, typically these parameters are directly passed to
+However, typically this parameter is directly passed to
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` to configure
 a specific new index:
 
@@ -391,7 +391,7 @@ Create a similarity index
 
 In order to create a new Mosaic similarity index, you need to specify
 either the `embeddings` or `model` argument to
-:meth:`compute_similarity() <fiftyone.brain.compute_similarity>`. Here's a few
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>`. Here are a few
 possibilities:
 
 .. code:: python
