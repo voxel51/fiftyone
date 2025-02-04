@@ -16,6 +16,13 @@ import { CustomPanelProps, useCustomPanelHooks } from "./useCustomPanelHooks";
 import { useTrackEvent } from "@fiftyone/analytics";
 import usePanelEvent from "./usePanelEvent";
 import LoadingSpinner from "@fiftyone/components/src/components/Loading/LoadingSpinner";
+import { styled } from "@mui/system";
+
+const SpinnerContainer = styled(Box)`
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+`;
 
 export function CustomPanel(props: CustomPanelProps) {
   const { panelId, dimensions, panelName, panelLabel, isModalPanel } = props;
@@ -49,10 +56,6 @@ export function CustomPanel(props: CustomPanelProps) {
     setLoading(count > 0);
   }, [setLoading, count]);
 
-  // remove this
-  panelSchema = null;
-  pending = false;
-
   if (pending && !panelSchema && !onLoadError) {
     return <PanelSkeleton />;
   }
@@ -62,12 +65,18 @@ export function CustomPanel(props: CustomPanelProps) {
       <CenteredStack spacing={1}>
         {!onLoadError && (
           <>
-            <Typography variant="h4">
+            <SpinnerContainer>
               <LoadingSpinner />
-              Still loading...
-            </Typography>
-            <Typography color="text.secondary">
+            </SpinnerContainer>
+            <Typography variant="h5">Still loading...</Typography>
+            <Typography
+              variant="body1"
+              color="text.secondary"
+              style={{ textAlign: "center" }}
+            >
               This panel is taking longer than expected to load.
+              <br />
+              You can continue to work with other panels while this loads.
             </Typography>
           </>
         )}
