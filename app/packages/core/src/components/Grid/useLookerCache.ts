@@ -47,7 +47,8 @@ export default function useLookerCache<
         return snapshot
           .getLoadable(activeLabelFields({ modal: false }))
           .getValue();
-      }
+      },
+    []
   );
 
   const cache = useMemo(() => {

@@ -71,9 +71,7 @@ export default function useRefreshers() {
       reset(gridOffset);
     });
 
-    return () => {
-      unsubscribe();
-    };
+    return unsubscribe;
   }, []);
 
   return {

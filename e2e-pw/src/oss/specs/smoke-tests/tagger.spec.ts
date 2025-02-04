@@ -27,19 +27,24 @@ const test = base.extend<{
   },
 });
 
-test.describe("tag", () => {
-  test.beforeAll(async ({ fiftyoneLoader }) => {
-    await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
-      max_samples: 5,
-    });
-  });
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
 
-  test.beforeEach(async ({ page, fiftyoneLoader, sidebar }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-    await sidebar.clickFieldCheckbox("ground_truth");
-    await sidebar.clickFieldCheckbox("predictions");
+test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
+  await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
+    max_samples: 5,
   });
+});
 
+test.beforeEach(async ({ page, fiftyoneLoader, sidebar }) => {
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  await sidebar.clickFieldCheckbox("ground_truth");
+  await sidebar.clickFieldCheckbox("predictions");
+});
+
+test.describe.serial("tag", () => {
   test("sample tag and label tag loads correct aggregation number on default view", async ({
     grid,
     tagger,

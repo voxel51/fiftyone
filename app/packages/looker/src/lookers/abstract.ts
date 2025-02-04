@@ -1,3 +1,4 @@
+import { Lookers } from "@fiftyone/state";
 import {
   AppError,
   DATE_FIELD,
@@ -43,6 +44,7 @@ import {
   snapBox,
 } from "../util";
 import { ProcessSample } from "../worker";
+import { AsyncLabelsRenderingManager } from "../worker/async-labels-rendering-manager";
 import { LookerUtils } from "./shared";
 import { retrieveArrayBuffers } from "./utils";
 
@@ -99,12 +101,16 @@ export abstract class AbstractLooker<
   protected currentOverlays: Overlay<State>[];
   protected pluckedOverlays: Overlay<State>[];
   protected sample: S;
-  protected state: State;
   protected readonly updater: StateUpdate<State>;
 
   private batchMergedUpdates: Partial<State> = {};
   private isBatching = false;
   private isCommittingBatchUpdates = false;
+
+  /** @internal */
+  public state: State;
+
+  private asyncLabelsRenderingManager: AsyncLabelsRenderingManager;
 
   constructor(
     sample: S,
@@ -162,6 +168,10 @@ export abstract class AbstractLooker<
       3500
     );
 
+    this.asyncLabelsRenderingManager = new AsyncLabelsRenderingManager(
+      this as unknown as Lookers
+    );
+
     this.init();
   }
 
@@ -193,6 +203,10 @@ export abstract class AbstractLooker<
         this.subscriptions[field] = newCallbacks;
       }
     };
+  }
+
+  getSampleOverlays(): Overlay<State>[] {
+    return this.sampleOverlays;
   }
 
   loadOverlays(sample: Sample): void {
@@ -554,11 +568,26 @@ export abstract class AbstractLooker<
 
   updateSample(sample: Sample) {
     const id = sample.id ?? sample._id;
+    const updateTimeoutMs = 10000;
 
     if (UPDATING_SAMPLES_IDS.has(id)) {
       UPDATING_SAMPLES_IDS.delete(id);
       this.cleanOverlays(true);
-      queueMicrotask(() => this.updateSample(sample));
+
+      // to prevent deadlock, we'll remove the id from the set after a timeout
+      const timeoutId = setTimeout(() => {
+        UPDATING_SAMPLES_IDS.delete(id);
+      }, updateTimeoutMs);
+
+      queueMicrotask(() => {
+        try {
+          this.updateSample(sample);
+          clearTimeout(timeoutId);
+        } catch (e) {
+          UPDATING_SAMPLES_IDS.delete(id);
+          this.updater({ error: e });
+        }
+      });
       return;
     }
 
@@ -567,13 +596,36 @@ export abstract class AbstractLooker<
     this.loadSample(sample, retrieveArrayBuffers(this.sampleOverlays));
   }
 
-  refreshSample() {
+  refreshSample(renderLabels: string[] | null = null) {
     // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
     // this crashes the app. this is a bug and should be fixed
-
-    if (this.sample) {
-      this.updateSample(this.sample);
+    if (!this.sample) {
+      return;
     }
+
+    if (!renderLabels?.length) {
+      this.updateSample(this.sample);
+      return;
+    }
+
+    this.asyncLabelsRenderingManager
+      .enqueueLabelPaintingJob({
+        sample: this.sample,
+        labels: renderLabels,
+      })
+      .then(({ sample, coloring }) => {
+        this.sample = sample;
+        this.state.options.coloring = coloring;
+        this.loadOverlays(sample);
+
+        // to run looker reconciliation
+        this.updater({
+          overlaysPrepared: true,
+        });
+      })
+      .catch((error) => {
+        this.updater({ error });
+      });
   }
 
   getSample(): Promise<Sample> {

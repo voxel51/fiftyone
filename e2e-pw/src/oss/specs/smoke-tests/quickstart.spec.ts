@@ -22,17 +22,27 @@ const test = base.extend<{
   },
 });
 
-test.beforeAll(async ({ fiftyoneLoader }) => {
+test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
   await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
     max_samples: 5,
   });
+});
+
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test.describe("quickstart", () => {
+test.afterEach(async ({ modal, page }) => {
+  await modal.close({ ignoreError: true });
+  await page.reload();
+});
+
+test.describe.serial("quickstart", () => {
   test("smoke", async ({ eventUtils, grid, modal, sidebar }) => {
     await grid.assert.isEntryCountTextEqualTo("5 samples");
 
@@ -83,7 +93,9 @@ test.describe("quickstart", () => {
     const gridRefresh = grid.getWaitForGridRefreshPromise();
     await grid.actionsRow.bookmarkFilters();
     await gridRefresh;
-    await expect(page.getByTestId("entry-counts")).toHaveText("1 sample");
+    await expect(page.getByTestId("entry-counts")).toHaveText(
+      "1 group of patch"
+    );
   });
 
   test("sidebar persistence", async ({ grid, modal, sidebar }) => {

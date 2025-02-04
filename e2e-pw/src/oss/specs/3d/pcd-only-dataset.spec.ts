@@ -26,43 +26,49 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   },
 });
 
-test.describe("orthographic projections", () => {
-  test.beforeAll(async ({ fiftyoneLoader, mediaFactory }) => {
-    mediaFactory.createPcd({
-      outputPath: normalPcd,
-      shape: "cube",
-      numPoints: 100,
-    });
-    mediaFactory.createPcd({
-      outputPath: pcdWithNaN,
-      shape: "cube",
-      numPoints: 100,
-      imputeNaN: {
-        indices: [
-          [0, 0],
-          [1, 1],
-          [2, 2],
-        ],
-      },
-    });
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
 
-    await fiftyoneLoader.executePythonCode(
-      `
-      import fiftyone as fo
-      import fiftyone.utils.utils3d as fou3d
+test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
+  await foWebServer.startWebServer();
 
-      dataset = fo.Dataset("${datasetName}")
-      dataset.persistent = True
-
-      sample1 = fo.Sample(filepath="${normalPcd}")
-      sample2 = fo.Sample(filepath="${pcdWithNaN}")
-      dataset.add_samples([sample1, sample2])
-
-      fou3d.compute_orthographic_projection_images(dataset, (-1, 64), "/tmp/ortho") 
-      `
-    );
+  mediaFactory.createPcd({
+    outputPath: normalPcd,
+    shape: "cube",
+    numPoints: 100,
+  });
+  mediaFactory.createPcd({
+    outputPath: pcdWithNaN,
+    shape: "cube",
+    numPoints: 100,
+    imputeNaN: {
+      indices: [
+        [0, 0],
+        [1, 1],
+        [2, 2],
+      ],
+    },
   });
 
+  await fiftyoneLoader.executePythonCode(
+    `
+    import fiftyone as fo
+    import fiftyone.utils.utils3d as fou3d
+
+    dataset = fo.Dataset("${datasetName}")
+    dataset.persistent = True
+
+    sample1 = fo.Sample(filepath="${normalPcd}")
+    sample2 = fo.Sample(filepath="${pcdWithNaN}")
+    dataset.add_samples([sample1, sample2])
+
+    fou3d.compute_orthographic_projection_images(dataset, (-1, 64), "/tmp/ortho") 
+    `
+  );
+});
+
+test.describe.serial("orthographic projections", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });

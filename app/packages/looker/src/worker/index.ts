@@ -48,6 +48,32 @@ const painterFactory = PainterFactory(requestColor);
 
 const ALL_VALID_LABELS = new Set(VALID_LABEL_TYPES);
 
+const shouldProcessLabel = ({
+  field,
+  label,
+  activePaths,
+  prefix,
+}: {
+  prefix: string;
+  field: string;
+  label: any;
+  activePaths: string[];
+}) => {
+  // check if it has a valid render status, in which case it takes precendence over activePaths
+  // it means this label was processed before and we should re-render it
+  const currentLabelRenderStatus = label?.renderStatus;
+
+  if (
+    currentLabelRenderStatus === "painted" ||
+    currentLabelRenderStatus === "decoded" ||
+    currentLabelRenderStatus === "pending"
+  ) {
+    return true;
+  }
+
+  return activePaths?.includes(`${prefix ?? ""}${field}`);
+};
+
 /**
  * This function processes labels in active paths in a recursive manner. It follows the following steps:
  * 1. Deserialize masks. Accumulate promises.
@@ -94,10 +120,15 @@ const processLabels = async (
 
       if (DENSE_LABELS.has(cls)) {
         if (
-          activePaths.length &&
-          activePaths.includes(`${prefix ?? ""}${field}`)
+          shouldProcessLabel({
+            prefix,
+            field,
+            label,
+            activePaths,
+          })
         ) {
           maskPathDecodingPromises.push(
+            // note: if it's an already decoded label, this will be cheap
             decodeOverlayOnDisk(
               `${prefix || ""}${field}`,
               label,
@@ -173,8 +204,12 @@ const processLabels = async (
       }
 
       if (
-        activePaths.length &&
-        activePaths.includes(`${prefix ?? ""}${field}`)
+        shouldProcessLabel({
+          prefix,
+          field,
+          label,
+          activePaths,
+        })
       ) {
         if (painterFactory[cls]) {
           painterPromises.push(

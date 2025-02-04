@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import { useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import { useShouldReloadSampleOnActiveFieldsChange } from "../Sidebar/useShouldReloadSample";
-import type { LookerCache } from "./types";
+import { LookerCache } from "./types";
 
 export default function useUpdates(
   cache: LookerCache,
@@ -13,7 +13,7 @@ export default function useUpdates(
 ) {
   const { init, deferred } = fos.useDeferrer();
 
-  const shouldRefresh = useShouldReloadSampleOnActiveFieldsChange({
+  const getNewFields = useShouldReloadSampleOnActiveFieldsChange({
     modal: false,
   });
 
@@ -33,10 +33,37 @@ export default function useUpdates(
           selected: selected.has(id.description),
         });
 
-        // rerender looker if active fields have changed and have never been
-        // rendered before
-        if (shouldRefresh(id.description)) {
-          entry.refreshSample();
+        const newFieldsIfAny = getNewFields(id.description);
+
+        const overlays = entry.getSampleOverlays() ?? [];
+
+        // rerender looker if active fields have changed and have never been rendered before
+        if (newFieldsIfAny) {
+          const thisInstanceOverlays = overlays.filter(
+            (o) => o.field && newFieldsIfAny.includes(o.field)
+          );
+
+          thisInstanceOverlays?.forEach((o) => {
+            if (o.label) {
+              // "pending" means we're marking this label for rendering / painting
+              // even if it's interrupted, say by unchecking sidebar
+              o.label.renderStatus = "pending";
+            }
+          });
+
+          if (thisInstanceOverlays?.length > 0) {
+            entry.refreshSample(newFieldsIfAny);
+          }
+        } else {
+          // if there're any labels marked "pending", render them
+          const pending = overlays.filter(
+            (o) => o.field && o.label && o.label.renderStatus === "pending"
+          );
+
+          if (pending?.length > 0) {
+            const rerenderFields = pending.map((o) => o.field!);
+            entry.refreshSample(rerenderFields);
+          }
         }
       });
 
@@ -46,9 +73,9 @@ export default function useUpdates(
     cache,
     deferred,
     getFontSize,
+    getNewFields,
     options,
     selected,
-    shouldRefresh,
     spotlight,
   ]);
 
