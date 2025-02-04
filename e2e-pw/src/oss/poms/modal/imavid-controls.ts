@@ -5,10 +5,12 @@ export class ModalImaAsVideoControlsPom {
   readonly page: Page;
   readonly assert: ModalImaAsVideoControlsAsserter;
   readonly controls: Locator;
+  readonly lookerControls: Locator;
   readonly optionsPanel: Locator;
-  readonly time: Locator;
   readonly playPauseButton: Locator;
+  readonly settingsButton: Locator;
   readonly speedButton: Locator;
+  readonly time: Locator;
   readonly timelineId: string;
 
   private readonly modal: ModalPom;
@@ -19,9 +21,14 @@ export class ModalImaAsVideoControlsPom {
     this.assert = new ModalImaAsVideoControlsAsserter(this);
 
     this.controls = this.modal.locator.getByTestId("imavid-timeline-controls");
-    this.time = this.modal.locator.getByTestId("imavid-status-indicator");
+    this.lookerControls = this.modal.locator.getByTestId("looker-controls");
+    this.optionsPanel = this.controls.getByTestId("looker-options-panel");
     this.playPauseButton = this.controls.getByTestId("imavid-playhead");
+    this.settingsButton = this.lookerControls.getByTestId(
+      "looker-controls-settings"
+    );
     this.speedButton = this.controls.getByTestId("imavid-speed");
+    this.time = this.modal.locator.getByTestId("imavid-status-indicator");
   }
 
   private async getTimelineIdForLocator(imaVidLocator: Locator) {
@@ -83,6 +90,23 @@ export class ModalImaAsVideoControlsPom {
       { frameText_: frameText, matchBeginning_: matchBeginning }
     );
     await this.togglePlay();
+  }
+
+  async toggleSettings() {
+    await this.settingsButton.click();
+  }
+
+  async setLooping(isLooping: boolean) {
+    const loopLabel = this.modal.locator.getByTestId(
+      "looker-checkbox-Loop video"
+    );
+    const loopInput = loopLabel.getByTestId("looker-checkbox-input-Loop video");
+
+    const loopInputChecked = await loopInput.isEnabled();
+
+    if (isLooping !== loopInputChecked) {
+      await loopLabel.click();
+    }
   }
 
   async setSpeedTo(config: "low" | "middle" | "high") {

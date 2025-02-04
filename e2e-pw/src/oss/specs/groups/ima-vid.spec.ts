@@ -128,6 +128,9 @@ test("check modal playback and tagging behavior", async ({ modal, grid }) => {
 
   // change speed to the low for easy testing
   await modal.imavid.setSpeedTo("low");
+  await modal.imavid.toggleSettings();
+  await modal.imavid.setLooping(false);
+  await modal.imavid.toggleSettings();
 
   await modal.imavid.playUntilFrames("13 / 150");
 
