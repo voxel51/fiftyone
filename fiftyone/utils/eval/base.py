@@ -28,8 +28,6 @@ class BaseEvaluationMethodConfig(foe.EvaluationMethodConfig):
     """Base class for configuring evaluation methods.
 
     Args:
-        custom_metrics (None): an optional list of custom metrics to compute
-            or dict mapping metric names to kwargs dicts
         **kwargs: any leftover keyword arguments after subclasses have done
             their parsing
     """
@@ -44,27 +42,17 @@ class BaseEvaluationMethod(foe.EvaluationMethod):
         config: an :class:`BaseEvaluationMethodConfig`
     """
 
-    def _get_custom_metrics(self, metric_uris=None):
+    def _get_custom_metrics(self):
         if not self.config.custom_metrics:
             return {}
 
         if isinstance(self.config.custom_metrics, list):
             return {m: None for m in self.config.custom_metrics}
 
-        custom_metrics = self.config.custom_metrics
+        return self.config.custom_metrics
 
-        if metric_uris is not None:
-            custom_metrics = {
-                k: v for k, v in custom_metrics.items() if k in metric_uris
-            }
-
-        return custom_metrics
-
-    def compute_custom_metrics(
-        self, samples, eval_key, results, metric_uris=None
-    ):
-        custom_metrics = self._get_custom_metrics(metric_uris=metric_uris)
-        for metric, kwargs in custom_metrics.items():
+    def compute_custom_metrics(self, samples, eval_key, results):
+        for metric, kwargs in self._get_custom_metrics().items():
             try:
                 operator = foo.get_operator(metric)
                 value = operator.compute(samples, results, **kwargs or {})
@@ -91,11 +79,10 @@ class BaseEvaluationMethod(foe.EvaluationMethod):
                     e,
                 )
 
-    def get_custom_metric_fields(self, samples, eval_key, metric_uris=None):
+    def get_custom_metric_fields(self, samples, eval_key):
         fields = []
 
-        custom_metrics = self._get_custom_metrics(metric_uris=metric_uris)
-        for metric in custom_metrics.keys():
+        for metric in self._get_custom_metrics().keys():
             try:
                 operator = foo.get_operator(metric)
                 fields.extend(
@@ -110,11 +97,8 @@ class BaseEvaluationMethod(foe.EvaluationMethod):
 
         return fields
 
-    def rename_custom_metrics(
-        self, samples, eval_key, new_eval_key, metric_uris=None
-    ):
-        custom_metrics = self._get_custom_metrics(metric_uris=metric_uris)
-        for metric in custom_metrics.keys():
+    def rename_custom_metrics(self, samples, eval_key, new_eval_key):
+        for metric in self._get_custom_metrics().keys():
             try:
                 operator = foo.get_operator(metric)
                 operator.rename(samples, self.config, eval_key, new_eval_key)
@@ -125,9 +109,8 @@ class BaseEvaluationMethod(foe.EvaluationMethod):
                     e,
                 )
 
-    def cleanup_custom_metrics(self, samples, eval_key, metric_uris=None):
-        custom_metrics = self._get_custom_metrics(metric_uris=metric_uris)
-        for metric in custom_metrics.keys():
+    def cleanup_custom_metrics(self, samples, eval_key):
+        for metric in self._get_custom_metrics().keys():
             try:
                 operator = foo.get_operator(metric)
                 operator.cleanup(samples, self.config, eval_key)
@@ -160,50 +143,6 @@ class BaseEvaluationResults(foe.EvaluationResults):
     ):
         super().__init__(samples, config, eval_key, backend=backend)
         self.custom_metrics = custom_metrics
-
-    def add_custom_metrics(self, custom_metrics, overwrite=True):
-        """Computes the given custom metrics and adds them to these results.
-
-        Args:
-            custom_metrics: a list of custom metrics to compute or a dict
-                mapping metric names to kwargs dicts
-            overwrite (True): whether to recompute any custom metrics that
-                have already been applied
-        """
-        _custom_metrics = self.config.custom_metrics
-
-        if _custom_metrics is None:
-            _custom_metrics = {}
-
-        if isinstance(_custom_metrics, list):
-            _custom_metrics = {k: None for k in _custom_metrics}
-
-        if isinstance(custom_metrics, list):
-            custom_metrics = {k: None for k in custom_metrics}
-
-        if not overwrite:
-            custom_metrics = {
-                k: v
-                for k, v in custom_metrics.items()
-                if k not in _custom_metrics
-            }
-
-        if not custom_metrics:
-            return
-
-        metric_uris = list(custom_metrics.keys())
-
-        _custom_metrics.update(custom_metrics)
-        if all(v is None for v in _custom_metrics.values()):
-            _custom_metrics = list(_custom_metrics.keys())
-
-        self.config.custom_metrics = _custom_metrics
-        self.save_config()
-
-        self.backend.compute_custom_metrics(
-            self.samples, self.key, self, metric_uris=metric_uris
-        )
-        self.save()
 
     def metrics(self, *args, **kwargs):
         """Returns the metrics associated with this evaluation run.

@@ -51,12 +51,12 @@ class PageAsserter {
   }
 
   async verifyPathname(pathname: string) {
-    expect(this.pagePom.pathname).toEqual(pathname);
+    await expect(this.pagePom.pathname).toEqual(pathname);
   }
 
   async verifyDataset(datasetName: string) {
     await this.pagePom.datasetSelector.assert.verifyValue(datasetName);
-    expect(this.pagePom.pathname).toEqual(`/datasets/${datasetName}`);
+    await expect(this.pagePom.pathname).toEqual(`/datasets/${datasetName}`);
   }
 
   async verifyDatasets(datasetNames: string[]) {
