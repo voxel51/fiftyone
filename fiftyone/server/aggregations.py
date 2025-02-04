@@ -331,11 +331,11 @@ async def _should_optimize_frames(form: AggregationForm):
     if not form.sample_ids and not form.group_id:
         return False
 
-    view = await _load_view(form, [])
-    if view.get_frame_field_schema() is None:
+    if form.view:
         return False
 
-    if form.view:
+    view = await _load_view(form, [])
+    if view.media_type != fom.VIDEO:
         return False
 
     if not form.filters:
