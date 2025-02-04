@@ -30,6 +30,8 @@ export const PainterFactory = (requestColor) => ({
       return;
     }
 
+    console.log(">>>painting detection: ", field);
+
     label.renderStatus = "painting";
 
     const setting = customizeColorSetting?.find((s) => s.path === field);
@@ -190,6 +192,8 @@ export const PainterFactory = (requestColor) => ({
       return;
     }
 
+    console.log(">>>painting heatmap", field);
+
     label.renderStatus = "painting";
 
     const overlay = new Uint32Array(label.map.image);
@@ -270,6 +274,8 @@ export const PainterFactory = (requestColor) => ({
     if (!label?.mask) {
       return;
     }
+
+    console.log(">>>painting segmentation", field);
 
     label.renderStatus = "painting";
 
