@@ -59,11 +59,19 @@ export default class DetectionOverlay<
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    if (this.label.renderStatus !== null && !this.label.mask) {
+    // renderstatus is guaranteed to be undefined when there is no mask_path
+    // so if render status is not null, means there's a mask
+    // we want to couple rendering of mask with bbox
+    // so we return if render status is truthy and there's no mask
+    // meaning mask is being processed
+    if (this.label.renderStatus && !this.label.mask) {
       return;
     }
 
-    this.label.mask && this.drawMask(ctx, state);
+    if (this.label.mask && this.label.renderStatus === "painted") {
+      this.drawMask(ctx, state);
+    }
+
     !state.config.thumbnail && this.drawLabelText(ctx, state);
 
     if (this.is3D && this.label.dimensions && this.label.location) {

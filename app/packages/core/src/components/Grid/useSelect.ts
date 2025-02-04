@@ -29,11 +29,6 @@ export default function useSelect(
         }
 
         retained.add(id.description);
-        instance.updateOptions({
-          ...options,
-          fontSize,
-          selected: selected.has(id.description),
-        });
 
         const newFieldsIfAny = getNewFields(id.description);
 
@@ -42,7 +37,11 @@ export default function useSelect(
         // rerender looker if active fields have changed and have never been rendered before
         if (newFieldsIfAny) {
           const thisInstanceOverlays = overlays.filter(
-            (o) => o.field && newFieldsIfAny.includes(o.field)
+            (o) =>
+              o.field &&
+              (o.label?.mask_path?.length > 0 ||
+                o.label?.map_path?.length > 0) &&
+              newFieldsIfAny.includes(o.field)
           );
 
           thisInstanceOverlays?.forEach((o) => {
@@ -53,18 +52,33 @@ export default function useSelect(
             }
           });
 
+          // important we "reconcile" here so that "pending" status percolates to
+          // draw function of labels
+          instance.updateOptions({
+            ...options,
+            fontSize,
+            selected: selected.has(id.description),
+          });
+
           if (thisInstanceOverlays?.length > 0) {
             instance.refreshSample(newFieldsIfAny);
           }
         } else {
           // if there're any labels marked "pending", render them
           const pending = overlays.filter(
-            (o) => o.field && o.label && o.label.renderStatus === "pending"
+            (o) => o.field && o.label?.renderStatus === "pending"
           );
 
           if (pending?.length > 0) {
             const rerenderFields = pending.map((o) => o.field!);
+            // `refreshSample` calls `updateOptions` internally
             instance.refreshSample(rerenderFields);
+          } else {
+            instance.updateOptions({
+              ...options,
+              fontSize,
+              selected: selected.has(id.description),
+            });
           }
         }
       });
