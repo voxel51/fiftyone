@@ -60,7 +60,8 @@
         "postcss": "^8.4.31",
         "graphql": "^16.8.1",
         "ip": "^2.0.1",
-        "es5-ext": "0.10.63"
+        "es5-ext": "0.10.63",
+        "@babel/runtime": "^7.24.6"
     },
     "packageManager": "yarn@3.2.1"
 }
