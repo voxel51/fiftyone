@@ -72,7 +72,7 @@ The example below demonstrates this workflow.
     to avoid entering them manually each time you interact with your
     Mosaic index.
 
-First let's load a dataset into FiftyOne and compute embeddings for the samples:
+First, let's load a dataset into FiftyOne and compute embeddings for the samples:
 
 .. code-block:: python
     :linenos:
