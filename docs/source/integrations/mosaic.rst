@@ -431,7 +431,7 @@ possibilities:
         brain_key=brain_key,
     )
 
-    # Option 4: Pass precomputed embeddings by field name
+    # Option 4: Pass pre-computed embeddings by field name
     dataset.compute_embeddings(model, embeddings_field="embeddings")
     fob.compute_similarity(
         dataset,
