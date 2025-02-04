@@ -26,8 +26,51 @@ from .base import (
     BaseClassificationResults,
 )
 
+import fiftyone.core.beam as fob
+
 
 logger = logging.getLogger(__name__)
+
+
+def _compute_matches(
+    _samples,
+    eval_method,
+    eval_key,
+    save=False,
+    progress=None,
+    processing_frames=False,
+    tp_field=None,
+    fp_field=None,
+    fn_field=None,
+):
+    matches = []
+    for sample in _samples.iter_samples(progress=progress, autosave=save):
+        if processing_frames:
+            docs = sample.frames.values()
+        else:
+            docs = [sample]
+
+        sample_tp = 0
+        sample_fp = 0
+        sample_fn = 0
+        for doc in docs:
+            doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
+            matches.extend(doc_matches)
+            tp, fp, fn = _tally_matches(doc_matches)
+            sample_tp += tp
+            sample_fp += fp
+            sample_fn += fn
+
+            if processing_frames and save:
+                doc[tp_field] = tp
+                doc[fp_field] = fp
+                doc[fn_field] = fn
+
+        if save:
+            sample[tp_field] = sample_tp
+            sample[fp_field] = sample_fp
+            sample[fn_field] = sample_fn
+    return matches
 
 
 def evaluate_detections(
@@ -45,6 +88,7 @@ def evaluate_detections(
     dynamic=True,
     custom_metrics=None,
     progress=None,
+    use_beam_map=False,
     **kwargs,
 ):
     """Evaluates the predicted detections in the given samples with respect to
@@ -141,6 +185,7 @@ def evaluate_detections(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
+        use_beam_map (False): whether to use beam map to compute detections
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
 
@@ -193,34 +238,41 @@ def evaluate_detections(
     else:
         _samples = samples.select_fields([gt_field, pred_field])
 
-    matches = []
+    def _map_fnc(samples):
+        return _compute_matches(
+            samples,
+            eval_method,
+            eval_key,
+            save=save,
+            progress=progress,
+            processing_frames=processing_frames,
+            tp_field=tp_field,
+            fp_field=fp_field,
+            fn_field=fn_field,
+        )
+
+    def _reduce_fcn(samples, accummulator):
+        output = []
+        for _id, matches in accummulator.items():
+            output.extend(matches)
+
     logger.info("Evaluating detections...")
-    for sample in _samples.iter_samples(progress=progress, autosave=save):
-        if processing_frames:
-            docs = sample.frames.values()
-        else:
-            docs = [sample]
-
-        sample_tp = 0
-        sample_fp = 0
-        sample_fn = 0
-        for doc in docs:
-            doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
-            matches.extend(doc_matches)
-            tp, fp, fn = _tally_matches(doc_matches)
-            sample_tp += tp
-            sample_fp += fp
-            sample_fn += fn
-
-            if processing_frames and save:
-                doc[tp_field] = tp
-                doc[fp_field] = fp
-                doc[fn_field] = fn
-
-        if save:
-            sample[tp_field] = sample_tp
-            sample[fp_field] = sample_fp
-            sample[fn_field] = sample_fn
+    if use_beam_map:
+        matches = fob.beam_map(
+            _samples, _map_fnc, reduce_fcn=_reduce_fcn, progress=progress
+        )
+    else:
+        matches = _compute_matches(
+            _samples,
+            eval_method,
+            eval_key,
+            save=save,
+            progress=progress,
+            processing_frames=processing_frames,
+            tp_field=tp_field,
+            fp_field=fp_field,
+            fn_field=fn_field,
+        )
 
     results = eval_method.generate_results(
         samples,
