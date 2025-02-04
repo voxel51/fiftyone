@@ -127,6 +127,7 @@ const processLabels = async (
           })
         ) {
           maskPathDecodingPromises.push(
+            // note: if it's an already decoded label, this will be cheap
             decodeOverlayOnDisk(
               `${prefix || ""}${field}`,
               label,

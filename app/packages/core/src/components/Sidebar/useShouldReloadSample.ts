@@ -1,7 +1,7 @@
 import { activeLabelFields } from "@fiftyone/state";
 import { useCallback, useEffect } from "react";
 import { useRecoilValue } from "recoil";
-import { syncAndCheckRefreshNeeded } from "./syncAndCheckRefreshNeeded";
+import { syncAndGetNewLabels } from "./syncAndGetNewLabels";
 
 export type LookerId = string;
 export type CachedLabels = Set<string>;
@@ -16,9 +16,9 @@ export const useShouldReloadSampleOnActiveFieldsChange = ({
 }) => {
   const activeLabelFieldsValue = useRecoilValue(activeLabelFields({ modal }));
 
-  const shouldRefresh = useCallback(
+  const getNewFields = useCallback(
     (id: string) => {
-      return syncAndCheckRefreshNeeded(
+      return syncAndGetNewLabels(
         id,
         modal ? modalActivePathsLUT : gridActivePathsLUT,
         new Set(activeLabelFieldsValue)
@@ -40,5 +40,5 @@ export const useShouldReloadSampleOnActiveFieldsChange = ({
     };
   }, []);
 
-  return shouldRefresh;
+  return getNewFields;
 };

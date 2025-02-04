@@ -13,7 +13,7 @@ export default function useSelect(
 ) {
   const { init, deferred } = fos.useDeferrer();
 
-  const shouldRefresh = useShouldReloadSampleOnActiveFieldsChange({
+  const getNewFields = useShouldReloadSampleOnActiveFieldsChange({
     modal: false,
   });
 
@@ -35,9 +35,11 @@ export default function useSelect(
           selected: selected.has(id.description),
         });
 
+        const newFieldsIfAny = getNewFields(id.description);
+
         // rerender looker if active fields have changed and have never been rendered before
-        if (shouldRefresh(id.description)) {
-          instance.refreshSample();
+        if (newFieldsIfAny) {
+          instance.refreshSample(newFieldsIfAny);
         }
       });
 

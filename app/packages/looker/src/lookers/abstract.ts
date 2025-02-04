@@ -45,6 +45,8 @@ import {
 import { ProcessSample } from "../worker";
 import { LookerUtils } from "./shared";
 import { retrieveArrayBuffers } from "./utils";
+import { AsyncLabelsRenderingManager } from "../worker/async-labels-rendering-manager";
+import { Lookers } from "@fiftyone/state";
 
 const UPDATING_SAMPLES_IDS = new Set();
 
@@ -99,12 +101,16 @@ export abstract class AbstractLooker<
   protected currentOverlays: Overlay<State>[];
   protected pluckedOverlays: Overlay<State>[];
   protected sample: S;
-  protected state: State;
   protected readonly updater: StateUpdate<State>;
 
   private batchMergedUpdates: Partial<State> = {};
   private isBatching = false;
   private isCommittingBatchUpdates = false;
+
+  /** @internal */
+  public state: State;
+
+  private asyncLabelsRenderingManager: AsyncLabelsRenderingManager;
 
   constructor(
     sample: S,
@@ -156,6 +162,10 @@ export abstract class AbstractLooker<
           }
         ),
       3500
+    );
+
+    this.asyncLabelsRenderingManager = new AsyncLabelsRenderingManager(
+      this as unknown as Lookers
     );
 
     this.init();
@@ -533,13 +543,35 @@ export abstract class AbstractLooker<
     this.loadSample(sample, retrieveArrayBuffers(this.sampleOverlays));
   }
 
-  refreshSample() {
+  refreshSample(renderLabels: string[] | null) {
     // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
     // this crashes the app. this is a bug and should be fixed
+    if (!this.sample) {
+      return;
+    }
 
-    if (this.sample) {
+    if (!renderLabels?.length) {
       this.updateSample(this.sample);
     }
+
+    this.asyncLabelsRenderingManager
+      .enqueueLabelPaintingJob({
+        sample: this.sample,
+        labels: renderLabels,
+      })
+      .then(({ sample, coloring }) => {
+        this.sample = sample;
+        this.state.options.coloring = coloring;
+        this.loadOverlays(sample);
+
+        // to run looker reconciliation
+        this.updater({
+          overlaysPrepared: true,
+        });
+      })
+      .catch((error) => {
+        this.updater({ error });
+      });
   }
 
   getSample(): Promise<Sample> {
