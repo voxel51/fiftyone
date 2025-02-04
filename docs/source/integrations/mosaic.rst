@@ -123,7 +123,7 @@ by specifying the `brain_key`:
 Setup
 _____
 
-To get started with Mosaic AI Vector Search, you need to have access to a Datbaricks workspace which satisfies the 
+To get started with Mosaic AI Vector Search, you need to have access to a Databricks workspace which satisfies the 
 `requirements for vector search <https://docs.databricks.com/en/generative-ai/vector-search.html#requirements>`_
 and `create a vector search endpoint <https://docs.databricks.com/en/generative-ai/create-query-vector-search.html#create-a-vector-search-endpoint>`_. 
 You also need to have a catalog and schema in Databricks where you want to create the vector search index.
