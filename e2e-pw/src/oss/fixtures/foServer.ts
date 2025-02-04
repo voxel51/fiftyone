@@ -43,6 +43,7 @@ export class FoWebServer {
         "0.0.0.0",
         "--port",
         this.#port.toString(),
+        "--clean_start",
       ]);
 
       const proc = spawn(procString, { shell: true });
