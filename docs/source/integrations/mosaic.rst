@@ -68,7 +68,7 @@ The example below demonstrates this workflow.
 
         pip install databricks-vectorsearch
 
-    Note that, you need to provide credentials as described in :ref:`this section <mosaic-setup>`
+    Note that you need to provide credentials as described in :ref:`this section <mosaic-setup>`
     to avoid entering them manually each time you interact with your
     Mosaic index.
 
