@@ -101,16 +101,6 @@ class SidebarAsserter {
     );
   }
 
-  async waitUntilSidebarEntryTextEqualsMultiple(entries: {
-    [key: string]: string;
-  }) {
-    await Promise.all(
-      Object.entries(entries).map(([key, value]) =>
-        this.waitUntilSidebarEntryTextEquals(key, value)
-      )
-    );
-  }
-
   async verifySidebarEntryTexts(entries: { [key: string]: string }) {
     await Promise.all(
       Object.entries(entries).map(([key, value]) =>

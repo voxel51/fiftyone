@@ -3,12 +3,6 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-FiftyOne Teams 2.5.1
---------------------
-*Released February 3, 2025*
-
-- Fixed a bug where we displayed a session error before initial user login
-
 FiftyOne Teams 2.5.0
 --------------------
 *Released January 24, 2025*

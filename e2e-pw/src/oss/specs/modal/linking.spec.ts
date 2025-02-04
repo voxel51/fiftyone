@@ -13,13 +13,7 @@ const groupDatasetName = getUniqueDatasetNameWithPrefix("group-linking");
 
 const id = "000000000000000000000000";
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
-  await foWebServer.startWebServer();
-
+test.beforeAll(async ({ fiftyoneLoader }) => {
   await fiftyoneLoader.executePythonCode(`
     from bson import ObjectId
 
@@ -44,26 +38,24 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
     group_dataset.add_sample(group_sample)`);
 });
 
-test.describe.serial("modal linking", () => {
-  test(`sample linking`, async ({ page, fiftyoneLoader, modal }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-      searchParams: new URLSearchParams({ id }),
-    });
-
-    await modal.waitForSampleLoadDomAttribute(true);
-
-    await modal.assert.isOpen();
-    await modal.sidebar.assert.verifySidebarEntryText("id", id);
+test(`sample linking`, async ({ page, fiftyoneLoader, modal }) => {
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+    searchParams: new URLSearchParams({ id }),
   });
 
-  test(`group linking`, async ({ page, fiftyoneLoader, modal }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, groupDatasetName, {
-      searchParams: new URLSearchParams({ groupId: id }),
-    });
+  await modal.waitForSampleLoadDomAttribute(true);
 
-    await modal.waitForSampleLoadDomAttribute(true);
+  await modal.assert.isOpen();
+  await modal.sidebar.assert.verifySidebarEntryText("id", id);
+});
 
-    await modal.assert.isOpen();
-    await modal.sidebar.assert.verifySidebarEntryText("group.id", id);
+test(`group linking`, async ({ page, fiftyoneLoader, modal }) => {
+  await fiftyoneLoader.waitUntilGridVisible(page, groupDatasetName, {
+    searchParams: new URLSearchParams({ groupId: id }),
   });
+
+  await modal.waitForSampleLoadDomAttribute(true);
+
+  await modal.assert.isOpen();
+  await modal.sidebar.assert.verifySidebarEntryText("group.id", id);
 });

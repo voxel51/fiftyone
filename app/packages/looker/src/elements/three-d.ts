@@ -71,6 +71,7 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
 
     this.element = new Image();
     this.element.loading = "eager";
+    this.element.crossOrigin = "Anonymous";
     if (this.isOpmAvailable) {
       this.element.setAttribute("src", src);
     } else {

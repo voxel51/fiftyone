@@ -1,7 +1,7 @@
 import { test as base } from "src/oss/fixtures";
 import { FieldVisibilityPom } from "src/oss/poms/field-visibility/field-visibility";
-import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { SidebarPom } from "src/oss/poms/sidebar";
 
 const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
 
@@ -17,37 +17,31 @@ const test = base.extend<{
   },
 });
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
+test.describe("field visibility", () => {
+  test.beforeAll(async ({ fiftyoneLoader }) => {
+    await fiftyoneLoader.executePythonCode(`
+      import fiftyone as fo
+      import fiftyone.zoo as foz
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
-  await foWebServer.startWebServer();
+      dataset = foz.load_zoo_dataset("quickstart", dataset_name="${datasetName}")
+      dataset.persistent = True
+      dataset.save()
 
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+      field = dataset.get_field("ground_truth")
+      field.description = "ground_truth description"
+      field.info = {"owner": "bob"}
+      field.save()
 
-    dataset = foz.load_zoo_dataset("quickstart", dataset_name="${datasetName}")
-    dataset.persistent = True
-    dataset.save()
+      field = dataset.get_field("metadata.width")
+      field.description = "metadata.width description"
+      field.info = {"owner": "bob"}
+      field.save()
 
-    field = dataset.get_field("ground_truth")
-    field.description = "ground_truth description"
-    field.info = {"owner": "bob"}
-    field.save()
+      dataset.add_samples([fo.Sample(filepath=f"{i}.png", group=1, i=i) for i in range(0, 21)])
+      dataset.save()
+    `);
+  });
 
-    field = dataset.get_field("metadata.width")
-    field.description = "metadata.width description"
-    field.info = {"owner": "bob"}
-    field.save()
-
-    dataset.add_samples([fo.Sample(filepath=f"{i}.png", group=1, i=i) for i in range(0, 21)])
-    dataset.save()
-  `);
-});
-
-test.describe.serial("field visibility", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });

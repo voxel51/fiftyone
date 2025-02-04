@@ -55,7 +55,7 @@
         "rollup-plugin-polyfill-node": "^0.6.2",
         "typescript": "^5.3.2",
         "typescript-plugin-css-modules": "^5.0.2",
-        "vite": "^5.4.12",
+        "vite": "^5.2.14",
         "vite-plugin-relay": "^1.0.7",
         "vite-plugin-rewrite-all": "^1.0.2",
         "vite-plugin-svgr": "^4.2.0"

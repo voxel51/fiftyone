@@ -17,52 +17,43 @@ const test = base.extend<{
   },
 });
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
+test.describe("dynamic embedded documents (DED) visibility / filter", () => {
+  test.beforeAll(async ({ fiftyoneLoader }) => {
+    await fiftyoneLoader.executePythonCode(`
+      import fiftyone as fo
+      import fiftyone.core.storage as fos
+      dataset = fo.Dataset("${datasetName}")
+      dataset.persistent = True
+
+      sample1 = fo.Sample(filepath="src/shared/assets/images/test.png")
+      dataset.add_samples([sample1])
+      dataset.save()
+
+      sample = dataset.first()
+
+      mask_path = fos.normalize_path("src/shared/assets/masks/mask.png")
+      seg = fo.Segmentation(
+        label='cat',
+        mask_path=mask_path
+      )
+
+      sample['emb_doc_fld'] = fo.DynamicEmbeddedDocument(seg=seg)
+      sample.save()
+      
+      dataset.add_dynamic_sample_fields()
+      dataset.save()
+    `);
+  });
+
+  test.beforeEach(async ({ page, fiftyoneLoader }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  });
+
+  test("Sample modal opens when the sample has segmentation mask label from disk mask_path", async ({
+    grid,
+    modal,
+  }) => {
+    await grid.openFirstSample();
+    await modal.assert.verifyModalOpenedSuccessfully();
+  });
 });
-
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
-  await foWebServer.startWebServer();
-
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-    import fiftyone.core.storage as fos
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
-
-    sample1 = fo.Sample(filepath="src/shared/assets/images/test.png")
-    dataset.add_samples([sample1])
-    dataset.save()
-
-    sample = dataset.first()
-
-    mask_path = fos.normalize_path("src/shared/assets/masks/mask.png")
-    seg = fo.Segmentation(
-      label='cat',
-      mask_path=mask_path
-    )
-
-    sample['emb_doc_fld'] = fo.DynamicEmbeddedDocument(seg=seg)
-    sample.save()
-    
-    dataset.add_dynamic_sample_fields()
-    dataset.save()
-  `);
-});
-
-test.describe.serial(
-  "dynamic embedded documents (DED) visibility / filter",
-  () => {
-    test.beforeEach(async ({ page, fiftyoneLoader }) => {
-      await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-    });
-
-    test("Sample modal opens when the sample has segmentation mask label from disk mask_path", async ({
-      grid,
-      modal,
-    }) => {
-      await grid.openFirstSample();
-      await modal.assert.verifyModalOpenedSuccessfully();
-    });
-  }
-);

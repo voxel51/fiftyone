@@ -737,9 +737,8 @@ The only difference between each task type is in how the IoU between objects is
 calculated:
 
 -   For object detections, IoUs are computed between each pair of bounding boxes
--   For instance segmentations, when ``use_masks=True``, IoUs are computed
-    between the dense pixel masks rather than their rectangular bounding boxes
--   For polygons, IoUs are computed between the polygonal shapes
+-   For instance segmentations and polygons, IoUs are computed between the
+    polygonal shapes rather than their rectangular bounding boxes
 -   For keypoint tasks,
     `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_
     is computed for each pair of objects, using the extent of the ground truth
@@ -753,7 +752,8 @@ stored in |Detections| format.
 
 For instance segmentation tasks, the ground truth and predicted objects should
 be stored in |Detections| format, and each |Detection| instance should have its
-mask populated to define the extent of the object within its bounding box.
+:attr:`mask <fiftyone.core.labels.Detection.mask>` attribute populated to
+define the extent of the object within its bounding box.
 
 .. note::
 
@@ -2085,7 +2085,6 @@ When using metric operators without custom parameters, you can also pass a list
 of operator URI's to the `custom_metrics` parameter:
 
 .. code-block:: python
-    :linenos:
 
     # Apply two custom metrics to a regression evaluation
     results = dataset.evaluate_regressions(
@@ -2096,23 +2095,6 @@ of operator URI's to the `custom_metrics` parameter:
             "@voxel51/metric-examples/absolute_error",
             "@voxel51/metric-examples/squared_error",
         ],
-    )
-
-You can also add custom metrics to an existing evaluation at any time via
-:meth:`add_custom_metrics() <fiftyone.utils.eval.base.BaseEvaluationResults.add_custom_metrics>`:
-
-.. code-block:: python
-    :linenos:
-
-    # Load an existing evaluation run
-    results = dataset.load_evaluation_results("eval")
-
-    # Add some custom metrics
-    results.add_custom_metrics(
-        [
-            "@voxel51/metric-examples/absolute_error",
-            "@voxel51/metric-examples/squared_error",
-        ]
     )
 
 Developing custom metrics
