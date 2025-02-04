@@ -35,6 +35,12 @@ import RunStatus from "./RunStatus";
 import RunsPin from "./RunsPin";
 import { useBooleanEnv } from "@fiftyone/hooks/src/common/useEnv";
 
+const NON_FINAL_RUN_STATES = [
+  OPERATOR_RUN_STATES.QUEUED,
+  OPERATOR_RUN_STATES.SCHEDULED,
+  OPERATOR_RUN_STATES.RUNNING,
+];
+
 function RunsListWithQuery(props) {
   const environment = useRelayEnvironment();
   const { queryRef, refresh, refreshStatus } = props;
@@ -47,9 +53,9 @@ function RunsListWithQuery(props) {
     FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS_ENV_KEY
   );
 
-  const { nodes, pageTotal } = addMockData(result.delegatedOperationsPage);
-  const hasRunningRuns = nodes.some(
-    (node) => node.runState === OPERATOR_RUN_STATES.RUNNING
+  const { nodes, pageTotal } = result.delegatedOperationsPage;
+  const hasRunningRuns = nodes.some((node) =>
+    NON_FINAL_RUN_STATES.includes(node.runState)
   );
 
   useEffect(() => {
