@@ -262,7 +262,7 @@ when loading an index later via
 Mosaic config parameters
 -------------------------------
 
-The Mosaic backend supports a the following parameter that can be
+The Mosaic backend supports the following parameter
 used to customize your similarity queries. 
 
 -   **index_name** (*None*): the name of the Mosaic vector search index
