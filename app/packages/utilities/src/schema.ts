@@ -11,6 +11,27 @@ export interface Field {
   pathWithDbField?: string | null;
 }
 
+export type GenericLabel = {
+  [labelKey: string]: {
+    [field: string]: unknown;
+  };
+  // todo: add other label types
+};
+
+export type Sample = {
+  metadata: {
+    width: number;
+    height: number;
+    mime_type?: string;
+  };
+  _id: string;
+  id: string;
+  filepath: string;
+  tags: string[];
+  _label_tags: string[];
+  _media_type: "image" | "video" | "point-cloud" | "3d";
+} & GenericLabel;
+
 export interface StrictField extends Omit<Field, "fields"> {
   fields?: StrictField[];
 }

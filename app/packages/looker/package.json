@@ -33,6 +33,7 @@
         "@rollup/plugin-inject": "^5.0.2",
         "@types/color-string": "^1.5.0",
         "@types/lru-cache": "^7.10.10",
+        "@types/utif": "^3.0.5",
         "@types/uuid": "^8.3.0",
         "buffer": "^6.0.3",
         "prettier": "^2.7.1",

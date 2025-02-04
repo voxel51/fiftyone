@@ -1,7 +1,6 @@
 import { HEATMAP, SEGMENTATION } from "@fiftyone/utilities";
-import { Coloring } from "..";
-import { OverlayMask } from "../numpy";
-import { isRgbMaskTargets } from "../overlays/util";
+import { isRgbMaskTargets } from "../../overlays/util";
+import type { Coloring } from "../../state";
 
 const canvasAndCtx = (() => {
   if (typeof OffscreenCanvas !== "undefined") {
@@ -108,9 +107,11 @@ export const decodeWithCanvas = async (
   }
 
   return {
+    arrayType: "Uint8ClampedArray",
     buffer: targetsBuffer,
     channels,
-    arrayType: "Uint8ClampedArray",
     shape: [height, width],
-  } as OverlayMask;
+  };
 };
+
+export default decodeWithCanvas;

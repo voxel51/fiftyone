@@ -2,21 +2,16 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 import { NONFINITES } from "@fiftyone/utilities";
-
 import { INFO_COLOR } from "../constants";
-import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
+import type { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
 import { distanceFromLineSegment } from "../util";
-import {
-  CONTAINS,
-  CoordinateOverlay,
-  LabelMask,
-  PointInfo,
-  RegularLabel,
-} from "./base";
+import type { LabelMask, PointInfo, RegularLabel } from "./base";
+import { CONTAINS, CoordinateOverlay } from "./base";
 import { t } from "./util";
 
 export interface DetectionLabel extends RegularLabel {
   mask?: LabelMask;
+  mask_path?: string;
   bounding_box: BoundingBox;
 
   // valid for 3D bounding boxes
@@ -166,17 +161,17 @@ export default class DetectionOverlay<
     let text =
       this.label.label && state.options.showLabel ? `${this.label.label}` : "";
 
-    if (state.options.showIndex && !isNaN(this.label.index)) {
-      text.length && (text += " ");
+    if (state.options.showIndex && !Number.isNaN(this.label.index)) {
+      if (text.length) text += " ";
       text += `${Number(this.label.index).toLocaleString()}`;
     }
 
     if (
       state.options.showConfidence &&
-      (!isNaN(this.label.confidence as number) ||
+      (!Number.isNaN(this.label.confidence as number) ||
         NONFINITES.has(this.label.confidence as NONFINITE))
     ) {
-      text.length && (text += " ");
+      if (text.length) text += " ";
       text += `(${
         typeof this.label.confidence === "number"
           ? Number(this.label.confidence).toFixed(2)
@@ -268,7 +263,7 @@ export default class DetectionOverlay<
 
 export const getDetectionPoints = (labels: DetectionLabel[]): Coordinates[] => {
   let points: Coordinates[] = [];
-  labels.forEach((label) => {
+  for (const label of labels) {
     const [tlx, tly, w, h] = label.bounding_box;
     points = [
       ...points,
@@ -277,6 +272,6 @@ export const getDetectionPoints = (labels: DetectionLabel[]): Coordinates[] => {
       [tlx + w, tly + h],
       [tlx, tly + h],
     ];
-  });
+  }
   return points;
 };

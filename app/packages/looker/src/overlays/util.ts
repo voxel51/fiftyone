@@ -63,9 +63,9 @@ export function isRgbMaskTargets(
 }
 
 // Return true is string is a valid color
-export function isValidColor(color: string | undefined | null): boolean {
-  return CSS.supports("color", color);
-}
+export const isValidColor = (color: string | undefined | null) => {
+  return typeof color === "string" ? colorString.get(color) !== null : false;
+};
 
 // Convert any valid css color to the hex color
 export function convertToHex(color: string) {
@@ -83,17 +83,19 @@ export function normalizeMaskTargetsCase(maskTargets: MaskTargets) {
   }
 
   const normalizedMaskTargets: RgbMaskTargets = {};
-  Object.entries(maskTargets).forEach(([key, value]) => {
+  for (const [key, value] of Object.entries(maskTargets)) {
     normalizedMaskTargets[key.toLocaleUpperCase()] = value;
-  });
+  }
   return normalizedMaskTargets;
 }
 
-export const convertId = (obj: Record<string, any>): Record<string, any> => {
+export const convertId = (
+  obj: Record<string, object>
+): Record<string, object> => {
   return Object.fromEntries(
     Object.entries(obj).map(([key, value]) => {
       if (Array.isArray(value)) {
-        return [key, value.map((item) => ({ ...item, id: item["_id"] }))];
+        return [key, value.map((item) => ({ ...item, id: item._id }))];
       }
       return [key, value];
     })
@@ -115,7 +117,7 @@ export const shouldShowLabelTag = (
   labelTags: string[] // current label's tags
 ) => {
   return (
-    (selectedLabelTags?.length == 0 && labelTags.length > 0) ||
+    (selectedLabelTags?.length === 0 && labelTags.length > 0) ||
     selectedLabelTags?.some((tag) => labelTags.includes(tag))
   );
 };
@@ -156,19 +158,19 @@ export const getLabelColor = ({
         coloring,
         fieldColor: labelTagColors?.fieldColor,
       });
-    } else {
-      return getLabelColorByField({
-        path,
-        coloring,
-        fieldColor: field?.fieldColor,
-      });
     }
+    return getLabelColorByField({
+      path,
+      coloring,
+      fieldColor: field?.fieldColor,
+    });
   }
 
   if (coloring.by === COLOR_BY.VALUE) {
     if (isTagged) {
       // if the label's tag is currently active, use the _label_tags color rules
-      // specified tag color > color by label tag's value > label tag field color > default label tag color
+      // specified tag color > color by label tag's value > label tag field
+      // color > default label tag color
 
       const tagColor = labelTagColors?.valueColors?.find((pair) =>
         label.tags.includes(pair.value)
@@ -176,23 +178,22 @@ export const getLabelColor = ({
 
       if (isValidColor(tagColor)) {
         return tagColor;
-      } else {
-        return getLabelColorByField({
-          path: label.tags.length > 0 ? label.tags[0] : "_Label_tags",
-          coloring,
-          fieldColor: labelTagColors?.fieldColor,
-        });
       }
-    } else {
-      // if the field has custom color rules, use the field/value specific rules
-      return getLabelColorByValue({
-        field,
-        label,
+
+      return getLabelColorByField({
+        path: label.tags.length > 0 ? label.tags[0] : "_Label_tags",
         coloring,
-        is3D,
-        embeddedDocType,
+        fieldColor: labelTagColors?.fieldColor,
       });
     }
+    // if the field has custom color rules, use the field/value specific rules
+    return getLabelColorByValue({
+      field,
+      label,
+      coloring,
+      is3D,
+      embeddedDocType,
+    });
   }
 
   return getColor(coloring.pool, coloring.seed, path);
@@ -219,21 +220,17 @@ const getLabelColorKey = (
   is3D: boolean,
   embeddedDocType: string
 ) => {
-  let key;
   if (field.colorByAttribute) {
     if (field.colorByAttribute === "index") {
-      key = ["string", "number"].includes(typeof label.index)
+      return ["string", "number"].includes(typeof label.index)
         ? "index"
         : is3D
         ? "_id"
         : "id";
-    } else {
-      key = field.colorByAttribute;
     }
-  } else {
-    key = embeddedDocType === REGRESSION ? "value" : "label";
+    return field.colorByAttribute;
   }
-  return key;
+  return embeddedDocType === REGRESSION ? "value" : "label";
 };
 
 const getLabelColorByValue = ({
@@ -249,9 +246,8 @@ const getLabelColorByValue = ({
   is3D: boolean;
   embeddedDocType: string;
 }) => {
-  let key;
   if (field) {
-    key = getLabelColorKey(field, label, is3D, embeddedDocType);
+    const key = getLabelColorKey(field, label, is3D, embeddedDocType);
     // use the first value as the fallback value to get color,
     // if it's a listField
     const fallbackValue =
@@ -268,7 +264,7 @@ const getLabelColorByValue = ({
       }
       if (["True", "False"].includes(l.value?.toString())) {
         return (
-          l.value?.toString().toLowerCase() ==
+          l.value?.toString().toLowerCase() ===
           label[key]?.toString().toLowerCase()
         );
       }
@@ -276,14 +272,14 @@ const getLabelColorByValue = ({
         ? label[key]
             .map((list) => list.toString())
             .includes(l.value?.toString())
-        : l.value?.toString() == label[key]?.toString();
+        : l.value?.toString() === label[key]?.toString();
     })?.color;
 
     return isValidColor(valueColor)
       ? valueColor
       : getColor(coloring.pool, coloring.seed, fallbackValue);
-  } else {
-    key = embeddedDocType === REGRESSION ? "value" : "label";
-    return getColor(coloring.pool, coloring.seed, label[key]);
   }
+
+  const key = embeddedDocType === REGRESSION ? "value" : "label";
+  return getColor(coloring.pool, coloring.seed, label[key]);
 };

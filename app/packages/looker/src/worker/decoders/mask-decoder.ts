@@ -1,4 +1,4 @@
-import { Coloring } from "..";
+import { Coloring } from "../..";
 import { decodeWithCanvas } from "./canvas-decoder";
 import { customDecode16BitPng } from "./custom-16-bit-png-decoder";
 

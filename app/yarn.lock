@@ -2107,6 +2107,7 @@ __metadata:
     "@rollup/plugin-inject": ^5.0.2
     "@types/color-string": ^1.5.0
     "@types/lru-cache": ^7.10.10
+    "@types/utif": ^3.0.5
     "@types/uuid": ^8.3.0
     "@ungap/event-target": ^0.2.2
     "@xmldom/xmldom": ^0.8.6
@@ -5253,6 +5254,15 @@ __metadata:
   version: 2.0.10
   resolution: "@types/unist@npm:2.0.10"
   checksum: e2924e18dedf45f68a5c6ccd6015cd62f1643b1b43baac1854efa21ae9e70505db94290434a23da1137d9e31eb58e54ca175982005698ac37300a1c889f6c4aa
+  languageName: node
+  linkType: hard
+
+"@types/utif@npm:^3.0.5":
+  version: 3.0.5
+  resolution: "@types/utif@npm:3.0.5"
+  dependencies:
+    "@types/node": "*"
+  checksum: dcf759815e1de0cd60849d76f77dc18be172d740fc56af6f57b350874c6b74cdd8ddef09e2af0b3825a0d07c7da8e461af99f20caffe381778fd1d1f2c821105
   languageName: node
   linkType: hard
 

@@ -4,38 +4,7 @@
 
 import { Buffer } from "buffer";
 import pako from "./pako.js";
-
-export { deserialize };
-
-export const ARRAY_TYPES = {
-  Uint8Array,
-  Uint8ClampedArray,
-  Int8Array,
-  Uint16Array,
-  Int16Array,
-  Uint32Array,
-  Int32Array,
-  Float32Array,
-  Float64Array,
-};
-
-export type TypedArray =
-  | Uint8Array
-  | Uint8ClampedArray
-  | Int8Array
-  | Uint16Array
-  | Int16Array
-  | Uint32Array
-  | Int32Array
-  | Float32Array
-  | Float64Array;
-
-export interface OverlayMask {
-  buffer: ArrayBuffer;
-  shape: [number, number];
-  channels: number;
-  arrayType: keyof typeof ARRAY_TYPES;
-}
+import type { OverlayMask } from "./types.js";
 
 const DATA_TYPES = {
   // < = little-endian, > = big-endian, | = host architecture
@@ -61,10 +30,10 @@ const DATA_TYPES = {
   "|i4": Int32Array,
   "<i4": Int32Array,
 
-  "|u8": convert64to32Array(Uint32Array),
-  "<u8": convert64to32Array(Uint32Array),
-  "|i8": convert64to32Array(Int32Array),
-  "<i8": convert64to32Array(Int32Array),
+  "|u8": BigUint64Array,
+  "<u8": BigUint64Array,
+  "|i8": BigInt64Array,
+  "<i8": BigInt64Array,
 
   "<f4": Float32Array,
   "|f4": Float32Array,
@@ -72,35 +41,6 @@ const DATA_TYPES = {
   "<f8": Float64Array,
   "|f8": Float64Array,
 };
-
-/**
- * Polyfill to convert a 64-bit integer array to a 32-bit integer array. This
- * assumes that no element actually requires more than 32 bits to store, which
- * should be a safe assumption for our purposes.
- */
-function convert64to32Array(
-  TargetArrayType: typeof Uint32Array | typeof Int32Array
-) {
-  // we only need the 3-argument constructor to be implemented. For details:
-  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray
-  const makeArray = function (
-    buffer: ArrayBuffer,
-    byteOffset: number,
-    length: number
-  ) {
-    // view buffer as 32-bit type and copy the 4 lowest bytes out of every 8
-    // bytes into a new array (assumes little-endian)
-    const source = new TargetArrayType(buffer, byteOffset, length * 2);
-    const target = new TargetArrayType(source.length);
-    for (let i = 0; i < target.length; i++) {
-      target[i] = source[i * 2];
-    }
-    return target;
-  };
-  // needed by parse()
-  makeArray.BYTES_PER_ELEMENT = 8;
-  return makeArray;
-}
 
 /**
  * Parses a uint16 (unsigned 16-bit integer) at a specified position in a
@@ -171,6 +111,6 @@ function parse(array: Uint8Array): OverlayMask {
 /**
  * Deserializes and parses a base64 encoded numpy array
  */
-function deserialize(compressedBase64Array: string): OverlayMask {
+export function deserialize(compressedBase64Array: string): OverlayMask {
   return parse(pako.inflate(Buffer.from(compressedBase64Array, "base64")));
 }
