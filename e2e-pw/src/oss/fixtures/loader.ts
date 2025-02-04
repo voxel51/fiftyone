@@ -77,9 +77,13 @@ export class OssLoader extends AbstractFiftyoneLoader {
 
     const search = searchParams ? searchParams.toString() : undefined;
     if (search) {
-      await page.goto(`/datasets/${datasetName}?${search}`);
+      await page.goto(`/datasets/${datasetName}?${search}`, {
+        waitUntil: "domcontentloaded",
+      });
     } else {
-      await page.goto(`/datasets/${datasetName}`);
+      await page.goto(`/datasets/${datasetName}`, {
+        waitUntil: "domcontentloaded",
+      });
     }
 
     const pathname = await page.evaluate(() => window.location.pathname);
