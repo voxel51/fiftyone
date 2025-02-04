@@ -449,7 +449,7 @@ another supported backend:
 -   **pinecone**: a :ref:`Pinecone backend <pinecone-integration>`
 -   **mongodb**: a :ref:`MongoDB backend <mongodb-integration>`
 -   **elasticsearch**: a :ref:`Elasticsearch backend <elasticsearch-integration>`
--   **databricks_mosaic_ai**: a :ref:`Databricks Mosaic AI backend <mosaic-integration>`
+-   **mosaic**: a :ref:`Databricks Mosaic AI backend <mosaic-integration>`
 -   **milvus**: a :ref:`Milvus backend <milvus-integration>`
 -   **lancedb**: a :ref:`LanceDB backend <lancedb-integration>`
 
