@@ -16,10 +16,16 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   },
 });
 
-test.describe("groups video labels", () => {
-  test.beforeAll(async ({ fiftyoneLoader, mediaFactory }) => {
-    [testVideoPath1, testVideoPath2].forEach(async (outputPath) => {
-      await mediaFactory.createBlankVideo({
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
+test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
+  await foWebServer.startWebServer();
+
+  await Promise.all(
+    [testVideoPath1, testVideoPath2].map(async (outputPath) => {
+      mediaFactory.createBlankVideo({
         outputPath,
         duration: 3,
         width: 100,
@@ -27,59 +33,63 @@ test.describe("groups video labels", () => {
         frameRate: 5,
         color: "#000000",
       });
-    });
+    })
+  );
 
-    await fiftyoneLoader.executePythonCode(
-      `
-      import fiftyone as fo
-      dataset = fo.Dataset("${datasetName}")
-      dataset.persistent = True
-      dataset.add_group_field("group", default="v1")
+  await fiftyoneLoader.executePythonCode(
+    `
+    import fiftyone as fo
+    dataset = fo.Dataset("${datasetName}")
+    dataset.persistent = True
+    dataset.add_group_field("group", default="v1")
 
-      group = fo.Group()
-      sample1 = fo.Sample(filepath="${testVideoPath1}", group=group.element("v1"))
-      sample2 = fo.Sample(filepath="${testVideoPath2}", group=group.element("v2"))
-      dataset.add_samples([sample1, sample2])
+    group = fo.Group()
+    sample1 = fo.Sample(filepath="${testVideoPath1}", group=group.element("v1"))
+    sample2 = fo.Sample(filepath="${testVideoPath2}", group=group.element("v2"))
+    dataset.add_samples([sample1, sample2])
 
-      dataset.ensure_frames()
+    dataset.ensure_frames()
 
-      for _, frame in sample1.frames.items():
-        d1 = fo.Detection(bounding_box=[0.1, 0.1, 0.2, 0.2], label="s1d1")
-        frame["d1"] = d1
-      sample1.save()
-  
-      for _, frame in sample2.frames.items():
-        d2 = fo.Detection(bounding_box=[0.2, 0.2, 0.25, 0.25], label="s1d2")
-        frame["d2"] = d2
-      sample2.save() 
-      `
-    );
-  });
+    for _, frame in sample1.frames.items():
+      d1 = fo.Detection(bounding_box=[0.1, 0.1, 0.2, 0.2], label="s1d1")
+      frame["d1"] = d1
+    sample1.save()
 
+    for _, frame in sample2.frames.items():
+      d2 = fo.Detection(bounding_box=[0.2, 0.2, 0.25, 0.25], label="s1d2")
+      frame["d2"] = d2
+    sample2.save() 
+    `
+  );
+});
+
+test.describe.serial("groups video labels", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
-  test("correct thumbnails for both slices", async ({ grid, page }) => {
+  test("correct thumbnails for both slices", async ({ grid }) => {
     await grid.sliceSelector.assert.verifySliceSelectorIsAvailable();
     await grid.sliceSelector.assert.verifyHasSlices(["v1", "v2"]);
 
     // compare screenshot for default slice (v1)
     await expect(grid.getNthLooker(0)).toHaveScreenshot("slice-v1.png");
 
-    const v2SampleLoadedPromise = page.evaluate((testVideoPath2_) => {
-      return new Promise<void>((resolve) => {
-        document.addEventListener("canvas-loaded", (e: CustomEvent) => {
-          if ((e.detail.sampleFilepath as string) === testVideoPath2_) {
-            resolve();
-          }
-        });
-      });
-    }, testVideoPath2);
+    // const v2SampleLoadedPromise = page.evaluate((testVideoPath2_) => {
+    //   return new Promise<void>((resolve) => {
+    //     document.addEventListener("canvas-loaded", (e: CustomEvent) => {
+    //       if ((e.detail.sampleFilepath as string) === testVideoPath2_) {
+    //         resolve();
+    //       }
+    //     });
+    //   });
+    // }, testVideoPath2);
 
     // compare screenshot for another slice (v2)
+    const gridRefresPromise = grid.getWaitForGridRefreshPromise();
     await grid.sliceSelector.selectSlice("v2");
-    await v2SampleLoadedPromise;
+    await gridRefresPromise;
+    // await v2SampleLoadedPromise;
 
     await expect(grid.getNthLooker(0)).toHaveScreenshot("slice-v2.png");
   });
@@ -89,6 +99,11 @@ test.describe("groups video labels", () => {
     modal,
     eventUtils,
   }) => {
+    // reset to default slice
+    const gridRefresPromise = grid.getWaitForGridRefreshPromise();
+    await grid.sliceSelector.selectSlice("v1");
+    await gridRefresPromise;
+
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
 

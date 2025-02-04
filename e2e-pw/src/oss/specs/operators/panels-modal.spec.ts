@@ -20,7 +20,12 @@ const test = base.extend<{
   },
 });
 
-test.beforeAll(async ({ fiftyoneLoader }) => {
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
+test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
   await fiftyoneLoader.executePythonCode(`
     import fiftyone as fo
     dataset = fo.Dataset("${datasetName}")

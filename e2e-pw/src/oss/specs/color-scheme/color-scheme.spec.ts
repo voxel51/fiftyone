@@ -32,30 +32,35 @@ const test = base.extend<{
 
 const datasetName = getUniqueDatasetNameWithPrefix("quickstart");
 
-test.describe("color scheme basic functionality with quickstart", () => {
-  test.beforeAll(async ({ fiftyoneLoader }) => {
-    await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
-      max_samples: 5,
-    });
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
 
-    await fiftyoneLoader.executePythonCode(`
-        import fiftyone as fo
-        import random
-        dataset = fo.load_dataset("${datasetName}")
-
-        n = len(dataset)
-        labels = ["foo", "bar", "spam", "eggs"]
-        collaborators = ["alice", "bob", "charlie", "peter", "susan"]
-
-        # Add label attributes of each primitive type
-        patches = dataset.to_patches("ground_truth")
-        p = len(patches)
-
-        dataset.add_sample_field("ground_truth.detections.str_field", fo.StringField)
-        patches.set_values("ground_truth.str_field", [labels[index % 4] for index in range(p)])
-        `);
+test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
+  await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
+    max_samples: 5,
   });
 
+  await fiftyoneLoader.executePythonCode(`
+      import fiftyone as fo
+      import random
+      dataset = fo.load_dataset("${datasetName}")
+
+      n = len(dataset)
+      labels = ["foo", "bar", "spam", "eggs"]
+      collaborators = ["alice", "bob", "charlie", "peter", "susan"]
+
+      # Add label attributes of each primitive type
+      patches = dataset.to_patches("ground_truth")
+      p = len(patches)
+
+      dataset.add_sample_field("ground_truth.detections.str_field", fo.StringField)
+      patches.set_values("ground_truth.str_field", [labels[index % 4] for index in range(p)])
+      `);
+});
+
+test.describe.serial("color scheme basic functionality with quickstart", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
