@@ -196,6 +196,10 @@ export abstract class AbstractLooker<
     };
   }
 
+  getSampleOverlays(): Overlay<State>[] {
+    return this.sampleOverlays;
+  }
+
   loadOverlays(sample: Sample): void {
     this.sampleOverlays = loadOverlays(sample, this.state.config.fieldSchema);
   }
@@ -558,7 +562,7 @@ export abstract class AbstractLooker<
     this.loadSample(sample, retrieveArrayBuffers(this.sampleOverlays));
   }
 
-  refreshSample(renderLabels: string[] | null) {
+  refreshSample(renderLabels: string[] | null = null) {
     // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
     // this crashes the app. this is a bug and should be fixed
     if (!this.sample) {

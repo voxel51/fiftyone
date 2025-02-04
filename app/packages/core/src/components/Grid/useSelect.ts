@@ -37,9 +37,35 @@ export default function useSelect(
 
         const newFieldsIfAny = getNewFields(id.description);
 
+        const overlays = instance.getSampleOverlays() ?? [];
+
         // rerender looker if active fields have changed and have never been rendered before
         if (newFieldsIfAny) {
-          instance.refreshSample(newFieldsIfAny);
+          const thisInstanceOverlays = overlays.filter(
+            (o) => o.field && newFieldsIfAny.includes(o.field)
+          );
+
+          thisInstanceOverlays?.forEach((o) => {
+            if (o.label) {
+              // "pending" means we're marking this label for rendering / painting
+              // even if it's interrupted, say by unchecking sidebar
+              o.label.renderStatus = "pending";
+            }
+          });
+
+          if (thisInstanceOverlays?.length > 0) {
+            instance.refreshSample(newFieldsIfAny);
+          }
+        } else {
+          // if there're any labels marked "pending", render them
+          const pending = overlays.filter(
+            (o) => o.field && o.label && o.label.renderStatus === "pending"
+          );
+
+          if (pending?.length > 0) {
+            const rerenderFields = pending.map((o) => o.field!);
+            instance.refreshSample(rerenderFields);
+          }
         }
       });
 
