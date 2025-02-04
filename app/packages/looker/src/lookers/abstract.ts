@@ -1,3 +1,4 @@
+import { Lookers } from "@fiftyone/state";
 import {
   AppError,
   DATE_FIELD,
@@ -43,10 +44,9 @@ import {
   snapBox,
 } from "../util";
 import { ProcessSample } from "../worker";
+import { AsyncLabelsRenderingManager } from "../worker/async-labels-rendering-manager";
 import { LookerUtils } from "./shared";
 import { retrieveArrayBuffers } from "./utils";
-import { AsyncLabelsRenderingManager } from "../worker/async-labels-rendering-manager";
-import { Lookers } from "@fiftyone/state";
 
 const UPDATING_SAMPLES_IDS = new Set();
 
@@ -530,11 +530,26 @@ export abstract class AbstractLooker<
 
   updateSample(sample: Sample) {
     const id = sample.id ?? sample._id;
+    const updateTimeoutMs = 10000;
 
     if (UPDATING_SAMPLES_IDS.has(id)) {
       UPDATING_SAMPLES_IDS.delete(id);
       this.cleanOverlays(true);
-      queueMicrotask(() => this.updateSample(sample));
+
+      // to prevent deadlock, we'll remove the id from the set after a timeout
+      const timeoutId = setTimeout(() => {
+        UPDATING_SAMPLES_IDS.delete(id);
+      }, updateTimeoutMs);
+
+      queueMicrotask(() => {
+        try {
+          this.updateSample(sample);
+          clearTimeout(timeoutId);
+        } catch (e) {
+          UPDATING_SAMPLES_IDS.delete(id);
+          this.updater({ error: e });
+        }
+      });
       return;
     }
 
