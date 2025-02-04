@@ -91,7 +91,7 @@ First, let's load a dataset into FiftyOne and compute embeddings for the samples
         backend="mosaic",
     )
 
-Once the similarity index has been generated, we can query our data in FiftyOne
+Once the similarity index has been generated, you can query your data in FiftyOne
 by specifying the `brain_key`:
 
 .. code-block:: python
