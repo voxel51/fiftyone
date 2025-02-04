@@ -1,4 +1,4 @@
-import { activeLabelFields } from "@fiftyone/state";
+import { activeLabelFields, datasetName } from "@fiftyone/state";
 import { useCallback, useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import { syncAndGetNewLabels } from "./syncAndGetNewLabels";
@@ -24,6 +24,17 @@ export const useDetectNewActiveLabelFields = ({
   modal: boolean;
 }) => {
   const activeLabelFieldsValue = useRecoilValue(activeLabelFields({ modal }));
+
+  const datasetNameValue = useRecoilValue(datasetName);
+
+  // reset when dataset changes
+  useEffect(() => {
+    if (modal) {
+      modalActivePathsLUT.clear();
+    } else {
+      gridActivePathsLUT.clear();
+    }
+  }, [datasetNameValue]);
 
   const getNewFields = useCallback(
     (id: string) => {
