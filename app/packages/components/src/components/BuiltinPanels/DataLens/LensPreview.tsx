@@ -25,6 +25,7 @@ export const LensPreview = ({
   previewTime,
   searchResponse,
   schema,
+  previewError,
 }: {
   expanded: boolean;
   onHeaderClick: () => void;
@@ -32,6 +33,7 @@ export const LensPreview = ({
   searchResponse?: PreviewResponse;
   previewTime: number;
   schema?: Schema;
+  previewError?: string | Error;
 }) => {
   if (loading) {
     return (
@@ -47,7 +49,7 @@ export const LensPreview = ({
         </Accordion>
       </Box>
     );
-  } else if (searchResponse) {
+  } else if (searchResponse || previewError) {
     return (
       <Box>
         <Accordion expanded={expanded}>
@@ -84,7 +86,13 @@ export const LensPreview = ({
             </Stack>
           </Box>
           <AccordionDetails>
-            {searchResponse.result_count > 0 ? (
+            {previewError ? (
+              <Box>
+                <Typography textAlign="center" color="error">
+                  Error generating preview: {`${previewError}`}
+                </Typography>
+              </Box>
+            ) : searchResponse.result_count > 0 ? (
               <Box sx={{ my: 2 }}>
                 <Lens
                   samples={searchResponse.query_result}

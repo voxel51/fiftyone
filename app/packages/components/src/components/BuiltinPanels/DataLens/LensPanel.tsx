@@ -107,6 +107,7 @@ export const LensPanel = ({
   const [isOperatorConfigReady, setIsOperatorConfigReady] = useState(false);
   const [previewTime, setPreviewTime] = useState(0);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState(null);
 
   const cleanedSchema = useSampleSchemaGenerator({
     baseSchema: searchResponse?.field_schema ?? {},
@@ -199,9 +200,7 @@ export const LensPanel = ({
       // Enable import if any samples were returned
       setIsImportEnabled(response.result?.result_count > 0);
 
-      if (response.error || response.result?.error) {
-        onError(response.error || response.result?.error);
-      }
+      setPreviewError(response.error ?? response.result?.error);
     };
 
     setSearchResponse(null);
@@ -327,6 +326,7 @@ export const LensPanel = ({
       previewTime={previewTime}
       searchResponse={searchResponse}
       schema={cleanedSchema}
+      previewError={previewError}
     />
   );
 
