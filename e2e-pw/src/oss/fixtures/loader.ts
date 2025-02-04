@@ -110,6 +110,10 @@ export class OssLoader extends AbstractFiftyoneLoader {
       if (isRetry) {
         throw e;
       } else {
+        const ctx = page.context();
+        ctx.clearCookies();
+        ctx.clearPermissions();
+        await page.reload({ waitUntil: "domcontentloaded" });
         await this.waitUntilGridVisible(page, datasetName, options, true);
       }
     }
