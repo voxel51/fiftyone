@@ -5,6 +5,7 @@
 import { getCls, sizeBytesEstimate } from "@fiftyone/utilities";
 import { OverlayMask } from "../numpy";
 import type { BaseState, Coordinates, NONFINITE } from "../state";
+import { DenseLabelRenderStatus } from "../worker/shared";
 import { getLabelColor, shouldShowLabelTag } from "./util";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
@@ -19,6 +20,7 @@ export interface BaseLabel {
   frame_number?: number;
   tags: string[];
   index?: number;
+  renderStatus?: DenseLabelRenderStatus;
 }
 
 export interface PointInfo<Label extends BaseLabel = BaseLabel> {

@@ -65,7 +65,8 @@ const shouldProcessLabel = ({
 
   if (
     currentLabelRenderStatus === "painted" ||
-    currentLabelRenderStatus === "decoded"
+    currentLabelRenderStatus === "decoded" ||
+    currentLabelRenderStatus === "pending"
   ) {
     return true;
   }
