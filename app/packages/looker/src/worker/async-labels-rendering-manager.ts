@@ -143,8 +143,8 @@ export class AsyncLabelsRenderingManager {
     return new Promise<AsyncJobResolutionResult>((resolve, reject) => {
       const pendingJob = pendingJobs.get(sample);
       if (pendingJob) {
-        // replace the pending job with new labels and new promise callbacks.
-        pendingJob.labels = labels;
+        // merge / replace pending job for the same sample
+        pendingJob.labels = [...new Set([...pendingJob.labels, ...labels])];
         pendingJob.resolve = resolve;
         pendingJob.reject = reject;
       } else {
