@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import type { LRUCache } from "lru-cache";
 import { useEffect } from "react";
 import { useRecoilValue } from "recoil";
-import { useShouldReloadSampleOnActiveFieldsChange } from "../Sidebar/useShouldReloadSample";
+import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
 
 export default function useSelect(
   getFontSize: () => number,
@@ -13,7 +13,7 @@ export default function useSelect(
 ) {
   const { init, deferred } = fos.useDeferrer();
 
-  const getNewFields = useShouldReloadSampleOnActiveFieldsChange({
+  const getNewFields = useDetectNewActiveLabelFields({
     modal: false,
   });
 

@@ -29,9 +29,6 @@ export const PainterFactory = (requestColor) => ({
     if (!label?.mask) {
       return;
     }
-
-    console.log(">>>painting detection: ", field);
-
     label.renderStatus = "painting";
 
     const setting = customizeColorSetting?.find((s) => s.path === field);
@@ -191,11 +188,6 @@ export const PainterFactory = (requestColor) => ({
     if (!label?.map) {
       return;
     }
-
-    console.log(">>>painting heatmap", field);
-
-    label.renderStatus = "painting";
-
     const overlay = new Uint32Array(label.map.image);
 
     const mapData = label.map.data;
@@ -274,9 +266,6 @@ export const PainterFactory = (requestColor) => ({
     if (!label?.mask) {
       return;
     }
-
-    console.log(">>>painting segmentation", field);
-
     label.renderStatus = "painting";
 
     // the actual overlay that'll be painted, byte-length of width * height * 4 (RGBA channels)

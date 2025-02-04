@@ -1,25 +1,26 @@
 import { Lookers } from "@fiftyone/state";
 import { v4 as uuid } from "uuid";
 import { ProcessSample } from ".";
+import { Coloring, Sample } from "..";
 import { LookerUtils } from "../lookers/shared";
 import { createWorker } from "../util";
 
 export type AsyncLabelsRenderingJob = {
-  sample: any;
+  sample: Sample;
   labels: string[];
   lookerRef: Lookers;
-  resolve: (data: any) => void;
+  resolve: (data: Omit<WorkerResponse, "uuid">) => void;
   reject: (error: Error) => void;
 };
 
 export type AsyncJobResolutionResult = {
-  sample: any;
-  coloring: any;
+  sample: Sample;
+  coloring: Coloring;
 };
 
 export type WorkerResponse = {
-  sample: any;
-  coloring: any;
+  sample: Sample;
+  coloring: Coloring;
   uuid: string;
 };
 
@@ -28,8 +29,8 @@ const MAX_WORKERS =
 
 // global job queue and indexes
 const jobQueue: AsyncLabelsRenderingJob[] = [];
-const pendingJobs = new Map<any, AsyncLabelsRenderingJob>();
-const processingSamples = new Set<any>();
+const pendingJobs = new Map<Sample, AsyncLabelsRenderingJob>();
+const processingSamples = new Set<Sample>();
 
 const workerPool: Worker[] = Array.from({ length: MAX_WORKERS }, () =>
   createWorker(LookerUtils.workerCallbacks)
@@ -107,8 +108,8 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
   });
 
   const workerArgs: ProcessSample & { method: "processSample" } = {
-    sample,
     method: "processSample",
+    sample: sample as ProcessSample["sample"],
     coloring: job.lookerRef.state.options.coloring,
     customizeColorSetting: job.lookerRef.state.options.customizeColorSetting,
     colorscale: job.lookerRef.state.options.colorscale,

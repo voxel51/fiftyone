@@ -13,7 +13,7 @@ import React, {
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
-import { gridActivePathsLUT } from "../Sidebar/useShouldReloadSample";
+import { gridActivePathsLUT } from "../Sidebar/useDetectNewActiveLabelFields";
 import { gridCrop, gridSpacing, pageParameters } from "./recoil";
 import useAt from "./useAt";
 import useEscape from "./useEscape";

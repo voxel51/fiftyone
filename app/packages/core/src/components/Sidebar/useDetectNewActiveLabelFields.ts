@@ -9,7 +9,16 @@ export type CachedLabels = Set<string>;
 export const gridActivePathsLUT = new Map<LookerId, CachedLabels>();
 export const modalActivePathsLUT = new Map<LookerId, CachedLabels>();
 
-export const useShouldReloadSampleOnActiveFieldsChange = ({
+/**
+ * Detects newly introduced active label fields for a given looker. Returns a
+ * callback that, given a looker ID, merges and returns any fields not yet in
+ * the cache. Clears its cache when unmounted.
+ *
+ * @param modal - Whether this hook is used in a modal context
+ * @returns A function that accepts a looker ID and returns newly added fields
+ *   or null if there are none
+ */
+export const useDetectNewActiveLabelFields = ({
   modal,
 }: {
   modal: boolean;
@@ -38,7 +47,7 @@ export const useShouldReloadSampleOnActiveFieldsChange = ({
         gridActivePathsLUT.clear();
       }
     };
-  }, []);
+  }, [modal]);
 
   return getNewFields;
 };

@@ -4,7 +4,7 @@ import { LRUCache } from "lru-cache";
 import { useEffect, useMemo } from "react";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
-import { gridActivePathsLUT } from "../Sidebar/useShouldReloadSample";
+import { gridActivePathsLUT } from "../Sidebar/useDetectNewActiveLabelFields";
 import { gridAt, gridOffset, gridPage } from "./recoil";
 
 const MAX_LRU_CACHE_ITEMS = 510;
