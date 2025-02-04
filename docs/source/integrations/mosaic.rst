@@ -504,7 +504,7 @@ You can use
 :meth:`add_to_index() <fiftyone.brain.similarity.SimilarityIndex.add_to_index>`
 and
 :meth:`remove_from_index() <fiftyone.brain.similarity.SimilarityIndex.remove_from_index>`
-to add and remove embeddings from an existing Mosaic index.
+to add and remove embeddings from an existing Mosaic index, respectively.
 
 These methods can come in handy if you modify your FiftyOne dataset and need
 to update the Mosaic index to reflect these changes:
