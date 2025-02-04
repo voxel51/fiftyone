@@ -422,7 +422,7 @@ possibilities:
         brain_key=brain_key,
     )
 
-    # Option 3: Pass precomputed embeddings as a numpy array
+    # Option 3: Pass pre-computed embeddings as a numpy array
     embeddings = dataset.compute_embeddings(model)
     fob.compute_similarity(
         dataset,
