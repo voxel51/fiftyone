@@ -39,7 +39,6 @@ import getTimestamp from "../utils/getTimestamp";
 import isUrl from "../utils/isUrl";
 import RunIO, { IOType } from "./components/RunIO";
 import RunView from "./components/RunView";
-import isUrl from "../utils/isUrl";
 import Logs from "../components/Logs";
 
 const { QUEUED, SCHEDULED, RUNNING, COMPLETED, FAILED } = OPERATOR_RUN_STATES;
