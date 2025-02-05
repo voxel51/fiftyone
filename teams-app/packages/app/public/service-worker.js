@@ -143,7 +143,8 @@ self.addEventListener("fetch", async (event) => {
       }
 
       // Do not add auth header to OPTIONS (prefetch) requests
-      if (event.request.method !== "OPTIONS") {
+      const method = event.request.method;
+      if (method !== "OPTIONS") {
         modifiedHeaders.set(authHeader, `${authPrefix} ${token}`);
       }
       // Create a new request with the modified properties by explicitly setting them.
@@ -151,8 +152,8 @@ self.addEventListener("fetch", async (event) => {
       const modifiedRequest = new Request(event.request.url, {
         url: request.url,
         method: request.method,
-        mode: "cors",
-        credentials: "include",
+        mode: method === "OPTIONS" ? undefined : "cors",
+        credentials: method === "OPTIONS" ? undefined : "include",
         cache: request.cache,
         redirect: request.redirect,
         referrer: request.referrer,
