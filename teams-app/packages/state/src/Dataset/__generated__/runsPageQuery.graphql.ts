@@ -46,6 +46,7 @@ export type runsPageQuery$data = {
     readonly nodeTotal: number;
     readonly nodes: ReadonlyArray<{
       readonly completedAt: string | null;
+      readonly datasetId: string | null;
       readonly failedAt: string | null;
       readonly id: string;
       readonly label: string | null;
@@ -282,6 +283,13 @@ v2 = [
             "args": null,
             "kind": "ScalarField",
             "name": "status",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "datasetId",
             "storageKey": null
           }
         ],

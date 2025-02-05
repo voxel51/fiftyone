@@ -1,4 +1,3 @@
-import { useCurrentDataset } from "@fiftyone/hooks";
 import {
   BasicTable,
   Box,
@@ -8,8 +7,8 @@ import {
   Timestamp,
 } from "@fiftyone/teams-components";
 import {
-  Dataset,
   autoRefreshRunsStatus,
+  datasetBySlugQuery,
   runsPageQuery,
   runsPageQueryDynamicVariables,
   runsPageQueryT,
@@ -20,9 +19,13 @@ import {
   OPERATOR_RUN_STATES,
 } from "@fiftyone/teams-state/src/constants";
 import { Stack, Typography } from "@mui/material";
-import { useRouter } from "next/router";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { usePreloadedQuery, useQueryLoader } from "react-relay";
+import {
+  usePreloadedQuery,
+  useQueryLoader,
+  fetchQuery,
+  useRelayEnvironment,
+} from "react-relay";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import getTimestamp from "../utils/getTimestamp";
 import useRefresher, { RUNS_STATUS_REFRESHER_ID } from "../utils/useRefresher";
@@ -33,8 +36,8 @@ import RunsPin from "./RunsPin";
 import { useBooleanEnv } from "@fiftyone/hooks/src/common/useEnv";
 
 function RunsListWithQuery(props) {
+  const environment = useRelayEnvironment();
   const { queryRef, refresh, refreshStatus } = props;
-  const { asPath } = useRouter();
   const result = usePreloadedQuery<runsPageQueryT>(runsPageQuery, queryRef);
   const [vars, setVars] = useRecoilState(runsPageQueryDynamicVariables);
   const setAutoRefresh = useSetRecoilState(autoRefreshRunsStatus);
@@ -58,8 +61,11 @@ function RunsListWithQuery(props) {
 
   if (nodes.length === 0) return <EmptyState resource="runs" />;
 
+  const runIdToDatasetId: Record<string, string> = {};
   const rows = nodes.map((node) => {
-    const { id, operator, label, runBy, runState, pinned, status } = node;
+    const { id, operator, label, runBy, runState, pinned, status, datasetId } =
+      node;
+    runIdToDatasetId[id] = datasetId as string;
     const timestamp = getTimestamp(node);
     const isHovering = hovered === id;
     const showProgress =
@@ -67,8 +73,20 @@ function RunsListWithQuery(props) {
 
     return {
       id,
-      link: `${asPath}/${id}`,
-      newWindow: true,
+      // link: `/datasets/${encodeURIComponent(
+      //   datasetId as string
+      // )}/runs/${encodeURIComponent(id)}`,
+      onClick: async (_, row) => {
+        const data = await fetchQuery(environment, datasetBySlugQuery, {
+          identifier: runIdToDatasetId[row.id],
+        }).toPromise();
+        const datasetSlug = data?.dataset?.slug;
+        if (!datasetSlug) return;
+        const url = `/datasets/${datasetSlug}/runs/${encodeURIComponent(
+          row.id
+        )}`;
+        window.open(url, "_blank", "noopener,noreferrer");
+      },
       onHover: (e, row, hovered) => {
         if (hovered) setHovered(row.id);
         else setHovered("");
@@ -161,15 +179,13 @@ export default function RunsList() {
   const [queryRef, loadQuery] = useQueryLoader(runsPageQuery);
   const [statusQueryRef, loadStatusQuery] = useQueryLoader(runsPageStatusQuery);
   const dynamicVars = useRecoilValue(runsPageQueryDynamicVariables);
-  const dataset = useCurrentDataset() as Dataset;
-  const { id } = dataset;
 
   const loadQueryVariables = useMemo(
     () => ({
       ...dynamicVars,
-      filter: { ...(dynamicVars.filter || {}), datasetIdentifier: { eq: id } },
+      filter: { ...(dynamicVars.filter || {}) },
     }),
-    [dynamicVars, id]
+    [dynamicVars]
   );
 
   const refresh = useCallback(() => {

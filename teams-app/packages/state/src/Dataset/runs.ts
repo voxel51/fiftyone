@@ -69,6 +69,7 @@ export const runsPageQuery = graphql`
         logUploadError
         scheduledAt
         status
+        datasetId
       }
       pageTotal
     }

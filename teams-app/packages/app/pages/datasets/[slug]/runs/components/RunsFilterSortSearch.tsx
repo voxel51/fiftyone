@@ -4,7 +4,9 @@ import {
   autoRefreshRunsStatus,
   runsPageQueryDefaultVariables,
   runsPageQueryDynamicVariables,
+  useCurrentDataset,
 } from "@fiftyone/teams-state";
+import { useRouter } from "next/router";
 import { AUTO_REFRESH_INTERVAL_IN_SECONDS } from "@fiftyone/teams-state/src/constants";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
@@ -15,15 +17,48 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import useRefresher, { RUNS_STATUS_REFRESHER_ID } from "../utils/useRefresher";
 import RunStatus from "./RunStatus";
 
+// should be always "this" for non-admins
+const DEFAULT_THIS_ALL_DATASETS_FILTER = "this";
+
 export default function RunsFilterSortSearch() {
+  const { query } = useRouter();
+  const { slug: datasetSlug } = query;
+  const currentDataset = useCurrentDataset(datasetSlug as string);
+
   const [user] = useCurrentUser();
   const id = user?.id;
+  const isAdmin = user?.role === "ADMIN";
+
+  const [datasetSelection, setDatasetSelection] = useState(
+    DEFAULT_THIS_ALL_DATASETS_FILTER
+  );
+
+  useEffect(() => {
+    if (
+      isAdmin &&
+      window.localStorage.getItem(
+        "runs-page-all-this-datasets-filter-last-selected"
+      ) === "all"
+    ) {
+      setDatasetSelection("all");
+      setFilter({
+        ...filter,
+        datasetIdentifier: null,
+      });
+    }
+  }, [isAdmin]);
+
   const setVars = useSetRecoilState(runsPageQueryDynamicVariables);
-  const [filter, setFilter] = useState(runsPageQueryDefaultVariables.filter);
+  const [filter, setFilter] = useState({
+    datasetIdentifier: {
+      eq: datasetSelection === "this" ? currentDataset?.id : null,
+    },
+  });
   const [order, setOrder] = useState(runsPageQueryDefaultVariables.order);
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState(null);
   const [statusSelections, setStatusSelections] = useState(["all"]);
+
   const shouldAutoRefresh = useRecoilValue(autoRefreshRunsStatus);
   const [refresh] = useRefresher(RUNS_STATUS_REFRESHER_ID);
 
@@ -51,7 +86,7 @@ export default function RunsFilterSortSearch() {
     setVars((vars) => {
       return { ...vars, search: searchField, order, filter, page: 1 };
     });
-  }, [filter, order, searchField, setVars]);
+  }, [currentDataset, filter, order, searchField, setVars, isAdmin]);
 
   return (
     <Stack direction="row" pb={1} justifyContent="space-between">
@@ -111,8 +146,41 @@ export default function RunsFilterSortSearch() {
           labelPrefix="Status: "
           value={statusSelections}
         />
-
-        <Selection
+        {isAdmin && (
+          <Selection
+            items={DatasetFilterItems.map(({ id, label }) => ({
+              id,
+              label,
+            }))}
+            menuSize="small"
+            placeholder="Filter by dataset"
+            onChange={(item) => {
+              if (isAdmin) {
+                window?.localStorage.setItem(
+                  "runs-page-all-this-datasets-filter-last-selected",
+                  item as string
+                );
+              }
+              setDatasetSelection(item as string);
+              setFilter({
+                ...filter,
+                datasetIdentifier:
+                  item === "all"
+                    ? null
+                    : {
+                        eq: currentDataset?.id,
+                      },
+              });
+            }}
+            selectProps={{
+              sx: { color: (theme) => theme.palette.text.secondary },
+              inputProps: { sx: { maxWidth: 100 } },
+            }}
+            value={datasetSelection}
+          />
+        )}
+        <RadioGroup
+          defaultValue="all"
           items={[
             { id: "all", label: "All runs" },
             { id: "my", label: "My runs" },
@@ -173,6 +241,11 @@ const statusFilterItems = [
   { id: "queued", label: "Queued" },
   { id: "running", label: "Running" },
   { id: "scheduled", label: "Scheduled" },
+];
+
+const DatasetFilterItems = [
+  { id: "all", label: "All Datasets" },
+  { id: "this", label: "This dataset" },
 ];
 
 type SortingMode = "newest" | "oldest" | "operator";
