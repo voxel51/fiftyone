@@ -46,7 +46,8 @@ export default class HeatmapOverlay<State extends BaseState>
   constructor(field: string, label: HeatmapLabel) {
     this.field = field;
     this.label = label;
-    if (!this.label.map) {
+
+    if (!this.label.map?.data) {
       return;
     }
 
@@ -66,6 +67,10 @@ export default class HeatmapOverlay<State extends BaseState>
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
+    if (!this.label.map?.data) {
+      return CONTAINS.NONE;
+    }
+
     const {
       pixelCoordinates: [x, y],
       dimensions: [w, h],

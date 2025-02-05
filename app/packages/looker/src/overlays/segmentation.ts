@@ -46,7 +46,7 @@ export default class SegmentationOverlay<State extends BaseState>
     this.field = field;
     this.label = label;
 
-    if (!this.label.mask) {
+    if (!this.label.mask?.data) {
       return;
     }
 
@@ -62,6 +62,10 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
+    if (!this.label.mask?.data) {
+      return CONTAINS.NONE;
+    }
+
     const {
       pixelCoordinates: [x, y],
       dimensions: [w, h],

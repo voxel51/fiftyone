@@ -17,6 +17,7 @@ import { t } from "./util";
 
 export interface DetectionLabel extends RegularLabel {
   mask?: LabelMask;
+  mask_path?: string;
   bounding_box: BoundingBox;
 
   // valid for 3D bounding boxes
@@ -43,6 +44,10 @@ export default class DetectionOverlay<
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
+    if ((this.label.mask || this.label.mask_path) && this.label.mask?.data) {
+      return CONTAINS.NONE;
+    }
+
     const [bx, by, bw, bh] = this.getDrawnBBox(state);
 
     const [px, py] = state.pixelCoordinates;
