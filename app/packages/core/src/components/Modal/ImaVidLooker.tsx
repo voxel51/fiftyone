@@ -23,7 +23,7 @@ import {
   useModalContext,
 } from "./hooks";
 import useKeyEvents from "./use-key-events";
-import { useModalSelectiveRendering } from "./use-modal-selective-rendering";
+import { useImavidModalSelectiveRendering } from "./use-modal-selective-rendering";
 import { shortcutToHelpItems } from "./utils";
 
 interface ImaVidLookerReactProps {
@@ -317,7 +317,7 @@ export const ImaVidLookerReact = React.memo(
       return () => clearInterval(intervalId);
     }, [looker]);
 
-    useModalSelectiveRendering(id, looker);
+    useImavidModalSelectiveRendering(id, looker);
 
     return (
       <div

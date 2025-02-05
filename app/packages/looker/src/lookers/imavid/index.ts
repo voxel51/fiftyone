@@ -29,14 +29,6 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   private elements: ReturnType<typeof getImaVidElements>;
   private unsubscribe: ReturnType<typeof this.subscribeToState>;
 
-  init() {
-    // subscribe to frame number and update sample when frame number changes
-    this.unsubscribe = this.subscribeToState("currentFrameNumber", () => {
-      this.thisFrameSample?.sample &&
-        this.updateSample(this.thisFrameSample.sample);
-    });
-  }
-
   get thisFrameSample() {
     return this.frameStoreController.store.getSampleAtFrame(this.frameNumber);
   }
@@ -199,5 +191,44 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     } else {
       this.updater({ options, disabled: false });
     }
+  }
+
+  refreshSample(renderLabels: string[] | null = null, frameNumber?: number) {
+    // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
+    // this crashes the app. this is a bug and should be fixed
+    if (!this.sample) {
+      return;
+    }
+
+    if (!renderLabels?.length) {
+      this.updateSample(this.sample);
+      return;
+    }
+
+    const sampleId =
+      this.frameStoreController.store.frameIndex.get(frameNumber);
+
+    if (!sampleId) {
+      return;
+    }
+
+    this.asyncLabelsRenderingManager
+      .enqueueLabelPaintingJob({
+        sample: this.frameStoreController.store.samples.get(sampleId).sample,
+        labels: renderLabels,
+      })
+      .then(({ sample, coloring }) => {
+        this.frameStoreController.store.updateSample(sampleId, sample);
+        this.state.options.coloring = coloring;
+        this.loadOverlays(sample);
+
+        // to run looker reconciliation
+        this.updater({
+          overlaysPrepared: true,
+        });
+      })
+      .catch((error) => {
+        this.updater({ error });
+      });
   }
 }
