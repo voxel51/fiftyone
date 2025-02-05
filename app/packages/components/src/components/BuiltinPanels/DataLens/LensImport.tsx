@@ -9,7 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import React from "react";
+import React, { useCallback } from "react";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import { useOperatorExecutor } from "@fiftyone/operators";
 
@@ -31,13 +31,13 @@ const ImportDetails = ({
   );
 
   // Callback which opens the target dataset.
-  const openDataset = async () => {
+  const openDataset = useCallback(() => {
     if (destinationDatasetName === activeDatasetName) {
-      await reloadDatasetOperator.execute({});
+      reloadDatasetOperator.execute({});
     } else {
-      await openDatasetOperator.execute({ dataset: destinationDatasetName });
+      openDatasetOperator.execute({ dataset: destinationDatasetName });
     }
-  };
+  }, [activeDatasetName, destinationDatasetName]);
 
   return (
     <Box

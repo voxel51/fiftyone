@@ -7,7 +7,7 @@ import {
   Typography,
 } from "@mui/material";
 import { FormState, OperatorConfigurator } from "./OperatorConfigurator";
-import React from "react";
+import React, { useMemo } from "react";
 
 export const LensQuery = ({
   expanded,
@@ -26,6 +26,12 @@ export const LensQuery = ({
   onStateChange: (state: FormState, isValid: boolean) => void;
   onReadyChange: (ready: boolean) => void;
 }) => {
+  const numFilters = useMemo(() => {
+    return Object.keys(formState)
+      .map((k) => formState[k] !== undefined && formState[k] !== null)
+      .reduce((acc, curr) => acc + (curr ? 1 : 0), 0);
+  }, [formState]);
+
   return (
     <Box sx={{ mt: 4 }}>
       <Accordion expanded={expanded}>
@@ -34,10 +40,7 @@ export const LensQuery = ({
             <Typography variant="h6">Query parameters</Typography>
             <Typography>&bull;</Typography>
             <Typography color="secondary">
-              {Object.keys(formState)
-                .map((k) => (formState[k] || formState[k] === 0 ? 1 : 0))
-                .reduce((l, r) => l + r, 0)}{" "}
-              filters applied
+              {`${numFilters} ${numFilters > 0 ? "filters" : "filter"} applied`}
             </Typography>
           </Stack>
         </AccordionSummary>

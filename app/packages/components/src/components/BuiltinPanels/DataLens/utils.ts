@@ -59,3 +59,56 @@ export const findFields = (
 ): { [k: string]: any } => {
   return findFieldsHelper(fields, data);
 };
+
+/**
+ * Helper method for converting from snake_case to camelCase
+ * @param str string to convert
+ */
+export const toCamelCase = (str?: string): string | undefined => {
+  const s = str
+    ?.match(
+      /[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g
+    )
+    ?.map((x: string) => x.slice(0, 1).toUpperCase() + x.slice(1).toLowerCase())
+    .join("");
+
+  return s && s.slice(0, 1).toLowerCase() + s.slice(1);
+};
+
+/**
+ * Helper method to convert the sample schema from SDK to looker.
+ *
+ * The schema returned by the SDK needs to be massaged for the looker
+ * to render properly.
+ *
+ * This method achieves the following:
+ *   1. Convert keys from snake_case to camelCase
+ *   2. Convert the 'fields' property from an array to a nested object
+ *   3. Ensure 'path' is available as a top-level property
+ *   4. Do (1) - (3) recursively for nested objects
+ * @param schema
+ */
+export const formatSchema = (schema: { [k: string]: any }) => {
+  const formatted: { [k: string]: any } = {};
+
+  // Convert top-level keys to camelCase
+  for (const k of Object.keys(schema)) {
+    formatted[toCamelCase(k)!] = schema[k];
+  }
+
+  // Ensure 'path' is defined
+  formatted["path"] = schema["name"];
+
+  // 'fields' is formatted as an array, but looker expects this
+  //   to be a nested object instead.
+  if (formatted["fields"] instanceof Array) {
+    const remapped: { [k: string]: any } = {};
+    for (const subfield of formatted["fields"]) {
+      // Recurse for each nested object
+      remapped[subfield["name"]] = formatSchema(subfield);
+    }
+    formatted["fields"] = remapped;
+  }
+
+  return formatted;
+};

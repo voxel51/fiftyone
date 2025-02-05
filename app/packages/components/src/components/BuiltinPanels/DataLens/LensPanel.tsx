@@ -288,6 +288,13 @@ export const LensPanel = ({
     </Box>
   );
 
+  const onQueryHeaderClick = useCallback(() => {
+    dispatchPanelUpdate({
+      isQueryExpanded: !panelState.isQueryExpanded,
+      isImportShown: false,
+    });
+  }, [dispatchPanelUpdate, panelState.isQueryExpanded]);
+
   // Query parameters.
   const queryOperatorContent = (
     <LensQuery
@@ -301,27 +308,24 @@ export const LensPanel = ({
       }
       operatorUri={activeConfig.operator_uri}
       formState={formState}
-      onHeaderClick={() =>
-        dispatchPanelUpdate({
-          isQueryExpanded: !panelState.isQueryExpanded,
-          isImportShown: false,
-        })
-      }
+      onHeaderClick={onQueryHeaderClick}
       onStateChange={handleFormStateChange}
       onReadyChange={setIsOperatorConfigReady}
     />
   );
 
+  const onPreviewHeaderClick = useCallback(() => {
+    dispatchPanelUpdate({
+      isPreviewExpanded: !panelState.isPreviewExpanded,
+      isImportShown: false,
+    });
+  }, [dispatchPanelUpdate, panelState.isPreviewExpanded]);
+
   // Sample preview.
   const previewContent = (
     <LensPreview
       expanded={panelState.isPreviewExpanded}
-      onHeaderClick={() =>
-        dispatchPanelUpdate({
-          isPreviewExpanded: !panelState.isPreviewExpanded,
-          isImportShown: false,
-        })
-      }
+      onHeaderClick={onPreviewHeaderClick}
       loading={isPreviewLoading}
       previewTime={previewTime}
       searchResponse={searchResponse}
@@ -330,17 +334,19 @@ export const LensPanel = ({
     />
   );
 
+  const onImportHeaderClick = useCallback(() => {
+    dispatchPanelUpdate({
+      isImportExpanded: !panelState.isImportExpanded,
+    });
+  }, [dispatchPanelUpdate, panelState.isImportExpanded]);
+
   // Sample import status.
   const importContent =
     panelState.isImportShown && (isImportLoading || importTime > 0) ? (
       <LensImport
         expanded={panelState.isImportExpanded}
         loading={isImportLoading}
-        onHeaderClick={() =>
-          dispatchPanelUpdate({
-            isImportExpanded: !panelState.isImportExpanded,
-          })
-        }
+        onHeaderClick={onImportHeaderClick}
         isDelegated={isDelegatedImport}
         importTime={importTime}
         activeDatasetName={activeDataset}
