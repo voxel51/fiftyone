@@ -1,15 +1,4 @@
-export const DETECTION_EMBEDDED_DOC_TYPE = "fiftyone.core.labels.Detection";
-export const DETECTIONS_EMBEDDED_DOC_TYPE = "fiftyone.core.labels.Detections";
-export const SEGMENTATION_EMBEDDED_DOC_TYPE =
-  "fiftyone.core.labels.Segmentation";
-export const HEATMAP_EMBEDDED_DOC_TYPE = "fiftyone.core.labels.Heatmap";
-
-export const DENSE_LABEL_EMBEDDED_DOC_TYPES = [
-  DETECTION_EMBEDDED_DOC_TYPE,
-  DETECTIONS_EMBEDDED_DOC_TYPE,
-  SEGMENTATION_EMBEDDED_DOC_TYPE,
-  HEATMAP_EMBEDDED_DOC_TYPE,
-];
+import { DENSE_LABEL_EMBEDDED_DOC_TYPES } from "./constants";
 
 export interface Field {
   ftype: string;
