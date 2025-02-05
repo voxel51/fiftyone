@@ -146,12 +146,12 @@ def beam_map(
     if shard_method == "slice":
         # Slice batches
         slices = list(zip(edges[:-1], edges[1:]))
+        print("Slices:", slices)
     else:
         # ID batches
         slices = [ids[i:j] for i, j in zip(edges[:-1], edges[1:])]
 
     num_shards = len(slices)
-    print(slices)
     batches = list(
         zip(
             range(num_shards),

@@ -18,7 +18,7 @@ def run_evaluation(dataset, config: dict) -> float:
     results = dataset.evaluate_detections(
         "detections",
         gt_field="detections",
-        eval_key=f"eval_predictions_{config['name']}",
+        eval_key=f"eval_predictions_{int(time.time())}_{config['name']}",
         use_beam_map=True,
         shard_method=config["shard_method"],
         num_workers=config["num_workers"],
@@ -30,6 +30,22 @@ def run_evaluation(dataset, config: dict) -> float:
     return duration
 
 
+def run_baseline(dataset) -> float:
+    """Run evaluation without beam_map to establish baseline"""
+    print("\nRunning baseline (no beam_map)")
+    start_time = time.time()
+    results = dataset.evaluate_detections(
+        "detections",
+        gt_field="detections",
+        eval_key=f"eval_predictions_{int(time.time())}_baseline",
+        use_beam_map=False,
+        progress=True,
+    )
+    duration = time.time() - start_time
+    print(f"Baseline Duration: {duration:.2f} seconds")
+    return duration
+
+
 def profile_configurations(
     dataset_name: str = "bdd100k-validation",
     worker_counts: List[int] = [1, 2, 4, 8],
@@ -38,6 +54,9 @@ def profile_configurations(
     """Profile different configurations and return results as DataFrame"""
     # Load dataset
     dataset = fo.load_dataset(dataset_name)
+
+    # Run baseline first
+    baseline_duration = run_baseline(dataset)
 
     # Generate configurations based on input parameters
     configs = []
@@ -63,6 +82,17 @@ def profile_configurations(
             }
         )
 
+    # Add baseline to results
+    results.insert(
+        0,
+        {
+            "configuration": "baseline",
+            "shard_method": "none",
+            "num_workers": 0,
+            "duration": baseline_duration,
+        },
+    )
+
     # Convert to DataFrame for easy analysis
     df = pd.DataFrame(results)
     df = df.sort_values("duration")
@@ -85,7 +115,7 @@ def main():
     parser.add_argument(
         "--workers",
         type=str,
-        default="1,2,4,8",
+        default="1,2,4,8,16",
         help="Comma-separated list of worker counts to test (default: 1,2,4,8)",
     )
 

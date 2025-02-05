@@ -32,7 +32,7 @@ import fiftyone.core.beam as fob
 logger = logging.getLogger(__name__)
 
 
-def _compute_matches(
+def _compute_matches_single(
     sample,
     eval_method,
     eval_key,
@@ -87,6 +87,8 @@ def evaluate_detections(
     custom_metrics=None,
     progress=None,
     use_beam_map=False,
+    num_workers=None,
+    shard_method="id",
     **kwargs,
 ):
     """Evaluates the predicted detections in the given samples with respect to
@@ -184,6 +186,8 @@ def evaluate_detections(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
         use_beam_map (False): whether to use beam map to compute detections
+        num_workers (None): the number of workers to use to compute detections
+        shard_method ("id"): the method to use to shard the dataset
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
 
@@ -237,7 +241,7 @@ def evaluate_detections(
         _samples = samples.select_fields([gt_field, pred_field])
 
     def _map_fnc(sample):
-        return _compute_matches(
+        return _compute_matches_single(
             sample,
             eval_method,
             eval_key,
@@ -260,21 +264,23 @@ def evaluate_detections(
             _samples,
             _map_fnc,
             reduce_fcn=_reduce_fcn,
-            shard_method="slice",
             progress=progress,
+            num_workers=num_workers,
+            shard_method=shard_method,
         )
     else:
-        matches = _compute_matches(
-            _samples,
-            eval_method,
-            eval_key,
-            save=save,
-            progress=progress,
-            processing_frames=processing_frames,
-            tp_field=tp_field,
-            fp_field=fp_field,
-            fn_field=fn_field,
-        )
+        matches = []
+        for sample in _samples.iter_samples(progress=progress):
+            matches = _compute_matches_single(
+                sample,
+                eval_method,
+                eval_key,
+                save=save,
+                processing_frames=processing_frames,
+                tp_field=tp_field,
+                fp_field=fp_field,
+                fn_field=fn_field,
+            )
 
     results = eval_method.generate_results(
         samples,
