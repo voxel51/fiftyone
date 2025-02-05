@@ -278,12 +278,8 @@ export default class DetectionOverlay<
     return [(bx - ow) * w, (by - oh) * h, (bw + ow * 2) * w, (bh + oh * 2) * h];
   }
 
-  public cleanup(setTargetsToNull = false): void {
+  public cleanup(): void {
     this.label.mask?.bitmap?.close();
-
-    if (setTargetsToNull && this.label.mask) {
-      this.label.mask = null;
-    }
   }
 }
 

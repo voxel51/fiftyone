@@ -269,7 +269,7 @@ export default class SegmentationOverlay<State extends BaseState>
     this.label.mask?.bitmap?.close();
 
     if (setTargetsToNull) {
-      this.label.mask = null;
+      this.targets = null;
     }
   }
 }
