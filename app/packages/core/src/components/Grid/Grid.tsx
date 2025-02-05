@@ -53,7 +53,8 @@ function Grid() {
         return snapshot
           .getLoadable(fos.activeLabelFields({ modal: false }))
           .getValue();
-      }
+      },
+    []
   );
 
   const spotlight = useMemo(() => {
