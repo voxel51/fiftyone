@@ -4,6 +4,7 @@ import type { LRUCache } from "lru-cache";
 import { useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
+import { VideoLooker } from "@fiftyone/looker";
 
 export default function useSelect(
   getFontSize: () => number,
@@ -32,7 +33,10 @@ export default function useSelect(
 
         const newFieldsIfAny = getNewFields(id.description);
 
-        const overlays = instance.getSampleOverlays() ?? [];
+        const overlays =
+          instance instanceof VideoLooker
+            ? instance.pluckedOverlays
+            : instance.sampleOverlays;
 
         // rerender looker if active fields have changed and have never been rendered before
         if (newFieldsIfAny) {
@@ -40,7 +44,9 @@ export default function useSelect(
             (o) =>
               o.field &&
               (o.label?.mask_path?.length > 0 ||
-                o.label?.map_path?.length > 0) &&
+                o.label?.map_path?.length > 0 ||
+                o.label?.mask ||
+                o.label?.map) &&
               newFieldsIfAny.includes(o.field)
           );
 

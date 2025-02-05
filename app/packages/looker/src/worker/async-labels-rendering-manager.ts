@@ -99,17 +99,28 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
   worker.addEventListener("message", handleMessage);
   worker.addEventListener("error", handleError);
 
-  // filter sample to only include keys in job.labels.
-  const sample = { ...job.sample };
-  Object.keys(sample).forEach((key) => {
-    if (!job.labels.includes(key)) {
-      delete sample[key];
+  // filter sample to only include keys in job.labels
+  const pluckRelevant = (sample: Sample) => {
+    const filtered = { ...sample };
+    Object.keys(filtered).forEach((key) => {
+      if (!job.labels.includes(key)) {
+        delete sample[key];
+      }
+    });
+
+    if (filtered.frames?.length) {
+      filtered.frames = filtered.frames.map((frame) => {
+        return pluckRelevant(frame);
+      });
     }
-  });
+    return filtered;
+  };
+
+  const filteredSample = pluckRelevant(job.sample);
 
   const workerArgs: ProcessSample & { method: "processSample" } = {
     method: "processSample",
-    sample: sample as ProcessSample["sample"],
+    sample: filteredSample as ProcessSample["sample"],
     coloring: job.lookerRef.state.options.coloring,
     customizeColorSetting: job.lookerRef.state.options.customizeColorSetting,
     colorscale: job.lookerRef.state.options.colorscale,

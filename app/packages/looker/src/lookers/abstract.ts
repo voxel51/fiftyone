@@ -97,9 +97,7 @@ export abstract class AbstractLooker<
   private readonly rootEvents: Events<State>;
 
   protected readonly abortController: AbortController;
-  protected sampleOverlays: Overlay<State>[];
   protected currentOverlays: Overlay<State>[];
-  protected pluckedOverlays: Overlay<State>[];
   protected sample: S;
   protected readonly updater: StateUpdate<State>;
 
@@ -108,7 +106,10 @@ export abstract class AbstractLooker<
   private isCommittingBatchUpdates = false;
 
   /** @internal */
-  public state: State;
+  state: State;
+
+  sampleOverlays: Overlay<State>[];
+  pluckedOverlays: Overlay<State>[];
 
   private asyncLabelsRenderingManager: AsyncLabelsRenderingManager;
 
@@ -194,10 +195,6 @@ export abstract class AbstractLooker<
         this.subscriptions[field] = newCallbacks;
       }
     };
-  }
-
-  getSampleOverlays(): Overlay<State>[] {
-    return this.sampleOverlays;
   }
 
   loadOverlays(sample: Sample): void {
