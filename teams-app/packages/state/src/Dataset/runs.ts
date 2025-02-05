@@ -94,6 +94,7 @@ export const runsPageStatusQuery = graphql`
       nodes {
         id
         status
+        runState
       }
     }
   }

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<96fa4d1148fa0fff2e0087e3f445eaff>>
+ * @generated SignedSource<<0ef85ec9b62e64f0982e69346443bb5b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -45,6 +45,7 @@ export type runsPageStatusQuery$data = {
   readonly delegatedOperationsPage: {
     readonly nodes: ReadonlyArray<{
       readonly id: string;
+      readonly runState: string;
       readonly status: any | null;
     }>;
   };
@@ -138,6 +139,13 @@ v1 = [
             "kind": "ScalarField",
             "name": "status",
             "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "runState",
+            "storageKey": null
           }
         ],
         "storageKey": null
@@ -164,16 +172,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "883da2225144b6b628fe2e9aba7dc456",
+    "cacheID": "0bcb9ba9054e1e74ae92ec9dd57ebfe8",
     "id": null,
     "metadata": {},
     "name": "runsPageStatusQuery",
     "operationKind": "query",
-    "text": "query runsPageStatusQuery(\n  $filter: DelegatedOperationFilter = null\n  $order: DelegatedOperationOrderFieldsOrder = null\n  $page: Int!\n  $pageSize: Int!\n  $search: DelegatedOperationSearchFieldsSearch = null\n) {\n  delegatedOperationsPage(filter: $filter, order: $order, page: $page, pageSize: $pageSize, search: $search) {\n    nodes {\n      id\n      status\n    }\n  }\n}\n"
+    "text": "query runsPageStatusQuery(\n  $filter: DelegatedOperationFilter = null\n  $order: DelegatedOperationOrderFieldsOrder = null\n  $page: Int!\n  $pageSize: Int!\n  $search: DelegatedOperationSearchFieldsSearch = null\n) {\n  delegatedOperationsPage(filter: $filter, order: $order, page: $page, pageSize: $pageSize, search: $search) {\n    nodes {\n      id\n      status\n      runState\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b34440d4c954edbd09a548928fbc06bb";
+(node as any).hash = "257dc3077af0a59cc7e1b870a9e6971a";
 
 export default node;
