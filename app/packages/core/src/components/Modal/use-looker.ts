@@ -3,10 +3,10 @@ import React, { useEffect, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
-import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
 import { useClearSelectedLabels, useShowOverlays } from "./ModalLooker";
 import { useLookerOptionsUpdate, useModalContext } from "./hooks";
 import useKeyEvents from "./use-key-events";
+import { useModalSelectiveRendering } from "./use-modal-selective-rendering";
 import { shortcutToHelpItems } from "./utils";
 
 const CLOSE = "close";
@@ -52,21 +52,7 @@ function useLooker<L extends fos.Lookers>({
     !initialRef.current && looker.updateOptions(lookerOptions);
   }, [looker, lookerOptions]);
 
-  const getNewFields = useDetectNewActiveLabelFields({
-    modal: true,
-  });
-
-  useEffect(() => {
-    if (!looker) {
-      return;
-    }
-
-    const newFieldsIfAny = getNewFields(id);
-
-    if (newFieldsIfAny) {
-      looker?.refreshSample(newFieldsIfAny);
-    }
-  }, [id, lookerOptions.activePaths, looker]);
+  useModalSelectiveRendering(id, looker);
 
   useEffect(() => {
     /** start refreshers */

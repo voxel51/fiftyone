@@ -1,6 +1,5 @@
 import { useTheme } from "@fiftyone/components";
-import { AbstractLooker, ImaVidLooker } from "@fiftyone/looker";
-import { BaseState } from "@fiftyone/looker/src/state";
+import { ImaVidLooker } from "@fiftyone/looker";
 import { FoTimelineConfig, useCreateTimeline } from "@fiftyone/playback";
 import { useDefaultTimelineNameImperative } from "@fiftyone/playback/src/lib/use-default-timeline-name";
 import { Timeline } from "@fiftyone/playback/src/views/Timeline";
@@ -24,6 +23,7 @@ import {
   useModalContext,
 } from "./hooks";
 import useKeyEvents from "./use-key-events";
+import { useModalSelectiveRendering } from "./use-modal-selective-rendering";
 import { shortcutToHelpItems } from "./utils";
 
 interface ImaVidLookerReactProps {
@@ -58,12 +58,12 @@ export const ImaVidLookerReact = React.memo(
 
     const { activeLookerRef, setActiveLookerRef } = useModalContext();
     const imaVidLookerRef =
-      activeLookerRef as unknown as React.MutableRefObject<ImaVidLooker>;
+      activeLookerRef as React.MutableRefObject<ImaVidLooker>;
 
     const looker = React.useMemo(
       () => createLooker.current(sampleDataWithExtraParams),
       [reset, createLooker, selectedMediaField]
-    ) as AbstractLooker<BaseState>;
+    ) as ImaVidLooker;
 
     useEffect(() => {
       setModalLooker(looker);
@@ -74,7 +74,7 @@ export const ImaVidLookerReact = React.memo(
 
     useEffect(() => {
       if (looker) {
-        setActiveLookerRef(looker as fos.Lookers);
+        setActiveLookerRef(looker);
       }
     }, [looker]);
 
@@ -316,6 +316,8 @@ export const ImaVidLookerReact = React.memo(
 
       return () => clearInterval(intervalId);
     }, [looker]);
+
+    useModalSelectiveRendering(id, looker);
 
     return (
       <div
