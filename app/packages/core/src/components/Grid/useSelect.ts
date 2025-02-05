@@ -73,13 +73,12 @@ export default function useSelect(
             const rerenderFields = pending.map((o) => o.field!);
             // `refreshSample` calls `updateOptions` internally
             instance.refreshSample(rerenderFields);
-          } else {
-            instance.updateOptions({
-              ...options,
-              fontSize,
-              selected: selected.has(id.description),
-            });
           }
+          instance.updateOptions({
+            ...options,
+            fontSize,
+            selected: selected.has(id.description),
+          });
         }
       });
 
