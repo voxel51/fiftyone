@@ -1,27 +1,59 @@
 import type Spotlight from "@fiftyone/spotlight";
+import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import { useShouldReloadSampleOnActiveFieldsChange } from "../Sidebar/useShouldReloadSample";
-import { LookerCache } from "./types";
+import type { LookerCache } from "./types";
 
-export default function useUpdates(
+const handleNewOverlays = (entry: fos.Lookers, newFields: string[]) => {
+  const overlays = entry.getSampleOverlays() ?? [];
+  const changed = overlays.filter(
+    (o) => o.field && newFields.includes(o.field)
+  );
+
+  for (const overlay of changed) {
+    if (overlay.label) {
+      // "pending" means we're marking this label for rendering or
+      // painting, even if it's interrupted, say by unchecking sidebar
+      overlay.label.renderStatus = "pending";
+    }
+  }
+
+  changed?.length && entry.refreshSample(newFields);
+};
+
+const handleChangedOverlays = (entry: fos.Lookers) => {
+  const overlays = entry.getSampleOverlays() ?? [];
+  const rerender: string[] = [];
+  for (const overlay of overlays) {
+    if (!overlay.field) {
+      continue;
+    }
+
+    if (overlay?.label?.renderStatus !== "pending") {
+      continue;
+    }
+
+    rerender.push(overlay.field);
+  }
+
+  // if there are any labels marked "pending", render them
+  rerender.length && entry.refreshSample(rerender);
+};
+
+const useItemUpdater = (
   cache: LookerCache,
-  getFontSize: () => number,
-  options: ReturnType<typeof fos.useLookerOptions>,
-  spotlight?: Spotlight<number, fos.Sample>
-) {
-  const { init, deferred } = fos.useDeferrer();
-
+  options: ReturnType<typeof fos.useLookerOptions>
+) => {
   const getNewFields = useShouldReloadSampleOnActiveFieldsChange({
     modal: false,
   });
-
   const selected = useRecoilValue(fos.selectedSamples);
-  useEffect(() => {
-    deferred(() => {
-      const fontSize = getFontSize();
-      spotlight?.updateItems((id) => {
+
+  return useCallback(
+    (fontSize: number) => {
+      return (id: ID) => {
         const entry = cache.get(id.description);
         if (!entry) {
           return;
@@ -33,55 +65,35 @@ export default function useUpdates(
           selected: selected.has(id.description),
         });
 
-        const newFieldsIfAny = getNewFields(id.description);
+        const newFields = getNewFields(id.description);
+        // rerender looker if active fields have changed and have never been
+        // rendered before
+        newFields?.length
+          ? handleNewOverlays(entry, newFields)
+          : handleChangedOverlays(entry);
+      };
+    },
+    [cache, getNewFields, options, selected]
+  );
+};
 
-        const overlays = entry.getSampleOverlays() ?? [];
+export default function useUpdates(
+  cache: LookerCache,
+  getFontSize: () => number,
+  options: ReturnType<typeof fos.useLookerOptions>,
+  spotlight?: Spotlight<number, fos.Sample>
+) {
+  const { init, deferred } = fos.useDeferrer();
+  const itemUpdater = useItemUpdater(cache, options);
 
-        // rerender looker if active fields have changed and have never been rendered before
-        if (newFieldsIfAny) {
-          const thisInstanceOverlays = overlays.filter(
-            (o) => o.field && newFieldsIfAny.includes(o.field)
-          );
-
-          thisInstanceOverlays?.forEach((o) => {
-            if (o.label) {
-              // "pending" means we're marking this label for rendering / painting
-              // even if it's interrupted, say by unchecking sidebar
-              o.label.renderStatus = "pending";
-            }
-          });
-
-          if (thisInstanceOverlays?.length > 0) {
-            entry.refreshSample(newFieldsIfAny);
-          }
-        } else {
-          // if there're any labels marked "pending", render them
-          const pending = overlays.filter(
-            (o) => o.field && o.label && o.label.renderStatus === "pending"
-          );
-
-          if (pending?.length > 0) {
-            const rerenderFields = pending.map((o) => o.field!);
-            entry.refreshSample(rerenderFields);
-          }
-        }
-      });
-
+  useEffect(() => {
+    deferred(() => {
+      spotlight?.updateItems(itemUpdater(getFontSize()));
       cache.empty();
     });
-  }, [
-    cache,
-    deferred,
-    getFontSize,
-    getNewFields,
-    options,
-    selected,
-    spotlight,
-  ]);
+  }, [cache, deferred, getFontSize, itemUpdater, spotlight]);
 
   useEffect(() => {
     return spotlight ? init() : undefined;
   }, [spotlight, init]);
-
-  return;
 }

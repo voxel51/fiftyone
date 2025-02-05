@@ -2,6 +2,8 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import type Spotlight from "./index";
+
 export interface At {
   description: string;
   offset?: number;
@@ -15,6 +17,8 @@ export interface Edge<K, V> {
 export type Focus = (id?: ID) => ID | undefined;
 
 export type Get<K, V> = (key: K) => Promise<Response<K, V>>;
+
+export type Hide = (ctx: { id: ID }) => void;
 
 export type ItemClick<K, V> = (
   callbackInterface: ItemClickInterface<K, V>
@@ -39,13 +43,6 @@ export type Measure<K, V> = (
   sizeBytes: () => number | Promise<number>
 ) => void;
 
-export type Show = (
-  id: ID,
-  element: HTMLDivElement,
-  dimensions: [number, number],
-  zooming: boolean
-) => number | Promise<number>;
-
 export interface Response<K, V> {
   items: ItemData<K, V>[];
   next: K | null;
@@ -59,6 +56,14 @@ export type Request<K, V> = (key: K) => Promise<{
   previous?: K;
 }>;
 
+export type Show<K, V> = (ctx: {
+  id: ID;
+  dimensions: [number, number];
+  element: HTMLDivElement;
+  spotlight: Spotlight<K, V>;
+  zooming: boolean;
+}) => number | Promise<number>;
+
 export interface SpotlightConfig<K, V> {
   at?: At;
   spacing?: number;
@@ -71,9 +76,9 @@ export interface SpotlightConfig<K, V> {
   detachItem: (id: ID) => void;
   get: Get<K, V>;
   getItemSizeBytes?: (id: ID) => number;
-  hideItem: (id: ID) => void;
+  hideItem: Hide;
   onItemClick?: ItemClick<K, V>;
-  showItem: Show;
+  showItem: Show<K, V>;
   rowAspectRatioThreshold: (width: number) => number;
 }
 

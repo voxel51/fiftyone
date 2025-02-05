@@ -3,10 +3,10 @@
  */
 import styles from "./styles.module.css";
 
+import { BOTTOM, DIV, ONE, TOP, UNSET, ZERO } from "./constants";
+import type Spotlight from "./index";
 import type Iter from "./iter";
 import type { Focus, ID, ItemData, Measure, SpotlightConfig } from "./types";
-
-import { BOTTOM, DIV, ONE, TOP, UNSET, ZERO } from "./constants";
 import { create, pixels } from "./utilities";
 
 export default class Row<K, V> {
@@ -143,7 +143,7 @@ export default class Row<K, V> {
 
   hide(): void {
     for (const { item } of this.#row) {
-      this.#config.hideItem(item.id);
+      this.#config.hideItem({ id: item.id });
     }
 
     this.#container.remove();
@@ -153,11 +153,13 @@ export default class Row<K, V> {
     attr,
     element,
     measure,
+    spotlight,
     zooming,
   }: {
     attr: typeof BOTTOM | typeof TOP;
     element: HTMLDivElement;
     measure: Measure<K, V>;
+    spotlight: Spotlight<K, V>;
     zooming: boolean;
   }) {
     if (!this.attached) {
@@ -173,7 +175,13 @@ export default class Row<K, V> {
       }
 
       measure(item, () =>
-        this.#config.showItem(item.id, element, [width, this.height], zooming)
+        this.#config.showItem({
+          id: item.id,
+          dimensions: [width, this.height],
+          element,
+          spotlight,
+          zooming,
+        })
       );
     }
   }

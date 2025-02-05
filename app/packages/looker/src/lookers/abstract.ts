@@ -231,6 +231,7 @@ export abstract class AbstractLooker<
     for (let index = 0; index < this.sampleOverlays.length; index++) {
       size += this.sampleOverlays[index].getSizeBytes();
     }
+    console.log("SIZE", size);
     return size;
   }
 
@@ -247,6 +248,7 @@ export abstract class AbstractLooker<
       return;
     }
 
+    console.log("DISPTACH", eventType);
     this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
   }
 
@@ -617,6 +619,9 @@ export abstract class AbstractLooker<
         this.sample = sample;
         this.state.options.coloring = coloring;
         this.loadOverlays(sample);
+
+        console.log("REFIDNVSDKN");
+        this.dispatchEvent("refresh", {});
 
         // to run looker reconciliation
         this.updater({

@@ -1,4 +1,4 @@
-import type { ID } from "@fiftyone/spotlight";
+import type { Hide, ID, Show } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { useCallback, useMemo } from "react";
 import type { LookerCache } from "./types";
@@ -27,15 +27,13 @@ export default function ({
     [cache]
   );
 
-  const hideItem = useCallback((id: ID) => cache.hide(id.description), [cache]);
+  const hideItem = useCallback<Hide>(
+    ({ id }) => cache.hide(id.description),
+    [cache]
+  );
 
-  const showItem = useCallback(
-    (
-      id: ID,
-      element: HTMLDivElement,
-      dimensions: [number, number],
-      zooming: boolean
-    ): number | Promise<number> => {
+  const showItem = useCallback<Show<number, fos.Sample>>(
+    ({ id, element, dimensions, spotlight, zooming }) => {
       const key = id.description;
       if (cache.isShown(key)) {
         return cache.sizeOf(key);
@@ -68,6 +66,13 @@ export default function ({
       looker.addEventListener("selectthumbnail", ({ detail }) =>
         selectSample.current?.(detail)
       );
+      looker.addEventListener("refresh", () => {
+        if (cache.isShown(key)) {
+          spotlight.sizeChange(key, looker.getSizeBytesEstimate());
+        } else {
+          cache.hide(key);
+        }
+      });
       cache.set(key, looker);
       looker.attach(element, dimensions);
 

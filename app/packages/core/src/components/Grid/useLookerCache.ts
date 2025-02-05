@@ -65,7 +65,9 @@ export default function useLookerCache<
       max: maxHiddenItems,
       maxSize: maxHiddenItemsSizeBytes,
       noDisposeOnSet: true,
-      sizeCalculation: (entry) => entry.instance.getSizeBytesEstimate(),
+      sizeCalculation: (entry) => {
+        return entry.instance.getSizeBytesEstimate();
+      },
     });
 
     // an intermediate mapping until the "load" event
@@ -84,7 +86,7 @@ export default function useLookerCache<
         return;
       }
 
-      const instance = get(key);
+      const instance = visible.get(key);
       visible.delete(key);
       if (!instance) {
         return;
@@ -194,6 +196,20 @@ export default function useLookerCache<
         loading.delete(key);
         loaded.delete(key);
         instance && visible.set(key, instance);
+      },
+
+      /**
+       * Update the instance
+       *
+       * @param {string} key - the instance key
+       * @param {T} instance - the instance
+       * @returns {T} the instance
+       */
+      update: (key: string, instance: T) => {
+        if (!loaded.has(key)) {
+          throw new Error("no instance loaded");
+        }
+        loaded.set(key, { dispose: true, instance });
       },
     };
   }, [

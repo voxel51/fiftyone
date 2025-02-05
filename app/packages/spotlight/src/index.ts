@@ -6,17 +6,6 @@ import "@af-utils/scrollend-polyfill";
 
 import styles from "./styles.module.css";
 
-import type { EventCallback } from "./events";
-import type {
-  At,
-  ID,
-  ItemData,
-  Measure,
-  Response,
-  SpotlightConfig,
-  Updater,
-} from "./types";
-
 import {
   DEFAULT_OFFSET,
   DEFAULT_SPACING,
@@ -31,10 +20,19 @@ import {
   ZOOMING_COEFFICIENT,
 } from "./constants";
 import createScrollReader from "./createScrollReader";
-import type { RowChange } from "./events";
+import type { EventCallback, RowChange } from "./events";
 import { Load, Rejected } from "./events";
 import Section from "./section";
 import tile from "./tile";
+import type {
+  At,
+  ID,
+  ItemData,
+  Measure,
+  Response,
+  SpotlightConfig,
+  Updater,
+} from "./types";
 import {
   create,
   findTop,
@@ -61,6 +59,7 @@ export default class Spotlight<K, V> extends EventTarget {
   #rejected = false;
   #scrollReader?: ReturnType<typeof createScrollReader>;
   #updater?: Updater;
+  #validate: (key: string, add: number) => void;
 
   constructor(config: SpotlightConfig<K, V>) {
     super();
@@ -150,11 +149,15 @@ export default class Spotlight<K, V> extends EventTarget {
     };
   }
 
-  async previous() {
+  previous() {
     if (this.#backward.finished) return undefined;
     return async () => {
       await this.#previous();
     };
+  }
+
+  sizeChange(key: string, add: number) {
+    this.#validate(key, add);
   }
 
   updateItems(updater: Updater): void {
@@ -256,24 +259,31 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   #race() {
-    let bytes = ZERO;
     const items: ItemData<K, V>[] = [];
     const map = new Map<string, number>();
+
+    const validate = (key: string, add: number) => {
+      map.set(key, add);
+      console.log(sum(Array.from(map.values())));
+      if (
+        sum(Array.from(map.values())) >= this.#config.maxItemsSizeBytes &&
+        this.#config.rowAspectRatioThreshold(this.#width) > ONE
+      ) {
+        this.#handleHighMemoryUsage(items, map);
+      }
+    };
+
+    this.#validate = validate;
+
     const measure = (item: ItemData<K, V>, add: number) => {
       if (!this.#config.maxItemsSizeBytes) {
         return;
       }
 
       items.push(item);
-      map.set(item.id.description, add);
-      bytes += add;
-      if (
-        bytes >= this.#config.maxItemsSizeBytes &&
-        this.#config.rowAspectRatioThreshold(this.#width) > ONE
-      ) {
-        this.#handleHighMemoryUsage(items, map);
-      }
+      validate(item.id.description, add);
     };
+
     return {
       measure: (
         item: ItemData<K, V>,
@@ -323,6 +333,7 @@ export default class Spotlight<K, V> extends EventTarget {
 
     const params = {
       measure,
+      spotlight: this,
       updater: (id) => this.#updater(id),
       zooming,
     };

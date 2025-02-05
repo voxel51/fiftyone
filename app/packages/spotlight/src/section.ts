@@ -4,16 +4,6 @@
 
 import styles from "./styles.module.css";
 
-import type {
-  Edge,
-  ID,
-  ItemData,
-  Measure,
-  Request,
-  SpotlightConfig,
-  Updater,
-} from "./types";
-
 import { closest } from "./closest";
 import {
   BOTTOM,
@@ -29,9 +19,19 @@ import {
   TWO,
   ZERO,
 } from "./constants";
+import type Spotlight from "./index";
 import Iter from "./iter";
 import Row from "./row";
 import tile from "./tile";
+import type {
+  Edge,
+  ID,
+  ItemData,
+  Measure,
+  Request,
+  SpotlightConfig,
+  Updater,
+} from "./types";
 import { create } from "./utilities";
 
 export type Renderer<K, V> = (
@@ -127,12 +127,14 @@ export default class Section<K, V> {
 
   render({
     measure,
+    spotlight,
     target,
     threshold,
     top,
     zooming,
   }: {
     measure: Measure<K, V>;
+    spotlight: Spotlight<K, V>;
     target: number;
     threshold: (n: number) => boolean;
     top: number;
@@ -183,6 +185,7 @@ export default class Section<K, V> {
           attr: this.#direction === DIRECTION.FORWARD ? TOP : BOTTOM,
           element: this.#container,
           measure,
+          spotlight,
           zooming,
         });
 
