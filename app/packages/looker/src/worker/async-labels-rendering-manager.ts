@@ -104,7 +104,7 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
     const filtered = { ...sample };
     Object.keys(filtered).forEach((key) => {
       if (!job.labels.includes(key)) {
-        delete sample[key];
+        delete filtered[key];
       }
     });
 
