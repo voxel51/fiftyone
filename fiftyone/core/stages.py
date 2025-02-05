@@ -1362,7 +1362,13 @@ class ExcludeLabels(ViewStage):
     """
 
     def __init__(
-        self, labels=None, ids=None, tags=None, fields=None, omit_empty=True
+        self,
+        labels=None,
+        ids=None,
+        tags=None,
+        fields=None,
+        omit_empty=True,
+        _frames=False,
     ):
         if labels is not None:
             sample_ids, labels_map = _parse_labels(labels)
@@ -1388,6 +1394,7 @@ class ExcludeLabels(ViewStage):
         self._ids = ids
         self._tags = tags
         self._fields = fields
+        self._frames = _frames
         self._omit_empty = omit_empty
         self._sample_ids = sample_ids
         self._labels_map = labels_map
@@ -1550,7 +1557,9 @@ class ExcludeLabels(ViewStage):
             label_filter = ~F("_id").is_in(
                 [foe.ObjectId(_id) for _id in labels_map]
             )
-            stage = FilterLabels(field, label_filter, only_matches=False)
+            stage = FilterLabels(
+                field, label_filter, only_matches=False, _frames=self._frames
+            )
             stage.validate(sample_collection)
             pipeline.extend(stage.to_mongo(sample_collection))
 
@@ -1588,7 +1597,12 @@ class ExcludeLabels(ViewStage):
         # Filter excluded labels
         if filter_expr is not None:
             for field in fields:
-                stage = FilterLabels(field, filter_expr, only_matches=False)
+                stage = FilterLabels(
+                    field,
+                    filter_expr,
+                    only_matches=False,
+                    _frames=self._frames,
+                )
                 stage.validate(sample_collection)
                 pipeline.extend(stage.to_mongo(sample_collection))
 

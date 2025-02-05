@@ -16,6 +16,7 @@ import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.stages as fos
 from fiftyone.core.utils import datetime_to_timestamp
 import fiftyone.core.view as fov
 
@@ -25,6 +26,15 @@ from fiftyone.server.inputs import SelectedLabel
 from fiftyone.server.scalars import BSON, BSONArray
 from fiftyone.server.utils import from_dict, meets_type
 import fiftyone.server.view as fosv
+
+
+_ALLOW_OPTIMIZED_FRAMES = {
+    fos.Exclude,
+    fos.ExcludeLabels,
+    fos.Limit,
+    fos.Select,
+    fos.Skip,
+}
 
 
 @gql.input
@@ -137,6 +147,23 @@ async def aggregate_resolver(
         view = view.select_group_slices(_force_mixed=True)
         view = fosv.get_extended_view(
             view, form.filters, optimize_frames=optimize_frames
+        )
+
+    if form.hidden_labels:
+        view = view.add_stage(
+            fos.ExcludeLabels(
+                [
+                    {
+                        "sample_id": l.sample_id,
+                        "field": l.field,
+                        "label_id": l.label_id,
+                        "frame_number": l.frame_number,
+                    }
+                    for l in form.hidden_labels
+                ],
+                omit_empty=False,
+                _frames=optimize_frames,
+            )
         )
 
     aggregations, deserializers = zip(
@@ -331,17 +358,15 @@ async def _should_optimize_frames(form: AggregationForm):
     if not form.sample_ids and not form.group_id:
         return False
 
-    if form.view:
-        return False
-
     view = await _load_view(form, [])
     if view.media_type != fom.VIDEO:
         return False
 
-    if not form.filters:
+    stages = set(type(stage) for stage in view._stages)
+    if not stages.issubset(_ALLOW_OPTIMIZED_FRAMES):
         return False
 
     return all(
         path.startswith(foc.SampleCollection._FRAMES_PREFIX)
-        for path in form.filters
+        for path in form.paths
     )
