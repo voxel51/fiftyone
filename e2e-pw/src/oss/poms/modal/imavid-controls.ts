@@ -74,9 +74,7 @@ export class ModalImaAsVideoControlsPom {
     await this.controls.first().hover();
   }
 
-  async playUntilFrames(frameText: string, matchBeginning = false) {
-    await this.togglePlay();
-
+  async waitUntilFrameTextIs(frameText: string, matchBeginning = false) {
     await this.page.waitForFunction(
       ({ frameText_, matchBeginning_ }) => {
         const frameTextDom = document.querySelector(
@@ -89,7 +87,29 @@ export class ModalImaAsVideoControlsPom {
       },
       { frameText_: frameText, matchBeginning_: matchBeginning }
     );
+  }
+
+  async playUntilFrames(frameText: string, matchBeginning = false) {
     await this.togglePlay();
+    await this.waitUntilFrameTextIs(frameText, matchBeginning);
+    await this.togglePlay();
+
+    // sometimes there's a drift, in which case correct it
+    let currentTime = await this.getCurrentFrameStatus();
+    const maxCorrectionAttempts = 10;
+
+    let correctionAttempts = 0;
+    if (currentTime !== frameText) {
+      // keep pressing "<" until we reach the desired frame
+      while (
+        currentTime !== frameText &&
+        correctionAttempts < maxCorrectionAttempts
+      ) {
+        await this.page.keyboard.press(",");
+        currentTime = await this.getCurrentFrameStatus();
+        correctionAttempts++;
+      }
+    }
   }
 
   async toggleSettings() {
@@ -125,7 +145,7 @@ export class ModalImaAsVideoControlsPom {
     switch (config) {
       case "low":
         await this.page.mouse.click(
-          sliderBoundingBox.x + sliderWidth * 0.05,
+          sliderBoundingBox.x + sliderWidth * 0.15,
           sliderBoundingBox.y
         );
         break;
@@ -142,6 +162,7 @@ export class ModalImaAsVideoControlsPom {
         );
         break;
     }
+    await this.controls.hover({ force: true });
   }
 }
 

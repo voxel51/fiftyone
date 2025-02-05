@@ -156,7 +156,6 @@ test(`dynamic groups of groups works`, async ({ grid, modal, sidebar }) => {
     scene_key: "1",
     order_key: "1",
   });
-  await modal.imavid.setSpeedTo("low");
   await modal.imavid.toggleSettings();
   await modal.imavid.setLooping(false);
   await modal.imavid.toggleSettings();
