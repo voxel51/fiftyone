@@ -77,6 +77,13 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
     // shallow merge worker-returned sample with the original sample.
     const mergedSample = { ...job.sample, ...sample };
 
+    // also merge frames if they exist
+    if (job.sample.frames && sample.frames) {
+      mergedSample.frames = job.sample.frames.map((frame, idx) => {
+        return { ...frame, ...sample.frames[idx] };
+      });
+    }
+
     job.resolve({ sample: mergedSample, coloring });
     processingSamples.delete(job.sample);
     freeWorkers.push(worker);
@@ -100,17 +107,20 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
   worker.addEventListener("error", handleError);
 
   // filter sample to only include keys in job.labels
-  const pluckRelevant = (sample: Sample) => {
+  const pluckRelevant = (sample: Sample, frames = false) => {
     const filtered = { ...sample };
     Object.keys(filtered).forEach((key) => {
-      if (!job.labels.includes(key)) {
+      if (!job.labels.includes(frames ? `frames.${key}` : key)) {
+        if (!frames && key === "frames") {
+          return;
+        }
         delete filtered[key];
       }
     });
 
     if (filtered.frames?.length) {
       filtered.frames = filtered.frames.map((frame) => {
-        return pluckRelevant(frame);
+        return pluckRelevant(frame, true);
       });
     }
     return filtered;
