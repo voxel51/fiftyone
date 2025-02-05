@@ -1,10 +1,10 @@
+import { VideoLooker } from "@fiftyone/looker";
 import type Spotlight from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import type { LRUCache } from "lru-cache";
 import { useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
-import { VideoLooker } from "@fiftyone/looker";
 
 export default function useSelect(
   getFontSize: () => number,
@@ -38,9 +38,15 @@ export default function useSelect(
             ? instance.pluckedOverlays
             : instance.sampleOverlays;
 
+        instance.updateOptions({
+          ...options,
+          fontSize,
+          selected: selected.has(id.description),
+        });
+
         // rerender looker if active fields have changed and have never been rendered before
         if (newFieldsIfAny) {
-          const thisInstanceOverlays = overlays.filter(
+          const thisInstanceOverlays = overlays?.filter(
             (o) =>
               o.field &&
               (o.label?.mask_path?.length > 0 ||
@@ -60,18 +66,14 @@ export default function useSelect(
 
           // important we "reconcile" here so that "pending" status percolates to
           // draw function of labels
-          instance.updateOptions({
-            ...options,
-            fontSize,
-            selected: selected.has(id.description),
-          });
+          instance.updateOptions({ ...options });
 
           if (thisInstanceOverlays?.length > 0) {
             instance.refreshSample(newFieldsIfAny);
           }
         } else {
           // if there're any labels marked "pending", render them
-          const pending = overlays.filter(
+          const pending = overlays?.filter(
             (o) => o.field && o.label?.renderStatus === "pending"
           );
 
@@ -82,8 +84,6 @@ export default function useSelect(
           }
           instance.updateOptions({
             ...options,
-            fontSize,
-            selected: selected.has(id.description),
           });
         }
       });

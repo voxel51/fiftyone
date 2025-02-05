@@ -530,6 +530,12 @@ export abstract class AbstractLooker<
   abstract updateOptions(options: Partial<State["options"]>): void;
 
   updateSample(sample: Sample) {
+    // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
+    // this crashes the app. this is a bug and should be fixed
+    if (!this.sample) {
+      return;
+    }
+
     const id = sample.id ?? sample._id;
     const updateTimeoutMs = 10000;
 
