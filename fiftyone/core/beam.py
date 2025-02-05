@@ -145,12 +145,13 @@ def beam_map(
 
     if shard_method == "slice":
         # Slice batches
-        slices = list(zip(edges[:-1], edges[1:]), 1)
+        slices = list(zip(edges[:-1], edges[1:]))
     else:
         # ID batches
         slices = [ids[i:j] for i, j in zip(edges[:-1], edges[1:])]
 
     num_shards = len(slices)
+    print(slices)
     batches = list(
         zip(
             range(num_shards),
@@ -334,12 +335,14 @@ class ReduceFn(beam.CombineFn):
 
 
 def _set_key(sample_collection, key, value, ttl=60):
+    print("Setting key", key)
     dataset_id = sample_collection._root_dataset._doc.id
     store = FileExecutionStore(dataset_id=dataset_id, base_path="beam")
     store.set(key, value, ttl=ttl)
 
 
 def _get_key(sample_collection, key):
+    print("Getting key", key)
     dataset_id = sample_collection._root_dataset._doc.id
     store = FileExecutionStore(dataset_id=dataset_id, base_path="beam")
     return store.get(key)
@@ -450,10 +453,10 @@ def extract_kwargs_for_function(cls_or_fcn, kwargs):
 
 
 class FileExecutionStore(object):
-    def __init__(self, dataset_id: str, base_path: str = ".store"):
-        self.dataset_id = dataset_id
+    def __init__(self, dataset_id: Any, base_path: str = ".store"):
+        self.dataset_id = str(dataset_id)
         self.base_path = base_path
-        self.store_path = os.path.join(base_path, dataset_id)
+        self.store_path = os.path.join(self.base_path, self.dataset_id)
         os.makedirs(self.store_path, exist_ok=True)
 
     def _get_file_path(self, key: str) -> str:
