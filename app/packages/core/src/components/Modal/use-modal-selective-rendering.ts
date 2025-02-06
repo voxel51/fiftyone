@@ -9,7 +9,7 @@ export const useImageModalSelectiveRendering = (
 ) => {
   const lookerOptions = useLookerOptions(true);
 
-  const getNewFields = useDetectNewActiveLabelFields({
+  const { getNewFields } = useDetectNewActiveLabelFields({
     modal: true,
   });
 
@@ -30,7 +30,7 @@ export const useImavidModalSelectiveRendering = (
   id: string,
   looker: ImaVidLooker
 ) => {
-  const getNewFields = useDetectNewActiveLabelFields({
+  const { getNewFields } = useDetectNewActiveLabelFields({
     modal: true,
   });
 
@@ -46,10 +46,15 @@ export const useImavidModalSelectiveRendering = (
           return;
         }
 
-        const newFieldsIfAny = getNewFields(`${id}-${currentFrameNumber}`);
+        const thisFrameId = `${id}-${currentFrameNumber}`;
+
+        const newFieldsIfAny = getNewFields(thisFrameId);
 
         if (newFieldsIfAny) {
           looker.refreshSample(newFieldsIfAny, currentFrameNumber);
+        } else {
+          // repainting labels should be sufficient
+          looker.refreshOverlaysToCurrentFrame();
         }
       }
     );
@@ -64,7 +69,7 @@ export const useVideoModalSelectiveRendering = (
   id: string,
   looker: VideoLooker
 ) => {
-  const getNewFields = useDetectNewActiveLabelFields({
+  const { getNewFields } = useDetectNewActiveLabelFields({
     modal: true,
   });
 

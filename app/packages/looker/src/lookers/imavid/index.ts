@@ -206,6 +206,23 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     }
   }
 
+  refreshOverlaysToCurrentFrame() {
+    const sampleIdFromFramesStore =
+      this.frameStoreController.store.frameIndex.get(this.frameNumber);
+
+    let sample: Sample;
+
+    if (sampleIdFromFramesStore) {
+      const { image: _cachedImage, ...sampleWithoutImage } =
+        this.frameStoreController.store.samples.get(sampleIdFromFramesStore);
+      sample = sampleWithoutImage.sample;
+    } else {
+      sample = this.sample;
+    }
+
+    this.loadOverlays(sample);
+  }
+
   refreshSample(renderLabels: string[] | null = null, frameNumber?: number) {
     // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
     // this crashes the app. this is a bug and should be fixed

@@ -47,6 +47,16 @@ export const useDetectNewActiveLabelFields = ({
     [activeLabelFieldsValue]
   );
 
+  const getExistingFields = useCallback(
+    (id: string) => {
+      const mayBeFields = modal
+        ? modalActivePathsLUT.get(id)
+        : gridActivePathsLUT.get(id);
+      return mayBeFields ? Array.from(mayBeFields) : [];
+    },
+    [modal]
+  );
+
   /**
    * clear look up table when component unmounts
    */
@@ -60,5 +70,5 @@ export const useDetectNewActiveLabelFields = ({
     };
   }, [modal]);
 
-  return getNewFields;
+  return { getNewFields, getExistingFields };
 };

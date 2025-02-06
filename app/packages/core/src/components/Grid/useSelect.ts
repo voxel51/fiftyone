@@ -14,7 +14,7 @@ export default function useSelect(
 ) {
   const { init, deferred } = fos.useDeferrer();
 
-  const getNewFields = useDetectNewActiveLabelFields({
+  const { getNewFields } = useDetectNewActiveLabelFields({
     modal: false,
   });
 
