@@ -27,8 +27,8 @@ export const LensQuery = ({
   onReadyChange: (ready: boolean) => void;
 }) => {
   const numFilters = useMemo(() => {
-    return Object.keys(formState)
-      .map((k) => formState[k] !== undefined && formState[k] !== null)
+    return Object.values(formState)
+      .map((v) => v !== undefined && v !== null)
       .reduce((acc, curr) => acc + (curr ? 1 : 0), 0);
   }, [formState]);
 
@@ -40,7 +40,9 @@ export const LensQuery = ({
             <Typography variant="h6">Query parameters</Typography>
             <Typography>&bull;</Typography>
             <Typography color="secondary">
-              {`${numFilters} ${numFilters > 0 ? "filters" : "filter"} applied`}
+              {`${numFilters} ${
+                numFilters === 1 ? "filter" : "filters"
+              } applied`}
             </Typography>
           </Stack>
         </AccordionSummary>
