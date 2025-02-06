@@ -5,6 +5,7 @@ import type { LRUCache } from "lru-cache";
 import { useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
+import { RENDER_STATUS_PENDING } from "@fiftyone/looker/src/worker/shared";
 
 export default function useSelect(
   getFontSize: () => number,
@@ -60,7 +61,7 @@ export default function useSelect(
             if (o.label) {
               // "pending" means we're marking this label for rendering / painting
               // even if it's interrupted, say by unchecking sidebar
-              o.label.renderStatus = "pending";
+              o.label.renderStatus = RENDER_STATUS_PENDING;
             }
           });
 
@@ -74,7 +75,7 @@ export default function useSelect(
         } else {
           // if there're any labels marked "pending", render them
           const pending = overlays?.filter(
-            (o) => o.field && o.label?.renderStatus === "pending"
+            (o) => o.field && o.label?.renderStatus === RENDER_STATUS_PENDING
           );
 
           if (pending?.length > 0) {

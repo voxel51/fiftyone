@@ -5,7 +5,7 @@ import { OverlayMask } from "../numpy";
 import { Colorscale } from "../state";
 import { decodeMaskOnDisk } from "./mask-decoder";
 import { enqueueFetch } from "./pooled-fetch";
-import { DenseLabelRenderStatus, getOverlayFieldFromCls } from "./shared";
+import { getOverlayFieldFromCls, RENDER_STATUS_DECODED } from "./shared";
 
 export type IntermediateMask = {
   data: OverlayMask;
@@ -141,7 +141,7 @@ export const decodeOverlayOnDisk = async (
     image: new ArrayBuffer(overlayWidth * overlayHeight * 4),
   } as IntermediateMask;
 
-  label.renderStatus = "decoded" as DenseLabelRenderStatus;
+  label.renderStatus = RENDER_STATUS_DECODED;
 
   // no need to transfer image's buffer
   //since we'll be constructing ImageBitmap and transfering that

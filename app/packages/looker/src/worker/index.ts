@@ -31,7 +31,13 @@ import { DeserializerFactory } from "./deserializer";
 import { decodeOverlayOnDisk } from "./disk-overlay-decoder";
 import { PainterFactory } from "./painter";
 import colorResolve from "./resolve-color";
-import { getOverlayFieldFromCls, mapId } from "./shared";
+import {
+  getOverlayFieldFromCls,
+  mapId,
+  RENDER_STATUS_DECODED,
+  RENDER_STATUS_PAINTED,
+  RENDER_STATUS_PENDING,
+} from "./shared";
 import { process3DLabels } from "./threed-label-processor";
 
 interface ResolveColor {
@@ -64,9 +70,9 @@ const shouldProcessLabel = ({
   const currentLabelRenderStatus = label?.renderStatus;
 
   if (
-    currentLabelRenderStatus === "painted" ||
-    currentLabelRenderStatus === "decoded" ||
-    currentLabelRenderStatus === "pending"
+    currentLabelRenderStatus === RENDER_STATUS_PAINTED ||
+    currentLabelRenderStatus === RENDER_STATUS_DECODED ||
+    currentLabelRenderStatus === RENDER_STATUS_PENDING
   ) {
     return true;
   }
@@ -144,7 +150,7 @@ const processLabels = async (
 
           if (cls in DeserializerFactory) {
             DeserializerFactory[cls](label, maskTargetsBuffers);
-            label.renderStatus = "decoded";
+            label.renderStatus = RENDER_STATUS_DECODED;
           }
         } else {
           // we'll process this label asynchronously later
