@@ -82,7 +82,7 @@ export default class HeatmapOverlay<State extends BaseState>
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    if (this.label.map?.bitmap) {
+    if (this.label.map?.bitmap?.width) {
       const [tlx, tly] = t(state, 0, 0);
       const [brx, bry] = t(state, 1, 1);
       const tmp = ctx.globalAlpha;

@@ -73,7 +73,10 @@ export default class DetectionOverlay<
       return;
     }
 
-    if (this.label.mask && this.label.renderStatus === "painted") {
+    if (
+      this.label.mask?.bitmap.width &&
+      this.label.renderStatus === "painted"
+    ) {
       this.drawMask(ctx, state);
     }
 
@@ -278,12 +281,8 @@ export default class DetectionOverlay<
     return [(bx - ow) * w, (by - oh) * h, (bw + ow * 2) * w, (bh + oh * 2) * h];
   }
 
-  public cleanup(setTargetsToNull = false): void {
+  public cleanup(): void {
     this.label.mask?.bitmap?.close();
-
-    if (setTargetsToNull) {
-      this.label.mask = null;
-    }
   }
 }
 

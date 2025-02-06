@@ -1,9 +1,14 @@
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import {
+  FrameLooker,
+  ImageLooker,
+  ImaVidLooker,
+  VideoLooker,
+} from "@fiftyone/looker";
 import { LRUCache } from "lru-cache";
 import { useState } from "react";
 import { ModalSample } from "../recoil";
 
-export type Lookers = FrameLooker | ImageLooker | VideoLooker;
+export type Lookers = FrameLooker | ImageLooker | ImaVidLooker | VideoLooker;
 
 const createLookerCache = <T extends Lookers>() => {
   return new LRUCache<string, T>({

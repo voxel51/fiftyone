@@ -30,6 +30,11 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   private unsubscribe: ReturnType<typeof this.subscribeToState>;
 
   init() {
+    // we have other mechanism for the modal
+    if (!this.state.config.thumbnail) {
+      return;
+    }
+
     // subscribe to frame number and update sample when frame number changes
     this.unsubscribe = this.subscribeToState("currentFrameNumber", () => {
       this.thisFrameSample?.sample &&
@@ -199,5 +204,58 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     } else {
       this.updater({ options, disabled: false });
     }
+  }
+
+  refreshSample(renderLabels: string[] | null = null, frameNumber?: number) {
+    // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
+    // this crashes the app. this is a bug and should be fixed
+    if (!this.sample) {
+      return;
+    }
+
+    if (!renderLabels?.length) {
+      this.updateSample(this.sample);
+      return;
+    }
+
+    const sampleIdFromFramesStore =
+      this.frameStoreController.store.frameIndex.get(frameNumber);
+
+    let sample: Sample;
+
+    // if sampleIdFromFramesStore is not found, it means we're in grid thumbnail view
+    if (sampleIdFromFramesStore) {
+      const { image: _cachedImage, ...sampleWithoutImage } =
+        this.frameStoreController.store.samples.get(sampleIdFromFramesStore);
+      sample = sampleWithoutImage.sample;
+    } else {
+      sample = this.sample;
+    }
+
+    this.asyncLabelsRenderingManager
+      .enqueueLabelPaintingJob({
+        sample: sample as Sample,
+        labels: renderLabels,
+      })
+      .then(({ sample, coloring }) => {
+        if (sampleIdFromFramesStore) {
+          this.frameStoreController.store.updateSample(
+            sampleIdFromFramesStore,
+            sample
+          );
+        } else {
+          this.sample = sample;
+        }
+        this.state.options.coloring = coloring;
+        this.loadOverlays(sample);
+
+        // to run looker reconciliation
+        this.updater({
+          overlaysPrepared: true,
+        });
+      })
+      .catch((error) => {
+        this.updater({ error });
+      });
   }
 }

@@ -81,7 +81,7 @@ export default class SegmentationOverlay<State extends BaseState>
       return;
     }
 
-    if (this.label.mask?.bitmap) {
+    if (this.label.mask?.bitmap?.width) {
       const [tlx, tly] = t(state, 0, 0);
       const [brx, bry] = t(state, 1, 1);
       const tmp = ctx.globalAlpha;
@@ -269,7 +269,7 @@ export default class SegmentationOverlay<State extends BaseState>
     this.label.mask?.bitmap?.close();
 
     if (setTargetsToNull) {
-      this.label.mask = null;
+      this.targets = null;
     }
   }
 }
