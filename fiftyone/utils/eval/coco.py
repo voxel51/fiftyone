@@ -830,6 +830,8 @@ def _compute_pr_curves(samples, config, classes=None, progress=None):
             thresholds[idx][c_idx] = t
             if rec.size != 0:
                 recall_sweep[idx][c_idx] = rec[-1]
+            else:
+                recall_sweep[idx][c_idx] = 0               
 
     return precision, recall, thresholds, iou_threshs, classes, recall_sweep
 
