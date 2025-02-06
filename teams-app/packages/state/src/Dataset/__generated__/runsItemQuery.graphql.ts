@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<281cf46e977f8cd8356873e9ad9f1aaa>>
+ * @generated SignedSource<<e97dc4c30668c8ba8ac66b4b6a4ae749>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -20,6 +20,7 @@ export type runsItemQuery$data = {
     readonly failedAt: string | null;
     readonly id: string;
     readonly label: string | null;
+    readonly logPath: string | null;
     readonly logUploadError: string | null;
     readonly metadata: any | null;
     readonly operator: string;
@@ -210,6 +211,13 @@ v2 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "logPath",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "logUploadError",
         "storageKey": null
       },
@@ -242,16 +250,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "6d94604296a4500a6d799dae21016862",
+    "cacheID": "d0127cbd1b3b942bbe156512f1e4b6bf",
     "id": null,
     "metadata": {},
     "name": "runsItemQuery",
     "operationKind": "query",
-    "text": "query runsItemQuery(\n  $run: String!\n) {\n  delegatedOperation(operationId: $run) {\n    completedAt\n    context\n    datasetId\n    failedAt\n    id\n    operator\n    label\n    pinned\n    queuedAt\n    result\n    runBy {\n      name\n      id\n    }\n    runState\n    scheduledAt\n    startedAt\n    status\n    runLink\n    signedUrl\n    priority\n    logUploadError\n    metadata\n  }\n}\n"
+    "text": "query runsItemQuery(\n  $run: String!\n) {\n  delegatedOperation(operationId: $run) {\n    completedAt\n    context\n    datasetId\n    failedAt\n    id\n    operator\n    label\n    pinned\n    queuedAt\n    result\n    runBy {\n      name\n      id\n    }\n    runState\n    scheduledAt\n    startedAt\n    status\n    runLink\n    signedUrl\n    priority\n    logPath\n    logUploadError\n    metadata\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d5dafb833ad165d6d1bbac8058334274";
+(node as any).hash = "b5056b670ab8d787f35932a1fddcaffc";
 
 export default node;
