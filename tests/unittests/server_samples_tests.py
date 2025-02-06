@@ -11,13 +11,12 @@ import unittest
 import fiftyone as fo
 from fiftyone.server.samples import get_samples_pipeline
 
-from decorators import drop_datasets
+from decorators import drop_async_dataset
 
 
-class ServerSamplesTests(unittest.TestCase):
-    @drop_datasets
-    def test_frames(self):
-        dataset: fo.Dataset = fo.Dataset()
+class ServerSamplesTests(unittest.IsolatedAsyncioTestCase):
+    @drop_async_dataset
+    async def test_frames(self, dataset: fo.Dataset):
         video = fo.Sample(
             filepath="video.mp4",
             label=fo.Classification(label="label"),
@@ -27,15 +26,17 @@ class ServerSamplesTests(unittest.TestCase):
         dataset.add_sample(video)
 
         # test no filters
-        pipeline = get_samples_pipeline(dataset, {}, None, [])
+        pipeline = await get_samples_pipeline(
+            dataset.name, dataset, {}, None, []
+        )
         self.assertEqual(
             pipeline,
             _get_lookup_pipeline(dataset, True) + _get_slice_frames_pipeline(),
         )
 
         # test sample-level filters
-        pipeline = get_samples_pipeline(
-            dataset, {"id": {}, "filepath": {}}, None, []
+        pipeline = await get_samples_pipeline(
+            dataset.name, dataset, {"id": {}, "filepath": {}}, None, []
         )
         self.assertEqual(
             pipeline,
@@ -43,8 +44,8 @@ class ServerSamplesTests(unittest.TestCase):
         )
 
         # test frames-level filters (full frame filtering)
-        pipeline = get_samples_pipeline(
-            dataset, {"frames.label": {}}, None, []
+        pipeline = await get_samples_pipeline(
+            dataset.name, dataset, {"frames.label": {}}, None, []
         )
         self.assertEqual(
             pipeline,
