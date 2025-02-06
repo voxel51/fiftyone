@@ -1,8 +1,9 @@
 import { SelectorValidationError } from "@fiftyone/components";
 import { isObjectIdField, snackbarErrors } from "@fiftyone/state";
 import { isObjectIdString } from "@fiftyone/utilities";
-import { RecoilState, useRecoilCallback } from "recoil";
-import { Result } from "./Result";
+import type { RecoilState } from "recoil";
+import { useRecoilCallback } from "recoil";
+import type { Result } from "./Result";
 
 export default function (
   modal: boolean,

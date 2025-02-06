@@ -29,6 +29,7 @@ export const PainterFactory = (requestColor) => ({
     if (!label?.mask) {
       return;
     }
+    label.renderStatus = "painting";
 
     label.renderStatus = "painting";
 
@@ -189,9 +190,6 @@ export const PainterFactory = (requestColor) => ({
     if (!label?.map) {
       return;
     }
-
-    label.renderStatus = "painting";
-
     const overlay = new Uint32Array(label.map.image);
 
     const mapData = label.map.data;
@@ -270,6 +268,7 @@ export const PainterFactory = (requestColor) => ({
     if (!label?.mask) {
       return;
     }
+    label.renderStatus = "painting";
 
     label.renderStatus = "painting";
 

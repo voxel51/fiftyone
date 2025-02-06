@@ -45,7 +45,8 @@ export class OssLoader extends AbstractFiftyoneLoader {
   async waitUntilGridVisible(
     page: Page,
     datasetName: string,
-    options?: WaitUntilGridVisibleOptions
+    options?: WaitUntilGridVisibleOptions,
+    isRetry?: boolean
   ) {
     const { isEmptyDataset, searchParams, withGrid } = options ?? {
       isEmptyDataset: false,
@@ -61,7 +62,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
     });
 
     const forceDatasetFromSelector = async () => {
-      await page.goto("/");
+      await page.goto("/", { waitUntil: "domcontentloaded" });
       await page.getByTestId("selector-dataset").click();
 
       if (datasetName) {
@@ -76,9 +77,13 @@ export class OssLoader extends AbstractFiftyoneLoader {
 
     const search = searchParams ? searchParams.toString() : undefined;
     if (search) {
-      await page.goto(`/datasets/${datasetName}?${search}`);
+      await page.goto(`/datasets/${datasetName}?${search}`, {
+        waitUntil: "domcontentloaded",
+      });
     } else {
-      await page.goto(`/datasets/${datasetName}`);
+      await page.goto(`/datasets/${datasetName}`, {
+        waitUntil: "domcontentloaded",
+      });
     }
 
     const pathname = await page.evaluate(() => window.location.pathname);
@@ -96,12 +101,26 @@ export class OssLoader extends AbstractFiftyoneLoader {
       }
     }
 
-    await page.waitForSelector(
-      `[data-cy=${withGrid ? "spotlight-section-forward" : "panel-container"}]`,
-      {
-        state: "visible",
+    try {
+      await page.waitForSelector(
+        `[data-cy=${
+          withGrid ? "spotlight-section-forward" : "panel-container"
+        }]`,
+        {
+          state: "visible",
+        }
+      );
+    } catch (e) {
+      if (isRetry) {
+        throw e;
+      } else {
+        const ctx = page.context();
+        ctx.clearCookies();
+        ctx.clearPermissions();
+        await page.reload({ waitUntil: "domcontentloaded" });
+        await this.waitUntilGridVisible(page, datasetName, options, true);
       }
-    );
+    }
 
     if (isEmptyDataset) {
       return;

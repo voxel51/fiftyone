@@ -97,9 +97,7 @@ export abstract class AbstractLooker<
   private readonly rootEvents: Events<State>;
 
   protected readonly abortController: AbortController;
-  protected sampleOverlays: Overlay<State>[];
   protected currentOverlays: Overlay<State>[];
-  protected pluckedOverlays: Overlay<State>[];
   protected sample: S;
   protected readonly updater: StateUpdate<State>;
 
@@ -108,7 +106,10 @@ export abstract class AbstractLooker<
   private isCommittingBatchUpdates = false;
 
   /** @internal */
-  public state: State;
+  state: State;
+
+  sampleOverlays: Overlay<State>[];
+  pluckedOverlays: Overlay<State>[];
 
   private asyncLabelsRenderingManager: AsyncLabelsRenderingManager;
 
@@ -231,7 +232,6 @@ export abstract class AbstractLooker<
     for (let index = 0; index < this.sampleOverlays.length; index++) {
       size += this.sampleOverlays[index].getSizeBytes();
     }
-    console.log("SIZE", size);
     return size;
   }
 
@@ -248,7 +248,6 @@ export abstract class AbstractLooker<
       return;
     }
 
-    console.log("DISPTACH", eventType);
     this.eventTarget.dispatchEvent(new CustomEvent(eventType, { detail }));
   }
 
@@ -569,6 +568,13 @@ export abstract class AbstractLooker<
   abstract updateOptions(options: Partial<State["options"]>): void;
 
   updateSample(sample: Sample) {
+    // todo: sometimes instance in spotlight?.updateItems() is defined but has
+    // no ref to sample, this crashes the app. this is a bug and should be
+    // fixed
+    if (!this.sample) {
+      return;
+    }
+
     const id = sample.id ?? sample._id;
     const updateTimeoutMs = 10000;
 
@@ -620,7 +626,6 @@ export abstract class AbstractLooker<
         this.state.options.coloring = coloring;
         this.loadOverlays(sample);
 
-        console.log("REFIDNVSDKN");
         this.dispatchEvent("refresh", {});
 
         // to run looker reconciliation

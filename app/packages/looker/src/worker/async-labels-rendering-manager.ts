@@ -1,25 +1,26 @@
 import { Lookers } from "@fiftyone/state";
 import { v4 as uuid } from "uuid";
 import { ProcessSample } from ".";
+import { Coloring, Sample } from "..";
 import { LookerUtils } from "../lookers/shared";
 import { createWorker } from "../util";
 
 export type AsyncLabelsRenderingJob = {
-  sample: any;
+  sample: Sample;
   labels: string[];
   lookerRef: Lookers;
-  resolve: (data: any) => void;
+  resolve: (data: Omit<WorkerResponse, "uuid">) => void;
   reject: (error: Error) => void;
 };
 
 export type AsyncJobResolutionResult = {
-  sample: any;
-  coloring: any;
+  sample: Sample;
+  coloring: Coloring;
 };
 
 export type WorkerResponse = {
-  sample: any;
-  coloring: any;
+  sample: Sample;
+  coloring: Coloring;
   uuid: string;
 };
 
@@ -28,8 +29,8 @@ const MAX_WORKERS =
 
 // global job queue and indexes
 const jobQueue: AsyncLabelsRenderingJob[] = [];
-const pendingJobs = new Map<any, AsyncLabelsRenderingJob>();
-const processingSamples = new Set<any>();
+const pendingJobs = new Map<Sample, AsyncLabelsRenderingJob>();
+const processingSamples = new Set<Sample>();
 
 const workerPool: Worker[] = Array.from({ length: MAX_WORKERS }, () =>
   createWorker(LookerUtils.workerCallbacks)
@@ -76,6 +77,13 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
     // shallow merge worker-returned sample with the original sample.
     const mergedSample = { ...job.sample, ...sample };
 
+    // also merge frames if they exist
+    if (job.sample.frames && sample.frames) {
+      mergedSample.frames = job.sample.frames.map((frame, idx) => {
+        return { ...frame, ...sample.frames[idx] };
+      });
+    }
+
     job.resolve({ sample: mergedSample, coloring });
     processingSamples.delete(job.sample);
     freeWorkers.push(worker);
@@ -98,17 +106,31 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
   worker.addEventListener("message", handleMessage);
   worker.addEventListener("error", handleError);
 
-  // filter sample to only include keys in job.labels.
-  const sample = { ...job.sample };
-  Object.keys(sample).forEach((key) => {
-    if (!job.labels.includes(key)) {
-      delete sample[key];
+  // filter sample to only include keys in job.labels
+  const pluckRelevant = (sample: Sample, frames = false) => {
+    const filtered = { ...sample };
+    Object.keys(filtered).forEach((key) => {
+      if (!job.labels.includes(frames ? `frames.${key}` : key)) {
+        if (!frames && key === "frames") {
+          return;
+        }
+        delete filtered[key];
+      }
+    });
+
+    if (filtered.frames?.length) {
+      filtered.frames = filtered.frames.map((frame) => {
+        return pluckRelevant(frame, true);
+      });
     }
-  });
+    return filtered;
+  };
+
+  const filteredSample = pluckRelevant(job.sample);
 
   const workerArgs: ProcessSample & { method: "processSample" } = {
-    sample,
     method: "processSample",
+    sample: filteredSample as ProcessSample["sample"],
     coloring: job.lookerRef.state.options.coloring,
     customizeColorSetting: job.lookerRef.state.options.customizeColorSetting,
     colorscale: job.lookerRef.state.options.colorscale,
@@ -142,8 +164,8 @@ export class AsyncLabelsRenderingManager {
     return new Promise<AsyncJobResolutionResult>((resolve, reject) => {
       const pendingJob = pendingJobs.get(sample);
       if (pendingJob) {
-        // replace the pending job with new labels and new promise callbacks.
-        pendingJob.labels = labels;
+        // merge / replace pending job for the same sample
+        pendingJob.labels = [...new Set([...pendingJob.labels, ...labels])];
         pendingJob.resolve = resolve;
         pendingJob.reject = reject;
       } else {

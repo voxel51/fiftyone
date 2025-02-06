@@ -17,6 +17,7 @@ import { t } from "./util";
 
 export interface DetectionLabel extends RegularLabel {
   mask?: LabelMask;
+  mask_path?: string;
   bounding_box: BoundingBox;
 
   // valid for 3D bounding boxes
@@ -43,6 +44,10 @@ export default class DetectionOverlay<
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
+    if ((this.label.mask || this.label.mask_path) && this.label.mask?.data) {
+      return CONTAINS.NONE;
+    }
+
     const [bx, by, bw, bh] = this.getDrawnBBox(state);
 
     const [px, py] = state.pixelCoordinates;
@@ -59,7 +64,19 @@ export default class DetectionOverlay<
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    this.label.mask && this.drawMask(ctx, state);
+    // renderstatus is guaranteed to be undefined when there is no mask_path
+    // so if render status is not null, means there's a mask
+    // we want to couple rendering of mask with bbox
+    // so we return if render status is truthy and there's no mask
+    // meaning mask is being processed
+    if (this.label.renderStatus && !this.label.mask) {
+      return;
+    }
+
+    if (this.label.mask && this.label.renderStatus === "painted") {
+      this.drawMask(ctx, state);
+    }
+
     !state.config.thumbnail && this.drawLabelText(ctx, state);
 
     if (this.is3D && this.label.dimensions && this.label.location) {
