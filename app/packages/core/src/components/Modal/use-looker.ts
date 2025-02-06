@@ -6,7 +6,6 @@ import { v4 as uuid } from "uuid";
 import { useClearSelectedLabels, useShowOverlays } from "./ModalLooker";
 import { useLookerOptionsUpdate, useModalContext } from "./hooks";
 import useKeyEvents from "./use-key-events";
-import { useModalSelectiveRendering } from "./use-modal-selective-rendering";
 import { shortcutToHelpItems } from "./utils";
 
 const CLOSE = "close";
@@ -51,8 +50,6 @@ function useLooker<L extends fos.Lookers>({
   useEffect(() => {
     !initialRef.current && looker.updateOptions(lookerOptions);
   }, [looker, lookerOptions]);
-
-  useModalSelectiveRendering(id, looker);
 
   useEffect(() => {
     /** start refreshers */

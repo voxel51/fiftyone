@@ -1,3 +1,5 @@
+import { syncAndGetNewLabels } from "@fiftyone/core/src/components/Sidebar/syncAndGetNewLabels";
+import { gridActivePathsLUT } from "@fiftyone/core/src/components/Sidebar/useDetectNewActiveLabelFields";
 import { BufferManager } from "@fiftyone/utilities";
 import { getImaVidElements } from "../../elements";
 import { IMAVID_SHORTCUTS } from "../../elements/common/actions";
@@ -36,10 +38,32 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     }
 
     // subscribe to frame number and update sample when frame number changes
-    this.unsubscribe = this.subscribeToState("currentFrameNumber", () => {
-      this.thisFrameSample?.sample &&
-        this.updateSample(this.thisFrameSample.sample);
-    });
+    this.unsubscribe = this.subscribeToState(
+      "currentFrameNumber",
+      (currentFrameNumber: number) => {
+        const thisFrameId = `${this.uuid}-${currentFrameNumber}`;
+
+        if (
+          gridActivePathsLUT.has(thisFrameId) &&
+          this.thisFrameSample?.sample
+        ) {
+          this.refreshOverlaysToCurrentFrame();
+        } else {
+          const newFieldsIfAny = syncAndGetNewLabels(
+            thisFrameId,
+            gridActivePathsLUT,
+            new Set(this.options.activePaths)
+          );
+
+          if (newFieldsIfAny && currentFrameNumber > 0) {
+            this.refreshSample(newFieldsIfAny, currentFrameNumber);
+          } else {
+            // worst case, only here for fail-safe
+            this.refreshSample();
+          }
+        }
+      }
+    );
   }
 
   get thisFrameSample() {
@@ -204,6 +228,19 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     } else {
       this.updater({ options, disabled: false });
     }
+  }
+
+  refreshOverlaysToCurrentFrame() {
+    let { image: _cachedImage, ...thisFrameSample } =
+      this.frameStoreController.store.getSampleAtFrame(
+        this.frameNumber
+      )?.sample;
+
+    if (!thisFrameSample) {
+      thisFrameSample = this.sample;
+    }
+
+    this.loadOverlays(thisFrameSample);
   }
 
   refreshSample(renderLabels: string[] | null = null, frameNumber?: number) {

@@ -12,7 +12,6 @@ import {
   withPath,
 } from "@fiftyone/utilities";
 import { isEmpty } from "lodash";
-import { v4 as uuid } from "uuid";
 import {
   BASE_ALPHA,
   DASH_LENGTH,
@@ -43,6 +42,7 @@ import {
   mergeUpdates,
   snapBox,
 } from "../util";
+import { v4 as uuid } from "uuid";
 import { ProcessSample } from "../worker";
 import { AsyncLabelsRenderingManager } from "../worker/async-labels-rendering-manager";
 import { LookerUtils } from "./shared";
@@ -104,6 +104,8 @@ export abstract class AbstractLooker<
   private batchMergedUpdates: Partial<State> = {};
   private isBatching = false;
   private isCommittingBatchUpdates = false;
+
+  public uuid = uuid();
 
   /** @internal */
   state: State;

@@ -15,6 +15,7 @@ import {
   MaskTargets,
   RgbMaskTargets,
 } from "../state";
+import { RENDER_STATUS_PAINTED, RENDER_STATUS_PAINTING } from "./shared";
 
 export const PainterFactory = (requestColor) => ({
   Detection: async (
@@ -29,7 +30,7 @@ export const PainterFactory = (requestColor) => ({
     if (!label?.mask) {
       return;
     }
-    label.renderStatus = "painting";
+    label.renderStatus = RENDER_STATUS_PAINTING;
 
     label.renderStatus = "painting";
 
@@ -145,7 +146,7 @@ export const PainterFactory = (requestColor) => ({
       }
     }
 
-    label.renderStatus = "painted";
+    label.renderStatus = RENDER_STATUS_PAINTED;
   },
   Detections: async (
     field,
@@ -160,7 +161,7 @@ export const PainterFactory = (requestColor) => ({
       return;
     }
 
-    labels.renderStatus = "painting";
+    labels.renderStatus = RENDER_STATUS_PAINTING;
 
     const promises = labels.detections.map((label) =>
       PainterFactory(requestColor).Detection(
@@ -176,7 +177,7 @@ export const PainterFactory = (requestColor) => ({
 
     await Promise.all(promises);
 
-    labels.renderStatus = "painted";
+    labels.renderStatus = RENDER_STATUS_PAINTED;
   },
   Heatmap: async (
     field,
@@ -254,7 +255,7 @@ export const PainterFactory = (requestColor) => ({
       overlay[i] = r;
     }
 
-    label.renderStatus = "painted";
+    label.renderStatus = RENDER_STATUS_PAINTED;
   },
   Segmentation: async (
     field,
@@ -268,7 +269,7 @@ export const PainterFactory = (requestColor) => ({
     if (!label?.mask) {
       return;
     }
-    label.renderStatus = "painting";
+    label.renderStatus = RENDER_STATUS_PAINTING;
 
     label.renderStatus = "painting";
 
@@ -404,7 +405,7 @@ export const PainterFactory = (requestColor) => ({
       }
     }
 
-    label.renderStatus = "painted";
+    label.renderStatus = RENDER_STATUS_PAINTED;
   },
 });
 
