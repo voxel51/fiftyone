@@ -23,7 +23,7 @@ export const useImageModalSelectiveRendering = (
     if (newFieldsIfAny) {
       looker?.refreshSample(newFieldsIfAny);
     }
-  }, [id, lookerOptions.activePaths, looker]);
+  }, [id, lookerOptions.activePaths, looker, getNewFields]);
 };
 
 export const useImavidModalSelectiveRendering = (
@@ -87,5 +87,5 @@ export const useVideoModalSelectiveRendering = (
       // it'd require selective re-processing of frames in the buffer
       looker?.refreshSample();
     }
-  }, [id, lookerOptions.activePaths, looker]);
+  }, [id, lookerOptions.activePaths, looker, getNewFields]);
 };
