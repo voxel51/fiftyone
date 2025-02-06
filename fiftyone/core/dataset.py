@@ -7493,6 +7493,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         detach_groups=False,
         groups_only=False,
         manual_group_select=False,
+        optimize_frames=False,
         post_pipeline=None,
     ):
         if media_type is None:
@@ -7529,6 +7530,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if groups_only:
             detach_groups = False
+
+        if optimize_frames:
+            attach_frames = False
+            detach_frames = False
+            frames_only = False
 
         _pipeline = []
 
