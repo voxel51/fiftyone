@@ -129,7 +129,7 @@ def get_view(
                     dataset, view, sample_filter.group
                 )
 
-            if sample_filter.id:
+            elif sample_filter.id:
                 view = fov.make_optimized_select_view(
                     view, [sample_filter.id], optimize_frames=optimize_frames
                 )
