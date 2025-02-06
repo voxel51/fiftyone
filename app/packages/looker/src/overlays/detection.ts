@@ -73,7 +73,10 @@ export default class DetectionOverlay<
       return;
     }
 
-    if (this.label.mask && this.label.renderStatus === "painted") {
+    if (
+      this.label.mask?.bitmap.width &&
+      this.label.renderStatus === "painted"
+    ) {
       this.drawMask(ctx, state);
     }
 

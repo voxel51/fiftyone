@@ -29,6 +29,19 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   private elements: ReturnType<typeof getImaVidElements>;
   private unsubscribe: ReturnType<typeof this.subscribeToState>;
 
+  init() {
+    // we have other mechanism for the modal
+    if (!this.state.config.thumbnail) {
+      return;
+    }
+
+    // subscribe to frame number and update sample when frame number changes
+    this.unsubscribe = this.subscribeToState("currentFrameNumber", () => {
+      this.thisFrameSample?.sample &&
+        this.updateSample(this.thisFrameSample.sample);
+    });
+  }
+
   get thisFrameSample() {
     return this.frameStoreController.store.getSampleAtFrame(this.frameNumber);
   }
@@ -205,20 +218,34 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
       return;
     }
 
-    const sampleId =
+    const sampleIdFromFramesStore =
       this.frameStoreController.store.frameIndex.get(frameNumber);
 
-    if (!sampleId) {
-      return;
+    let sample: Sample;
+
+    // if sampleIdFromFramesStore is not found, it means we're in grid thumbnail view
+    if (sampleIdFromFramesStore) {
+      const { image: _cachedImage, ...sampleWithoutImage } =
+        this.frameStoreController.store.samples.get(sampleIdFromFramesStore);
+      sample = sampleWithoutImage.sample;
+    } else {
+      sample = this.sample;
     }
 
     this.asyncLabelsRenderingManager
       .enqueueLabelPaintingJob({
-        sample: this.frameStoreController.store.samples.get(sampleId).sample,
+        sample: sample as Sample,
         labels: renderLabels,
       })
       .then(({ sample, coloring }) => {
-        this.frameStoreController.store.updateSample(sampleId, sample);
+        if (sampleIdFromFramesStore) {
+          this.frameStoreController.store.updateSample(
+            sampleIdFromFramesStore,
+            sample
+          );
+        } else {
+          this.sample = sample;
+        }
         this.state.options.coloring = coloring;
         this.loadOverlays(sample);
 

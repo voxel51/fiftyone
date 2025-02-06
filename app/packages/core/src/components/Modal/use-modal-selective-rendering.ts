@@ -27,11 +27,13 @@ export const useImavidModalSelectiveRendering = (
   id: string,
   looker: ImaVidLooker
 ) => {
-  const lookerOptions = useLookerOptions(true);
-
   const getNewFields = useDetectNewActiveLabelFields({
     modal: true,
   });
+
+  // this is for default view
+  // subscription below will not have triggered for the first frame
+  useModalSelectiveRendering(id, looker);
 
   useEffect(() => {
     const unsub = looker.subscribeToState(
@@ -45,8 +47,6 @@ export const useImavidModalSelectiveRendering = (
 
         if (newFieldsIfAny) {
           looker.refreshSample(newFieldsIfAny, currentFrameNumber);
-        } else {
-          looker.updateSample(looker.thisFrameSample.sample);
         }
       }
     );
