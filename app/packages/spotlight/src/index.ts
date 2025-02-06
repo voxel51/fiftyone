@@ -264,7 +264,6 @@ export default class Spotlight<K, V> extends EventTarget {
 
     const validate = (key: string, add: number) => {
       map.set(key, add);
-      console.log(sum(Array.from(map.values())));
       if (
         sum(Array.from(map.values())) >= this.#config.maxItemsSizeBytes &&
         this.#config.rowAspectRatioThreshold(this.#width) > ONE
