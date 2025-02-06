@@ -224,7 +224,10 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
 
     if (reload) {
       this.updater({ options, reloading: this.state.disabled });
-      this.updateSample(this.sample);
+      if (this.config.thumbnail) {
+        // `useImavidModalSelectiveRendering` takes care of it for modal
+        this.updateSample(this.sample);
+      }
     } else {
       this.updater({ options, disabled: false });
     }
@@ -290,9 +293,6 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
         this.updater({
           overlaysPrepared: true,
         });
-      })
-      .catch((error) => {
-        this.updater({ error });
       });
   }
 }
