@@ -102,7 +102,9 @@ async def paginate_samples(
     if int(after) > -1:
         view = view.skip(int(after) + 1)
 
-    pipeline = get_samples_pipeline(view, filters, sample_filter, stages)
+    pipeline = await get_samples_pipeline(
+        dataset, view, filters, sample_filter, stages
+    )
 
     samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
@@ -180,13 +182,17 @@ async def _create_sample_item(
     return from_dict(cls, {"id": _id, "sample": sample, **metadata})
 
 
-def get_samples_pipeline(
+async def get_samples_pipeline(
+    dataset: str,
     view: SampleCollection,
     filters: t.Optional[JSON],
     sample_filter: t.Optional[SampleFilter],
     stages: BSONArray,
 ):
-    frames, frames_pipeline = _handle_frames(view, filters, stages)
+    root_view = await run_sync_task(
+        lambda: fosv.get_view(dataset, stages=stages)
+    )
+    frames, frames_pipeline = _handle_frames(view, filters, root_view)
     groups = _handle_groups(sample_filter)
     pipeline = view._pipeline(
         **groups,
@@ -200,12 +206,16 @@ def get_samples_pipeline(
 
 
 def _handle_frames(
-    view: SampleCollection, filters: t.Optional[JSON], stages: BSONArray
+    view: SampleCollection,
+    filters: t.Optional[JSON],
+    root_view: SampleCollection,
 ):
     # check frame field schema explicitly, media type is not reliable for
     # groups
     attach_frames = view.get_frame_field_schema() is not None
-    full_lookup = attach_frames and (_has_frame_filtering(filters) or stages)
+    full_lookup = attach_frames and (
+        _has_frame_filtering(filters) or root_view._stages
+    )
 
     # Only return the first frame of each video sample for the grid thumbnail
     if attach_frames:
