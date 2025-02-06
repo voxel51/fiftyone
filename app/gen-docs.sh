@@ -5,6 +5,7 @@
 # --rebuild-sphinx: rebuild the sphinx docs
 REBUILD_SHPINX=false
 REBUILD_TYPEDOC=true
+GENERATE_MARKDOWN=false
 DOCS_JSON_FILE="docs.json"
 
 while [[ $# -gt 0 ]]; do
@@ -18,6 +19,10 @@ while [[ $# -gt 0 ]]; do
             REBUILD_SHPINX=true
             shift
             ;;
+        --generate-markdown)
+            GENERATE_MARKDOWN=true
+            shift
+            ;;
         *)
             echo "Unknown flag: $key"
             exit 1
@@ -28,7 +33,14 @@ done
 if [ "$REBUILD_TYPEDOC" = true ] ; then
   echo "Rebuilding typedoc JSON..."
   echo "Generating doc JSON... at $DOCS_JSON_FILE"
-  npx typedoc --options typedoc.js --json $DOCS_JSON_FILE
+  # if markdown
+  if [ "$GENERATE_MARKDOWN" = true ] ; then
+    yarn typedoc --options typedoc.js --plugin typedoc-plugin-markdown --out docs
+    # done!
+    exit 0
+  else
+    yarn typedoc --options typedoc.js --json $DOCS_JSON_FILE
+  fi
 fi
 
 node gen-docs.js $DOCS_JSON_FILE

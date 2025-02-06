@@ -12,3 +12,4 @@ dist
 docs.json
 tsconfig.tsbuildinfo
 yarn-error.log
+docs
