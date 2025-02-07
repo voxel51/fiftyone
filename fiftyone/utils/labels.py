@@ -7,6 +7,8 @@ Label utilities.
 """
 import contextlib
 
+import eta.core.utils as etau
+
 import fiftyone.core.labels as fol
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
@@ -201,8 +203,15 @@ def export_segmentations(
         (fol.Segmentation, fol.Detection, fol.Detections, fol.Heatmap),
     )
 
-    samples = sample_collection.select_fields(in_field)
-    in_field, processing_frames = samples._handle_frame_field(in_field)
+    select_fields = [in_field]
+    in_field, processing_frames = sample_collection._handle_frame_field(
+        in_field
+    )
+    if processing_frames:
+        # filepath required for filename generation
+        select_fields.append("frames.filepath")
+
+    samples = sample_collection.select_fields(select_fields)
 
     if overwrite:
         fos.delete_dir(output_dir)
