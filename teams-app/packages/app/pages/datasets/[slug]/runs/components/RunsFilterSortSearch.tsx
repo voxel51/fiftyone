@@ -177,8 +177,7 @@ export default function RunsFilterSortSearch() {
             value={datasetSelection}
           />
         )}
-        <RadioGroup
-          defaultValue="all"
+        <Selection
           items={[
             { id: "all", label: "All runs" },
             { id: "my", label: "My runs" },
