@@ -12,6 +12,7 @@ import {
   withPath,
 } from "@fiftyone/utilities";
 import { isEmpty } from "lodash";
+import { v4 as uuid } from "uuid";
 import {
   BASE_ALPHA,
   DASH_LENGTH,
@@ -42,7 +43,6 @@ import {
   mergeUpdates,
   snapBox,
 } from "../util";
-import { v4 as uuid } from "uuid";
 import { ProcessSample } from "../worker";
 import { AsyncLabelsRenderingManager } from "../worker/async-labels-rendering-manager";
 import { LookerUtils } from "./shared";
@@ -552,6 +552,7 @@ export abstract class AbstractLooker<
           this.loadSample(sample, retrieveTransferables(this.sampleOverlays));
         } catch (error) {
           this.isSampleUpdating = false;
+          console.error(error);
         }
       }, UPDATE_SAMPLE_DEBOUNCE_MS);
     };
@@ -785,8 +786,15 @@ export abstract class AbstractLooker<
 
     const labelsWorker = getLabelsWorker();
 
-    const listener = ({ data: { sample, coloring, uuid } }) => {
+    const listener = ({ data: { sample, coloring, uuid, error } }) => {
       if (uuid === messageUUID) {
+        if (error) {
+          console.warn(error);
+          this.isSampleUpdating = false;
+          labelsWorker.removeEventListener("message", listener);
+          return;
+        }
+
         // we paint overlays again, so cleanup the old ones
         // this helps prevent memory leaks from, for instance, dangling ImageBitmaps
         this.cleanOverlays();
@@ -798,6 +806,7 @@ export abstract class AbstractLooker<
           disabled: false,
           reloading: false,
         });
+
         labelsWorker.removeEventListener("message", listener);
 
         this.isSampleUpdating = false;
