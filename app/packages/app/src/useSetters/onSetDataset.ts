@@ -5,6 +5,8 @@ import {
 } from "@fiftyone/relay";
 import {
   GRID_SPACES_DEFAULT,
+  ResponseFrom,
+  Session,
   ensureColorScheme,
   stateSubscription,
 } from "@fiftyone/state";
@@ -27,17 +29,11 @@ const onSetDataset: RegisteredSetter =
       });
 
     const unsubscribe = subscribeBefore<DatasetPageQuery>((entry) => {
-      sessionRef.current.selectedLabels = [];
-      sessionRef.current.selectedSamples = new Set();
-      sessionRef.current.sessionSpaces = GRID_SPACES_DEFAULT;
-      sessionRef.current.fieldVisibilityStage = undefined;
-      sessionRef.current.colorScheme = ensureColorScheme(
-        entry.data.dataset?.appConfig,
-        entry.data.config
-      );
-      sessionRef.current.sessionGroupSlice =
-        entry.data.dataset?.defaultGroupSlice || undefined;
-
+      assignSession(sessionRef.current, {
+        colorScheme: entry.data.dataset?.appConfig?.colorScheme,
+        config: entry.data.config,
+        groupSlice: entry.data.dataset?.defaultGroupSlice,
+      });
       unsubscribe();
     });
 
@@ -59,5 +55,28 @@ const onSetDataset: RegisteredSetter =
       }
     );
   };
+
+export const assignSession = (
+  session: Session,
+  settings: {
+    colorScheme?: Partial<
+      NonNullable<
+        NonNullable<ResponseFrom<DatasetPageQuery>["dataset"]>["appConfig"]
+      >["colorScheme"]
+    >;
+    config?: ResponseFrom<DatasetPageQuery>["config"];
+    groupSlice?: null | string;
+  }
+) => {
+  session.selectedLabels = [];
+  session.selectedSamples = new Set();
+  session.sessionSpaces = GRID_SPACES_DEFAULT;
+  session.fieldVisibilityStage = undefined;
+  session.colorScheme = ensureColorScheme(
+    settings.colorScheme,
+    settings.config
+  );
+  session.sessionGroupSlice = settings?.groupSlice || undefined;
+};
 
 export default onSetDataset;
