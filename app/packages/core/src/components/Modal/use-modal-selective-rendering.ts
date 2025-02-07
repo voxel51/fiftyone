@@ -34,26 +34,17 @@ export const useImavidModalSelectiveRendering = (
     modal: true,
   });
 
-  const coloringIds = useRef(new WeakMap<any, any>());
-  const coloringIdCounter = useRef(0);
-
   const lookerOptions = useLookerOptions(true);
 
   // this is for default view
   // subscription below will not have triggered for the first frame
   useImageModalSelectiveRendering(id, looker);
 
-  // way to get a unique id for a coloring without hashing on the content of coloring
+  // using weak heuristic to detect coloring changes
+  // this is not perfect, but should be good enough
   const getColoringHash = useCallback(() => {
-    if (!coloringIds.current.has(lookerOptions.coloring)) {
-      coloringIds.current.set(
-        lookerOptions.coloring,
-        `id_${coloringIdCounter.current++}`
-      );
-    }
-
-    return coloringIds.current.get(lookerOptions.coloring);
-  }, [lookerOptions.coloring]);
+    return lookerOptions?.coloring?.targets.join("-") ?? "";
+  }, [lookerOptions]);
 
   useEffect(() => {
     const unsub = looker.subscribeToState(

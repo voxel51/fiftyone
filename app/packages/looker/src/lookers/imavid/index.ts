@@ -41,7 +41,11 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     this.unsubscribe = this.subscribeToState(
       "currentFrameNumber",
       (currentFrameNumber: number) => {
-        const thisFrameId = `${this.uuid}-${currentFrameNumber}`;
+        const thisFrameId = `${
+          this.uuid
+        }-${currentFrameNumber}-${this.state.options.coloring.targets.join(
+          "-"
+        )}`;
 
         if (
           gridActivePathsLUT.has(thisFrameId) &&
