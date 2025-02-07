@@ -1,6 +1,6 @@
 import { ImaVidLooker, VideoLooker } from "@fiftyone/looker";
 import { Lookers, useLookerOptions } from "@fiftyone/state";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
 
 export const useImageModalSelectiveRendering = (
@@ -23,7 +23,7 @@ export const useImageModalSelectiveRendering = (
     if (newFieldsIfAny) {
       looker?.refreshSample(newFieldsIfAny);
     }
-  }, [id, lookerOptions.activePaths, looker]);
+  }, [id, lookerOptions.activePaths, looker, getNewFields]);
 };
 
 export const useImavidModalSelectiveRendering = (
@@ -34,9 +34,17 @@ export const useImavidModalSelectiveRendering = (
     modal: true,
   });
 
+  const lookerOptions = useLookerOptions(true);
+
   // this is for default view
   // subscription below will not have triggered for the first frame
   useImageModalSelectiveRendering(id, looker);
+
+  // using weak heuristic to detect coloring changes
+  // this is not perfect, but should be good enough
+  const getColoringHash = useCallback(() => {
+    return lookerOptions?.coloring?.targets.join("-") ?? "";
+  }, [lookerOptions]);
 
   useEffect(() => {
     const unsub = looker.subscribeToState(
@@ -46,7 +54,7 @@ export const useImavidModalSelectiveRendering = (
           return;
         }
 
-        const thisFrameId = `${id}-${currentFrameNumber}`;
+        const thisFrameId = `${id}-${currentFrameNumber}-${getColoringHash()}`;
 
         const newFieldsIfAny = getNewFields(thisFrameId);
 
@@ -62,7 +70,7 @@ export const useImavidModalSelectiveRendering = (
     return () => {
       unsub();
     };
-  }, [getNewFields, looker]);
+  }, [getNewFields, getColoringHash, looker]);
 };
 
 export const useVideoModalSelectiveRendering = (
@@ -87,5 +95,5 @@ export const useVideoModalSelectiveRendering = (
       // it'd require selective re-processing of frames in the buffer
       looker?.refreshSample();
     }
-  }, [id, lookerOptions.activePaths, looker]);
+  }, [id, lookerOptions.activePaths, looker, getNewFields]);
 };
