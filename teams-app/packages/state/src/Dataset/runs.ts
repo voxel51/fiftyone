@@ -97,9 +97,14 @@ export const runsPageStatusQuery = graphql`
       search: $search
     ) {
       nodes {
+        completedAt
+        failedAt
         id
-        status
+        queuedAt
         runState
+        scheduledAt
+        startedAt
+        status
       }
     }
   }
