@@ -548,7 +548,11 @@ export abstract class AbstractLooker<
         }
 
         this.isSampleUpdating = true;
-        this.loadSample(sample, retrieveTransferables(this.sampleOverlays));
+        try {
+          this.loadSample(sample, retrieveTransferables(this.sampleOverlays));
+        } catch (error) {
+          this.isSampleUpdating = false;
+        }
       }, UPDATE_SAMPLE_DEBOUNCE_MS);
     };
   })();
