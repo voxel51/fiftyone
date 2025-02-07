@@ -46,8 +46,3 @@ test("handles reverse fibonnaci", () => {
   expect(tile([5, 3, 2, 1], 3, true)).toStrictEqual([1, 2, 4]);
   expect(tile([5, 3, 2, 1], 3, false)).toStrictEqual([1, 2, 4]);
 });
-
-test("handles reverse fibonnaci", () => {
-  expect(tile([5, 3, 2, 1], 3, true)).toStrictEqual([1, 2, 4]);
-  expect(tile([5, 3, 2, 1], 3, false)).toStrictEqual([1, 2, 4]);
-});

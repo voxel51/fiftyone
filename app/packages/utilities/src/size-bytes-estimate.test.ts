@@ -1,5 +1,7 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import sizeBytesEstimate from "./size-bytes-estimate";
+
+vi.stubGlobal("createImageBitmap", (canvas: HTMLCanvasElement) => canvas);
 
 describe("sizeBytesEstimate tests", () => {
   test("Array values are summed", () => {

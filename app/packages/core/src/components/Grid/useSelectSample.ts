@@ -5,6 +5,7 @@ import {
   selectedSamples,
   useSetSelected,
 } from "@fiftyone/state";
+import { useRef } from "react";
 import { useRecoilCallback } from "recoil";
 import type { Records } from "./useRecords";
 
@@ -101,15 +102,11 @@ export const removeRange = (
 
 export default (records: Records) => {
   const setSelected = useSetSelected();
-
-  return useRecoilCallback(
+  const ref = useRef<(params: SelectThumbnailData) => Promise<void>>();
+  ref.current = useRecoilCallback(
     ({ set, snapshot }) =>
-      async ({
-        shiftKey,
-        id: sampleId,
-        sample,
-        symbol,
-      }: SelectThumbnailData) => {
+      async (params: SelectThumbnailData) => {
+        const { shiftKey, id: sampleId, sample, symbol } = params;
         const current = new Set(await snapshot.getPromise(selectedSamples));
         let selected = new Set(current);
         const selectedObjects = new Map(
@@ -142,4 +139,5 @@ export default (records: Records) => {
       },
     [records, setSelected]
   );
+  return ref;
 };
