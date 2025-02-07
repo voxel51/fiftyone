@@ -1,7 +1,7 @@
 # If you are using the `Building and Deploying FiftyOne Teams (internal use)` doc
 # https://docs.google.com/document/d/1Tn-gf4XKKF3P2fUIVPF0xGDuidbI04WvKmnPlPKTVSQ
-# Then `TORCH_IMAGE_NAME` should already be set, just reuse it here...
-ARG TORCH_IMAGE_NAME
+# Then `CV_BASE_IMAGE_NAME` should already be set, just reuse it here...
+ARG CV_BASE_IMAGE_NAME
 ARG PYTHON_VERSION=3.11
 
 FROM python:${PYTHON_VERSION} AS wheelhouse
@@ -17,7 +17,7 @@ RUN pip wheel --wheel-dir=/tmp/wheels \
   wandb==0.16.4
 
 
-FROM ${TORCH_IMAGE_NAME} AS protexaiplugins
+FROM ${CV_BASE_IMAGE_NAME} AS protexaiplugins
 
 RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     pip --no-cache-dir install -q --no-index \
