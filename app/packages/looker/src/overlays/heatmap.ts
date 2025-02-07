@@ -46,7 +46,8 @@ export default class HeatmapOverlay<State extends BaseState>
   constructor(field: string, label: HeatmapLabel) {
     this.field = field;
     this.label = label;
-    if (!this.label.map) {
+
+    if (!this.label.map?.data) {
       return;
     }
 
@@ -66,6 +67,10 @@ export default class HeatmapOverlay<State extends BaseState>
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
+    if (!this.label.map?.data) {
+      return CONTAINS.NONE;
+    }
+
     const {
       pixelCoordinates: [x, y],
       dimensions: [w, h],
@@ -77,7 +82,7 @@ export default class HeatmapOverlay<State extends BaseState>
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    if (this.label.map?.bitmap) {
+    if (this.label.map?.bitmap?.width) {
       const [tlx, tly] = t(state, 0, 0);
       const [brx, bry] = t(state, 1, 1);
       const tmp = ctx.globalAlpha;
@@ -206,9 +211,12 @@ export default class HeatmapOverlay<State extends BaseState>
     return sizeBytesEstimate(this.label);
   }
 
-  public cleanup(): void {
+  public cleanup(setTargetsToNull = false): void {
     this.label.map?.bitmap?.close();
-    this.targets = null;
+
+    if (setTargetsToNull) {
+      this.targets = null;
+    }
   }
 }
 

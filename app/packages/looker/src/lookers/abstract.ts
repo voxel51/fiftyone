@@ -1,3 +1,4 @@
+import { Lookers } from "@fiftyone/state";
 import {
   AppError,
   DATE_FIELD,
@@ -11,7 +12,6 @@ import {
   withPath,
 } from "@fiftyone/utilities";
 import { isEmpty } from "lodash";
-import { v4 as uuid } from "uuid";
 import {
   BASE_ALPHA,
   DASH_LENGTH,
@@ -42,9 +42,13 @@ import {
   mergeUpdates,
   snapBox,
 } from "../util";
+import { v4 as uuid } from "uuid";
 import { ProcessSample } from "../worker";
+import { AsyncLabelsRenderingManager } from "../worker/async-labels-rendering-manager";
 import { LookerUtils } from "./shared";
-import { retrieveArrayBuffers } from "./utils";
+import { retrieveTransferables } from "./utils";
+
+const UPDATING_SAMPLES_IDS = new Set();
 
 const LABEL_LISTS_PATH = new Set(withPath(LABELS_PATH, LABEL_LISTS));
 const LABEL_LIST_KEY = Object.fromEntries(
@@ -93,16 +97,23 @@ export abstract class AbstractLooker<
   private readonly rootEvents: Events<State>;
 
   protected readonly abortController: AbortController;
-  protected sampleOverlays: Overlay<State>[];
   protected currentOverlays: Overlay<State>[];
-  protected pluckedOverlays: Overlay<State>[];
   protected sample: S;
-  protected state: State;
   protected readonly updater: StateUpdate<State>;
 
   private batchMergedUpdates: Partial<State> = {};
   private isBatching = false;
   private isCommittingBatchUpdates = false;
+
+  public uuid = uuid();
+
+  /** @internal */
+  state: State;
+
+  sampleOverlays: Overlay<State>[];
+  pluckedOverlays: Overlay<State>[];
+
+  protected asyncLabelsRenderingManager: AsyncLabelsRenderingManager;
 
   constructor(
     sample: S,
@@ -154,6 +165,10 @@ export abstract class AbstractLooker<
           }
         ),
       3500
+    );
+
+    this.asyncLabelsRenderingManager = new AsyncLabelsRenderingManager(
+      this as unknown as Lookers
     );
 
     this.init();
@@ -517,7 +532,71 @@ export abstract class AbstractLooker<
   abstract updateOptions(options: Partial<State["options"]>): void;
 
   updateSample(sample: Sample) {
-    this.loadSample(sample, retrieveArrayBuffers(this.sampleOverlays));
+    // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
+    // this crashes the app. this is a bug and should be fixed
+    if (!this.sample) {
+      return;
+    }
+
+    const id = sample.id ?? sample._id;
+    const updateTimeoutMs = 10000;
+
+    if (UPDATING_SAMPLES_IDS.has(id)) {
+      UPDATING_SAMPLES_IDS.delete(id);
+      this.cleanOverlays(true);
+
+      // to prevent deadlock, we'll remove the id from the set after a timeout
+      const timeoutId = setTimeout(() => {
+        UPDATING_SAMPLES_IDS.delete(id);
+      }, updateTimeoutMs);
+
+      queueMicrotask(() => {
+        try {
+          this.updateSample(sample);
+          clearTimeout(timeoutId);
+        } catch (e) {
+          UPDATING_SAMPLES_IDS.delete(id);
+          this.updater({ error: e });
+        }
+      });
+      return;
+    }
+
+    UPDATING_SAMPLES_IDS.add(id);
+
+    this.loadSample(sample, retrieveTransferables(this.sampleOverlays));
+  }
+
+  refreshSample(renderLabels: string[] | null = null) {
+    // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
+    // this crashes the app. this is a bug and should be fixed
+    if (!this.sample) {
+      return;
+    }
+
+    if (!renderLabels?.length) {
+      this.updateSample(this.sample);
+      return;
+    }
+
+    this.asyncLabelsRenderingManager
+      .enqueueLabelPaintingJob({
+        sample: this.sample,
+        labels: renderLabels,
+      })
+      .then(({ sample, coloring }) => {
+        this.sample = sample;
+        this.state.options.coloring = coloring;
+        this.loadOverlays(sample);
+
+        // to run looker reconciliation
+        this.updater({
+          overlaysPrepared: true,
+        });
+      })
+      .catch((error) => {
+        this.updater({ error });
+      });
   }
 
   getSample(): Promise<Sample> {
@@ -701,9 +780,9 @@ export abstract class AbstractLooker<
     );
   }
 
-  protected cleanOverlays() {
+  protected cleanOverlays(setTargetsToNull = false) {
     for (const overlay of this.sampleOverlays ?? []) {
-      overlay.cleanup?.();
+      overlay.cleanup?.(setTargetsToNull);
     }
   }
 
@@ -726,6 +805,8 @@ export abstract class AbstractLooker<
           reloading: false,
         });
         labelsWorker.removeEventListener("message", listener);
+
+        UPDATING_SAMPLES_IDS.delete(sample.id ?? sample._id);
       }
     };
 
@@ -742,6 +823,7 @@ export abstract class AbstractLooker<
       sources: this.state.config.sources,
       schema: this.state.config.fieldSchema,
       uuid: messageUUID,
+      activePaths: this.state.options.activePaths,
     } as ProcessSample;
 
     try {

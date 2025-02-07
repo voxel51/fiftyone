@@ -60,6 +60,12 @@ DATASET_FILTER_STAGE = [{"$match": DATASET_FILTER[0]}]
 
 
 @gql.type
+class FieldVisibilityConfig:
+    include: t.Optional[t.List[str]]
+    exclude: t.Optional[t.List[str]]
+
+
+@gql.type
 class Group:
     name: str
     media_type: MediaType
@@ -210,6 +216,7 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 @gql.type
 class DatasetAppConfig:
     color_scheme: t.Optional[ColorScheme]
+    default_visibility_labels: t.Optional[FieldVisibilityConfig]
     disable_frame_filtering: t.Optional[bool] = None
     dynamic_groups_target_frame_rate: int = 30
     grid_media_field: str = "filepath"

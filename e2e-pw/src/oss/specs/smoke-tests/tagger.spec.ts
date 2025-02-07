@@ -33,14 +33,15 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
-
   await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
     max_samples: 5,
   });
 });
 
-test.beforeEach(async ({ page, fiftyoneLoader }) => {
+test.beforeEach(async ({ page, fiftyoneLoader, sidebar }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  await sidebar.clickFieldCheckbox("ground_truth");
+  await sidebar.clickFieldCheckbox("predictions");
 });
 
 test.describe.serial("tag", () => {
