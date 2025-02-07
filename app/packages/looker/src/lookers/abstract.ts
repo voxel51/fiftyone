@@ -46,7 +46,7 @@ import { v4 as uuid } from "uuid";
 import { ProcessSample } from "../worker";
 import { AsyncLabelsRenderingManager } from "../worker/async-labels-rendering-manager";
 import { LookerUtils } from "./shared";
-import { retrieveArrayBuffers } from "./utils";
+import { retrieveTransferables } from "./utils";
 
 const UPDATING_SAMPLES_IDS = new Set();
 
@@ -564,7 +564,7 @@ export abstract class AbstractLooker<
 
     UPDATING_SAMPLES_IDS.add(id);
 
-    this.loadSample(sample, retrieveArrayBuffers(this.sampleOverlays));
+    this.loadSample(sample, retrieveTransferables(this.sampleOverlays));
   }
 
   refreshSample(renderLabels: string[] | null = null) {

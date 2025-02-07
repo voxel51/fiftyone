@@ -3,6 +3,8 @@ import { v4 as uuid } from "uuid";
 import { ProcessSample } from ".";
 import { Coloring, Sample } from "..";
 import { LookerUtils } from "../lookers/shared";
+import { retrieveTransferables } from "../lookers/utils";
+import { accumulateOverlays } from "../overlays";
 import { createWorker } from "../util";
 
 export type AsyncLabelsRenderingJob = {
@@ -131,6 +133,7 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
   const workerArgs: ProcessSample & { method: "processSample" } = {
     method: "processSample",
     sample: filteredSample as ProcessSample["sample"],
+    uuid: messageUuid,
     coloring: job.lookerRef.state.options.coloring,
     customizeColorSetting: job.lookerRef.state.options.customizeColorSetting,
     colorscale: job.lookerRef.state.options.colorscale,
@@ -138,11 +141,16 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
     selectedLabelTags: job.lookerRef.state.options.selectedLabelTags,
     sources: job.lookerRef.state.config.sources,
     schema: job.lookerRef.state.config.fieldSchema,
-    uuid: messageUuid,
     activePaths: job.lookerRef.state.options.activePaths,
   };
 
-  worker.postMessage(workerArgs);
+  const { overlays: filteredOverlays } = accumulateOverlays(
+    filteredSample,
+    job.lookerRef.state.config.fieldSchema
+  );
+  const transfer = retrieveTransferables(filteredOverlays);
+
+  worker.postMessage(workerArgs, transfer);
 };
 
 export class AsyncLabelsRenderingManager {

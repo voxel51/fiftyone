@@ -1,6 +1,6 @@
 import { ImaVidLooker, VideoLooker } from "@fiftyone/looker";
 import { Lookers, useLookerOptions } from "@fiftyone/state";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
 
 export const useImageModalSelectiveRendering = (
@@ -34,9 +34,26 @@ export const useImavidModalSelectiveRendering = (
     modal: true,
   });
 
+  const coloringIds = useRef(new WeakMap<any, any>());
+  const coloringIdCounter = useRef(0);
+
+  const lookerOptions = useLookerOptions(true);
+
   // this is for default view
   // subscription below will not have triggered for the first frame
   useImageModalSelectiveRendering(id, looker);
+
+  // way to get a unique id for a coloring without hashing on the content of coloring
+  const getColoringHash = useCallback(() => {
+    if (!coloringIds.current.has(lookerOptions.coloring)) {
+      coloringIds.current.set(
+        lookerOptions.coloring,
+        `id_${coloringIdCounter.current++}`
+      );
+    }
+
+    return coloringIds.current.get(lookerOptions.coloring);
+  }, [lookerOptions.coloring]);
 
   useEffect(() => {
     const unsub = looker.subscribeToState(
@@ -46,7 +63,7 @@ export const useImavidModalSelectiveRendering = (
           return;
         }
 
-        const thisFrameId = `${id}-${currentFrameNumber}`;
+        const thisFrameId = `${id}-${currentFrameNumber}-${getColoringHash()}`;
 
         const newFieldsIfAny = getNewFields(thisFrameId);
 
@@ -62,7 +79,7 @@ export const useImavidModalSelectiveRendering = (
     return () => {
       unsub();
     };
-  }, [getNewFields, looker]);
+  }, [getNewFields, getColoringHash, looker]);
 };
 
 export const useVideoModalSelectiveRendering = (
