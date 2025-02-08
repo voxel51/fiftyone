@@ -5,12 +5,14 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import inspect
 import itertools
 import logging
 import os
 
 from bson import ObjectId
 import numpy as np
+from tqdm.auto import tqdm
 
 import fiftyone.core.dataset as fod
 import fiftyone.core.utils as fou
@@ -19,7 +21,6 @@ import fiftyone.operators.store as foos
 
 os.environ["GRPC_VERBOSITY"] = "NONE"
 fou.ensure_import("apache_beam")
-tqdm = fou.lazy_import("tqdm.auto")
 
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions
@@ -349,6 +350,7 @@ def beam_map(
     sample_collection,
     map_fcn,
     reduce_fcn=None,
+    reduce_cls=None,
     save=None,
     shard_size=None,
     shard_method="id",
@@ -360,25 +362,38 @@ def beam_map(
     """Applies the given function to each sample in the collection via
      `Apache Beam <https://beam.apache.org>`_.
 
-    When only a ``map_fcn`` is provided, this function is a parallelized
-    version of
-    :meth:`iter_samples(autosave=True) <fiftyone.core.collections.SampleCollection.iter_samples>`
-    that effectively performs the following operation with the outer loop
-    in parallel::
+    When only a ``map_fcn`` is provided, this function effectively performs
+    the following map operation with the outer loop in parallel::
 
-        for batch_view in fou.iter_batches(sample_collection, shard_size):
+        for batch_view in fou.iter_slices(sample_collection, shard_size):
             for sample in batch_view.iter_samples(autosave=True):
                 map_fcn(sample)
 
-    When a ``reduce_fcn`` is provided, this function effectively performs the
-    following operation with the outer loop in parallel::
+    When a ``reduce_fcn`` function is provided, this function effectively
+    performs the following map-reduce operation with the outer loop in
+    parallel::
 
-        values = {}
-        for batch_view in fou.iter_batches(sample_collection, shard_size):
+        outputs = {}
+
+        for batch_view in fou.iter_slices(sample_collection, shard_size):
             for sample in batch_view.iter_samples(autosave=save):
-                values[sample.id] = map_fcn(sample)
+                outputs[sample.id] = map_fcn(sample)
 
-        output = reduce_fcn(sample_collection, values)
+        output = reduce_fcn(sample_collection, outputs)
+
+    When a ``reduce_fcn`` class is provided, this function effectively performs
+    the following map-reduce operation with the outer loop in parallel:
+
+        reducer = reduce_fcn(...)
+
+        for batch_view in fou.iter_slices(sample_collection, shard_size):
+            for sample in batch_view.iter_samples(autosave=True):
+                sample_output = sample.map_fcn(sample)
+
+                # Outputs are fed to reducer.add_input()
+                yield sample.id, sample_output
+
+        output = reducer.extract_output(...)
 
     Example::
 
@@ -401,11 +416,11 @@ def beam_map(
         print(dataset.count_values("ground_truth.label"))
 
         #
-        # Example 2: map-reduce
+        # Example 2: map-reduce with reduce function
         #
 
         def map_fcn(sample):
-            return sample.ground_truth.label.lower()
+            return sample.ground_truth.label.upper()
 
         def reduce_fcn(sample_collection, values):
             from collections import Counter
@@ -414,15 +429,47 @@ def beam_map(
         counts = foub.beam_map(view, map_fcn, reduce_fcn=reduce_fcn, progress=True)
         print(counts)
 
+        #
+        # Example 3: map-reduce with reduce class
+        #
+
+        def map_fcn(sample):
+            return sample.ground_truth.label.upper()
+
+        class ReduceFcn(foub.ReduceFcn):
+            def create_accumulator(self):
+                from collections import Counter
+                return Counter()
+
+            def add_input(self, accumulator, input):
+                sample_id, value = input
+                accumulator[value] += 1
+                return accumulator
+
+            def merge_accumulators(self, accumulators):
+                from collections import Counter
+                accumulator = Counter()
+                for a in accumulators:
+                    accumulator.update(a)
+                return accumulator
+
+            def extract_output(self, accumulator):
+                counts = dict(accumulator)
+                self._store_output(counts)
+
+        counts = foub.beam_map(view, map_fcn, reduce_fcn=ReduceFcn, progress=True)
+        print(counts)
+
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         map_fcn: a function to apply to each sample
-        reduce_fcn (None): an optional reduce function to apply to the map
-            outputs. See the docstring above for usage information
+        reduce_fcn (None): an optional function or
+            :class:`fiftyone.utils.beam.ReduceFcn` to reduce the map outputs.
+            See above for usage information
         save (None): whether to save any sample edits applied by ``map_fcn``.
             By default this is True when no ``reduce_fcn`` is provided and
-            False when a ``reduce_fcn`` is provided
+            False otherwise
         shard_size (None): an optional number of samples to distribute to each
             worker at a time. By default, samples are evenly distributed to
             workers with one shard per worker
@@ -440,7 +487,7 @@ def beam_map(
         verbose (False): whether to log the Beam pipeline's messages
 
     Returns:
-        the output of ``reduce_fcn``, or None
+        the output of ``reduce_fcn`` if provided, else None
     """
     if shard_method == "slice":
         n = len(sample_collection)
@@ -450,6 +497,17 @@ def beam_map(
 
     if num_workers is None:
         num_workers = fou.recommend_process_pool_workers()
+
+    # Must cap size of select(ids) stages
+    if shard_method == "id":
+        max_shard_size = fou.recommend_batch_size_for_value(
+            ObjectId(), max_size=100000
+        )
+
+        if shard_size is not None:
+            shard_size = min(shard_size, max_shard_size)
+        elif n > num_workers * max_shard_size:
+            shard_size = max_shard_size
 
     if shard_size is not None:
         # Fixed size shards
@@ -497,9 +555,15 @@ def beam_map(
 
     if reduce_fcn is not None:
         result_key = f"beam_map_{str(ObjectId())}"
-        reduce_fn = ReduceFn(
+
+        if inspect.isclass(reduce_fcn):
+            reduce_cls = reduce_fcn
+        else:
+            reduce_cls = ReduceFcn
+
+        reduce_fn = reduce_cls(
             dataset_name,
-            reduce_fcn,
+            reduce_fcn=reduce_fcn,
             view_stages=view_stages,
             result_key=result_key,
         )
@@ -525,7 +589,7 @@ def beam_map(
             )
 
             if reduce_fn is not None:
-                _ = pcoll | "ReduceFn" >> beam.CombineGlobally(reduce_fn)
+                _ = pcoll | "ReduceFcn" >> beam.CombineGlobally(reduce_fn)
 
     sample_collection.reload()
 
@@ -754,7 +818,7 @@ class MapBatch(beam.DoFn):
 
         if self.progress:
             desc = f"Batch {i + 1:0{len(str(num_batches))}}/{num_batches}"
-            with tqdm.tqdm(total=total, desc=desc, position=i) as pbar:
+            with tqdm(total=total, desc=desc, position=i) as pbar:
                 for sample in batch_view.iter_samples(autosave=self.save):
                     result = self.map_fcn(sample)
                     if self.return_outputs and result is not None:
@@ -768,11 +832,11 @@ class MapBatch(beam.DoFn):
                     yield sample.id, result
 
 
-class ReduceFn(beam.CombineFn):
+class ReduceFcn(beam.CombineFn):
     def __init__(
         self,
         dataset_name,
-        reduce_fcn,
+        reduce_fcn=None,
         view_stages=None,
         result_key=None,
     ):
@@ -813,8 +877,17 @@ class ReduceFn(beam.CombineFn):
         return accumulator
 
     def extract_output(self, accumulator):
+        if self.reduce_fcn is None:
+            return
+
         output = self.reduce_fcn(self._sample_collection, accumulator)
-        if output is None or self.result_key is None:
+        if output is None:
+            return
+
+        self._store_output(output)
+
+    def _store_output(self, output):
+        if self.result_key is None:
             return
 
         _set_key(self._sample_collection, self.result_key, output)
