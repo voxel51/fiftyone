@@ -257,6 +257,7 @@ from .utils.eval.detection import (
     DetectionEvaluationConfig,
     DetectionResults,
 )
+from .utils.multiprocessing import ReduceFcn
 from .utils.eval.regression import (
     evaluate_regressions,
     RegressionEvaluationConfig,
