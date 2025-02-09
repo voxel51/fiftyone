@@ -10,6 +10,7 @@ from collections import defaultdict
 from copy import copy
 from datetime import datetime
 import fnmatch
+import inspect
 import itertools
 import logging
 import numbers
@@ -3269,17 +3270,37 @@ class SampleCollection(object):
                 for sample in batch_view.iter_samples(autosave=True):
                     map_fcn(sample)
 
-        When a ``reduce_fcn`` is provided, this function effectively performs
-        the following map-reduce operation with the outer loop in parallel::
+        When a ``reduce_fcn`` function is provided, this function effectively
+        performs the following map-reduce operation with the outer loop in
+        parallel::
 
-            values = {}
+            outputs = {}
+
             for batch_view in fou.iter_slices(sample_collection, shard_size):
                 for sample in batch_view.iter_samples(autosave=True):
-                    values[sample.id] = map_fcn(sample)
+                    outputs[sample.id] = map_fcn(sample)
 
-            output = reduce_fcn(sample_collection, values)
+            output = reduce_fcn(sample_collection, outputs)
+
+        When a ``reduce_fcn`` class is provided, this function effectively
+        performs the following map-reduce operation with the outer loop in
+        parallel::
+
+            reducer = reduce_fcn(sample_collection)
+            reducer.init()
+
+            for batch_view in fou.iter_slices(sample_collection, shard_size):
+                outputs = {}
+                for sample in batch_view.iter_samples(autosave=True):
+                    outputs[sample.id] = map_fcn(sample)
+
+                reducer.update(outputs)
+
+            output = reducer.finalize()
 
         Example::
+
+            from collections import Counter
 
             import fiftyone as fo
             import fiftyone.zoo as foz
@@ -3299,23 +3320,43 @@ class SampleCollection(object):
             print(dataset.count_values("ground_truth.label"))
 
             #
-            # Example 2: map-reduce
+            # Example 2: map-reduce with reduce function
             #
 
             def map_fcn(sample):
                 return sample.ground_truth.label.lower()
 
             def reduce_fcn(sample_collection, values):
-                from collections import Counter
                 return dict(Counter(values.values()))
 
             counts = view.map_samples(map_fcn, reduce_fcn=reduce_fcn)
             print(counts)
 
+            #
+            # Example 3: map-reduce with reduce class
+            #
+
+            def map_fcn(sample):
+                return sample.ground_truth.label.lower()
+
+            class ReduceFcn(fo.ReduceFcn):
+                def init(self):
+                    self.accumulator = Counter()
+
+                def update(self, outputs):
+                    self.accumulator.update(Counter(outputs.values()))
+
+                def finalize(self):
+                    return dict(self.accumulator)
+
+            counts = view.map_samples(map_fcn, reduce_fcn=ReduceFcn)
+            print(counts)
+
         Args:
             map_fcn: a function to apply to each sample in the collection
-            reduce_fcn (None): an optional function to reduce the map outputs.
-                See the docstring above for usage information
+            reduce_fcn (None): an optional function or
+                :class:`fiftyone.utils.multiprocessing.ReduceFcn` subclass to
+                reduce the map outputs. See above for usage information
             save (None): whether to save any sample edits applied by
                 ``map_fcn``. By default this is True when no ``reduce_fcn`` is
                 provided and False when a ``reduce_fcn`` is provided
@@ -3371,17 +3412,26 @@ class SampleCollection(object):
         if save is None:
             save = reduce_fcn is None
 
+        if inspect.isclass(reduce_fcn):
+            reducer = reduce_fcn(self)
+        elif reduce_fcn is not None:
+            reducer = foum.ReduceFcn(self, reduce_fcn=reduce_fcn)
+        else:
+            reducer = None
+
+        if reducer is not None:
+            reducer.init()
+
         if progress == "global":
             progress = True
 
-        outputs = {}
         for sample in self.iter_samples(autosave=save, progress=progress):
-            output = map_fcn(sample)
-            if reduce_fcn is not None:
-                outputs[sample.id] = output
+            sample_output = map_fcn(sample)
+            if reducer is not None and sample_output is not None:
+                reducer.update({sample.id: sample_output})
 
-        if reduce_fcn is not None:
-            return reduce_fcn(self, outputs)
+        if reducer is not None:
+            return reducer.finalize()
 
     def compute_metadata(
         self,

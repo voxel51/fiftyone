@@ -5793,37 +5793,90 @@ You can also perform map-reduce operations with
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
 by providing a ``reduce_fcn``:
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    def map_fcn(sample):
-        return sample.ground_truth.label.lower()
+    .. group-tab:: Reduce function
 
-    def reduce_fcn(sample_collection, values):
-        from collections import Counter
-        return dict(Counter(values.values()))
+        .. code-block:: python
+            :linenos:
 
-    counts = view.map_samples(map_fcn, reduce_fcn=reduce_fcn)
+            from collections import Counter
 
-    print(counts)
-    # {'deer': 5000, 'horse': 5000, 'airplane': 5000, ..., 'dog': 5000}
+            def map_fcn(sample):
+                return sample.ground_truth.label.lower()
 
-Under the hood,
-:meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
-method effectively performs the following operation with the outer loop in
-parallel:
+            def reduce_fcn(sample_collection, values):
+                return dict(Counter(values.values()))
 
-.. code-block:: python
-    :linenos:
+            counts = view.map_samples(map_fcn, reduce_fcn=reduce_fcn)
 
-    import fiftyone.core.utils as fou
+            print(counts)
+            # {'deer': 5000, 'horse': 5000, 'airplane': 5000, ..., 'dog': 5000}
 
-    outputs = {}
-    for batch_view in fou.iter_slices(view, batch_size=3125):
-        for sample in batch_view.iter_samples(autosave=True):
-            outputs[sample.id] = map_fcn(sample)
+        Under the hood,
+        :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
+        method effectively performs the following operation with the outer loop
+        in parallel:
 
-    output = reduce_fcn(view, outputs)
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone.core.utils as fou
+
+            outputs = {}
+
+            for batch_view in fou.iter_slices(view, batch_size=3125):
+                for sample in batch_view.iter_samples(autosave=True):
+                    outputs[sample.id] = map_fcn(sample)
+
+            output = reduce_fcn(view, outputs)
+
+    .. group-tab:: Reduce class
+
+        .. code-block:: python
+            :linenos:
+
+            from collections import Counter
+
+            def map_fcn(sample):
+                return sample.ground_truth.label.lower()
+
+            class ReduceFcn(fo.ReduceFcn):
+                def init(self):
+                    self.accumulator = Counter()
+
+                def update(self, outputs):
+                    self.accumulator.update(Counter(outputs.values()))
+
+                def finalize(self):
+                    return dict(self.accumulator)
+
+            counts = view.map_samples(map_fcn, reduce_fcn=ReduceFcn)
+
+            print(counts)
+            # {'deer': 5000, 'horse': 5000, 'airplane': 5000, ..., 'dog': 5000}
+
+        Under the hood,
+        :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
+        method effectively performs the following operation with the outer loop
+        in parallel:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone.core.utils as fou
+
+            reducer = ReduceFcn(view)
+            reducer.init()
+
+            for batch_view in fou.iter_slices(view, batch_size=3125):
+                outputs = {}
+                for sample in batch_view.iter_samples(autosave=True):
+                    outputs[sample.id] = map_fcn(sample)
+
+                reducer.update(outputs)
+
+            output = reducer.finalize()
 
 You can configure the number of workers that
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
