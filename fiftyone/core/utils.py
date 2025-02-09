@@ -2294,6 +2294,10 @@ def recommend_thread_pool_workers(num_workers=None):
 def recommend_process_pool_workers(num_workers=None):
     """Recommends a number of workers for a process pool.
 
+    By default, ``multiprocessing.cpu_count()`` workers will be recommended if
+    you are running on macOS or Linux, while a single worker will be
+    recommended on Windows.
+
     If a ``fo.config.max_process_pool_workers`` is set, this limit is applied.
 
     Args:
