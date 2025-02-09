@@ -5,6 +5,7 @@ Multiprocessing utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import inspect
 import itertools
 
 from bson import ObjectId
@@ -36,17 +37,37 @@ def map_samples(
             for sample in batch_view.iter_samples(autosave=True):
                 map_fcn(sample)
 
-    When a ``reduce_fcn`` is provided, this function effectively performs
-    the following map-reduce operation with the outer loop in parallel::
+    When a ``reduce_fcn`` function is provided, this function effectively
+    performs the following map-reduce operation with the outer loop in
+    parallel::
 
-        values = {}
+        outputs = {}
+
         for batch_view in fou.iter_slices(sample_collection, shard_size):
             for sample in batch_view.iter_samples(autosave=True):
-                values[sample.id] = map_fcn(sample)
+                outputs[sample.id] = map_fcn(sample)
 
-        output = reduce_fcn(sample_collection, values)
+        output = reduce_fcn(sample_collection, outputs)
+
+    When a ``reduce_fcn`` class is provided, this function effectively
+    performs the following map-reduce operation with the outer loop in
+    parallel::
+
+        reducer = reduce_fcn(sample_collection)
+        reducer.init()
+
+        for batch_view in fou.iter_slices(sample_collection, shard_size):
+            outputs = {}
+            for sample in batch_view.iter_samples(autosave=True):
+                outputs[sample.id] = map_fcn(sample)
+
+            reducer.update(outputs)
+
+        output = reducer.finalize()
 
     Example::
+
+        from collections import Counter
 
         import fiftyone as fo
         import fiftyone.utils.multiprocessing as foum
@@ -67,25 +88,44 @@ def map_samples(
         print(dataset.count_values("ground_truth.label"))
 
         #
-        # Example 2: map-reduce
+        # Example 2: map-reduce with reduce function
         #
 
         def map_fcn(sample):
             return sample.ground_truth.label.lower()
 
         def reduce_fcn(sample_collection, values):
-            from collections import Counter
             return dict(Counter(values.values()))
 
         counts = foum.map_samples(view, map_fcn, reduce_fcn=reduce_fcn)
+        print(counts)
+
+        #
+        # Example 3: map-reduce with reduce class
+        #
+
+        def map_fcn(sample):
+            return sample.ground_truth.label.lower()
+
+        class ReduceFcn(fo.ReduceFcn):
+            def init(self):
+                self.accumulator = Counter()
+
+            def update(self, outputs):
+                self.accumulator.update(Counter(outputs.values()))
+
+            def finalize(self):
+                return dict(self.accumulator)
+
+        counts = foum.map_samples(view, map_fcn, reduce_fcn=ReduceFcn)
         print(counts)
 
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         map_fcn: a function to apply to each sample
-        reduce_fcn (None): an optional function to reduce the map outputs. See
-            the docstring above for usage information
+        reduce_fcn (None): an optional function or :class:`ReduceFcn` subclass
+            to reduce the map outputs. See above for usage information
         save (None): whether to save any sample edits applied by ``map_fcn``.
             By default this is True when no ``reduce_fcn`` is provided and
             False when a ``reduce_fcn`` is provided
@@ -122,10 +162,17 @@ def map_samples(
     if save is None:
         save = reduce_fcn is None
 
+    if inspect.isclass(reduce_fcn):
+        reducer = reduce_fcn(sample_collection)
+    elif reduce_fcn is not None:
+        reducer = ReduceFcn(sample_collection, reduce_fcn=reduce_fcn)
+    else:
+        reducer = None
+
     if progress is None:
         progress = fo.config.show_progress_bars
 
-    return_outputs = reduce_fcn is not None
+    return_outputs = reducer is not None
     global_progress = False
     lock = None
 
@@ -155,21 +202,56 @@ def map_samples(
         ),
     )
 
-    outputs = {}
-
     pb = fou.ProgressBar(
         total=len(batches),
         progress=global_progress,
         iters_str="batches",
     )
 
+    if reducer is not None:
+        reducer.init()
+
     with pb, pool:
         for _outputs in pb(pool.imap_unordered(_map_batch, batches)):
             if _outputs is not None:
-                outputs.update(_outputs)
+                reducer.update(_outputs)
 
-    if reduce_fcn is not None:
-        return reduce_fcn(sample_collection, outputs)
+    if reducer is not None:
+        return reducer.finalize()
+
+
+class ReduceFcn(object):
+    """Base class for reducers for use with :func:`map_samples`.
+
+    Subclasses may optionally override :meth:`init`, :meth:`update`, and
+    :meth:`finalize` as necessary.
+    """
+
+    def __init__(self, sample_collection, reduce_fcn=None):
+        self.sample_collection = sample_collection
+        self.reduce_fcn = reduce_fcn
+        self.accumulator = None
+
+    def init(self):
+        """Initializes the reducer."""
+        self.accumulator = {}
+
+    def update(self, outputs):
+        """Adds a batch of map outputs to the reducer.
+
+        Args:
+            outputs: a dict mapping sample IDs to map outputs
+        """
+        self.accumulator.update(outputs)
+
+    def finalize(self):
+        """Finalizes the reducer and returns the result, if any.
+
+        Returns:
+            the final output, or None
+        """
+        if self.reduce_fcn is not None:
+            return self.reduce_fcn(self.sample_collection, self.accumulator)
 
 
 def _init_batches(
