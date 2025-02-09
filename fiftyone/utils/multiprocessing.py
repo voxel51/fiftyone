@@ -32,7 +32,7 @@ def map_samples(
     When only a ``map_fcn`` is provided, this function effectively performs
     the following map operation with the outer loop in parallel::
 
-        for batch_view in fou.iter_batches(sample_collection, shard_size):
+        for batch_view in fou.iter_slices(sample_collection, shard_size):
             for sample in batch_view.iter_samples(autosave=True):
                 map_fcn(sample)
 
@@ -40,8 +40,8 @@ def map_samples(
     the following map-reduce operation with the outer loop in parallel::
 
         values = {}
-        for batch_view in fou.iter_batches(sample_collection, shard_size):
-            for sample in batch_view.iter_samples(autosave=save):
+        for batch_view in fou.iter_slices(sample_collection, shard_size):
+            for sample in batch_view.iter_samples(autosave=True):
                 values[sample.id] = map_fcn(sample)
 
         output = reduce_fcn(sample_collection, values)
