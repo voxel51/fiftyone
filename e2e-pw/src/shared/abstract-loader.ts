@@ -48,6 +48,18 @@ export abstract class AbstractFiftyoneLoader {
   abstract executePythonCode(code: string): Promise<void>;
 
   /**
+   * Select a dataset from the dataset selector.
+   * This method doesn't result in a page reload.
+   *
+   * @param page Playwright page object.
+   * @param datasetName Name of the dataset to be selected.
+   */
+  abstract selectDatasetFromSelector(
+    page: Page,
+    datasetName: string
+  ): Promise<void>;
+
+  /**
    * Wait until the dataset is loaded into the view.
    *
    * @param page Playwright page object.
