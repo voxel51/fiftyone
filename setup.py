@@ -57,7 +57,7 @@ INSTALL_REQUIRES = [
     "plotly>=4.14",
     "pprintpp",
     "psutil",
-    "pymongo~=4.9.2",
+    "pymongo~=4.9.2",  # warning: changing this could be a breaking change for pymongo proxy
     "pytz",
     "PyYAML",
     "regex",
