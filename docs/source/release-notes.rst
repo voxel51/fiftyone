@@ -3,6 +3,15 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 2.6.0
+--------------------
+*Released February 10, 2025*
+
+- Improved backwards compatibility between an older SDK and newer deployment.
+- Added a configurable banner which appears at top and bottom of every page,
+  often used for compliance reasons.
+- Fixed a bug where invite email smtp configuration was not saving correctly.
+
 FiftyOne Teams 2.5.1
 --------------------
 *Released February 3, 2025*
