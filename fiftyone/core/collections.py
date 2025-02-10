@@ -3349,6 +3349,9 @@ class SampleCollection(object):
         if num_workers is None:
             num_workers = fo.config.default_map_workers
 
+        if num_workers is None:
+            num_workers = fou.recommend_process_pool_workers()
+
         if num_workers is not None and num_workers <= 1:
             return self._map_samples_single(
                 map_fcn,
