@@ -9,6 +9,7 @@ from importlib import metadata
 from typing import Any, BinaryIO, Callable, Dict, Iterator, Mapping, Optional
 
 import backoff
+import pymongo
 import requests
 from typing_extensions import Literal
 
@@ -57,6 +58,8 @@ class Client:
             version = ""
         self._extra_headers = {
             "User-Agent": f"FiftyOne Teams client/{version}",
+            "X-FiftyOne-SDK-Version": version,
+            "X-FiftyOne-Pymongo-Version": pymongo.version,
         }
         if self.__key:
             self._extra_headers["X-API-Key"] = self.__key
