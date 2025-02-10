@@ -13,7 +13,7 @@ from importlib import metadata
 
 from setuptools import find_packages, setup
 
-VERSION = "2.5.1"
+VERSION = "2.6.0"
 
 
 def get_version():
@@ -57,7 +57,7 @@ INSTALL_REQUIRES = [
     "plotly>=4.14",
     "pprintpp",
     "psutil",
-    "pymongo~=4.9.2",
+    "pymongo~=4.9.2",  # warning: changing this could be a breaking change for pymongo proxy
     "pytz",
     "PyYAML",
     "regex",
@@ -134,7 +134,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone",
-    version="2.5.1",
+    version="2.6.0",
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"

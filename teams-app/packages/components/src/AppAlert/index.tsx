@@ -1,12 +1,16 @@
 import useAppNotification from "@fiftyone/hooks/src/notifications/useAppNotification";
 import { NotificationCodeT, NotificationLevelT } from "@fiftyone/teams-state";
-import { Alert, Collapse, Link } from "@mui/material";
+import { Alert, Collapse, Typography } from "@mui/material";
 import React from "react";
 import AlertLink from "../AlertLink";
 
-export default function AppAlert() {
+export default function AppAlert({
+  showInFooterOnly = false,
+}: {
+  showInFooterOnly: boolean;
+}) {
   // instead of showing one alert, we show a list of alerts
-  const notifications = useAppNotification();
+  const notifications = useAppNotification({ showInFooterOnly });
 
   const getDismissedAlerts = () => {
     const dismissedAlerts = localStorage.getItem("dismissedAlerts");
@@ -63,22 +67,52 @@ function AlertInfo({
   type,
   code,
   setDismissedAlert,
+  overrideBgColor,
+  overrideTextColor,
 }): AlertInfoProps {
+  const isStaticBanner = code === "STATIC_BANNER";
   const [open, setOpen] = React.useState(true);
 
-  const handleClose = () => {
-    setDismissedAlert(code);
-    setOpen(false);
-  };
+  const handleClose = isStaticBanner
+    ? null
+    : () => {
+        setDismissedAlert(code);
+        setOpen(false);
+      };
+
+  const alertSx = isStaticBanner
+    ? {
+        backgroundColor: overrideBgColor || "inherit",
+        color: overrideTextColor || "inherit",
+        justifyContent: "center",
+      }
+    : {};
 
   return (
     <Collapse in={open}>
-      <Alert severity={type} onClose={handleClose}>
+      <Alert
+        title={title}
+        severity={type}
+        onClose={handleClose}
+        sx={alertSx}
+        {...(isStaticBanner ? { icon: false } : {})}
+      >
         <div
           style={{ display: "inline" }}
           data-testid={`global-notification-${code.toLowerCase()}`}
         >
-          {title} <AlertLink code={code} details={details} />
+          {isStaticBanner ? (
+            <Typography
+              sx={alertSx}
+              noWrap={Boolean(overrideBgColor) ? true : false}
+            >
+              {title} <AlertLink code={code} details={details} />
+            </Typography>
+          ) : (
+            <>
+              {title} <AlertLink code={code} details={details} />
+            </>
+          )}
         </div>
       </Alert>
     </Collapse>
