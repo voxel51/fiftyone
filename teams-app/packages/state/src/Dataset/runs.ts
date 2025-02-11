@@ -63,9 +63,9 @@ export const runsPageQuery = graphql`
         }
         pinned
         runLink
-        signedUrl
         priority
         logPath
+        logUrl
         logUploadError
         scheduledAt
         status
@@ -143,9 +143,10 @@ export const runsItemQuery = graphql`
       startedAt
       status
       runLink
-      signedUrl
       priority
       logPath
+      logUrl
+      logSize
       logUploadError
       metadata
     }

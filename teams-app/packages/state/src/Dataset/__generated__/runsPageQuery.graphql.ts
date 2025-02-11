@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3ed34ec5964e43b1268321d7d517e74a>>
+ * @generated SignedSource<<d70c1256bbc0d75d0291be071aa8f829>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -51,6 +51,7 @@ export type runsPageQuery$data = {
       readonly label: string | null;
       readonly logPath: string | null;
       readonly logUploadError: string | null;
+      readonly logUrl: string | null;
       readonly operator: string;
       readonly pinned: boolean | null;
       readonly priority: number | null;
@@ -62,7 +63,6 @@ export type runsPageQuery$data = {
       readonly runLink: string | null;
       readonly runState: string;
       readonly scheduledAt: string | null;
-      readonly signedUrl: string | null;
       readonly startedAt: string | null;
       readonly status: any | null;
     }>;
@@ -246,13 +246,6 @@ v2 = [
             "alias": null,
             "args": null,
             "kind": "ScalarField",
-            "name": "signedUrl",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
             "name": "priority",
             "storageKey": null
           },
@@ -261,6 +254,13 @@ v2 = [
             "args": null,
             "kind": "ScalarField",
             "name": "logPath",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "logUrl",
             "storageKey": null
           },
           {
@@ -316,16 +316,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "48dfccfdfca604073cd27a446adb3044",
+    "cacheID": "cae2acfacef2b1a690d7b591ae0d8fad",
     "id": null,
     "metadata": {},
     "name": "runsPageQuery",
     "operationKind": "query",
-    "text": "query runsPageQuery(\n  $filter: DelegatedOperationFilter = null\n  $order: DelegatedOperationOrderFieldsOrder = null\n  $page: Int!\n  $pageSize: Int!\n  $search: DelegatedOperationSearchFieldsSearch = null\n) {\n  delegatedOperationsPage(filter: $filter, order: $order, page: $page, pageSize: $pageSize, search: $search) {\n    nodeTotal\n    nodes {\n      operator\n      label\n      id\n      runState\n      startedAt\n      queuedAt\n      completedAt\n      failedAt\n      runBy {\n        name\n        id\n      }\n      pinned\n      runLink\n      signedUrl\n      priority\n      logPath\n      logUploadError\n      scheduledAt\n      status\n    }\n    pageTotal\n  }\n}\n"
+    "text": "query runsPageQuery(\n  $filter: DelegatedOperationFilter = null\n  $order: DelegatedOperationOrderFieldsOrder = null\n  $page: Int!\n  $pageSize: Int!\n  $search: DelegatedOperationSearchFieldsSearch = null\n) {\n  delegatedOperationsPage(filter: $filter, order: $order, page: $page, pageSize: $pageSize, search: $search) {\n    nodeTotal\n    nodes {\n      operator\n      label\n      id\n      runState\n      startedAt\n      queuedAt\n      completedAt\n      failedAt\n      runBy {\n        name\n        id\n      }\n      pinned\n      runLink\n      priority\n      logPath\n      logUrl\n      logUploadError\n      scheduledAt\n      status\n    }\n    pageTotal\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "8f6aae13ba6f8560dabf510d8b35879b";
+(node as any).hash = "cbaa7ad2b3f69f92933546aabf733437";
 
 export default node;
