@@ -114,7 +114,7 @@ export abstract class AbstractLooker<
   sampleOverlays: Overlay<State>[];
   pluckedOverlays: Overlay<State>[];
 
-  protected asyncLabelsRenderingManager: AsyncLabelsRenderingManager;
+  public asyncLabelsRenderingManager: AsyncLabelsRenderingManager;
 
   constructor(
     sample: S,

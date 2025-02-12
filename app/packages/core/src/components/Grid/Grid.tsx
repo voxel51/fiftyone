@@ -12,6 +12,7 @@ import React, {
 } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
+import { useSyncLabelsRenderingStatus } from "../../../../app/src/useSyncLabelsRenderingStatus";
 import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
 import { gridActivePathsLUT } from "../Sidebar/useDetectNewActiveLabelFields";
 import { gridCrop, gridSpacing, pageParameters } from "./recoil";
@@ -32,6 +33,8 @@ function Grid() {
   const { lookerStore, pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
   const threshold = useThreshold();
+
+  useSyncLabelsRenderingStatus();
 
   const records = useRecords(pageReset);
   const { page, store } = useSpotlightPager({
