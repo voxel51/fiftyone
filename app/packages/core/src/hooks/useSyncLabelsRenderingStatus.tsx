@@ -12,24 +12,13 @@ export const useSyncLabelsRenderingStatus = () => {
   const [_, setIsPanelUpdating] = usePanelLoading();
 
   useEffect(() => {
-    let animationId: ReturnType<typeof requestAnimationFrame>;
-
-    const sync = () => {
-      animationId = requestAnimationFrame(sync);
-
+    const unsub = jotaiStore.sub(numConcurrentRenderingLabels, () => {
       const count = jotaiStore.get(numConcurrentRenderingLabels);
-
-      if (count > 0) {
-        setIsPanelUpdating(true);
-      } else {
-        setIsPanelUpdating(false);
-      }
-    };
-
-    animationId = requestAnimationFrame(sync);
+      setIsPanelUpdating(count > 0);
+    });
 
     return () => {
-      cancelAnimationFrame(animationId);
+      unsub();
     };
   }, [setIsPanelUpdating]);
 };
