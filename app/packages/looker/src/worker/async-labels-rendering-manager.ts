@@ -109,6 +109,7 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
     job.reject(new Error(error.message));
     processingSamples.delete(job.sample);
     freeWorkers.push(worker);
+    updateRenderingCount(-1);
     processQueue();
   };
 
@@ -162,9 +163,9 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
   );
   const transfer = retrieveTransferables(filteredOverlays);
 
-  updateRenderingCount(1);
-
   worker.postMessage(workerArgs, transfer);
+
+  updateRenderingCount(1);
 };
 
 export class AsyncLabelsRenderingManager {
