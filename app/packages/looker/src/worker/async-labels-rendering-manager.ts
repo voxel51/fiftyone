@@ -6,6 +6,10 @@ import { LookerUtils } from "../lookers/shared";
 import { retrieveTransferables } from "../lookers/utils";
 import { accumulateOverlays } from "../overlays";
 import { createWorker } from "../util";
+import {
+  jotaiStore,
+  numConcurrentRenderingLabels,
+} from "@fiftyone/state/src/jotai";
 
 export type AsyncLabelsRenderingJob = {
   sample: Sample;
@@ -90,6 +94,10 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
     processingSamples.delete(job.sample);
     freeWorkers.push(worker);
     processQueue();
+
+    jotaiStore.set(numConcurrentRenderingLabels, (curr) => {
+      return curr - 1;
+    });
   };
 
   const handleError = (error: ErrorEvent) => {
@@ -149,6 +157,10 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
     job.lookerRef.state.config.fieldSchema
   );
   const transfer = retrieveTransferables(filteredOverlays);
+
+  jotaiStore.set(numConcurrentRenderingLabels, (curr) => {
+    return curr + 1;
+  });
 
   worker.postMessage(workerArgs, transfer);
 };
