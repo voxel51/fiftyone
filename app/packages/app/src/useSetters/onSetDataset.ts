@@ -32,7 +32,7 @@ const onSetDataset: RegisteredSetter =
       sessionRef.current.sessionSpaces = GRID_SPACES_DEFAULT;
       sessionRef.current.fieldVisibilityStage = undefined;
       sessionRef.current.colorScheme = ensureColorScheme(
-        entry.data.dataset?.appConfig,
+        entry.data.dataset?.appConfig?.colorScheme,
         entry.data.config
       );
       sessionRef.current.sessionGroupSlice =

@@ -42,6 +42,11 @@ export class OssLoader extends AbstractFiftyoneLoader {
     throw new Error("Method not implemented.");
   }
 
+  async selectDatasetFromSelector(page: Page, datasetName: string) {
+    await page.getByTestId("selector-dataset").click();
+    await page.getByTestId(`selector-result-${datasetName}`).click();
+  }
+
   async waitUntilGridVisible(
     page: Page,
     datasetName: string,

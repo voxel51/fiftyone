@@ -342,6 +342,18 @@ const processSample = async ({
   schema,
   activePaths,
 }: ProcessSample) => {
+  if (!sample) {
+    // edge case where looker hasn't been associated with a sample yet
+    // but `updateSample` was called anyway, say, due to user switching colors
+    // as soon as the app loads but before grid is ready
+    postMessage({
+      method: "processSample",
+      uuid,
+      error: "sample not attached",
+    });
+    return;
+  }
+
   mapId(sample);
 
   const imageBitmapPromises: Promise<ImageBitmap[]>[] = [];

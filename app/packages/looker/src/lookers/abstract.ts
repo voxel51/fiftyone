@@ -12,6 +12,7 @@ import {
   withPath,
 } from "@fiftyone/utilities";
 import { isEmpty } from "lodash";
+import { v4 as uuid } from "uuid";
 import {
   BASE_ALPHA,
   DASH_LENGTH,
@@ -42,19 +43,18 @@ import {
   mergeUpdates,
   snapBox,
 } from "../util";
-import { v4 as uuid } from "uuid";
 import { ProcessSample } from "../worker";
 import { AsyncLabelsRenderingManager } from "../worker/async-labels-rendering-manager";
 import { LookerUtils } from "./shared";
 import { retrieveTransferables } from "./utils";
-
-const UPDATING_SAMPLES_IDS = new Set();
 
 const LABEL_LISTS_PATH = new Set(withPath(LABELS_PATH, LABEL_LISTS));
 const LABEL_LIST_KEY = Object.fromEntries(
   Object.entries(LABEL_LISTS_MAP).map(([k, v]) => [withPath(LABELS_PATH, k), v])
 );
 const LABELS_SET = new Set(LABELS);
+
+const UPDATE_SAMPLE_DEBOUNCE_MS = 100;
 
 /**
  * worker pool for processing labels
@@ -95,6 +95,7 @@ export abstract class AbstractLooker<
   private readonly ctx: CanvasRenderingContext2D;
   private previousState?: Readonly<State>;
   private readonly rootEvents: Events<State>;
+  private isSampleUpdating: boolean = false;
 
   protected readonly abortController: AbortController;
   protected currentOverlays: Overlay<State>[];
@@ -531,40 +532,34 @@ export abstract class AbstractLooker<
 
   abstract updateOptions(options: Partial<State["options"]>): void;
 
-  updateSample(sample: Sample) {
-    // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
-    // this crashes the app. this is a bug and should be fixed
-    if (!this.sample) {
-      return;
-    }
-
-    const id = sample.id ?? sample._id;
-    const updateTimeoutMs = 10000;
-
-    if (UPDATING_SAMPLES_IDS.has(id)) {
-      UPDATING_SAMPLES_IDS.delete(id);
-      this.cleanOverlays(true);
-
-      // to prevent deadlock, we'll remove the id from the set after a timeout
-      const timeoutId = setTimeout(() => {
-        UPDATING_SAMPLES_IDS.delete(id);
-      }, updateTimeoutMs);
-
-      queueMicrotask(() => {
-        try {
-          this.updateSample(sample);
-          clearTimeout(timeoutId);
-        } catch (e) {
-          UPDATING_SAMPLES_IDS.delete(id);
-          this.updater({ error: e });
+  private updateSampleDebounced = (() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    return (sample: Sample) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
+        // this crashes the app. this is a bug and should be fixed
+        if (!this.sample) {
+          return;
         }
-      });
-      return;
-    }
 
-    UPDATING_SAMPLES_IDS.add(id);
+        if (this.isSampleUpdating) {
+          return;
+        }
 
-    this.loadSample(sample, retrieveTransferables(this.sampleOverlays));
+        this.isSampleUpdating = true;
+        try {
+          this.loadSample(sample, retrieveTransferables(this.sampleOverlays));
+        } catch (error) {
+          this.isSampleUpdating = false;
+          console.error(error);
+        }
+      }, UPDATE_SAMPLE_DEBOUNCE_MS);
+    };
+  })();
+
+  updateSample(sample: Sample) {
+    this.updateSampleDebounced(sample);
   }
 
   refreshSample(renderLabels: string[] | null = null) {
@@ -791,8 +786,15 @@ export abstract class AbstractLooker<
 
     const labelsWorker = getLabelsWorker();
 
-    const listener = ({ data: { sample, coloring, uuid } }) => {
+    const listener = ({ data: { sample, coloring, uuid, error } }) => {
       if (uuid === messageUUID) {
+        if (error) {
+          console.warn(error);
+          this.isSampleUpdating = false;
+          labelsWorker.removeEventListener("message", listener);
+          return;
+        }
+
         // we paint overlays again, so cleanup the old ones
         // this helps prevent memory leaks from, for instance, dangling ImageBitmaps
         this.cleanOverlays();
@@ -804,9 +806,10 @@ export abstract class AbstractLooker<
           disabled: false,
           reloading: false,
         });
+
         labelsWorker.removeEventListener("message", listener);
 
-        UPDATING_SAMPLES_IDS.delete(sample.id ?? sample._id);
+        this.isSampleUpdating = false;
       }
     };
 
