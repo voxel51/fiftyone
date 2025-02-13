@@ -42,5 +42,5 @@ MongoDB 4.4
 
 `MongoDB 4.4 <https://www.mongodb.com/legal/support-policy/lifecycles>`_
 transitioned to `end-of-life` effective February of 2024. FiftyOne 
-releases after March 1, 2024 might no longer be compatible with
+releases after March 1, 2025 might no longer be compatible with
 MongoDB 4.4 and older.
