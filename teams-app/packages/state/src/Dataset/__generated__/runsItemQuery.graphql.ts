@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5cba1acf50f7e1b1d34671b518346ed9>>
+ * @generated SignedSource<<201b14e44de2edf90222add73c1e948e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,7 +21,7 @@ export type runsItemQuery$data = {
     readonly id: string;
     readonly label: string | null;
     readonly logPath: string | null;
-    readonly logSize: string | null;
+    readonly logSize: number | null;
     readonly logUploadError: string | null;
     readonly logUrl: string | null;
     readonly metadata: any | null;
