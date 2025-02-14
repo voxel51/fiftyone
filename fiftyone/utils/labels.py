@@ -5,7 +5,6 @@ Label utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
@@ -78,9 +77,19 @@ def objects_to_segmentations(
     if mask_size is None:
         sample_collection.compute_metadata()
 
+    select_fields = [in_field]
+    in_field, processing_frames = sample_collection._handle_frame_field(
+        in_field
+    )
+    out_field, _ = sample_collection._handle_frame_field(out_field)
+    if (
+        processing_frames
+        and output_dir is not None
+        and sample_collection.has_field("frames.filepath")
+    ):
+        select_fields.append("frames.filepath")
+
     samples = sample_collection.select_fields(in_field)
-    in_field, processing_frames = samples._handle_frame_field(in_field)
-    out_field, _ = samples._handle_frame_field(out_field)
 
     if overwrite and output_dir is not None:
         etau.delete_dir(output_dir)
@@ -134,7 +143,7 @@ def objects_to_segmentations(
 
             if output_dir is not None:
                 mask_path = filename_maker.get_output_path(
-                    image.filepath, output_ext=".png"
+                    _get_filepath(image, sample), output_ext=".png"
                 )
                 segmentation.export_mask(mask_path, update=True)
 
@@ -195,8 +204,7 @@ def export_segmentations(
     in_field, processing_frames = sample_collection._handle_frame_field(
         in_field
     )
-    if processing_frames:
-        # filepath required for filename generation
+    if processing_frames and sample_collection.has_field("frames.filepath"):
         select_fields.append("frames.filepath")
 
     samples = sample_collection.select_fields(select_fields)
@@ -222,26 +230,26 @@ def export_segmentations(
             if isinstance(label, fol.Segmentation):
                 if label.mask is not None:
                     outpath = filename_maker.get_output_path(
-                        image.filepath, output_ext=".png"
+                        _get_filepath(image, sample), output_ext=".png"
                     )
                     label.export_mask(outpath, update=update)
             elif isinstance(label, fol.Detection):
                 if label.mask is not None:
                     outpath = filename_maker.get_output_path(
-                        image.filepath, output_ext=".png"
+                        _get_filepath(image, sample), output_ext=".png"
                     )
                     label.export_mask(outpath, update=update)
             elif isinstance(label, fol.Detections):
                 for detection in label.detections:
                     if detection.mask is not None:
                         outpath = filename_maker.get_output_path(
-                            image.filepath, output_ext=".png"
+                            _get_filepath(image, sample), output_ext=".png"
                         )
                         detection.export_mask(outpath, update=update)
             elif isinstance(label, fol.Heatmap):
                 if label.map is not None:
                     outpath = filename_maker.get_output_path(
-                        image.filepath, output_ext=".png"
+                        _get_filepath(image, sample), output_ext=".png"
                     )
                     label.export_map(outpath, update=update)
 
@@ -374,8 +382,18 @@ def transform_segmentations(
         sample_collection, in_field, fol.Segmentation
     )
 
-    samples = sample_collection.select_fields(in_field)
-    in_field, processing_frames = samples._handle_frame_field(in_field)
+    select_fields = [in_field]
+    in_field, processing_frames = sample_collection._handle_frame_field(
+        in_field
+    )
+    if (
+        processing_frames
+        and output_dir is not None
+        and sample_collection.has_field("frames.filepath")
+    ):
+        select_fields.append("frames.filepath")
+
+    samples = sample_collection.select_fields(select_fields)
 
     if output_dir is not None:
         if overwrite:
@@ -398,7 +416,7 @@ def transform_segmentations(
 
             if output_dir is not None:
                 outpath = filename_maker.get_output_path(
-                    image.filepath, output_ext=".png"
+                    _get_filepath(image, sample), output_ext=".png"
                 )
             else:
                 outpath = None
@@ -495,9 +513,19 @@ def segmentations_to_detections(
         fol.Segmentation,
     )
 
-    samples = sample_collection.select_fields(in_field)
-    in_field, processing_frames = samples._handle_frame_field(in_field)
-    out_field, _ = samples._handle_frame_field(out_field)
+    select_fields = [in_field]
+    in_field, processing_frames = sample_collection._handle_frame_field(
+        in_field
+    )
+    out_field, _ = sample_collection._handle_frame_field(out_field)
+    if (
+        processing_frames
+        and output_dir is not None
+        and sample_collection.has_field("frames.filepath")
+    ):
+        select_fields.append("frames.filepath")
+
+    samples = sample_collection.select_fields(select_fields)
 
     if overwrite and output_dir is not None:
         etau.delete_dir(output_dir)
@@ -524,7 +552,7 @@ def segmentations_to_detections(
             if output_dir is not None:
                 for detection in detections.detections:
                     mask_path = filename_maker.get_output_path(
-                        image.filepath, output_ext=".png"
+                        _get_filepath(image, sample), output_ext=".png"
                     )
                     detection.export_mask(mask_path, update=True)
 
@@ -865,3 +893,10 @@ def _perform_nms(
             del detections[i]
 
     return nms_detections
+
+
+def _get_filepath(sample_or_frame, sample):
+    try:
+        return sample_or_frame.filepath
+    except:
+        return sample.filepath
