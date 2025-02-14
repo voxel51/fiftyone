@@ -4,10 +4,10 @@ import Spotlight, { ID } from "@fiftyone/spotlight";
 import type { Sample } from "@fiftyone/state";
 import {
   datasetName,
-  useLookerOptions as fosUseLookerOptions,
   Lookers,
   useCreateLooker,
   useDeferrer,
+  useLookerOptions as fosUseLookerOptions,
 } from "@fiftyone/state";
 import { Schema } from "@fiftyone/utilities";
 import { useAtom } from "jotai";
@@ -22,7 +22,7 @@ import {
   OperatorResponse,
 } from "./models";
 import { checkedFieldsAtom } from "./state";
-import { findFields } from "./utils";
+import { findFields, formatSchema } from "./utils";
 
 /**
  * Hook which provides the active dataset.
@@ -158,61 +158,17 @@ const useLookerOptions = ({ samples }: { samples: LensSample[] }) => {
 export const useSampleSchemaGenerator = ({
   baseSchema,
 }: {
-  baseSchema: object;
+  baseSchema: { [k: string]: any };
 }) => {
-  // Generate a valid field schema for use by the looker.
   return useMemo(() => {
-    // Helper method for converting from snake_case to camelCase
-    const toCamelCase = (str: string): string => {
-      const s = str
-        .match(
-          /[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g
-        )
-        ?.map(
-          (x: string) => x.slice(0, 1).toUpperCase() + x.slice(1).toLowerCase()
-        )
-        .join("");
-      return s && s.slice(0, 1).toLowerCase() + s.slice(1);
-    };
-
-    // The schema returned by the SDK needs to be massaged for the looker
-    //   to render properly.
-    // This method achieves the following:
-    //   1. Convert keys from snake_case to camelCase
-    //   2. Convert the 'fields' property from an array to a nested object
-    //   3. Ensure 'path' is available as a top-level property
-    //   4. Do (1) - (3) recursively for nested objects
-    const formatSchema = (schema: object) => {
-      const formatted = {};
-
-      // Convert top-level keys to camelCase
-      for (let k of Object.keys(schema)) {
-        formatted[toCamelCase(k)] = schema[k];
-      }
-
-      // Ensure 'path' is defined
-      formatted["path"] = schema["name"];
-
-      // 'fields' is formatted as an array, but looker expects this
-      //   to be a nested object instead.
-      if (formatted["fields"] instanceof Array) {
-        const remapped = {};
-        for (let subfield of formatted["fields"]) {
-          // Recurse for each nested object
-          remapped[subfield["name"]] = formatSchema(subfield);
-        }
-        formatted["fields"] = remapped;
-      }
-
-      return formatted;
-    };
-
-    const formattedSchema = {};
-    for (let k of Object.keys(baseSchema)) {
+    const formattedSchema: { [k: string]: any } = {};
+    for (const k of Object.keys(baseSchema)) {
       if (baseSchema[k] instanceof Object) {
+        // Convert top-level objects
         formattedSchema[k] = formatSchema(baseSchema[k]);
         formattedSchema[k]["path"] = baseSchema[k]["name"];
       } else {
+        // Copy top-level scalars
         formattedSchema[k] = baseSchema[k];
       }
     }
@@ -349,16 +305,7 @@ export const useSpotlight = ({
       key: 0, // initial page index
       scrollbar: true,
       rowAspectRatioThreshold: (width: number) => {
-        let min = 1;
-        if (width >= 1200) {
-          min = -5;
-        } else if (width >= 1000) {
-          min = -3;
-        } else if (width >= 800) {
-          min = -1;
-        }
-
-        return Math.max(minZoomLevel, maxZoomLevel - Math.max(min, zoom));
+        return Math.max(minZoomLevel, maxZoomLevel - zoom);
       },
       get: (page: number): Promise<SamplePage> => {
         const pageSize = 20;

@@ -24,7 +24,7 @@ export const Error = ({
       >
         <Stack direction="column" spacing={1}>
           {errors.map((err, idx) => (
-            <Typography key={idx}>{err}</Typography>
+            <Typography key={idx}>{`${err}`}</Typography>
           ))}
         </Stack>
       </Alert>
