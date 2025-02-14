@@ -80,6 +80,14 @@ def objects_to_segmentations(
     if mask_size is None:
         sample_collection.compute_metadata()
 
+    select_fields = [in_field]
+    if (
+        sample_collection._is_frame_field(in_field)
+        and output_dir is not None
+        and sample_collection.has_field("frames.filepath")
+    ):
+        select_fields.append("frames.filepath")
+
     samples = sample_collection.select_fields(in_field)
 
     with contextlib.ExitStack() as context:
@@ -142,7 +150,7 @@ def objects_to_segmentations(
 
                 if output_dir is not None:
                     mask_path = filename_maker.get_output_path(
-                        image.filepath, output_ext=".png"
+                        _get_filepath(image, sample), output_ext=".png"
                     )
                     local_path = filename_maker.get_alt_path(mask_path)
 
@@ -207,8 +215,7 @@ def export_segmentations(
     in_field, processing_frames = sample_collection._handle_frame_field(
         in_field
     )
-    if processing_frames:
-        # filepath required for filename generation
+    if processing_frames and sample_collection.has_field("frames.filepath"):
         select_fields.append("frames.filepath")
 
     samples = sample_collection.select_fields(select_fields)
@@ -238,7 +245,7 @@ def export_segmentations(
                 if isinstance(label, fol.Segmentation):
                     if label.mask is not None:
                         outpath = filename_maker.get_output_path(
-                            image.filepath, output_ext=".png"
+                            _get_filepath(image, sample), output_ext=".png"
                         )
                         local_path = filename_maker.get_alt_path(outpath)
                         label.export_mask(local_path)
@@ -248,7 +255,7 @@ def export_segmentations(
                 elif isinstance(label, fol.Detection):
                     if label.mask is not None:
                         outpath = filename_maker.get_output_path(
-                            image.filepath, output_ext=".png"
+                            _get_filepath(image, sample), output_ext=".png"
                         )
                         local_path = filename_maker.get_alt_path(outpath)
                         label.export_mask(local_path)
@@ -259,7 +266,7 @@ def export_segmentations(
                     for detection in label.detections:
                         if detection.mask is not None:
                             outpath = filename_maker.get_output_path(
-                                image.filepath, output_ext=".png"
+                                _get_filepath(image, sample), output_ext=".png"
                             )
                             local_path = filename_maker.get_alt_path(outpath)
                             detection.export_mask(local_path)
@@ -269,7 +276,7 @@ def export_segmentations(
                 elif isinstance(label, fol.Heatmap):
                     if label.map is not None:
                         outpath = filename_maker.get_output_path(
-                            image.filepath, output_ext=".png"
+                            _get_filepath(image, sample), output_ext=".png"
                         )
                         local_path = filename_maker.get_alt_path(outpath)
                         label.export_map(local_path)
@@ -414,7 +421,15 @@ def transform_segmentations(
         sample_collection, in_field, fol.Segmentation
     )
 
-    samples = sample_collection.select_fields(in_field)
+    select_fields = [in_field]
+    if (
+        sample_collection._is_frame_field(in_field)
+        and output_dir is not None
+        and sample_collection.has_field("frames.filepath")
+    ):
+        select_fields.append("frames.filepath")
+
+    samples = sample_collection.select_fields(select_fields)
 
     with contextlib.ExitStack() as context:
         context.enter_context(
@@ -457,7 +472,7 @@ def transform_segmentations(
 
                 if output_dir is not None:
                     mask_path = filename_maker.get_output_path(
-                        image.filepath, output_ext=".png"
+                        _get_filepath(image, sample), output_ext=".png"
                     )
                     local_path = filename_maker.get_alt_path(mask_path)
                 else:
@@ -564,7 +579,15 @@ def segmentations_to_detections(
         fol.Segmentation,
     )
 
-    samples = sample_collection.select_fields(in_field)
+    select_fields = [in_field]
+    if (
+        sample_collection._is_frame_field(in_field)
+        and output_dir is not None
+        and sample_collection.has_field("frames.filepath")
+    ):
+        select_fields.append("frames.filepath")
+
+    samples = sample_collection.select_fields(select_fields)
 
     with contextlib.ExitStack() as context:
         context.enter_context(
@@ -603,7 +626,7 @@ def segmentations_to_detections(
                 if output_dir is not None:
                     for detection in detections.detections:
                         mask_path = filename_maker.get_output_path(
-                            image.filepath, output_ext=".png"
+                            _get_filepath(image, sample), output_ext=".png"
                         )
                         local_path = filename_maker.get_alt_path(mask_path)
 
@@ -954,3 +977,10 @@ def _perform_nms(
             del detections[i]
 
     return nms_detections
+
+
+def _get_filepath(sample_or_frame, sample):
+    try:
+        return sample_or_frame.filepath
+    except:
+        return sample.filepath
