@@ -7,8 +7,6 @@ Label utilities.
 """
 import contextlib
 
-import eta.core.utils as etau
-
 import fiftyone.core.labels as fol
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
