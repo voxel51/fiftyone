@@ -122,6 +122,10 @@ function RunsListWithQuery(props) {
           ),
         },
         {
+          id: `${id}-dataset`,
+          value: node.dataset.name,
+        },
+        {
           id: `${id}-status`,
           Component: (
             <RunStatus
@@ -130,10 +134,6 @@ function RunsListWithQuery(props) {
               position={node.position}
             />
           ),
-        },
-        {
-          id: `${id}-dataset`,
-          value: node.dataset.name,
         },
         {
           id: `${id}-timestamp`,
@@ -161,7 +161,14 @@ function RunsListWithQuery(props) {
     <Stack>
       <BasicTable
         rows={rows}
-        columns={["Operator", "Status", "Dataset", "Updated", "Run by", ""]}
+        columns={[
+          "Operator",
+          "Dataset",
+          "Status",
+          "Last updated",
+          "Run by",
+          "",
+        ]}
       />
       <Pagination
         page={vars.page}

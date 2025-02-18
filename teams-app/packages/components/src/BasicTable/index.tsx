@@ -43,7 +43,7 @@ export default function BasicTable({
     <Wrapper>
       <Table>
         {showTableHead && (
-          <TableHead>
+          <TableHead sx={{ borderBottom: "1px solid #333" }}>
             <TableRow>
               {columns.map((column) => (
                 <TableCell key={column}>

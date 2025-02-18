@@ -244,7 +244,7 @@ const statusFilterItems = [
 ];
 
 const DatasetFilterItems = [
-  { id: "all", label: "All Datasets" },
+  { id: "all", label: "All datasets" },
   { id: "this", label: "This dataset" },
 ];
 
