@@ -271,7 +271,7 @@ refer to the corresponding dataset format when reading the dataset from disk.
     |                                                                                       | <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.        |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`BDDDataset <BDDDataset-import>`                                                 | A labeled dataset consisting of images and their associated multitask predictions  |
-    |                                                                                       | saved in `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.       |
+    |                                                                                       | saved in `Berkeley DeepDrive (BDD) format <http://bdd-data.berkeley.edu>`_.        |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`CSVDataset <CSVDataset-import>`                                                 | A labeled dataset consisting of images or videos and their associated field values |
     |                                                                                       | stored as columns of a CSV file.                                                   |
@@ -4120,7 +4120,7 @@ BDDDataset
 
 The :class:`fiftyone.types.BDDDataset` type represents a labeled dataset
 consisting of images and their associated multitask predictions saved in
-`Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
+`Berkeley DeepDrive (BDD) format <http://bdd-data.berkeley.edu>`_.
 
 Datasets of this type are read in the following format:
 
