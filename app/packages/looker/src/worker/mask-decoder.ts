@@ -1,3 +1,4 @@
+import { Coloring } from "..";
 import { decodeWithCanvas } from "./canvas-decoder";
 import { customDecode16BitPng } from "./custom-16-bit-png-decoder";
 
@@ -33,7 +34,12 @@ const getMaybePngHeader = async (
   return { bitDepth, colorType };
 };
 
-export const decodeMaskOnDisk = async (blob: Blob, cls: string) => {
+export const decodeMaskOnDisk = async (
+  blob: Blob,
+  cls: string,
+  field: string,
+  coloring: Coloring
+) => {
   let channels: number = 4;
 
   if (blob.type !== "image/jpg" && blob.type !== "image/jpeg") {
@@ -41,7 +47,7 @@ export const decodeMaskOnDisk = async (blob: Blob, cls: string) => {
 
     if (!headerInfo) {
       // ambiguous mask type, default to canvas decoding
-      return decodeWithCanvas(blob, cls, channels);
+      return decodeWithCanvas(blob, cls, channels, field, coloring);
     }
 
     const { bitDepth, colorType } = headerInfo;
@@ -66,5 +72,5 @@ export const decodeMaskOnDisk = async (blob: Blob, cls: string) => {
     }
   }
 
-  return decodeWithCanvas(blob, cls, channels);
+  return decodeWithCanvas(blob, cls, channels, field, coloring);
 };

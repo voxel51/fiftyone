@@ -22,13 +22,19 @@ const test = base.extend<{
 
 const datasetName = getUniqueDatasetNameWithPrefix("grid-tagging");
 
-test.beforeAll(async ({ fiftyoneLoader }) => {
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
+test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
+
   await fiftyoneLoader.executePythonCode(`
     import fiftyone as fo
 
     filepaths = []
     for i in range(1, 511):
-        filepath = f"/tmp/{i}.png"
+        filepath = f"/tmp/{i}-${datasetName}.png"
         filepaths.append((i, filepath))
     
     dataset = fo.Dataset("${datasetName}")
@@ -45,7 +51,7 @@ test("grid tagging", async ({ fiftyoneLoader, grid, page, sidebar }) => {
   await sidebar.clickFieldCheckbox("tags");
   await grid.scrollBottom();
   for (let i = 31; i <= 54; i++) {
-    const locator = grid.locator.getByText(`/tmp/${i}.png`);
+    const locator = grid.locator.getByText(`/tmp/${i}-${datasetName}.png`);
     await expect(locator).toBeVisible();
   }
 
@@ -56,7 +62,7 @@ test("grid tagging", async ({ fiftyoneLoader, grid, page, sidebar }) => {
   });
 
   for (let i = 31; i <= 54; i++) {
-    const locator = grid.locator.getByText(`/tmp/${i}.png`);
+    const locator = grid.locator.getByText(`/tmp/${i}-${datasetName}.png`);
     await expect(locator).toBeVisible();
     await expect(
       locator.locator("..").getByTestId("tag-tags-grid-test")

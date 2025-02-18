@@ -3259,6 +3259,22 @@ class DelegatedLaunchCommand(Command):
             help="whether to skip parameter validation",
         )
 
+        parser.add_argument(
+            "-n",
+            "--name",
+            type=str,
+            default=None,
+            help="the name to give the executor to be used as a target",
+        )
+
+        parser.add_argument(
+            "-d",
+            "--description",
+            type=str,
+            default=None,
+            help="the description to give the executor",
+        )
+
     @staticmethod
     def execute(parser, args):
         # Note that `local` is not supported in Teams unless the caller forces
@@ -3276,12 +3292,19 @@ class DelegatedLaunchCommand(Command):
         elif args.type == "remote":
             do_svc = food.DelegatedOperationService()
             orch_svc = foo.orchestrator.OrchestratorService()
-            run_link_path = fo.config.delegated_operation_run_link_path
+            log_path = fo.config.delegated_operation_log_path
+            kwargs = {
+                "execution_interval": args.interval,
+                "log_directory_path": log_path,
+            }
+            if args.name:
+                kwargs["instance_id"] = args.name
+            if args.description:
+                kwargs["instance_desc"] = args.description
             executor = fodec.ContinualExecutor(
                 do_svc,
                 orch_svc,
-                execution_interval=args.interval,
-                run_link_path=run_link_path,
+                **kwargs,
             )
             if args.validate:
                 executor.validate()

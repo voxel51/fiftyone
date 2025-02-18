@@ -46,7 +46,10 @@ export default function BasicTable({
                 <TableRow
                   key={id}
                   hover={clickable}
-                  sx={{ cursor: clickable ? "pointer" : "default" }}
+                  sx={{
+                    cursor: clickable ? "pointer" : "default",
+                    width: "100%",
+                  }}
                   onClick={(e) => {
                     if (hasOnClick) onClick(e, row);
                   }}

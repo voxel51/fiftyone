@@ -1,8 +1,9 @@
-FROM node:18 AS builder
+FROM node:22 AS builder
 WORKDIR /opt
 
 ENV HOME="/opt"
 ENV NODE_ENV=production
+ENV NEXT_SHARP_PATH=/opt/teams-app/node_modules/sharp
 
 COPY app/ app/
 COPY teams-app/ teams-app/
@@ -10,7 +11,8 @@ COPY deployment/docker/yarnrc.yml ~/.yarnrc.yml
 
 RUN rm -f teams-app/packages/app/.env.local \
     && cd app/ && yarn install --silent && cd - \
-    && cd teams-app/ && yarn install --silent --immutable && yarn build \
+    && cd teams-app/ && yarn install --silent --immutable \
+    && yarn build \
     && DEPS_TO_REMOVE="\
     @esbuild \
     @jest \
@@ -19,8 +21,10 @@ RUN rm -f teams-app/packages/app/.env.local \
     @vitejs \
     @vitest \
     @types \
+    cross-spawn \
     nodemon \
     vite-node \
+    vite \
     vitest \
     tsconfig-paths \
     esbuild" \
@@ -29,7 +33,7 @@ RUN rm -f teams-app/packages/app/.env.local \
     done
 
 
-FROM node:18-slim AS runner
+FROM node:22-slim AS runner
 WORKDIR /app
 
 # overridden during build process
@@ -39,6 +43,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV FIFTYONE_APP_SEGMENT_WRITE_KEY=${FIFTYONE_APP_SEGMENT_WRITE_KEY}
+ENV NEXT_SHARP_PATH=/opt/teams-app/node_modules/sharp
 
 RUN apt-get -qq -y update && apt-get -qq -y upgrade \
     && apt clean && rm -rf /var/lib/apt/lists/* \
@@ -47,11 +52,11 @@ RUN apt-get -qq -y update && apt-get -qq -y upgrade \
     && mkdir -p /app/packages/app/.next \
     && chown --silent --no-dereference --recursive voxel51:voxel51 /app
 
-COPY --from=builder /opt/teams-app/packages/app/next.config.js /opt/app/packages/app/package.json /app/packages/app
+COPY --from=builder /opt/teams-app/packages/app/next.config.ts /opt/app/packages/app/package.json /app/packages/app
 COPY --from=builder /opt/teams-app/packages/app/public /app/packages/app/public
 COPY --from=builder /opt/teams-app/package.json /app
 
-COPY --from=builder --chown=voxel51:voxel51 /opt/teams-app/packages/app/.next/standalone /app/packages/app
+COPY --from=builder --chown=voxel51:voxel51 /opt/teams-app/packages/app/.next/standalone/packages/app /app/packages/app
 COPY --from=builder --chown=voxel51:voxel51 /opt/teams-app/packages/app/.next/static /app/packages/app/.next/static
 COPY --from=builder --chown=voxel51:voxel51 /opt/teams-app/node_modules /app/packages/app/node_modules
 COPY --from=builder --chown=voxel51:voxel51 /opt/teams-app/packages/app/node_modules /app/packages/app/node_modules

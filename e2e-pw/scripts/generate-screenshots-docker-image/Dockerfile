@@ -1,10 +1,14 @@
-FROM mcr.microsoft.com/playwright:v1.47.1-jammy
+FROM mcr.microsoft.com/playwright:v1.50.1
 
-# Install python 3.10
-RUN apt-get update \
-    && apt-get install -y libhdf5-dev pkg-config \
-        python3.10 python3-pip python3.10-venv \
-    && ln -s /usr/bin/python3 /usr/bin/python
+# Install Python 3.10 via deadsnakes PPA
+RUN apt-get update && apt-get install -y software-properties-common \
+    && add-apt-repository ppa:deadsnakes/ppa -y \
+    && apt-get update \
+    && apt-get install -y libhdf5-dev pkg-config ffmpeg \
+       python3.10 python3.10-venv python3.10-distutils \
+    && ln -sf /usr/bin/python3.10 /usr/bin/python \
+    && ln -sf /usr/bin/python3.10 /usr/bin/python3 \
+    && python -m ensurepip --upgrade
 
 WORKDIR /e2e
 

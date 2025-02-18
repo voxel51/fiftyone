@@ -5,7 +5,13 @@ import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { refresher } from "./atoms";
 import * as filterAtoms from "./filters";
-import { currentSlices, groupId, groupSlice, groupStatistics } from "./groups";
+import {
+  currentSlices,
+  groupId,
+  groupSlice,
+  groupSlices,
+  groupStatistics,
+} from "./groups";
 import { sidebarSampleId } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
@@ -76,7 +82,7 @@ export const aggregationQuery = graphQLSelectorFamily<
         paths,
         mixed,
         sampleIds,
-        slices: mixed ? null : get(currentSlices(modal)), // when mixed, slice is not needed
+        slices: mixed ? get(groupSlices) : get(currentSlices(modal)),
         slice: get(groupSlice),
         view: customView ? customView : !root ? get(viewAtoms.view) : [],
       };
@@ -150,15 +156,22 @@ export const modalAggregationPaths = selectorFamily({
       const isFramesPath = frames.some((p) => params.path.startsWith(p));
       let paths = isFramesPath
         ? frames
-        : get(schemaAtoms.labelFields({ space: State.SPACE.SAMPLE })).map(
-            (path) => get(schemaAtoms.expandPath(path))
-          );
+        : [
+            ...get(schemaAtoms.labelFields({ space: State.SPACE.SAMPLE })).map(
+              (path) => get(schemaAtoms.expandPath(path))
+            ),
+          ];
 
       paths = paths
         .sort()
         .flatMap((p) => get(schemaAtoms.modalFilterFields(p)));
 
       const numeric = get(schemaAtoms.isNumericField(params.path));
+      if (!isFramesPath && !numeric) {
+        // the modal currently requires a 'tags' aggregation
+        paths = ["tags", ...paths];
+      }
+
       if (params.mixed || get(groupId)) {
         paths = [
           ...paths.filter((p) => {
@@ -166,11 +179,6 @@ export const modalAggregationPaths = selectorFamily({
             return numeric ? n : !n;
           }),
         ];
-
-        if (!numeric && !isFramesPath) {
-          // the modal currently requires a 'tags' aggregation
-          paths = ["tags", ...paths];
-        }
       }
 
       return paths;
