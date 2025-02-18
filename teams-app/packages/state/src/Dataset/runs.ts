@@ -75,6 +75,7 @@ export const runsPageQuery = graphql`
         scheduledAt
         status
         datasetId
+        updatedAt
       }
       pageTotal
     }

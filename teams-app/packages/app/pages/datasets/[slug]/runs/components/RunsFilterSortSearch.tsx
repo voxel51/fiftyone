@@ -207,6 +207,7 @@ export default function RunsFilterSortSearch() {
           items={[
             { id: "newest", label: "Newest" },
             { id: "oldest", label: "Oldest" },
+            { id: "recentlyUpdated", label: "Recently updated" },
             { id: "operator", label: "Operator name" },
           ]}
           defaultValue="newest"
@@ -226,8 +227,9 @@ export default function RunsFilterSortSearch() {
 }
 
 const sortingMap = {
-  newest: { direction: "DESC", field: "updatedAt" },
-  oldest: { direction: "ASC", field: "updatedAt" },
+  recentlyUpdated: { direction: "ASC", field: "updatedAt" },
+  newest: { direction: "DESC", field: "scheduledAt" },
+  oldest: { direction: "ASC", field: "scheduledAt" },
   operator: { direction: "ASC", field: "operator" },
 };
 

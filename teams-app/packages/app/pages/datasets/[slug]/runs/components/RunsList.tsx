@@ -28,7 +28,6 @@ import {
   useRelayEnvironment,
 } from "react-relay";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
-import getTimestamp from "../utils/getTimestamp";
 import useRefresher, { RUNS_STATUS_REFRESHER_ID } from "../utils/useRefresher";
 import RunActions from "./RunActions";
 import RunLabel from "./RunLabel";
@@ -92,7 +91,7 @@ function RunsListWithQuery(props) {
     const { id, operator, label, runBy, runState, pinned, status, datasetId } =
       node;
     runIdToDatasetId[id] = datasetId as string;
-    const timestamp = getTimestamp(node);
+    const timestamp = node.updatedAt;
     const isHovering = hovered === id;
     const showProgress =
       status !== null && runState === OPERATOR_RUN_STATES.RUNNING;

@@ -66,6 +66,7 @@ export type runsPageQuery$data = {
       readonly scheduledAt: string | null;
       readonly startedAt: string | null;
       readonly status: any | null;
+      readonly updatedAt: string | null;
     }>;
     readonly pageTotal: number;
   };
@@ -290,6 +291,13 @@ v2 = [
             "args": null,
             "kind": "ScalarField",
             "name": "datasetId",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "updatedAt",
             "storageKey": null
           }
         ],
