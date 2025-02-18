@@ -282,17 +282,16 @@ def _add_custom_metrics(ctx, inputs, eval_type, method):
 
     for metric in metrics:
         operator = foo.get_operator(metric)
-        obj = types.Object()
-        obj.view(
-            f"header|{metric}",
-            types.Header(
-                label=f"{operator.config.label} parameters",
-                divider=True,
-            ),
-        )
-        operator.get_parameters(ctx, obj)
-        if len(obj.properties) > 1:
-            inputs.define_property(f"parameters|{metric}", obj)
+        prop = operator.resolve_input(ctx)
+        if prop is not None:
+            inputs.view(
+                f"header|{metric}",
+                types.Header(
+                    label=f"{operator.config.label} parameters",
+                    divider=True,
+                ),
+            )
+            inputs.add_property(f"parameters|{metric}", prop)
 
 
 def _get_evaluation_method(eval_type, method):
