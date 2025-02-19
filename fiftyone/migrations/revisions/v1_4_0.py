@@ -8,37 +8,46 @@ FiftyOne v1.4.0 revision.
 
 
 def up(db, dataset_name):
-    delegated_ops = _get_ops(db, dataset_name)
-
-    for op in delegated_ops:
-        run_link = op.get("run_link")
-
-        if (
-            run_link
-            and isinstance(run_link, str)
-            and run_link.endswith(".log")
-        ):
-            db.delegated_ops.update_one(
-                {"_id": op["_id"]},
-                {"$set": {"log_path": run_link, "run_link": None}},
-            )
+    _migrate_field_bulk(db, dataset_name, "run_link", "log_path")
 
 
 def down(db, dataset_name):
-    delegated_ops = _get_ops(db, dataset_name)
+    _migrate_field_bulk(db, dataset_name, "logs_path", "run_link")
 
-    for op in delegated_ops:
-        log_path = op.get("log_path")
 
-        if (
-            log_path
-            and isinstance(log_path, str)
-            and log_path.endswith(".log")
-        ):
-            db.delegated_ops.update_one(
-                {"_id": op["_id"]},
-                {"$set": {"log_path": None, "run_link": log_path}},
-            )
+def _migrate_field_bulk(db, dataset_name, source_field, target_field):
+    ops = _get_ops(db, dataset_name)
+
+    ops_to_update = [
+        op
+        for op in ops
+        if op.get(source_field)
+        and isinstance(op.get(source_field), str)
+        and op.get(source_field).endswith(".log")
+    ]
+
+    if not ops_to_update:
+        return 0
+
+    bulk_updates = [
+        {
+            "update_one": {
+                "filter": {"_id": op["_id"]},
+                "update": {
+                    "$set": {
+                        target_field: op[source_field],
+                        source_field: None,
+                    }
+                },
+            }
+        }
+        for op in ops_to_update
+    ]
+
+    try:
+        return db.delegated_ops.bulk_write(bulk_updates)
+    except Exception:
+        return 0
 
 
 def _get_ops(db, dataset_name):
