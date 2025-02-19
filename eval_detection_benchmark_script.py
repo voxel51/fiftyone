@@ -75,13 +75,26 @@ def profile_configurations(
     dataset_name: str = "bdd100k-validation",
     worker_counts: List[int] = [1, 2, 4, 8],
     shard_methods: List[str] = ["slice", "id"],
+    run_baseline_eval: bool = True,
 ) -> pd.DataFrame:
     """Profile different configurations and return results as DataFrame"""
     # Load dataset
     dataset = fo.load_dataset(dataset_name)
 
-    # Run baseline first
-    baseline_duration = run_baseline(dataset)
+    # Initialize results list
+    results = []
+
+    # Run baseline if requested
+    if run_baseline_eval:
+        baseline_duration = run_baseline(dataset)
+        results.append(
+            {
+                "configuration": "baseline",
+                "shard_method": "none",
+                "num_workers": 0,
+                "duration": baseline_duration,
+            }
+        )
 
     # Generate configurations based on input parameters
     configs = []
@@ -95,7 +108,6 @@ def profile_configurations(
                 }
             )
 
-    results = []
     for config in configs:
         duration = run_evaluation(dataset, config)
         results.append(
@@ -106,17 +118,6 @@ def profile_configurations(
                 "duration": duration,
             }
         )
-
-    # Add baseline to results
-    results.insert(
-        0,
-        {
-            "configuration": "baseline",
-            "shard_method": "none",
-            "num_workers": 0,
-            "duration": baseline_duration,
-        },
-    )
 
     # Convert to DataFrame for easy analysis
     df = pd.DataFrame(results)
@@ -158,6 +159,12 @@ def main():
         help="Output CSV file path (default: detection_eval_performance.csv)",
     )
 
+    parser.add_argument(
+        "--skip-baseline",
+        action="store_true",
+        help="Skip running the baseline (non-parallel) evaluation",
+    )
+
     args = parser.parse_args()
 
     # Parse worker counts and shard methods
@@ -169,6 +176,7 @@ def main():
         dataset_name=args.dataset,
         worker_counts=worker_counts,
         shard_methods=shard_methods,
+        run_baseline_eval=not args.skip_baseline,
     )
 
     # Print summary
