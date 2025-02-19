@@ -6,6 +6,8 @@
 #
 # ARGs::
 #
+#   BUILD_TYPE (interactive): Allows interactive or server builds without
+#       editing the Dockerfile
 #   PIP_INDEX_URL (https://pypi.org/simple): Allow the use of caching proxies
 #   PYTHON_VERSION (3.11): The Python base image to use
 #   ROOT_DIR (/fiftyone): The name of the directory within the container that
@@ -24,13 +26,15 @@
 #       -it local/fiftyone
 #
 
+# The type of build to run
+ARG BUILD_TYPE=interactive
+
 # The base python image to build from
 ARG PYTHON_VERSION=3.11
 
 # Collect wheels for future installation
-FROM python:${PYTHON_VERSION} AS builder
+FROM python:${PYTHON_VERSION} AS interactive
 ARG PIP_INDEX_URL=https://pypi.org/simple
-
 # default: use local wheel
 #
 COPY dist dist
@@ -40,14 +44,16 @@ RUN pip --no-cache-dir install -q -U pip setuptools wheel \
         dist/*.whl \
         ipython
 
+FROM python:${PYTHON_VERSION} AS server
+ARG PIP_INDEX_URL=https://pypi.org/simple
 # server: use published pypi package
 #
-# ARG FO_VERSION
-# ENV FO_VERSION=${FO_VERSION}
-# RUN pip --no-cache-dir install -q -U pip setuptools wheel \
-#     && pip wheel --wheel-dir=/wheels \
-#         fiftyone==${FO_VERSION} \
-#         ipython
+ARG FO_VERSION
+ENV FO_VERSION=${FO_VERSION}
+RUN pip --no-cache-dir install -q -U pip setuptools wheel \
+    && pip wheel --wheel-dir=/wheels \
+        fiftyone==${FO_VERSION} \
+        ipython
 
 #
 # Other packages you might want to add to the list above:
@@ -63,9 +69,12 @@ RUN pip --no-cache-dir install -q -U pip setuptools wheel \
 #   pydicom: DICOM images
 #
 
+FROM ${BUILD_TYPE} AS builder
+# This is an empty target because you can't use a variable in `RUN --mount`
+
 
 # Create a smaller image with wheels installed
-FROM python:${PYTHON_VERSION}-slim AS final
+FROM python:${PYTHON_VERSION}-slim AS shared
 ARG PIP_INDEX_URL=https://pypi.org/simple
 
 # The name of the shared directory in the container that should be
@@ -97,18 +106,21 @@ RUN --mount=type=cache,from=builder,target=/builder,ro \
     --find-links=/builder/wheels \
     /builder/wheels/*
 
+FROM shared AS server-final
+#
+# server: Launch the App
+#
+EXPOSE 5151
+CMD [ \
+    "python", \
+    "-m", \
+    "fiftyone.server.main", \
+    "--port", \
+    "5151" \
+    ]
+
+FROM shared AS interactive-final
 #
 # default: interactive, behavior
 #
 CMD [ "ipython" ]
-
-# server: Launch the App
-#
-# EXPOSE 5151
-# CMD [ \
-#     "python", \
-#     "-m", \
-#     "fiftyone.server.main", \
-#     "--port", \
-#     "5151" \
-#     ]
