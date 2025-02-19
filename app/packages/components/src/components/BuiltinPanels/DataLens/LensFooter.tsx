@@ -126,5 +126,5 @@ export const LensFooter = ({
     }
   }
 
-  return <Box sx={{ m: 2 }}>{content}</Box>;
+  return <Box sx={{ my: 1, mx: 2 }}>{content}</Box>;
 };

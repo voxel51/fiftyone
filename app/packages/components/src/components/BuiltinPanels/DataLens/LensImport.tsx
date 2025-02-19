@@ -113,7 +113,7 @@ export const LensImport = ({
   destinationDatasetName: string;
 }) => {
   return (
-    <Box sx={{ mt: 4 }}>
+    <Box>
       <Accordion expanded={expanded}>
         <AccordionSummary
           expandIcon={
