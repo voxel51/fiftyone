@@ -34,6 +34,8 @@ import RunLabel from "./RunLabel";
 import RunStatus from "./RunStatus";
 import RunsPin from "./RunsPin";
 import { useBooleanEnv } from "@fiftyone/hooks/src/common/useEnv";
+import { useRouter } from "next/router";
+import { useCurrentUser } from "@fiftyone/hooks";
 
 const NON_FINAL_RUN_STATES = [
   OPERATOR_RUN_STATES.QUEUED,
@@ -52,6 +54,10 @@ function RunsListWithQuery(props) {
   const showOrchestrators = !useBooleanEnv(
     FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS_ENV_KEY
   );
+  const { query } = useRouter();
+  const { slug: currentDatasetSlug } = query;
+  const [user] = useCurrentUser();
+  const isAdmin = user?.role === "ADMIN";
 
   const { nodes, pageTotal } = result.delegatedOperationsPage;
   const hasRunningRuns = nodes.some((node) =>
@@ -65,9 +71,17 @@ function RunsListWithQuery(props) {
     setRefresher(refreshStatus);
   }, [refreshStatus, setRefresher]);
 
+  const tableColumns = useMemo(() => {
+    if (isAdmin) {
+      return ["Operator", "Status", "Dataset", "Updated", "Run by", ""];
+    }
+    return ["Operator", "Status", "Updated", "Run by", ""];
+  }, [isAdmin]);
+
   if (nodes.length === 0) return <EmptyState resource="runs" />;
 
   const runIdToDatasetId: Record<string, string> = {};
+  console.log("nodes", nodes);
   const rows = nodes.map((node) => {
     const { id, operator, label, runBy, runState, pinned, status, datasetId } =
       node;
@@ -79,19 +93,24 @@ function RunsListWithQuery(props) {
 
     return {
       id,
-      // link: `/datasets/${encodeURIComponent(
-      //   datasetId as string
-      // )}/runs/${encodeURIComponent(id)}`,
       onClick: async (_, row) => {
+        console.log("runIdToDatasetId", runIdToDatasetId);
+        // TODO: change this to get datasetSlug from runs query when API is updated
         const data = await fetchQuery(environment, datasetBySlugQuery, {
           identifier: runIdToDatasetId[row.id],
         }).toPromise();
+        console.log("data", data);
         const datasetSlug = data?.dataset?.slug;
         if (!datasetSlug) return;
         const url = `/datasets/${datasetSlug}/runs/${encodeURIComponent(
           row.id
         )}`;
-        window.open(url, "_blank", "noopener,noreferrer");
+
+        if (currentDatasetSlug === datasetSlug) {
+          window.open(url, "_self");
+        } else {
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
       },
       onHover: (e, row, hovered) => {
         if (hovered) setHovered(row.id);
@@ -135,6 +154,14 @@ function RunsListWithQuery(props) {
             />
           ),
         },
+        ...(isAdmin
+          ? [
+              {
+                id: `${id}-dataset`,
+                value: node.datasetId,
+              },
+            ]
+          : []),
         {
           id: `${id}-timestamp`,
           Component: <Timestamp timestamp={timestamp} />,
@@ -159,17 +186,7 @@ function RunsListWithQuery(props) {
 
   return (
     <Stack>
-      <BasicTable
-        rows={rows}
-        columns={[
-          "Operator",
-          "Dataset",
-          "Status",
-          "Last updated",
-          "Run by",
-          "",
-        ]}
-      />
+      <BasicTable rows={rows} columns={tableColumns} />
       <Pagination
         page={vars.page}
         count={pageTotal}
