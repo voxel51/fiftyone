@@ -1,6 +1,8 @@
 """
 FiftyOne v1.4.0 revision.
 
+In previous versions we used the run_link field in delegated operations to store the path to the log file. This revision migrates the data from the run_link field to the new log_path field allowing for the use of both fields and a cleaner implementation.
+
 | Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
