@@ -31,12 +31,23 @@ ARG PYTHON_VERSION=3.11
 FROM python:${PYTHON_VERSION} AS builder
 ARG PIP_INDEX_URL=https://pypi.org/simple
 
+# default: use local wheel
+#
 COPY dist dist
 
 RUN pip --no-cache-dir install -q -U pip setuptools wheel \
     && pip wheel --wheel-dir=/wheels \
         dist/*.whl \
         ipython
+
+# server: use published pypi package
+#
+# ARG FO_VERSION
+# ENV FO_VERSION=${FO_VERSION}
+# RUN pip --no-cache-dir install -q -U pip setuptools wheel \
+#     && pip wheel --wheel-dir=/wheels \
+#         fiftyone==${FO_VERSION} \
+#         ipython
 
 #
 # Other packages you might want to add to the list above:
@@ -87,16 +98,17 @@ RUN --mount=type=cache,from=builder,target=/builder,ro \
     /builder/wheels/*
 
 #
-# Default, interactive, behavior
+# default: interactive, behavior
 #
-
 CMD [ "ipython" ]
 
-# Use this if want the default behavior to launch the App instead
+# server: Launch the App
+#
 # EXPOSE 5151
 # CMD [ \
 #     "python", \
-#     ".fiftyone-venv/lib/python3.11/site-packages/fiftyone/server/main.py", \
+#     "-m", \
+#     "fiftyone.server.main", \
 #     "--port", \
 #     "5151" \
 #     ]
