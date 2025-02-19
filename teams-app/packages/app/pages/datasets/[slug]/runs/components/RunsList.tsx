@@ -142,7 +142,7 @@ function RunsListWithQuery(props) {
         },
         {
           id: `${id}-dataset`,
-          value: node.dataset.name,
+          value: node.dataset.id,
         },
         {
           id: `${id}-status`,
