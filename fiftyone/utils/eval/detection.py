@@ -267,8 +267,8 @@ def evaluate_detections(
         )
     else:
         matches = []
-        for sample in _samples.iter_samples(progress=progress):
-            matches = _compute_matches_single(
+        for sample in _samples.iter_samples(progress=progress, autosave=save):
+            results = _compute_matches_single(
                 sample,
                 eval_method,
                 eval_key,
@@ -278,6 +278,7 @@ def evaluate_detections(
                 fp_field=fp_field,
                 fn_field=fn_field,
             )
+            matches.extend(results)
 
     results = eval_method.generate_results(
         samples,
