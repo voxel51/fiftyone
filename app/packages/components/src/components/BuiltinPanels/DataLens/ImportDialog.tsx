@@ -148,14 +148,8 @@ export const ImportDialog = ({
               <TextField
                 fullWidth
                 label="Number of samples"
-                value={maxImportSamples}
-                onChange={(e) =>
-                  setMaxImportSamples(
-                    isNaN(Number.parseInt(e.target.value))
-                      ? defaultMaxSamples
-                      : Number.parseInt(e.target.value)
-                  )
-                }
+                value={isNaN(maxImportSamples) ? "" : maxImportSamples}
+                onChange={(e) => setMaxImportSamples(parseInt(e.target.value))}
               />
             )}
           </Box>
@@ -271,7 +265,7 @@ export const ImportDialog = ({
             executionParams={importRequest}
             onSuccess={onSuccess}
             onError={onError}
-            onOptionSelected={(opt) => onStart(opt.isDelegated, datasetName)}
+            onOptionSelected={(opt) => onStart?.(opt.isDelegated, datasetName)}
           >
             Import data
           </OperatorExecutionButton>

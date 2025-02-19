@@ -393,7 +393,7 @@ export const LensPanel = ({
           loading={isPreviewLoading || isImportLoading}
           isPreviewEnabled={isFormValid && !isPreviewLoading && maxSamples > 0}
           maxSamples={maxSamples}
-          onMaxSamplesChange={(v) => v && setMaxSamples(parseInt(v))}
+          onMaxSamplesChange={(v) => setMaxSamples(parseInt(v))}
           onResetClick={resetPanelState}
           onPreviewClick={doSearch}
           onImportClick={openImportDialog}
