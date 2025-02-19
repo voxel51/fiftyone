@@ -4,7 +4,7 @@ import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from "../constants";
 
 export const runsPageQueryDefaultVariables = {
   filter: {},
-  order: { direction: "DESC", field: "updatedAt" },
+  order: { direction: "DESC", field: "scheduledAt" },
   page: DEFAULT_PAGE,
   pageSize: DEFAULT_PAGE_SIZE,
   search: null,

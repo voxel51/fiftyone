@@ -149,7 +149,8 @@ function RunsListWithQuery(props) {
             <RunStatus
               status={runState}
               progress={showProgress ? status : undefined}
-              position={node.position}
+              priority={node.priority}
+              maxPriority={5}
             />
           ),
         },
@@ -161,6 +162,10 @@ function RunsListWithQuery(props) {
               },
             ]
           : []),
+        {
+          id: `${id}-dataset`,
+          value: "mock dataset name", // todo@im
+        },
         {
           id: `${id}-timestamp`,
           Component: <Timestamp timestamp={timestamp} />,
@@ -244,23 +249,4 @@ export default function RunsList() {
       />
     </Suspense>
   );
-}
-
-// todo@im: remove
-function addMockData(data = {}) {
-  const dataWithMockData = { ...data };
-  const nodes = dataWithMockData.nodes;
-  if (!Array.isArray(nodes)) return dataWithMockData;
-  const scheduledCount = nodes.filter(
-    (node) => node.runState === "scheduled"
-  ).length;
-  let position = 1;
-  dataWithMockData.nodes = dataWithMockData.nodes.map((node) => {
-    const updatedNode = { ...node, dataset: { name: "quickstart" } };
-    if (node.runState === "scheduled") {
-      updatedNode.position = `${position++}/${scheduledCount}`;
-    }
-    return updatedNode;
-  });
-  return dataWithMockData;
 }

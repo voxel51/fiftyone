@@ -227,7 +227,7 @@ export default function RunsFilterSortSearch() {
 }
 
 const sortingMap = {
-  recentlyUpdated: { direction: "ASC", field: "updatedAt" },
+  recentlyUpdated: { direction: "DESC", field: "updatedAt" },
   newest: { direction: "DESC", field: "scheduledAt" },
   oldest: { direction: "ASC", field: "scheduledAt" },
   operator: { direction: "ASC", field: "operator" },

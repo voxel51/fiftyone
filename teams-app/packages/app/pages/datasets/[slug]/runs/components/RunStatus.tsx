@@ -1,4 +1,5 @@
 import { Box, ColorCircle } from "@fiftyone/teams-components";
+import { isNullish } from "@fiftyone/utilities";
 import { InfoOutlined } from "@mui/icons-material";
 import { Chip, Stack, Tooltip, Typography, useTheme } from "@mui/material";
 import { capitalize } from "lodash";
@@ -7,7 +8,7 @@ import React from "react";
 const STATUS_WITH_TOOLTIP = ["queued", "scheduled"];
 
 export default function RunStatus(props: RunStatusPropsType) {
-  const { status, variant = "chip", progress, position } = props;
+  const { status, variant = "chip", progress, priority, maxPriority } = props;
   const { palette } = useTheme();
   const colorGroup = colorGroupStatus[status];
   const color = palette[colorGroup].main;
@@ -25,7 +26,7 @@ export default function RunStatus(props: RunStatusPropsType) {
   }
   if (status === "scheduled") {
     wrapperProps = {
-      title: `Scheduled job position ${position}`,
+      title: `Scheduled job position ${priority}/${maxPriority}`,
       arrow: true,
     };
   }
@@ -36,8 +37,12 @@ export default function RunStatus(props: RunStatusPropsType) {
     <Wrapper {...wrapperProps}>
       <Chip
         label={
-          position ? (
-            <LabelWithPosition label={label} position={position} />
+          !isNullish(priority) ? (
+            <LabelWithPriority
+              label={label}
+              priority={priority}
+              maxPriority={maxPriority}
+            />
           ) : (
             label
           )
@@ -84,9 +89,8 @@ function ProgressChip(props: ProgressType) {
   );
 }
 
-function LabelWithPosition(props: LabelWithPositionPropsType) {
-  const { label, position } = props;
-  const [current, outOf] = position.split("/");
+function LabelWithPriority(props: LabelWithPriorityPropsType) {
+  const { label, priority, maxPriority } = props;
 
   return (
     <Stack direction="row" sx={{ alignItems: "center" }}>
@@ -104,7 +108,7 @@ function LabelWithPosition(props: LabelWithPositionPropsType) {
             lineHeight: "1rem",
           }}
         >
-          {current}
+          {priority}
         </Typography>
       </Box>
     </Stack>
@@ -115,7 +119,8 @@ type RunStatusPropsType = {
   status: string;
   variant?: "chip" | "circle";
   progress?: ProgressType;
-  position?: string;
+  priority?: number;
+  maxPriority?: number;
 };
 
 const colorGroupStatus = {
@@ -132,7 +137,8 @@ type ProgressType = {
   updated_at?: string;
 };
 
-type LabelWithPositionPropsType = {
-  position: string;
+type LabelWithPriorityPropsType = {
+  priority: number;
+  maxPriority: number;
   label: string;
 };
