@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d70c1256bbc0d75d0291be071aa8f829>>
+ * @generated SignedSource<<3fb247d42fa62ec671272d13347f1065>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -8,7 +8,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Query } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 export type DelegatedOperationOrderFields = "completedAt" | "failedAt" | "operator" | "queuedAt" | "scheduledAt" | "startedAt" | "updatedAt" | "%future added value";
 export type DelegatedOperationSearchFields = "delegationTarget" | "label" | "operator" | "user" | "%future added value";
 export type OrderInputDirection = "ASC" | "DESC" | "%future added value";
@@ -324,16 +324,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "cae2acfacef2b1a690d7b591ae0d8fad",
+    "cacheID": "d471ceb5fbc8eef8f076a9b821ba6a9d",
     "id": null,
     "metadata": {},
     "name": "runsPageQuery",
     "operationKind": "query",
-    "text": "query runsPageQuery(\n  $filter: DelegatedOperationFilter = null\n  $order: DelegatedOperationOrderFieldsOrder = null\n  $page: Int!\n  $pageSize: Int!\n  $search: DelegatedOperationSearchFieldsSearch = null\n) {\n  delegatedOperationsPage(filter: $filter, order: $order, page: $page, pageSize: $pageSize, search: $search) {\n    nodeTotal\n    nodes {\n      operator\n      label\n      id\n      runState\n      startedAt\n      queuedAt\n      completedAt\n      failedAt\n      runBy {\n        name\n        id\n      }\n      pinned\n      runLink\n      priority\n      logPath\n      logUrl\n      logUploadError\n      scheduledAt\n      status\n    }\n    pageTotal\n  }\n}\n"
+    "text": "query runsPageQuery(\n  $filter: DelegatedOperationFilter = null\n  $order: DelegatedOperationOrderFieldsOrder = null\n  $page: Int!\n  $pageSize: Int!\n  $search: DelegatedOperationSearchFieldsSearch = null\n) {\n  delegatedOperationsPage(filter: $filter, order: $order, page: $page, pageSize: $pageSize, search: $search) {\n    nodeTotal\n    nodes {\n      operator\n      label\n      id\n      runState\n      startedAt\n      queuedAt\n      completedAt\n      failedAt\n      runBy {\n        name\n        id\n      }\n      pinned\n      runLink\n      priority\n      logPath\n      logUrl\n      logUploadError\n      scheduledAt\n      status\n      datasetId\n    }\n    pageTotal\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "cbaa7ad2b3f69f92933546aabf733437";
+(node as any).hash = "d9521f99feace236e88311facf985f63";
 
 export default node;
