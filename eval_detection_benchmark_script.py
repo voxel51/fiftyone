@@ -3,6 +3,29 @@ import time
 import pandas as pd
 import argparse
 from typing import List
+from functools import wraps
+
+
+def cleanup_after(func):
+    """Decorator to automatically clean up dataset after evaluation"""
+
+    @wraps(func)
+    def wrapper(dataset, *args, **kwargs):
+        # Store original fields before evaluation
+        original_fields = list(dataset.get_field_schema().keys())
+
+        try:
+            # Run the evaluation function
+            result = func(dataset, *args, **kwargs)
+            return result
+        finally:
+            # Clean up regardless of whether evaluation succeeded or failed
+            field_names = list(dataset.get_field_schema().keys())
+            for field in field_names:
+                if field not in original_fields:
+                    dataset.delete_sample_field(field)
+
+    return wrapper
 
 
 def parse_worker_counts(workers_str: str) -> List[int]:
@@ -10,6 +33,7 @@ def parse_worker_counts(workers_str: str) -> List[int]:
     return [int(w.strip()) for w in workers_str.split(",")]
 
 
+@cleanup_after
 def run_evaluation(dataset, config: dict) -> float:
     """Run evaluation with given configuration and return execution time"""
     print(f"\nRunning configuration: {config['name']}")
@@ -30,6 +54,7 @@ def run_evaluation(dataset, config: dict) -> float:
     return duration
 
 
+@cleanup_after
 def run_baseline(dataset) -> float:
     """Run evaluation without beam_map to establish baseline"""
     print("\nRunning baseline (no beam_map)")
