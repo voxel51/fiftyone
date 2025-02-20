@@ -15,6 +15,11 @@ export const runsPageQueryDynamicVariables = atom({
   default: runsPageQueryDefaultVariables,
 });
 
+export const runsPageFilterDatasetSelectionState = atom<"this" | "all">({
+  key: "runsPageFilterDatasetSelectionState",
+  default: "this",
+});
+
 export const orchestratorDialogAtom = atom({
   key: "orchestratorDialogAtom",
   default: {

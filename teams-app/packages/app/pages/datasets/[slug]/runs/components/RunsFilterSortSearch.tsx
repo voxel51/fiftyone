@@ -2,6 +2,7 @@ import { useCurrentUser } from "@fiftyone/hooks";
 import { AutoRefresh, RadioGroup, Selection } from "@fiftyone/teams-components";
 import {
   autoRefreshRunsStatus,
+  runsPageFilterDatasetSelectionState,
   runsPageQueryDefaultVariables,
   runsPageQueryDynamicVariables,
   useCurrentDataset,
@@ -13,12 +14,9 @@ import SearchIcon from "@mui/icons-material/Search";
 import { IconButton, Stack, TextField } from "@mui/material";
 import { throttle } from "lodash";
 import { useCallback, useEffect, useState } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilValue, useSetRecoilState, useRecoilState } from "recoil";
 import useRefresher, { RUNS_STATUS_REFRESHER_ID } from "../utils/useRefresher";
 import RunStatus from "./RunStatus";
-
-// should be always "this" for non-admins
-const DEFAULT_THIS_ALL_DATASETS_FILTER = "this";
 
 export default function RunsFilterSortSearch() {
   const { query } = useRouter();
@@ -29,8 +27,8 @@ export default function RunsFilterSortSearch() {
   const id = user?.id;
   const isAdmin = user?.role === "ADMIN";
 
-  const [datasetSelection, setDatasetSelection] = useState(
-    DEFAULT_THIS_ALL_DATASETS_FILTER
+  const [datasetSelection, setDatasetSelection] = useRecoilState(
+    runsPageFilterDatasetSelectionState
   );
 
   useEffect(() => {

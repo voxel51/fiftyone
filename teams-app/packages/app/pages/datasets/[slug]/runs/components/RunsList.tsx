@@ -9,6 +9,7 @@ import {
 import {
   autoRefreshRunsStatus,
   datasetBySlugQuery,
+  runsPageFilterDatasetSelectionState,
   runsPageQuery,
   runsPageQueryDynamicVariables,
   runsPageQueryT,
@@ -54,10 +55,16 @@ function RunsListWithQuery(props) {
   const showOrchestrators = !useBooleanEnv(
     FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS_ENV_KEY
   );
+  const filterDatasetSelection = useRecoilValue(
+    runsPageFilterDatasetSelectionState
+  );
+
   const { query } = useRouter();
   const { slug: currentDatasetSlug } = query;
   const [user] = useCurrentUser();
   const isAdmin = user?.role === "ADMIN";
+
+  const showRunsForAllDatasets = filterDatasetSelection === "all" && isAdmin;
 
   const { nodes, pageTotal } = result.delegatedOperationsPage;
   const hasRunningRuns = nodes.some((node) =>
@@ -72,16 +79,15 @@ function RunsListWithQuery(props) {
   }, [refreshStatus, setRefresher]);
 
   const tableColumns = useMemo(() => {
-    if (isAdmin) {
+    if (showRunsForAllDatasets) {
       return ["Operator", "Status", "Dataset", "Updated", "Run by", ""];
     }
     return ["Operator", "Status", "Updated", "Run by", ""];
-  }, [isAdmin]);
+  }, [showRunsForAllDatasets]);
 
   if (nodes.length === 0) return <EmptyState resource="runs" />;
 
   const runIdToDatasetId: Record<string, string> = {};
-  console.log("nodes", nodes);
   const rows = nodes.map((node) => {
     const { id, operator, label, runBy, runState, pinned, status, datasetId } =
       node;
@@ -94,12 +100,10 @@ function RunsListWithQuery(props) {
     return {
       id,
       onClick: async (_, row) => {
-        console.log("runIdToDatasetId", runIdToDatasetId);
         // TODO: change this to get datasetSlug from runs query when API is updated
         const data = await fetchQuery(environment, datasetBySlugQuery, {
           identifier: runIdToDatasetId[row.id],
         }).toPromise();
-        console.log("data", data);
         const datasetSlug = data?.dataset?.slug;
         if (!datasetSlug) return;
         const url = `/datasets/${datasetSlug}/runs/${encodeURIComponent(
@@ -141,10 +145,6 @@ function RunsListWithQuery(props) {
           ),
         },
         {
-          id: `${id}-dataset`,
-          value: node.dataset.id,
-        },
-        {
           id: `${id}-status`,
           Component: (
             <RunStatus
@@ -154,7 +154,7 @@ function RunsListWithQuery(props) {
             />
           ),
         },
-        ...(isAdmin
+        ...(showRunsForAllDatasets
           ? [
               {
                 id: `${id}-dataset`,
