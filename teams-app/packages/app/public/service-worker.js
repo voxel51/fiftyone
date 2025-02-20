@@ -142,7 +142,7 @@ self.addEventListener("fetch", async (event) => {
         }
       }
 
-      // Do not add auth header to OPTIONS (prefetch) requests
+      // Do not add auth header to OPTIONS (preflight) requests
       const method = event.request.method;
       if (method !== "OPTIONS") {
         modifiedHeaders.set(authHeader, `${authPrefix} ${token}`);
@@ -152,8 +152,8 @@ self.addEventListener("fetch", async (event) => {
       const modifiedRequest = new Request(event.request.url, {
         url: request.url,
         method: request.method,
-        mode: method === "OPTIONS" ? undefined : "cors",
-        credentials: method === "OPTIONS" ? undefined : "include",
+        mode: "cors",
+        credentials: "include",
         cache: request.cache,
         redirect: request.redirect,
         referrer: request.referrer,
@@ -161,25 +161,36 @@ self.addEventListener("fetch", async (event) => {
       });
 
       event.respondWith(
-        fetch(modifiedRequest).catch((e) => {
-          console.error("Error fetching modified request:", e);
-          return new Response(
-            JSON.stringify({ message: "Error fetching modified request" }),
-            {
-              status: 500,
-              headers: { "Content-Type": "application/json" },
+        fetch(modifiedRequest)
+          .then((response) => {
+            // sometimes there's a redirect from preflight requests
+            if (response.status === 302 || response.type === "opaqueredirect") {
+              // unlikely browsers will let us read the Location header, but we can try
+              const redirectUrl = response.headers.get("Location");
+              if (redirectUrl) {
+                return fetch(redirectUrl);
+              }
             }
-          );
-        })
+            return response;
+          })
+          .catch((e) => {
+            console.error("Error fetching modified request:", e);
+            return new Response(
+              JSON.stringify({ message: "Error fetching modified request" }),
+              {
+                status: 500,
+                headers: { "Content-Type": "application/json" },
+              }
+            );
+          })
       );
-    } else {
-      // Allow the request to continue as normal and allow the browser to handle it
-      return;
     }
+    // if we don't modify the request, just return the original response
+    return;
   } catch (error) {
     console.error("Fetch handler encountered an error:", error);
 
-    // Safely extract error details
+    // safely extract error details
     let errorMessage = "An unknown error occurred in the service worker.";
     if (error instanceof Error && error.message) {
       errorMessage = error.message;
@@ -187,12 +198,12 @@ self.addEventListener("fetch", async (event) => {
       try {
         errorMessage = JSON.stringify(error);
       } catch (jsonError) {
-        // If the error details cannot be stringified, use a generic message to prevent circular references
+        // if the error details cannot be stringified, use a generic message to prevent circular references
         errorMessage = "Error details could not be stringified.";
       }
     }
 
-    // Respond with a 500 error on failure
+    // respond with a 500 error on failure
     event.respondWith(
       new Response(
         JSON.stringify({ message: `Service worker error: ${errorMessage}` }),
