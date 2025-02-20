@@ -152,7 +152,7 @@ export interface KeypointSkeleton {
   edges: number[][];
 }
 
-interface BaseOptions {
+export interface BaseOptions {
   highlight: boolean;
   activePaths: string[];
   fontSize?: number;
