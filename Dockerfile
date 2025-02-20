@@ -1,7 +1,8 @@
 # Copyright 2017-2025, Voxel51, Inc.
 # voxel51.com
 #
-# Dockerfile for building a FiftyOne image atop a Python 3.11 base image
+# Dockerfile for building a FiftyOne image atop a Python base image as defined
+#  by the PYTHON_VERSION build-arg
 #
 # ARGs::
 #
