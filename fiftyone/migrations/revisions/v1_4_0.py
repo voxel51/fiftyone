@@ -22,41 +22,21 @@ def down(db, dataset_name):
 
 
 def _migrate_field_bulk(db, dataset_name, source_field, target_field):
-    ops = _get_ops(db, dataset_name)
-
-    ops_to_update = [
-        op
-        for op in ops
-        if op.get(source_field)
-        and isinstance(op.get(source_field), str)
-        and op.get(source_field).endswith(".log")
-    ]
-
-    if not ops_to_update:
-        return 0
-
-    bulk_updates = [
-        UpdateOne(
-            {"_id": op["_id"]},
-            {"$set": {target_field: op[source_field], source_field: None}},
-        )
-        for op in ops_to_update
-    ]
-
-    try:
-        result = db.delegated_ops.bulk_write(bulk_updates)
-        return result
-    except Exception as e:
-        return 0
-
-
-def _get_ops(db, dataset_name):
-    dataset = db.datasets.find_one({"name": dataset_name})
+    dataset = db.datasets.find_one({"name": dataset_name}, {"_id": True})
     if not dataset:
-        return []
+        return
 
     dataset_id = dataset.get("_id")
     if not dataset_id:
-        return []
+        return
 
-    return db.delegated_ops.find({"dataset_id": dataset_id})
+    try:
+        db.delegated_ops.update_many(
+            {
+                "dataset_id": dataset_id,
+                f"{source_field}": {"$regex": "\\.log$", "$exists": True},
+            },
+            {"$rename": {f"{source_field}": f"{target_field}"}},
+        )
+    except Exception:
+        return
