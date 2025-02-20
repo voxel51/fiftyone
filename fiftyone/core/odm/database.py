@@ -956,9 +956,13 @@ def insert_documents(docs, coll, ordered=False, progress=None, num_docs=None):
     try:
         with batcher:
             for batch in batcher:
-                batch = list(batch)
+                # Modify each document client-side and ensure _id exists and is first
+                # https://github.com/mongodb/specifications/blob/master/source/crud/bulk-write.md#insert
+                for i, doc in enumerate(batch):
+                    _id = doc.pop("_id", ObjectId())
+                    ids.append(_id)
+                    batch[i] = {"_id": _id, **doc}
                 coll.insert_many(batch, ordered=ordered)
-                ids.extend(b["_id"] for b in batch)
                 if batcher.manual_backpressure:
                     # @todo can we infer content size from insert_many() above?
                     batcher.apply_backpressure(batch)
