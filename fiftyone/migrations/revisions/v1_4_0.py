@@ -10,6 +10,7 @@ and a cleaner implementation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from pymongo import UpdateOne
 
 
 def up(db, dataset_name):
@@ -17,7 +18,7 @@ def up(db, dataset_name):
 
 
 def down(db, dataset_name):
-    _migrate_field_bulk(db, dataset_name, "logs_path", "run_link")
+    _migrate_field_bulk(db, dataset_name, "log_path", "run_link")
 
 
 def _migrate_field_bulk(db, dataset_name, source_field, target_field):
@@ -35,23 +36,17 @@ def _migrate_field_bulk(db, dataset_name, source_field, target_field):
         return 0
 
     bulk_updates = [
-        {
-            "update_one": {
-                "filter": {"_id": op["_id"]},
-                "update": {
-                    "$set": {
-                        target_field: op[source_field],
-                        source_field: None,
-                    }
-                },
-            }
-        }
+        UpdateOne(
+            {"_id": op["_id"]},
+            {"$set": {target_field: op[source_field], source_field: None}},
+        )
         for op in ops_to_update
     ]
 
     try:
-        return db.delegated_ops.bulk_write(bulk_updates)
-    except Exception:
+        result = db.delegated_ops.bulk_write(bulk_updates)
+        return result
+    except Exception as e:
         return 0
 
 
