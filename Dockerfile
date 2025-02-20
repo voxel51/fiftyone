@@ -1,22 +1,36 @@
 # Copyright 2017-2025, Voxel51, Inc.
 # voxel51.com
 #
-# Dockerfile for building an image with source FiftyOne atop a Python 3.11
-#  base image
+# Dockerfile for building a FiftyOne image atop a Python 3.11 base image
 #
 # ARGs::
 #
-#   BUILD_TYPE (interactive): Allows interactive or server builds without
-#       editing the Dockerfile
+#   BUILD_TYPE (source): Allows source or released artifact builds without
+#       editing the Dockerfile [`source` or `released`]
+#   FO_VERSION [`released` builds only]: This is the fiftyone version to use for
+#       `released` builds
 #   PIP_INDEX_URL (https://pypi.org/simple): Allow the use of caching proxies
 #   PYTHON_VERSION (3.11): The Python base image to use
 #   ROOT_DIR (/fiftyone): The name of the directory within the container that
 #       should be mounted when running
 #
+# Targets::
+#   interactive (default): This builds a docker image that runs `ipython`
+#   server: This builds a docker image that launches fiftyone on port 5151
+#
 # Example usage::
 #
-#   # Build
+#   # Build interactive image from source
 #   make docker
+#
+#   # Build interactive image from released artifact
+#   docker build -t local/fiftyone \
+#      --build-arg BUILD_TYPE=released \
+#      --build-arg FO_VERSION=1.3.0 .
+#
+#   # Build server image from source artifact
+#   make python
+#   docker build -t local/fiftyone --target server .
 #
 #   # Run
 #   SHARED_DIR=/path/to/shared/dir
@@ -27,13 +41,13 @@
 #
 
 # The type of build to run
-ARG BUILD_TYPE=interactive
+ARG BUILD_TYPE=source
 
 # The base python image to build from
 ARG PYTHON_VERSION=3.11
 
 # Collect wheels for future installation
-FROM python:${PYTHON_VERSION} AS interactive
+FROM python:${PYTHON_VERSION} AS source
 ARG PIP_INDEX_URL=https://pypi.org/simple
 # default: use local wheel
 #
@@ -44,7 +58,7 @@ RUN pip --no-cache-dir install -q -U pip setuptools wheel \
         dist/*.whl \
         ipython
 
-FROM python:${PYTHON_VERSION} AS server
+FROM python:${PYTHON_VERSION} AS released
 ARG PIP_INDEX_URL=https://pypi.org/simple
 # server: use published pypi package
 #
@@ -106,7 +120,7 @@ RUN --mount=type=cache,from=builder,target=/builder,ro \
     --find-links=/builder/wheels \
     /builder/wheels/*
 
-FROM shared AS server-final
+FROM shared AS server
 #
 # server: Launch the App
 #
@@ -119,7 +133,7 @@ CMD [ \
     "5151" \
     ]
 
-FROM shared AS interactive-final
+FROM shared AS interactive
 #
 # default: interactive, behavior
 #
