@@ -12,6 +12,7 @@ import type {
 } from "../state";
 import type { BaseElement } from "./base";
 import * as common from "./common";
+import * as file from "./file";
 import * as frame from "./frame";
 import * as image from "./image";
 import * as imavid from "./imavid";
@@ -27,6 +28,23 @@ export type GetElements<State extends BaseState> = (params: {
   dispatchEvent: (eventType: string, details?: any) => void;
   update: StateUpdate<State>;
 }) => common.LookerElement<State>;
+
+export const getFileElements: GetElements<BaseState> = (params) => {
+  const elements = {
+    node: common.LookerElement,
+    children: [
+      { node: file.FileElement },
+      { node: common.CanvasElement },
+      { node: common.ErrorElement },
+      { node: common.ThumbnailSelectorElement },
+    ],
+  };
+
+  return createElementsTree({
+    ...params,
+    root: elements,
+  });
+};
 
 export const getFrameElements: GetElements<FrameState> = (params) => {
   const elements = {

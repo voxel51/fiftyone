@@ -1,5 +1,6 @@
 import {
   AbstractLooker,
+  FileLooker,
   FrameLooker,
   ImaVidLooker,
   ImageLooker,
@@ -92,7 +93,8 @@ export default <T extends AbstractLooker<BaseState>>(
           | typeof ImageLooker
           | typeof ImaVidLooker
           | typeof ThreeDLooker
-          | typeof VideoLooker = ImageLooker;
+          | typeof VideoLooker
+          | typeof FileLooker = ImageLooker;
 
         const mimeType = getMimeType(sample);
 
@@ -105,24 +107,37 @@ export default <T extends AbstractLooker<BaseState>>(
         const filePath =
           urls.filepath?.split("?")[0] ?? (sample.filepath as string);
 
-        if (filePath.endsWith(".pcd") || filePath.endsWith(".fo3d")) {
-          create = ThreeDLooker;
-        } else if (mimeType !== null) {
-          const isVideo = mimeType.startsWith("video/");
+        // media types for which we have a dedicated looker
+        const nativeMediaTypes = [
+          "image",
+          "video",
+          "3d",
+          "point-cloud",
+          "group",
+        ];
 
-          if (isVideo && (isFrame || isPatch)) {
-            create = FrameLooker;
-          }
-
-          if (isVideo) {
-            create = VideoLooker;
-          }
-
-          if (!isVideo && shouldRenderImaVidLooker) {
-            create = ImaVidLooker;
-          }
+        if (!nativeMediaTypes.includes(sample.media_type)) {
+          create = FileLooker;
         } else {
-          create = ImageLooker;
+          if (filePath.endsWith(".pcd") || filePath.endsWith(".fo3d")) {
+            create = ThreeDLooker;
+          } else if (mimeType !== null) {
+            const isVideo = mimeType.startsWith("video/");
+
+            if (isVideo && (isFrame || isPatch)) {
+              create = FrameLooker;
+            }
+
+            if (isVideo) {
+              create = VideoLooker;
+            }
+
+            if (!isVideo && shouldRenderImaVidLooker) {
+              create = ImaVidLooker;
+            }
+          } else {
+            create = ImageLooker;
+          }
         }
 
         let config: ConstructorParameters<T>[1] = {
