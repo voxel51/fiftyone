@@ -10,7 +10,6 @@ and a cleaner implementation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from pymongo import UpdateOne
 
 
 def up(db, dataset_name):
