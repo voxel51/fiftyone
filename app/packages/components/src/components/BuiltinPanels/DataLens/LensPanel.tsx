@@ -14,6 +14,7 @@ import {
   CircularProgress,
   MenuItem,
   Select,
+  Stack,
   Typography,
 } from "@mui/material";
 import { ImportDialog } from "./ImportDialog";
@@ -369,12 +370,17 @@ export const LensPanel = ({
   // All content.
   return (
     <Box sx={{ minWidth: "450px", m: "auto" }}>
-      <Box ref={mainContentRef} sx={{ m: "auto", mb: 16 }}>
+      <Stack
+        direction="column"
+        spacing={2}
+        ref={mainContentRef}
+        sx={{ m: "auto", mb: 16 }}
+      >
         {lensConfigContent}
         {queryOperatorContent}
         {previewContent}
         {importContent}
-      </Box>
+      </Stack>
 
       {/*Sticky footer*/}
       <Box
@@ -393,7 +399,7 @@ export const LensPanel = ({
           loading={isPreviewLoading || isImportLoading}
           isPreviewEnabled={isFormValid && !isPreviewLoading && maxSamples > 0}
           maxSamples={maxSamples}
-          onMaxSamplesChange={(v) => v && setMaxSamples(parseInt(v))}
+          onMaxSamplesChange={(v) => setMaxSamples(parseInt(v))}
           onResetClick={resetPanelState}
           onPreviewClick={doSearch}
           onImportClick={openImportDialog}

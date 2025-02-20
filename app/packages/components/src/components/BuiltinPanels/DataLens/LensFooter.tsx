@@ -33,7 +33,7 @@ export const LensFooter = ({
     <FormControl>
       <TextField
         label="Number of preview samples"
-        value={maxSamples}
+        value={isNaN(maxSamples) ? "" : maxSamples}
         onChange={(e) => onMaxSamplesChange(e.target.value)}
       />
     </FormControl>
@@ -126,5 +126,5 @@ export const LensFooter = ({
     }
   }
 
-  return <Box sx={{ m: 2 }}>{content}</Box>;
+  return <Box sx={{ my: 1, mx: 2 }}>{content}</Box>;
 };

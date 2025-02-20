@@ -28,12 +28,12 @@ export const LensQuery = ({
 }) => {
   const numFilters = useMemo(() => {
     return Object.values(formState)
-      .map((v) => v !== undefined && v !== null)
+      .map((v) => !!v || v === 0)
       .reduce((acc, curr) => acc + (curr ? 1 : 0), 0);
   }, [formState]);
 
   return (
-    <Box sx={{ mt: 4 }}>
+    <Box>
       <Accordion expanded={expanded}>
         <AccordionSummary expandIcon={expandIcon} onClick={onHeaderClick}>
           <Stack direction="row" alignItems="center" spacing={2}>

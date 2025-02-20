@@ -98,15 +98,10 @@ export const OperatorConfigurator = ({
 
   // Callback which handles updates to the form state.
   const updateFormState = (newState: FormState) => {
-    const hasData = Object.keys(newState).reduce(
-      (acc, key) => acc || newState[key] || newState[key] === 0,
-      false
-    );
-    const hasRequiredData = requiredFields.reduce(
-      (acc, key) => acc && (newState[key] || newState[key] === 0),
+    const isValid = requiredFields.reduce(
+      (acc, key) => acc && (!!newState[key] || newState[key] === 0),
       true
     );
-    const isValid = hasData && hasRequiredData;
 
     // For dynamic operators, we need to resolve inputs every time the form
     //  state changes.

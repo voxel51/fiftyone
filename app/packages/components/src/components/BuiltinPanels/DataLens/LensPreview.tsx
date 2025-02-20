@@ -37,7 +37,7 @@ export const LensPreview = ({
 }) => {
   if (loading) {
     return (
-      <Box sx={{ mt: 4 }}>
+      <Box>
         <Accordion expanded={expanded}>
           <AccordionSummary
             expandIcon={<CircularProgress size="1.5rem" />}
@@ -53,7 +53,7 @@ export const LensPreview = ({
     return (
       <Box>
         <Accordion expanded={expanded}>
-          <Box sx={{ my: 2, pt: 2, mx: 2 }}>
+          <Box sx={{ minHeight: "48px", p: "16px" }}>
             <Stack
               direction="row"
               justifyContent="space-between"
@@ -93,12 +93,10 @@ export const LensPreview = ({
                 </Typography>
               </Box>
             ) : searchResponse.result_count > 0 ? (
-              <Box sx={{ my: 2 }}>
-                <Lens
-                  samples={searchResponse.query_result}
-                  sampleSchema={schema!}
-                />
-              </Box>
+              <Lens
+                samples={searchResponse.query_result}
+                sampleSchema={schema!}
+              />
             ) : (
               <Box>
                 <Typography textAlign="center" color="secondary">
