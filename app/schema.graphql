@@ -220,8 +220,8 @@ type Dataset {
   groupMediaTypes: [Group!]
   groupField: String
   defaultGroupSlice: String
-  mediaType: MediaType
-  parentMediaType: MediaType
+  mediaType: String
+  parentMediaType: String
   maskTargets: [NamedTargets!]!
   defaultMaskTargets: [Target!]
   sampleFields: [SampleField!]!
@@ -364,7 +364,7 @@ type FloatLightningResult implements LightningResult {
 
 type Group {
   name: String!
-  mediaType: MediaType!
+  mediaType: String!
 }
 
 input GroupElementFilter {
@@ -487,14 +487,6 @@ type MaskColor {
 input MaskColorInput {
   color: String!
   intTarget: Int!
-}
-
-enum MediaType {
-  image
-  group
-  point_cloud
-  three_d
-  video
 }
 
 type MediaURL {
