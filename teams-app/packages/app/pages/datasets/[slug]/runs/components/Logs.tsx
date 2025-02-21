@@ -61,7 +61,6 @@ export default function Logs(props) {
   // const logStatus: LogStatus = "UPLOAD_SUCCESS";
   const { runLink, logConnection } = props.runData;
   const logStatus = getLogStatus(props.runData);
-  console.log("Log Connection:", logConnection);
 
   switch (logStatus) {
     case LOG_STATUS.PENDING:
@@ -72,7 +71,7 @@ export default function Logs(props) {
     default:
       return <UnsetLog />;
     case LOG_STATUS.UPLOAD_SUCCESS:
-      return <LogPreview />;
+      return <LogPreview props={props} />;
   }
   return <></>;
 }
