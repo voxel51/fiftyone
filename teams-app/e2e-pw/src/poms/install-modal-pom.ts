@@ -15,10 +15,14 @@ export class InstallModalPom {
 
   async getInstallCode() {
     const dialogContainer = this.page.getByTestId("dialog");
+    console.log(
+      "dialogContainer",
+      await dialogContainer.getByTestId("code").innerText()
+    );
     const installText = await dialogContainer
       .getByTestId("code")
       .getByRole("code")
-      .nth(0)
+      .nth(1)
       .innerText();
     return installText;
   }

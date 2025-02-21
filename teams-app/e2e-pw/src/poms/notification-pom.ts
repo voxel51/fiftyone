@@ -14,6 +14,7 @@ export class NotificationPom {
   }
 
   async hasNotifications() {
+    console.log("all global notifications", await this.locator.all());
     return Boolean(await this.locator.count());
   }
 
