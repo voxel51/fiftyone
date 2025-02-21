@@ -64,7 +64,7 @@ function RunsListWithQuery(props) {
   const [user] = useCurrentUser();
   const isAdmin = user?.role === "ADMIN";
 
-  const showRunsForAllDatasets = filterDatasetSelection === "all" && isAdmin;
+  const showRunsForAllDatasets = isAdmin;
 
   const { nodes, pageTotal } = result.delegatedOperationsPage;
   const hasRunningRuns = nodes.some((node) =>
