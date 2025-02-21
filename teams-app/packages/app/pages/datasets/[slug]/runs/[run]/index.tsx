@@ -16,8 +16,6 @@ import {
   VIEW_DATASET,
   runsItemQuery,
   runsItemQueryT,
-  runsLogQuery,
-  runsLogQueryDefaultVariables,
 } from "@fiftyone/teams-state";
 import {
   AUTO_REFRESH_INTERVAL_IN_SECONDS,
@@ -29,8 +27,8 @@ import * as fou from "@fiftyone/utilities";
 import { Link, Stack, Tab, TabProps, Tabs, Typography } from "@mui/material";
 import withRelay from "lib/withRelay";
 import { capitalize, get, omit } from "lodash";
-import { useEffect, useMemo, useState } from "react";
-import { usePreloadedQuery, useQueryLoader } from "react-relay";
+import { useEffect, useState } from "react";
+import { usePreloadedQuery } from "react-relay";
 import DatasetNavigation from "../../components/navigation";
 import Logs from "../components/Logs";
 import RunActions from "../components/RunActions";
@@ -46,14 +44,13 @@ import RunView from "./components/RunView";
 const { QUEUED, SCHEDULED, RUNNING, COMPLETED, FAILED } = OPERATOR_RUN_STATES;
 
 function Run(props) {
-  const { query } = useRouter();
-  const { slug: currentDatasetSlug } = query;
   const { preloadedQuery, refresh } = props;
   const result = usePreloadedQuery<runsItemQueryT>(
     runsItemQuery,
     preloadedQuery
   );
   const runData = result.delegatedOperation;
+  console.log("runData", runData);
   const timestamp = getTimestamp(runData);
   const [tab, setTab] = useState("inputs");
   const [schemas, setSchemas] = useState<{ inputs?: any; outputs?: any }>({});
@@ -86,19 +83,6 @@ function Run(props) {
     FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS_ENV_KEY
   );
   const { inputs_schema, outputs_schema } = metadata || {};
-  const [queryRef, loadQuery] = useQueryLoader(runsLogQuery);
-  // load logs query for dataset
-  const logQueryVariables = useMemo(() => {
-    return {
-      ...runsLogQueryDefaultVariables,
-      filter: {
-        datasetIdentifier: {
-          eq: currentDatasetSlug,
-        },
-      },
-    };
-  }, [currentDatasetSlug]);
-  console.log("logQueryVariables", logQueryVariables);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -133,13 +117,6 @@ function Run(props) {
       fetchIO("outputs");
     }
   }, []);
-
-  useEffect(() => {
-    if (!queryRef) {
-      console.log("Loading logs query...");
-      loadQuery(logQueryVariables, { fetchPolicy: "store-and-network" });
-    }
-  }, [loadQuery, logQueryVariables, queryRef]);
 
   const runByName = runBy?.name;
 
@@ -271,7 +248,7 @@ function Run(props) {
           />
         )}
         {tab === "errors" && runErrorData && <CodeBlock text={runErrorData} />}
-        {tab === "logs" && <Logs queryRef={queryRef} />}
+        {tab === "logs" && <Logs />}
         {tab === "view" && (
           <RunView
             view={omit(ctxData, ["operator_uri", "params", "dataset_name"])}

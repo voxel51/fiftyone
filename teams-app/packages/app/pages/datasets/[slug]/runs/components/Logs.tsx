@@ -1,18 +1,7 @@
-import {
-  ExternalLinkIcon,
-  SearchIcon,
-  TableSkeleton,
-} from "@fiftyone/teams-components";
+import { ExternalLinkIcon, SearchIcon } from "@fiftyone/teams-components";
+import { CONSTANT_VARIABLES } from "@fiftyone/teams-state";
 import { Box, Button, Stack, Typography } from "@mui/material";
-import {
-  CONSTANT_VARIABLES,
-  runsLogQuery,
-  runsLogQueryT,
-} from "@fiftyone/teams-state";
 import { LOG_STATUS } from "../utils/getLogStatus";
-import { loadQuery, usePreloadedQuery } from "react-relay";
-import { useEffect } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import LogPreview from "./logs/LogPreview";
 
 const UnsetLog = () => {
@@ -68,9 +57,8 @@ const UnsetLog = () => {
 
 type LogStatus = keyof typeof LOG_STATUS;
 
-export default function Logs(props) {
+export default function Logs() {
   const logStatus: LogStatus = "UPLOAD_SUCCESS";
-  const { queryRef } = props;
 
   switch (logStatus) {
     case LOG_STATUS.PENDING:
@@ -81,10 +69,7 @@ export default function Logs(props) {
     default:
       return <UnsetLog />;
     case LOG_STATUS.UPLOAD_SUCCESS:
-      if (!queryRef) {
-        return <TableSkeleton rows={25} />;
-      }
-      return <LogPreview queryRef={queryRef} />;
+      return <LogPreview />;
   }
   return <></>;
 }
