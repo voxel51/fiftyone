@@ -109,6 +109,8 @@ export default <T extends AbstractLooker<BaseState>>(
 
         // media types for which we have a dedicated looker
         const nativeMediaTypes = [
+          // undefined media_type is assumed to be an image
+          undefined,
           "image",
           "video",
           "3d",
