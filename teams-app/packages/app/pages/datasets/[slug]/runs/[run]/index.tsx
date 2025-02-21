@@ -70,7 +70,11 @@ function Run(props) {
     id,
     pinned,
     runLink,
+    logUrl,
+    logUploadError,
+    logSize,
     metadata,
+    logConnection,
   } = runData;
   const { operator_uri, params, ...ctxData } = context.request_params;
   const { inputs, outputs } = schemas;
@@ -248,7 +252,7 @@ function Run(props) {
           />
         )}
         {tab === "errors" && runErrorData && <CodeBlock text={runErrorData} />}
-        {tab === "logs" && <Logs />}
+        {tab === "logs" && <Logs runData={runData} />}
         {tab === "view" && (
           <RunView
             view={omit(ctxData, ["operator_uri", "params", "dataset_name"])}

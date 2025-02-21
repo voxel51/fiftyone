@@ -57,8 +57,10 @@ const UnsetLog = () => {
 
 type LogStatus = keyof typeof LOG_STATUS;
 
-export default function Logs() {
+export default function Logs(props) {
   const logStatus: LogStatus = "UPLOAD_SUCCESS";
+  const { runLink, logConnection } = props.runData;
+  console.log("Log Connection:", logConnection);
 
   switch (logStatus) {
     case LOG_STATUS.PENDING:
