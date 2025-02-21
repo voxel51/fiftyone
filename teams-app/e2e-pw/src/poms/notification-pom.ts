@@ -14,7 +14,15 @@ export class NotificationPom {
   }
 
   async hasNotifications() {
-    console.log("all global notifications", await this.locator.all());
+    const alerts = await this.page
+      .getByTestId("global-notification-container")
+      .locator("*")
+      .all();
+
+    console.log(
+      await Promise.all(alerts.map(async (alert) => await alert.textContent()))
+    );
+
     return Boolean(await this.locator.count());
   }
 
