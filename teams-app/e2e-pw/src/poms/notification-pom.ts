@@ -35,7 +35,7 @@ class NotificationAsserter {
     expect(await this.pom.hasNotifications()).toBe(true);
     const scText = await this.pom.getStrictComplianceNotificationText();
     const expectedPattern =
-      /Your deployment is currently in violation of its license\. The maximum licenses for the following roles have been exceeded: .*/;
+      /Your deployment is currently in violation of its license\. The maximum licenses for the following roles have been exceeded: .* Please resolve this before .* to avoid any service interruptions\./;
     expect(scText).toMatch(expectedPattern);
   }
 
