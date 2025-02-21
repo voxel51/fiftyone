@@ -62,7 +62,6 @@ export FIFTYONE_API_KEY=YYYYYYYYY`;
         machine.
       </Typography>
       <CodeTabs
-        data-testid="install-command"
         tabs={[
           {
             id: "bash-install",
