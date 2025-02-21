@@ -50,7 +50,6 @@ function Run(props) {
     preloadedQuery
   );
   const runData = result.delegatedOperation;
-  console.log("runData", runData);
   const timestamp = getTimestamp(runData);
   const [tab, setTab] = useState("inputs");
   const [schemas, setSchemas] = useState<{ inputs?: any; outputs?: any }>({});
