@@ -17,8 +17,7 @@ export const runsLogQueryDefaultVariables = {
   page: 1,
   pageSize: 1000,
   search: null,
-  logs_first: 0,
-  logs_after: null,
+  logs_first: 1000,
 };
 
 export const runsPageQueryDynamicVariables = atom({

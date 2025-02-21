@@ -98,6 +98,7 @@ function Run(props) {
       },
     };
   }, [currentDatasetSlug]);
+  console.log("logQueryVariables", logQueryVariables);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -134,8 +135,11 @@ function Run(props) {
   }, []);
 
   useEffect(() => {
-    loadQuery(logQueryVariables, { fetchPolicy: "store-and-network" });
-  }, [loadQuery, logQueryVariables]);
+    if (!queryRef) {
+      console.log("Loading logs query...");
+      loadQuery(logQueryVariables, { fetchPolicy: "store-and-network" });
+    }
+  }, [loadQuery, logQueryVariables, queryRef]);
 
   const runByName = runBy?.name;
 

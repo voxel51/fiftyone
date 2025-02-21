@@ -1,4 +1,8 @@
-import { ExternalLinkIcon, SearchIcon } from "@fiftyone/teams-components";
+import {
+  ExternalLinkIcon,
+  SearchIcon,
+  TableSkeleton,
+} from "@fiftyone/teams-components";
 import { Box, Button, Stack, Typography } from "@mui/material";
 import {
   CONSTANT_VARIABLES,
@@ -68,8 +72,6 @@ export default function Logs(props) {
   const logStatus: LogStatus = "UPLOAD_SUCCESS";
   const { queryRef } = props;
 
-  console.log("logresult", result);
-
   switch (logStatus) {
     case LOG_STATUS.PENDING:
     // return <PendingLog />;
@@ -79,6 +81,9 @@ export default function Logs(props) {
     default:
       return <UnsetLog />;
     case LOG_STATUS.UPLOAD_SUCCESS:
+      if (!queryRef) {
+        return <TableSkeleton rows={25} />;
+      }
       return <LogPreview queryRef={queryRef} />;
   }
   return <></>;
