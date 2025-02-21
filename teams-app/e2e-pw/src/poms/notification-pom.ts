@@ -14,16 +14,14 @@ export class NotificationPom {
   }
 
   async hasNotifications() {
-    const alerts = await this.page
-      .getByTestId("global-notification-container")
-      .locator("*")
-      .all();
-
-    console.log(
-      await Promise.all(alerts.map(async (alert) => await alert.all()))
+    return Boolean(
+      (await this.locator
+        .getByTestId("global-notification-strict_compliance")
+        .count()) ||
+        (await this.locator
+          .getByTestId("global-notification-license_expiration")
+          .count())
     );
-
-    return Boolean(await this.locator.count());
   }
 
   async getStrictComplianceNotificationText() {

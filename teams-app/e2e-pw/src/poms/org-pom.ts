@@ -69,7 +69,6 @@ export class OrgPom {
 
   async isCompliant() {
     const audit = await this.defaultAudit();
-    console.log("audit", audit);
     let isCompliant = true;
     Object.entries(audit).forEach(
       ([_, item]: [string, { remaining: number }]) => {

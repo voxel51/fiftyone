@@ -14,11 +14,13 @@ export class InstallModalPom {
   }
 
   async getInstallCode() {
-    const codeBlock = this.page
-      .getByTestId("dialog")
-      .getByTestId("install-command");
-    console.log(await codeBlock.allInnerTexts());
-    return (await codeBlock.textContent()) ?? "";
+    const dialogContainer = this.page.getByTestId("dialog");
+    const installText = await dialogContainer
+      .getByTestId("code")
+      .getByRole("code")
+      .first()
+      .innerText();
+    return installText;
   }
 
   async open() {
