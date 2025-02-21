@@ -14,6 +14,7 @@ import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls"
 import { getColorFromPoolBasedOnHash } from "../../utils";
 import { useFo3dContext } from "../context";
 import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
+import { useFoLoader } from "../../hooks/use-fo-loaders";
 
 const ObjMeshDefaultMaterial = ({
   name,
@@ -35,7 +36,7 @@ const ObjMeshDefaultMaterial = ({
     [objPath, preTransformedObjPath, fo3dRoot]
   );
 
-  const mesh = useLoader(OBJLoader, objUrl);
+  const mesh = useFoLoader(OBJLoader, objUrl);
 
   const { material } = useMeshMaterialControls(name, obj.defaultMaterial);
 
@@ -94,12 +95,12 @@ const ObjMeshWithCustomMaterial = ({
     [fo3dRoot, mtlUrl]
   );
 
-  const materials = useLoader(MTLLoader, mtlUrl, (loader) => {
+  const materials = useFoLoader(MTLLoader, mtlUrl, (loader) => {
     if (resourcePath) {
       loader.setResourcePath(resourcePath);
     }
   });
-  const mesh = useLoader(OBJLoader, objUrl, (loader) => {
+  const mesh = useFoLoader(OBJLoader, objUrl, (loader) => {
     if (mtlUrl) {
       materials.preload();
       loader.setMaterials(materials);
