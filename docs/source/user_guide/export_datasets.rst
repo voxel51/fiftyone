@@ -510,7 +510,7 @@ refer to the corresponding dataset format when writing the dataset to disk.
     |                                                                    | <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.        |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`BDDDataset <BDDDataset-export>`                              | A labeled dataset consisting of images and their associated multitask predictions  |
-    |                                                                    | saved in `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.       |
+    |                                                                    | saved in `Berkeley DeepDrive (BDD) format <http://bdd-data.berkeley.edu>`_.        |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`CSVDataset <CSVDataset-export>`                              | A flexible CSV format that represents slice(s) of a dataset's values as columns of |
     |                                                                    | a CSV file.                                                                        |
@@ -3291,7 +3291,7 @@ BDDDataset
 
 The :class:`fiftyone.types.BDDDataset` type represents a labeled dataset
 consisting of images and their associated multitask predictions saved in
-`Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
+`Berkeley DeepDrive (BDD) format <http://bdd-data.berkeley.edu>`_.
 
 Datasets of this type are exported in the following format:
 
