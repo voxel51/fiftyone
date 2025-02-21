@@ -20,7 +20,7 @@ export class NotificationPom {
       .all();
 
     console.log(
-      await Promise.all(alerts.map(async (alert) => await alert.textContent()))
+      await Promise.all(alerts.map(async (alert) => await alert.all()))
     );
 
     return Boolean(await this.locator.count());
