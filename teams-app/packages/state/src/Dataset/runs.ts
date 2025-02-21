@@ -10,6 +10,17 @@ export const runsPageQueryDefaultVariables = {
   search: null,
 };
 
+// preview the first 1000 line of logs
+export const runsLogQueryDefaultVariables = {
+  filter: {},
+  order: { direction: "DESC", field: "date" },
+  page: 1,
+  pageSize: 1000,
+  search: null,
+  logs_first: 0,
+  logs_after: null,
+};
+
 export const runsPageQueryDynamicVariables = atom({
   key: "runsPageQueryDynamicVariables",
   default: runsPageQueryDefaultVariables,
@@ -101,6 +112,47 @@ export const runsPageStatusQuery = graphql`
         status
         runState
       }
+    }
+  }
+`;
+
+export const runsLogQuery = graphql`
+  query runsLogQuery(
+    $filter: DelegatedOperationFilter = null
+    $order: DelegatedOperationOrderFieldsOrder = null
+    $page: Int!
+    $pageSize: Int!
+    $search: DelegatedOperationSearchFieldsSearch = null
+    $logs_first: Int!
+    $logs_after: String = null
+  ) {
+    delegatedOperationsPage(
+      filter: $filter
+      order: $order
+      page: $page
+      pageSize: $pageSize
+      search: $search
+    ) {
+      nodeTotal
+      nodes {
+        logConnection(first: $logs_first, after: $logs_after) {
+          pageInfo {
+            hasNextPage
+            hasPreviousPage
+            startCursor
+            endCursor
+          }
+          edges {
+            node {
+              content
+              date
+              level
+            }
+            cursor
+          }
+        }
+      }
+      pageTotal
     }
   }
 `;
