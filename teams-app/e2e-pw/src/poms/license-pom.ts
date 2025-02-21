@@ -1,4 +1,4 @@
-import { expect, Locator, Page } from '@playwright/test';
+import { expect, Locator, Page } from "@playwright/test";
 
 const BASE_URL = process.env.BASE_URL;
 
@@ -12,22 +12,22 @@ export class LicensePom {
 
   async goTo(url: string) {
     await this.page.goto(url, {
-      waitUntil: 'networkidle'
+      waitUntil: "networkidle",
     });
   }
 
   async getInfoAlert() {
     await this.page.waitForSelector('[data-testid="license-info-alert"]');
-    return this.page.getByTestId('license-info-alert');
+    return this.page.getByTestId("license-info-alert");
   }
 
   async getInfoIcon() {
     await this.page.waitForSelector('[data-testid="license-info-icon"]');
-    return this.page.getByTestId('license-info-icon');
+    return this.page.getByTestId("license-info-icon");
   }
 
   async getLicenseCountText() {
-    return await this.page.getByTestId('license-counts-text').innerText();
+    return await this.page.getByTestId("license-counts-text").innerText();
   }
 
   async getSeatsInfo() {
@@ -35,30 +35,30 @@ export class LicensePom {
     let seatsMap: { users: any; guests: any; collaborators?: any } = {
       users: {
         current: Number(
-          await this.page.getByTestId('license-table-users-current').innerText()
+          await this.page.getByTestId("license-table-users-current").innerText()
         ),
         remaining: Number(
           await this.page
-            .getByTestId('license-table-users-remaining')
+            .getByTestId("license-table-users-remaining")
             .innerText()
         ),
         total: Number(
-          await this.page.getByTestId('license-table-users-total').innerText()
-        )
+          await this.page.getByTestId("license-table-users-total").innerText()
+        ),
       },
       guests: {
         current: Number(
-          await this.page.getByTestId('license-table-guest-current').innerText()
+          await this.page.getByTestId("license-table-guest-current").innerText()
         ),
         remaining: Number(
           await this.page
-            .getByTestId('license-table-guest-remaining')
+            .getByTestId("license-table-guest-remaining")
             .innerText()
         ),
         total: Number(
-          await this.page.getByTestId('license-table-guest-total').innerText()
-        )
-      }
+          await this.page.getByTestId("license-table-guest-total").innerText()
+        ),
+      },
     };
 
     const collabCount = await this.page
@@ -69,19 +69,19 @@ export class LicensePom {
       seatsMap.collaborators = {
         current: Number(
           await this.page
-            .getByTestId('license-table-collaborator-current')
+            .getByTestId("license-table-collaborator-current")
             .innerText()
         ),
         remaining: Number(
           await this.page
-            .getByTestId('license-table-collaborator-remaining')
+            .getByTestId("license-table-collaborator-remaining")
             .innerText()
         ),
         total: Number(
           await this.page
-            .getByTestId('license-table-collaborator-total')
+            .getByTestId("license-table-collaborator-total")
             .innerText()
-        )
+        ),
       };
     }
 
@@ -97,7 +97,7 @@ export class LicensePom {
   async unHoverOverLicenseInfoIcon() {
     await this.page.mouse.move(0, 0);
     await this.page.waitForSelector('[data-testid="license-info-table"]', {
-      state: 'hidden'
+      state: "hidden",
     });
   }
 
@@ -105,8 +105,8 @@ export class LicensePom {
     const infoIcon = await this.getInfoIcon();
     await infoIcon.hover();
     await this.page.waitForSelector('[data-testid="license-info-table"]', {
-      state: 'visible',
-      timeout: 10000
+      state: "visible",
+      timeout: 10000,
     });
   }
 }
@@ -123,8 +123,8 @@ class LicenseAsserter {
     await expect(table).toBeVisible();
 
     await expect(
-      table.getByTestId('license-info-table-header-role')
-    ).toHaveText('Role');
+      table.getByTestId("license-info-table-header-role")
+    ).toHaveText("Role");
   }
 
   async ensureAlertShownCorrectly(routeToUsersPage: boolean = true) {
@@ -135,7 +135,7 @@ class LicenseAsserter {
 
     const alertText = await this.license.getLicenseCountText();
 
-    let expectedText = '';
+    let expectedText = "";
     if (!seatMap?.collaborators) {
       expectedText = `Users (Admins, Members, Collaborators): ${seatMap.users.remaining} Guests: ${seatMap.guests.remaining}`;
     } else {

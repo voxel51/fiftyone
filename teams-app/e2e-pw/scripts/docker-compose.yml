@@ -1,9 +1,9 @@
-version: '3.8'
+version: "3.8"
 services:
   mongodb:
     image: mongo:6-jammy
     container_name: e2e-mongo
-    command: ['--quiet', '--port', '${MONGO_PORT}', '--bind_ip_all']
+    command: ["--quiet", "--port", "${MONGO_PORT}", "--bind_ip_all"]
     restart: always
     ports:
       - ${MONGO_PORT}:${MONGO_PORT}
@@ -59,7 +59,7 @@ services:
       APP_USE_HTTPS: ${APP_USE_HTTPS:-true}
       APP_BIND_PORT: ${APP_BIND_PORT}
       FIFTYONE_APP_TEAMS_SDK_RECOMMENDED_VERSION: 0.13.2
-      FIFTYONE_SERVER_ADDRESS: ''
+      FIFTYONE_SERVER_ADDRESS: ""
       FIFTYONE_SERVER_PATH_PREFIX: /api/proxy/fiftyone-teams
       FIFTYONE_TEAMS_PROXY_URL: ${FIFTYONE_TEAMS_PROXY_URL}
       NODE_ENV: production

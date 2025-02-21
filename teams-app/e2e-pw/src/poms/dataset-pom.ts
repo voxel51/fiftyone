@@ -1,4 +1,4 @@
-import { Locator, Page, expect } from '@playwright/test';
+import { Locator, Page, expect } from "@playwright/test";
 
 const BASE_URL = process.env.BASE_URL;
 
@@ -11,19 +11,19 @@ export class DatasetPom {
   }
 
   get deleteBtn() {
-    return this.page.getByTestId('dataset-delete-btn');
+    return this.page.getByTestId("dataset-delete-btn");
   }
 
   get createBtn() {
-    return this.page.getByTestId('dataset-create-btn');
+    return this.page.getByTestId("dataset-create-btn");
   }
 
   async exists(name: string) {
-    const searchFieldParent = this.page.getByTestId('datasets-search-field');
-    await searchFieldParent.locator('input').fill(name);
+    const searchFieldParent = this.page.getByTestId("datasets-search-field");
+    await searchFieldParent.locator("input").fill(name);
     await this.page.waitForSelector('ul[role="listbox"]');
     await this.page.waitForSelector('[data-testid="search-in-progress-icon"]', {
-      state: 'hidden'
+      state: "hidden",
     });
 
     const matchCount = await this.page
@@ -38,26 +38,26 @@ export class DatasetPom {
   }
 
   async search(name: string) {
-    await this.page.goto(`${BASE_URL}/datasets`, { waitUntil: 'networkidle' });
-    const searchFieldParent = this.page.getByTestId('datasets-search-field');
-    await searchFieldParent.locator('input').fill(name);
-    await searchFieldParent.locator('input').press('Enter');
+    await this.page.goto(`${BASE_URL}/datasets`, { waitUntil: "networkidle" });
+    const searchFieldParent = this.page.getByTestId("datasets-search-field");
+    await searchFieldParent.locator("input").fill(name);
+    await searchFieldParent.locator("input").press("Enter");
 
-    await this.page.waitForLoadState('networkidle');
+    await this.page.waitForLoadState("networkidle");
     await this.page.waitForSelector('[data-testid^="dataset-table-row-"]', {
-      state: 'visible'
+      state: "visible",
     });
   }
 
   async clearSearch() {
-    await this.page.getByTestId('clear-search-input').click();
-    await this.page.waitForLoadState('networkidle');
+    await this.page.getByTestId("clear-search-input").click();
+    await this.page.waitForLoadState("networkidle");
   }
 
   async pin(name: string) {
     await this.page.getByTestId(`dataset-table-row-${name}-title`).hover();
     await this.page.getByTestId(`dataset-table-row-${name}-pin`).click();
-    await this.page.waitForLoadState('networkidle');
+    await this.page.waitForLoadState("networkidle");
   }
 
   async isPinned(name: string) {
@@ -74,42 +74,42 @@ export class DatasetPom {
 
   async searchAndNavigate(
     name: string,
-    page: 'samples' | 'access' = 'samples'
+    page: "samples" | "access" = "samples"
   ) {
     const match = await this.exists(name);
     if (match) {
       await match.click();
       await this.page.waitForURL(`**/datasets/${name}/${page}`, {
-        waitUntil: 'networkidle'
+        waitUntil: "networkidle",
       });
     }
   }
 
   async delete(name: string) {
     await this.page.goto(`${BASE_URL}/datasets/${name}/manage/danger_zone`, {
-      waitUntil: 'networkidle'
+      waitUntil: "networkidle",
     });
 
     await this.deleteBtn.click();
     await this.page.waitForSelector('[data-testid="delete-dataset-dialog"]', {
-      state: 'visible'
+      state: "visible",
     });
     const deleteInput = this.page.locator(
       `input[type="text"][placeholder="${name}"]`
     );
     await deleteInput.fill(name);
 
-    const confirmDeleteBtn = this.page.getByRole('button', {
-      name: 'Delete dataset'
+    const confirmDeleteBtn = this.page.getByRole("button", {
+      name: "Delete dataset",
     });
     await confirmDeleteBtn.click();
     await this.page.waitForSelector('[data-testid="delete-dataset-dialog"]', {
-      state: 'hidden'
+      state: "hidden",
     });
   }
 
   async deleteIfExists(name: string) {
-    await this.page.goto(`${BASE_URL}/datasets`, { waitUntil: 'networkidle' });
+    await this.page.goto(`${BASE_URL}/datasets`, { waitUntil: "networkidle" });
     const exists = await this.exists(name);
 
     if (exists) {
@@ -118,32 +118,32 @@ export class DatasetPom {
   }
 
   async goToAccessPage(name: string) {
-    await this.page.waitForLoadState('networkidle'); // don't remove
+    await this.page.waitForLoadState("networkidle"); // don't remove
     await this.page.goto(`${BASE_URL}/datasets/${name}/manage/access`, {
       timeout: 600000,
-      waitUntil: 'load'
+      waitUntil: "load",
     });
   }
 
   async openGrantAccessModal() {
-    await this.page.getByTestId('dataset-access-add-user-btn').click();
+    await this.page.getByTestId("dataset-access-add-user-btn").click();
     await this.page.waitForSelector('[data-testid="dataset-access-dialog"]', {
-      state: 'visible'
+      state: "visible",
     });
   }
 
   async create(name: string) {
-    await this.page.goto(`${BASE_URL}/datasets`, { waitUntil: 'load' });
+    await this.page.goto(`${BASE_URL}/datasets`, { waitUntil: "load" });
     await this.page.waitForSelector('[data-testid="dataset-create-btn"]', {
-      state: 'visible'
+      state: "visible",
     });
 
     await this.createBtn.click();
     await this.page.waitForSelector('[data-testid="create-dataset-modal"]', {
-      state: 'visible'
+      state: "visible",
     });
 
-    const modal = this.page.getByTestId('create-dataset-modal');
+    const modal = this.page.getByTestId("create-dataset-modal");
 
     const nameInputParent = this.page.locator(
       '[data-testid="dataset-name-input"]'
@@ -163,7 +163,7 @@ export class DatasetPom {
 
     await submitButton.click();
     await this.page.waitForSelector('[data-testid="create-dataset-modal"]', {
-      state: 'hidden'
+      state: "hidden",
     });
   }
 }
@@ -188,15 +188,15 @@ class DatasetAsserter {
 
   async ensurePagination() {
     await this.dataset.page.goto(`${BASE_URL}/datasets?page=1&pageSize=1`, {
-      waitUntil: 'networkidle'
+      waitUntil: "networkidle",
     });
-    const paginationControl = this.dataset.page.getByTestId('go-to-next-page');
+    const paginationControl = this.dataset.page.getByTestId("go-to-next-page");
     await paginationControl.scrollIntoViewIfNeeded();
     await paginationControl.click();
 
     // Verify that the page navigation worked as expected
-    await this.dataset.page.waitForURL('**/datasets?page=2&pageSize=1', {
-      waitUntil: 'networkidle'
+    await this.dataset.page.waitForURL("**/datasets?page=2&pageSize=1", {
+      waitUntil: "networkidle",
     });
   }
 }
