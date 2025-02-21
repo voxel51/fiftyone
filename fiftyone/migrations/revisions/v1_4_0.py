@@ -11,6 +11,8 @@ and a cleaner implementation.
 |
 """
 
+LOG_FILE_SUFFIX = ".log"
+
 
 def up(db, dataset_name):
     _migrate_field_bulk(db, dataset_name, "run_link", "log_path")
@@ -33,9 +35,15 @@ def _migrate_field_bulk(db, dataset_name, source_field, target_field):
         db.delegated_ops.update_many(
             {
                 "dataset_id": dataset_id,
-                f"{source_field}": {"$regex": "\\.log$", "$exists": True},
+                f"{source_field}": {
+                    "$regex": f"\\{LOG_FILE_SUFFIX}$",
+                    "$exists": True,
+                },
             },
             {"$rename": {f"{source_field}": f"{target_field}"}},
         )
-    except Exception:
-        return
+    except Exception as e:
+        raise RuntimeError(
+            f"Failed to replace '{target_field}' with '{source_field}' "
+            f"for dataset '{dataset_name}'. Reason: {e}"
+        )
