@@ -153,7 +153,7 @@ self.addEventListener("fetch", async (event) => {
         url: request.url,
         method: request.method,
         mode: "cors",
-        credentials: "include",
+        credentials: "omit",
         cache: request.cache,
         redirect: request.redirect,
         referrer: request.referrer,
