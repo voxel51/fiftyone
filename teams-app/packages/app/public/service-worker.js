@@ -152,7 +152,13 @@ self.addEventListener("fetch", async (event) => {
       const modifiedRequest = new Request(event.request.url, {
         url: request.url,
         method: request.method,
+        // We must set mode to cors here.
         mode: "cors",
+        // We must set credentials to omit here.
+        // We're still manually specifying credentials in the Authorization: Bearer MY_TOKEN header, which will pass through.
+        // It just means cookies forwarding + Authorization: Basic XYZ headers would not go through.
+        // Client expects Access-Control-Allow-Credentials: true in the response header when credentials is true,
+        // which is not true for many media servers, like gcloud.
         credentials: "omit",
         cache: request.cache,
         redirect: request.redirect,
