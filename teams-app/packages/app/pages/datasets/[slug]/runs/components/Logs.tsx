@@ -1,8 +1,17 @@
 import { ExternalLinkIcon, SearchIcon } from "@fiftyone/teams-components";
 import { Box, Button, Stack, Typography } from "@mui/material";
-import { CONSTANT_VARIABLES } from "@fiftyone/teams-state";
+import {
+  CONSTANT_VARIABLES,
+  runsLogQuery,
+  runsLogQueryT,
+} from "@fiftyone/teams-state";
+import { LOG_STATUS } from "../utils/getLogStatus";
+import { loadQuery, usePreloadedQuery } from "react-relay";
+import { useEffect } from "react";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import LogPreview from "./logs/LogPreview";
 
-const EmptyLogs = () => {
+const UnsetLog = () => {
   const handleButtonClick = (url: string) => {
     window.open(url, "_blank", "noopener,noreferrer");
   };
@@ -53,11 +62,24 @@ const EmptyLogs = () => {
   );
 };
 
-export default function Logs() {
-  const emptyLog = true;
-  if (emptyLog) {
-    return <EmptyLogs />;
-  }
+type LogStatus = keyof typeof LOG_STATUS;
 
-  return <Stack>normal logs</Stack>;
+export default function Logs(props) {
+  const logStatus: LogStatus = "UPLOAD_SUCCESS";
+  const { queryRef } = props;
+
+  console.log("logresult", result);
+
+  switch (logStatus) {
+    case LOG_STATUS.PENDING:
+    // return <PendingLog />;
+    case LOG_STATUS.URL_LINK:
+    // return <URLLog />;
+    case LOG_STATUS.UNSET:
+    default:
+      return <UnsetLog />;
+    case LOG_STATUS.UPLOAD_SUCCESS:
+      return <LogPreview queryRef={queryRef} />;
+  }
+  return <></>;
 }

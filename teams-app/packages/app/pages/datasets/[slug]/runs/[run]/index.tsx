@@ -16,6 +16,8 @@ import {
   VIEW_DATASET,
   runsItemQuery,
   runsItemQueryT,
+  runsLogQuery,
+  runsLogQueryDefaultVariables,
 } from "@fiftyone/teams-state";
 import {
   AUTO_REFRESH_INTERVAL_IN_SECONDS,
@@ -27,9 +29,10 @@ import * as fou from "@fiftyone/utilities";
 import { Link, Stack, Tab, TabProps, Tabs, Typography } from "@mui/material";
 import withRelay from "lib/withRelay";
 import { capitalize, get, omit } from "lodash";
-import { useEffect, useState } from "react";
-import { usePreloadedQuery } from "react-relay";
+import { useEffect, useMemo, useState } from "react";
+import { usePreloadedQuery, useQueryLoader } from "react-relay";
 import DatasetNavigation from "../../components/navigation";
+import Logs from "../components/Logs";
 import RunActions from "../components/RunActions";
 import RunLabel from "../components/RunLabel";
 import RunStatus from "../components/RunStatus";
@@ -39,11 +42,12 @@ import getTimestamp from "../utils/getTimestamp";
 import isUrl from "../utils/isUrl";
 import RunIO, { IOType } from "./components/RunIO";
 import RunView from "./components/RunView";
-import Logs from "../components/Logs";
 
 const { QUEUED, SCHEDULED, RUNNING, COMPLETED, FAILED } = OPERATOR_RUN_STATES;
 
 function Run(props) {
+  const { query } = useRouter();
+  const { slug: currentDatasetSlug } = query;
   const { preloadedQuery, refresh } = props;
   const result = usePreloadedQuery<runsItemQueryT>(
     runsItemQuery,
@@ -82,6 +86,18 @@ function Run(props) {
     FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS_ENV_KEY
   );
   const { inputs_schema, outputs_schema } = metadata || {};
+  const [queryRef, loadQuery] = useQueryLoader(runsLogQuery);
+  // load logs query for dataset
+  const logQueryVariables = useMemo(() => {
+    return {
+      ...runsLogQueryDefaultVariables,
+      filter: {
+        datasetIdentifier: {
+          eq: currentDatasetSlug,
+        },
+      },
+    };
+  }, [currentDatasetSlug]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -116,6 +132,10 @@ function Run(props) {
       fetchIO("outputs");
     }
   }, []);
+
+  useEffect(() => {
+    loadQuery(logQueryVariables, { fetchPolicy: "store-and-network" });
+  }, [loadQuery, logQueryVariables]);
 
   const runByName = runBy?.name;
 
@@ -247,7 +267,7 @@ function Run(props) {
           />
         )}
         {tab === "errors" && runErrorData && <CodeBlock text={runErrorData} />}
-        {tab === "logs" && <Logs />}
+        {tab === "logs" && <Logs queryRef={queryRef} />}
         {tab === "view" && (
           <RunView
             view={omit(ctxData, ["operator_uri", "params", "dataset_name"])}
