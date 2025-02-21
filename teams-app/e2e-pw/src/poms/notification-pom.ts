@@ -40,7 +40,6 @@ class NotificationAsserter {
   }
 
   async ensureComplianceNotification() {
-    const audit = await this.pom.org.defaultAudit();
     const org = await this.pom.org.getDefaultOrg();
 
     const isCompliant = await this.pom.org.isCompliant();

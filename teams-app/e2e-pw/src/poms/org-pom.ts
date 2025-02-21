@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { Page } from "@playwright/test";
 
 const BASE_URL = process.env.BASE_URL;
 const { SUPERADMIN_SECRET } = process.env;
@@ -9,8 +9,8 @@ let cachedAudit = null;
 async function getOrgs() {
   if (!cachedOrgs) {
     const orgsReq = await fetch(`${BASE_URL}/cas/api/orgs`, {
-      headers: { 'X-API-KEY': SUPERADMIN_SECRET },
-      method: 'GET'
+      headers: { "X-API-KEY": SUPERADMIN_SECRET },
+      method: "GET",
     });
     cachedOrgs = await orgsReq.json(); // assuming the response is JSON
   }
@@ -23,10 +23,10 @@ async function getAudit(defaultOrgId) {
       `${BASE_URL}/cas/api/orgs/${defaultOrgId}/audit`,
       {
         headers: {
-          'X-API-KEY': SUPERADMIN_SECRET,
-          'Content-Type': 'application/json'
+          "X-API-KEY": SUPERADMIN_SECRET,
+          "Content-Type": "application/json",
         },
-        method: 'GET'
+        method: "GET",
       }
     );
     cachedAudit = await auditReq.json(); // assuming the response is JSON
@@ -69,6 +69,7 @@ export class OrgPom {
 
   async isCompliant() {
     const audit = await this.defaultAudit();
+    console.log("audit", audit);
     let isCompliant = true;
     Object.entries(audit).forEach(
       ([_, item]: [string, { remaining: number }]) => {
