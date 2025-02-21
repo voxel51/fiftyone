@@ -261,6 +261,7 @@ def evaluate_detections(
         matches = _samples.map_samples(
             _map_fnc,
             reduce_fcn=_reduce_fcn,
+            save=save,
             progress=progress,
             num_workers=num_workers,
             shard_method=shard_method,
@@ -279,6 +280,8 @@ def evaluate_detections(
                 fn_field=fn_field,
             )
             matches.extend(results)
+    print("Matches:", matches[:5])
+    print("Len Matches:", len(matches))
 
     results = eval_method.generate_results(
         samples,

@@ -39,15 +39,18 @@ def run_evaluation(dataset, config: dict) -> float:
     print(f"\nRunning configuration: {config['name']}")
 
     start_time = time.time()
-    results = dataset.evaluate_detections(
-        "detections",
-        gt_field="detections",
-        eval_key=f"eval_predictions_{int(time.time())}_{config['name']}",
-        multiprocessing=True,
-        shard_method=config["shard_method"],
-        num_workers=config["num_workers"],
-        progress=True,
-    )
+    try:
+        results = dataset.evaluate_detections(
+            "detections",
+            gt_field="detections",
+            eval_key=f"eval_predictions_{int(time.time())}_{config['name']}",
+            multiprocessing=True,
+            shard_method=config["shard_method"],
+            num_workers=config["num_workers"],
+            progress=True,
+        )
+    except Exception as e:
+        print(f"Error: {e}")
     duration = time.time() - start_time
 
     print(f"Duration: {duration:.2f} seconds")
