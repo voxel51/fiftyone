@@ -14,7 +14,13 @@ export class NotificationPom {
   }
 
   async hasNotifications() {
-    return Boolean(await this.locator.count());
+    const [strictCount, licenseCount] = await Promise.all([
+      this.locator.getByTestId("global-notification-strict_compliance").count(),
+      this.locator
+        .getByTestId("global-notification-license_expiration")
+        .count(),
+    ]);
+    return strictCount > 0 || licenseCount > 0;
   }
 
   async getStrictComplianceNotificationText() {
@@ -35,12 +41,11 @@ class NotificationAsserter {
     expect(await this.pom.hasNotifications()).toBe(true);
     const scText = await this.pom.getStrictComplianceNotificationText();
     const expectedPattern =
-      /Your deployment is currently in violation of its license\. Please resolve this before .* to avoid any service interruptions\./;
+      /Your deployment is currently in violation of its license\. The maximum licenses for the following roles have been exceeded: .* Please resolve this before .* to avoid any service interruptions\./;
     expect(scText).toMatch(expectedPattern);
   }
 
   async ensureComplianceNotification() {
-    const audit = await this.pom.org.defaultAudit();
     const org = await this.pom.org.getDefaultOrg();
 
     const isCompliant = await this.pom.org.isCompliant();

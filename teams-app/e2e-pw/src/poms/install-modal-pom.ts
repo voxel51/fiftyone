@@ -18,7 +18,7 @@ export class InstallModalPom {
     const installText = await dialogContainer
       .getByTestId("code")
       .getByRole("code")
-      .nth(1)
+      .first()
       .innerText();
     return installText;
   }

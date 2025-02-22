@@ -17,6 +17,7 @@ import {
   ShadeByHeight,
   ShadeByIntensity,
 } from "./shaders";
+import { useFoLoader } from "../../hooks/use-fo-loaders";
 
 type PointCloudMeshArgs = {
   upVector: THREE.Vector3;
@@ -48,7 +49,7 @@ export const PointCloudMesh = ({
   rotation,
   onLoad,
 }: PointCloudMeshArgs) => {
-  const points = useLoader(PCDLoader, src);
+  const points = useFoLoader(PCDLoader, src);
 
   const [colorMinMax, setColorMinMax] = useState<ColorMinMax>({
     min: 0,

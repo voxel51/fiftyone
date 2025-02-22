@@ -55,6 +55,12 @@ _MODEL_TEMPLATE = """
 
 -   Model name: ``{{ name }}``
 -   Model source: {{ source }}
+{% if author %}
+-   Model author: {{ author }}
+{% endif %}
+{% if license %}
+-   Model license: {{ license }}
+{% endif %}
 {% if size %}
 -   Model size: {{ size }}
 {% endif %}
@@ -343,6 +349,8 @@ def _render_model_content(template, model_name):
         header_name=header_name,
         description=zoo_model.description,
         source=zoo_model.source,
+        author=zoo_model.author,
+        license=zoo_model.license,
         size=size_str,
         exposes_embeddings=exposes_embeddings,
         tags=tags_str,

@@ -6,6 +6,8 @@
             "version": null,
             "description": "AlexNet model architecture from `One weird trick for parallelizing convolutional neural networks <https://arxiv.org/abs/1404.5997>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Alex Krizhevsky",
+            "license": "BSD 3-Clause",
             "size_bytes": 244418560,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -54,6 +56,8 @@
             "version": null,
             "description": "DeepLabV3 model from `Rethinking Atrous Convolution for Semantic Image Segmentation <https://arxiv.org/abs/1706.05587>`_ with ResNet-101 backbone trained on COCO",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Liang-Chieh Chen, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 244545539,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -93,6 +97,8 @@
             "version": null,
             "description": "Segment Anything Model (SAM) from `Segment Anything <https://arxiv.org/abs/2304.02643>`_ with ViT-B/16 backbone trained on SA-1B",
             "source": "https://segment-anything.com",
+            "author": "Alexander Kirillov, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 732512,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -126,6 +132,8 @@
             "version": null,
             "description": "Segment Anything Model (SAM) from `Segment Anything <https://arxiv.org/abs/2304.02643>`_ with ViT-H/16 backbone trained on SA-1B",
             "source": "https://segment-anything.com",
+            "author": "Alexander Kirillov, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 5008896,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -159,6 +167,8 @@
             "version": null,
             "description": "Segment Anything Model (SAM) from `Segment Anything <https://arxiv.org/abs/2304.02643>`_ with ViT-L/16 backbone trained on SA-1B",
             "source": "https://segment-anything.com",
+            "author": "Alexander Kirillov, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 2440480,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -192,6 +202,8 @@
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
             "source": "https://ai.meta.com/sam2/",
+            "author": "Nikhila Ravi, et al.",
+            "license": "Apache 2.0,BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -225,6 +237,8 @@
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
             "source": "https://ai.meta.com/sam2/",
+            "author": "Nikhila Ravi, et al.",
+            "license": "Apache 2.0,BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -258,6 +272,8 @@
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
             "source": "https://ai.meta.com/sam2/",
+            "author": "Nikhila Ravi, et al.",
+            "license": "Apache 2.0,BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -291,6 +307,8 @@
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
             "source": "https://ai.meta.com/sam2/",
+            "author": "Nikhila Ravi, et al.",
+            "license": "Apache 2.0,BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -324,6 +342,8 @@
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
             "source": "https://ai.meta.com/sam2/",
+            "author": "Nikhila Ravi, et al.",
+            "license": "Apache 2.0,BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -356,6 +376,8 @@
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
             "source": "https://ai.meta.com/sam2/",
+            "author": "Nikhila Ravi, et al.",
+            "license": "Apache 2.0,BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -389,6 +411,8 @@
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
             "source": "https://ai.meta.com/sam2/",
+            "author": "Nikhila Ravi, et al.",
+            "license": "Apache 2.0,BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -422,6 +446,8 @@
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
             "source": "https://ai.meta.com/sam2/",
+            "author": "Nikhila Ravi, et al.",
+            "license": "Apache 2.0,BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -455,6 +481,8 @@
             "version": null,
             "description": "Fine-tuned SAM2-hiera-tiny model from `Medical SAM 2 - Segment Medical Images as Video via Segment Anything Model 2 <https://arxiv.org/abs/2408.00874>`_",
             "source": "https://github.com/MedicineToken/Medical-SAM2",
+            "author": "Jiayuan Zhu, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -493,6 +521,8 @@
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
             "source": "https://ai.meta.com/sam2/",
+            "author": "Nikhila Ravi, et al.",
+            "license": "Apache 2.0,BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -528,6 +558,8 @@
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
             "source": "https://ai.meta.com/sam2/",
+            "author": "Nikhila Ravi, et al.",
+            "license": "Apache 2.0,BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -563,6 +595,8 @@
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
             "source": "https://ai.meta.com/sam2/",
+            "author": "Nikhila Ravi, et al.",
+            "license": "Apache 2.0,BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -598,6 +632,8 @@
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
             "source": "https://ai.meta.com/sam2/",
+            "author": "Nikhila Ravi, et al.",
+            "license": "Apache 2.0,BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -633,6 +669,8 @@
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
             "source": "https://ai.meta.com/sam2/",
+            "author": "Nikhila Ravi, et al.",
+            "license": "Apache 2.0,BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -667,6 +705,8 @@
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
             "source": "https://ai.meta.com/sam2/",
+            "author": "Nikhila Ravi, et al.",
+            "license": "Apache 2.0,BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -702,6 +742,8 @@
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
             "source": "https://ai.meta.com/sam2/",
+            "author": "Nikhila Ravi, et al.",
+            "license": "Apache 2.0,BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -737,6 +779,8 @@
             "version": null,
             "description": "Segment Anything Model 2 (SAM2) from `SAM2: Segment Anything in Images and Videos <https://arxiv.org/abs/2408.00714>`_",
             "source": "https://ai.meta.com/sam2/",
+            "author": "Nikhila Ravi, et al.",
+            "license": "Apache 2.0,BSD 3-Clause",
             "size_bytes": 155906050,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -772,6 +816,8 @@
             "version": null,
             "description": "DeepLabV3 model from `Rethinking Atrous Convolution for Semantic Image Segmentation <https://arxiv.org/abs/1706.05587>`_ with ResNet-50 backbone trained on COCO",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Liang-Chieh Chen, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 168312152,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -811,6 +857,8 @@
             "version": null,
             "description": "Densenet-121 model from `Densely Connected Convolutional Networks <https://arxiv.org/pdf/1608.06993.pdf>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Gao Huang, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 32342954,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -859,6 +907,8 @@
             "version": null,
             "description": "Densenet-161 model from `Densely Connected Convolutional Networks <https://arxiv.org/pdf/1608.06993.pdf>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Gao Huang, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 115730790,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -907,6 +957,8 @@
             "version": null,
             "description": "Densenet-169 model from `Densely Connected Convolutional Networks <https://arxiv.org/pdf/1608.06993.pdf>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Gao Huang, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 57365526,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -955,6 +1007,8 @@
             "version": null,
             "description": "Densenet-201 model from `Densely Connected Convolutional Networks <https://arxiv.org/pdf/1608.06993.pdf>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Gao Huang, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 81131730,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1003,6 +1057,8 @@
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with ResNet-50 FPN backbone trained on COCO",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Shaoqing Ren, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 167502836,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1040,6 +1096,8 @@
             "version": null,
             "description": "FCN model from `Fully Convolutional Networks for Semantic Segmentation <https://arxiv.org/abs/1411.4038>`_ with ResNet-101 backbone trained on COCO",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Jonathan Long, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 217800805,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1079,6 +1137,8 @@
             "version": null,
             "description": "FCN model from `Fully Convolutional Networks for Semantic Segmentation <https://arxiv.org/abs/1411.4038>`_ with ResNet-50 backbone trained on COCO",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Jonathan Long, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 141567418,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1118,6 +1178,8 @@
             "version": null,
             "description": "GoogLeNet (Inception v1) model from `Going Deeper with Convolutions <https://arxiv.org/abs/1409.4842>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Christian Szegedy, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 52147035,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1166,6 +1228,8 @@
             "version": null,
             "description": "Inception v3 model from `Rethinking the Inception Architecture for Computer Vision <https://arxiv.org/abs/1512.00567>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Christian Szegedy, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 108857766,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1213,6 +1277,8 @@
             "version": null,
             "description": "Keypoint R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with ResNet-50 FPN backbone trained on COCO",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Kaiming He, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 237034793,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1276,6 +1342,8 @@
             "version": null,
             "description": "Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with ResNet-50 FPN backbone trained on COCO",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Kaiming He, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 178090079,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1312,6 +1380,8 @@
             "version": null,
             "description": "MNASNet model from from `MnasNet: Platform-Aware Neural Architecture Search for Mobile <https://arxiv.org/abs/1807.11626>`_ with depth multiplier of 0.5 trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Mingxing Tan, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 9008489,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1360,6 +1430,8 @@
             "version": null,
             "description": "MNASNet model from `MnasNet: Platform-Aware Neural Architecture Search for Mobile <https://arxiv.org/abs/1807.11626>`_ with depth multiplier of 1.0 trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Mingxing Tan, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 17736997,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1408,6 +1480,8 @@
             "version": null,
             "description": "MobileNetV2 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <https://arxiv.org/abs/1801.04381>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Mark Sandler, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 14212972,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1456,6 +1530,8 @@
             "version": null,
             "description": "ResNet-101 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Kaiming He, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 178728960,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1504,6 +1580,8 @@
             "version": null,
             "description": "ResNet-152 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Kaiming He, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 241530880,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1552,6 +1630,8 @@
             "version": null,
             "description": "ResNet-18 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Kaiming He, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 46827520,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1600,6 +1680,8 @@
             "version": null,
             "description": "ResNet-34 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Kaiming He, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 87306240,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1648,6 +1730,8 @@
             "version": null,
             "description": "ResNet-50 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Kaiming He, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 102502400,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1696,6 +1780,8 @@
             "version": null,
             "description": "ResNeXt-101 32x8d model from `Aggregated Residual Transformations for Deep Neural Networks <https://arxiv.org/abs/1611.05431>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Saining Xie, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 356082095,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1744,6 +1830,8 @@
             "version": null,
             "description": "ResNeXt-50 32x4d model from `Aggregated Residual Transformations for Deep Neural Networks <https://arxiv.org/abs/1611.05431>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Saining Xie, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 100441675,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1792,6 +1880,8 @@
             "version": null,
             "description": "RetinaNet model from `Focal Loss for Dense Object Detection <https://arxiv.org/abs/1708.02002>`_ with ResNet-50 FPN backbone trained on COCO",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Tsung-Yi Lin, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 136595076,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1829,6 +1919,8 @@
             "version": null,
             "description": "ShuffleNetV2 model from `ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design <https://arxiv.org/abs/1807.11164>`_ with 0.5x output channels trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Ningning Ma, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 5538128,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1877,6 +1969,8 @@
             "version": null,
             "description": "ShuffleNetV2 model from `ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design <https://arxiv.org/abs/1807.11164>`_ with 1.0x output channels trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Ningning Ma, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 9218294,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1925,6 +2019,8 @@
             "version": null,
             "description": "SqueezeNet 1.1 model from `the official SqueezeNet repo <https://github.com/forresti/SqueezeNet/tree/master/SqueezeNet_v1.1>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Forrest Iandola",
+            "license": "BSD 2-Clause",
             "size_bytes": 4966400,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -1965,6 +2061,8 @@
             "version": null,
             "description": "SqueezeNet model from `SqueezeNet: AlexNet-level accuracy with 50x fewer parameters and <0.5MB model size <https://arxiv.org/abs/1602.07360>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Forrest Iandola",
+            "license": "BSD 2-Clause",
             "size_bytes": 5017600,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -2005,6 +2103,8 @@
             "version": null,
             "description": "VGG-11 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ with batch normalization trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Karen Simonyan, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 531503671,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -2053,6 +2153,8 @@
             "version": null,
             "description": "VGG-11 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Karen Simonyan, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 531456000,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -2099,6 +2201,8 @@
             "version": null,
             "description": "VGG-13 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ with batch normalization trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Karen Simonyan, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 532246301,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -2147,6 +2251,8 @@
             "version": null,
             "description": "VGG-13 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Karen Simonyan, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 532194478,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -2193,6 +2299,8 @@
             "version": null,
             "description": "VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ with batch normalization trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Karen Simonyan, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 553507836,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -2241,6 +2349,8 @@
             "version": null,
             "description": "VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Karen Simonyan, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 553433881,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -2287,6 +2397,8 @@
             "version": null,
             "description": "VGG-19 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ with batch normalization trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Karen Simonyan, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 574769405,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -2335,6 +2447,8 @@
             "version": null,
             "description": "VGG-19 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Karen Simonyan, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 574673361,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -2381,6 +2495,8 @@
             "version": null,
             "description": "Wide ResNet-101-2 model from `Wide Residual Networks <https://arxiv.org/abs/1605.07146>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Sergey Zagoruyko, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 254695146,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -2429,6 +2545,8 @@
             "version": null,
             "description": "Wide ResNet-50-2 model from `Wide Residual Networks <https://arxiv.org/abs/1605.07146>`_ trained on ImageNet",
             "source": "https://pytorch.org/vision/main/models.html",
+            "author": "Sergey Zagoruyko, et al.",
+            "license": "BSD 3-Clause",
             "size_bytes": 138223492,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -2477,6 +2595,8 @@
             "version": null,
             "description": "OPEN CLIP text/image encoder from `Learning Transferable Visual Models From Natural Language Supervision <https://arxiv.org/abs/2103.00020>`_ trained on 400M text-image pairs",
             "source": "https://github.com/mlfoundations/open_clip",
+            "author": "Gabriel Ilharco, et al.",
+            "license": "MIT",
             "size_bytes": null,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.open_clip.TorchOpenClipModel",
@@ -2518,6 +2638,8 @@
             "version": null,
             "description": "Hugging Face Transformers model for image classification",
             "source": "https://huggingface.co/docs/transformers/tasks/image_classification",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
             "size_bytes": null,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
@@ -2547,6 +2669,8 @@
             "version": null,
             "description": "Hugging Face Transformers model for object detection",
             "source": "https://huggingface.co/docs/transformers/tasks/object_detection",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
             "size_bytes": null,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
@@ -2576,6 +2700,8 @@
             "version": null,
             "description": "Hugging Face Transformers model for semantic segmentation",
             "source": "https://huggingface.co/docs/transformers/tasks/semantic_segmentation",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
             "size_bytes": null,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
@@ -2599,6 +2725,8 @@
             "version": null,
             "description": "Hugging Face Transformers model for monocular depth estimation",
             "source": "https://huggingface.co/docs/transformers/tasks/monocular_depth_estimation",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
             "size_bytes": null,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForDepthEstimation",
@@ -2622,6 +2750,8 @@
             "version": null,
             "description": "Hugging Face Transformers model for zero-shot image classification",
             "source": "https://huggingface.co/docs/transformers/tasks/zero_shot_image_classification",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
             "size_bytes": null,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
@@ -2652,6 +2782,8 @@
             "version": null,
             "description": "Hugging Face Transformers model for zero-shot object detection",
             "source": "https://huggingface.co/docs/transformers/tasks/zero_shot_object_detection",
+            "author": "Thomas Wolf, et al.",
+            "license": "Apache 2.0",
             "size_bytes": null,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
@@ -2682,6 +2814,8 @@
             "version": null,
             "description": "CLIP text/image encoder from `Learning Transferable Visual Models From Natural Language Supervision <https://arxiv.org/abs/2103.00020>`_ trained on 400M text-image pairs",
             "source": "https://github.com/openai/CLIP",
+            "author": "Alec Radford, et al.",
+            "license": "MIT",
             "size_bytes": 353976522,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -2728,6 +2862,8 @@
             "base_name": "dinov2-vits14-torch",
             "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-S/14 distilled",
             "source": "https://github.com/facebookresearch/dinov2",
+            "author": "Maxime Oquab, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 88283115,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
@@ -2757,6 +2893,8 @@
             "base_name": "dinov2-vitb14-torch",
             "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-B/14 distilled",
             "source": "https://github.com/facebookresearch/dinov2",
+            "author": "Maxime Oquab, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 346378731,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
@@ -2786,6 +2924,8 @@
             "base_name": "dinov2-vitl14-torch",
             "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-L/14 distilled",
             "source": "https://github.com/facebookresearch/dinov2",
+            "author": "Maxime Oquab, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 1217586395,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
@@ -2815,6 +2955,8 @@
             "base_name": "dinov2-vitg14-torch",
             "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-g/14",
             "source": "https://github.com/facebookresearch/dinov2",
+            "author": "Maxime Oquab, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 4546108579,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
@@ -2844,6 +2986,8 @@
             "base_name": "dinov2-vits14-reg-torch",
             "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-S/14 distilled",
             "source": "https://github.com/facebookresearch/dinov2",
+            "author": "Maxime Oquab, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 88291785,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
@@ -2873,6 +3017,8 @@
             "base_name": "dinov2-vitb14-reg-torch",
             "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-B/14 distilled",
             "source": "https://github.com/facebookresearch/dinov2",
+            "author": "Maxime Oquab, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 346393545,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
@@ -2902,6 +3048,8 @@
             "base_name": "dinov2-vitl14-reg-torch",
             "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-L/14 distilled",
             "source": "https://github.com/facebookresearch/dinov2",
+            "author": "Maxime Oquab, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 1217607321,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
@@ -2931,6 +3079,8 @@
             "base_name": "dinov2-vitg14-reg-torch",
             "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-g/14",
             "source": "https://github.com/facebookresearch/dinov2",
+            "author": "Maxime Oquab, et al.",
+            "license": "Apache 2.0",
             "size_bytes": 4546140349,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
@@ -2960,6 +3110,8 @@
             "base_name": "yolov5n-coco-torch",
             "description": "Ultralytics YOLOv5n model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 7936,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
@@ -2991,6 +3143,8 @@
             "base_name": "yolov5s-coco-torch",
             "description": "Ultralytics YOLOv5s model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 28928,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
@@ -3022,6 +3176,8 @@
             "base_name": "yolov5m-coco-torch",
             "description": "Ultralytics YOLOv5m model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 83872,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
@@ -3053,6 +3209,8 @@
             "base_name": "yolov5l-coco-torch",
             "description": "Ultralytics YOLOv5l model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 197504,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
@@ -3085,6 +3243,8 @@
             "base_filename": "yolov8n-coco.pt",
             "description": "Ultralytics YOLOv8n model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov8/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 6534387,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3117,6 +3277,8 @@
             "base_filename": "yolov8s-coco.pt",
             "description": "Ultralytics YOLOv8s model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov8/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 22573363,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3149,6 +3311,8 @@
             "base_filename": "yolov8m-coco.pt",
             "description": "Ultralytics YOLOv8m model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov8/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 52117635,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3181,6 +3345,8 @@
             "base_filename": "yolov8l-coco.pt",
             "description": "Ultralytics YOLOv8l model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov8/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 87769683,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3213,6 +3379,8 @@
             "base_filename": "yolov8x-coco.pt",
             "description": "Ultralytics YOLOv8x model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov8/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 136867539,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3245,6 +3413,8 @@
             "base_filename": "yolov8n-seg-coco.pt",
             "description": "Ultralytics YOLOv8n Segmentation model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov8/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 7054355,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3277,6 +3447,8 @@
             "base_filename": "yolov8s-seg-coco.pt",
             "description": "Ultralytics YOLOv8s Segmentation model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov8/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 23897299,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3309,6 +3481,8 @@
             "base_filename": "yolov8m-seg-coco.pt",
             "description": "Ultralytics YOLOv8m Segmentation model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov8/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 54899779,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3341,6 +3515,8 @@
             "base_filename": "yolov8l-seg-coco.pt",
             "description": "Ultralytics YOLOv8l Segmentation model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov8/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 92391859,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3373,6 +3549,8 @@
             "base_filename": "yolov8x-seg-coco.pt",
             "description": "Ultralytics YOLOv8x Segmentation model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov8/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 144076467,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3405,6 +3583,8 @@
             "base_filename": "yolov9c-coco.pt",
             "description": "YOLOv9-C model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov9/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 51802599,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3437,6 +3617,8 @@
             "base_filename": "yolov9e-coco.pt",
             "description": "YOLOv9-E model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov9/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 117530476,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3469,6 +3651,8 @@
             "base_filename": "yolov9c-seg-coco.pt",
             "description": "YOLOv9-C Segmentation model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov9/#__tabbed_1_2",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 112406113,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3501,6 +3685,8 @@
             "base_filename": "yolov9e-seg-coco.pt",
             "description": "YOLOv9-E Segmentation model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov9/#__tabbed_1_2",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 243481823,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3533,6 +3719,8 @@
             "base_filename": "yolov10n-coco.pt",
             "description": "YOLOv10-N model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov10/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 5860383,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3565,6 +3753,8 @@
             "base_filename": "yolov10s-coco.pt",
             "description": "YOLOv10-S model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov10/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 16623111,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3597,6 +3787,8 @@
             "base_filename": "yolov10m-coco.pt",
             "description": "YOLOv10-M model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov10/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 33643667,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3629,6 +3821,8 @@
             "base_filename": "yolov10l-coco.pt",
             "description": "YOLOv10-L model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov10/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 52425230,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3661,6 +3855,8 @@
             "base_filename": "yolov10x-coco.pt",
             "description": "YOLOv10-X model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov10/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 64395854,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3693,6 +3889,8 @@
             "base_filename": "yolo11n-coco.pt",
             "description": "YOLO11-N model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov11/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 5613764,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3725,6 +3923,8 @@
             "base_filename": "yolo11s-coco.pt",
             "description": "YOLO11-S model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov11/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 19313732,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3757,6 +3957,8 @@
             "base_filename": "yolo11m-coco.pt",
             "description": "YOLO11-M model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov11/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 40684120,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3789,6 +3991,8 @@
             "base_filename": "yolo11l-coco.pt",
             "description": "YOLO11-L model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov11/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 51387343,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3821,6 +4025,8 @@
             "base_filename": "yolo11x-coco.pt",
             "description": "YOLO11-X model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov11/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 114636239,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3853,6 +4059,8 @@
             "base_filename": "yolo11n-seg-coco.pt",
             "description": "YOLO11-N Segmentation model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolo11/#__tabbed_1_2",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 6182636,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3885,6 +4093,8 @@
             "base_filename": "yolo11s-seg-coco.pt",
             "description": "YOLO11-S Segmentation model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolo11/#__tabbed_1_2",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 20669228,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3917,6 +4127,8 @@
             "base_filename": "yolo11m-seg-coco.pt",
             "description": "YOLO11-M Segmentation model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolo11/#__tabbed_1_2",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 45400152,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3949,6 +4161,8 @@
             "base_filename": "yolo11l-seg-coco.pt",
             "description": "YOLO11-L Segmentation model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolo11/#__tabbed_1_2",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 56096965,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -3981,6 +4195,8 @@
             "base_filename": "yolo11x-seg-coco.pt",
             "description": "YOLO11-X Segmentation model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolo11/#__tabbed_1_2",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 125090821,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -4013,6 +4229,8 @@
             "base_filename": "rtdetr-l-coco.pt",
             "description": "RT-DETR-l model trained on COCO",
             "source": "https://docs.ultralytics.com/models/rtdetr/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 66511432,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -4045,6 +4263,8 @@
             "base_filename": "rtdetr-x-coco.pt",
             "description": "RT-DETR-x model trained on COCO",
             "source": "https://docs.ultralytics.com/models/rtdetr/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 135755662,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -4077,6 +4297,8 @@
             "base_filename": "yolov8s-world.pt",
             "description": "YOLOv8s-World model",
             "source": "https://docs.ultralytics.com/models/yolo-world/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 27166882,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -4109,6 +4331,8 @@
             "base_filename": "yolov8m-world.pt",
             "description": "YOLOv8m-World model",
             "source": "https://docs.ultralytics.com/models/yolo-world/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 58607810,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -4141,6 +4365,8 @@
             "base_filename": "yolov8l-world.pt",
             "description": "YOLOv8l-World model",
             "source": "https://docs.ultralytics.com/models/yolo-world/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 95664610,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -4173,6 +4399,8 @@
             "base_filename": "yolov8x-world.pt",
             "description": "YOLOv8x-World model",
             "source": "https://docs.ultralytics.com/models/yolo-world/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 147959522,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -4205,6 +4433,8 @@
             "base_filename": "yolov8n-obb.pt",
             "description": "YOLOv8n Oriented Bounding Box model",
             "source": "https://docs.ultralytics.com/tasks/obb/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 6548034,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -4237,6 +4467,8 @@
             "base_filename": "yolov8s-obb.pt",
             "description": "YOLOv8s Oriented Bounding Box model",
             "source": "https://docs.ultralytics.com/tasks/obb/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 23245186,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -4269,6 +4501,8 @@
             "base_filename": "yolov8m-obb.pt",
             "description": "YOLOv8m Oriented Bounding Box model",
             "source": "https://docs.ultralytics.com/tasks/obb/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 53304682,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -4301,6 +4535,8 @@
             "base_filename": "yolov8l-obb.pt",
             "description": "YOLOv8l Oriented Bounding Box model",
             "source": "https://docs.ultralytics.com/tasks/obb/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 89504274,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -4333,6 +4569,8 @@
             "base_filename": "yolov8x-obb.pt",
             "description": "YOLOv8x Oriented Bounding Box model",
             "source": "https://docs.ultralytics.com/tasks/obb/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 139533138,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -4365,6 +4603,8 @@
             "base_filename": "yolov8n-oiv7.pt",
             "description": "Ultralytics YOLOv8n model trained on Open Images v7",
             "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 6534387,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -4397,6 +4637,8 @@
             "base_filename": "yolov8s-oiv7.pt",
             "description": "Ultralytics YOLOv8s model trained on Open Images v7",
             "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 22573363,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -4429,6 +4671,8 @@
             "base_filename": "yolov8m-oiv7.pt",
             "description": "Ultralytics YOLOv8m model trained Open Images v7",
             "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 52117635,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -4461,6 +4705,8 @@
             "base_filename": "yolov8l-oiv7.pt",
             "description": "Ultralytics YOLOv8l model trained Open Images v7",
             "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 87769683,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -4493,6 +4739,8 @@
             "base_filename": "yolov8x-oiv7.pt",
             "description": "Ultralytics YOLOv8x model trained Open Images v7",
             "source": "https://docs.ultralytics.com/datasets/detect/open-images-v7",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 136867539,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
@@ -4526,6 +4774,8 @@
             "version": null,
             "description": "YOLO-NAS is an open-source training library for advanced computer vision models. It specializes in accuracy and efficiency, supporting tasks like object detection",
             "source": "https://github.com/Deci-AI/super-gradients",
+            "author": "Shay Aharon, et al.",
+            "license": "Apache 2.0",
             "size_bytes": null,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.super_gradients.TorchYoloNasModel",
@@ -4551,6 +4801,8 @@
             "base_name": "yolov5x-coco-torch",
             "description": "Ultralytics YOLOv5x model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
             "size_bytes": 360496,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.torch.TorchImageModel",
