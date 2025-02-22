@@ -38,6 +38,7 @@ INSTALL_REQUIRES = [
     "cachetools",
     "dacite>=1.6.0,<1.8.0",
     "Deprecated",
+    "dill",
     "ftfy",
     "humanize",
     "hypercorn>=0.13.2",

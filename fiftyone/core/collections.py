@@ -10,9 +10,9 @@ from collections import defaultdict
 from copy import copy
 from datetime import datetime
 import fnmatch
-import inspect
 import itertools
 import logging
+import multiprocessing
 import numbers
 import os
 import random
@@ -3219,6 +3219,7 @@ class SampleCollection(object):
         self,
         map_fcn,
         reduce_fcn=None,
+        aggregate_fcn=None,
         save=None,
         num_workers=None,
         shard_size=None,
@@ -3227,7 +3228,9 @@ class SampleCollection(object):
     ):
         """Applies the given function to each sample in the collection.
 
-        By default, a multiprocessing pool is used to parallelize the work.
+        By default, a multiprocessing pool is used to parallelize the work,
+        unless this method is called in a daemon process (subprocess), in which
+        case no workers are used.
 
         When only a ``map_fcn`` is provided, this function effectively performs
         the following map operation with the outer loop in parallel::
@@ -3235,18 +3238,6 @@ class SampleCollection(object):
             for batch_view in fou.iter_slices(sample_collection, shard_size):
                 for sample in batch_view.iter_samples(autosave=True):
                     map_fcn(sample)
-
-        When a ``reduce_fcn`` function is provided, this function effectively
-        performs the following map-reduce operation with the outer loop in
-        parallel::
-
-            outputs = {}
-
-            for batch_view in fou.iter_slices(sample_collection, shard_size):
-                for sample in batch_view.iter_samples(autosave=True):
-                    outputs[sample.id] = map_fcn(sample)
-
-            output = reduce_fcn(sample_collection, outputs)
 
         When a ``reduce_fcn`` class is provided, this function effectively
         performs the following map-reduce operation with the outer loop in
@@ -3263,6 +3254,18 @@ class SampleCollection(object):
                 reducer.update(outputs)
 
             output = reducer.finalize()
+
+        When an ``aggregate_fcn`` is provided, this function effectively
+        performs the following map-aggregate operation with the outer loop in
+        parallel::
+
+            outputs = {}
+
+            for batch_view in fou.iter_slices(sample_collection, shard_size):
+                for sample in batch_view.iter_samples(autosave=True):
+                    outputs[sample.id] = map_fcn(sample)
+
+            output = aggregate_fcn(sample_collection, outputs)
 
         Example::
 
@@ -3286,20 +3289,7 @@ class SampleCollection(object):
             print(dataset.count_values("ground_truth.label"))
 
             #
-            # Example 2: map-reduce with reduce function
-            #
-
-            def map_fcn(sample):
-                return sample.ground_truth.label.lower()
-
-            def reduce_fcn(sample_collection, values):
-                return dict(Counter(values.values()))
-
-            counts = view.map_samples(map_fcn, reduce_fcn=reduce_fcn)
-            print(counts)
-
-            #
-            # Example 3: map-reduce with reduce class
+            # Example 2: map-reduce
             #
 
             def map_fcn(sample):
@@ -3318,14 +3308,29 @@ class SampleCollection(object):
             counts = view.map_samples(map_fcn, reduce_fcn=ReduceFcn)
             print(counts)
 
+            #
+            # Example 3: map-aggregate
+            #
+
+            def map_fcn(sample):
+                return sample.ground_truth.label.lower()
+
+            def aggregate_fcn(sample_collection, values):
+                return dict(Counter(values.values()))
+
+            counts = view.map_samples(map_fcn, aggregate_fcn=aggregate_fcn)
+            print(counts)
+
         Args:
             map_fcn: a function to apply to each sample in the collection
-            reduce_fcn (None): an optional function or
+            reduce_fcn (None): an optional
                 :class:`fiftyone.utils.multiprocessing.ReduceFcn` subclass to
                 reduce the map outputs. See above for usage information
+            aggregate_fcn (None): an optional function to aggregate the map
+                outputs. See above for usage information
             save (None): whether to save any sample edits applied by
-                ``map_fcn``. By default this is True when no ``reduce_fcn`` is
-                provided and False when a ``reduce_fcn`` is provided
+                ``map_fcn``. By default this is True when no ``reduce_fcn`` or
+                ``aggregate_fcn`` is provided and False otherwise
             num_workers (None): the number of workers to use. By default,
                 ``fiftyone.config.default_map_workers`` workers are used if
                 this value is set, else
@@ -3344,18 +3349,22 @@ class SampleCollection(object):
                 function to invoke instead
 
         Returns:
-            the output of ``reduce_fcn``, if provided, else None
+            the output of ``reduce_fcn`` or ``aggregate_fcn``, if provided,
+            else None
         """
         if num_workers is None:
-            num_workers = fo.config.default_map_workers
-
-        if num_workers is None:
-            num_workers = fou.recommend_process_pool_workers()
+            if multiprocessing.current_process().daemon:
+                num_workers = 1
+            elif fo.config.default_map_workers is not None:
+                num_workers = fo.config.default_map_workers
+            else:
+                num_workers = fou.recommend_process_pool_workers()
 
         if num_workers is not None and num_workers <= 1:
             return self._map_samples_single(
                 map_fcn,
                 reduce_fcn=reduce_fcn,
+                aggregate_fcn=aggregate_fcn,
                 save=save,
                 progress=progress,
             )
@@ -3364,6 +3373,7 @@ class SampleCollection(object):
             self,
             map_fcn,
             reduce_fcn=reduce_fcn,
+            aggregate_fcn=aggregate_fcn,
             save=save,
             num_workers=num_workers,
             shard_size=shard_size,
@@ -3375,18 +3385,19 @@ class SampleCollection(object):
         self,
         map_fcn,
         reduce_fcn=None,
+        aggregate_fcn=None,
         save=None,
         progress=False,
     ):
-        if save is None:
-            save = reduce_fcn is None
-
-        if inspect.isclass(reduce_fcn):
+        if reduce_fcn is not None:
             reducer = reduce_fcn(self)
-        elif reduce_fcn is not None:
-            reducer = foum.ReduceFcn(self, reduce_fcn=reduce_fcn)
+        elif aggregate_fcn is not None:
+            reducer = foum.ReduceFcn(self, aggregate_fcn=aggregate_fcn)
         else:
             reducer = None
+
+        if save is None:
+            save = reducer is None
 
         if reducer is not None:
             reducer.init()
