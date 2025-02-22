@@ -351,7 +351,7 @@ def beam_map(
     map_fcn,
     reduce_fcn=None,
     aggregate_fcn=None,
-    save=None,
+    save=False,
     shard_size=None,
     shard_method="id",
     num_workers=None,
@@ -366,7 +366,7 @@ def beam_map(
     the following map operation with the outer loop in parallel::
 
         for batch_view in fou.iter_slices(sample_collection, shard_size):
-            for sample in batch_view.iter_samples(autosave=True):
+            for sample in batch_view.iter_samples(autosave=save):
                 map_fcn(sample)
 
     When a ``reduce_fcn`` is provided, this function effectively performs the
@@ -375,7 +375,7 @@ def beam_map(
         reducer = reduce_fcn(...)
 
         for batch_view in fou.iter_slices(sample_collection, shard_size):
-            for sample in batch_view.iter_samples(autosave=True):
+            for sample in batch_view.iter_samples(autosave=save):
                 sample_output = sample.map_fcn(sample)
 
                 # Outputs are fed to reducer.add_input()
@@ -410,7 +410,7 @@ def beam_map(
         def map_fcn(sample):
             sample.ground_truth.label = sample.ground_truth.label.upper()
 
-        foub.beam_map(view, map_fcn, progress=True)
+        foub.beam_map(view, map_fcn, save=True, progress=True)
 
         print(dataset.count_values("ground_truth.label"))
 
@@ -456,9 +456,7 @@ def beam_map(
             from collections import Counter
             return dict(Counter(values.values()))
 
-        counts = foub.beam_map(
-            view, map_fcn, aggregate_fcn=aggregate_fcn, progress=True
-        )
+        counts = foub.beam_map(view, map_fcn, aggregate_fcn=aggregate_fcn, progress=True)
         print(counts)
 
     Args:
@@ -469,9 +467,7 @@ def beam_map(
             to reduce the map outputs. See above for usage information
         aggregate_fcn (None): an optional function to aggregate the map
             outputs. See above for usage information
-        save (None): whether to save any sample edits applied by ``map_fcn``.
-            By default this is True when no ``reduce_fcn`` or ``aggregate_fcn``
-            is provided and False otherwise
+        save (False): whether to save any sample edits applied by ``map_fcn``
         shard_size (None): an optional number of samples to distribute to each
             worker at a time. By default, samples are evenly distributed to
             workers with one shard per worker
@@ -545,9 +541,6 @@ def beam_map(
         view_stages = None
 
     has_reducer = reduce_fcn is not None or aggregate_fcn is not None
-
-    if save is None:
-        save = not has_reducer
 
     map_batch = MapBatch(
         dataset_name,
