@@ -5,10 +5,11 @@ Multiprocessing utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import inspect
 import itertools
+import multiprocessing
 
 from bson import ObjectId
+import dill as pickle
 import numpy as np
 from tqdm.auto import tqdm
 
@@ -21,6 +22,7 @@ def map_samples(
     sample_collection,
     map_fcn,
     reduce_fcn=None,
+    aggregate_fcn=None,
     save=None,
     num_workers=None,
     shard_size=None,
@@ -37,21 +39,8 @@ def map_samples(
             for sample in batch_view.iter_samples(autosave=True):
                 map_fcn(sample)
 
-    When a ``reduce_fcn`` function is provided, this function effectively
-    performs the following map-reduce operation with the outer loop in
-    parallel::
-
-        outputs = {}
-
-        for batch_view in fou.iter_slices(sample_collection, shard_size):
-            for sample in batch_view.iter_samples(autosave=True):
-                outputs[sample.id] = map_fcn(sample)
-
-        output = reduce_fcn(sample_collection, outputs)
-
-    When a ``reduce_fcn`` class is provided, this function effectively
-    performs the following map-reduce operation with the outer loop in
-    parallel::
+    When a ``reduce_fcn`` is provided, this function effectively performs the
+    following map-reduce operation with the outer loop in parallel::
 
         reducer = reduce_fcn(sample_collection)
         reducer.init()
@@ -64,6 +53,17 @@ def map_samples(
             reducer.update(outputs)
 
         output = reducer.finalize()
+
+    When an ``aggregate_fcn`` is provided, this function effectively performs
+    the following map-aggregate operation with the outer loop in parallel::
+
+        outputs = {}
+
+        for batch_view in fou.iter_slices(sample_collection, shard_size):
+            for sample in batch_view.iter_samples(autosave=True):
+                outputs[sample.id] = map_fcn(sample)
+
+        output = aggregate_fcn(sample_collection, outputs)
 
     Example::
 
@@ -88,20 +88,7 @@ def map_samples(
         print(dataset.count_values("ground_truth.label"))
 
         #
-        # Example 2: map-reduce with reduce function
-        #
-
-        def map_fcn(sample):
-            return sample.ground_truth.label.lower()
-
-        def reduce_fcn(sample_collection, values):
-            return dict(Counter(values.values()))
-
-        counts = foum.map_samples(view, map_fcn, reduce_fcn=reduce_fcn)
-        print(counts)
-
-        #
-        # Example 3: map-reduce with reduce class
+        # Example 2: map-reduce
         #
 
         def map_fcn(sample):
@@ -120,15 +107,30 @@ def map_samples(
         counts = foum.map_samples(view, map_fcn, reduce_fcn=ReduceFcn)
         print(counts)
 
+        #
+        # Example 3: map-aggregate
+        #
+
+        def map_fcn(sample):
+            return sample.ground_truth.label.lower()
+
+        def aggregate_fcn(sample_collection, values):
+            return dict(Counter(values.values()))
+
+        counts = foum.map_samples(view, map_fcn, aggregate_fcn=aggregate_fcn)
+        print(counts)
+
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         map_fcn: a function to apply to each sample
-        reduce_fcn (None): an optional function or :class:`ReduceFcn` subclass
-            to reduce the map outputs. See above for usage information
+        reduce_fcn (None): an optional :class:`ReduceFcn` subclass to reduce
+            the map outputs. See above for usage information
+        aggregate_fcn (None): an optional function to aggregate the map
+            outputs. See above for usage information
         save (None): whether to save any sample edits applied by ``map_fcn``.
-            By default this is True when no ``reduce_fcn`` is provided and
-            False when a ``reduce_fcn`` is provided
+            By default this is True when no ``reduce_fcn`` or ``aggregate_fcn``
+            is provided and False otherwise
         num_workers (None): the number of workers to use. The default is
             :meth:`fiftyone.core.utils.recommend_process_pool_workers`
         shard_size (None): an optional number of samples to distribute to each
@@ -143,7 +145,8 @@ def map_samples(
             function to invoke instead
 
     Returns:
-        the output of ``reduce_fcn``, if provided, else None
+        the output of ``reduce_fcn`` or ``aggregate_fcn``, if provided, else
+        None
     """
     if isinstance(sample_collection, fov.DatasetView):
         dataset_name = sample_collection._root_dataset.name
@@ -159,15 +162,15 @@ def map_samples(
         num_workers=num_workers,
     )
 
-    if save is None:
-        save = reduce_fcn is None
-
-    if inspect.isclass(reduce_fcn):
+    if reduce_fcn is not None:
         reducer = reduce_fcn(sample_collection)
-    elif reduce_fcn is not None:
-        reducer = ReduceFcn(sample_collection, reduce_fcn=reduce_fcn)
+    elif aggregate_fcn is not None:
+        reducer = ReduceFcn(sample_collection, aggregate_fcn=aggregate_fcn)
     else:
         reducer = None
+
+    if save is None:
+        save = reducer is None
 
     if progress is None:
         progress = fo.config.show_progress_bars
@@ -194,7 +197,7 @@ def map_samples(
         initargs=(
             dataset_name,
             view_stages,
-            map_fcn,
+            pickle.dumps(map_fcn),
             save,
             return_outputs,
             progress,
@@ -227,9 +230,9 @@ class ReduceFcn(object):
     :meth:`finalize` as necessary.
     """
 
-    def __init__(self, sample_collection, reduce_fcn=None):
+    def __init__(self, sample_collection, aggregate_fcn=None):
         self.sample_collection = sample_collection
-        self.reduce_fcn = reduce_fcn
+        self.aggregate_fcn = aggregate_fcn
         self.accumulator = None
 
     def init(self):
@@ -250,8 +253,8 @@ class ReduceFcn(object):
         Returns:
             the final output, or None
         """
-        if self.reduce_fcn is not None:
-            return self.reduce_fcn(self.sample_collection, self.accumulator)
+        if self.aggregate_fcn is not None:
+            return self.aggregate_fcn(self.sample_collection, self.accumulator)
 
 
 def _init_batches(
@@ -329,7 +332,7 @@ def _init_worker(dataset_name, view_stages, m, s, r, p, l):
     else:
         sample_collection = dataset
 
-    map_fcn = m
+    map_fcn = pickle.loads(m)
     save = s
     return_outputs = r
     progress = p
