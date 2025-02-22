@@ -350,7 +350,7 @@ def beam_map(
     sample_collection,
     map_fcn,
     reduce_fcn=None,
-    reduce_cls=None,
+    aggregate_fcn=None,
     save=None,
     shard_size=None,
     shard_method="id",
@@ -369,20 +369,8 @@ def beam_map(
             for sample in batch_view.iter_samples(autosave=True):
                 map_fcn(sample)
 
-    When a ``reduce_fcn`` function is provided, this function effectively
-    performs the following map-reduce operation with the outer loop in
-    parallel::
-
-        outputs = {}
-
-        for batch_view in fou.iter_slices(sample_collection, shard_size):
-            for sample in batch_view.iter_samples(autosave=save):
-                outputs[sample.id] = map_fcn(sample)
-
-        output = reduce_fcn(sample_collection, outputs)
-
-    When a ``reduce_fcn`` class is provided, this function effectively performs
-    the following map-reduce operation with the outer loop in parallel:
+    When a ``reduce_fcn`` is provided, this function effectively performs the
+    following map-reduce operation with the outer loop in parallel:
 
         reducer = reduce_fcn(...)
 
@@ -395,6 +383,17 @@ def beam_map(
 
         output = reducer.extract_output(...)
 
+    When a ``aggregate_fcn`` is provided, this function effectively performs
+    the following map-aggregate operation with the outer loop in parallel::
+
+        outputs = {}
+
+        for batch_view in fou.iter_slices(sample_collection, shard_size):
+            for sample in batch_view.iter_samples(autosave=save):
+                outputs[sample.id] = map_fcn(sample)
+
+        output = aggregate_fcn(sample_collection, outputs)
+
     Example::
 
         import fiftyone as fo
@@ -405,7 +404,7 @@ def beam_map(
         view = dataset.select_fields("ground_truth")
 
         #
-        # Example 1: map
+        # Example 1: map-save
         #
 
         def map_fcn(sample):
@@ -416,25 +415,11 @@ def beam_map(
         print(dataset.count_values("ground_truth.label"))
 
         #
-        # Example 2: map-reduce with reduce function
+        # Example 2: map-reduce
         #
 
         def map_fcn(sample):
-            return sample.ground_truth.label.upper()
-
-        def reduce_fcn(sample_collection, values):
-            from collections import Counter
-            return dict(Counter(values.values()))
-
-        counts = foub.beam_map(view, map_fcn, reduce_fcn=reduce_fcn, progress=True)
-        print(counts)
-
-        #
-        # Example 3: map-reduce with reduce class
-        #
-
-        def map_fcn(sample):
-            return sample.ground_truth.label.upper()
+            return sample.ground_truth.label.lower()
 
         class ReduceFcn(foub.ReduceFcn):
             def create_accumulator(self):
@@ -460,16 +445,33 @@ def beam_map(
         counts = foub.beam_map(view, map_fcn, reduce_fcn=ReduceFcn, progress=True)
         print(counts)
 
+        #
+        # Example 3: map-aggregate
+        #
+
+        def map_fcn(sample):
+            return sample.ground_truth.label.lower()
+
+        def aggregate_fcn(sample_collection, values):
+            from collections import Counter
+            return dict(Counter(values.values()))
+
+        counts = foub.beam_map(
+            view, map_fcn, aggregate_fcn=aggregate_fcn, progress=True
+        )
+        print(counts)
+
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         map_fcn: a function to apply to each sample
-        reduce_fcn (None): an optional function or
-            :class:`fiftyone.utils.beam.ReduceFcn` to reduce the map outputs.
-            See above for usage information
+        reduce_fcn (None): an optional :class:`fiftyone.utils.beam.ReduceFcn`
+            to reduce the map outputs. See above for usage information
+        aggregate_fcn (None): an optional function to aggregate the map
+            outputs. See above for usage information
         save (None): whether to save any sample edits applied by ``map_fcn``.
-            By default this is True when no ``reduce_fcn`` is provided and
-            False otherwise
+            By default this is True when no ``reduce_fcn`` or ``aggregate_fcn``
+            is provided and False otherwise
         shard_size (None): an optional number of samples to distribute to each
             worker at a time. By default, samples are evenly distributed to
             workers with one shard per worker
@@ -487,7 +489,8 @@ def beam_map(
         verbose (False): whether to log the Beam pipeline's messages
 
     Returns:
-        the output of ``reduce_fcn`` if provided, else None
+        the output of ``reduce_fcn`` or ``aggregate_fcn`` if provided, else
+        None
     """
     if shard_method == "slice":
         n = len(sample_collection)
@@ -541,30 +544,32 @@ def beam_map(
         dataset_name = sample_collection.name
         view_stages = None
 
+    has_reducer = reduce_fcn is not None or aggregate_fcn is not None
+
     if save is None:
-        save = reduce_fcn is None
+        save = not has_reducer
 
     map_batch = MapBatch(
         dataset_name,
         map_fcn,
         view_stages=view_stages,
         save=save,
-        return_outputs=reduce_fcn is not None,
+        return_outputs=has_reducer,
         progress=progress,
     )
 
-    if reduce_fcn is not None:
+    if has_reducer:
         result_key = f"beam_map_{str(ObjectId())}"
 
-        if inspect.isclass(reduce_fcn):
+        if reduce_fcn is not None:
             reduce_cls = reduce_fcn
         else:
             reduce_cls = ReduceFcn
 
         reduce_fn = reduce_cls(
             dataset_name,
-            reduce_fcn=reduce_fcn,
             view_stages=view_stages,
+            aggregate_fcn=aggregate_fcn,
             result_key=result_key,
         )
     else:
@@ -829,14 +834,14 @@ class MapBatch(beam.DoFn):
             with tqdm(total=total, desc=desc, position=i) as pbar:
                 for sample in batch_view.iter_samples(autosave=self.save):
                     result = self.map_fcn(sample)
-                    if self.return_outputs and result is not None:
+                    if self.return_outputs:
                         yield sample.id, result
 
                     pbar.update()
         else:
             for sample in batch_view.iter_samples(autosave=self.save):
                 result = self.map_fcn(sample)
-                if self.return_outputs and result is not None:
+                if self.return_outputs:
                     yield sample.id, result
 
 
@@ -844,13 +849,13 @@ class ReduceFcn(beam.CombineFn):
     def __init__(
         self,
         dataset_name,
-        reduce_fcn=None,
         view_stages=None,
+        aggregate_fcn=None,
         result_key=None,
     ):
         self.dataset_name = dataset_name
-        self.reduce_fcn = reduce_fcn
         self.view_stages = view_stages
+        self.aggregate_fcn = aggregate_fcn
         self.result_key = result_key
 
         self._sample_collection = None
@@ -885,10 +890,10 @@ class ReduceFcn(beam.CombineFn):
         return accumulator
 
     def extract_output(self, accumulator):
-        if self.reduce_fcn is None:
+        if self.aggregate_fcn is None:
             return
 
-        output = self.reduce_fcn(self._sample_collection, accumulator)
+        output = self.aggregate_fcn(self._sample_collection, accumulator)
         if output is None:
             return
 
