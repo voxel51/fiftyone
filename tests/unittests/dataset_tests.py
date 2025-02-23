@@ -6,12 +6,14 @@ FiftyOne dataset-related unit tests.
 |
 """
 
+from collections import Counter
 from copy import deepcopy, copy
 from datetime import date, datetime, timedelta
 import gc
 import os
 import random
 import string
+import time
 import unittest
 from unittest.mock import patch
 
@@ -1021,6 +1023,130 @@ class DatasetTests(unittest.TestCase):
                 m3 < m4 for m3, m4 in zip(last_modified_at3, last_modified_at4)
             )
         )
+
+    @drop_datasets
+    def test_update_samples(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [fo.Sample(filepath="image%d.jpg" % i, int=i) for i in range(50)]
+        )
+
+        self.assertTupleEqual(dataset.bounds("int"), (0, 49))
+
+        def update_fcn(sample):
+            sample.int += 1
+
+        #
+        # Multiple workers
+        #
+
+        dataset.update_samples(update_fcn, num_workers=2)
+
+        self.assertTupleEqual(dataset.bounds("int"), (1, 50))
+
+        dataset.update_samples(
+            update_fcn, num_workers=2, shard_size=10, shard_method="id"
+        )
+
+        self.assertTupleEqual(dataset.bounds("int"), (2, 51))
+
+        dataset.update_samples(
+            update_fcn, num_workers=2, shard_size=10, shard_method="slice"
+        )
+
+        self.assertTupleEqual(dataset.bounds("int"), (3, 52))
+
+        #
+        # Main process
+        #
+
+        dataset.update_samples(update_fcn, num_workers=1)
+
+        self.assertTupleEqual(dataset.bounds("int"), (4, 53))
+
+    @drop_datasets
+    def test_map_samples(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image%d.jpg" % i, foo="bar")
+                for i in range(50)
+            ]
+        )
+
+        self.assertDictEqual(dataset.count_values("foo"), {"bar": 50})
+
+        def map_fcn(sample):
+            return sample.foo.upper()
+
+        class ReduceFcn(fo.ReduceFcn):
+            def init(self):
+                self.accumulator = Counter()
+
+            def add(self, sample_id, output):
+                self.accumulator[output] += 1
+
+            def finalize(self):
+                return dict(self.accumulator)
+
+        def aggregate_fcn(dataset, outputs):
+            return dict(Counter(outputs.values()))
+
+        #
+        # Multiple workers
+        #
+
+        counter = Counter()
+        for _, value in dataset.map_samples(map_fcn, num_workers=2):
+            counter[value] += 1
+
+        counts = dict(counter)
+
+        self.assertDictEqual(counts, {"BAR": 50})
+
+        counts = dataset.map_samples(
+            map_fcn,
+            reduce_fcn=ReduceFcn,
+            num_workers=2,
+            shard_size=10,
+            shard_method="id",
+        )
+
+        self.assertDictEqual(counts, {"BAR": 50})
+
+        counts = dataset.map_samples(
+            map_fcn,
+            aggregate_fcn=aggregate_fcn,
+            num_workers=2,
+            shard_size=10,
+            shard_method="slice",
+        )
+
+        self.assertDictEqual(counts, {"BAR": 50})
+
+        #
+        # Main process
+        #
+
+        counter = Counter()
+        for _, value in dataset.map_samples(map_fcn, num_workers=1):
+            counter[value] += 1
+
+        counts = dict(counter)
+
+        self.assertDictEqual(counts, {"BAR": 50})
+
+        counts = dataset.map_samples(
+            map_fcn, reduce_fcn=ReduceFcn, num_workers=1
+        )
+
+        self.assertDictEqual(counts, {"BAR": 50})
+
+        counts = dataset.map_samples(
+            map_fcn, aggregate_fcn=aggregate_fcn, num_workers=1
+        )
+
+        self.assertDictEqual(counts, {"BAR": 50})
 
     @drop_datasets
     def test_date_fields(self):
