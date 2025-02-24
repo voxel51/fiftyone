@@ -17,7 +17,8 @@ from typing import Tuple
 import asyncio
 from bson import json_util, ObjectId
 from bson.codec_options import CodecOptions
-from mongoengine import connect
+from mongoengine import connect, disconnect
+import mongoengine.errors as moe
 import motor.motor_asyncio as mtr
 
 from packaging.version import Version
@@ -211,15 +212,7 @@ def establish_db_conn(config):
                 "own MongoDB instance or cluster "
             )
 
-    _client = pymongo.MongoClient(
-        **_connection_kwargs, appname=foc.DATABASE_APPNAME
-    )
-    _validate_db_version(config, _client)
-
-    # Register cleanup method
-    atexit.register(_delete_non_persistent_datasets_if_allowed)
-
-    connect(config.database_name, **_connection_kwargs)
+    _connect(config)
 
     db_config = get_db_config()
     if db_config.type != foc.CLIENT_TYPE:
@@ -235,13 +228,30 @@ def establish_db_conn(config):
             _update_fc_version(_client)
         fom.migrate_database_if_necessary(config=db_config)
 
+    # Register cleanup method
+    atexit.register(_delete_non_persistent_datasets_if_allowed)
 
-def _connect():
+
+def disconnect_db():
+    """Disconnects from the database, if necessary."""
+    _disconnect()
+
+
+def _connect(config=None):
     global _client
+
     if _client is None:
         global _connection_kwargs
 
-        establish_db_conn(fo.config)
+        if config is None:
+            config = fo.config
+
+        _client = pymongo.MongoClient(
+            **_connection_kwargs, appname=foc.DATABASE_APPNAME
+        )
+        _validate_db_version(config, _client)
+
+        connect(config.database_name, **_connection_kwargs)
 
 
 def _async_connect(use_global=False):
@@ -250,6 +260,7 @@ def _async_connect(use_global=False):
     _connect()
 
     global _async_client
+
     if not use_global or _async_client is None:
         global _connection_kwargs
         client = mtr.AsyncIOMotorClient(
@@ -262,6 +273,16 @@ def _async_connect(use_global=False):
         client = _async_client
 
     return client
+
+
+def _disconnect():
+    global _client
+
+    if _client is not None:
+        _client.close()
+        _client = None
+
+        disconnect()
 
 
 def _delete_non_persistent_datasets_if_allowed():
