@@ -32,8 +32,7 @@ function useLooker<L extends fos.Lookers>({
 
   // use a ref for sample data to prevent instance recreation
   //
-  // sample updates via looker.updateSample(...) in ImaVidLookerReact,
-  // VideoLookerReact, and ModalLookerNoTimeline
+  // sample updates are handled via looker.updateSample(...)
   const sampleRef = useRef(sample);
   sampleRef.current = sample;
   const looker = React.useMemo(() => {
