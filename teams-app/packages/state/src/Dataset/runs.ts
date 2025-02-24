@@ -54,27 +54,29 @@ export const runsPageQuery = graphql`
     ) {
       nodeTotal
       nodes {
-        operator
-        label
-        id
-        runState
-        startedAt
-        queuedAt
         completedAt
-        failedAt
-        runBy {
-          name
-          id
-        }
-        pinned
-        runLink
-        priority
-        logPath
-        logUrl
-        logUploadError
-        scheduledAt
-        status
         datasetId
+        datasetName
+        failedAt
+        id
+        label
+        logPath
+        logUploadError
+        logUrl
+        operator
+        pinned
+        priority
+        priorityTotal
+        queuedAt
+        runBy {
+          id
+          name
+        }
+        runLink
+        runState
+        scheduledAt
+        startedAt
+        status
         updatedAt
       }
       pageTotal

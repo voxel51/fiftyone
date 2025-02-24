@@ -697,12 +697,20 @@ type DelegatedOperation {
   result: JSON
   status: JSON
   datasetId: String
+  datasetSlug: String
+  datasetName: String
   metadata: JSON
   logUploadError: String
   logPath: String
   priority: Int
+  priorityTotal: Int
   runBy: User
-  signedUrl: String
+  logConnection(
+    first: Int!
+    after: String = null
+  ): DelegatedOperationLogConnection!
+  logUrl: String
+  logSize: Int
 }
 
 input DelegatedOperationFilter {
@@ -712,6 +720,22 @@ input DelegatedOperationFilter {
   delegationTarget: StringFilter = null
   runBy: StringFilter = null
   pinned: Boolean = null
+}
+
+type DelegatedOperationLog {
+  level: String
+  date: datetime
+  content: String
+}
+
+type DelegatedOperationLogConnection {
+  pageInfo: PageInfo!
+  edges: [DelegatedOperationLogEdge!]!
+}
+
+type DelegatedOperationLogEdge {
+  node: DelegatedOperationLog!
+  cursor: String!
 }
 
 enum DelegatedOperationOrderFields {

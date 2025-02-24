@@ -150,7 +150,7 @@ function RunsListWithQuery(props) {
               status={runState}
               progress={showProgress ? status : undefined}
               priority={node.priority}
-              maxPriority={5}
+              maxPriority={node.priorityTotal}
             />
           ),
         },
@@ -158,14 +158,10 @@ function RunsListWithQuery(props) {
           ? [
               {
                 id: `${id}-dataset`,
-                value: node.datasetId,
+                value: node.datasetName,
               },
             ]
           : []),
-        {
-          id: `${id}-dataset`,
-          value: "mock dataset name", // todo@im
-        },
         {
           id: `${id}-timestamp`,
           Component: <Timestamp timestamp={timestamp} />,
