@@ -1,8 +1,8 @@
-import { promises as fs } from 'fs';
-import path from 'path';
+import { promises as fs } from "fs";
+import path from "path";
 
 const OSS_IMPORT_LOOKUP_MAX_LINE_NUMBER_LIMIT = 20;
-const OSS_ROOT_DIR = '../../.oss';
+const OSS_ROOT_DIR = "../../.oss";
 
 const DO_NOT_EDIT_COMMENT = `/**
  * 
@@ -15,23 +15,23 @@ const mapImport = (line: string) => {
    * 1. change imports from src/oss/fixtures to src/teams/fixtures
    * 2. change other imports from src/... to .oss/...
    */
-  if (line.startsWith('import') && line.includes('"src/oss/fixtures')) {
-    return line.replace(/src\/oss\/fixtures/, 'src/teams/fixtures');
+  if (line.startsWith("import") && line.includes('"src/oss/fixtures')) {
+    return line.replace(/src\/oss\/fixtures/, "src/teams/fixtures");
   }
 
   return line.replace(/"src\//, '".oss/');
 };
 
 const getFileContentWithModifiedImports = async (buffer: string) => {
-  const lines = buffer.split('\n');
+  const lines = buffer.split("\n");
   const firstNLines = lines.slice(0, OSS_IMPORT_LOOKUP_MAX_LINE_NUMBER_LIMIT);
 
   const importMappedLines = firstNLines.map(mapImport);
 
   const newFileContent = [
     ...importMappedLines,
-    ...lines.slice(OSS_IMPORT_LOOKUP_MAX_LINE_NUMBER_LIMIT)
-  ].join('\n');
+    ...lines.slice(OSS_IMPORT_LOOKUP_MAX_LINE_NUMBER_LIMIT),
+  ].join("\n");
   return newFileContent;
 };
 
@@ -45,10 +45,10 @@ const modifyFilesInDir = async (directory: string) => {
     if (stats.isDirectory()) {
       await modifyFilesInDir(filePath);
     } else if (stats.isFile()) {
-      const fileBuffer = await fs.readFile(filePath, 'utf-8');
+      const fileBuffer = await fs.readFile(filePath, "utf-8");
       const newBuffer = await getFileContentWithModifiedImports(fileBuffer);
       const modifiedContent =
-        DO_NOT_EDIT_COMMENT + '\n' + newBuffer + '\n' + DO_NOT_EDIT_COMMENT;
+        DO_NOT_EDIT_COMMENT + "\n" + newBuffer + "\n" + DO_NOT_EDIT_COMMENT;
       await fs.writeFile(filePath, modifiedContent);
     }
   }

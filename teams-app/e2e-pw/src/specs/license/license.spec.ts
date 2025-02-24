@@ -1,16 +1,16 @@
-import { expect, test as setup } from '@playwright/test';
-import { LicensePom } from '../../poms/license-pom';
-import { DatasetPom } from '../../poms/dataset-pom';
-import { SuperadminPom } from '../../poms/superadmin-pom';
+import { expect, test as setup } from "@playwright/test";
+import { LicensePom } from "../../poms/license-pom";
+import { DatasetPom } from "../../poms/dataset-pom";
+import { SuperadminPom } from "../../poms/superadmin-pom";
 
-import { InstallModalPom } from '../../poms/install-modal-pom';
-import { SettingsRolesPom } from 'src/poms/settings-roles-pom';
-import { NotificationPom } from 'src/poms/notification-pom';
+import { InstallModalPom } from "../../poms/install-modal-pom";
+import { SettingsRolesPom } from "src/poms/settings-roles-pom";
+import { NotificationPom } from "src/poms/notification-pom";
 
 const { KC_GUEST_EMAIL, KC_GUEST_USERNAME } = process.env;
 export const BASE_URL = process.env.BASE_URL;
 
-const TEST_DATASET_NAME = 'test-e2e';
+const TEST_DATASET_NAME = "test-e2e";
 
 const test = setup.extend<{
   license: LicensePom;
@@ -37,26 +37,26 @@ const test = setup.extend<{
   },
   notification: async ({ page }, use) => {
     await use(new NotificationPom(page));
-  }
+  },
 });
 
-test.describe('Tests license data displayed in Teams App', async () => {
-  test('pypitoken in install modal', async ({ installModal }) => {
+test.describe("Tests license data displayed in Teams App", async () => {
+  test("pypitoken in install modal", async ({ installModal }) => {
     await installModal.assert.ensureCorrectPypiToken();
   });
 
-  test('Admin alert in settings > team > users', async ({ license }) => {
+  test("Admin alert in settings > team > users", async ({ license }) => {
     await license.assert.ensureAlertShownCorrectly();
   });
 
-  test('Admin tooltip in settings > team > users', async ({ license }) => {
+  test("Admin tooltip in settings > team > users", async ({ license }) => {
     await license.assert.ensureTableShownCorrectly();
   });
 
-  test('license table in grant dataset access modal', async ({
+  test("license table in grant dataset access modal", async ({
     license,
     dataset,
-    page
+    page,
   }) => {
     await dataset.deleteIfExists(TEST_DATASET_NAME);
     await dataset.create(TEST_DATASET_NAME);
@@ -68,17 +68,17 @@ test.describe('Tests license data displayed in Teams App', async () => {
     await license.assert.ensureAlertShownCorrectly(false);
   });
 
-  test('super admin audit page', async ({ license, superadmin, page }) => {
+  test("super admin audit page", async ({ license, superadmin, page }) => {
     await superadmin.assert.ensureAuditPage();
   });
 
-  test('roles page and role definitions', async ({ settingsConfig }) => {
+  test("roles page and role definitions", async ({ settingsConfig }) => {
     await settingsConfig.assert.ensureRolesPageTable();
   });
 
-  test('add/remove user and license alert updates', async ({
+  test("add/remove user and license alert updates", async ({
     license,
-    superadmin
+    superadmin,
   }) => {
     await license.goTo(`${BASE_URL}/settings/team/users`);
     const currentSeats = await license.getSeatsInfo();
@@ -98,10 +98,10 @@ test.describe('Tests license data displayed in Teams App', async () => {
     expect(newSeats.users.total).toEqual(currentSeats.users.total);
   });
 
-  test('global notification when non-compliant but within the grace period', async ({
+  test("global notification when non-compliant but within the grace period", async ({
     page,
     dataset,
-    notification
+    notification,
   }) => {
     await page.goto(`${BASE_URL}/datasets`);
 
