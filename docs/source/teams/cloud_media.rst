@@ -736,6 +736,23 @@ than the default behavior of uploading copies of the media to the CVAT server.
 First, follow
 `these instructions <https://opencv.github.io/cvat/docs/manual/basics/attach-cloud-storage/>`_
 to attach a cloud storage bucket to CVAT. Then, simply provide the
+`cloud_storage_id` parameter to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
+specify the integer ID of the cloud storage configured in CVAT:
+
+.. code-block:: python
+    :linenos:
+
+    anno_key = "cloud_annotations"
+
+    results = dataset.annotate(
+        anno_key,
+        label_field="ground_truth",
+        cloud_storage_id=51,
+    )
+
+Alternatively, if you have configured a CVAT cloud manifest file
+then, simply provide the
 `cloud_manifest` parameter to
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
 specify the URL of the manifest file in your cloud bucket:
@@ -751,7 +768,7 @@ specify the URL of the manifest file in your cloud bucket:
         cloud_manifest="s3://voxel51/manifest.jsonl",
     )
 
-Alternatively, if your cloud manifest has the default name `manifest.jsonl`
+If your cloud manifest has the default name `manifest.jsonl`
 and exists in the root of the bucket containing the data in the sample
 collection being annotated, then you can simply pass `cloud_manifest=True`:
 
@@ -766,7 +783,7 @@ collection being annotated, then you can simply pass `cloud_manifest=True`:
 
 .. note::
 
-    The cloud manifest file must contain all media files in the sample
+    The cloud storage must contain all media files in the sample
     collection being annotated.
 
 .. _teams-annotating-cloud-media-v7:
