@@ -50,6 +50,7 @@ function Run(props) {
     preloadedQuery
   );
   const runData = result.delegatedOperation;
+
   const timestamp = getTimestamp(runData);
   const [tab, setTab] = useState("inputs");
   const [schemas, setSchemas] = useState<{ inputs?: any; outputs?: any }>({});
@@ -251,7 +252,9 @@ function Run(props) {
           />
         )}
         {tab === "errors" && runErrorData && <CodeBlock text={runErrorData} />}
-        {tab === "logs" && <Logs runData={runData} />}
+        {tab === "logs" && (
+          <Logs logConnection={logConnection} runData={runData} />
+        )}
         {tab === "view" && (
           <RunView
             view={omit(ctxData, ["operator_uri", "params", "dataset_name"])}

@@ -1,5 +1,6 @@
 import { TableSkeleton } from "@fiftyone/teams-components";
 import { runsItemQuery$dataT } from "@fiftyone/teams-state";
+import { useTheme } from "@mui/material";
 import Paper from "@mui/material/Paper";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -11,9 +12,9 @@ import React, { Suspense } from "react";
 import { TableComponents, TableVirtuoso } from "react-virtuoso";
 
 export default function LogPreview(props) {
+  if (!props) return <></>;
   const { logConnection } =
     props.runData as runsItemQuery$dataT["delegatedOperation"];
-  console.log("logPreview page edges", logConnection.edges);
 
   const formattedLogs = logConnection.edges.map(({ node }, index) => ({
     id: index + 1, // Generate a sequential ID
@@ -22,11 +23,9 @@ export default function LogPreview(props) {
     content: node.content || "No content available", // Fallback message
   }));
 
-  console.log("formattedLogs", formattedLogs);
-
   return (
-    <Suspense fallback={<TableSkeleton rows={25} />}>
-      <VirtualLogTable logData={formattedLogs} />
+    <Suspense fallback={<TableSkeleton />}>
+      <VirtualLogTable data={formattedLogs} />
     </Suspense>
   );
 }
@@ -45,9 +44,7 @@ interface ColumnData {
 }
 
 const VirtualLogTable = (props) => {
-  const { logData } = props;
-
-  console.log("end", logData);
+  let logData = props.data;
 
   // Define columns
   const columns: ColumnData[] = [
@@ -106,12 +103,14 @@ const VirtualLogTable = (props) => {
     );
   }
 
+  const { palette } = useTheme();
+
   const levelColors: Record<string, string> = {
-    INFO: "#3c19d7", // Light Blue
-    WARN: "#efc807", // Light Yellow
-    ERROR: "#f65707", // Light Red
-    DEBUG: "#242525", // Light Gray
-    "": "#3c19d7", // Light Blue
+    INFO: "#7FB9F4",
+    WARN: "#ECD000",
+    ERROR: "#DB4E45",
+    DEBUG: "#B0B0B0",
+    "": palette.text.primary,
   };
 
   // Row content
@@ -122,7 +121,10 @@ const VirtualLogTable = (props) => {
           let cellStyle = {};
           if (column.dataKey === "level") {
             cellStyle = {
-              color: levelColors[row.level],
+              color:
+                row.level !== ""
+                  ? levelColors[row.level]
+                  : palette.text.primary,
             };
           }
           return (
@@ -136,7 +138,7 @@ const VirtualLogTable = (props) => {
   }
 
   return (
-    <Paper style={{ height: 500, width: "100%" }}>
+    <Paper style={{ height: "calc(100vh - 280px)", width: "100%" }}>
       <TableVirtuoso
         data={logData}
         components={VirtuosoTableComponents}

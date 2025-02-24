@@ -1,5 +1,5 @@
 import { ExternalLinkIcon, SearchIcon } from "@fiftyone/teams-components";
-import { CONSTANT_VARIABLES, runsItemQuery$dataT } from "@fiftyone/teams-state";
+import { CONSTANT_VARIABLES } from "@fiftyone/teams-state";
 import { Box, Button, Stack, Typography } from "@mui/material";
 import { getLogStatus, LOG_STATUS } from "../utils/getLogStatus";
 import LogPreview from "./logs/LogPreview";
@@ -58,8 +58,6 @@ const UnsetLog = () => {
 type LogStatus = keyof typeof LOG_STATUS;
 
 export default function Logs(props) {
-  // const logStatus: LogStatus = "UPLOAD_SUCCESS";
-  const { runLink, logConnection } = props.runData;
   const logStatus = getLogStatus(props.runData);
 
   switch (logStatus) {
@@ -71,7 +69,7 @@ export default function Logs(props) {
     default:
       return <UnsetLog />;
     case LOG_STATUS.UPLOAD_SUCCESS:
-      return <LogPreview props={props} />;
+      return <LogPreview {...props} />;
   }
   return <></>;
 }
