@@ -156,6 +156,22 @@ export const runsItemQuery = graphql`
       logSize
       logUploadError
       metadata
+      logConnection(first: 1000, after: null) {
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          startCursor
+          endCursor
+        }
+        edges {
+          node {
+            content
+            date
+            level
+          }
+          cursor
+        }
+      }
     }
   }
 `;

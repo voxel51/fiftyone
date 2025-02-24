@@ -52,9 +52,8 @@ export default function RunActions(props: RunActionsPropsType) {
   ].includes(runState);
   const canViewInOrchestrator =
     runLink && isUrl(runLink) && !hideViewInOrchestrator;
-
-  // const isExpired = result?.includes("expired");
   const isExpired = false;
+  // const isExpired = result?.includes("expired");
   const hasLogSetup = Boolean(logUrl);
 
   // TODO: update the url (when we have the actual link) and move it to Constants.ts

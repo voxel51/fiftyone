@@ -1,8 +1,10 @@
 import { ExternalLinkIcon, SearchIcon } from "@fiftyone/teams-components";
-import { Box, Button, Stack, Typography } from "@mui/material";
 import { CONSTANT_VARIABLES } from "@fiftyone/teams-state";
+import { Box, Button, Stack, Typography } from "@mui/material";
+import { getLogStatus, LOG_STATUS } from "../utils/getLogStatus";
+import LogPreview from "./logs/LogPreview";
 
-const EmptyLogs = () => {
+const UnsetLog = () => {
   const handleButtonClick = (url: string) => {
     window.open(url, "_blank", "noopener,noreferrer");
   };
@@ -53,11 +55,21 @@ const EmptyLogs = () => {
   );
 };
 
-export default function Logs() {
-  const emptyLog = true;
-  if (emptyLog) {
-    return <EmptyLogs />;
-  }
+type LogStatus = keyof typeof LOG_STATUS;
 
-  return <Stack>normal logs</Stack>;
+export default function Logs(props) {
+  const logStatus = getLogStatus(props.runData);
+
+  switch (logStatus) {
+    case LOG_STATUS.PENDING:
+    // return <PendingLog />;
+    case LOG_STATUS.URL_LINK:
+    // return <URLLog />;
+    case LOG_STATUS.UNSET:
+    default:
+      return <UnsetLog />;
+    case LOG_STATUS.UPLOAD_SUCCESS:
+      return <LogPreview {...props} />;
+  }
+  return <></>;
 }

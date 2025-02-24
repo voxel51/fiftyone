@@ -30,6 +30,7 @@ import { capitalize, get, omit } from "lodash";
 import { useEffect, useState } from "react";
 import { usePreloadedQuery } from "react-relay";
 import DatasetNavigation from "../../components/navigation";
+import Logs from "../components/Logs";
 import RunActions from "../components/RunActions";
 import RunLabel from "../components/RunLabel";
 import RunStatus from "../components/RunStatus";
@@ -39,7 +40,6 @@ import getTimestamp from "../utils/getTimestamp";
 import isUrl from "../utils/isUrl";
 import RunIO, { IOType } from "./components/RunIO";
 import RunView from "./components/RunView";
-import Logs from "../components/Logs";
 
 const { QUEUED, SCHEDULED, RUNNING, COMPLETED, FAILED } = OPERATOR_RUN_STATES;
 
@@ -50,6 +50,7 @@ function Run(props) {
     preloadedQuery
   );
   const runData = result.delegatedOperation;
+
   const timestamp = getTimestamp(runData);
   const [tab, setTab] = useState("inputs");
   const [schemas, setSchemas] = useState<{ inputs?: any; outputs?: any }>({});
@@ -69,7 +70,11 @@ function Run(props) {
     id,
     pinned,
     runLink,
+    logUrl,
+    logUploadError,
+    logSize,
     metadata,
+    logConnection,
   } = runData;
   const { operator_uri, params, ...ctxData } = context.request_params;
   const { inputs, outputs } = schemas;
@@ -247,7 +252,9 @@ function Run(props) {
           />
         )}
         {tab === "errors" && runErrorData && <CodeBlock text={runErrorData} />}
-        {tab === "logs" && <Logs />}
+        {tab === "logs" && (
+          <Logs logConnection={logConnection} runData={runData} />
+        )}
         {tab === "view" && (
           <RunView
             view={omit(ctxData, ["operator_uri", "params", "dataset_name"])}
