@@ -1,5 +1,6 @@
 import { TableSkeleton } from "@fiftyone/teams-components";
 import { runsItemQuery$dataT } from "@fiftyone/teams-state";
+import { fontWeight } from "@mui/joy/styles/styleFunctionSx";
 import { useTheme } from "@mui/material";
 import Paper from "@mui/material/Paper";
 import Table from "@mui/material/Table";
@@ -132,6 +133,7 @@ const VirtualLogTable = ({ data }) => {
               width: column.width,
               fontWeight: "bold",
               color: palette.text.secondary,
+              fontSize: "0.875rem",
             }}
             sx={{ backgroundColor: "background.paper" }}
           >
@@ -148,9 +150,10 @@ const VirtualLogTable = ({ data }) => {
     (_index: number, row: LogData) => (
       <>
         {columns.map((column) => {
-          let cellStyle = {};
+          let cellStyle = { fontWeight: "normal", fontSize: "0.9rem" };
           if (column.dataKey === "level") {
             cellStyle = {
+              ...cellStyle,
               color: row.level ? levelColors[row.level] : palette.text.primary,
             };
           }
