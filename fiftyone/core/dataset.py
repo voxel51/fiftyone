@@ -435,7 +435,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def _is_generated(self):
-        return self._is_patches or self._is_frames or self._is_clips
+        return (
+            self._is_patches
+            or self._is_frames
+            or self._is_clips
+            or self._is_materialized
+        )
 
     @property
     def _is_patches(self):
@@ -450,6 +455,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @property
     def _is_clips(self):
         return self._sample_collection_name.startswith("clips.")
+
+    @property
+    def _is_materialized(self):
+        return self._sample_collection_name.startswith("materialized.")
 
     @property
     def _is_dynamic_groups(self):
@@ -3465,7 +3474,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return d
 
     def _bulk_write(
-        self, ops, ids=None, frames=False, ordered=False, progress=False
+        self,
+        ops,
+        ids=None,
+        sample_ids=None,
+        frames=False,
+        ordered=False,
+        progress=False,
     ):
         if frames:
             coll = self._frame_collection
@@ -3475,7 +3490,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         foo.bulk_write(ops, coll, ordered=ordered, progress=progress)
 
         if frames:
-            fofr.Frame._reload_docs(self._frame_collection_name, frame_ids=ids)
+            fofr.Frame._reload_docs(
+                self._frame_collection_name,
+                sample_ids=sample_ids,
+                frame_ids=ids,
+            )
         else:
             fos.Sample._reload_docs(
                 self._sample_collection_name, sample_ids=ids
@@ -4886,7 +4905,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return self._clone(name=name, persistent=persistent)
 
-    def _clone(self, name=None, persistent=False, view=None):
+    def _clone(
+        self,
+        name=None,
+        persistent=False,
+        view=None,
+        materialized=False,
+    ):
         if name is None:
             name = get_default_dataset_name()
 
@@ -4895,7 +4920,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             sample_collection = self
 
-        return _clone_collection(sample_collection, name, persistent)
+        return _clone_collection(
+            sample_collection,
+            name,
+            persistent=persistent,
+            materialized=materialized,
+        )
 
     def clear(self):
         """Removes all samples from the dataset.
@@ -5065,7 +5095,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_collection_name, sample_ids=sample_ids
         )
 
-    def _keep_frames(self, view=None, frame_ids=None):
+    def _keep_frames(self, view=None):
         sample_collection = view if view is not None else self
         if not sample_collection._contains_videos(any_slice=True):
             return
@@ -7990,6 +8020,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Reloads the dataset and any in-memory samples from the database."""
         self._reload(hard=True)
         self._reload_docs(hard=True)
+        self._reload_docs(frames=True, hard=True)
 
     def clear_cache(self):
         """Clears the dataset's in-memory cache.
@@ -8031,11 +8062,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._update_last_loaded_at()
 
-    def _reload_docs(self, hard=False):
-        fos.Sample._reload_docs(self._sample_collection_name, hard=hard)
+    def _reload_docs(self, ids=None, frames=False, hard=False):
+        if frames:
+            if not self._has_frame_fields():
+                return
 
-        if self._has_frame_fields():
-            fofr.Frame._reload_docs(self._frame_collection_name, hard=hard)
+            fofr.Frame._reload_docs(
+                self._frame_collection_name, frame_ids=ids, hard=hard
+            )
+        else:
+            fos.Sample._reload_docs(
+                self._sample_collection_name, sample_ids=ids, hard=hard
+            )
 
     def _serialize(self):
         return self._doc.to_dict(extended=True)
@@ -8280,7 +8318,7 @@ def _clone_collection_indexes(
 
 
 def _make_sample_collection_name(
-    dataset_id, patches=False, frames=False, clips=False
+    dataset_id, patches=False, frames=False, clips=False, materialized=False
 ):
     if patches and frames:
         prefix = "patches.frames"
@@ -8290,6 +8328,8 @@ def _make_sample_collection_name(
         prefix = "frames"
     elif clips:
         prefix = "clips"
+    elif materialized:
+        prefix = "materialized"
     else:
         prefix = "samples"
 
@@ -8472,7 +8512,12 @@ def _delete_dataset_doc(dataset_doc):
     dataset_doc.delete()
 
 
-def _clone_collection(sample_collection, name, persistent):
+def _clone_collection(
+    sample_collection,
+    name,
+    persistent=False,
+    materialized=False,
+):
     slug = _validate_dataset_name(name)
 
     contains_videos = sample_collection._contains_videos(any_slice=True)
@@ -8499,7 +8544,9 @@ def _clone_collection(sample_collection, name, persistent):
     _id = dataset_doc.id
     now = datetime.utcnow()
 
-    sample_collection_name = _make_sample_collection_name(_id)
+    sample_collection_name = _make_sample_collection_name(
+        _id, materialized=materialized
+    )
 
     if contains_videos:
         frame_collection_name = _make_frame_collection_name(
