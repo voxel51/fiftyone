@@ -94,6 +94,10 @@ FiftyOne supports the configuration options described below:
 | `logging_level`               | `FIFTYONE_LOGGING_LEVEL`              | `INFO`                        | Controls FiftyOne's package-wide logging level. Can be any valid ``logging`` level as  |
 |                               |                                       |                               | a string: ``DEBUG, INFO, WARNING, ERROR, CRITICAL``.                                   |
 +-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `default_map_workers`         | `FIFTYONE_DEFAULT_MAP_WORKERS`        | `None`                        | The default number of worker processes to use when                                     |
+|                               |                                       |                               | :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>` is      |
+|                               |                                       |                               | called.                                                                                |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `max_thread_pool_workers`     | `FIFTYONE_MAX_THREAD_POOL_WORKERS`    | `None`                        | An optional maximum number of workers to use when creating thread pools                |
 +-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `max_process_pool_workers`    | `FIFTYONE_MAX_PROCESS_POOL_WORKERS`   | `None`                        | An optional maximum number of workers to use when creating process pools               |
@@ -169,6 +173,7 @@ and the CLI:
             "default_batcher": "latency",
             "default_dataset_dir": "~/fiftyone",
             "default_image_ext": ".jpg",
+            "default_map_workers": null,
             "default_ml_backend": "torch",
             "default_sequence_idx": "%06d",
             "default_video_ext": ".mp4",
@@ -219,6 +224,7 @@ and the CLI:
             "default_batcher": "latency",
             "default_dataset_dir": "~/fiftyone",
             "default_image_ext": ".jpg",
+            "default_map_workers": null,
             "default_ml_backend": "torch",
             "default_sequence_idx": "%06d",
             "default_video_ext": ".mp4",
