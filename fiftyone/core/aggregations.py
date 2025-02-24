@@ -2884,12 +2884,17 @@ class Values(Aggregation):
             context=context,
         )
 
-        self._field = self._manual_field or field
-        self._big_field = big_field
-        self._num_list_fields = len(list_fields)
+        # Optimization: call str() in memory rather than $toString in database
+        if id_to_str:
+            field = fof.ObjectIdField()
+            id_to_str = False
 
-        pipeline.extend(
-            _make_extract_values_pipeline(
+        # Optimization: use field inclusion syntax when possible
+        if self._expr is None and path == "_id":
+            big_field = path
+            _pipeline = [{"$project": {"_id": 1}}]
+        else:
+            _pipeline = _make_extract_values_pipeline(
                 path,
                 list_fields,
                 id_to_str,
@@ -2897,7 +2902,12 @@ class Values(Aggregation):
                 self._big_result,
                 big_field,
             )
-        )
+
+        self._field = self._manual_field or field
+        self._big_field = big_field
+        self._num_list_fields = len(list_fields)
+
+        pipeline.extend(_pipeline)
 
         return pipeline
 
