@@ -166,7 +166,7 @@ export const ImportDialog = ({
               <Stack direction="column" spacing={1}>
                 <Typography>Skip existing samples</Typography>
                 <Typography color="secondary" variant="body2">
-                  Check this box to skip importing examples whose filepath
+                  Check this box to skip importing samples whose filepath
                   matches an existing dataset sample
                 </Typography>
               </Stack>
