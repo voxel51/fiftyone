@@ -8,7 +8,7 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import React, { Suspense } from "react";
+import React, { Suspense, useCallback, useMemo } from "react";
 import { TableComponents, TableVirtuoso } from "react-virtuoso";
 
 export default function LogPreview(props) {
@@ -16,16 +16,49 @@ export default function LogPreview(props) {
   const { logConnection } =
     props.runData as runsItemQuery$dataT["delegatedOperation"];
 
-  const formattedLogs = logConnection.edges.map(({ node }, index) => ({
-    id: index + 1, // Generate a sequential ID
-    date: node.date || "", // Fallback if date is null
-    level: node.level || "", // Default level
-    content: node.content || "No content available", // Fallback message
-  }));
+  const processedLogs = useMemo(() => {
+    if (!logConnection?.edges || !Array.isArray(logConnection.edges)) return [];
+
+    let idCounter = 1;
+
+    return logConnection.edges.reduce((acc, { node }, index, arr) => {
+      // Assign fallback values directly
+      let date = node?.date || "";
+      let level = node?.level || "";
+      let content = node?.content?.trim() || "";
+
+      // Skip invalid logs
+      if (!date || !level || !content) return acc;
+
+      // Check the next log entry
+      let nextNode = arr[index + 1]?.node;
+      let nextContent = nextNode?.content?.trim() || "";
+      let nextDate = nextNode?.date || "";
+      let nextLevel = nextNode?.level || "";
+
+      // Merge multi-line logs
+      if (content === "\n" || content === "") {
+        if (nextContent && !nextDate && !nextLevel) {
+          acc.push({
+            id: idCounter++,
+            date,
+            level,
+            content: nextContent,
+          });
+          return acc; // Skip adding the current log
+        }
+      }
+
+      // Add the valid log entry
+      acc.push({ id: idCounter++, date, level, content });
+
+      return acc;
+    }, []);
+  }, [logConnection.edges]);
 
   return (
     <Suspense fallback={<TableSkeleton />}>
-      <VirtualLogTable data={formattedLogs} />
+      <VirtualLogTable data={processedLogs} />
     </Suspense>
   );
 }
@@ -43,27 +76,28 @@ interface ColumnData {
   width?: number;
 }
 
-const VirtualLogTable = (props) => {
-  let logData = props.data;
+const VirtualLogTable = ({ data }) => {
+  const { palette } = useTheme();
 
-  // Define columns
-  const columns: ColumnData[] = [
-    {
-      width: 160,
-      label: "Date",
-      dataKey: "date",
-    },
-    {
-      width: 80,
-      label: "Level",
-      dataKey: "level",
-    },
-    {
-      width: 500,
-      label: "Log Content",
-      dataKey: "content",
-    },
-  ];
+  const columns: ColumnData[] = useMemo(
+    () => [
+      { width: 160, label: "Timestamp", dataKey: "date" },
+      { width: 80, label: "Level", dataKey: "level" },
+      { width: 500, label: "Message", dataKey: "content" },
+    ],
+    []
+  );
+
+  const levelColors = useMemo(
+    () => ({
+      INFO: "#7FB9F4",
+      WARN: "#ECD000",
+      ERROR: "#DB4E45",
+      DEBUG: "#B0B0B0",
+      "": palette.text.primary,
+    }),
+    [palette.text.primary]
+  );
 
   // Virtualized table components
   const VirtuosoTableComponents: TableComponents<LogData> = {
@@ -73,6 +107,7 @@ const VirtualLogTable = (props) => {
     Table: (props) => (
       <Table
         {...props}
+        size="small"
         sx={{ borderCollapse: "separate", tableLayout: "fixed" }}
       />
     ),
@@ -85,46 +120,38 @@ const VirtualLogTable = (props) => {
     )),
   };
 
-  // Header
-  function fixedHeaderContent() {
-    return (
+  // Memoize fixedHeaderContent to prevent unnecessary re-renders
+  const fixedHeaderContent = useCallback(
+    () => (
       <TableRow>
         {columns.map((column) => (
           <TableCell
             key={column.dataKey}
             variant="head"
-            style={{ width: column.width, fontWeight: "bold" }}
+            style={{
+              width: column.width,
+              fontWeight: "bold",
+              color: palette.text.secondary,
+            }}
             sx={{ backgroundColor: "background.paper" }}
           >
             {column.label}
           </TableCell>
         ))}
       </TableRow>
-    );
-  }
+    ),
+    [columns]
+  );
 
-  const { palette } = useTheme();
-
-  const levelColors: Record<string, string> = {
-    INFO: "#7FB9F4",
-    WARN: "#ECD000",
-    ERROR: "#DB4E45",
-    DEBUG: "#B0B0B0",
-    "": palette.text.primary,
-  };
-
-  // Row content
-  function rowContent(_index: number, row: LogData) {
-    return (
-      <React.Fragment>
+  // Memoize rowContent to avoid unnecessary re-renders
+  const rowContent = useCallback(
+    (_index: number, row: LogData) => (
+      <>
         {columns.map((column) => {
           let cellStyle = {};
           if (column.dataKey === "level") {
             cellStyle = {
-              color:
-                row.level !== ""
-                  ? levelColors[row.level]
-                  : palette.text.primary,
+              color: row.level ? levelColors[row.level] : palette.text.primary,
             };
           }
           return (
@@ -133,14 +160,15 @@ const VirtualLogTable = (props) => {
             </TableCell>
           );
         })}
-      </React.Fragment>
-    );
-  }
+      </>
+    ),
+    [columns, levelColors, palette.text.primary]
+  );
 
   return (
-    <Paper style={{ height: "calc(100vh - 280px)", width: "100%" }}>
+    <Paper style={{ height: "calc(100vh - 430px)", width: "100%" }}>
       <TableVirtuoso
-        data={logData}
+        data={data}
         components={VirtuosoTableComponents}
         fixedHeaderContent={fixedHeaderContent}
         itemContent={rowContent}
