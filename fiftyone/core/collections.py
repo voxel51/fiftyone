@@ -10,7 +10,6 @@ from collections import defaultdict
 from copy import copy
 from datetime import datetime
 import fnmatch
-import inspect
 import itertools
 import logging
 import numbers
@@ -26,7 +25,6 @@ from pymongo import InsertOne, UpdateOne, UpdateMany, WriteConcern
 import eta.core.serial as etas
 import eta.core.utils as etau
 
-import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
@@ -3215,54 +3213,121 @@ class SampleCollection(object):
     def _delete_labels(self, ids, fields=None):
         self._dataset.delete_labels(ids=ids, fields=fields)
 
-    def map_samples(
+    def update_samples(
         self,
-        map_fcn,
-        reduce_fcn=None,
-        save=None,
+        update_fcn,
         num_workers=None,
         shard_size=None,
         shard_method="id",
         progress=None,
     ):
-        """Applies the given function to each sample in the collection.
+        """Applies the given function to each sample in the collection and
+        saves the resulting sample edits.
 
-        By default, a multiprocessing pool is used to parallelize the work.
+        By default, a multiprocessing pool is used to parallelize the work,
+        unless this method is called in a daemon process (subprocess), in which
+        case no workers are used.
 
-        When only a ``map_fcn`` is provided, this function effectively performs
-        the following map operation with the outer loop in parallel::
+        This function effectively performs the following map operation with the
+        outer loop in parallel::
 
             for batch_view in fou.iter_slices(sample_collection, shard_size):
                 for sample in batch_view.iter_samples(autosave=True):
                     map_fcn(sample)
 
-        When a ``reduce_fcn`` function is provided, this function effectively
-        performs the following map-reduce operation with the outer loop in
-        parallel::
+        Example::
 
-            outputs = {}
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("cifar10", split="train")
+            view = dataset.select_fields("ground_truth")
+
+            def update_fcn(sample):
+                sample.ground_truth.label = sample.ground_truth.label.upper()
+
+            view.update_samples(update_fcn)
+
+            print(dataset.count_values("ground_truth.label"))
+
+        Args:
+            update_fcn: a function to apply to each sample in the collection
+            num_workers (None): the number of workers to use. By default,
+                ``fiftyone.config.default_map_workers`` workers are used if
+                this value is set, else
+                :meth:`fiftyone.core.utils.recommend_process_pool_workers`
+                workers are used. If this value is <= 1, all work is done in
+                the main process
+            shard_size (None): an optional number of samples to distribute to
+                each worker at a time. By default, samples are evenly
+                distributed to workers with one shard per worker
+            shard_method ("id"): whether to use IDs (``"id"``) or slices
+                (``"slice"``) to assign samples to workers
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead, or
+                "workers" to render per-worker progress bars
+        """
+        return self._map_samples(
+            update_fcn,
+            return_outputs=False,
+            save=True,
+            num_workers=num_workers,
+            shard_size=shard_size,
+            shard_method=shard_method,
+            progress=progress,
+        )
+
+    def map_samples(
+        self,
+        map_fcn,
+        reduce_fcn=None,
+        aggregate_fcn=None,
+        save=False,
+        num_workers=None,
+        shard_size=None,
+        shard_method="id",
+        progress=None,
+    ):
+        """Applies the given function to each sample in the collection and
+        optionally reduces/aggregates the results.
+
+        By default, a multiprocessing pool is used to parallelize the work,
+        unless this method is called in a daemon process (subprocess), in which
+        case no workers are used.
+
+        When only a ``map_fcn`` is provided, this function effectively performs
+        the following map operation with the outer loop in parallel::
 
             for batch_view in fou.iter_slices(sample_collection, shard_size):
-                for sample in batch_view.iter_samples(autosave=True):
-                    outputs[sample.id] = map_fcn(sample)
+                for sample in batch_view.iter_samples(autosave=save):
+                    sample_output = map_fcn(sample)
+                    yield sample.id, sample_output
 
-            output = reduce_fcn(sample_collection, outputs)
-
-        When a ``reduce_fcn`` class is provided, this function effectively
-        performs the following map-reduce operation with the outer loop in
-        parallel::
+        When a ``reduce_fcn`` is provided, this function effectively performs
+        the following map-reduce operation with the outer loop in parallel::
 
             reducer = reduce_fcn(sample_collection)
             reducer.init()
 
             for batch_view in fou.iter_slices(sample_collection, shard_size):
-                outputs = {}
-                for sample in batch_view.iter_samples(autosave=True):
-                    outputs[sample.id] = map_fcn(sample)
-
-                reducer.update(outputs)
+                for sample in batch_view.iter_samples(autosave=save):
+                    sample_output = map_fcn(sample)
+                    reducer.add(sample.id, sample_output)
 
             output = reducer.finalize()
+
+        When an ``aggregate_fcn`` is provided, this function effectively
+        performs the following map-aggregate operation with the outer loop in
+        parallel::
+
+            outputs = {}
+
+            for batch_view in fou.iter_slices(sample_collection, shard_size):
+                for sample in batch_view.iter_samples(autosave=save):
+                    outputs[sample.id] = map_fcn(sample)
+
+            output = aggregate_fcn(sample_collection, outputs)
 
         Example::
 
@@ -3279,38 +3344,27 @@ class SampleCollection(object):
             #
 
             def map_fcn(sample):
-                sample.ground_truth.label = sample.ground_truth.label.upper()
+                return sample.ground_truth.label.upper()
 
-            view.map_samples(map_fcn)
+            counter = Counter()
+            for _, label in view.map_samples(map_fcn):
+                counter[label] += 1
 
-            print(dataset.count_values("ground_truth.label"))
-
-            #
-            # Example 2: map-reduce with reduce function
-            #
-
-            def map_fcn(sample):
-                return sample.ground_truth.label.lower()
-
-            def reduce_fcn(sample_collection, values):
-                return dict(Counter(values.values()))
-
-            counts = view.map_samples(map_fcn, reduce_fcn=reduce_fcn)
-            print(counts)
+            print(dict(counter))
 
             #
-            # Example 3: map-reduce with reduce class
+            # Example 2: map-reduce
             #
 
             def map_fcn(sample):
-                return sample.ground_truth.label.lower()
+                return sample.ground_truth.label.upper()
 
             class ReduceFcn(fo.ReduceFcn):
                 def init(self):
                     self.accumulator = Counter()
 
-                def update(self, outputs):
-                    self.accumulator.update(Counter(outputs.values()))
+                def add(self, sample_id, output):
+                    self.accumulator[output] += 1
 
                 def finalize(self):
                     return dict(self.accumulator)
@@ -3318,14 +3372,28 @@ class SampleCollection(object):
             counts = view.map_samples(map_fcn, reduce_fcn=ReduceFcn)
             print(counts)
 
+            #
+            # Example 3: map-aggregate
+            #
+
+            def map_fcn(sample):
+                return sample.ground_truth.label.upper()
+
+            def aggregate_fcn(sample_collection, outputs):
+                return dict(Counter(outputs.values()))
+
+            counts = view.map_samples(map_fcn, aggregate_fcn=aggregate_fcn)
+            print(counts)
+
         Args:
             map_fcn: a function to apply to each sample in the collection
-            reduce_fcn (None): an optional function or
+            reduce_fcn (None): an optional
                 :class:`fiftyone.utils.multiprocessing.ReduceFcn` subclass to
                 reduce the map outputs. See above for usage information
-            save (None): whether to save any sample edits applied by
-                ``map_fcn``. By default this is True when no ``reduce_fcn`` is
-                provided and False when a ``reduce_fcn`` is provided
+            aggregate_fcn (None): an optional function to aggregate the map
+                outputs. See above for usage information
+            save (False): whether to save any sample edits applied by
+                ``map_fcn``
             num_workers (None): the number of workers to use. By default,
                 ``fiftyone.config.default_map_workers`` workers are used if
                 this value is set, else
@@ -3337,33 +3405,19 @@ class SampleCollection(object):
                 distributed to workers with one shard per worker
             shard_method ("id"): whether to use IDs (``"id"``) or slices
                 (``"slice"``) to assign samples to workers
-            progress (None): whether to render a progress bar for each worker
-                (True/False), use the default value
-                ``fiftyone.config.show_progress_bars`` (None), or "global" to
-                render a single global progress bar, or a progress callback
-                function to invoke instead
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead, or
+                "workers" to render per-worker progress bars
 
         Returns:
-            the output of ``reduce_fcn``, if provided, else None
+            the output of ``reduce_fcn`` or ``aggregate_fcn``, if provided,
+            otherwise a generator that emits ``(sample_id, map_output)`` tuples
         """
-        if num_workers is None:
-            num_workers = fo.config.default_map_workers
-
-        if num_workers is None:
-            num_workers = fou.recommend_process_pool_workers()
-
-        if num_workers is not None and num_workers <= 1:
-            return self._map_samples_single(
-                map_fcn,
-                reduce_fcn=reduce_fcn,
-                save=save,
-                progress=progress,
-            )
-
-        return foum.map_samples(
-            self,
+        return self._map_samples(
             map_fcn,
             reduce_fcn=reduce_fcn,
+            aggregate_fcn=aggregate_fcn,
             save=save,
             num_workers=num_workers,
             shard_size=shard_size,
@@ -3371,36 +3425,30 @@ class SampleCollection(object):
             progress=progress,
         )
 
-    def _map_samples_single(
+    def _map_samples(
         self,
         map_fcn,
         reduce_fcn=None,
-        save=None,
-        progress=False,
+        aggregate_fcn=None,
+        return_outputs=True,
+        save=False,
+        num_workers=None,
+        shard_size=None,
+        shard_method="id",
+        progress=None,
     ):
-        if save is None:
-            save = reduce_fcn is None
-
-        if inspect.isclass(reduce_fcn):
-            reducer = reduce_fcn(self)
-        elif reduce_fcn is not None:
-            reducer = foum.ReduceFcn(self, reduce_fcn=reduce_fcn)
-        else:
-            reducer = None
-
-        if reducer is not None:
-            reducer.init()
-
-        if progress == "global":
-            progress = True
-
-        for sample in self.iter_samples(autosave=save, progress=progress):
-            sample_output = map_fcn(sample)
-            if reducer is not None and sample_output is not None:
-                reducer.update({sample.id: sample_output})
-
-        if reducer is not None:
-            return reducer.finalize()
+        return foum.map_samples(
+            self,
+            map_fcn,
+            reduce_fcn=reduce_fcn,
+            aggregate_fcn=aggregate_fcn,
+            return_outputs=return_outputs,
+            save=save,
+            num_workers=num_workers,
+            shard_size=shard_size,
+            shard_method=shard_method,
+            progress=progress,
+        )
 
     def compute_metadata(
         self,

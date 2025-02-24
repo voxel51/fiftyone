@@ -5,10 +5,13 @@ Multiprocessing utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import inspect
 import itertools
+import multiprocessing
+from queue import Empty
+import time
 
 from bson import ObjectId
+import dill as pickle
 import numpy as np
 from tqdm.auto import tqdm
 
@@ -21,49 +24,49 @@ def map_samples(
     sample_collection,
     map_fcn,
     reduce_fcn=None,
-    save=None,
+    aggregate_fcn=None,
+    return_outputs=True,
+    save=False,
     num_workers=None,
     shard_size=None,
     shard_method="id",
     progress=None,
 ):
     """Applies the given function to each sample in the collection via a
-    multiprocessing pool.
+    multiprocessing pool, optionally saving any sample edits and
+    reducing/aggregating the outputs.
 
     When only a ``map_fcn`` is provided, this function effectively performs
     the following map operation with the outer loop in parallel::
 
         for batch_view in fou.iter_slices(sample_collection, shard_size):
-            for sample in batch_view.iter_samples(autosave=True):
-                map_fcn(sample)
+            for sample in batch_view.iter_samples(autosave=save):
+                sample_output = map_fcn(sample)
+                yield sample.id, sample_output
 
-    When a ``reduce_fcn`` function is provided, this function effectively
-    performs the following map-reduce operation with the outer loop in
-    parallel::
-
-        outputs = {}
-
-        for batch_view in fou.iter_slices(sample_collection, shard_size):
-            for sample in batch_view.iter_samples(autosave=True):
-                outputs[sample.id] = map_fcn(sample)
-
-        output = reduce_fcn(sample_collection, outputs)
-
-    When a ``reduce_fcn`` class is provided, this function effectively
-    performs the following map-reduce operation with the outer loop in
-    parallel::
+    When a ``reduce_fcn`` is provided, this function effectively performs the
+    following map-reduce operation with the outer loop in parallel::
 
         reducer = reduce_fcn(sample_collection)
         reducer.init()
 
         for batch_view in fou.iter_slices(sample_collection, shard_size):
-            outputs = {}
-            for sample in batch_view.iter_samples(autosave=True):
-                outputs[sample.id] = map_fcn(sample)
-
-            reducer.update(outputs)
+            for sample in batch_view.iter_samples(autosave=save):
+                sample_output = map_fcn(sample)
+                reducer.add(sample.id, sample_output)
 
         output = reducer.finalize()
+
+    When an ``aggregate_fcn`` is provided, this function effectively performs
+    the following map-aggregate operation with the outer loop in parallel::
+
+        outputs = {}
+
+        for batch_view in fou.iter_slices(sample_collection, shard_size):
+            for sample in batch_view.iter_samples(autosave=save):
+                outputs[sample.id] = map_fcn(sample)
+
+        output = aggregate_fcn(sample_collection, outputs)
 
     Example::
 
@@ -77,31 +80,31 @@ def map_samples(
         view = dataset.select_fields("ground_truth")
 
         #
-        # Example 1: map
+        # Example 1: update
         #
 
         def map_fcn(sample):
             sample.ground_truth.label = sample.ground_truth.label.upper()
 
-        foum.map_samples(view, map_fcn)
+        foum.map_samples(view, map_fcn, return_outputs=False, save=True)
 
         print(dataset.count_values("ground_truth.label"))
 
         #
-        # Example 2: map-reduce with reduce function
+        # Example 2: map
         #
 
         def map_fcn(sample):
             return sample.ground_truth.label.lower()
 
-        def reduce_fcn(sample_collection, values):
-            return dict(Counter(values.values()))
+        counter = Counter()
+        for _, label in foum.map_samples(view, map_fcn):
+            counter[label] += 1
 
-        counts = foum.map_samples(view, map_fcn, reduce_fcn=reduce_fcn)
-        print(counts)
+        print(dict(counter))
 
         #
-        # Example 3: map-reduce with reduce class
+        # Example 3: map-reduce
         #
 
         def map_fcn(sample):
@@ -111,8 +114,8 @@ def map_samples(
             def init(self):
                 self.accumulator = Counter()
 
-            def update(self, outputs):
-                self.accumulator.update(Counter(outputs.values()))
+            def add(self, sample_id, output):
+                self.accumulator[output] += 1
 
             def finalize(self):
                 return dict(self.accumulator)
@@ -120,31 +123,70 @@ def map_samples(
         counts = foum.map_samples(view, map_fcn, reduce_fcn=ReduceFcn)
         print(counts)
 
+        #
+        # Example 4: map-aggregate
+        #
+
+        def map_fcn(sample):
+            return sample.ground_truth.label.lower()
+
+        def aggregate_fcn(sample_collection, outputs):
+            return dict(Counter(outputs.values()))
+
+        counts = foum.map_samples(view, map_fcn, aggregate_fcn=aggregate_fcn)
+        print(counts)
+
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         map_fcn: a function to apply to each sample
-        reduce_fcn (None): an optional function or :class:`ReduceFcn` subclass
-            to reduce the map outputs. See above for usage information
-        save (None): whether to save any sample edits applied by ``map_fcn``.
-            By default this is True when no ``reduce_fcn`` is provided and
-            False when a ``reduce_fcn`` is provided
+        reduce_fcn (None): an optional :class:`ReduceFcn` subclass to reduce
+            the map outputs. See above for usage information
+        aggregate_fcn (None): an optional function to aggregate the map
+            outputs. See above for usage information
+        return_outputs (True): whether to return the map outputs. This has no
+            effect when a ``reduce_fcn`` or ``aggregate_fcn`` is provided
+        save (False): whether to save any sample edits applied by ``map_fcn``
         num_workers (None): the number of workers to use. The default is
-            :meth:`fiftyone.core.utils.recommend_process_pool_workers`
+            :meth:`fiftyone.core.utils.recommend_process_pool_workers`. If this
+            value is <= 1, all work is done in the main process
         shard_size (None): an optional number of samples to distribute to each
             worker at a time. By default, samples are evenly distributed to
             workers with one shard per worker
         shard_method ("id"): whether to use IDs (``"id"``) or slices
             (``"slice"``) to assign samples to workers
-        progress (None): whether to render a progress bar for each worker
-            (True/False), use the default value
-            ``fiftyone.config.show_progress_bars`` (None), or "global" to
-            render a single global progress bar, or a progress callback
-            function to invoke instead
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead, or "workers" to
+            render per-worker progress bars
 
     Returns:
-        the output of ``reduce_fcn``, if provided, else None
+        one of the following:
+
+        -   the output of ``reduce_fcn`` or ``aggregate_fcn``, if provided
+        -   a generator that emits ``(sample_id, map_output)`` tuples, if
+            ``return_outputs`` is True
+        -   None, otherwise
     """
+    if num_workers is None:
+        if multiprocessing.current_process().daemon:
+            num_workers = 1
+        elif fo.config.default_map_workers is not None:
+            num_workers = fo.config.default_map_workers
+        else:
+            num_workers = fou.recommend_process_pool_workers()
+
+    if num_workers <= 1:
+        return _map_samples_single(
+            sample_collection,
+            map_fcn,
+            reduce_fcn=reduce_fcn,
+            aggregate_fcn=aggregate_fcn,
+            return_outputs=return_outputs,
+            save=save,
+            progress=progress,
+        )
+
     if isinstance(sample_collection, fov.DatasetView):
         dataset_name = sample_collection._root_dataset.name
         view_stages = sample_collection._serialize()
@@ -152,41 +194,49 @@ def map_samples(
         dataset_name = sample_collection.name
         view_stages = None
 
-    batches, num_workers = _init_batches(
+    batches, num_workers, num_samples = _init_batches(
         sample_collection,
         shard_size=shard_size,
         shard_method=shard_method,
         num_workers=num_workers,
     )
 
-    if save is None:
-        save = reduce_fcn is None
+    ctx = fou.get_multiprocessing_context()
 
-    if inspect.isclass(reduce_fcn):
+    if reduce_fcn is not None:
         reducer = reduce_fcn(sample_collection)
-    elif reduce_fcn is not None:
-        reducer = ReduceFcn(sample_collection, reduce_fcn=reduce_fcn)
+    elif aggregate_fcn is not None:
+        reducer = ReduceFcn(sample_collection, aggregate_fcn=aggregate_fcn)
     else:
         reducer = None
+
+    if reducer is not None:
+        return_outputs = True
 
     if progress is None:
         progress = fo.config.show_progress_bars
 
-    return_outputs = reducer is not None
-    global_progress = False
-    lock = None
-
-    ctx = fou.get_multiprocessing_context()
-
-    if progress is True:
+    if progress == "workers":
+        worker_progress = True
+        progress = False
         lock = ctx.RLock()
         tqdm.set_lock(lock)
-    elif progress == "global":
-        global_progress = True
-        progress = False
-    elif callable(progress):
-        global_progress = progress
-        progress = False
+    else:
+        worker_progress = False
+        lock = None
+
+    if return_outputs:
+        batch_count = multiprocessing.Value("i", 0)
+        sample_count = None
+        queue = multiprocessing.Queue()
+    elif progress != False:
+        batch_count = multiprocessing.Value("i", 0)
+        sample_count = multiprocessing.Value("i", 0)
+        queue = None
+    else:
+        batch_count = None
+        sample_count = None
+        queue = None
 
     pool = ctx.Pool(
         processes=num_workers,
@@ -194,47 +244,183 @@ def map_samples(
         initargs=(
             dataset_name,
             view_stages,
-            map_fcn,
+            pickle.dumps(map_fcn),
+            batch_count,
+            sample_count,
+            queue,
             save,
-            return_outputs,
-            progress,
+            worker_progress,
             lock,
         ),
     )
 
-    pb = fou.ProgressBar(
-        total=len(batches),
-        progress=global_progress,
-        iters_str="batches",
-    )
+    pb = fou.ProgressBar(total=num_samples, progress=progress)
 
     if reducer is not None:
-        reducer.init()
+        return _do_map_reduce_samples(
+            pool, pb, batches, batch_count, queue, reducer
+        )
+    elif queue is not None:
+        return _do_map_samples(pool, pb, batches, batch_count, queue)
+    else:
+        return _do_update_samples(pool, pb, batches, batch_count, sample_count)
 
-    with pb, pool:
-        for _outputs in pb(pool.imap_unordered(_map_batch, batches)):
-            if _outputs is not None:
-                reducer.update(_outputs)
+
+def _do_update_samples(pool, pb, batches, batch_count, sample_count):
+    num_batches = len(batches)
+
+    with pool, pb:
+        pool.map_async(_map_batch, batches)
+
+        if batch_count is not None:
+            while batch_count.value < num_batches:
+                pb.set_iteration(sample_count.value)
+                time.sleep(0.01)
+
+            pb.set_iteration(sample_count.value)
+
+        pool.close()
+        pool.join()
+
+
+def _do_map_samples(pool, pb, batches, batch_count, queue):
+    num_batches = len(batches)
+
+    with pool, pb:
+        pool.map_async(_map_batch, batches)
+
+        while True:
+            try:
+                result = queue.get(timeout=0.01)
+                pb.update()
+                yield result
+            except Empty:
+                if batch_count.value >= num_batches:
+                    break
+
+        queue.close()
+        queue.join_thread()
+
+        pool.close()
+        pool.join()
+
+
+def _do_map_reduce_samples(pool, pb, batches, batch_count, queue, reducer):
+    num_batches = len(batches)
+
+    reducer.init()
+
+    with pool, pb:
+        pool.map_async(_map_batch, batches)
+
+        while True:
+            try:
+                result = queue.get(timeout=0.01)
+                pb.update()
+                reducer.add(*result)
+            except Empty:
+                if batch_count.value >= num_batches:
+                    break
+
+        queue.close()
+        queue.join_thread()
+
+        pool.close()
+        pool.join()
+
+    return reducer.finalize()
+
+
+def _map_samples_single(
+    sample_collection,
+    map_fcn,
+    reduce_fcn=None,
+    aggregate_fcn=None,
+    return_outputs=True,
+    save=False,
+    progress=None,
+):
+    if reduce_fcn is not None:
+        reducer = reduce_fcn(sample_collection)
+    elif aggregate_fcn is not None:
+        reducer = ReduceFcn(sample_collection, aggregate_fcn=aggregate_fcn)
+    else:
+        reducer = None
+
+    if progress == "workers":
+        progress = True
 
     if reducer is not None:
-        return reducer.finalize()
+        return _do_map_reduce_samples_single(
+            sample_collection, map_fcn, reducer, save=save, progress=progress
+        )
+    elif return_outputs:
+        return _do_map_samples_single(
+            sample_collection, map_fcn, save=save, progress=progress
+        )
+    else:
+        return _do_update_samples_single(
+            sample_collection, map_fcn, save=save, progress=progress
+        )
+
+
+def _do_update_samples_single(
+    sample_collection, map_fcn, save=False, progress=None
+):
+    for sample in sample_collection.iter_samples(
+        autosave=save, progress=progress
+    ):
+        map_fcn(sample)
+
+
+def _do_map_samples_single(
+    sample_collection, map_fcn, save=False, progress=None
+):
+    for sample in sample_collection.iter_samples(
+        autosave=save, progress=progress
+    ):
+        sample_output = map_fcn(sample)
+        yield sample.id, sample_output
+
+
+def _do_map_reduce_samples_single(
+    sample_collection, map_fcn, reducer, save=False, progress=None
+):
+    reducer.init()
+
+    for sample in sample_collection.iter_samples(
+        autosave=save, progress=progress
+    ):
+        sample_output = map_fcn(sample)
+        reducer.add(sample.id, sample_output)
+
+    return reducer.finalize()
 
 
 class ReduceFcn(object):
     """Base class for reducers for use with :func:`map_samples`.
 
-    Subclasses may optionally override :meth:`init`, :meth:`update`, and
-    :meth:`finalize` as necessary.
+    Subclasses may optionally override :meth:`init`, :meth:`add`,
+    :meth:`update`, and :meth:`finalize` as necessary.
     """
 
-    def __init__(self, sample_collection, reduce_fcn=None):
+    def __init__(self, sample_collection, aggregate_fcn=None):
         self.sample_collection = sample_collection
-        self.reduce_fcn = reduce_fcn
+        self.aggregate_fcn = aggregate_fcn
         self.accumulator = None
 
     def init(self):
         """Initializes the reducer."""
         self.accumulator = {}
+
+    def add(self, sample_id, output):
+        """Adds a map output to the reducer.
+
+        Args:
+            sample_id: a sample ID
+            output: a map output
+        """
+        self.accumulator[sample_id] = output
 
     def update(self, outputs):
         """Adds a batch of map outputs to the reducer.
@@ -250,8 +436,8 @@ class ReduceFcn(object):
         Returns:
             the final output, or None
         """
-        if self.reduce_fcn is not None:
-            return self.reduce_fcn(self.sample_collection, self.accumulator)
+        if self.aggregate_fcn is not None:
+            return self.aggregate_fcn(self.sample_collection, self.accumulator)
 
 
 def _init_batches(
@@ -307,17 +493,23 @@ def _init_batches(
 
     num_workers = min(num_workers, num_shards)
 
-    return batches, num_workers
+    return batches, num_workers, n
 
 
-def _init_worker(dataset_name, view_stages, m, s, r, p, l):
+def _init_worker(dataset_name, view_stages, m, bc, sc, q, s, p, l):
     from tqdm.auto import tqdm
 
     import fiftyone as fo
     import fiftyone.core.odm.database as food
     import fiftyone.core.view as fov
 
-    global sample_collection, map_fcn, save, return_outputs, progress
+    global sample_collection
+    global map_fcn
+    global batch_count
+    global sample_count
+    global queue
+    global save
+    global progress
 
     # Ensure that each process creates its own MongoDB clients
     # https://pymongo.readthedocs.io/en/stable/faq.html#using-pymongo-with-multiprocessing
@@ -329,9 +521,11 @@ def _init_worker(dataset_name, view_stages, m, s, r, p, l):
     else:
         sample_collection = dataset
 
-    map_fcn = m
+    map_fcn = pickle.loads(m)
+    batch_count = bc
+    sample_count = sc
+    queue = q
     save = s
-    return_outputs = r
     progress = p
 
     if l is not None:
@@ -354,23 +548,25 @@ def _map_batch(input):
             sample_collection, sample_ids
         )
 
-    if return_outputs:
-        values = {}
-
     if progress:
         desc = f"Batch {i + 1:0{len(str(num_batches))}}/{num_batches}"
         with tqdm(total=total, desc=desc, position=i) as pb:
             for sample in batch_view.iter_samples(autosave=save):
-                result = map_fcn(sample)
-                if return_outputs and result is not None:
-                    values[sample.id] = result
+                sample_output = map_fcn(sample)
+                if queue is not None:
+                    queue.put((sample.id, sample_output))
 
                 pb.update()
     else:
         for sample in batch_view.iter_samples(autosave=save):
-            result = map_fcn(sample)
-            if return_outputs and result is not None:
-                values[sample.id] = result
+            sample_output = map_fcn(sample)
+            if queue is not None:
+                queue.put((sample.id, sample_output))
 
-    if return_outputs:
-        return values
+            if sample_count is not None:
+                with sample_count.get_lock():
+                    sample_count.value += 1
+
+    if batch_count is not None:
+        with batch_count.get_lock():
+            batch_count.value += 1

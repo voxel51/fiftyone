@@ -5539,10 +5539,10 @@ to manipulate the fields or subfields of embedded documents in your dataset:
     # Delete an embedded field
     dataset.delete_sample_field("predictions.detections.still_label")
 
-.. _efficient-batch-edits:
+.. _save-contexts:
 
-Efficient batch edits
----------------------
+Save contexts
+-------------
 
 You are always free to perform arbitrary edits to a |Dataset| by iterating over
 its contents and editing the samples directly:
@@ -5612,16 +5612,15 @@ The benefit of the above approach versus passing ``autosave=True`` to
 to be explicit about which samples you are editing, which avoids unnecessary
 computations if your loop only edits certain samples.
 
-.. _map-reduce-operations:
+.. _updating-samples:
 
-Map-reduce operations
----------------------
+Updating samples
+----------------
 
 The
-:meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
-method provides a powerful and efficient interface for iterating over samples,
-applying a function to each sample, saving any sample edits performed, and
-optionally reducing the map function outputs:
+:meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
+method provides an efficient interface for applying a function to each sample
+in a collection and saving the sample edits:
 
 .. code-block:: python
     :linenos:
@@ -5632,49 +5631,23 @@ optionally reducing the map function outputs:
     dataset = foz.load_zoo_dataset("cifar10", split="train")
     view = dataset.select_fields("ground_truth")
 
-    def map_fcn(sample):
+    def update_fcn(sample):
         sample.ground_truth.label = sample.ground_truth.label.upper()
 
-    view.map_samples(map_fcn)
+    view.update_samples(update_fcn)
 
     print(dataset.count_values("ground_truth.label"))
+    # {'DEER': 5000, 'HORSE': 5000, 'AIRPLANE': 5000, ..., 'DOG': 5000}
 
-.. code-block:: text
+.. note::
 
-    Batch 04/16: 100%|█████████████████████████████████████████████████| 3125/3125 [899.01it/s]
-    Batch 03/16: 100%|█████████████████████████████████████████████████| 3125/3125 [894.90it/s]
-    Batch 11/16: 100%|█████████████████████████████████████████████████| 3125/3125 [900.14it/s]
-    Batch 06/16: 100%|█████████████████████████████████████████████████| 3125/3125 [895.61it/s]
-    Batch 13/16: 100%|█████████████████████████████████████████████████| 3125/3125 [903.09it/s]
-    Batch 08/16: 100%|█████████████████████████████████████████████████| 3125/3125 [895.33it/s]
-    Batch 05/16: 100%|█████████████████████████████████████████████████| 3125/3125 [893.26it/s]
-    Batch 02/16: 100%|█████████████████████████████████████████████████| 3125/3125 [889.17it/s]
-    Batch 01/16: 100%|█████████████████████████████████████████████████| 3125/3125 [888.16it/s]
-    Batch 09/16: 100%|█████████████████████████████████████████████████| 3125/3125 [893.69it/s]
-    Batch 12/16: 100%|█████████████████████████████████████████████████| 3125/3125 [896.80it/s]
-    Batch 14/16: 100%|█████████████████████████████████████████████████| 3125/3125 [903.28it/s]
-    Batch 10/16: 100%|█████████████████████████████████████████████████| 3125/3125 [893.63it/s]
-    Batch 07/16: 100%|█████████████████████████████████████████████████| 3125/3125 [891.26it/s]
-    Batch 15/16: 100%|█████████████████████████████████████████████████| 3125/3125 [905.06it/s]
-    Batch 16/16: 100%|█████████████████████████████████████████████████| 3125/3125 [911.72it/s]
-    {'DEER': 5000, 'HORSE': 5000, 'AIRPLANE': 5000, ..., 'DOG': 5000}
+    As the above snippet shows, you should optimize your iteration by
+    :ref:`selecting only <efficient-iteration-views>` the required fields.
 
-The above example demonstrates some important properties of
-:meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`:
-
--   :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
-    does not process samples in any particular order
-
--   Your ``map_fcn`` may edit samples, but it should not modify global state
-    or variables defined outside of the function
-
--   You can optimize the operation by
-    :ref:`selecting only <efficient-iteration-views>` the required fields
-
-As you can see,
-:meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
-can leverage a multiprocessing pool to parallelize the work across a number of
-batches, resulting in signficant performance improvements over the equivalent
+By default,
+:meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
+leverages a multiprocessing pool to parallelize the work across a number of
+workers, resulting in signficant performance improvements over the equivalent
 :meth:`iter_samples(autosave=True) <fiftyone.core.dataset.Dataset.iter_samples>`
 syntax:
 
@@ -5682,66 +5655,166 @@ syntax:
     :linenos:
 
     for sample in view.iter_samples(autosave=True, progress=True):
-        map_fcn(sample)
+        update_fcn(sample)
 
-You can also perform map-reduce operations with
+Keep the following points in mind while using
+:meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`:
+
+-   The samples are not processed in any particular order
+
+-   Your ``update_fcn`` should not modify global state or variables defined
+    outside of the function
+
+You can configure the number of workers that
+:meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
+uses in a variety of ways:
+
+-   Configure the default number of workers used by all
+    :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
+    calls by setting the ``default_map_workers`` value in your
+    :ref:`FiftyOne config <configuring-fiftyone>`
+
+-   Manually configure the number of workers for a particular
+    :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
+    call by passing the ``num_workers`` parameter
+
+-   If neither of the above settings are applied,
+    :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
+    will use
+    :func:`recommend_process_pool_workers() <fiftyone.core.utils.recommend_process_pool_workers>`
+    to choose a number of worker processes, unless the method is called in a
+    daemon process (subprocess), in which case no workers are used
+
+.. note::
+
+    You can set ``default_map_workers<=1`` or ``num_workers<=1`` to disable the
+    use of multiprocessing pools in
+    :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`.
+
+By default,
+:meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
+evenly distributes samples to all workers in a single shard per worker.
+However, you can pass the ``shard_size`` parameter to customize the number of
+samples sent to each worker at a time:
+
+.. code-block:: python
+    :linenos:
+
+    view.update_samples(update_fcn, shard_size=50, num_workers=4)
+
+You can also pass `progress="workers"` to
+:meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
+to render progress bar(s) for each worker:
+
+.. code-block:: python
+    :linenos:
+
+    view.update_samples(update_fcn, num_workers=16, progress="workers")
+
+.. code-block:: text
+
+    Batch 01/16: 100%|█████████████████████████████████████████████████| 3125/3125 [899.01it/s]
+    Batch 02/16: 100%|█████████████████████████████████████████████████| 3125/3125 [894.90it/s]
+    Batch 03/16: 100%|█████████████████████████████████████████████████| 3125/3125 [900.14it/s]
+    Batch 04/16: 100%|█████████████████████████████████████████████████| 3125/3125 [895.61it/s]
+    Batch 05/16: 100%|█████████████████████████████████████████████████| 3125/3125 [903.09it/s]
+    Batch 06/16: 100%|█████████████████████████████████████████████████| 3125/3125 [895.33it/s]
+    Batch 07/16: 100%|█████████████████████████████████████████████████| 3125/3125 [893.26it/s]
+    Batch 08/16: 100%|█████████████████████████████████████████████████| 3125/3125 [889.17it/s]
+    Batch 09/16: 100%|█████████████████████████████████████████████████| 3125/3125 [888.16it/s]
+    Batch 10/16: 100%|█████████████████████████████████████████████████| 3125/3125 [893.69it/s]
+    Batch 11/16: 100%|█████████████████████████████████████████████████| 3125/3125 [896.80it/s]
+    Batch 12/16: 100%|█████████████████████████████████████████████████| 3125/3125 [903.28it/s]
+    Batch 13/16: 100%|█████████████████████████████████████████████████| 3125/3125 [893.63it/s]
+    Batch 14/16: 100%|█████████████████████████████████████████████████| 3125/3125 [891.26it/s]
+    Batch 15/16: 100%|█████████████████████████████████████████████████| 3125/3125 [905.06it/s]
+    Batch 16/16: 100%|█████████████████████████████████████████████████| 3125/3125 [911.72it/s]
+
+.. _map-reduce-operations:
+
+Map-reduce operations
+---------------------
+
+The
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
-by providing a ``reduce_fcn``:
+method provides a powerful and efficient interface for iterating over samples,
+applying a function to each sample, and optionally reducing/aggregating the
+results:
+
+.. code-block:: python
+    :linenos:
+
+    from collections import Counter
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("cifar10", split="train")
+    view = dataset.select_fields("ground_truth")
+
+    def map_fcn(sample):
+        return sample.ground_truth.label.upper()
+
+    counter = Counter()
+    for _, label in view.map_samples(map_fcn):
+        counter[label] += 1
+
+    print(dict(counter))
+    # {'DEER': 5000, 'HORSE': 5000, 'AIRPLANE': 5000, ..., 'DOG': 5000}
+
+.. note::
+
+    As the above snippet shows, you should optimize your iteration by
+    :ref:`selecting only <efficient-iteration-views>` the required fields.
+
+By default,
+:meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
+leverages a multiprocessing pool to parallelize the work across a number of
+workers, resulting in signficant performance improvements over the equivalent
+:meth:`iter_samples() <fiftyone.core.dataset.Dataset.iter_samples>` syntax:
+
+.. code-block:: python
+    :linenos:
+
+    counter = Counter()
+    for sample in view.iter_samples(progress=True):
+        label = map_fcn(sample)
+        counter[label] += 1
+
+Keep the following points in mind while using
+:meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`:
+
+-   The samples are not processed in any particular order
+
+-   Your ``map_fcn`` should not modify global state or variables defined
+    outside of the function
+
+-   If your ``map_fcn`` modifies samples in-place, you must pass ``save=True``
+    to save these edits
+
+You can also perform map-reduce and map-aggregate operations with
+:meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
+by providing a ``reduce_fcn`` or ``aggregate_fcn``:
 
 .. tabs::
 
     .. group-tab:: Reduce function
 
+        Reduce functions allow you to efficiently accumulate the outputs of the
+        map function as they are emitted:
+
         .. code-block:: python
             :linenos:
-
-            from collections import Counter
 
             def map_fcn(sample):
-                return sample.ground_truth.label.lower()
-
-            def reduce_fcn(sample_collection, values):
-                return dict(Counter(values.values()))
-
-            counts = view.map_samples(map_fcn, reduce_fcn=reduce_fcn)
-
-            print(counts)
-            # {'deer': 5000, 'horse': 5000, 'airplane': 5000, ..., 'dog': 5000}
-
-        Under the hood,
-        :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
-        method effectively performs the following operation with the outer loop
-        in parallel:
-
-        .. code-block:: python
-            :linenos:
-
-            import fiftyone.core.utils as fou
-
-            outputs = {}
-
-            for batch_view in fou.iter_slices(view, batch_size=3125):
-                for sample in batch_view.iter_samples(autosave=True):
-                    outputs[sample.id] = map_fcn(sample)
-
-            output = reduce_fcn(view, outputs)
-
-    .. group-tab:: Reduce class
-
-        .. code-block:: python
-            :linenos:
-
-            from collections import Counter
-
-            def map_fcn(sample):
-                return sample.ground_truth.label.lower()
+                return sample.ground_truth.label.upper()
 
             class ReduceFcn(fo.ReduceFcn):
                 def init(self):
                     self.accumulator = Counter()
 
-                def update(self, outputs):
-                    self.accumulator.update(Counter(outputs.values()))
+                def add(self, sample_id, output):
+                    self.accumulator[output] += 1
 
                 def finalize(self):
                     return dict(self.accumulator)
@@ -5749,12 +5822,12 @@ by providing a ``reduce_fcn``:
             counts = view.map_samples(map_fcn, reduce_fcn=ReduceFcn)
 
             print(counts)
-            # {'deer': 5000, 'horse': 5000, 'airplane': 5000, ..., 'dog': 5000}
+            # {'DEER': 5000, 'HORSE': 5000, 'AIRPLANE': 5000, ..., 'DOG': 5000}
 
         Under the hood,
         :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
-        method effectively performs the following operation with the outer loop
-        in parallel:
+        with a reduce function effectively performs the following operation
+        with the outer loop in parallel:
 
         .. code-block:: python
             :linenos:
@@ -5765,13 +5838,48 @@ by providing a ``reduce_fcn``:
             reducer.init()
 
             for batch_view in fou.iter_slices(view, batch_size=3125):
-                outputs = {}
-                for sample in batch_view.iter_samples(autosave=True):
-                    outputs[sample.id] = map_fcn(sample)
-
-                reducer.update(outputs)
+                for sample in batch_view.iter_samples():
+                    sample_output = map_fcn(sample)
+                    reducer.add(sample.id, sample_output)
 
             output = reducer.finalize()
+
+    .. group-tab:: Aggregate function
+
+        Aggregate functions allow you to perform an action on the dictionary of
+        all map function outputs:
+
+        .. code-block:: python
+            :linenos:
+
+            def map_fcn(sample):
+                return sample.ground_truth.label.upper()
+
+            def aggregate_fcn(sample_collection, outputs):
+                return dict(Counter(outputs.values()))
+
+            counts = view.map_samples(map_fcn, aggregate_fcn=aggregate_fcn)
+
+            print(counts)
+            # {'DEER': 5000, 'HORSE': 5000, 'AIRPLANE': 5000, ..., 'DOG': 5000}
+
+        Under the hood,
+        :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
+        with an aggregate function effectively performs the following operation
+        with the outer loop in parallel:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone.core.utils as fou
+
+            outputs = {}
+
+            for batch_view in fou.iter_slices(view, batch_size=3125):
+                for sample in batch_view.iter_samples():
+                    outputs[sample.id] = map_fcn(sample)
+
+            output = aggregate_fcn(view, outputs)
 
 You can configure the number of workers that
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
@@ -5779,8 +5887,7 @@ uses in a variety of ways:
 
 -   Configure the default number of workers used by all
     :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
-    calls by setting the
-    ``default_map_workers`` value in your
+    calls by setting the ``default_map_workers`` value in your
     :ref:`FiftyOne config <configuring-fiftyone>`
 
 -   Manually configure the number of workers for a particular
@@ -5791,7 +5898,8 @@ uses in a variety of ways:
     :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
     will use
     :func:`recommend_process_pool_workers() <fiftyone.core.utils.recommend_process_pool_workers>`
-    to choose a number of worker processes
+    to choose a number of worker processes, unless the method is called in a
+    daemon process (subprocess), in which case no workers are used
 
 .. note::
 
@@ -5808,7 +5916,35 @@ samples sent to each worker at a time:
 .. code-block:: python
     :linenos:
 
-    view.map_samples(map_fcn, shard_size=50, num_workers=4, progress="global")
+    view.map_samples(map_fcn, reduce_fcn=ReduceFcn, shard_size=50, num_workers=4)
+
+You can also pass `progress="workers"` to
+:meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
+to render progress bar(s) for each worker:
+
+.. code-block:: python
+    :linenos:
+
+    view.map_samples(map_fcn, reduce_fcn=ReduceFcn, num_workers=16, progress="workers")
+
+.. code-block:: text
+
+    Batch 01/16: 100%|█████████████████████████████████████████████████| 3125/3125 [899.01it/s]
+    Batch 02/16: 100%|█████████████████████████████████████████████████| 3125/3125 [894.90it/s]
+    Batch 03/16: 100%|█████████████████████████████████████████████████| 3125/3125 [900.14it/s]
+    Batch 04/16: 100%|█████████████████████████████████████████████████| 3125/3125 [895.61it/s]
+    Batch 05/16: 100%|█████████████████████████████████████████████████| 3125/3125 [903.09it/s]
+    Batch 06/16: 100%|█████████████████████████████████████████████████| 3125/3125 [895.33it/s]
+    Batch 07/16: 100%|█████████████████████████████████████████████████| 3125/3125 [893.26it/s]
+    Batch 08/16: 100%|█████████████████████████████████████████████████| 3125/3125 [889.17it/s]
+    Batch 09/16: 100%|█████████████████████████████████████████████████| 3125/3125 [888.16it/s]
+    Batch 10/16: 100%|█████████████████████████████████████████████████| 3125/3125 [893.69it/s]
+    Batch 11/16: 100%|█████████████████████████████████████████████████| 3125/3125 [896.80it/s]
+    Batch 12/16: 100%|█████████████████████████████████████████████████| 3125/3125 [903.28it/s]
+    Batch 13/16: 100%|█████████████████████████████████████████████████| 3125/3125 [893.63it/s]
+    Batch 14/16: 100%|█████████████████████████████████████████████████| 3125/3125 [891.26it/s]
+    Batch 15/16: 100%|█████████████████████████████████████████████████| 3125/3125 [905.06it/s]
+    Batch 16/16: 100%|█████████████████████████████████████████████████| 3125/3125 [911.72it/s]
 
 .. _set-values:
 
