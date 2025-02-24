@@ -59,7 +59,7 @@ export const Seekbar = React.forwardRef<
     loaded: Buffers;
     loading: BufferRange;
     debounce?: number;
-    style: React.CSSProperties;
+    style?: React.CSSProperties;
     totalFrames: number;
     value: number;
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -139,7 +139,7 @@ export const SeekbarThumb = React.forwardRef<
   React.HTMLProps<HTMLDivElement> & {
     shouldDisplayThumb: boolean;
     value: number;
-    style: React.CSSProperties;
+    style?: React.CSSProperties;
   }
 >(({ shouldDisplayThumb, value, style, ...props }, ref) => {
   const progress = React.useMemo(() => Math.max(0, value - 0.5), [value]);
@@ -166,7 +166,7 @@ export const Speed = React.forwardRef<
   HTMLDivElement,
   SpeedProps &
     React.HTMLProps<HTMLDivElement> & {
-      style: React.CSSProperties;
+      style?: React.CSSProperties;
     }
 >(({ speed, setSpeed, ...props }, ref) => {
   const { style, className, ...otherProps } = props;

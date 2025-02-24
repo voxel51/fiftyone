@@ -1,7 +1,15 @@
 import { useTheme } from "@fiftyone/components";
 import { ImaVidLooker } from "@fiftyone/looker";
-import { FoTimelineConfig, useCreateTimeline } from "@fiftyone/playback";
-import { PLAYHEAD_STATE_PAUSED } from "@fiftyone/playback/src/lib/constants";
+import {
+  FoTimelineConfig,
+  useCreateTimeline,
+  useTimeline,
+} from "@fiftyone/playback";
+import {
+  PLAYHEAD_STATE_BUFFERING,
+  PLAYHEAD_STATE_PAUSED,
+  PLAYHEAD_STATE_PLAYING,
+} from "@fiftyone/playback/src/lib/constants";
 import { useDefaultTimelineNameImperative } from "@fiftyone/playback/src/lib/use-default-timeline-name";
 import { Timeline } from "@fiftyone/playback/src/views/Timeline";
 import * as fos from "@fiftyone/state";
@@ -168,7 +176,11 @@ export const ImaVidLookerReact = React.memo(
           return;
         }
 
-        setPlayHeadState({ name: timelineName, state: "buffering" });
+        // if looker is playing, don't change playhead to buffering status
+        // we indicate buffering status in status bar
+        if (getPlayHeadState() !== PLAYHEAD_STATE_PLAYING) {
+          setPlayHeadState(PLAYHEAD_STATE_BUFFERING);
+        }
 
         imaVidLookerRef.current.frameStoreController.enqueueFetch(
           unprocessedBufferRange
@@ -182,13 +194,13 @@ export const ImaVidLookerReact = React.memo(
               e.detail.id === imaVidLookerRef.current.frameStoreController.key
             ) {
               if (storeBufferManager.containsRange(unprocessedBufferRange)) {
-                // todo: change playhead state in setFrameNumberAtom and not here
-                // if done here, store ref to last playhead status
-                setPlayHeadState({
-                  name: timelineName,
-                  state: PLAYHEAD_STATE_PAUSED,
-                });
+                // if we were buffering, set playhead state to playing
+                if (getPlayHeadState() === PLAYHEAD_STATE_BUFFERING) {
+                  setPlayHeadState(PLAYHEAD_STATE_PAUSED);
+                }
+
                 resolve();
+
                 window.removeEventListener(
                   "fetchMore",
                   fetchMoreListener as EventListener
@@ -253,7 +265,6 @@ export const ImaVidLookerReact = React.memo(
       registerOnPauseCallback,
       registerOnPlayCallback,
       registerOnSeekCallbacks,
-      setPlayHeadState,
       subscribe,
     } = useCreateTimeline({
       name: timelineName,
@@ -264,6 +275,8 @@ export const ImaVidLookerReact = React.memo(
       // since imavid is part of the grid too
       onAnimationStutter,
     });
+
+    const { setPlayHeadState, getPlayHeadState } = useTimeline(timelineName);
 
     /**
      * This effect subscribes to the timeline.
