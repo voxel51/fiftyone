@@ -1,20 +1,37 @@
 # Copyright 2017-2025, Voxel51, Inc.
 # voxel51.com
 #
-# Dockerfile for building an image with source FiftyOne atop a Python 3.11
-#  base image
+# Dockerfile for building a FiftyOne image atop a Python base image as defined
+#  by the PYTHON_VERSION build-arg
 #
 # ARGs::
 #
+#   BUILD_TYPE (source): Allows source or released artifact builds without
+#       editing the Dockerfile [`source` or `released`]
+#   FO_VERSION [`released` builds only]: This is the fiftyone version to use for
+#       `released` builds
 #   PIP_INDEX_URL (https://pypi.org/simple): Allow the use of caching proxies
 #   PYTHON_VERSION (3.11): The Python base image to use
 #   ROOT_DIR (/fiftyone): The name of the directory within the container that
 #       should be mounted when running
 #
+# Targets::
+#   interactive (default): This builds a docker image that runs `ipython`
+#   server: This builds a docker image that launches fiftyone on port 5151
+#
 # Example usage::
 #
-#   # Build
+#   # Build interactive image from source
 #   make docker
+#
+#   # Build interactive image from released artifact
+#   docker build -t local/fiftyone \
+#      --build-arg BUILD_TYPE=released \
+#      --build-arg FO_VERSION=1.3.0 .
+#
+#   # Build server image from source artifact
+#   make python
+#   docker build -t local/fiftyone --target server .
 #
 #   # Run
 #   SHARED_DIR=/path/to/shared/dir
@@ -24,18 +41,33 @@
 #       -it local/fiftyone
 #
 
+# The type of build to run
+ARG BUILD_TYPE=source
+
 # The base python image to build from
 ARG PYTHON_VERSION=3.11
 
 # Collect wheels for future installation
-FROM python:${PYTHON_VERSION} AS builder
+FROM python:${PYTHON_VERSION} AS source
 ARG PIP_INDEX_URL=https://pypi.org/simple
-
+# default: use local wheel
+#
 COPY dist dist
 
 RUN pip --no-cache-dir install -q -U pip setuptools wheel \
     && pip wheel --wheel-dir=/wheels \
         dist/*.whl \
+        ipython
+
+FROM python:${PYTHON_VERSION} AS released
+ARG PIP_INDEX_URL=https://pypi.org/simple
+# server: use published pypi package
+#
+ARG FO_VERSION
+ENV FO_VERSION=${FO_VERSION}
+RUN pip --no-cache-dir install -q -U pip setuptools wheel \
+    && pip wheel --wheel-dir=/wheels \
+        fiftyone==${FO_VERSION} \
         ipython
 
 #
@@ -52,9 +84,12 @@ RUN pip --no-cache-dir install -q -U pip setuptools wheel \
 #   pydicom: DICOM images
 #
 
+FROM ${BUILD_TYPE} AS builder
+# This is an empty target because you can't use a variable in `RUN --mount`
+
 
 # Create a smaller image with wheels installed
-FROM python:${PYTHON_VERSION}-slim AS final
+FROM python:${PYTHON_VERSION}-slim AS shared
 ARG PIP_INDEX_URL=https://pypi.org/simple
 
 # The name of the shared directory in the container that should be
@@ -86,17 +121,21 @@ RUN --mount=type=cache,from=builder,target=/builder,ro \
     --find-links=/builder/wheels \
     /builder/wheels/*
 
+FROM shared AS server
 #
-# Default, interactive, behavior
+# server: Launch the App
 #
+EXPOSE 5151
+CMD [ \
+    "python", \
+    "-m", \
+    "fiftyone.server.main", \
+    "--port", \
+    "5151" \
+    ]
 
+FROM shared AS interactive
+#
+# default: interactive, behavior
+#
 CMD [ "ipython" ]
-
-# Use this if want the default behavior to launch the App instead
-# EXPOSE 5151
-# CMD [ \
-#     "python", \
-#     ".fiftyone-venv/lib/python3.11/site-packages/fiftyone/server/main.py", \
-#     "--port", \
-#     "5151" \
-#     ]

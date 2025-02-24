@@ -5,6 +5,7 @@ import * as fos from "@fiftyone/state";
 import React, { useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
+import { useSyncLabelsRenderingStatus } from "../../hooks";
 import {
   gridAutosizing,
   gridCrop,
@@ -34,6 +35,8 @@ function Grid() {
   const { pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
   const threshold = useThreshold();
+
+  useSyncLabelsRenderingStatus();
 
   const records = useRecords(pageReset);
 

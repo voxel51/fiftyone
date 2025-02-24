@@ -33,7 +33,7 @@ export type ColorscaleInput = {
   path?: string;
   name?: string;
   list?: [];
-  rgb?: [RGB[]];
+  rgb?: RGB[];
 };
 
 export type Colorscale = {

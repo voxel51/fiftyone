@@ -1,4 +1,8 @@
 import { Lookers } from "@fiftyone/state";
+import {
+  jotaiStore,
+  numConcurrentRenderingLabels,
+} from "@fiftyone/state/src/jotai";
 import { v4 as uuid } from "uuid";
 import { ProcessSample } from ".";
 import { Coloring, Sample } from "..";
@@ -38,6 +42,12 @@ const workerPool: Worker[] = Array.from({ length: MAX_WORKERS }, () =>
   createWorker(LookerUtils.workerCallbacks)
 );
 const freeWorkers: Worker[] = workerPool.slice();
+
+const updateRenderingCount = (delta: number) => {
+  jotaiStore.set(numConcurrentRenderingLabels, (curr) =>
+    Math.max(0, curr + delta)
+  );
+};
 
 /**
  * Process the global jobQueue: assign jobs (whose sample is not already
@@ -90,6 +100,8 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
     processingSamples.delete(job.sample);
     freeWorkers.push(worker);
     processQueue();
+
+    updateRenderingCount(-1);
   };
 
   const handleError = (error: ErrorEvent) => {
@@ -97,6 +109,7 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
     job.reject(new Error(error.message));
     processingSamples.delete(job.sample);
     freeWorkers.push(worker);
+    updateRenderingCount(-1);
     processQueue();
   };
 
@@ -151,6 +164,8 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
   const transfer = retrieveTransferables(filteredOverlays);
 
   worker.postMessage(workerArgs, transfer);
+
+  updateRenderingCount(1);
 };
 
 export class AsyncLabelsRenderingManager {

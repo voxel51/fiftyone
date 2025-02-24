@@ -178,7 +178,21 @@ export default class HeatmapOverlay<State extends BaseState>
         stop,
         state.options.coloring.scale.length
       );
-      return index < 0 ? 0 : get32BitColor(state.options.coloring.scale[index]);
+
+      if (index < 0) {
+        return 0;
+      }
+
+      // first check if we have a predefined colorscale for this field
+      const fieldSetting = state.options.colorscale.fields?.find(
+        (x) => x.path === this.field
+      );
+
+      if (fieldSetting?.rgb?.length) {
+        return get32BitColor(fieldSetting.rgb[index]);
+      }
+
+      return get32BitColor(state.options.coloring.scale[index]);
     }
 
     const color = getColor(
