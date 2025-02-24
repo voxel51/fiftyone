@@ -29,7 +29,7 @@ export const modalLooker = atom<Lookers | null>({
   dangerouslyAllowMutability: true,
 });
 
-export const sidebarSampleId = selector({
+export const sidebarSampleId = selector<null | string>({
   key: "sidebarSampleId",
   get: ({ get }) => {
     if (get(shouldRenderImaVidLooker(true))) {
@@ -41,7 +41,7 @@ export const sidebarSampleId = selector({
 
       if (!isPlaying && !isSeeking && thisFrameNumber && sample) {
         // is the type incorrect? fix me
-        const id = sample?.id || sample?._id || sample?.sample?._id;
+        const id = sample?.id || sample?._id || (sample?.sample?._id as string);
         if (id) {
           return id;
         }

@@ -348,7 +348,11 @@ const useTagCallback = (
           fos.isOrderedDynamicGroup
         );
 
-        const slices = await snapshot.getPromise(fos.currentSlices(modal));
+        const mode = await snapshot.getPromise(groupStatistics(modal));
+        const currentSlices = await snapshot.getPromise(
+          fos.currentSlices(modal)
+        );
+        const slices = await snapshot.getPromise(fos.groupSlices);
         const { samples } = await getFetchFunction()("POST", "/tag", {
           ...tagParameters({
             activeFields: await snapshot.getPromise(
@@ -363,9 +367,10 @@ const useTagCallback = (
               isGroup && !isNonNestedDynamicGroup
                 ? {
                     id: modal ? await snapshot.getPromise(groupId) : null,
-                    slices,
+                    mode,
+                    currentSlices,
                     slice: await snapshot.getPromise(fos.groupSlice),
-                    mode: await snapshot.getPromise(groupStatistics(modal)),
+                    slices,
                   }
                 : null,
             modal,
