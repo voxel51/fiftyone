@@ -249,16 +249,18 @@ def handle_group_filter(
     stages = view._stages
     group_field = dataset.group_field
 
-    unselected = not any(
-        isinstance(stage, fosg.SelectGroupSlices) for stage in stages
-    )
+    selected = False
+    for stage in stages:
+        if isinstance(stage, fosg.SelectGroupSlices) and stage.flat:
+            selected = True
+
     group_by = any(isinstance(stage, fosg.GroupBy) for stage in stages)
 
     view = dataset.view()
     if filter.slice:
         view.group_slice = filter.slice
 
-    if unselected and filter.slices:
+    if not selected and filter.slices:
         # flatten the collection if the view has no slice(s) selected
         view = dataset.select_group_slices(_force_mixed=True)
 
@@ -274,6 +276,11 @@ def handle_group_filter(
                 view = view.match(
                     {group_field + ".name": {"$in": filter.slices}}
                 )
+
+            if isinstance(
+                stage, (fosg.SelectGroupSlices, fosg.ExcludeGroupSlices)
+            ):
+                continue
 
             # if selecting a group, filter out select/reorder stages
             if (

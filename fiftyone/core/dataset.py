@@ -8476,7 +8476,6 @@ def _clone_collection(sample_collection, name, persistent):
     slug = _validate_dataset_name(name)
 
     contains_videos = sample_collection._contains_videos(any_slice=True)
-    contains_groups = sample_collection.media_type == fom.GROUP
 
     if isinstance(sample_collection, fov.DatasetView):
         dataset = sample_collection._dataset
@@ -8484,6 +8483,9 @@ def _clone_collection(sample_collection, name, persistent):
 
         if view.media_type == fom.MIXED:
             raise ValueError("Cloning mixed views is not allowed")
+
+        if view._is_dynamic_groups:
+            raise ValueError("Cloning dynamic grouped views is not allowed")
     else:
         dataset = sample_collection
         view = None
@@ -8517,10 +8519,9 @@ def _clone_collection(sample_collection, name, persistent):
     dataset_doc.sample_collection_name = sample_collection_name
     dataset_doc.frame_collection_name = frame_collection_name
     dataset_doc.media_type = sample_collection.media_type
-    if not contains_groups:
-        dataset_doc.group_field = None
-        dataset_doc.group_media_types = {}
-        dataset_doc.default_group_slice = None
+    dataset_doc.group_field = sample_collection.group_field
+    dataset_doc.group_media_types = sample_collection.group_media_types
+    dataset_doc.default_group_slice = sample_collection.default_group_slice
 
     for field in dataset_doc.sample_fields:
         field._set_created_at(now)
