@@ -103,13 +103,14 @@ def profile_configurations(
     configs = []
     for method in shard_methods:
         for workers in worker_counts:
-            configs.append(
-                {
-                    "name": f"{method}_{workers}w",
-                    "shard_method": method,
-                    "num_workers": workers,
-                }
-            )
+            if workers > 0:
+                configs.append(
+                    {
+                        "name": f"{method}_{workers}w",
+                        "shard_method": method,
+                        "num_workers": workers,
+                    }
+                )
 
     for config in configs:
         duration = run_evaluation(dataset, config)
