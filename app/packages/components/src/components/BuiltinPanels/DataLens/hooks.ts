@@ -383,7 +383,8 @@ export const useSpotlight = ({
 
         lookerStore.get(id)?.attach(element, dimensions);
       },
-      spacing: 20,
+      spacing: 7,
+      offset: 14,
       destroy: (id: ID) => {
         lookerStore.get(id)?.destroy();
         lookerStore.delete(id);
