@@ -12,7 +12,7 @@ import { isNullish } from "@fiftyone/utilities";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 
-const CONFIGURE_SCENARIO_ACTION = "@voxel51/scenario/configure_scenario";
+const CONFIGURE_SCENARIO_ACTION = "configure_scenario";
 
 export default function EvaluationScenarioAnalysis(props) {
   const { evaluation, data, loadScenario } = props;
