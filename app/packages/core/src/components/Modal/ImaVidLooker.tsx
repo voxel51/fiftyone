@@ -1,6 +1,7 @@
 import { useTheme } from "@fiftyone/components";
 import { ImaVidLooker } from "@fiftyone/looker";
 import { FoTimelineConfig, useCreateTimeline } from "@fiftyone/playback";
+import { PLAYHEAD_STATE_PAUSED } from "@fiftyone/playback/src/lib/constants";
 import { useDefaultTimelineNameImperative } from "@fiftyone/playback/src/lib/use-default-timeline-name";
 import { Timeline } from "@fiftyone/playback/src/views/Timeline";
 import * as fos from "@fiftyone/state";
@@ -183,7 +184,10 @@ export const ImaVidLookerReact = React.memo(
               if (storeBufferManager.containsRange(unprocessedBufferRange)) {
                 // todo: change playhead state in setFrameNumberAtom and not here
                 // if done here, store ref to last playhead status
-                setPlayHeadState({ name: timelineName, state: "paused" });
+                setPlayHeadState({
+                  name: timelineName,
+                  state: PLAYHEAD_STATE_PAUSED,
+                });
                 resolve();
                 window.removeEventListener(
                   "fetchMore",
