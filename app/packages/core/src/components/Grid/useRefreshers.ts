@@ -1,13 +1,9 @@
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { LRUCache } from "lru-cache";
 import { useEffect, useMemo } from "react";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
-import { gridActivePathsLUT } from "../Sidebar/useDetectNewActiveLabelFields";
 import { gridAt, gridOffset, gridPage } from "./recoil";
-
-const MAX_LRU_CACHE_ITEMS = 510;
 
 export default function useRefreshers() {
   const cropToContent = useRecoilValue(fos.cropToContent(false));
@@ -28,7 +24,7 @@ export default function useRefreshers() {
   const shouldRenderImaVidLooker = useRecoilValue(
     fos.shouldRenderImaVidLooker(false)
   );
-  const view = fos.filterView(useRecoilValue(fos.view));
+  const view = fos.filterView(useRecoilValue(fos.view) ?? []);
 
   // only reload, attempt to return to the last grid location
   const layoutReset = useMemo(() => {
@@ -80,23 +76,7 @@ export default function useRefreshers() {
     };
   }, []);
 
-  const lookerStore = useMemo(() => {
-    /** LOOKER STORE REFRESHER */
-    reset;
-    /** LOOKER STORE REFRESHER */
-
-    return new LRUCache<string, fos.Lookers>({
-      dispose: (looker, id) => {
-        looker.destroy();
-        gridActivePathsLUT.delete(id);
-      },
-      max: MAX_LRU_CACHE_ITEMS,
-      noDisposeOnSet: true,
-    });
-  }, [reset]);
-
   return {
-    lookerStore,
     pageReset,
     reset,
   };
