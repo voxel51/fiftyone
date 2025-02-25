@@ -155,7 +155,7 @@ export default function OverflowMenu({
             </MenuItem>
           );
 
-          const text = useMemo(() => hoverText || "", [hoverText]);
+          const text = hoverText || "";
 
           if (disabled) {
             return (
