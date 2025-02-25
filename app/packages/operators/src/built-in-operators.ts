@@ -1474,6 +1474,36 @@ class ToggleSidebar extends Operator {
   }
 }
 
+class UpdateAppSamples extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "update_app_samples",
+      label: "Update app samples",
+    });
+  }
+  async resolveInput(): Promise<types.Property> {
+    const inputs = new types.Object();
+    const update = new types.Object();
+    update.str("id", { label: "Sample ID", required: true });
+    update.obj("values", { label: "Values", required: true });
+    inputs.list("updates", update, { label: "Updates", required: true });
+    return new types.Property(inputs);
+  }
+  useHooks(): object {
+    return {
+      update: fos.useUpdateSamples(),
+    };
+  }
+  async execute({ params, hooks }: ExecutionContext) {
+    const sampleUpdates = [];
+    for (const update of params.updates) {
+      sampleUpdates.push([update.id, update.values]);
+    }
+    hooks.update(sampleUpdates);
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);

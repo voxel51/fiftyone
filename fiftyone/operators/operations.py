@@ -112,6 +112,16 @@ class Operations(object):
             params={"path": path, "list_filesystems": list_filesystems},
         )
 
+    def reload_sample(self, sample_id):
+        """Reload a sample in the App."""
+        return self._ctx.trigger(
+            "reload_sample", params={"sample_id": sample_id}
+        )
+
+    def reload_current_sample(self):
+        """Reload the current sample in the App."""
+        return self._ctx.trigger("reload_current_sample")
+
     ###########################################################################
     # Builtin JS operators
     ###########################################################################
@@ -691,6 +701,21 @@ class Operations(object):
     def toggle_sidebar(self):
         """Toggle the visibility of the App's sidebar."""
         return self._ctx.trigger("toggle_sidebar")
+
+    def update_app_samples(self, samples):
+        """Update samples, patches, or frames in the App.
+
+        This will update the apps representation of a given set of samples (or patches or frames)
+        with the provided values.
+
+        A ``SampleUpdate`` is a dictionary with the following keys:
+            id: the ID of the sample, patch or frame to update
+            values: the values to update the sample with
+
+        Args:
+            samples: an array of ``SampleUpdate`` objects to apply to the App
+        """
+        return self._ctx.trigger("update_app_samples", {"samples": samples})
 
 
 def _serialize_view(view):
