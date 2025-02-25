@@ -36,7 +36,7 @@ export default function LogPreview(props: {
       let content = node?.content?.trim() || "";
 
       // Skip invalid logs
-      if (!date || !level || !content) return acc;
+      if (!date && !level && !content) return acc;
 
       // Check the next log entry
       let nextNode = arr[index + 1]?.node;
