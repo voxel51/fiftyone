@@ -331,6 +331,10 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 }
             }
         elif run_state == ExecutionRunState.QUEUED:
+            if self.is_remote:
+                raise PermissionError(
+                    "Cannot set queued run_state in remote context"
+                )
             update = {
                 "$set": {
                     "run_state": run_state,
