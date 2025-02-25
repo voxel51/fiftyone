@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v4
@@ -40,7 +40,7 @@ jobs:
           path: package/graphql/dist/*
 
   publish:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     needs: [build]
     if: startsWith(github.ref, 'refs/tags/db-v')
     steps:
