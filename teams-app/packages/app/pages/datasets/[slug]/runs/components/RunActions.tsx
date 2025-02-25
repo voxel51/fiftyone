@@ -122,7 +122,7 @@ export default function RunActions(props: RunActionsPropsType) {
 
     // view in orchestrator button
     if (canViewInOrchestrator) {
-      items.push({
+      menuItems.push({
         primaryText: "View in orchestrator",
         IconComponent: <SettingsSystemDaydreamOutlinedIcon color="secondary" />,
         onClick() {

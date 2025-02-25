@@ -4,15 +4,8 @@ import isUrl from "./isUrl";
 
 type RunData = runsItemQuery$dataT["delegatedOperation"];
 export const getLogStatus = (runData: RunData) => {
-  const {
-    logUrl,
-    logUploadError,
-    runState,
-    result,
-    runLink,
-    logSize,
-    logConnection,
-  } = runData;
+  const { logUrl, logUploadError, runState, result, runLink, logConnection } =
+    runData;
 
   const runHasFinished = [
     OPERATOR_RUN_STATES.COMPLETED,
@@ -23,8 +16,6 @@ export const getLogStatus = (runData: RunData) => {
   if (!runHasFinished) {
     return LOG_STATUS.PENDING;
   }
-
-  debugger;
 
   // when log url is never configured, there is no logUrl
   if (!logUrl && !runLink && runHasFinished) {
@@ -41,8 +32,6 @@ export const getLogStatus = (runData: RunData) => {
       ? LOG_STATUS.UPLOAD_SUCCESS_LARGE_FILE
       : LOG_STATUS.UPLOAD_SUCCESS;
   }
-
-  debugger;
 
   if (logUploadError) {
     return LOG_STATUS.UPLOAD_ERROR;

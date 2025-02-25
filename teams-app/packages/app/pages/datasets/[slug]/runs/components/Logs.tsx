@@ -167,7 +167,7 @@ export const DefaultLog = () => {
 type LogStatus = keyof typeof LOG_STATUS;
 
 export default function Logs(props) {
-  const logStatus = getLogStatus(props.runData) as LogStatus;
+  let logStatus = getLogStatus(props.runData) as LogStatus;
 
   switch (logStatus) {
     case LOG_STATUS.PENDING:
