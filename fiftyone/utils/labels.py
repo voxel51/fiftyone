@@ -7,6 +7,7 @@ Label utilities.
 """
 import contextlib
 
+import fiftyone.core.cache as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
@@ -446,13 +447,6 @@ def transform_segmentations(
                 idempotent=False,
             )
         else:
-            mask_field = in_field + ".mask_path"
-            mask_paths = sample_collection.values(mask_field, unwind=True)
-            local_paths = sample_collection.get_local_paths(
-                in_field, download=False
-            )
-            local_map = dict(zip(mask_paths, local_paths))
-
             writer = context.enter_context(fos.FileWriter())
 
         in_field, processing_frames = samples._handle_frame_field(in_field)
@@ -475,7 +469,9 @@ def transform_segmentations(
                     local_path = filename_maker.get_alt_path(mask_path)
                 else:
                     mask_path = label.mask_path
-                    local_path = local_map[mask_path]
+                    local_path = foc.media_cache.get_local_path(
+                        mask_path, download=False
+                    )
                     writer.register_local_path(mask_path, local_path)
 
                 _mask = label.transform_mask(targets_map, outpath=local_path)
@@ -682,61 +678,79 @@ def binarize_instances(
     )
 
     select_fields = [in_field]
-    in_field, processing_frames = sample_collection._handle_frame_field(
-        in_field
-    )
     if (
-        processing_frames
+        sample_collection._is_frame_field(in_field)
         and output_dir is not None
         and sample_collection.has_field("frames.filepath")
     ):
         select_fields.append("frames.filepath")
 
-    samples = sample_collection.select_fields(in_field)
+    samples = sample_collection.select_fields(select_fields)
 
-    if overwrite and output_dir is not None:
-        etau.delete_dir(output_dir)
-
-    if output_dir is not None:
-        filename_maker = fou.UniqueFilenameMaker(
-            output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+    with contextlib.ExitStack() as context:
+        context.enter_context(
+            samples.download_context(media_fields=in_field, progress=progress)
         )
 
-    for sample in samples.iter_samples(autosave=True, progress=progress):
-        if processing_frames:
-            images = sample.frames.values()
+        if output_dir is not None:
+            if overwrite:
+                fos.delete_dir(output_dir)
+
+            local_dir = context.enter_context(fos.LocalDir(output_dir, "w"))
+            filename_maker = fou.UniqueFilenameMaker(
+                output_dir=output_dir,
+                rel_dir=rel_dir,
+                alt_dir=local_dir,
+                idempotent=False,
+            )
         else:
-            images = [sample]
+            writer = context.enter_context(fos.FileWriter())
 
-        for image in images:
-            label = image[in_field]
-            if label is None:
-                continue
+        in_field, processing_frames = samples._handle_frame_field(in_field)
 
-            if isinstance(label, fol.Detection):
-                detections = [label]
+        for sample in samples.iter_samples(autosave=True, progress=progress):
+            if processing_frames:
+                images = sample.frames.values()
             else:
-                detections = label.detections
+                images = [sample]
 
-            for detection in detections:
-                mask = detection.get_mask()
-                if mask is None:
+            for image in images:
+                label = image[in_field]
+                if label is None:
                     continue
 
-                detection.mask = mask >= threshold
-
-                if output_dir is not None:
-                    mask_path = filename_maker.get_output_path(
-                        _get_filepath(image, sample), output_ext=".png"
-                    )
-                elif detection.mask_path is not None:
-                    mask_path = detection.mask_path
-                    detection.mask_path = None
+                if isinstance(label, fol.Detection):
+                    detections = [label]
                 else:
-                    mask_path = None
+                    detections = label.detections
 
-                if mask_path is not None:
-                    detection.export_mask(mask_path, update=True)
+                for detection in detections:
+                    mask = detection.get_mask()
+                    if mask is None:
+                        continue
+
+                    detection.mask = mask >= threshold
+
+                    if output_dir is not None:
+                        mask_path = filename_maker.get_output_path(
+                            _get_filepath(image, sample), output_ext=".png"
+                        )
+                        local_path = filename_maker.get_alt_path(mask_path)
+                    elif detection.mask_path is not None:
+                        mask_path = detection.mask_path
+                        local_path = foc.media_cache.get_local_path(
+                            mask_path, download=False
+                        )
+                        writer.register_local_path(mask_path, local_path)
+                        detection.mask_path = None
+                    else:
+                        mask_path = None
+                        local_path = None
+
+                    if local_path is not None:
+                        detection.export_mask(local_path)
+                        detection.mask_path = mask_path
+                        detection.mask = None
 
 
 def instances_to_polylines(
