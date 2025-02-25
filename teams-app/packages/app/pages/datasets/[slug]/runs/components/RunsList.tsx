@@ -1,3 +1,5 @@
+import { useCurrentUser } from "@fiftyone/hooks";
+import { useBooleanEnv } from "@fiftyone/hooks/src/common/useEnv";
 import {
   BasicTable,
   Box,
@@ -8,8 +10,6 @@ import {
 } from "@fiftyone/teams-components";
 import {
   autoRefreshRunsStatus,
-  datasetBySlugQuery,
-  runsPageFilterDatasetSelectionState,
   runsPageQuery,
   runsPageQueryDynamicVariables,
   runsPageQueryT,
@@ -20,11 +20,11 @@ import {
   OPERATOR_RUN_STATES,
 } from "@fiftyone/teams-state/src/constants";
 import { Stack, Typography } from "@mui/material";
+import { useRouter } from "next/router";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
   usePreloadedQuery,
   useQueryLoader,
-  fetchQuery,
   useRelayEnvironment,
 } from "react-relay";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
@@ -33,9 +33,6 @@ import RunActions from "./RunActions";
 import RunLabel from "./RunLabel";
 import RunStatus from "./RunStatus";
 import RunsPin from "./RunsPin";
-import { useBooleanEnv } from "@fiftyone/hooks/src/common/useEnv";
-import { useRouter } from "next/router";
-import { useCurrentUser } from "@fiftyone/hooks";
 
 const NON_FINAL_RUN_STATES = [
   OPERATOR_RUN_STATES.QUEUED,
@@ -53,9 +50,6 @@ function RunsListWithQuery(props) {
   const [_, setRefresher] = useRefresher(RUNS_STATUS_REFRESHER_ID);
   const showOrchestrators = !useBooleanEnv(
     FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS_ENV_KEY
-  );
-  const filterDatasetSelection = useRecoilValue(
-    runsPageFilterDatasetSelectionState
   );
 
   const { query } = useRouter();
@@ -88,33 +82,28 @@ function RunsListWithQuery(props) {
 
   const runIdToDatasetId: Record<string, string> = {};
   const rows = nodes.map((node) => {
-    const { id, operator, label, runBy, runState, pinned, status, datasetId } =
-      node;
+    const {
+      id,
+      operator,
+      label,
+      runBy,
+      runState,
+      pinned,
+      status,
+      datasetId,
+      datasetSlug,
+    } = node;
     runIdToDatasetId[id] = datasetId as string;
     const timestamp = node.updatedAt;
     const isHovering = hovered === id;
     const showProgress =
       status !== null && runState === OPERATOR_RUN_STATES.RUNNING;
+    const link = `/datasets/${datasetSlug}/runs/${encodeURIComponent(id)}`;
 
     return {
       id,
-      onClick: async (_, row) => {
-        // TODO: change this to get datasetSlug from runs query when API is updated
-        const data = await fetchQuery(environment, datasetBySlugQuery, {
-          identifier: runIdToDatasetId[row.id],
-        }).toPromise();
-        const datasetSlug = data?.dataset?.slug;
-        if (!datasetSlug) return;
-        const url = `/datasets/${datasetSlug}/runs/${encodeURIComponent(
-          row.id
-        )}`;
-
-        if (currentDatasetSlug === datasetSlug) {
-          window.open(url, "_self");
-        } else {
-          window.open(url, "_blank", "noopener,noreferrer");
-        }
-      },
+      link,
+      newWindow: currentDatasetSlug !== datasetSlug,
       onHover: (e, row, hovered) => {
         if (hovered) setHovered(row.id);
         else setHovered("");

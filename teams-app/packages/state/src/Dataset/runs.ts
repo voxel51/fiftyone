@@ -57,6 +57,7 @@ export const runsPageQuery = graphql`
         completedAt
         datasetId
         datasetName
+        datasetSlug
         failedAt
         id
         label

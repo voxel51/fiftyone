@@ -61,49 +61,46 @@ export default function BasicTable({
           {rows.map((row) => {
             const { id, cells, link, onClick, onHover, newWindow } = row;
             const useMUILink = link && newWindow;
-            const useNextLink = link && !newWindow;
-            const Wrapper = useNextLink ? Link : Fragment;
-            const wrapperProps = useNextLink ? { href: link } : {};
             const hasOnClick = typeof onClick === "function";
             const hasOnHover = typeof onHover === "function";
-            const clickable = typeof link === "string" || hasOnClick;
+            const hasLink = typeof link === "string";
+            const clickable = hasLink || hasOnClick;
+            const linkComponent = useMUILink ? MUILink : Link;
 
             return (
-              <Wrapper {...wrapperProps}>
-                <TableRow
-                  component={useMUILink ? MUILink : undefined}
-                  key={id}
-                  href={useMUILink ? link : undefined}
-                  target={useMUILink ? "_blank" : undefined}
-                  hover={clickable}
-                  sx={{
-                    cursor: clickable ? "pointer" : "default",
-                    textDecoration: "none",
-                    width: "100%",
-                  }}
-                  onClick={(e) => {
-                    if (hasOnClick) onClick(e, row);
-                  }}
-                  onMouseEnter={(e) => {
-                    if (hasOnHover) onHover(e, row, true);
-                  }}
-                  onMouseLeave={(e) => {
-                    if (hasOnHover) onHover(e, row, false);
-                  }}
-                >
-                  {cells.map(({ id, value, Component, ...props }) => {
-                    return (
-                      <TableCell {...props}>
-                        {Component ? (
-                          Component
-                        ) : (
-                          <Typography key={id}>{value}</Typography>
-                        )}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              </Wrapper>
+              <TableRow
+                component={hasLink ? linkComponent : undefined}
+                key={id}
+                href={link}
+                target={useMUILink ? "_blank" : undefined}
+                hover={clickable}
+                sx={{
+                  cursor: clickable ? "pointer" : "default",
+                  textDecoration: "none",
+                  width: "100%",
+                }}
+                onClick={(e) => {
+                  if (hasOnClick) onClick(e, row);
+                }}
+                onMouseEnter={(e) => {
+                  if (hasOnHover) onHover(e, row, true);
+                }}
+                onMouseLeave={(e) => {
+                  if (hasOnHover) onHover(e, row, false);
+                }}
+              >
+                {cells.map(({ id, value, Component, ...props }) => {
+                  return (
+                    <TableCell {...props}>
+                      {Component ? (
+                        Component
+                      ) : (
+                        <Typography key={id}>{value}</Typography>
+                      )}
+                    </TableCell>
+                  );
+                })}
+              </TableRow>
             );
           })}
         </TableBody>
