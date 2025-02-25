@@ -260,7 +260,7 @@ def evaluate_detections(
     if multiprocessing:
         matches = _samples.map_samples(
             _map_fnc,
-            reduce_fcn=_reduce_fcn,
+            aggregate_fcn=_reduce_fcn,
             save=save,
             progress=progress,
             num_workers=num_workers,
