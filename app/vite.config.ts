@@ -17,6 +17,7 @@ export default defineConfig({
         "**/__generated__",
         "**/.yarn/**",
         "**/.storybook/**",
+        "node_modules",
       ],
     },
   },
