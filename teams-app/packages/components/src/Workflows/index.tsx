@@ -98,7 +98,7 @@ export default function Workflows() {
         >
           {WORKFLOWS.map((workflow) => (
             <Grid item xs>
-              <Link href={workflow.href}>
+              <Link href={workflow.href} legacyBehavior>
                 <CardActionArea
                   sx={{ height: "100%" }}
                   onClick={() => {

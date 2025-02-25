@@ -9,7 +9,7 @@ export default function BackButton(props: BackButtonPropsType) {
   const backPath = ancestorPath(window.location.pathname, level);
 
   return (
-    <NextLink href={backPath} passHref>
+    <NextLink href={backPath} passHref legacyBehavior>
       <Link>
         <IconButton title={`Back to ${toName || "previous page"}`}>
           <ArrowBackIcon color="secondary" />

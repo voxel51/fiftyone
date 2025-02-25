@@ -42,7 +42,7 @@ export default function RouteNav(props: RouteNavProps) {
 function RouteNavItem({ selected, href, id, label }) {
   return (
     <ListItem>
-      <Link href={href}>
+      <Link href={href} legacyBehavior>
         <ListItemButton selected={selected}>
           <ListItemText id={id} primary={label} />
         </ListItemButton>

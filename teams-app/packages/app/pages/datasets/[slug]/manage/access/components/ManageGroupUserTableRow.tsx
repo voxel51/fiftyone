@@ -63,7 +63,7 @@ export default function ManageGroupUserTableRow({
 
   const renderGroupTitleCell = () => {
     return (
-      <Link href={`/settings/team/groups/${slug}`} title={"See group"}>
+      <Link href={`/settings/team/groups/${slug}`} title={"See group"} legacyBehavior>
         {renderTitleCell()}
       </Link>
     );
