@@ -61,7 +61,8 @@
         "graphql": "^16.8.1",
         "ip": "^2.0.1",
         "es5-ext": "0.10.63",
-        "@babel/runtime": "^7.24.6"
+        "@babel/runtime": "^7.24.6",
+        "nanoid": "^3.3.8"
     },
     "packageManager": "yarn@3.2.1"
 }
