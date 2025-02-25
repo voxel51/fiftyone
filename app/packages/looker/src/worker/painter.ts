@@ -32,8 +32,6 @@ export const PainterFactory = (requestColor) => ({
     }
     label.renderStatus = RENDER_STATUS_PAINTING;
 
-    label.renderStatus = "painting";
-
     const setting = customizeColorSetting?.find((s) => s.path === field);
     let color;
 
@@ -270,8 +268,6 @@ export const PainterFactory = (requestColor) => ({
       return;
     }
     label.renderStatus = RENDER_STATUS_PAINTING;
-
-    label.renderStatus = "painting";
 
     // the actual overlay that'll be painted, byte-length of width * height * 4 (RGBA channels)
     const overlay = new Uint32Array(label.mask.image);

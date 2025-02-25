@@ -1,9 +1,7 @@
 import type * as fos from "@fiftyone/state";
-import { activeLabelFields } from "@fiftyone/state";
 import { LRUCache } from "lru-cache";
 import { useEffect, useMemo } from "react";
-import { useRecoilCallback } from "recoil";
-import { gridActivePathsLUT } from "../Sidebar/useShouldReloadSample";
+import { gridActivePathsLUT } from "../Sidebar/useDetectNewActiveLabelFields";
 
 interface Entry<T extends Lookers | fos.Lookers = fos.Lookers> {
   dispose: boolean;
@@ -39,18 +37,17 @@ const resolveSize = <T extends Lookers | fos.Lookers = fos.Lookers>(
 
 export default function useLookerCache<
   T extends Lookers | fos.Lookers = fos.Lookers
->(reset: string, maxHiddenItems: number, maxHiddenItemsSizeBytes: number) {
-  // initialize active paths tracker
-  const getCurrentActiveLabelFields = useRecoilCallback(
-    ({ snapshot }) =>
-      () => {
-        return snapshot
-          .getLoadable(activeLabelFields({ modal: false }))
-          .getValue();
-      },
-    []
-  );
-
+>({
+  maxHiddenItems,
+  maxHiddenItemsSizeBytes,
+  onSet,
+  reset,
+}: {
+  maxHiddenItems: number;
+  maxHiddenItemsSizeBytes: number;
+  onSet?: (key: string) => void;
+  reset: string;
+}) {
   const cache = useMemo(() => {
     /** CLEAR CACHE WHEN reset CHANGES */
     reset;
@@ -167,10 +164,7 @@ export default function useLookerCache<
        */
       set: (key: string, instance: T) => {
         visible.set(key, instance);
-        const currentActiveLabelFields = getCurrentActiveLabelFields();
-        if (currentActiveLabelFields && !gridActivePathsLUT.has(key)) {
-          gridActivePathsLUT.set(key, new Set(currentActiveLabelFields));
-        }
+        onSet?.(key);
       },
 
       /**
@@ -212,12 +206,7 @@ export default function useLookerCache<
         loaded.set(key, { dispose: true, instance });
       },
     };
-  }, [
-    getCurrentActiveLabelFields,
-    maxHiddenItems,
-    maxHiddenItemsSizeBytes,
-    reset,
-  ]);
+  }, [maxHiddenItems, maxHiddenItemsSizeBytes, onSet, reset]);
 
   // delete cache during cleanup
   useEffect(() => () => cache.delete(), [cache]);

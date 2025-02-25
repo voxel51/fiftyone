@@ -1,4 +1,4 @@
-import { getDenseLabelNames, Schema } from "@fiftyone/utilities";
+import { Schema, getDenseLabelNames } from "@fiftyone/utilities";
 
 export const computeDefaultVisibleLabels = (
   sampleSchema: Schema,
@@ -23,9 +23,7 @@ export const computeDefaultVisibleLabels = (
     !defaultVisibleLabelsConfig?.include &&
     !defaultVisibleLabelsConfig?.exclude
   ) {
-    const all = allLabels.filter((label) => !denseLabels.includes(label));
-    console.log("all", all);
-    return all;
+    return allLabels.filter((label) => !denseLabels.includes(label));
   }
 
   // if only include is defined

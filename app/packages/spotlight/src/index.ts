@@ -14,7 +14,6 @@ import {
   FOUR,
   ONE,
   SCROLLBAR_WIDTH,
-  THREE,
   TWO,
   ZERO,
   ZOOMING_COEFFICIENT,
@@ -166,6 +165,10 @@ export default class Spotlight<K, V> extends EventTarget {
     this.#updater = updater;
   }
 
+  get #minAspectRatioRecommentation() {
+    return ONE + ONE / TWO;
+  }
+
   get #pivot() {
     let base = this.#backward.height;
     if (base) base += this.#config.spacing;
@@ -265,7 +268,7 @@ export default class Spotlight<K, V> extends EventTarget {
     const validate = (key: string, add: number) => {
       map.set(key, add);
       if (
-        sum(Array.from(map.values())) >= this.#config.maxItemsSizeBytes &&
+        sum(Array.from(map.values())) >= this.#sizeThreshold &&
         this.#config.rowAspectRatioThreshold(this.#width) > ONE
       ) {
         this.#handleHighMemoryUsage(items, map);
@@ -276,6 +279,11 @@ export default class Spotlight<K, V> extends EventTarget {
 
     const measure = (item: ItemData<K, V>, add: number) => {
       if (!this.#config.maxItemsSizeBytes) {
+        return;
+      }
+
+      const ar = this.#config.rowAspectRatioThreshold(this.#width);
+      if (ar <= this.#minAspectRatioRecommentation) {
         return;
       }
 
@@ -408,6 +416,7 @@ export default class Spotlight<K, V> extends EventTarget {
     let bytes = ZERO;
     const items: ItemData<K, V>[] = [];
     const map = new Map<string, number>();
+
     await runWhileWithHandler(
       () => {
         this.#render({
@@ -415,7 +424,11 @@ export default class Spotlight<K, V> extends EventTarget {
           offset: -this.#pivot,
           measure: (item, adder) => {
             const add = adder();
-            if (!this.#config.maxItemsSizeBytes) {
+            const ar = this.#config.rowAspectRatioThreshold(this.#width);
+            if (
+              !this.#config.maxItemsSizeBytes ||
+              ar <= this.#minAspectRatioRecommentation
+            ) {
               return;
             }
 
@@ -431,10 +444,7 @@ export default class Spotlight<K, V> extends EventTarget {
             map.set(item.id.description, add);
             bytes += add;
 
-            if (
-              bytes >= this.#config.maxItemsSizeBytes / THREE &&
-              this.#config.rowAspectRatioThreshold(this.#width) > ONE
-            ) {
+            if (bytes >= this.#sizeThreshold && ar > ONE) {
               throw bytes;
             }
           },

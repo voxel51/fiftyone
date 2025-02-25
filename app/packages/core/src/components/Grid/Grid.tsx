@@ -16,6 +16,7 @@ import {
 import useAt from "./useAt";
 import useEscape from "./useEscape";
 import useEvents from "./useEvents";
+import useLabelVisibility from "./useLabelVisibility";
 import useLookerCache from "./useLookerCache";
 import useRecords from "./useRecords";
 import useRefreshers from "./useRefreshers";
@@ -41,7 +42,12 @@ function Grid() {
   const records = useRecords(pageReset);
 
   const maxBytes = useRecoilValue(maxGridItemsSizeBytes);
-  const cache = useLookerCache(reset, MAX_INSTANCES, maxBytes);
+  const cache = useLookerCache({
+    maxHiddenItems: MAX_INSTANCES,
+    maxHiddenItemsSizeBytes: maxBytes,
+    onSet: useLabelVisibility(),
+    reset,
+  });
 
   const { page, store } = useSpotlightPager({
     clearRecords: pageReset,
@@ -100,8 +106,8 @@ function Grid() {
   ]);
 
   useEscape();
-  useEvents({ id, cache, pixels, resizing, set, spotlight });
-  useUpdates(cache, getFontSize, lookerOptions, spotlight);
+  useEvents({ id, pixels, resizing, set, spotlight });
+  useUpdates({ cache, getFontSize, options: lookerOptions, spotlight });
   useResize(id, setResizing);
 
   return (

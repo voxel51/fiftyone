@@ -1,22 +1,29 @@
+import { RENDER_STATUS_PAINTING } from "@fiftyone/looker/src/worker/shared";
 import type Spotlight from "@fiftyone/spotlight";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect } from "react";
 import { useRecoilValue } from "recoil";
-import { useShouldReloadSampleOnActiveFieldsChange } from "../Sidebar/useShouldReloadSample";
+import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
 import type { LookerCache } from "./types";
 
 const handleNewOverlays = (entry: fos.Lookers, newFields: string[]) => {
   const overlays = entry.getSampleOverlays() ?? [];
   const changed = overlays.filter(
-    (o) => o.field && newFields.includes(o.field)
+    (o) =>
+      o.field &&
+      (o.label?.mask_path?.length > 0 ||
+        o.label?.map_path?.length > 0 ||
+        o.label?.mask ||
+        o.label?.map) &&
+      newFields.includes(o.field)
   );
 
   for (const overlay of changed) {
     if (overlay.label) {
       // "pending" means we're marking this label for rendering or
       // painting, even if it's interrupted, say by unchecking sidebar
-      overlay.label.renderStatus = "pending";
+      overlay.label.renderStatus = RENDER_STATUS_PAINTING;
     }
   }
 
@@ -31,7 +38,7 @@ const handleChangedOverlays = (entry: fos.Lookers) => {
       continue;
     }
 
-    if (overlay?.label?.renderStatus !== "pending") {
+    if (overlay?.label?.renderStatus !== RENDER_STATUS_PAINTING) {
       continue;
     }
 
@@ -46,9 +53,7 @@ const useItemUpdater = (
   cache: LookerCache,
   options: ReturnType<typeof fos.useLookerOptions>
 ) => {
-  const getNewFields = useShouldReloadSampleOnActiveFieldsChange({
-    modal: false,
-  });
+  const { getNewFields } = useDetectNewActiveLabelFields({ modal: false });
   const selected = useRecoilValue(fos.selectedSamples);
 
   return useCallback(
@@ -77,12 +82,17 @@ const useItemUpdater = (
   );
 };
 
-export default function useUpdates(
-  cache: LookerCache,
-  getFontSize: () => number,
-  options: ReturnType<typeof fos.useLookerOptions>,
-  spotlight?: Spotlight<number, fos.Sample>
-) {
+export default function useUpdates({
+  cache,
+  getFontSize,
+  options,
+  spotlight,
+}: {
+  cache: LookerCache;
+  getFontSize: () => number;
+  options: ReturnType<typeof fos.useLookerOptions>;
+  spotlight?: Spotlight<number, fos.Sample>;
+}) {
   const { init, deferred } = fos.useDeferrer();
   const itemUpdater = useItemUpdater(cache, options);
 
