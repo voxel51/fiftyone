@@ -54,6 +54,11 @@ _metadata_cache = LRUCache(
     fo.config.signed_url_cache_size,
 )
 
+import os
+
+endpoint_alias = os.environ.get("FIFTYONE_SERVICE_WORKER_ALIAS")
+endpoint_domain = os.environ.get("FIFTYONE_SERVICE_WORKER_DOMAIN")
+
 
 @gql.enum
 class MediaType(Enum):
@@ -599,7 +604,8 @@ async def _create_media_urls(
             # Gracefully continue so that missing cloud credentials do not
             # cause fatal App errors
             url = path
-
+        if endpoint_domain and endpoint_alias:
+            url = url.replace(endpoint_alias, endpoint_domain)
         cache[path] = url
         media_urls.append(dict(field=field, url=url))
         if use_opm and opm_filepath == field:
