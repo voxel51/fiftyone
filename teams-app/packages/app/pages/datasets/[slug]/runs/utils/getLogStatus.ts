@@ -14,8 +14,6 @@ export const getLogStatus = (runData: RunData) => {
     logConnection,
   } = runData;
 
-  debugger;
-
   const runHasFinished = [
     OPERATOR_RUN_STATES.COMPLETED,
     OPERATOR_RUN_STATES.FAILED,
@@ -25,6 +23,8 @@ export const getLogStatus = (runData: RunData) => {
   if (!runHasFinished) {
     return LOG_STATUS.PENDING;
   }
+
+  debugger;
 
   // when log url is never configured, there is no logUrl
   if (!logUrl && !runLink && runHasFinished) {
@@ -42,6 +42,8 @@ export const getLogStatus = (runData: RunData) => {
       : LOG_STATUS.UPLOAD_SUCCESS;
   }
 
+  debugger;
+
   if (logUploadError) {
     return LOG_STATUS.UPLOAD_ERROR;
   }
@@ -51,7 +53,8 @@ export const LOG_STATUS = {
   // not available scenarios:
   PENDING: "PENDING", // waiting for log
   URL_LINK: "URLLINK", // log is available via URL (airflow)
-  UNSET: "UNSET", // not available
+  UNSET: "UNSET", // not available show configure guidance
+  UNAVAILABLE: "UNAVAILABLE", // log is not available (could be old runs)
 
   UPLOAD_ERROR: "UPLOAD_ERROR", // error in uploading log
   UPLOAD_SUCCESS: "UPLOAD_SUCCESS", // log uploaded successfully

@@ -4,98 +4,152 @@ import { Box, Button, Stack, Typography } from "@mui/material";
 import { getLogStatus, LOG_STATUS } from "../utils/getLogStatus";
 import LogPreview from "./logs/LogPreview";
 
-// Type definitions
-type ButtonProps = {
-  label: string;
-  url: string;
-};
+const URLLog = (props) => {
+  const handleButtonClick = (url: string) => {
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
 
-type LogMessageProps = {
-  message?: string;
-  buttons?: ButtonProps[];
-};
-
-// Generic log display component
-const LogMessage: React.FC<LogMessageProps> = ({ message, buttons = [] }) => (
-  <Box
-    sx={{
-      display: "grid",
-      placeItems: "center",
-      minHeight: "50vh",
-    }}
-  >
-    <Stack
+  return (
+    <Box
       sx={{
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        display: "flex",
-        gap: "24px",
+        display: "grid",
+        placeItems: "center",
+        minHeight: "50vh",
       }}
     >
-      <SearchIcon
-        viewBox="0 0 50 50"
-        fill="#FFC59B"
-        sx={{ width: 50, height: 50 }}
-      />
-      <Typography variant="h6" color="secondary">
-        Logs are not available
-      </Typography>
-      {message && (
-        <Typography variant="body2" color="secondary">
-          {message}
+      <Stack
+        sx={{
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          display: "flex",
+          gap: "24px",
+        }}
+      >
+        <SearchIcon
+          viewBox="0 0 50 50"
+          fill="#FFC59B"
+          sx={{ width: 50, height: 50 }}
+        />
+        <Typography variant="h6" color="secondary">
+          Logs are not available
         </Typography>
-      )}
-      <Stack spacing={1} direction="row">
-        {buttons.map(({ label, url }, index) => (
+        <Stack spacing={1} direction="row">
           <Button
-            key={index}
             variant="outlined"
             endIcon={<ExternalLinkIcon viewBox="0 0 17 16" />}
-            onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
+            onClick={() => handleButtonClick(props.runLink)}
           >
-            {label}
+            Open run link
           </Button>
-        ))}
+        </Stack>
       </Stack>
-    </Stack>
-  </Box>
-);
+    </Box>
+  );
+};
+const UnsetLog = () => {
+  const handleButtonClick = (url: string) => {
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <Box
+      sx={{
+        display: "grid",
+        placeItems: "center",
+        minHeight: "50vh",
+      }}
+    >
+      <Stack
+        sx={{
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          display: "flex",
+          gap: "24px",
+        }}
+      >
+        <SearchIcon
+          viewBox="0 0 50 50"
+          fill="#FFC59B"
+          sx={{ width: 50, height: 50 }}
+        />
+        <Typography variant="h6" color="secondary">
+          Logs are not available
+        </Typography>
+        <Stack spacing={1} direction="row">
+          <Button
+            variant="outlined"
+            endIcon={<ExternalLinkIcon viewBox="0 0 17 16" />}
+            onClick={() => handleButtonClick(CONSTANT_VARIABLES.HELM_DOC_URL)}
+          >
+            Helm documentation
+          </Button>
+          <Button
+            variant="outlined"
+            endIcon={<ExternalLinkIcon viewBox="0 0 17 16" />}
+            onClick={() => handleButtonClick(CONSTANT_VARIABLES.DOCKER_DOC_URL)}
+          >
+            Docker documentation
+          </Button>
+        </Stack>
+      </Stack>
+    </Box>
+  );
+};
+const PendingLog = () => {
+  return (
+    <Box
+      sx={{
+        display: "grid",
+        placeItems: "center",
+        minHeight: "50vh",
+      }}
+    >
+      <Stack
+        sx={{
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          display: "flex",
+          gap: "24px",
+        }}
+      >
+        <SearchIcon
+          viewBox="0 0 50 50"
+          fill="#FFC59B"
+          sx={{ width: 50, height: 50 }}
+        />
+        <Typography variant="h6" color="secondary">
+          Logs are not available
+        </Typography>
+        <Stack spacing={1} direction="row">
+          <Typography variant="body" color="secondary">
+            The operation has not completed yet, try again in sometime
+          </Typography>
+        </Stack>
+      </Stack>
+    </Box>
+  );
+};
 
 type LogStatus = keyof typeof LOG_STATUS;
 
-export default function Logs(props: { runData: { runLink?: string } }) {
+export default function Logs(props) {
   const logStatus = getLogStatus(props.runData) as LogStatus;
 
-  // Define different log states
-  const logConfig: Record<LogStatus, LogMessageProps | null> = {
-    [LOG_STATUS.PENDING]: {
-      message: "The operation has not completed, try again in some time",
-    },
-    [LOG_STATUS.URL_LINK]: {
-      buttons: [{ label: "Open run link", url: props.runData.runLink || "" }],
-    },
-    [LOG_STATUS.UNSET]: {
-      buttons: [
-        { label: "Helm documentation", url: CONSTANT_VARIABLES.HELM_DOC_URL },
-        {
-          label: "Docker documentation",
-          url: CONSTANT_VARIABLES.DOCKER_DOC_URL,
-        },
-      ],
-    },
-    [LOG_STATUS.UPLOAD_SUCCESS]: null,
-    [LOG_STATUS.UPLOAD_SUCCESS_LARGE_FILE]: null,
-    [LOG_STATUS.UPLOAD_ERROR]: { message: "Error in publishing the logs" },
-  };
-
-  // Handle special cases (log previews)
-  if (logStatus === LOG_STATUS.UPLOAD_SUCCESS) return <LogPreview {...props} />;
-  if (logStatus === LOG_STATUS.UPLOAD_SUCCESS_LARGE_FILE)
-    return <LogPreview isLargeFile={true} {...props} />;
-
-  // Default log display
-  return (
-    <LogMessage {...(logConfig[logStatus] || logConfig[LOG_STATUS.UNSET])} />
-  );
+  switch (logStatus) {
+    case LOG_STATUS.PENDING:
+      return <PendingLog />;
+    case LOG_STATUS.URL_LINK:
+      return <URLLog runLink={props.runData.runLink} />;
+    case LOG_STATUS.UNSET:
+    default:
+      return <UnsetLog />;
+    case LOG_STATUS.UPLOAD_SUCCESS:
+      return <LogPreview {...props} />;
+    case LOG_STATUS.UPLOAD_SUCCESS_LARGE_FILE:
+      return <LogPreview isLargeFile={true} {...props} />;
+  }
+  return <></>;
 }
