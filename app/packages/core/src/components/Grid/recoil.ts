@@ -105,11 +105,11 @@ export const gridCrop = selector({
 
 // ensure navigator is defined
 const deviceMemory =
-  typeof navigator !== "undefined" ? navigator.deviceMemory : 8;
+  // @ts-ignore
+  typeof navigator !== "undefined" ? navigator?.deviceMemory || 8 : 8;
 
 export const maxGridItemsSizeBytes = atom({
   key: "maxGridItemsSizeBytes",
-  // @ts-ignore
   default: (deviceMemory / 16) * 1e9,
   effects: [
     fos.getBrowserStorageEffectForKey("maxGridItemsSizeBytes", {
