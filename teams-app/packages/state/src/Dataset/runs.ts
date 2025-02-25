@@ -167,7 +167,14 @@ export const runsItemQuery = graphql`
       logSize
       logUploadError
       metadata
-      logConnection(first: 1000, after: null) {
+    }
+  }
+`;
+
+export const runsLogQuery = graphql`
+  query runsLogQuery($run: String!) {
+    delegatedOperation(operationId: $run) {
+      logConnection(first: 200000, after: null) {
         pageInfo {
           hasNextPage
           hasPreviousPage
