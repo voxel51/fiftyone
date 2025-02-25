@@ -14,7 +14,8 @@ export const getLogStatus = (runData: RunData) => {
     logConnection,
   } = runData;
 
-  const isRunning = runState === OPERATOR_RUN_STATES.RUNNING;
+  debugger;
+
   const runHasFinished = [
     OPERATOR_RUN_STATES.COMPLETED,
     OPERATOR_RUN_STATES.FAILED,
@@ -41,7 +42,7 @@ export const getLogStatus = (runData: RunData) => {
       : LOG_STATUS.UPLOAD_SUCCESS;
   }
 
-  if (logUrl && logUploadError && runHasFinished) {
+  if (logUploadError) {
     return LOG_STATUS.UPLOAD_ERROR;
   }
 };
