@@ -37,7 +37,6 @@ import RunStatus from "../components/RunStatus";
 import RunsPin from "../components/RunsPin";
 import formatCtx from "../utils/formatCtx";
 import getTimestamp from "../utils/getTimestamp";
-import isUrl from "../utils/isUrl";
 import RunIO, { IOType } from "./components/RunIO";
 import RunView from "./components/RunView";
 
@@ -55,7 +54,6 @@ function Run(props) {
   const [tab, setTab] = useState("inputs");
   const [schemas, setSchemas] = useState<{ inputs?: any; outputs?: any }>({});
   const [errors, setErrors] = useState<{ inputs?: Error; outputs?: Error }>({});
-
   const {
     label,
     operator,
@@ -74,7 +72,6 @@ function Run(props) {
     logUploadError,
     logSize,
     metadata,
-    logConnection,
   } = runData;
   const { operator_uri, params, ...ctxData } = context.request_params;
   const { inputs, outputs } = schemas;
@@ -195,28 +192,21 @@ function Run(props) {
                 </Typography>
               )}
             </Stack>
-            {runLink &&
-              showOrchestrators &&
-              (isUrl(runLink) ? (
-                <Link
-                  href={runLink}
-                  target="_blank"
-                  color="secondary"
-                  sx={{
-                    maxWidth: "80vw",
-                    overflow: "hidden",
-                    whiteSpace: "nowrap",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {runLink}
-                </Link>
-              ) : (
-                <Typography color="text.tertiary">
-                  {runLink.startsWith("http") ? "Run link" : "Logs link"}:
-                  {runLink}
-                </Typography>
-              ))}
+            {runLink && showOrchestrators && (
+              <Link
+                href={runLink}
+                target="_blank"
+                color="secondary"
+                sx={{
+                  maxWidth: "80vw",
+                  overflow: "hidden",
+                  whiteSpace: "nowrap",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {runLink}
+              </Link>
+            )}
           </Stack>
           <Box style={{ marginLeft: "auto" }}>
             <RunActions {...runData} hideViewInOrchestrator />

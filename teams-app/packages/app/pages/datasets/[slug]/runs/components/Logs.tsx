@@ -86,14 +86,7 @@ const UnsetLog = () => {
             endIcon={<ExternalLinkIcon viewBox="0 0 17 16" />}
             onClick={() => handleButtonClick(CONSTANT_VARIABLES.HELM_DOC_URL)}
           >
-            Helm documentation
-          </Button>
-          <Button
-            variant="outlined"
-            endIcon={<ExternalLinkIcon viewBox="0 0 17 16" />}
-            onClick={() => handleButtonClick(CONSTANT_VARIABLES.DOCKER_DOC_URL)}
-          >
-            Docker documentation
+            Configure logs
           </Button>
         </Stack>
       </Stack>

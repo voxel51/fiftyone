@@ -189,7 +189,7 @@ const VirtualLogTable = ({ data }) => {
             style={{
               width: column.width,
               fontWeight: "bold",
-              color: palette.text.secondary,
+              color: palette.primary.main,
               fontSize: "0.875rem",
             }}
             sx={{ backgroundColor: "background.paper" }}
