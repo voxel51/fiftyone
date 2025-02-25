@@ -2294,6 +2294,46 @@ class ListFiles(foo.Operator):
                 return {"files": [], "error": str(e)}
 
 
+class ReloadCurrentSample(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="reload_current_sample",
+            label="Reload current sample",
+            unlisted=True,
+        )
+
+    def execute(self, ctx):
+        current_sample_id = ctx.current_sample
+        sample = ctx.view[current_sample_id]
+        sample.reload()
+        sample_update = dict(
+            id=sample.id,
+            values=sample.to_dict(),
+        )
+        ctx.ops.update_app_samples([sample_update])
+
+
+class ReloadSample(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="reload_sample",
+            label="Reload sample",
+            unlisted=True,
+        )
+
+    def execute(self, ctx):
+        sample_id = ctx.params["id"]
+        sample = ctx.view[sample_id]
+        sample.reload()
+        sample_update = dict(
+            id=sample.id,
+            values=sample.to_dict(),
+        )
+        ctx.ops.update_app_samples([sample_update])
+
+
 def get_default_path_for_filesystem(fs):
     if fs == fos.FileSystem.LOCAL:
         HOME = os.environ.get("HOME", None)
