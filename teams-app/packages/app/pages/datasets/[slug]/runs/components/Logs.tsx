@@ -182,7 +182,13 @@ export default function Logs(props) {
     case LOG_STATUS.UPLOAD_SUCCESS:
       return <LogPreview {...props} />;
     case LOG_STATUS.UPLOAD_SUCCESS_LARGE_FILE:
-      return <LogPreview isLargeFile={true} {...props} />;
+      return (
+        <LogPreview
+          isLargeFile={true}
+          logConnection={props.logConnection}
+          {...props}
+        />
+      );
   }
   return <DefaultLog />;
 }
