@@ -86,7 +86,11 @@ export default function LogPreview(props: {
           alignItems="center"
           mb={1}
         >
-          <Typography variant="h6">Logs Preview</Typography>
+          <Typography variant="h6">
+            {logConnection.edges.length === 0
+              ? "Logs Preview is not available"
+              : "Logs Preview"}
+          </Typography>
           <Button
             variant="contained"
             size="small"
@@ -97,13 +101,19 @@ export default function LogPreview(props: {
             Download Logs
           </Button>
         </Box>
-        <Suspense fallback={<TableSkeleton />}>
-          <VirtualLogTable data={processedLogs} />
-        </Suspense>
+        {logConnection.edges.length === 0 ? (
+          <></>
+        ) : (
+          <Suspense fallback={<TableSkeleton />}>
+            <VirtualLogTable data={processedLogs} />
+          </Suspense>
+        )}
       </div>
     );
   } else {
-    return (
+    return logConnection?.edges.length === 0 ? (
+      <></>
+    ) : (
       <Suspense fallback={<TableSkeleton />}>
         <VirtualLogTable data={processedLogs} />
       </Suspense>

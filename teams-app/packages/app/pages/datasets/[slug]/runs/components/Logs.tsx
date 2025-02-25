@@ -133,6 +133,37 @@ const PendingLog = () => {
   );
 };
 
+export const DefaultLog = () => {
+  return (
+    <Box
+      sx={{
+        display: "grid",
+        placeItems: "center",
+        minHeight: "50vh",
+      }}
+    >
+      <Stack
+        sx={{
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          display: "flex",
+          gap: "24px",
+        }}
+      >
+        <SearchIcon
+          viewBox="0 0 50 50"
+          fill="#FFC59B"
+          sx={{ width: 50, height: 50 }}
+        />
+        <Typography variant="h6" color="secondary">
+          Logs are not available
+        </Typography>
+      </Stack>
+    </Box>
+  );
+};
+
 type LogStatus = keyof typeof LOG_STATUS;
 
 export default function Logs(props) {
@@ -144,12 +175,11 @@ export default function Logs(props) {
     case LOG_STATUS.URL_LINK:
       return <URLLog runLink={props.runData.runLink} />;
     case LOG_STATUS.UNSET:
-    default:
       return <UnsetLog />;
     case LOG_STATUS.UPLOAD_SUCCESS:
       return <LogPreview {...props} />;
     case LOG_STATUS.UPLOAD_SUCCESS_LARGE_FILE:
       return <LogPreview isLargeFile={true} {...props} />;
   }
-  return <></>;
+  return <DefaultLog />;
 }
