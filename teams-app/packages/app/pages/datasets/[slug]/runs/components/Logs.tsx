@@ -133,7 +133,7 @@ const PendingLog = () => {
   );
 };
 
-export const DefaultLog = () => {
+export const DefaultLog = (props) => {
   return (
     <Box
       sx={{
@@ -159,6 +159,11 @@ export const DefaultLog = () => {
         <Typography variant="h6" color="secondary">
           Logs are not available
         </Typography>
+        {props?.message && (
+          <Typography variant="title" color="secondary">
+            {props.message}
+          </Typography>
+        )}
       </Stack>
     </Box>
   );
@@ -176,6 +181,8 @@ export default function Logs(props) {
       return <URLLog runLink={props.runData.runLink} />;
     case LOG_STATUS.UNSET:
       return <UnsetLog />;
+    case LOG_STATUS.UPLOAD_ERROR:
+      return <DefaultLog message={props.runData.logUploadError} />;
     case LOG_STATUS.UPLOAD_SUCCESS:
       return <LogPreview {...props} />;
     case LOG_STATUS.UPLOAD_SUCCESS_LARGE_FILE:
