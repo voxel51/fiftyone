@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<761804b28943e86c420998e11842b2b2>>
+ * @generated SignedSource<<45071afaccf57d618934d43bf23eeaed>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -47,6 +47,8 @@ export type runsPageStatusQuery$data = {
       readonly completedAt: string | null;
       readonly failedAt: string | null;
       readonly id: string;
+      readonly priority: number | null;
+      readonly priorityTotal: number | null;
       readonly queuedAt: string | null;
       readonly runState: string;
       readonly scheduledAt: string | null;
@@ -186,6 +188,20 @@ v1 = [
             "kind": "ScalarField",
             "name": "status",
             "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "priority",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "priorityTotal",
+            "storageKey": null
           }
         ],
         "storageKey": null
@@ -212,16 +228,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "31b3bcc56322f7f4f80f627d01188006",
+    "cacheID": "a9200c29fab269c32327490792530cd2",
     "id": null,
     "metadata": {},
     "name": "runsPageStatusQuery",
     "operationKind": "query",
-    "text": "query runsPageStatusQuery(\n  $filter: DelegatedOperationFilter = null\n  $order: DelegatedOperationOrderFieldsOrder = null\n  $page: Int!\n  $pageSize: Int!\n  $search: DelegatedOperationSearchFieldsSearch = null\n) {\n  delegatedOperationsPage(filter: $filter, order: $order, page: $page, pageSize: $pageSize, search: $search) {\n    nodes {\n      completedAt\n      failedAt\n      id\n      queuedAt\n      runState\n      scheduledAt\n      startedAt\n      status\n    }\n  }\n}\n"
+    "text": "query runsPageStatusQuery(\n  $filter: DelegatedOperationFilter = null\n  $order: DelegatedOperationOrderFieldsOrder = null\n  $page: Int!\n  $pageSize: Int!\n  $search: DelegatedOperationSearchFieldsSearch = null\n) {\n  delegatedOperationsPage(filter: $filter, order: $order, page: $page, pageSize: $pageSize, search: $search) {\n    nodes {\n      completedAt\n      failedAt\n      id\n      queuedAt\n      runState\n      scheduledAt\n      startedAt\n      status\n      priority\n      priorityTotal\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "f0ba331573c2a5c326390310f590c319";
+(node as any).hash = "8ff6cc9c64e630ce97ed53a602fb82f7";
 
 export default node;

@@ -108,6 +108,8 @@ export const runsPageStatusQuery = graphql`
         scheduledAt
         startedAt
         status
+        priority
+        priorityTotal
       }
     }
   }
