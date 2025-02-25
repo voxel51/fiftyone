@@ -1,7 +1,8 @@
+import { useNotification } from "@fiftyone/hooks";
 import { TableSkeleton } from "@fiftyone/teams-components";
 import { runsItemQuery$dataT } from "@fiftyone/teams-state";
-import { fontWeight } from "@mui/joy/styles/styleFunctionSx";
-import { useTheme } from "@mui/material";
+import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
+import { Box, Button, Typography, useTheme } from "@mui/material";
 import Paper from "@mui/material/Paper";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -12,10 +13,16 @@ import TableRow from "@mui/material/TableRow";
 import React, { Suspense, useCallback, useMemo } from "react";
 import { TableComponents, TableVirtuoso } from "react-virtuoso";
 
-export default function LogPreview(props) {
+export default function LogPreview(props: {
+  runData: runsItemQuery$dataT["delegatedOperation"];
+  isLargeFile?: boolean;
+}) {
   if (!props) return <></>;
+  const [_, sendNotification] = useNotification();
   const { logConnection } =
     props.runData as runsItemQuery$dataT["delegatedOperation"];
+
+  const isLargeFile = props.isLargeFile ?? false;
 
   const processedLogs = useMemo(() => {
     if (!logConnection?.edges || !Array.isArray(logConnection.edges)) return [];
@@ -29,7 +36,7 @@ export default function LogPreview(props) {
       let content = node?.content?.trim() || "";
 
       // Skip invalid logs
-      if (!date || !level || !content) return acc;
+      if (!date && !level && !content) return acc;
 
       // Check the next log entry
       let nextNode = arr[index + 1]?.node;
@@ -57,11 +64,61 @@ export default function LogPreview(props) {
     }, []);
   }, [logConnection.edges]);
 
-  return (
-    <Suspense fallback={<TableSkeleton />}>
-      <VirtualLogTable data={processedLogs} />
-    </Suspense>
-  );
+  const handleDownload = () => {
+    // Download the content using the logUrl
+    const link = document.createElement("a");
+    link.href = props.runData.logUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    sendNotification({
+      msg: "Log downloaded successfully",
+      variant: "success",
+    });
+  };
+
+  if (isLargeFile) {
+    return (
+      <div>
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="center"
+          mb={1}
+        >
+          <Typography variant="h6">
+            {logConnection.edges.length === 0
+              ? "Logs Preview is not available"
+              : "Logs Preview"}
+          </Typography>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<CloudDownloadIcon />}
+            onClick={handleDownload}
+            color="info"
+          >
+            Download Logs
+          </Button>
+        </Box>
+        {logConnection.edges.length === 0 ? (
+          <></>
+        ) : (
+          <Suspense fallback={<TableSkeleton />}>
+            <VirtualLogTable data={processedLogs} />
+          </Suspense>
+        )}
+      </div>
+    );
+  } else {
+    return logConnection?.edges.length === 0 ? (
+      <></>
+    ) : (
+      <Suspense fallback={<TableSkeleton />}>
+        <VirtualLogTable data={processedLogs} />
+      </Suspense>
+    );
+  }
 }
 
 interface LogData {

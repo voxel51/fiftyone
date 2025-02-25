@@ -4,17 +4,9 @@ import isUrl from "./isUrl";
 
 type RunData = runsItemQuery$dataT["delegatedOperation"];
 export const getLogStatus = (runData: RunData) => {
-  const {
-    logUrl,
-    logUploadError,
-    runState,
-    result,
-    runLink,
-    logSize,
-    logConnection,
-  } = runData;
+  const { logUrl, logUploadError, runState, result, runLink, logConnection } =
+    runData;
 
-  const isRunning = runState === OPERATOR_RUN_STATES.RUNNING;
   const runHasFinished = [
     OPERATOR_RUN_STATES.COMPLETED,
     OPERATOR_RUN_STATES.FAILED,
@@ -41,7 +33,7 @@ export const getLogStatus = (runData: RunData) => {
       : LOG_STATUS.UPLOAD_SUCCESS;
   }
 
-  if (logUrl && logUploadError && runHasFinished) {
+  if (logUploadError) {
     return LOG_STATUS.UPLOAD_ERROR;
   }
 };
@@ -50,7 +42,8 @@ export const LOG_STATUS = {
   // not available scenarios:
   PENDING: "PENDING", // waiting for log
   URL_LINK: "URLLINK", // log is available via URL (airflow)
-  UNSET: "UNSET", // not available
+  UNSET: "UNSET", // not available show configure guidance
+  UNAVAILABLE: "UNAVAILABLE", // log is not available (could be old runs)
 
   UPLOAD_ERROR: "UPLOAD_ERROR", // error in uploading log
   UPLOAD_SUCCESS: "UPLOAD_SUCCESS", // log uploaded successfully
