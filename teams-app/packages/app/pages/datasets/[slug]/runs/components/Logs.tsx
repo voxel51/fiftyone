@@ -70,6 +70,8 @@ export default function Logs(props) {
       return <UnsetLog />;
     case LOG_STATUS.UPLOAD_SUCCESS:
       return <LogPreview {...props} />;
+    case LOG_STATUS.UPLOAD_SUCCESS_LARGE_FILE:
+      return <LogPreview isLargeFile={true} {...props} />;
   }
   return <></>;
 }

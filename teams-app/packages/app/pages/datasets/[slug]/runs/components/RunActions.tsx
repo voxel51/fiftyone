@@ -52,17 +52,16 @@ export default function RunActions(props: RunActionsPropsType) {
   ].includes(runState);
   const canViewInOrchestrator =
     runLink && isUrl(runLink) && !hideViewInOrchestrator;
-  const isExpired = false;
-  // const isExpired = result?.includes("expired");
+  const isExpired = result && result?.includes("expired");
   const hasLogSetup = Boolean(logUrl);
 
   // TODO: update the url (when we have the actual link) and move it to Constants.ts
   const logDocUrl = "https://docs.voxel51.com/teams/teams_plugins.html";
 
-  // success or fail: run_link is null = the user never configured their log location
-  // success or fail: run_link is present and log_status is null and the result field is not "expired" = we successfully published logs
-  // fail: run_link is present and log_status is null and result field is "expired" = DO executor failed to exit we can't promise logs were ever flushed
-  // success or fail: run_link is present and log_status is some exception = we failed to publish logs
+  // success or fail: logUrl is null = the user never configured their log location
+  // success or fail: logUrl is present and log_status is null and the result field is not "expired" = we successfully published logs
+  // fail: logUrl is present and log_status is null and result field is "expired" = DO executor failed to exit we can't promise logs were ever flushed
+  // success or fail: logUrl is present and log_status is some exception = we failed to publish logs
   // when runstate is running, we can't download logs
 
   const canDownloadLogs =
