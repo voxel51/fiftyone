@@ -317,9 +317,6 @@ const muiTheme = extendMuiTheme({
         queued: {
           main: colors.gray50,
         },
-        info: {
-          main: colors.yellow21,
-        },
         custom: {
           shadow: themes.light.shadow,
           shadowDark: themes.light.shadowDark,
@@ -400,9 +397,6 @@ const muiTheme = extendMuiTheme({
         },
         queued: {
           main: colors.gray40,
-        },
-        info: {
-          main: colors.yellow60,
         },
       },
     },
