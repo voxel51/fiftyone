@@ -604,7 +604,11 @@ async def _create_media_urls(
             # Gracefully continue so that missing cloud credentials do not
             # cause fatal App errors
             url = path
-        if endpoint_domain and endpoint_alias:
+        if (
+            endpoint_domain
+            and endpoint_alias
+            and url.startswith(endpoint_alias)
+        ):
             url = url.replace(endpoint_alias, endpoint_domain)
         cache[path] = url
         media_urls.append(dict(field=field, url=url))
