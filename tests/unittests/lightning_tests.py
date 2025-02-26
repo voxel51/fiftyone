@@ -1172,6 +1172,51 @@ class TestGroupDatasetLightningQueries(unittest.IsolatedAsyncioTestCase):
         )
 
 
+class TestObjectIdLightningQueries(unittest.IsolatedAsyncioTestCase):
+    @drop_async_dataset
+    async def test_object_ids(self, dataset: fo.Dataset):
+        keys = _add_samples(dataset, dict(id="0" * 24))
+        query = """
+            query Query($input: LightningInput!) {
+                lightning(input: $input) {
+                    ... on ObjectIdLightningResult {
+                        path
+                        values
+                    }
+                }
+            }
+        """
+
+        result = await _execute(
+            query,
+            dataset,
+            fo.ObjectIdField,
+            keys,
+            frames=False,
+            search="0" * 25,
+        )
+
+        for path in result.data["lightning"]:
+            if path["path"] == "id":
+                self.assertEqual(len(path["values"]), 1)
+            else:
+                self.assertListEqual(
+                    path["values"], ["000000000000000000000000"]
+                )
+
+        result = await _execute(
+            query,
+            dataset,
+            fo.ObjectIdField,
+            keys,
+            frames=False,
+            search="Z" * 25,
+        )
+
+        for path in result.data["lightning"]:
+            self.assertListEqual(path["values"], [])
+
+
 def _add_samples(dataset: fo.Dataset, *sample_data: t.List[t.Dict]):
     samples = []
     keys = set()
@@ -1191,6 +1236,7 @@ async def _execute(
     field: fo.Field,
     keys: t.Set[str],
     frames=True,
+    search: t.Optional[str] = None,
     slice: t.Optional[str] = None,
 ):
     return await execute(
@@ -1200,7 +1246,9 @@ async def _execute(
             "input": asdict(
                 LightningInput(
                     dataset=dataset.name,
-                    paths=_get_paths(dataset, field, keys, frames=frames),
+                    paths=_get_paths(
+                        dataset, field, keys, frames=frames, search=search
+                    ),
                     slice=slice,
                 )
             )
@@ -1213,6 +1261,7 @@ def _get_paths(
     field_type: t.Type[fo.Field],
     keys: t.Set[str],
     frames=True,
+    search: t.Optional[str] = None,
 ):
     field_dict = dataset.get_field_schema(flat=True)
 
@@ -1239,7 +1288,8 @@ def _get_paths(
             continue
 
         dataset.create_index(path)
-        paths.append(LightningPathInput(path=path))
+        paths.append(LightningPathInput(path=path, search=search))
+
     return paths
 
 

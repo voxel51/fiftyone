@@ -5,7 +5,7 @@ import { OverlayMask } from "../numpy";
 import { Colorscale } from "../state";
 import { decodeMaskOnDisk } from "./mask-decoder";
 import { enqueueFetch } from "./pooled-fetch";
-import { getOverlayFieldFromCls } from "./shared";
+import { getOverlayFieldFromCls, RENDER_STATUS_DECODED } from "./shared";
 
 export type IntermediateMask = {
   data: OverlayMask;
@@ -62,7 +62,8 @@ export const decodeOverlayOnDisk = async (
     // it's possible we're just re-coloring, in which case re-init mask image and set bitmap to null
     if (
       label[overlayField] &&
-      label[overlayField].bitmap &&
+      (label[overlayField].bitmap?.height ||
+        label[overlayField].bitmap?.width) &&
       !label[overlayField].image
     ) {
       const height = label[overlayField].bitmap.height;
@@ -140,6 +141,8 @@ export const decodeOverlayOnDisk = async (
     data: overlayMask,
     image: new ArrayBuffer(overlayWidth * overlayHeight * 4),
   } as IntermediateMask;
+
+  label.renderStatus = RENDER_STATUS_DECODED;
 
   // no need to transfer image's buffer
   //since we'll be constructing ImageBitmap and transfering that

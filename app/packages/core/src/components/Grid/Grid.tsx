@@ -10,9 +10,11 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
+import { useSyncLabelsRenderingStatus } from "../../hooks";
 import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
+import { gridActivePathsLUT } from "../Sidebar/useDetectNewActiveLabelFields";
 import { gridCrop, gridSpacing, pageParameters } from "./recoil";
 import useAt from "./useAt";
 import useEscape from "./useEscape";
@@ -32,6 +34,8 @@ function Grid() {
   const [resizing, setResizing] = useState(false);
   const threshold = useThreshold();
 
+  useSyncLabelsRenderingStatus();
+
   const records = useRecords(pageReset);
   const { page, store } = useSpotlightPager({
     clearRecords: pageReset,
@@ -45,6 +49,16 @@ function Grid() {
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
   const setSample = fos.useExpandSample(store);
   const getFontSize = useFontSize(id);
+
+  const getCurrentActiveLabelFields = useRecoilCallback(
+    ({ snapshot }) =>
+      () => {
+        return snapshot
+          .getLoadable(fos.activeLabelFields({ modal: false }))
+          .getValue();
+      },
+    []
+  );
 
   const spotlight = useMemo(() => {
     /** SPOTLIGHT REFRESHER */
@@ -61,6 +75,7 @@ function Grid() {
         const looker = lookerStore.get(id.description);
         looker?.destroy();
         lookerStore.delete(id.description);
+        gridActivePathsLUT.delete(id.description);
       },
       detach: (id) => {
         const looker = lookerStore.get(id.description);
@@ -101,6 +116,18 @@ function Grid() {
         );
         lookerStore.set(id.description, looker);
         looker.attach(element, dimensions);
+
+        // initialize active paths tracker
+        const currentActiveLabelFields = getCurrentActiveLabelFields();
+        if (
+          currentActiveLabelFields &&
+          !gridActivePathsLUT.has(id.description)
+        ) {
+          gridActivePathsLUT.set(
+            id.description,
+            new Set(currentActiveLabelFields)
+          );
+        }
       },
       scrollbar: true,
       spacing,

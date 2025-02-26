@@ -345,8 +345,13 @@ async def _do_distinct_query(
     query: DistinctQuery,
 ):
     match = None
+    matcher = lambda v: False
     if query.search:
         match = query.search
+        matcher = lambda v: match not in v
+        if query.is_object_id_field:
+            match = match[:_TWENTY_FOUR]
+            matcher = lambda v: v < match
 
     try:
         result = await collection.distinct(query.path)
@@ -358,10 +363,13 @@ async def _do_distinct_query(
     exclude = set(query.exclude or [])
 
     for value in result:
+        if query.is_object_id_field:
+            value = str(value)
+
         if value in exclude:
             continue
 
-        if not value or (match and match not in value):
+        if not value or matcher(value):
             continue
 
         values.append(value)
@@ -386,25 +394,19 @@ async def _do_distinct_pipeline(
 
     pipeline.append({"$sort": {query.path: 1}})
 
+    match_search = None
     if query.search:
-        if query.is_object_id_field:
-            add = (_TWENTY_FOUR - len(query.search)) * "0"
-            value = {"$gte": ObjectId(f"{query.search}{add}")}
-        else:
-            value = Regex(f"^{query.search}")
-        pipeline.append({"$match": {query.path: value}})
+        match_search = _add_search(query)
+        pipeline.append(match_search)
 
-    pipeline += _match_arrays(dataset, query.path, False) + _unwind(
+    match_arrays = _match_arrays(dataset, query.path, False) + _unwind(
         dataset, query.path, False
     )
-
-    if query.search:
-        if query.is_object_id_field:
-            add = (_TWENTY_FOUR - len(query.search)) * "0"
-            value = {"$gte": ObjectId(f"{query.search}{add}")}
-        else:
-            value = Regex(f"^{query.search}")
-        pipeline.append({"$match": {query.path: value}})
+    if match_arrays:
+        pipeline += match_arrays
+        if match_search:
+            # match again after unwinding list fields
+            pipeline.append(match_search)
 
     pipeline += [{"$group": {"_id": f"${query.path}"}}]
 
@@ -421,6 +423,23 @@ async def _do_distinct_pipeline(
             break
 
     return values
+
+
+def _add_search(query: DistinctQuery):
+    # strip chars after 24
+    if query.is_object_id_field:
+        search = query.search[:_TWENTY_FOUR]
+        add = (_TWENTY_FOUR - len(search)) * "0"
+        if add:
+            search = f"{search}{add}"
+        try:
+            value = {"$gte": ObjectId(search)}
+        except:
+            # search is not valid
+            value = {"$lt": ObjectId("0" * _TWENTY_FOUR)}
+    else:
+        value = Regex(f"^{search}")
+    return {"$match": {query.path: value}}
 
 
 def _first(

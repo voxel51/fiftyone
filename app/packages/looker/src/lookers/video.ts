@@ -257,6 +257,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       addFrameBuffers: (range) => {
         this.state.buffers = addToBuffers(range, this.state.buffers);
       },
+      activePaths: this.state.options.activePaths,
       coloring: this.state.options.coloring,
       customizeColorSetting: this.state.options.customizeColorSetting,
       dispatchEvent: (event, detail) => this.dispatchEvent(event, detail),

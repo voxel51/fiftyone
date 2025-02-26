@@ -7,7 +7,7 @@ import KeypointOverlay from "../overlays/keypoint";
 import PolylineOverlay from "../overlays/polyline";
 import SegmentationOverlay from "../overlays/segmentation";
 import type { Buffers } from "../state";
-import { hasFrame, retrieveArrayBuffers } from "./utils";
+import { hasFrame, retrieveTransferables } from "./utils";
 
 describe("looker utilities", () => {
   it("determines frame availability given a buffer list", () => {
@@ -26,25 +26,25 @@ describe("looker utilities", () => {
 
   it("retrieves array buffers without errors", () => {
     expect(
-      retrieveArrayBuffers([new ClassificationsOverlay([])])
+      retrieveTransferables([new ClassificationsOverlay([])])
     ).toStrictEqual([]);
 
     expect(
-      retrieveArrayBuffers([new DetectionOverlay("ground_truth", {})])
+      retrieveTransferables([new DetectionOverlay("ground_truth", {})])
     ).toStrictEqual([]);
 
     expect(
-      retrieveArrayBuffers([
+      retrieveTransferables([
         new HeatmapOverlay("ground_truth", { id: "", tags: [] }),
       ])
     ).toStrictEqual([]);
 
     expect(
-      retrieveArrayBuffers([new KeypointOverlay("ground_truth", {})])
+      retrieveTransferables([new KeypointOverlay("ground_truth", {})])
     ).toStrictEqual([]);
 
     expect(
-      retrieveArrayBuffers([
+      retrieveTransferables([
         new PolylineOverlay("ground_truth", {
           id: "",
           closed: false,
@@ -56,13 +56,13 @@ describe("looker utilities", () => {
     ).toStrictEqual([]);
 
     expect(
-      retrieveArrayBuffers([
+      retrieveTransferables([
         new SegmentationOverlay("ground_truth", { id: "", tags: [] }),
       ])
     ).toStrictEqual([]);
 
     expect(
-      retrieveArrayBuffers([new TemporalDetectionOverlay([])])
+      retrieveTransferables([new TemporalDetectionOverlay([])])
     ).toStrictEqual([]);
   });
 });

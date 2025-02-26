@@ -33,7 +33,7 @@ DATASET_METADATA_FILENAMES = ("fiftyone.yml", "fiftyone.yaml")
 logger = logging.getLogger(__name__)
 
 
-def list_zoo_datasets(tags=None, source=None):
+def list_zoo_datasets(tags=None, source=None, license=None):
     """Lists the available datasets in the FiftyOne Dataset Zoo.
 
     Also includes any remotely-sourced zoo datasets that you've downloaded.
@@ -69,15 +69,18 @@ def list_zoo_datasets(tags=None, source=None):
             of tags
         source (None): only include datasets available via the given source or
             list of sources
+        license (None): only include datasets that are distributed under the
+            specified license or any of the specified list of licenses. Run
+            ``fiftyone zoo datasets list`` to see the available licenses
 
     Returns:
         a sorted list of dataset names
     """
-    datasets = _list_zoo_datasets(tags=tags, source=source)
+    datasets = _list_zoo_datasets(tags=tags, source=source, license=license)
     return sorted(datasets.keys())
 
 
-def _list_zoo_datasets(tags=None, source=None):
+def _list_zoo_datasets(tags=None, source=None, license=None):
     all_datasets, all_sources, _ = _get_zoo_datasets()
 
     if etau.is_str(source):
@@ -105,6 +108,19 @@ def _list_zoo_datasets(tags=None, source=None):
             name: zoo_dataset
             for name, zoo_dataset in datasets.items()
             if tags.issubset(zoo_dataset.tags)
+        }
+
+    if license is not None:
+        if etau.is_str(license):
+            licenses = {license}
+        else:
+            licenses = set(license)
+
+        datasets = {
+            name: zoo_dataset
+            for name, zoo_dataset in datasets.items()
+            if zoo_dataset.license
+            and licenses.intersection(zoo_dataset.license.split(","))
         }
 
     return datasets
@@ -1069,6 +1085,13 @@ class ZooDataset(object):
     def is_remote(self):
         """Whether the dataset is remotely-sourced."""
         return False
+
+    @property
+    def license(self):
+        """The license or list,of,licenses under which the dataset is
+        distributed, or None if unknown.
+        """
+        return None
 
     @property
     def tags(self):
