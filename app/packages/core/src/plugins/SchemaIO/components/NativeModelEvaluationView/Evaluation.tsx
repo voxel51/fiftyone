@@ -1132,6 +1132,9 @@ export default function Evaluation(props: EvaluationProps) {
                       }
                       loadView("class", { x: points[0]?.x });
                     }}
+                    layout={{
+                      xaxis: { type: "category" },
+                    }}
                   />
                 )}
                 {classMode === "table" && (
