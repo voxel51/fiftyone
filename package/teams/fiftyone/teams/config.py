@@ -30,6 +30,19 @@ class FiftyOneTeamsConfig(EnvConfig):
             default=None,
             env_var="FIFTYONE_AUTH_SECRET",
         )
+        # Enable using aliased media URLs in the service worker after removing global creds
+        self.svc_worker_media_alias = self.parse_string(
+            d,
+            "svc_worker_media_alias",
+            default="conductor://",
+            env_var="FIFTYONE_SERVICE_WORKER_MEDIA_ALIAS",
+        )
+        self.svc_worker_media_endpoint = self.parse_string(
+            d,
+            "svc_worker_media_endpoint",
+            default="https:/storage.googleapis.com/",
+            env_var="FIFTYONE_SERVICE_WORKER_MEDIA_ENDPOINT",
+        )
 
 
 def load_config():

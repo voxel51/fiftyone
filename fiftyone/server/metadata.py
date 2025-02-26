@@ -12,7 +12,6 @@ import shutil
 import struct
 import typing as t
 from enum import Enum
-from functools import reduce
 from pydash import get
 
 import aiofiles
@@ -35,6 +34,7 @@ import fiftyone.core.utils as fou
 from fiftyone.core.collections import SampleCollection
 from fiftyone.core.config import HTTPRetryConfig
 from fiftyone.server.cache import get_cached_media_url
+from fiftyone.teams import teams_config
 from fiftyone.utils.rerun import RrdFile
 from fiftyone.utils.utils3d import OrthographicProjectionMetadata
 
@@ -54,10 +54,8 @@ _metadata_cache = LRUCache(
     fo.config.signed_url_cache_size,
 )
 
-import os
-
-endpoint_alias = os.environ.get("FIFTYONE_SERVICE_WORKER_ALIAS")
-endpoint_domain = os.environ.get("FIFTYONE_SERVICE_WORKER_DOMAIN")
+_svc_worker_media_alias = teams_config.svc_worker_media_alias
+_svc_worker_media_endpoint = teams_config.svc_worker_media_endpoint
 
 
 @gql.enum
@@ -604,12 +602,10 @@ async def _create_media_urls(
             # Gracefully continue so that missing cloud credentials do not
             # cause fatal App errors
             url = path
-        if (
-            endpoint_domain
-            and endpoint_alias
-            and url.startswith(endpoint_alias)
-        ):
-            url = url.replace(endpoint_alias, endpoint_domain)
+
+        # If an alias is configured for the service worker,
+        # replace the alias in the url with the real endpoint
+        url = _resolve_media_alias_for_svc_worker(url)
         cache[path] = url
         media_urls.append(dict(field=field, url=url))
         if use_opm and opm_filepath == field:
@@ -651,3 +647,13 @@ def _get_additional_media_fields(
                 additional.append(f"{field_name}.{subfield_name}")
 
     return opm_field, detections_fields, additional
+
+
+def _resolve_media_alias_for_svc_worker(url):
+    if (
+        _svc_worker_media_alias
+        and _svc_worker_media_endpoint
+        and url.startswith(_svc_worker_media_alias)
+    ):
+        url = url.replace(_svc_worker_media_alias, _svc_worker_media_endpoint)
+    return url
