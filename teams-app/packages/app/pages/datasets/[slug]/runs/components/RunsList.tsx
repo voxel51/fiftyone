@@ -22,11 +22,7 @@ import {
 import { Stack, Typography } from "@mui/material";
 import { useRouter } from "next/router";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import {
-  usePreloadedQuery,
-  useQueryLoader,
-  useRelayEnvironment,
-} from "react-relay";
+import { usePreloadedQuery, useQueryLoader } from "react-relay";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import useRefresher, { RUNS_STATUS_REFRESHER_ID } from "../utils/useRefresher";
 import RunActions from "./RunActions";
@@ -41,7 +37,6 @@ const NON_FINAL_RUN_STATES = [
 ];
 
 function RunsListWithQuery(props) {
-  const environment = useRelayEnvironment();
   const { queryRef, refresh, refreshStatus } = props;
   const result = usePreloadedQuery<runsPageQueryT>(runsPageQuery, queryRef);
   const [vars, setVars] = useRecoilState(runsPageQueryDynamicVariables);
@@ -73,7 +68,7 @@ function RunsListWithQuery(props) {
 
   const tableColumns = useMemo(() => {
     if (showRunsForAllDatasets) {
-      return ["Operator", "Status", "Dataset", "Updated", "Run by", ""];
+      return ["Operator", "Dataset", "Status", "Updated", "Run by", ""];
     }
     return ["Operator", "Status", "Updated", "Run by", ""];
   }, [showRunsForAllDatasets]);
@@ -132,6 +127,14 @@ function RunsListWithQuery(props) {
             </Box>
           ),
         },
+        ...(showRunsForAllDatasets
+          ? [
+              {
+                id: `${id}-dataset`,
+                value: node.datasetName,
+              },
+            ]
+          : []),
         {
           id: `${id}-status`,
           Component: (
@@ -143,14 +146,6 @@ function RunsListWithQuery(props) {
             />
           ),
         },
-        ...(showRunsForAllDatasets
-          ? [
-              {
-                id: `${id}-dataset`,
-                value: node.datasetName,
-              },
-            ]
-          : []),
         {
           id: `${id}-timestamp`,
           Component: <Timestamp timestamp={timestamp} />,

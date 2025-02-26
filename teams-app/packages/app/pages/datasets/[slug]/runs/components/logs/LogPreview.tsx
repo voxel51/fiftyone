@@ -72,7 +72,7 @@ export default function LogPreview(props: {
     link.click();
     document.body.removeChild(link);
     sendNotification({
-      msg: "Log downloaded successfully",
+      msg: "Download started successfully",
       variant: "success",
     });
   };

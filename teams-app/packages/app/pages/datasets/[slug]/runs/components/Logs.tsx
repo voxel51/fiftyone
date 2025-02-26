@@ -4,6 +4,9 @@ import { Box, Button, Stack, Typography } from "@mui/material";
 import { getLogStatus, LOG_STATUS } from "../utils/getLogStatus";
 import LogPreview from "./logs/LogPreview";
 
+const UNAVAILABLE_LOGS =
+  "Run logs are not yet available, please check again after completion.";
+
 const URLLog = (props) => {
   const handleButtonClick = (url: string) => {
     window.open(url, "_blank", "noopener,noreferrer");
@@ -32,7 +35,7 @@ const URLLog = (props) => {
           sx={{ width: 50, height: 50 }}
         />
         <Typography variant="h6" color="secondary">
-          Logs are not available
+          {UNAVAILABLE_LOGS}
         </Typography>
         <Stack spacing={1} direction="row">
           <Button
@@ -75,7 +78,7 @@ const UnsetLog = () => {
           sx={{ width: 50, height: 50 }}
         />
         <Typography variant="h6" color="secondary">
-          Logs are not available
+          {UNAVAILABLE_LOGS}
         </Typography>
         <Stack spacing={1} direction="row">
           <Button
@@ -121,7 +124,7 @@ const PendingLog = () => {
           sx={{ width: 50, height: 50 }}
         />
         <Typography variant="h6" color="secondary">
-          Logs are not available
+          {UNAVAILABLE_LOGS}
         </Typography>
         <Stack spacing={1} direction="row">
           <Typography variant="body" color="secondary">
@@ -157,7 +160,7 @@ export const DefaultLog = (props) => {
           sx={{ width: 50, height: 50 }}
         />
         <Typography variant="h6" color="secondary">
-          Logs are not available
+          {UNAVAILABLE_LOGS}
         </Typography>
         {props?.message && (
           <Typography variant="title" color="secondary">
