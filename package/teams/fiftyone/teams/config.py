@@ -34,13 +34,13 @@ class FiftyOneTeamsConfig(EnvConfig):
         self.svc_worker_media_alias = self.parse_string(
             d,
             "svc_worker_media_alias",
-            default="conductor://",
+            default=None,
             env_var="FIFTYONE_SERVICE_WORKER_MEDIA_ALIAS",
         )
         self.svc_worker_media_endpoint = self.parse_string(
             d,
             "svc_worker_media_endpoint",
-            default="https:/storage.googleapis.com/",
+            default=None,
             env_var="FIFTYONE_SERVICE_WORKER_MEDIA_ENDPOINT",
         )
 
