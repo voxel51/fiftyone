@@ -37,3 +37,5 @@ operators:
   - delete_workspace
   - sync_last_modified_at
   - list_files
+  - reload_current_sample
+  - reload_sample

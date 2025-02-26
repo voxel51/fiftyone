@@ -35,7 +35,7 @@ import {
   executeOperator,
   listLocalAndRemoteOperators,
 } from "./operators";
-import { useShowOperatorIO } from "./state";
+import { useCurrentSample, useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
 
 //
@@ -1155,11 +1155,13 @@ export class SetActiveFields extends Operator {
   useHooks(): {
     setActiveFields: (fields: string[]) => void;
   } {
+    // NOTE: useRecoilValue(fos.modal) is always false here
+    const currentSample = useCurrentSample();
     return {
+      modal: !!currentSample,
       setActiveFields: useRecoilCallback(
         ({ snapshot, set }) =>
-          async (fields) => {
-            const modal = !!(await snapshot.getPromise(fos.modal));
+          async (fields, modal) => {
             set(fos.activeFields({ modal }), fields);
           }
       ),
@@ -1174,7 +1176,7 @@ export class SetActiveFields extends Operator {
     return new types.Property(inputs);
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    ctx.hooks.setActiveFields(ctx.params.fields);
+    ctx.hooks.setActiveFields(ctx.params.fields, ctx.hooks.modal);
   }
 }
 
@@ -1560,6 +1562,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(ShowSidebar);
     _registerBuiltInOperator(HideSidebar);
     _registerBuiltInOperator(ToggleSidebar);
+    _registerBuiltInOperator(UpdateAppSamples);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);

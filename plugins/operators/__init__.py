@@ -2467,3 +2467,5 @@ def register(p):
     p.register(DeleteWorkspace)
     p.register(SyncLastModifiedAt)
     p.register(ListFiles)
+    p.register(ReloadCurrentSample)
+    p.register(ReloadSample)

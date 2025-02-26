@@ -715,7 +715,7 @@ class Operations(object):
         Args:
             samples: an array of ``SampleUpdate`` objects to apply to the App
         """
-        return self._ctx.trigger("update_app_samples", {"samples": samples})
+        return self._ctx.trigger("update_app_samples", {"updates": samples})
 
 
 def _serialize_view(view):
