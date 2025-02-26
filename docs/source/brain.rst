@@ -449,6 +449,7 @@ another supported backend:
 -   **pinecone**: a :ref:`Pinecone backend <pinecone-integration>`
 -   **mongodb**: a :ref:`MongoDB backend <mongodb-integration>`
 -   **elasticsearch**: a :ref:`Elasticsearch backend <elasticsearch-integration>`
+-   **mosaic**: a :ref:`Databricks Mosaic AI backend <mosaic-integration>`
 -   **milvus**: a :ref:`Milvus backend <milvus-integration>`
 -   **lancedb**: a :ref:`LanceDB backend <lancedb-integration>`
 
@@ -835,6 +836,7 @@ The relevant classes for the builtin similarity backends are:
 -   **pinecone**: :class:`fiftyone.brain.internal.core.pinecone.PineconeSimilarityConfig`
 -   **mongodb**: :class:`fiftyone.brain.internal.core.mongodb.MongoDBSimilarityConfig`
 -   **elasticsearch**: a :ref:`fiftyone.brain.internal.core.elasticsearch.ElasticsearchSimilarityConfig`
+-   **mosaic**: :class:`fiftyone.brain.internal.core.mosaic.MosaicSimilarityConfig`
 -   **milvus**: :class:`fiftyone.brain.internal.core.milvus.MilvusSimilarityConfig`
 -   **lancedb**: :class:`fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig`
 
@@ -2122,6 +2124,9 @@ and the CLI:
                 },
                 "elasticsearch": {
                     "config_cls": "fiftyone.brain.internal.core.elasticsearch.ElasticsearchSimilarityConfig"
+                },
+                "mosaic": {
+                    "config_cls": "fiftyone.brain.internal.core.mosaic.MosaicSimilarityConfig"
                 },
                 "lancedb": {
                     "config_cls": "fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig"

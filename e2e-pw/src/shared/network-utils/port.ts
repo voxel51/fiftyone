@@ -64,6 +64,7 @@ export async function assertPortAvailableOrWaitWithTimeout(
     const available = await checkPort(port);
     if (available) {
       // Port appears available.
+      console.log(`Port ${port} is available.`);
       return;
     }
 

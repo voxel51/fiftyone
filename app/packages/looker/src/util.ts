@@ -449,6 +449,10 @@ export const createWorker = (
   dispatchEvent?: DispatchEvent,
   abortController?: AbortController
 ): Worker => {
+  if (typeof Worker === "undefined" || typeof window === "undefined") {
+    return null;
+  }
+
   let worker: Worker = null;
 
   const signal = abortController

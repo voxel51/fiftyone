@@ -46,7 +46,7 @@ export default class SegmentationOverlay<State extends BaseState>
     this.field = field;
     this.label = label;
 
-    if (!this.label.mask) {
+    if (!this.label.mask?.data) {
       return;
     }
 
@@ -62,6 +62,10 @@ export default class SegmentationOverlay<State extends BaseState>
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
+    if (!this.label.mask?.data) {
+      return CONTAINS.NONE;
+    }
+
     const {
       pixelCoordinates: [x, y],
       dimensions: [w, h],
@@ -77,7 +81,7 @@ export default class SegmentationOverlay<State extends BaseState>
       return;
     }
 
-    if (this.label.mask?.bitmap) {
+    if (this.label.mask?.bitmap?.width) {
       const [tlx, tly] = t(state, 0, 0);
       const [brx, bry] = t(state, 1, 1);
       const tmp = ctx.globalAlpha;
@@ -261,9 +265,12 @@ export default class SegmentationOverlay<State extends BaseState>
     return sizeBytesEstimate(this.label);
   }
 
-  public cleanup(): void {
+  public cleanup(setTargetsToNull = false): void {
     this.label.mask?.bitmap?.close();
-    this.targets = null;
+
+    if (setTargetsToNull) {
+      this.targets = null;
+    }
   }
 }
 

@@ -1,3 +1,16 @@
+export const DETECTION_EMBEDDED_DOC_TYPE = "fiftyone.core.labels.Detection";
+export const DETECTIONS_EMBEDDED_DOC_TYPE = "fiftyone.core.labels.Detections";
+export const SEGMENTATION_EMBEDDED_DOC_TYPE =
+  "fiftyone.core.labels.Segmentation";
+export const HEATMAP_EMBEDDED_DOC_TYPE = "fiftyone.core.labels.Heatmap";
+
+export const DENSE_LABEL_EMBEDDED_DOC_TYPES = [
+  DETECTION_EMBEDDED_DOC_TYPE,
+  DETECTIONS_EMBEDDED_DOC_TYPE,
+  SEGMENTATION_EMBEDDED_DOC_TYPE,
+  HEATMAP_EMBEDDED_DOC_TYPE,
+];
+
 export interface Field {
   ftype: string;
   dbField: string | null;
@@ -54,21 +67,29 @@ export function getCls(fieldPath: string, schema: Schema): string | undefined {
 
 export function getFieldsWithEmbeddedDocType(
   schema: Schema,
-  embeddedDocType: string
+  embeddedDocType: string | string[],
+  shouldRecurse = true
 ): Field[] {
   const result: Field[] = [];
 
   function recurse(schema: Schema) {
     for (const field of Object.values(schema ?? {})) {
-      if (field.embeddedDocType === embeddedDocType) {
+      if (Array.isArray(embeddedDocType)) {
+        if (embeddedDocType.includes(field.embeddedDocType)) {
+          result.push(field);
+        }
+      } else if (field.embeddedDocType === embeddedDocType) {
         result.push(field);
       }
       if (field.fields) {
-        recurse(field.fields);
+        if (shouldRecurse) {
+          recurse(field.fields);
+        }
       }
     }
   }
 
+  // need to call it once regardless of shouldRecurse
   recurse(schema);
   return result;
 }
@@ -90,4 +111,14 @@ export function doesSchemaContainEmbeddedDocType(
   }
 
   return recurse(schema);
+}
+
+export function getDenseLabelNames(schema: Schema): string[] {
+  const denseLabels = getFieldsWithEmbeddedDocType(
+    schema,
+    DENSE_LABEL_EMBEDDED_DOC_TYPES,
+    false
+  );
+
+  return denseLabels.map((label) => label.name);
 }

@@ -64,6 +64,10 @@ class MNISTDataset(TFDSDataset):
         return "mnist"
 
     @property
+    def license(self):
+        return "CC-BY-SA-3.0"
+
+    @property
     def tags(self):
         return ("image", "classification")
 
@@ -119,6 +123,10 @@ class FashionMNISTDataset(TFDSDataset):
     @property
     def name(self):
         return "fashion-mnist"
+
+    @property
+    def license(self):
+        return "MIT"
 
     @property
     def tags(self):
@@ -179,6 +187,10 @@ class CIFAR10Dataset(TFDSDataset):
         return "cifar10"
 
     @property
+    def license(self):
+        return None
+
+    @property
     def tags(self):
         return ("image", "classification")
 
@@ -235,6 +247,10 @@ class CIFAR100Dataset(TFDSDataset):
     @property
     def name(self):
         return "cifar100"
+
+    @property
+    def license(self):
+        return None
 
     @property
     def tags(self):
@@ -329,6 +345,10 @@ class ImageNet2012Dataset(TFDSDataset):
         return "imagenet-2012"
 
     @property
+    def license(self):
+        return "https://image-net.org/download"
+
+    @property
     def tags(self):
         return ("image", "classification", "manual")
 
@@ -403,6 +423,10 @@ class VOC2007Dataset(TFDSDataset):
         return "voc-2007"
 
     @property
+    def license(self):
+        return None
+
+    @property
     def tags(self):
         return ("image", "detection")
 
@@ -465,6 +489,10 @@ class VOC2012Dataset(TFDSDataset):
     @property
     def name(self):
         return "voc-2012"
+
+    @property
+    def license(self):
+        return None
 
     @property
     def tags(self):

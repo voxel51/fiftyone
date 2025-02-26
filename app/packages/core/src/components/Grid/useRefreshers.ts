@@ -4,6 +4,7 @@ import { LRUCache } from "lru-cache";
 import { useEffect, useMemo } from "react";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
+import { gridActivePathsLUT } from "../Sidebar/useDetectNewActiveLabelFields";
 import { gridAt, gridOffset, gridPage } from "./recoil";
 
 const MAX_LRU_CACHE_ITEMS = 510;
@@ -64,18 +65,20 @@ export default function useRefreshers() {
     return uuid();
   }, [layoutReset, pageReset]);
 
-  useEffect(
-    () =>
-      subscribe(({ event }, { reset }) => {
-        if (event === "fieldVisibility") return;
+  useEffect(() => {
+    const unsubscribe = subscribe(({ event }, { reset }) => {
+      if (event === "fieldVisibility") return;
 
-        // if not a modal page change, reset the grid location
-        reset(gridAt);
-        reset(gridPage);
-        reset(gridOffset);
-      }),
-    []
-  );
+      // if not a modal page change, reset the grid location
+      reset(gridAt);
+      reset(gridPage);
+      reset(gridOffset);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   const lookerStore = useMemo(() => {
     /** LOOKER STORE REFRESHER */
@@ -83,8 +86,9 @@ export default function useRefreshers() {
     /** LOOKER STORE REFRESHER */
 
     return new LRUCache<string, fos.Lookers>({
-      dispose: (looker) => {
+      dispose: (looker, id) => {
         looker.destroy();
+        gridActivePathsLUT.delete(id);
       },
       max: MAX_LRU_CACHE_ITEMS,
       noDisposeOnSet: true,
