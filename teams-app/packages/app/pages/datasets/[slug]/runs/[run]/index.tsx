@@ -78,8 +78,6 @@ function Run(props) {
     metadata,
   } = runData;
 
-  console.log("logsize", runData);
-
   const { operator_uri, params, ...ctxData } = context.request_params;
   const { inputs, outputs } = schemas;
   const { inputs: inputError, outputs: outputError } = errors;
