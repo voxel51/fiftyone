@@ -34,7 +34,6 @@ import fiftyone.core.utils as fou
 from fiftyone.core.collections import SampleCollection
 from fiftyone.core.config import HTTPRetryConfig
 from fiftyone.server.cache import get_cached_media_url
-from fiftyone.teams import teams_config
 from fiftyone.utils.rerun import RrdFile
 from fiftyone.utils.utils3d import OrthographicProjectionMetadata
 
@@ -54,8 +53,8 @@ _metadata_cache = LRUCache(
     fo.config.signed_url_cache_size,
 )
 
-_svc_worker_media_alias = teams_config.svc_worker_media_alias
-_svc_worker_media_endpoint = teams_config.svc_worker_media_endpoint
+_svc_worker_media_alias = fo.config.svc_worker_media_alias
+_svc_worker_media_endpoint = fo.config.svc_worker_media_endpoint
 
 
 @gql.enum
