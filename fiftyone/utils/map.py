@@ -72,6 +72,6 @@ def update_samples(
     backend_instance = MapBackendFactory.get_backend(backend)
 
     # Execute map_samples with the chosen backend
-    return backend_instance.map_samples(
+    return backend_instance.update_samples(
         sample_collection, map_fcn, save, num_workers, shard_method, progress
     )

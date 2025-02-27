@@ -1,5 +1,6 @@
 from enum import Enum
 
+from .map import MapBackend
 from .sequential import SequentialMapBackend
 
 
@@ -23,16 +24,36 @@ class MapBackendType(Enum):
 
 
 class MapBackendFactory:
-    """Factory for creating MapBackend instances based on a backend name."""
+    """Factory for creating MapBackend instances based on backend type."""
 
     _backends = {
-        "sequential": SequentialMapBackend,
+        MapBackendType.sequential: SequentialMapBackend,
     }
 
     @classmethod
-    def get_backend(cls, backend_name="sequential"):
-        """Returns an instance of the requested backend."""
-        backend_class = cls._backends.get(backend_name.lower())
-        if backend_class is None:
-            raise ValueError(f"Unknown map_samples backend '{backend_name}'")
-        return backend_class()
+    def get_backend(
+        cls, backend: str | MapBackendType = MapBackendType.sequential
+    ) -> MapBackend:
+        """
+        Returns an instance of the requested backend.
+
+        Args:
+            backend: Backend execution strategy.
+                - If a string, it is converted to `MapBackendType`.
+                - If not provided, defaults to `sequential`.
+
+        Returns:
+            MapBackend: An instance of the selected backend.
+
+        Raises:
+            ValueError: If the backend is unknown.
+        """
+        # Convert string backend to Enum
+        if isinstance(backend, str):
+            backend = MapBackendType.from_string(backend)
+
+        # Ensure backend is valid
+        if backend not in cls._backends:
+            raise ValueError(f"Unknown map_samples backend '{backend}'")
+
+        return cls._backends[backend]()
