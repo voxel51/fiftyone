@@ -1,13 +1,10 @@
 import { ExternalLinkIcon, SearchIcon } from "@fiftyone/teams-components";
-import {
-  CONSTANT_VARIABLES,
-  runsLogQuery,
-  runsLogQueryT,
-} from "@fiftyone/teams-state";
+import { CONSTANT_VARIABLES, runsLogQuery } from "@fiftyone/teams-state";
 import { Box, Button, Stack, Typography } from "@mui/material";
 import { useEffect } from "react";
-import { usePreloadedQuery, useQueryLoader } from "react-relay";
+import { useQueryLoader } from "react-relay";
 import { getLogStatus, LOG_STATUS } from "../utils/getLogStatus";
+import LogPreview from "./logs/LogPreview";
 
 const UNAVAILABLE_LOGS =
   "Run logs are not yet available, please check again after completion.";
@@ -178,40 +175,37 @@ export default function Logs(props) {
   const [logQueryRef, loadLogs] = useQueryLoader(runsLogQuery);
 
   useEffect(() => {
-    if (!logQueryRef) {
-      loadLogs({ run: runData.id }, { fetchPolicy: "network-only" });
-    }
+    loadLogs({ run: runData.id }, { fetchPolicy: "store-and-network" });
   }, [runData.id]);
 
   if (!logQueryRef) {
     return <div>Loading logs...</div>;
   }
 
-  return <LogsContent queryRef={logQueryRef} />;
+  return (
+    <LogsContent
+      logQueryRef={logQueryRef}
+      logStatus={logStatus}
+      runData={runData}
+    />
+  );
 }
 
-function LogsContent({ queryRef }) {
-  console.log("queryRef", queryRef);
-  const logData = usePreloadedQuery<runsLogQueryT>(runsLogQuery, queryRef);
-
-  console.log("logData", logData);
-
-  return <div>234</div>;
-
+function LogsContent({ logQueryRef, logStatus, runData }) {
   switch (logStatus) {
     case LOG_STATUS.PENDING:
       return <PendingLog />;
     case LOG_STATUS.URL_LINK:
-      return <URLLog runLink={props.runData.runLink} />;
+      return <URLLog runLink={runData.runLink} />;
     case LOG_STATUS.UNSET:
       return <UnsetLog />;
     case LOG_STATUS.UPLOAD_ERROR:
-      return <DefaultLog message={props.runData.logUploadError} />;
+      return <DefaultLog message={runData.logUploadError} />;
     case LOG_STATUS.UPLOAD_SUCCESS:
       return <DefaultLog />;
-    // return <LogPreview {...props} />;
+    // return <LogPreview queryRef={queryRef} />;
     case LOG_STATUS.UPLOAD_SUCCESS_LARGE_FILE:
-      return <UnsetLog isLargeFile={true} logPath={props.runData.logPath} />;
+      return <UnsetLog isLargeFile={true} logPath={runData.logPath} />;
   }
   return <DefaultLog />;
 }

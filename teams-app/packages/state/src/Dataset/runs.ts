@@ -170,10 +170,10 @@ export const runsItemQuery = graphql`
     }
   }
 `;
-
 export const runsLogQuery = graphql`
   query runsLogQuery($run: String!) {
     delegatedOperation(operationId: $run) {
+      id
       logConnection(first: 200000, after: null) {
         pageInfo {
           hasNextPage
@@ -190,6 +190,30 @@ export const runsLogQuery = graphql`
           cursor
         }
       }
+      completedAt
+      context
+      datasetId
+      failedAt
+      operator
+      label
+      pinned
+      queuedAt
+      result
+      runBy {
+        name
+        id
+      }
+      runState
+      scheduledAt
+      startedAt
+      status
+      runLink
+      priority
+      logPath
+      logUrl
+      logSize
+      logUploadError
+      metadata
     }
   }
 `;
