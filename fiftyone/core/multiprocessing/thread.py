@@ -1,5 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 
+import fiftyone.core.utils as fou
+
 from .map import MapBackend
 
 
@@ -17,7 +19,7 @@ class ThreadMapBackend(MapBackend):
         shard_method="id",
         progress=None,
     ):
-        max_workers = num_workers or min(len(sample_collection), 8)
+        max_workers = fou.recommend_thread_pool_workers(num_workers)
         results = {}
 
         def process_sample(sample):
