@@ -1,23 +1,42 @@
+import { useNotification } from "@fiftyone/state/src/hooks";
 import { ExternalLinkIcon, SearchIcon } from "@fiftyone/teams-components";
 import { CONSTANT_VARIABLES, runsLogQuery } from "@fiftyone/teams-state";
-import { Box, Button, Stack, Typography } from "@mui/material";
+import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { useEffect } from "react";
 import { PreloadedQuery, useQueryLoader } from "react-relay";
+import { OperationType } from "relay-runtime";
 import { getLogStatus, LOG_STATUS } from "../utils/getLogStatus";
 import LogPreview from "./logs/LogPreview";
-import { OperationType } from "relay-runtime";
 
 type DefaultLog = {
   message?: string; // right underneath the logs not available message
   button?: {
     message: string; // what to display in the button
     url: string;
+    icon: "externalLink" | "download";
   };
 };
 
 export const DefaultLog = (props: DefaultLog) => {
+  const [_, sendNotification] = useNotification();
   const handleButtonClick = (url: string) => {
     window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleDownload = (url: string) => {
+    const link = document.createElement("a");
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    sendNotification({
+      message: "Downloading logs...",
+      variant: "success",
+    });
   };
 
   return (
@@ -56,8 +75,18 @@ export const DefaultLog = (props: DefaultLog) => {
           {props.button.url ? (
             <Button
               variant="outlined"
-              endIcon={<ExternalLinkIcon viewBox="0 0 17 16" />}
-              onClick={() => handleButtonClick(props.button.url)}
+              endIcon={
+                props.button.icon === "download" ? (
+                  <CloudDownloadIcon />
+                ) : (
+                  <ExternalLinkIcon viewBox="0 0 17 16" />
+                )
+              }
+              onClick={() =>
+                props.button.icon === "download"
+                  ? handleDownload(props.button.url)
+                  : handleButtonClick(props.button.url)
+              }
             >
               {props.button.message}
             </Button>
@@ -106,12 +135,16 @@ function LogsContent({ logQueryRef, logStatus, runData }: LogsContent) {
   switch (logStatus) {
     case LOG_STATUS.PENDING:
       return (
-        <DefaultLog message="The operation has not completed yet. Please try again later." />
+        <DefaultLog message="Logs not available yet. Please check again after run has completed" />
       );
     case LOG_STATUS.URL_LINK:
       return (
         <DefaultLog
-          button={{ url: runData.runLink, message: "Open run link" }}
+          button={{
+            url: runData.runLink,
+            message: "Open run link",
+            icon: "externalLink",
+          }}
         />
       );
     case LOG_STATUS.UNSET:
@@ -119,6 +152,7 @@ function LogsContent({ logQueryRef, logStatus, runData }: LogsContent) {
       return (
         <DefaultLog
           button={{
+            icon: "externalLink",
             url: CONSTANT_VARIABLES.HELM_DOC_URL,
             message: "Configure logs",
           }}
@@ -129,7 +163,16 @@ function LogsContent({ logQueryRef, logStatus, runData }: LogsContent) {
     case LOG_STATUS.UPLOAD_SUCCESS:
       return <LogPreview queryRef={logQueryRef} />;
     case LOG_STATUS.UPLOAD_SUCCESS_LARGE_FILE:
-      return <UnsetLog isLargeFile={true} logPath={runData.logPath} />;
+      return (
+        <DefaultLog
+          message="Log size too large."
+          button={{
+            url: runData.logUrl,
+            message: "Download logs",
+            icon: "download",
+          }}
+        />
+      );
   }
   return <DefaultLog />;
 }

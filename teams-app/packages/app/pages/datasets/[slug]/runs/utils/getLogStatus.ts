@@ -4,15 +4,8 @@ import isUrl from "./isUrl";
 
 type RunData = runsItemQuery$dataT["delegatedOperation"];
 export const getLogStatus = (runData: RunData) => {
-  const {
-    logUrl,
-    logUploadError,
-    runState,
-    result,
-    runLink,
-    logConnection,
-    logSize,
-  } = runData;
+  const { logUrl, logUploadError, runState, result, runLink, logSize } =
+    runData;
 
   const runHasFinished = [
     OPERATOR_RUN_STATES.COMPLETED,
