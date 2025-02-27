@@ -1,8 +1,6 @@
-import { useNotification } from "@fiftyone/hooks";
 import { TableSkeleton } from "@fiftyone/teams-components";
 import { runsLogQuery, runsLogQuery$dataT } from "@fiftyone/teams-state";
-import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
-import { Box, Button, Typography, useTheme } from "@mui/material";
+import { useTheme } from "@mui/material";
 import Paper from "@mui/material/Paper";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -21,7 +19,6 @@ export default function LogPreview({ queryRef }) {
     queryRef
   ) as runsLogQuery$dataT;
   const logConnection = data.delegatedOperation.logConnection;
-  const [_, sendNotification] = useNotification();
 
   const processedLogs = useMemo(() => {
     if (!logConnection?.edges || !Array.isArray(logConnection.edges)) return [];
