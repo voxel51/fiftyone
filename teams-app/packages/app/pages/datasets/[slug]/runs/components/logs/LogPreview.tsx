@@ -1,6 +1,9 @@
+import { useNotification } from "@fiftyone/state/src/hooks";
 import { TableSkeleton } from "@fiftyone/teams-components";
 import { runsLogQuery, runsLogQuery$dataT } from "@fiftyone/teams-state";
-import { useTheme } from "@mui/material";
+import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -8,6 +11,8 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
+import Typography from "@mui/material/Typography";
+import useTheme from "@mui/material/styles/useTheme";
 import React, { Suspense, useCallback, useMemo } from "react";
 import { usePreloadedQuery } from "react-relay";
 import { TableComponents, TableVirtuoso } from "react-virtuoso";
@@ -19,7 +24,23 @@ export default function LogPreview({ queryRef }) {
     queryRef
   ) as runsLogQuery$dataT;
   const logConnection = data.delegatedOperation.logConnection;
+  const [_, sendNotification] = useNotification();
 
+  const handleDownload = useCallback(() => {
+    const link = document.createElement("a");
+    link.href = data.delegatedOperation.logUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    sendNotification({
+      message: "Downloading logs...",
+      variant: "success",
+    });
+  }, [data.delegatedOperation.logUrl]);
+
+  // skip logs if date, level, content are all empty
+  // if one line have date and level, but no content, the second line have no
+  // date or level, but has content, combine the two lines
   const processedLogs = useMemo(() => {
     if (!logConnection?.edges || !Array.isArray(logConnection.edges)) return [];
 
@@ -56,7 +77,7 @@ export default function LogPreview({ queryRef }) {
       // Add the valid log entry
       acc.push({ id: idCounter++, date, level, content });
 
-      return acc;
+      return acc as LogData[];
     }, []);
   }, [logConnection.edges]);
 
@@ -65,9 +86,31 @@ export default function LogPreview({ queryRef }) {
   }
 
   return (
-    <Suspense fallback={<TableSkeleton />}>
-      <VirtualLogTable data={processedLogs} />
-    </Suspense>
+    <div>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={1}
+      >
+        <Typography variant="h6">
+          {logConnection.edges.length === 0
+            ? "Logs Preview is not available"
+            : "Logs"}
+        </Typography>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<CloudDownloadIcon />}
+          onClick={handleDownload}
+        >
+          Download Logs
+        </Button>
+      </Box>
+      <Suspense fallback={<TableSkeleton />}>
+        <VirtualLogTable data={processedLogs} />
+      </Suspense>
+    </div>
   );
 }
 
@@ -84,14 +127,14 @@ interface ColumnData {
   width?: number;
 }
 
-const VirtualLogTable = ({ data }) => {
+const VirtualLogTable = ({ data }: { data: LogData[] }) => {
   const { palette } = useTheme();
 
   const columns: ColumnData[] = useMemo(
     () => [
       { width: 160, label: "Timestamp", dataKey: "date" },
       { width: 80, label: "Level", dataKey: "level" },
-      { width: 500, label: "Message", dataKey: "content" },
+      { label: "Message", dataKey: "content" },
     ],
     []
   );
@@ -116,7 +159,7 @@ const VirtualLogTable = ({ data }) => {
       <Table
         {...props}
         size="small"
-        sx={{ borderCollapse: "separate", tableLayout: "fixed" }}
+        sx={{ borderCollapse: "separate", tableLayout: "fixed", width: "100%" }}
       />
     ),
     TableHead: React.forwardRef<HTMLTableSectionElement>((props, ref) => (
@@ -136,13 +179,15 @@ const VirtualLogTable = ({ data }) => {
           <TableCell
             key={column.dataKey}
             variant="head"
-            style={{
+            sx={{
               width: column.width,
               fontWeight: "bold",
               color: palette.primary.main,
               fontSize: "0.875rem",
+              width: column.widht ?? "auto",
+              backgroundColor: "background.paper",
+              flexGrow: column.dataKey === "content" ? 1 : 0,
             }}
-            sx={{ backgroundColor: "background.paper" }}
           >
             {column.label}
           </TableCell>
@@ -157,7 +202,14 @@ const VirtualLogTable = ({ data }) => {
     (_index: number, row: LogData) => (
       <>
         {columns.map((column) => {
-          let cellStyle = { fontWeight: "normal", fontSize: "0.9rem" };
+          let cellStyle = {
+            fontWeight: "normal",
+            fontSize: "0.9rem",
+            minWidth: column.width ?? 0,
+            maxWidth: column.dataKey === "content" ? "auto" : column.width,
+            overflow: "hidden",
+            flexGrow: column.dataKey === "content" ? 1 : 0,
+          };
           if (column.dataKey === "level") {
             cellStyle = {
               ...cellStyle,
