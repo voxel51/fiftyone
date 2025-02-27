@@ -1,3 +1,5 @@
+from typing import Iterator, Any
+
 from .map import MapBackend
 
 
@@ -12,7 +14,7 @@ class SequentialMapBackend(MapBackend):
         num_workers=None,
         shard_method="id",
         progress=None,
-    ):
+    ) -> Iterator[Any]:
         for sample in sample_collection.iter_samples(
             progress=progress, autosave=save
         ):
