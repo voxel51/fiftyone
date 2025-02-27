@@ -19,7 +19,7 @@ def get_item_quickstart(sample):
     image = Image.open(sample["filepath"])
     og_wh = np.array([image.width, image.height])
     image = tv_tensors.Image(image)
-    detections = sample["detections.detections"]
+    detections = sample["ground_truth.detections"]
     if detections is None:
         detections = []
     detections_tensor = (
@@ -43,7 +43,7 @@ def get_item_cached_quickstart(sample_dict):
     image = Image.open(sample_dict["filepath"])
     og_wh = np.array([image.width, image.height])
     image = tv_tensors.Image(image)
-    detections = sample_dict["detections.detections.bounding_box"]
+    detections = sample_dict["ground_truth.detections.bounding_box"]
     if detections is None:
         detections = []
     detections_tensor = (
@@ -56,7 +56,7 @@ def get_item_cached_quickstart(sample_dict):
         format=tv_tensors.BoundingBoxFormat("XYWH"),
         canvas_size=image.shape[-2:],
     )
-    res["label"] = sample_dict["detections.detections.label"]
+    res["label"] = sample_dict["ground_truth.detections.label"]
     res["id"] = sample_dict["id"]
     image, res = augmentations_quickstart(image, res)
     return image, res
