@@ -8,6 +8,7 @@ PyTorch utilities.
 import logging
 import itertools
 import multiprocessing
+from multiprocessing.managers import SyncManager
 import os
 import sys
 from typing import Callable, Any, Optional, List
@@ -1694,6 +1695,119 @@ class FiftyOneTorchDataset(Dataset):
         return len(self.ids)
 
 
+class FiftyOneTorchDatasetLazy(Dataset):
+    def __init__(
+        self,
+        samples: focol.SampleCollection,
+        get_item: Callable[fos.SampleView, Any],
+        cache_field_names: list[str] = None,
+        local_process_group=None,
+    ):
+        super().__init__()
+
+        if samples._dataset.persistent is False:
+            raise ValueError(
+                "This class only works with persistent datasets. Please set your dataset to be persistent."
+            )
+
+        start_method = multiprocessing.get_start_method(allow_none=True)
+        if start_method not in ["spawn", "forkserver"]:
+            warnings.warn(
+                f"Your start method is {start_method}. It is recommended to use 'spawn' or 'forkserver' with this class."
+            )
+
+        self.name = samples._dataset.name
+        # either a whole dataset or a view
+        self.stages = (
+            samples._serialize()
+            if isinstance(samples, fov.DatasetView)
+            else None
+        )
+        self.get_item = get_item
+
+        self.cached_fields = None
+        self.cache_field_names = cache_field_names
+
+        self._len = len(samples)
+
+        # initialized in worker
+        self._dataset = None
+        self._samples = None
+        self.samples_list = SharedLazySamples(
+            samples, local_process_group, cache_field_names
+        )
+
+    def __len__(self):
+        return self._len
+
+    @property
+    def samples(self):
+        if self._samples == None:
+            self._load_samples()
+        return self._samples
+
+    # called on every worker init
+    @staticmethod
+    def worker_init(worker_id):
+        torch_dataset_object = torch.utils.data.get_worker_info().dataset
+
+        # if the samples are already loaded, fail loudly
+        if torch_dataset_object._samples is not None:
+            raise ValueError(
+                "Worker init called after samples have been loaded. This should not happen. "
+                "This will fail anyways if using 'spawn' or 'forkserver' and can lead"
+                " to unexpected behavior if using 'fork'."
+            )
+
+        torch_dataset_object._load_samples()
+
+        torch_dataset_object.samples_list.worker_init(
+            torch_dataset_object._samples
+        )
+
+    @staticmethod
+    def distributed_init(dataset_name, local_process_group, view_name=None):
+        """Function to be called by each trainer process in DDP training.
+        Facilitates communication between processes. Safely creates database connection for each trainer.
+
+        This function should be called at the beginning of the training script.
+
+        Args:
+            dataset_name: the name of the dataset to load
+            local_process_group: the process group with all the processes running the main training script
+            view_name (None): the name of the view to load. If None, the whole dataset is loaded.
+
+        Returns:
+            The loaded :class:`fiftyone.core.dataset.Dataset` or :class:`fiftyone.core.view.DatasetView`
+        """
+        import fiftyone as fo
+
+        # make sure all processes have the same authkey
+        local_broadcast_process_authkey(local_process_group)
+
+        for i in range(get_local_size(local_process_group)):
+            if get_local_rank(local_process_group) == i:
+                # load the dataset
+                dataset = fo.load_dataset(dataset_name)
+                if view_name is not None:
+                    dataset = dataset.load_saved_view(view_name)
+                torch.distributed.barrier(local_process_group)
+
+        return dataset
+
+    def _load_samples(self):
+        import fiftyone as fo
+
+        self._dataset = fo.load_dataset(self.name)
+        if self.stages is not None:
+            self._samples = fov.DatasetView._build(self._dataset, self.stages)
+        else:
+            self._samples = self._dataset
+
+    def __getitem__(self, idx):
+        return self.get_item(self.samples_list[idx])
+
+
 class TorchImageDataset(Dataset):
     """A :class:`torch:torch.utils.data.Dataset` of images.
 
@@ -2341,6 +2455,66 @@ class TorchShmSerializedList(TorchSerializedList):
                 f"Worker {get_rank()} obtains a dataset of length="
                 f"{len(self)} from its local leader."
             )
+
+
+class SharedLazySamples:
+    def __init__(self, samples, local_process_group, cache_field_names=["id"]):
+        self.cache_field_names = cache_field_names
+        if "id" not in cache_field_names:
+            cache_field_names.append("id")
+
+        # just a quick check, saves headaches
+        for field_name in cache_field_names:
+            if not samples.has_field(field_name):
+                raise ValueError(
+                    f'Can\'t find field with name "{field_name}" in samples passed.'
+                )
+
+    def worker_init(self, samples, local_process_group):
+
+        if get_local_rank(local_process_group) == 0:
+            self.manager = SyncManager(address=("localhost", 0))
+            self.manager.start()
+            _ = local_scatter(
+                [
+                    # pylint: disable=no-member
+                    self.manager.address
+                    for i in range(get_local_size(local_process_group))
+                ],
+                local_process_group,
+            )
+            self.samples_list = self.manager.list(
+                [None for i in range(len(samples))]
+            )
+            _ = local_scatter(
+                [
+                    self.samples_list
+                    for i in range(get_local_size(local_process_group))
+                ],
+                local_process_group,
+            )
+
+        else:
+            address = local_scatter(None, local_process_group)
+            # pylint: disable=no-member
+            self.manager = SyncManager(address=address)
+            self.manager.connect()
+            self.samples_list = local_scatter(None, local_process_group)
+
+        self.samples = samples
+
+    def __getitem__(self, idx):
+        val = self.samples_list.get(idx)
+        if val is not None:
+            return val
+
+        sample_dict = self.manager.dict()
+        for field_name in self.cache_field_names:
+            sample_dict.update(
+                field_name, self.samples[idx : idx + 1].first()[field_name]
+            )
+        self.samples_list[idx] = sample_dict
+        return sample_dict
 
 
 def get_local_size(local_process_group) -> int:
