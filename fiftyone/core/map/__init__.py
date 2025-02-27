@@ -10,8 +10,6 @@ import types
 from .factory import MapBackendFactory
 from .map import MapBackend
 from .sequential import SequentialMapBackend
-from .thread import ThreadMapBackend
-from .process import ProcessMapBackend
 
 
 # This enables Sphinx refs to directly use paths imported here
