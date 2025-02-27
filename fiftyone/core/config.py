@@ -244,6 +244,12 @@ class FiftyOneConfig(EnvConfig):
         self.timezone = self.parse_string(
             d, "timezone", env_var="FIFTYONE_TIMEZONE", default=None
         )
+        self.default_map_workers = self.parse_int(
+            d,
+            "default_map_workers",
+            env_var="FIFTYONE_DEFAULT_MAP_WORKERS",
+            default=None,
+        )
         self.max_thread_pool_workers = self.parse_int(
             d,
             "max_thread_pool_workers",
