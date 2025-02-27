@@ -27,10 +27,6 @@ def map_samples(
     Returns:
         Iterator[Any]: Processed sample results.
     """
-    # Convert backend to Enum if given as a string
-    if isinstance(backend, str):
-        backend = MapBackendType.from_string(backend)
-
     # Get the correct backend implementation
     backend_instance = MapBackendFactory.get_backend(backend)
 
@@ -61,10 +57,6 @@ def update_samples(
         progress (None): Whether to show progress bar.
         backend (MapBackendType.sequential): Backend execution strategy.
     """
-    # Convert backend to Enum if given as a string
-    if isinstance(backend, str):
-        backend = MapBackendType.from_string(backend)
-
     # Get the correct backend implementation
     backend_instance = MapBackendFactory.get_backend(backend)
 
