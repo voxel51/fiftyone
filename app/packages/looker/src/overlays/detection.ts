@@ -73,7 +73,6 @@ export default class DetectionOverlay<
       return;
     }
 
-    console.log(this.label.renderStatus);
     if (
       this.label.mask?.bitmap?.width &&
       this.label.renderStatus === "painted"

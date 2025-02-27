@@ -229,20 +229,6 @@ export default function useLookerCache<
       },
 
       /**
-       * Update the instance
-       *
-       * @param {string} key - the instance key
-       * @param {T} instance - the instance
-       * @returns {T} the instance
-       */
-      update: (key: string, instance: T) => {
-        if (!hidden.has(key)) {
-          throw new Error("no instance hidden");
-        }
-        hidden.set(key, { dispose: true, instance });
-      },
-
-      /**
        * Hide frozen instances
        */
       unfreeze: () => {
