@@ -1,4 +1,3 @@
-import { useNotification } from "@fiftyone/state/src/hooks";
 import { TableSkeleton } from "@fiftyone/teams-components";
 import { runsLogQuery, runsLogQuery$dataT } from "@fiftyone/teams-state";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
@@ -17,6 +16,7 @@ import React, { Suspense, useCallback, useMemo } from "react";
 import { usePreloadedQuery } from "react-relay";
 import { TableComponents, TableVirtuoso } from "react-virtuoso";
 import { DefaultLog } from "../Logs";
+import { useNotification } from "@fiftyone/hooks";
 
 export default function LogPreview({ queryRef }) {
   const data = usePreloadedQuery<runsLogQuery$dataT>(
@@ -33,7 +33,7 @@ export default function LogPreview({ queryRef }) {
     link.click();
     document.body.removeChild(link);
     sendNotification({
-      message: "Downloading logs...",
+      msg: "Logs download started",
       variant: "success",
     });
   }, [data.delegatedOperation.logUrl]);
@@ -184,7 +184,7 @@ const VirtualLogTable = ({ data }: { data: LogData[] }) => {
               fontWeight: "bold",
               color: palette.primary.main,
               fontSize: "0.875rem",
-              width: column.widht ?? "auto",
+              width: column.width ?? "auto",
               backgroundColor: "background.paper",
               flexGrow: column.dataKey === "content" ? 1 : 0,
             }}

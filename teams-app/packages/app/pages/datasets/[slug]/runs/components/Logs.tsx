@@ -1,4 +1,4 @@
-import { useNotification } from "@fiftyone/state/src/hooks";
+import { useNotification } from "@fiftyone/hooks";
 import { ExternalLinkIcon, SearchIcon } from "@fiftyone/teams-components";
 import { CONSTANT_VARIABLES, runsLogQuery } from "@fiftyone/teams-state";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
@@ -15,7 +15,7 @@ import LogPreview from "./logs/LogPreview";
 type DefaultLog = {
   message?: string; // right underneath the logs not available message
   button?: {
-    message: string; // what to display in the button
+    message: string; // button underneath the message
     url: string;
     icon: "externalLink" | "download";
   };
@@ -34,7 +34,7 @@ export const DefaultLog = (props: DefaultLog) => {
     link.click();
     document.body.removeChild(link);
     sendNotification({
-      message: "Downloading logs...",
+      msg: "Logs download started",
       variant: "success",
     });
   };

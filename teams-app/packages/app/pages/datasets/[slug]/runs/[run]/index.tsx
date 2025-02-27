@@ -10,13 +10,12 @@ import {
   BackButton,
   Box,
   Timestamp,
+  CodeBlock,
 } from "@fiftyone/teams-components";
 import {
   VIEW_DATASET,
   runsItemQuery,
   runsItemQueryT,
-  runsLogQuery,
-  runsLogQueryT,
 } from "@fiftyone/teams-state";
 import {
   AUTO_REFRESH_INTERVAL_IN_SECONDS,
@@ -27,11 +26,11 @@ import {
 import * as fou from "@fiftyone/utilities";
 import { Stack, Tab, TabProps, Tabs, Typography } from "@mui/material";
 import withRelay from "lib/withRelay";
-import { capitalize, get } from "lodash";
+import { capitalize, get, omit } from "lodash";
 import { useEffect, useState } from "react";
-import { usePreloadedQuery, useQueryLoader } from "react-relay";
+import { usePreloadedQuery } from "react-relay";
 import DatasetNavigation from "../../components/navigation";
-import Logs from "../components/Logs";
+import Logs, { DefaultLog } from "../components/Logs";
 import RunActions from "../components/RunActions";
 import RunLabel from "../components/RunLabel";
 import RunStatus from "../components/RunStatus";
@@ -39,6 +38,7 @@ import RunsPin from "../components/RunsPin";
 import formatCtx from "../utils/formatCtx";
 import getTimestamp from "../utils/getTimestamp";
 import RunIO, { IOType } from "./components/RunIO";
+import RunView from "./components/RunView";
 
 const { QUEUED, SCHEDULED, RUNNING, COMPLETED, FAILED } = OPERATOR_RUN_STATES;
 
@@ -51,12 +51,10 @@ function Run(props) {
     preloadedQuery
   );
   const runData = result.delegatedOperation;
-
   const timestamp = getTimestamp(runData);
   const [tab, setTab] = useState("inputs");
   const [schemas, setSchemas] = useState<{ inputs?: any; outputs?: any }>({});
   const [errors, setErrors] = useState<{ inputs?: Error; outputs?: Error }>({});
-  const [logQueryRef, loadLogs] = useQueryLoader(runsLogQuery);
 
   const {
     label,
@@ -175,7 +173,46 @@ function Run(props) {
                 {runState === RUNNING ? "Started" : capitalize(runState)}{" "}
                 <Timestamp timestamp={timestamp} />
               </Typography>
+              {runState !== SCHEDULED && scheduledAt && (
+                <Typography color="text.tertiary">
+                  Scheduled{" "}
+                  <Timestamp timestamp={scheduledAt} color="text.tertiary" />
+                </Typography>
+              )}
+              {runState !== QUEUED && queuedAt && (
+                <Typography color="text.tertiary">
+                  Queued{" "}
+                  <Timestamp timestamp={queuedAt} color="text.tertiary" />
+                </Typography>
+              )}
+              {EXITED_STATES.includes(runState) && (
+                <Typography color="text.tertiary">
+                  Started{" "}
+                  <Timestamp timestamp={startedAt} color="text.tertiary" />
+                </Typography>
+              )}
             </Stack>
+            {(runLink || logUrl) &&
+              showOrchestrators &&
+              (runLink ? (
+                <Link
+                  href={runLink}
+                  target="_blank"
+                  color="secondary"
+                  sx={{
+                    maxWidth: "80vw",
+                    overflow: "hidden",
+                    whiteSpace: "nowrap",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {runLink}
+                </Link>
+              ) : (
+                <Typography color="text.tertiary">
+                  {runLink || logUrl}
+                </Typography>
+              ))}
           </Stack>
           <Box style={{ marginLeft: "auto" }}>
             <RunActions {...runData} hideViewInOrchestrator />
@@ -183,7 +220,14 @@ function Run(props) {
         </Stack>
         <Tabs value={tab} onChange={(e, tab) => setTab(tab)} sx={{ mx: 2 }}>
           <Tab label="Input" value="inputs" sx={{ ...TAB_SX, ml: 1 }} />
+          {runState === COMPLETED && (
+            <Tab label="Output" value="outputs" sx={TAB_SX} />
+          )}
+          {runState === FAILED && (
+            <Tab label="Errors" value="errors" sx={TAB_SX} />
+          )}
           <Tab label="Logs" value="logs" sx={TAB_SX} />
+          <Tab label="View" value="view" sx={TAB_SX} />
         </Tabs>
       </Box>
       <Box p={2}>
@@ -195,13 +239,32 @@ function Run(props) {
             type="inputs"
           />
         )}
-        {tab === "logs" && logSize < 1 * 1024 * 1024 && (
+        {tab === "outputs" && (
+          <RunIO
+            property={outputs}
+            data={runResultData}
+            error={outputError}
+            type="outputs"
+          />
+        )}
+        {tab === "logs" && !(logSize && logSize >= 1 * 1024 * 1024) && (
           <Logs logSize={logSize} runData={runData} />
         )}
-        {tab === "logs" && logSize >= 1 * 1024 * 1024 && (
-          <Typography>
-            Log file too large to display. Download it instead.
-          </Typography>
+        {tab === "logs" && logSize && logSize >= 1 * 1024 * 1024 && (
+          <DefaultLog
+            message="Log size too large."
+            button={{
+              url: logUrl,
+              message: "Download logs",
+              icon: "download",
+            }}
+          />
+        )}
+        {tab === "errors" && runErrorData && <CodeBlock text={runErrorData} />}
+        {tab === "view" && (
+          <RunView
+            view={omit(ctxData, ["operator_uri", "params", "dataset_name"])}
+          />
         )}
       </Box>
     </Box>
