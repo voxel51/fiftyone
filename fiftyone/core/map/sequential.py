@@ -1,4 +1,4 @@
-from typing import Iterator, Any
+from typing import Iterator, Any, Optional
 
 from .map import MapBackend
 
@@ -10,10 +10,10 @@ class SequentialMapBackend(MapBackend):
         self,
         sample_collection,
         map_fcn,
-        save=None,
-        num_workers=None,
-        shard_method="id",
-        progress=None,
+        save: Optional[bool] = None,
+        num_workers: Optional[int] = None,
+        shard_method: str = "id",
+        progress: Optional[bool] = None,
     ) -> Iterator[Any]:
         for sample in sample_collection.iter_samples(
             progress=progress, autosave=save
@@ -25,10 +25,10 @@ class SequentialMapBackend(MapBackend):
         self,
         sample_collection,
         map_fcn,
-        save=None,
-        num_workers=None,
-        shard_method="id",
-        progress=None,
+        save: Optional[bool] = None,
+        num_workers: Optional[int] = None,
+        shard_method: str = "id",
+        progress: Optional[bool] = None,
     ):
         for sample in sample_collection.iter_samples(
             progress=progress, autosave=save

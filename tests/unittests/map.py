@@ -1,6 +1,6 @@
 import unittest
 import fiftyone as fo
-from fiftyone.core.map import SequentialMapBackend
+import fiftyone.utils.map as foum
 
 
 class TestSequentialMapBackend(unittest.TestCase):
@@ -31,7 +31,7 @@ class TestSequentialMapBackend(unittest.TestCase):
             return sample["field1"]
 
         # Run map_samples
-        results = list(self.dataset.map_samples(map_fcn, save=True))
+        results = list(foum.map_samples(self.dataset, map_fcn, save=True))
 
         # Verify results
         for sample_id, output in results:
@@ -51,7 +51,7 @@ class TestSequentialMapBackend(unittest.TestCase):
             sample["field2"] = sample["input"] * 3
 
         # Run update_samples
-        self.dataset.update_samples(map_fcn, save=True)
+        foum.update_samples(self.dataset, map_fcn, save=True)
 
         dataset = fo.load_dataset("test_sequential_map_backend")
 
