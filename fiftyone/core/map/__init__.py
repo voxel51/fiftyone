@@ -7,7 +7,7 @@ ODM package declaration.
 """
 import types
 
-from .factory import MapBackendFactory
+from .factory import MapBackendFactory, MapBackendType
 from .map import MapBackend
 from .sequential import SequentialMapBackend
 
