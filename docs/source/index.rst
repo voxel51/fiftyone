@@ -381,7 +381,7 @@ With plugins, you can add new functionality to the FiftyOne App, create
 integrations with other tools and APIs, render custom panels, and add custom
 buttons to menus.
 
-With :ref:`FiftyOne Teams <teams-delegated-operations>`, you can even write
+With :ref:`FiftyOne Enterprise <teams-delegated-operations>`, you can even write
 plugins that allow users to execute long-running tasks from within the App that
 run on a connected compute cluster.
 
@@ -485,7 +485,7 @@ us at support@voxel51.com.
    :hidden:
 
    Overview <self>
-   FiftyOne Teams 🚀 <teams/index>
+   FiftyOne Enterprise 🚀 <teams/index>
    Installation <getting_started/install>
    Environments <environments/index>
    Tutorials <tutorials/index>

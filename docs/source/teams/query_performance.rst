@@ -5,10 +5,10 @@ Query Performance
 
 .. default-role:: code
 
-**Available in FiftyOne Teams v2.2+**
+**Available in FiftyOne Enterprise v2.2+**
 
 Query Performance is a builtin feature of the
-:ref:`FiftyOne Teams App <teams-app>` that leverages database indexes to
+:ref:`FiftyOne Enterprise App <teams-app>` that leverages database indexes to
 optimize your queries on large-scale datasets.
 
 Optimizing Query Performance

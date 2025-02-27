@@ -5,9 +5,9 @@ Data Lens
 
 .. default-role:: code
 
-**Available in FiftyOne Teams v2.2+**
+**Available in FiftyOne Enterprise v2.2+**
 
-Data Lens is a feature built into the :ref:`FiftyOne Teams App <teams-app>`
+Data Lens is a feature built into the :ref:`FiftyOne Enterprise App <teams-app>`
 which allows you to use FiftyOne to explore and import samples from external
 data sources.
 
@@ -235,7 +235,7 @@ Setting up your operator
 
 To assist with Data Lens integration, we can use the
 :class:`DataLensOperator <fiftyone.operators.data_lens.operator.DataLensOperator>`
-base class provided with the Teams SDK. This base class handles the
+base class provided with the Enterprise SDK. This base class handles the
 implementation for the operator's `execute()` method, and defines a single
 abstract method that we'll implement.
 
@@ -282,7 +282,7 @@ Let's take a look at what we have so far.
 
 Our operator extends the
 :class:`DataLensOperator <fiftyone.operators.data_lens.operator.DataLensOperator>`
-provided by the Teams SDK. This base class defines the abstract
+provided by the Enterprise SDK. This base class defines the abstract
 :meth:`handle_lens_search_request() <fiftyone.operators.data_lens.operator.DataLensOperator.handle_lens_search_request>`
 method, which we will need to implement.
 
