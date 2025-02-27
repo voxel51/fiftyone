@@ -802,10 +802,10 @@ class CreateDatasetWithPermissionsTests(unittest.TestCase):
 
         # Passes permission error down
         create_dataset_with_current_user_permissions_mock.side_effect = (
-            api_errors.FiftyOneTeamsAPIError
+            api_errors.FiftyOneEnterpriseAPIError
         )
         self.assertRaises(
-            api_errors.FiftyOneTeamsAPIError,
+            api_errors.FiftyOneEnterpriseAPIError,
             fo.Dataset,
             dataset,
             persistent=True,

@@ -512,9 +512,9 @@ class ManagementSdkUserGroup(unittest.TestCase):
         returned_group = fom.get_user_group(group_name)
         self.assertIsNone(returned_group)
 
-        # expect None when FiftyOneTeamsAPIError is raised
+        # expect None when FiftyOneEnterpriseAPIError is raised
         self.client.post_graphql_request.side_effect = (
-            fom.FiftyOneTeamsAPIError
+            fom.FiftyOneEnterpriseAPIError
         )
         returned_group = fom.get_user_group(group_name)
         self.assertIsNone(returned_group)

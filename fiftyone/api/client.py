@@ -21,7 +21,7 @@ def fatal_http_code(e):
 
 
 class Client:
-    """Class for communicating with Teams API"""
+    """Class for communicating with Enterprise API"""
 
     @staticmethod
     def _chunk_generator_factory(
@@ -57,7 +57,7 @@ class Client:
         except metadata.PackageNotFoundError:
             version = ""
         self._extra_headers = {
-            "User-Agent": f"FiftyOne Teams client/{version}",
+            "User-Agent": f"FiftyOne Enterprise client/{version}",
             "X-FiftyOne-SDK-Version": version,
             "X-FiftyOne-Pymongo-Version": pymongo.version,
         }
@@ -82,12 +82,12 @@ class Client:
 
     @property
     def base_url(self):
-        """Base URL to Teams Api"""
+        """Base URL to Enterprise Api"""
         return self.__base_url
 
     @property
     def key(self):
-        """Key for authenticating Teams Api"""
+        """Key for authenticating Enterprise Api"""
         return self.__key
 
     def get(self, url_path: str) -> requests.Response:
@@ -188,7 +188,7 @@ class Client:
         response_json = self.post_json(url_path, payload, timeout)
 
         if "errors" in response_json:
-            raise errors.FiftyOneTeamsAPIError(
+            raise errors.FiftyOneEnterpriseAPIError(
                 *[err["message"] for err in response_json["errors"]]
             )
 

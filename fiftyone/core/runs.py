@@ -546,10 +546,10 @@ class BaseRun(Configurable):
             raise ValueError(
                 "Failed to load info for %s with key '%s'. The %s used a "
                 "version of FiftyOne with open source compatibility version "
-                "fiftyone==%s but you are currently running FiftyOne Teams "
+                "fiftyone==%s but you are currently running FiftyOne Enterprise "
                 "v%s with open source compatibility fiftyone==%s. We "
                 "recommend that you re-run the method with your current "
-                "FiftyOne Teams version"
+                "FiftyOne Enterprise version"
                 % (
                     cls._run_str(),
                     key,
