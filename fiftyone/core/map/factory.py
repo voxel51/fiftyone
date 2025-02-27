@@ -15,8 +15,10 @@ class MapBackendType(Enum):
         backend_str = backend_str.strip().lower()
         try:
             return cls(backend_str)
-        except ValueError:
-            raise ValueError(f"Unknown map_samples backend '{backend_str}'")
+        except ValueError as err:
+            raise ValueError(
+                f"Unknown map_samples backend '{backend_str}'"
+            ) from err
 
     def to_string(self) -> str:
         """Returns the string representation of the Enum value."""
@@ -51,9 +53,5 @@ class MapBackendFactory:
         # Convert string backend to Enum
         if isinstance(backend, str):
             backend = MapBackendType.from_string(backend)
-
-        # Ensure backend is valid
-        if backend not in cls._backends:
-            raise ValueError(f"Unknown map_samples backend '{backend}'")
 
         return cls._backends[backend]()
