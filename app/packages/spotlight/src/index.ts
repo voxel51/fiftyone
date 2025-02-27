@@ -180,7 +180,7 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   get #sizeThreshold() {
-    return this.#config.maxItemsSizeBytes / 2;
+    return this.#config.maxItemsSizeBytes / TWO;
   }
 
   get #containerHeight() {
