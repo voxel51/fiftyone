@@ -170,8 +170,8 @@ export const DefaultLog = (props) => {
 type LogStatus = keyof typeof LOG_STATUS;
 
 export default function Logs(props) {
-  let logStatus = getLogStatus(props.runData) as LogStatus;
-  let runData = props.runData;
+  const runData = props.runData;
+  const logStatus = getLogStatus(runData) as LogStatus;
   const [logQueryRef, loadLogs] = useQueryLoader(runsLogQuery);
 
   useEffect(() => {
@@ -179,7 +179,7 @@ export default function Logs(props) {
   }, [runData.id]);
 
   if (!logQueryRef) {
-    return <div>Loading logs...</div>;
+    return <></>;
   }
 
   return (
@@ -202,8 +202,7 @@ function LogsContent({ logQueryRef, logStatus, runData }) {
     case LOG_STATUS.UPLOAD_ERROR:
       return <DefaultLog message={runData.logUploadError} />;
     case LOG_STATUS.UPLOAD_SUCCESS:
-      return <DefaultLog />;
-    // return <LogPreview queryRef={queryRef} />;
+      return <LogPreview queryRef={logQueryRef} />;
     case LOG_STATUS.UPLOAD_SUCCESS_LARGE_FILE:
       return <UnsetLog isLargeFile={true} logPath={runData.logPath} />;
   }

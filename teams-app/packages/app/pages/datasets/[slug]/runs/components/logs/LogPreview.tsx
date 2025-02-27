@@ -1,6 +1,6 @@
 import { useNotification } from "@fiftyone/hooks";
 import { TableSkeleton } from "@fiftyone/teams-components";
-import { runsItemQuery$dataT } from "@fiftyone/teams-state";
+import { runsLogQuery, runsLogQuery$dataT } from "@fiftyone/teams-state";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 import { Box, Button, Typography, useTheme } from "@mui/material";
 import Paper from "@mui/material/Paper";
@@ -11,18 +11,17 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import React, { Suspense, useCallback, useMemo } from "react";
+import { usePreloadedQuery } from "react-relay";
 import { TableComponents, TableVirtuoso } from "react-virtuoso";
+import { DefaultLog } from "../Logs";
 
-export default function LogPreview(props: {
-  runData: runsItemQuery$dataT["delegatedOperation"];
-  isLargeFile?: boolean;
-}) {
-  if (!props) return <></>;
+export default function LogPreview({ queryRef }) {
+  const data = usePreloadedQuery<runsLogQuery$dataT>(
+    runsLogQuery,
+    queryRef
+  ) as runsLogQuery$dataT;
+  const logConnection = data.delegatedOperation.logConnection;
   const [_, sendNotification] = useNotification();
-  const { logConnection } =
-    props.runData as runsItemQuery$dataT["delegatedOperation"];
-
-  const isLargeFile = props.isLargeFile ?? false;
 
   const processedLogs = useMemo(() => {
     if (!logConnection?.edges || !Array.isArray(logConnection.edges)) return [];
@@ -64,61 +63,15 @@ export default function LogPreview(props: {
     }, []);
   }, [logConnection.edges]);
 
-  const handleDownload = () => {
-    // Download the content using the logUrl
-    const link = document.createElement("a");
-    link.href = props.runData.logUrl;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    sendNotification({
-      msg: "Download started successfully",
-      variant: "success",
-    });
-  };
-
-  if (isLargeFile) {
-    return (
-      <div>
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          alignItems="center"
-          mb={1}
-        >
-          <Typography variant="h6">
-            {logConnection.edges.length === 0
-              ? "Logs Preview is not available"
-              : "Logs Preview"}
-          </Typography>
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<CloudDownloadIcon />}
-            onClick={handleDownload}
-            color="info"
-          >
-            Download Logs
-          </Button>
-        </Box>
-        {logConnection.edges.length === 0 ? (
-          <></>
-        ) : (
-          <Suspense fallback={<TableSkeleton />}>
-            <VirtualLogTable data={processedLogs} />
-          </Suspense>
-        )}
-      </div>
-    );
-  } else {
-    return logConnection?.edges.length === 0 ? (
-      <></>
-    ) : (
-      <Suspense fallback={<TableSkeleton />}>
-        <VirtualLogTable data={processedLogs} />
-      </Suspense>
-    );
+  if (processedLogs.length == 0) {
+    return <DefaultLog />;
   }
+
+  return (
+    <Suspense fallback={<TableSkeleton />}>
+      <VirtualLogTable data={processedLogs} />
+    </Suspense>
+  );
 }
 
 interface LogData {
@@ -226,7 +179,7 @@ const VirtualLogTable = ({ data }) => {
   );
 
   return (
-    <Paper style={{ height: "calc(100vh - 430px)", width: "100%" }}>
+    <Paper style={{ height: "calc(100vh - 440px)", width: "100%" }}>
       <TableVirtuoso
         data={data}
         components={VirtuosoTableComponents}
