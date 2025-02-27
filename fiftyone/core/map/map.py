@@ -34,7 +34,7 @@ class MapBackend(ABC):
         progress=None,
     ):
         """
-        Applies `map_fcn` to each sample
+        Applies `map_fcn` to each sample.
 
         Returns:
             Iterator[Any]: An iterator that yields processed sample results.
