@@ -12,7 +12,7 @@ FiftyOne Installation
 .. note::
 
     Need to collaborate on your datasets? Check out
-    :ref:`FiftyOne Enterprise <fiftyone-teams>`!
+    :ref:`FiftyOne Enterprise <fiftyone-enterprise>`!
 
 .. _install-prereqs:
 

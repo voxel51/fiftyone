@@ -789,7 +789,7 @@ operator's input modal when executing it from within the App:
 
 .. note::
 
-    :ref:`FiftyOne Enterprise <fiftyone-teams>` users can also specify an optional
+    :ref:`FiftyOne Enterprise <fiftyone-enterprise>` users can also specify an optional
     delegation target for their delegated operations:
 
     .. code-block:: python
@@ -871,7 +871,7 @@ are executed in the background while you continue to work.
 
 .. note::
 
-    :ref:`FiftyOne Enterprise <teams-delegated-operations>` deployments come out of
+    :ref:`FiftyOne Enterprise <enterprise-delegated-operations>` deployments come out of
     the box with a connected compute cluster for executing delegated operations
     at scale.
 
@@ -900,8 +900,8 @@ curation, and evaluation are performed.
 .. note::
 
     Want to run delegated operations at scale?
-    `Contact us <https://voxel51.com/get-fiftyone-teams>`_ about
-    :ref:`FiftyOne Enterprise <fiftyone-teams>`, an open source-compatible
+    `Contact us <https://voxel51.com/talk-to-sales>`_ about
+    :ref:`FiftyOne Enterprise <fiftyone-enterprise>`, an open source-compatible
     enterprise deployment of FiftyOne with multiuser collaboration features,
     native cloud dataset support, and much more!
 
@@ -941,7 +941,7 @@ in the environment where you run the App/SDK, e.g. by setting:
 FiftyOne Enterprise
 -------------------
 
-:ref:`FiftyOne Enterprise <teams-delegated-operations>` deployments come out of the
+:ref:`FiftyOne Enterprise <enterprise-delegated-operations>` deployments come out of the
 box with a connected compute cluster for executing delegated operations at
 scale.
 
@@ -952,8 +952,8 @@ other work in the App.
 .. note::
 
     Want to take advantage of this functionality?
-    `Contact us <https://voxel51.com/get-fiftyone-teams>`_ about
-    :ref:`FiftyOne Enterprise <fiftyone-teams>`, an open source-compatible
+    `Contact us <https://voxel51.com/talk-to-sales>`_ about
+    :ref:`FiftyOne Enterprise <fiftyone-enterprise>`, an open source-compatible
     enterprise deployment of FiftyOne with multiuser collaboration features,
     native cloud dataset support, and much more!
 

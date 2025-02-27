@@ -48,7 +48,7 @@ and [OAuth2](https://oauth.net/2/).
 
 ## Super Admin UI
 
-![Super Admin UI](/images/teams/cas/cas_api_docs.png)
+![Super Admin UI](/images/enterprise/cas/cas_api_docs.png)
 
 The Super Admin UI contains FiftyOne Enterprise deployment wide configurations.
 When logging into FiftyOne Enterprise as an admin, you are in the context of an
@@ -59,7 +59,7 @@ global configurations (Identity Providers, Session timeouts, and JS hooks).
 > **NOTE**: In v1.6.0, the Super Admin UI is only available in
 > [internal mode](#internal-mode)
 
-![Sign In to CAS](/images/teams/cas/cas_sign_in.png)
+![Sign In to CAS](/images/enterprise/cas/cas_sign_in.png)
 
 To login to this application navigate to
 `https://<YOUR_FIFTYONE_TEAMS_URL>/cas/configurations`. In the top right of the
@@ -76,7 +76,7 @@ As of FiftyOne Enterprise 2.1.0, onboarding new users can be done via
 invitation links. To do so, "Enable invitation" must be toggled on in the
 Organizations section of the [Super Admin UI](#super-admin-ui).
 
-![Enable Invitations](/images/teams/cas/org_enable_invitations.png)
+![Enable Invitations](/images/enterprise/cas/org_enable_invitations.png)
 
 This allows creating invitation links in [internal mode](#internal-mode) that
 can be manually sent to users. When those users click the links, they will be
@@ -95,12 +95,12 @@ need for Auth0 or any other external connections beyond the SMTP server itself.
 To do so, "Send email invitations" must be toggled on in the Organizations
 section of the [Super Admin UI](#super-admin-ui)
 
-![Send email invitations](/images/teams/cas/org_send_email_invitations.png)
+![Send email invitations](/images/enterprise/cas/org_send_email_invitations.png)
 
 To configure your SMTP connection, navigate to the SMTP section of the
 [Super Admin UI](#super-admin-ui)
 
-![SMTP Config](/images/teams/cas/SMTP_config.png)
+![SMTP Config](/images/enterprise/cas/SMTP_config.png)
 
 A notification at the top of the menu will inform if an SMTP configuration is
 already saved. Currently, only one SMTP configuration can be saved per
@@ -114,7 +114,7 @@ host provided. The configuration will not save otherwise.
 Additionally, users can enter a valid email address and click Send Test Email
 to test the connection.
 
-![SMTP Config test email](/images/teams/cas/SMTP_config_test_email.png)
+![SMTP Config test email](/images/enterprise/cas/SMTP_config_test_email.png)
 
 > **NOTE:** Emails and an SMTP connection are not required to use invitations.
 > Invitation links can still be generated and manually distributed without an
@@ -123,9 +123,9 @@ to test the connection.
 ## Identity Providers (IdP)
 
 In [internal mode](#internal-mode), use the CAS REST API or Super Admin UI to
-configure FiftyOne teams to authenticate users via OIDC or OAuth2 compatible
-Identity Providers. Below is an example configuration for KeyCloak as an
-Identity Provider.
+configure FiftyOne Enterprise to authenticate users via OIDC or OAuth2
+compatible Identity Providers. Below is an example configuration for KeyCloak
+as an Identity Provider.
 
 ```json
 {
