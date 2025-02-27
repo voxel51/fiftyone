@@ -8,16 +8,19 @@ import { useLayoutEffect } from "react";
 import { useSetRecoilState } from "recoil";
 import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
 import { recommendedGridZoom } from "./recoil";
+import type { LookerCache } from "./types";
 import type { AtInterface } from "./useAt";
 
 export default ({
   id,
+  cache,
   pixels,
   resizing,
   set,
   spotlight,
 }: {
   id: string;
+  cache: LookerCache;
   pixels: string;
   resizing: boolean;
   set: (at: AtInterface) => void;
@@ -42,6 +45,7 @@ export default ({
     }, QP_WAIT);
 
     const mount = () => {
+      cache.unfreeze();
       clearTimeout(timeout);
       document.getElementById(pixels)?.classList.add(styles.hidden);
       document.dispatchEvent(new CustomEvent("grid-mount"));
@@ -71,6 +75,7 @@ export default ({
       spotlight.destroy();
     };
   }, [
+    cache,
     id,
     handleError,
     pixels,

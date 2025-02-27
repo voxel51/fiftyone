@@ -45,8 +45,8 @@ function Grid() {
   const cache = useLookerCache({
     maxHiddenItems: MAX_INSTANCES,
     maxHiddenItemsSizeBytes: maxBytes,
-    onSet: useLabelVisibility(),
     reset,
+    ...useLabelVisibility(),
   });
 
   const { page, store } = useSpotlightPager({
@@ -76,7 +76,7 @@ function Grid() {
       return undefined;
     }
 
-    cache.hide();
+    cache.freeze();
 
     return new Spotlight<number, fos.Sample>({
       ...get(),
@@ -106,7 +106,7 @@ function Grid() {
   ]);
 
   useEscape();
-  useEvents({ id, pixels, resizing, set, spotlight });
+  useEvents({ id, cache, pixels, resizing, set, spotlight });
   useUpdates({ cache, getFontSize, options: lookerOptions, spotlight });
   useResize(id, setResizing);
 

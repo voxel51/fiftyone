@@ -35,6 +35,7 @@ export default function ({
   const showItem = useCallback<Show<number, fos.Sample>>(
     ({ id, element, dimensions, spotlight, zooming }) => {
       const key = id.description;
+
       if (cache.isShown(key)) {
         return cache.sizeOf(key);
       }
@@ -57,21 +58,21 @@ export default function ({
         throw new Error("bad data");
       }
 
-      const looker: fos.Lookers = createLooker.current?.(
-        { ...result, symbol: id },
-        {
-          fontSize: getFontSize(),
-        }
-      );
+      const looker: fos.Lookers =
+        cache.getFrozen(key) ??
+        createLooker.current?.(
+          { ...result, symbol: id },
+          {
+            fontSize: getFontSize(),
+          }
+        );
+
       looker.addEventListener("selectthumbnail", ({ detail }) =>
         selectSample.current?.(detail)
       );
       looker.addEventListener("refresh", () => {
-        if (cache.isShown(key)) {
+        cache.isShown(key) &&
           spotlight.sizeChange(key, looker.getSizeBytesEstimate());
-        } else {
-          cache.hide(key);
-        }
       });
       cache.set(key, looker);
       looker.attach(element, dimensions);

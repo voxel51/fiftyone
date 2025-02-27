@@ -9,36 +9,41 @@ class Looker extends EventTarget {
 }
 
 describe("useLookerCache", () => {
-  it("assert loaded, loading, and visible cache states and transitions", () => {
+  it("assert loaded, pending, and shown cache states and transitions", () => {
     const { result, rerender } = renderHook(
-      (reset) => useLookerCache<Looker>(reset, 2, 2),
+      (reset) =>
+        useLookerCache<Looker>({
+          reset,
+          maxHiddenItems: 2,
+          maxHiddenItemsSizeBytes: 2,
+        }),
       {
         initialProps: "one",
       }
     );
-    expect(result.current.loaded.size).toBe(0);
-    expect(result.current.loading.size).toBe(0);
-    expect(result.current.visible.size).toBe(0);
-    expect(result.current.loaded.calculatedSize).toBe(0);
+    expect(result.current.hidden.size).toBe(0);
+    expect(result.current.pending.size).toBe(0);
+    expect(result.current.shown.size).toBe(0);
+    expect(result.current.hidden.calculatedSize).toBe(0);
 
     act(() => {
       const looker = new Looker();
       result.current.set("one", looker);
     });
 
-    expect(result.current.loaded.size).toBe(0);
-    expect(result.current.loading.size).toBe(0);
-    expect(result.current.visible.size).toBe(1);
-    expect(result.current.loaded.calculatedSize).toBe(0);
+    expect(result.current.hidden.size).toBe(0);
+    expect(result.current.pending.size).toBe(0);
+    expect(result.current.shown.size).toBe(1);
+    expect(result.current.hidden.calculatedSize).toBe(0);
 
     act(() => {
       result.current.hide("one");
     });
 
-    expect(result.current.loaded.size).toBe(0);
-    expect(result.current.loading.size).toBe(1);
-    expect(result.current.visible.size).toBe(0);
-    expect(result.current.loaded.calculatedSize).toBe(0);
+    expect(result.current.hidden.size).toBe(0);
+    expect(result.current.pending.size).toBe(1);
+    expect(result.current.shown.size).toBe(0);
+    expect(result.current.hidden.calculatedSize).toBe(0);
 
     act(() => {
       const looker = result.current.get("one");
@@ -49,15 +54,15 @@ describe("useLookerCache", () => {
       looker.dispatchEvent(new Event("load"));
     });
 
-    expect(result.current.loaded.size).toBe(1);
-    expect(result.current.loading.size).toBe(0);
-    expect(result.current.visible.size).toBe(0);
-    expect(result.current.loaded.calculatedSize).toBe(1);
+    expect(result.current.hidden.size).toBe(1);
+    expect(result.current.pending.size).toBe(0);
+    expect(result.current.shown.size).toBe(0);
+    expect(result.current.hidden.calculatedSize).toBe(1);
 
     rerender("two");
-    expect(result.current.loaded.size).toBe(0);
-    expect(result.current.loading.size).toBe(0);
-    expect(result.current.visible.size).toBe(0);
-    expect(result.current.loaded.calculatedSize).toBe(0);
+    expect(result.current.hidden.size).toBe(0);
+    expect(result.current.pending.size).toBe(0);
+    expect(result.current.shown.size).toBe(0);
+    expect(result.current.hidden.calculatedSize).toBe(0);
   });
 });
