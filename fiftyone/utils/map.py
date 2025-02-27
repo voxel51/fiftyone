@@ -1,4 +1,4 @@
-from typing import Iterator, Any
+from typing import Iterator, Any, Optional
 
 from fiftyone.core.map import MapBackendFactory, MapBackendType
 
@@ -6,10 +6,10 @@ from fiftyone.core.map import MapBackendFactory, MapBackendType
 def map_samples(
     sample_collection,
     map_fcn,
-    save=None,
-    num_workers=None,
-    shard_method="id",
-    progress=None,
+    save: Optional[bool] = None,
+    num_workers: Optional[int] = None,
+    shard_method: str = "id",
+    progress: Optional[bool] = None,
     backend: str | MapBackendType = MapBackendType.sequential,
 ) -> Iterator[Any]:
     """
@@ -17,12 +17,12 @@ def map_samples(
 
     Args:
         sample_collection: The dataset or view to process.
-        map_fcn (callable): Function to apply to each sample.
-        save (bool, optional): Whether to save modified samples.
-        num_workers (int, optional): Number of workers (if applicable).
-        shard_method (str, optional): Method for sharding ('id' or 'slice').
-        progress (bool, optional): Whether to show progress bar.
-        backend (str | MapBackendType, optional): Backend execution strategy.
+        map_fcn: Function to apply to each sample.
+        save (None): Whether to save modified samples.
+        num_workers (None): Number of workers.
+        shard_method ("id"): Method for sharding ('id' or 'slice').
+        progress (None): Whether to show progress bar.
+        backend (MapBackendType.sequential): Backend execution strategy.
 
     Returns:
         Iterator[Any]: Processed sample results.
@@ -43,26 +43,23 @@ def map_samples(
 def update_samples(
     sample_collection,
     map_fcn,
-    save=None,
-    num_workers=None,
-    shard_method="id",
-    progress=None,
+    save: Optional[bool] = None,
+    num_workers: Optional[int] = None,
+    shard_method: str = "id",
+    progress: Optional[bool] = None,
     backend: str | MapBackendType = MapBackendType.sequential,
-) -> Iterator[Any]:
+):
     """
     Applies `map_fcn` to each sample using the specified backend strategy.
 
     Args:
         sample_collection: The dataset or view to process.
-        map_fcn (callable): Function to apply to each sample.
-        save (bool, optional): Whether to save modified samples.
-        num_workers (int, optional): Number of workers (if applicable).
-        shard_method (str, optional): Method for sharding ('id' or 'slice').
-        progress (bool, optional): Whether to show progress bar.
-        backend (str | MapBackendType, optional): Backend execution strategy.
-
-    Returns:
-        Iterator[Any]: Processed sample results.
+        map_fcn: Function to apply to each sample.
+        save (None): Whether to save modified samples.
+        num_workers (None): Number of workers.
+        shard_method ("id"): Method for sharding ('id' or 'slice').
+        progress (None): Whether to show progress bar.
+        backend (MapBackendType.sequential): Backend execution strategy.
     """
     # Convert backend to Enum if given as a string
     if isinstance(backend, str):

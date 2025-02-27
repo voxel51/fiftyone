@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Iterator, Any
+from typing import Iterator, Any, Optional
 
 
 class MapBackend(ABC):
@@ -10,10 +10,10 @@ class MapBackend(ABC):
         self,
         sample_collection,
         map_fcn,
-        save=None,
-        num_workers=None,
-        shard_method="id",
-        progress=None,
+        save: Optional[bool] = None,
+        num_workers: Optional[int] = None,
+        shard_method: str = "id",
+        progress: Optional[bool] = None,
     ) -> Iterator[Any]:
         """
         Applies `map_fcn` to each sample and returns an iterator over the results.
@@ -28,15 +28,12 @@ class MapBackend(ABC):
         self,
         sample_collection,
         map_fcn,
-        save=None,
-        num_workers=None,
-        shard_method="id",
-        progress=None,
+        save: Optional[bool] = None,
+        num_workers: Optional[int] = None,
+        shard_method: str = "id",
+        progress: Optional[bool] = None,
     ):
         """
         Applies `map_fcn` to each sample.
-
-        Returns:
-            Iterator[Any]: An iterator that yields processed sample results.
         """
         pass

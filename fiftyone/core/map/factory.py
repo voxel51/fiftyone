@@ -38,7 +38,7 @@ class MapBackendFactory:
         Returns an instance of the requested backend.
 
         Args:
-            backend: Backend execution strategy.
+            backend (MapBackendType.sequential): Backend execution strategy.
                 - If a string, it is converted to `MapBackendType`.
                 - If not provided, defaults to `sequential`.
 
