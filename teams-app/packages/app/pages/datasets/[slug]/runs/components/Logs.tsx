@@ -1,8 +1,13 @@
 import { ExternalLinkIcon, SearchIcon } from "@fiftyone/teams-components";
-import { CONSTANT_VARIABLES } from "@fiftyone/teams-state";
+import {
+  CONSTANT_VARIABLES,
+  runsLogQuery,
+  runsLogQueryT,
+} from "@fiftyone/teams-state";
 import { Box, Button, Stack, Typography } from "@mui/material";
+import { useEffect } from "react";
+import { usePreloadedQuery, useQueryLoader } from "react-relay";
 import { getLogStatus, LOG_STATUS } from "../utils/getLogStatus";
-import LogPreview from "./logs/LogPreview";
 
 const UNAVAILABLE_LOGS =
   "Run logs are not yet available, please check again after completion.";
@@ -169,6 +174,29 @@ type LogStatus = keyof typeof LOG_STATUS;
 
 export default function Logs(props) {
   let logStatus = getLogStatus(props.runData) as LogStatus;
+  let runData = props.runData;
+  const [logQueryRef, loadLogs] = useQueryLoader(runsLogQuery);
+
+  useEffect(() => {
+    if (!logQueryRef) {
+      loadLogs({ run: runData.id }, { fetchPolicy: "network-only" });
+    }
+  }, [runData.id]);
+
+  if (!logQueryRef) {
+    return <div>Loading logs...</div>;
+  }
+
+  return <LogsContent queryRef={logQueryRef} />;
+}
+
+function LogsContent({ queryRef }) {
+  console.log("queryRef", queryRef);
+  const logData = usePreloadedQuery<runsLogQueryT>(runsLogQuery, queryRef);
+
+  console.log("logData", logData);
+
+  return <div>234</div>;
 
   switch (logStatus) {
     case LOG_STATUS.PENDING:
@@ -180,15 +208,10 @@ export default function Logs(props) {
     case LOG_STATUS.UPLOAD_ERROR:
       return <DefaultLog message={props.runData.logUploadError} />;
     case LOG_STATUS.UPLOAD_SUCCESS:
-      return <LogPreview {...props} />;
+      return <DefaultLog />;
+    // return <LogPreview {...props} />;
     case LOG_STATUS.UPLOAD_SUCCESS_LARGE_FILE:
-      return (
-        <LogPreview
-          isLargeFile={true}
-          logConnection={props.logConnection}
-          {...props}
-        />
-      );
+      return <UnsetLog isLargeFile={true} logPath={props.runData.logPath} />;
   }
   return <DefaultLog />;
 }

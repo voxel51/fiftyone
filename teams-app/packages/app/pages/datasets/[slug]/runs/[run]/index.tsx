@@ -57,8 +57,6 @@ function Run(props) {
   const [schemas, setSchemas] = useState<{ inputs?: any; outputs?: any }>({});
   const [errors, setErrors] = useState<{ inputs?: Error; outputs?: Error }>({});
   const [logQueryRef, loadLogs] = useQueryLoader(runsLogQuery);
-  const [logData, setLogData] = useState(null);
-  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
   const {
     label,
@@ -79,6 +77,8 @@ function Run(props) {
     logSize,
     metadata,
   } = runData;
+
+  console.log("logsize", runData);
 
   const { operator_uri, params, ...ctxData } = context.request_params;
   const { inputs, outputs } = schemas;
@@ -125,24 +125,6 @@ function Run(props) {
       fetchIO("outputs");
     }
   }, []);
-
-  useEffect(() => {
-    console.log("logSize", logSize);
-    if (logSize !== null && logSize < 1 * 1024 * 1024) {
-      setIsLoadingLogs(true);
-      loadLogs({ run: id }, { fetchPolicy: "network-only" });
-    }
-  }, [logSize]);
-
-  // Run the query when logQueryRef is available
-  useEffect(() => {
-    if (logQueryRef) {
-      const data = usePreloadedQuery<runsLogQueryT>(runsLogQuery, logQueryRef);
-      console.log("data", data);
-      setLogData(data);
-      setIsLoadingLogs(false);
-    }
-  }, [logQueryRef]);
 
   const runByName = runBy?.name;
 
@@ -215,8 +197,8 @@ function Run(props) {
             type="inputs"
           />
         )}
-        {tab === "logs" && logSize < 1 * 1024 * 1024 && logQueryRef && (
-          <Logs logQueryRef={logQueryRef} />
+        {tab === "logs" && logSize < 1 * 1024 * 1024 && (
+          <Logs logSize={logSize} runData={runData} />
         )}
         {tab === "logs" && logSize >= 1 * 1024 * 1024 && (
           <Typography>
