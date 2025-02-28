@@ -20,7 +20,7 @@ export default function useExtendedStageEffect() {
   const slices = useRecoilValue(fos.currentSlices(false));
   const lassoPoints = useRecoilValue(selectionAtoms.lassoPoints);
   const [pointField] = usePointField();
-  
+
   useEffect(() => {
     if (loadedPlot && Array.isArray(selection)) {
       fetchExtendedStage({
@@ -30,7 +30,7 @@ export default function useExtendedStageEffect() {
         selection,
         slices,
         lassoPoints,
-        pointField
+        pointField,
       }).then(async (res) => {
         const currentDataset = await getCurrentDataset();
         if (currentDataset !== datasetName) return;
@@ -39,5 +39,12 @@ export default function useExtendedStageEffect() {
         });
       });
     }
-  }, [datasetName, loadedPlot?.patches_field, view, selection, pointField, lassoPoints]);
+  }, [
+    datasetName,
+    loadedPlot?.patches_field,
+    view,
+    selection,
+    pointField,
+    lassoPoints,
+  ]);
 }

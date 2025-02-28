@@ -169,7 +169,7 @@ class OnPlotLoad(HTTPEndpoint):
             "available_count": available_count,
             "missing_count": missing_count,
             "patches_field": patches_field,
-            "point_field": point_field
+            "point_field": point_field,
         }
 
 
@@ -376,6 +376,7 @@ def _add_to_trace(traces, style, points, id, sample_id, label, selected):
             "selected": selected,
         }
     )
+
 
 def _get_fiftyone_geowithin(lasso_points):
     """
