@@ -284,3 +284,5 @@ const TAB_SX: TabProps["sx"] = {
   px: 0,
   ml: 4,
 };
+
+const EXITED_STATES = [COMPLETED, FAILED];
