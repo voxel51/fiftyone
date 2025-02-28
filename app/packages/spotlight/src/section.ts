@@ -31,7 +31,7 @@ import {
 import Iter from "./iter";
 import Row from "./row";
 import tile from "./tile";
-import { create } from "./utilities";
+import { create, createScrollTarget } from "./utilities";
 
 export type Renderer<K, V> = (
   run: () => { section: Section<K, V>; offset: number }
@@ -75,7 +75,9 @@ export default class Section<K, V> {
 
     this.#section.classList.add(styles.spotlightSection);
     this.#section.classList.add(direction);
-    this.#section.append(...[create(DIV), this.#container, create(DIV)]);
+    this.#section.append(
+      ...[createScrollTarget(), this.#container, createScrollTarget()]
+    );
   }
 
   get direction() {
