@@ -88,7 +88,6 @@ function Run(props) {
   );
   const { inputs_schema, outputs_schema } = metadata || {};
   const hasExpired = runResult && runResult?.error?.includes("expired");
-  console.log("hasExpired", hasExpired, runResult);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
