@@ -99,7 +99,7 @@ export default function LogPreview({ queryRef }) {
             : " "}
         </Typography>
         <Button
-          variant="contained"
+          variant="outlined"
           size="small"
           startIcon={<CloudDownloadIcon />}
           onClick={handleDownload}

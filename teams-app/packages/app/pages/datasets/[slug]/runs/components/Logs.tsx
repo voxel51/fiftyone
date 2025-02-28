@@ -34,7 +34,7 @@ export const DefaultLog = (props: DefaultLog) => {
     link.click();
     document.body.removeChild(link);
     sendNotification({
-      msg: "Logs download started",
+      msg: "Download started successfully",
       variant: "success",
     });
   };
@@ -62,7 +62,7 @@ export const DefaultLog = (props: DefaultLog) => {
           sx={{ width: 50, height: 50 }}
         />
         <Typography variant="h6" color="secondary">
-          {UNAVAILABLE_LOGS}
+          Logs are not available
         </Typography>
         {props?.message && (
           <Typography variant="title" color="secondary">
@@ -71,7 +71,9 @@ export const DefaultLog = (props: DefaultLog) => {
         )}
         {props?.button && (
           <Button
-            variant="outlined"
+            variant={
+              props?.button?.icon === "download" ? "contained " : "outlined"
+            }
             endIcon={
               props.button.icon === "download" ? (
                 <CloudDownloadIcon />
@@ -80,7 +82,7 @@ export const DefaultLog = (props: DefaultLog) => {
               )
             }
             onClick={() =>
-              props.button.icon === "download"
+              props?.button?.icon === "download"
                 ? handleDownload(props.button.url)
                 : handleButtonClick(props.button.url)
             }
