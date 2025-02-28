@@ -194,36 +194,21 @@ function Run(props) {
                 </Typography>
               )}
             </Stack>
-            {showOrchestrators &&
-              (runLink ? (
-                <Link
-                  href={runLink}
-                  target="_blank"
-                  color="secondary"
-                  sx={{
-                    maxWidth: "80vw",
-                    overflow: "hidden",
-                    whiteSpace: "nowrap",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {runLink}
-                </Link>
-              ) : (
-                <Link
-                  href={logUrl}
-                  target="_blank"
-                  color="secondary"
-                  sx={{
-                    maxWidth: "80vw",
-                    overflow: "hidden",
-                    whiteSpace: "nowrap",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {logUrl}
-                </Link>
-              ))}
+            {showOrchestrators && runLink && (
+              <Link
+                href={runLink}
+                target="_blank"
+                color="secondary"
+                sx={{
+                  maxWidth: "80vw",
+                  overflow: "hidden",
+                  whiteSpace: "nowrap",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {runLink}
+              </Link>
+            )}
           </Stack>
           <Box style={{ marginLeft: "auto" }}>
             <RunActions {...runData} hideViewInOrchestrator />

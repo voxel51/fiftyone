@@ -44,7 +44,7 @@ export const DefaultLog = (props: DefaultLog) => {
       sx={{
         display: "grid",
         placeItems: "center",
-        minHeight: "50vh",
+        minHeight: "30vh",
       }}
     >
       <Stack
@@ -69,34 +69,26 @@ export const DefaultLog = (props: DefaultLog) => {
             {props.message}
           </Typography>
         )}
+        {props?.button && (
+          <Button
+            variant="outlined"
+            endIcon={
+              props.button.icon === "download" ? (
+                <CloudDownloadIcon />
+              ) : (
+                <ExternalLinkIcon viewBox="0 0 17 16" />
+              )
+            }
+            onClick={() =>
+              props.button.icon === "download"
+                ? handleDownload(props.button.url)
+                : handleButtonClick(props.button.url)
+            }
+          >
+            {props.button.message}
+          </Button>
+        )}
       </Stack>
-      {props?.button && (
-        <Stack spacing={1} direction="row">
-          {props.button.url ? (
-            <Button
-              variant="outlined"
-              endIcon={
-                props.button.icon === "download" ? (
-                  <CloudDownloadIcon />
-                ) : (
-                  <ExternalLinkIcon viewBox="0 0 17 16" />
-                )
-              }
-              onClick={() =>
-                props.button.icon === "download"
-                  ? handleDownload(props.button.url)
-                  : handleButtonClick(props.button.url)
-              }
-            >
-              {props.button.message}
-            </Button>
-          ) : (
-            <Typography variant="body" color="secondary">
-              {props.button.message}
-            </Typography>
-          )}
-        </Stack>
-      )}
     </Box>
   );
 };
