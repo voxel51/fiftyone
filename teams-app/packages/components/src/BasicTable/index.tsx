@@ -36,7 +36,9 @@ export default function BasicTable({
         <TableBody>
           {rows.map((row) => {
             const { id, cells, link, onClick, onHover } = row;
-            const Wrapper = link ? Link : Fragment;
+            const Wrapper = link
+              ? (props) => <Link {...props} legacyBehavior />
+              : Fragment;
             const wrapperProps = link ? { href: link } : {};
             const hasOnClick = typeof onClick === "function";
             const hasOnHover = typeof onHover === "function";

@@ -87,7 +87,7 @@ const DatalistTableRow = (props: DatalistTableRowProps) => {
 
   return (
     <div ref={hoverRef} data-testid="dataset-box">
-      <Link key={id} href={`/datasets/${encodeURIComponent(slug)}/samples`}>
+      <Link key={id} href={`/datasets/${encodeURIComponent(slug)}/samples`} legacyBehavior>
         <Box
           sx={{
             py: 1.75,
@@ -199,7 +199,7 @@ const DatalistTableRow = (props: DatalistTableRowProps) => {
                     "aria-labelledby": "actions-button",
                   }}
                 >
-                  <Link href={`/datasets/${slug}/manage/basic_info`}>
+                  <Link href={`/datasets/${slug}/manage/basic_info`} legacyBehavior>
                     <MenuItem>
                       <ListItemIcon>
                         <EditOutlinedIcon fontSize="small" />

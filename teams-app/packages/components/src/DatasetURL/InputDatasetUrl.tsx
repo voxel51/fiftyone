@@ -228,6 +228,7 @@ function InputDatasetURL({ setOpen }: { setOpen: SetterOrUpdater<boolean> }) {
           <NextLink
             href={`/datasets/${encodeURIComponent(slug.toString())}/history`}
             passHref
+            legacyBehavior
           >
             <Link> Create a snapshot</Link>
           </NextLink>{" "}

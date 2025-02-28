@@ -87,7 +87,8 @@ RUN apt-get -qq -y update && apt-get -qq -y upgrade \
     && groupadd -g 1000 voxel51 \
     && useradd -u 1000 -g 1000 -l -d /opt voxel51 \
     && python3 -m venv "${VIRTUAL_ENV}" \
-    && "${VIRTUAL_ENV}"/bin/pip --no-cache-dir install -q -U pip setuptools wheel
+    && "${VIRTUAL_ENV}"/bin/pip --no-cache-dir install -q -U pip setuptools wheel \
+    && rm -rf /usr/local/lib/python*/ensurepip
 
 # Install fiftyone-teams-app and chown everything to voxel51
 RUN --mount=type=cache,from=builder,target=/builder,ro \

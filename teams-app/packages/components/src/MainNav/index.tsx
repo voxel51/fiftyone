@@ -19,7 +19,7 @@ export default function MainNav() {
     >
       <List>
         <ListItem>
-          <Link href="/datasets">
+          <Link href="/datasets" legacyBehavior>
             <ListItemButton
               sx={{
                 justifyContent: "center",
@@ -51,7 +51,7 @@ function MainNavItem(props) {
   const { href = "/", IconComponent, label } = props;
   return (
     <ListItem>
-      <Link href={href}>
+      <Link href={href} legacyBehavior>
         <ListItemButton sx={{ justifyContent: "center", padding: "1rem" }}>
           <ListItemDecorator sx={{ justifyContent: "center" }}>
             <IconComponent

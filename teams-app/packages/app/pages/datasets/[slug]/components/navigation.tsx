@@ -42,7 +42,7 @@ const DatasetDetailLink = (slug: string, label: string, tabName: string) => {
     return box;
   }
 
-  return <NextLink href={pathname}>{box}</NextLink>;
+  return <NextLink href={pathname} legacyBehavior>{box}</NextLink>;
 };
 
 const DatasetMenuTab = (slug: string, label: string, tabName: string) => {

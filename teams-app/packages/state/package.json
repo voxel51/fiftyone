@@ -8,7 +8,7 @@
     },
     "peerDependencies": {
         "react-relay": "*",
-        "recoil": "^0.7.6"
+        "recoil": "^0.7.7"
     },
     "devDependencies": {
         "relay-compiler": "^14.0.0",

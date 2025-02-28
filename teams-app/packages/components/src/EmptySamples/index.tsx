@@ -62,7 +62,7 @@ dataset.add_dir(
         {canInvite && (
           <Typography>
             Want to invite other people?{" "}
-            <NextLink href={`/datasets/${slug}/manage/access`} passHref>
+            <NextLink href={`/datasets/${slug}/manage/access`} passHref legacyBehavior>
               <Link>Manage access</Link>
             </NextLink>
           </Typography>

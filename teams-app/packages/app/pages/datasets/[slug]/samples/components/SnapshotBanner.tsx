@@ -236,7 +236,7 @@ function CompactSnapshot(props: CompactSnapshotPropsType) {
               >
                 <Typography color="text.tertiary">
                   Cannot browse archived snapshot.&nbsp;
-                  <NextLink href={`/datasets/${query.slug}/history`} passHref>
+                  <NextLink href={`/datasets/${query.slug}/history`} passHref legacyBehavior>
                     <Link color="secondary">Manage snapshots</Link>
                   </NextLink>
                 </Typography>
