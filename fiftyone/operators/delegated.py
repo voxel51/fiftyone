@@ -276,6 +276,18 @@ class DelegatedOperationService(object):
             _id=doc_id, log_upload_error=log_upload_error
         )
 
+    def set_log_size(self, doc_id, log_size):
+        """Sets the log size for the given delegated operation.
+
+        Args:
+            doc_id: the ID of the delegated operation
+            log size: the size of the log file for the given delegated operation.
+
+        Returns:
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+        """
+        return self._repo.set_log_size(_id=doc_id, log_size=log_size)
+
     def delete_operation(self, doc_id):
         """Deletes the given delegated operation.
 
