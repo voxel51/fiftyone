@@ -111,6 +111,7 @@ class DataQualityPanel(Panel):
         ctx.panel.state.tags = []
         ctx.panel.state.first_open = False
         ctx.panel.state.dataset_name = ctx.dataset.name
+        ctx.panel.state.new_sample_scan = True
 
         # load store
         store = self.get_store(ctx)
@@ -141,9 +142,6 @@ class DataQualityPanel(Panel):
 
             results = content.get("results", SAMPLE_STORE.get("results"))
 
-        self.scan_for_new_samples(ctx, results)
-
-    def scan_for_new_samples(self, ctx, results):
         # format: [new_samples_count, check ran, rescan completed]
         ctx.panel.state.new_samples = {
             "brightness": [0, False, False],
@@ -153,91 +151,6 @@ class DataQualityPanel(Panel):
             "near_duplicates": [0, False, False],
             "exact_duplicates": [0, False, False],
         }
-
-        # Run check for new samples in the background
-        last_scan_brightness = (
-            ctx.panel.state.last_scan.get("brightness") or {}
-        ).get("timestamp") or (LAST_SCAN.get("brightness") or {}).get(
-            "timestamp"
-        )
-        last_scan_blurriness = (
-            ctx.panel.state.last_scan.get("blurriness") or {}
-        ).get("timestamp") or (LAST_SCAN.get("blurriness") or {}).get(
-            "timestamp"
-        )
-        last_scan_aspect_ratio = (
-            ctx.panel.state.last_scan.get("aspect_ratio") or {}
-        ).get("timestamp") or (LAST_SCAN.get("aspect_ratio") or {}).get(
-            "timestamp"
-        )
-        last_scan_entropy = (
-            ctx.panel.state.last_scan.get("entropy") or {}
-        ).get("timestamp") or (LAST_SCAN.get("entropy") or {}).get("timestamp")
-        last_scan_near_duplicates = (
-            ctx.panel.state.last_scan.get("near_duplicates") or {}
-        ).get("timestamp") or (LAST_SCAN.get("near_duplicates") or {}).get(
-            "timestamp"
-        )
-        last_scan_exact_duplicates = (
-            ctx.panel.state.last_scan.get("exact_duplicates") or {}
-        ).get("timestamp") or (LAST_SCAN.get("exact_duplicates") or {}).get(
-            "timestamp"
-        )
-
-        asyncio.run(
-            self.check_for_new_samples(
-                ctx,
-                "brightness",
-                FIELD_NAME["brightness"],
-                results.get("brightness", {}),
-                last_scan_brightness,
-            )
-        )
-        asyncio.run(
-            self.check_for_new_samples(
-                ctx,
-                "blurriness",
-                FIELD_NAME["blurriness"],
-                results.get("blurriness", {}),
-                last_scan_blurriness,
-            )
-        )
-        asyncio.run(
-            self.check_for_new_samples(
-                ctx,
-                "aspect_ratio",
-                FIELD_NAME["aspect_ratio"],
-                results.get("aspect_ratio", {}),
-                last_scan_aspect_ratio,
-            )
-        )
-        asyncio.run(
-            self.check_for_new_samples(
-                ctx,
-                "entropy",
-                FIELD_NAME["entropy"],
-                results.get("entropy", {}),
-                last_scan_entropy,
-            )
-        )
-        asyncio.run(
-            self.check_for_new_samples(
-                ctx,
-                "near_duplicates",
-                FIELD_NAME["near_duplicates"],
-                results.get("near_duplicates", {}),
-                last_scan_near_duplicates,
-            )
-        )
-        asyncio.run(
-            self.check_for_new_samples(
-                ctx,
-                "exact_duplicates",
-                FIELD_NAME["exact_duplicates"],
-                results.get("exact_duplicates", {}),
-                last_scan_exact_duplicates,
-            )
-        )
 
     def on_change_selected(self, ctx):
         if (
@@ -789,43 +702,55 @@ class DataQualityPanel(Panel):
 
         return 0
 
-    async def check_for_new_samples(
-        self, ctx, issue_type, field_name, previous_results, last_scan_time
-    ):
-        # note: default to future datetime if None (never scanned)
-        last_scan = last_scan_time or datetime.utcnow() + timedelta(days=1)
-        last_modified = ctx.dataset._max("last_modified_at") or last_scan
-
-        if last_scan_time is None:
+    def check_for_new_samples(self, ctx):
+        if not hasattr(ctx.panel.state, "new_samples"):
             return
 
-        if last_modified <= last_scan:
-            return
+        # Get last scan times
+        last_scan_times = {
+            issue_type: (ctx.panel.state.last_scan.get(issue_type) or {}).get(
+                "timestamp"
+            )
+            or (LAST_SCAN.get(issue_type) or {}).get("timestamp")
+            for issue_type in ISSUE_TYPES
+        }
 
-        if issue_type != "exact_duplicates" and (
-            previous_results.get("counts", None) is None
-            or previous_results.get("edges", None) is None
-        ):
-            return
+        # Check each issue type
+        for issue_type in ISSUE_TYPES:
+            if ctx.panel.state.new_samples[issue_type][1]:
+                continue  # Already checked
 
-        if (
-            ctx.panel.state.new_samples[issue_type][0] == 0
-            and not ctx.panel.state.new_samples[issue_type][1]
-        ):
+            last_scan = last_scan_times[
+                issue_type
+            ] or datetime.utcnow() + timedelta(days=1)
+            last_modified = ctx.dataset._max("last_modified_at") or last_scan
+
+            if last_modified <= last_scan:
+                ctx.panel.state.new_samples[issue_type] = [0, True, False]
+                continue
+
+            field_name = FIELD_NAME[issue_type]
             new_samples_view = ctx.dataset.exists(field_name, bool=False)
+
             if len(new_samples_view) > 0:
                 ctx.panel.state.new_samples[issue_type] = [
                     len(new_samples_view),
                     True,
                     False,
                 ]
+                if len(new_samples_view) == ctx.dataset.count():
+                    self._change_issue_status(
+                        ctx, issue_type=issue_type, new_status=STATUS[0]
+                    )
             else:
                 ctx.panel.state.new_samples[issue_type] = [0, True, False]
 
-            if len(new_samples_view) == ctx.dataset.count():
-                self._change_issue_status(
-                    ctx, issue_type=issue_type, new_status=STATUS[0]
-                )
+        # Check if all scans are complete
+        all_checked = all(
+            status[1] for status in ctx.panel.state.new_samples.values()
+        )
+        if all_checked:
+            ctx.panel.state.new_sample_scan = False
 
     def _rescan_samples(self, ctx):
         self.change_computing_status(ctx, ctx.panel.state.issue_type)
@@ -2385,7 +2310,7 @@ class DataQualityPanel(Panel):
 
         # NOTE: if dataset changes, the render function is called on the new
         # dataset with the old dataset's store before it gets called again with
-        # the right store. This can cause incosistency in the UX
+        # the right store. This can cause inconsistency in the UX
         if self.has_store(ctx) and new_dataset_name == old_dataset_name:
             if ctx.dataset.media_type != "image":
                 self.wrapper_screen(panel, "unsupported")
@@ -2411,6 +2336,16 @@ class DataQualityPanel(Panel):
                     self._render_toast(panel, "reviewed", ctx)
                 elif "computation_failed" in (ctx.panel.state.alert or ""):
                     self._render_toast(panel, ctx.panel.state.alert, ctx)
+
+            # check for new samples in the background
+            if ctx.panel.state.new_sample_scan:
+                panel.view(
+                    "new_sample_scan_check",
+                    view=types.TimerView(
+                        timeout=2000,
+                        on_timeout=self.check_for_new_samples,
+                    ),
+                )
 
             # delegated op exists, initiate long polling
             if ctx.panel.state.computing:
