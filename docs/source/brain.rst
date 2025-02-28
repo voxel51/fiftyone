@@ -837,7 +837,7 @@ The relevant classes for the builtin similarity backends are:
 -   **pinecone**: :class:`fiftyone.brain.internal.core.pinecone.PineconeSimilarityConfig`
 -   **mongodb**: :class:`fiftyone.brain.internal.core.mongodb.MongoDBSimilarityConfig`
 -   **elasticsearch**: a :ref:`fiftyone.brain.internal.core.elasticsearch.ElasticsearchSimilarityConfig`
--   **pgvector**: a :ref:`fiftyone.brain.internal.core.pgvector.PgvectorSimilarityConfig`
+-   **pgvector**: a :ref:`fiftyone.brain.internal.core.pgvector.PgVectorSimilarityConfig`
 -   **mosaic**: :class:`fiftyone.brain.internal.core.mosaic.MosaicSimilarityConfig`
 -   **milvus**: :class:`fiftyone.brain.internal.core.milvus.MilvusSimilarityConfig`
 -   **lancedb**: :class:`fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig`
