@@ -96,10 +96,10 @@ export default function LogPreview({ queryRef }) {
         <Typography variant="h6">
           {logConnection.edges.length === 0
             ? "Logs Preview is not available"
-            : "Logs"}
+            : " "}
         </Typography>
         <Button
-          variant="outlined"
+          variant="contained"
           size="small"
           startIcon={<CloudDownloadIcon />}
           onClick={handleDownload}

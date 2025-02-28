@@ -151,7 +151,9 @@ function LogsContent({ logQueryRef, logStatus, runData }: LogsContent) {
         />
       );
     case LOG_STATUS.UPLOAD_ERROR:
-      return <DefaultLog message={runData.logUploadError} />;
+      return (
+        <DefaultLog message={runData.logUploadError ?? runData.result?.error} />
+      );
     case LOG_STATUS.UPLOAD_SUCCESS:
       return <LogPreview queryRef={logQueryRef} />;
     case LOG_STATUS.UPLOAD_SUCCESS_LARGE_FILE:
