@@ -17,7 +17,7 @@ from typing import Tuple
 import asyncio
 from bson import json_util, ObjectId
 from bson.codec_options import CodecOptions
-from mongoengine import connect
+import mongoengine
 import motor.motor_asyncio as mtr
 
 from packaging.version import Version
@@ -222,7 +222,7 @@ def establish_db_conn(config):
     # Register cleanup method
     atexit.register(_delete_non_persistent_datasets_if_allowed)
 
-    connect(config.database_name, **_connection_kwargs)
+    mongoengine.connect(config.database_name, **_connection_kwargs)
 
     db_config = get_db_config()
     if db_config.type != foc.CLIENT_TYPE:
@@ -244,6 +244,13 @@ def _connect():
         global _connection_kwargs
 
         establish_db_conn(fo.config)
+
+
+def _disconnect():
+    global _client, _async_client
+    _client = None
+    _async_client = None
+    mongoengine.disconnect_all()
 
 
 def _async_connect(use_global=False):
