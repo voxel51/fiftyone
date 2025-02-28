@@ -2249,6 +2249,7 @@ __metadata:
     prettier: "npm:^2.7.1"
     react-loading-skeleton: "npm:^3.1.0"
     react-relay: "npm:^16.2.0"
+    react-virtuoso: "npm:^4.12.5"
     recoil: "npm:^0.7.7"
     recoil-relay: "npm:^0.1.0"
     relay-compiler: "npm:^14.0.0"
@@ -17083,6 +17084,16 @@ __metadata:
   version: 1.0.3
   resolution: "react-uuid@npm:1.0.3"
   checksum: 10/364d23d07908927d0db80a8236752d7e6ee148eeccffa3e8f961410a2a2d4dd1315def0015d594775b56f9c1fbe4f2838ec08e2ae5149f992aad3ec2a3c29a62
+  languageName: node
+  linkType: hard
+
+"react-virtuoso@npm:^4.12.5":
+  version: 4.12.5
+  resolution: "react-virtuoso@npm:4.12.5"
+  peerDependencies:
+    react: ">=16 || >=17 || >= 18 || >= 19"
+    react-dom: ">=16 || >=17 || >= 18 || >=19"
+  checksum: 10/09f28ca7940c301899e9d0aa83bf0c7fcb499ca7daaef0545c4aad07164aa22b37391c007f361ae4618ed2a49a1b88c8efe62f6875aaead0995cc99ee6b6f1d9
   languageName: node
   linkType: hard
 

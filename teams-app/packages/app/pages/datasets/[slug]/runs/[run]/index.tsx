@@ -30,13 +30,13 @@ import { capitalize, get, omit } from "lodash";
 import { useEffect, useState } from "react";
 import { usePreloadedQuery } from "react-relay";
 import DatasetNavigation from "../../components/navigation";
+import Logs, { DefaultLog } from "../components/Logs";
 import RunActions from "../components/RunActions";
 import RunLabel from "../components/RunLabel";
 import RunStatus from "../components/RunStatus";
 import RunsPin from "../components/RunsPin";
 import formatCtx from "../utils/formatCtx";
 import getTimestamp from "../utils/getTimestamp";
-import isUrl from "../utils/isUrl";
 import RunIO, { IOType } from "./components/RunIO";
 import RunView from "./components/RunView";
 
@@ -44,6 +44,8 @@ const { QUEUED, SCHEDULED, RUNNING, COMPLETED, FAILED } = OPERATOR_RUN_STATES;
 
 function Run(props) {
   const { preloadedQuery, refresh } = props;
+
+  // Fetch run metadata including logSize
   const result = usePreloadedQuery<runsItemQueryT>(
     runsItemQuery,
     preloadedQuery
@@ -68,8 +70,12 @@ function Run(props) {
     id,
     pinned,
     runLink,
+    logUrl,
+    logUploadError,
+    logSize,
     metadata,
   } = runData;
+
   const { operator_uri, params, ...ctxData } = context.request_params;
   const { inputs, outputs } = schemas;
   const { inputs: inputError, outputs: outputError } = errors;
@@ -81,6 +87,7 @@ function Run(props) {
     FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS_ENV_KEY
   );
   const { inputs_schema, outputs_schema } = metadata || {};
+  const hasExpired = runResult && runResult?.error?.includes("expired");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -149,10 +156,7 @@ function Run(props) {
               {runState === RUNNING && (
                 <AutoRefresh
                   refresh={refresh}
-                  title={
-                    "Auto refresh progress every" +
-                    ` ${AUTO_REFRESH_INTERVAL_IN_SECONDS} seconds`
-                  }
+                  title={`Auto refresh progress every ${AUTO_REFRESH_INTERVAL_IN_SECONDS} seconds`}
                   persistanceKey="auto_refresh_run_status"
                 />
               )}
@@ -162,6 +166,7 @@ function Run(props) {
               direction="row"
               spacing={1}
               divider={<Typography>·</Typography>}
+              sx={{ whiteSpace: "nowrap" }}
             >
               {runByName && (
                 <Typography color="secondary">Run by {runByName}</Typography>
@@ -189,28 +194,21 @@ function Run(props) {
                 </Typography>
               )}
             </Stack>
-            {runLink &&
-              showOrchestrators &&
-              (isUrl(runLink) ? (
-                <Link
-                  href={runLink}
-                  target="_blank"
-                  color="secondary"
-                  sx={{
-                    maxWidth: "80vw",
-                    overflow: "hidden",
-                    whiteSpace: "nowrap",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {runLink}
-                </Link>
-              ) : (
-                <Typography color="text.tertiary">
-                  {runLink.startsWith("http") ? "Run link" : "Logs link"}:
-                  {runLink}
-                </Typography>
-              ))}
+            {showOrchestrators && runLink && (
+              <Link
+                href={runLink}
+                target="_blank"
+                color="secondary"
+                sx={{
+                  maxWidth: "80vw",
+                  overflow: "hidden",
+                  whiteSpace: "nowrap",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {runLink}
+              </Link>
+            )}
           </Stack>
           <Box style={{ marginLeft: "auto" }}>
             <RunActions {...runData} hideViewInOrchestrator />
@@ -224,6 +222,7 @@ function Run(props) {
           {runState === FAILED && (
             <Tab label="Errors" value="errors" sx={TAB_SX} />
           )}
+          <Tab label="Logs" value="logs" sx={TAB_SX} />
           <Tab label="View" value="view" sx={TAB_SX} />
         </Tabs>
       </Box>
@@ -242,6 +241,19 @@ function Run(props) {
             data={runResultData}
             error={outputError}
             type="outputs"
+          />
+        )}
+        {tab === "logs" && !(logSize && logSize >= 1 * 1024 * 1024) && (
+          <Logs runData={runData} />
+        )}
+        {tab === "logs" && logSize && logSize >= 1 * 1024 * 1024 && (
+          <DefaultLog
+            message="Logs size too large"
+            button={{
+              url: logUrl,
+              message: "Download logs",
+              icon: "download",
+            }}
           />
         )}
         {tab === "errors" && runErrorData && <CodeBlock text={runErrorData} />}

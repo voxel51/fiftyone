@@ -396,13 +396,15 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         ):
             raise ValueError("Invalid progress: {}".format(execution_progress))
 
+        updated_at = datetime.utcnow()
         update = {
             "$set": {
                 "status": {
                     "progress": execution_progress.progress,
                     "label": execution_progress.label,
-                    "updated_at": datetime.utcnow(),
+                    "updated_at": updated_at,
                 },
+                "updated_at": updated_at,
             }
         }
 

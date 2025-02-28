@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<96fa4d1148fa0fff2e0087e3f445eaff>>
+ * @generated SignedSource<<45071afaccf57d618934d43bf23eeaed>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -44,7 +44,15 @@ export type runsPageStatusQuery$variables = {
 export type runsPageStatusQuery$data = {
   readonly delegatedOperationsPage: {
     readonly nodes: ReadonlyArray<{
+      readonly completedAt: string | null;
+      readonly failedAt: string | null;
       readonly id: string;
+      readonly priority: number | null;
+      readonly priorityTotal: number | null;
+      readonly queuedAt: string | null;
+      readonly runState: string;
+      readonly scheduledAt: string | null;
+      readonly startedAt: string | null;
       readonly status: any | null;
     }>;
   };
@@ -129,6 +137,20 @@ v1 = [
             "alias": null,
             "args": null,
             "kind": "ScalarField",
+            "name": "completedAt",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "failedAt",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
             "name": "id",
             "storageKey": null
           },
@@ -136,7 +158,49 @@ v1 = [
             "alias": null,
             "args": null,
             "kind": "ScalarField",
+            "name": "queuedAt",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "runState",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "scheduledAt",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "startedAt",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
             "name": "status",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "priority",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "priorityTotal",
             "storageKey": null
           }
         ],
@@ -164,16 +228,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "883da2225144b6b628fe2e9aba7dc456",
+    "cacheID": "a9200c29fab269c32327490792530cd2",
     "id": null,
     "metadata": {},
     "name": "runsPageStatusQuery",
     "operationKind": "query",
-    "text": "query runsPageStatusQuery(\n  $filter: DelegatedOperationFilter = null\n  $order: DelegatedOperationOrderFieldsOrder = null\n  $page: Int!\n  $pageSize: Int!\n  $search: DelegatedOperationSearchFieldsSearch = null\n) {\n  delegatedOperationsPage(filter: $filter, order: $order, page: $page, pageSize: $pageSize, search: $search) {\n    nodes {\n      id\n      status\n    }\n  }\n}\n"
+    "text": "query runsPageStatusQuery(\n  $filter: DelegatedOperationFilter = null\n  $order: DelegatedOperationOrderFieldsOrder = null\n  $page: Int!\n  $pageSize: Int!\n  $search: DelegatedOperationSearchFieldsSearch = null\n) {\n  delegatedOperationsPage(filter: $filter, order: $order, page: $page, pageSize: $pageSize, search: $search) {\n    nodes {\n      completedAt\n      failedAt\n      id\n      queuedAt\n      runState\n      scheduledAt\n      startedAt\n      status\n      priority\n      priorityTotal\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b34440d4c954edbd09a548928fbc06bb";
+(node as any).hash = "8ff6cc9c64e630ce97ed53a602fb82f7";
 
 export default node;

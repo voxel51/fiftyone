@@ -25,6 +25,10 @@ export const DATASETS_ORDER_DIRECTION_ASC = "ASC";
 export const DATASETS_ORDER_DIRECTION_DESC = "DESC";
 export const LEARN_MORE_ABOUT_ROLES_LINK =
   "https://docs.voxel51.com/teams/roles_and_permissions.html";
+export const DOCKER_DOC_URL =
+  "https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docker/docs/configuring-delegated-operators.md";
+export const HELM_DOC_URL =
+  "https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/helm/docs/configuring-delegated-operators.md";
 export const DEFAULT_PAGE = 1;
 export const DEFAULT_PAGE_SIZE = 25;
 export const DEFAULT_USERS_PAGE_SIZE = 25;
