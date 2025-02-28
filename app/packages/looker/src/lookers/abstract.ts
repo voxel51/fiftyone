@@ -135,14 +135,18 @@ export abstract class AbstractLooker<
     this.canvas = this.lookerElement.children[1].element as HTMLCanvasElement;
     this.ctx = this.canvas.getContext("2d");
 
-    this.resizeObserver = new ResizeObserver(() => {
-      const box = getElementBBox(this.lookerElement.element);
-      if (box[2] && box[3] && this.lookerElement) {
-        this.updater((s) => ({ ...s, windowBBox: box }));
-      } else {
-        this.updater({});
-      }
-    });
+    if (!this.state.config.thumbnail) {
+      // resize observer adds cost and is not for thumbnails
+      // instead, dimensions are provided when attached
+      this.resizeObserver = new ResizeObserver(() => {
+        const box = getElementBBox(this.lookerElement.element);
+        if (box[2] && box[3] && this.lookerElement) {
+          this.updater((s) => ({ ...s, windowBBox: box }));
+        } else {
+          this.updater({});
+        }
+      });
+    }
 
     this.rootEvents = {};
     const events = this.getRootEvents();
@@ -175,6 +179,11 @@ export abstract class AbstractLooker<
     this.init();
   }
 
+  get loaded() {
+    const state = this.state;
+    return state.overlaysPrepared && state.dimensions && state.loaded;
+  }
+
   protected init() {}
 
   public subscribeToState(
@@ -200,6 +209,10 @@ export abstract class AbstractLooker<
     };
   }
 
+  getSampleOverlays(): Overlay<State>[] {
+    return this.sampleOverlays;
+  }
+
   loadOverlays(sample: Sample): void {
     this.sampleOverlays = loadOverlays(sample, this.state.config.fieldSchema);
   }
@@ -208,7 +221,24 @@ export abstract class AbstractLooker<
     return this.sampleOverlays;
   }
 
-  protected dispatchEvent(eventType: string, detail: any): void {
+  getSizeBytesEstimate() {
+    let size = 1;
+    if (this.state.dimensions && !this.state.error) {
+      const [w, h] = this.state.dimensions;
+      size += w * h * 4;
+    }
+
+    if (!this.sampleOverlays?.length) {
+      return size;
+    }
+
+    for (let index = 0; index < this.sampleOverlays.length; index++) {
+      size += this.sampleOverlays[index].getSizeBytes();
+    }
+    return size;
+  }
+
+  dispatchEvent(eventType: string, detail: any): void {
     if (detail instanceof ErrorEvent) {
       this.updater({ error: detail.error });
       return;
@@ -225,11 +255,19 @@ export abstract class AbstractLooker<
   }
 
   protected dispatchImpliedEvents(
-    { options: prevOtions }: Readonly<State>,
-    { options }: Readonly<State>
+    previous: Readonly<State>,
+    next: Readonly<State>
   ): void {
-    if (options.showJSON !== prevOtions.showJSON) {
-      this.dispatchEvent("options", { showJSON: options.showJSON });
+    if (previous.options.showJSON !== next.options.showJSON) {
+      this.dispatchEvent("options", { showJSON: next.options.showJSON });
+    }
+
+    const wasLoaded =
+      previous.overlaysPrepared && previous.dimensions && previous.loaded;
+    const isLoaded = next.overlaysPrepared && next.dimensions && next.loaded;
+
+    if (!wasLoaded && isLoaded) {
+      this.dispatchEvent("load", undefined);
     }
   }
 
@@ -493,11 +531,12 @@ export abstract class AbstractLooker<
     if (element === this.lookerElement.element.parentElement) {
       this.state.disabled &&
         this.updater({ disabled: false, options: { fontSize } });
+      this.resizeObserver?.observe(element);
       return;
     }
 
     if (this.lookerElement.element.parentElement) {
-      console.warn("instance is already attached");
+      this.detach();
     }
 
     for (const eventType in this.rootEvents) {
@@ -510,8 +549,8 @@ export abstract class AbstractLooker<
       disabled: false,
       options: { fontSize },
     });
-    element.appendChild(this.lookerElement.element);
-    !dimensions && this.resizeObserver.observe(element);
+    element.replaceChildren(this.lookerElement.element);
+    this.resizeObserver?.observe(element);
   }
 
   resize(dimensions: Dimensions): void {
@@ -523,11 +562,10 @@ export abstract class AbstractLooker<
   /**
    * Detaches the instance from the DOM
    */
-  detach(): void {
-    this.resizeObserver.disconnect();
-    this.lookerElement.element.parentNode?.removeChild(
-      this.lookerElement.element
-    );
+  detach() {
+    const parent = this.lookerElement.element.parentElement;
+    this.resizeObserver?.disconnect();
+    parent?.removeChild(this.lookerElement.element);
   }
 
   abstract updateOptions(options: Partial<State["options"]>): void;
@@ -583,6 +621,8 @@ export abstract class AbstractLooker<
         this.sample = sample;
         this.state.options.coloring = coloring;
         this.loadOverlays(sample);
+
+        this.dispatchEvent("refresh", {});
 
         // to run looker reconciliation
         this.updater({

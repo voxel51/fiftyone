@@ -28,10 +28,6 @@
   outline: none;
 }
 
-.spotlightLoaded {
-  background: var(--fo-palette-background-level2);
-}
-
 @-moz-document {
   .spotlight {
     scrollbar-width: none;
