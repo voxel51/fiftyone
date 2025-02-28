@@ -1,6 +1,6 @@
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import { isNullish } from "@fiftyone/utilities";
-import { get, isEqual, set } from "lodash";
+import { get, has, isEqual, set } from "lodash";
 import { useEffect, useMemo, useRef } from "react";
 import { isPathUserChanged } from "../hooks";
 import {
@@ -76,7 +76,7 @@ function useStateInitializer(props: ViewPropsType) {
   const shouldInitialize = useMemo(() => {
     if (hasInitialized.current) return false;
     return !isCompositeView(computedSchema) && isEditableView(computedSchema);
-  }, [computedSchema]);
+  }, [computedSchema, hasInitialized]);
   const basicData = useMemo(() => {
     if (shouldInitialize) {
       return data;

@@ -25,7 +25,7 @@ export default function AutocompleteView(props) {
         disabled={readOnly}
         autoHighlight
         clearOnBlur={multiple}
-        defaultValue={getDefaultValue(data, choices)}
+        defaultValue={getDefaultValue(data, choices, multiple)}
         freeSolo={allowUserInput}
         size="small"
         onChange={(e, choice) => {
@@ -40,6 +40,9 @@ export default function AutocompleteView(props) {
             valuesOnly,
             multiple
           );
+          if (multiple && Array.isArray(changedValue) && !changedValue.length) {
+            onChange(path, null);
+          }
           onChange(path, changedValue);
           setUserChanged();
         }}
@@ -94,7 +97,13 @@ export default function AutocompleteView(props) {
 
 // TODO: move these functions to a utils file
 
-function getDefaultValue(defaultValue, choices = []) {
+function getDefaultValue(defaultValue, choices = [], multiple) {
+  if (multiple) {
+    if (Array.isArray(defaultValue)) {
+      return defaultValue;
+    }
+    return [];
+  }
   const choice = choices.find(({ value }) => value === defaultValue);
   return choice || defaultValue;
 }
