@@ -1,5 +1,6 @@
 import { selectorFamily } from "recoil";
 import { aggregation } from "../aggregations";
+import { groupStatistics } from "../groups";
 import * as schemaAtoms from "../schema";
 
 export const labelTagCounts = selectorFamily<
@@ -11,7 +12,14 @@ export const labelTagCounts = selectorFamily<
     ({ modal, extended }) =>
     ({ get }) => {
       const data = get(schemaAtoms.labelPaths({})).map((path) =>
-        get(aggregation({ extended, modal, path: `${path}.tags`, mixed: true }))
+        get(
+          aggregation({
+            extended,
+            modal,
+            path: `${path}.tags`,
+            mixed: get(groupStatistics(modal)) === "group",
+          })
+        )
       );
 
       const result = {};
@@ -45,7 +53,13 @@ export const sampleTagCounts = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      const data = get(aggregation({ ...params, path: "tags" }));
+      const data = get(
+        aggregation({
+          ...params,
+          path: "tags",
+          mixed: get(groupStatistics(params.modal)) === "group",
+        })
+      );
       if (data.__typename !== "StringAggregation") {
         throw new Error("unexpected");
       }
