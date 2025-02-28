@@ -2127,8 +2127,8 @@ and the CLI:
                 "elasticsearch": {
                     "config_cls": "fiftyone.brain.internal.core.elasticsearch.ElasticsearchSimilarityConfig"
                 },
-                "postgres": {
-                    "config_cls": "fiftyone.brain.internal.core.postgres.PostgresSimilarityConfig"
+                "pgvector": {
+                    "config_cls": "fiftyone.brain.internal.core.pgvector.PgVectorSimilarityConfig"
                 },
                 "mosaic": {
                     "config_cls": "fiftyone.brain.internal.core.mosaic.MosaicSimilarityConfig"

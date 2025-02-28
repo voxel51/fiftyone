@@ -225,7 +225,7 @@ on the cards below to see how!
     Pinecone <pinecone.rst>
     MongoDB <mongodb.rst>
     Elasticsearch <elasticsearch.rst>
-    Postgres <pgvector.rst>
+    PostgreSQL Pgvector <pgvector.rst>
     Databricks Mosaic AI <mosaic.rst>
     Milvus <milvus.rst>
     LanceDB <lancedb.rst>
