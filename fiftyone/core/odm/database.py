@@ -960,7 +960,6 @@ def insert_documents(docs, coll, ordered=False, progress=None, num_docs=None):
                 coll.insert_many(batch, ordered=ordered)
                 ids.extend(b["_id"] for b in batch)
                 if batcher.manual_backpressure:
-                    # @todo can we infer content size from insert_many() above?
                     batcher.apply_backpressure(batch)
 
     except BulkWriteError as bwe:
@@ -989,8 +988,6 @@ def bulk_write(ops, coll, ordered=False, progress=False):
                 batch = list(batch)
                 coll.bulk_write(batch, ordered=ordered)
                 if batcher.manual_backpressure:
-                    # @todo can we infer content size from bulk_write() above?
-                    # @todo do we need a more accurate measure of size here?
                     content_size = sum(len(str(b)) for b in batch)
                     batcher.apply_backpressure(content_size)
 
