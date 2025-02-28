@@ -228,7 +228,7 @@ const VirtualLogTable = ({ data }: { data: LogData[] }) => {
   );
 
   return (
-    <Paper style={{ height: "calc(100vh - 440px)", width: "100%" }}>
+    <Paper style={{ height: "calc(100vh - 520px)", width: "100%" }}>
       <TableVirtuoso
         data={data}
         components={VirtuosoTableComponents}
