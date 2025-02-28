@@ -132,7 +132,7 @@ const VirtualLogTable = ({ data }: { data: LogData[] }) => {
 
   const columns: ColumnData[] = useMemo(
     () => [
-      { width: 160, label: "Timestamp", dataKey: "date" },
+      { width: 200, label: "Timestamp", dataKey: "date" },
       { width: 80, label: "Level", dataKey: "level" },
       { label: "Message", dataKey: "content" },
     ],

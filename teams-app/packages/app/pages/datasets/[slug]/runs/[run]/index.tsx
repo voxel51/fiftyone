@@ -11,6 +11,7 @@ import {
   Box,
   Timestamp,
   CodeBlock,
+  Link,
 } from "@fiftyone/teams-components";
 import {
   VIEW_DATASET,
@@ -248,7 +249,7 @@ function Run(props) {
           />
         )}
         {tab === "logs" && !(logSize && logSize >= 1 * 1024 * 1024) && (
-          <Logs logSize={logSize} runData={runData} />
+          <Logs runData={runData} />
         )}
         {tab === "logs" && logSize && logSize >= 1 * 1024 * 1024 && (
           <DefaultLog
