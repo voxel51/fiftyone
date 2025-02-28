@@ -2339,7 +2339,13 @@ class DataQualityPanel(Panel):
 
             # check for new samples in the background
             if ctx.panel.state.new_sample_scan:
-                self.check_for_new_samples(ctx)
+                panel.view(
+                    "new_sample_scan_check",
+                    view=types.TimerView(
+                        timeout=2000,
+                        on_timeout=self.check_for_new_samples,
+                    ),
+                )
 
             # delegated op exists, initiate long polling
             if ctx.panel.state.computing:
