@@ -3,15 +3,14 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-
 FiftyOne Teams 2.6.1
 --------------------
 *Released February 28, 2025*
 
-Includes all updates from :ref:`FiftyOne 2.6.1 <release-notes-v2.6.1>`, plus:
+Includes all updates from :ref:`FiftyOne 1.3.1 <release-notes-v1.3.1>`, plus:
 
-- Per-user cloud credentials support masks and 3d media
-- Security fixes for: nextjs, cookie, cross-spawn, lodash
+- Per-user cloud credentials now support masks and 3D media
+- Security fixes for nextjs, cookie, cross-spawn, and lodash
 - Bump node version to 22
 
 .. _release-notes-v1.3.1:
@@ -22,9 +21,10 @@ FiftyOne 1.3.1
 
 App
 
-- Optimized modal tagger to support massive datasets `#5417 <https://github.com/voxel51/fiftyone/pull/5417>`_ 
-- Fixed a bug with sample updates after tagging in the modal `#5514 <https://github.com/voxel51/fiftyone/pull/5514>`_
-
+- Optimized modal tagger to support massive datasets
+  `#5417 <https://github.com/voxel51/fiftyone/pull/5417>`_
+- Fixed a bug with sample updates after tagging in the modal
+  `#5514 <https://github.com/voxel51/fiftyone/pull/5514>`_
 
 FiftyOne Teams 2.6.0
 --------------------
