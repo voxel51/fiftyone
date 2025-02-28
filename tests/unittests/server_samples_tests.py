@@ -14,68 +14,129 @@ from fiftyone.server.samples import get_samples_pipeline
 from decorators import drop_async_dataset
 
 
+F = fo.ViewField
+
+
 class ServerSamplesTests(unittest.IsolatedAsyncioTestCase):
     @drop_async_dataset
-    async def test_frames(self, dataset: fo.Dataset):
-        video = fo.Sample(
-            filepath="video.mp4",
-            label=fo.Classification(label="label"),
-        )
-        video[1]["label"] = fo.Classification(label="one")
-        video[2]["label"] = fo.Classification(label="two")
-        dataset.add_sample(video)
+    async def test_limited_frames_lookup(self, dataset: fo.Dataset):
+        video = _add_video_sample(dataset)
+        limited_lookup = _get_expected_lookup_stage(dataset, limit=True)
 
         # test no filters
-        pipeline = await get_samples_pipeline(
-            dataset.name, dataset, {}, None, []
-        )
-        self.assertEqual(
-            pipeline,
-            _get_lookup_pipeline(dataset, True) + _get_slice_frames_pipeline(),
-        )
+        self.assertEqual(await _resolve_lookup_stage(dataset), limited_lookup)
 
         # test sample-level filters
-        pipeline = await get_samples_pipeline(
-            dataset.name, dataset, {"id": {}, "filepath": {}}, None, []
-        )
         self.assertEqual(
-            pipeline,
-            _get_lookup_pipeline(dataset, True) + _get_slice_frames_pipeline(),
+            await _resolve_lookup_stage(
+                dataset.match({"filepath": "video.mp4"})
+            ),
+            limited_lookup,
         )
 
-        # test frames-level filters (full frame filtering)
-        pipeline = await get_samples_pipeline(
-            dataset.name, dataset, {"frames.label": {}}, None, []
-        )
+        # test sample-level label filters
         self.assertEqual(
-            pipeline,
-            _get_lookup_pipeline(dataset, False)
-            + _get_slice_frames_pipeline(),
+            await _resolve_lookup_stage(
+                dataset.filter_labels("labels", F("label") == "label")
+            ),
+            limited_lookup,
+        )
+
+        # test clips
+        self.assertEqual(
+            await _resolve_lookup_stage(
+                dataset.to_clips("frames.labels"),
+            ),
+            _get_expected_lookup_stage(dataset, clips=True, limit=True),
+        )
+
+        # test select
+        self.assertEqual(
+            await _resolve_lookup_stage(dataset.select(video.id)),
+            limited_lookup,
+        )
+
+    @drop_async_dataset
+    async def test_full_frames_lookup(self, dataset: fo.Dataset):
+        _add_video_sample(dataset)
+        full_lookup = _get_expected_lookup_stage(dataset, limit=False)
+
+        # test match frames field
+        self.assertEqual(
+            await _resolve_lookup_stage(
+                dataset.match({"frames.filepath": "frame.png"}),
+            ),
+            full_lookup,
+        )
+
+        # test match frames field expression
+        self.assertEqual(
+            await _resolve_lookup_stage(
+                dataset.match(F("frames.filepath") == "frame.png"),
+            ),
+            full_lookup,
+        )
+
+        # test filter frame labels
+        self.assertEqual(
+            await _resolve_lookup_stage(
+                dataset.filter_labels("frames.labels", F("label") == "label"),
+            ),
+            full_lookup,
         )
 
 
-def _get_lookup_pipeline(dataset: fo.Dataset, limit=False):
+async def _resolve_lookup_stage(view: fo.DatasetView):
+    pipeline = await get_samples_pipeline(view, None)
+    return pipeline[0]
+
+
+def _get_expected_lookup_stage(view: fo.DatasetView, clips=False, limit=False):
+    if clips:
+        match = {
+            "$and": [
+                {"$eq": ["$$sample_id", "$_sample_id"]},
+                {"$gte": ["$frame_number", "$$first"]},
+                {"$lte": ["$frame_number", "$$last"]},
+            ],
+        }
+    else:
+        match = {"$eq": ["$$sample_id", "$_sample_id"]}
+
     lookup_pipeline = [
-        {"$match": {"$expr": {"$eq": ["$$sample_id", "$_sample_id"]}}},
+        {"$match": {"$expr": match}},
         {"$sort": {"frame_number": 1}},
     ]
 
     if limit:
         lookup_pipeline.append({"$limit": 1})
 
-    return [
-        {
-            "$lookup": {
-                "from": dataset._frame_collection_name,
-                "let": {"sample_id": "$_id"},
-                "pipeline": lookup_pipeline,
-                "as": "frames",
-            },
+    if clips:
+        let = {
+            "sample_id": "$_sample_id",
+            "first": {"$arrayElemAt": ["$support", 0]},
+            "last": {"$arrayElemAt": ["$support", 1]},
+        }
+    else:
+        let = {"sample_id": "$_id"}
+
+    return {
+        "$lookup": {
+            "from": view._frame_collection_name,
+            "let": let,
+            "pipeline": lookup_pipeline,
+            "as": "frames",
         },
-    ]
+    }
 
 
-def _get_slice_frames_pipeline():
-    return [
-        {"$addFields": {"frames": {"$slice": ["$frames", 1]}}},
-    ]
+def _add_video_sample(dataset: fo.Dataset):
+    video = fo.Sample(
+        filepath="video.mp4",
+        labels=fo.Detections(detections=[fo.Detection(label="label")]),
+    )
+    video[1]["labels"] = fo.Detections(
+        detections=[fo.Detection(label="label")]
+    )
+    dataset.add_sample(video)
+    return video

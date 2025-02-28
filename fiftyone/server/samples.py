@@ -12,6 +12,7 @@ import typing as t
 
 
 from fiftyone.core.collections import SampleCollection
+from fiftyone.core.dataset import Dataset
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 from fiftyone.core.utils import run_sync_task
@@ -183,16 +184,10 @@ async def _create_sample_item(
 
 
 async def get_samples_pipeline(
-    dataset: str,
     view: SampleCollection,
-    filters: t.Optional[JSON],
     sample_filter: t.Optional[SampleFilter],
-    stages: BSONArray,
 ):
-    root_view = await run_sync_task(
-        lambda: fosv.get_view(dataset, stages=stages)
-    )
-    frames, frames_pipeline = _handle_frames(view, filters, root_view)
+    frames, frames_pipeline = _handle_frames(view)
     groups = _handle_groups(sample_filter)
     pipeline = view._pipeline(
         **groups,
@@ -207,33 +202,28 @@ async def get_samples_pipeline(
 
 def _handle_frames(
     view: SampleCollection,
-    filters: t.Optional[JSON],
-    root_view: SampleCollection,
 ):
     # check frame field schema explicitly, media type is not reliable for
     # groups
     attach_frames = view.get_frame_field_schema() is not None
-    full_lookup = attach_frames and (
-        _has_frame_filtering(filters) or root_view._stages
-    )
 
     # Only return the first frame of each video sample for the grid thumbnail
     if attach_frames:
         return dict(
             attach_frames=attach_frames,
             detach_frames=False,
-            limit_frames=None if full_lookup else 1,
+            limit_frames=None if _needs_full_lookup(view) else 1,
         ), [{"$addFields": {"frames": {"$slice": ["$frames", 1]}}}]
 
     return dict(), []
 
 
-def _has_frame_filtering(filters: t.Optional[JSON]):
-    if not filters:
+def _needs_full_lookup(view: SampleCollection):
+    if isinstance(view, Dataset):
         return False
 
-    for path in filters:
-        if path.startswith(SampleCollection._FRAMES_PREFIX):
+    for stage in view._stages:
+        if stage._needs_frames(view):
             return True
 
     return False
