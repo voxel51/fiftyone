@@ -103,10 +103,7 @@ async def paginate_samples(
     if int(after) > -1:
         view = view.skip(int(after) + 1)
 
-    pipeline = await get_samples_pipeline(
-        dataset, view, filters, sample_filter, stages
-    )
-
+    pipeline = await get_samples_pipeline(view, sample_filter)
     samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
         pipeline,
