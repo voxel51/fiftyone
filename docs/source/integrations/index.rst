@@ -126,8 +126,8 @@ on the cards below to see how!
     :tags: Brain,Embeddings,Vector-Search
 
 .. customcarditem::
-    :header: Pgvector
-    :description: Use our Pgvector integration to enable vector search and query your FiftyOne datasets at scale.
+    :header: PostgreSQL Pgvector
+    :description: Use our PostgreSQL Pgvector integration to enable vector search and query your FiftyOne datasets at scale.
     :link: pgvector.html
     :image: ../_static/images/integrations/postgres.png
     :tags: Brain,Embeddings,Vector-Search
