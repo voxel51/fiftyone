@@ -129,7 +129,7 @@ learn how:
 .. customimagelink::
     :image_link: integrations/postgres.html
     :image_src: https://voxel51.com/images/integrations/postgres-128.png
-    :image_title: Postgres
+    :image_title: PostgreSQL
 
 .. customimagelink::
     :image_link: integrations/mosaic.html
