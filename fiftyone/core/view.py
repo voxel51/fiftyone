@@ -5,6 +5,7 @@ Dataset views.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict, OrderedDict
 import contextlib
 from copy import copy, deepcopy
@@ -1544,6 +1545,7 @@ class DatasetView(foc.SampleCollection):
         media_type=None,
         attach_frames=False,
         detach_frames=False,
+        limit_frames=None,
         frames_only=False,
         support=None,
         group_slice=None,
@@ -1644,12 +1646,16 @@ class DatasetView(foc.SampleCollection):
             # Two lookups are required; manually do the **last** one and rely
             # on dataset._pipeline() to do the first one
             attach_frames = True
-            _pipeline = self._dataset._attach_frames_pipeline(support=support)
+            _pipeline = self._dataset._attach_frames_pipeline(
+                limit=limit_frames, support=support
+            )
             _pipelines.insert(_attach_frames_idx, _pipeline)
         elif _found_select_group_slice and _attach_frames_idx is not None:
             # Must manually attach frames after the group selection
             attach_frames = None  # special syntax: frames already attached
-            _pipeline = self._dataset._attach_frames_pipeline(support=support)
+            _pipeline = self._dataset._attach_frames_pipeline(
+                limit=limit_frames, support=support
+            )
             _pipelines.insert(_attach_frames_idx, _pipeline)
         elif _attach_frames_idx0 is not None or _attach_frames_idx is not None:
             # Exactly one lookup is required; rely on dataset._pipeline() to
@@ -1706,6 +1712,7 @@ class DatasetView(foc.SampleCollection):
             media_type=media_type,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
+            limit_frames=limit_frames,
             frames_only=frames_only,
             support=support,
             group_slice=group_slice,
