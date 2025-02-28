@@ -955,11 +955,12 @@ def _format_attributes(backend, attributes):
         if not attr:
             attr = backend.recommend_attr_tool(name, None)
 
-        attr_type = attr.get("type", None)
-        values = attr.get("values", None)
-        default = attr.get("default", None)
-        mutable = attr.get("mutable", None)
-        read_only = attr.get("read_only", None)
+        _attr = deepcopy(attr)
+        attr_type = _attr.pop("type", None)
+        values = _attr.pop("values", None)
+        default = _attr.pop("default", None)
+        mutable = _attr.pop("mutable", None)
+        read_only = _attr.pop("read_only", None)
 
         if attr_type is None:
             raise ValueError(
@@ -978,7 +979,7 @@ def _format_attributes(backend, attributes):
                 )
             )
 
-        _attr = {"type": attr_type}
+        _attr["type"] = attr_type
 
         # Parse `values` property
         if values is not None:
