@@ -13,6 +13,11 @@ import {
   fo3dContainsBackground,
   isGridOnAtom,
 } from "./state";
+import {
+  isFo3d,
+  isPointCloud,
+  setContainsPointCloud,
+} from "@fiftyone/utilities";
 
 /**
  * This component is responsible for rendering both "3d" as well as
@@ -24,8 +29,8 @@ import {
 export const Looker3d = () => {
   const mediaType = useRecoilValue(fos.mediaType);
   const hasFo3dSlice = useRecoilValue(fos.hasFo3dSlice);
-  const hasPcdSlices = useRecoilValue(fos.groupMediaTypesSet).has(
-    "point_cloud"
+  const hasPcdSlices = setContainsPointCloud(
+    useRecoilValue(fos.groupMediaTypesSet)
   );
   const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
   const parentMediaType = useRecoilValue(fos.parentMediaTypeSelector);
@@ -48,16 +53,16 @@ export const Looker3d = () => {
 
   const shouldRenderPcdComponent = useMemo(
     () =>
-      mediaType === "point_cloud" ||
+      isPointCloud(mediaType) ||
       (mediaType === "group" && hasPcdSlices) ||
-      (isDynamicGroup && parentMediaType === "point_cloud"),
+      (isDynamicGroup && isPointCloud(parentMediaType)),
     [mediaType, hasPcdSlices, isDynamicGroup, parentMediaType]
   );
   const shouldRenderFo3dComponent = useMemo(
     () =>
-      mediaType === "three_d" ||
+      isFo3d(mediaType) ||
       (mediaType === "group" && hasFo3dSlice) ||
-      (isDynamicGroup && parentMediaType === "three_d"),
+      (isDynamicGroup && isFo3d(parentMediaType)),
     [mediaType, hasFo3dSlice, isDynamicGroup, parentMediaType]
   );
 

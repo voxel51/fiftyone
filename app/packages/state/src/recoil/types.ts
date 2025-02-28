@@ -6,7 +6,9 @@ export namespace State {
     | "image"
     | "group"
     | "point_cloud"
+    | "point-cloud"
     | "three_d"
+    | "3d"
     | "video";
 
   export enum SPACE {
