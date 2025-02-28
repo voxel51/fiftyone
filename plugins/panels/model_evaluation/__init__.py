@@ -89,6 +89,10 @@ class EvaluationPanel(Panel):
                 evaluation = {
                     "key": key,
                     "id": self.get_evaluation_id(ctx.dataset, key),
+                    "type": ctx.dataset.get_evaluation_info(key).config.type,
+                    "method": ctx.dataset.get_evaluation_info(
+                        key
+                    ).config.method,
                 }
                 evaluations.append(evaluation)
         ctx.panel.set_state("evaluations", evaluations)
@@ -427,8 +431,15 @@ class EvaluationPanel(Panel):
                     pending
                 )
         for key in eval_keys:
+            conf = ctx.dataset.get_evaluation_info(key).config
             if not self.has_evaluation_results(ctx.dataset, key):
-                pending_evaluations.append({"eval_key": key})
+                pending_evaluations.append(
+                    {
+                        "eval_key": key,
+                        "type": conf.type,
+                        "method": conf.method,
+                    }
+                )
         if update_store:
             pending_evaluations_in_store[
                 dataset_id

@@ -30,9 +30,11 @@ export default function NativeModelEvaluationView(props) {
     pending_evaluations = [],
   } = data;
   const computedEvaluations = useMemo(() => {
-    return evaluations.map(({ key, id }) => ({
+    return evaluations.map(({ key, id, type, method }) => ({
       key,
       id,
+      type,
+      method,
       description: "The description for evaluation " + key,
       status: "reviewed",
     }));
