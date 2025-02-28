@@ -1,7 +1,7 @@
 import { ErrorBoundary, ThemeProvider } from "@fiftyone/components";
 import { BeforeScreenshotContext, screenshotCallbacks } from "@fiftyone/state";
 import { SnackbarProvider } from "notistack";
-import type React from "react";
+import React from "react";
 import { createRoot } from "react-dom/client";
 import { RecoilRoot } from "recoil";
 import Network from "./Network";
@@ -13,6 +13,7 @@ const App: React.FC = () => {
 
   return <Network environment={environment} context={context} />;
 };
+
 
 createRoot(document.getElementById("root") as HTMLDivElement).render(
   <RecoilRoot>
