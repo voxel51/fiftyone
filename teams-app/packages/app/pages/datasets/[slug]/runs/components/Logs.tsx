@@ -1,15 +1,42 @@
+import { useNotification } from "@fiftyone/hooks";
 import { ExternalLinkIcon, SearchIcon } from "@fiftyone/teams-components";
-import { CONSTANT_VARIABLES } from "@fiftyone/teams-state";
-import { Box, Button, Stack, Typography } from "@mui/material";
+import { CONSTANT_VARIABLES, runsLogQuery } from "@fiftyone/teams-state";
+import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import { useEffect } from "react";
+import { PreloadedQuery, useQueryLoader } from "react-relay";
+import { OperationType } from "relay-runtime";
 import { getLogStatus, LOG_STATUS } from "../utils/getLogStatus";
 import LogPreview from "./logs/LogPreview";
 
-const UNAVAILABLE_LOGS =
-  "Run logs are not yet available, please check again after completion.";
+type DefaultLog = {
+  message?: string; // right underneath the logs not available message
+  button?: {
+    message: string; // button underneath the message
+    url: string;
+    icon: "externalLink" | "download";
+  };
+};
 
-const URLLog = (props) => {
+export const DefaultLog = (props: DefaultLog) => {
+  const [_, sendNotification] = useNotification();
   const handleButtonClick = (url: string) => {
     window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleDownload = (url: string) => {
+    const link = document.createElement("a");
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    sendNotification({
+      msg: "Logs download started",
+      variant: "success",
+    });
   };
 
   return (
@@ -17,132 +44,7 @@ const URLLog = (props) => {
       sx={{
         display: "grid",
         placeItems: "center",
-        minHeight: "50vh",
-      }}
-    >
-      <Stack
-        sx={{
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          display: "flex",
-          gap: "24px",
-        }}
-      >
-        <SearchIcon
-          viewBox="0 0 50 50"
-          fill="#FFC59B"
-          sx={{ width: 50, height: 50 }}
-        />
-        <Typography variant="h6" color="secondary">
-          {UNAVAILABLE_LOGS}
-        </Typography>
-        <Stack spacing={1} direction="row">
-          <Button
-            variant="outlined"
-            endIcon={<ExternalLinkIcon viewBox="0 0 17 16" />}
-            onClick={() => handleButtonClick(props.runLink)}
-          >
-            Open run link
-          </Button>
-        </Stack>
-      </Stack>
-    </Box>
-  );
-};
-const UnsetLog = () => {
-  const handleButtonClick = (url: string) => {
-    window.open(url, "_blank", "noopener,noreferrer");
-  };
-
-  return (
-    <Box
-      sx={{
-        display: "grid",
-        placeItems: "center",
-        minHeight: "50vh",
-      }}
-    >
-      <Stack
-        sx={{
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          display: "flex",
-          gap: "24px",
-        }}
-      >
-        <SearchIcon
-          viewBox="0 0 50 50"
-          fill="#FFC59B"
-          sx={{ width: 50, height: 50 }}
-        />
-        <Typography variant="h6" color="secondary">
-          {UNAVAILABLE_LOGS}
-        </Typography>
-        <Stack spacing={1} direction="row">
-          <Button
-            variant="outlined"
-            endIcon={<ExternalLinkIcon viewBox="0 0 17 16" />}
-            onClick={() => handleButtonClick(CONSTANT_VARIABLES.HELM_DOC_URL)}
-          >
-            Helm documentation
-          </Button>
-          <Button
-            variant="outlined"
-            endIcon={<ExternalLinkIcon viewBox="0 0 17 16" />}
-            onClick={() => handleButtonClick(CONSTANT_VARIABLES.DOCKER_DOC_URL)}
-          >
-            Docker documentation
-          </Button>
-        </Stack>
-      </Stack>
-    </Box>
-  );
-};
-const PendingLog = () => {
-  return (
-    <Box
-      sx={{
-        display: "grid",
-        placeItems: "center",
-        minHeight: "50vh",
-      }}
-    >
-      <Stack
-        sx={{
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          display: "flex",
-          gap: "24px",
-        }}
-      >
-        <SearchIcon
-          viewBox="0 0 50 50"
-          fill="#FFC59B"
-          sx={{ width: 50, height: 50 }}
-        />
-        <Typography variant="h6" color="secondary">
-          {UNAVAILABLE_LOGS}
-        </Typography>
-        <Stack spacing={1} direction="row">
-          <Typography variant="body" color="secondary">
-            The operation has not completed yet, try again in sometime
-          </Typography>
-        </Stack>
-      </Stack>
-    </Box>
-  );
-};
-
-export const DefaultLog = (props) => {
-  return (
-    <Box
-      sx={{
-        display: "grid",
-        placeItems: "center",
-        minHeight: "50vh",
+        minHeight: "30vh",
       }}
     >
       <Stack
@@ -167,6 +69,25 @@ export const DefaultLog = (props) => {
             {props.message}
           </Typography>
         )}
+        {props?.button && (
+          <Button
+            variant="outlined"
+            endIcon={
+              props.button.icon === "download" ? (
+                <CloudDownloadIcon />
+              ) : (
+                <ExternalLinkIcon viewBox="0 0 17 16" />
+              )
+            }
+            onClick={() =>
+              props.button.icon === "download"
+                ? handleDownload(props.button.url)
+                : handleButtonClick(props.button.url)
+            }
+          >
+            {props.button.message}
+          </Button>
+        )}
       </Stack>
     </Box>
   );
@@ -175,21 +96,77 @@ export const DefaultLog = (props) => {
 type LogStatus = keyof typeof LOG_STATUS;
 
 export default function Logs(props) {
-  let logStatus = getLogStatus(props.runData) as LogStatus;
+  const runData = props.runData;
+  const logStatus = getLogStatus(runData) as LogStatus;
+  const [logQueryRef, loadLogs] = useQueryLoader(runsLogQuery);
 
+  useEffect(() => {
+    loadLogs({ run: runData.id }, { fetchPolicy: "store-and-network" });
+  }, [runData.id]);
+
+  if (!logQueryRef) {
+    return <></>;
+  }
+
+  return (
+    <LogsContent
+      logQueryRef={logQueryRef}
+      logStatus={logStatus}
+      runData={runData}
+    />
+  );
+}
+
+type LogsContent = {
+  logQueryRef: PreloadedQuery<OperationType, Record<string, unknown>>;
+  logStatus: LogStatus;
+  runData: any;
+};
+
+function LogsContent({ logQueryRef, logStatus, runData }: LogsContent) {
   switch (logStatus) {
     case LOG_STATUS.PENDING:
-      return <PendingLog />;
+      return (
+        <DefaultLog message="Logs not available yet. Please check again after run has completed" />
+      );
     case LOG_STATUS.URL_LINK:
-      return <URLLog runLink={props.runData.runLink} />;
+      return (
+        <DefaultLog
+          button={{
+            url: runData.runLink,
+            message: "Open run link",
+            icon: "externalLink",
+          }}
+        />
+      );
     case LOG_STATUS.UNSET:
-      return <UnsetLog />;
+      //TODO: replace the doc url here with the correct one when it's ready
+      return (
+        <DefaultLog
+          button={{
+            icon: "externalLink",
+            url: CONSTANT_VARIABLES.HELM_DOC_URL,
+            message: "Configure logs",
+          }}
+        />
+      );
     case LOG_STATUS.UPLOAD_ERROR:
-      return <DefaultLog message={props.runData.logUploadError} />;
+      return (
+        <DefaultLog message={runData.logUploadError ?? runData.result?.error} />
+      );
     case LOG_STATUS.UPLOAD_SUCCESS:
-      return <LogPreview {...props} />;
+      return <LogPreview queryRef={logQueryRef} />;
     case LOG_STATUS.UPLOAD_SUCCESS_LARGE_FILE:
-      return <LogPreview isLargeFile={true} {...props} />;
+      return (
+        <DefaultLog
+          message="Log size too large."
+          button={{
+            url: runData.logUrl,
+            message: "Download logs",
+            icon: "download",
+          }}
+        />
+      );
   }
   return <DefaultLog />;
 }

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<201b14e44de2edf90222add73c1e948e>>
+ * @generated SignedSource<<e04437f88a48176b3dfcda70a98ff034>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,10 +9,10 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Query } from 'relay-runtime';
-export type runsItemQuery$variables = {
+export type runsLogQuery$variables = {
   run: string;
 };
-export type runsItemQuery$data = {
+export type runsLogQuery$data = {
   readonly delegatedOperation: {
     readonly completedAt: string | null;
     readonly context: any | null;
@@ -20,6 +20,22 @@ export type runsItemQuery$data = {
     readonly failedAt: string | null;
     readonly id: string;
     readonly label: string | null;
+    readonly logConnection: {
+      readonly edges: ReadonlyArray<{
+        readonly cursor: string;
+        readonly node: {
+          readonly content: string | null;
+          readonly date: string | null;
+          readonly level: string | null;
+        };
+      }>;
+      readonly pageInfo: {
+        readonly endCursor: string | null;
+        readonly hasNextPage: boolean;
+        readonly hasPreviousPage: boolean;
+        readonly startCursor: string | null;
+      };
+    };
     readonly logPath: string | null;
     readonly logSize: number | null;
     readonly logUploadError: string | null;
@@ -41,9 +57,9 @@ export type runsItemQuery$data = {
     readonly status: any | null;
   };
 };
-export type runsItemQuery = {
-  response: runsItemQuery$data;
-  variables: runsItemQuery$variables;
+export type runsLogQuery = {
+  response: runsLogQuery$data;
+  variables: runsLogQuery$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -76,6 +92,113 @@ v2 = [
     "name": "delegatedOperation",
     "plural": false,
     "selections": [
+      (v1/*: any*/),
+      {
+        "alias": null,
+        "args": [
+          {
+            "kind": "Literal",
+            "name": "first",
+            "value": 200000
+          }
+        ],
+        "concreteType": "DelegatedOperationLogConnection",
+        "kind": "LinkedField",
+        "name": "logConnection",
+        "plural": false,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "PageInfo",
+            "kind": "LinkedField",
+            "name": "pageInfo",
+            "plural": false,
+            "selections": [
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "hasNextPage",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "hasPreviousPage",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "startCursor",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "endCursor",
+                "storageKey": null
+              }
+            ],
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "DelegatedOperationLogEdge",
+            "kind": "LinkedField",
+            "name": "edges",
+            "plural": true,
+            "selections": [
+              {
+                "alias": null,
+                "args": null,
+                "concreteType": "DelegatedOperationLog",
+                "kind": "LinkedField",
+                "name": "node",
+                "plural": false,
+                "selections": [
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "content",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "date",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "level",
+                    "storageKey": null
+                  }
+                ],
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "cursor",
+                "storageKey": null
+              }
+            ],
+            "storageKey": null
+          }
+        ],
+        "storageKey": "logConnection(first:200000)"
+      },
       {
         "alias": null,
         "args": null,
@@ -104,7 +227,6 @@ v2 = [
         "name": "failedAt",
         "storageKey": null
       },
-      (v1/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -245,7 +367,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "runsItemQuery",
+    "name": "runsLogQuery",
     "selections": (v2/*: any*/),
     "type": "Query",
     "abstractKey": null
@@ -254,20 +376,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "runsItemQuery",
+    "name": "runsLogQuery",
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "a963d1bdb41b91a6a8876b91841be6ab",
+    "cacheID": "22d7431da11495f82c07f92b3f5139ec",
     "id": null,
     "metadata": {},
-    "name": "runsItemQuery",
+    "name": "runsLogQuery",
     "operationKind": "query",
-    "text": "query runsItemQuery(\n  $run: String!\n) {\n  delegatedOperation(operationId: $run) {\n    completedAt\n    context\n    datasetId\n    failedAt\n    id\n    operator\n    label\n    pinned\n    queuedAt\n    result\n    runBy {\n      name\n      id\n    }\n    runState\n    scheduledAt\n    startedAt\n    status\n    runLink\n    priority\n    logPath\n    logUrl\n    logSize\n    logUploadError\n    metadata\n  }\n}\n"
+    "text": "query runsLogQuery(\n  $run: String!\n) {\n  delegatedOperation(operationId: $run) {\n    id\n    logConnection(first: 200000) {\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n        startCursor\n        endCursor\n      }\n      edges {\n        node {\n          content\n          date\n          level\n        }\n        cursor\n      }\n    }\n    completedAt\n    context\n    datasetId\n    failedAt\n    operator\n    label\n    pinned\n    queuedAt\n    result\n    runBy {\n      name\n      id\n    }\n    runState\n    scheduledAt\n    startedAt\n    status\n    runLink\n    priority\n    logPath\n    logUrl\n    logSize\n    logUploadError\n    metadata\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b3287081ef86a27e8ac2c02a316bc8a4";
+(node as any).hash = "c9f3ed4081fe61ef5c0138acbc7a1d8a";
 
 export default node;

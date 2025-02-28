@@ -1,8 +1,8 @@
-import { useNotification } from "@fiftyone/hooks";
 import { TableSkeleton } from "@fiftyone/teams-components";
-import { runsItemQuery$dataT } from "@fiftyone/teams-state";
+import { runsLogQuery, runsLogQuery$dataT } from "@fiftyone/teams-state";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
-import { Box, Button, Typography, useTheme } from "@mui/material";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -10,20 +10,37 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
+import Typography from "@mui/material/Typography";
+import useTheme from "@mui/material/styles/useTheme";
 import React, { Suspense, useCallback, useMemo } from "react";
+import { usePreloadedQuery } from "react-relay";
 import { TableComponents, TableVirtuoso } from "react-virtuoso";
+import { DefaultLog } from "../Logs";
+import { useNotification } from "@fiftyone/hooks";
 
-export default function LogPreview(props: {
-  runData: runsItemQuery$dataT["delegatedOperation"];
-  isLargeFile?: boolean;
-}) {
-  if (!props) return <></>;
+export default function LogPreview({ queryRef }) {
+  const data = usePreloadedQuery<runsLogQuery$dataT>(
+    runsLogQuery,
+    queryRef
+  ) as runsLogQuery$dataT;
+  const logConnection = data.delegatedOperation.logConnection;
   const [_, sendNotification] = useNotification();
-  const { logConnection } =
-    props.runData as runsItemQuery$dataT["delegatedOperation"];
 
-  const isLargeFile = props.isLargeFile ?? false;
+  const handleDownload = useCallback(() => {
+    const link = document.createElement("a");
+    link.href = data.delegatedOperation.logUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    sendNotification({
+      msg: "Logs download started",
+      variant: "success",
+    });
+  }, [data.delegatedOperation.logUrl]);
 
+  // skip logs if date, level, content are all empty
+  // if one line have date and level, but no content, the second line have no
+  // date or level, but has content, combine the two lines
   const processedLogs = useMemo(() => {
     if (!logConnection?.edges || !Array.isArray(logConnection.edges)) return [];
 
@@ -60,65 +77,41 @@ export default function LogPreview(props: {
       // Add the valid log entry
       acc.push({ id: idCounter++, date, level, content });
 
-      return acc;
+      return acc as LogData[];
     }, []);
   }, [logConnection.edges]);
 
-  const handleDownload = () => {
-    // Download the content using the logUrl
-    const link = document.createElement("a");
-    link.href = props.runData.logUrl;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    sendNotification({
-      msg: "Download started successfully",
-      variant: "success",
-    });
-  };
+  if (processedLogs.length == 0) {
+    return <DefaultLog />;
+  }
 
-  if (isLargeFile) {
-    return (
-      <div>
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          alignItems="center"
-          mb={1}
+  return (
+    <div>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={1}
+      >
+        <Typography variant="h6">
+          {logConnection.edges.length === 0
+            ? "Logs Preview is not available"
+            : " "}
+        </Typography>
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<CloudDownloadIcon />}
+          onClick={handleDownload}
         >
-          <Typography variant="h6">
-            {logConnection.edges.length === 0
-              ? "Logs Preview is not available"
-              : "Logs Preview"}
-          </Typography>
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<CloudDownloadIcon />}
-            onClick={handleDownload}
-            color="info"
-          >
-            Download Logs
-          </Button>
-        </Box>
-        {logConnection.edges.length === 0 ? (
-          <></>
-        ) : (
-          <Suspense fallback={<TableSkeleton />}>
-            <VirtualLogTable data={processedLogs} />
-          </Suspense>
-        )}
-      </div>
-    );
-  } else {
-    return logConnection?.edges.length === 0 ? (
-      <></>
-    ) : (
+          Download Logs
+        </Button>
+      </Box>
       <Suspense fallback={<TableSkeleton />}>
         <VirtualLogTable data={processedLogs} />
       </Suspense>
-    );
-  }
+    </div>
+  );
 }
 
 interface LogData {
@@ -134,14 +127,14 @@ interface ColumnData {
   width?: number;
 }
 
-const VirtualLogTable = ({ data }) => {
+const VirtualLogTable = ({ data }: { data: LogData[] }) => {
   const { palette } = useTheme();
 
   const columns: ColumnData[] = useMemo(
     () => [
-      { width: 160, label: "Timestamp", dataKey: "date" },
+      { width: 200, label: "Timestamp", dataKey: "date" },
       { width: 80, label: "Level", dataKey: "level" },
-      { width: 500, label: "Message", dataKey: "content" },
+      { label: "Message", dataKey: "content" },
     ],
     []
   );
@@ -166,7 +159,7 @@ const VirtualLogTable = ({ data }) => {
       <Table
         {...props}
         size="small"
-        sx={{ borderCollapse: "separate", tableLayout: "fixed" }}
+        sx={{ borderCollapse: "separate", tableLayout: "fixed", width: "100%" }}
       />
     ),
     TableHead: React.forwardRef<HTMLTableSectionElement>((props, ref) => (
@@ -186,13 +179,15 @@ const VirtualLogTable = ({ data }) => {
           <TableCell
             key={column.dataKey}
             variant="head"
-            style={{
+            sx={{
               width: column.width,
               fontWeight: "bold",
-              color: palette.text.secondary,
+              color: palette.primary.secondary,
               fontSize: "0.875rem",
+              width: column.width ?? "auto",
+              backgroundColor: "background.paper",
+              flexGrow: column.dataKey === "content" ? 1 : 0,
             }}
-            sx={{ backgroundColor: "background.paper" }}
           >
             {column.label}
           </TableCell>
@@ -207,7 +202,14 @@ const VirtualLogTable = ({ data }) => {
     (_index: number, row: LogData) => (
       <>
         {columns.map((column) => {
-          let cellStyle = { fontWeight: "normal", fontSize: "0.9rem" };
+          let cellStyle = {
+            fontWeight: "normal",
+            fontSize: "0.9rem",
+            minWidth: column.width ?? 0,
+            maxWidth: column.dataKey === "content" ? "auto" : column.width,
+            overflow: "hidden",
+            flexGrow: column.dataKey === "content" ? 1 : 0,
+          };
           if (column.dataKey === "level") {
             cellStyle = {
               ...cellStyle,
@@ -226,7 +228,7 @@ const VirtualLogTable = ({ data }) => {
   );
 
   return (
-    <Paper style={{ height: "calc(100vh - 430px)", width: "100%" }}>
+    <Paper style={{ height: "calc(100vh - 520px)", width: "100%" }}>
       <TableVirtuoso
         data={data}
         components={VirtuosoTableComponents}

@@ -4,7 +4,7 @@ import isUrl from "./isUrl";
 
 type RunData = runsItemQuery$dataT["delegatedOperation"];
 export const getLogStatus = (runData: RunData) => {
-  const { logUrl, logUploadError, runState, result, runLink, logConnection } =
+  const { logUrl, logUploadError, runState, result, runLink, logSize } =
     runData;
 
   const runHasFinished = [
@@ -26,11 +26,16 @@ export const getLogStatus = (runData: RunData) => {
     return LOG_STATUS.URL_LINK;
   }
   // when the run has finished and log is uploaded successfully
-  if (logUrl && !logUploadError && runHasFinished) {
-    const largeFile = logConnection.edges.length === 1000;
+  if (logSize && logUrl && !logUploadError && runHasFinished) {
+    const logSizeInMB = logSize / 1024 / 1024;
+    const largeFile = logSizeInMB > 1;
     return largeFile
       ? LOG_STATUS.UPLOAD_SUCCESS_LARGE_FILE
       : LOG_STATUS.UPLOAD_SUCCESS;
+  }
+
+  if (logUrl && !logUploadError && runHasFinished) {
+    return LOG_STATUS.UPLOAD_SUCCESS;
   }
 
   if (logUploadError) {
