@@ -12,11 +12,11 @@ from datetime import datetime
 import fnmatch
 import itertools
 import logging
-import numbers
 import os
 import random
 import string
 import timeit
+from typing import Iterator, Any
 import warnings
 
 from bson import ObjectId
@@ -34,6 +34,7 @@ import fiftyone.core.evaluation as foev
 import fiftyone.core.fields as fof
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
+import fiftyone.core.map as fomp
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
@@ -49,6 +50,7 @@ fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
+foum = fou.lazy_import("fiftyone.utils.map")
 foos = fou.lazy_import("fiftyone.operators.store")
 
 
@@ -3211,6 +3213,65 @@ class SampleCollection(object):
 
     def _delete_labels(self, ids, fields=None):
         self._dataset.delete_labels(ids=ids, fields=fields)
+
+    def map_samples(
+        self,
+        map_fcn,
+        save=None,
+        num_workers=None,
+        shard_method="id",
+        progress=None,
+        backend: str | fomp.MapBackendType = None,
+    ) -> Iterator[Any]:
+        """
+        Applies map_samples with specified backend, defaulting to `sequential`.
+
+        Args:
+            map_fcn: Function to apply to each sample.
+            save (None): Whether to save modified samples.
+            num_workers (None): Number of workers (if applicable).
+            shard_method ("id"): Method for sharding ('id' or 'slice').
+            progress (None): Whether to show a progress bar.
+            backend (None): Backend execution strategy, defaults to `sequential` if None.
+
+        Returns:
+            Iterator[Any]: Processed sample results.
+        """
+        # Default to sequential if backend is not provided
+        if backend is None:
+            backend = fomp.MapBackendType.sequential
+
+        return foum.map_samples(
+            self, map_fcn, save, num_workers, shard_method, progress, backend
+        )
+
+    def update_samples(
+        self,
+        map_fcn,
+        save=None,
+        num_workers=None,
+        shard_method="id",
+        progress=None,
+        backend: str | fomp.MapBackendType = None,
+    ):
+        """
+        Applies update_samples with specified backend, defaulting to `sequential`.
+
+        Args:
+            map_fcn: Function to apply to each sample.
+            save (None): Whether to save modified samples.
+            num_workers (None): Number of workers (if applicable).
+            shard_method ("id"): Method for sharding ('id' or 'slice').
+            progress (None): Whether to show a progress bar.
+            backend (None): Backend execution strategy, defaults to `sequential` if None.
+        """
+        # Default to sequential if backend is not provided
+        if backend is None:
+            backend = fomp.MapBackendType.sequential
+
+        return foum.update_samples(
+            self, map_fcn, save, num_workers, shard_method, progress, backend
+        )
 
     def compute_metadata(
         self,
