@@ -9,9 +9,8 @@ import {
   AutoRefresh,
   BackButton,
   Box,
-  Timestamp,
   CodeBlock,
-  Link,
+  Timestamp,
 } from "@fiftyone/teams-components";
 import {
   VIEW_DATASET,
@@ -25,7 +24,7 @@ import {
   OPERATOR_RUN_STATES,
 } from "@fiftyone/teams-state/src/constants";
 import * as fou from "@fiftyone/utilities";
-import { Stack, Tab, TabProps, Tabs, Typography } from "@mui/material";
+import { Link, Stack, Tab, TabProps, Tabs, Typography } from "@mui/material";
 import withRelay from "lib/withRelay";
 import { capitalize, get, omit } from "lodash";
 import { useEffect, useState } from "react";
@@ -88,6 +87,8 @@ function Run(props) {
     FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS_ENV_KEY
   );
   const { inputs_schema, outputs_schema } = metadata || {};
+  const hasExpired = runResult && runResult?.error?.includes("expired");
+  console.log("hasExpired", hasExpired, runResult);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -166,6 +167,7 @@ function Run(props) {
               direction="row"
               spacing={1}
               divider={<Typography>·</Typography>}
+              sx={{ whiteSpace: "nowrap" }}
             >
               {runByName && (
                 <Typography color="secondary">Run by {runByName}</Typography>
@@ -193,8 +195,7 @@ function Run(props) {
                 </Typography>
               )}
             </Stack>
-            {(runLink || logUrl) &&
-              showOrchestrators &&
+            {showOrchestrators &&
               (runLink ? (
                 <Link
                   href={runLink}
@@ -210,9 +211,19 @@ function Run(props) {
                   {runLink}
                 </Link>
               ) : (
-                <Typography color="text.tertiary">
-                  {runLink || logUrl}
-                </Typography>
+                <Link
+                  href={logUrl}
+                  target="_blank"
+                  color="secondary"
+                  sx={{
+                    maxWidth: "80vw",
+                    overflow: "hidden",
+                    whiteSpace: "nowrap",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {logUrl}
+                </Link>
               ))}
           </Stack>
           <Box style={{ marginLeft: "auto" }}>
