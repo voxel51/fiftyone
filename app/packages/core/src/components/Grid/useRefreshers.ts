@@ -1,8 +1,9 @@
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
+import { useMemoOne } from "use-memo-one";
 import { gridAt, gridOffset, gridPage } from "./recoil";
 
 export default function useRefreshers() {
@@ -27,7 +28,7 @@ export default function useRefreshers() {
   const view = fos.filterView(useRecoilValue(fos.view) ?? []);
 
   // only reload, attempt to return to the last grid location
-  const layoutReset = useMemo(() => {
+  const layoutReset = useMemoOne(() => {
     cropToContent;
     fieldVisibilityStage;
     mediaField;
@@ -36,7 +37,7 @@ export default function useRefreshers() {
   }, [cropToContent, fieldVisibilityStage, mediaField, refresher]);
 
   // the values reset the page, i.e. return to the top
-  const pageReset = useMemo(() => {
+  const pageReset = useMemoOne(() => {
     datasetName;
     extendedStagesUnsorted;
     filters;
@@ -55,7 +56,7 @@ export default function useRefreshers() {
     view,
   ]);
 
-  const reset = useMemo(() => {
+  const reset = useMemoOne(() => {
     layoutReset;
     pageReset;
     return uuid();

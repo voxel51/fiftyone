@@ -2,8 +2,9 @@ import styles from "./Grid.module.css";
 
 import Spotlight from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { useRecoilValue } from "recoil";
+import { useMemoOne } from "use-memo-one";
 import { v4 as uuid } from "uuid";
 import { useSyncLabelsRenderingStatus } from "../../hooks";
 import {
@@ -30,8 +31,8 @@ const MAX_INSTANCES = 5151;
 const MAX_ROWS = 5151;
 
 function Grid() {
-  const id = useMemo(() => uuid(), []);
-  const pixels = useMemo(() => uuid(), []);
+  const id = useMemoOne(() => uuid(), []);
+  const pixels = useMemoOne(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
   const { pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
@@ -67,7 +68,7 @@ function Grid() {
   const setSample = fos.useExpandSample(store);
   const autosizing = useRecoilValue(gridAutosizing);
 
-  const spotlight = useMemo(() => {
+  const spotlight = useMemoOne(() => {
     /** SPOTLIGHT REFRESHER */
     reset;
     /** SPOTLIGHT REFRESHER */
