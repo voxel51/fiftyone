@@ -31,7 +31,7 @@ SAML). For the supported IdPs, see
 
 ### Internal Mode
 
-In internal mode, FiftyOne Enterprise the CAS replaces Auth0. FiftyOne
+In internal mode of FiftyOne Enterprise, the CAS replaces Auth0. FiftyOne
 Enterprise will not require network egress to external services. User data is
 immediately consistent (where changes are reflected across FiftyOne Enterprise
 instantly). Directory data is immediately written to MongoDB, and organizations

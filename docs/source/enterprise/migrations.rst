@@ -23,7 +23,7 @@ follows:
 
 .. code-block:: shell
 
-    pip install --index-url https://${TOKEN}@pypi.fiftyone.ai –-upgrade fiftyone
+    pip install --index-url https://${TOKEN}@pypi.fiftyone.ai --upgrade fiftyone
 
 A specific FiftyOne Enterprise client version can be installed like so:
 

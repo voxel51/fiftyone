@@ -39,8 +39,8 @@ For example, you can set environment variables:
 
 .. code-block:: shell
 
-   export FIFTYONE_API_URI==XXXXXXXX
-   export FIFTYONE_API_KEY==YYYYYYYY
+   export FIFTYONE_API_URI=XXXXXXXX
+   export FIFTYONE_API_KEY=YYYYYYYY
 
 See
 :ref:`this page <configuring-fiftyone>` for more information about using your

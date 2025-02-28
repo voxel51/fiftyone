@@ -83,8 +83,8 @@ of virtual CPU cores on your machine to download media files.
 When the cache is full, local files are automatically deleted in reverse order
 of when they were last accessed (i.e., oldest deleted first).
 
-You can configure the behavior of FiftyOne Team’s media cache in any of the
-following ways.
+You can configure the behavior of FiftyOne Enterprise’s media cache in any of
+the following ways.
 
 1. Configure your media cache on a per-session basis by setting any of the
 following environment variables (default values shown):
