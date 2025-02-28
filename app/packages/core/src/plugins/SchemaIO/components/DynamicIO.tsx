@@ -1,7 +1,7 @@
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import { isNullish } from "@fiftyone/utilities";
 import { get, isEqual, set } from "lodash";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { isPathUserChanged } from "../hooks";
 import {
   getComponent,
@@ -72,7 +72,9 @@ function useStateInitializer(props: ViewPropsType) {
   const { data, onChange } = props;
   const computedSchema = getComputedSchema(props);
   const { default: defaultValue } = computedSchema;
+  const hasInitialized = useRef(false);
   const shouldInitialize = useMemo(() => {
+    if (hasInitialized.current) return false;
     return !isCompositeView(computedSchema) && isEditableView(computedSchema);
   }, [computedSchema]);
   const basicData = useMemo(() => {
@@ -92,6 +94,7 @@ function useStateInitializer(props: ViewPropsType) {
       !isNullish(defaultValue) &&
       !isInitialized(props)
     ) {
+      hasInitialized.current = true;
       onChange(path, defaultValue, computedSchema);
     }
   }, [defaultValue, onChange, unboundState]);
