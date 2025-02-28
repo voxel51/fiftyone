@@ -1,20 +1,18 @@
 import { useTheme } from "@fiftyone/components";
 import { ImaVidLooker } from "@fiftyone/looker";
-import {
-  FoTimelineConfig,
-  useCreateTimeline,
-  useTimeline,
-} from "@fiftyone/playback";
+import type { FoTimelineConfig } from "@fiftyone/playback";
 import {
   PLAYHEAD_STATE_BUFFERING,
   PLAYHEAD_STATE_PAUSED,
   PLAYHEAD_STATE_PLAYING,
-} from "@fiftyone/playback/src/lib/constants";
-import { useDefaultTimelineNameImperative } from "@fiftyone/playback/src/lib/use-default-timeline-name";
+  useCreateTimeline,
+  useDefaultTimelineNameImperative,
+  useTimeline,
+} from "@fiftyone/playback";
 import { Timeline } from "@fiftyone/playback/src/views/Timeline";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOnSelectLabel } from "@fiftyone/state";
-import { BufferRange } from "@fiftyone/utilities";
+import type { BufferRange } from "@fiftyone/utilities";
 import React, {
   useCallback,
   useEffect,
