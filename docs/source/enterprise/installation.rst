@@ -153,7 +153,7 @@ You should then see snippets in the ``pyproject.toml`` file like the following
 .. code-block:: toml
 
     [tool.poetry.dependencies]
-    fiftyone = {version = "X.Y.Z", source = "fiftyone-enterprise}
+    fiftyone = {version = "X.Y.Z", source = "fiftyone-enterprise"}
 
 .. _enterprise-cloud-credentials:
 

@@ -844,12 +844,12 @@ Functions.
 
 We recommend including FiftyOne Enterprise in your  function’s `requirements.txt`
 file by passing your token as a build environment variable, e.g.,
-`FIFTYONE_TEAMS_TOKEN` and then using the syntax below to specify the version
+`FIFTYONE_ENTERPRISE_TOKEN` and then using the syntax below to specify the version
 of the FiftyOne Enterprise client to use:
 
 .. code-block:: text
 
-    https://${FIFTYONE_TEAMS_TOKEN}@pypi.fiftyone.ai/packages/fiftyone-0.6.6-py3-none-any.whl
+    https://${FIFTYONE_ENTERPRISE_TOKEN}@pypi.fiftyone.ai/packages/fiftyone-0.6.6-py3-none-any.whl
 
 **Runtime**
 
