@@ -5,6 +5,7 @@ Dataset views.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict, OrderedDict
 import contextlib
 from copy import copy, deepcopy
@@ -162,7 +163,7 @@ class DatasetView(foc.SampleCollection):
             return False
 
         for stage in self._stages:
-            if isinstance(stage, fost.SelectGroupSlices):
+            if stage.flattens_groups:
                 return False
 
         return True
@@ -244,7 +245,7 @@ class DatasetView(foc.SampleCollection):
             return None
 
         if self.__group_slice is not None:
-            return self.__group_slice
+            return self.__group_slice or None
 
         return self._dataset.group_slice
 
@@ -271,7 +272,7 @@ class DatasetView(foc.SampleCollection):
         if not self._has_slices:
             return None
 
-        return self._dataset.group_slices
+        return list(self._get_group_media_types().keys())
 
     @property
     def group_media_types(self):
@@ -281,7 +282,7 @@ class DatasetView(foc.SampleCollection):
         if not self._has_slices:
             return None
 
-        return self._dataset.group_media_types
+        return self._get_group_media_types()
 
     @property
     def default_group_slice(self):
@@ -290,6 +291,9 @@ class DatasetView(foc.SampleCollection):
         """
         if not self._has_slices:
             return None
+
+        if self._dataset.default_group_slice not in self.group_slices:
+            return self.group_slice
 
         return self._dataset.default_group_slice
 
@@ -1557,7 +1561,7 @@ class DatasetView(foc.SampleCollection):
         _view = self._base_view
 
         _contains_videos = self._dataset._contains_videos(any_slice=True)
-        _found_select_group_slice = False
+        _found_flattened_videos = False
         _attach_frames_idx = None
         _attach_frames_idx0 = None
         _attach_frames_idx1 = None
@@ -1573,10 +1577,12 @@ class DatasetView(foc.SampleCollection):
 
         idx = 0
         for stage in self._stages:
-            if isinstance(stage, fost.SelectGroupSlices):
-                # We might need to reattach frames after `SelectGroupSlices`,
-                # since it involves a `$lookup` that resets the samples
-                _found_select_group_slice = True
+            _pipeline = stage.to_mongo(_view)
+
+            if stage.flattens_groups and _contains_videos and _pipeline:
+                # We might need to reattach frames after flattening groups
+                # since this involves a `$lookup` that resets the samples
+                _found_flattened_videos = True
                 _attach_frames_idx0 = _attach_frames_idx
                 _attach_frames_idx = None
 
@@ -1604,15 +1610,12 @@ class DatasetView(foc.SampleCollection):
 
                     _group_slices.update(_stage_group_slices)
 
-            _pipeline = stage.to_mongo(_view)
-
-            # @note(SelectGroupSlices)
-            # Special case: when selecting group slices of a video dataset that
+            # Special case: when flattening group slices of a video dataset that
             # modifies the dataset's schema, frame lookups must be injected in
             # the middle of the stage's pipeline, after the group slice $lookup
             # but *before* the $project stage(s) that reapply schema changes
             if (
-                isinstance(stage, fost.SelectGroupSlices)
+                stage.flattens_groups
                 and _contains_videos
                 and _pipeline
                 and "$project" in _pipeline[-1]
@@ -1646,8 +1649,8 @@ class DatasetView(foc.SampleCollection):
             attach_frames = True
             _pipeline = self._dataset._attach_frames_pipeline(support=support)
             _pipelines.insert(_attach_frames_idx, _pipeline)
-        elif _found_select_group_slice and _attach_frames_idx is not None:
-            # Must manually attach frames after the group selection
+        elif _found_flattened_videos and _attach_frames_idx is not None:
+            # Must manually attach frames after the group $lookup
             attach_frames = None  # special syntax: frames already attached
             _pipeline = self._dataset._attach_frames_pipeline(support=support)
             _pipelines.insert(_attach_frames_idx, _pipeline)
@@ -1699,7 +1702,7 @@ class DatasetView(foc.SampleCollection):
             media_type = self.media_type
 
         if group_slice is None and self._dataset.media_type == fom.GROUP:
-            group_slice = self.__group_slice or self._dataset.group_slice
+            group_slice = self.__group_slice
 
         return self._dataset._pipeline(
             pipeline=_pipeline,
@@ -1812,12 +1815,24 @@ class DatasetView(foc.SampleCollection):
             if media_type is not None:
                 view._set_media_type(media_type)
 
+            group_media_types = stage.get_group_media_types(self)
+            if (
+                group_media_types is not None
+                and view.media_type == fom.GROUP
+                and view.group_slice not in group_media_types
+            ):
+                group_slice = next(iter(group_media_types.keys()), "")
+                view._set_group_slice(group_slice)
+
         view._set_name(None)
 
         return view
 
     def _set_media_type(self, media_type):
         self.__media_type = media_type
+
+    def _set_group_slice(self, slice_name):
+        self.__group_slice = slice_name
 
     def _set_name(self, name):
         self.__name = name
@@ -1922,11 +1937,17 @@ class DatasetView(foc.SampleCollection):
         return missing_fields
 
     def _get_group_media_types(self):
-        for stage in reversed(self._stages):
-            if isinstance(stage, fost.SelectGroupSlices):
-                return stage._get_group_media_types(self._dataset)
+        group_media_types = self._dataset.group_media_types
 
-        return self._dataset.group_media_types
+        _view = self._base_view
+        for stage in self._stages:
+            gmt = stage.get_group_media_types(_view)
+            if gmt is not None:
+                group_media_types = gmt
+
+            _view = _view._add_view_stage(stage, validate=False)
+
+        return group_media_types
 
 
 def make_optimized_select_view(
@@ -1953,7 +1974,7 @@ def make_optimized_select_view(
             match the order of the provided IDs
         groups (False): whether the IDs are group IDs, not sample IDs
         flatten (False): whether to flatten group datasets before selecting
-            sample ids
+            sample IDs
 
     Returns:
         a :class:`DatasetView`
