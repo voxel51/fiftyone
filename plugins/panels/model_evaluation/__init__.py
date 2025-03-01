@@ -510,18 +510,7 @@ class EvaluationPanel(Panel):
         if subset_name is not None:
             subsets = ctx.panel.get_state("subsets")
             subset_def = subsets.get(subset_name, None)
-
-            if isinstance(subset_def, tuple):
-                # Subset field
-                field, value = subset_def
-                eval_view = foue.get_subset_view(
-                    eval_view, gt_field, field=field, value=value
-                )
-            elif subset_def is not None:
-                # Subset expression
-                eval_view = foue.get_subset_view(
-                    eval_view, gt_field, expr=subset_def
-                )
+            eval_view = foue.get_subset_view(eval_view, gt_field, subset_def)
 
         view = None
         if info.config.type == "classification":
