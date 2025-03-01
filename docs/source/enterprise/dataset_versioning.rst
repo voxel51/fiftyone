@@ -5,7 +5,7 @@ Dataset Versioning
 
 .. default-role:: code
 
-FiftyOne Teams provides native support for versioning your datasets!
+FiftyOne Enterprise provides native support for versioning your datasets!
 
 Dataset Versioning allows you to capture the state of your dataset in time so
 that it can be referenced in the future. This enables workflows like recalling
@@ -24,7 +24,7 @@ annotation added, etc) as well as helping to prevent accidental data loss.
 Overview
 ________
 
-Dataset Versioning in FiftyOne Teams is implemented as a linear sequence of
+Dataset Versioning in FiftyOne Enterprise is implemented as a linear sequence of
 read-only :ref:`Snapshots <dataset-versioning-snapshots>`. In other words,
 creating a new Snapshot creates a permanent record of the dataset’s contents
 that can be loaded and viewed at any time in the future, but not directly
@@ -78,7 +78,7 @@ Dataset Versioning has been built with an extensible architecture so that
 different versioning backends can be swapped in. Each backend may have
 different tradeoffs in terms of performance, storage, and deployment needs, so
 users should be able to choose the best fit for their needs. In addition, many
-users may already have a versioning solution external to FiftyOne Teams, and
+users may already have a versioning solution external to FiftyOne Enterprise, and
 the goal is to support integration around those use cases as well.
 
 Currently, only the
@@ -97,7 +97,7 @@ are :ref:`on the roadmap <dataset-versioning-roadmap>`.
 Snapshots
 _________
 
-Dataset Versioning in FiftyOne Teams is implemented as a linear history of
+Dataset Versioning in FiftyOne Enterprise is implemented as a linear history of
 **Snapshots**. A Snapshot captures the state of a dataset at a particular point
 in time as an immutable object. Compare this concept to creating commits and
 tags in a single branch of a version control system such as git or svn; a
@@ -133,7 +133,7 @@ choices and user actions.
     Virtual Snapshot
         A Snapshot whose state and contents are stored by the pluggable backend
         versioning implementation in whatever way it chooses. In order to be
-        loaded by FiftyOne Teams users, the Snapshot must be *materialized*
+        loaded by FiftyOne Enterprise users, the Snapshot must be *materialized*
         into its workable form in MongoDB. This is done through a combination
         of the overarching versioning infrastructure and the specific
         versioning backend.
@@ -165,7 +165,7 @@ creating snapshots causes database storage to grow quickly!
 When a snapshot is archived, all of its contents are stored in an archive in
 the configured cold storage location: either a mounted filesystem or cloud
 storage folder (using your deployment's
-:ref:`cloud credentials <teams-cloud-credentials>`).
+:ref:`cloud credentials <enterprise-cloud-credentials>`).
 
 .. note::
 
@@ -237,7 +237,7 @@ Usage notes
 Snapshot permissions
 ____________________
 
-The table below shows the :ref:`dataset permissions <teams-permissions>`
+The table below shows the :ref:`dataset permissions <enterprise-permissions>`
 required to perform different Snapshot-related operations:
 
 +----------------------------+----------------------------------+
@@ -278,20 +278,20 @@ trigger a modification to the stored dataset.
 List snapshots
 --------------
 
-Teams UI
-~~~~~~~~
+Enterprise UI
+~~~~~~~~~~~~~
 
 To access the Snapshot history and management page, click the "History tab" on
 a dataset's main page.
 
-.. image:: /images/teams/versioning/history-tab-button.png
+.. image:: /images/enterprise/versioning/history-tab-button.png
     :alt: history-tab-button
     :align: center
 
 On this page you can see a listing of the Snapshot history for the dataset.
 Each row contains information about a single Snapshot.
 
-.. image:: /images/teams/versioning/snapshot-list.png
+.. image:: /images/enterprise/versioning/snapshot-list.png
     :alt: snapshot-list
     :align: center
 
@@ -330,16 +330,16 @@ Loading snapshots
 -----------------
 
 Any user with Can View permissions to a dataset can view and load its snapshots
-via the Teams UI or the SDK.
+via the Enterprise UI or the SDK.
 
-Teams UI
-~~~~~~~~
+Enterprise UI
+~~~~~~~~~~~~~
 
 From the dataset's History tab, click the "Browse" button next to a Snapshot in
 the :ref:`snapshot list <dataset-versioning-list-snapshots>` to load the
 Snapshot in the UI.
 
-.. image:: /images/teams/versioning/browse-button.png
+.. image:: /images/enterprise/versioning/browse-button.png
     :alt: history-browse-button
     :align: center
 
@@ -353,7 +353,7 @@ button. For the above Snapshot, it would look like this:
 
 .. code-block:: text
 
-    https://<your-teams-url>/datasets/roadscene-vehicle-detection/samples?snapshot=new+snapshot
+    https://<your-enterprise-url>/datasets/roadscene-vehicle-detection/samples?snapshot=new+snapshot
 
 One other difference from the normal page is the Snapshot banner which gives
 information about the Snapshot being viewed, and other quick-click operations.
@@ -361,7 +361,7 @@ Clicking the name line drops down a list of the Snapshots where the current one
 is highlighted. Clicking on a Snapshot in the dropdown will navigate to the
 browse page for that Snapshot.
 
-.. image:: /images/teams/versioning/browse-banner-dropdown.png
+.. image:: /images/enterprise/versioning/browse-banner-dropdown.png
     :alt: browse-banner-dropdown
     :align: center
 
@@ -372,7 +372,7 @@ from the 3-dot (kebab) menu which gives various
 :ref:`management functions <dataset-versioning-snapshot-management>` for the
 current Snapshot.
 
-.. image:: /images/teams/versioning/browse-banner-right.png
+.. image:: /images/enterprise/versioning/browse-banner-right.png
     :alt: browse-banner-rightside
     :align: center
 
@@ -409,14 +409,14 @@ Creating a snapshot
 -------------------
 
 Users with Can Manage permissions to a dataset can create Snapshots through the
-Teams UI or the Management SDK.
+Enterprise UI or the Management SDK.
 
 .. note::
 
     Snapshots can only be created from the HEAD of the dataset.
 
-Teams UI
-~~~~~~~~
+Enterprise UI
+~~~~~~~~~~~~~
 
 At the top of the History tab for a dataset is the Create snapshot panel.
 This panel shows the number of changes that have happened between the last
@@ -427,7 +427,7 @@ Snapshot and the current state of the dataset.
     The latest changes summary is not continuously updated; click the "Refresh"
     button to recompute these values.
 
-.. image:: /images/teams/versioning/create-refresh-button.png
+.. image:: /images/enterprise/versioning/create-refresh-button.png
     :alt: create-refresh-button
     :align: center
 
@@ -440,13 +440,13 @@ click the "Save new snapshot" button.
     used, deployment options chosen, and the size of the dataset, this may take
     some time.
 
-.. image:: /images/teams/versioning/create-save-button.png
+.. image:: /images/enterprise/versioning/create-save-button.png
     :alt: create-save-button
     :align: center
 
 After creation, the new Snapshot will show up in the list!
 
-.. image:: /images/teams/versioning/history-new-snapshot.png
+.. image:: /images/enterprise/versioning/history-new-snapshot.png
     :alt: history-new-snapshot
     :align: center
 
@@ -505,7 +505,7 @@ Deleting a snapshot
 -------------------
 
 Users with Can Manage permissions to a dataset can delete snapshots through the
-Teams UI or the Management SDK.
+Enterprise UI or the Management SDK.
 
 If the Snapshot is the most recent, the latest (HEAD) sample changes summary is
 not automatically recalculated. See
@@ -520,14 +520,14 @@ Snapshot.
 
     Deleting a Snapshot cannot be undone!
 
-Teams UI
-~~~~~~~~
+Enterprise UI
+~~~~~~~~~~~~~
 
 To delete a Snapshot via the App, open the 3-dot (kebab) menu for the Snapshot.
 In the menu, click "Delete snapshot". This will bring up a confirmation dialog
 to prevent accidental deletions.
 
-.. image:: /images/teams/versioning/delete-snapshot.png
+.. image:: /images/enterprise/versioning/delete-snapshot.png
     :alt: delete-snapshot
     :align: center
 
@@ -562,15 +562,15 @@ of a given Snapshot.
     **all** changes between the selected Snapshot and the current working
     version of the dataset, including all newer Snapshots.
 
-Teams UI
-~~~~~~~~
+Enterprise UI
+~~~~~~~~~~~~~
 
 To revert a dataset to a Snapshot's state, click the 3-dot (kebab) menu in
 the History tab for the Snapshot you want to rollback to and select
 "Rollback to this snapshot". This will bring up a confirmation dialog to
 prevent accidental deletions.
 
-.. image:: /images/teams/versioning/rollback-snapshot.png
+.. image:: /images/enterprise/versioning/rollback-snapshot.png
     :alt: rollback-snapshot
     :align: center
 
@@ -615,15 +615,15 @@ configured cold storage location via the UI or the Management SDK.
     The snapshot must first be
     :ref:`unarchived <dataset-versioning-unarchive-snapshot>`.
 
-Teams UI
-~~~~~~~~
+Enterprise UI
+~~~~~~~~~~~~~
 
 To manually archive a snapshot, click the 3-dot (kebab) menu in the History tab
 for a snapshot you want to archive and select "Archive snapshot". This will
 begin the archival process and the browse button will be replaced with an
 "Archiving" spinner":
 
-.. image:: /images/teams/versioning/archive-snapshot.png
+.. image:: /images/enterprise/versioning/archive-snapshot.png
     :alt: archive-snapshot
     :align: center
 
@@ -655,14 +655,14 @@ Unarchive snapshot
 To make an archived snapshot browsable again, users with Can Manage
 permissions to the dataset can unarchive it via the UI or Management SDK.
 
-Teams UI
-~~~~~~~~
+Enterprise UI
+~~~~~~~~~~~~~
 
 To unarchive a snapshot, click the "Unarchive" button in the History tab for a
 snapshot you want to unarchive. This will begin the unarchival process and the
 archive button will be replaced with an "Unarchiving" spinner:
 
-.. image:: /images/teams/versioning/unarchive-snapshot.png
+.. image:: /images/enterprise/versioning/unarchive-snapshot.png
     :alt: unarchive-snapshot
     :align: center
 
@@ -701,7 +701,7 @@ better suit the users' needs and technology preferences. In the future, this
 section will contain information and discussion about each of these available
 backends, including their strengths/limitations and configuration options.
 
-For the initial release in FiftyOne Teams v1.4.0, however, there is only one
+For the initial release in FiftyOne Enterprise v1.4.0, however, there is only one
 backend choice described below. Additional backends may be implemented in the
 future, but for now, releasing dataset versioning with the first
 iteration was prioritized so that users can begin to see value and provide
@@ -808,7 +808,7 @@ following advice:
 Configuration
 -------------
 
-Since Snapshots impact the storage needs of FiftyOne Teams, some guard rails
+Since Snapshots impact the storage needs of FiftyOne Enterprise, some guard rails
 have been put in place to control the maximum amount of Snapshots that can be
 created. If a threshold has been exceeded while a user attempts to create a
 new Snapshot, they will receive an error informing them that it may be time to
@@ -844,7 +844,7 @@ Roadmap
 _______
 
 The following are some items that are on the roadmap for future iterations
-of the dataset versioning system. Keep an eye out for future FiftyOne Teams
+of the dataset versioning system. Keep an eye out for future FiftyOne Enterprise
 versions for these additional features!
 
 **Near term**

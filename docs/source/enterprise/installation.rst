@@ -1,43 +1,43 @@
-.. _teams-installation:
+.. _enterprise-installation:
 
-FiftyOne Teams Installation
-===========================
+FiftyOne Enterprise Installation
+================================
 
 .. default-role:: code
 
-FiftyOne Teams deployments come with a centralized FiftyOne Teams App and
+FiftyOne Enterprise deployments come with a centralized FiftyOne Enterprise App and
 database that allows your entire team to collaborate securely on the same
-datasets. FiftyOne Teams is deployed entirely into your environment, either
+datasets. FiftyOne Enterprise is deployed entirely into your environment, either
 on-premises or in a private cloud. Your data never leaves your environment.
 
-FiftyOne Teams can be deployed on a wide variety of infrastructure solutions,
+FiftyOne Enterprise can be deployed on a wide variety of infrastructure solutions,
 including Kubernetes and Docker.
 
 .. note::
 
-    Detailed instructions for the initial FiftyOne Teams deployment, along with
+    Detailed instructions for the initial FiftyOne Enterprise deployment, along with
     all necessary components, are made available by your Voxel51 CS engineer
     during the onboarding process.
 
-.. _teams-python-sdk:
+.. _enterprise-python-sdk:
 
 Python SDK
 ----------
 
-While the :ref:`FiftyOne Teams App <teams-app>` allows for countless new
+While the :ref:`FiftyOne Enterprise App <enterprise-app>` allows for countless new
 App-centric workflows, any existing Python-based workflows that you've fallen
 in love with in the open-source version of FiftyOne are still directly
 applicable!
 
-FiftyOne Teams requires an updated Python SDK, which is a wrapper around the
+FiftyOne Enterprise requires an updated Python SDK, which is a wrapper around the
 open-source FiftyOne package that adds new functionality like support for
 cloud-backed media.
 
 You can find the installation instructions under the "Install FiftyOne" section
-of the Teams App by clicking on your user icon in the upper right corner:
+of the Enterprise App by clicking on your user icon in the upper right corner:
 
-.. image:: /images/teams/install_fiftyone.png
-   :alt: install-teams
+.. image:: /images/enterprise/install_fiftyone.png
+   :alt: install-enterprise
    :align: center
    :width: 300
 
@@ -50,32 +50,32 @@ private PyPI server as shown below:
 
 .. note::
 
-    See :ref:`Installation with Poetry<teams-installation-poetry>` if you use
+    See :ref:`Installation with Poetry<enterprise-installation-poetry>` if you use
     ``poetry`` instead of ``pip``.
 
 .. note::
 
-   The Teams Python package is named ``fiftyone`` and has the same module
+   The Enterprise Python package is named ``fiftyone`` and has the same module
    structure as :doc:`fiftyone <../api/fiftyone>`, so any existing scripts you
    built using open source will continue to run after you upgrade!
 
 Next Steps
 __________
 
-After installing the Teams Python SDK in your virtual environment, you'll need
+After installing the Enterprise Python SDK in your virtual environment, you'll need
 to configure two things:
 
-*   Your team's :ref:`API connection <teams-api-connection>` or
+*   Your team's :ref:`API connection <enterprise-api-connection>` or
     :ref:`MongoDB connection <configuring-mongodb-connection>`
 
-*   The :ref:`cloud credentials <teams-cloud-credentials>` to access your
+*   The :ref:`cloud credentials <enterprise-cloud-credentials>` to access your
     cloud-backed media
 
 That's it! Any operations you perform will be stored in a centralized location
 and will be available to all users with access to the same datasets in the
-Teams App or their Python workflows.
+Enterprise App or their Python workflows.
 
-.. _teams-installation-poetry:
+.. _enterprise-installation-poetry:
 
 Installation with Poetry
 ________________________
@@ -95,28 +95,28 @@ In poetry v1.5, it is recommended to use an
 
 .. code-block:: shell
 
-    poetry source add --priority=explicit fiftyone-teams https://pypi.fiftyone.ai/simple/
+    poetry source add --priority=explicit fiftyone-enterprise https://pypi.fiftyone.ai/simple/
 
 Prior to v1.5, you should use the deprecated
 `secondary package source. <https://python-poetry.org/docs/1.4/repositories/#secondary-package-sources>`_
 
 .. code-block:: shell
 
-    poetry source add --secondary fiftyone-teams https://pypi.fiftyone.ai/simple/
+    poetry source add --secondary fiftyone-enterprise https://pypi.fiftyone.ai/simple/
 
 Configure credentials
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: shell
 
-    poetry config http-basic.fiftyone-teams ${TOKEN} ""
+    poetry config http-basic.fiftyone-enterprise ${TOKEN} ""
 
 Alternatively, you can specify the credentials in environment variables.
 
 .. code-block:: shell
 
-    export POETRY_HTTP_BASIC_FIFTYONE_TEAMS_USERNAME="${TOKEN}"
-    export POETRY_HTTP_BASIC_FIFTYONE_TEAMS_PASSWORD=""
+    export POETRY_HTTP_BASIC_FIFTYONE_ENTERPRISE_USERNAME="${TOKEN}"
+    export POETRY_HTTP_BASIC_FIFTYONE_ENTERPRISE_PASSWORD=""
 
 If you have trouble configuring the credentials, see
 `more in the poetry docs here. <https://python-poetry.org/docs/repositories/#configuring-credentials>`_
@@ -128,7 +128,7 @@ Replace ``X.Y.Z`` with the proper version
 
 .. code-block::
 
-    poetry add --source fiftyone-teams fiftyone==X.Y.Z
+    poetry add --source fiftyone-enterprise fiftyone==X.Y.Z
 
 .. note::
 
@@ -146,27 +146,27 @@ You should then see snippets in the ``pyproject.toml`` file like the following
 .. code-block:: toml
 
     [[tool.poetry.source]]
-    name = "fiftyone-teams"
+    name = "fiftyone-enterprise"
     url = "https://pypi.fiftyone.ai"
     priority = "explicit"
 
 .. code-block:: toml
 
     [tool.poetry.dependencies]
-    fiftyone = {version = "X.Y.Z", source = "fiftyone-teams}
+    fiftyone = {version = "X.Y.Z", source = "fiftyone-enterprise"}
 
-.. _teams-cloud-credentials:
+.. _enterprise-cloud-credentials:
 
 Cloud credentials
 -----------------
 
-In order to utilize cloud-backed media functionality of FiftyOne Teams, at
+In order to utilize cloud-backed media functionality of FiftyOne Enterprise, at
 least one cloud source must be configured with proper credentials. Below are
 instructions for configuring each supported cloud provider for local SDK use
-or directly to the Teams containers. An admin can also :ref:`configure
-credentials for use by all app users <teams-cloud-storage-page>`.
+or directly to the Enterprise containers. An admin can also :ref:`configure
+credentials for use by all app users <enterprise-cloud-storage-page>`.
 
-.. _teams-cors:
+.. _enterprise-cors:
 
 Cross-origin resource sharing (CORS)
 ____________________________________
@@ -185,7 +185,7 @@ sources to allow for built in browser caching. This will cache signed URL respon
 so you don't need to reload assets from your cloud storage between sessions.
 Details are provided below for each cloud platform.
 
-.. _teams-amazon-s3:
+.. _enterprise-amazon-s3:
 
 Amazon S3
 _________
@@ -193,7 +193,7 @@ _________
 To work with FiftyOne datasets whose media are stored in Amazon S3, you simply
 need to provide
 `AWS credentials <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file>`_
-to your Teams client with read access to the relevant objects and buckets.
+to your Enterprise client with read access to the relevant objects and buckets.
 
 You can do this in any of the following ways:
 
@@ -240,7 +240,7 @@ and the shared credentials file should use
 
 .. note::
 
-    FiftyOne Teams requires either the `s3:ListBucket` or
+    FiftyOne Enterprise requires either the `s3:ListBucket` or
     `s3:GetBucketLocation` permission in order to access objects in S3 buckets.
 
     If you wish to use multi-account credentials, your credentials must have
@@ -248,7 +248,7 @@ and the shared credentials file should use
     this.
 
 3. Permanently register AWS credentials on a particular machine by adding the
-following keys to your :ref:`media cache config <teams-media-cache-config>`:
+following keys to your :ref:`media cache config <enterprise-media-cache-config>`:
 
 .. code-block:: json
 
@@ -264,7 +264,7 @@ here is an example configuration:
 
     [
         {
-            "origin": ["https://fiftyone-teams-deployment.yourcompany.com"],
+            "origin": ["https://fiftyone-enterprise-deployment.yourcompany.com"],
             "method": ["GET", "HEAD"],
             "responseHeader": ["*"],
             "maxAgeSeconds": 86400
@@ -276,14 +276,14 @@ If you would like to take advantage of browser caching you can
 By default S3 does not provide cache-control headers so it will be up to your browser's
 heuristics engine to determine how long to cache the object.
 
-.. _teams-google-cloud:
+.. _enterprise-google-cloud:
 
 Google Cloud Storage
 ____________________
 
 To work with FiftyOne datasets whose media are stored in Google Cloud Storage,
 you simply need to provide `credentials <https://cloud.google.com/docs/authentication>`_
-to your Teams client with read access to the relevant objects and buckets.
+to your Enterprise client with read access to the relevant objects and buckets.
 
 You can do this in any of the following ways:
 
@@ -302,7 +302,7 @@ environment variables to point to your GCS credentials on disk:
     export GOOGLE_APPLICATION_CREDENTIALS="/path/to/gcp-credentials.json"
 
 3. Permanently register GCS credentials on a particular machine by adding the
-following keys to your :ref:`media cache config <teams-media-cache-config>`:
+following keys to your :ref:`media cache config <enterprise-media-cache-config>`:
 
 .. code-block:: json
 
@@ -322,7 +322,7 @@ here is an example configuration:
 
     [
         {
-            "origin": ["https://fiftyone-teams-deployment.yourcompany.com"],
+            "origin": ["https://fiftyone-enterprise-deployment.yourcompany.com"],
             "method": ["GET", "HEAD"],
             "responseHeader": ["*"],
             "maxAgeSeconds": 3600
@@ -333,7 +333,7 @@ If you would like to take advantage of browser caching you can
 `specify cache-control headers on GCP content <https://cloud.google.com/storage/docs/metadata#cache-control>`_.
 By default GCP sets the max-age=0 seconds meaning no caching will occur.
 
-.. _teams-azure:
+.. _enterprise-azure:
 
 Microsoft Azure
 _______________
@@ -341,7 +341,7 @@ _______________
 To work with FiftyOne datasets whose media are stored in Azure Storage, you
 simply need to provide
 `Azure credentials <https://learn.microsoft.com/en-us/azure/storage/blobs/authorize-data-operations-cli>`_
-to your Teams client with read access to the relevant objects and containers.
+to your Enterprise client with read access to the relevant objects and containers.
 
 You can do this in any of the following ways:
 
@@ -382,7 +382,7 @@ environment variables to point to your Azure credentials on disk:
     export AZURE_PROFILE=default  # optional
 
 4. Permanently register Azure credentials on a particular machine by adding the
-following keys to your :ref:`media cache config <teams-media-cache-config>`:
+following keys to your :ref:`media cache config <enterprise-media-cache-config>`:
 
 .. code-block:: json
 
@@ -449,14 +449,14 @@ If you would like to take advantage of browser caching you can
 By default Azure does not provide cache-control headers so it will be up to your browser's
 heuristics engine to determine how long to cache the object.
 
-.. _teams-minio:
+.. _enterprise-minio:
 
 MinIO
 _____
 
 To work with FiftyOne datasets whose media are stored in
 `MinIO <https://min.io/>`_, you simply need to provide the credentials to your
-Teams client with read access to the relevant objects and buckets.
+Enterprise client with read access to the relevant objects and buckets.
 
 You can do this in any of the following ways:
 
@@ -480,7 +480,7 @@ environment variables to point to your MinIO credentials on disk:
     export MINIO_PROFILE=default  # optional
 
 3. Permanently register MinIO credentials on a particular machine by adding the
-following keys to your :ref:`media cache config <teams-media-cache-config>`:
+following keys to your :ref:`media cache config <enterprise-media-cache-config>`:
 
 .. code-block:: json
 
@@ -525,15 +525,15 @@ If you would like to take advantage of browser caching you can
 By default Minio does not provide cache-control headers so it will be up to your browser's
 heuristics engine to determine how long to cache the object.
 
-.. _teams-extra-kwargs:
+.. _enterprise-extra-kwargs:
 
 Extra client arguments
 ______________________
 
 Configuring credentials following the instructions above is almost always
-sufficient for FiftyOne Teams to properly utilize them. In rare cases where the
+sufficient for FiftyOne Enterprise to properly utilize them. In rare cases where the
 cloud provider client needs non-default configuration, you can add extra client
-kwargs via the :ref:`media cache config <teams-media-cache-config>`:
+kwargs via the :ref:`media cache config <enterprise-media-cache-config>`:
 
 .. code-block:: json
 
@@ -557,7 +557,7 @@ Provider names and the class that extra kwargs are passed to:
         <li> <strong>s3</strong>: <code class="docutils literal notranslate> <span class="pre">botocore.config.Config</span></code> </li>
     </ul>
 
-.. _teams-cloud-storage-page:
+.. _enterprise-cloud-storage-page:
 
 Cloud storage page
 ------------------
@@ -565,9 +565,9 @@ Cloud storage page
 Admins can also configure cloud credentials via the Settings > Cloud storage
 page.
 
-Credentials configured via this page are stored (encrypted) in the Teams
+Credentials configured via this page are stored (encrypted) in the Enterprise
 database, rather than needing to be configured through environment variables in
-your Teams deployment.
+your Enterprise deployment.
 
 .. note::
 
@@ -576,14 +576,14 @@ your Teams deployment.
 
 To upload a new credential, click the ``Add credential`` button:
 
-.. image:: /images/teams/cloud_creds_add_btn.png
+.. image:: /images/enterprise/cloud_creds_add_btn.png
     :alt: cloud-creds-add-credentials-button
     :align: center
 
 This will open a modal that you can use to add a credential for any of the
 available providers:
 
-.. image:: /images/teams/cloud_creds_modal_blank.png
+.. image:: /images/enterprise/cloud_creds_modal_blank.png
     :alt: blank-cloud-creds-modal
     :align: center
 
@@ -616,17 +616,17 @@ Alternatively, credentials can be updated programmatically with the
 method in the Management SDK.
 
 Any cloud credentials uploaded via this method will automatically be used by
-the Teams UI when any user attempts to load media associated with the
+the Enterprise UI when any user attempts to load media associated with the
 appropriate provider or specific bucket.
 
 .. note::
 
-    By default, Teams servers refresh their credentials every 120 seconds, so
+    By default, Enterprise servers refresh their credentials every 120 seconds, so
     you may need to wait up to two minutes after modifying your credentials via
     this page in order for the changes to take effect.
 
 .. note::
 
-    Users cannot access stored credentials directly, either via the Teams UI or
-    by using the Teams SDK locally. The credentials are only decrypted and
-    used internally by the Teams servers.
+    Users cannot access stored credentials directly, either via the Enterprise UI or
+    by using the Enterprise SDK locally. The credentials are only decrypted and
+    used internally by the Enterprise servers.

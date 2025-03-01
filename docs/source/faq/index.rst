@@ -163,7 +163,7 @@ you can :ref:`load a dataset remotely <remote-data>` and then explore it via an
 Can I access data stored in the cloud?
 --------------------------------------
 
-Yes! Check out :ref:`FiftyOne Teams <fiftyone-teams>`.
+Yes! Check out :ref:`FiftyOne Enterprise <fiftyone-enterprise>`.
 
 .. _faq-supported-os:
 
