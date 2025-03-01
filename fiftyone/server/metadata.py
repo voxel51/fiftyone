@@ -53,9 +53,6 @@ _metadata_cache = LRUCache(
     fo.config.signed_url_cache_size,
 )
 
-_svc_worker_media_alias = fo.config.svc_worker_media_alias
-_svc_worker_media_endpoint = fo.config.svc_worker_media_endpoint
-
 
 @gql.enum
 class MediaType(Enum):
@@ -649,10 +646,8 @@ def _get_additional_media_fields(
 
 
 def resolve_media_alias_for_svc_worker(url):
-    if (
-        _svc_worker_media_alias
-        and _svc_worker_media_endpoint
-        and url.startswith(_svc_worker_media_alias)
-    ):
-        url = url.replace(_svc_worker_media_alias, _svc_worker_media_endpoint)
+    alias = fo.config.svc_worker_media_alias
+    endpoint = fo.config.svc_worker_media_endpoint
+    if alias and endpoint and url.startswith(alias):
+        url = url.replace(alias, endpoint)
     return url
