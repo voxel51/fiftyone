@@ -7,6 +7,7 @@ export * from "./buffer-manager";
 export * from "./color";
 export * from "./errors";
 export * from "./fetch";
+export * from "./media";
 export * from "./order";
 export * from "./paths";
 export * from "./Resource";
