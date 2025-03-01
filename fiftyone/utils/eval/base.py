@@ -6,6 +6,7 @@ Base evaluation methods.
 |
 """
 
+from copy import deepcopy
 import itertools
 import logging
 import numbers
@@ -25,46 +26,156 @@ foo = fou.lazy_import("fiftyone.operators")
 logger = logging.getLogger(__name__)
 
 
-def get_subset_view(
-    sample_collection,
-    gt_field,
-    field=None,
-    value=None,
-    expr=None,
-):
+def get_subset_view(sample_collection, gt_field, subset_def):
     """Returns the view into the given collection specified by the subset
     definition.
+
+    Example subset definitions::
+
+        # Subset defined by a saved view
+        subset_def = {
+            "type": "view",
+            "view": "night_view",
+        }
+
+        # Subset defined by a sample field value
+        subset_def = {
+            "type": "sample",
+            "field": "timeofday",
+            "value": "night",
+        }
+
+        # Subset defined by a sample field expression
+        subset_def = {
+            "type": "field",
+            "expr": F("uniqueness") > 0.75,
+        }
+
+        # Subset defined by a label attribute value
+        subset_def = {
+            "type": "attribute",
+            "field": "type",
+            "value": "sedan",
+        }
+
+        # Subset defined by a label expression
+        bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+        subset_def = {
+            "type": "attribute",
+            "expr": (0.05 <= bbox_area) & (bbox_area <= 0.5),
+        }
+
+        # Compound subset defined by a sample field value + sample expression
+        subset_def = [
+            {
+                "type": "field",
+                "field": "timeofday",
+                "value": "night",
+            },
+            {
+                "type": "field",
+                "expr": F("uniqueness") > 0.75,
+            },
+        ]
+
+        # Compound subset defined by a sample field value + label expression
+        bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+        subset_def = [
+            {
+                "type": "field",
+                "field": "timeofday",
+                "value": "night",
+            },
+            {
+                "type": "attribute",
+                "expr": (0.05 <= bbox_area) & (bbox_area <= 0.5),
+            },
+        ]
+
+        # Compound subset defined by a saved view + label attribute value
+        subset_def = [
+            {
+                "type": "view",
+                "view": "night_view",
+            },
+            {
+                "type": "attribute",
+                "field": "type",
+                "value": "sedan",
+            }
+        ]
 
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         gt_field: the ground truth field
-        field (None): a field whose values define the subset
-        value (None): a value that ``field`` must take to be in the subset
-        expr (None): a :class:`fiftyone.core.expressions.ViewExpression` that
-            the ground truth labels must match to be in the subset
+        subset_def: a dict or list of dicts defining the subset. See above for
+            syntax and examples
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
     """
     from fiftyone import ViewField as F
 
-    _, is_list_field = sample_collection._get_label_field_root(gt_field)
-
-    if field is not None and value is not None:
-        if field == "tags":
-            subset_view = sample_collection.match_tags(value)
-        elif isinstance(sample_collection.get_field(field), fof.ListField):
-            subset_view = sample_collection.match(F(field).contains(value))
-        else:
-            subset_view = sample_collection.match(F(field) == value)
-    elif expr is not None:
-        if is_list_field:
-            subset_view = sample_collection.filter_labels(gt_field, expr)
-        else:
-            subset_view = sample_collection.match(F(gt_field).apply(expr))
+    if isinstance(subset_def, dict):
+        subset_def = [subset_def]
     else:
-        raise ValueError("Invalid subset definition")
+        subset_def = list(subset_def)
+
+    subset_view = None
+
+    # Always apply saved view first
+    for d in subset_def:
+        type = d["type"]
+        view = d.get("view", None)
+
+        if type == "view":
+            subset_view = sample_collection._root_dataset.load_saved_view(view)
+
+    if subset_view is None:
+        subset_view = sample_collection
+
+    for d in subset_def:
+        type = d["type"]
+        field = d.get("field", None)
+        value = d.get("value", None)
+        expr = d.get("expr", None)
+
+        if type == "field":
+            if value is not None:
+                # Field value
+                if field == "tags":
+                    subset_view = subset_view.match_tags(value)
+                elif isinstance(subset_view.get_field(field), fof.ListField):
+                    subset_view = subset_view.match(F(field).contains(value))
+                else:
+                    subset_view = subset_view.match(F(field) == value)
+            elif expr is not None:
+                # Field expression
+                expr = deepcopy(expr)  # don't modify caller's expression
+                subset_view = subset_view.match(expr)
+        elif type == "attribute":
+            gt_root, is_list_field = sample_collection._get_label_field_root(
+                gt_field
+            )
+
+            if value is not None:
+                # Label attribute value
+                if isinstance(
+                    subset_view.get_field(gt_root + "." + field),
+                    fof.ListField,
+                ):
+                    expr = F(field).contains(value)
+                else:
+                    expr = F(field) == value
+            else:
+                # Label attribute expression
+                expr = deepcopy(expr)  # don't modify caller's expression
+
+            if is_list_field:
+                subset_view = subset_view.filter_labels(gt_field, expr)
+            else:
+                subset_view = subset_view.match(F(gt_field).apply(expr))
 
     return subset_view
 
@@ -382,7 +493,7 @@ class BaseClassificationResults(BaseEvaluationResults):
         """
         return self._has_subset
 
-    def use_subset(self, field=None, value=None, expr=None):
+    def use_subset(self, subset_def):
         """Restricts the evaluation results to the specified subset.
 
         Subsequent calls to supported methods on this instance will only
@@ -415,20 +526,20 @@ class BaseClassificationResults(BaseEvaluationResults):
             results.print_report(classes=classes)
 
             # Sunny samples
-            with results.use_subset(field="tags", value="sunny"):
+            subset_def = dict(type="field", field="tags", value="sunny")
+            with results.use_subset(subset_def):
                 results.print_report(classes=classes)
 
             # Small objects
             bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
             small_objects = bbox_area <= 0.05
-            with results.use_subset(expr=small_objects):
+            subset_def = dict(type="attribute", expr=small_objects)
+            with results.use_subset(subset_def):
                 results.print_report(classes=classes)
 
         Args:
-            field (None): a field whose values define the subset
-            value (None): a value that ``field`` must take to be in the subset
-            expr (None): a :class:`fiftyone.core.expressions.ViewExpression`
-                that the ground truth labels must match to be in the subset
+            subset_def: a dict or list of dicts defining the subset. See above
+                for examples and see :func:`get_subset_view` for full syntax
 
         Returns:
             self
@@ -440,9 +551,7 @@ class BaseClassificationResults(BaseEvaluationResults):
             )
 
         gt_field = self.config.gt_field
-        subset_view = get_subset_view(
-            self.samples, gt_field, field=field, value=value, expr=expr
-        )
+        subset_view = get_subset_view(self.samples, gt_field, subset_def)
 
         self._samples_orig = self.samples
         self._ytrue_orig = self.ytrue
