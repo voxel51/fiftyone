@@ -98,6 +98,18 @@ class ViewStage(object):
         """
         return None
 
+    @property
+    def flattens_groups(self):
+        """Whether this stage flattens groups into a non-grouped collection.
+
+        The possible return values are:
+
+        -   ``True``: this stage *flattens* groups
+        -   ``False``: this stage *does not flatten* groups
+        -   ``None``: this stage does not change group status
+        """
+        return None
+
     def get_edited_fields(self, sample_collection, frames=False):
         """Returns a list of names of fields or embedded fields that may have
         been edited by the stage, if any.
@@ -209,6 +221,22 @@ class ViewStage(object):
             -   whether the group expression is an ObjectId field, or ``None``
         """
         return None, None
+
+    def get_group_media_types(self, sample_collection):
+        """Returns the group media types outputted by this stage, if any, when
+        applied to the given collection, if and only if they are different from
+        the input collection.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
+
+        Returns:
+            a dict mapping slice names to media types, or ``None`` if the stage
+            does not change the types
+        """
+        return None
 
     def load_view(self, sample_collection):
         """Loads the :class:`fiftyone.core.view.DatasetView` containing the
@@ -4587,16 +4615,19 @@ class Match(ViewStage):
 
 
 class SelectGroupSlices(ViewStage):
-    """Selects the samples in a group collection from the given slice(s).
+    """Selects the specified group slice(s) from a grouped collection.
 
-    The returned view is a flattened non-grouped view containing only the
-    slice(s) of interest.
+    When ``flat==True``, the returned view is a flattened non-grouped view
+    containing the samples from the slice(s) of interest.
+
+    When ``flat=False``, the returned view is a grouped collection containing
+    only the slice(s) of interest.
 
     .. note::
 
-        This stage performs a ``$lookup`` that pulls the requested slice(s) for
-        each sample in the input collection from the source dataset. As a
-        result, this stage always emits *unfiltered samples*.
+        When ``flat=True``, this stage performs a ``$lookup`` that pulls the
+        requested slice(s) for each sample in the input collection from the
+        source dataset. As a result, the stage emits *unfiltered samples*.
 
     Examples::
 
@@ -4652,6 +4683,13 @@ class SelectGroupSlices(ViewStage):
         view = dataset.add_stage(stage)
 
         #
+        # Select only the "left" and "right" group slices
+        #
+
+        stage = fo.SelectGroupSlices(["left", "right"], flat=False)
+        view = dataset.add_stage(stage)
+
+        #
         # Retrieve all image samples
         #
 
@@ -4662,18 +4700,23 @@ class SelectGroupSlices(ViewStage):
         slices (None): a group slice or iterable of group slices to select.
             If neither argument is provided, a flattened list of all samples is
             returned
-        media_type (None): a media type whose slice(s) to select
+        media_type (None): a media type or iterable of media types whose
+            slice(s) to select
+        flat (True): whether to return a flattened collection (True) or a
+            grouped collection (False)
     """
 
     def __init__(
         self,
         slices=None,
         media_type=None,
+        flat=True,
         _allow_mixed=False,
         _force_mixed=False,
     ):
         self._slices = slices
         self._media_type = media_type
+        self._flat = flat
         self._allow_mixed = _allow_mixed
         self._force_mixed = _force_mixed
 
@@ -4684,10 +4727,22 @@ class SelectGroupSlices(ViewStage):
 
     @property
     def media_type(self):
-        """The media type whose slices to select."""
+        """The media type(s) whose slices to select."""
         return self._media_type
 
+    @property
+    def flat(self):
+        """Whether to generate a flattened collection."""
+        return self._flat
+
+    @property
+    def flattens_groups(self):
+        return self._flat
+
     def to_mongo(self, sample_collection):
+        if not self._flat:
+            return []
+
         if isinstance(sample_collection, fod.Dataset) or (
             isinstance(sample_collection, fov.DatasetView)
             and len(sample_collection._stages) == 0
@@ -4714,6 +4769,13 @@ class SelectGroupSlices(ViewStage):
         name_field = group_field + ".name"
 
         slices = self._get_slices(sample_collection)
+
+        # No $lookup needed because active slice is the only one requested
+        if (
+            etau.is_str(slices) and slices == sample_collection.group_slice
+        ) or (slices is None and len(sample_collection.group_slices) == 1):
+            return []
+
         expr = F(id_field) == "$$group_id"
         if isinstance(slices, list):
             expr &= F(name_field).is_in(slices)
@@ -4734,7 +4796,6 @@ class SelectGroupSlices(ViewStage):
             {"$replaceRoot": {"newRoot": "$groups"}},
         ]
 
-        # @note(SelectGroupSlices)
         # Must re-apply field selection/exclusion after the $lookup
         if isinstance(sample_collection, fov.DatasetView):
             selected_fields, excluded_fields = _get_selected_excluded_fields(
@@ -4752,6 +4813,9 @@ class SelectGroupSlices(ViewStage):
         return pipeline
 
     def get_media_type(self, sample_collection):
+        if not self._flat:
+            return sample_collection.media_type
+
         if self._force_mixed:
             return fom.MIXED
 
@@ -4813,14 +4877,24 @@ class SelectGroupSlices(ViewStage):
 
     def _get_slices(self, sample_collection):
         if self._media_type is not None:
+            if etau.is_str(self._media_type):
+                media_types = {self._media_type}
+            else:
+                media_types = set(self._media_type)
+
             group_media_types = sample_collection.group_media_types
             slices = [
                 slice_name
                 for slice_name, media_type in group_media_types.items()
-                if media_type == self._media_type
+                if media_type in media_types
             ]
         else:
             slices = self._slices
+
+        if slices is None:
+            group_slices = sample_collection.group_slices
+            if group_slices != sample_collection._dataset.group_slices:
+                slices = group_slices
 
         if not etau.is_container(slices):
             return slices
@@ -4832,7 +4906,7 @@ class SelectGroupSlices(ViewStage):
 
         return slices
 
-    def _get_group_media_types(self, sample_collection):
+    def get_group_media_types(self, sample_collection):
         group_media_types = sample_collection.group_media_types
         slices = self._get_slices(sample_collection)
 
@@ -4853,6 +4927,7 @@ class SelectGroupSlices(ViewStage):
         return [
             ["slices", self._slices],
             ["media_type", self._media_type],
+            ["flat", self._flat],
             ["_allow_mixed", self._allow_mixed],
             ["_force_mixed", self._force_mixed],
         ]
@@ -4868,9 +4943,15 @@ class SelectGroupSlices(ViewStage):
             },
             {
                 "name": "media_type",
-                "type": "NoneType|str",
+                "type": "NoneType|list<str>|str",
                 "placeholder": "media_type (default=None)",
                 "default": "None",
+            },
+            {
+                "name": "flat",
+                "type": "bool",
+                "default": "True",
+                "placeholder": "flat (default=True)",
             },
             {
                 "name": "_allow_mixed",
@@ -4880,6 +4961,158 @@ class SelectGroupSlices(ViewStage):
             {
                 "name": "_force_mixed",
                 "type": "NoneType|bool",
+                "default": "None",
+            },
+        ]
+
+
+class ExcludeGroupSlices(ViewStage):
+    """Excludes the specified group slice(s) from a grouped collection.
+
+    Examples::
+
+        import fiftyone as fo
+
+        dataset = fo.Dataset()
+        dataset.add_group_field("group", default="ego")
+
+        group1 = fo.Group()
+        group2 = fo.Group()
+
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/left-image1.jpg",
+                    group=group1.element("left"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/video1.mp4",
+                    group=group1.element("ego"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/right-image1.jpg",
+                    group=group1.element("right"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/left-image2.jpg",
+                    group=group2.element("left"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/video2.mp4",
+                    group=group2.element("ego"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/right-image2.jpg",
+                    group=group2.element("right"),
+                ),
+            ]
+        )
+
+        #
+        # Exclude the "ego" group slice
+        #
+
+        stage = fo.ExcludeGroupSlices("ego")
+        view = dataset.add_stage(stage)
+
+        #
+        # Exclude the "left" and "right" group slices
+        #
+
+        stage = fo.ExcludeGroupSlices(["left", "right"])
+        view = dataset.add_stage(stage)
+
+        #
+        # Exclude all image slices
+        #
+
+        stage = fo.ExcludeGroupSlices(media_type="image")
+        view = dataset.add_stage(stage)
+
+    Args:
+        slices (None): a group slice or iterable of group slices to exclude.
+        media_type (None): a media type or iterable of media types whose
+            slice(s) to exclude
+    """
+
+    def __init__(self, slices=None, media_type=None):
+        self._slices = slices
+        self._media_type = media_type
+
+    @property
+    def slices(self):
+        """The group slice(s) to exclude."""
+        return self._slices
+
+    @property
+    def media_type(self):
+        """The media type(s) whose slices to exclude."""
+        return self._media_type
+
+    def to_mongo(self, sample_collection):
+        return []
+
+    def validate(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            raise ValueError("%s has no groups" % type(sample_collection))
+
+    def _get_slices(self, sample_collection):
+        if self._media_type is not None:
+            if etau.is_str(self._media_type):
+                media_types = {self._media_type}
+            else:
+                media_types = set(self._media_type)
+
+            group_media_types = sample_collection.group_media_types
+            return [
+                slice_name
+                for slice_name, media_type in group_media_types.items()
+                if media_type not in media_types
+            ]
+
+        if self._slices is not None:
+            if etau.is_str(self._slices):
+                slices = {self._slices}
+            else:
+                slices = set(self._slices)
+
+            return [
+                slice_name
+                for slice_name in sample_collection.group_slices
+                if slice_name not in slices
+            ]
+
+        return sample_collection.group_slices
+
+    def get_group_media_types(self, sample_collection):
+        group_media_types = sample_collection.group_media_types
+        slices = set(self._get_slices(sample_collection))
+
+        return {
+            slice_name: media_type
+            for slice_name, media_type in group_media_types.items()
+            if slice_name in slices
+        }
+
+    def _kwargs(self):
+        return [
+            ["slices", self._slices],
+            ["media_type", self._media_type],
+        ]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {
+                "name": "slices",
+                "type": "NoneType|list<str>|str",
+                "placeholder": "slices (default=None)",
+                "default": "None",
+            },
+            {
+                "name": "media_type",
+                "type": "NoneType|list<str>|str",
+                "placeholder": "media_type (default=None)",
                 "default": "None",
             },
         ]
@@ -8648,6 +8881,7 @@ _STAGES = [
     ExcludeFields,
     ExcludeFrames,
     ExcludeGroups,
+    ExcludeGroupSlices,
     ExcludeLabels,
     Exists,
     FilterField,
@@ -8695,6 +8929,7 @@ _STAGES_THAT_SELECT_OR_REORDER = {
     # View stages that only select documents
     Exclude,
     ExcludeBy,
+    ExcludeGroupSlices,
     Exists,
     GeoNear,
     GeoWithin,
@@ -8711,5 +8946,6 @@ _STAGES_THAT_SELECT_OR_REORDER = {
 
 # Registry of select stages that should select first
 _STAGES_THAT_SELECT_FIRST = {
+    ExcludeGroupSlices,
     SelectGroupSlices,
 }
