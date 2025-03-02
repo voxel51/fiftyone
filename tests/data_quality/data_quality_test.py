@@ -461,33 +461,33 @@ def test_change_computing_status_with_issue_status(panel, mock_ctx, mocker):
     # store_mock.set.assert_not_called()
 
 
-@pytest.mark.asyncio
-async def test_check_for_new_samples_new_samples_equals_dataset_size(
+def test_check_for_new_samples_new_samples_equals_dataset_size(
     panel, mock_ctx, mocker
 ):
-    mock_ctx.panel.state.new_samples = {
-        "exact_duplicates": [0, False, False],
+    # Setup state for "exact_duplicates"
+    mock_ctx.panel.state.new_samples = {"exact_duplicates": [0, False, False]}
+    last_scan_time = datetime.utcnow() - timedelta(days=1)
+    mock_ctx.panel.state.last_scan = {
+        "exact_duplicates": {"timestamp": last_scan_time}
     }
-    mocker.patch.object(panel, "get_store", return_value=MagicMock())
+
+    # Setup the store to return previous results (for exact_duplicates, results are not validated)
+    store_mock = MagicMock()
+    store_mock.get.return_value = {
+        "results": {"exact_duplicates": {"dummy": "value"}}
+    }
+    mocker.patch.object(panel, "get_store", return_value=store_mock)
 
     mock_ctx.dataset.exists = MagicMock(
         return_value=["sample1", "sample2", "sample3"]
     )
     mock_ctx.dataset.count = MagicMock(return_value=3)
-
-    previous_results = {"counts": [10], "edges": [1]}
-    last_scan_time = datetime.utcnow() - timedelta(days=1)
     mock_ctx.dataset._max = MagicMock(return_value=datetime.utcnow())
 
     mocker.patch.object(panel, "_change_issue_status")
 
-    await panel.check_for_new_samples(
-        mock_ctx,
-        "exact_duplicates",
-        "field_name",
-        previous_results,
-        last_scan_time,
-    )
+    # Call the new check_for_new_samples method
+    panel.check_for_new_samples(mock_ctx)
 
     panel._change_issue_status.assert_called_once_with(
         mock_ctx, issue_type="exact_duplicates", new_status=STATUS[0]
@@ -499,31 +499,26 @@ async def test_check_for_new_samples_new_samples_equals_dataset_size(
     ]
 
 
-@pytest.mark.asyncio
-async def test_check_for_new_samples_empty_new_samples_view(
-    panel, mock_ctx, mocker
-):
-    mock_ctx.panel.state.new_samples = {
-        "exact_duplicates": [0, False, False],
+def test_check_for_new_samples_empty_new_samples_view(panel, mock_ctx, mocker):
+    mock_ctx.panel.state.new_samples = {"exact_duplicates": [0, False, False]}
+    last_scan_time = datetime.utcnow() - timedelta(days=1)
+    mock_ctx.panel.state.last_scan = {
+        "exact_duplicates": {"timestamp": last_scan_time}
     }
-    mocker.patch.object(panel, "get_store", return_value=MagicMock())
+
+    store_mock = MagicMock()
+    store_mock.get.return_value = {
+        "results": {"exact_duplicates": {"dummy": "value"}}
+    }
+    mocker.patch.object(panel, "get_store", return_value=store_mock)
 
     mock_ctx.dataset.exists = MagicMock(return_value=[])
     mock_ctx.dataset.count = MagicMock(return_value=100)
-
-    previous_results = {"counts": [10], "edges": [1]}
-    last_scan_time = datetime.utcnow() - timedelta(days=1)
     mock_ctx.dataset._max = MagicMock(return_value=datetime.utcnow())
 
-    await panel.check_for_new_samples(
-        mock_ctx,
-        "exact_duplicates",
-        "field_name",
-        previous_results,
-        last_scan_time,
-    )
+    panel.check_for_new_samples(mock_ctx)
 
-    # Assert the new samples state is updated
+    # When no new samples are found, state is updated to [0, True, False]
     assert mock_ctx.panel.state.new_samples["exact_duplicates"] == [
         0,
         True,
@@ -531,92 +526,102 @@ async def test_check_for_new_samples_empty_new_samples_view(
     ]
 
 
-@pytest.mark.asyncio
-async def test_check_for_new_samples_missing_counts_or_edges(
+def test_check_for_new_samples_missing_counts_or_edges(
     panel, mock_ctx, mocker
 ):
+    # Use a non-duplicate issue type ("brightness") for this test and provide all keys
     mock_ctx.panel.state.new_samples = {
+        "brightness": [0, False, False],
+        "blurriness": [0, False, False],
+        "aspect_ratio": [0, False, False],
+        "entropy": [0, False, False],
+        "near_duplicates": [0, False, False],
         "exact_duplicates": [0, False, False],
     }
-    mocker.patch.object(panel, "get_store", return_value=MagicMock())
+    last_scan_time = datetime.utcnow() - timedelta(days=1)
+    mock_ctx.panel.state.last_scan = {
+        "brightness": {"timestamp": last_scan_time},
+        "blurriness": {"timestamp": last_scan_time},
+        "aspect_ratio": {"timestamp": last_scan_time},
+        "entropy": {"timestamp": last_scan_time},
+        "near_duplicates": {"timestamp": last_scan_time},
+        "exact_duplicates": {"timestamp": last_scan_time},
+    }
 
-    # Mock values
-    previous_results = {"counts": None, "edges": None}
-    last_scan_time = datetime.utcnow() + timedelta(days=1)
+    store_mock = MagicMock()
+    # Simulate missing "counts" and "edges" in the stored results for brightness.
+    store_mock.get.return_value = {
+        "results": {"brightness": {"counts": None, "edges": None}}
+    }
+    mocker.patch.object(panel, "get_store", return_value=store_mock)
+
     mock_ctx.dataset._max = MagicMock(return_value=datetime.utcnow())
 
-    # Call the function
-    await panel.check_for_new_samples(
-        mock_ctx,
-        "exact_duplicates",
-        "field_name",
-        previous_results,
-        last_scan_time,
-    )
+    panel.check_for_new_samples(mock_ctx)
 
-    # Assert that the function returns early (no changes)
-    assert mock_ctx.panel.state.new_samples["exact_duplicates"] == [
-        0,
-        False,
-        False,
-    ]
+    # Since brightness's stored results are incomplete, its new_samples should remain unchanged.
+    assert mock_ctx.panel.state.new_samples["brightness"] == [0, False, False]
 
 
-@pytest.mark.asyncio
-async def test_check_for_new_samples_last_modified_before_scan(
+def test_check_for_new_samples_last_modified_before_scan(
     panel, mock_ctx, mocker
 ):
-    mock_ctx.panel.state.new_samples = {
-        "exact_duplicates": [0, False, False],
-    }
-    mocker.patch.object(panel, "get_store", return_value=MagicMock())
-
-    previous_results = {"counts": [0], "edges": [1]}
+    mock_ctx.panel.state.new_samples = {"exact_duplicates": [0, False, False]}
     last_scan_time = datetime.utcnow() + timedelta(days=1)
+    mock_ctx.panel.state.last_scan = {
+        "exact_duplicates": {"timestamp": last_scan_time}
+    }
+
+    store_mock = MagicMock()
+    store_mock.get.return_value = {
+        "results": {"exact_duplicates": {"dummy": "value"}}
+    }
+    mocker.patch.object(panel, "get_store", return_value=store_mock)
+
+    # Simulate that the dataset's last modified time is before the last scan.
     mock_ctx.dataset._max = MagicMock(
         return_value=datetime.utcnow() - timedelta(days=2)
     )
 
-    await panel.check_for_new_samples(
-        mock_ctx,
-        "exact_duplicates",
-        "field_name",
-        previous_results,
-        last_scan_time,
-    )
+    panel.check_for_new_samples(mock_ctx)
 
     assert mock_ctx.panel.state.new_samples["exact_duplicates"] == [
         0,
-        False,
+        True,
         False,
     ]
 
 
-@pytest.mark.asyncio
-async def test_check_for_new_samples_no_last_scan_time(
-    panel, mock_ctx, mocker
-):
-    """Test when last_scan_time is None."""
+def test_check_for_new_samples_no_last_scan_time(panel, mock_ctx, mocker):
+    """Test when last_scan is not set for the issue type."""
     mock_ctx.panel.state.new_samples = {
         "exact_duplicates": [0, False, False],
+        "brightness": [0, False, False],
+        "blurriness": [0, False, False],
+        "aspect_ratio": [0, False, False],
+        "entropy": [0, False, False],
+        "near_duplicates": [0, False, False],
     }
-    mocker.patch.object(panel, "get_store", return_value=MagicMock())
+    # Simulate no last_scan by setting an empty dict
+    mock_ctx.panel.state.last_scan = {}
 
-    previous_results = {"counts": None, "edges": None}
-    last_scan_time = None
+    # Patch LAST_SCAN to an empty dict so that no MagicMock is returned from LAST_SCAN.get()
+    mocker.patch("plugins.panels.data_quality.LAST_SCAN", {})
 
-    await panel.check_for_new_samples(
-        mock_ctx,
-        "exact_duplicates",
-        "field_name",
-        previous_results,
-        last_scan_time,
-    )
+    store_mock = MagicMock()
+    store_mock.get.return_value = {
+        "results": {"exact_duplicates": {"dummy": "value"}}
+    }
+    mocker.patch.object(panel, "get_store", return_value=store_mock)
 
-    # Assert that the function return   s early (no changes)
+    mock_ctx.dataset._max = MagicMock(return_value=datetime.utcnow())
+
+    panel.check_for_new_samples(mock_ctx)
+
+    # With no last_scan, the method should update new_samples to [0, True, False]
     assert mock_ctx.panel.state.new_samples["exact_duplicates"] == [
         0,
-        False,
+        True,
         False,
     ]
 
