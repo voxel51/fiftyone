@@ -17,7 +17,7 @@ models**
 <a href="https://voxel51.com/docs/fiftyone/tutorials/index.html">Tutorials</a> •
 <a href="https://github.com/voxel51/fiftyone-examples">Examples</a> •
 <a href="https://voxel51.com/blog/">Blog</a> •
-<a href="https://slack.voxel51.com">Community</a>
+<a href="https://discord.gg/fiftyone-community">Community</a>
 
 [![PyPI python](https://img.shields.io/pypi/pyversions/fiftyone)](https://pypi.org/project/fiftyone)
 [![PyPI version](https://badge.fury.io/py/fiftyone.svg)](https://pypi.org/project/fiftyone)
