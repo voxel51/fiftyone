@@ -7,6 +7,7 @@ Evaluation utilities.
 """
 import types
 
+from .base import get_subset_view
 from .classification import (
     evaluate_classifications,
     ClassificationEvaluationConfig,
