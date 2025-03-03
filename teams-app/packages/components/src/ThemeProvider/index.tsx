@@ -24,6 +24,7 @@ const colors = {
   gray12: hsl(200, 0, 12),
   gray15: hsl(200, 0, 15),
   gray20: hsl(200, 0, 20),
+  gray25: hsl(200, 0, 25),
   gray30: hsl(200, 0, 30),
   gray40: hsl(200, 0, 40),
   gray50: hsl(200, 0, 50),
@@ -56,6 +57,7 @@ const themes = {
     primaryHoverBg: colors.gray12,
     secondaryBg: colors.gray10,
     secondaryHoverBg: colors.gray20,
+    tertiaryBg: colors.gray25,
     primaryText: colors.gray100,
     secondaryText: colors.gray70,
     tertiaryText: colors.gray50,
@@ -66,7 +68,7 @@ const themes = {
     itemBg: colors.gray20,
     itemText: colors.gray20,
     dividerPrimary: colors.gray20,
-    dividerSecondary: colors.gray50,
+    dividerSecondary: colors.gray30,
     shadow: colors.gray5,
     shadowDark: colors.gray5,
     inputBg: colors.gray5,
@@ -88,6 +90,7 @@ const themes = {
     primaryHoverBg: colors.gray95,
     secondaryBg: colors.gray98,
     secondaryHoverBg: colors.gray95,
+    tertiaryBg: colors.gray90,
     primaryText: colors.gray0,
     secondaryText: colors.gray40,
     tertiaryText: colors.gray60,
@@ -98,7 +101,7 @@ const themes = {
     itemBg: colors.gray90,
     itemText: colors.gray80,
     dividerPrimary: colors.gray90,
-    dividerSecondary: colors.gray50,
+    dividerSecondary: colors.gray70,
     shadow: colors.gray85,
     shadowDark: colors.gray40,
     inputBg: colors.gray100,
@@ -244,6 +247,7 @@ const muiTheme = extendMuiTheme({
     light: {
       palette: {
         divider: themes.light.dividerPrimary,
+        dividerSecondary: themes.light.dividerSecondary,
         // Alert: {
         //   infoIconColor: '#475467',
         //   infoColor: '#475467'
@@ -282,6 +286,7 @@ const muiTheme = extendMuiTheme({
           primaryHover: themes.light.primaryHoverBg,
           secondary: themes.light.secondaryBg,
           secondaryHover: themes.light.secondaryHoverBg,
+          tertiary: themes.light.tertiaryBg,
           paper: themes.light.primaryBg,
           item: themes.light.itemBg,
           input: themes.light.inputBg,
@@ -310,10 +315,7 @@ const muiTheme = extendMuiTheme({
           main: colors.gray50,
         },
         queued: {
-          main: colors.blue20,
-        },
-        info: {
-          main: colors.yellow21,
+          main: colors.gray50,
         },
         custom: {
           shadow: themes.light.shadow,
@@ -341,6 +343,7 @@ const muiTheme = extendMuiTheme({
           },
         }),
         divider: themes.dark.dividerPrimary,
+        dividerSecondary: themes.dark.dividerSecondary,
         primary: {
           main: themes.dark.primaryText,
         },
@@ -349,6 +352,7 @@ const muiTheme = extendMuiTheme({
           primaryHover: themes.dark.primaryHoverBg,
           secondary: themes.dark.secondaryBg,
           secondaryHover: themes.dark.secondaryHoverBg,
+          tertiary: themes.dark.tertiaryBg,
           paper: themes.dark.primaryBg,
           item: themes.dark.itemBg,
           input: themes.dark.inputBg,
@@ -392,10 +396,7 @@ const muiTheme = extendMuiTheme({
           main: colors.gray40,
         },
         queued: {
-          main: colors.blue56,
-        },
-        info: {
-          main: colors.yellow60,
+          main: colors.gray40,
         },
       },
     },
@@ -603,6 +604,15 @@ const muiTheme = extendMuiTheme({
       styleOverrides: {
         root: {
           borderColor: dynamicTheme("palette.divider"),
+        },
+      },
+    },
+    MuiTableHead: {
+      styleOverrides: {
+        root: {
+          ".MuiTableCell-root": {
+            borderColor: dynamicTheme("palette.dividerSecondary"),
+          },
         },
       },
     },

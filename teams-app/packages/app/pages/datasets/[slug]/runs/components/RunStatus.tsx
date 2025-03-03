@@ -1,23 +1,56 @@
-import { ColorCircle } from "@fiftyone/teams-components";
+import { Box, ColorCircle } from "@fiftyone/teams-components";
+import { isNullish } from "@fiftyone/utilities";
 import { InfoOutlined } from "@mui/icons-material";
-import { Chip, Tooltip, Typography, useTheme } from "@mui/material";
+import { Chip, Stack, Tooltip, Typography, useTheme } from "@mui/material";
 import { capitalize } from "lodash";
+import React from "react";
+
+const STATUS_WITH_TOOLTIP = ["queued", "scheduled"];
 
 export default function RunStatus(props: RunStatusPropsType) {
-  const { status, variant = "chip", progress } = props;
+  const { status, variant = "chip", progress, priority, maxPriority } = props;
   const { palette } = useTheme();
   const colorGroup = colorGroupStatus[status];
   const color = palette[colorGroup].main;
   const label = capitalize(status);
+  const Wrapper = STATUS_WITH_TOOLTIP.includes(status)
+    ? Tooltip
+    : React.Fragment;
+  let wrapperProps = {};
+  if (status === "queued") {
+    wrapperProps = {
+      title:
+        "Queued job will run as soon as resources are available on your orchestrator",
+      arrow: true,
+    };
+  }
+  if (status === "scheduled") {
+    wrapperProps = {
+      title: `Scheduled job position ${priority}/${maxPriority}`,
+      arrow: true,
+    };
+  }
 
   if (progress) return <ProgressChip {...progress} />;
 
   return variant === "chip" ? (
-    <Chip
-      label={label}
-      sx={{ backgroundColor: color, color: palette.common.white }}
-      size="small"
-    />
+    <Wrapper {...wrapperProps}>
+      <Chip
+        label={
+          !isNullish(priority) ? (
+            <LabelWithPriority
+              label={label}
+              priority={priority}
+              maxPriority={maxPriority}
+            />
+          ) : (
+            label
+          )
+        }
+        sx={{ backgroundColor: color, color: palette.common.white }}
+        size="small"
+      />
+    </Wrapper>
   ) : (
     <ColorCircle title={label} color={color} sx={{ mr: 1 }} />
   );
@@ -56,10 +89,38 @@ function ProgressChip(props: ProgressType) {
   );
 }
 
+function LabelWithPriority(props: LabelWithPriorityPropsType) {
+  const { label, priority, maxPriority } = props;
+
+  return (
+    <Stack direction="row" sx={{ alignItems: "center" }}>
+      <Typography sx={{ color: (theme) => theme.palette.common.white }}>
+        {label}
+      </Typography>
+      <Box>
+        <Typography
+          sx={{
+            backgroundColor: (theme) => theme.palette.background.tertiary,
+            borderRadius: "50%",
+            px: 0.75,
+            pb: 0.25,
+            ml: 1,
+            lineHeight: "1rem",
+          }}
+        >
+          {priority}
+        </Typography>
+      </Box>
+    </Stack>
+  );
+}
+
 type RunStatusPropsType = {
   status: string;
   variant?: "chip" | "circle";
   progress?: ProgressType;
+  priority?: number;
+  maxPriority?: number;
 };
 
 const colorGroupStatus = {
@@ -74,4 +135,10 @@ type ProgressType = {
   progress?: number;
   label?: string;
   updated_at?: string;
+};
+
+type LabelWithPriorityPropsType = {
+  priority: number;
+  maxPriority: number;
+  label: string;
 };

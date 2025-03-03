@@ -1,0 +1,2153 @@
+type APIKey {
+  name: String!
+  id: String!
+  createdAt: datetime!
+  key: String
+}
+
+type AuditResult {
+  current: Int!
+  remaining: Int!
+}
+
+scalar BSONArray
+
+type BoolUserAttributeInfo {
+  attribute: UserAttribute!
+  display: String!
+  description: String!
+  value: Boolean!
+  options: [Boolean!]!
+}
+
+enum CloudProvider {
+  GCP
+  AWS
+  AZURE
+  MINIO
+}
+
+type CloudProviderCredentials {
+  createdAt: datetime!
+  description: String
+  prefixes: [String!]!
+  provider: CloudProvider!
+  createdBy: User!
+}
+
+type Dataset {
+  createdAt: datetime
+  defaultPermission: DatasetPermission!
+  description: String
+  id: String!
+  lastLoadedAt: datetime
+  mediaType: MediaTypeOption
+  name: String!
+  sampleFieldsCount: Int!
+  slug: String!
+  tags: [String!]!
+
+  """
+  Get a combined list of users and user groups with access to this dataset.
+  """
+  access(
+    first: Int! = 10
+    groupFilter: DatasetUserGroupFilter = null
+    groupSearch: DatasetUserGroupSearchFieldsSearch = null
+    userFilter: DatasetUserFilter = null
+  ): [DatasetAccess!]!
+
+  """
+  Get a connection of users and user groups with access to this dataset.
+  """
+  accessConnection(
+    first: Int! = 10
+    after: String = null
+    groupFilter: DatasetUserGroupFilter = null
+    groupSearch: DatasetUserGroupSearchFieldsSearch = null
+    userFilter: DatasetUserFilter = null
+  ): DatasetAccessConnection!
+
+  """
+  Get a count of users and user groups with access to this dataset.
+  """
+  accessCount(
+    groupFilter: DatasetUserGroupFilter = null
+    groupSearch: DatasetUserGroupSearchFieldsSearch = null
+    userFilter: DatasetUserFilter = null
+  ): Int!
+
+  """
+  Get a connection of users and user groups with access to this dataset.
+  """
+  accessPage(
+    pageSize: Int! = 10
+    page: Int! = 1
+    groupFilter: DatasetUserGroupFilter = null
+    groupSearch: DatasetUserGroupSearchFieldsSearch = null
+    userFilter: DatasetUserFilter = null
+  ): DatasetAccessPage!
+  createdBy: User
+  exportFormats(includeMedia: Boolean! = true): [ExportFormat!]!
+  exportFields(exportFormat: String!): [String!]!
+  latestChanges: SampleChangeSummary
+  samplesCount: Int!
+  sizeEstimate(
+    viewSelectors: ViewSelectors!
+    fields: [String!] = null
+    includeMedia: Boolean = false
+  ): Int
+  snapshot(snapshot: String!): DatasetSnapshot
+  snapshots(
+    first: Int = 10
+    order: DatasetSnapshotOrderFieldsOrder = null
+  ): [DatasetSnapshot!]!
+  snapshotsConnection(
+    first: Int!
+    after: String = null
+    order: DatasetSnapshotOrderFieldsOrder = null
+  ): DatasetSnapshotConnection!
+  snapshotsPage(
+    pageSize: Int!
+    page: Int! = 1
+    order: DatasetSnapshotOrderFieldsOrder = null
+  ): DatasetSnapshotPage!
+
+  """
+  Get a user within the context of a dataset.
+  """
+  user(id: String!): DatasetUser
+
+  """
+  Get a user group with access to this dataset.
+  """
+  userGroup(identifier: String!): DatasetUserGroup
+
+  """
+  Get a list of user groups with access to this dataset.
+  """
+  userGroups(
+    filter: DatasetUserGroupFilter = null
+    first: Int! = 10
+    order: DatasetUserGroupOrderFieldsOrder = null
+    search: DatasetUserGroupSearchFieldsSearch = null
+  ): [DatasetUserGroup!]!
+
+  """
+  Get a connection of user groups that this user is a part of.
+  """
+  userGroupsConnection(
+    first: Int! = 10
+    after: String = null
+    filter: DatasetUserGroupFilter = null
+    order: DatasetUserGroupOrderFieldsOrder = null
+    search: DatasetUserGroupSearchFieldsSearch = null
+  ): DatasetUserGroupConnection!
+
+  """
+  Get the number of user groups that this user is a part of.
+  """
+  userGroupsCount(
+    filter: DatasetUserGroupFilter = null
+    search: DatasetUserGroupSearchFieldsSearch = null
+  ): Int!
+
+  """
+  Get a page of user groups that this user is a part of.
+  """
+  userGroupsPage(
+    pageSize: Int! = 10
+    page: Int! = 1
+    filter: DatasetUserGroupFilter = null
+    order: DatasetUserGroupOrderFieldsOrder = null
+    search: DatasetUserGroupSearchFieldsSearch = null
+  ): DatasetUserGroupPage!
+  users(
+    first: Int! = 10
+    filter: DatasetUserFilter = null
+    order: UserOrderFieldsOrder = null
+  ): [DatasetUser!]!
+  usersConnection(
+    first: Int! = 10
+    after: String = null
+    filter: DatasetUserFilter = null
+    order: UserOrderFieldsOrder = null
+  ): DatasetUserConnection!
+  usersCount(filter: DatasetUserFilter = null): Int!
+  usersPage(
+    pageSize: Int! = 10
+    page: Int! = 1
+    filter: DatasetUserFilter = null
+    order: UserOrderFieldsOrder = null
+  ): DatasetUserPage!
+  view(identifier: String!): DatasetView
+  views(
+    first: Int! = 10
+    order: DatasetViewOrderFieldsOrder = null
+  ): [DatasetView!]!
+  viewsConnection(
+    first: Int!
+    after: String = null
+    order: DatasetViewOrderFieldsOrder = null
+  ): DatasetViewConnection!
+  viewsPage(
+    pageSize: Int!
+    page: Int! = 1
+    order: DatasetViewOrderFieldsOrder = null
+  ): DatasetViewPage!
+  viewsCount: Int!
+  viewer: DatasetUser!
+}
+
+union DatasetAccess = DatasetUser | DatasetUserGroup
+
+type DatasetAccessConnection {
+  pageInfo: PageInfo!
+  edges: [DatasetAccessEdge!]!
+}
+
+type DatasetAccessEdge {
+  node: DatasetAccess!
+  cursor: String!
+}
+
+enum DatasetAccessLevel {
+  ALL
+  IMPLICIT
+  EXPLICIT
+}
+
+type DatasetAccessLevelUserAttributeInfo {
+  attribute: UserAttribute!
+  display: String!
+  description: String!
+  value: DatasetAccessLevel!
+  options: [DatasetAccessLevel!]!
+}
+
+type DatasetAccessPage {
+  prev: Int
+  page: Int
+  next: Int
+  nodes: [DatasetAccess!]!
+  pageSize: Int!
+  pageTotal: Int!
+  nodeTotal: Int!
+}
+
+type DatasetConnection {
+  pageInfo: PageInfo!
+  edges: [DatasetEdge!]!
+}
+
+type DatasetEdge {
+  node: Dataset!
+  cursor: String!
+}
+
+input DatasetFilter {
+  createdBy: StringFilter = null
+  name: StringFilter = null
+  slug: StringFilter = null
+  userPermission: DatasetPermissionComparisonFilter = null
+  userPinned: Boolean = null
+  mediaType: DatasetMediaTypeComparisonFilter = null
+}
+
+enum DatasetMediaType {
+  IMAGE
+  VIDEO
+  GROUP
+  POINT_CLOUD
+  THREE_D
+}
+
+input DatasetMediaTypeComparisonFilter {
+  eq: DatasetMediaType
+  ge: DatasetMediaType
+  gt: DatasetMediaType
+  le: DatasetMediaType
+  lt: DatasetMediaType
+  in: [DatasetMediaType!]
+  ne: DatasetMediaType
+}
+
+enum DatasetOrderFields {
+  createdAt
+  lastLoadedAt
+  name
+  userPinnedAt
+  sampleFieldsCount
+  samplesCount
+  slug
+}
+
+input DatasetOrderFieldsOrder {
+  field: DatasetOrderFields!
+  direction: OrderInputDirection! = ASC
+}
+
+type DatasetPage {
+  prev: Int
+  page: Int
+  next: Int
+  nodes: [Dataset!]!
+  pageSize: Int!
+  pageTotal: Int!
+  nodeTotal: Int!
+}
+
+enum DatasetPermission {
+  NO_ACCESS
+  VIEW
+  TAG
+  EDIT
+  MANAGE
+}
+
+input DatasetPermissionComparisonFilter {
+  eq: DatasetPermission
+  ge: DatasetPermission
+  gt: DatasetPermission
+  le: DatasetPermission
+  lt: DatasetPermission
+  in: [DatasetPermission!]
+  ne: DatasetPermission
+}
+
+type DatasetPermissionUserAttributeInfo {
+  attribute: UserAttribute!
+  display: String!
+  description: String!
+  value: DatasetPermission!
+  options: [DatasetPermission!]!
+}
+
+union DatasetSample = Dataset | Sample
+
+enum DatasetSearchFields {
+  id
+  mediaType
+  name
+  slug
+  tags
+}
+
+input DatasetSearchFieldsSearch {
+  term: String!
+  fields: [DatasetSearchFields!]!
+}
+
+type DatasetSlug {
+  slug: String!
+  available: Boolean!
+}
+
+type DatasetSnapshot {
+  createdAt: datetime
+  description: String
+  id: String!
+  linearChangeSummary: SampleChangeSummary
+  loadStatus: DatasetSnapshotStatus!
+  name: String!
+  slug: String!
+  createdBy: User
+  dataset: Dataset!
+  exportFields(exportFormat: String!): [String!]!
+  exportFormats(includeMedia: Boolean! = true): [ExportFormat!]!
+  sizeEstimate(
+    viewSelectors: ViewSelectors!
+    fields: [String!] = null
+    includeMedia: Boolean = false
+  ): Int
+}
+
+type DatasetSnapshotConnection {
+  pageInfo: PageInfo!
+  edges: [DatasetSnapshotEdge!]!
+}
+
+type DatasetSnapshotEdge {
+  node: DatasetSnapshot!
+  cursor: String!
+}
+
+enum DatasetSnapshotOrderFields {
+  createdAt
+}
+
+input DatasetSnapshotOrderFieldsOrder {
+  field: DatasetSnapshotOrderFields!
+  direction: OrderInputDirection! = ASC
+}
+
+type DatasetSnapshotPage {
+  prev: Int
+  page: Int
+  next: Int
+  nodes: [DatasetSnapshot!]!
+  pageSize: Int!
+  pageTotal: Int!
+  nodeTotal: Int!
+}
+
+enum DatasetSnapshotStatus {
+  UNLOADED
+  LOADING
+  LOADED
+}
+
+type DatasetUser implements IUser {
+  email: String!
+  name: String!
+  id: String!
+  role: UserRole!
+  picture: String
+  apiKeys: [APIKey!]!
+
+  """
+  Get an attribute of this user.
+  """
+  attribute(attribute: UserAttribute!): UserAttributeInfo!
+
+  """
+  Get the attributes of this user.
+  """
+  attributes(
+    include: [UserAttribute!]
+    exclude: [UserAttribute!]
+  ): [UserAttributeInfo!]!
+
+  """
+  The referenced dataset or a specific dataset if an identifier is passed.
+  """
+  dataset(identifier: String = null): Dataset
+  datasets(
+    first: Int! = 10
+    filter: DatasetFilter = null
+    search: DatasetSearchFieldsSearch = null
+    order: DatasetOrderFieldsOrder = null
+  ): [Dataset!]!
+  datasetsConnection(
+    first: Int! = 10
+    after: String = null
+    filter: DatasetFilter = null
+    search: DatasetSearchFieldsSearch = null
+    order: DatasetOrderFieldsOrder = null
+  ): DatasetConnection!
+  datasetsCount(
+    filter: DatasetFilter = null
+    search: DatasetSearchFieldsSearch = null
+  ): Int!
+  datasetsPage(
+    pageSize: Int! = 10
+    page: Int! = 1
+    filter: DatasetFilter = null
+    search: DatasetSearchFieldsSearch = null
+    order: DatasetOrderFieldsOrder = null
+  ): DatasetPage!
+  joinedAt: datetime! @deprecated(reason: "No longer tracking this data.")
+
+  """
+  Get a user group that this user is a part of.
+  """
+  userGroup(identifier: String!): UserGroup
+
+  """
+  Get a list of user groups that this user is a part of.
+  """
+  userGroups(
+    filter: UserGroupFilter = null
+    first: Int! = 10
+    order: UserGroupOrderFieldsOrder = null
+    search: UserGroupSearchFieldsSearch = null
+  ): [UserGroup!]!
+
+  """
+  Get a connection of user groups that this user is a part of.
+  """
+  userGroupsConnection(
+    first: Int!
+    after: String = null
+    filter: UserGroupFilter = null
+    order: UserGroupOrderFieldsOrder = null
+    search: UserGroupSearchFieldsSearch = null
+  ): UserGroupConnection!
+
+  """
+  Get the number of user groups that this user is a part of.
+  """
+  userGroupsCount: Int!
+
+  """
+  Get a page of user groups that this user is a part of.
+  """
+  userGroupsPage(
+    pageSize: Int!
+    page: Int! = 1
+    filter: UserGroupFilter = null
+    order: UserGroupOrderFieldsOrder = null
+    search: UserGroupSearchFieldsSearch = null
+  ): UserGroupPage!
+  activePermission: DatasetPermission!
+  pinnedAt: datetime
+  userPermission: DatasetPermission
+
+  """
+  The active permission.
+  """
+  permission: DatasetPermission!
+    @deprecated(reason: "Moved to 'active_permission' for more clarity.")
+
+  """
+  Whether the user has pinned the dataset
+  """
+  pinned: Boolean!
+
+  """
+  The user
+  """
+  user: User!
+    @deprecated(
+      reason: "All User fields are now available on the parent DatasetUser."
+    )
+}
+
+type DatasetUserConnection {
+  pageInfo: PageInfo!
+  edges: [DatasetUserEdge!]!
+}
+
+type DatasetUserEdge {
+  node: DatasetUser!
+  cursor: String!
+}
+
+input DatasetUserFilter {
+  userPermission: DatasetPermissionComparisonFilter = null
+  userRole: UserRoleComparisonFilter = null
+}
+
+type DatasetUserGroup {
+  id: String!
+  name: String!
+  slug: String!
+  createdAt: datetime!
+  description: String
+  createdBy: User!
+  user(id: String!): User
+  users(first: Int! = 10, search: UserSearchFieldsSearch = null): [User!]!
+  usersConnection(
+    first: Int! = 10
+    after: String = null
+    search: UserSearchFieldsSearch = null
+  ): UserConnection!
+  usersPage(
+    pageSize: Int! = 10
+    page: Int! = 1
+    search: UserSearchFieldsSearch = null
+  ): UserPage!
+  usersCount(search: UserSearchFieldsSearch = null): Int!
+  permission: DatasetPermission
+
+  """
+  The referenced dataset or a specific dataset if an identifier is passed.
+  """
+  dataset(identifier: String = null): Dataset
+}
+
+type DatasetUserGroupConnection {
+  pageInfo: PageInfo!
+  edges: [DatasetUserGroupEdge!]!
+}
+
+type DatasetUserGroupEdge {
+  node: DatasetUserGroup!
+  cursor: String!
+}
+
+input DatasetUserGroupFilter {
+  createdBy: StringFilter = null
+  id: StringFilter = null
+  userId: StringFilter = null
+  datasetIdentifier: StringFilter = null
+  permission: DatasetPermissionComparisonFilter = null
+}
+
+enum DatasetUserGroupOrderFields {
+  createdAt
+  name
+  slug
+}
+
+input DatasetUserGroupOrderFieldsOrder {
+  field: DatasetUserGroupOrderFields!
+  direction: OrderInputDirection! = ASC
+}
+
+type DatasetUserGroupPage {
+  prev: Int
+  page: Int
+  next: Int
+  nodes: [DatasetUserGroup!]!
+  pageSize: Int!
+  pageTotal: Int!
+  nodeTotal: Int!
+}
+
+enum DatasetUserGroupSearchFields {
+  name
+  slug
+  user
+}
+
+input DatasetUserGroupSearchFieldsSearch {
+  term: String!
+  fields: [DatasetUserGroupSearchFields!]!
+}
+
+type DatasetUserPage {
+  prev: Int
+  page: Int
+  next: Int
+  nodes: [DatasetUser!]!
+  pageSize: Int!
+  pageTotal: Int!
+  nodeTotal: Int!
+}
+
+type DatasetView {
+  color: String
+  createdAt: datetime
+  description: String
+  id: String!
+  lastModifiedAt: datetime
+  lastLoadedAt: datetime
+  loadCount: Int
+  name: String!
+  user: DatasetViewUser
+  createdBy: User
+  dataset: Dataset
+  samplesCount(force: Boolean = false): Int
+  slug: String!
+}
+
+type DatasetViewConnection {
+  pageInfo: PageInfo!
+  edges: [DatasetViewEdge!]!
+}
+
+type DatasetViewEdge {
+  node: DatasetView!
+  cursor: String!
+}
+
+enum DatasetViewOrderFields {
+  lastLoadedAt
+  loadCount
+}
+
+input DatasetViewOrderFieldsOrder {
+  field: DatasetViewOrderFields!
+  direction: OrderInputDirection! = ASC
+}
+
+type DatasetViewPage {
+  prev: Int
+  page: Int
+  next: Int
+  nodes: [DatasetView!]!
+  pageSize: Int!
+  pageTotal: Int!
+  nodeTotal: Int!
+}
+
+type DatasetViewUser {
+  lastLoadedAt: datetime
+  loadCount: Int
+  dataset: Dataset
+  user: User!
+  view: DatasetView
+}
+
+input DatetimeComparisonFilter {
+  eq: datetime
+  ge: datetime
+  gt: datetime
+  le: datetime
+  lt: datetime
+  in: [datetime!]
+  ne: datetime
+}
+
+type DelegatedOperation {
+  id: String!
+  operator: String!
+  label: String
+  runState: String!
+  runLink: String
+  pinned: Boolean
+  scheduledAt: datetime
+  queuedAt: datetime
+  updatedAt: datetime
+  startedAt: datetime
+  completedAt: datetime
+  failedAt: datetime
+  context: JSON
+  result: JSON
+  status: JSON
+  datasetId: String
+  datasetSlug: String
+  datasetName: String
+  metadata: JSON
+  logUploadError: String
+  logPath: String
+  priority: Int
+  priorityTotal: Int
+  runBy: User
+  logConnection(
+    first: Int!
+    after: String = null
+  ): DelegatedOperationLogConnection!
+  logUrl: String
+  logSize: Int
+}
+
+input DelegatedOperationFilter {
+  operator: StringFilter = null
+  datasetIdentifier: StringFilter = null
+  runState: StringFilter = null
+  delegationTarget: StringFilter = null
+  runBy: StringFilter = null
+  pinned: Boolean = null
+}
+
+type DelegatedOperationLog {
+  level: String
+  date: datetime
+  content: String
+}
+
+type DelegatedOperationLogConnection {
+  pageInfo: PageInfo!
+  edges: [DelegatedOperationLogEdge!]!
+}
+
+type DelegatedOperationLogEdge {
+  node: DelegatedOperationLog!
+  cursor: String!
+}
+
+enum DelegatedOperationOrderFields {
+  updatedAt
+  queuedAt
+  scheduledAt
+  startedAt
+  completedAt
+  failedAt
+  operator
+}
+
+input DelegatedOperationOrderFieldsOrder {
+  field: DelegatedOperationOrderFields!
+  direction: OrderInputDirection! = ASC
+}
+
+type DelegatedOperationPage {
+  prev: Int
+  page: Int
+  next: Int
+  nodes: [DelegatedOperation!]!
+  pageSize: Int!
+  pageTotal: Int!
+  nodeTotal: Int!
+}
+
+enum DelegatedOperationSearchFields {
+  operator
+  user
+  delegationTarget
+  label
+}
+
+input DelegatedOperationSearchFieldsSearch {
+  term: String!
+  fields: [DelegatedOperationSearchFields!]!
+}
+
+scalar Email
+
+type EncryptedSecret {
+  id: String!
+  key: String!
+  value: String!
+  createdAt: datetime!
+  description: String
+  decrypted: String
+}
+
+type ExportFormat {
+  name: String!
+  displayName: String!
+  datasetType: String!
+  mediaTypes: [String!]!
+  labelTypes: [String!]
+  frameLabelTypes: [String!]
+  allowMultiFieldSelect: Boolean
+  labelsOnlyExtension: String
+  supportsLabelsOnly: Boolean!
+  allowEmbeddedFields: Boolean!
+  matchConditional: String!
+}
+
+input ExportFormatFilter {
+  name: StringFilter = null
+  mediaTypes: StrListFilter = null
+}
+
+type FeatureFlag {
+  invitationsEnabled: Boolean!
+  invitationEmailsEnabled: Boolean!
+}
+
+interface IUser {
+  email: String!
+  name: String!
+  id: String!
+  role: UserRole!
+  picture: String
+}
+
+type Invitation {
+  id: String!
+  createdAt: datetime!
+  emailSendAttemptedAt: datetime
+  emailSentAt: datetime
+  expiresAt: datetime!
+  inviteeEmail: String!
+  inviteeRole: UserRole!
+  url: String!
+  inviter: User!
+}
+
+"""
+The `JSON` scalar type represents JSON values as specified by [ECMA-404](https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf).
+"""
+scalar JSON
+  @specifiedBy(
+    url: "https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf"
+  )
+
+input LabelFormatOptions {
+  format: LabelFormatOptionsEnum!
+  labelField: String = "ground_truth"
+  fields: [String!]!
+}
+
+enum LabelFormatOptionsEnum {
+  ImageClassificationDirectoryTree
+  VideoClassificationDirectoryTree
+  TFImageClassificationDataset
+  TFObjectDetectionDataset
+  FiftyOneImageClassificationDataset
+  FiftyOneImageDetectionDataset
+  FiftyOneTemporalDetectionDataset
+  COCODetectionDataset
+  VOCDetectionDataset
+  KITTIDetectionDataset
+  YOLOv4Dataset
+  YOLOv5Dataset
+  ImageSegmentationDirectory
+  CVATImageDataset
+  CVATVideoDataset
+  FiftyOneDataset
+  CSVDataset
+}
+
+type MediaType {
+  type: MediaTypeOption!
+}
+
+enum MediaTypeOption {
+  group
+  point_cloud
+  three_d
+  image
+  video
+}
+
+union MultiSearch = MediaType | Dataset | Tag
+
+type Mutation {
+  """
+  Generate a new API Key for a user.
+  """
+  generateApiKey(name: String!, userId: String = null): APIKey!
+
+  """
+  Remove an API Key from a user.
+  """
+  removeApiKey(keyId: String!, userId: String = null): Void
+
+  """
+  Remove a cloud credential for a cloud provider
+  """
+  removeCloudCredentials(
+    provider: CloudProvider!
+    prefixes: [String!] = null
+  ): Void
+
+  """
+  Set a credentials value for a given cloud storage provider
+  """
+  setCloudCredentials(
+    provider: CloudProvider!
+    credentials: String!
+    prefixes: [String!] = null
+    description: String = null
+    overwrite: Boolean = true
+  ): CloudProviderCredentials!
+
+  """
+  Add tags to a dataset.
+  """
+  addDatasetTags(identifier: String!, tags: [String!]!): Dataset!
+
+  """
+  Create a new dataset using an existing dataset as a basis.
+  """
+  cloneDataset(
+    sourceIdentifier: String!
+    name: String!
+    snapshot: String = null
+  ): Dataset!
+
+  """
+  Create a new dataset.
+  """
+  createDataset(
+    name: String!
+    description: String = null
+    tags: [String!] = null
+    onBehalfOfUserId: String = null
+  ): Dataset!
+
+  """
+  Create a new dataset using a view from an existing dataset as a basis.
+  """
+  createDatasetFromView(
+    sourceIdentifier: String!
+    sourceView: ViewSelectors!
+    name: String!
+    snapshot: String = null
+  ): Dataset!
+
+  """
+  Delete a dataset.
+  """
+  deleteDataset(identifier: String!): Void
+
+  """
+  Remove tags from a dataset
+  """
+  removeDatasetTags(identifier: String!, tags: [String!]!): Dataset!
+
+  """
+  Revoke explicit dataset permission from a user.
+  """
+  removeDatasetUserPermission(
+    datasetIdentifier: String!
+    userId: String = null
+    email: Email = null
+  ): Dataset!
+
+  """
+  Sets the default dataset permission to be used by members without explicit permissions.
+  """
+  setDatasetDefaultPermission(
+    datasetIdentifier: String!
+    permission: DatasetPermission!
+  ): Dataset!
+
+  """
+  Pin or unpin a dataset.
+  """
+  setDatasetPinned(
+    datasetIdentifier: String!
+    userId: String = null
+    pinned: Boolean = true
+  ): Dataset!
+
+  """
+  Revoke explicit dataset permission from a user group.
+  """
+  removeDatasetUserGroupPermission(
+    datasetIdentifier: String!
+    userGroupIdentifier: String!
+  ): Dataset!
+
+  """
+  Sets the explicit dataset permission for a user group.
+  """
+  setDatasetUserGroupPermission(
+    datasetIdentifier: String!
+    permission: DatasetPermission!
+    userGroupIdentifier: String!
+  ): Dataset!
+
+  """
+  Sets the explicit dataset permission for a user.
+  """
+  setDatasetUserPermission(
+    datasetIdentifier: String!
+    permission: DatasetPermission!
+    userId: String = null
+    email: Email = null
+    role: UserRole = null
+  ): Dataset!
+
+  """
+  Update basic fields on a dataset.
+  """
+  updateDataset(
+    identifier: String!
+    name: String
+    description: String
+    tags: [String!]
+  ): Dataset!
+
+  """
+  Export select aspects of a view and return download file token.
+  """
+  exportView(
+    datasetIdentifier: String!
+    snapshot: String = null
+    exportViewSelectors: ViewSelectors = null
+    cloudStoragePath: String = null
+    includeFilepaths: Boolean! = false
+    includeTags: Boolean! = false
+    includeMedia: Boolean! = false
+    includeLabels: LabelFormatOptions = null
+  ): String
+
+  """
+  Record the time a particular view was loaded.
+  """
+  updateViewActivity(
+    viewName: String!
+    viewId: String!
+    datasetId: String!
+  ): Int
+
+  """
+  re-run the delegated operation
+  """
+  rerunDelegatedOperation(operationId: String!): DelegatedOperation!
+
+  """
+  Set the delegated operation as pinned or not
+  """
+  setDelegatedOperationPinned(
+    operationId: String!
+    pinned: Boolean! = true
+  ): DelegatedOperation!
+
+  """
+  Set the delegated operation label
+  """
+  setDelegatedOperationLabel(
+    operationId: String!
+    label: String!
+  ): DelegatedOperation!
+
+  """
+  Set the delegated operation as failed
+  """
+  setDelegatedOperationFailed(
+    operationId: String!
+    message: String = null
+  ): DelegatedOperation!
+
+  """
+  Delete the delegated operation
+  """
+  deleteDelegatedOperation(operationId: String!): Void
+
+  """
+  Set the organization settings
+  """
+  setOrganizationSettings(
+    defaultUserRole: UserRole = null
+    defaultDatasetPermission: DatasetPermission = null
+    defaultOperatorMinimumRole: UserRole = null
+    defaultOperatorMinimumDatasetPermission: DatasetPermission = null
+  ): OrganizationSettings!
+
+  """
+  Download a plugin and return download file token.
+  """
+  downloadPlugin(name: String!): String!
+
+  """
+  Remove a plugin.
+  """
+  removePlugin(name: String!): Void
+
+  """
+  Update plugin operator permissions or enabled status.
+  """
+  updatePlugin(
+    name: String!
+    enabled: Boolean = null
+    operatorSettings: PluginOperatorInput = null
+  ): Plugin!
+
+  """
+  Upload a plugin by redeeming a file uploadtoken for a previously-uploaded plugin .zip file.
+  """
+  uploadPlugin(fileUploadToken: String!, overwrite: Boolean! = false): Plugin!
+
+  """
+  Upgrade an existing plugin by redeeming a file uploadtoken for a previously-uploaded plugin .zip file.
+  """
+  upgradePlugin(fileUploadToken: String!, pluginName: String!): Plugin!
+
+  """
+  Encrypt and save secrets to the database.
+  """
+  createSecret(
+    key: String!
+    value: String!
+    scope: SecretScope = GLOBAL
+    description: String
+    metadata: JSON
+  ): EncryptedSecret!
+
+  """
+  Delete a secret.
+  """
+  deleteSecret(key: String!): Void
+
+  """
+  Update the description and config for a secret.
+  """
+  updateSecret(
+    key: String!
+    description: String
+    scope: SecretScope
+    metadata: JSON
+  ): EncryptedSecret!
+
+  """
+  Calculate and cache changes for a dataset from the latest snapshot.
+  """
+  calculateDatasetLatestChanges(datasetIdentifier: String!): SampleChangeSummary
+
+  """
+  Create a dataset snapshot.
+  """
+  createDatasetSnapshot(
+    datasetIdentifier: String!
+    snapshotName: String!
+    description: String = null
+  ): DatasetSnapshot!
+
+  """
+  Delete a dataset.
+  """
+  deleteDatasetSnapshot(datasetIdentifier: String!, snapshotName: String!): Void
+
+  """
+  Load dataset snapshot
+  """
+  loadDatasetSnapshot(
+    datasetIdentifier: String!
+    snapshotName: String!
+  ): String!
+
+  """
+  Manually offload dataset snapshot in case of emergency.
+  """
+  offloadDatasetSnapshot(
+    datasetIdentifier: String!
+    snapshotName: String!
+  ): Void
+
+  """
+  Create a dataset snapshot.
+  """
+  revertDatasetToSnapshot(
+    datasetIdentifier: String!
+    snapshotName: String!
+  ): Dataset!
+
+  """
+  Remove a user.
+  """
+  removeUser(userId: String!): Void
+
+  """
+  Revoke an invitation.
+  """
+  revokeUserInvitation(invitationId: String!): Void
+
+  """
+  Send an invitation to an email address.
+  """
+  sendUserInvitation(email: String!, role: UserRole!): Invitation!
+
+  """
+  Set the user role the provided user
+  """
+  setUserRole(userId: String!, role: UserRole!): User!
+
+  """
+  Add users to a user group.
+  """
+  addUserGroupUsers(
+    userGroupIdentifier: String!
+    userIds: [String!]!
+  ): UserGroup!
+
+  """
+  Create a user group.
+  """
+  createUserGroup(name: String!, description: String = null): UserGroup!
+
+  """
+  Delete a user group.
+  """
+  deleteUserGroup(userGroupIdentifier: String!): Void
+
+  """
+  Remove users from a user group.
+  """
+  removeUserGroupUsers(
+    userGroupIdentifier: String!
+    userIds: [String!]!
+  ): UserGroup!
+
+  """
+  Update user group information.
+  """
+  updateUserGroupInfo(
+    identifier: String!
+    name: String
+    description: String
+  ): UserGroup!
+}
+
+type Notification {
+  """
+  The kind of notification.
+  """
+  kind: NotificationKind!
+
+  """
+  The code identifying the notification.
+  """
+  code: NotificationCode!
+
+  """
+  The level of the notification type.
+  """
+  level: NotificationLevel!
+
+  """
+  The main content of the notification
+  """
+  title: String!
+
+  """
+  Any further details related to the notification
+  """
+  details: [String!]
+
+  """
+  Whether or not the message has been read by the viewer
+  """
+  read: Boolean!
+}
+
+enum NotificationCode {
+  LICENSE_EXPIRATION
+  STRICT_COMPLIANCE
+}
+
+type NotificationConnection {
+  pageInfo: PageInfo!
+  edges: [NotificationEdge!]!
+}
+
+type NotificationEdge {
+  node: Notification!
+  cursor: String!
+}
+
+input NotificationFilter {
+  kinds: [NotificationKind!] = null
+  codes: [NotificationCode!] = null
+  levels: [NotificationLevel!] = null
+  createdAt: DatetimeComparisonFilter = null
+  read: Boolean = null
+}
+
+enum NotificationKind {
+  DIRECT
+  GLOBAL
+}
+
+enum NotificationLevel {
+  INFO
+  WARNING
+  ERROR
+}
+
+type NotificationPage {
+  prev: Int
+  page: Int
+  next: Int
+  nodes: [Notification!]!
+  pageSize: Int!
+  pageTotal: Int!
+  nodeTotal: Int!
+}
+
+type OperatorPermission {
+  minimumRole: UserRole
+  minimumDatasetPermission: DatasetPermission
+}
+
+input OperatorPermissionInput {
+  minimumRole: UserRole = null
+  minimumDatasetPermission: DatasetPermission = null
+}
+
+type Orchestrator {
+  orchestratorIdentifier: String!
+  instanceIdentifier: String!
+  description: String!
+  createdAt: datetime!
+  updatedAt: datetime
+  deactivatedAt: datetime
+  availableOperators: [String!]
+}
+
+input OrchestratorFilter {
+  includeDeactivated: Boolean = null
+}
+
+enum OrchestratorOrderFields {
+  updatedAt
+  createdAt
+  instanceIdentifier
+}
+
+input OrchestratorOrderFieldsOrder {
+  field: OrchestratorOrderFields!
+  direction: OrderInputDirection! = ASC
+}
+
+type OrchestratorPage {
+  prev: Int
+  page: Int
+  next: Int
+  nodes: [Orchestrator!]!
+  pageSize: Int!
+  pageTotal: Int!
+  nodeTotal: Int!
+}
+
+enum OrchestratorSearchFields {
+  availableOperators
+  instanceIdentifier
+}
+
+input OrchestratorSearchFieldsSearch {
+  term: String!
+  fields: [OrchestratorSearchFields!]!
+}
+
+enum OrderInputDirection {
+  ASC
+  DESC
+}
+
+type Organization {
+  id: String!
+  name: String!
+  displayName: String!
+  pypiToken: String
+}
+
+type OrganizationSettings {
+  defaultUserRole: UserRole!
+  defaultDatasetPermission: DatasetPermission!
+  defaultOperatorMinimumRole: UserRole!
+  defaultOperatorMinimumDatasetPermission: DatasetPermission!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+type Plugin {
+  name: String!
+  description: String
+  version: String
+  fiftyoneVersion: String
+  enabled: Boolean!
+  operators: [PluginOperator!]!
+  modifiedAt: datetime
+}
+
+type PluginOperator {
+  name: String!
+  enabled: Boolean!
+  permission: OperatorPermission
+  pluginName: String!
+  uri: String!
+}
+
+input PluginOperatorInput {
+  name: String!
+  enabled: Boolean = null
+  permission: OperatorPermissionInput = null
+}
+
+type Query {
+  """
+  Get the current API version.
+  """
+  apiVersion: String!
+
+  """
+  Get the cloud credentials for a provider within the viewer's organization.
+  """
+  cloudCredential(
+    provider: CloudProvider!
+    prefixes: [String!] = null
+  ): CloudProviderCredentials
+
+  """
+  Get a list of all cloud credentials within the viewer's organization.
+  """
+  cloudCredentials: [CloudProviderCredentials!]!
+
+  """
+  Get a dataset, that the viewer can access, by slug or ID.
+  """
+  dataset(identifier: String!): Dataset
+
+  """
+  List the datasets, that the viewer  can access.
+  """
+  datasets(
+    first: Int! = 10
+    filter: DatasetFilter = null
+    search: DatasetSearchFieldsSearch = null
+    order: DatasetOrderFieldsOrder = null
+  ): [Dataset!]!
+
+  """
+  Get a connection, containing datasets the viewer can access.
+  """
+  datasetsConnection(
+    first: Int! = 10
+    after: String = null
+    filter: DatasetFilter = null
+    search: DatasetSearchFieldsSearch = null
+    order: DatasetOrderFieldsOrder = null
+  ): DatasetConnection!
+
+  """
+  Count the number of datasets that the viewer can access.
+  """
+  datasetsCount(
+    filter: DatasetFilter = null
+    search: DatasetSearchFieldsSearch = null
+  ): Int!
+
+  """
+  Get a page, containing datasets the viewer can access.
+  """
+  datasetsPage(
+    pageSize: Int! = 10
+    page: Int! = 1
+    filter: DatasetFilter = null
+    search: DatasetSearchFieldsSearch = null
+    order: DatasetOrderFieldsOrder = null
+  ): DatasetPage!
+
+  """
+  Get a dataset slug and whether it is available.
+  """
+  datasetSlug(name: String!): DatasetSlug!
+
+  """
+  Dataset view accessible to the viewer.
+  """
+  datasetView(datasetId: String!, viewId: String!): DatasetView!
+
+  """
+  List of saved views for a particular dataset that the viewer has access to.
+  """
+  datasetViews(
+    datasetIdentifier: String!
+    first: Int = 10
+    order: DatasetViewOrderFieldsOrder = null
+  ): [DatasetView!]!
+
+  """
+  A connection, containing the saved views on a dataset"
+          " that the viewer has access to.
+  """
+  datasetViewsConnection(
+    datasetIdentifier: String = null
+    first: Int = 10
+    after: String = null
+    order: DatasetViewOrderFieldsOrder = null
+  ): DatasetViewConnection!
+
+  """
+  The number of saved views on a dataset that the viewer"
+          " has access to.
+  """
+  datasetViewsCount(datasetIdentifier: String = null): Int!
+
+  """
+  A page, containing the saved views of a dataset that the viewer has access to.
+  """
+  datasetViewsPage(
+    pageSize: Int!
+    page: Int! = 1
+    datasetIdentifier: String = null
+    order: DatasetViewOrderFieldsOrder = null
+  ): DatasetViewPage!
+
+  """
+  Get a list of delegated operations that theviewer has access to.
+  """
+  delegatedOperationsPage(
+    page: Int! = 1
+    pageSize: Int! = 10
+    filter: DelegatedOperationFilter = null
+    search: DelegatedOperationSearchFieldsSearch = null
+    order: DelegatedOperationOrderFieldsOrder = null
+  ): DelegatedOperationPage!
+
+  """
+  Get a single delegated operation that the viewer has access to by the operation ID.
+  """
+  delegatedOperation(operationId: String!): DelegatedOperation!
+
+  """
+  Example
+  """
+  example(uuid: String!): String!
+
+  """
+  Get an export format.
+  """
+  exportFormat(name: String!): ExportFormat
+
+  """
+  List the export formats available.
+  """
+  exportFormats(
+    filter: ExportFormatFilter = null
+    mediaType: String = null
+  ): [ExportFormat!]!
+
+  """
+  The feature flags.
+  """
+  featureFlag: FeatureFlag!
+
+  """
+  Get pending user invitations within the viewer's organization.
+  """
+  invitations: [Invitation!]!
+
+  """
+  Get notifications for the viewer.
+  """
+  notifications(
+    first: Int = 10
+    filter: NotificationFilter = null
+  ): [Notification!]!
+
+  """
+  Get a notification connection for the viewer.
+  """
+  notificationsConnection(
+    first: Int = 10
+    after: String = null
+    filter: NotificationFilter = null
+  ): NotificationConnection!
+
+  """
+  Get a page of notifications for the viewer.
+  """
+  notificationsPage(
+    pageSize: Int! = 10
+    page: Int! = 1
+    filter: NotificationFilter = null
+  ): NotificationPage!
+
+  """
+  Get the number of notifications for the viewer.
+  """
+  notificationsCount(filter: NotificationFilter = null): Int!
+
+  """
+  Get an enabled plugin operator that the viewer has access to.
+  """
+  operator(
+    operatorName: String!
+    datasetIds: [String!] = null
+    onlyIfEnabled: Boolean! = true
+  ): PluginOperator
+
+  """
+  Get a list of enabled plugin operators that the viewerhas access to.
+  """
+  operators(
+    datasetIds: [String!] = null
+    onlyEnabled: Boolean! = true
+  ): [PluginOperator!]!
+
+  """
+  Get a page of registered orchestrators
+  """
+  orchestratorsPage(
+    page: Int! = 1
+    pageSize: Int! = 10
+    filter: OrchestratorFilter = null
+    search: OrchestratorSearchFieldsSearch = null
+    order: OrchestratorOrderFieldsOrder = null
+  ): OrchestratorPage!
+
+  """
+  Get a registered orchestrator
+  """
+  orchestrator(
+    instanceIdentifier: String = null
+    orchestratorIdentifier: String = null
+  ): Orchestrator!
+
+  """
+  Get the organization of the viewer.
+  """
+  organization: Organization!
+
+  """
+  Get the settings for the organization of the viewer.
+  """
+  organizationSettings: OrganizationSettings!
+
+  """
+  Get a plugin that the viewer has access to.
+  """
+  plugin(name: String!): Plugin
+
+  """
+  Get a list plugins that the viewer has access to.
+  """
+  plugins(
+    onlyEnabled: Boolean = false
+    includeBuiltin: Boolean! = false
+  ): [Plugin!]!
+
+  """
+  Get the user role info
+  """
+  role(role: UserRole!): UserRoleInfo!
+
+  """
+  Get the info for all the user roles
+  """
+  roles(include: [UserRole!], exclude: [UserRole!]): [UserRoleInfo!]!
+
+  """
+  Search across multiple object types.
+  """
+  search(
+    term: String!
+    searchTypes: [SearchType!] = null
+    first: Int = 10
+  ): [MultiSearch!]!
+
+  """
+  Get a secret with value encrypted.
+  """
+  secret(key: String!): EncryptedSecret
+
+  """
+  Get a list of secrets with values encrypted.
+  """
+  secrets(
+    filter: SecretFilter = null
+    order: SecretOrderFieldsOrder = null
+  ): [EncryptedSecret!]
+
+  """
+  Get a list of tags.
+  """
+  tags(first: Int = 10, searchTerm: String = null): [Tag!]!
+
+  """
+  Get a user within the viewer's organization by ID.
+  """
+  user(id: String!): User
+
+  """
+  Get a single user group by id
+  """
+  userGroup(identifier: String!): UserGroup
+
+  """
+  List of saved views loaded by and are accessible to the viewer.
+  """
+  userViews(
+    first: Int = 10
+    order: DatasetViewOrderFieldsOrder = null
+  ): [DatasetViewUser!]!
+
+  """
+  Get a list of users within the viewer's organization.
+  """
+  users(
+    first: Int = 10
+    search: UserSearchFieldsSearch = null
+    order: UserOrderFieldsOrder = null
+  ): [User!]!
+
+  """
+  Get a user connection within the viewer's organization.
+  """
+  usersConnection(
+    first: Int = 10
+    after: String = null
+    search: UserSearchFieldsSearch = null
+    order: UserOrderFieldsOrder = null
+  ): UserConnection!
+
+  """
+  Get a page of users within the viewer's organization.
+  """
+  usersPage(
+    pageSize: Int! = 10
+    page: Int! = 1
+    search: UserSearchFieldsSearch = null
+    order: UserOrderFieldsOrder = null
+  ): UserPage!
+
+  """
+  Get the number of users within the viewer's organization.
+  """
+  usersCount(search: UserSearchFieldsSearch = null): Int!
+
+  """
+  Get a list of user groups within the viewer's organization.
+  """
+  userGroups(
+    filter: UserGroupFilter = null
+    first: Int! = 10
+    order: UserGroupOrderFieldsOrder = null
+    search: UserGroupSearchFieldsSearch = null
+  ): [UserGroup!]!
+
+  """
+  Get a connection of user groups within the viewer's organization.
+  """
+  userGroupsConnection(
+    first: Int!
+    after: String = null
+    filter: UserGroupFilter = null
+    order: UserGroupOrderFieldsOrder = null
+    search: UserGroupSearchFieldsSearch = null
+  ): UserGroupConnection!
+
+  """
+  Get a list of user groups within the viewer's organization.
+  """
+  userGroupsCount: Int!
+
+  """
+  Get a page of user groups within the viewer's organization.
+  """
+  userGroupsPage(
+    pageSize: Int!
+    page: Int! = 1
+    filter: UserGroupFilter = null
+    order: UserGroupOrderFieldsOrder = null
+    search: UserGroupSearchFieldsSearch = null
+  ): UserGroupPage!
+
+  """
+  Get the count of current users and remaining number of licensed seats by role.
+  """
+  usersAudit: UsersAudit
+
+  """
+  Get the product version.
+  """
+  version: String!
+
+  """
+  Get the viewer (current authenticated user).
+  """
+  viewer: User
+}
+
+type Sample {
+  filepath: String!
+  tags: [String!]!
+}
+
+type SampleChangeSummary {
+  numSamplesAdded: Int!
+  numSamplesDeleted: Int!
+  numSamplesChanged: Int!
+  totalSamples: Int!
+  updatedAt: datetime
+}
+
+enum SearchType {
+  Dataset
+  MediaType
+  Tag
+  User
+  UserGroup
+}
+
+input SecretFilter {
+  createdBy: StringFilter = null
+  key: StringFilter = null
+  scope: SecretScopeComparisonFilter = null
+}
+
+enum SecretOrderFields {
+  createdAt
+  key
+}
+
+input SecretOrderFieldsOrder {
+  field: SecretOrderFields!
+  direction: OrderInputDirection! = ASC
+}
+
+enum SecretScope {
+  DATASET
+  USER
+  PLUGIN
+  GLOBAL
+}
+
+input SecretScopeComparisonFilter {
+  eq: SecretScope
+  ge: SecretScope
+  gt: SecretScope
+  le: SecretScope
+  lt: SecretScope
+  in: [SecretScope!]
+  ne: SecretScope
+}
+
+input StrListFilter {
+  in: String
+  ni: String
+}
+
+input StringFilter {
+  in: [String!]
+  eq: String
+  ne: String
+  regexp: String
+}
+
+type Tag {
+  text: String!
+  sources: [DatasetSample!]!
+}
+
+type User implements IUser {
+  email: String!
+  name: String!
+  id: String!
+  role: UserRole!
+  picture: String
+  apiKeys: [APIKey!]!
+
+  """
+  Get an attribute of this user.
+  """
+  attribute(attribute: UserAttribute!): UserAttributeInfo!
+
+  """
+  Get the attributes of this user.
+  """
+  attributes(
+    include: [UserAttribute!]
+    exclude: [UserAttribute!]
+  ): [UserAttributeInfo!]!
+  dataset(identifier: String!): Dataset
+  datasets(
+    first: Int! = 10
+    filter: DatasetFilter = null
+    search: DatasetSearchFieldsSearch = null
+    order: DatasetOrderFieldsOrder = null
+  ): [Dataset!]!
+  datasetsConnection(
+    first: Int! = 10
+    after: String = null
+    filter: DatasetFilter = null
+    search: DatasetSearchFieldsSearch = null
+    order: DatasetOrderFieldsOrder = null
+  ): DatasetConnection!
+  datasetsCount(
+    filter: DatasetFilter = null
+    search: DatasetSearchFieldsSearch = null
+  ): Int!
+  datasetsPage(
+    pageSize: Int! = 10
+    page: Int! = 1
+    filter: DatasetFilter = null
+    search: DatasetSearchFieldsSearch = null
+    order: DatasetOrderFieldsOrder = null
+  ): DatasetPage!
+  joinedAt: datetime! @deprecated(reason: "No longer tracking this data.")
+
+  """
+  Get a user group that this user is a part of.
+  """
+  userGroup(identifier: String!): UserGroup
+
+  """
+  Get a list of user groups that this user is a part of.
+  """
+  userGroups(
+    filter: UserGroupFilter = null
+    first: Int! = 10
+    order: UserGroupOrderFieldsOrder = null
+    search: UserGroupSearchFieldsSearch = null
+  ): [UserGroup!]!
+
+  """
+  Get a connection of user groups that this user is a part of.
+  """
+  userGroupsConnection(
+    first: Int!
+    after: String = null
+    filter: UserGroupFilter = null
+    order: UserGroupOrderFieldsOrder = null
+    search: UserGroupSearchFieldsSearch = null
+  ): UserGroupConnection!
+
+  """
+  Get the number of user groups that this user is a part of.
+  """
+  userGroupsCount: Int!
+
+  """
+  Get a page of user groups that this user is a part of.
+  """
+  userGroupsPage(
+    pageSize: Int!
+    page: Int! = 1
+    filter: UserGroupFilter = null
+    order: UserGroupOrderFieldsOrder = null
+    search: UserGroupSearchFieldsSearch = null
+  ): UserGroupPage!
+}
+
+enum UserAttribute {
+  ACT_ON_BEHALF_OF_USER
+  CREATE_DATASETS
+  DATASET_ACCESS_LEVEL
+  EDIT_USERS
+  EXPORT_DATASETS
+  EXECUTE_BUILTIN_PLUGINS
+  EXECUTE_CUSTOM_PLUGINS
+  MANAGE_INVITATIONS
+  MANAGE_ORGANIZATION
+  MAX_DATASET_PERMISSION
+  VIEW_USERS
+  USE_API_KEYS
+}
+
+union UserAttributeInfo =
+    BoolUserAttributeInfo
+  | DatasetAccessLevelUserAttributeInfo
+  | DatasetPermissionUserAttributeInfo
+
+type UserConnection {
+  pageInfo: PageInfo!
+  edges: [UserEdge!]!
+}
+
+type UserEdge {
+  node: User!
+  cursor: String!
+}
+
+type UserGroup {
+  id: String!
+  name: String!
+  slug: String!
+  createdAt: datetime!
+  description: String
+  createdBy: User!
+  user(id: String!): User
+  users(first: Int! = 10, search: UserSearchFieldsSearch = null): [User!]!
+  usersConnection(
+    first: Int! = 10
+    after: String = null
+    search: UserSearchFieldsSearch = null
+  ): UserConnection!
+  usersPage(
+    pageSize: Int! = 10
+    page: Int! = 1
+    search: UserSearchFieldsSearch = null
+  ): UserPage!
+  usersCount(search: UserSearchFieldsSearch = null): Int!
+}
+
+type UserGroupConnection {
+  pageInfo: PageInfo!
+  edges: [UserGroupEdge!]!
+}
+
+type UserGroupEdge {
+  node: UserGroup!
+  cursor: String!
+}
+
+input UserGroupFilter {
+  createdBy: StringFilter = null
+  id: StringFilter = null
+  userId: StringFilter = null
+}
+
+enum UserGroupOrderFields {
+  createdAt
+  name
+  slug
+}
+
+input UserGroupOrderFieldsOrder {
+  field: UserGroupOrderFields!
+  direction: OrderInputDirection! = ASC
+}
+
+type UserGroupPage {
+  prev: Int
+  page: Int
+  next: Int
+  nodes: [UserGroup!]!
+  pageSize: Int!
+  pageTotal: Int!
+  nodeTotal: Int!
+}
+
+enum UserGroupSearchFields {
+  name
+  slug
+  user
+  id
+}
+
+input UserGroupSearchFieldsSearch {
+  term: String!
+  fields: [UserGroupSearchFields!]!
+}
+
+enum UserOrderFields {
+  name
+}
+
+input UserOrderFieldsOrder {
+  field: UserOrderFields!
+  direction: OrderInputDirection! = ASC
+}
+
+type UserPage {
+  prev: Int
+  page: Int
+  next: Int
+  nodes: [User!]!
+  pageSize: Int!
+  pageTotal: Int!
+  nodeTotal: Int!
+}
+
+enum UserRole {
+  ADMIN
+  COLLABORATOR
+  GUEST
+  MEMBER
+}
+
+input UserRoleComparisonFilter {
+  eq: UserRole
+  ge: UserRole
+  gt: UserRole
+  le: UserRole
+  lt: UserRole
+  in: [UserRole!]
+  ne: UserRole
+}
+
+type UserRoleInfo {
+  """
+  The user role.
+  """
+  role: UserRole!
+
+  """
+  Get an attribute of this role.
+  """
+  attribute(attribute: UserAttribute!): UserAttributeInfo!
+
+  """
+  Get the attributes of this role.
+  """
+  attributes(
+    include: [UserAttribute!]
+    exclude: [UserAttribute!]
+  ): [UserAttributeInfo!]!
+}
+
+enum UserSearchFields {
+  email
+  id
+  name
+}
+
+input UserSearchFieldsSearch {
+  term: String!
+  fields: [UserSearchFields!]!
+}
+
+type UsersAudit {
+  users: AuditResult!
+  collaborators: AuditResult
+  guests: AuditResult!
+}
+
+input ViewSelectors {
+  filters: JSON = null
+  sampleIds: [String!] = null
+  viewStages: BSONArray = null
+}
+
+"""
+Represents NULL values
+"""
+scalar Void
+
+scalar datetime

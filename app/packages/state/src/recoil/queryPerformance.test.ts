@@ -23,4 +23,44 @@ describe("tests query performance selectors", () => {
 
     expect(test()).toEqual(new Set(["ground_truth.id", "ground_truth.label"]));
   });
+
+  it("resolves query performant views", () => {
+    const test = <TestSelector<typeof queryPerformance.isQueryPerformantView>>(
+      (<unknown>queryPerformance.isQueryPerformantView)
+    );
+
+    setMockAtoms({
+      _view__setter: [],
+    });
+    expect(test()).toBe(true);
+
+    setMockAtoms({
+      _view__setter: [
+        {
+          _cls: "fiftyone.core.stages.ExcludeFields",
+        },
+        {
+          _cls: "fiftyone.core.stages.SelectFields",
+        },
+        {
+          _cls: "fiftyone.core.stages.SelectGroupSlices",
+        },
+      ],
+    });
+    expect(test()).toBe(true);
+
+    setMockAtoms({
+      _view__setter: [
+        {
+          _cls: "unsupported",
+        },
+      ],
+    });
+    expect(test()).toBe(false);
+
+    setMockAtoms({
+      _view__setter: [{}, {}],
+    });
+    expect(test()).toBe(false);
+  });
 });

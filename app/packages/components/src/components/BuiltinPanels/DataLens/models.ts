@@ -27,7 +27,7 @@ export type PreviewRequest = {
  */
 export type PreviewResponse = {
   result_count: number;
-  query_result: object[];
+  query_result: LensSample[];
   field_schema: object;
 } & BaseResponse;
 
@@ -107,6 +107,8 @@ export type OperatorResponse<T> = {
   result: T;
   error?: string;
 };
+
+export type LensViewMode = "grid" | "json";
 
 /**
  * Generic sample data.

@@ -27,7 +27,7 @@ for (const queriesExportFile of queriesExportFiles) {
   if (!relativeExportFilePath.startsWith("."))
     relativeExportFilePath = "./" + relativeExportFilePath;
   relativeExportFilePath = relativeExportFilePath.replace("/index.ts", "");
-  typesExportFileData += `export * from '${relativeExportFilePath}'\n`;
+  typesExportFileData += `export * from "${relativeExportFilePath}";\n`;
 }
 fs.writeFileSync(typesExportFilePath, typesExportFileData);
 

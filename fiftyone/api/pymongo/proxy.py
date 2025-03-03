@@ -3,6 +3,7 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import abc
 from typing import Any, Iterable, Mapping, Optional, Tuple, Union
 
@@ -46,7 +47,7 @@ class PymongoRestProxy(utils.IProxy, abc.ABC, metaclass=PymongoProxyMeta):
             "_pymongo", payload=marshalled_payload, stream=True
         )
 
-        return self.__proxy_api_handle_reponse__(marshalled_response)
+        return self.__proxy_api_handle_response__(marshalled_response)
 
     @property
     @abc.abstractmethod
@@ -61,7 +62,7 @@ class PymongoRestProxy(utils.IProxy, abc.ABC, metaclass=PymongoProxyMeta):
         in which a context can be derived.
         """
 
-    def __proxy_api_handle_reponse__(
+    def __proxy_api_handle_response__(
         self, marshalled_response: Union[str, bytes]
     ) -> Any:
         """Handle a marshalled respoinse from the Teams API."""
@@ -98,9 +99,6 @@ class PymongoWebsocketProxy(PymongoRestProxy, abc.ABC):
             None, init_batch_size=100, max_batch_beta=128.0
         )
 
-    def _handle_disconnect(self):
-        self.__proxy_socket_connect__()
-
     def __proxy_it__(
         self,
         name: str,
@@ -119,9 +117,9 @@ class PymongoWebsocketProxy(PymongoRestProxy, abc.ABC):
 
                 # Get marshalled response message from the server.
                 marshalled_response = next(self.__proxy_api_socket)
-                return self.__proxy_api_handle_reponse__(marshalled_response)
-            except socket.SocketDisconnectException as err:
-                self._handle_disconnect()
+                return self.__proxy_api_handle_response__(marshalled_response)
+            except socket.SocketDisconnectException:
+                self.__proxy_socket_connect__()
 
     # pylint: disable-next=missing-function-docstring
     def close(self) -> None:

@@ -10,7 +10,7 @@ export const DATASET_CREATION_DOCUMENTATION_LINK =
   "https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/index.html";
 export const DOCUMENTATION_LINK = "https://docs.fiftyone.ai/";
 export const CONTACT_LINK = "mailto:support@voxel51.com";
-export const SLACK_LINK = "https://slack.voxel51.com";
+export const DISCORD_LINK = "https://community.voxel51.com";
 export const GITHUB_LINK = "https://github.com/voxel51/fiftyone";
 export const TERMS_OF_SERVICE_LINK = "https://voxel51.com/terms";
 export const PRIVACY_POLICY_LINK = "https://voxel51.com/privacy";
@@ -25,6 +25,10 @@ export const DATASETS_ORDER_DIRECTION_ASC = "ASC";
 export const DATASETS_ORDER_DIRECTION_DESC = "DESC";
 export const LEARN_MORE_ABOUT_ROLES_LINK =
   "https://docs.voxel51.com/teams/roles_and_permissions.html";
+export const DOCKER_DOC_URL =
+  "https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docker/docs/configuring-delegated-operators.md";
+export const HELM_DOC_URL =
+  "https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/helm/docs/configuring-delegated-operators.md";
 export const DEFAULT_PAGE = 1;
 export const DEFAULT_PAGE_SIZE = 25;
 export const DEFAULT_USERS_PAGE_SIZE = 25;
@@ -326,6 +330,9 @@ export const FIFTYONE_APP_BANNER_TEXT_ENV_KEY = "FIFTYONE_APP_BANNER_TEXT";
 export const FIFTYONE_APP_BANNER_COLOR_ENV_KEY = "FIFTYONE_APP_BANNER_COLOR";
 export const FIFTYONE_APP_BANNER_TEXT_COLOR_ENV_KEY =
   "FIFTYONE_APP_BANNER_TEXT_COLOR";
+export const FIFTYONE_APP_TERMS_URL_ENV_KEY = "FIFTYONE_APP_TERMS_URL";
+export const FIFTYONE_APP_PRIVACY_URL_ENV_KEY = "FIFTYONE_APP_PRIVACY_URL";
+export const FIFTYONE_APP_IMPRINT_URL_ENV_KEY = "FIFTYONE_APP_IMPRINT_URL";
 export const FIFTYONE_SNAPSHOTS_ARCHIVE_PATH_ENV_KEY =
   "FIFTYONE_SNAPSHOTS_ARCHIVE_PATH";
 

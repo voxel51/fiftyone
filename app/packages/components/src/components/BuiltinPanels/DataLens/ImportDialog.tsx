@@ -148,14 +148,8 @@ export const ImportDialog = ({
               <TextField
                 fullWidth
                 label="Number of samples"
-                value={maxImportSamples}
-                onChange={(e) =>
-                  setMaxImportSamples(
-                    isNaN(Number.parseInt(e.target.value))
-                      ? defaultMaxSamples
-                      : Number.parseInt(e.target.value)
-                  )
-                }
+                value={isNaN(maxImportSamples) ? "" : maxImportSamples}
+                onChange={(e) => setMaxImportSamples(parseInt(e.target.value))}
               />
             )}
           </Box>
@@ -172,7 +166,7 @@ export const ImportDialog = ({
               <Stack direction="column" spacing={1}>
                 <Typography>Skip existing samples</Typography>
                 <Typography color="secondary" variant="body2">
-                  Check this box to skip importing examples whose filepath
+                  Check this box to skip importing samples whose filepath
                   matches an existing dataset sample
                 </Typography>
               </Stack>
@@ -271,7 +265,7 @@ export const ImportDialog = ({
             executionParams={importRequest}
             onSuccess={onSuccess}
             onError={onError}
-            onOptionSelected={(opt) => onStart(opt.isDelegated, datasetName)}
+            onOptionSelected={(opt) => onStart?.(opt.isDelegated, datasetName)}
           >
             Import data
           </OperatorExecutionButton>

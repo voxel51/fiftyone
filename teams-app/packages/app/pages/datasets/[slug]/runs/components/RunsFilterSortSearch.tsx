@@ -2,28 +2,61 @@ import { useCurrentUser } from "@fiftyone/hooks";
 import { AutoRefresh, RadioGroup, Selection } from "@fiftyone/teams-components";
 import {
   autoRefreshRunsStatus,
+  runsPageFilterDatasetSelectionState,
   runsPageQueryDefaultVariables,
   runsPageQueryDynamicVariables,
+  useCurrentDataset,
 } from "@fiftyone/teams-state";
+import { useRouter } from "next/router";
 import { AUTO_REFRESH_INTERVAL_IN_SECONDS } from "@fiftyone/teams-state/src/constants";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
 import { IconButton, Stack, TextField } from "@mui/material";
 import { throttle } from "lodash";
 import { useCallback, useEffect, useState } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilValue, useSetRecoilState, useRecoilState } from "recoil";
 import useRefresher, { RUNS_STATUS_REFRESHER_ID } from "../utils/useRefresher";
 import RunStatus from "./RunStatus";
 
 export default function RunsFilterSortSearch() {
+  const { query } = useRouter();
+  const { slug: datasetSlug } = query;
+  const currentDataset = useCurrentDataset(datasetSlug as string);
+
   const [user] = useCurrentUser();
   const id = user?.id;
+  const isAdmin = user?.role === "ADMIN";
+
+  const [datasetSelection, setDatasetSelection] = useRecoilState(
+    runsPageFilterDatasetSelectionState
+  );
+
+  useEffect(() => {
+    if (
+      isAdmin &&
+      window.localStorage.getItem(
+        "runs-page-all-this-datasets-filter-last-selected"
+      ) === "all"
+    ) {
+      setDatasetSelection("all");
+      setFilter({
+        ...filter,
+        datasetIdentifier: null,
+      });
+    }
+  }, [isAdmin]);
+
   const setVars = useSetRecoilState(runsPageQueryDynamicVariables);
-  const [filter, setFilter] = useState(runsPageQueryDefaultVariables.filter);
+  const [filter, setFilter] = useState({
+    datasetIdentifier: {
+      eq: datasetSelection === "this" ? currentDataset?.id : null,
+    },
+  });
   const [order, setOrder] = useState(runsPageQueryDefaultVariables.order);
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState(null);
   const [statusSelections, setStatusSelections] = useState(["all"]);
+
   const shouldAutoRefresh = useRecoilValue(autoRefreshRunsStatus);
   const [refresh] = useRefresher(RUNS_STATUS_REFRESHER_ID);
 
@@ -51,7 +84,7 @@ export default function RunsFilterSortSearch() {
     setVars((vars) => {
       return { ...vars, search: searchField, order, filter, page: 1 };
     });
-  }, [filter, order, searchField, setVars]);
+  }, [currentDataset, filter, order, searchField, setVars, isAdmin]);
 
   return (
     <Stack direction="row" pb={1} justifyContent="space-between">
@@ -111,16 +144,53 @@ export default function RunsFilterSortSearch() {
           labelPrefix="Status: "
           value={statusSelections}
         />
-        <RadioGroup
-          defaultValue="all"
+        {isAdmin && (
+          <Selection
+            items={DatasetFilterItems.map(({ id, label }) => ({
+              id,
+              label,
+            }))}
+            menuSize="small"
+            placeholder="Filter by dataset"
+            onChange={(item) => {
+              if (isAdmin) {
+                window?.localStorage.setItem(
+                  "runs-page-all-this-datasets-filter-last-selected",
+                  item as string
+                );
+              }
+              setDatasetSelection(item as string);
+              setFilter({
+                ...filter,
+                datasetIdentifier:
+                  item === "all"
+                    ? null
+                    : {
+                        eq: currentDataset?.id,
+                      },
+              });
+            }}
+            selectProps={{
+              sx: { color: (theme) => theme.palette.text.secondary },
+              inputProps: { sx: { maxWidth: 100 } },
+            }}
+            value={datasetSelection}
+          />
+        )}
+        <Selection
           items={[
-            { value: "all", label: "All runs" },
-            { value: "my", label: "My runs" },
+            { id: "all", label: "All runs" },
+            { id: "my", label: "My runs" },
           ]}
-          onChange={(e, value) => {
+          defaultValue="all"
+          selectProps={{
+            sx: {
+              color: (theme) => theme.palette.text.secondary,
+            },
+          }}
+          onChange={(value) => {
             setFilter({ ...filter, runBy: value === "my" ? { eq: id } : null });
           }}
-          row
         />
       </Stack>
       <Stack direction="row">
@@ -137,6 +207,7 @@ export default function RunsFilterSortSearch() {
           items={[
             { id: "newest", label: "Newest" },
             { id: "oldest", label: "Oldest" },
+            { id: "recentlyUpdated", label: "Recently updated" },
             { id: "operator", label: "Operator name" },
           ]}
           defaultValue="newest"
@@ -156,8 +227,9 @@ export default function RunsFilterSortSearch() {
 }
 
 const sortingMap = {
-  newest: { direction: "DESC", field: "updatedAt" },
-  oldest: { direction: "ASC", field: "updatedAt" },
+  recentlyUpdated: { direction: "DESC", field: "updatedAt" },
+  newest: { direction: "DESC", field: "scheduledAt" },
+  oldest: { direction: "ASC", field: "scheduledAt" },
   operator: { direction: "ASC", field: "operator" },
 };
 
@@ -168,6 +240,11 @@ const statusFilterItems = [
   { id: "queued", label: "Queued" },
   { id: "running", label: "Running" },
   { id: "scheduled", label: "Scheduled" },
+];
+
+const DatasetFilterItems = [
+  { id: "all", label: "All datasets" },
+  { id: "this", label: "This dataset" },
 ];
 
 type SortingMode = "newest" | "oldest" | "operator";

@@ -19,6 +19,15 @@ import { datasetId, datasetName } from "./selectors";
 import { State } from "./types";
 import { view } from "./view";
 
+const EXCLUDE_FIELDS = "fiftyone.core.stages.ExcludeFields";
+const SELECT_FIELDS = "fiftyone.core.stages.SelectFields";
+const SELECT_GROUP_SLICES = "fiftyone.core.stages.SelectGroupSlices";
+const VALID_QP_STAGES = new Set([
+  EXCLUDE_FIELDS,
+  SELECT_FIELDS,
+  SELECT_GROUP_SLICES,
+]);
+
 export const lightningQuery = graphQLSelectorFamily<
   foq.lightningQuery$variables,
   foq.LightningInput["paths"],
@@ -186,6 +195,19 @@ export const indexedPaths = selectorFamily<Set<string>, string>({
 
       return new Set();
     },
+});
+
+export const isQueryPerformantView = selector({
+  key: "isQueryPerformantView",
+  get: ({ get }) => {
+    const stages = get(view);
+    if (!stages?.length) {
+      return true;
+    }
+
+    const stageClasses = [...new Set(stages.map(({ _cls }) => _cls))];
+    return stageClasses.every((cls) => VALID_QP_STAGES.has(cls));
+  },
 });
 
 export const enableQueryPerformanceConfig = selector({

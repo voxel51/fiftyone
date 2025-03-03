@@ -3,10 +3,12 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import abc
 from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Union
 
 import pymongo
+import pymongo.cursor
 import pymongo.errors
 
 from fiftyone.api.pymongo import mixin, proxy
@@ -40,9 +42,6 @@ class AbstractCursor(proxy.PymongoWebsocketProxy, abc.ABC):
             limit=limit,
             **kwargs,
         )
-
-    def _handle_disconnect(self):
-        raise pymongo.errors.CursorNotFound("Cursor::Websocket disconnect")
 
     @property
     def __proxy_api_client__(self) -> proxy.ProxyAPIClient:

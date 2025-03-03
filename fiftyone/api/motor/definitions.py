@@ -3,20 +3,28 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import asyncio
 from typing import Any, Optional
 
 import bson
-from motor import motor_asyncio
 import pymongo
+from motor import motor_asyncio
 
-from fiftyone.api import pymongo as fomongo
 from fiftyone.api.motor import mixin, proxy
+from fiftyone.api.pymongo import (
+    change_stream,
+    client,
+    collection,
+    command_cursor,
+    cursor,
+)
+from fiftyone.api.pymongo import database as database_
 
 
 class AsyncIOMotorChangeStream(
     mixin.PymongoWebsocketProxyAsyncDunderMixin,
-    fomongo.change_stream.AbstractChangeStream,
+    change_stream.AbstractChangeStream,
     metaclass=proxy.MotorProxyMeta,
 ):
     """Proxy for motor.motor_asyncio.AsyncIOMotorChangeStream"""
@@ -26,7 +34,7 @@ class AsyncIOMotorChangeStream(
 
 class AsyncIOMotorCommandCursor(
     mixin.PymongoWebsocketProxyAsyncDunderMixin,
-    fomongo.command_cursor.AbstractCommandCursor,
+    command_cursor.AbstractCommandCursor,
     metaclass=proxy.MotorProxyMeta,
 ):
     """Proxy for motor.motor_asyncio.AsyncIOMotorCommandCursor"""
@@ -36,7 +44,7 @@ class AsyncIOMotorCommandCursor(
 
 class AsyncIOMotorCursor(
     mixin.PymongoWebsocketProxyAsyncDunderMixin,
-    fomongo.cursor.AbstractCursor,
+    cursor.AbstractCursor,
     metaclass=proxy.MotorProxyMeta,
 ):
     """Proxy for motor.motor_asyncio.AsyncIOMotorCursor"""
@@ -45,7 +53,7 @@ class AsyncIOMotorCursor(
 
 
 class AsyncIOMotorCollection(
-    fomongo.collection.Collection, metaclass=proxy.MotorProxyMeta
+    collection.Collection, metaclass=proxy.MotorProxyMeta
 ):
     """Proxy for motor.motor_asyncio.AsyncIOMotorCollection"""
 
@@ -91,9 +99,7 @@ class AsyncIOMotorCollection(
         return AsyncIOMotorChangeStream(self, *args, **kwargs)
 
 
-class AsyncIOMotorDatabase(
-    fomongo.database.Database, metaclass=proxy.MotorProxyMeta
-):
+class AsyncIOMotorDatabase(database_.Database, metaclass=proxy.MotorProxyMeta):
     """Proxy for motor.motor_asyncio.AsyncIOMotorDatabase"""
 
     __proxy_class__ = motor_asyncio.AsyncIOMotorDatabase
@@ -114,10 +120,10 @@ class AsyncIOMotorDatabase(
     # pylint: disable-next=missing-function-docstring, invalid-overridden-method
     async def list_collections(
         self, *args: Any, **kwargs: Any
-    ) -> fomongo.command_cursor.CommandCursor:
+    ) -> command_cursor.CommandCursor:
         # This is inconsistent behavior with other method but this is what
         # motor is doing.
-        return fomongo.command_cursor.CommandCursor(
+        return command_cursor.CommandCursor(
             self, "list_collections", *args, **kwargs
         )
 
@@ -125,7 +131,7 @@ class AsyncIOMotorDatabase(
         return AsyncIOMotorChangeStream(self, *args, **kwargs)
 
 
-class AsyncIOMotorClient(fomongo.MongoClient, metaclass=proxy.MotorProxyMeta):
+class AsyncIOMotorClient(client.MongoClient, metaclass=proxy.MotorProxyMeta):
     """Proxy for motor.motor_asyncio.AsyncIOMotorClient"""
 
     __proxy_class__ = motor_asyncio.AsyncIOMotorClient
@@ -138,8 +144,7 @@ class AsyncIOMotorClient(fomongo.MongoClient, metaclass=proxy.MotorProxyMeta):
     def io_loop(self):
         return asyncio.get_event_loop()
 
-    def close(self) -> None:
-        ...
+    def close(self) -> None: ...
 
     def _get_database(
         self,

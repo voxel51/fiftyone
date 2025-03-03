@@ -45,6 +45,7 @@ class DelegatedOperationRepo(object):
         run_state: ExecutionRunState,
         result: ExecutionResult = None,
         run_link: str = None,
+        log_path: str = None,
         progress: ExecutionProgress = None,
         required_state: ExecutionRunState = None,
     ) -> DelegatedOperationDocument:
@@ -119,6 +120,14 @@ class DelegatedOperationRepo(object):
         """Sets the label for the delegated operation."""
         raise NotImplementedError("subclass must implement set_label()")
 
+    def set_log_upload_error(
+        self, _id: ObjectId, log_upload_error: str
+    ) -> DelegatedOperationDocument:
+        """Sets the log upload error for the delegated operation."""
+        raise NotImplementedError(
+            "subclass must implement set_log_upload_error()"
+        )
+
     def get(self, _id: ObjectId) -> DelegatedOperationDocument:
         """Get an operation by id."""
         raise NotImplementedError("subclass must implement get()")
@@ -166,6 +175,13 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             indices_to_create.append(
                 IndexModel(
                     [("run_state", pymongo.ASCENDING)], name="run_state_1"
+                )
+            )
+
+        if "dataset_id_1" not in index_names:
+            indices_to_create.append(
+                IndexModel(
+                    [("dataset_id", pymongo.ASCENDING)], name="dataset_id_1"
                 )
             )
 
@@ -255,6 +271,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         run_state: ExecutionRunState,
         result: ExecutionResult = None,
         run_link: str = None,
+        log_path: str = None,
         progress: ExecutionProgress = None,
         required_state: ExecutionRunState = None,
     ) -> DelegatedOperationDocument:
@@ -325,6 +342,9 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if run_link is not None:
             update["$set"]["run_link"] = run_link
 
+        if log_path is not None:
+            update["$set"]["log_path"] = log_path
+
         if update is None:
             raise ValueError("Invalid run_state: {}".format(run_state))
 
@@ -366,13 +386,15 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         ):
             raise ValueError("Invalid progress: {}".format(execution_progress))
 
+        updated_at = datetime.utcnow()
         update = {
             "$set": {
                 "status": {
                     "progress": execution_progress.progress,
                     "label": execution_progress.label,
-                    "updated_at": datetime.utcnow(),
+                    "updated_at": updated_at,
                 },
+                "updated_at": updated_at,
             }
         }
 

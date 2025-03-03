@@ -249,11 +249,17 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_REQUIREMENT_ERROR_LEVEL",
             default=0,
         )
-        self.delegated_operation_run_link_path = self.parse_string(
+        delegated_operation_legacy_log_path = self.parse_string(
             d,
             "delegated_operation_run_link_path",
             env_var="FIFTYONE_DELEGATED_OPERATION_RUN_LINK_PATH",
             default=None,
+        )
+        self.delegated_operation_log_path = self.parse_string(
+            d,
+            "delegated_operation_log_path",
+            env_var="FIFTYONE_DELEGATED_OPERATION_LOG_PATH",
+            default=delegated_operation_legacy_log_path,
         )
         self.timezone = self.parse_string(
             d, "timezone", env_var="FIFTYONE_TIMEZONE", default=None
@@ -281,6 +287,19 @@ class FiftyOneConfig(EnvConfig):
             "signed_url_expiration",
             env_var="FIFTYONE_SIGNED_URL_EXPIRATION",
             default=24,
+        )
+        # Enable using aliased media URLs in the service worker after removing global creds
+        self.svc_worker_media_alias = self.parse_string(
+            d,
+            "svc_worker_media_alias",
+            default=None,
+            env_var="FIFTYONE_SERVICE_WORKER_MEDIA_ALIAS",
+        )
+        self.svc_worker_media_endpoint = self.parse_string(
+            d,
+            "svc_worker_media_endpoint",
+            default=None,
+            env_var="FIFTYONE_SERVICE_WORKER_MEDIA_ENDPOINT",
         )
 
         self._init()

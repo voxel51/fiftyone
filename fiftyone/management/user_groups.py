@@ -8,7 +8,7 @@ Group management.
 import dataclasses
 from typing import List, Optional, Union, Any
 
-from fiftyone.api.errors import FiftyOneTeamsAPIError
+from fiftyone.api.errors import FiftyOneEnterpriseAPIError
 from fiftyone.management.connection import APIClientConnection
 from fiftyone.management.users import User, resolve_user_id
 from fiftyone.management.exceptions import FiftyOneManagementError
@@ -333,7 +333,7 @@ def get_user_group(user_group: str) -> Union[UserGroup, None]:
         return (
             UserGroup(**data["userGroup"]) if data.get("userGroup") else None
         )
-    except FiftyOneTeamsAPIError:
+    except FiftyOneEnterpriseAPIError:
         return
 
 

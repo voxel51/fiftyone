@@ -74,7 +74,7 @@ mutation (
 
 
 def get_organization_settings() -> OrganizationSettings:
-    """Gets organization-wide settings for the Teams deployment.
+    """Gets organization-wide settings for the FiftyOne Enterprise deployment.
 
     .. note::
 
@@ -107,7 +107,7 @@ def set_organization_settings(
         dataset.DatasetPermission
     ] = None,
 ) -> OrganizationSettings:
-    """Sets organization-wide settings for the Teams deployment
+    """Sets organization-wide settings for the FiftyOne Enterprise deployment.
 
     .. note::
 

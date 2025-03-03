@@ -879,7 +879,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/runtime@npm:^7.0.0, @babel/runtime@npm:^7.1.2, @babel/runtime@npm:^7.10.4, @babel/runtime@npm:^7.11.2, @babel/runtime@npm:^7.12.5, @babel/runtime@npm:^7.13.10, @babel/runtime@npm:^7.17.8, @babel/runtime@npm:^7.18.3, @babel/runtime@npm:^7.19.0, @babel/runtime@npm:^7.20.1, @babel/runtime@npm:^7.20.6, @babel/runtime@npm:^7.20.7, @babel/runtime@npm:^7.21.0, @babel/runtime@npm:^7.23.9, @babel/runtime@npm:^7.3.1, @babel/runtime@npm:^7.5.5, @babel/runtime@npm:^7.7.2, @babel/runtime@npm:^7.7.6, @babel/runtime@npm:^7.8.7":
+"@babel/runtime@npm:^7.24.6":
   version: 7.26.7
   resolution: "@babel/runtime@npm:7.26.7"
   dependencies:
@@ -1848,7 +1848,7 @@ __metadata:
     lodash: "npm:^4.17.21"
     prettier: "npm:2.2.1"
     typescript: "npm:4.2.4"
-    vite: "npm:^5.2.14"
+    vite: "npm:^5.4.12"
   languageName: unknown
   linkType: soft
 
@@ -1884,8 +1884,9 @@ __metadata:
     react-use: "npm:^17.5.1"
     typescript: "npm:^4.7.4"
     typescript-plugin-css-modules: "npm:^5.1.0"
-    vite: "npm:^5.2.14"
+    vite: "npm:^5.4.12"
   peerDependencies:
+    jotai: "*"
     re-resizable: "*"
     react: "*"
     react-relay: "*"
@@ -1959,7 +1960,7 @@ __metadata:
     typescript: "npm:^5.4.5"
     typescript-plugin-css-modules: "npm:^5.1.0"
     uuid: "npm:^8.3.2"
-    vite: "npm:^5.2.14"
+    vite: "npm:^5.4.12"
     vite-plugin-relay: "npm:^1.0.7"
     xstate: "npm:^4.14.0"
   peerDependencies:
@@ -1982,7 +1983,7 @@ __metadata:
     plotly.js: "npm:^2.32.0"
     typescript: "npm:^4.7.4"
     use-resize-observer: "npm:^9.0.2"
-    vite: "npm:^5.2.14"
+    vite: "npm:^5.4.12"
     vite-plugin-externals: "npm:^0.5.0"
   peerDependencies:
     "@mui/icons-material": "*"
@@ -1998,7 +1999,7 @@ __metadata:
     prettier: "npm:^2.7.1"
     typescript: "npm:^4.7.4"
     typescript-plugin-css-modules: "npm:^5.1.0"
-    vite: "npm:^5.2.14"
+    vite: "npm:^5.4.12"
   languageName: unknown
   linkType: soft
 
@@ -2032,7 +2033,7 @@ __metadata:
     three: "npm:^0.169.0"
     tunnel-rat: "npm:^0.1.2"
     typescript: "npm:^5.4.5"
-    vite: "npm:^5.2.14"
+    vite: "npm:^5.4.12"
     vite-plugin-externals: "npm:^0.5.0"
   peerDependencies:
     "@mui/icons-material": "*"
@@ -2064,7 +2065,7 @@ __metadata:
     typescript: "npm:^4.7.4"
     typescript-plugin-css-modules: "npm:^5.1.0"
     uuid: "npm:^8.3.2"
-    vite: "npm:^5.2.14"
+    vite: "npm:^5.4.12"
   peerDependencies:
     jotai: "*"
   languageName: unknown
@@ -2089,7 +2090,7 @@ __metadata:
     react-map-gl: "npm:^7.0.18"
     typescript: "npm:^4.7.4"
     use-resize-observer: "npm:^9.0.2"
-    vite: "npm:^5.2.14"
+    vite: "npm:^5.4.12"
     vite-plugin-externals: "npm:^0.5.0"
   peerDependencies:
     "@mui/icons-material": "*"
@@ -2108,7 +2109,7 @@ __metadata:
     jest: "npm:^29.7.0"
     prettier: "npm:2.2.1"
     typescript: "npm:4.2.4"
-    vite: "npm:^5.2.14"
+    vite: "npm:^5.4.12"
   peerDependencies:
     "@mui/icons-material": "*"
     "@mui/material": "*"
@@ -2129,7 +2130,7 @@ __metadata:
     prettier: "npm:^3.3.3"
     typescript: "npm:^5.5.4"
     typescript-eslint: "npm:^7.17.0"
-    vite: "npm:^5.4.6"
+    vite: "npm:^5.4.12"
     vite-plugin-svgr: "npm:^4.2.0"
   peerDependencies:
     "@fiftyone/spaces": "*"
@@ -2147,7 +2148,7 @@ __metadata:
     moment: "npm:^2.29.4"
     prettier: "npm:2.2.1"
     typescript: "npm:4.2.4"
-    vite: "npm:^5.2.14"
+    vite: "npm:^5.4.12"
   languageName: unknown
   linkType: soft
 
@@ -2163,7 +2164,7 @@ __metadata:
     relay-compiler-language-typescript: "npm:^15.0.1"
     relay-config: "npm:^12.0.1"
     typescript: "npm:^4.7.4"
-    vite: "npm:^5.2.14"
+    vite: "npm:^5.4.12"
   languageName: unknown
   linkType: soft
 
@@ -2175,7 +2176,7 @@ __metadata:
     allotment: "npm:^1.17.0"
     react-sortablejs: "npm:^6.1.4"
     sortablejs: "npm:^1.15.0"
-    vite: "npm:^5.2.14"
+    vite: "npm:^5.4.12"
   peerDependencies:
     "@mui/icons-material": "*"
     "@mui/material": "*"
@@ -2193,7 +2194,7 @@ __metadata:
     "@biomejs/biome": "npm:^1.7.1"
     typescript: "npm:^5.4.5"
     typescript-plugin-css-modules: "npm:^5.1.0"
-    vite: "npm:^5.2.14"
+    vite: "npm:^5.4.12"
   languageName: unknown
   linkType: soft
 
@@ -2211,7 +2212,7 @@ __metadata:
     lodash: "npm:^4.17.21"
     prettier: "npm:^2.7.1"
     typescript: "npm:^4.7.4"
-    vite: "npm:^5.2.14"
+    vite: "npm:^5.4.12"
   peerDependencies:
     react: "*"
     react-error-boundary: "*"
@@ -2248,6 +2249,7 @@ __metadata:
     prettier: "npm:^2.7.1"
     react-loading-skeleton: "npm:^3.1.0"
     react-relay: "npm:^16.2.0"
+    react-virtuoso: "npm:^4.12.5"
     recoil: "npm:^0.7.7"
     recoil-relay: "npm:^0.1.0"
     relay-compiler: "npm:^14.0.0"
@@ -2309,7 +2311,7 @@ __metadata:
     prettier: "npm:^2.7.1"
     typescript: "npm:^4.7.4"
     typescript-plugin-css-modules: "npm:^5.1.0"
-    vite: "npm:^5.2.14"
+    vite: "npm:^5.4.12"
   languageName: unknown
   linkType: soft
 
@@ -15355,12 +15357,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nanoid@npm:^3.3.7":
-  version: 3.3.7
-  resolution: "nanoid@npm:3.3.7"
+"nanoid@npm:^3.3.8":
+  version: 3.3.8
+  resolution: "nanoid@npm:3.3.8"
   bin:
     nanoid: bin/nanoid.cjs
-  checksum: 10/ac1eb60f615b272bccb0e2b9cd933720dad30bf9708424f691b8113826bb91aca7e9d14ef5d9415a6ba15c266b37817256f58d8ce980c82b0ba3185352565679
+  checksum: 10/2d1766606cf0d6f47b6f0fdab91761bb81609b2e3d367027aff45e6ee7006f660fb7e7781f4a34799fe6734f1268eeed2e37a5fdee809ade0c2d4eb11b0f9c40
   languageName: node
   linkType: hard
 
@@ -17082,6 +17084,16 @@ __metadata:
   version: 1.0.3
   resolution: "react-uuid@npm:1.0.3"
   checksum: 10/364d23d07908927d0db80a8236752d7e6ee148eeccffa3e8f961410a2a2d4dd1315def0015d594775b56f9c1fbe4f2838ec08e2ae5149f992aad3ec2a3c29a62
+  languageName: node
+  linkType: hard
+
+"react-virtuoso@npm:^4.12.5":
+  version: 4.12.5
+  resolution: "react-virtuoso@npm:4.12.5"
+  peerDependencies:
+    react: ">=16 || >=17 || >= 18 || >= 19"
+    react-dom: ">=16 || >=17 || >= 18 || >=19"
+  checksum: 10/09f28ca7940c301899e9d0aa83bf0c7fcb499ca7daaef0545c4aad07164aa22b37391c007f361ae4618ed2a49a1b88c8efe62f6875aaead0995cc99ee6b6f1d9
   languageName: node
   linkType: hard
 
@@ -20436,9 +20448,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vite@npm:^5.2.14":
-  version: 5.4.7
-  resolution: "vite@npm:5.4.7"
+"vite@npm:^5.4.12":
+  version: 5.4.14
+  resolution: "vite@npm:5.4.14"
   dependencies:
     esbuild: "npm:^0.21.3"
     fsevents: "npm:~2.3.3"
@@ -20475,50 +20487,7 @@ __metadata:
       optional: true
   bin:
     vite: bin/vite.js
-  checksum: 10/3f27e870930ad83b51e009604c6b69ab090e69bb5bfe85007c7e4ec3326efae4e33ac799645926363f258595b3be3055cc1ebc5ee158cff4bacdf41adf4ef8ed
-  languageName: node
-  linkType: hard
-
-"vite@npm:^5.4.6":
-  version: 5.4.8
-  resolution: "vite@npm:5.4.8"
-  dependencies:
-    esbuild: "npm:^0.21.3"
-    fsevents: "npm:~2.3.3"
-    postcss: "npm:^8.4.43"
-    rollup: "npm:^4.20.0"
-  peerDependencies:
-    "@types/node": ^18.0.0 || >=20.0.0
-    less: "*"
-    lightningcss: ^1.21.0
-    sass: "*"
-    sass-embedded: "*"
-    stylus: "*"
-    sugarss: "*"
-    terser: ^5.4.0
-  dependenciesMeta:
-    fsevents:
-      optional: true
-  peerDependenciesMeta:
-    "@types/node":
-      optional: true
-    less:
-      optional: true
-    lightningcss:
-      optional: true
-    sass:
-      optional: true
-    sass-embedded:
-      optional: true
-    stylus:
-      optional: true
-    sugarss:
-      optional: true
-    terser:
-      optional: true
-  bin:
-    vite: bin/vite.js
-  checksum: 10/17fdffa558abaf854f04ead7d3ddd76e4556a59871f9ac63cca3fc20a79979984837d8dddaae4b171e3d73061f781e4eec0f6d3babdbce2b4d111d29cf474c1c
+  checksum: 10/ce382f4059eb6c939823b8f62163794752243755d84c71a4b73ad0f7d4d9f4c7a557a6ef4c78e0640f4bcf5ae5ec6b20c7ee4816419af3c81ba275f478b73468
   languageName: node
   linkType: hard
 

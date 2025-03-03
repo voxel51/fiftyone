@@ -187,7 +187,8 @@ def _dict_to_plugin(plugin_dict: Dict) -> Plugin:
 
 
 def list_plugins(include_builtin: bool = False) -> List[Plugin]:
-    """Returns a list of all installed plugins in central FiftyOne Teams.
+    """Returns a list of all installed plugins in the FiftyOne Enterprise
+    deployment.
 
     Examples::
 
@@ -214,7 +215,8 @@ def list_plugins(include_builtin: bool = False) -> List[Plugin]:
 
 
 def get_plugin_info(plugin_name: str) -> Plugin:
-    """Gets information about the specified plugin in central FiftyOne Teams.
+    """Gets information about the specified plugin in the FiftyOne Enterprise
+    deployment.
 
     Examples::
 
@@ -297,7 +299,7 @@ def _make_archive(plugin_path: str, zip_base: str, optimize: bool) -> str:
 def upload_plugin(
     plugin_path: str, overwrite: bool = False, optimize=False
 ) -> Plugin:
-    """Uploads a plugin to central FiftyOne Teams.
+    """Uploads a plugin to the FiftyOne Enterprise deployment.
 
     The local plugin must be a zip file that contains a single directory with
     a ``fiftyone.yml`` or ``fiftyone.yaml`` file. For example::
@@ -362,7 +364,7 @@ def upload_plugin(
 
 
 def delete_plugin(plugin_name: str) -> None:
-    """Deletes the given plugin from central FiftyOne Teams.
+    """Deletes the given plugin from the FiftyOne Enterprise deployment.
 
     Examples::
 
@@ -388,7 +390,7 @@ def delete_plugin(plugin_name: str) -> None:
 
 
 def download_plugin(plugin_name: str, download_dir: str) -> str:
-    """Downloads a plugin from central FiftyOne Teams.
+    """Downloads a plugin from the FiftyOne Enterprise deployment.
 
     Examples::
 
@@ -421,7 +423,8 @@ def download_plugin(plugin_name: str, download_dir: str) -> str:
 
 
 def set_plugin_enabled(plugin_name: str, enabled: bool) -> None:
-    """Sets the enabled status of the given plugin in central FiftyOne Teams.
+    """Sets the enabled status of the given plugin in the FiftyOne Enterprise
+    deployment.
 
     .. note::
 
@@ -448,8 +451,8 @@ def set_plugin_enabled(plugin_name: str, enabled: bool) -> None:
 def set_plugin_operator_enabled(
     plugin_name: str, operator_name: str, enabled: bool
 ) -> None:
-    """Sets the enabled status of the given plugin operator in central FiftyOne
-    Teams.
+    """Sets the enabled status of the given plugin operator in the FiftyOne
+    Enterprise deployment.
 
     .. note::
 
@@ -484,8 +487,8 @@ def set_plugin_operator_permissions(
     minimum_role: Optional[users.UserRole] = None,
     minimum_dataset_permission: Optional[dataset.DatasetPermission] = None,
 ):
-    """Sets permission levels of the given plugin operator in central FiftyOne
-    Teams.
+    """Sets permission levels of the given plugin operator in the FiftyOne
+    Enterprise deployment.
 
     At least one of ``minimum_role`` and ``minimum_dataset_permission``
     must be set.

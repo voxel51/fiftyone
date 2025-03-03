@@ -70,6 +70,8 @@ FROM python:${PYTHON_VERSION}-slim AS release
 
 WORKDIR /opt
 
+COPY entrypoint.sh entrypoint.sh
+
 ENV FIFTYONE_DATABASE_ADMIN=false \
     FIFTYONE_DATABASE_NAME=fiftyone \
     FIFTYONE_MEDIA_CACHE_APP_IMAGES=false \
@@ -88,7 +90,8 @@ RUN apt-get -qq -y update && apt-get -qq -y upgrade \
     && useradd -u 1000 -g 1000 -l -d /opt voxel51 \
     && python3 -m venv "${VIRTUAL_ENV}" \
     && "${VIRTUAL_ENV}"/bin/pip --no-cache-dir install -q -U pip setuptools wheel \
-    && rm -rf /usr/local/lib/python*/ensurepip
+    && rm -rf /usr/local/lib/python*/ensurepip \
+    && chmod +x /opt/entrypoint.sh
 
 # Install fiftyone-teams-app and chown everything to voxel51
 RUN --mount=type=cache,from=builder,target=/builder,ro \
@@ -104,6 +107,8 @@ RUN --mount=type=cache,from=builder,target=/builder,ro \
 USER 1000:1000
 
 #
-# Serve the app
+# Serve the app. Kept as a CMD and not an
+# ENTRYPOINT so existing customers not impacted
+# if they override these
 #
-CMD hypercorn fiftyone.teams.app:app --bind "${FIFTYONE_DEFAULT_APP_ADDRESS:-0.0.0.0}":"${FIFTYONE_DEFAULT_APP_PORT:-5151}"
+CMD [ "/opt/entrypoint.sh" ]

@@ -25,3 +25,5 @@ panels:
   - model_evaluation_panel_builtin
   - query_performance_panel
   - data_quality_panel
+secrets:
+  - FIFTYONE_ZOO_ALLOWED_MODEL_LICENSES
