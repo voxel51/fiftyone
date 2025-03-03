@@ -703,26 +703,42 @@ class DataQualityPanel(Panel):
         return 0
 
     def check_for_new_samples(self, ctx):
-        if not hasattr(ctx.panel.state, "new_samples"):
-            return
+        store = self.get_store(ctx)
+        key = self._get_store_key(ctx)
+        content = store.get(key)
+        # Retrieve previous results from the store
+        results = content.get("results", SAMPLE_STORE["results"])
 
-        # Get last scan times
+        # Get last scan times for each issue type
         last_scan_times = {
-            issue_type: (ctx.panel.state.last_scan.get(issue_type) or {}).get(
-                "timestamp"
+            issue_type: (
+                (ctx.panel.state.last_scan.get(issue_type) or {}).get(
+                    "timestamp"
+                )
+                or (LAST_SCAN.get(issue_type) or {}).get("timestamp")
             )
-            or (LAST_SCAN.get(issue_type) or {}).get("timestamp")
             for issue_type in ISSUE_TYPES
         }
 
-        # Check each issue type
+        # Loop over all issue types
         for issue_type in ISSUE_TYPES:
-            if ctx.panel.state.new_samples[issue_type][1]:
-                continue  # Already checked
+            # For non-"exact_duplicates", ensure that previous results have valid counts and edges
+            if issue_type != "exact_duplicates":
+                prev_res = results.get(issue_type, {})
+                if (
+                    prev_res.get("counts") is None
+                    or prev_res.get("edges") is None
+                ):
+                    # Skip this issue type if results are incomplete
+                    continue
 
-            last_scan = last_scan_times[
-                issue_type
-            ] or datetime.utcnow() + timedelta(days=1)
+            # Skip if the check for new samples has already been run for this issue type
+            if ctx.panel.state.new_samples[issue_type][1]:
+                continue
+
+            last_scan = last_scan_times.get(issue_type) or (
+                datetime.utcnow() + timedelta(days=1)
+            )
             last_modified = ctx.dataset._max("last_modified_at") or last_scan
 
             if last_modified <= last_scan:
@@ -745,7 +761,7 @@ class DataQualityPanel(Panel):
             else:
                 ctx.panel.state.new_samples[issue_type] = [0, True, False]
 
-        # Check if all scans are complete
+        # If all issue types have been checked, mark the scan as complete
         all_checked = all(
             status[1] for status in ctx.panel.state.new_samples.values()
         )
