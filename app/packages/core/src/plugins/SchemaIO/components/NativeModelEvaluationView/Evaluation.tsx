@@ -58,6 +58,8 @@ import {
   getNumericDifference,
   useTriggerEvent,
 } from "./utils";
+import { usePanelEvent } from "@fiftyone/operators";
+import { usePanelId } from "@fiftyone/spaces";
 
 const KEY_COLOR = "#ff6d04";
 const COMPARE_KEY_COLOR = "#03a9f4";
@@ -65,7 +67,10 @@ const COMPARE_KEY_SECONDARY_COLOR = "#87D2FA";
 const DEFAULT_BAR_CONFIG = { sortBy: "default" };
 const NONE_CLASS = "(none)";
 
+const configure_subset_uri = "@voxel51/scenario/configure_scenario";
+
 export default function Evaluation(props: EvaluationProps) {
+  console.log("Evaluation props", props);
   const {
     name,
     id,
@@ -81,23 +86,51 @@ export default function Evaluation(props: EvaluationProps) {
     loadView,
     onRename,
     loadScenario,
+    onSaveScenario,
   } = props;
   const theme = useTheme();
   const [expanded, setExpanded] = React.useState("summary");
   const [mode, setMode] = useState("chart");
   const [editNoteState, setEditNoteState] = useState({ open: false, note: "" });
-  const [classPerformanceConfig, setClassPerformanceConfig] =
-    useState<PLOT_CONFIG_TYPE>({});
-  const [classPerformanceDialogConfig, setClassPerformanceDialogConfig] =
-    useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
-  const [confusionMatrixConfig, setConfusionMatrixConfig] =
-    useState<PLOT_CONFIG_TYPE>({ log: true });
-  const [confusionMatrixDialogConfig, setConfusionMatrixDialogConfig] =
-    useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
+  const [
+    classPerformanceConfig,
+    setClassPerformanceConfig,
+  ] = useState<PLOT_CONFIG_TYPE>({});
+  const panelId = usePanelId();
+  const [
+    classPerformanceDialogConfig,
+    setClassPerformanceDialogConfig,
+  ] = useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
+  const [
+    confusionMatrixConfig,
+    setConfusionMatrixConfig,
+  ] = useState<PLOT_CONFIG_TYPE>({ log: true });
+  const [
+    confusionMatrixDialogConfig,
+    setConfusionMatrixDialogConfig,
+  ] = useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
   const [metricMode, setMetricMode] = useState("chart");
   const [classMode, setClassMode] = useState("chart");
   const [performanceClass, setPerformanceClass] = useState("precision");
   const [loadingCompare, setLoadingCompare] = useState(false);
+  const scenarioData = useMemo(() => {
+    const scenarioData = data?.[`evaluations_scenario`];
+    return scenarioData;
+  }, [data]);
+  const scenarioDataAPerformance = useMemo(() => {
+    const scenarioDataA = scenarioData?.[name]?.["performance"];
+    return scenarioDataA;
+  }, [scenarioData]);
+  const scenarioDataBPerformance = useMemo(() => {
+    const scenarioDataB = scenarioData?.[compareKey]?.["performance"];
+    return scenarioDataB;
+  }, [scenarioData]);
+  const [selectedScenarioClass, setSelectedScenarioClass] = useState(
+    Object.keys(scenarioDataAPerformance || {})?.[0]
+  );
+  console.log("scenarioDataA", scenarioDataAPerformance);
+  console.log("scenarioDataB", scenarioDataBPerformance);
+  console.log("data", data);
   const evaluation = useMemo(() => {
     const evaluation = data?.[`evaluation_${name}`];
     return evaluation;
@@ -179,6 +212,7 @@ export default function Evaluation(props: EvaluationProps) {
   }, [compareEvaluation, compareKey]);
 
   const triggerEvent = useTriggerEvent();
+  const promptOperator = usePanelEvent();
   const activeFilter = useActiveFilter(evaluation, compareEvaluation);
   const setEditingField = useSetRecoilState(editingFieldAtom);
 
@@ -1414,6 +1448,135 @@ export default function Evaluation(props: EvaluationProps) {
           </Accordion>
         </Stack>
       )}
+      <Accordion
+        // expanded={expanded === "subset"}
+        expanded={true}
+        onChange={(e, expanded) => {
+          setExpanded(expanded ? "subset" : "");
+        }}
+        disableGutters
+        sx={{ borderRadius: 1, "&::before": { display: "none" } }}
+      >
+        <AccordionSummary expandIcon={<ExpandMore />}>
+          Scenario Analysis
+        </AccordionSummary>
+        <AccordionDetails>
+          <Stack direction="row" sx={{ justifyContent: "space-between" }}>
+            <Typography color="secondary">Subset</Typography>
+            {scenarioDataAPerformance?.[selectedScenarioClass] &&
+              scenarioDataBPerformance && (
+                <>
+                  <Stack spacing={1} pt={1}>
+                    <Typography color="secondary">Sort by:</Typography>
+
+                    <Select
+                      size="small"
+                      onChange={(e) => {
+                        setSelectedScenarioClass(e.target.value as string);
+                      }}
+                      defaultValue={selectedScenarioClass}
+                    >
+                      {Object.keys(scenarioDataAPerformance).map(
+                        (val: string) => {
+                          return (
+                            <MenuItem key={val} value={val}>
+                              {val}
+                            </MenuItem>
+                          );
+                        }
+                      )}
+                    </Select>
+                  </Stack>
+
+                  <EvaluationPlot
+                    data={[
+                      {
+                        type: "scatterpolar",
+                        r: [
+                          scenarioDataAPerformance[selectedScenarioClass]
+                            .accuracy,
+                          scenarioDataAPerformance[selectedScenarioClass]
+                            .fscore,
+                          scenarioDataAPerformance[selectedScenarioClass]
+                            .precision,
+                          scenarioDataAPerformance[selectedScenarioClass]
+                            .recall,
+                          scenarioDataAPerformance[selectedScenarioClass]
+                            .support / 100, // Normalize support
+                        ],
+                        theta: labels,
+                        fill: "toself",
+                        name:
+                          scenarioDataAPerformance[selectedScenarioClass].label,
+                        fillcolor: "rgba(0, 123, 255, 0.2)", // Light transparent blue
+                        line: {
+                          color: "rgba(0, 123, 255, 1)", // Solid blue line
+                        },
+                      },
+                      {
+                        type: "scatterpolar",
+                        r: [
+                          scenarioDataBPerformance[selectedScenarioClass]
+                            .accuracy,
+                          scenarioDataBPerformance[selectedScenarioClass]
+                            .fscore,
+                          scenarioDataBPerformance[selectedScenarioClass]
+                            .precision,
+                          scenarioDataBPerformance[selectedScenarioClass]
+                            .recall,
+                          scenarioDataBPerformance[selectedScenarioClass]
+                            .support / 100, // Normalize support
+                        ],
+                        theta: labels,
+                        fill: "toself",
+                        name:
+                          scenarioDataBPerformance[selectedScenarioClass].label,
+                        fillcolor: "rgba(255, 123, 0, 0.2)", // Light transparent orange
+                        line: {
+                          color: "rgba(255, 123, 0, 1)", // Solid orange line
+                        },
+                      },
+                    ]}
+                    layout={{
+                      polar: {
+                        radialaxis: {
+                          visible: true,
+                          range: [0, 1],
+                        },
+                      },
+                      showlegend: true,
+                    }}
+                  />
+                </>
+              )}
+            <Box>
+              <IconButton
+                onClick={() => {
+                  promptOperator(panelId, {
+                    params: {
+                      gt_field: evaluationConfig.gt_field,
+                      scenario_type: "custom_code",
+                      scenario_name: "", // # TODO: Edit will pass current name
+                    },
+                    operator: configure_subset_uri,
+                    prompt: true,
+                    callback: (result, opts) => {
+                      console.log("params", opts.ctx.params);
+                      onSaveScenario({ subset: opts.ctx.params });
+                      // TODO: save the subset
+
+                      // TODO: error handling
+                    },
+                  });
+                }}
+              >
+                Create subset
+                <Settings />
+              </IconButton>
+            </Box>
+          </Stack>
+        </AccordionDetails>
+      </Accordion>
       {mode === "info" && (
         <Card sx={{ p: 2 }}>
           <EvaluationTable>
@@ -1704,6 +1867,7 @@ type EvaluationProps = {
   notes: Record<string, string>;
   loadView: (type: string, params: any) => void;
   onRename: (oldName: string, newName: string) => void;
+  onSaveScenario: (scenario: any) => void;
 };
 
 function ColorSquare(props: { color: string }) {
@@ -1793,9 +1957,8 @@ function getConfigLabel({ config, type, dashed }) {
     type === "classPerformance"
       ? CLASS_PERFORMANCE_SORT_OPTIONS
       : CONFUSION_MATRIX_SORT_OPTIONS;
-  const sortByLabel = sortByLabels.find(
-    (option) => option.value === sortBy
-  )?.label;
+  const sortByLabel = sortByLabels.find((option) => option.value === sortBy)
+    ?.label;
   return dashed ? ` - ${sortByLabel}` : sortByLabel;
 }
 
