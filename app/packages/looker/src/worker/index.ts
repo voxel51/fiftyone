@@ -148,7 +148,7 @@ const processLabels = async (
             )
           );
 
-          if (cls in DeserializerFactory) {
+          if (cls in DeserializerFactory && (label.mask || label.map)) {
             DeserializerFactory[cls](label, maskTargetsBuffers);
             label.renderStatus = RENDER_STATUS_DECODED;
           }
