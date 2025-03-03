@@ -32,6 +32,7 @@ import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import { getStandardizedUrls } from "../utils";
+import { isNativeMediaType } from "@fiftyone/looker/src/util";
 
 export default <T extends AbstractLooker<BaseState>>(
   isModal: boolean,
@@ -107,18 +108,7 @@ export default <T extends AbstractLooker<BaseState>>(
         const filePath =
           urls.filepath?.split("?")[0] ?? (sample.filepath as string);
 
-        // media types for which we have a dedicated looker
-        const nativeMediaTypes = [
-          // undefined media_type is assumed to be an image
-          undefined,
-          "image",
-          "video",
-          "3d",
-          "point-cloud",
-          "group",
-        ];
-
-        if (!nativeMediaTypes.includes(sample.media_type)) {
+        if (!isNativeMediaType(sample.media_type)) {
           create = MetadataLooker;
         } else {
           if (filePath.endsWith(".pcd") || filePath.endsWith(".fo3d")) {
