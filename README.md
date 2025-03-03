@@ -17,7 +17,7 @@ models**
 <a href="https://voxel51.com/docs/fiftyone/tutorials/index.html">Tutorials</a> •
 <a href="https://github.com/voxel51/fiftyone-examples">Examples</a> •
 <a href="https://voxel51.com/blog/">Blog</a> •
-<a href="https://slack.voxel51.com">Community</a>
+<a href="https://discord.gg/fiftyone-community">Community</a>
 
 [![PyPI python](https://img.shields.io/pypi/pyversions/fiftyone)](https://pypi.org/project/fiftyone)
 [![PyPI version](https://badge.fury.io/py/fiftyone.svg)](https://pypi.org/project/fiftyone)
@@ -25,7 +25,6 @@ models**
 [![Docker Pulls](https://badgen.net/docker/pulls/voxel51/fiftyone?icon=docker&label=pulls)](https://hub.docker.com/r/voxel51/fiftyone/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Discord](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/fiftyone-community)
-[![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)](https://slack.voxel51.com)
 [![Medium](https://img.shields.io/badge/Medium-12100E?logo=medium&logoColor=white)](https://medium.com/voxel51)
 [![Mailing list](http://bit.ly/2Md9rxM)](https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk)
 [![Twitter](https://img.shields.io/twitter/follow/Voxel51?style=social)](https://twitter.com/voxel51)
@@ -499,8 +498,7 @@ more answers.
 
 If you encounter an issue that the above resources don't help you resolve, feel
 free to [open an issue on GitHub](https://github.com/voxel51/fiftyone/issues)
-or contact us on [Slack](https://slack.voxel51.com/) or
-[Discord](https://discord.gg/fiftyone-community).
+or contact us on [Discord](https://discord.gg/fiftyone-community).
 
 </div>
 
@@ -513,7 +511,6 @@ or contact us on [Slack](https://slack.voxel51.com/) or
 Connect with us through your preferred channels:
 
 [![Discord](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/fiftyone-community)
-[![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)](https://slack.voxel51.com)
 [![Medium](https://img.shields.io/badge/Medium-12100E?logo=medium&logoColor=white)](https://medium.com/voxel51)
 [![Twitter](https://img.shields.io/badge/Twitter-1DA1F2?logo=twitter&logoColor=white)](https://twitter.com/voxel51)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?logo=linkedin&logoColor=white)](https://www.linkedin.com/company/voxel51)
