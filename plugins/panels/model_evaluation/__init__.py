@@ -685,6 +685,189 @@ class EvaluationPanel(Panel):
         if view is not None:
             ctx.ops.set_view(view)
 
+    def save_scenario(self, ctx):
+        # Called when you click the "Save Scenario" button
+        # Validates and stores a subset in the execution store for model eval
+        # {
+        #   id,
+        #   name: string (unique),
+        #   type: 'sample_field' | 'saved_view' | 'custom_code' | "label_attributes",
+        #   sample_field: string (optional, only required if type == 'sample_field'),
+        #   code_expr: string (optional, only required if type == 'custom_code'),
+        # }
+        # TODO: implement
+        pass
+
+    def extract_save_scenario_params(self, ctx):
+        print("ctx.params", ctx.params)
+        params = ctx.params.get("scenario", {}).get("subset", {})
+        scenario_name = params.get("scenario_name", None)
+        if scenario_name is None:
+            raise ValueError("No scenario name provided")
+
+        scenario_type = params.get("scenario_type", None)
+        if scenario_type is None:
+            raise ValueError("No scenario type provided")
+
+        sample_field_values = params.get("sample_field_values", None)
+
+        label_attribute_values = params.get("label_attribute_values", None)
+        saved_views = params.get("saved_views_values", None)
+
+        return {
+            "name": scenario_name,
+            "type": scenario_type,
+            "saved_views": saved_views,
+            "sample_field": params.get("sample_field", None),
+            "scenario_field": params.get("scenario_field", None),
+            "code_expr": params.get("code_expr", None),
+            "sample_field_values": sample_field_values,
+            "label_attribute_values": label_attribute_values,
+        }
+
+    def load_compare_evaluation_results(self, ctx):
+        base_model_key = (
+            ctx.params.get("panel_state", {}).get("view", {}).get("key", None)
+        )
+        compare_model_key = (
+            ctx.params.get("panel_state", {})
+            .get("view", {})
+            .get("compareKey", None)
+        )
+
+        if base_model_key is None:
+            raise ValueError("No base model key provided")
+
+        eval_a_results = ctx.dataset.load_evaluation_results(base_model_key)
+        eval_b_results = ctx.dataset.load_evaluation_results(compare_model_key)
+
+        return (
+            base_model_key,
+            eval_a_results,
+            compare_model_key,
+            eval_b_results,
+        )
+
+    def on_save_analyze_scenario(self, ctx):
+        label_attrs_classes = None
+
+        params = self.extract_save_scenario_params(ctx)
+        (
+            eval_a_key,
+            eval_a_results,
+            eval_b_key,
+            eval_b_results,
+        ) = self.load_compare_evaluation_results(ctx)
+
+        graph_data = {
+            eval_a_key: {
+                "performance": {},
+                "confusion_matrix": {},
+            },
+            eval_b_key: {
+                "performance": {},
+                "confusion_matrix": {},
+            },
+        }
+
+        scenario_type = params.get("type", None)
+        sample_field_values = params.get("sample_field_values", None)
+
+        # I. Saved views
+        if scenario_type == "saved_views":
+            saved_views = params.get("saved_views", None)
+
+            for saved_view in saved_views:
+                subset_def = dict(
+                    type="view",
+                    view=saved_view,
+                )
+
+                # Graph I data - Model Performance
+                with eval_a_results.use_subset(subset_def):
+                    graph_data[eval_a_key]["performance"][
+                        saved_view
+                    ] = eval_a_results.metrics()
+                with eval_b_results.use_subset(subset_def):
+                    graph_data[eval_b_key]["performance"][
+                        saved_view
+                    ] = eval_b_results.metrics()
+
+        # II. Sample Fields
+        elif scenario_type == "sample_field":
+            scenario_field = params.get("scenario_field", None)
+            if scenario_field is None:
+                raise ValueError("No scenario field provided")
+
+            # case sample fields: tags
+            if scenario_field == "tags":
+                field_paths = list(sample_field_values.keys())
+
+                for field_path in field_paths:
+                    if sample_field_values[field_path] is True:
+                        subset_def = dict(
+                            type="field",
+                            field=scenario_field,
+                            value=field_path,
+                        )
+
+                        # Graph I data - Model Performance
+                        with eval_a_results.use_subset(subset_def):
+                            graph_data[eval_a_key]["performance"][
+                                field_path
+                            ] = eval_a_results.metrics()
+                        with eval_b_results.use_subset(subset_def):
+                            graph_data[eval_b_key]["performance"][
+                                field_path
+                            ] = eval_b_results.metrics()
+
+            # TODO: case continuous fields: confidence
+
+            # TODO: case discrete fields: < 100 categories
+
+        # III. Custom Code
+        elif scenario_type == "custom_code":
+            code_expr = params.get("code_expr", None)
+            if code_expr is None:
+                raise ValueError("No code expression provided")
+
+            subset_def = dict(type="code", code=code_expr)
+
+        # IV. Label Attributes
+        elif scenario_type == "label_attribute":
+            label_attrs_map = params.get("label_attribute_values", {})
+            label_attrs_classes = list(label_attrs_map.keys()) or []
+
+            # Graph I data - Model Performance
+            for label in label_attrs_classes:
+                subset_def = dict(
+                    type="attribute",
+                    field="label",  # TODO
+                    value=label,
+                )
+                with eval_a_results.use_subset(subset_def):
+                    graph_data[eval_a_key]["performance"][
+                        label
+                    ] = eval_a_results.metrics()
+                with eval_b_results.use_subset(subset_def):
+                    graph_data[eval_b_key]["performance"][
+                        label
+                    ] = eval_b_results.metrics()
+
+            # Graph II data - Prediction Statistics
+            # TODO
+
+            # Graph III data - Confusion Metrics
+            graph_data[eval_a_key][
+                "confusion_matrix"
+            ] = eval_a_results.confusion_matrix(classes=label_attrs_classes)
+            graph_data[eval_b_key][
+                "confusion_matrix"
+            ] = eval_b_results.confusion_matrix(classes=label_attrs_classes)
+
+        print("graph_data", graph_data)
+        ctx.panel.set_state("evaluations_scenario", graph_data)
+
     def render(self, ctx):
         panel = types.Object()
         return types.Property(
@@ -699,6 +882,7 @@ class EvaluationPanel(Panel):
                 set_status=self.set_status,
                 set_note=self.set_note,
                 load_view=self.load_view,
+                on_save_subset=self.on_save_analyze_scenario,
             ),
         )
 
