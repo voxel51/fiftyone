@@ -7,6 +7,7 @@ import type { Lookers } from "../hooks";
 import { ComputeCoordinatesReturnType } from "../hooks/useTooltip";
 import { ModalSelector, sessionAtom } from "../session";
 import { ResponseFrom } from "../utils";
+import { refresher } from "./atoms";
 import { imaVidLookerState, shouldRenderImaVidLooker } from "./dynamicGroups";
 import {
   activeModalSidebarSample,
@@ -195,6 +196,7 @@ export const modalSample = graphQLSelector<
     }
 
     return {
+      index: get(refresher),
       dataset: get(datasetName),
       view: get(view),
       filter: {
