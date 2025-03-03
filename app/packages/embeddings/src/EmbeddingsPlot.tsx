@@ -92,10 +92,10 @@ export function EmbeddingsPlot({
               result[p.fullData.name].push(p.id);
               pointIds.push(p.id);
             }
-            handleSelected(pointIds);
+            handleSelected(pointIds, selected.lassoPoints);
           }}
           onDeselect={() => {
-            handleSelected(null);
+            handleSelected(null, null);
           }}
           config={{
             scrollZoom: true,
