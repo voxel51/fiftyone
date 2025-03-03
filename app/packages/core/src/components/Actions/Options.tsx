@@ -14,6 +14,11 @@ const SortFilterResults = ({ modal }) => {
   const [{ count, asc }, setSortFilterResults] = useRecoilState(
     fos.sortFilterResults(modal)
   );
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  if (queryPerformance) {
+    // sidebar sorting is not configurable
+    return null;
+  }
 
   return (
     <>
