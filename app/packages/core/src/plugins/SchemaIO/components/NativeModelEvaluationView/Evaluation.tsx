@@ -57,12 +57,17 @@ import {
   getNumericDifference,
   useTriggerEvent,
 } from "./utils";
+import get from "lodash/get";
+import { usePanelId } from "@fiftyone/spaces";
+import { usePanelEvent } from "@fiftyone/operators";
 
 const KEY_COLOR = "#ff6d04";
 const COMPARE_KEY_COLOR = "#03a9f4";
 const COMPARE_KEY_SECONDARY_COLOR = "#87D2FA";
 const DEFAULT_BAR_CONFIG = { sortBy: "default" };
 const NONE_CLASS = "(none)";
+
+const configure_subset_uri = "@voxel51/subset/configure_subset";
 
 export default function Evaluation(props: EvaluationProps) {
   const {
@@ -78,20 +83,33 @@ export default function Evaluation(props: EvaluationProps) {
     setNoteEvent,
     notes = {},
     loadView,
+<<<<<<< HEAD
     onRename,
+=======
+    onSaveSubset,
+>>>>>>> f1f49a8181 (in progress poc)
   } = props;
   const theme = useTheme();
   const [expanded, setExpanded] = React.useState("summary");
   const [mode, setMode] = useState("chart");
   const [editNoteState, setEditNoteState] = useState({ open: false, note: "" });
-  const [classPerformanceConfig, setClassPerformanceConfig] =
-    useState<PLOT_CONFIG_TYPE>({});
-  const [classPerformanceDialogConfig, setClassPerformanceDialogConfig] =
-    useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
-  const [confusionMatrixConfig, setConfusionMatrixConfig] =
-    useState<PLOT_CONFIG_TYPE>({ log: true });
-  const [confusionMatrixDialogConfig, setConfusionMatrixDialogConfig] =
-    useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
+  const [
+    classPerformanceConfig,
+    setClassPerformanceConfig,
+  ] = useState<PLOT_CONFIG_TYPE>({});
+  const panelId = usePanelId();
+  const [
+    classPerformanceDialogConfig,
+    setClassPerformanceDialogConfig,
+  ] = useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
+  const [
+    confusionMatrixConfig,
+    setConfusionMatrixConfig,
+  ] = useState<PLOT_CONFIG_TYPE>({ log: true });
+  const [
+    confusionMatrixDialogConfig,
+    setConfusionMatrixDialogConfig,
+  ] = useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
   const [metricMode, setMetricMode] = useState("chart");
   const [classMode, setClassMode] = useState("chart");
   const [performanceClass, setPerformanceClass] = useState("precision");
@@ -177,6 +195,7 @@ export default function Evaluation(props: EvaluationProps) {
   }, [compareEvaluation, compareKey]);
 
   const triggerEvent = useTriggerEvent();
+  const promptOperator = usePanelEvent();
   const activeFilter = useActiveFilter(evaluation, compareEvaluation);
   const setEditingField = useSetRecoilState(editingFieldAtom);
 
@@ -1395,6 +1414,44 @@ export default function Evaluation(props: EvaluationProps) {
           </Accordion>
         </Stack>
       )}
+      <Accordion
+        expanded={expanded === "subset"}
+        onChange={(e, expanded) => {
+          setExpanded(expanded ? "subset" : "");
+        }}
+        disableGutters
+        sx={{ borderRadius: 1, "&::before": { display: "none" } }}
+      >
+        <AccordionSummary expandIcon={<ExpandMore />}>
+          Subset Performance
+        </AccordionSummary>
+        <AccordionDetails>
+          <Stack direction="row" sx={{ justifyContent: "space-between" }}>
+            <Typography color="secondary">Subset</Typography>
+            <Box>
+              <IconButton
+                onClick={() => {
+                  promptOperator(panelId, {
+                    // params: { test: "test" },
+                    operator: configure_subset_uri,
+                    prompt: true,
+                    callback: (result, opts) => {
+                      console.log("params", opts.ctx.params);
+                      onSaveSubset({ subset: opts.ctx.params });
+                      // TODO: save the subset
+
+                      // TODO: error handling
+                    },
+                  });
+                }}
+              >
+                Create subset
+                <Settings />
+              </IconButton>
+            </Box>
+          </Stack>
+        </AccordionDetails>
+      </Accordion>
       {mode === "info" && (
         <Card sx={{ p: 2 }}>
           <EvaluationTable>
@@ -1684,6 +1741,7 @@ type EvaluationProps = {
   notes: Record<string, string>;
   loadView: (type: string, params: any) => void;
   onRename: (oldName: string, newName: string) => void;
+  onSaveSubset: (subset: any) => void;
 };
 
 function ColorSquare(props: { color: string }) {
@@ -1773,9 +1831,8 @@ function getConfigLabel({ config, type, dashed }) {
     type === "classPerformance"
       ? CLASS_PERFORMANCE_SORT_OPTIONS
       : CONFUSION_MATRIX_SORT_OPTIONS;
-  const sortByLabel = sortByLabels.find(
-    (option) => option.value === sortBy
-  )?.label;
+  const sortByLabel = sortByLabels.find((option) => option.value === sortBy)
+    ?.label;
   return dashed ? ` - ${sortByLabel}` : sortByLabel;
 }
 
