@@ -20,6 +20,7 @@ export default function NativeModelEvaluationView(props) {
     set_status,
     set_note,
     load_view,
+    on_save_subset,
   } = view;
   const {
     evaluations = [],
@@ -50,7 +51,7 @@ export default function NativeModelEvaluationView(props) {
   const [showCTA, setShowCTA] = React.useState(false);
   const onEvaluate = useCallback(() => {
     if (constants.IS_APP_MODE_FIFTYONE) {
-      setShowCTA(true);
+      // setShowCTA(true);
     } else {
       triggerEvent(on_evaluate_model);
     }
@@ -81,6 +82,10 @@ export default function NativeModelEvaluationView(props) {
           notes={notes}
           loadView={(type, options) => {
             triggerEvent(load_view, { type, options });
+          }}
+          onSaveSubset={(subset: any) => {
+            console.log("NativeEvak", subset);
+            triggerEvent(on_save_subset, { subset });
           }}
         />
       )}
