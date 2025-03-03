@@ -64,7 +64,7 @@ class OnPlotLoad(HTTPEndpoint):
                 % brain_key
             )
             return {"error": msg}
-        point_field = results.point_field
+
         view = fosv.get_view(
             dataset_name,
             stages=stages,
@@ -93,9 +93,7 @@ class OnPlotLoad(HTTPEndpoint):
         # embeddings for
         missing_count = results.missing_size
 
-        # if not point_field:
-        #     points = results.get_points()
-
+        points = results._curr_points
         if is_patches_plot:
             ids = results._curr_label_ids
             sample_ids = results._curr_sample_ids
@@ -143,22 +141,6 @@ class OnPlotLoad(HTTPEndpoint):
         selected = itertools.repeat(True)
 
         traces = {}
-        if point_field:
-            print(point_field)
-            print(view)
-            points = view.values(point_field)
-            for sample in view:
-                if point_field in sample:
-                    _add_to_trace(
-                        traces,
-                        style,
-                        sample.get_value(point_field),
-                        sample["_id"],
-                        sample["_id"],
-                        None,
-                        True,
-                    )
-
         for data in zip(points, ids, sample_ids, labels, selected):
             _add_to_trace(traces, style, *data)
 
@@ -169,7 +151,6 @@ class OnPlotLoad(HTTPEndpoint):
             "available_count": available_count,
             "missing_count": missing_count,
             "patches_field": patches_field,
-            "point_field": point_field,
         }
 
 
@@ -263,7 +244,6 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
         lassoPoints = data.get("lassoPoints", None)
 
         if point_field:
-            print(point_field)
             lasso_points_as_tuples = _get_fiftyone_geowithin(lassoPoints)
             stage = fos.Mongo(
                 [
