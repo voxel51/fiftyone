@@ -288,6 +288,19 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_SIGNED_URL_EXPIRATION",
             default=24,
         )
+        # Enable using aliased media URLs in the service worker after removing global creds
+        self.svc_worker_media_alias = self.parse_string(
+            d,
+            "svc_worker_media_alias",
+            default=None,
+            env_var="FIFTYONE_SERVICE_WORKER_MEDIA_ALIAS",
+        )
+        self.svc_worker_media_endpoint = self.parse_string(
+            d,
+            "svc_worker_media_endpoint",
+            default=None,
+            env_var="FIFTYONE_SERVICE_WORKER_MEDIA_ENDPOINT",
+        )
 
         self._init()
 
