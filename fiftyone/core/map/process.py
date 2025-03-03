@@ -18,11 +18,10 @@ from tqdm.auto import tqdm
 import fiftyone as fo
 import fiftyone.core.utils as fou
 
-# import fiftyone.core.view as fov
-
 from .map import MapBackend
 from .sequential import SequentialMapBackend
-from ..view import DatasetView, make_optimized_select_view
+
+fov = fou.lazy_import("fiftyone.core.view")
 
 
 class ProcessMapBackend(MapBackend):
@@ -161,7 +160,7 @@ class ProcessMapBackend(MapBackend):
                 progress=progress,
             )
 
-        if isinstance(sample_collection, DatasetView):
+        if isinstance(sample_collection, fov.DatasetView):
             dataset_name = sample_collection._root_dataset.name
             view_stages = sample_collection._serialize()
         else:
@@ -374,7 +373,9 @@ def _map_batch(input):
         # ID batches
         sample_ids = batch
         total = len(sample_ids)
-        batch_view = make_optimized_select_view(sample_collection, sample_ids)
+        batch_view = fov.make_optimized_select_view(
+            sample_collection, sample_ids
+        )
 
     if progress:
         desc = f"Batch {i + 1:0{len(str(num_batches))}}/{num_batches}"
