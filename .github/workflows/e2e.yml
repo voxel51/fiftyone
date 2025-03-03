@@ -24,10 +24,10 @@ jobs:
         with:
           submodules: true
 
-      - name: Setup node 18
+      - name: Setup node 22
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
 
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.12.0
