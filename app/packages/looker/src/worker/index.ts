@@ -150,7 +150,6 @@ const processLabels = async (
 
           if (cls in DeserializerFactory) {
             DeserializerFactory[cls](label, maskTargetsBuffers);
-            label.renderStatus = RENDER_STATUS_DECODED;
           }
         } else {
           // we'll process this label asynchronously later

@@ -14,6 +14,7 @@ import {
   RegularLabel,
 } from "./base";
 import { t } from "./util";
+import { RENDER_STATUS_PAINTED } from "../worker/shared";
 
 export interface DetectionLabel extends RegularLabel {
   mask?: LabelMask;
@@ -75,7 +76,7 @@ export default class DetectionOverlay<
 
     if (
       this.label.mask?.bitmap?.width &&
-      this.label.renderStatus === "painted"
+      this.label.renderStatus === RENDER_STATUS_PAINTED
     ) {
       this.drawMask(ctx, state);
     }
