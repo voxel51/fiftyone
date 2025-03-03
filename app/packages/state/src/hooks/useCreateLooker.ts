@@ -1,6 +1,6 @@
 import {
   AbstractLooker,
-  FileLooker,
+  MetadataLooker,
   FrameLooker,
   ImaVidLooker,
   ImageLooker,
@@ -94,7 +94,7 @@ export default <T extends AbstractLooker<BaseState>>(
           | typeof ImaVidLooker
           | typeof ThreeDLooker
           | typeof VideoLooker
-          | typeof FileLooker = ImageLooker;
+          | typeof MetadataLooker = ImageLooker;
 
         const mimeType = getMimeType(sample);
 
@@ -119,7 +119,7 @@ export default <T extends AbstractLooker<BaseState>>(
         ];
 
         if (!nativeMediaTypes.includes(sample.media_type)) {
-          create = FileLooker;
+          create = MetadataLooker;
         } else {
           if (filePath.endsWith(".pcd") || filePath.endsWith(".fo3d")) {
             create = ThreeDLooker;
