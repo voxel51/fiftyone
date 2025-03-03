@@ -23,6 +23,7 @@ import logging
 import multiprocessing
 import numbers
 import os
+from packaging.version import Version
 import platform
 import re
 import signal
@@ -2434,26 +2435,23 @@ def _is_podman():
 def get_multiprocessing_context():
     """Returns the preferred ``multiprocessing`` context for the current OS.
 
+    When running on macOS or Linux with no start method configured, this method
+    will set the default start method to ``"fork"``.
+
     Returns:
         a ``multiprocessing`` context
     """
     if (
-        sys.platform == "darwin"
+        sys.platform in ("darwin", "linux")
         and multiprocessing.get_start_method(allow_none=True) is None
+        and Version(platform.python_version()) < Version("3.14")
     ):
-        #
-        # If we're running on macOS and the user didn't manually configure the
-        # default multiprocessing context, force 'fork' to be used
-        #
-        # Background: on macOS, multiprocessing's default context was changed
-        # from 'fork' to 'spawn' in Python 3.8, but we prefer 'fork' because
-        # the startup time is much shorter. Also, this is not fully proven, but
-        # @brimoor believes he's seen cases where 'spawn' causes some of our
-        # `multiprocessing.Pool.imap_unordered()` calls to run twice...
-        #
-        return multiprocessing.get_context("fork")
+        # We prefer 'fork' because the startup time is shorter.
+        # Also, note that we intentionally set the start method here so that
+        # subsequent usage of things like `multiprocessing.Queue()` will not
+        # cause the default start method to switch to 'spawn'
+        multiprocessing.set_start_method("fork", force=True)
 
-    # Use the default context
     return multiprocessing.get_context()
 
 
@@ -2479,6 +2477,10 @@ def recommend_thread_pool_workers(num_workers=None):
 
 def recommend_process_pool_workers(num_workers=None):
     """Recommends a number of workers for a process pool.
+
+    By default, ``multiprocessing.cpu_count()`` workers will be recommended if
+    you are running on macOS or Linux, while a single worker will be
+    recommended on Windows.
 
     If a ``fo.config.max_process_pool_workers`` is set, this limit is applied.
 
