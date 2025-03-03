@@ -165,7 +165,7 @@ export default class Spotlight<K, V> extends EventTarget {
     this.#updater = updater;
   }
 
-  get #minAspectRatioRecommentation() {
+  get #minAspectRatioRecommendation() {
     return ONE + ONE / TWO;
   }
 
@@ -283,7 +283,7 @@ export default class Spotlight<K, V> extends EventTarget {
       }
 
       const ar = this.#config.rowAspectRatioThreshold(this.#width);
-      if (ar <= this.#minAspectRatioRecommentation) {
+      if (ar <= this.#minAspectRatioRecommendation) {
         return;
       }
 
@@ -427,7 +427,7 @@ export default class Spotlight<K, V> extends EventTarget {
             const ar = this.#config.rowAspectRatioThreshold(this.#width);
             if (
               !this.#config.maxItemsSizeBytes ||
-              ar <= this.#minAspectRatioRecommentation
+              ar <= this.#minAspectRatioRecommendation
             ) {
               return;
             }
