@@ -3282,7 +3282,6 @@ class SampleCollection(object):
     def update_samples(
         self,
         map_fcn,
-        save=None,
         num_workers=None,
         shard_method="id",
         progress=None,
@@ -3293,7 +3292,6 @@ class SampleCollection(object):
 
         Args:
             map_fcn: Function to apply to each sample.
-            save (None): Whether to save modified samples.
             num_workers (None): Number of workers (if applicable).
             shard_method ("id"): Method for sharding ('id' or 'slice').
             progress (None): Whether to show a progress bar.
@@ -3304,7 +3302,7 @@ class SampleCollection(object):
             backend = fomp.MapBackendType.sequential
 
         return foum.update_samples(
-            self, map_fcn, save, num_workers, shard_method, progress, backend
+            self, map_fcn, num_workers, shard_method, progress, backend
         )
 
     def compute_metadata(

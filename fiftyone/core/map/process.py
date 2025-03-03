@@ -11,7 +11,6 @@ from queue import Empty
 import time
 from typing import Iterator, Any, Optional, Union
 
-from bson import ObjectId
 import dill as pickle
 import numpy as np
 from tqdm.auto import tqdm
@@ -31,7 +30,6 @@ class ProcessMapBackend(MapBackend):
         self,
         sample_collection,
         map_fcn,
-        save: Optional[bool] = None,
         num_workers: Optional[int] = None,
         shard_method: str = "id",
         progress: Optional[Union[str, bool]] = None,
@@ -40,7 +38,7 @@ class ProcessMapBackend(MapBackend):
             sample_collection,
             map_fcn,
             return_outputs=False,
-            save=save,
+            save=True,
             num_workers=num_workers,
             shard_method=shard_method,
             progress=progress,
