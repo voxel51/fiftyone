@@ -10,6 +10,7 @@ import Button from "./Button";
 import TooltipProvider from "./TooltipProvider";
 
 export default function ButtonView(props: ViewPropsType) {
+  console.log("props", props.path, props);
   const { schema, path, onClick } = props;
   const { view = {} } = schema;
   const {
