@@ -160,6 +160,19 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     };
   }
 
+  getSizeBytesEstimate() {
+    let size = super.getSizeBytesEstimate();
+    if (!this.firstFrame.overlays?.length) {
+      return size;
+    }
+
+    for (let index = 0; index < this.firstFrame.overlays.length; index++) {
+      size += this.firstFrame.overlays[index].getSizeBytes();
+    }
+
+    return size;
+  }
+
   hasDefaultZoom(state: VideoState, overlays: Overlay<VideoState>[]): boolean {
     const pan = [0, 0];
     const scale = 1;

@@ -543,22 +543,16 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
           };
 
           const seeked = () => {
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                setTimeout(() => {
-                  const ctx = this.canvas.getContext("2d");
-                  ctx.imageSmoothingEnabled = false;
-                  ctx.drawImage(video, 0, 0);
-                  release();
-                  video.removeEventListener("seeked", seeked);
-                  video.removeEventListener("error", error);
-                  this.update({
-                    hasPoster: true,
-                    duration: video.duration,
-                    loaded: true,
-                  });
-                }, 20);
-              });
+            const ctx = this.canvas.getContext("2d");
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(video, 0, 0);
+            video.removeEventListener("seeked", seeked);
+            video.removeEventListener("error", error);
+            release();
+            this.update({
+              hasPoster: true,
+              duration: video.duration,
+              loaded: true,
             });
           };
 
@@ -573,9 +567,9 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             this.update({ dimensions: [video.videoWidth, video.videoHeight] });
           };
 
-          video.src = src;
           video.addEventListener("error", error);
           video.addEventListener("loadedmetadata", load);
+          video.src = src;
         });
       } else {
         this.element = document.createElement("video");
