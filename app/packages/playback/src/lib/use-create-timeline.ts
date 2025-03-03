@@ -15,7 +15,13 @@ import {
   setFrameNumberAtom,
   updatePlayheadStateAtom,
 } from "../lib/state";
-import { DEFAULT_FRAME_NUMBER } from "./constants";
+import {
+  DEFAULT_FRAME_NUMBER,
+  PLAYHEAD_STATE_BUFFERING,
+  PLAYHEAD_STATE_PAUSED,
+  PLAYHEAD_STATE_PLAYING,
+  PLAYHEAD_STATE_WAITING_TO_PAUSE,
+} from "./constants";
 import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
 import { getTimelineSetFrameNumberEventName } from "./utils";
 
@@ -102,11 +108,11 @@ export const useCreateTimeline = (
       return;
     }
 
-    if (playHeadState === "playing") {
+    if (playHeadState === PLAYHEAD_STATE_PLAYING) {
       startAnimation();
     }
 
-    if (playHeadState === "paused") {
+    if (playHeadState === PLAYHEAD_STATE_PAUSED) {
       cancelAnimation();
     }
 
@@ -221,8 +227,8 @@ export const useCreateTimeline = (
   const animate = useCallback(
     (newTime: DOMHighResTimeStamp) => {
       if (
-        playHeadStateRef.current === "paused" ||
-        playHeadStateRef.current === "waitingToPause"
+        playHeadStateRef.current === PLAYHEAD_STATE_PAUSED ||
+        playHeadStateRef.current === PLAYHEAD_STATE_WAITING_TO_PAUSE
       ) {
         cancelAnimation();
       }
@@ -304,7 +310,10 @@ export const useCreateTimeline = (
   );
 
   const startAnimation = useCallback(() => {
-    if (playHeadState === "paused" || playHeadState === "waitingToPause") {
+    if (
+      playHeadState === PLAYHEAD_STATE_PAUSED ||
+      playHeadState === PLAYHEAD_STATE_WAITING_TO_PAUSE
+    ) {
       cancelAnimation();
     }
 
@@ -368,11 +377,11 @@ export const useCreateTimeline = (
       const key = e.key.toLowerCase();
 
       if (key === " ") {
-        if (playHeadState === "buffering") {
+        if (playHeadState === PLAYHEAD_STATE_BUFFERING) {
           return;
         }
 
-        if (playHeadState === "paused") {
+        if (playHeadState === PLAYHEAD_STATE_PAUSED) {
           play();
         } else {
           pause();
