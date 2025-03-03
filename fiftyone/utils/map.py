@@ -62,7 +62,6 @@ def update_samples(
     return backend_instance.update_samples(
         sample_collection,
         map_fcn,
-        save=True,
         num_workers=num_workers,
         shard_method=shard_method,
         progress=progress,
