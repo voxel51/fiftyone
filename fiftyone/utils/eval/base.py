@@ -145,6 +145,7 @@ def get_subset_view(sample_collection, gt_field, subset_def):
             if value is not None:
                 # Field value
                 if field == "tags":
+                    print("here", value)
                     subset_view = subset_view.match_tags(value)
                 elif isinstance(subset_view.get_field(field), fof.ListField):
                     subset_view = subset_view.match(F(field).contains(value))

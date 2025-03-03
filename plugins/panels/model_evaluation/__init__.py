@@ -505,9 +505,9 @@ class EvaluationPanel(Panel):
                     }
                 )
         if update_store:
-            pending_evaluations_in_store[
-                dataset_id
-            ] = updated_pending_evaluations_for_dataset_in_stored
+            pending_evaluations_in_store[dataset_id] = (
+                updated_pending_evaluations_for_dataset_in_stored
+            )
             store.set("pending_evaluations", pending_evaluations_in_store)
         ctx.panel.set_data("pending_evaluations", pending_evaluations)
 
@@ -759,6 +759,157 @@ class EvaluationPanel(Panel):
         if view is not None:
             ctx.ops.set_view(view)
 
+    def save_subset(self, ctx):
+        # Called when you click the "Save Subset" button
+        # Validates and stores a subset in the execution store for model eval
+        # {
+        #   id,
+        #   name: string (unique),
+        #   type: 'sample_field' | 'saved_view' | 'custom_code' | "label_attributes",
+        #   sample_field: string (optional, only required if type == 'sample_field'),
+        #   code_expr: string (optional, only required if type == 'custom_code'),
+        # }
+        # TODO: implement
+        pass
+
+    def extract_save_subset_params(self, ctx):
+        params = ctx.params.get("subset", {}).get("subset", {})
+        subset_name = params.get("subset_name", None)
+        if subset_name is None:
+            raise ValueError("No subset name provided")
+
+        subset_type = params.get("subset_type", None)
+        if subset_type is None:
+            raise ValueError("No subset type provided")
+
+        subset_sample_field_values = params.get(
+            "subset_sample_field_values", None
+        )
+
+        label_attribute_values = params.get("label_attribute_values", None)
+        src_view = params.get("src_view", None)
+
+        return {
+            "name": subset_name,
+            "type": subset_type,
+            "src_view": src_view,
+            "sample_field": params.get("sample_field", None),
+            "subset_field": params.get("subset_field", None),
+            "code_expr": params.get("code_expr", None),
+            "sample_field_values": subset_sample_field_values,
+            "label_attribute_values": label_attribute_values,
+        }
+
+    def load_compare_evaluation_results(self, ctx):
+        base_model_key = (
+            ctx.params.get("panel_state", {}).get("view", {}).get("key", None)
+        )
+        compare_model_key = (
+            ctx.params.get("panel_state", {})
+            .get("view", {})
+            .get("compareKey", None)
+        )
+
+        if base_model_key is None:
+            raise ValueError("No base model key provided")
+
+        eval_a_results = ctx.dataset.load_evaluation_results(base_model_key)
+        eval_b_results = ctx.dataset.load_evaluation_results(compare_model_key)
+
+        return (
+            base_model_key,
+            eval_a_results,
+            compare_model_key,
+            eval_b_results,
+        )
+
+    def on_save_analyze_subset(self, ctx):
+        label_attrs_classes = None
+
+        params = self.extract_save_subset_params(ctx)
+        (
+            eval_a_key,
+            eval_a_results,
+            eval_b_key,
+            eval_b_results,
+        ) = self.load_compare_evaluation_results(ctx)
+
+        graph_data = {
+            eval_a_key: {
+                "performance": {},
+                "confusion_matrix": {},
+            },
+            eval_b_key: {
+                "performance": {},
+                "confusion_matrix": {},
+            },
+        }
+
+        subset_type = params.get("type", None)
+        subset_sample_field_values = params.get("sample_field_values", None)
+
+        # I. Saved views
+        if subset_type == "saved_views":
+            src_view = params.get("src_view", None)
+            subset_def = dict(type="view", view=src_view)
+
+        # II. Sample Fields
+        elif subset_type == "sample_field":
+            subset_field = params.get("subset_field", None)
+            if subset_field is None:
+                raise ValueError("No subset field provided")
+
+            # case sample fields: tags
+            if subset_field == "tags":
+                values = list(subset_sample_field_values.keys())
+                subset_def = dict(
+                    type="field",
+                    field="tags",
+                    value=values,
+                )
+
+        # III. Custom Code
+        elif subset_type == "custom_code":
+            code_expr = params.get("code_expr", None)
+            if code_expr is None:
+                raise ValueError("No code expression provided")
+
+            subset_def = dict(type="code", code=code_expr)
+
+        # IV. Label Attributes
+        elif subset_type == "label_attribute":
+            label_attrs_map = params.get("label_attribute_values", {})
+            label_attrs_classes = list(label_attrs_map.keys()) or []
+
+            # Graph I data - Model Performance
+            for label in label_attrs_classes:
+                subset_def = dict(
+                    type="attribute",
+                    field="label",  # TODO
+                    value=label,
+                )
+                with eval_a_results.use_subset(subset_def):
+                    graph_data[eval_a_key]["performance"][
+                        label
+                    ] = eval_a_results.metrics()
+                with eval_b_results.use_subset(subset_def):
+                    graph_data[eval_b_key]["performance"][
+                        label
+                    ] = eval_b_results.metrics()
+
+            # Graph II data - Prediction Statistics
+            # TODO
+
+            # Graph III data - Confusion Metrics
+            graph_data[eval_a_key]["confusion_matrix"] = (
+                eval_a_results.confusion_matrix(classes=label_attrs_classes)
+            )
+            graph_data[eval_b_key]["confusion_matrix"] = (
+                eval_b_results.confusion_matrix(classes=label_attrs_classes)
+            )
+
+        print("graph_data", graph_data)
+
     def render(self, ctx):
         panel = types.Object()
         return types.Property(
@@ -775,6 +926,7 @@ class EvaluationPanel(Panel):
                 load_view=self.load_view,
                 rename_evaluation=self.rename_evaluation,
                 delete_evaluation=self.delete_evaluation,
+                on_save_subset=self.on_save_analyze_subset,
             ),
         )
 
