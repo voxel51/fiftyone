@@ -247,7 +247,9 @@ type Dataset {
 
 type DatasetAppConfig {
   colorScheme: ColorScheme
+  defaultVisibilityLabels: FieldVisibilityConfig
   disableFrameFiltering: Boolean
+  dynamicGroupsTargetFrameRate: Int!
   gridMediaField: String!
   mediaFields: [String!]
   modalMediaField: String!
@@ -326,6 +328,11 @@ input ExtendedViewForm {
   mixed: Boolean = null
   sampleIds: [String!] = null
   slice: String = null
+}
+
+type FieldVisibilityConfig {
+  include: [String!]
+  exclude: [String!]
 }
 
 type FloatAggregation implements Aggregation {

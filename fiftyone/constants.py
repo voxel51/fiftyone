@@ -42,7 +42,7 @@ RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 # This setting may be ``None`` if this client has no compatibility with other
 # versions
 #
-COMPATIBLE_VERSIONS = ">=0.19,<1.4"
+COMPATIBLE_VERSIONS = ">=0.19,<1.5"
 
 # Package metadata
 _META = metadata("fiftyone")
@@ -102,6 +102,8 @@ MIGRATIONS_REVISIONS_DIR = os.path.join(
 )
 
 MIN_MONGODB_VERSION = Version("4.4")
+MAX_ALLOWABLE_FCV_DELTA = 1
+MONGODB_SERVER_FCV_REQUIRED_CONFIRMATION = Version("7.0")
 DATABASE_APPNAME = "fiftyone"
 
 # Server setup

@@ -13,16 +13,19 @@ export const FIELD_METADATA =
 export const FRAME_FILTERING_DISABLED =
   "https://docs.voxel51.com/user_guide/using_datasets.html#disable-frame-filtering";
 
+export const GRID_SETTINGS =
+  "https://docs.voxel51.com/user_guide/app.html#grid-settings";
+
+export const OBJECT_PATCHES =
+  "https://docs.voxel51.com/user_guide/app.html#app-object-patches";
+
+export const NAME_COLORSCALE = "https://plotly.com/python/colorscales/";
+
 export const QP_MODE =
   "https://docs.voxel51.com/user_guide/app.html#query-performance";
 
 export const QP_MODE_SUMMARY =
   "https://docs.voxel51.com/user_guide/using_datasets.html#summary-fields";
-
-export const NAME_COLORSCALE = "https://plotly.com/python/colorscales/";
-
-export const OBJECT_PATCHES =
-  "https://docs.voxel51.com/user_guide/app.html#app-object-patches";
 
 export const SIDEBAR_MODE =
   "https://docs.voxel51.com/user_guide/app.html#sidebar-mode";

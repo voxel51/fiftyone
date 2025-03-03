@@ -15,6 +15,14 @@ import { Property } from "./types";
 import { CustomPanelProps, useCustomPanelHooks } from "./useCustomPanelHooks";
 import { useTrackEvent } from "@fiftyone/analytics";
 import usePanelEvent from "./usePanelEvent";
+import LoadingSpinner from "@fiftyone/components/src/components/Loading/LoadingSpinner";
+import { styled } from "@mui/system";
+
+const SpinnerContainer = styled(Box)`
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+`;
 
 export function CustomPanel(props: CustomPanelProps) {
   const { panelId, dimensions, panelName, panelLabel, isModalPanel } = props;
@@ -23,14 +31,14 @@ export function CustomPanel(props: CustomPanelProps) {
   const [_, setLoading] = usePanelLoading(panelId);
   const triggerPanelEvent = usePanelEvent();
 
-  const {
+  let {
     handlePanelStateChange,
     handlePanelStatePathChange,
     panelSchema,
     data,
     onLoadError,
   } = useCustomPanelHooks(props);
-  const pending = fos.useTimeout(PANEL_LOAD_TIMEOUT);
+  let pending = fos.useTimeout(PANEL_LOAD_TIMEOUT);
   const setPanelCloseEffect = useSetPanelCloseEffect();
   const trackEvent = useTrackEvent();
 
@@ -38,7 +46,9 @@ export function CustomPanel(props: CustomPanelProps) {
     setPanelCloseEffect(() => {
       clearUseKeyStores(panelId);
       trackEvent("close_panel", { panel: panelName });
-      triggerPanelEvent(panelId, { operator: props.onUnLoad });
+      if (props.onUnLoad) {
+        triggerPanelEvent(panelId, { operator: props.onUnLoad });
+      }
     });
   }, []);
 
@@ -53,15 +63,23 @@ export function CustomPanel(props: CustomPanelProps) {
   if (!panelSchema)
     return (
       <CenteredStack spacing={1}>
-        <Typography variant="h4">{panelLabel || "Operator Panel"}</Typography>
-        <Typography color="text.secondary">
-          Operator panel &quot;
-          <Typography component="span">{panelName}</Typography>&quot; is not
-          configured yet.
-        </Typography>
-        <Typography component="pre" color="text.tertiary">
-          {panelId}
-        </Typography>
+        {!onLoadError && (
+          <>
+            <SpinnerContainer>
+              <LoadingSpinner />
+            </SpinnerContainer>
+            <Typography variant="h5">Still loading...</Typography>
+            <Typography
+              variant="body1"
+              color="text.secondary"
+              style={{ textAlign: "center" }}
+            >
+              This panel is taking longer than expected to load.
+              <br />
+              You can continue to work with other panels while this loads.
+            </Typography>
+          </>
+        )}
         {onLoadError && (
           <Box maxWidth="95%">
             <CodeBlock text={onLoadError} />

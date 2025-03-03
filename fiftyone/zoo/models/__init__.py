@@ -32,7 +32,7 @@ _MODELS = weakref.WeakValueDictionary()
 logger = logging.getLogger(__name__)
 
 
-def list_zoo_models(tags=None, source=None):
+def list_zoo_models(tags=None, source=None, license=None):
     """Returns the list of available models in the FiftyOne Model Zoo.
 
     Also includes models from any remote sources that you've registered.
@@ -61,15 +61,18 @@ def list_zoo_models(tags=None, source=None):
             of tags
         source (None): only include models available via the given remote
             source
+        license (None): only include models that are distributed under the
+            specified license or any of the specified list of licenses. Run
+            ``fiftyone zoo models list`` to see the available licenses
 
     Returns:
         a list of model names
     """
-    models = _list_zoo_models(tags=tags, source=source)
+    models = _list_zoo_models(tags=tags, source=source, license=license)
     return sorted(model.name for model in models)
 
 
-def _list_zoo_models(tags=None, source=None):
+def _list_zoo_models(tags=None, source=None, license=None):
     manifest, remote_sources = _load_zoo_models_manifest()
 
     if source is not None:
@@ -84,6 +87,19 @@ def _list_zoo_models(tags=None, source=None):
             tags = set(tags)
 
         manifest = [model for model in manifest if tags.issubset(model.tags)]
+
+    if license is not None:
+        if etau.is_str(license):
+            licenses = {license}
+        else:
+            licenses = set(license)
+
+        manifest = [
+            model
+            for model in manifest
+            if model.license
+            and licenses.intersection(model.license.split(","))
+        ]
 
     return list(manifest)
 
@@ -300,11 +316,11 @@ def load_zoo_model(
         model.ensure_requirements(error_level=error_level)
 
     config_dict = deepcopy(model.default_deployment_config_dict)
-    model_path = model.get_path_in_dir(models_dir)
 
     if isinstance(model, RemoteZooModel) and config_dict is None:
-        model = _load_remote_model(model.name, model_path, **kwargs)
+        model = model.load_model(**kwargs)
     else:
+        model_path = model.get_path_in_dir(models_dir)
         model = fom.load_model(config_dict, model_path=model_path, **kwargs)
 
     if cache and key is not None:
@@ -502,6 +518,21 @@ class RemoteZooModel(ZooModel):
             config = RemoteModelManagerConfig(dict(model_name=self.name))
             self.manager = RemoteModelManager(config)
 
+    def _get_model_path(self):
+        return self.get_path_in_dir(fo.config.model_zoo_dir)
+
+    def load_model(self, **kwargs):
+        model_path = self._get_model_path()
+        return _load_remote_model(self.name, model_path, **kwargs)
+
+    def resolve_input(self, ctx):
+        model_path = self._get_model_path()
+        return _resolve_remote_input(self.name, model_path, ctx)
+
+    def parse_parameters(self, ctx, params):
+        model_path = self._get_model_path()
+        _parse_remote_model_parameters(self.name, model_path, ctx, params)
+
 
 class RemoteModelManagerConfig(etam.ModelManagerConfig):
     def __init__(self, d):
@@ -534,6 +565,26 @@ def _load_remote_model(model_name, model_path, **kwargs):
         raise ValueError(f"Module {model_dir} has no 'load_model()' method")
 
     return module.load_model(model_name, model_path, **kwargs)
+
+
+def _resolve_remote_input(model_name, model_path, ctx):
+    model_dir = os.path.dirname(model_path)
+
+    module = _import_zoo_module(model_dir)
+    if not hasattr(module, "resolve_input"):
+        return None
+
+    return module.resolve_input(model_name, ctx)
+
+
+def _parse_remote_model_parameters(model_name, model_path, ctx, params):
+    model_dir = os.path.dirname(model_path)
+
+    module = _import_zoo_module(model_dir)
+    if not hasattr(module, "parse_parameters"):
+        return
+
+    module.parse_parameters(model_name, ctx, params)
 
 
 def _import_zoo_module(model_dir):

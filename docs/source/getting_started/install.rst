@@ -203,10 +203,25 @@ option to ``pip install``:
 
 .. note::
 
-  If you are working with a
-  :ref:`custom/shared MongoDB database <configuring-mongodb-connection>`, you
+  If you have a configured
+  :ref:`MongoDB connection <configuring-mongodb-connection>`, you
   can use :ref:`database admin privileges <database-migrations>` to control
   which clients are allowed to upgrade your FiftyOne deployment.
+
+.. note::
+
+  If you are a FiftyOne 1.2.0 or lower user with an Ubuntu 24 operating system, 
+  you will need to 
+  :ref:`upgrade your mongodb binaries <mongodb-7-to-8>`.
+
+.. note::
+
+  FiftyOne versions greater than 1.3.0 will manage the MongoDB feature
+  compatibility version if you are using the default `fiftyone-db` database
+  binary. Because of this addition, Voxel51 recommends backing up your database
+  between upgrades. Alternatively, you can configure your own
+  :ref:`MongoDB conection <configuring-mongodb-connection>`
+  outside of FiftyOnes administrative management.
 
 .. _downgrading-fiftyone:
 

@@ -14,13 +14,19 @@ const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
   },
 });
 
-test.describe("sidebar-filter-visibility", () => {
-  test.beforeAll(async ({ fiftyoneLoader }) => {
-    await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
-      max_samples: 5,
-    });
-  });
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
 
+test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
+
+  await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
+    max_samples: 5,
+  });
+});
+
+test.describe.serial("sidebar-filter-visibility", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     // always fold tags and metaData groups
@@ -33,8 +39,8 @@ test.describe("sidebar-filter-visibility", () => {
     sidebar,
     eventUtils,
   }) => {
-    // do not show prediction labels
-    await sidebar.clickFieldCheckbox("predictions");
+    // only show ground_truth
+    await sidebar.clickFieldCheckbox("ground_truth");
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
       () => true
@@ -89,8 +95,8 @@ test.describe("sidebar-filter-visibility", () => {
     sidebar,
     eventUtils,
   }) => {
-    // do not show prediction labels
-    await sidebar.clickFieldCheckbox("predictions");
+    // only show ground_truth
+    await sidebar.clickFieldCheckbox("ground_truth");
 
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
@@ -147,8 +153,8 @@ test.describe("sidebar-filter-visibility", () => {
     sidebar,
     eventUtils,
   }) => {
-    // do not show prediction labels
-    await sidebar.clickFieldCheckbox("predictions");
+    // only show ground_truth
+    await sidebar.clickFieldCheckbox("ground_truth");
 
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
@@ -157,6 +163,8 @@ test.describe("sidebar-filter-visibility", () => {
 
     await sidebar.clickFieldDropdown("ground_truth");
     await entryExpandPromise;
+
+    const gridRefreshPromise = grid.getWaitForGridRefreshPromise();
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
       ["bottle"],
@@ -165,12 +173,11 @@ test.describe("sidebar-filter-visibility", () => {
 
     // verify the number of samples in the result
     await grid.assert.isEntryCountTextEqualTo("1 of 5 samples");
-    await grid.waitForGridToLoad();
+    await gridRefreshPromise;
 
-    await expect(await grid.getForwardSection()).toHaveScreenshot(
-      "show-bottle.png",
-      { animations: "allow" }
-    );
+    await expect(grid.getForwardSection()).toHaveScreenshot("show-bottle.png", {
+      animations: "allow",
+    });
 
     // Test with visibility mode:
     await sidebar.toggleSidebarMode();
@@ -205,8 +212,8 @@ test.describe("sidebar-filter-visibility", () => {
     sidebar,
     eventUtils,
   }) => {
-    // do not show prediction labels
-    await sidebar.clickFieldCheckbox("predictions");
+    // only show ground_truth
+    await sidebar.clickFieldCheckbox("ground_truth");
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
       () => true

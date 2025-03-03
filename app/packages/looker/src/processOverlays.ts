@@ -2,11 +2,12 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { CONTAINS, Overlay } from "./overlays/base";
+import type { Overlay } from "./overlays/base";
+import { CONTAINS } from "./overlays/base";
 import { ClassificationsOverlay } from "./overlays/classifications";
 import HeatmapOverlay from "./overlays/heatmap";
 import SegmentationOverlay from "./overlays/segmentation";
-import { BaseState } from "./state";
+import type { BaseState } from "./state";
 import { rotate } from "./util";
 
 const processOverlays = <State extends BaseState>(
@@ -53,10 +54,15 @@ const processOverlays = <State extends BaseState>(
 
     if (!overlay.isShown(state)) continue;
 
+    if (filter(overlay, bins)) continue;
+
     bins[overlay.field].push(overlay);
   }
 
-  let ordered = activePaths.reduce((acc, cur) => [...acc, ...bins[cur]], []);
+  let ordered = activePaths.reduce((acc, cur) => {
+    acc.push(...bins[cur]);
+    return acc;
+  }, []);
 
   if (classifications && !state.config.thumbnail) {
     ordered = [classifications, ...ordered];
@@ -95,6 +101,28 @@ const processOverlays = <State extends BaseState>(
   }
 
   return [[...contained, ...outside], newRotate];
+};
+
+export const filter = <State extends BaseState>(
+  overlay: Overlay<State>,
+  bins: {
+    [k: string]: Overlay<State>[];
+  }
+) => {
+  if (!(overlay.field && overlay.field in bins)) return true;
+
+  // todo: find a better approach / place for this.
+  // for instance, this won't work in detection overlay, where
+  // we might want the bounding boxes but masks might not have been loaded
+  if (overlay instanceof HeatmapOverlay && !overlay.label.map) {
+    return true;
+  }
+
+  if (overlay instanceof SegmentationOverlay && !overlay.label.mask) {
+    return true;
+  }
+
+  return false;
 };
 
 export default processOverlays;

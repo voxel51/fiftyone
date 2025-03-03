@@ -2,7 +2,7 @@ import * as foq from "@fiftyone/relay";
 import { BufferManager } from "@fiftyone/utilities";
 import { Environment, Subscription, fetchQuery } from "relay-runtime";
 import { BufferRange, ImaVidState, StateUpdate } from "../../state";
-import { BUFFERS_REFRESH_TIMEOUT_YIELD, DEFAULT_FRAME_RATE } from "./constants";
+import { BUFFERS_REFRESH_TIMEOUT_YIELD } from "./constants";
 import {
   ImaVidFrameSamples,
   ModalSampleExtendedWithImage,
@@ -12,9 +12,9 @@ import { ImaVidStore } from "./store";
 const BUFFER_METADATA_FETCHING = "fetching";
 
 export class ImaVidFramesController {
-  private frameRate = DEFAULT_FRAME_RATE;
   private mediaField = "filepath";
   private subscription: Subscription;
+  private targetFrameRate: number;
   private timeoutId: number;
 
   public fetchBufferManager = new BufferManager();
@@ -32,6 +32,7 @@ export class ImaVidFramesController {
       page: any;
       key: string;
       totalFrameCountPromise: Promise<number>;
+      targetFrameRate: number;
     }
   ) {
     this.storeBufferManager = new BufferManager([
@@ -40,6 +41,7 @@ export class ImaVidFramesController {
     config.totalFrameCountPromise.then((frameCount) => {
       this.totalFrameCount = frameCount;
     });
+    this.targetFrameRate = config.targetFrameRate;
   }
 
   public setImaVidStateUpdater(updater: StateUpdate<ImaVidState>) {
@@ -150,7 +152,7 @@ export class ImaVidFramesController {
   }
 
   public get currentFrameRate() {
-    return this.frameRate;
+    return this.targetFrameRate;
   }
 
   public get isStoreBufferManagerEmpty() {
@@ -181,15 +183,15 @@ export class ImaVidFramesController {
   }
 
   public setFrameRate(newFrameRate: number) {
-    if (newFrameRate > 24) {
-      throw new Error("max frame rate is 24");
+    if (newFrameRate > 60) {
+      throw new Error("max frame rate is 60");
     }
 
     if (newFrameRate < 1) {
       throw new Error("min frame rate is 1");
     }
 
-    this.frameRate = newFrameRate;
+    this.targetFrameRate = newFrameRate;
   }
 
   public setMediaField(mediaField: string) {

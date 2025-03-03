@@ -31,7 +31,11 @@ export const SwitchDiv = animated(styled.div`
   text-transform: capitalize;
 `);
 
-export const useHighlightHover = (disabled, override = null, color = null) => {
+export const useHighlightHover = (
+  disabled: boolean,
+  override: null | boolean = null,
+  color: null | string = null
+) => {
   const [hovering, setHovering] = useState(false);
   const theme = useTheme();
   const on =
@@ -80,9 +84,10 @@ export const tagStatistics = selectorFamily<
             get(isGroup) && get(fos.groupField)
               ? {
                   id: modal ? get(groupId) : null,
-                  slices: get(fos.currentSlices(modal)),
-                  slice: get(fos.currentSlice(modal)),
+                  currentSlices: get(fos.currentSlices(modal)),
                   mode: get(groupStatistics(modal)),
+                  slice: get(fos.currentSlice(modal)),
+                  slices: get(fos.groupSlices),
                 }
               : null,
           hiddenLabels: get(fos.hiddenLabelsArray),
@@ -127,18 +132,7 @@ export const tagStats = selectorFamily<
   get:
     ({ modal, labels }) =>
     ({ get }) => {
-      const data = Object.keys(
-        get(
-          labels
-            ? fos.labelTagCounts({ modal: false, extended: false })
-            : fos.sampleTagCounts({ modal: false, extended: false })
-        )
-      ).map((t) => [t, 0]);
-
-      return {
-        ...Object.fromEntries(data),
-        ...get(tagStatistics({ modal, labels })).tags,
-      };
+      return get(tagStatistics({ modal, labels })).tags;
     },
 });
 
@@ -162,6 +156,7 @@ export const tagParameters = ({
   activeFields: string[];
   groupData: {
     id: string | null;
+    currentSlices: string[] | null;
     slice: string | null;
     slices: string[] | null;
     mode: "group" | "slice";
@@ -170,8 +165,11 @@ export const tagParameters = ({
   sampleId: string | null;
 }) => {
   const shouldShowCurrentSample =
-    params.modal && selectedSamples.size == 0 && hiddenLabels.length == 0;
+    params.modal && selectedSamples.size === 0 && hiddenLabels.length === 0;
   const groups = groupData?.mode === "group";
+  if (groupData && !groups) {
+    groupData.slices = groupData.currentSlices;
+  }
 
   const getSampleIds = () => {
     if (shouldShowCurrentSample && !groups) {
@@ -182,9 +180,11 @@ export const tagParameters = ({
         return [...new Set(selectedLabels.map((l) => l.sampleId))];
       }
       return [sampleId];
-    } else if (selectedSamples.size) {
+    }
+    if (selectedSamples.size) {
       return [...selectedSamples];
     }
+
     return null;
   };
 
@@ -192,7 +192,7 @@ export const tagParameters = ({
     ...params,
     label_fields: activeFields,
     target_labels: targetLabels,
-    slices: !groups ? groupData?.slices : null,
+    slices: groupData?.slices,
     slice: groupData?.slice,
     group_id: params.modal ? groupData?.id : null,
     sample_ids: getSampleIds(),

@@ -706,7 +706,7 @@ class FiftyOneVideoLabelsDataset(VideoLabelsDataset):
 class BDDDataset(ImageLabelsDataset):
     """A labeled dataset consisting of images and their associated multitask
     predictions saved in
-    `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
+    `Berkeley DeepDrive (BDD) format <http://bdd-data.berkeley.edu>`_.
 
     See :ref:`this page <BDDDataset-import>` for importing datasets of this
     type, and see :ref:`this page <BDDDataset-export>` for exporting datasets

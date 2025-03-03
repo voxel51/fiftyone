@@ -3,7 +3,12 @@ import videoStyles from "@fiftyone/looker/src/elements/video.module.css";
 import { BufferRange, Buffers } from "@fiftyone/utilities";
 import React from "react";
 import styled from "styled-components";
-import { PlayheadState, TimelineName } from "../lib/state";
+import {
+  PLAYHEAD_STATE_PAUSED,
+  PLAYHEAD_STATE_PLAYING,
+  PlayheadState,
+} from "../lib/constants";
+import { TimelineName } from "../lib/state";
 import { convertFrameNumberToPercentage } from "../lib/use-timeline-viz-utils";
 import { getGradientStringForSeekbar } from "../lib/utils";
 import BufferingIcon from "./svgs/buffering.svg?react";
@@ -30,7 +35,7 @@ interface StatusIndicatorProps {
 export const Playhead = React.forwardRef<
   HTMLDivElement,
   PlayheadProps & React.HTMLProps<HTMLDivElement>
->(({ status, timelineName, play, pause, ...props }, ref) => {
+>(({ status, play, pause, ...props }, ref) => {
   const { className, ...otherProps } = props;
 
   return (
@@ -40,9 +45,10 @@ export const Playhead = React.forwardRef<
       className={`${className ?? ""} ${controlsStyles.lookerClickable}`}
       data-playhead-state={status}
     >
-      {status === "playing" && <PauseIcon onClick={pause} />}
-      {status === "paused" && <PlayIcon onClick={play} />}
-      {status !== "playing" && status !== "paused" && <BufferingIcon />}
+      {status === PLAYHEAD_STATE_PLAYING && <PauseIcon onClick={pause} />}
+      {status === PLAYHEAD_STATE_PAUSED && <PlayIcon onClick={play} />}
+      {status !== PLAYHEAD_STATE_PLAYING &&
+        status !== PLAYHEAD_STATE_PAUSED && <BufferingIcon />}
     </TimelineElementContainer>
   );
 });
@@ -53,6 +59,7 @@ export const Seekbar = React.forwardRef<
     loaded: Buffers;
     loading: BufferRange;
     debounce?: number;
+    style?: React.CSSProperties;
     totalFrames: number;
     value: number;
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -68,7 +75,6 @@ export const Seekbar = React.forwardRef<
     onChange,
     onSeekStart,
     onSeekEnd,
-    debounce,
     style,
     className,
     ...otherProps
@@ -133,6 +139,7 @@ export const SeekbarThumb = React.forwardRef<
   React.HTMLProps<HTMLDivElement> & {
     shouldDisplayThumb: boolean;
     value: number;
+    style?: React.CSSProperties;
   }
 >(({ shouldDisplayThumb, value, style, ...props }, ref) => {
   const progress = React.useMemo(() => Math.max(0, value - 0.5), [value]);
@@ -157,7 +164,10 @@ export const SeekbarThumb = React.forwardRef<
 
 export const Speed = React.forwardRef<
   HTMLDivElement,
-  SpeedProps & React.HTMLProps<HTMLDivElement>
+  SpeedProps &
+    React.HTMLProps<HTMLDivElement> & {
+      style?: React.CSSProperties;
+    }
 >(({ speed, setSpeed, ...props }, ref) => {
   const { style, className, ...otherProps } = props;
 
@@ -220,6 +230,7 @@ export const StatusIndicator = React.forwardRef<
 
   return (
     <div
+      ref={ref}
       {...otherProps}
       className={`${className ?? ""} ${controlsStyles.lookerTime}`}
     >

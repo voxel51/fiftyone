@@ -71,8 +71,15 @@ jobs:
         run: |
           python tests/utils/setup_config.py
           python tests/utils/github_actions_flags.py
-      - name: FFmpeg
-        uses: FedericoCarboni/setup-ffmpeg@v3
+
+      # - name: Setup FFmpeg (with retries)
+      #   uses: FedericoCarboni/setup-ffmpeg@v3
+
+      # Use this until https://github.com/federicocarboni/setup-ffmpeg/pull/23
+      # is merged or the maintainer addresses the root issue.
+      - name: Setup FFmpeg (with retries)
+        uses: afoley587/setup-ffmpeg@main
+
       # Important: use pytest_wrapper.py instead of pytest directly to ensure
       # that services shut down cleanly and do not conflict with steps later in
       # this workflow

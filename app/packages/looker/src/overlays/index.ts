@@ -84,7 +84,7 @@ const EMBEDDED_FIELDS = Object.freeze(
   new Set([EMBEDDED_DOCUMENT_FIELD, DYNAMIC_EMBEDDED_DOCUMENT_FIELD])
 );
 
-const accumulateOverlays = <State extends BaseState>(
+export const accumulateOverlays = <State extends BaseState>(
   data: {
     [key: string]: any;
   },

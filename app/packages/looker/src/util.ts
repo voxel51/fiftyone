@@ -22,7 +22,6 @@ import {
   ServerError,
   getFetchParameters,
 } from "@fiftyone/utilities";
-import { DEFAULT_FRAME_RATE } from "./lookers/imavid/constants";
 import LookerWorker from "./worker/index.ts?worker&inline";
 
 /**
@@ -254,11 +253,12 @@ export const ensureCanvasSize = (
 };
 
 export const getMillisecondsFromPlaybackRate = (
+  frameRate: number,
   playbackRate: number
 ): number => {
   const normalizedPlaybackRate =
     playbackRate > 1 ? playbackRate * 1.5 : playbackRate;
-  return 1000 / (DEFAULT_FRAME_RATE * normalizedPlaybackRate);
+  return 1000 / (frameRate * normalizedPlaybackRate);
 };
 
 /**
@@ -449,6 +449,10 @@ export const createWorker = (
   dispatchEvent?: DispatchEvent,
   abortController?: AbortController
 ): Worker => {
+  if (typeof Worker === "undefined" || typeof window === "undefined") {
+    return null;
+  }
+
   let worker: Worker = null;
 
   const signal = abortController

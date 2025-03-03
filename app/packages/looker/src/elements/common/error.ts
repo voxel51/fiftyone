@@ -76,7 +76,9 @@ export class ErrorElement<State extends BaseState> extends BaseElement<State> {
         } else {
           const text = document.createElement("p");
           const textDiv = document.createElement("div");
-          text.innerText = "Something went wrong";
+          text.innerText =
+            "Something went wrong" +
+            (error["message"] ? `: ${error["message"]}` : ".");
           textDiv.appendChild(text);
           this.errorElement.appendChild(textDiv);
         }

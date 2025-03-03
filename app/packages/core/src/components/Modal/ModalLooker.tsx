@@ -6,6 +6,7 @@ import { useRecoilCallback, useRecoilValue } from "recoil";
 import { ImaVidLookerReact } from "./ImaVidLooker";
 import { VideoLookerReact } from "./VideoLooker";
 import useLooker from "./use-looker";
+import { useImageModalSelectiveRendering } from "./use-modal-selective-rendering";
 
 export const useShowOverlays = () => {
   return useRecoilCallback(({ set }) => async (event: CustomEvent) => {
@@ -27,8 +28,9 @@ interface LookerProps {
 }
 
 const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
-  const { id, ref } = useLooker<ImageLooker>(props);
+  const { id, ref, looker } = useLooker<ImageLooker>(props);
   const theme = useTheme();
+  useImageModalSelectiveRendering(id, looker);
 
   return (
     <div
@@ -65,8 +67,10 @@ export const ModalLooker = React.memo(
     );
     const video = useRecoilValue(fos.isVideoDataset);
 
+    const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
+
     if (shouldRenderImavid) {
-      return <ImaVidLookerReact sample={sample} />;
+      return <ImaVidLookerReact sample={sample} key={modalMediaField} />;
     }
 
     if (video) {

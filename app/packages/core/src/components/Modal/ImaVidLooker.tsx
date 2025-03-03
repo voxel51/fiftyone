@@ -1,12 +1,18 @@
 import { useTheme } from "@fiftyone/components";
-import { AbstractLooker, ImaVidLooker } from "@fiftyone/looker";
-import { BaseState } from "@fiftyone/looker/src/state";
-import { FoTimelineConfig, useCreateTimeline } from "@fiftyone/playback";
-import { useDefaultTimelineNameImperative } from "@fiftyone/playback/src/lib/use-default-timeline-name";
+import { ImaVidLooker } from "@fiftyone/looker";
+import type { FoTimelineConfig } from "@fiftyone/playback";
+import {
+  PLAYHEAD_STATE_BUFFERING,
+  PLAYHEAD_STATE_PAUSED,
+  PLAYHEAD_STATE_PLAYING,
+  useCreateTimeline,
+  useDefaultTimelineNameImperative,
+  useTimeline,
+} from "@fiftyone/playback";
 import { Timeline } from "@fiftyone/playback/src/views/Timeline";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOnSelectLabel } from "@fiftyone/state";
-import { BufferRange } from "@fiftyone/utilities";
+import type { BufferRange } from "@fiftyone/utilities";
 import React, {
   useCallback,
   useEffect,
@@ -24,6 +30,7 @@ import {
   useModalContext,
 } from "./hooks";
 import useKeyEvents from "./use-key-events";
+import { useImavidModalSelectiveRendering } from "./use-modal-selective-rendering";
 import { shortcutToHelpItems } from "./utils";
 
 interface ImaVidLookerReactProps {
@@ -37,6 +44,9 @@ export const ImaVidLookerReact = React.memo(
   ({ sample: sampleDataWithExtraParams }: ImaVidLookerReactProps) => {
     const [id] = useState(() => uuid());
     const colorScheme = useRecoilValue(fos.colorScheme);
+    const dynamicGroupsTargetFrameRate = useRecoilValue(
+      fos.dynamicGroupsTargetFrameRate
+    );
 
     const { sample } = sampleDataWithExtraParams;
 
@@ -55,12 +65,12 @@ export const ImaVidLookerReact = React.memo(
 
     const { activeLookerRef, setActiveLookerRef } = useModalContext();
     const imaVidLookerRef =
-      activeLookerRef as unknown as React.MutableRefObject<ImaVidLooker>;
+      activeLookerRef as React.MutableRefObject<ImaVidLooker>;
 
     const looker = React.useMemo(
       () => createLooker.current(sampleDataWithExtraParams),
       [reset, createLooker, selectedMediaField]
-    ) as AbstractLooker<BaseState>;
+    ) as ImaVidLooker;
 
     useEffect(() => {
       setModalLooker(looker);
@@ -71,7 +81,7 @@ export const ImaVidLookerReact = React.memo(
 
     useEffect(() => {
       if (looker) {
-        setActiveLookerRef(looker as fos.Lookers);
+        setActiveLookerRef(looker);
       }
     }, [looker]);
 
@@ -164,7 +174,11 @@ export const ImaVidLookerReact = React.memo(
           return;
         }
 
-        setPlayHeadState({ name: timelineName, state: "buffering" });
+        // if looker is playing, don't change playhead to buffering status
+        // we indicate buffering status in status bar
+        if (getPlayHeadState() !== PLAYHEAD_STATE_PLAYING) {
+          setPlayHeadState(PLAYHEAD_STATE_BUFFERING);
+        }
 
         imaVidLookerRef.current.frameStoreController.enqueueFetch(
           unprocessedBufferRange
@@ -178,10 +192,13 @@ export const ImaVidLookerReact = React.memo(
               e.detail.id === imaVidLookerRef.current.frameStoreController.key
             ) {
               if (storeBufferManager.containsRange(unprocessedBufferRange)) {
-                // todo: change playhead state in setFrameNumberAtom and not here
-                // if done here, store ref to last playhead status
-                setPlayHeadState({ name: timelineName, state: "paused" });
+                // if we were buffering, set playhead state to playing
+                if (getPlayHeadState() === PLAYHEAD_STATE_BUFFERING) {
+                  setPlayHeadState(PLAYHEAD_STATE_PAUSED);
+                }
+
                 resolve();
+
                 window.removeEventListener(
                   "fetchMore",
                   fetchMoreListener as EventListener
@@ -192,8 +209,7 @@ export const ImaVidLookerReact = React.memo(
 
           window.addEventListener(
             "fetchMore",
-            fetchMoreListener as EventListener,
-            { once: true }
+            fetchMoreListener as EventListener
           );
         });
       },
@@ -219,8 +235,9 @@ export const ImaVidLookerReact = React.memo(
       }
 
       return {
-        totalFrames: totalFrameCount,
         loop: (looker as ImaVidLooker).options.loop,
+        targetFrameRate: dynamicGroupsTargetFrameRate,
+        totalFrames: totalFrameCount,
       } as FoTimelineConfig;
     }, [totalFrameCount, (looker as ImaVidLooker).options.loop]);
 
@@ -246,7 +263,6 @@ export const ImaVidLookerReact = React.memo(
       registerOnPauseCallback,
       registerOnPlayCallback,
       registerOnSeekCallbacks,
-      setPlayHeadState,
       subscribe,
     } = useCreateTimeline({
       name: timelineName,
@@ -257,6 +273,8 @@ export const ImaVidLookerReact = React.memo(
       // since imavid is part of the grid too
       onAnimationStutter,
     });
+
+    const { setPlayHeadState, getPlayHeadState } = useTimeline(timelineName);
 
     /**
      * This effect subscribes to the timeline.
@@ -313,6 +331,8 @@ export const ImaVidLookerReact = React.memo(
 
       return () => clearInterval(intervalId);
     }, [looker]);
+
+    useImavidModalSelectiveRendering(id, looker);
 
     return (
       <div

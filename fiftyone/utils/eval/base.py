@@ -5,17 +5,252 @@ Base evaluation methods.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import itertools
+import logging
+import numbers
 
 import numpy as np
 import sklearn.metrics as skm
+from tabulate import tabulate
 
 import fiftyone.core.evaluation as foe
 import fiftyone.core.plots as fop
+import fiftyone.core.utils as fou
+
+foo = fou.lazy_import("fiftyone.operators")
+
+
+logger = logging.getLogger(__name__)
+
+
+class BaseEvaluationMethodConfig(foe.EvaluationMethodConfig):
+    """Base class for configuring evaluation methods.
+
+    Args:
+        custom_metrics (None): an optional list of custom metrics to compute
+            or dict mapping metric names to kwargs dicts
+        **kwargs: any leftover keyword arguments after subclasses have done
+            their parsing
+    """
+
+    pass
+
+
+class BaseEvaluationMethod(foe.EvaluationMethod):
+    """Base class for evaluation methods.
+
+    Args:
+        config: an :class:`BaseEvaluationMethodConfig`
+    """
+
+    def _get_custom_metrics(self, metric_uris=None):
+        if not self.config.custom_metrics:
+            return {}
+
+        if isinstance(self.config.custom_metrics, list):
+            return {m: None for m in self.config.custom_metrics}
+
+        custom_metrics = self.config.custom_metrics
+
+        if metric_uris is not None:
+            custom_metrics = {
+                k: v for k, v in custom_metrics.items() if k in metric_uris
+            }
+
+        return custom_metrics
+
+    def compute_custom_metrics(
+        self, samples, eval_key, results, metric_uris=None
+    ):
+        custom_metrics = self._get_custom_metrics(metric_uris=metric_uris)
+        for metric, kwargs in custom_metrics.items():
+            try:
+                operator = foo.get_operator(metric)
+                value = operator.compute(samples, results, **kwargs or {})
+                if value is not None:
+                    if results.custom_metrics is None:
+                        results.custom_metrics = {}
+
+                    key = operator.config.aggregate_key
+                    if key is None:
+                        key = operator.config.name
+
+                    results.custom_metrics[operator.uri] = {
+                        "key": key,
+                        "value": value,
+                        "label": operator.config.label,
+                        "lower_is_better": operator.config.kwargs.get(
+                            "lower_is_better", True
+                        ),
+                    }
+            except Exception as e:
+                logger.warning(
+                    "Failed to compute metric '%s': Reason: %s",
+                    metric,
+                    e,
+                )
+
+    def get_custom_metric_fields(self, samples, eval_key, metric_uris=None):
+        fields = []
+
+        custom_metrics = self._get_custom_metrics(metric_uris=metric_uris)
+        for metric in custom_metrics.keys():
+            try:
+                operator = foo.get_operator(metric)
+                fields.extend(
+                    operator.get_fields(samples, self.config.eval_key)
+                )
+            except Exception as e:
+                logger.warning(
+                    "Failed to get fields for metric '%s': Reason: %s",
+                    metric,
+                    e,
+                )
+
+        return fields
+
+    def rename_custom_metrics(
+        self, samples, eval_key, new_eval_key, metric_uris=None
+    ):
+        custom_metrics = self._get_custom_metrics(metric_uris=metric_uris)
+        for metric in custom_metrics.keys():
+            try:
+                operator = foo.get_operator(metric)
+                operator.rename(samples, self.config, eval_key, new_eval_key)
+            except Exception as e:
+                logger.warning(
+                    "Failed to rename fields for metric '%s': Reason: %s",
+                    metric,
+                    e,
+                )
+
+    def cleanup_custom_metrics(self, samples, eval_key, metric_uris=None):
+        custom_metrics = self._get_custom_metrics(metric_uris=metric_uris)
+        for metric in custom_metrics.keys():
+            try:
+                operator = foo.get_operator(metric)
+                operator.cleanup(samples, self.config, eval_key)
+            except Exception as e:
+                logger.warning(
+                    "Failed to cleanup metric '%s': Reason: %s",
+                    metric,
+                    e,
+                )
 
 
 class BaseEvaluationResults(foe.EvaluationResults):
     """Base class for evaluation results.
+
+    Args:
+        samples: the :class:`fiftyone.core.collections.SampleCollection` used
+        config: the :class:`BaseEvaluationMethodConfig` used
+        eval_key: the evaluation key
+        custom_metrics (None): an optional dict of custom metrics
+        backend (None): an :class:`EvaluationMethod` backend
+    """
+
+    def __init__(
+        self,
+        samples,
+        config,
+        eval_key,
+        custom_metrics=None,
+        backend=None,
+    ):
+        super().__init__(samples, config, eval_key, backend=backend)
+        self.custom_metrics = custom_metrics
+
+    def add_custom_metrics(self, custom_metrics, overwrite=True):
+        """Computes the given custom metrics and adds them to these results.
+
+        Args:
+            custom_metrics: a list of custom metrics to compute or a dict
+                mapping metric names to kwargs dicts
+            overwrite (True): whether to recompute any custom metrics that
+                have already been applied
+        """
+        _custom_metrics = self.config.custom_metrics
+
+        if _custom_metrics is None:
+            _custom_metrics = {}
+
+        if isinstance(_custom_metrics, list):
+            _custom_metrics = {k: None for k in _custom_metrics}
+
+        if isinstance(custom_metrics, list):
+            custom_metrics = {k: None for k in custom_metrics}
+
+        if not overwrite:
+            custom_metrics = {
+                k: v
+                for k, v in custom_metrics.items()
+                if k not in _custom_metrics
+            }
+
+        if not custom_metrics:
+            return
+
+        metric_uris = list(custom_metrics.keys())
+
+        _custom_metrics.update(custom_metrics)
+        if all(v is None for v in _custom_metrics.values()):
+            _custom_metrics = list(_custom_metrics.keys())
+
+        self.config.custom_metrics = _custom_metrics
+        self.save_config()
+
+        self.backend.compute_custom_metrics(
+            self.samples, self.key, self, metric_uris=metric_uris
+        )
+        self.save()
+
+    def metrics(self, *args, **kwargs):
+        """Returns the metrics associated with this evaluation run.
+
+        Also includes any custom metrics from :attr:`custom_metrics`.
+
+        Args:
+            *args: subclass-specific positional arguments
+            **kwargs: subclass-specific keyword arguments
+
+        Returns:
+            a dict
+        """
+        return self._get_custom_metrics()
+
+    def print_metrics(self, *args, digits=2, **kwargs):
+        """Prints the metrics computed via :meth:`metrics`.
+
+        Args:
+            *args: subclass-specific positional arguments
+            digits (2): the number of digits of precision to print
+            **kwargs: subclass-specific keyword argument
+        """
+        metrics = self.metrics(*args, **kwargs)
+        self._print_metrics(metrics, digits=digits)
+
+    def _get_custom_metrics(self):
+        if not self.custom_metrics:
+            return {}
+
+        metrics = {}
+
+        try:
+            for uri, metric in self.custom_metrics.items():
+                metrics[metric["key"]] = metric["value"]
+        except Exception as e:
+            logger.warning("Failed to parse custom metrics. Reason: %s", e)
+
+        return metrics
+
+    def _print_metrics(self, metrics, digits=2):
+        _print_dict_as_table(metrics, digits)
+
+
+class BaseClassificationResults(BaseEvaluationResults):
+    """Base class for evaluation results that expose classification metrics
+    like P/R/F1 and confusion matrices.
 
     Args:
         samples: the :class:`fiftyone.core.collections.SampleCollection` used
@@ -32,8 +267,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
             observed ground truth/predicted labels are used
         missing (None): a missing label string. Any None-valued labels are
             given this label for evaluation purposes
-        samples (None): the :class:`fiftyone.core.collections.SampleCollection`
-            for which the results were computed
+        custom_metrics (None): an optional dict of custom metrics
         backend (None): a :class:`fiftyone.core.evaluation.EvaluationMethod`
             backend
     """
@@ -51,9 +285,16 @@ class BaseEvaluationResults(foe.EvaluationResults):
         ypred_ids=None,
         classes=None,
         missing=None,
+        custom_metrics=None,
         backend=None,
     ):
-        super().__init__(samples, config, eval_key, backend=backend)
+        super().__init__(
+            samples,
+            config,
+            eval_key,
+            custom_metrics=custom_metrics,
+            backend=backend,
+        )
 
         if missing is None:
             missing = "(none)"
@@ -113,12 +354,39 @@ class BaseEvaluationResults(foe.EvaluationResults):
             zero_division=0,
         )
 
+    def print_report(self, classes=None, digits=2):
+        """Prints a classification report for the results via
+        :func:`sklearn:sklearn.metrics.classification_report`.
+
+        Args:
+            classes (None): an optional list of classes to include in the
+                report
+            digits (2): the number of digits of precision to print
+        """
+        labels = self._parse_classes(classes)
+
+        if labels.size == 0:
+            print("No classes to analyze")
+            return
+
+        report_str = skm.classification_report(
+            self.ytrue,
+            self.ypred,
+            labels=labels,
+            digits=digits,
+            sample_weight=self.weights,
+            zero_division=0,
+        )
+        print(report_str)
+
     def metrics(self, classes=None, average="micro", beta=1.0):
         """Computes classification metrics for the results, including accuracy,
         precision, recall, and F-beta score.
 
         See :func:`sklearn:sklearn.metrics.precision_recall_fscore_support` for
         details.
+
+        Also includes any custom metrics from :attr:`custom_metrics`.
 
         Args:
             classes (None): an optional list of classes to include in the
@@ -149,7 +417,7 @@ class BaseEvaluationResults(foe.EvaluationResults):
             self.ytrue, labels=labels, weights=self.weights
         )
 
-        return {
+        metrics = {
             "accuracy": accuracy,
             "precision": precision,
             "recall": recall,
@@ -157,32 +425,29 @@ class BaseEvaluationResults(foe.EvaluationResults):
             "support": support,
         }
 
-    def print_report(self, classes=None, digits=2):
-        """Prints a classification report for the results via
-        :func:`sklearn:sklearn.metrics.classification_report`.
+        metrics.update(self._get_custom_metrics())
+
+        return metrics
+
+    def print_metrics(self, classes=None, average="micro", beta=1.0, digits=2):
+        """Prints the metrics computed via :meth:`metrics`.
 
         Args:
             classes (None): an optional list of classes to include in the
-                report
+                calculations
+            average ("micro"): the averaging strategy to use
+            beta (1.0): the F-beta value to use
             digits (2): the number of digits of precision to print
         """
-        labels = self._parse_classes(classes)
+        metrics = self.metrics(classes=classes, average=average, beta=beta)
+        self._print_metrics(metrics, digits=digits)
 
-        if labels.size == 0:
-            print("No classes to analyze")
-            return
-
-        report_str = skm.classification_report(
-            self.ytrue,
-            self.ypred,
-            labels=labels,
-            digits=digits,
-            sample_weight=self.weights,
-            zero_division=0,
-        )
-        print(report_str)
-
-    def confusion_matrix(self, classes=None, include_other=False):
+    def confusion_matrix(
+        self,
+        classes=None,
+        include_other=False,
+        include_missing=False,
+    ):
         """Generates a confusion matrix for the results via
         :func:`sklearn:sklearn.metrics.confusion_matrix`.
 
@@ -191,17 +456,23 @@ class BaseEvaluationResults(foe.EvaluationResults):
 
         Args:
             classes (None): an optional list of classes to include in the
-                confusion matrix. Include ``self.missing`` in this list if you
-                would like to include a row/column for unmatched examples
+                confusion matrix
             include_other (False): whether to include an extra row/column at
                 the end of the matrix for labels that do not appear in
                 ``classes``. Only applicable if ``classes`` are provided
+            include_missing (False): whether to include a row/column at the end
+                of the matrix for unmatched labels. Only applicable if
+                ``self.missing`` does not already appear in ``classes``. If
+                both "other" and "missing" rows/columns are requested, this one
+                is last
 
         Returns:
             a ``num_classes x num_classes`` confusion matrix
         """
         confusion_matrix, _, _ = self._confusion_matrix(
-            classes=classes, include_other=include_other, include_missing=False
+            classes=classes,
+            include_other=include_other,
+            include_missing=include_missing,
         )
         return confusion_matrix
 
@@ -519,3 +790,20 @@ def _compute_confusion_matrix(
             ids[yt, yp].append(ip)
 
     return confusion_matrix, ids
+
+
+def _print_dict_as_table(d, digits):
+    fmt = "%%.%df" % digits
+    records = []
+    for k, v in d.items():
+        k = k.replace("_", " ")
+        if isinstance(v, numbers.Integral):
+            v = str(v)
+        elif isinstance(v, numbers.Number):
+            v = fmt % v
+        else:
+            v = str(v)
+
+        records.append((k, v))
+
+    print(tabulate(records, tablefmt="plain", numalign="left"))

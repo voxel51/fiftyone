@@ -5,7 +5,12 @@ export default graphql`
     colorScheme {
       ...colorSchemeFragment
     }
+    defaultVisibilityLabels {
+      include
+      exclude
+    }
     disableFrameFiltering
+    dynamicGroupsTargetFrameRate
     gridMediaField
     mediaFields
     modalMediaField
