@@ -62,5 +62,10 @@ def update_samples(
 
     # Execute map_samples with the chosen backend
     return backend_instance.update_samples(
-        sample_collection, map_fcn, save, num_workers, shard_method, progress
+        sample_collection,
+        map_fcn,
+        save=True,
+        num_workers=num_workers,
+        shard_method=shard_method,
+        progress=progress,
     )
