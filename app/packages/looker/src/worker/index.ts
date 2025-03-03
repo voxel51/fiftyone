@@ -8,13 +8,13 @@ import {
   DETECTIONS,
   DYNAMIC_EMBEDDED_DOCUMENT,
   EMBEDDED_DOCUMENT,
-  LABEL_LIST,
-  Schema,
-  Stage,
-  VALID_LABEL_TYPES,
   getCls,
   getFetchFunction,
+  LABEL_LIST,
+  Schema,
   setFetchFunction,
+  Stage,
+  VALID_LABEL_TYPES,
 } from "@fiftyone/utilities";
 import { CHUNK_SIZE } from "../constants";
 import {
@@ -314,9 +314,7 @@ interface ReaderMethod {
   method: string;
 }
 
-export interface ProcessSample {
-  uuid: string;
-  sample: Sample & FrameSample;
+export interface ProcessSampleOptions {
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
   labelTagColors: LabelTagColor;
@@ -326,20 +324,27 @@ export interface ProcessSample {
   schema: Schema;
   activePaths: string[];
 }
+export interface ProcessSample {
+  sample: Sample & FrameSample;
+  options: ProcessSampleOptions;
+  uuid: string;
+}
 
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
 const processSample = async ({
   sample,
+  options: {
+    coloring,
+    sources,
+    customizeColorSetting,
+    colorscale,
+    selectedLabelTags,
+    labelTagColors,
+    schema,
+    activePaths,
+  },
   uuid,
-  coloring,
-  sources,
-  customizeColorSetting,
-  colorscale,
-  selectedLabelTags,
-  labelTagColors,
-  schema,
-  activePaths,
 }: ProcessSample) => {
   if (!sample) {
     // edge case where looker hasn't been associated with a sample yet
@@ -356,7 +361,7 @@ const processSample = async ({
   mapId(sample);
 
   const imageBitmapPromises: Promise<ImageBitmap[]>[] = [];
-  let maskTargetsBuffers: ArrayBuffer[] = [];
+  const maskTargetsBuffers: ArrayBuffer[] = [];
 
   if (sample?._media_type === "point-cloud" || sample?._media_type === "3d") {
     // we process all 3d labels regardless of active paths

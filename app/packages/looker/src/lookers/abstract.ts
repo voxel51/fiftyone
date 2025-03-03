@@ -1,4 +1,3 @@
-import { Lookers } from "@fiftyone/state";
 import {
   AppError,
   DATE_FIELD,
@@ -83,38 +82,35 @@ export abstract class AbstractLooker<
   State extends BaseState,
   S extends Sample = Sample
 > {
-  public readonly subscriptions: {
-    [fieldName: string]: ((newValue: any) => void)[];
-  };
-  private eventTarget: EventTarget;
-
-  private hideControlsTimeout: ReturnType<typeof setTimeout> | null = null;
-  protected lookerElement: LookerElement<State>;
-  private resizeObserver: ResizeObserver;
   private readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D;
-  private previousState?: Readonly<State>;
   private readonly rootEvents: Events<State>;
-  private isSampleUpdating: boolean = false;
+  private readonly subscriptions: {
+    [fieldName: string]: ((newValue: any) => void)[];
+  };
 
-  protected readonly abortController: AbortController;
-  protected currentOverlays: Overlay<State>[];
-  protected sample: S;
-  protected readonly updater: StateUpdate<State>;
+  private eventTarget: EventTarget;
+  private hideControlsTimeout: ReturnType<typeof setTimeout> | null = null;
+  private previousState?: Readonly<State>;
+  private resizeObserver: ResizeObserver;
 
   private batchMergedUpdates: Partial<State> = {};
   private isBatching = false;
   private isCommittingBatchUpdates = false;
+  private isSampleUpdating = false;
+
+  protected readonly abortController: AbortController;
+  protected readonly updater: StateUpdate<State>;
+
+  protected asyncLabelsRenderingManager: AsyncLabelsRenderingManager<S>;
+  protected currentOverlays: Overlay<State>[];
+  protected lookerElement: LookerElement<State>;
+  protected sample: S;
+  protected state: State;
 
   public uuid = uuid();
-
-  /** @internal */
-  state: State;
-
   sampleOverlays: Overlay<State>[];
   pluckedOverlays: Overlay<State>[];
-
-  public asyncLabelsRenderingManager: AsyncLabelsRenderingManager;
 
   constructor(
     sample: S,
@@ -172,9 +168,7 @@ export abstract class AbstractLooker<
       3500
     );
 
-    this.asyncLabelsRenderingManager = new AsyncLabelsRenderingManager(
-      this as unknown as Lookers
-    );
+    this.asyncLabelsRenderingManager = new AsyncLabelsRenderingManager();
 
     this.init();
   }
@@ -614,8 +608,19 @@ export abstract class AbstractLooker<
 
     this.asyncLabelsRenderingManager
       .enqueueLabelPaintingJob({
-        sample: this.sample,
         labels: renderLabels,
+        options: {
+          coloring: this.state.options.coloring,
+          customizeColorSetting: this.state.options.customizeColorSetting,
+          colorscale: this.state.options.colorscale,
+          labelTagColors: this.state.options.labelTagColors,
+          selectedLabelTags: this.state.options.selectedLabelTags,
+          sources: this.state.config.sources,
+          schema: this.state.config.fieldSchema,
+          activePaths: this.state.options.activePaths,
+        },
+        schema: this.state.config.fieldSchema,
+        sample: this.sample,
       })
       .then(({ sample, coloring }) => {
         this.sample = sample;
@@ -855,19 +860,21 @@ export abstract class AbstractLooker<
 
     labelsWorker.addEventListener("message", listener);
 
-    const workerArgs = {
-      sample: sample as ProcessSample["sample"],
+    const workerArgs: ProcessSample & { method: "processSample" } = {
       method: "processSample",
-      coloring: this.state.options.coloring,
-      customizeColorSetting: this.state.options.customizeColorSetting,
-      colorscale: this.state.options.colorscale,
-      labelTagColors: this.state.options.labelTagColors,
-      selectedLabelTags: this.state.options.selectedLabelTags,
-      sources: this.state.config.sources,
-      schema: this.state.config.fieldSchema,
+      options: {
+        coloring: this.state.options.coloring,
+        customizeColorSetting: this.state.options.customizeColorSetting,
+        colorscale: this.state.options.colorscale,
+        labelTagColors: this.state.options.labelTagColors,
+        selectedLabelTags: this.state.options.selectedLabelTags,
+        sources: this.state.config.sources,
+        schema: this.state.config.fieldSchema,
+        activePaths: this.state.options.activePaths,
+      },
       uuid: messageUUID,
-      activePaths: this.state.options.activePaths,
-    } as ProcessSample;
+      sample: sample as ProcessSample["sample"],
+    };
 
     try {
       labelsWorker.postMessage(workerArgs, transfer);
