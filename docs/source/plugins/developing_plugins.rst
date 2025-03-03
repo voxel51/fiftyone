@@ -1132,7 +1132,7 @@ executed in the background while you continue to use the App.
 
 .. note::
 
-    :ref:`FiftyOne Teams <teams-delegated-operations>` deployments come out of
+    :ref:`FiftyOne Enterprise <enterprise-delegated-operations>` deployments come out of
     the box with a connected compute cluster for executing delegated operations
     at scale.
 
@@ -1275,9 +1275,9 @@ on their execution context from within
 
 .. note::
 
-    :ref:`FiftyOne Teams <fiftyone-teams>` users can view the current progress
+    :ref:`FiftyOne Enterprise <fiftyone-enterprise>` users can view the current progress
     of their delegated operations from the
-    :ref:`Runs page <teams-managing-delegated-operations>` of the Teams App!
+    :ref:`Runs page <enterprise-managing-delegated-operations>` of the Enterprise App!
 
 For your convenience, all builtin methods of the FiftyOne SDK that support
 rendering progress bars provide an optional `progress` method that you can use
