@@ -28,7 +28,6 @@ class MapBackend(ABC):
         self,
         sample_collection,
         map_fcn,
-        save: Optional[bool] = None,
         num_workers: Optional[int] = None,
         shard_method: str = "id",
         progress: Optional[bool] = None,
