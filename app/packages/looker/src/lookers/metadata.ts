@@ -7,12 +7,12 @@ import {
 } from "../state";
 import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
 import { Overlay } from "../overlays/base";
-import { getFileElements } from "../elements";
+import { getMetadataElements } from "../elements";
 
 /**
- * Looker which renders metadata and/or file contents for non-visual samples.
+ * Looker which renders metadata for non-visual samples.
  */
-export class FileLooker extends AbstractLooker<BaseState> {
+export class MetadataLooker extends AbstractLooker<BaseState> {
   updateOptions(options: Partial<BaseOptions>): void {}
 
   protected hasDefaultZoom(
@@ -25,7 +25,7 @@ export class FileLooker extends AbstractLooker<BaseState> {
   protected getElements(
     config: Readonly<BaseConfig>
   ): LookerElement<BaseState> {
-    return getFileElements({
+    return getMetadataElements({
       abortController: this.abortController,
       config,
       update: this.updater,
