@@ -2,12 +2,14 @@ from enum import Enum
 
 from .map import MapBackend
 from .sequential import SequentialMapBackend
+from .process import ProcessMapBackend
 
 
 class MapBackendType(Enum):
     """Enumeration of available map_samples execution backends."""
 
     sequential = "sequential"
+    process = "process"
 
     @classmethod
     def from_string(cls, backend_str: str) -> "MapBackendType":
@@ -30,6 +32,7 @@ class MapBackendFactory:
 
     _backends = {
         MapBackendType.sequential: SequentialMapBackend,
+        MapBackendType.process: ProcessMapBackend,
     }
 
     @classmethod

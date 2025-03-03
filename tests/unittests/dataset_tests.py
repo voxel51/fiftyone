@@ -1039,11 +1039,15 @@ class DatasetTests(unittest.TestCase):
         # Multiple workers
         #
 
-        dataset.update_samples(update_fcn, num_workers=2, shard_method="id")
+        dataset.update_samples(
+            update_fcn, num_workers=2, shard_method="id", backend="process"
+        )
 
         self.assertTupleEqual(dataset.bounds("int"), (1, 50))
 
-        dataset.update_samples(update_fcn, num_workers=2, shard_method="slice")
+        dataset.update_samples(
+            update_fcn, num_workers=2, shard_method="slice", backend="process"
+        )
 
         self.assertTupleEqual(dataset.bounds("int"), (2, 51))
 
@@ -1051,7 +1055,7 @@ class DatasetTests(unittest.TestCase):
         # Main process
         #
 
-        dataset.update_samples(update_fcn, num_workers=1)
+        dataset.update_samples(update_fcn, num_workers=1, backend="process")
 
         self.assertTupleEqual(dataset.bounds("int"), (3, 52))
 
@@ -1075,7 +1079,9 @@ class DatasetTests(unittest.TestCase):
         #
 
         counter = Counter()
-        for _, value in dataset.map_samples(map_fcn, num_workers=2):
+        for _, value in dataset.map_samples(
+            map_fcn, num_workers=2, backend="process"
+        ):
             counter[value] += 1
 
         self.assertDictEqual(dict(counter), {"BAR": 50})
@@ -1085,7 +1091,9 @@ class DatasetTests(unittest.TestCase):
         #
 
         counter = Counter()
-        for _, value in dataset.map_samples(map_fcn, num_workers=1):
+        for _, value in dataset.map_samples(
+            map_fcn, num_workers=1, backend="process"
+        ):
             counter[value] += 1
 
         self.assertDictEqual(dict(counter), {"BAR": 50})
