@@ -7,6 +7,7 @@ Session class for interacting with the FiftyOne App.
 """
 
 from collections import defaultdict
+from dataclasses import asdict
 from functools import wraps
 import logging
 import os
@@ -15,6 +16,7 @@ import typing as t
 from uuid import uuid4
 import webbrowser
 
+from dacite import from_dict
 
 try:
     import IPython.display
@@ -41,6 +43,7 @@ from fiftyone.core.session.events import (
     CaptureNotebookCell,
     CloseSession,
     DeactivateNotebookCell,
+    LabelData,
     ReactivateNotebookCell,
     Refresh,
     SelectLabels,
@@ -830,7 +833,9 @@ class Session(object):
     @selected_labels.setter  # type: ignore
     def selected_labels(self, labels: dict) -> None:
         self._state.selected_labels = list(labels) if labels else []
-        self._client.send_event(SelectLabels(self._state.selected_labels))
+        self._client.send_event(
+            from_dict(SelectLabels, dict(labels=self._state.selected_labels))
+        )
 
     def select_labels(
         self,
@@ -1172,9 +1177,9 @@ def _attach_listeners(session: "Session"):
     ] = lambda event: setattr(session._state, "selected", event.sample_ids)
     session._client.add_event_listener("select_samples", on_select_samples)
 
-    on_select_labels: t.Callable[[SelectLabels], None] = lambda event: setattr(
-        session._state, "selected_labels", event.labels
-    )
+    on_select_labels: t.Callable[
+        [SelectLabels], None
+    ] = lambda event: _on_select_labels(session._state, event)
     session._client.add_event_listener("select_labels", on_select_labels)
 
     on_set_color_scheme: t.Callable[
@@ -1282,12 +1287,15 @@ def _log_welcome_message_if_allowed():
 
 
 def _on_refresh(session: Session, state: t.Optional[StateDescription]):
-    """Refreshes session state, including a dataset reload."""
     if state:
         session._state = state
 
     if session.dataset is not None:
         session.dataset.reload()
+
+
+def _on_select_labels(state: StateDescription, event: SelectLabels):
+    setattr(state, "selected_labels", [asdict(data) for data in event.labels])
 
 
 def _pull_group_slice(
