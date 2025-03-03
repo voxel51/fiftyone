@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f30db9e0b088ac9142c968f522ebb649>>
+ * @generated SignedSource<<2910b2846e112ba6598cdb2c794a3e20>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -84,7 +84,7 @@ export type DatasetPageQuery$data = {
     readonly defaultGroupSlice: string | null;
     readonly name: string;
     readonly " $fragmentSpreads": FragmentRefs<"datasetFragment">;
-  } | null;
+  };
   readonly " $fragmentSpreads": FragmentRefs<"NavFragment" | "configFragment" | "savedViewsFragment" | "stageDefinitionsFragment" | "viewSchemaFragment">;
 };
 export type DatasetPageQuery = {

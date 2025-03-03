@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d2915b41290da7b904ed7d7becf917d8>>
+ * @generated SignedSource<<c713ad7de54d632dc04f23967a60ad5c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,6 +22,7 @@ export type mainSampleQuery$variables = {
   dataset: string;
   filter: SampleFilter;
   filters?: object | null;
+  index?: number | null;
   view: Array;
 };
 export type mainSampleQuery$data = {
@@ -93,30 +94,35 @@ v2 = {
 v3 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "view"
+  "name": "index"
 },
 v4 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "view"
+},
+v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "aspectRatio",
   "storageKey": null
 },
-v5 = {
+v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "id",
   "storageKey": null
 },
-v6 = {
+v7 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "sample",
   "storageKey": null
 },
-v7 = {
+v8 = {
   "alias": null,
   "args": null,
   "concreteType": "MediaURL",
@@ -141,13 +147,13 @@ v7 = {
   ],
   "storageKey": null
 },
-v8 = [
-  (v4/*: any*/),
+v9 = [
   (v5/*: any*/),
   (v6/*: any*/),
-  (v7/*: any*/)
+  (v7/*: any*/),
+  (v8/*: any*/)
 ],
-v9 = [
+v10 = [
   {
     "alias": null,
     "args": [
@@ -165,6 +171,11 @@ v9 = [
         "kind": "Variable",
         "name": "filters",
         "variableName": "filters"
+      },
+      {
+        "kind": "Variable",
+        "name": "index",
+        "variableName": "index"
       },
       {
         "kind": "Variable",
@@ -186,21 +197,21 @@ v9 = [
       },
       {
         "kind": "InlineFragment",
-        "selections": (v8/*: any*/),
+        "selections": (v9/*: any*/),
         "type": "ImageSample",
         "abstractKey": null
       },
       {
         "kind": "InlineFragment",
-        "selections": (v8/*: any*/),
+        "selections": (v9/*: any*/),
         "type": "PointCloudSample",
         "abstractKey": null
       },
       {
         "kind": "InlineFragment",
         "selections": [
-          (v4/*: any*/),
           (v5/*: any*/),
+          (v6/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -215,15 +226,15 @@ v9 = [
             "name": "frameNumber",
             "storageKey": null
           },
-          (v6/*: any*/),
-          (v7/*: any*/)
+          (v7/*: any*/),
+          (v8/*: any*/)
         ],
         "type": "VideoSample",
         "abstractKey": null
       },
       {
         "kind": "InlineFragment",
-        "selections": (v8/*: any*/),
+        "selections": (v9/*: any*/),
         "type": "ThreeDSample",
         "abstractKey": null
       }
@@ -237,12 +248,13 @@ return {
       (v0/*: any*/),
       (v1/*: any*/),
       (v2/*: any*/),
-      (v3/*: any*/)
+      (v3/*: any*/),
+      (v4/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "mainSampleQuery",
-    "selections": (v9/*: any*/),
+    "selections": (v10/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -250,25 +262,26 @@ return {
   "operation": {
     "argumentDefinitions": [
       (v0/*: any*/),
-      (v3/*: any*/),
+      (v4/*: any*/),
       (v1/*: any*/),
-      (v2/*: any*/)
+      (v2/*: any*/),
+      (v3/*: any*/)
     ],
     "kind": "Operation",
     "name": "mainSampleQuery",
-    "selections": (v9/*: any*/)
+    "selections": (v10/*: any*/)
   },
   "params": {
-    "cacheID": "3620bb08051185b996237076ef49a2f1",
+    "cacheID": "bffeb162696de73ac85fb189aad1667c",
     "id": null,
     "metadata": {},
     "name": "mainSampleQuery",
     "operationKind": "query",
-    "text": "query mainSampleQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: JSON\n) {\n  sample(dataset: $dataset, view: $view, filters: $filters, filter: $filter) {\n    __typename\n    ... on ImageSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on PointCloudSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on VideoSample {\n      aspectRatio\n      id\n      frameRate\n      frameNumber\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on ThreeDSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n  }\n}\n"
+    "text": "query mainSampleQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: JSON\n  $index: Int\n) {\n  sample(dataset: $dataset, view: $view, filters: $filters, filter: $filter, index: $index) {\n    __typename\n    ... on ImageSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on PointCloudSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on VideoSample {\n      aspectRatio\n      id\n      frameRate\n      frameNumber\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on ThreeDSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "e886574436e86028aafc7255b6088901";
+(node as any).hash = "9f65c4bd7445409739ebc516850c87f4";
 
 export default node;
