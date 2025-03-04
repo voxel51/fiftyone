@@ -1,5 +1,5 @@
 """
-FiftyOne session-related unit tests.
+FiftyOne session events-related unit tests.
 
 | Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -11,7 +11,6 @@ import unittest
 
 from dacite import from_dict
 
-import fiftyone as fo
 from fiftyone.core.state import StateDescription
 from fiftyone.core.session.session import _on_select_labels
 from fiftyone.core.session.events import SelectLabels
