@@ -1,4 +1,3 @@
-import { act } from "@testing-library/react-hooks";
 import { describe, expect, it } from "vitest";
 import { createCache } from "./cache";
 
@@ -14,38 +13,71 @@ describe("useLookerCache", () => {
       maxHiddenItems: 2,
       maxHiddenItemsSizeBytes: 2,
     });
+    expect(cache.frozen.size).toBe(0);
     expect(cache.hidden.size).toBe(0);
+    expect(cache.hidden.calculatedSize).toBe(0);
     expect(cache.pending.size).toBe(0);
     expect(cache.shown.size).toBe(0);
-    expect(cache.hidden.calculatedSize).toBe(0);
 
-    act(() => {
-      const looker = new Looker();
-      cache.set("one", looker);
-    });
-
+    cache.set("one", new Looker());
+    expect(cache.isShown("one")).toBe(true);
+    expect(cache.frozen.size).toBe(0);
     expect(cache.hidden.size).toBe(0);
+    expect(cache.hidden.calculatedSize).toBe(0);
     expect(cache.pending.size).toBe(0);
     expect(cache.shown.size).toBe(1);
-    expect(cache.hidden.calculatedSize).toBe(0);
 
     cache.hide("one");
-
+    expect(cache.isShown("one")).toBe(false);
+    expect(cache.frozen.size).toBe(0);
     expect(cache.hidden.size).toBe(0);
+    expect(cache.hidden.calculatedSize).toBe(0);
     expect(cache.pending.size).toBe(1);
     expect(cache.shown.size).toBe(0);
-    expect(cache.hidden.calculatedSize).toBe(0);
 
-    const looker = cache.get("one");
-    if (!looker) {
-      throw new Error("looker is missing");
-    }
-
+    const looker = cache.get("one")!;
+    looker.loaded = true;
     looker.dispatchEvent(new Event("load"));
-
+    expect(cache.isShown("one")).toBe(false);
+    expect(cache.frozen.size).toBe(0);
     expect(cache.hidden.size).toBe(1);
+    expect(cache.hidden.calculatedSize).toBe(1);
     expect(cache.pending.size).toBe(0);
     expect(cache.shown.size).toBe(0);
+
+    cache.freeze();
+    expect(cache.isShown("one")).toBe(false);
+    expect(cache.frozen.size).toBe(0);
+    expect(cache.hidden.size).toBe(1);
     expect(cache.hidden.calculatedSize).toBe(1);
+    expect(cache.pending.size).toBe(0);
+    expect(cache.shown.size).toBe(0);
+
+    cache.show("one");
+    expect(cache.isShown("one")).toBe(true);
+    cache.freeze();
+    expect(cache.isShown("one")).toBe(false);
+    expect(cache.frozen.size).toBe(1);
+    expect(cache.hidden.size).toBe(0);
+    expect(cache.hidden.calculatedSize).toBe(0);
+    expect(cache.pending.size).toBe(0);
+    expect(cache.shown.size).toBe(0);
+
+    cache.set("one", looker);
+    expect(cache.isShown("one")).toBe(true);
+    expect(cache.frozen.size).toBe(0);
+    expect(cache.hidden.size).toBe(0);
+    expect(cache.hidden.calculatedSize).toBe(0);
+    expect(cache.pending.size).toBe(0);
+    expect(cache.shown.size).toBe(1);
+
+    cache.freeze();
+    cache.unfreeze();
+    expect(cache.isShown("one")).toBe(false);
+    expect(cache.frozen.size).toBe(0);
+    expect(cache.hidden.size).toBe(1);
+    expect(cache.hidden.calculatedSize).toBe(1);
+    expect(cache.pending.size).toBe(0);
+    expect(cache.shown.size).toBe(0);
   });
 });
