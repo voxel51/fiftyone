@@ -4361,7 +4361,13 @@ class SetField(ViewStage):
             that defines the field value to set
     """
 
-    def __init__(self, field, expr, _allow_missing=False):
+    def __init__(
+        self,
+        field,
+        expr,
+        _allow_missing=False,
+        _allow_limit=False,
+    ):
         if isinstance(expr, MongoEngineBaseDocument):
             expr = expr.to_dict()
             expr.pop("_id", None)
@@ -4369,6 +4375,7 @@ class SetField(ViewStage):
         self._field = field
         self._expr = expr
         self._allow_missing = _allow_missing
+        self._allow_limit = _allow_limit
         self._pipeline = None
         self._expr_dict = None
 

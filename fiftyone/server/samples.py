@@ -15,6 +15,7 @@ from fiftyone.core.collections import SampleCollection
 from fiftyone.core.dataset import Dataset
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
+import fiftyone.core.stages as fos
 from fiftyone.core.utils import run_sync_task
 
 from fiftyone.server.filters import SampleFilter
@@ -220,6 +221,25 @@ def _needs_full_lookup(view: SampleCollection):
         return False
 
     for stage in view._stages:
+
+        if isinstance(
+            stage,
+            (
+                fos.ExcludeFields,
+                fos.ExcludeFrames,
+                fos.ExcludeLabels,
+                fos.SelectFields,
+                fos.SelectFrames,
+                fos.SelectLabels,
+            ),
+        ):
+            # these stages do not directly impact matched results
+            continue
+
+        if isinstance(stage, fos.SetField) and stage._allow_limit:
+            # manually override to support first frame label tag counts
+            continue
+
         if stage._needs_frames(view):
             return True
 

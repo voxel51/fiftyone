@@ -56,6 +56,24 @@ class ServerSamplesTests(unittest.IsolatedAsyncioTestCase):
             limited_lookup,
         )
 
+        # test select fields
+        self.assertEqual(
+            await _resolve_lookup_stage(
+                dataset.select_fields("frames.labels")
+            ),
+            limited_lookup,
+        )
+
+        # test set field
+        self.assertEqual(
+            await _resolve_lookup_stage(
+                dataset.add_stage(
+                    fo.SetField("frames.labels", None, _allow_limit=True)
+                )
+            ),
+            limited_lookup,
+        )
+
     @drop_async_dataset
     async def test_full_frames_lookup(self, dataset: fo.Dataset):
         _add_video_sample(dataset)
