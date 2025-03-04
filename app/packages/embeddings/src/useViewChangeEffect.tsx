@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import { useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { fetchPlot } from "./fetch";
-import { useBrainResult, usePointField } from "./useBrainResult";
+import { useBrainResult, usePointsField } from "./useBrainResult";
 import { useColorByField } from "./useLabelSelector";
 import { useWarnings } from "./useWarnings";
 
@@ -11,7 +11,7 @@ export function useViewChangeEffect() {
   const colorSeed = useRecoilValue(fos.colorSeed);
   const datasetName = useRecoilValue(fos.datasetName);
   const [brainKey, setBrainKey] = useBrainResult();
-  const [pointField, setPointField] = usePointField();
+  const [pointsField, setPointsField] = usePointsField();
   const [labelField] = useColorByField();
   const view = useRecoilValue(fos.view);
   const slices = useRecoilValue(fos.currentSlices(false));
@@ -73,7 +73,7 @@ export function useViewChangeEffect() {
 
         setLoadingPlotError(null);
         setLoadedPlot(res);
-        setPointField(res.point_field);
+        setPointsField(res.points_field);
       })
       .finally(() => setLoadingPlot(false));
   }, [datasetName, brainKey, labelField, view, colorSeed, slices, filters]);
