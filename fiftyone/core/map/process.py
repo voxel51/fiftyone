@@ -18,6 +18,7 @@ from tqdm.auto import tqdm
 import fiftyone as fo
 import fiftyone.core.utils as fou
 
+from .batcher import initialize_batches
 from .map import MapBackend
 from .sequential import SequentialMapBackend
 
@@ -167,7 +168,7 @@ class ProcessMapBackend(MapBackend):
             dataset_name = sample_collection.name
             view_stages = None
 
-        batches, num_workers, num_samples = _init_batches(
+        batches, num_workers, num_samples = initialize_batches(
             sample_collection,
             shard_method=shard_method,
             num_workers=num_workers,
@@ -285,44 +286,6 @@ def _map_samples_single(
         return sequential_backend.update_samples(
             sample_collection, map_fcn, progress=progress
         )
-
-
-def _init_batches(
-    sample_collection,
-    shard_method="id",
-    num_workers=None,
-):
-    if shard_method == "slice":
-        n = len(sample_collection)
-    else:
-        ids = sample_collection.values("id")
-        n = len(ids)
-
-    if num_workers is None:
-        num_workers = fou.recommend_process_pool_workers()
-
-    # Split collection into exactly `num_workers` shards
-    edges = [int(round(b)) for b in np.linspace(0, n, num_workers + 1)]
-
-    if shard_method == "slice":
-        # Slice batches
-        slices = list(zip(edges[:-1], edges[1:]))
-    else:
-        # ID batches
-        slices = [ids[i:j] for i, j in zip(edges[:-1], edges[1:])]
-
-    num_shards = len(slices)
-    batches = list(
-        zip(
-            range(num_shards),
-            itertools.repeat(num_shards),
-            slices,
-        )
-    )
-
-    num_workers = min(num_workers, num_shards)
-
-    return batches, num_workers, n
 
 
 def _init_worker(dataset_name, view_stages, m, bc, sc, q, s, p, l):
