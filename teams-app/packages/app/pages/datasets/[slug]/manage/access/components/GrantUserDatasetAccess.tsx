@@ -143,7 +143,7 @@ function GrantUserDatasetAccess() {
         )}
         {showTextForCanManageOrg && (
           <Typography variant="body1">
-            <NextLink href={TEAM_USERS_PATH} passHref>
+            <NextLink href={TEAM_USERS_PATH} passHref legacyBehavior>
               <Link>Click here</Link>
             </NextLink>
             {` ${INVITE_HELPER_TEXT_DATASET_ACCESS}`}

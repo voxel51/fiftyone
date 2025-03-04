@@ -86,12 +86,7 @@ describe("decodeOverlayOnDisk", () => {
       url: sampleSrcUrl,
       options: { priority: "low" },
     });
-    expect(decodeMaskOnDisk).toHaveBeenCalledWith(
-      mockBlob,
-      SEGMENTATION,
-      field,
-      COLORING
-    );
+    expect(decodeMaskOnDisk).toHaveBeenCalledWith(mockBlob, SEGMENTATION);
     expect(label.mask).toBeDefined();
     expect(label.mask.data).toBe(overlayMask);
     expect(label.mask.image).toBeInstanceOf(ArrayBuffer);
@@ -127,12 +122,7 @@ describe("decodeOverlayOnDisk", () => {
       url: sampleSrcUrl,
       options: { priority: "low" },
     });
-    expect(decodeMaskOnDisk).toHaveBeenCalledWith(
-      mockBlob,
-      HEATMAP,
-      field,
-      COLORING
-    );
+    expect(decodeMaskOnDisk).toHaveBeenCalledWith(mockBlob, HEATMAP);
     expect(label.map).toBeDefined();
     expect(label.map.data).toBe(overlayMask);
     expect(label.map.image).toBeInstanceOf(ArrayBuffer);

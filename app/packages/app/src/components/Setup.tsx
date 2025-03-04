@@ -79,7 +79,7 @@ session = fo.launch_app(dataset, port=${port})
 };
 
 const RemoteInstructions = () => {
-  const bashSnippet = `# Option 1: Configure port forwarding
+  const bashSnippet = `# Option 1: Configure port forwaring
 # Then open http://localhost:${port} in your web browser
 ssh -N -L ${port}:127.0.0.1:XXXX [<username>@]<hostname>
 

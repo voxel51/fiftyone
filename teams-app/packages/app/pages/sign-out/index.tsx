@@ -18,7 +18,7 @@ function SignOut() {
         }}
       >
         <Typography variant="body1">Signed out successfully!</Typography>
-        <Link href={SIGN_IN_ENDPOINT}>
+        <Link href={SIGN_IN_ENDPOINT} legacyBehavior>
           <Button variant="contained">Sign in</Button>
         </Link>
       </Box>

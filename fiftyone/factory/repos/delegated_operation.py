@@ -265,16 +265,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         )
         return DelegatedOperationDocument().from_pymongo(doc)
 
-    def set_log_upload_error(
-        self, _id: ObjectId, log_upload_error: str
-    ) -> DelegatedOperationDocument:
-        doc = self._collection.find_one_and_update(
-            filter={"_id": _id},
-            update={"$set": {"log_upload_error": log_upload_error}},
-            return_document=pymongo.ReturnDocument.AFTER,
-        )
-        return DelegatedOperationDocument().from_pymongo(doc)
-
     def update_run_state(
         self,
         _id: ObjectId,

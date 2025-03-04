@@ -62,7 +62,7 @@ async def add_event_listener(
         while True:
             disconnected = await request.is_disconnected()
             if disconnected:
-                await disconnect(
+                await _disconnect(
                     data.is_app,
                     data.request_listeners,
                 )
@@ -90,29 +90,18 @@ async def add_event_listener(
             await asyncio.sleep(0.2)
 
     except asyncio.CancelledError as e:
-        await disconnect(data.is_app, data.request_listeners)
+        await _disconnect(data.is_app, data.request_listeners)
         raise e
 
 
-async def disconnect(
+async def _disconnect(
     is_app: bool, listeners: t.Set[t.Tuple[str, Listener]]
 ) -> None:
-    """Disconnect a listener
-
-    Args:
-        is_app: whether is an app listener
-        listeners: events the listener has subscribed to
-
-    Returns:
-        A closed session event or None
-    """
     for event_name, listener in listeners:
         get_listeners()[event_name].remove(listener)
 
     if is_app:
         decrement_app_count()
 
-        if not get_app_count() and focx._get_context() == focx._NONE:
-            return await dispatch_event(None, CloseSession())
-
-    return None
+        if get_app_count() and focx._get_context() == focx._NONE:
+            await dispatch_event(None, CloseSession())

@@ -106,7 +106,7 @@ export default function ProfileMenu() {
         transformOrigin={{ horizontal: "right", vertical: "top" }}
         anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
       >
-        <NextLink href="/settings/account">
+        <NextLink href="/settings/account" legacyBehavior>
           <MenuItem>
             <Box display="flex" flexDirection="row">
               <Box>
@@ -188,7 +188,7 @@ export default function ProfileMenu() {
           </Box>
           Switch to {nextMode} theme
         </MenuItem>
-        <NextLink href="/settings/account">
+        <NextLink href="/settings/account" legacyBehavior>
           <MenuItem>
             <Box display="flex">
               <ListItemIcon sx={{ display: "flex", justifyContent: "center" }}>

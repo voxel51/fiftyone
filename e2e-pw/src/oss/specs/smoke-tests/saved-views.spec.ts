@@ -78,25 +78,19 @@ const test = base.extend<{ savedViews: SavedViewsPom }>({
   },
 });
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
+test.describe("saved views", () => {
+  test.beforeAll(async ({ fiftyoneLoader }) => {
+    await fiftyoneLoader.executePythonCode(`
+      import fiftyone as fo
 
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
-  await foWebServer.startWebServer();
+      dataset_name = "${datasetName}"
+      dataset = fo.Dataset(name=dataset_name)
+      dataset.persistent = True
 
-  await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
+      dataset.add_sample(fo.Sample(filepath="image1.jpg"))
+    `);
+  });
 
-    dataset_name = "${datasetName}"
-    dataset = fo.Dataset(name=dataset_name)
-    dataset.persistent = True
-
-    dataset.add_sample(fo.Sample(filepath="image1.jpg"))
-  `);
-});
-
-test.describe.serial("saved views", () => {
   test.beforeEach(async ({ page, fiftyoneLoader, savedViews }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await deleteSavedView(savedViews, testView.name);

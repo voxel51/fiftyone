@@ -65,7 +65,7 @@ export default function BasicTable({
             const hasOnHover = typeof onHover === "function";
             const hasLink = typeof link === "string";
             const clickable = hasLink || hasOnClick;
-            const linkComponent = useMUILink ? MUILink : Link;
+            const linkComponent = useMUILink ? MUILink : (props) => <Link {...props} legacyBehavior />;
 
             return (
               <TableRow

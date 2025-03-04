@@ -83,7 +83,7 @@ export default function MainTitle({ noBorder }) {
         alignItems="center"
         data-cy="main-title"
       >
-        <NextLink href="/datasets" passHref>
+        <NextLink href="/datasets" passHref legacyBehavior>
           <Link sx={{ pr: 2, lineHeight: 0 }}>
             <img
               data-cy="main-title-logo"
@@ -95,7 +95,7 @@ export default function MainTitle({ noBorder }) {
           </Link>
         </NextLink>
         <Box display="flex" alignItems="center">
-          <NextLink href="/datasets" passHref>
+          <NextLink href="/datasets" passHref legacyBehavior>
             <Link style={{ textDecoration: "none" }}>
               <Typography
                 variant="body2"

@@ -212,6 +212,7 @@ function DatasetAccessInfo(props: DatasetAccessInfoProps) {
         <NextLink
           href={`/datasets/${datasetIdentifier}/manage/access`}
           passHref
+          legacyBehavior
         >
           <Button
             variant="contained"
@@ -229,6 +230,7 @@ function DatasetAccessInfo(props: DatasetAccessInfoProps) {
         <NextLink
           href={`/datasets/${datasetIdentifier}/manage/access`}
           passHref
+          legacyBehavior
         >
           <Button
             variant="contained"

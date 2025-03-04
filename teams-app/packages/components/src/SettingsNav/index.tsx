@@ -88,7 +88,7 @@ function SettingsNavItems({ currentPath, items }) {
 function SettingsNavItem({ selected, href, id, label, isSubItem }) {
   return (
     <ListItem sx={isSubItem ? { paddingLeft: "4rem" } : {}}>
-      <Link href={href} style={{ width: "100%" }}>
+      <Link href={href} legacyBehavior>
         <ListItemButton selected={selected}>
           <ListItemText id={id} primary={label} />
         </ListItemButton>

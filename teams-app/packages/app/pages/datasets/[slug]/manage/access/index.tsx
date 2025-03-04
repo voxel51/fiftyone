@@ -66,7 +66,7 @@ function Access() {
               <br />
               {canManageOrganization ? (
                 <>
-                  <NextLink href="/settings/team/users" passHref>
+                  <NextLink href="/settings/team/users" passHref legacyBehavior>
                     <Link>Manage team settings</Link>
                   </NextLink>
                 </>

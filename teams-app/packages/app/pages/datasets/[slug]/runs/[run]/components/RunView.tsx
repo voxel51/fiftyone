@@ -33,7 +33,7 @@ export default function RunView(props: RunViewPropsType) {
       )}
       {previewModeAvailable && !rawMode && (
         <Box pl={1}>
-          <NextLink href={{ pathname: SAMPLES_NEXT_PATH, query }} passHref>
+          <NextLink href={{ pathname: SAMPLES_NEXT_PATH, query }} passHref legacyBehavior>
             <Link>
               <Button variant="contained">Load view</Button>
             </Link>

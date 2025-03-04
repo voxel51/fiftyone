@@ -18,10 +18,10 @@ jobs:
         with:
           submodules: true
 
-      - name: Setup node 18
+      - name: Setup node 22
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache

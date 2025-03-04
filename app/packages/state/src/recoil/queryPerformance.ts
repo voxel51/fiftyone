@@ -220,15 +220,24 @@ export const defaultQueryPerformanceConfig = selector({
   get: ({ get }) => get(config).defaultQueryPerformance,
 });
 
-export const queryPerformance = selector<boolean>({
-  key: "queryPerformance",
-  get: ({ get }) => get(queryPerformanceSetting) && get(isQueryPerformantView),
-  set: ({ set }, value) => set(queryPerformanceSetting, value),
+const queryPerformanceStore = atomFamily<boolean, string>({
+  key: "queryPerformanceStore",
+  default: undefined,
+  effects: (datasetId) => [
+    getBrowserStorageEffectForKey(`queryPerformance-${datasetId}`, {
+      sessionStorage: true,
+      valueClass: "boolean",
+    }),
+  ],
 });
 
-export const queryPerformanceSetting = selector<boolean>({
-  key: "queryPerformanceSetting",
+export const queryPerformance = selector<boolean>({
+  key: "queryPerformance",
   get: ({ get }) => {
+    if (get(view).length) {
+      return false;
+    }
+
     if (!get(enableQueryPerformanceConfig)) {
       return false;
     }
@@ -246,15 +255,4 @@ export const queryPerformanceSetting = selector<boolean>({
       value instanceof DefaultValue ? undefined : value
     );
   },
-});
-
-const queryPerformanceStore = atomFamily<boolean, string>({
-  key: "queryPerformanceStore",
-  default: undefined,
-  effects: (datasetId) => [
-    getBrowserStorageEffectForKey(`queryPerformance-${datasetId}`, {
-      sessionStorage: true,
-      valueClass: "boolean",
-    }),
-  ],
 });

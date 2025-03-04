@@ -129,7 +129,7 @@ function WidgetItem(props: DatasetHighlightsWidgetItem) {
 
 function WidgetLink({ to, ...props }) {
   return (
-    <NextLink href={to} passHref>
+    <NextLink href={to} passHref legacyBehavior>
       <Link {...props} />
     </NextLink>
   );

@@ -24,12 +24,7 @@ const test = base.extend<{
   },
 });
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
-  await foWebServer.startWebServer();
+test.beforeAll(async ({ fiftyoneLoader }) => {
   await fiftyoneLoader.executePythonCode(`
     import fiftyone as fo
     dataset = fo.Dataset("${datasetName}")
@@ -59,92 +54,85 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test.describe.serial("operator prompt", () => {
-  test("Prompt: Cancel modal", async ({
-    operatorsBrowser,
-    operatorsPrompt,
-  }) => {
-    await operatorsBrowser.show();
-    await operatorsBrowser.search("E2E");
-    await operatorsBrowser.choose("E2E: Say hello in modal");
-    await operatorsPrompt.locator.locator("input").first().fill("E2E");
-    await operatorsPrompt.assert.isOpen();
-    await operatorsPrompt.cancel();
-    await operatorsPrompt.assert.isClosed();
-  });
+test("Prompt: Cancel modal", async ({ operatorsBrowser, operatorsPrompt }) => {
+  await operatorsBrowser.show();
+  await operatorsBrowser.search("E2E");
+  await operatorsBrowser.choose("E2E: Say hello in modal");
+  await operatorsPrompt.locator.locator("input").first().fill("E2E");
+  await operatorsPrompt.assert.isOpen();
+  await operatorsPrompt.cancel();
+  await operatorsPrompt.assert.isClosed();
+});
 
-  test("Prompt: Say hello in modal", async ({
-    operatorsBrowser,
-    operatorsPrompt,
-  }) => {
-    await operatorsBrowser.show();
-    await operatorsBrowser.search("E2E");
-    await operatorsBrowser.choose("E2E: Say hello in modal");
-    await operatorsPrompt.assert.isOpen();
-    await operatorsPrompt.locator
-      .locator("input")
-      .first()
-      .pressSequentially("E2E");
-    await operatorsPrompt.assert.isValidated();
-    await operatorsPrompt.execute();
-    await operatorsPrompt.assert.isExecuting();
-    await expect(operatorsPrompt.content).toContainText("Message:Hi E2E!");
-    await operatorsPrompt.close();
-    await operatorsPrompt.assert.isClosed();
-  });
+test("Prompt: Say hello in modal", async ({
+  operatorsBrowser,
+  operatorsPrompt,
+}) => {
+  await operatorsBrowser.show();
+  await operatorsBrowser.search("E2E");
+  await operatorsBrowser.choose("E2E: Say hello in modal");
+  await operatorsPrompt.assert.isOpen();
+  await operatorsPrompt.locator
+    .locator("input")
+    .first()
+    .pressSequentially("E2E");
+  await operatorsPrompt.assert.isValidated();
+  await operatorsPrompt.execute();
+  await operatorsPrompt.assert.isExecuting();
+  await expect(operatorsPrompt.content).toContainText("Message:Hi E2E!");
+  await operatorsPrompt.close();
+  await operatorsPrompt.assert.isClosed();
+});
 
-  test("Prompt: Cancel drawer", async ({
-    operatorsBrowser,
-    operatorsPromptDrawer,
-  }) => {
-    await operatorsBrowser.show();
-    await operatorsBrowser.search("E2E");
-    await operatorsBrowser.choose("E2E: Say hello in drawer");
-    await operatorsPromptDrawer.locator.locator("input").first().fill("E2E");
-    await operatorsPromptDrawer.assert.isOpen();
-    await operatorsPromptDrawer.cancel();
-    await operatorsPromptDrawer.assert.isClosed();
-  });
+test("Prompt: Cancel drawer", async ({
+  operatorsBrowser,
+  operatorsPromptDrawer,
+}) => {
+  await operatorsBrowser.show();
+  await operatorsBrowser.search("E2E");
+  await operatorsBrowser.choose("E2E: Say hello in drawer");
+  await operatorsPromptDrawer.locator.locator("input").first().fill("E2E");
+  await operatorsPromptDrawer.assert.isOpen();
+  await operatorsPromptDrawer.cancel();
+  await operatorsPromptDrawer.assert.isClosed();
+});
 
-  test("Prompt: Say hello in drawer", async ({
-    operatorsBrowser,
-    operatorsPromptDrawer,
-  }) => {
-    await operatorsBrowser.show();
-    await operatorsBrowser.search("E2E");
-    await operatorsBrowser.choose("E2E: Say hello in drawer");
-    await operatorsPromptDrawer.assert.isOpen();
-    await operatorsPromptDrawer.locator
-      .locator("input")
-      .first()
-      .pressSequentially("E2E");
-    await operatorsPromptDrawer.assert.isValidated();
-    await operatorsPromptDrawer.execute();
-    await operatorsPromptDrawer.assert.isExecuting();
-    await expect(operatorsPromptDrawer.content).toContainText(
-      "Message:Hi E2E!"
-    );
-    await operatorsPromptDrawer.close();
-    await operatorsPromptDrawer.assert.isClosed();
-  });
+test("Prompt: Say hello in drawer", async ({
+  operatorsBrowser,
+  operatorsPromptDrawer,
+}) => {
+  await operatorsBrowser.show();
+  await operatorsBrowser.search("E2E");
+  await operatorsBrowser.choose("E2E: Say hello in drawer");
+  await operatorsPromptDrawer.assert.isOpen();
+  await operatorsPromptDrawer.locator
+    .locator("input")
+    .first()
+    .pressSequentially("E2E");
+  await operatorsPromptDrawer.assert.isValidated();
+  await operatorsPromptDrawer.execute();
+  await operatorsPromptDrawer.assert.isExecuting();
+  await expect(operatorsPromptDrawer.content).toContainText("Message:Hi E2E!");
+  await operatorsPromptDrawer.close();
+  await operatorsPromptDrawer.assert.isClosed();
+});
 
-  test("Prompt: Progress", async ({
-    operatorsBrowser,
-    operatorsPrompt,
-    operatorsPromptViewModal,
-  }) => {
-    await operatorsBrowser.show();
-    await operatorsBrowser.search("E2E");
-    await operatorsBrowser.choose("E2E: Progress");
-    await operatorsPrompt.assert.isExecuting();
-    await expect(operatorsPromptViewModal.content).toContainText(
-      "Loading 1 of 2"
-    );
-    await expect(operatorsPromptViewModal.content).toContainText(
-      "Loading 2 of 2"
-    );
-    await operatorsPromptViewModal.done();
-    await operatorsPrompt.assert.isClosed();
-    await operatorsPromptViewModal.assert.isClosed();
-  });
+test("Prompt: Progress", async ({
+  operatorsBrowser,
+  operatorsPrompt,
+  operatorsPromptViewModal,
+}) => {
+  await operatorsBrowser.show();
+  await operatorsBrowser.search("E2E");
+  await operatorsBrowser.choose("E2E: Progress");
+  await operatorsPrompt.assert.isExecuting();
+  await expect(operatorsPromptViewModal.content).toContainText(
+    "Loading 1 of 2"
+  );
+  await expect(operatorsPromptViewModal.content).toContainText(
+    "Loading 2 of 2"
+  );
+  await operatorsPromptViewModal.done();
+  await operatorsPrompt.assert.isClosed();
+  await operatorsPromptViewModal.assert.isClosed();
 });

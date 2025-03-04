@@ -47,7 +47,7 @@ const GroupsTableRow: FC<Props> = (props) => {
   );
 
   return (
-    <Link href={`/settings/team/groups/${slug}`} title={"See group"}>
+    <Link href={`/settings/team/groups/${slug}`} title={"See group"} legacyBehavior>
       <TableRow
         key={slug}
         sx={{

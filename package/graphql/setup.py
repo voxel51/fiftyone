@@ -37,7 +37,7 @@ setup(
     long_description="Supporting package for [FiftyOne](https://pypi.org/project/fiftyone).",
     long_description_content_type="text/markdown",
     packages="fiftyone.graphql",
-    install_requires=["strawberry-graphql==0.257.0"],
+    install_requires=["strawberry-graphql==0.243.0"],
     include_package_data=True,
     classifiers=[
         "Intended Audience :: Developers",
