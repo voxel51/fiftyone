@@ -3221,7 +3221,7 @@ class SampleCollection(object):
         num_workers=None,
         shard_method="id",
         progress=None,
-        backend: str | fomp.MapBackendType = None,
+        backend: str | fomp.MapBackendType = fomp.MapBackendType.sequential,
     ) -> Iterator[Any]:
         """
         Applies map_samples with specified backend, defaulting to `sequential`.
@@ -3232,15 +3232,11 @@ class SampleCollection(object):
             num_workers (None): Number of workers (if applicable).
             shard_method ("id"): Method for sharding ('id' or 'slice').
             progress (None): Whether to show a progress bar.
-            backend (None): Backend execution strategy, defaults to `sequential` if None.
+            backend (fiftyone.core.map.MapBackendType.sequential): Backend execution strategy, defaults to `sequential`.
 
         Returns:
             Iterator[Any]: Processed sample results.
         """
-        # Default to sequential if backend is not provided
-        if backend is None:
-            backend = fomp.MapBackendType.sequential
-
         return foum.map_samples(
             self, map_fcn, save, num_workers, shard_method, progress, backend
         )
@@ -3251,7 +3247,7 @@ class SampleCollection(object):
         num_workers=None,
         shard_method="id",
         progress=None,
-        backend: str | fomp.MapBackendType = None,
+        backend: str | fomp.MapBackendType = fomp.MapBackendType.sequential,
     ):
         """
         Applies update_samples with specified backend, defaulting to `sequential`.
@@ -3261,12 +3257,8 @@ class SampleCollection(object):
             num_workers (None): Number of workers (if applicable).
             shard_method ("id"): Method for sharding ('id' or 'slice').
             progress (None): Whether to show a progress bar.
-            backend (None): Backend execution strategy, defaults to `sequential` if None.
+            backend (fiftyone.core.map.MapBackendType.sequential): Backend execution strategy, defaults to `sequential`.
         """
-        # Default to sequential if backend is not provided
-        if backend is None:
-            backend = fomp.MapBackendType.sequential
-
         return foum.update_samples(
             self, map_fcn, num_workers, shard_method, progress, backend
         )
