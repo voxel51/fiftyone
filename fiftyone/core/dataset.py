@@ -7,6 +7,7 @@ FiftyOne datasets.
 """
 
 from collections import defaultdict
+from functools import partial
 import contextlib
 from datetime import datetime
 import fnmatch
@@ -3226,9 +3227,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             the ID of the sample in the dataset
         """
-        ids = self._add_samples_batch(
-            [sample], expand_schema, dynamic, validate
+        # call manually because this is typically done by the batcher
+        sample = self._transform_sample(
+            sample,
+            expand_schema=expand_schema,
+            dynamic=dynamic,
+            validate=validate,
+            copy=True,
         )
+
+        ids = self._add_samples_batch([sample])
         return ids[0]
 
     def add_samples(
@@ -3270,16 +3278,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if num_samples is None:
             num_samples = samples
 
+        transform_fn = partial(
+            self._transform_sample,
+            expand_schema=expand_schema,
+            dynamic=dynamic,
+            validate=validate,
+            copy=True,
+        )
+
+        calculate_size_fn = partial(self._calculate_size)
+
         batcher = fou.get_default_batcher(
-            samples, progress=progress, total=num_samples
+            samples,
+            progress=progress,
+            total=num_samples,
+            transform_fn=transform_fn,
+            size_calc_fn=calculate_size_fn,
         )
 
         sample_ids = []
         with batcher:
             for batch in batcher:
-                _ids = self._add_samples_batch(
-                    batch, expand_schema, dynamic, validate, batcher=batcher
-                )
+                _ids = self._add_samples_batch(batch, batcher=batcher)
                 sample_ids.extend(_ids)
 
         return sample_ids
@@ -3336,26 +3356,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
         return self.skip(num_samples).values("id")
 
-    def _add_samples_batch(
-        self, samples, expand_schema, dynamic, validate, batcher=None
-    ):
-        samples = [s.copy() if s._in_db else s for s in samples]
-
-        if self.media_type is None and samples:
-            self.media_type = _get_media_type(samples[0])
-
-        if expand_schema:
-            self._expand_schema(samples, dynamic)
-
-        if validate:
-            self._validate_samples(samples)
-
-        now = datetime.utcnow()
-        dicts = [
-            self._make_dict(sample, created_at=now, last_modified_at=now)
-            for sample in samples
-        ]
-
+    def _add_samples_batch(self, samples, batcher=None):
+        dicts = [sample[1] for sample in samples]
         try:
             # adds `_id` to each dict
             self._sample_collection.insert_many(dicts)
@@ -3363,7 +3365,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             msg = bwe.details["writeErrors"][0]["errmsg"]
             raise ValueError(msg) from bwe
 
-        for sample, d in zip(samples, dicts):
+        for sample, d in samples:
             doc = self._sample_dict_to_doc(d)
             sample._set_backing_doc(doc, dataset=self)
             if sample.media_type == fom.VIDEO:
@@ -3386,36 +3388,62 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if num_samples is None:
             num_samples = samples
 
-        batcher = fou.get_default_batcher(samples, progress=progress)
+        transform_fn = partial(
+            self._transform_sample,
+            expand_schema=expand_schema,
+            dynamic=dynamic,
+            validate=validate,
+            copy=False,
+        )
+
+        calculate_size_fn = partial(self._calculate_size)
+
+        batcher = fou.get_default_batcher(
+            samples,
+            progress=progress,
+            transform_fn=transform_fn,
+            size_calc_fn=calculate_size_fn,
+        )
 
         with batcher:
             for batch in batcher:
-                self._upsert_samples_batch(
-                    batch, expand_schema, dynamic, validate, batcher=batcher
-                )
+                self._upsert_samples_batch(batch, batcher=batcher)
 
-    def _upsert_samples_batch(
-        self, samples, expand_schema, dynamic, validate, batcher=None
+    def _transform_sample(
+        self, sample, expand_schema, dynamic, validate, copy=False
     ):
-        if self.media_type is None and samples:
-            self.media_type = _get_media_type(samples[0])
+        """Transforms the given sample and returns the transformed sample and dict as a pair"""
+
+        if copy and sample._in_db:
+            sample = sample.copy()
+
+        if self.media_type is None and sample:
+            self.media_type = _get_media_type(sample[0])
 
         if expand_schema:
-            self._expand_schema(samples, dynamic)
+            self._expand_schema(sample, dynamic)
 
         if validate:
-            self._validate_samples(samples)
+            self._validate_samples(sample)
 
         now = datetime.utcnow()
 
-        dicts = []
-        ops = []
-        for sample in samples:
-            d = self._make_dict(
+        return (
+            sample,
+            self._make_dict(
                 sample, include_id=True, created_at=now, last_modified_at=now
-            )
-            dicts.append(d)
+            ),
+        )
 
+    def _calculate_size(self, sample):
+        try:
+            return len(json_util.dumps(sample[1]))
+        except Exception:
+            return len(str(sample[1]))
+
+    def _upsert_samples_batch(self, samples, batcher=None):
+        ops = []
+        for sample, d in samples:
             if sample.id:
                 ops.append(ReplaceOne({"_id": sample._id}, d, upsert=True))
             else:
@@ -3428,7 +3456,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             msg = bwe.details["writeErrors"][0]["errmsg"]
             raise ValueError(msg) from bwe
 
-        for sample, d in zip(samples, dicts):
+        for sample, d in samples:
             doc = self._sample_dict_to_doc(d)
             sample._set_backing_doc(doc, dataset=self)
 
@@ -3436,7 +3464,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample.frames.save()
 
         if batcher and batcher.manual_backpressure:
-            batcher.apply_backpressure(dicts)
+            batcher.apply_backpressure([sample[1] for sample in samples])
 
     def _make_dict(
         self,

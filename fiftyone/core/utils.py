@@ -1073,7 +1073,12 @@ class Batcher(abc.ABC):
     manual_backpressure = False
 
     def __init__(
-        self, iterable, return_views=False, progress=False, total=None
+        self,
+        iterable,
+        return_views=False,
+        progress=False,
+        total=None,
+        transform_fn=None,
     ):
         import fiftyone.core.collections as foc
 
@@ -1095,6 +1100,7 @@ class Batcher(abc.ABC):
         self._render_progress = bool(progress)  # callback function: True
         self._last_offset = None
         self._num_samples = None
+        self._transform_fn = transform_fn
 
     def __enter__(self):
         self._in_context = True
@@ -1132,7 +1138,14 @@ class Batcher(abc.ABC):
                 )
                 self._render_progress = False
 
+        if self._transform_fn is not None:
+            self._iter = self._apply_transform(self)
+
         return self
+
+    def _apply_transform(self, iterator):
+        for item in iterator:
+            yield self._transform_fn(item)
 
     @abc.abstractmethod
     def __next__(self):
@@ -1205,9 +1218,14 @@ class BaseDynamicBatcher(BaseBatcher):
         return_views=False,
         progress=False,
         total=None,
+        transform_fn=None,
     ):
         super().__init__(
-            iterable, return_views=return_views, progress=progress, total=total
+            iterable,
+            return_views=return_views,
+            progress=progress,
+            total=total,
+            transform_fn=transform_fn,
         )
 
         self.target_measurement = target_measurement
@@ -1333,6 +1351,7 @@ class LatencyDynamicBatcher(BaseDynamicBatcher):
         return_views=False,
         progress=False,
         total=None,
+        transform_fn=None,
     ):
         super().__init__(
             iterable,
@@ -1344,6 +1363,7 @@ class LatencyDynamicBatcher(BaseDynamicBatcher):
             return_views=return_views,
             progress=progress,
             total=total,
+            transform_fn=transform_fn,
         )
 
         self._last_time = None
@@ -1444,6 +1464,7 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
         return_views=False,
         progress=False,
         total=None,
+        transform_fn=None,
     ):
         # If unset or larger, max batch size must be 1 byte per object
         if max_batch_size is None or max_batch_size > target_size:
@@ -1458,6 +1479,7 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
             return_views=return_views,
             progress=progress,
             total=total,
+            transform_fn=transform_fn,
         )
         self._last_batch_content_size = 0
         self._manually_applied_backpressure = True
@@ -1525,9 +1547,14 @@ class StaticBatcher(BaseBatcher):
         return_views=False,
         progress=False,
         total=None,
+        transform_fn=None,
     ):
         super().__init__(
-            iterable, return_views=return_views, progress=progress, total=total
+            iterable,
+            return_views=return_views,
+            progress=progress,
+            total=total,
+            transform_fn=transform_fn,
         )
 
         self.batch_size = batch_size
@@ -1588,9 +1615,14 @@ class ContentSizeBatcher(Batcher):
         max_batch_size=None,
         progress=False,
         total=None,
+        transform_fn=None,
     ):
         super().__init__(
-            iterable, return_views=False, progress=progress, total=total
+            iterable,
+            return_views=False,
+            progress=progress,
+            total=total,
+            transform_fn=transform_fn,
         )
         self.max_batch_size = max_batch_size
         self.target_size = target_size
@@ -1658,6 +1690,7 @@ def get_default_batcher(
     progress=False,
     total=None,
     size_calc_fn=default_calculate_size,
+    transform_fn=None,
 ):
     """Returns a :class:`Batcher` over ``iterable`` using defaults from your
     FiftyOne config.
@@ -1691,6 +1724,7 @@ def get_default_batcher(
             max_batch_size=100000,
             progress=progress,
             total=total,
+            transform_fn=transform_fn,
         )
     elif default_batcher == "size":
         target_content_size = fo.config.batcher_target_size_bytes
@@ -1701,11 +1735,16 @@ def get_default_batcher(
             progress=progress,
             size_calculation_fn=size_calc_fn,
             total=total,
+            transform_fn=transform_fn,
         )
     elif default_batcher == "static":
         batch_size = fo.config.batcher_static_size
         return StaticBatcher(
-            iterable, batch_size=batch_size, progress=progress, total=total
+            iterable,
+            batch_size=batch_size,
+            progress=progress,
+            total=total,
+            transform_fn=transform_fn,
         )
     else:
         raise ValueError(
