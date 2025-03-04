@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<eaed7c345d4f7bd68c6ec6e3e4e3f7a8>>
+ * @generated SignedSource<<734cbc614c1150b88acdc8403d03bed2>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,6 +18,7 @@ export type AggregationForm = {
   index?: number | null;
   mixed: boolean;
   paths: ReadonlyArray<string>;
+  qp?: boolean | null;
   sampleIds: ReadonlyArray<string>;
   slice?: string | null;
   slices?: ReadonlyArray<string> | null;
@@ -78,7 +79,7 @@ export type aggregationsQuery$data = {
     readonly values: ReadonlyArray<{
       readonly count: number;
       readonly value: string;
-    }>;
+    }> | null;
   } | {
     // This will never be '%other', but we need some
     // value in case none of the concrete values match.
