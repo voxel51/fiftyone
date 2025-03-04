@@ -7,6 +7,7 @@ import type { PcdAsset } from "../../hooks";
 import { useFo3dContext } from "../context";
 import { getResolvedUrlForFo3dAsset } from "../utils";
 import { usePcdMaterial } from "./use-pcd-material";
+import { useFoLoader } from "../../hooks/use-fo-loaders";
 
 export const Pcd = ({
   name,
@@ -32,7 +33,7 @@ export const Pcd = ({
     [pcdPath, preTransformedPcdPath, fo3dRoot]
   );
 
-  const points_ = useLoader(PCDLoader, pcdUrl);
+  const points_ = useFoLoader(PCDLoader, pcdUrl);
 
   // todo: hack until https://github.com/pmndrs/react-three-fiber/issues/245 is fixed
   const points = useMemo(() => points_.clone(false), [points_]);
