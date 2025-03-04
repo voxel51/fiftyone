@@ -1139,7 +1139,7 @@ class Batcher(abc.ABC):
                 self._render_progress = False
 
         if self._transform_fn is not None:
-            self._iter = self._apply_transform(self)
+            self._iter = self._apply_transform(self._iter)
 
         return self
 
@@ -1172,7 +1172,10 @@ class BaseBatcher(Batcher):
             offset = self._last_offset
             self._last_offset += batch_size
 
-            return self.iterable[offset : (offset + batch_size)]
+            batch = self.iterable[offset : (offset + batch_size)]
+            if self._transform_fn is not None:
+                batch = [self._transform_fn(item) for item in batch]
+            return batch
 
         batch = []
         idx = 0
@@ -1338,6 +1341,7 @@ class LatencyDynamicBatcher(BaseDynamicBatcher):
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
+        transform_fn (None): a transform function to apply to each item of the batch
     """
 
     def __init__(
@@ -1449,6 +1453,7 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
+        transform_fn (None): a transform function to apply to each item of the batch
     """
 
     manual_backpressure = True
@@ -1538,6 +1543,7 @@ class StaticBatcher(BaseBatcher):
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
+        transform_fn (None): a transform function to apply to each item of the batch
     """
 
     def __init__(
@@ -1605,6 +1611,7 @@ class ContentSizeBatcher(Batcher):
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
+        transform_fn (None): a transform function to apply to each item of the batch
     """
 
     def __init__(
@@ -1709,6 +1716,7 @@ def get_default_batcher(
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
+        transform_fn (None): a transform function to apply to each item of the batch
 
     Returns:
         a :class:`Batcher`

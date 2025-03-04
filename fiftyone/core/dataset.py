@@ -3418,13 +3418,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample = sample.copy()
 
         if self.media_type is None and sample:
-            self.media_type = _get_media_type(sample[0])
+            self.media_type = _get_media_type(sample)
 
         if expand_schema:
             self._expand_schema(sample, dynamic)
 
         if validate:
-            self._validate_samples(sample)
+            self._validate_sample(sample)
 
         now = datetime.utcnow()
 
@@ -7815,58 +7815,55 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 embedded_doc_type=label_cls,
             )
 
-    def _expand_schema(self, samples, dynamic):
+    def _expand_schema(self, sample, dynamic):
         expanded = False
 
         if not dynamic:
             schema = self.get_field_schema(include_private=True)
 
-        for sample in samples:
-            for field_name in sample._get_field_names(include_private=True):
-                if field_name == "_id":
-                    continue
+        for field_name in sample._get_field_names(include_private=True):
+            if field_name == "_id":
+                continue
 
-                value = sample[field_name]
+            value = sample[field_name]
 
-                if value is None:
-                    continue
+            if value is None:
+                continue
 
-                if isinstance(value, fog.Group):
-                    self._expand_group_schema(
-                        field_name, value.name, sample.media_type
-                    )
+            if isinstance(value, fog.Group):
+                self._expand_group_schema(
+                    field_name, value.name, sample.media_type
+                )
 
-                if (
-                    self.media_type == fom.GROUP
-                    and sample.media_type
-                    not in set(self.group_media_types.values())
-                ):
-                    expanded |= self._sample_doc_cls.merge_field_schema(
-                        {
-                            "metadata": fo.EmbeddedDocumentField(
-                                fome.get_metadata_cls(sample.media_type)
-                            )
-                        },
-                        validate=False,
-                    )
+            if self.media_type == fom.GROUP and sample.media_type not in set(
+                self.group_media_types.values()
+            ):
+                expanded |= self._sample_doc_cls.merge_field_schema(
+                    {
+                        "metadata": fo.EmbeddedDocumentField(
+                            fome.get_metadata_cls(sample.media_type)
+                        )
+                    },
+                    validate=False,
+                )
 
-                if not dynamic and field_name in schema:
-                    continue
+            if not dynamic and field_name in schema:
+                continue
 
-                if isinstance(value, fog.Group):
-                    expanded |= self._add_group_field(
-                        field_name, default=value.name
-                    )
-                else:
-                    expanded |= self._sample_doc_cls.add_implied_field(
-                        field_name, value, dynamic=dynamic, validate=False
-                    )
+            if isinstance(value, fog.Group):
+                expanded |= self._add_group_field(
+                    field_name, default=value.name
+                )
+            else:
+                expanded |= self._sample_doc_cls.add_implied_field(
+                    field_name, value, dynamic=dynamic, validate=False
+                )
 
-                if not dynamic:
-                    schema = self.get_field_schema(include_private=True)
+            if not dynamic:
+                schema = self.get_field_schema(include_private=True)
 
-            if sample.media_type == fom.VIDEO:
-                expanded |= self._expand_frame_schema(sample.frames, dynamic)
+        if sample.media_type == fom.VIDEO:
+            expanded |= self._expand_frame_schema(sample.frames, dynamic)
 
         if expanded:
             self._reload()
@@ -7932,85 +7929,82 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             return self._frame_doc_cls.from_dict(d, extended=False)
 
-    def _validate_samples(self, samples):
+    def _validate_sample(self, sample):
         schema = self.get_field_schema(include_private=True)
 
-        for sample in samples:
-            if (
-                self.media_type != fom.GROUP
-                and sample.media_type != self.media_type
-            ):
-                raise fom.MediaTypeError(
-                    "Sample media type '%s' does not match dataset media type "
-                    "'%s'" % (sample.media_type, self.media_type)
-                )
+        if (
+            self.media_type != fom.GROUP
+            and sample.media_type != self.media_type
+        ):
+            raise fom.MediaTypeError(
+                "Sample media type '%s' does not match dataset media type "
+                "'%s'" % (sample.media_type, self.media_type)
+            )
 
-            non_existent_fields = None
-            found_group = False
+        non_existent_fields = None
+        found_group = False
 
-            for field_name, value in sample.iter_fields(
-                include_timestamps=True
-            ):
-                if isinstance(value, fog.Group):
-                    if self.media_type != fom.GROUP:
-                        raise ValueError(
-                            "Only datasets with media type '%s' may contain "
-                            "Group fields" % fom.GROUP
-                        )
-
-                    if field_name != self.group_field:
-                        raise ValueError(
-                            "Dataset has no group field '%s'" % field_name
-                        )
-
-                    slice_media_type = self._doc.group_media_types.get(
-                        value.name,
-                        None,
+        for field_name, value in sample.iter_fields(include_timestamps=True):
+            if isinstance(value, fog.Group):
+                if self.media_type != fom.GROUP:
+                    raise ValueError(
+                        "Only datasets with media type '%s' may contain "
+                        "Group fields" % fom.GROUP
                     )
-                    if slice_media_type is None:
-                        raise ValueError(
-                            "Dataset has no group slice '%s'" % value.name
-                        )
-                    elif sample.media_type != slice_media_type:
-                        raise ValueError(
-                            "Sample media type '%s' does not match group "
-                            "slice '%s' media type '%s'"
-                            % (
-                                sample.media_type,
-                                value.name,
-                                slice_media_type,
-                            )
-                        )
 
-                    found_group = True
+                if field_name != self.group_field:
+                    raise ValueError(
+                        "Dataset has no group field '%s'" % field_name
+                    )
 
-                field = schema.get(field_name, None)
-                if field is None:
-                    if value is not None:
-                        if non_existent_fields is None:
-                            non_existent_fields = {field_name}
-                        else:
-                            non_existent_fields.add(field_name)
-                else:
-                    if value is not None or not field.null:
-                        try:
-                            field.validate(value)
-                        except Exception as e:
-                            raise ValueError(
-                                "Invalid value for field '%s'. Reason: %s"
-                                % (field_name, str(e))
-                            )
-
-            if non_existent_fields:
-                raise ValueError(
-                    "Fields %s do not exist on dataset '%s'"
-                    % (non_existent_fields, self.name)
+                slice_media_type = self._doc.group_media_types.get(
+                    value.name,
+                    None,
                 )
+                if slice_media_type is None:
+                    raise ValueError(
+                        "Dataset has no group slice '%s'" % value.name
+                    )
+                elif sample.media_type != slice_media_type:
+                    raise ValueError(
+                        "Sample media type '%s' does not match group "
+                        "slice '%s' media type '%s'"
+                        % (
+                            sample.media_type,
+                            value.name,
+                            slice_media_type,
+                        )
+                    )
 
-            if self.media_type == fom.GROUP and not found_group:
-                raise ValueError(
-                    "Found sample missing group field '%s'" % self.group_field
-                )
+                found_group = True
+
+            field = schema.get(field_name, None)
+            if field is None:
+                if value is not None:
+                    if non_existent_fields is None:
+                        non_existent_fields = {field_name}
+                    else:
+                        non_existent_fields.add(field_name)
+            else:
+                if value is not None or not field.null:
+                    try:
+                        field.validate(value)
+                    except Exception as e:
+                        raise ValueError(
+                            "Invalid value for field '%s'. Reason: %s"
+                            % (field_name, str(e))
+                        )
+
+        if non_existent_fields:
+            raise ValueError(
+                "Fields %s do not exist on dataset '%s'"
+                % (non_existent_fields, self.name)
+            )
+
+        if self.media_type == fom.GROUP and not found_group:
+            raise ValueError(
+                "Found sample missing group field '%s'" % self.group_field
+            )
 
     def reload(self):
         """Reloads the dataset and any in-memory samples from the database."""
