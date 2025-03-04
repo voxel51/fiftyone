@@ -12,7 +12,6 @@ from starlette.requests import Request
 
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.json as foj
-import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 from fiftyone.core.utils import run_sync_task
 import fiftyone.core.view as fov
@@ -31,7 +30,6 @@ class Frames(HTTPEndpoint):
         dataset = data.get("dataset")
         stages = data.get("view")
         sample_id = data.get("sampleId")
-        group_slice = data.get("slice", None)
 
         view = await fosv.get_view(
             dataset, stages=stages, extended_stages=extended, awaitable=True

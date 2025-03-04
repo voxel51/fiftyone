@@ -791,15 +791,19 @@ def _add_frame_labels_tags(path, field, view):
         items = "%s.%s" % (path, field.document_type._LABEL_LIST_FIELD)
 
     reduce = F(items).reduce(VALUE.extend(F("tags")), [])
-    view = view.set_field(
-        _LABEL_TAGS,
-        F(_LABEL_TAGS).extend(
-            F("frames").reduce(
-                VALUE.extend(F(items).exists().if_else(reduce, [])),
-                [],
-            )
-        ),
-        _allow_missing=True,
+    view = view.add_stage(
+        fosg.SetField(
+            _LABEL_TAGS,
+            F(_LABEL_TAGS).extend(
+                F("frames").reduce(
+                    VALUE.extend(F(items).exists().if_else(reduce, [])),
+                    [],
+                )
+            ),
+            # we are only counting "first frame" labels tags, frame limit is ok
+            _allow_limit=True,
+            _allow_missing=True,
+        )
     )
     return view
 
@@ -807,14 +811,18 @@ def _add_frame_labels_tags(path, field, view):
 def _add_frame_label_tags(path, field, view):
     path = path[len("frames.") :]
     tags = "%s.tags" % path
-    view = view.set_field(
-        _LABEL_TAGS,
-        F(_LABEL_TAGS).extend(
-            F("frames").reduce(
-                VALUE.extend((F(tags) != None).if_else(F(tags), [])), []
-            )
-        ),
-        _allow_missing=True,
+    view = view.add_stage(
+        fosg.SetField(
+            _LABEL_TAGS,
+            F(_LABEL_TAGS).extend(
+                F("frames").reduce(
+                    VALUE.extend((F(tags) != None).if_else(F(tags), [])), []
+                )
+            ),
+            # we are only counting "first frame" label tags, frame limit is ok
+            _allow_limit=True,
+            _allow_missing=True,
+        )
     )
     return view
 
