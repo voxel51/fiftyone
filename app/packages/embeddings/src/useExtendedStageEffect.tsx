@@ -4,7 +4,7 @@ import * as fos from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { fetchExtendedStage } from "./fetch";
 import { atoms as selectionAtoms } from "./usePlotSelection";
-import { usePointField } from "./useBrainResult";
+import { usePointsField } from "./useBrainResult";
 
 export default function useExtendedStageEffect() {
   const datasetName = useRecoilValue(fos.datasetName);
@@ -19,7 +19,7 @@ export default function useExtendedStageEffect() {
   });
   const slices = useRecoilValue(fos.currentSlices(false));
   const lassoPoints = useRecoilValue(selectionAtoms.lassoPoints);
-  const [pointField] = usePointField();
+  const [pointsField] = usePointsField();
 
   useEffect(() => {
     if (loadedPlot && Array.isArray(selection)) {
@@ -30,7 +30,7 @@ export default function useExtendedStageEffect() {
         selection,
         slices,
         lassoPoints,
-        pointField,
+        pointsField,
       }).then(async (res) => {
         const currentDataset = await getCurrentDataset();
         if (currentDataset !== datasetName) return;
@@ -44,7 +44,7 @@ export default function useExtendedStageEffect() {
     loadedPlot?.patches_field,
     view,
     selection,
-    pointField,
+    pointsField,
     lassoPoints,
   ]);
 }

@@ -235,31 +235,13 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
         return await run_sync_task(self._post_sync, data)
 
     def _post_sync(self, data):
-        point_field = data["pointField"]
         dataset_name = data["datasetName"]
         stages = data["view"]
         patches_field = data["patchesField"]  # patches field of plot, or None
         selected_ids = data["selection"]  # selected IDs in plot
         slices = data["slices"]
-        lassoPoints = data.get("lassoPoints", None)
-
-        if point_field:
-            lasso_points_as_tuples = _get_fiftyone_geowithin(lassoPoints)
-            stage = fos.Mongo(
-                [
-                    {
-                        "$match": {
-                            point_field: {
-                                "$geoWithin": {
-                                    "$polygon": lasso_points_as_tuples
-                                }
-                            }
-                        }
-                    }
-                ]
-            )
-            d = stage._serialize(include_uuid=False)
-            return {"_cls": d["_cls"], "kwargs": dict(d["kwargs"])}
+        lasso_points = data.get("lassoPoints", None)
+        points_field = data.get("pointsField", None)
 
         view = fosv.get_view(
             dataset_name,
@@ -270,7 +252,39 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
         is_patches_view = view._is_patches
         is_patches_plot = patches_field is not None
 
-        if not is_patches_view and not is_patches_plot:
+        if (
+            lasso_points is not None
+            and points_field is not None
+            and (patches_field is None or is_patches_view)
+        ):
+            # Lasso points via spatial index
+            # Unfortunately we can't use $geoWithin to filter nested arrays.
+            # The user must have switched to a patches view for this
+            if patches_field is not None:
+                _, points_field = view._get_label_field_path(
+                    patches_field, points_field
+                )
+
+            stage = fos.Mongo(
+                [
+                    {
+                        "$match": {
+                            points_field: {
+                                "$geoWithin": {
+                                    "$polygon": [
+                                        [x, y]
+                                        for x, y in zip(
+                                            lasso_points["x"],
+                                            lasso_points["y"],
+                                        )
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                ]
+            )
+        elif not is_patches_view and not is_patches_plot:
             # Samples plot and samples view
             stage = fos.Select(selected_ids)
         elif is_patches_view and is_patches_plot:
@@ -356,45 +370,3 @@ def _add_to_trace(traces, style, points, id, sample_id, label, selected):
             "selected": selected,
         }
     )
-
-
-def _get_fiftyone_geowithin(lasso_points):
-    """
-    Convert lasso points dictionary to the FiftyOne $geoWithin view stage format.
-
-    Args:
-        lasso_points (Dict[str, List[float]]): A dictionary containing 'x' and 'y' lists of coordinates.
-            Example input format:
-            {
-                'x': [-0.924, -0.982, -1.068, ...],
-                'y': [-0.075, -0.046, -0.028, ...]
-            }
-
-    Returns:
-        List[List[float]]: A list of coordinate pairs formatted for FiftyOne's $geoWithin view stage.
-            Example output format:
-            [
-                [-0.924, -0.075],
-                [-0.982, -0.046],
-                [-1.068, -0.028],
-                ...
-            ]
-    """
-    if "x" not in lasso_points or "y" not in lasso_points:
-        raise ValueError(
-            "Input dictionary must contain 'x' and 'y' keys with coordinate lists."
-        )
-
-    if len(lasso_points["x"]) != len(lasso_points["y"]):
-        raise ValueError("The 'x' and 'y' lists must have the same length.")
-
-    # Convert x and y coordinates to the required FiftyOne format
-    coordinates = [
-        [x, y] for x, y in zip(lasso_points["x"], lasso_points["y"])
-    ]
-
-    # If last point is not the same as first, add it
-    if coordinates[0] != coordinates[-1]:
-        coordinates.append(coordinates[0])
-
-    return coordinates
