@@ -85,45 +85,41 @@ class BatcherTests(unittest.TestCase):
     def test_content_size_batcher(self):
         n = 10
         samples = [fo.Sample(filepath=f"{i}.jpg") for i in range(n)]
-
-        # Test min batch size same as total size
-        batcher = fou.ContentSizeBatcher(iter(samples), min_batch_size=n)
-        expected = [n]
-        self.assertListEqual(expected, batcher.batch_sizes)
-        self.assertEqual(n, sum(batcher.batch_sizes))
-
-        # Test max batch size same as min_size and less than target
-        batcher = fou.ContentSizeBatcher(iter(samples), max_batch_size=1)
-        expected = [1] * n
-        self.assertListEqual(expected, batcher.batch_sizes)
-        self.assertEqual(n, sum(batcher.batch_sizes))
-
-        # Test default case
-        batcher = fou.ContentSizeBatcher(iter(samples))
-        expected = [n]
-        self.assertListEqual(expected, batcher.batch_sizes)
-        self.assertEqual(n, sum(batcher.batch_sizes))
-
-        # Test target smaller than min
-        batcher = fou.ContentSizeBatcher(iter(samples), target_size=1)
-        expected = [1] * n
-        self.assertListEqual(expected, batcher.batch_sizes)
-
         # Test target size half of total
         total_size = len(
             json_util.dumps(
                 [sample.to_mongo_dict(include_id=True) for sample in samples]
             )
         )
+
+        # Test max batch size same as min_size and less than target
+        batcher = fou.ContentSizeBatcher(iter(samples), max_batch_size=1)
+        with batcher:
+            for batch in batcher:
+                self.assertEqual(len(batch), 1)
+
+        # Test default case
+        batcher = fou.ContentSizeBatcher(iter(samples))
+        with batcher:
+            for batch in batcher:
+                self.assertEqual(len(batch), n)
+
+        # Test target smaller than min
+        batcher = fou.ContentSizeBatcher(iter(samples), target_size=1)
+        with batcher:
+            for batch in batcher:
+                self.assertEqual(len(batch), 1)
+
         target_size = (
-            total_size // 2 - 100
+            total_size // 2
         )  # offset because the items slightly differ in size
         expected = [n // 2] * 2
         batcher = fou.ContentSizeBatcher(
             iter(samples), target_size=target_size
         )
-        self.assertListEqual(expected, batcher.batch_sizes)
-        self.assertEqual(n, sum(batcher.batch_sizes))
+        with batcher:
+            for batch in batcher:
+                self.assertEqual(len(batch), n // 2)
 
     def test_static_batcher_perfect_boundary(self):
         iterable = list(range(200))

@@ -1617,7 +1617,7 @@ class ContentSizeBatcher(Batcher):
     def __init__(
         self,
         iterable,
-        size_calculation_fn,
+        size_calculation_fn=None,
         target_size=2**20,
         max_batch_size=None,
         progress=False,
@@ -1634,7 +1634,11 @@ class ContentSizeBatcher(Batcher):
         self.max_batch_size = max_batch_size
         self.target_size = target_size
         self._prev_element = None
-        self._size_calculation_fn = size_calculation_fn
+        self._size_calculation_fn = (
+            size_calculation_fn
+            if size_calculation_fn
+            else default_calculate_size
+        )
 
     def __iter__(self):
         super().__iter__()
