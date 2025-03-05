@@ -133,24 +133,23 @@ export default function Evaluation(props: EvaluationProps) {
   ]);
 
   const compareKeys = useMemo(() => {
-    const keys: EvaluationKey[] = [];
-    const evaluations = data?.evaluations || [];
-    for (const evaluation of evaluations) {
-      const { key, type, method } = evaluation;
-      if (key !== name) {
-        keys.push({
-          key,
-          type,
-          method,
-          // disabled: Boolean(evaluationType !== type),
-          // tooltip: `Evaluation type: ${evaluationType}`,
-        });
-      }
-    }
-    // keys.sort((a, b) =>
-    //   a.type === evaluationType ? -1 : b.type === evaluationType ? 1 : 0
-    // );
-    return keys;
+    const currentEval = data?.[`evaluation_${name}`];
+    const currentType = currentEval?.info?.config?.type || "";
+    return (data?.evaluations ?? [])
+      .filter((evalItem) => evalItem.key !== name)
+      .map(
+        (evalItem) =>
+          ({
+            key: evalItem.key,
+            type: evalItem.type,
+            method: evalItem.method,
+            disabled: evalItem.type !== currentType,
+            tooltip: `Evaluation type: ${currentType}`,
+          } as EvaluationKey)
+      )
+      .sort((a, b) =>
+        a.type === currentType ? -1 : b.type === currentType ? 1 : 0
+      );
   }, [data, name]);
 
   const status = useMemo(() => {
@@ -534,15 +533,6 @@ export default function Evaluation(props: EvaluationProps) {
     activeFilter?.type === "label"
       ? [classPerformance.findIndex((c) => c.id === activeFilter.value)]
       : undefined;
-  const sortedCompareKeys = compareKeys
-    .map((item) => ({
-      ...item,
-      disabled: item.type !== evaluationType,
-      tooltip: `Evaluation type: ${evaluationType}`,
-    }))
-    .sort((a, b) =>
-      a.type === evaluationType ? -1 : b.type === evaluationType ? 1 : 0
-    );
 
   return (
     <Stack spacing={2} sx={{ p: 2 }}>
@@ -656,7 +646,7 @@ export default function Evaluation(props: EvaluationProps) {
                 ) : null
               }
             >
-              {sortedCompareKeys.map(({ key, type, method }) => {
+              {compareKeys.map(({ key, type, method }) => {
                 return (
                   <MenuItem value={key} key={key} sx={{ p: 0 }}>
                     <EvaluationIcon

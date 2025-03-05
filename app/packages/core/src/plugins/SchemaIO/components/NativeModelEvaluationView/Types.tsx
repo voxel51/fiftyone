@@ -17,6 +17,14 @@ export type EvaluationType = {
   method?: string;
 };
 
+export type EvaluationKey = {
+  key: string;
+  type: string;
+  method: string;
+  disabled: boolean;
+  tooltip: string;
+};
+
 export type PendingEvaluationType = {
   eval_key: string;
   type: string;
