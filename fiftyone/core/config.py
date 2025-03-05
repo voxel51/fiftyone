@@ -293,7 +293,7 @@ class FiftyOneConfig(EnvConfig):
             d,
             "media_filepath_prefix_alias",
             default=None,
-            env_var="FIFTYONE_MEDIA_FILEPATH_ALIAS",
+            env_var="FIFTYONE_MEDIA_FILEPATH_PREFIX_ALIAS",
         )
         self.media_filepath_prefix_url = self.parse_string(
             d,
