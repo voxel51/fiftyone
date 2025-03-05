@@ -42,26 +42,37 @@ test.afterAll(async ({ foWebServer }) => {
 
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
-  await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
+  await fiftyoneLoader.loadZooDataset("quickstart", quickstartColorByField, {
     max_samples: 5,
   });
 
   await fiftyoneLoader.executePythonCode(`
       import fiftyone as fo
       import random
-      dataset = fo.load_dataset("${datasetName}")
+      quickstart_color_by_field = fo.load_dataset("${quickstartColorByField}")      
 
-      n = len(dataset)
+      n = len(quickstart_color_by_field)
       labels = ["foo", "bar", "spam", "eggs"]
       collaborators = ["alice", "bob", "charlie", "peter", "susan"]
 
       # Add label attributes of each primitive type
-      patches = dataset.to_patches("ground_truth")
+      patches = quickstart_color_by_field.to_patches("ground_truth")
       p = len(patches)
 
-      dataset.add_sample_field("ground_truth.detections.str_field", fo.StringField)
+      quickstart_color_by_field.add_sample_field("ground_truth.detections.str_field", fo.StringField)
       patches.set_values("ground_truth.str_field", [labels[index % 4] for index in range(p)])
-      `);
+
+      dummy_color_by_instance = fo.Dataset("${dummyDatasetColorByInstance}")
+      dummy_color_by_instance.persistent = True
+      dummy_color_by_instance.add_sample(
+        fo.Sample(
+          filepath="dummy.png",
+          ground_truth=fo.Detections(detections=[fo.Detection(label="foo")])
+        )
+      )
+      dummy_color_by_instance.app_config.color_scheme = fo.ColorScheme(color_by="instance", color_pool=["red", "green", "blue", "yellow", "purple", "orange", "brown", "pink", "gray", "black", "white"])
+      dummy_color_by_instance.save()
+    `);
 });
 
 test.describe.serial("color scheme basic functionality with quickstart", () => {
