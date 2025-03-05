@@ -139,10 +139,11 @@ export default function Evaluation(props: EvaluationProps) {
   ]);
 
   const compareKeys = useMemo(() => {
-    const currentEval = data?.[`evaluation_${name}`];
-    const currentType = currentEval?.info?.config?.type || "";
-    const currentMethod = currentEval?.info?.config?.method || "";
+    const currentEval = data.evaluations.find((item) => item.key === name);
+    const currentType = currentEval?.type || "";
+    const currentMethod = currentEval?.method || "";
     const evaluations = data?.evaluations || [];
+
     return computeSortedCompareKeys(
       evaluations,
       name,
