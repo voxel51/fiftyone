@@ -40,16 +40,16 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
+import get from "lodash/get";
 import React, { useEffect, useMemo, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import Error from "./Error";
+import EvaluationIcon from "./EvaluationIcon";
 import EvaluationNotes from "./EvaluationNotes";
 import EvaluationPlot from "./EvaluationPlot";
 import Status from "./Status";
+import { ConcreteEvaluationType, EvaluationKey } from "./Types";
 import { formatValue, getNumericDifference, useTriggerEvent } from "./utils";
-import EvaluationIcon from "./EvaluationIcon";
-import { ConcreteEvaluationType } from "./Types";
-import get from "lodash/get";
 
 const KEY_COLOR = "#ff6d04";
 const COMPARE_KEY_COLOR = "#03a9f4";
@@ -91,6 +91,7 @@ export default function Evaluation(props: EvaluationProps) {
     const evaluation = data?.[`evaluation_${name}`];
     return evaluation;
   }, [data]);
+
   const compareEvaluation = useMemo(() => {
     const evaluation = data?.[`evaluation_${compareKey}`];
     return evaluation;
@@ -99,6 +100,7 @@ export default function Evaluation(props: EvaluationProps) {
     const evaluation = data?.[`evaluation_${name}_error`];
     return evaluation;
   }, [data]);
+
   const compareEvaluationError = useMemo(() => {
     const evaluation = data?.[`evaluation_${compareKey}_error`];
     return evaluation;
@@ -129,17 +131,28 @@ export default function Evaluation(props: EvaluationProps) {
     evaluationMaskTargets,
     compareEvaluationMaskTargets,
   ]);
+
   const compareKeys = useMemo(() => {
-    const keys: Record<string, string>[] = [];
+    const keys: EvaluationKey[] = [];
     const evaluations = data?.evaluations || [];
     for (const evaluation of evaluations) {
       const { key, type, method } = evaluation;
       if (key !== name) {
-        keys.push({ key, type, method });
+        keys.push({
+          key,
+          type,
+          method,
+          // disabled: Boolean(evaluationType !== type),
+          // tooltip: `Evaluation type: ${evaluationType}`,
+        });
       }
     }
+    // keys.sort((a, b) =>
+    //   a.type === evaluationType ? -1 : b.type === evaluationType ? 1 : 0
+    // );
     return keys;
   }, [data, name]);
+
   const status = useMemo(() => {
     return statuses[id];
   }, [statuses, id]);
@@ -521,6 +534,15 @@ export default function Evaluation(props: EvaluationProps) {
     activeFilter?.type === "label"
       ? [classPerformance.findIndex((c) => c.id === activeFilter.value)]
       : undefined;
+  const sortedCompareKeys = compareKeys
+    .map((item) => ({
+      ...item,
+      disabled: item.type !== evaluationType,
+      tooltip: `Evaluation type: ${evaluationType}`,
+    }))
+    .sort((a, b) =>
+      a.type === evaluationType ? -1 : b.type === evaluationType ? 1 : 0
+    );
 
   return (
     <Stack spacing={2} sx={{ p: 2 }}>
@@ -634,7 +656,7 @@ export default function Evaluation(props: EvaluationProps) {
                 ) : null
               }
             >
-              {compareKeys.map(({ key, type, method }) => {
+              {sortedCompareKeys.map(({ key, type, method }) => {
                 return (
                   <MenuItem value={key} key={key} sx={{ p: 0 }}>
                     <EvaluationIcon
