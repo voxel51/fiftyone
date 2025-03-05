@@ -601,7 +601,7 @@ async def _create_media_urls(
 
         # If an alias is configured for the service worker,
         # replace the alias in the url with the real endpoint
-        url = resolve_media_alias_for_svc_worker(url)
+        url = resolve_media_alias_to_url(url)
         cache[path] = url
         media_urls.append(dict(field=field, url=url))
         if use_opm and opm_filepath == field:
@@ -645,9 +645,10 @@ def _get_additional_media_fields(
     return opm_field, detections_fields, additional
 
 
-def resolve_media_alias_for_svc_worker(url):
-    alias = fo.config.svc_worker_media_alias
-    endpoint = fo.config.svc_worker_media_endpoint
-    if alias and endpoint and url.startswith(alias):
+def resolve_media_alias_to_url(url):
+    alias = fo.config.media_filepath_prefix_alias
+    endpoint = fo.config.media_filepath_prefix_url
+    # specifically check for None in case alias or endpoint is set to an empty string
+    if None not in [alias, endpoint] and url.startswith(alias):
         url = url.replace(alias, endpoint)
     return url
