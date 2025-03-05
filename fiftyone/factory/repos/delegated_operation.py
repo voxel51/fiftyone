@@ -122,7 +122,15 @@ class DelegatedOperationRepo(object):
         self, _id: ObjectId, log_upload_error: str
     ) -> DelegatedOperationDocument:
         """Sets the log upload error for the delegated operation."""
-        raise NotImplementedError("subclass must implement set_log_upload_error()")
+        raise NotImplementedError(
+            "subclass must implement set_log_upload_error()"
+        )
+
+    def set_log_size(
+        self, _id: ObjectId, log_size: int
+    ) -> DelegatedOperationDocument:
+        """Sets the log size for the delegated operation."""
+        raise NotImplementedError("subclass must implement set_log_size()")
 
     def get(self, _id: ObjectId) -> DelegatedOperationDocument:
         """Get an operation by id."""
@@ -259,6 +267,16 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         doc = self._collection.find_one_and_update(
             filter={"_id": _id},
             update={"$set": {"log_upload_error": log_upload_error}},
+            return_document=pymongo.ReturnDocument.AFTER,
+        )
+        return DelegatedOperationDocument().from_pymongo(doc)
+
+    def set_log_size(
+        self, _id: ObjectId, log_size: int
+    ) -> DelegatedOperationDocument:
+        doc = self._collection.find_one_and_update(
+            filter={"_id": _id},
+            update={"$set": {"log_size": log_size}},
             return_document=pymongo.ReturnDocument.AFTER,
         )
         return DelegatedOperationDocument().from_pymongo(doc)
