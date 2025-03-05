@@ -5,14 +5,12 @@ Multiprocessing utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import itertools
 import multiprocessing
 from queue import Empty
 import time
 from typing import Iterator, Any, Optional, Union
 
 import dill as pickle
-import numpy as np
 from tqdm.auto import tqdm
 
 import fiftyone as fo
