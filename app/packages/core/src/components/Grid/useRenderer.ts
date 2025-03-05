@@ -58,14 +58,12 @@ export default function ({
         throw new Error("bad data");
       }
 
-      const looker: fos.Lookers =
-        cache.getFrozen(key) ??
-        createLooker.current?.(
-          { ...result, symbol: id },
-          {
-            fontSize: getFontSize(),
-          }
-        );
+      const looker: fos.Lookers = createLooker.current?.(
+        { ...result, symbol: id },
+        {
+          fontSize: getFontSize(),
+        }
+      );
 
       looker.addEventListener("selectthumbnail", ({ detail }) =>
         selectSample.current?.(detail)
@@ -74,9 +72,9 @@ export default function ({
         cache.isShown(key) &&
           spotlight.sizeChange(key, looker.getSizeBytesEstimate());
       });
+
       cache.set(key, looker);
       looker.attach(element, dimensions);
-
       return cache.sizeOf(key);
     },
     [cache, createLooker, getFontSize, selectSample, store]
