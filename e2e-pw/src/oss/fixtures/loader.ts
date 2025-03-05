@@ -67,7 +67,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
     });
 
     const forceDatasetFromSelector = async () => {
-      await page.goto("/");
+      await page.goto("/", { waitUntil: "domcontentloaded" });
       await page.getByTestId("selector-dataset").click();
 
       if (datasetName) {
