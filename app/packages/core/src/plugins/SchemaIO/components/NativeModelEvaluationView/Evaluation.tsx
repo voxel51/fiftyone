@@ -37,6 +37,7 @@ import {
   TextField,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
   useTheme,
 } from "@mui/material";
@@ -48,8 +49,13 @@ import EvaluationIcon from "./EvaluationIcon";
 import EvaluationNotes from "./EvaluationNotes";
 import EvaluationPlot from "./EvaluationPlot";
 import Status from "./Status";
-import { ConcreteEvaluationType, EvaluationKey } from "./Types";
-import { formatValue, getNumericDifference, useTriggerEvent } from "./utils";
+import { ConcreteEvaluationType } from "./Types";
+import {
+  computeSortedCompareKeys,
+  formatValue,
+  getNumericDifference,
+  useTriggerEvent,
+} from "./utils";
 
 const KEY_COLOR = "#ff6d04";
 const COMPARE_KEY_COLOR = "#03a9f4";
@@ -135,21 +141,8 @@ export default function Evaluation(props: EvaluationProps) {
   const compareKeys = useMemo(() => {
     const currentEval = data?.[`evaluation_${name}`];
     const currentType = currentEval?.info?.config?.type || "";
-    return (data?.evaluations ?? [])
-      .filter((evalItem) => evalItem.key !== name)
-      .map(
-        (evalItem) =>
-          ({
-            key: evalItem.key,
-            type: evalItem.type,
-            method: evalItem.method,
-            disabled: evalItem.type !== currentType,
-            tooltip: `Evaluation type: ${currentType}`,
-          } as EvaluationKey)
-      )
-      .sort((a, b) =>
-        a.type === currentType ? -1 : b.type === currentType ? 1 : 0
-      );
+    const evaluations = data?.evaluations || [];
+    return computeSortedCompareKeys(evaluations, name, currentType);
   }, [data, name]);
 
   const status = useMemo(() => {
@@ -638,25 +631,40 @@ export default function Evaluation(props: EvaluationProps) {
                   </IconButton>
                 ) : null
               }
-              startAdornment={
-                compareKey ? (
-                  <Box sx={{ pr: 1 }}>
-                    <ColorSquare color={COMPARE_KEY_COLOR} />{" "}
-                  </Box>
-                ) : null
-              }
             >
-              {compareKeys.map(({ key, type, method }) => {
-                return (
-                  <MenuItem value={key} key={key} sx={{ p: 0 }}>
-                    <EvaluationIcon
-                      type={type as ConcreteEvaluationType}
-                      method={method}
-                    />
-                    <Typography>{key}</Typography>
-                  </MenuItem>
-                );
-              })}
+              {compareKeys.map(
+                ({ key, type, method, disabled, tooltip, tooltipBody }) => {
+                  const menuItem = (
+                    <MenuItem
+                      value={key}
+                      key={key}
+                      sx={{ p: 0 }}
+                      disabled={disabled}
+                    >
+                      <EvaluationIcon
+                        type={type as ConcreteEvaluationType}
+                        method={method}
+                      />
+                      <Typography>{key}</Typography>
+                    </MenuItem>
+                  );
+                  return disabled ? (
+                    <Tooltip
+                      key={key}
+                      title={
+                        <>
+                          <Typography variant="subtitle1">{tooltip}</Typography>
+                          <Typography variant="body2">{tooltipBody}</Typography>
+                        </>
+                      }
+                    >
+                      <span>{menuItem}</span>
+                    </Tooltip>
+                  ) : (
+                    menuItem
+                  );
+                }
+              )}
             </Select>
           )}
         </Stack>

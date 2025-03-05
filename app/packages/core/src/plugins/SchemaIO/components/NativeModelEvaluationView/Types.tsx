@@ -23,6 +23,7 @@ export type EvaluationKey = {
   method: string;
   disabled: boolean;
   tooltip: string;
+  tooltipBody?: string;
 };
 
 export type PendingEvaluationType = {
