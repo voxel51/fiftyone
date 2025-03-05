@@ -1,9 +1,21 @@
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  atom,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import * as fos from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { useBrainResultInfo } from "./useBrainResultInfo";
 import { SELECTION_SCOPE } from "./constants";
 import { useResetExtendedSelection } from "@fiftyone/state";
+
+export const atoms = {
+  lassoPoints: atom({
+    key: "lassoPoints",
+    default: { x: [], y: [] },
+  }),
+};
 
 export function usePlotSelection() {
   const brainResultInfo = useBrainResultInfo();
@@ -20,14 +32,22 @@ export function usePlotSelection() {
     [],
     true
   );
+  const [lassoPoints, setLassoPoints] = useRecoilState(atoms.lassoPoints);
   const selectedPatchIds = useRecoilValue(fos.selectedPatchIds(patchesField));
   const selectedPatchSampleIds = useRecoilValue(fos.selectedPatchSamples);
-  function handleSelected(selectedResults) {
+  function handleSelected(
+    selectedResults,
+    lassoPoints: { x: number[]; y: number[] }
+  ) {
     setSelectedSamples(new Set());
     setExtendedSelection({
       selection: selectedResults,
       scope: SELECTION_SCOPE,
     });
+    if (lassoPoints) {
+      // TODO: this handleSelected is called without lassoPoints in some unkown cases
+      setLassoPoints(lassoPoints);
+    }
     if (selectedResults === null) {
       clearSelection();
     }
