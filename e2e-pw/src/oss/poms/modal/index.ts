@@ -215,17 +215,9 @@ export class ModalPom {
     return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }
 
-  async close({ ignoreError } = { ignoreError: false }) {
+  async close() {
     // close by clicking outside of modal
-    try {
-      await this.page.click("body", { position: { x: 0, y: 0 } });
-      await this.locator.waitFor({ state: "hidden" });
-    } catch (e) {
-      if (ignoreError) {
-        return;
-      }
-      throw e;
-    }
+    await this.page.click("body", { position: { x: 0, y: 0 } });
   }
 
   async navigateNextSample(allowErrorInfo = false) {

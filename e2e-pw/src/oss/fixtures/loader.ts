@@ -1,16 +1,91 @@
 import { Page } from "@playwright/test";
+import { spawn } from "child_process";
 import { getPythonCommand, getStringifiedKwargs } from "src/oss/utils/commands";
 import {
   AbstractFiftyoneLoader,
   WaitUntilGridVisibleOptions,
 } from "src/shared/abstract-loader";
 import { PythonRunner } from "src/shared/python-runner/python-runner";
+import kill from "tree-kill";
+import waitOn from "wait-on";
+import { POPUP_DISMISS_TIMEOUT } from "../constants";
 import { Duration } from "../utils";
 
+type WebServerProcessConfig = {
+  port: number;
+  processId: number;
+};
 export class OssLoader extends AbstractFiftyoneLoader {
+  protected webserverProcessConfig: WebServerProcessConfig;
+
   constructor() {
     super();
     this.pythonRunner = new PythonRunner(getPythonCommand);
+  }
+
+  async startWebServer(port: number) {
+    if (!port) {
+      throw new Error("port is required");
+    }
+
+    console.log("starting webserver on port", port);
+
+    process.env.FIFTYONE_DATABASE_NAME = `${process.env.FIFTYONE_DATABASE_NAME}-${port}`;
+
+    const mainPyPath = process.env.FIFTYONE_ROOT_DIR
+      ? `${process.env.FIFTYONE_ROOT_DIR}/fiftyone/server/main.py`
+      : "../fiftyone/server/main.py";
+
+    const procString = getPythonCommand([
+      mainPyPath,
+      "--address",
+      "0.0.0.0",
+      "--port",
+      port.toString(),
+      "--clean_start",
+    ]);
+
+    const proc = spawn(procString, { shell: true });
+    proc.stdout.pipe(process.stdout);
+    proc.stderr.pipe(process.stderr);
+
+    this.webserverProcessConfig = {
+      port,
+      processId: proc.pid,
+    };
+
+    console.log(
+      `waiting for webserver (procId = ${proc.pid}) to start on port ${port}...`
+    );
+
+    return waitOn({
+      resources: [`http://0.0.0.0:${port}`],
+      timeout: Duration.Seconds(30),
+    })
+      .then(() => {
+        console.log("webserver started");
+      })
+      .catch((err) => {
+        console.log("webserver failed to start, err = ", err);
+        throw err;
+      });
+  }
+
+  async stopWebServer() {
+    if (!this.webserverProcessConfig.processId) {
+      throw new Error("webserver process not started");
+    }
+
+    return new Promise<void>((resolve, reject) => {
+      kill(this.webserverProcessConfig.processId, "SIGTERM", (err) => {
+        if (err) {
+          reject(err);
+        }
+
+        console.log("webserver stopped");
+        resolve();
+      });
+    });
   }
 
   async loadZooDataset(
@@ -59,16 +134,9 @@ export class OssLoader extends AbstractFiftyoneLoader {
       withGrid: true,
     };
 
-    await page.addInitScript(() => {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore injecting IS_PLAYWRIGHT into window so that
-      // we can disable 1) analytics, and 2) QA performance toast banners
-      window.IS_PLAYWRIGHT = true;
-    });
-
     const forceDatasetFromSelector = async () => {
-      await page.goto("/", { waitUntil: "domcontentloaded" });
-      await page.getByTestId("selector-dataset").click();
+      await page.goto("/");
+      await page.getByTestId("selector-Select dataset").click();
 
       if (datasetName) {
         await page.getByTestId(`selector-result-${datasetName}`).click();
@@ -145,5 +213,22 @@ export class OssLoader extends AbstractFiftyoneLoader {
       {},
       { timeout: Duration.Seconds(10) }
     );
+
+    // close all pop-ups (cookies, new feature annoucement, etc.)
+    try {
+      await page
+        .getByTestId("btn-dismiss-query-performance-toast")
+        .click({ timeout: POPUP_DISMISS_TIMEOUT });
+    } catch {
+      console.log("No query performance toast to dismiss");
+    }
+
+    try {
+      await page
+        .getByTestId("btn-disable-cookies")
+        .click({ timeout: POPUP_DISMISS_TIMEOUT });
+    } catch {
+      console.log("No cookies button to disable");
+    }
   }
 }

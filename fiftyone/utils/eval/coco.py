@@ -50,8 +50,7 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
             of the provided :class:`fiftyone.core.labels.Polyline` instances
             rather than using their actual geometries
         tolerance (None): a tolerance, in pixels, when generating approximate
-            polylines for instance masks. Typical values are 1-3 pixels. By
-            default, IoUs are computed directly on the dense pixel masks
+            polylines for instance masks. Typical values are 1-3 pixels
         compute_mAP (False): whether to perform the necessary computations so
             that mAP, mAR, and PR curves can be generated
         iou_threshs (None): a list of IoU thresholds to use when computing mAP
@@ -831,7 +830,7 @@ def _compute_pr_curves(samples, config, classes=None, progress=None):
             if rec.size != 0:
                 recall_sweep[idx][c_idx] = rec[-1]
             else:
-                recall_sweep[idx][c_idx] = 0               
+                recall_sweep[idx][c_idx] = 0
 
     return precision, recall, thresholds, iou_threshs, classes, recall_sweep
 

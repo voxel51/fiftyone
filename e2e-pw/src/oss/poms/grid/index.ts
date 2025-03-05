@@ -4,7 +4,6 @@ import { GridActionsRowPom } from "../action-row/grid-actions-row";
 import { GridSliceSelectorPom } from "../action-row/grid-slice-selector";
 import { GridTaggerPom } from "../action-row/tagger/grid-tagger";
 import { UrlPom } from "../url";
-import { Duration } from "src/oss/utils";
 
 export class GridPom {
   readonly assert: GridAsserter;
@@ -68,14 +67,14 @@ export class GridPom {
     return this.getForwardSection()
       .locator("div")
       .last()
-      .scrollIntoViewIfNeeded({ timeout: Duration.Seconds(20) });
+      .scrollIntoViewIfNeeded();
   }
 
   async scrollTop() {
     return this.getBackwardSection()
       .locator("div")
       .first()
-      .scrollIntoViewIfNeeded({ timeout: Duration.Seconds(20) });
+      .scrollIntoViewIfNeeded();
   }
 
   async selectSlice(slice: string) {

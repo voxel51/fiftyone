@@ -20,13 +20,7 @@ const extensionDatasetNamePairs = ["mp4", "pcd", "png"].map(
     ] as const
 );
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
-  await foWebServer.startWebServer();
-
+test.beforeAll(async ({ fiftyoneLoader }) => {
   let pythonCode = `
       import fiftyone as fo
   `;
@@ -49,58 +43,60 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await fiftyoneLoader.executePythonCode(pythonCode);
 });
 
-test.describe.serial("selection", () => {
-  extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
-    test(`${extension} selection`, async ({
-      page,
-      fiftyoneLoader,
-      grid,
-      modal,
-    }) => {
-      await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-      await grid.assert.isEntryCountTextEqualTo("5 samples");
-      await grid.toggleSelectFirstSample();
-      await grid.assert.isSelectionCountEqualTo(1);
-      await grid.toggleSelectNthSample(4);
-      await grid.assert.isSelectionCountEqualTo(2);
-      await grid.toggleSelectFirstSample();
-      await grid.assert.isSelectionCountEqualTo(1);
-      await grid.toggleSelectNthSample(4);
-      await grid.assert.isSelectionCountEqualTo(0);
+extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
+  test(`${extension} grid selection`, async ({
+    page,
+    fiftyoneLoader,
+    grid,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    await grid.assert.isEntryCountTextEqualTo("5 samples");
+    await grid.toggleSelectFirstSample();
+    await grid.assert.isSelectionCountEqualTo(1);
+    await grid.toggleSelectNthSample(4);
+    await grid.assert.isSelectionCountEqualTo(2);
+    await grid.toggleSelectFirstSample();
+    await grid.assert.isSelectionCountEqualTo(1);
+    await grid.toggleSelectNthSample(4);
+    await grid.assert.isSelectionCountEqualTo(0);
 
-      // verify selection clears on escape
-      await grid.toggleSelectFirstSample();
-      await grid.assert.isSelectionCountEqualTo(1);
-      await page.press("body", "Escape");
-      await grid.assert.isSelectionCountEqualTo(0);
+    // verify selection clears on escape
+    await grid.toggleSelectFirstSample();
+    await grid.assert.isSelectionCountEqualTo(1);
+    await page.press("body", "Escape");
+    await grid.assert.isSelectionCountEqualTo(0);
+  });
 
-      // check modal
-      await page.reload();
-      const isPcd = extension === "pcd";
-      await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-      await grid.toggleSelectFirstSample();
-      await grid.assert.isNthSampleSelected(0);
-      await grid.openNthSample(1);
-      await modal.assert.verifySelectionCount(1);
-      await modal.toggleSelection(isPcd);
-      await modal.assert.verifySelectionCount(2);
-      await modal.toggleSelection(isPcd);
-      await modal.assert.verifySelectionCount(1);
-      await modal.navigatePreviousSample(true);
-      await modal.toggleSelection(isPcd);
-      await modal.assert.verifySelectionCount(0);
+  test(`${extension} modal selection`, async ({
+    fiftyoneLoader,
+    page,
+    modal,
+    grid,
+  }) => {
+    const isPcd = extension === "pcd";
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    await grid.toggleSelectFirstSample();
+    await grid.assert.isNthSampleSelected(0);
+    await grid.openNthSample(1);
+    await modal.assert.verifySelectionCount(1);
+    await modal.toggleSelection(isPcd);
+    await modal.assert.verifySelectionCount(2);
+    await modal.toggleSelection(isPcd);
+    await modal.assert.verifySelectionCount(1);
+    await modal.navigatePreviousSample(true);
+    await modal.toggleSelection(isPcd);
+    await modal.assert.verifySelectionCount(0);
 
-      // verify pressing escape clears modal but not selection
-      await modal.toggleSelection(isPcd);
-      await modal.assert.verifySelectionCount(1);
-      await modal.close();
-      await grid.assert.isSelectionCountEqualTo(1);
+    // verify pressing escape clears modal but not selection
+    await modal.toggleSelection(isPcd);
+    await modal.assert.verifySelectionCount(1);
+    await modal.close();
+    await grid.assert.isSelectionCountEqualTo(1);
 
-      await grid.openNthSample(1);
-      await modal.assert.verifySelectionCount(1);
-      await modal.close();
-      await modal.assert.isClosed();
-      await grid.assert.isSelectionCountEqualTo(1);
-    });
+    await grid.openNthSample(1);
+    await modal.assert.verifySelectionCount(1);
+    await modal.close();
+    await modal.assert.isClosed();
+    await grid.assert.isSelectionCountEqualTo(1);
   });
 });

@@ -327,11 +327,6 @@ class EvaluationPanel(Panel):
             "lc_colorscale": lc_colorscale,
         }
 
-    def get_correct_incorrect(self, results):
-        correct = np.count_nonzero(results.ypred == results.ytrue)
-        incorrect = np.count_nonzero(results.ypred != results.ytrue)
-        return correct, incorrect
-
     def load_evaluation(self, ctx):
         view_state = ctx.panel.get_state("view") or {}
         eval_key = view_state.get("key")
@@ -371,16 +366,6 @@ class EvaluationPanel(Panel):
             )
             metrics["mAP"] = self.get_map(results)
             metrics["mAR"] = self.get_mar(results)
-
-            if (
-                info.config.type == "classification"
-                and info.config.method != "binary"
-            ):
-                (
-                    metrics["num_correct"],
-                    metrics["num_incorrect"],
-                ) = self.get_correct_incorrect(results)
-
             evaluation_data = {
                 "metrics": metrics,
                 "custom_metrics": self.get_custom_metrics(results),

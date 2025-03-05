@@ -21,7 +21,7 @@
     },
     "devDependencies": {
         "typescript": "^4.7.4",
-        "vite": "^5.4.12",
+        "vite": "^5.2.14",
         "vite-plugin-externals": "^0.5.0"
     },
     "fiftyone": {

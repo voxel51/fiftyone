@@ -44,8 +44,7 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
             of the provided :class:`fiftyone.core.labels.Polyline` instances
             rather than using their actual geometries
         tolerance (None): a tolerance, in pixels, when generating approximate
-            polylines for instance masks. Typical values are 1-3 pixels. By
-            default, IoUs are computed directly on the dense pixel masks
+            polylines for instance masks. Typical values are 1-3 pixels
         max_preds (None): the maximum number of predicted objects to evaluate
             when computing mAP and PR curves
         error_level (1): the error level to use when manipulating instance

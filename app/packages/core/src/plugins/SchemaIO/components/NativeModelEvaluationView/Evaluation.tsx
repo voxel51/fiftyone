@@ -213,8 +213,6 @@ export default function Evaluation(props: EvaluationProps) {
   const isBinaryClassification =
     evaluationType === "classification" && evaluationMethod === "binary";
   const showTpFpFn = isObjectDetection || isBinaryClassification;
-  const isNoneBinaryClassification =
-    isClassification && evaluationMethod !== "binary";
   const infoRows = [
     {
       id: "evaluation_key",
@@ -469,24 +467,6 @@ export default function Evaluation(props: EvaluationProps) {
             : "selected"
           : false,
       hide: !showTpFpFn,
-    },
-    {
-      id: true,
-      property: "Correct",
-      value: evaluationMetrics.num_correct,
-      compareValue: compareEvaluationMetrics.num_correct,
-      lesserIsBetter: false,
-      filterable: true,
-      hide: !isNoneBinaryClassification,
-    },
-    {
-      id: false,
-      property: "Incorrect",
-      value: evaluationMetrics.num_incorrect,
-      compareValue: compareEvaluationMetrics.num_incorrect,
-      lesserIsBetter: false,
-      filterable: true,
-      hide: !isNoneBinaryClassification,
     },
     ...formatCustomMetricRows(evaluation, compareEvaluation),
   ];

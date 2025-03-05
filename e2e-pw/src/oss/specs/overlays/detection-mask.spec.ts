@@ -22,12 +22,7 @@ const test = base.extend<{ modal: ModalPom; grid: GridPom }>({
   },
 });
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
-test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
-  await foWebServer.startWebServer();
+test.beforeAll(async ({ fiftyoneLoader, mediaFactory }) => {
   await Promise.all(
     [
       badDetectionMaskSampleImage,
@@ -106,7 +101,7 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test.describe.serial("detection-mask", () => {
+test.describe("detection-mask", () => {
   test("should load all masks fine", async ({ grid, modal }) => {
     await grid.assert.isEntryCountTextEqualTo("3 samples");
 

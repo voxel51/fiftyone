@@ -23,7 +23,7 @@
         "relay-compiler-language-typescript": "^15.0.1",
         "relay-config": "^12.0.1",
         "typescript": "^4.7.4",
-        "vite": "^5.4.12"
+        "vite": "^5.2.14"
     },
     "dependencies": {
         "@recoiljs/refine": "^0.1.1",
