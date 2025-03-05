@@ -141,8 +141,14 @@ export default function Evaluation(props: EvaluationProps) {
   const compareKeys = useMemo(() => {
     const currentEval = data?.[`evaluation_${name}`];
     const currentType = currentEval?.info?.config?.type || "";
+    const currentMethod = currentEval?.info?.config?.method || "";
     const evaluations = data?.evaluations || [];
-    return computeSortedCompareKeys(evaluations, name, currentType);
+    return computeSortedCompareKeys(
+      evaluations,
+      name,
+      currentType,
+      currentMethod
+    );
   }, [data, name]);
 
   const status = useMemo(() => {

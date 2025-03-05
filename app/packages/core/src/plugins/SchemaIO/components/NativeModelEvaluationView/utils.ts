@@ -54,7 +54,8 @@ export interface CompareKey {
 export function computeSortedCompareKeys(
   evaluations: any[],
   currentName: string,
-  currentType: string
+  currentType: string,
+  currentMethod: string
 ): CompareKey[] {
   return evaluations
     .filter((evaluation) => evaluation.key !== currentName)
@@ -62,14 +63,26 @@ export function computeSortedCompareKeys(
       key: evaluation.key,
       type: evaluation.type,
       method: evaluation.method,
-      disabled: evaluation.type !== currentType,
+      disabled: !(
+        evaluation.type === currentType && evaluation.method === currentMethod
+      ),
       tooltip: `Evaluation Type: ${capitalize(currentType)}`,
-      tooltipBody:
-        evaluation.type !== currentType
-          ? `Note: Comparisons are only valid between evaluations of the same type.`
-          : undefined,
+      tooltipBody: !(
+        evaluation.type === currentType && evaluation.method === currentMethod
+      )
+        ? `Note: Comparisons are only valid between evaluations of the same type and method.`
+        : undefined,
     }))
-    .sort((a, b) =>
-      a.type === currentType ? -1 : b.type === currentType ? 1 : 0
-    );
+    .sort((a, b) => {
+      // First, non-disabled items come first
+      if (a.disabled !== b.disabled) {
+        return a.disabled ? 1 : -1;
+      }
+      // Next, items with type equal to currentType come first
+      if ((a.type === currentType) !== (b.type === currentType)) {
+        return a.type === currentType ? -1 : 1;
+      }
+      // Finally, sort alphabetically by key to ensure deterministic order
+      return a.key.localeCompare(b.key);
+    });
 }
