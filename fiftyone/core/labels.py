@@ -45,7 +45,10 @@ class _HasUuid(object):
     """Mixin for :class:`Label` classes that contain a UUID via an ``uuid``
     attribute.
 
-    The ``uuid`` attribute is automatically populated when the label is created.
+    Contrary to the ``id`` field, which is unique to each label, the ``uuid``
+    field is unique to each label instance either temporally or across
+    various modalities, allowing you to identify the same logical label
+    across different samples.
     """
 
     uuid = fof.ObjectIdField(
