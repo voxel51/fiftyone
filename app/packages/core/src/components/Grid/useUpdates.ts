@@ -23,7 +23,7 @@ const handleNewOverlays = (entry: fos.Lookers, newFields: string[]) => {
     if (overlay.label) {
       // "pending" means we're marking this label for rendering or
       // painting, even if it's interrupted, say by unchecking sidebar
-      overlay.label.renderStatus = RENDER_STATUS_PAINTING;
+      overlay.label._renderStatus = RENDER_STATUS_PAINTING;
     }
   }
 
@@ -38,7 +38,7 @@ const handleChangedOverlays = (entry: fos.Lookers) => {
       continue;
     }
 
-    if (overlay?.label?.renderStatus !== RENDER_STATUS_PAINTING) {
+    if (overlay?.label?._renderStatus !== RENDER_STATUS_PAINTING) {
       continue;
     }
 

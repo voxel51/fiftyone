@@ -26,7 +26,7 @@ export const DeserializerFactory = {
         image: new ArrayBuffer(width * height * 4),
       };
       buffers.push(data.buffer);
-      label.renderStatus = RENDER_STATUS_DECODED;
+      label._renderStatus = RENDER_STATUS_DECODED;
     }
   },
   Detections: (labels, buffers) => {
@@ -37,10 +37,10 @@ export const DeserializerFactory = {
 
     const allLabelsDecoded =
       list.length > 0 &&
-      list.every((label) => label.renderStatus === RENDER_STATUS_DECODED);
+      list.every((label) => label._renderStatus === RENDER_STATUS_DECODED);
 
     if (allLabelsDecoded) {
-      labels.renderStatus = RENDER_STATUS_DECODED;
+      labels._renderStatus = RENDER_STATUS_DECODED;
     }
   },
   Heatmap: (label, buffers) => {
@@ -56,7 +56,7 @@ export const DeserializerFactory = {
       };
 
       buffers.push(data.buffer);
-      label.renderStatus = RENDER_STATUS_DECODED;
+      label._renderStatus = RENDER_STATUS_DECODED;
     }
   },
   Segmentation: (label, buffers) => {
@@ -72,7 +72,7 @@ export const DeserializerFactory = {
       };
 
       buffers.push(data.buffer);
-      label.renderStatus = RENDER_STATUS_DECODED;
+      label._renderStatus = RENDER_STATUS_DECODED;
     }
   },
 };
