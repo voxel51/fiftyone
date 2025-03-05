@@ -41,6 +41,20 @@ class _NoDefault(object):
 no_default = _NoDefault()
 
 
+class _HasUuid(object):
+    """Mixin for :class:`Label` classes that contain a UUID via an ``uuid``
+    attribute.
+
+    The ``uuid`` attribute is automatically populated when the label is created.
+    """
+
+    uuid = fof.ObjectIdField(
+        required=True,
+        default=lambda: str(ObjectId()),
+        db_field="_uuid",
+    )
+
+
 class _HasMedia(object):
     """Mixin for :class:`Label` classes that contain a media field."""
 
@@ -367,7 +381,7 @@ class Regression(_HasID, Label):
     confidence = fof.FloatField()
 
 
-class Classification(_HasID, Label):
+class Classification(_HasID, _HasUuid, Label):
     """A classification label.
 
     Args:
@@ -395,7 +409,7 @@ class Classifications(_HasLabelList, Label):
     logits = fof.VectorField()
 
 
-class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
+class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasUuid, Label):
     """An object detection.
 
     Args:
@@ -584,7 +598,7 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
         return cls(label=label, bounding_box=bbox, mask=mask, **attributes)
 
 
-class Detections(_HasLabelList, Label):
+class Detections(_HasLabelList, _HasUuid, Label):
     """A list of object detections in an image.
 
     Args:
@@ -664,7 +678,7 @@ class Detections(_HasLabelList, Label):
         return Segmentation(mask=mask)
 
 
-class Polyline(_HasAttributesDict, _HasID, Label):
+class Polyline(_HasAttributesDict, _HasID, _HasUuid, Label):
     """A set of semantically related polylines or polygons.
 
     Args:
@@ -1006,7 +1020,7 @@ class Polylines(_HasLabelList, Label):
         return Segmentation(mask=mask)
 
 
-class Keypoint(_HasAttributesDict, _HasID, Label):
+class Keypoint(_HasAttributesDict, _HasID, _HasUuid, Label):
     """A list of keypoints in an image.
 
     Args:
