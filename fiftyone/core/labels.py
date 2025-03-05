@@ -412,7 +412,6 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
             on disk, which should be a single-channel PNG image where any
             non-zero values represent the instance's extent
         confidence (None): a confidence in ``[0, 1]`` for the detection
-        index (None): an index for the object
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """
@@ -424,7 +423,6 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
     mask = fof.ArrayField()
     mask_path = fof.StringField()
     confidence = fof.FloatField()
-    index = fof.IntField()
 
     @property
     def has_mask(self):
@@ -504,7 +502,6 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
             label=self.label,
             points=polyline.points,
             confidence=self.confidence,
-            index=self.index,
             closed=polyline.closed,
             filled=polyline.filled,
             tags=self.tags,
@@ -676,7 +673,6 @@ class Polyline(_HasAttributesDict, _HasID, Label):
             ``[0, 1] x [0, 1]`` describing the vertices of each shape in the
             polyline
         confidence (None): a confidence in ``[0, 1]`` for the polyline
-        index (None): an index for the polyline
         closed (False): whether the shapes are closed, i.e., and edge should
             be drawn from the last vertex to the first vertex of each shape
         filled (False): whether the polyline represents polygons, i.e., shapes
@@ -688,7 +684,6 @@ class Polyline(_HasAttributesDict, _HasID, Label):
     label = fof.StringField()
     points = fof.PolylinePointsField()
     confidence = fof.FloatField()
-    index = fof.IntField()
     closed = fof.BooleanField(default=False)
     filled = fof.BooleanField(default=False)
 
@@ -738,7 +733,6 @@ class Polyline(_HasAttributesDict, _HasID, Label):
             bounding_box=bounding_box,
             confidence=self.confidence,
             mask=mask,
-            index=self.index,
             tags=self.tags,
             **attributes,
         )
@@ -1019,7 +1013,6 @@ class Keypoint(_HasAttributesDict, _HasID, Label):
         label (None): a label for the points
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
         confidence (None): a list of confidences in ``[0, 1]`` for each point
-        index (None): an index for the keypoints
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """
@@ -1027,7 +1020,6 @@ class Keypoint(_HasAttributesDict, _HasID, Label):
     label = fof.StringField()
     points = fof.KeypointsField()
     confidence = fof.ListField(fof.FloatField(), null=True)
-    index = fof.IntField()
 
     def to_shapely(self, frame_size=None):
         """Returns a Shapely representation of this instance.
