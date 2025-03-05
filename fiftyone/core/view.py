@@ -7,10 +7,14 @@ Dataset views.
 """
 
 from collections import defaultdict, OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 import contextlib
 from copy import copy, deepcopy
 import itertools
+import logging
 import numbers
+import queue
+import threading
 
 from bson import ObjectId
 from pymongo.errors import CursorNotFound
@@ -28,6 +32,9 @@ import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 
 fost = fou.lazy_import("fiftyone.core.stages")
+
+
+logger = logging.getLogger(__name__)
 
 
 class DatasetView(foc.SampleCollection):
@@ -450,6 +457,128 @@ class DatasetView(foc.SampleCollection):
             a :class:`DatasetView`
         """
         return copy(self)
+
+    def map_samples(
+        self,
+        map_func,
+        map_func_args=None,
+        aggregate_func=None,
+        num_workers=4,
+        progress=False,
+        autosave=False,
+        batch_size=None,
+        batching_strategy=None,
+        skip_failures=True,
+        warn_failures=False,
+    ):
+        if not callable(map_func):
+            raise ValueError("map_func must be callable")
+
+        # Create shared queues with max size
+        MAX_QUEUE_SIZE = 10000
+        work_queue = queue.Queue(maxsize=MAX_QUEUE_SIZE)
+        result_queue = queue.Queue()
+
+        def worker(thread_name):
+            """Worker thread function that processes samples from the queue"""
+            while True:
+                try:
+                    sample = work_queue.get_nowait()
+                    try:
+                        result = map_func(sample, map_func_args)
+                        result_queue.put(("success", result))
+                    except Exception as e:
+                        if skip_failures:
+                            if warn_failures:
+                                print(
+                                    f"Warning: Failed to process sample: {e}"
+                                )
+                            result_queue.put(("failure", None))
+                        else:
+                            result_queue.put(("error", e))
+                    work_queue.task_done()
+                except queue.Empty:
+                    print(f"Worker thread {thread_name} exiting")
+                    break
+
+        results = []
+        sample_count = 0
+        error_occurred = False
+        threads = []
+
+        try:
+            # Start worker threads
+            for i in range(num_workers):
+                thread = threading.Thread(
+                    target=worker,
+                    name=f"SampleMapper-{i}",
+                    args=(f"SampleMapper-{i}",),
+                    daemon=True,
+                )
+                thread.start()
+                threads.append(thread)
+
+            # Process samples
+            for sample in self.iter_samples(
+                progress=progress,
+                autosave=autosave,
+                batch_size=batch_size,
+                batching_strategy=batching_strategy,
+            ):
+                if error_occurred and not skip_failures:
+                    break
+
+                # Simply block until space is available in the queue
+                work_queue.put(sample)
+                sample_count += 1
+
+            # Collect all results
+            while not result_queue.empty():
+                status, result = result_queue.get()
+                if status == "error" and not skip_failures:
+                    raise result
+                elif status == "success":
+                    results.append(result)
+
+        finally:
+            # Clean up threads
+            for thread in threads:
+                thread.join(timeout=1.0)
+
+        # Check result count
+        if len(results) != sample_count:
+            message = f"Worker threads did not process all samples, getting {len(results)} results out of {sample_count}"
+            if not skip_failures:
+                raise RuntimeError(message)
+            else:
+                if warn_failures:
+                    logger.warning(message)
+
+        # Apply aggregation if specified
+        if aggregate_func is not None:
+            if callable(aggregate_func):
+                results = aggregate_func(results)
+            else:
+                raise ValueError("aggregate_func must be callable")
+
+        return results
+
+    def _process_future_result(
+        self, futures, result, skip_failures, warn_failures
+    ):
+        for future in futures:
+            try:
+                result.append(future.result())
+            except Exception as e:
+                if not skip_failures:
+                    raise RuntimeError(
+                        "Worker failed while processing sample"
+                    ) from e
+
+                if warn_failures:
+                    logger.warning("Error processing sample: %s", e)
+
+                result.append(None)
 
     def iter_samples(
         self,
