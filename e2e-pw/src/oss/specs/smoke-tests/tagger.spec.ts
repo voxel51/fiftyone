@@ -38,10 +38,8 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   });
 });
 
-test.beforeEach(async ({ page, fiftyoneLoader, sidebar }) => {
+test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await sidebar.clickFieldCheckbox("ground_truth");
-  await sidebar.clickFieldCheckbox("predictions");
 });
 
 test.describe.serial("tag", () => {

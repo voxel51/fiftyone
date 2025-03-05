@@ -39,8 +39,9 @@ test.describe.serial("sidebar-filter-visibility", () => {
     sidebar,
     eventUtils,
   }) => {
-    // only show ground_truth
-    await sidebar.clickFieldCheckbox("ground_truth");
+    // only show ground_truth (on by default), hide predictions
+    await sidebar.clickFieldCheckbox("predictions");
+
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
       () => true
@@ -95,8 +96,8 @@ test.describe.serial("sidebar-filter-visibility", () => {
     sidebar,
     eventUtils,
   }) => {
-    // only show ground_truth
-    await sidebar.clickFieldCheckbox("ground_truth");
+    // only show ground_truth (on by default), hide predictions
+    await sidebar.clickFieldCheckbox("predictions");
 
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
@@ -153,8 +154,8 @@ test.describe.serial("sidebar-filter-visibility", () => {
     sidebar,
     eventUtils,
   }) => {
-    // only show ground_truth
-    await sidebar.clickFieldCheckbox("ground_truth");
+    // only show ground_truth (on by default), hide predictions
+    await sidebar.clickFieldCheckbox("predictions");
 
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
@@ -212,8 +213,9 @@ test.describe.serial("sidebar-filter-visibility", () => {
     sidebar,
     eventUtils,
   }) => {
-    // only show ground_truth
-    await sidebar.clickFieldCheckbox("ground_truth");
+    // only show ground_truth (on by default), hide predictions
+    await sidebar.clickFieldCheckbox("predictions");
+
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
       () => true
