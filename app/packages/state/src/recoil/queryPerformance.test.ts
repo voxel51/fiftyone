@@ -40,6 +40,12 @@ describe("tests query performance selectors", () => {
     setMockAtoms({
       _view__setter: [
         {
+          _cls: "fiftyone.core.stages.ExcludeFields",
+        },
+        {
+          _cls: "fiftyone.core.stages.SelectFields",
+        },
+        {
           _cls: "fiftyone.core.stages.SelectGroupSlices",
         },
       ],
