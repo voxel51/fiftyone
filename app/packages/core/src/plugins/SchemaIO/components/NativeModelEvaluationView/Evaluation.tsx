@@ -40,16 +40,16 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
+import get from "lodash/get";
 import React, { useEffect, useMemo, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import Error from "./Error";
+import EvaluationIcon from "./EvaluationIcon";
 import EvaluationNotes from "./EvaluationNotes";
 import EvaluationPlot from "./EvaluationPlot";
 import Status from "./Status";
-import { formatValue, getNumericDifference, useTriggerEvent } from "./utils";
-import EvaluationIcon from "./EvaluationIcon";
 import { ConcreteEvaluationType } from "./Types";
-import get from "lodash/get";
+import { formatValue, getNumericDifference, useTriggerEvent } from "./utils";
 
 const KEY_COLOR = "#ff6d04";
 const COMPARE_KEY_COLOR = "#03a9f4";
@@ -75,14 +75,22 @@ export default function Evaluation(props: EvaluationProps) {
   const [expanded, setExpanded] = React.useState("summary");
   const [mode, setMode] = useState("chart");
   const [editNoteState, setEditNoteState] = useState({ open: false, note: "" });
-  const [classPerformanceConfig, setClassPerformanceConfig] =
-    useState<PLOT_CONFIG_TYPE>({});
-  const [classPerformanceDialogConfig, setClassPerformanceDialogConfig] =
-    useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
-  const [confusionMatrixConfig, setConfusionMatrixConfig] =
-    useState<PLOT_CONFIG_TYPE>({ log: true });
-  const [confusionMatrixDialogConfig, setConfusionMatrixDialogConfig] =
-    useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
+  const [
+    classPerformanceConfig,
+    setClassPerformanceConfig,
+  ] = useState<PLOT_CONFIG_TYPE>({});
+  const [
+    classPerformanceDialogConfig,
+    setClassPerformanceDialogConfig,
+  ] = useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
+  const [
+    confusionMatrixConfig,
+    setConfusionMatrixConfig,
+  ] = useState<PLOT_CONFIG_TYPE>({ log: true });
+  const [
+    confusionMatrixDialogConfig,
+    setConfusionMatrixDialogConfig,
+  ] = useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
   const [metricMode, setMetricMode] = useState("chart");
   const [classMode, setClassMode] = useState("chart");
   const [performanceClass, setPerformanceClass] = useState("precision");
@@ -213,6 +221,8 @@ export default function Evaluation(props: EvaluationProps) {
   const isBinaryClassification =
     evaluationType === "classification" && evaluationMethod === "binary";
   const showTpFpFn = isObjectDetection || isBinaryClassification;
+  const isNoneBinaryClassification =
+    isClassification && evaluationMethod !== "binary";
   const infoRows = [
     {
       id: "evaluation_key",
@@ -467,6 +477,24 @@ export default function Evaluation(props: EvaluationProps) {
             : "selected"
           : false,
       hide: !showTpFpFn,
+    },
+    {
+      id: true,
+      property: "Correct",
+      value: evaluationMetrics.num_correct,
+      compareValue: compareEvaluationMetrics.num_correct,
+      lesserIsBetter: false,
+      filterable: true,
+      hide: !isNoneBinaryClassification,
+    },
+    {
+      id: false,
+      property: "Incorrect",
+      value: evaluationMetrics.num_incorrect,
+      compareValue: compareEvaluationMetrics.num_incorrect,
+      lesserIsBetter: false,
+      filterable: true,
+      hide: !isNoneBinaryClassification,
     },
     ...formatCustomMetricRows(evaluation, compareEvaluation),
   ];
@@ -1712,9 +1740,8 @@ function getConfigLabel({ config, type, dashed }) {
     type === "classPerformance"
       ? CLASS_PERFORMANCE_SORT_OPTIONS
       : CONFUSION_MATRIX_SORT_OPTIONS;
-  const sortByLabel = sortByLabels.find(
-    (option) => option.value === sortBy
-  )?.label;
+  const sortByLabel = sortByLabels.find((option) => option.value === sortBy)
+    ?.label;
   return dashed ? ` - ${sortByLabel}` : sortByLabel;
 }
 
