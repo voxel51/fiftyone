@@ -3,7 +3,6 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import functools
 import posixpath
 from importlib import metadata
 from typing import Any, BinaryIO, Callable, Dict, Iterator, Mapping, Optional
@@ -124,8 +123,12 @@ class Client:
         # https://requests.readthedocs.io/en/latest/user/advanced/#body-content-workflow
         with response:
             if stream:
-                return functools.reduce(
-                    lambda res, line: res + line, response.iter_lines(), b""
+                return b"".join(
+                    chunk
+                    for chunk in response.iter_content(
+                        chunk_size=constants.CHUNK_SIZE
+                    )
+                    if chunk
                 )
 
             return response.content
