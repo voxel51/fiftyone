@@ -326,6 +326,10 @@ export default class Spotlight<K, V> extends EventTarget {
     measure: Measure<K, V>;
     zooming?: boolean;
   }) {
+    if (this.#aborter.signal.aborted) {
+      return;
+    }
+
     if (go && offset !== false) {
       this.#forward.top = this.#pivot + this.#config.offset;
       this.#backward.top = this.#config.offset;
@@ -469,7 +473,7 @@ export default class Spotlight<K, V> extends EventTarget {
       }
     );
 
-    if (this.#loaded) {
+    if (this.#loaded && !this.#aborter.signal.aborted) {
       this.dispatchEvent(new Load(this.#config.key));
     }
   }

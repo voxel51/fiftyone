@@ -67,7 +67,10 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
   const shown = new Map<string, T>();
 
   const get = (key: string) =>
-    shown.get(key) ?? hidden.get(key)?.instance ?? pending.get(key);
+    shown.get(key) ??
+    hidden.get(key)?.instance ??
+    pending.get(key) ??
+    frozen.get(key);
 
   const hide = (key?: string) => {
     if (!key) {
@@ -75,8 +78,9 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
       return;
     }
 
-    const instance = shown.get(key);
+    const instance = shown.get(key) ?? frozen.get(key);
     shown.delete(key);
+    frozen.delete(key);
     if (!instance) {
       return;
     }
@@ -104,9 +108,13 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
   };
 
   return {
+    /** TESTING ONLY **/
     frozen,
+    /** TESTING ONLY **/
     hidden,
+    /** TESTING ONLY **/
     pending,
+    /** TESTING ONLY **/
     shown,
 
     /**
@@ -139,14 +147,6 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
     get,
 
     /**
-     * Get a frozen instance
-     *
-     * @param {string} key - the instance key
-     * @returns {T} the instance
-     */
-    getFrozen: (key: string) => frozen.get(key),
-
-    /**
      * Hide an instance. If a key is not provided, all instances are hidden
      *
      * @param {string=} key - an optional key
@@ -154,8 +154,7 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
     hide,
 
     /**
-     * Clear shown instances and move them to a frozen state where they are
-     * neither shown or hidden
+     * Freeze shown instances. A frozen instance is neither shown or hidden
      */
     freeze: () => {
       for (const [key, value] of shown.entries()) {
@@ -165,7 +164,7 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
     },
 
     /**
-     * Determine an instance's visibility
+     * Determine if an instance is shown
      *
      * @param {string} key - the instance key
      * @returns {boolean} whether it is shown
@@ -173,7 +172,8 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
     isShown: (key: string) => shown.has(key),
 
     /**
-     * Set an instance. The initial state of the instance is always shown
+     * Set an instance. The initial state of the instance is always shown. If
+     * the instance was frozen, it is unfrozen
      *
      * @param {string} key - the instance key
      * @param {T} instance - the instance
@@ -181,6 +181,7 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
      */
     set: (key: string, instance: T) => {
       shown.set(key, instance);
+      frozen.delete(key);
       onSet?.(key);
     },
 
@@ -204,8 +205,9 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
       }
 
       const instance = get(key);
-      pending.delete(key);
       hidden.delete(key);
+      pending.delete(key);
+      frozen.delete(key);
       instance && shown.set(key, instance);
     },
 
