@@ -5,6 +5,7 @@ FiftyOne view-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import Counter
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 import math
@@ -107,6 +108,132 @@ class DatasetViewTests(unittest.TestCase):
                 m3 < m4 for m3, m4 in zip(last_modified_at3, last_modified_at4)
             )
         )
+
+    @drop_datasets
+    def test_update_samples(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [fo.Sample(filepath="image%d.jpg" % i, int=i) for i in range(50)]
+        )
+
+        view = dataset.select_fields("int")
+
+        self.assertTupleEqual(view.bounds("int"), (0, 49))
+
+        def update_fcn(sample):
+            sample.int += 1
+
+        #
+        # Multiple workers
+        #
+
+        view.update_samples(update_fcn, num_workers=2)
+
+        self.assertTupleEqual(view.bounds("int"), (1, 50))
+
+        view.update_samples(
+            update_fcn, num_workers=2, shard_size=10, shard_method="id"
+        )
+
+        self.assertTupleEqual(view.bounds("int"), (2, 51))
+
+        view.update_samples(
+            update_fcn, num_workers=2, shard_size=10, shard_method="slice"
+        )
+
+        self.assertTupleEqual(view.bounds("int"), (3, 52))
+
+        #
+        # Main process
+        #
+
+        view.update_samples(update_fcn, num_workers=1)
+
+        self.assertTupleEqual(view.bounds("int"), (4, 53))
+
+    @drop_datasets
+    def test_map_samples(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image%d.jpg" % i, foo="bar")
+                for i in range(50)
+            ]
+        )
+
+        view = dataset.select_fields("foo")
+
+        self.assertDictEqual(view.count_values("foo"), {"bar": 50})
+
+        def map_fcn(sample):
+            return sample.foo.upper()
+
+        class ReduceFcn(fo.ReduceFcn):
+            def init(self):
+                self.accumulator = Counter()
+
+            def add(self, sample_id, output):
+                self.accumulator[output] += 1
+
+            def finalize(self):
+                return dict(self.accumulator)
+
+        def aggregate_fcn(view, outputs):
+            return dict(Counter(outputs.values()))
+
+        #
+        # Multiple workers
+        #
+
+        counter = Counter()
+        for _, value in view.map_samples(map_fcn, num_workers=2):
+            counter[value] += 1
+
+        counts = dict(counter)
+
+        self.assertDictEqual(counts, {"BAR": 50})
+
+        counts = view.map_samples(
+            map_fcn,
+            reduce_fcn=ReduceFcn,
+            num_workers=2,
+            shard_size=10,
+            shard_method="id",
+        )
+
+        self.assertDictEqual(counts, {"BAR": 50})
+
+        counts = view.map_samples(
+            map_fcn,
+            aggregate_fcn=aggregate_fcn,
+            num_workers=2,
+            shard_size=10,
+            shard_method="slice",
+        )
+
+        self.assertDictEqual(counts, {"BAR": 50})
+
+        #
+        # Main process
+        #
+
+        counter = Counter()
+        for _, value in view.map_samples(map_fcn, num_workers=1):
+            counter[value] += 1
+
+        counts = dict(counter)
+
+        self.assertDictEqual(counts, {"BAR": 50})
+
+        counts = view.map_samples(map_fcn, reduce_fcn=ReduceFcn, num_workers=1)
+
+        self.assertDictEqual(counts, {"BAR": 50})
+
+        counts = view.map_samples(
+            map_fcn, aggregate_fcn=aggregate_fcn, num_workers=1
+        )
+
+        self.assertDictEqual(counts, {"BAR": 50})
 
     @drop_datasets
     def test_set_unknown_attribute(self):
