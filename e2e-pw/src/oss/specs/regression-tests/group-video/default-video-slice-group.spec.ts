@@ -24,52 +24,57 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   },
 });
 
-test.describe("default video slice group", () => {
-  test.beforeAll(async ({ fiftyoneLoader, mediaFactory }) => {
-    await mediaFactory.createBlankVideo({
-      outputPath: testVideoPath,
-      duration: 2,
-      width: 50,
-      height: 50,
-      frameRate: 5,
-      color: "#000000",
-    });
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
 
-    await mediaFactory.createBlankImage({
-      outputPath: testImgPath,
-      width: 50,
-      height: 50,
-    });
-
-    await mediaFactory.createBlankImage({
-      outputPath: testImgPath2,
-      width: 50,
-      height: 50,
-    });
-
-    await fiftyoneLoader.executePythonCode(`
-        import fiftyone as fo
-
-        dataset = fo.Dataset("${datasetName}")
-        dataset.persistent = True
-
-        dataset.add_group_field("group", default="video")
-
-        group1 = fo.Group()
-        image_sample = fo.Sample(filepath="${testImgPath}", group=group1.element("image"))
-        video_sample = fo.Sample(filepath="${testVideoPath}", group=group1.element("video"))
-
-        group2 = fo.Group()
-        image_sample2 = fo.Sample(filepath="${testImgPath2}", group=group2.element("image"))
-
-        dataset.ensure_frames();
-        for _, frame in video_sample.frames.items():
-          d1 = fo.Detection(bounding_box=[0.1, 0.1, 0.2, 0.2])
-          frame["d1"] = d1
-        dataset.add_samples([video_sample, image_sample, image_sample2])
-        `);
+test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
+  await foWebServer.startWebServer();
+  await mediaFactory.createBlankVideo({
+    outputPath: testVideoPath,
+    duration: 2,
+    width: 50,
+    height: 50,
+    frameRate: 5,
+    color: "#000000",
   });
 
+  await mediaFactory.createBlankImage({
+    outputPath: testImgPath,
+    width: 50,
+    height: 50,
+  });
+
+  await mediaFactory.createBlankImage({
+    outputPath: testImgPath2,
+    width: 50,
+    height: 50,
+  });
+
+  await fiftyoneLoader.executePythonCode(`
+      import fiftyone as fo
+
+      dataset = fo.Dataset("${datasetName}")
+      dataset.persistent = True
+
+      dataset.add_group_field("group", default="video")
+
+      group1 = fo.Group()
+      image_sample = fo.Sample(filepath="${testImgPath}", group=group1.element("image"))
+      video_sample = fo.Sample(filepath="${testVideoPath}", group=group1.element("video"))
+
+      group2 = fo.Group()
+      image_sample2 = fo.Sample(filepath="${testImgPath2}", group=group2.element("image"))
+
+      dataset.ensure_frames();
+      for _, frame in video_sample.frames.items():
+        d1 = fo.Detection(bounding_box=[0.1, 0.1, 0.2, 0.2])
+        frame["d1"] = d1
+      dataset.add_samples([video_sample, image_sample, image_sample2])
+      `);
+});
+
+test.describe.serial("default video slice group", () => {
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });

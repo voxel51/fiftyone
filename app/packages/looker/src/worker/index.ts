@@ -30,7 +30,14 @@ import {
 import { DeserializerFactory } from "./deserializer";
 import { decodeOverlayOnDisk } from "./disk-overlay-decoder";
 import { PainterFactory } from "./painter";
-import { getOverlayFieldFromCls, mapId } from "./shared";
+import colorResolve from "./resolve-color";
+import {
+  getOverlayFieldFromCls,
+  mapId,
+  RENDER_STATUS_DECODED,
+  RENDER_STATUS_PAINTED,
+  RENDER_STATUS_PENDING,
+} from "./shared";
 import { process3DLabels } from "./threed-label-processor";
 
 interface ResolveColor {
@@ -41,60 +48,40 @@ interface ResolveColor {
 
 type ResolveColorMethod = ReaderMethod & ResolveColor;
 
-const [requestColor, resolveColor] = ((): [
-  (pool: string[], seed: number, key: string | number) => Promise<string>,
-  (result: ResolveColor) => void
-] => {
-  const cache = {};
-  const requests = {};
-  const promises = {};
-
-  return [
-    (pool, seed, key) => {
-      if (!(seed in cache)) {
-        cache[seed] = {};
-      }
-
-      const colors = cache[seed];
-
-      if (!(key in colors)) {
-        if (!(seed in requests)) {
-          requests[seed] = {};
-          promises[seed] = {};
-        }
-
-        const seedRequests = requests[seed];
-        const seedPromises = promises[seed];
-
-        if (!(key in seedRequests)) {
-          seedPromises[key] = new Promise((resolve) => {
-            seedRequests[key] = resolve;
-            postMessage({
-              method: "requestColor",
-              key,
-              seed,
-              pool,
-            });
-          });
-        }
-
-        return seedPromises[key];
-      }
-
-      return Promise.resolve(colors[key]);
-    },
-    ({ key, seed, color }) => {
-      requests[seed][key](color);
-    },
-  ];
-})();
+const [requestColor, resolveColor] = colorResolve();
 
 const painterFactory = PainterFactory(requestColor);
 
 const ALL_VALID_LABELS = new Set(VALID_LABEL_TYPES);
 
+const shouldProcessLabel = ({
+  field,
+  label,
+  activePaths,
+  prefix,
+}: {
+  prefix: string;
+  field: string;
+  label: any;
+  activePaths: string[];
+}) => {
+  // check if it has a valid render status, in which case it takes precendence over activePaths
+  // it means this label was processed before and we should re-render it
+  const currentLabelRenderStatus = label?.renderStatus;
+
+  if (
+    currentLabelRenderStatus === RENDER_STATUS_PAINTED ||
+    currentLabelRenderStatus === RENDER_STATUS_DECODED ||
+    currentLabelRenderStatus === RENDER_STATUS_PENDING
+  ) {
+    return true;
+  }
+
+  return activePaths?.includes(`${prefix ?? ""}${field}`);
+};
+
 /**
- * This function processes labels in a recursive manner. It follows the following steps:
+ * This function processes labels in active paths in a recursive manner. It follows the following steps:
  * 1. Deserialize masks. Accumulate promises.
  * 2. Await mask path decoding to finish.
  * 3. Start painting overlays. Accumulate promises.
@@ -112,7 +99,8 @@ const processLabels = async (
   colorscale: ProcessSample["colorscale"],
   labelTagColors: ProcessSample["labelTagColors"],
   selectedLabelTags: ProcessSample["selectedLabelTags"],
-  schema: Schema
+  schema: ProcessSample["schema"],
+  activePaths: ProcessSample["activePaths"]
 ): Promise<[Promise<ImageBitmap[]>[], ArrayBuffer[]]> => {
   const maskPathDecodingPromises: Promise<void>[] = [];
   const painterPromises: Promise<void>[] = [];
@@ -137,23 +125,36 @@ const processLabels = async (
       }
 
       if (DENSE_LABELS.has(cls)) {
-        maskPathDecodingPromises.push(
-          decodeOverlayOnDisk(
-            `${prefix || ""}${field}`,
+        if (
+          shouldProcessLabel({
+            prefix,
+            field,
             label,
-            coloring,
-            customizeColorSetting,
-            colorscale,
-            sources,
-            cls,
-            maskPathDecodingPromises,
-            maskTargetsBuffers
-          )
-        );
-      }
+            activePaths,
+          })
+        ) {
+          maskPathDecodingPromises.push(
+            // note: if it's an already decoded label, this will be cheap
+            decodeOverlayOnDisk(
+              `${prefix || ""}${field}`,
+              label,
+              coloring,
+              customizeColorSetting,
+              colorscale,
+              sources,
+              cls,
+              maskPathDecodingPromises,
+              maskTargetsBuffers
+            )
+          );
 
-      if (cls in DeserializerFactory) {
-        DeserializerFactory[cls](label, maskTargetsBuffers);
+          if (cls in DeserializerFactory) {
+            DeserializerFactory[cls](label, maskTargetsBuffers);
+          }
+        } else {
+          // we'll process this label asynchronously later
+          label.renderStatus = null;
+        }
       }
 
       if ([EMBEDDED_DOCUMENT, DYNAMIC_EMBEDDED_DOCUMENT].includes(cls)) {
@@ -167,7 +168,8 @@ const processLabels = async (
             colorscale,
             labelTagColors,
             selectedLabelTags,
-            schema
+            schema,
+            activePaths
           );
         bitmapPromises.push(...moreBitmapPromises);
         maskTargetsBuffers.push(...moreMaskTargetsBuffers);
@@ -205,18 +207,28 @@ const processLabels = async (
       if (!label) {
         continue;
       }
-      if (painterFactory[cls]) {
-        painterPromises.push(
-          painterFactory[cls](
-            prefix ? prefix + field : field,
-            label,
-            coloring,
-            customizeColorSetting,
-            colorscale,
-            labelTagColors,
-            selectedLabelTags
-          )
-        );
+
+      if (
+        shouldProcessLabel({
+          prefix,
+          field,
+          label,
+          activePaths,
+        })
+      ) {
+        if (painterFactory[cls]) {
+          painterPromises.push(
+            painterFactory[cls](
+              prefix ? prefix + field : field,
+              label,
+              coloring,
+              customizeColorSetting,
+              colorscale,
+              labelTagColors,
+              selectedLabelTags
+            )
+          );
+        }
       }
     }
   }
@@ -238,7 +250,7 @@ const processLabels = async (
     }
 
     for (const label of labels) {
-      if (!label) {
+      if (label?.renderStatus !== "painted") {
         continue;
       }
 
@@ -312,6 +324,7 @@ export interface ProcessSample {
   selectedLabelTags: string[];
   sources: { [path: string]: string };
   schema: Schema;
+  activePaths: string[];
 }
 
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
@@ -326,13 +339,27 @@ const processSample = async ({
   selectedLabelTags,
   labelTagColors,
   schema,
+  activePaths,
 }: ProcessSample) => {
+  if (!sample) {
+    // edge case where looker hasn't been associated with a sample yet
+    // but `updateSample` was called anyway, say, due to user switching colors
+    // as soon as the app loads but before grid is ready
+    postMessage({
+      method: "processSample",
+      uuid,
+      error: "sample not attached",
+    });
+    return;
+  }
+
   mapId(sample);
 
   const imageBitmapPromises: Promise<ImageBitmap[]>[] = [];
   let maskTargetsBuffers: ArrayBuffer[] = [];
 
   if (sample?._media_type === "point-cloud" || sample?._media_type === "3d") {
+    // we process all 3d labels regardless of active paths
     process3DLabels(schema, sample);
   } else {
     const [bitmapPromises, moreMaskTargetsBuffers] = await processLabels(
@@ -344,7 +371,8 @@ const processSample = async ({
       colorscale,
       labelTagColors,
       selectedLabelTags,
-      schema
+      schema,
+      activePaths
     );
 
     if (bitmapPromises.length !== 0) {
@@ -371,7 +399,8 @@ const processSample = async ({
           colorscale,
           labelTagColors,
           selectedLabelTags,
-          schema
+          schema,
+          activePaths
         )
       );
     }
@@ -417,6 +446,7 @@ interface FrameStream {
 }
 
 interface FrameChunkResponse extends FrameChunk {
+  activePaths: string[];
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
   colorscale: Colorscale;
@@ -439,7 +469,9 @@ const createReader = ({
   view,
   group,
   schema,
+  activePaths,
 }: {
+  activePaths: string[];
   chunkSize: number;
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
@@ -485,6 +517,7 @@ const createReader = ({
             const { frames, range } = await call();
 
             controller.enqueue({
+              activePaths,
               frames,
               range,
               coloring,
@@ -536,7 +569,8 @@ const getSendChunk =
             value.colorscale,
             value.labelTagColors,
             value.selectedLabelTags,
-            value.schema
+            value.schema,
+            value.activePaths
           )
         )
       );
@@ -584,6 +618,7 @@ const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
 };
 
 interface SetStream {
+  activePaths: string[];
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
   colorscale: Colorscale;
@@ -615,6 +650,7 @@ const setStream = ({
   view,
   group,
   schema,
+  activePaths,
 }: SetStream) => {
   stream && stream.cancel();
   streamId = uuid;
@@ -633,6 +669,7 @@ const setStream = ({
     view,
     group,
     schema,
+    activePaths,
   });
 
   stream.reader.read().then(getSendChunk(uuid));

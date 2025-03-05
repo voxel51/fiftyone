@@ -5,6 +5,7 @@ Label utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import contextlib
 
 import fiftyone.core.cache as foc
@@ -80,8 +81,12 @@ def objects_to_segmentations(
         sample_collection.compute_metadata()
 
     select_fields = [in_field]
+    in_field, processing_frames = sample_collection._handle_frame_field(
+        in_field
+    )
+    out_field, _ = sample_collection._handle_frame_field(out_field)
     if (
-        sample_collection._is_frame_field(in_field)
+        processing_frames
         and output_dir is not None
         and sample_collection.has_field("frames.filepath")
     ):
@@ -421,8 +426,11 @@ def transform_segmentations(
     )
 
     select_fields = [in_field]
+    in_field, processing_frames = sample_collection._handle_frame_field(
+        in_field
+    )
     if (
-        sample_collection._is_frame_field(in_field)
+        processing_frames
         and output_dir is not None
         and sample_collection.has_field("frames.filepath")
     ):
@@ -574,8 +582,12 @@ def segmentations_to_detections(
     )
 
     select_fields = [in_field]
+    in_field, processing_frames = sample_collection._handle_frame_field(
+        in_field
+    )
+    out_field, _ = sample_collection._handle_frame_field(out_field)
     if (
-        sample_collection._is_frame_field(in_field)
+        processing_frames
         and output_dir is not None
         and sample_collection.has_field("frames.filepath")
     ):

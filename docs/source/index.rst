@@ -127,6 +127,16 @@ learn how:
     :image_title: Elasticsearch
 
 .. customimagelink::
+    :image_link: integrations/postgres.html
+    :image_src: https://voxel51.com/images/integrations/postgres-128.png
+    :image_title: PostgreSQL
+
+.. customimagelink::
+    :image_link: integrations/mosaic.html
+    :image_src: https://voxel51.com/images/integrations/mosaic-128.png
+    :image_title: Mosaic
+
+.. customimagelink::
     :image_link: integrations/milvus.html
     :image_src: https://voxel51.com/images/integrations/milvus-128.png
     :image_title: Milvus

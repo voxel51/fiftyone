@@ -37,7 +37,7 @@ export type ColorscaleInput = {
   path?: string;
   name?: string;
   list?: [];
-  rgb?: [RGB[]];
+  rgb?: RGB[];
 };
 
 export type Colorscale = {
@@ -90,6 +90,7 @@ export type Sample = {
   _id: string;
   id: string;
   filepath: string;
+  frames?: Sample[];
   tags: string[];
   _label_tags: string[];
   _media_type: "image" | "video" | "point-cloud" | "3d";

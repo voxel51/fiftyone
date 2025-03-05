@@ -1,4 +1,3 @@
-import _ from "lodash";
 import { Dialog } from "@fiftyone/components";
 import { editingFieldAtom, view } from "@fiftyone/state";
 import {
@@ -41,12 +40,15 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
+import get from "lodash/get";
 import React, { useEffect, useMemo, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import Error from "./Error";
+import EvaluationIcon from "./EvaluationIcon";
 import EvaluationNotes from "./EvaluationNotes";
 import EvaluationPlot from "./EvaluationPlot";
 import Status from "./Status";
+import { ConcreteEvaluationType } from "./Types";
 import { formatValue, getNumericDifference, useTriggerEvent } from "./utils";
 
 const KEY_COLOR = "#ff6d04";
@@ -128,12 +130,12 @@ export default function Evaluation(props: EvaluationProps) {
     compareEvaluationMaskTargets,
   ]);
   const compareKeys = useMemo(() => {
-    const keys: string[] = [];
+    const keys: Record<string, string>[] = [];
     const evaluations = data?.evaluations || [];
     for (const evaluation of evaluations) {
-      const { key } = evaluation;
+      const { key, type, method } = evaluation;
       if (key !== name) {
-        keys.push(key);
+        keys.push({ key, type, method });
       }
     }
     return keys;
@@ -211,6 +213,8 @@ export default function Evaluation(props: EvaluationProps) {
   const isBinaryClassification =
     evaluationType === "classification" && evaluationMethod === "binary";
   const showTpFpFn = isObjectDetection || isBinaryClassification;
+  const isNoneBinaryClassification =
+    isClassification && evaluationMethod !== "binary";
   const infoRows = [
     {
       id: "evaluation_key",
@@ -466,6 +470,24 @@ export default function Evaluation(props: EvaluationProps) {
           : false,
       hide: !showTpFpFn,
     },
+    {
+      id: true,
+      property: "Correct",
+      value: evaluationMetrics.num_correct,
+      compareValue: compareEvaluationMetrics.num_correct,
+      lesserIsBetter: false,
+      filterable: true,
+      hide: !isNoneBinaryClassification,
+    },
+    {
+      id: false,
+      property: "Incorrect",
+      value: evaluationMetrics.num_incorrect,
+      compareValue: compareEvaluationMetrics.num_incorrect,
+      lesserIsBetter: false,
+      filterable: true,
+      hide: !isNoneBinaryClassification,
+    },
     ...formatCustomMetricRows(evaluation, compareEvaluation),
   ];
 
@@ -503,7 +525,7 @@ export default function Evaluation(props: EvaluationProps) {
   return (
     <Stack spacing={2} sx={{ p: 2 }}>
       <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+        <Stack direction="row" spacing={0} sx={{ alignItems: "center" }}>
           <IconButton
             onClick={() => {
               navigateBack();
@@ -512,6 +534,7 @@ export default function Evaluation(props: EvaluationProps) {
           >
             <ArrowBack />
           </IconButton>
+          <EvaluationIcon type={evaluationType} method={evaluationMethod} />
           <Typography>{name}</Typography>
         </Stack>
         <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
@@ -581,6 +604,10 @@ export default function Evaluation(props: EvaluationProps) {
                 height: 28,
                 width: "100%",
                 background: theme.palette.background.card,
+                "& .MuiOutlinedInput-input": {
+                  display: "flex",
+                  alignItems: "center",
+                },
               }}
               defaultValue={compareKey}
               onChange={(e) => {
@@ -607,9 +634,13 @@ export default function Evaluation(props: EvaluationProps) {
                 ) : null
               }
             >
-              {compareKeys.map((key) => {
+              {compareKeys.map(({ key, type, method }) => {
                 return (
-                  <MenuItem value={key} key={key}>
+                  <MenuItem value={key} key={key} sx={{ p: 0 }}>
+                    <EvaluationIcon
+                      type={type as ConcreteEvaluationType}
+                      method={method}
+                    />
                     <Typography>{key}</Typography>
                   </MenuItem>
                 );
@@ -1111,6 +1142,9 @@ export default function Evaluation(props: EvaluationProps) {
                         return loadView("clear", {});
                       }
                       loadView("class", { x: points[0]?.x });
+                    }}
+                    layout={{
+                      xaxis: { type: "category" },
                     }}
                   />
                 )}
@@ -1783,10 +1817,10 @@ type SummaryRow = {
 
 function formatCustomMetricRows(evaluationMetrics, comparisonMetrics) {
   const results = [] as SummaryRow[];
-  const customMetrics = (_.get(evaluationMetrics, "custom_metrics", null) ||
+  const customMetrics = (get(evaluationMetrics, "custom_metrics", null) ||
     {}) as CustomMetrics;
   for (const [operatorUri, customMetric] of Object.entries(customMetrics)) {
-    const compareValue = _.get(
+    const compareValue = get(
       comparisonMetrics,
       `custom_metrics.${operatorUri}.value`,
       null

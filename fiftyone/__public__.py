@@ -203,6 +203,7 @@ from .core.stages import (
     ExcludeFields,
     ExcludeFrames,
     ExcludeGroups,
+    ExcludeGroupSlices,
     ExcludeLabels,
     Exists,
     FilterField,

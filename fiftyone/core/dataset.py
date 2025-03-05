@@ -7724,6 +7724,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         media_type=None,
         attach_frames=False,
         detach_frames=False,
+        limit_frames=None,
         frames_only=False,
         support=None,
         group_slice=None,
@@ -7776,7 +7777,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _pipeline.extend(self._group_select_pipeline(group_slice))
 
         if attach_frames:
-            _pipeline.extend(self._attach_frames_pipeline(support=support))
+            _pipeline.extend(
+                self._attach_frames_pipeline(
+                    limit=limit_frames, support=support
+                )
+            )
 
         if pipeline is not None:
             _pipeline.extend(pipeline)
@@ -7798,7 +7803,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return _pipeline
 
-    def _attach_frames_pipeline(self, support=None):
+    def _attach_frames_pipeline(self, limit=None, support=None):
         """A pipeline that attaches the frame documents for each document."""
         if self._is_clips:
             first = {"$arrayElemAt": ["$support", 0]}
@@ -7829,15 +7834,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             let = {"sample_id": "$_id"}
             match_expr = {"$eq": ["$$sample_id", "$_sample_id"]}
 
+        pipeline = [
+            {"$match": {"$expr": match_expr}},
+            {"$sort": {"frame_number": 1}},
+        ]
+
+        if limit:
+            pipeline.append({"$limit": limit})
+
         return [
             {
                 "$lookup": {
                     "from": self._frame_collection_name,
                     "let": let,
-                    "pipeline": [
-                        {"$match": {"$expr": match_expr}},
-                        {"$sort": {"frame_number": 1}},
-                    ],
+                    "pipeline": pipeline,
                     "as": "frames",
                 }
             }
@@ -8716,7 +8726,6 @@ def _clone_collection(sample_collection, name, persistent):
     slug = _validate_dataset_name(name)
 
     contains_videos = sample_collection._contains_videos(any_slice=True)
-    contains_groups = sample_collection.media_type == fom.GROUP
 
     if isinstance(sample_collection, fov.DatasetView):
         dataset = sample_collection._dataset
@@ -8724,6 +8733,9 @@ def _clone_collection(sample_collection, name, persistent):
 
         if view.media_type == fom.MIXED:
             raise ValueError("Cloning mixed views is not allowed")
+
+        if view._is_dynamic_groups:
+            raise ValueError("Cloning dynamic grouped views is not allowed")
     else:
         dataset = sample_collection
         view = None
@@ -8757,10 +8769,9 @@ def _clone_collection(sample_collection, name, persistent):
     dataset_doc.sample_collection_name = sample_collection_name
     dataset_doc.frame_collection_name = frame_collection_name
     dataset_doc.media_type = sample_collection.media_type
-    if not contains_groups:
-        dataset_doc.group_field = None
-        dataset_doc.group_media_types = {}
-        dataset_doc.default_group_slice = None
+    dataset_doc.group_field = sample_collection.group_field
+    dataset_doc.group_media_types = sample_collection.group_media_types
+    dataset_doc.default_group_slice = sample_collection.default_group_slice
 
     for field in dataset_doc.sample_fields:
         field._set_created_at(now)

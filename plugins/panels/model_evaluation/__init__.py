@@ -98,6 +98,10 @@ class EvaluationPanel(Panel):
                 evaluation = {
                     "key": key,
                     "id": self.get_evaluation_id(ctx.dataset, key),
+                    "type": ctx.dataset.get_evaluation_info(key).config.type,
+                    "method": ctx.dataset.get_evaluation_info(
+                        key
+                    ).config.method,
                 }
                 evaluations.append(evaluation)
         ctx.panel.set_state("evaluations", evaluations)
@@ -332,6 +336,11 @@ class EvaluationPanel(Panel):
             "lc_colorscale": lc_colorscale,
         }
 
+    def get_correct_incorrect(self, results):
+        correct = np.count_nonzero(results.ypred == results.ytrue)
+        incorrect = np.count_nonzero(results.ypred != results.ytrue)
+        return correct, incorrect
+
     def load_evaluation(self, ctx):
         view_state = ctx.panel.get_state("view") or {}
         eval_key = view_state.get("key")
@@ -371,6 +380,16 @@ class EvaluationPanel(Panel):
             )
             metrics["mAP"] = self.get_map(results)
             metrics["mAR"] = self.get_mar(results)
+
+            if (
+                info.config.type == "classification"
+                and info.config.method != "binary"
+            ):
+                (
+                    metrics["num_correct"],
+                    metrics["num_incorrect"],
+                ) = self.get_correct_incorrect(results)
+
             evaluation_data = {
                 "metrics": metrics,
                 "custom_metrics": self.get_custom_metrics(results),
@@ -421,8 +440,15 @@ class EvaluationPanel(Panel):
                     pending
                 )
         for key in eval_keys:
+            conf = ctx.dataset.get_evaluation_info(key).config
             if not self.has_evaluation_results(ctx.dataset, key):
-                pending_evaluations.append({"eval_key": key})
+                pending_evaluations.append(
+                    {
+                        "eval_key": key,
+                        "type": conf.type,
+                        "method": conf.method,
+                    }
+                )
         if update_store:
             pending_evaluations_in_store[
                 dataset_id
