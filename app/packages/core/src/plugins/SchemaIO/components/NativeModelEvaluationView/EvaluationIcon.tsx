@@ -1,7 +1,6 @@
-import _, { capitalize } from "lodash";
+import { capitalize } from "lodash";
 
 import { IconButton } from "@mui/material";
-import React from "react";
 
 import CallSplitOutlinedIcon from "@mui/icons-material/CallSplitOutlined";
 import CrisisAlertOutlinedIcon from "@mui/icons-material/CrisisAlertOutlined";
