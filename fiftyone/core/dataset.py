@@ -3394,6 +3394,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dynamic=dynamic,
             validate=validate,
             copy=False,
+            include_id=True,
         )
 
         calculate_size_fn = partial(self._calculate_size)
@@ -3410,7 +3411,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._upsert_samples_batch(batch, batcher=batcher)
 
     def _transform_sample(
-        self, sample, expand_schema, dynamic, validate, copy=False
+        self,
+        sample,
+        expand_schema,
+        dynamic,
+        validate,
+        copy=False,
+        include_id=False,
     ):
         """Transforms the given sample and returns the transformed sample and dict as a pair"""
 
@@ -3431,7 +3438,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return (
             sample,
             self._make_dict(
-                sample, include_id=True, created_at=now, last_modified_at=now
+                sample,
+                include_id=include_id,
+                created_at=now,
+                last_modified_at=now,
             ),
         )
 
