@@ -76,6 +76,7 @@ class OnPlotLoad(HTTPEndpoint):
 
         patches_field = results.config.patches_field
         is_patches_plot = patches_field is not None
+        points_field = results.config.points_field
 
         # Determines which points from `results` are in `view`, which are the
         # only points we want to display in the embeddings plot
@@ -151,6 +152,7 @@ class OnPlotLoad(HTTPEndpoint):
             "available_count": available_count,
             "missing_count": missing_count,
             "patches_field": patches_field,
+            "points_field": points_field,
         }
 
 
@@ -242,6 +244,8 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
         slices = data["slices"]
         lasso_points = data.get("lassoPoints", None)
         points_field = data.get("pointsField", None)
+
+        print(points_field)
 
         view = fosv.get_view(
             dataset_name,
