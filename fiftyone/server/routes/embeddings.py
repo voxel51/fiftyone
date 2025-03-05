@@ -245,8 +245,6 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
         lasso_points = data.get("lassoPoints", None)
         points_field = data.get("pointsField", None)
 
-        print(points_field)
-
         view = fosv.get_view(
             dataset_name,
             stages=stages,
