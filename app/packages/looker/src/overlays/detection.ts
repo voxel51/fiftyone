@@ -45,7 +45,7 @@ export default class DetectionOverlay<
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
-    if ((this.label.mask || this.label.mask_path) && this.label.mask?.data) {
+    if ((this.label.mask || this.label.mask_path) && !this.label.mask?.data) {
       return CONTAINS.NONE;
     }
 
@@ -113,6 +113,7 @@ export default class DetectionOverlay<
   }
 
   getPointInfo(state: Readonly<State>): PointInfo<DetectionLabel> {
+    console.log(">>>getPointInfo", this.label);
     return {
       color: this.getColor(state),
       field: this.field,
