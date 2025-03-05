@@ -465,6 +465,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if media_type == self._doc.media_type:
             return
 
+        # @todo handle custom media types?
         if media_type not in fom.MEDIA_TYPES and media_type != fom.GROUP:
             raise ValueError(
                 "Invalid media_type '%s'. Supported values are %s"
@@ -2784,6 +2785,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 % (name, existing_media_type, media_type)
             )
 
+        # @todo handle custom media types?
         if media_type not in fom.MEDIA_TYPES:
             raise ValueError("Invalid media type '%s'" % media_type)
 
