@@ -24,3 +24,17 @@ class TestResolveMediaAliasForSvcWorker(unittest.TestCase):
             self.assertEqual(
                 unaliased, "https://localhost:5151/media/filename.jpg"
             )
+
+    def test_replace_only_prefix(self):
+        with patch.object(
+            fo.config, "media_filepath_prefix_alias", "gs"
+        ), patch.object(
+            fo.config,
+            "media_filepath_prefix_url",
+            "www.googleapis.com/storage",
+        ):
+            url = "gs/media/gs/dogs.jpg"
+            unaliased = resolve_media_alias_to_url(url)
+            self.assertEqual(
+                unaliased, "www.googleapis.com/storage/media/gs/dogs.jpg"
+            )

@@ -649,6 +649,6 @@ def resolve_media_alias_to_url(url):
     alias = fo.config.media_filepath_prefix_alias
     endpoint = fo.config.media_filepath_prefix_url
     # specifically check for None in case alias or endpoint is set to an empty string
-    if None not in [alias, endpoint] and url.startswith(alias):
-        url = url.replace(alias, endpoint)
+    if alias is not None and endpoint is not None and url.startswith(alias):
+        url = endpoint + url[len(alias) :]
     return url
