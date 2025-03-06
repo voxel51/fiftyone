@@ -53,6 +53,9 @@ class ProcessMapBackend(MapBackend):
         shard_method: str = "id",
         progress: Optional[Union[str, bool]] = None,
     ) -> Iterator[Any]:
+        if len(sample_collection) == 0:
+            raise StopIteration()
+
         return self._map_samples(
             sample_collection,
             map_fcn,
@@ -72,7 +75,7 @@ class ProcessMapBackend(MapBackend):
         num_workers: Optional[int] = None,
         shard_method: str = "id",
         progress: Optional[Union[str, bool]] = None,
-    ):
+    ) -> Optional[Iterator[Any]]:
         """Applies the given function to each sample in the collection via a
         multiprocessing pool, optionally saving any sample edits.
 
