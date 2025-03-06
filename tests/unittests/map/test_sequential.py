@@ -66,6 +66,8 @@ class TestSequentialMapBackend(unittest.TestCase):
         # Run update_samples
         self.seq_backend.update_samples(self.dataset, map_fcn)
 
+        foum.update_samples(self.dataset, map_fcn)
+
         dataset = fo.load_dataset("test_sequential_map_backend")
 
         # Verify results
