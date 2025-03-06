@@ -17,6 +17,8 @@ from typing import (
 import bson
 import bson.raw_bson
 import pymongo
+from bson import ObjectId
+from pymongo import WriteConcern
 
 from fiftyone.api.pymongo import proxy, change_stream, command_cursor, cursor
 
@@ -212,15 +214,23 @@ class Collection(proxy.PymongoRestProxy):
         *args: Any,
         **kwargs: Any,
     ) -> pymongo.results.InsertManyResult:
-        res = self.__proxy_it__("insert_many", (documents, *args), kwargs)
+        inserted_ids = []
 
-        # Need to mutate documents passed in.
-        idx = 0
-        for document in documents:
-            if "_id" not in document:
-                document["_id"] = res.inserted_ids[idx]
-                idx += 1
-        return res
+        if documents:
+            # Modify each document client-side and ensure _id exists and is first
+            # to avoid additional reordering server-side
+            # https://github.com/mongodb/specifications/blob/master/source/crud/bulk-write.md#insert
+            for i, doc in enumerate(documents):
+                oid = doc.pop("_id", ObjectId())
+                inserted_ids.append(oid)
+                doc["_id"] = oid
+                documents[i] = {"_id": oid, **doc}
+
+            _ = self.__proxy_it__("insert_many", (documents, *args), kwargs)
+
+        return pymongo.results.InsertManyResult(
+            inserted_ids, acknowledged=WriteConcern() != 0
+        )
 
     # pylint: disable-next=missing-function-docstring
     def list_indexes(
