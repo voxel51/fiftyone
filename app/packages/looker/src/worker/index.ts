@@ -8,13 +8,13 @@ import {
   DETECTIONS,
   DYNAMIC_EMBEDDED_DOCUMENT,
   EMBEDDED_DOCUMENT,
-  LABEL_LIST,
-  Schema,
-  Stage,
-  VALID_LABEL_TYPES,
   getCls,
   getFetchFunction,
+  LABEL_LIST,
+  Schema,
   setFetchFunction,
+  Stage,
+  VALID_LABEL_TYPES,
 } from "@fiftyone/utilities";
 import { CHUNK_SIZE } from "../constants";
 import {
@@ -67,12 +67,12 @@ const shouldProcessLabel = ({
 }) => {
   // check if it has a valid render status, in which case it takes precendence over activePaths
   // it means this label was processed before and we should re-render it
-  const currentLabelRenderStatus = label?.renderStatus;
+  const currentLabel_renderStatus = label?._renderStatus;
 
   if (
-    currentLabelRenderStatus === RENDER_STATUS_PAINTED ||
-    currentLabelRenderStatus === RENDER_STATUS_DECODED ||
-    currentLabelRenderStatus === RENDER_STATUS_PENDING
+    currentLabel_renderStatus === RENDER_STATUS_PAINTED ||
+    currentLabel_renderStatus === RENDER_STATUS_DECODED ||
+    currentLabel_renderStatus === RENDER_STATUS_PENDING
   ) {
     return true;
   }
@@ -153,7 +153,7 @@ const processLabels = async (
           }
         } else {
           // we'll process this label asynchronously later
-          label.renderStatus = null;
+          label._renderStatus = null;
         }
       }
 
@@ -250,7 +250,7 @@ const processLabels = async (
     }
 
     for (const label of labels) {
-      if (label?.renderStatus !== "painted") {
+      if (label?._renderStatus !== "painted") {
         continue;
       }
 

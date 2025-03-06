@@ -5,7 +5,8 @@
     "private": true,
     "main": "./src/index.ts",
     "scripts": {
-        "dev": "vite"
+        "dev": "vite",
+        "test": "vitest"
     },
     "dependencies": {
         "@fiftyone/components": "*",
