@@ -123,6 +123,7 @@ class Client:
         # https://requests.readthedocs.io/en/latest/user/advanced/#body-content-workflow
         with response:
             if stream:
+                # Iter in chunks rather than lines since data isn't newline delimited
                 return b"".join(
                     chunk
                     for chunk in response.iter_content(
