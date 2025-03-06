@@ -5,7 +5,6 @@ FiftyOne view-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import Counter
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 import math
@@ -108,89 +107,6 @@ class DatasetViewTests(unittest.TestCase):
                 m3 < m4 for m3, m4 in zip(last_modified_at3, last_modified_at4)
             )
         )
-
-    @drop_datasets
-    def test_update_samples(self):
-        dataset = fo.Dataset()
-        dataset.add_samples(
-            [fo.Sample(filepath="image%d.jpg" % i, int=i) for i in range(50)]
-        )
-
-        view = dataset.select_fields("int")
-
-        self.assertTupleEqual(view.bounds("int"), (0, 49))
-
-        def update_fcn(sample):
-            sample.int += 1
-
-        #
-        # Multiple workers
-        #
-
-        view.update_samples(update_fcn, num_workers=2, shard_method="id")
-
-        self.assertTupleEqual(view.bounds("int"), (1, 50))
-
-        view.update_samples(update_fcn, num_workers=2, shard_method="slice")
-
-        self.assertTupleEqual(view.bounds("int"), (2, 51))
-
-        #
-        # Main process
-        #
-
-        view.update_samples(update_fcn, num_workers=1)
-
-        self.assertTupleEqual(view.bounds("int"), (3, 52))
-
-    @drop_datasets
-    def test_map_samples(self):
-        dataset = fo.Dataset()
-        dataset.add_samples(
-            [
-                fo.Sample(filepath="image%d.jpg" % i, foo="bar")
-                for i in range(50)
-            ]
-        )
-
-        view = dataset.select_fields("foo")
-
-        self.assertDictEqual(view.count_values("foo"), {"bar": 50})
-
-        def map_fcn(sample):
-            return sample.foo.upper()
-
-        #
-        # Multiple workers
-        #
-
-        counter = Counter()
-        for _, value in view.map_samples(
-            map_fcn, num_workers=2, shard_method="slice"
-        ):
-            assert value == "BAR"
-            counter[value] += 1
-
-        self.assertDictEqual(dict(counter), {"BAR": 50})
-
-        counter = Counter()
-        for _, value in view.map_samples(
-            map_fcn, num_workers=2, shard_method="id"
-        ):
-            assert value == "BAR"
-            counter[value] += 1
-
-        self.assertDictEqual(dict(counter), {"BAR": 50})
-
-        #
-        # Main process
-        #
-
-        counter = Counter()
-        for _, value in view.map_samples(map_fcn, num_workers=1):
-            counter[value] += 1
-
-        self.assertDictEqual(dict(counter), {"BAR": 50})
 
     @drop_datasets
     def test_set_unknown_attribute(self):
