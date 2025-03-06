@@ -113,21 +113,18 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
      * Delete all instances
      */
     delete: () => {
-      destroy(frozen);
+      destroy(frozen, onDispose);
       hidden.clear();
-      destroy(pending);
-      destroy(shown);
+      destroy(pending, onDispose);
+      destroy(shown, onDispose);
     },
 
     /**
      * Delete hidden instances
      */
     empty: () => {
-      for (const it of pending.keys()) {
-        pending.get(it)?.destroy();
-        pending.delete(it);
-      }
-      for (const it of hidden.keys()) hidden.delete(it);
+      hidden.clear();
+      destroy(pending, onDispose);
     },
 
     /**
@@ -208,9 +205,13 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
 };
 
 const destroy = <T extends Instance | Lookers = Lookers>(
-  map: Map<string, T>
+  map: Map<string, T>,
+  onDispose?: CacheCallback
 ) => {
-  for (const instance of map.values()) instance.destroy();
+  for (const [key, instance] of map.entries()) {
+    instance.destroy();
+    onDispose?.(key);
+  }
   map.clear();
 };
 
