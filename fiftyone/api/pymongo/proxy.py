@@ -15,6 +15,8 @@ ProxyAPIContext = Iterable[
     Tuple[str, Optional[Iterable[Any]], Optional[Mapping[str, Any]]]
 ]
 
+BULK_WRITE_OPERATIONS = ["insert_many", "bulk_write"]
+
 
 class PymongoProxyMeta(utils.ProxyMeta):
     """Metaclass for wrapping Pymongo public methods with proxy"""
@@ -44,7 +46,10 @@ class PymongoRestProxy(utils.IProxy, abc.ABC, metaclass=PymongoProxyMeta):
 
         # Get marshalled response from the server.
         marshalled_response = self.__proxy_api_client__.post(
-            "_pymongo", payload=marshalled_payload, stream=True
+            "_pymongo",
+            payload=marshalled_payload,
+            stream=True,
+            is_bulk_write=name in BULK_WRITE_OPERATIONS,
         )
 
         return self.__proxy_api_handle_response__(marshalled_response)

@@ -4,6 +4,7 @@
 |
 """
 import functools
+import logging
 import posixpath
 from importlib import metadata
 from typing import Any, BinaryIO, Callable, Dict, Iterator, Mapping, Optional
@@ -14,6 +15,8 @@ import requests
 from typing_extensions import Literal
 
 from fiftyone.api import constants, errors, socket
+
+AllowedRequestMethod = Literal["GET", "POST", "BULK_WRITE"]
 
 
 def fatal_http_code(e):
@@ -99,11 +102,17 @@ class Client:
         payload: str,
         stream: bool = False,
         timeout: Optional[int] = None,
+        is_bulk_write: bool = False,
     ) -> Any:
         """Make post request"""
 
         data = payload
         headers = {}
+        # If the payload is a bulk write operation,
+        # set the method to BULK_WRITE to prevent retries on read timeouts
+        method: AllowedRequestMethod = (
+            "POST" if not is_bulk_write else "BULK_WRITE"
+        )
 
         data_generator_factory = None
         if stream:
@@ -111,24 +120,41 @@ class Client:
             data_generator_factory = self._chunk_generator_factory(payload)
             headers["Transfer-Encoding"] = "chunked"
 
-        response = self.__request(
-            "POST",
-            url_path,
-            timeout,
-            data_generator_factory=data_generator_factory,
-            data=data,
-            headers=headers,
-            stream=stream,
-        )
-        # Use response as context manager to ensure it's closed.
-        # https://requests.readthedocs.io/en/latest/user/advanced/#body-content-workflow
-        with response:
-            if stream:
-                return functools.reduce(
-                    lambda res, line: res + line, response.iter_lines(), b""
-                )
+        try:
+            response = self.__request(
+                method,
+                url_path,
+                timeout,
+                data_generator_factory=data_generator_factory,
+                data=data,
+                headers=headers,
+                stream=stream,
+            )
+            # Use response as context manager to ensure it's closed.
+            # https://requests.readthedocs.io/en/latest/user/advanced/#body-content-workflow
+            with response:
+                if stream:
+                    return b"".join(
+                        chunk
+                        for chunk in response.iter_content(
+                            chunk_size=constants.CHUNK_SIZE
+                        )
+                        if chunk
+                    )
 
-            return response.content
+                return response.content
+        except requests.exceptions.ReadTimeout as e:
+            # Put the summary of the error at the end in case the error body itself is large
+            msg = (
+                f"Error={e}. \nReadTimeout for {method} request to {url_path}."
+            )
+            if not is_bulk_write:
+                raise errors.FiftyOneEnterpriseAPIError(msg)
+
+            # Log the error but don't raise for read timeouts on bulk write operations
+            # as the operation has already been sent to the server and
+            # the client doesn't need to wait for a response
+            logging.error(msg)
 
     def post_file(
         self,
@@ -242,22 +268,9 @@ class Client:
 
         return return_value
 
-    @backoff.on_exception(
-        backoff.expo, requests.exceptions.ConnectionError, max_tries=5
-    )
-    @backoff.on_exception(
-        backoff.expo, requests.exceptions.ReadTimeout, max_time=60
-    )
-    # 500 errors are possibly recoverable but 400 are not
-    @backoff.on_exception(
-        backoff.expo,
-        requests.exceptions.HTTPError,
-        max_time=60,
-        giveup=fatal_http_code,
-    )
     def __request(
         self,
-        method: Literal["POST", "GET"],
+        method: AllowedRequestMethod,
         url_path: str,
         timeout: Optional[int] = None,
         data_generator_factory: Optional[Callable[[], Iterator[bytes]]] = None,
@@ -265,6 +278,7 @@ class Client:
     ):
         timeout = timeout or self._timeout
         url = posixpath.join(self.__base_url, url_path)
+        is_bulk_write = method is "BULK_WRITE"
 
         # Use data generator factory to get a data generator.
         #   Need this so that we get a fresh generator if we retry via backoff.
@@ -272,10 +286,38 @@ class Client:
             data_generator = data_generator_factory()
             request_kwargs["data"] = data_generator
 
-        response = self._session.request(
-            method, url=url, timeout=timeout, **request_kwargs
-        )
+        # If the request is a bulk write operation, don't automatically retry on read timeouts
+        # as the operation may have already been applied
+        max_tries = 1 if is_bulk_write else 5
+        max_time = timeout * max_tries
 
+        # Using nested function to pass variables to the decorator
+        @backoff.on_exception(
+            backoff.expo,
+            requests.exceptions.HTTPError,
+            max_time=max_time,
+            giveup=fatal_http_code,  # 500 errors are possibly recoverable but 400 are not
+        )
+        @backoff.on_exception(
+            backoff.expo,
+            requests.exceptions.ConnectionError,
+            max_tries=max_tries,
+        )
+        @backoff.on_exception(
+            backoff.expo,
+            requests.exceptions.ReadTimeout,
+            max_time=max_time,
+            max_tries=max_tries,
+        )
+        def _request_with_backoff(_method, _url, _timeout, **_request_kwargs):
+            req_method = "POST" if _method == "BULK_WRITE" else _method
+            return self._session.request(
+                req_method, url=_url, timeout=_timeout, **_request_kwargs
+            )
+
+        response = _request_with_backoff(
+            method, url, timeout, **request_kwargs
+        )
         if response.status_code == 401:
             raise errors.APIAuthenticationError(response.text)
 
