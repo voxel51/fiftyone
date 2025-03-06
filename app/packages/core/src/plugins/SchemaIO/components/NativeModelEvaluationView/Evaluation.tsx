@@ -59,6 +59,7 @@ import {
 
 const KEY_COLOR = "#ff6d04";
 const COMPARE_KEY_COLOR = "#03a9f4";
+const COMPARE_KEY_SECONDARY_COLOR = "#87D2FA";
 const DEFAULT_BAR_CONFIG = { sortBy: "default" };
 const NONE_CLASS = "(none)";
 
@@ -654,6 +655,7 @@ export default function Evaluation(props: EvaluationProps) {
                       <EvaluationIcon
                         type={type as ConcreteEvaluationType}
                         method={method}
+                        color={COMPARE_KEY_SECONDARY_COLOR}
                       />
                       <Typography>{key}</Typography>
                     </MenuItem>
