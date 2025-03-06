@@ -10,6 +10,7 @@ def map_samples(
     num_workers: Optional[int] = None,
     shard_method: str = "id",
     progress: Optional[bool] = None,
+    queue_batch_size: int = 1,
     backend: str | MapBackendType = MapBackendType.sequential,
 ) -> Iterator[Any]:
     """
@@ -22,6 +23,7 @@ def map_samples(
         num_workers (None): Number of workers.
         shard_method ("id"): Method for sharding ('id' or 'slice').
         progress (None): Whether to show progress bar.
+        queue_batch_size (1): Batch size for the result queue.
         backend (MapBackendType.sequential): Backend execution strategy.
 
     Returns:
@@ -32,7 +34,13 @@ def map_samples(
 
     # Execute map_samples with the chosen backend
     return backend_instance.map_samples(
-        sample_collection, map_fcn, save, num_workers, shard_method, progress
+        sample_collection,
+        map_fcn,
+        save,
+        num_workers,
+        shard_method,
+        progress,
+        queue_batch_size,
     )
 
 

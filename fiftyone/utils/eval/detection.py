@@ -252,6 +252,7 @@ def evaluate_detections(
 
     logger.info("Evaluating detections...")
     if multiprocessing:
+        print("Multiprocessing")
         matches = []
         for _, result in _samples.map_samples(
             _map_fnc,
@@ -262,6 +263,9 @@ def evaluate_detections(
             backend="process",
         ):
             matches.extend(result)
+        # from pdb import set_trace; set_trace()
+        print("Matches:", matches[:5])
+        print("Len Matches:", len(matches))
     else:
         matches = []
         for sample in _samples.iter_samples(progress=progress, autosave=save):
@@ -276,8 +280,6 @@ def evaluate_detections(
                 fn_field=fn_field,
             )
             matches.extend(results)
-    print("Matches:", matches[:5])
-    print("Len Matches:", len(matches))
 
     results = eval_method.generate_results(
         samples,

@@ -3221,6 +3221,7 @@ class SampleCollection(object):
         num_workers=None,
         shard_method="id",
         progress=None,
+        queue_batch_size=1,
         backend: str | fomp.MapBackendType = fomp.MapBackendType.sequential,
     ) -> Iterator[Any]:
         """
@@ -3232,13 +3233,21 @@ class SampleCollection(object):
             num_workers (None): Number of workers (if applicable).
             shard_method ("id"): Method for sharding ('id' or 'slice').
             progress (None): Whether to show a progress bar.
+            queue_batch_size (1): The size of the queue batches to use.
             backend (fiftyone.core.map.MapBackendType.sequential): Backend execution strategy, defaults to `sequential`.
 
         Returns:
             Iterator[Any]: Processed sample results.
         """
         return foum.map_samples(
-            self, map_fcn, save, num_workers, shard_method, progress, backend
+            self,
+            map_fcn,
+            save,
+            num_workers,
+            shard_method,
+            progress,
+            queue_batch_size,
+            backend,
         )
 
     def update_samples(

@@ -52,6 +52,7 @@ class ProcessMapBackend(MapBackend):
         num_workers: Optional[int] = None,
         shard_method: str = "id",
         progress: Optional[Union[str, bool]] = None,
+        queue_batch_size: int = 1,
     ) -> Iterator[Any]:
         return self._map_samples(
             sample_collection,
@@ -61,6 +62,7 @@ class ProcessMapBackend(MapBackend):
             num_workers=num_workers,
             shard_method=shard_method,
             progress=progress,
+            queue_batch_size=queue_batch_size,
         )
 
     def _map_samples(
@@ -72,6 +74,7 @@ class ProcessMapBackend(MapBackend):
         num_workers: Optional[int] = None,
         shard_method: str = "id",
         progress: Optional[Union[str, bool]] = None,
+        queue_batch_size: int = 10,
     ):
         """Applies the given function to each sample in the collection via a
         multiprocessing pool, optionally saving any sample edits.
@@ -135,6 +138,7 @@ class ProcessMapBackend(MapBackend):
                 default value ``fiftyone.config.show_progress_bars`` (None), or a
                 progress callback function to invoke instead, or "workers" to
                 render per-worker progress bars
+            queue_batch_size (1): the size of the queue used to communicate
 
         Returns:
             one of the following:
@@ -142,6 +146,8 @@ class ProcessMapBackend(MapBackend):
                 ``return_outputs`` is True
             -   None, otherwise
         """
+        queue_batch_size = 10
+        print("queue_batch_size:", queue_batch_size)
         if num_workers is None:
             if multiprocessing.current_process().daemon:
                 num_workers = 1
@@ -209,6 +215,7 @@ class ProcessMapBackend(MapBackend):
                 batch_count,
                 sample_count,
                 queue,
+                queue_batch_size,
                 save,
                 worker_progress,
                 lock,
@@ -218,7 +225,9 @@ class ProcessMapBackend(MapBackend):
         pb = fou.ProgressBar(total=num_samples, progress=progress)
 
         if queue is not None:
-            return _do_map_samples(pool, pb, batches, batch_count, queue)
+            return _do_map_samples(
+                pool, pb, batches, batch_count, queue, queue_batch_size
+            )
         else:
             return _do_update_samples(
                 pool, pb, batches, batch_count, sample_count
@@ -242,7 +251,7 @@ def _do_update_samples(pool, pb, batches, batch_count, sample_count):
         pool.join()
 
 
-def _do_map_samples(pool, pb, batches, batch_count, queue):
+def _do_map_samples(pool, pb, batches, batch_count, queue, queue_batch_size):
     num_batches = len(batches)
 
     with pool, pb:
@@ -251,8 +260,13 @@ def _do_map_samples(pool, pb, batches, batch_count, queue):
         while True:
             try:
                 result = queue.get(timeout=0.01)
-                pb.update()
-                yield result
+                if queue_batch_size > 1:
+                    for item in result:
+                        pb.update()
+                        yield item
+                else:
+                    pb.update()
+                    yield result
             except Empty:
                 if batch_count.value >= num_batches:
                     break
@@ -286,7 +300,7 @@ def _map_samples_single(
         )
 
 
-def _init_worker(dataset_name, view_stages, m, bc, sc, q, s, p, l):
+def _init_worker(dataset_name, view_stages, m, bc, sc, q, qbs, s, p, l):
     from tqdm.auto import tqdm
 
     import fiftyone as fo
@@ -298,6 +312,7 @@ def _init_worker(dataset_name, view_stages, m, bc, sc, q, s, p, l):
     global batch_count
     global sample_count
     global queue
+    global queue_batch_size
     global save
     global progress
 
@@ -315,6 +330,7 @@ def _init_worker(dataset_name, view_stages, m, bc, sc, q, s, p, l):
     batch_count = bc
     sample_count = sc
     queue = q
+    queue_batch_size = qbs
     save = s
     progress = p
 
@@ -338,24 +354,46 @@ def _map_batch(input):
             sample_collection, sample_ids
         )
 
+    def _put_result_into_queue(id, result, queue, batch, queue_batch_size):
+        if queue_batch_size > 1:
+            batch.append((id, result))
+            if len(batch) == queue_batch_size:
+                queue.put(batch[:])
+                batch.clear()
+        else:
+            queue.put((id, result))
+
     if progress:
         desc = f"Batch {i + 1:0{len(str(num_batches))}}/{num_batches}"
         with tqdm(total=total, desc=desc, position=i) as pb:
+            batch = []
             for sample in batch_view.iter_samples(autosave=save):
                 sample_output = map_fcn(sample)
                 if queue is not None:
-                    queue.put((sample.id, sample_output))
-
+                    _put_result_into_queue(
+                        sample.id,
+                        sample_output,
+                        queue,
+                        batch,
+                        queue_batch_size,
+                    )
                 pb.update()
+            if len(batch) > 0 and queue is not None:
+                queue.put(batch)
     else:
+        batch = []
         for sample in batch_view.iter_samples(autosave=save):
             sample_output = map_fcn(sample)
             if queue is not None:
-                queue.put((sample.id, sample_output))
+                _put_result_into_queue(
+                    sample.id, sample_output, queue, batch, queue_batch_size
+                )
 
             if sample_count is not None:
                 with sample_count.get_lock():
                     sample_count.value += 1
+        if len(batch) > 0 and queue is not None:
+            queue.put(batch)
 
     if batch_count is not None:
         with batch_count.get_lock():

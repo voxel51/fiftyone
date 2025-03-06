@@ -14,6 +14,7 @@ class SequentialMapBackend(MapBackend):
         num_workers: Optional[int] = None,
         shard_method: str = "id",
         progress: Optional[bool] = None,
+        queue_batch_size: int = 1,
     ) -> Iterator[Any]:
         for sample in sample_collection.iter_samples(
             progress=progress, autosave=save

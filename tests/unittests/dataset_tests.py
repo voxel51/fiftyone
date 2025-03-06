@@ -1098,6 +1098,16 @@ class DatasetTests(unittest.TestCase):
 
         self.assertDictEqual(dict(counter), {"BAR": 50})
 
+        # Test different queue batch size
+        # from pdb import set_trace; set_trace()
+        counter = Counter()
+        for _, value in dataset.map_samples(
+            map_fcn, num_workers=1, queue_batch_size=2, backend="process"
+        ):
+            counter[value] += 1
+
+        self.assertDictEqual(dict(counter), {"BAR": 50})
+
     @drop_datasets
     def test_date_fields(self):
         dataset = fo.Dataset()
