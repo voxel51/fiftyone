@@ -289,17 +289,17 @@ class FiftyOneConfig(EnvConfig):
             default=24,
         )
         # Enable using aliased media URLs in the service worker after removing global creds
-        self.svc_worker_media_alias = self.parse_string(
+        self.media_filepath_prefix_alias = self.parse_string(
             d,
-            "svc_worker_media_alias",
+            "media_filepath_prefix_alias",
             default=None,
-            env_var="FIFTYONE_SERVICE_WORKER_MEDIA_ALIAS",
+            env_var="FIFTYONE_MEDIA_FILEPATH_PREFIX_ALIAS",
         )
-        self.svc_worker_media_endpoint = self.parse_string(
+        self.media_filepath_prefix_url = self.parse_string(
             d,
-            "svc_worker_media_endpoint",
+            "media_filepath_prefix_url",
             default=None,
-            env_var="FIFTYONE_SERVICE_WORKER_MEDIA_ENDPOINT",
+            env_var="FIFTYONE_MEDIA_FILEPATH_PREFIX_URL",
         )
 
         self._init()
