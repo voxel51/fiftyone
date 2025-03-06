@@ -3355,16 +3355,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
         return self.skip(num_samples).values("id")
 
-    def _add_samples_batch(self, samples: List[Tuple[Any, Dict[Any, Any]]]):
-        """Writes the given samples to the database and returns their IDs
+    def _add_samples_batch(
+        self, samples_and_docs: List[Tuple[Any, Dict[Any, Any]]]
+    ):
+        """Writes the given samples and backing docs to the database and returns their IDs
 
         Args:
-            samples: a list of tuples of the form (sample, dict) where the dict
+            samples_and_docs: a list of tuples of the form (sample, dict) where the dict
                 is the sample's backing document
         Returns:
             a list of IDs of the samples that were added to this dataset
         """
-        dicts = [sample[1] for sample in samples]
+        dicts = [sample[1] for sample in samples_and_docs]
         try:
             # adds `_id` to each dict
             self._sample_collection.insert_many(dicts)
@@ -3372,7 +3374,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             msg = bwe.details["writeErrors"][0]["errmsg"]
             raise ValueError(msg) from bwe
 
-        for sample, d in samples:
+        for sample, d in samples_and_docs:
             doc = self._sample_dict_to_doc(d)
             sample._set_backing_doc(doc, dataset=self)
             if sample.media_type == fom.VIDEO:
@@ -3455,9 +3457,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except Exception:
             return len(str(sample[1]))
 
-    def _upsert_samples_batch(self, samples):
+    def _upsert_samples_batch(
+        self, samples_and_docs: List[Tuple[Any, Dict[Any, Any]]]
+    ):
+        """Upserts the given samples and their backing docs to the database
+
+        Args:
+            samples: a list of tuples of the form (sample, dict) where the dict
+                is the sample's backing document
+        """
         ops = []
-        for sample, d in samples:
+        for sample, d in samples_and_docs:
             if sample.id:
                 ops.append(ReplaceOne({"_id": sample._id}, d, upsert=True))
             else:
@@ -3470,7 +3480,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             msg = bwe.details["writeErrors"][0]["errmsg"]
             raise ValueError(msg) from bwe
 
-        for sample, d in samples:
+        for sample, d in samples_and_docs:
             doc = self._sample_dict_to_doc(d)
             sample._set_backing_doc(doc, dataset=self)
 
