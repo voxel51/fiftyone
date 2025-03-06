@@ -3366,7 +3366,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples that were added to this dataset
         """
-        dicts = [sample[1] for sample in samples_and_docs]
+        dicts = [sample_and_doc[1] for sample_and_doc in samples_and_docs]
         try:
             # adds `_id` to each dict
             self._sample_collection.insert_many(dicts)
