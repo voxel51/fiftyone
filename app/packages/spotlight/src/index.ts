@@ -12,6 +12,7 @@ import {
   DIRECTION,
   DIV,
   FOUR,
+  MIN_ASPECT_RATIO_RECOMMENDATION,
   ONE,
   SCROLLBAR_WIDTH,
   TWO,
@@ -165,10 +166,6 @@ export default class Spotlight<K, V> extends EventTarget {
     this.#updater = updater;
   }
 
-  get #minAspectRatioRecommendation() {
-    return ONE + ONE / TWO;
-  }
-
   get #pivot() {
     let base = this.#backward.height;
     if (base) base += this.#config.spacing;
@@ -177,10 +174,6 @@ export default class Spotlight<K, V> extends EventTarget {
 
   get #aspectRatio() {
     return this.#width / this.#height;
-  }
-
-  get #sizeThreshold() {
-    return this.#config.maxItemsSizeBytes / TWO;
   }
 
   get #containerHeight() {
@@ -197,7 +190,7 @@ export default class Spotlight<K, V> extends EventTarget {
 
   #handleHighMemoryUsage(items: ItemData<K, V>[], map: Map<string, number>) {
     let bytes = ZERO;
-    const threshold = this.#sizeThreshold;
+    const threshold = this.#config.maxItemsSizeBytes;
     let use: typeof items = [];
     for (const item of items) {
       bytes += map.get(item.id.description);
@@ -217,7 +210,7 @@ export default class Spotlight<K, V> extends EventTarget {
     do {
       proposed -= ONE / TWO;
 
-      if (proposed < ONE + ONE / TWO) {
+      if (proposed < MIN_ASPECT_RATIO_RECOMMENDATION) {
         break;
       }
 
@@ -230,9 +223,12 @@ export default class Spotlight<K, V> extends EventTarget {
       }
 
       tiledAspectRatio = ONE / sum(rows);
+      // container aspect ratio divided by FOUR increases height by 4x
+      // rendering virtualization attempts to fill 3x container height
+      // 4x gives a buffer so the recommendation is not invalidated as often
     } while (tiledAspectRatio > this.#aspectRatio / FOUR);
 
-    proposed = Math.max(proposed, ONE + ONE / TWO);
+    proposed = Math.max(proposed, MIN_ASPECT_RATIO_RECOMMENDATION);
     if (!this.#rejected && proposed < current) {
       this.#rejected = true;
       this.dispatchEvent(new Rejected(proposed));
@@ -268,7 +264,7 @@ export default class Spotlight<K, V> extends EventTarget {
     const validate = (key: string, add: number) => {
       map.set(key, add);
       if (
-        sum(Array.from(map.values())) >= this.#sizeThreshold &&
+        sum(Array.from(map.values())) >= this.#config.maxItemsSizeBytes &&
         this.#config.rowAspectRatioThreshold(this.#width) > ONE
       ) {
         this.#handleHighMemoryUsage(items, map);
@@ -283,7 +279,7 @@ export default class Spotlight<K, V> extends EventTarget {
       }
 
       const ar = this.#config.rowAspectRatioThreshold(this.#width);
-      if (ar <= this.#minAspectRatioRecommendation) {
+      if (ar <= MIN_ASPECT_RATIO_RECOMMENDATION) {
         return;
       }
 
@@ -431,7 +427,7 @@ export default class Spotlight<K, V> extends EventTarget {
             const ar = this.#config.rowAspectRatioThreshold(this.#width);
             if (
               !this.#config.maxItemsSizeBytes ||
-              ar <= this.#minAspectRatioRecommendation
+              ar <= MIN_ASPECT_RATIO_RECOMMENDATION
             ) {
               return;
             }
@@ -448,7 +444,7 @@ export default class Spotlight<K, V> extends EventTarget {
             map.set(item.id.description, add);
             bytes += add;
 
-            if (bytes >= this.#sizeThreshold && ar > ONE) {
+            if (bytes >= this.#config.maxItemsSizeBytes && ar > ONE) {
               throw bytes;
             }
           },
