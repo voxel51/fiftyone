@@ -86,7 +86,6 @@ export default function NativeModelEvaluationView(props) {
             triggerEvent(load_view, { type, options });
           }}
           onSaveSubset={(subset: any) => {
-            console.log("NativeEvak", subset);
             triggerEvent(on_save_subset, { subset });
           }}
         />
