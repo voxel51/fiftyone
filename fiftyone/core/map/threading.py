@@ -52,7 +52,7 @@ class ThreadingMapBackend(foms.SequentialMapBackend):
         num_workers: int,
         shard_method: Literal["id", "slice"],
         shard_size: Union[int, None] = None,
-    ) -> tuple[fomm.SampleCollection[T], int]:
+    ) -> list[tuple[fomm.SampleCollection[T], int]]:
         """Split a sample collection into multiple sample collections"""
 
         if shard_method == "slice":
