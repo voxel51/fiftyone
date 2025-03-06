@@ -17,6 +17,7 @@ import numbers
 import os
 import random
 import string
+from typing import List, Tuple, Any, Dict
 
 from bson import json_util, ObjectId, DBRef
 import cachetools
@@ -3286,20 +3287,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             copy=True,
         )
 
-        calculate_size_fn = partial(self._calculate_size)
-
         batcher = fou.get_default_batcher(
             samples,
             progress=progress,
             total=num_samples,
             transform_fn=transform_fn,
-            size_calc_fn=calculate_size_fn,
+            size_calc_fn=self._calculate_size,
         )
 
         sample_ids = []
         with batcher:
             for batch in batcher:
-                _ids = self._add_samples_batch(batch, batcher=batcher)
+                _ids = self._add_samples_batch(batch)
                 sample_ids.extend(_ids)
 
         return sample_ids
@@ -3356,7 +3355,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
         return self.skip(num_samples).values("id")
 
-    def _add_samples_batch(self, samples, batcher=None):
+    def _add_samples_batch(self, samples: List[Tuple[Any, Dict[Any, Any]]]):
+        """Writes the given samples to the database and returns their IDs
+
+        Args:
+            samples: a list of tuples of the form (sample, dict) where the dict
+                is the sample's backing document
+        Returns:
+            a list of IDs of the samples that were added to this dataset
+        """
         dicts = [sample[1] for sample in samples]
         try:
             # adds `_id` to each dict
@@ -3370,9 +3377,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample._set_backing_doc(doc, dataset=self)
             if sample.media_type == fom.VIDEO:
                 sample.frames.save()
-
-        if batcher and batcher.manual_backpressure:
-            batcher.apply_backpressure(dicts)
 
         return [str(d["_id"]) for d in dicts]
 
@@ -3408,7 +3412,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         with batcher:
             for batch in batcher:
-                self._upsert_samples_batch(batch, batcher=batcher)
+                self._upsert_samples_batch(batch)
 
     def _transform_sample(
         self,
@@ -3451,7 +3455,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except Exception:
             return len(str(sample[1]))
 
-    def _upsert_samples_batch(self, samples, batcher=None):
+    def _upsert_samples_batch(self, samples):
         ops = []
         for sample, d in samples:
             if sample.id:
@@ -3472,9 +3476,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             if sample.media_type == fom.VIDEO:
                 sample.frames.save()
-
-        if batcher and batcher.manual_backpressure:
-            batcher.apply_backpressure([sample[1] for sample in samples])
 
     def _make_dict(
         self,

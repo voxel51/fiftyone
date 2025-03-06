@@ -1068,10 +1068,7 @@ def _report_progress_dt(progress, dt):
     return progress_dt
 
 
-class Batcher(abc.ABC):
-
-    manual_backpressure = False
-
+class BaseBatcher(abc.ABC):
     def __init__(
         self,
         iterable,
@@ -1139,21 +1136,19 @@ class Batcher(abc.ABC):
                 self._render_progress = False
 
         if self._transform_fn is not None:
-            self._iter = self._apply_transform(self._iter)
+            self._iter = map(self._transform_fn, self._iter)
 
         return self
-
-    def _apply_transform(self, iterator):
-        for item in iterator:
-            yield self._transform_fn(item)
 
     @abc.abstractmethod
     def __next__(self):
         pass
 
 
-class BaseBatcher(Batcher):
-    """Base class for iterating over the elements of an iterable in batches."""
+class BaseChunkyBatcher(BaseBatcher):
+    """Base class for iterating over the elements of an iterable in batches.
+    Batch sizes are determined per chunk using ``_compute_batch_size``.
+    """
 
     def __next__(self):
         if self._render_progress and self._last_batch_size is not None:
@@ -1198,7 +1193,7 @@ class BaseBatcher(Batcher):
         """Return next batch size. Concrete classes must implement."""
 
 
-class BaseDynamicBatcher(BaseBatcher):
+class BaseDynamicBatcher(BaseChunkyBatcher):
     """Class for iterating over the elements of an iterable with a dynamic
     batch size to achieve a desired target measurement.
 
@@ -1236,19 +1231,6 @@ class BaseDynamicBatcher(BaseBatcher):
         self.min_batch_size = min_batch_size
         self.max_batch_size = max_batch_size
         self.max_batch_beta = max_batch_beta
-        self._manually_applied_backpressure = False
-
-    def __next__(self):
-        if (
-            self.manual_backpressure
-            and not self._manually_applied_backpressure
-        ):
-            raise ValueError(
-                "Backpressure value not registered for this batcher"
-            )
-        self._manually_applied_backpressure = False
-
-        return super().__next__()
 
     def _compute_batch_size(self):
         current_measurement = self._get_measurement()
@@ -1456,8 +1438,6 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
         transform_fn (None): a transform function to apply to each item of the batch
     """
 
-    manual_backpressure = True
-
     def __init__(
         self,
         iterable,
@@ -1489,6 +1469,15 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
         self._last_batch_content_size = 0
         self._manually_applied_backpressure = True
 
+    def __next__(self):
+        if not self._manually_applied_backpressure:
+            raise ValueError(
+                "Backpressure value not registered for this batcher"
+            )
+        self._manually_applied_backpressure = False
+
+        return super().__next__()
+
     def apply_backpressure(self, batch_or_size):
         if isinstance(batch_or_size, numbers.Number):
             batch_content_size = batch_or_size
@@ -1504,7 +1493,7 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
         return self._last_batch_content_size
 
 
-class StaticBatcher(BaseBatcher):
+class StaticBatcher(BaseChunkyBatcher):
     """Class for iterating over the elements of an iterable with a static
     batch size.
 
@@ -1569,7 +1558,7 @@ class StaticBatcher(BaseBatcher):
         return self.batch_size
 
 
-class ContentSizeBatcher(Batcher):
+class ContentSizeBatcher(BaseBatcher):
     """Class for iterating over the elements of an iterable with a dynamic
     batch size to achieve a desired content size.
 
@@ -1658,7 +1647,6 @@ class ContentSizeBatcher(Batcher):
             raise StopIteration()
 
         batch_content_size = self._size_calculation_fn(self._prev_element)
-        curr_batch_size = 1
         curr_batch = [self._prev_element]
 
         while True:
@@ -1669,18 +1657,17 @@ class ContentSizeBatcher(Batcher):
                 )
                 if (
                     self.max_batch_size
-                    and curr_batch_size >= self.max_batch_size
+                    and len(curr_batch) >= self.max_batch_size
                 ) or (
                     batch_content_size + next_element_size > self.target_size
                 ):
                     break
-                curr_batch_size += 1
                 batch_content_size += next_element_size
                 curr_batch.append(self._prev_element)
             except StopIteration:
                 self._prev_element = None
                 break
-        self._last_batch_size = curr_batch_size
+        self._last_batch_size = len(curr_batch)
         return curr_batch
 
 
@@ -1700,7 +1687,7 @@ def get_default_batcher(
     iterable,
     progress=False,
     total=None,
-    size_calc_fn=default_calculate_size,
+    size_calc_fn=None,
     transform_fn=None,
 ):
     """Returns a :class:`Batcher` over ``iterable`` using defaults from your
@@ -1720,6 +1707,9 @@ def get_default_batcher(
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
+        size_calc_fn (None): a function used to calculate the size of each item
+            before adding them to the batch to ensure we are under max batch size.
+            This is applied after transform_fn if both are provided.
         transform_fn (None): a transform function to apply to each item of the batch
 
     Returns:
