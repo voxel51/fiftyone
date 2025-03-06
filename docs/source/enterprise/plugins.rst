@@ -616,27 +616,23 @@ Monitoring progress
 Delegated operations can optionally
 :ref:`report their progress <operator-reporting-progress>` during execution.
 
-If a progress is available for a run, it will be displayed in the Runs table
-as indicated by "2". By default, the progress of running operations is
-automatically refreshed. You can disable auto-refresh of running operations by
-toggling the auto refresh setting indicated by "1".
+If progress is available for a run, it will be displayed in the Runs table as indicated by “2”. 
+By default, the general status of a run and the progress of running operations is automatically refreshed. 
+You can disable the auto-refresh of running operations by toggling the auto-refresh setting indicated by “1”.
 
 .. image:: /images/plugins/operators/runs/run_progress.png
 
-.. note::
-
-    Only the progress of running operations is automatically refreshed.
 
 .. _enterprise-run-page:
 
 Run page
 --------
 
-The Run page allows you to see information about a specific run such as inputs,
+The Run page for a specific run allows you to see information about a specific run such as inputs,
 outputs, and errors.
 
-You can visit the Run page for a run by clicking on a run in the runs table,
-the Pinned runs, or Recent runs widgets.
+You can visit the Run page for a run by clicking on a run in the runs table, 
+the Pinned runs, or the Recent runs widgets.
 
 Input
 ^^^^^
@@ -669,8 +665,8 @@ completed run:
 Errors
 ^^^^^^
 
-The Errors tab on the Run page will appear if the run failed and lets you see
-the errors that occurred:
+The Errors tab on the Run page will appear if the run failed and it lets you 
+see the errors that occurred:
 
 .. image:: /images/plugins/operators/runs/errors.png
 
@@ -682,3 +678,59 @@ scheduled:
 
 .. image:: /images/plugins/operators/runs/view.png
 
+Logs
+^^^^
+
+The Logs tab on the Run page allows you to view any logging associated with your run:
+
+.. image:: /images/plugins/operators/runs/view.png
+
+**Logs setup**
+
+Setting up logs happens at the deployment level. In order for logs to appear on your Runs page, 
+you need to explicitly define log generation behavior in your FiftyOne Enterprise deployment when 
+setting up Delegated Operations.
+
+Here are the setup instructions for logging in the two deployment configurations we support: 
+`Helm <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/helm/docs/configuring-delegated-operators.md>`_ & 
+`Docker <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docker/docs/configuring-delegated-operators.md>`_.
+
+.. note::
+
+    If you set up logs with a third-party orchestrator like Airflow, logs will not be natively available, 
+    however, we will report the log location URI for the third-party path you defined in your FiftyOne Enterprise deployment.
+
+**Logs availability**
+
+If logs are set up, they will appear natively within the Logs tab after the completion of a run. 
+Logs will not appear before completion. If log creation errors out for any reason, 
+logs will not be available and a message will be shown indicating such.
+
+.. image:: /images/plugins/operators/runs/view.png
+
+**Logs structure**
+
+If logs are available, they are displayed in a structured format. 
+There will be 3 columns, and each row represents a singular line of a log file. 
+The columns Timestamp, Severity, and Message define the log structure and will be shown natively in table format up to 1 MB in total content size.
+
+.. image:: /images/plugins/operators/runs/view.png
+
+.. note::
+
+    If the content size of logs for a given run exceeds 1 MB, no content will be shown and instead a Download Logs button will appear.
+    Clicking this button will download the logs as a text file.
+
+.. image:: /images/plugins/operators/runs/view.png
+
+**Download logs**
+
+If logs are available, you can download them directly. 
+The text file generated for download is a line-by-line log output of the 
+logging for the attached orchestrator of the given run.
+
+.. image:: /images/plugins/operators/runs/view.png
+
+.. image:: /images/plugins/operators/runs/view.png
+
+.. image:: /images/plugins/operators/runs/view.png
