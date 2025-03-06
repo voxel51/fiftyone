@@ -14,6 +14,7 @@ class MapBackend(ABC):
         num_workers: Optional[int] = None,
         shard_method: str = "id",
         progress: Optional[bool] = None,
+        queue_batch_size: int = 1,
     ) -> Iterator[Any]:
         """
         Applies `map_fcn` to each sample and returns an iterator over the results.
@@ -28,7 +29,6 @@ class MapBackend(ABC):
         self,
         sample_collection,
         map_fcn,
-        save: Optional[bool] = None,
         num_workers: Optional[int] = None,
         shard_method: str = "id",
         progress: Optional[bool] = None,

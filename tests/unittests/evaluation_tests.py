@@ -1697,9 +1697,23 @@ class DetectionsTests(unittest.TestCase):
         self._evaluate_coco(dataset, kwargs)
 
     @drop_datasets
+    def test_evaluate_detections_coco_multiprocessing(self):
+        dataset = self._make_detections_dataset()
+        kwargs = {"multiprocessing": True}
+
+        self._evaluate_coco(dataset, kwargs)
+
+    @drop_datasets
     def test_evaluate_instances_coco(self):
         dataset = self._make_instances_dataset()
         kwargs = dict(use_masks=True)
+
+        self._evaluate_coco(dataset, kwargs)
+
+    @drop_datasets
+    def test_evaluate_instances_coco_multiprocessing(self):
+        dataset = self._make_instances_dataset()
+        kwargs = dict(use_masks=True, multiprocessing=True)
 
         self._evaluate_coco(dataset, kwargs)
 
@@ -1711,9 +1725,23 @@ class DetectionsTests(unittest.TestCase):
         self._evaluate_coco(dataset, kwargs)
 
     @drop_datasets
+    def test_evaluate_polylines_coco_multiprocessing(self):
+        dataset = self._make_polylines_dataset()
+        kwargs = {"multiprocessing": True}
+
+        self._evaluate_coco(dataset, kwargs)
+
+    @drop_datasets
     def test_evaluate_detections_open_images(self):
         dataset = self._make_detections_dataset()
         kwargs = {}
+
+        self._evaluate_open_images(dataset, kwargs)
+
+    @drop_datasets
+    def test_evaluate_detections_open_images_multiprocessing(self):
+        dataset = self._make_detections_dataset()
+        kwargs = {"multiprocessing": True}
 
         self._evaluate_open_images(dataset, kwargs)
 
@@ -1725,9 +1753,23 @@ class DetectionsTests(unittest.TestCase):
         self._evaluate_open_images(dataset, kwargs)
 
     @drop_datasets
+    def test_evaluate_instances_open_images_multiprocessing(self):
+        dataset = self._make_instances_dataset()
+        kwargs = dict(use_masks=True, multiprocessing=True)
+
+        self._evaluate_open_images(dataset, kwargs)
+
+    @drop_datasets
     def test_evaluate_polylines_open_images(self):
         dataset = self._make_polylines_dataset()
         kwargs = {}
+
+        self._evaluate_open_images(dataset, kwargs)
+
+    @drop_datasets
+    def test_evaluate_polylines_open_images_multiprocessing(self):
+        dataset = self._make_polylines_dataset()
+        kwargs = {"multiprocessing": True}
 
         self._evaluate_open_images(dataset, kwargs)
 
