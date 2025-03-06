@@ -113,7 +113,11 @@ class Operations(object):
         )
 
     def reload_sample(self, sample_id):
-        """Reload a sample in the App."""
+        """Reload a sample in the App.
+
+        Args:
+            sample_id: the sample ID
+        """
         return self._ctx.trigger(
             "reload_sample", params={"sample_id": sample_id}
         )
@@ -703,17 +707,30 @@ class Operations(object):
         return self._ctx.trigger("toggle_sidebar")
 
     def update_app_samples(self, samples):
-        """Update samples, patches, or frames in the App.
+        """Apply updates to samples in the App.
 
-        This will update the apps representation of a given set of samples (or patches or frames)
-        with the provided values.
+        Example ``samples`` format::
 
-        A ``SampleUpdate`` is a dictionary with the following keys:
-            id: the ID of the sample, patch or frame to update
-            values: the values to update the sample with
+            [
+                {
+                    "id": "67ca305e17bddd69d65d76e4",
+                    "values": {"foo": "bar", "spam": "eggs"},
+                },
+                {
+                    "id": sample.id,
+                    "values": sample.to_dict(),
+                },
+                ...
+            ]
+
+        .. warning::
+
+            This method only update the App's representation of the sample; any
+            edits are not persisted to the database.
 
         Args:
-            samples: an array of ``SampleUpdate`` objects to apply to the App
+            samples: a list of dicts describing sample updates to apply in the
+                format described above
         """
         return self._ctx.trigger("update_app_samples", {"updates": samples})
 
