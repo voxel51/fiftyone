@@ -3,6 +3,7 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -17,6 +18,7 @@ from typing import (
 import bson
 import bson.raw_bson
 import pymongo
+import requests.exceptions
 from bson import ObjectId
 from pymongo import WriteConcern
 
@@ -184,6 +186,8 @@ class Collection(proxy.PymongoRestProxy):
 
     # pylint: disable-next=missing-function-docstring
     def find(self, *args: Any, **kwargs: Any) -> cursor.Cursor:
+        print("find args=", args)
+        print("find kwargs=", kwargs)
         return cursor.Cursor(self, "find", *args, **kwargs)
 
     # pylint: disable-next=missing-function-docstring
@@ -199,11 +203,14 @@ class Collection(proxy.PymongoRestProxy):
         *args: Any,
         **kwargs: Any,
     ) -> pymongo.results.InsertOneResult:
-        res = self.__proxy_it__("insert_one", (document, *args), kwargs)
 
-        # Need to mutate document passed in
+        # Add _id to document passed in if it doesn't exist so that
+        # if the operation is retried due to a timeout, we don't
+        # end up with duplicate samples
         if "_id" not in document:
-            document["_id"] = res.inserted_id
+            document["_id"] = ObjectId()
+
+        res = self.__proxy_it__("insert_one", (document, *args), kwargs)
 
         return res
 
@@ -225,8 +232,37 @@ class Collection(proxy.PymongoRestProxy):
                 inserted_ids.append(oid)
                 doc["_id"] = oid
                 documents[i] = {"_id": oid, **doc}
+            try:
+                _ = self.__proxy_it__(
+                    "insert_many",
+                    (documents, *args),
+                    kwargs,
+                    is_idempotent=False,
+                )
+            except requests.exceptions.ReadTimeout as e:
+                logging.debug("ReadTimeout for method `insert_many`: %s", e)
 
-            _ = self.__proxy_it__("insert_many", (documents, *args), kwargs)
+                # ReadTimeouts can occur even if the operation eventually succeeds server-side.
+                # In this case, check for the last inserted _id to ensure all documents were sent
+                # and that it's not an error with inserting documents entirely.
+                try:
+                    inserted = self.find_one(
+                        ({"_id": inserted_ids[-1]}, {"_id": 1}),
+                        {"hint": {"_id": 1}},
+                    )
+                    if not inserted:
+                        raise e
+                    logging.warning(
+                        "Response to `insert_many` request taking too long. "
+                        "To avoid further issues, try reducing the batch size."
+                    )
+                except Exception as err:
+                    logging.debug(
+                        f"Error while checking last inserted _id {inserted_ids[-1]}:",
+                        err,
+                    )
+                    # If the last inserted _id is not found, raise the original ReadTimeout error
+                    raise e
 
         return pymongo.results.InsertManyResult(
             inserted_ids, acknowledged=WriteConcern() != 0
