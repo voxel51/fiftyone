@@ -5,11 +5,13 @@ ODM package declaration.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import types
 
 from .factory import MapBackendFactory, MapBackendType
 from .map import MapBackend
 from .sequential import SequentialMapBackend
+from .threading import ThreadingMapBackend
 
 
 # This enables Sphinx refs to directly use paths imported here

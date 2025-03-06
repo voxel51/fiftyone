@@ -1,3 +1,9 @@
+"""
+| Copyright 2017-2025, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
 import unittest
 import fiftyone as fo
 import fiftyone.utils.map as foum
