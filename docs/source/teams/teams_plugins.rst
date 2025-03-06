@@ -466,14 +466,40 @@ executed as resources are available on the targeted orchestrator.
 Runs page
 ---------
 
-The Runs page is accessible to all users with Can view access to the dataset.
+The Runs page is accessible to all users with at least **Can View** access to a dataset.
 
 You can access the Runs page by clicking on the "Runs" tab from the
-:ref:`Samples tab <teams-using-datasets>`.
+:ref:`Samples toolbar <teams-using-datasets>` under your dataset name.
 
-Once you are on the Runs page, you will see a table with the list of all
-operators scheduled by any user of your organization on the dataset. You can
-sort, search and filter runs listed to refine the list as you like:
+Once you are on the Runs page, you will see a table with the list of all operators scheduled for execution. 
+As an admin, you can see any scheduled or running operations by any user of your organization on any dataset. 
+While as an organization member with less than admin privileges, you can view your own operations, for only 
+datasets you have access to. You can sort, search, and filter runs shown to refine the list as you like:
+
+.. image:: /images/plugins/operators/runs/runs_page.png
+
+.. _teams-runs-statuses:
+
+Statuses
+^^^^^^^
+For any run in the Runs page, there are 5 potential statuses:
+
+- **Scheduled**: The run has been scheduled for execution but has not yet started.
+- **Queued**: The run is waiting for resources to become available on the orchestrator.
+- **Running**: The run is currently being executed.
+- **Completed**: The run has completed successfully.
+- **Failed**: The run failed to complete.
+
+All runs begin in the Scheduled state and move to the Queued state if a position is open in the execution queue. 
+At most there can be three Queued runs at any given time. If there are more than three operations that have not 
+entered the execution queue, then they will remain in the Scheduled state until a spot in the execution queue opens up.
+
+.. image:: /images/plugins/operators/runs/runs_page.png
+
+.. note::
+
+    Hovering over the status badge of a run in a Scheduled or Queued state will provide you with more information about its execution. 
+    Most importantly, you can view the position of where in the Scheduled ordering your run is if there are multiple by hovering over the badge.
 
 .. image:: /images/plugins/operators/runs/runs_page.png
 
@@ -482,9 +508,8 @@ sort, search and filter runs listed to refine the list as you like:
 Sorting
 ^^^^^^^
 
-By default, the runs table is sorted by recency, but you can use the dropdown
-menu in the upper left of table to sort by other fields like update time or the
-name of the operator:
+By default, the runs table is sorted by recency, the newest run to be added to the Runs page, but you can use the dropdown menu in the upper right 
+of the table to sort by other fields like: last updated, oldest, or the name of the operator.
 
 .. image:: /images/plugins/operators/runs/sort.png
 
@@ -495,12 +520,11 @@ Filtering
 
 You can also filter the runs table to see a subset of runs.
 
-Use the "My runs" radio button to see only the runs that you scheduled:
+Depending on your permissions, you can toggle between “My Runs” and “All Runs” to see what runs you have scheduled versus runs that others in your organization have scheduled:
 
 .. image:: /images/plugins/operators/runs/my_runs.png
 
-You can further refine the list of runs using the status dropdown to select one
-or more status you would like to filter by:
+You can further refine the list of runs using the Status dropdown to select one or more statuses you would like to filter by:
 
 .. image:: /images/plugins/operators/runs/filter_by_status.png
 
@@ -527,7 +551,7 @@ Re-running
 ^^^^^^^^^^
 
 From the Runs page, you can trigger a re-run of any listed run by clicking the
-three-dots to open actions menu and then clicking "Re-run":
+three-dots to open the actions menu and then clicking "Re-run":
 
 .. image:: /images/plugins/operators/runs/re_run.png
 
@@ -558,11 +582,10 @@ Renaming
 When delegating an operator multiple times on the same dataset, you may wish to
 give the runs custom labels so that you can easily identify each run later.
 
-To edit the label of an operator run, move your mouse cursor over the label of
-interest and click the pencil button as indicated by "1" below. This will
-present an input field indicated by "2" where you can update label to text of
-your choice. Once you are ready to apply changes, click the save button
-indicated by "3".
+To edit the label of an operator run, move your mouse cursor over the label of interest 
+and click the pencil button as indicated by “1” below. This will present an input field 
+indicated by “2” where you can update the label to the text of your choice. Once you are 
+ready to apply changes, click the save button indicated by “3”.
 
 .. image:: /images/plugins/operators/runs/edit_label.png
 
