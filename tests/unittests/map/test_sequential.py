@@ -57,7 +57,7 @@ class TestSequentialMapBackend(unittest.TestCase):
             sample["field2"] = sample["input"] * 3
 
         # Run update_samples
-        foum.update_samples(self.dataset, map_fcn, save=True)
+        foum.update_samples(self.dataset, map_fcn)
 
         dataset = fo.load_dataset("test_sequential_map_backend")
 
