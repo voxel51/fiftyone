@@ -616,7 +616,7 @@ export default function Evaluation(props: EvaluationProps) {
             <Select
               key={compareKey}
               sx={{
-                height: 28,
+                height: 40,
                 width: "100%",
                 background: theme.palette.background.card,
                 "& .MuiOutlinedInput-input": {
