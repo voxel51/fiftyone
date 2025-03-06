@@ -13,7 +13,7 @@ import {
 import styled from "styled-components";
 import { GridActionsRow } from "./Actions";
 import { Slider } from "./Common/RangeSlider";
-import { gridZoom, gridZoomRange } from "./Grid";
+import { ZOOM_RANGE, gridZoom } from "./Grid";
 import { gridSpacing } from "./Grid/recoil";
 import GroupSliceSelector from "./GroupSliceSelector";
 import ResourceCount from "./ResourceCount";
@@ -90,10 +90,9 @@ const Spacing = () => {
 
 const Zoom = () => {
   const resetZoom = useRecoilCallback(
-    ({ set, snapshot }) =>
+    ({ set }) =>
       async () => {
-        const [start] = await snapshot.getPromise(gridZoomRange);
-        set(gridZoom, Math.max(start, 5));
+        set(gridZoom, Math.max(ZOOM_RANGE[0], 5));
       },
     []
   );
@@ -104,7 +103,7 @@ const Zoom = () => {
       <div style={{ flexGrow: 1 }} title={"Zoom"}>
         <Slider
           valueAtom={gridZoom}
-          boundsAtom={gridZoomRange}
+          boundsAtom={constSelector(ZOOM_RANGE)}
           color={theme.primary.plainColor}
           showBounds={false}
           persistValue={false}

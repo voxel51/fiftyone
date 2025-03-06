@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import useThreshold from "./useThreshold";
+import useThreshold from "./useZoomSetting";
 
 const MAX = 14;
 const MIN = 10;
