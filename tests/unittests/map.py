@@ -121,10 +121,13 @@ class TestProcessMapBackend(unittest.TestCase):
             sample["input"] = i
             cls.dataset.add_sample(sample)
 
+        cls.empty_dataset = fo.Dataset(name="empty_dataset_process_backend")
+
     @classmethod
     def tearDownClass(cls):
         """Cleanup: Delete the dataset after the test."""
         cls.dataset.delete()
+        cls.empty_dataset.delete()
 
     def test_map_samples_process(self):
         """Test ProcessMapBackend with map_samples"""
@@ -163,3 +166,13 @@ class TestProcessMapBackend(unittest.TestCase):
         # Verify results
         for sample in dataset.iter_samples():
             self.assertEqual(sample["field2"], sample["input"] * 3)
+
+    def test_empty_dataset(self):
+        """Test ProcessMapBackend with an empty dataset."""
+
+        def map_fcn(sample):
+            sample["field1"] = sample["input"] * 2
+            return sample["field1"]
+
+        with self.assertRaises(StopIteration):
+            self.process_backend.map_samples(self.empty_dataset, map_fcn)
