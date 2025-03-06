@@ -3463,7 +3463,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Upserts the given samples and their backing docs to the database
 
         Args:
-            samples: a list of tuples of the form (sample, dict) where the dict
+            samples_and_docs: a list of tuples of the form (sample, dict) where the dict
                 is the sample's backing document
         """
         ops = []
