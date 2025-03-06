@@ -589,7 +589,10 @@ export default function Evaluation(props: EvaluationProps) {
               borderColor: theme.palette.divider,
             }}
           >
-            <ColorSquare color={KEY_COLOR} />
+            <EvaluationIcon
+              type={evaluationType as ConcreteEvaluationType}
+              method={evaluationMethod}
+            />
             <Typography>{evaluationKey}</Typography>
           </Stack>
         </Stack>
