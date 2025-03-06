@@ -1492,16 +1492,12 @@ class DelegatedOperationServiceTests(unittest.IsolatedAsyncioTestCase):
         self.docs_to_delete.append(doc)
         self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
 
-    @patch.object(
-        delegated_operation,
-        "is_remote_service",
-        return_value=True,
-    )
     def test_set_queue_remote_service(
         self,
-        mock_is_remote_service,
         mock_get_operator,
         mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
     ):
         mock_is_remote_service.return_value = True
         db = delegated_operation.MongoDelegatedOperationRepo()
