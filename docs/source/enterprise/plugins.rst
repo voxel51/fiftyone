@@ -634,6 +634,8 @@ outputs, and errors.
 You can visit the Run page for a run by clicking on a run in the runs table, 
 the Pinned runs, or the Recent runs widgets.
 
+.. _teams-run-page-input:
+
 Input
 ^^^^^
 
@@ -650,6 +652,8 @@ by clicking the "Show raw" toggle button:
 
 .. image:: /images/plugins/operators/runs/raw_input.png
 
+.. _teams-run-page-output:
+
 Output
 ^^^^^^
 
@@ -662,6 +666,8 @@ completed run:
 
 .. image:: /images/plugins/operators/runs/output.png
 
+.. _teams-run-page-errors:
+
 Errors
 ^^^^^^
 
@@ -670,6 +676,8 @@ see the errors that occurred:
 
 .. image:: /images/plugins/operators/runs/errors.png
 
+.. _teams-run-page-view:
+
 View
 ^^^^
 
@@ -677,6 +685,8 @@ The View tab on the Run page lets you see the dataset view on which the run was
 scheduled:
 
 .. image:: /images/plugins/operators/runs/view.png
+
+.. _teams-run-page-logs:
 
 Logs
 ^^^^
