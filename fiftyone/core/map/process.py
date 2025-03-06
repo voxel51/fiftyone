@@ -68,7 +68,7 @@ class ProcessMapBackend(MapBackend):
         sample_collection,
         map_fcn,
         return_outputs: bool = True,
-        save: Optional[bool] = False,
+        save: bool = False,
         num_workers: Optional[int] = None,
         shard_method: str = "id",
         progress: Optional[Union[str, bool]] = None,
