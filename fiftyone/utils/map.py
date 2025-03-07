@@ -1,4 +1,12 @@
-from typing import Iterator, Any, Optional
+"""
+Utility method for mapping samples
+
+| Copyright 2017-2025, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
+from typing import Any, Iterator, Optional, Union
 
 from fiftyone.core.map import MapBackendFactory, MapBackendType
 
@@ -6,15 +14,16 @@ from fiftyone.core.map import MapBackendFactory, MapBackendType
 def map_samples(
     sample_collection,
     map_fcn,
-    save: Optional[bool] = None,
     num_workers: Optional[int] = None,
     shard_method: str = "id",
     progress: Optional[bool] = None,
     queue_batch_size: int = 1,
-    backend: str | MapBackendType = MapBackendType.sequential,
+    save: bool = False,
+    backend: Union[str, MapBackendType] = MapBackendType.sequential,
 ) -> Iterator[Any]:
     """
-    Applies `map_fcn` to each sample using the specified backend strategy and returns an iterator.
+    Applies `map_fcn` to each sample using the specified backend strategy and
+    returns an iterator.
 
     Args:
         sample_collection: The dataset or view to process.
@@ -36,11 +45,11 @@ def map_samples(
     return backend_instance.map_samples(
         sample_collection,
         map_fcn,
-        save,
         num_workers,
         shard_method,
         progress,
         queue_batch_size,
+        save,
     )
 
 
@@ -50,7 +59,7 @@ def update_samples(
     num_workers: Optional[int] = None,
     shard_method: str = "id",
     progress: Optional[bool] = None,
-    backend: str | MapBackendType = MapBackendType.sequential,
+    backend: Union[str, MapBackendType] = MapBackendType.sequential,
 ):
     """
     Applies `map_fcn` to each sample using the specified backend strategy.
