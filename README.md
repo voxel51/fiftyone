@@ -296,7 +296,7 @@ brew install python@3.9
 brew install protobuf
 ```
 
-#### 4. Create and activate a virtual nvironment
+#### 4. Create and activate a virtual environment
 
 ```shell
 python3 -m venv fiftyone_env
