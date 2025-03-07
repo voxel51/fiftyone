@@ -74,7 +74,6 @@ class DataQualityPanel(Panel):
             name="data_quality_panel",
             label="Data Quality",
             category=foo.Categories.CURATE,
-            beta=True,
             icon=ICON_PATH,
             light_icon=ICON_PATH,
             dark_icon=ICON_PATH,
