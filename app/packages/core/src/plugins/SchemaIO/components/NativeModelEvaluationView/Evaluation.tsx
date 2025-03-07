@@ -1,4 +1,4 @@
-import { Dialog } from "@fiftyone/components";
+import { Dialog, EditableLabel } from "@fiftyone/components";
 import { editingFieldAtom, view } from "@fiftyone/state";
 import {
   ArrowBack,
@@ -77,6 +77,7 @@ export default function Evaluation(props: EvaluationProps) {
     setNoteEvent,
     notes = {},
     loadView,
+    onRename,
   } = props;
   const theme = useTheme();
   const [expanded, setExpanded] = React.useState("summary");
@@ -548,7 +549,12 @@ export default function Evaluation(props: EvaluationProps) {
             <ArrowBack />
           </IconButton>
           <EvaluationIcon type={evaluationType} method={evaluationMethod} />
-          <Typography>{name}</Typography>
+          <EditableLabel
+            label={name}
+            onSave={(newLabel) => {
+              onRename(name, newLabel);
+            }}
+          />
         </Stack>
         <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
           <Status
@@ -1675,6 +1681,7 @@ type EvaluationProps = {
   setNoteEvent: string;
   notes: Record<string, string>;
   loadView: (type: string, params: any) => void;
+  onRename: (oldName: string, newName: string) => void;
 };
 
 function ColorSquare(props: { color: string }) {

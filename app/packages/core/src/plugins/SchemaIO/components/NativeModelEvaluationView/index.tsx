@@ -20,6 +20,7 @@ export default function NativeModelEvaluationView(props) {
     set_status,
     set_note,
     load_view,
+    rename_evaluation,
   } = view;
   const {
     evaluations = [],
@@ -57,6 +58,29 @@ export default function NativeModelEvaluationView(props) {
       triggerEvent(on_evaluate_model);
     }
   }, [triggerEvent, on_evaluate_model]);
+  const onRename = useCallback(
+    (old_name: string, new_name: string) => {
+      triggerEvent(
+        rename_evaluation,
+        { old_name, new_name },
+        false,
+        (results) => {
+          if (results?.error === null) {
+            const updatedEvaluations = evaluations.map((evaluation) => {
+              if (evaluation.key === old_name) {
+                return { ...evaluation, key: new_name };
+              }
+            });
+            onChange("evaluations", updatedEvaluations);
+            if (page === "evaluation") {
+              onChange("view.key", new_name);
+            }
+          }
+        }
+      );
+    },
+    [triggerEvent, rename_evaluation, evaluations, onChange]
+  );
 
   return (
     <Box sx={{ height: "100%" }}>
@@ -84,6 +108,7 @@ export default function NativeModelEvaluationView(props) {
           loadView={(type, options) => {
             triggerEvent(load_view, { type, options });
           }}
+          onRename={onRename}
         />
       )}
       {page === "overview" &&
@@ -125,6 +150,7 @@ export default function NativeModelEvaluationView(props) {
             notes={notes}
             permissions={permissions}
             pending_evaluations={pending_evaluations}
+            onRename={onRename}
           />
         ))}
     </Box>

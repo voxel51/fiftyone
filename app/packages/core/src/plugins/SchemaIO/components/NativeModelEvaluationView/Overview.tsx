@@ -1,4 +1,4 @@
-import { LoadingDots } from "@fiftyone/components";
+import { EditableLabel, LoadingDots } from "@fiftyone/components";
 import { Card, CardActionArea, Chip, Stack, Typography } from "@mui/material";
 import React from "react";
 import Evaluate from "./Evaluate";
@@ -20,6 +20,7 @@ export default function Overview(props: OverviewProps) {
     notes = {},
     permissions = {},
     pending_evaluations,
+    onRename,
   } = props;
   const count = evaluations.length;
 
@@ -52,6 +53,7 @@ export default function Overview(props: OverviewProps) {
             type={type}
             method={method}
             onSelect={onSelect}
+            onRename={onRename}
           />
         );
       })}
@@ -73,10 +75,30 @@ export default function Overview(props: OverviewProps) {
 }
 
 function EvaluationCard(props: EvaluationCardProps) {
-  const { pending, onSelect, eval_key, note, status, id, type, method } = props;
+  const {
+    pending,
+    onSelect,
+    eval_key,
+    note,
+    status,
+    id,
+    type,
+    method,
+    onRename,
+  } = props;
+  const [hovering, setHovering] = React.useState(false);
 
   return (
-    <CardActionArea key={eval_key} disabled={pending}>
+    <CardActionArea
+      key={eval_key}
+      disabled={pending}
+      onMouseEnter={() => {
+        setHovering(true);
+      }}
+      onMouseLeave={() => {
+        setHovering(false);
+      }}
+    >
       <Card
         sx={{ p: 2, cursor: "pointer" }}
         onClick={() => {
@@ -93,9 +115,14 @@ function EvaluationCard(props: EvaluationCardProps) {
               type={type as ConcreteEvaluationType}
               method={method}
             />
-            <Typography sx={{ fontSize: 16, fontWeight: 600 }}>
-              {eval_key}
-            </Typography>
+            <EditableLabel
+              label={eval_key}
+              labelProps={{ sx: { fontSize: 16, fontWeight: 600 } }}
+              onSave={(newName) => {
+                onRename(eval_key, newName);
+              }}
+              showEditIcon={hovering}
+            />
           </Stack>
           {pending && (
             <Chip
