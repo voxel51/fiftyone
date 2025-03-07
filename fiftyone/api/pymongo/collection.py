@@ -242,7 +242,8 @@ class Collection(proxy.PymongoRestProxy):
                 # To avoid duplicate samples from retries, log a warning and return the inserted ids.
                 logging.warning(
                     "Response to `insert_many` request taking too long. "
-                    "To avoid further issues, try reducing the batch size."
+                    "To avoid further issues, try reducing the default batch size "
+                    "in your FiftyOne config."
                 )
                 logging.debug("ReadTimeout error: %s", e)
 
