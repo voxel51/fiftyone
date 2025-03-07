@@ -25,6 +25,7 @@ export default function NativeModelEvaluationView(props) {
     on_evaluate_model,
     load_evaluation,
     load_evaluation_view,
+    delete_evaluation,
     set_status,
     set_note,
     load_view,
@@ -94,6 +95,26 @@ export default function NativeModelEvaluationView(props) {
     setOpenDialog(false);
     setSelectedEvaluation(null);
   };
+
+  const onDelete = useCallback(
+    (evalId: string, evalKey: string) => {
+      triggerEvent(delete_evaluation, { evalId, evalKey }, false, (results) => {
+        console.log("evalId, evalKey", evalId, evalKey);
+        if (results?.error === null) {
+          const updatedEvaluations = evaluations.filter(
+            (evaluation) => evaluation.key !== evalKey
+          );
+          onChange("evaluations", updatedEvaluations);
+          if (page === "evaluation") {
+            // should return to overview page
+            onChange("view", { page: "overview" });
+            triggerEvent(on_change_view);
+          }
+        }
+      });
+    },
+    [triggerEvent, delete_evaluation, evaluations, onChange]
+  );
 
   return (
     <Box sx={{ height: "100%" }}>
