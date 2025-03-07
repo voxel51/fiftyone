@@ -316,13 +316,10 @@ class DatasetMixin(object):
                 is_frame_field=is_frame_field,
             )
 
-        # Silently skip updating metadata of any read-only fields or hidden
+        # Silently skip updating metadata of any read-only fields
         for path in list(new_metadata.keys()):
             field = cls._get_field(path, allow_missing=True)
-            if field is None:
-                continue
-
-            if not isinstance(field, fof.Field) or field.read_only:
+            if field is not None and getattr(field, "read_only", False):
                 del new_metadata[path]
 
         for path, field in new_schema.items():
@@ -521,7 +518,7 @@ class DatasetMixin(object):
                     % (cls._doc_name().lower(), path)
                 )
 
-            if field is not None and field.read_only:
+            if field is not None and getattr(field, "read_only", False):
                 raise ValueError(
                     "Cannot rename read-only %s field '%s'"
                     % (cls._doc_name().lower(), path)
@@ -688,7 +685,7 @@ class DatasetMixin(object):
                     "%s field '%s' does not exist" % (cls._doc_name(), path)
                 )
 
-            if field is not None and field.read_only:
+            if field is not None and getattr(field, "read_only", False):
                 raise ValueError(
                     "Cannot rename read-only %s field '%s'"
                     % (cls._doc_name().lower(), path)
@@ -757,7 +754,7 @@ class DatasetMixin(object):
                 )
                 continue
 
-            if field is not None and field.read_only:
+            if field is not None and getattr(field, "read_only", False):
                 raise ValueError(
                     "Cannot delete read-only %s field '%s'"
                     % (cls._doc_name().lower(), path)
@@ -866,7 +863,7 @@ class DatasetMixin(object):
                 )
                 continue
 
-            if field is not None and field.read_only:
+            if field is not None and getattr(field, "read_only", False):
                 fou.handle_error(
                     ValueError(
                         "Cannot remove read-only %s field '%s'"
