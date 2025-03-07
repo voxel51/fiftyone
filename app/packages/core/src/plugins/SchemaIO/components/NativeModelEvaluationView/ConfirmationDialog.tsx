@@ -25,7 +25,7 @@ const ConfirmationDialog = ({
     const evalId = evaluations.find(
       (evaluation) => evaluation.key === selectedEvaluation
     ).id;
-    handleDelete(evalId);
+    handleDelete(evalId, selectedEvaluation);
     setSelectedEvaluation(null);
     handleClose();
   };
