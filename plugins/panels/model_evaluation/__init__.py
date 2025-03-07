@@ -762,7 +762,7 @@ class EvaluationPanel(Panel):
                 set_note=self.set_note,
                 load_view=self.load_view,
                 rename_evaluation=self.rename_evaluation,
-                delete_evalution=self.delete_evaluation,
+                delete_evaluation=self.delete_evaluation,
             ),
         )
 
