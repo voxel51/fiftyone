@@ -306,7 +306,7 @@ class DatasetMixin(object):
 
         for path in new_schema.keys():
             _, _, _, root_doc = cls._parse_path(path)
-            if root_doc is not None and root_doc.read_only:
+            if root_doc is not None and getattr(root_doc, "read_only", False):
                 root = path.rsplit(".", 1)[0]
                 raise ValueError("Cannot edit read-only field '%s'" % root)
 
