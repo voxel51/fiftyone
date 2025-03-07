@@ -6,6 +6,7 @@ export type OverviewProps = {
   notes?: Record<string, string>;
   permissions?: Record<string, boolean>;
   pending_evaluations: PendingEvaluationType[];
+  onRename: (oldName: string, newName: string) => void;
 };
 
 export type EvaluationType = {
@@ -33,6 +34,7 @@ export type EvaluationCardProps = {
   onSelect: OverviewProps["onSelect"];
   pending?: boolean;
   status?: string;
+  onRename: OverviewProps["onRename"];
 };
 
 export type ConcreteEvaluationType =

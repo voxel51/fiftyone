@@ -7,8 +7,13 @@ export function useTriggerEvent() {
   const handleEvent = usePanelEvent();
 
   const triggerEvent = useCallback(
-    (event: string, params?: any, prompt?: boolean) => {
-      handleEvent(panelId, { operator: event, params, prompt });
+    (event: string, params?: any, prompt?: boolean, callback?: any) => {
+      handleEvent(panelId, {
+        operator: event,
+        params,
+        prompt,
+        callback,
+      });
     },
     [handleEvent, panelId]
   );

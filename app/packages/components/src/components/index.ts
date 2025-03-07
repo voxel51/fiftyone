@@ -40,5 +40,6 @@ export { default as ThemeProvider, useFont, useTheme } from "./ThemeProvider";
 export { default as Tooltip } from "./Tooltip";
 export { default as Toast } from "./Toast";
 export { default as PanelCTA } from "./PanelCTA";
+export { default as EditableLabel } from "./EditableLabel";
 
 export * from "./types";
