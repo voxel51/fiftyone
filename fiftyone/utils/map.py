@@ -6,7 +6,7 @@ from fiftyone.core.map import MapBackendFactory, MapBackendType
 def map_samples(
     sample_collection,
     map_fcn,
-    save: Optional[bool] = None,
+    save: bool = False,
     num_workers: Optional[int] = None,
     shard_method: str = "id",
     progress: Optional[bool] = None,
@@ -18,7 +18,7 @@ def map_samples(
     Args:
         sample_collection: The dataset or view to process.
         map_fcn: Function to apply to each sample.
-        save (None): Whether to save modified samples.
+        save (False): Whether to save modified samples.
         num_workers (None): Number of workers.
         shard_method ("id"): Method for sharding ('id' or 'slice').
         progress (None): Whether to show progress bar.
@@ -39,7 +39,6 @@ def map_samples(
 def update_samples(
     sample_collection,
     map_fcn,
-    save: Optional[bool] = None,
     num_workers: Optional[int] = None,
     shard_method: str = "id",
     progress: Optional[bool] = None,
@@ -51,7 +50,6 @@ def update_samples(
     Args:
         sample_collection: The dataset or view to process.
         map_fcn: Function to apply to each sample.
-        save (None): Whether to save modified samples.
         num_workers (None): Number of workers.
         shard_method ("id"): Method for sharding ('id' or 'slice').
         progress (None): Whether to show progress bar.
@@ -62,5 +60,9 @@ def update_samples(
 
     # Execute map_samples with the chosen backend
     return backend_instance.update_samples(
-        sample_collection, map_fcn, save, num_workers, shard_method, progress
+        sample_collection,
+        map_fcn,
+        num_workers=num_workers,
+        shard_method=shard_method,
+        progress=progress,
     )
