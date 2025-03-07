@@ -240,29 +240,13 @@ class Collection(proxy.PymongoRestProxy):
                     is_idempotent=False,
                 )
             except requests.exceptions.ReadTimeout as e:
-                logging.debug("ReadTimeout for method `insert_many`: %s", e)
-
                 # ReadTimeouts can occur even if the operation eventually succeeds server-side.
-                # In this case, check for the last inserted _id to ensure all documents were sent
-                # and that it's not an error with inserting documents entirely.
-                try:
-                    inserted = self.find_one(
-                        ({"_id": inserted_ids[-1]}, {"_id": 1}),
-                        {"hint": {"_id": 1}},
-                    )
-                    if not inserted:
-                        raise e
-                    logging.warning(
-                        "Response to `insert_many` request taking too long. "
-                        "To avoid further issues, try reducing the batch size."
-                    )
-                except Exception as err:
-                    logging.debug(
-                        f"Error while checking last inserted _id {inserted_ids[-1]}:",
-                        err,
-                    )
-                    # If the last inserted _id is not found, raise the original ReadTimeout error
-                    raise e
+                # To avoid duplicate samples from retries, log a warning and return the inserted ids.
+                logging.warning(
+                    "Response to `insert_many` request taking too long. "
+                    "To avoid further issues, try reducing the batch size."
+                )
+                logging.debug("ReadTimeout error: %s", e)
 
         return pymongo.results.InsertManyResult(
             inserted_ids, acknowledged=WriteConcern() != 0
