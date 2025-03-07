@@ -3363,7 +3363,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples that were added to this dataset
         """
-        dicts = [sample_and_doc[1] for sample_and_doc in samples_and_docs]
+        dicts = [doc for _, doc in samples_and_docs]
         try:
             # adds `_id` to each dict
             self._sample_collection.insert_many(dicts)
@@ -3388,9 +3388,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         progress=None,
         num_samples=None,
     ):
-        if num_samples is None:
-            num_samples = samples
-
         transform_fn = partial(
             self._transform_sample,
             expand_schema=expand_schema,
@@ -3400,13 +3397,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             include_id=True,
         )
 
-        calculate_size_fn = partial(self._calculate_size)
-
         batcher = fou.get_default_batcher(
             samples,
             progress=progress,
             transform_fn=transform_fn,
-            size_calc_fn=calculate_size_fn,
+            size_calc_fn=self._calculate_size,
+            total=num_samples,
         )
 
         with batcher:
@@ -3422,8 +3418,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         copy=False,
         include_id=False,
     ):
-        """Transforms the given sample and returns the transformed sample and dict as a pair"""
+        """Transforms the given sample and returns the transformed sample and dict as a pair
 
+        This method handles schema expansion, validation, and preparing the sample's
+        backing document before adding it to the database.
+
+        Args:
+            sample: The sample to transform
+            expand_schema: Whether to dynamically add new sample fields encountered
+            dynamic: Whether to declare dynamic attributes of embedded document fields
+            validate: Whether to validate the sample against the dataset schema
+            copy: Whether to create a copy of the sample if it's already in a dataset
+            include_id: Whether to include the sample's ID in the backing document
+
+        Returns:
+            A tuple of (transformed_sample, backing_document_dict)
+        """
         if copy and sample._in_db:
             sample = sample.copy()
 
