@@ -1,3 +1,9 @@
+"""
+| Copyright 2017-2025, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
 import unittest
 
 import fiftyone as fo
@@ -59,6 +65,8 @@ class TestSequentialMapBackend(unittest.TestCase):
 
         # Run update_samples
         self.seq_backend.update_samples(self.dataset, map_fcn)
+
+        foum.update_samples(self.dataset, map_fcn)
 
         dataset = fo.load_dataset("test_sequential_map_backend")
 
