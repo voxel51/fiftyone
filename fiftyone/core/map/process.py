@@ -5,6 +5,7 @@ Multiprocessing utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import multiprocessing
 from queue import Empty
 import time
@@ -29,14 +30,14 @@ class ProcessMapBackend(MapBackend):
     def update_samples(
         self,
         sample_collection,
-        map_fcn,
+        update_fcn,
         num_workers: Optional[int] = None,
         shard_method: str = "id",
         progress: Optional[Union[str, bool]] = None,
     ):
         return self._map_samples(
             sample_collection,
-            map_fcn,
+            update_fcn,
             return_outputs=False,
             save=True,
             num_workers=num_workers,
@@ -48,10 +49,10 @@ class ProcessMapBackend(MapBackend):
         self,
         sample_collection,
         map_fcn,
-        save: bool = False,
         num_workers: Optional[int] = None,
         shard_method: str = "id",
         progress: Optional[Union[str, bool]] = None,
+        save: bool = False,
     ) -> Iterator[Any]:
         if len(sample_collection) == 0:
             raise StopIteration()
