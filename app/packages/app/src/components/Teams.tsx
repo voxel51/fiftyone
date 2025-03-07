@@ -16,6 +16,7 @@ const ENTERPRISE_BUTTON_ID = "fo-cta-enterprise-button";
 
 const DARK_BG_COLOR = "#333333";
 const LIGHT_BG_COLOR = "#FFFFFF";
+
 const GRADIENT_START_COLOR = "#FF6D04";
 const GRADIENT_END_COLOR = "#B681FF";
 
@@ -50,6 +51,7 @@ const IconContainer = styled.div`
 const GradientAutoAwesomeIcon = () => (
   <>
     <svg width={0} height={0} aria-label="Gradient" aria-labelledby="gradient">
+      <title>Gradient</title>
       <defs>
         <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop
@@ -204,18 +206,18 @@ const PopoverFooter = styled(Stack)`
   margin-top: 16px;
 `;
 
-export default function Teams({ disablePopover = false }: { disablePopover?: boolean }) {
+export default function Teams({
+  disablePopover = false,
+}: { disablePopover?: boolean }) {
   const [showPopover, setShowPopover] = useState(false);
 
   const { mode } = useColorScheme();
   const theme = useTheme();
 
-  // Get the appropriate background color based on mode
   const bgColor = mode === "light" ? LIGHT_BG_COLOR : DARK_BG_COLOR;
 
   useEffect(() => {
     const hasSeenTooltip = window.localStorage.getItem(ENTERPRISE_TOOLTIP_LS);
-    console.log("hasSeenTooltip", hasSeenTooltip);
     if (!hasSeenTooltip) {
       setShowPopover(true);
     }
@@ -269,7 +271,12 @@ export default function Teams({ disablePopover = false }: { disablePopover?: boo
           }}
           elevation={3}
         >
-          <PopoverContent>
+          <PopoverContent
+            style={{
+              backgroundColor:
+                mode === "light" ? LIGHT_BG_COLOR : DARK_BG_COLOR,
+            }}
+          >
             <PopoverHeading variant="h6">
               <GradientAutoAwesomeIcon />
               <Typography variant="h6" letterSpacing={0.3}>
