@@ -15,8 +15,6 @@ ProxyAPIContext = Iterable[
     Tuple[str, Optional[Iterable[Any]], Optional[Mapping[str, Any]]]
 ]
 
-BULK_WRITE_OPERATIONS = ["insert_many", "bulk_write"]
-
 
 class PymongoProxyMeta(utils.ProxyMeta):
     """Metaclass for wrapping Pymongo public methods with proxy"""

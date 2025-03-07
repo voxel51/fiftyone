@@ -14,8 +14,6 @@ from typing_extensions import Literal
 
 from fiftyone.api import constants, errors, socket
 
-AllowedRequestMethod = Literal["GET", "POST"]
-
 
 def fatal_http_code(e):
     return 400 <= e.response.status_code < 500
@@ -252,7 +250,7 @@ class Client:
 
     def __request(
         self,
-        method: AllowedRequestMethod,
+        method: Literal["POST", "GET"],
         url_path: str,
         timeout: Optional[int] = None,
         data_generator_factory: Optional[Callable[[], Iterator[bytes]]] = None,
