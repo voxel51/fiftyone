@@ -319,7 +319,10 @@ class DatasetMixin(object):
         # Silently skip updating metadata of any read-only fields
         for path in list(new_metadata.keys()):
             field = cls._get_field(path, allow_missing=True)
-            if field is not None and getattr(field, "read_only", False):
+            if field is not None and (
+                not isinstance(field, fof.Field)
+                or getattr(field, "read_only", False)
+            ):
                 del new_metadata[path]
 
         for path, field in new_schema.items():
