@@ -186,8 +186,6 @@ class Collection(proxy.PymongoRestProxy):
 
     # pylint: disable-next=missing-function-docstring
     def find(self, *args: Any, **kwargs: Any) -> cursor.Cursor:
-        print("find args=", args)
-        print("find kwargs=", kwargs)
         return cursor.Cursor(self, "find", *args, **kwargs)
 
     # pylint: disable-next=missing-function-docstring
