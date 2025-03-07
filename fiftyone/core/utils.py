@@ -1622,7 +1622,7 @@ class ContentSizeBatcher(BaseBatcher):
         )
         self.max_batch_size = max_batch_size
         self.target_size = target_size
-        self._prev_element = None
+        self._next_element = None
         self._size_calculation_fn = (
             size_calculation_fn
             if size_calculation_fn
@@ -1632,29 +1632,34 @@ class ContentSizeBatcher(BaseBatcher):
     def __iter__(self):
         super().__iter__()
         try:
-            self._prev_element = next(self._iter)
+            self._next_element = next(self._iter)
         except StopIteration:
             # If iterable is empty, we want to throw StopIteration at the first
             #   call to next(), not here.
-            self._prev_element = None
+            self._next_element = None
         return self
 
     def __next__(self):
         if self._render_progress and self._last_batch_size:
             self._pb.update(count=self._last_batch_size)
 
-        if self._prev_element is None:
+        if self._next_element is None:
             raise StopIteration()
 
-        batch_content_size = self._size_calculation_fn(self._prev_element)
-        curr_batch = [self._prev_element]
+        # Must have at least 1 element in a batch
+        batch_content_size = self._size_calculation_fn(self._next_element)
+        curr_batch = [self._next_element]
 
         while True:
             try:
-                self._prev_element = next(self._iter)
+                # Peek at next element and get its size
+                self._next_element = next(self._iter)
                 next_element_size = self._size_calculation_fn(
-                    self._prev_element
+                    self._next_element
                 )
+
+                # If adding next element would put this batch over the limit,
+                #   stop here
                 if (
                     self.max_batch_size
                     and len(curr_batch) >= self.max_batch_size
@@ -1662,11 +1667,18 @@ class ContentSizeBatcher(BaseBatcher):
                     batch_content_size + next_element_size > self.target_size
                 ):
                     break
+
+                # Otherwise, add next element to curr batch and keep truckin'
                 batch_content_size += next_element_size
-                curr_batch.append(self._prev_element)
+                curr_batch.append(self._next_element)
+
             except StopIteration:
-                self._prev_element = None
+                # If we get StopIteration, it just means we are done and can
+                #   end this batch. On the following call to __next__(), we'll
+                #   raise our StopIteration
+                self._next_element = None
                 break
+
         self._last_batch_size = len(curr_batch)
         return curr_batch
 
