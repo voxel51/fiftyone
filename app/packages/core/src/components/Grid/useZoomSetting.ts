@@ -7,7 +7,7 @@ const WIDE = 1000;
 const NORMAL = 800;
 
 // Zoom value is 11 minus ideal aspect ratio
-//   - min aspect ratio is 1 -> max zoom is 0
+//   - min aspect ratio is 1 -> max zoom is 10
 //   - min zoom is -4 -> max aspect ratio is 15
 const FROM_ROW_ASPECT_RATIO = 11;
 export const ZOOM_RANGE: [number, number] = [-4, 10];
@@ -27,7 +27,7 @@ export const zoomFromAspectRatio = (aspectRatio: number) =>
  * @param {number} zoom
  * @returns {number}
  */
-export const zoomToAspectRatio = (zoom: number) => FROM_ROW_ASPECT_RATIO - zoom;
+const zoomToAspectRatio = (zoom: number) => FROM_ROW_ASPECT_RATIO - zoom;
 
 /**
  * Determines a maximium aspect ratio threshold for grid rows based on the

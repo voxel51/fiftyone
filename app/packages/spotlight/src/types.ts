@@ -66,20 +66,20 @@ export type Show<K, V> = (ctx: {
 
 export interface SpotlightConfig<K, V> {
   at?: At;
-  spacing?: number;
-  scrollbar?: boolean;
   key: K;
   maxRows?: number;
   maxItemsSizeBytes?: number;
   offset?: number;
+  scrollbar?: boolean;
+  spacing?: number;
 
   detachItem: (id: ID) => void;
   get: Get<K, V>;
   getItemSizeBytes?: (id: ID) => number;
   hideItem: Hide;
   onItemClick?: ItemClick<K, V>;
-  showItem: Show<K, V>;
   rowAspectRatioThreshold: (width: number) => number;
+  showItem: Show<K, V>;
 }
 
 export type Updater = (id: ID) => void;

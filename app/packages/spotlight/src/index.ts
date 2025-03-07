@@ -229,7 +229,7 @@ export default class Spotlight<K, V> extends EventTarget {
     } while (tiledAspectRatio > this.#aspectRatio / FOUR);
 
     proposed = Math.max(proposed, MIN_ASPECT_RATIO_RECOMMENDATION);
-    if (!this.#rejected && proposed < current) {
+    if (proposed < current) {
       this.#rejected = true;
       this.dispatchEvent(new Rejected(proposed));
     }
@@ -274,7 +274,8 @@ export default class Spotlight<K, V> extends EventTarget {
     this.#validate = validate;
 
     const measure = (item: ItemData<K, V>, add: number) => {
-      if (!this.#config.maxItemsSizeBytes) {
+      // do not measure without a config value, or already REJECTED
+      if (!this.#config.maxItemsSizeBytes || this.#rejected) {
         return;
       }
 
@@ -426,6 +427,7 @@ export default class Spotlight<K, V> extends EventTarget {
             const add = adder();
             const ar = this.#config.rowAspectRatioThreshold(this.#width);
             if (
+              this.#rejected ||
               !this.#config.maxItemsSizeBytes ||
               ar <= MIN_ASPECT_RATIO_RECOMMENDATION
             ) {

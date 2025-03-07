@@ -53,16 +53,14 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
     max: maxHiddenItems,
     maxSize: maxHiddenItemsSizeBytes,
     noDisposeOnSet: true,
-    sizeCalculation: (instance) => {
-      return instance.getSizeBytesEstimate();
-    },
+    sizeCalculation: (instance) => instance.getSizeBytesEstimate(),
   });
 
   // frozen instances, i.e. neither shown or hidden
   const frozen = new Map<string, T>();
 
   const get = (key: string) =>
-    shown.get(key) ?? hidden.get(key) ?? pending.get(key) ?? frozen.get(key);
+    frozen.get(key) ?? hidden.get(key) ?? pending.get(key) ?? shown.get(key);
 
   const hide = (key?: string) => {
     if (!key) {
@@ -171,6 +169,8 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
     set: (key: string, instance: T) => {
       shown.set(key, instance);
       frozen.delete(key);
+      hidden.delete(key);
+      pending.delete(key);
       onSet?.(key);
     },
 

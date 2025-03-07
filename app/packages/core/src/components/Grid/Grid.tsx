@@ -85,7 +85,6 @@ function Grid() {
       ...renderer,
 
       maxRows: MAX_ROWS,
-
       maxItemsSizeBytes: autosizing ? maxBytes : undefined,
       scrollbar: true,
       spacing,
