@@ -10,7 +10,6 @@ import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
 import { recommendedGridZoom } from "./recoil";
 import type { LookerCache } from "./types";
 import type { ScrollLocation } from "./useScrollLocation";
-import { zoomFromAspectRatio } from "./useZoomSetting";
 
 export default ({
   id,
@@ -54,9 +53,7 @@ export default ({
 
     const rejected = (event: Rejected) => {
       clearTimeout(timeout);
-      setRecommendedZoom(
-        zoomFromAspectRatio(event.recommendedRowAspectRatioThreshold)
-      );
+      setRecommendedZoom(-event.recommendedRowAspectRatioThreshold);
       spotlight.loaded &&
         handleError(["That's a lot of data! We've zoomed in a bit"]);
     };
