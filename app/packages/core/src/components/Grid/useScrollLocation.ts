@@ -3,13 +3,13 @@ import { useMemo } from "react";
 import { useRecoilCallback, useRecoilTransaction_UNSTABLE } from "recoil";
 import { gridAt, gridOffset, gridPage } from "./recoil";
 
-export interface AtInterface {
+export interface ScrollLocation {
   at: ID;
   page: number;
   offset: number;
 }
 
-export default function useAt(pageReset: string) {
+export default function useScrollLocation(pageReset: string) {
   const getPage = useRecoilTransaction_UNSTABLE(
     ({ get }) =>
       (ref: { current: number | null }) => {
@@ -58,10 +58,10 @@ export default function useAt(pageReset: string) {
   // when scrolling ends, use set to save the grid location to recoil
   const set = useRecoilTransaction_UNSTABLE(
     ({ set }) =>
-      (at: AtInterface) => {
-        set(gridPage, at.page);
-        set(gridAt, at.at.description);
-        set(gridOffset, at.offset);
+      (location: ScrollLocation) => {
+        set(gridPage, location.page);
+        set(gridAt, location.at.description);
+        set(gridOffset, location.offset);
       },
     []
   );

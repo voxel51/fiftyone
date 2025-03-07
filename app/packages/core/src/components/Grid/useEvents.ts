@@ -9,7 +9,7 @@ import { useSetRecoilState } from "recoil";
 import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
 import { recommendedGridZoom } from "./recoil";
 import type { LookerCache } from "./types";
-import type { AtInterface } from "./useAt";
+import type { ScrollLocation } from "./useScrollLocation";
 
 export default ({
   id,
@@ -23,11 +23,11 @@ export default ({
   cache: LookerCache;
   pixels: string;
   resizing: boolean;
-  set: (at: AtInterface) => void;
+  set: (location: ScrollLocation) => void;
   spotlight?: Spotlight<number, fos.Sample>;
 }) => {
   const handleError = useSetRecoilState(fos.snackbarErrors);
-  const setRecommendedGridZoomRange = useSetRecoilState(recommendedGridZoom);
+  const setRecommendedZoom = useSetRecoilState(recommendedGridZoom);
   useLayoutEffect(() => {
     if (resizing || !spotlight) {
       return undefined;
@@ -53,9 +53,7 @@ export default ({
 
     const rejected = (event: Rejected) => {
       clearTimeout(timeout);
-      setRecommendedGridZoomRange(
-        11 - event.recommendedRowAspectRatioThreshold
-      );
+      setRecommendedZoom(-event.recommendedRowAspectRatioThreshold);
       spotlight.loaded &&
         handleError(["That's a lot of data! We've zoomed in a bit"]);
     };
@@ -81,7 +79,7 @@ export default ({
     pixels,
     resizing,
     set,
-    setRecommendedGridZoomRange,
+    setRecommendedZoom,
     spotlight,
   ]);
 };

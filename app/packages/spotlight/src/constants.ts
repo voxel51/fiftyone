@@ -19,6 +19,7 @@ export const DIV = "div";
 export const FIRST = "first";
 export const FOUR = 4;
 export const LAST = "last";
+export const MIN_ASPECT_RATIO_RECOMMENDATION = 1.5;
 export const ONE = 1;
 export const RESIZE_TIMEOUT = 1000;
 export const SCROLLBAR_WIDTH = 14;

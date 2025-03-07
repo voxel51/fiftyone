@@ -14,7 +14,6 @@ import {
   maxGridItemsSizeBytes,
   pageParameters,
 } from "./recoil";
-import useAt from "./useAt";
 import useEscape from "./useEscape";
 import useEvents from "./useEvents";
 import useLabelVisibility from "./useLabelVisibility";
@@ -23,9 +22,10 @@ import useRecords from "./useRecords";
 import useRefreshers from "./useRefreshers";
 import useRenderer from "./useRenderer";
 import useResize from "./useResize";
+import useScrollLocation from "./useScrollLocation";
 import useSpotlightPager from "./useSpotlightPager";
-import useThreshold from "./useThreshold";
 import useUpdates from "./useUpdates";
+import useZoomSetting from "./useZoomSetting";
 
 const MAX_INSTANCES = 5151;
 const MAX_ROWS = 5151;
@@ -36,13 +36,14 @@ function Grid() {
   const spacing = useRecoilValue(gridSpacing);
   const { pageReset, reset } = useRefreshers();
   const [resizing, setResizing] = useState(false);
-  const threshold = useThreshold();
+  const zoom = useZoomSetting();
 
   useSyncLabelsRenderingStatus();
 
   const records = useRecords(pageReset);
 
-  const maxBytes = useRecoilValue(maxGridItemsSizeBytes);
+  // divide by two, half for the hidden cache and half for max shown
+  const maxBytes = useRecoilValue(maxGridItemsSizeBytes) / 2;
   const cache = useLookerCache({
     maxHiddenItems: MAX_INSTANCES,
     maxHiddenItemsSizeBytes: maxBytes,
@@ -63,7 +64,7 @@ function Grid() {
     records,
     store,
   });
-  const { get, set } = useAt(pageReset);
+  const { get, set } = useScrollLocation(pageReset);
 
   const setSample = fos.useExpandSample(store);
   const autosizing = useRecoilValue(gridAutosizing);
@@ -90,7 +91,7 @@ function Grid() {
 
       get: (next) => page(next),
       onItemClick: setSample,
-      rowAspectRatioThreshold: threshold,
+      rowAspectRatioThreshold: zoom,
     });
   }, [
     cache,
@@ -103,7 +104,7 @@ function Grid() {
     resizing,
     setSample,
     spacing,
-    threshold,
+    zoom,
   ]);
 
   useEscape();
