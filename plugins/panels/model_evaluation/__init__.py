@@ -111,31 +111,6 @@ class EvaluationPanel(Panel):
         ctx.panel.set_data("permissions", permissions)
         self.load_pending_evaluations(ctx)
 
-    def on_delete_evaluation(self, ctx):
-        if not self.can_delete_evaluation(ctx):
-            ctx.ops.notify(
-                "You do not have permission to delete evaluations",
-                variant="error",
-            )
-            return
-        current_eval_key = ctx.params.get("key", None)
-        print("going to delete", current_eval_key)
-        try:
-            ctx.dataset.on_delete_evaluation(current_eval_key)
-            view_state = ctx.panel.get_state("view") or {}
-            eval_id = view_state.get("id")
-            store = self.get_store(ctx)
-            store.delete_key(eval_id)
-            ctx.ops.notify(
-                "Evaluation deleted successfully!",
-                variant="success",
-            )
-        except Exception as e:
-            ctx.ops.notify(
-                f"Failed to delete evaluation successfully",
-                variant="error",
-            )
-
     def get_avg_confidence(self, per_class_metrics):
         count = 0
         total = 0
@@ -253,6 +228,29 @@ class EvaluationPanel(Panel):
         except Exception as e:
             ctx.ops.notify(
                 f"Failed to rename evaluation '{old_name}' to '{new_name}'",
+                variant="error",
+            )
+
+    def delete_evaluation(self, ctx):
+        if not self.can_delete_evaluation(ctx):
+            ctx.ops.notify(
+                "You do not have permission to delete evaluations",
+                variant="error",
+            )
+            return
+        eval_id = ctx.params.get("eval_id", None)
+
+        try:
+            ctx.dataset.delete_evaluation(eval_id)
+            store = self.get_store(ctx)
+            store.delete_key(eval_id)
+            ctx.ops.notify(
+                "Evaluation deleted successfully!",
+                variant="success",
+            )
+        except Exception as e:
+            ctx.ops.notify(
+                f"Failed to delete evaluation successfully",
                 variant="error",
             )
 
@@ -760,11 +758,11 @@ class EvaluationPanel(Panel):
                 on_evaluate_model=self.on_evaluate_model,
                 load_evaluation=self.load_evaluation,
                 load_evaluation_view=self.load_evaluation_view,
-                delete_evalution=self.on_delete_evaluation,
                 set_status=self.set_status,
                 set_note=self.set_note,
                 load_view=self.load_view,
                 rename_evaluation=self.rename_evaluation,
+                delete_evalution=self.delete_evaluation,
             ),
         )
 
