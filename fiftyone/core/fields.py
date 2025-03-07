@@ -152,9 +152,7 @@ def matches_constraints(
         ):
             return False
 
-    if read_only is not None and read_only != getattr(
-        field, "read_only", False
-    ):
+    if read_only is not None and read_only != field.read_only:
         return False
 
     if info_keys is not None:
@@ -229,14 +227,10 @@ def validate_field(
             )
 
     if read_only is not None:
-        if read_only != getattr(field, "read_only", False):
+        if read_only != field.read_only:
             raise ValueError(
                 "%s has read_only %s, not %s"
-                % (
-                    _make_prefix(path),
-                    getattr(field, "read_only", False),
-                    read_only,
-                )
+                % (_make_prefix(path), field.read_only, read_only)
             )
 
 

@@ -321,7 +321,7 @@ def get_field_kwargs(field):
         "db_field": field.db_field,
         "description": field.description,
         "info": field.info,
-        "read_only": getattr(field, "read_only", False),
+        "read_only": field.read_only,
         "created_at": field.created_at,
     }
 
@@ -439,7 +439,7 @@ def _get_field_kwargs(value, field, dynamic):
         "db_field": field.db_field,
         "description": field.description,
         "info": field.info,
-        "read_only": getattr(field, "read_only", False),
+        "read_only": field.read_only,
         "created_at": field.created_at,
     }
 
