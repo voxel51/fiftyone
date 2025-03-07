@@ -4,15 +4,17 @@ import { useEffect, useState } from "react";
 import { useSetRecoilState } from "recoil";
 import useInitializeTheme from "./useInitializeTheme";
 import useSessionRefresher from "./useSessionRefresher";
+import useInitializeGettingStarted from "./useInitializeGettingStarted";
 
 export default function useInitializeApp(props) {
   const { pageProps } = props;
+  const { envs = {} } = pageProps;
+
   const initializeTheme = useInitializeTheme();
-  useSessionRefresher();
   const [ready, setReady] = useState(false);
   const setAppEnvs = useSetRecoilState(appEnvs);
-
-  const { envs = {} } = pageProps;
+  useSessionRefresher();
+  useInitializeGettingStarted(envs);
 
   useEffect(() => {
     setAppEnvs(envs);
