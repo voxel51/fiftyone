@@ -95,23 +95,26 @@ export default function NativeModelEvaluationView(props) {
   );
 
   const onDelete = useCallback(
-    (eval_id: string) => {
-      console.log("delete_evaluation", delete_evaluation);
-      debugger;
-      triggerEvent(delete_evaluation, { eval_id }, false, (results) => {
-        console.log("evalId, evalKey", eval_id);
-        if (results?.error === null) {
-          const updatedEvaluations = evaluations.filter(
-            (evaluation) => evaluation.id !== eval_id
-          );
-          onChange("evaluations", updatedEvaluations);
-          if (page === "evaluation") {
-            // should return to overview page
-            onChange("view", { page: "overview" });
+    (eval_id: string, eval_key: string) => {
+      triggerEvent(
+        delete_evaluation,
+        { eval_id, eval_key },
+        false,
+        (results) => {
+          if (results?.error === null) {
+            const updatedEvaluations = evaluations.filter(
+              (evaluation) => evaluation.id !== eval_id
+            );
+            onChange("evaluations", updatedEvaluations);
             triggerEvent(on_change_view);
+            if (page === "evaluation") {
+              // should return to overview page
+              onChange("view", { page: "overview" });
+              triggerEvent(on_change_view);
+            }
           }
         }
-      });
+      );
     },
     [triggerEvent, delete_evaluation, evaluations, onChange]
   );

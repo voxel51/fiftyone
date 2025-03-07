@@ -238,12 +238,16 @@ class EvaluationPanel(Panel):
                 variant="error",
             )
             return
+
+        # use eval_id to delete the execution store
         eval_id = ctx.params.get("eval_id", None)
+        # use eval_key to delete the evaluation from dataset
+        eval_key = ctx.params.get("eval_key", None)
 
         try:
-            ctx.dataset.delete_evaluation(eval_id)
+            ctx.dataset.delete_evaluation(eval_key)
             store = self.get_store(ctx)
-            store.delete_key(eval_id)
+            store.delete(eval_id)
             ctx.ops.notify(
                 "Evaluation deleted successfully!",
                 variant="success",
