@@ -1,8 +1,17 @@
-from enum import Enum
+"""
+Factory for mapping backends
+| Copyright 2017-2025, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 
-from .map import MapBackend
-from .sequential import SequentialMapBackend
-from .process import ProcessMapBackend
+from enum import Enum
+from typing import Union
+
+import fiftyone.core.map.map as fomm
+import fiftyone.core.map.process as fomp
+import fiftyone.core.map.sequential as foms
+import fiftyone.core.map.threading as fomt
 
 
 class MapBackendType(Enum):
@@ -10,6 +19,7 @@ class MapBackendType(Enum):
 
     sequential = "sequential"
     process = "process"
+    threading = "threading"
 
     @classmethod
     def from_string(cls, backend_str: str) -> "MapBackendType":
@@ -31,14 +41,15 @@ class MapBackendFactory:
     """Factory for creating MapBackend instances based on backend type."""
 
     _backends = {
-        MapBackendType.sequential: SequentialMapBackend,
-        MapBackendType.process: ProcessMapBackend,
+        MapBackendType.process: fomp.ProcessMapBackend,
+        MapBackendType.sequential: foms.SequentialMapBackend,
+        MapBackendType.threading: fomt.ThreadingMapBackend,
     }
 
     @classmethod
     def get_backend(
-        cls, backend: str | MapBackendType = MapBackendType.sequential
-    ) -> MapBackend:
+        cls, backend: Union[str, MapBackendType] = MapBackendType.sequential
+    ) -> fomm.MapBackend:
         """
         Returns an instance of the requested backend.
 
