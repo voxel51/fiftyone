@@ -64,6 +64,7 @@ class EvaluationPanel(Panel):
             "can_evaluate": True,
             "can_edit_note": True,
             "can_edit_status": True,
+            "can_delete_evaluation": True,
             "can_rename": True,
         }
 
@@ -75,6 +76,9 @@ class EvaluationPanel(Panel):
 
     def can_edit_status(self, ctx):
         return self.get_permissions(ctx).get("can_edit_status", False)
+
+    def can_delete_evaluation(self, ctx):
+        return self.get_permissions(ctx).get("can_delete_evaluation", False)
 
     def can_rename(self, ctx):
         return self.get_permissions(ctx).get("can_rename", False)
@@ -106,6 +110,31 @@ class EvaluationPanel(Panel):
         ctx.panel.set_data("notes", notes)
         ctx.panel.set_data("permissions", permissions)
         self.load_pending_evaluations(ctx)
+
+    def on_delete_evaluation(self, ctx):
+        if not self.can_delete_evaluation(ctx):
+            ctx.ops.notify(
+                "You do not have permission to delete evaluations",
+                variant="error",
+            )
+            return
+        current_eval_key = ctx.params.get("key", None)
+        print("going to delete", current_eval_key)
+        try:
+            ctx.dataset.on_delete_evaluation(current_eval_key)
+            view_state = ctx.panel.get_state("view") or {}
+            eval_id = view_state.get("id")
+            store = self.get_store(ctx)
+            store.delete_key(eval_id)
+            ctx.ops.notify(
+                "Evaluation deleted successfully!",
+                variant="success",
+            )
+        except Exception as e:
+            ctx.ops.notify(
+                f"Failed to delete evaluation successfully",
+                variant="error",
+            )
 
     def get_avg_confidence(self, per_class_metrics):
         count = 0
@@ -731,6 +760,7 @@ class EvaluationPanel(Panel):
                 on_evaluate_model=self.on_evaluate_model,
                 load_evaluation=self.load_evaluation,
                 load_evaluation_view=self.load_evaluation_view,
+                delete_evalution=self.on_delete_evaluation,
                 set_status=self.set_status,
                 set_note=self.set_note,
                 load_view=self.load_view,
