@@ -2,15 +2,23 @@ import { PanelCTA } from "@fiftyone/components";
 import { constants } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import React, { useCallback, useMemo } from "react";
+import { useRecoilState, useSetRecoilState } from "recoil";
+import ConfirmationDialog from "./ConfirmationDialog";
 import Evaluate from "./Evaluate";
 import Evaluation from "./Evaluation";
 import Overview from "./Overview";
-import { useTriggerEvent } from "./utils";
+import {
+  openModelEvalDialog,
+  selectedModelEvaluation,
+  useTriggerEvent,
+} from "./utils";
 
 const TRY_LINK = "http://voxel51.com/try-evaluation";
 
 export default function NativeModelEvaluationView(props) {
   const { data = {}, schema, onChange, layout } = props;
+  const [openDialog, setOpenDialog] = useRecoilState(openModelEvalDialog);
+  const setSelectedEvaluation = useSetRecoilState(selectedModelEvaluation);
   const { view } = schema;
   const {
     on_change_view,
@@ -81,6 +89,11 @@ export default function NativeModelEvaluationView(props) {
     },
     [triggerEvent, rename_evaluation, evaluations, onChange]
   );
+
+  const handleClose = () => {
+    setOpenDialog(false);
+    setSelectedEvaluation(null);
+  };
 
   return (
     <Box sx={{ height: "100%" }}>
@@ -153,6 +166,7 @@ export default function NativeModelEvaluationView(props) {
             onRename={onRename}
           />
         ))}
+      <ConfirmationDialog open={openDialog} handleClose={handleClose} />
     </Box>
   );
 }
