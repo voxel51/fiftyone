@@ -5,6 +5,7 @@ Mixins and helpers for dataset backing documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import OrderedDict
 from datetime import datetime
 import itertools
@@ -315,10 +316,13 @@ class DatasetMixin(object):
                 is_frame_field=is_frame_field,
             )
 
-        # Silently skip updating metadata of any read-only fields
+        # Silently skip updating metadata of any read-only fields or hidden
         for path in list(new_metadata.keys()):
             field = cls._get_field(path, allow_missing=True)
-            if field is not None and field.read_only:
+            if field is None:
+                continue
+
+            if not isinstance(field, fof.Field) or field.read_only:
                 del new_metadata[path]
 
         for path, field in new_schema.items():
