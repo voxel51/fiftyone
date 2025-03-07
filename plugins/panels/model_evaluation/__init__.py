@@ -787,12 +787,12 @@ class EvaluationPanel(Panel):
         )
 
         label_attribute_values = params.get("label_attribute_values", None)
-        src_view = params.get("src_view", None)
+        saved_views = params.get("saved_views_values", None)
 
         return {
             "name": subset_name,
             "type": subset_type,
-            "src_view": src_view,
+            "saved_views": saved_views,
             "sample_field": params.get("sample_field", None),
             "subset_field": params.get("subset_field", None),
             "code_expr": params.get("code_expr", None),
@@ -850,8 +850,23 @@ class EvaluationPanel(Panel):
 
         # I. Saved views
         if subset_type == "saved_views":
-            src_view = params.get("src_view", None)
-            subset_def = dict(type="view", view=src_view)
+            saved_views = params.get("saved_views", None)
+
+            for saved_view in saved_views:
+                subset_def = dict(
+                    type="view",
+                    view=saved_view,
+                )
+
+                # Graph I data - Model Performance
+                with eval_a_results.use_subset(subset_def):
+                    graph_data[eval_a_key]["performance"][
+                        saved_view
+                    ] = eval_a_results.metrics()
+                with eval_b_results.use_subset(subset_def):
+                    graph_data[eval_b_key]["performance"][
+                        saved_view
+                    ] = eval_b_results.metrics()
 
         # II. Sample Fields
         elif subset_type == "sample_field":
@@ -861,12 +876,29 @@ class EvaluationPanel(Panel):
 
             # case sample fields: tags
             if subset_field == "tags":
-                values = list(subset_sample_field_values.keys())
-                subset_def = dict(
-                    type="field",
-                    field="tags",
-                    value=values,
-                )
+                field_paths = list(subset_sample_field_values.keys())
+
+                for field_path in field_paths:
+                    if subset_sample_field_values[field_path] is True:
+                        subset_def = dict(
+                            type="field",
+                            field=subset_field,
+                            value=field_path,
+                        )
+
+                        # Graph I data - Model Performance
+                        with eval_a_results.use_subset(subset_def):
+                            graph_data[eval_a_key]["performance"][
+                                field_path
+                            ] = eval_a_results.metrics()
+                        with eval_b_results.use_subset(subset_def):
+                            graph_data[eval_b_key]["performance"][
+                                field_path
+                            ] = eval_b_results.metrics()
+
+            # TODO: case continuous fields: confidence
+
+            # TODO: case discrete fields: < 100 categories
 
         # III. Custom Code
         elif subset_type == "custom_code":
