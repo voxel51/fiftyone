@@ -17,7 +17,6 @@ import numbers
 import os
 import random
 import string
-from typing import List, Tuple, Any, Dict
 
 from bson import json_util, ObjectId, DBRef
 import cachetools
@@ -3355,9 +3354,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
         return self.skip(num_samples).values("id")
 
-    def _add_samples_batch(
-        self, samples_and_docs: List[Tuple[Any, Dict[Any, Any]]]
-    ):
+    def _add_samples_batch(self, samples_and_docs):
         """Writes the given samples and backing docs to the database and returns their IDs
 
         Args:
@@ -3457,9 +3454,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except Exception:
             return len(str(sample[1]))
 
-    def _upsert_samples_batch(
-        self, samples_and_docs: List[Tuple[Any, Dict[Any, Any]]]
-    ):
+    def _upsert_samples_batch(self, samples_and_docs):
         """Upserts the given samples and their backing docs to the database
 
         Args:
