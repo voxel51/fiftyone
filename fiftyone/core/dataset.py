@@ -2176,7 +2176,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     error_level,
                 )
             else:
-                if field.read_only:
+                if getattr(field, "read_only", False):
                     field.read_only = False
                     field.save()
 
@@ -4224,7 +4224,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if is_default and _enforce_read_only:
             default_field = self._get_default_field(field.path)
-            if default_field.read_only and not field.read_only:
+            if getattr(default_field, "read_only", False) and not getattr(
+                field, "read_only", False
+            ):
                 raise ValueError(
                     "Read-only default field '%s' must remain read-only"
                     % field.path
@@ -4233,16 +4235,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if "." in path and _enforce_read_only:
             root = path.rsplit(".", 1)[0]
             root_doc = doc_cls._get_field_doc(root)
-            if root_doc.read_only:
+            if getattr(root_doc, "read_only", False):
                 raise ValueError(
                     "Cannot edit read-only field '%s'" % field.path
                 )
 
-        if field.read_only and field_doc.read_only and _enforce_read_only:
+        if (
+            getattr(field, "read_only", False)
+            and getattr(field_doc, "read_only", False)
+            and _enforce_read_only
+        ):
             raise ValueError("Cannot edit read-only field '%s'" % field.path)
 
-        if field.read_only != field_doc.read_only:
-            _set_field_read_only(field_doc, field.read_only)
+        if getattr(field, "read_only", False) != getattr(
+            field_doc, "read_only", False
+        ):
+            _set_field_read_only(field_doc, getattr(field, "read_only", False))
             _reload = True
         else:
             _reload = False

@@ -1425,7 +1425,7 @@ class SampleCollection(object):
                 return None, None, read_only
 
             resolved_keys.append(field.db_field or field.name)
-            read_only = field.read_only
+            read_only = getattr(field, "read_only", False)
             last_key = idx == len(keys) - 1
 
             if last_key and not leaf:
@@ -2499,7 +2499,7 @@ class SampleCollection(object):
         if field is None:
             field = self.get_field(field_name)
 
-        if field is not None and field.read_only:
+        if field is not None and getattr(field, "read_only", False):
             raise ValueError("Cannot edit read-only field '%s'" % field_name)
 
         _field_name, _, list_fields, _, id_to_str = self._parse_field_name(
@@ -2658,7 +2658,7 @@ class SampleCollection(object):
         if field is None:
             field = self.get_field(field_name)
 
-        if field is not None and field.read_only:
+        if field is not None and getattr(field, "read_only", False):
             raise ValueError("Cannot edit read-only field '%s'" % field_name)
 
         _field_name, is_frame_field, _, _, id_to_str = self._parse_field_name(

@@ -107,7 +107,7 @@ class SampleFieldDocument(EmbeddedDocument):
             db_field=self.db_field,
             description=self.description,
             info=self.info,
-            read_only=self.read_only,
+            read_only=getattr(self, "read_only", False),
             created_at=self.created_at,
         )
 
@@ -136,7 +136,7 @@ class SampleFieldDocument(EmbeddedDocument):
             db_field=field.db_field,
             description=field.description,
             info=field.info,
-            read_only=field.read_only,
+            read_only=getattr(field, "read_only", False),
             created_at=field.created_at,
         )
 
@@ -381,7 +381,6 @@ class ColorScheme(EmbeddedDocument):
                 or not isinstance(int_target_value, int)
                 or int_target_value < 0
             ):
-
                 raise ValidationError(
                     f"Invalid intTarget in {context}."
                     "intTarget must be a nonnegative integer."
