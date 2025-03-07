@@ -10,18 +10,26 @@ import React from "react";
 import { useRecoilState } from "recoil";
 import { selectedModelEvaluation } from "./utils";
 
-const ConfirmationDialog = ({ open, handleClose }) => {
+const ConfirmationDialog = ({
+  open,
+  handleClose,
+  handleDelete,
+  evaluations,
+}) => {
   const dialogTitle = "Delete Model Evaluation";
   const [selectedEvaluation, setSelectedEvaluation] = useRecoilState(
     selectedModelEvaluation
   );
 
   const handleConfirm = () => {
-    // trigger delete evaluation operation here
-    console.log(`Deleting evaluation with id ${selectedEvaluation}`);
+    const evalId = evaluations.find(
+      (evaluation) => evaluation.key === selectedEvaluation
+    ).id;
+    handleDelete(evalId);
     setSelectedEvaluation(null);
     handleClose();
   };
+
   return (
     <Dialog open={open} onClose={handleClose}>
       <DialogTitle id="confirmation-dialog-title">{dialogTitle}</DialogTitle>
