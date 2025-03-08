@@ -1,16 +1,15 @@
 import { LoadingDots } from "@fiftyone/components";
-import {
-  Card,
-  CardActionArea,
-  Chip,
-  Stack,
-  Typography,
-  useTheme,
-} from "@mui/material";
+import { Card, CardActionArea, Chip, Stack, Typography } from "@mui/material";
 import React from "react";
 import Evaluate from "./Evaluate";
 import EvaluationNotes from "./EvaluationNotes";
 import Status from "./Status";
+import {
+  ConcreteEvaluationType,
+  EvaluationCardProps,
+  OverviewProps,
+} from "./Types";
+import EvaluationIcon from "./EvaluationIcon";
 
 export default function Overview(props: OverviewProps) {
   const {
@@ -40,7 +39,7 @@ export default function Overview(props: OverviewProps) {
         />
       </Stack>
       {evaluations.map((evaluation) => {
-        const { key, id } = evaluation;
+        const { key, id, type, method } = evaluation;
         const status = statuses[id] || "needs_review";
         const note = notes[id];
         return (
@@ -50,18 +49,22 @@ export default function Overview(props: OverviewProps) {
             id={id}
             status={status}
             note={note}
+            type={type}
+            method={method}
             onSelect={onSelect}
           />
         );
       })}
       {pending_evaluations.map((evaluation) => {
-        const { eval_key } = evaluation;
+        const { eval_key, type, method } = evaluation;
         return (
           <EvaluationCard
             key={eval_key}
             eval_key={eval_key}
             pending
             onSelect={onSelect}
+            type={type}
+            method={method}
           />
         );
       })}
@@ -70,8 +73,7 @@ export default function Overview(props: OverviewProps) {
 }
 
 function EvaluationCard(props: EvaluationCardProps) {
-  const { pending, onSelect, eval_key, note, status, id } = props;
-  const theme = useTheme();
+  const { pending, onSelect, eval_key, note, status, id, type, method } = props;
 
   return (
     <CardActionArea key={eval_key} disabled={pending}>
@@ -81,10 +83,20 @@ function EvaluationCard(props: EvaluationCardProps) {
           onSelect(eval_key, id);
         }}
       >
-        <Stack direction="row" justifyContent="space-between">
-          <Typography sx={{ fontSize: 16, fontWeight: 600 }}>
-            {eval_key}
-          </Typography>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+        >
+          <Stack direction="row" alignItems="center" spacing={0.5}>
+            <EvaluationIcon
+              type={type as ConcreteEvaluationType}
+              method={method}
+            />
+            <Typography sx={{ fontSize: 16, fontWeight: 600 }}>
+              {eval_key}
+            </Typography>
+          </Stack>
           {pending && (
             <Chip
               variant="filled"
@@ -104,34 +116,3 @@ function EvaluationCard(props: EvaluationCardProps) {
     </CardActionArea>
   );
 }
-
-type OverviewProps = {
-  evaluations: EvaluationType[];
-  onSelect: (key: string, id: string) => void;
-  onEvaluate: () => void;
-  statuses?: Record<string, string>;
-  notes?: Record<string, string>;
-  permissions?: Record<string, boolean>;
-  pending_evaluations: PendingEvaluationType[];
-};
-
-type EvaluationType = {
-  key: string;
-  id: string;
-  description: string;
-  status: string;
-};
-
-type PendingEvaluationType = {
-  eval_key: string;
-  doc_id?: string;
-};
-
-type EvaluationCardProps = {
-  eval_key: string;
-  id?: string;
-  note?: string;
-  onSelect: OverviewProps["onSelect"];
-  pending?: boolean;
-  status?: string;
-};

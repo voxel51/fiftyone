@@ -1,4 +1,3 @@
-import _ from "lodash";
 import { Dialog } from "@fiftyone/components";
 import { editingFieldAtom, view } from "@fiftyone/state";
 import {
@@ -48,11 +47,18 @@ import EvaluationNotes from "./EvaluationNotes";
 import EvaluationPlot from "./EvaluationPlot";
 import Status from "./Status";
 import { formatValue, getNumericDifference, useTriggerEvent } from "./utils";
+import EvaluationIcon from "./EvaluationIcon";
+import { ConcreteEvaluationType } from "./Types";
+import get from "lodash/get";
+import { usePanelId } from "@fiftyone/spaces";
+import { usePanelEvent } from "@fiftyone/operators";
 
 const KEY_COLOR = "#ff6d04";
 const COMPARE_KEY_COLOR = "#03a9f4";
 const DEFAULT_BAR_CONFIG = { sortBy: "default" };
 const NONE_CLASS = "(none)";
+
+const configure_subset_uri = "@voxel51/scenario/configure_scenario";
 
 export default function Evaluation(props: EvaluationProps) {
   const {
@@ -68,6 +74,7 @@ export default function Evaluation(props: EvaluationProps) {
     setNoteEvent,
     notes = {},
     loadView,
+    onSaveSubset,
   } = props;
   const theme = useTheme();
   const [expanded, setExpanded] = React.useState("summary");
@@ -75,6 +82,7 @@ export default function Evaluation(props: EvaluationProps) {
   const [editNoteState, setEditNoteState] = useState({ open: false, note: "" });
   const [classPerformanceConfig, setClassPerformanceConfig] =
     useState<PLOT_CONFIG_TYPE>({});
+  const panelId = usePanelId();
   const [classPerformanceDialogConfig, setClassPerformanceDialogConfig] =
     useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
   const [confusionMatrixConfig, setConfusionMatrixConfig] =
@@ -128,12 +136,12 @@ export default function Evaluation(props: EvaluationProps) {
     compareEvaluationMaskTargets,
   ]);
   const compareKeys = useMemo(() => {
-    const keys: string[] = [];
+    const keys: Record<string, string>[] = [];
     const evaluations = data?.evaluations || [];
     for (const evaluation of evaluations) {
-      const { key } = evaluation;
+      const { key, type, method } = evaluation;
       if (key !== name) {
-        keys.push(key);
+        keys.push({ key, type, method });
       }
     }
     return keys;
@@ -160,6 +168,7 @@ export default function Evaluation(props: EvaluationProps) {
   }, [compareEvaluation, compareKey]);
 
   const triggerEvent = useTriggerEvent();
+  const promptOperator = usePanelEvent();
   const activeFilter = useActiveFilter(evaluation, compareEvaluation);
   const setEditingField = useSetRecoilState(editingFieldAtom);
 
@@ -523,7 +532,7 @@ export default function Evaluation(props: EvaluationProps) {
   return (
     <Stack spacing={2} sx={{ p: 2 }}>
       <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+        <Stack direction="row" spacing={0} sx={{ alignItems: "center" }}>
           <IconButton
             onClick={() => {
               navigateBack();
@@ -532,6 +541,7 @@ export default function Evaluation(props: EvaluationProps) {
           >
             <ArrowBack />
           </IconButton>
+          <EvaluationIcon type={evaluationType} method={evaluationMethod} />
           <Typography>{name}</Typography>
         </Stack>
         <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
@@ -601,6 +611,10 @@ export default function Evaluation(props: EvaluationProps) {
                 height: 28,
                 width: "100%",
                 background: theme.palette.background.card,
+                "& .MuiOutlinedInput-input": {
+                  display: "flex",
+                  alignItems: "center",
+                },
               }}
               defaultValue={compareKey}
               onChange={(e) => {
@@ -627,9 +641,13 @@ export default function Evaluation(props: EvaluationProps) {
                 ) : null
               }
             >
-              {compareKeys.map((key) => {
+              {compareKeys.map(({ key, type, method }) => {
                 return (
-                  <MenuItem value={key} key={key}>
+                  <MenuItem value={key} key={key} sx={{ p: 0 }}>
+                    <EvaluationIcon
+                      type={type as ConcreteEvaluationType}
+                      method={method}
+                    />
                     <Typography>{key}</Typography>
                   </MenuItem>
                 );
@@ -1132,6 +1150,9 @@ export default function Evaluation(props: EvaluationProps) {
                       }
                       loadView("class", { x: points[0]?.x });
                     }}
+                    layout={{
+                      xaxis: { type: "category" },
+                    }}
                   />
                 )}
                 {classMode === "table" && (
@@ -1341,6 +1362,44 @@ export default function Evaluation(props: EvaluationProps) {
           </Accordion>
         </Stack>
       )}
+      <Accordion
+        expanded={expanded === "subset"}
+        onChange={(e, expanded) => {
+          setExpanded(expanded ? "subset" : "");
+        }}
+        disableGutters
+        sx={{ borderRadius: 1, "&::before": { display: "none" } }}
+      >
+        <AccordionSummary expandIcon={<ExpandMore />}>
+          Subset Performance
+        </AccordionSummary>
+        <AccordionDetails>
+          <Stack direction="row" sx={{ justifyContent: "space-between" }}>
+            <Typography color="secondary">Subset</Typography>
+            <Box>
+              <IconButton
+                onClick={() => {
+                  promptOperator(panelId, {
+                    params: { gt_field: evaluationConfig.gt_field },
+                    operator: configure_subset_uri,
+                    prompt: true,
+                    callback: (result, opts) => {
+                      console.log("params", opts.ctx.params);
+                      onSaveSubset({ subset: opts.ctx.params });
+                      // TODO: save the subset
+
+                      // TODO: error handling
+                    },
+                  });
+                }}
+              >
+                Create subset
+                <Settings />
+              </IconButton>
+            </Box>
+          </Stack>
+        </AccordionDetails>
+      </Accordion>
       {mode === "info" && (
         <Card sx={{ p: 2 }}>
           <EvaluationTable>
@@ -1629,6 +1688,7 @@ type EvaluationProps = {
   setNoteEvent: string;
   notes: Record<string, string>;
   loadView: (type: string, params: any) => void;
+  onSaveSubset: (subset: any) => void;
 };
 
 function ColorSquare(props: { color: string }) {
@@ -1803,10 +1863,10 @@ type SummaryRow = {
 
 function formatCustomMetricRows(evaluationMetrics, comparisonMetrics) {
   const results = [] as SummaryRow[];
-  const customMetrics = (_.get(evaluationMetrics, "custom_metrics", null) ||
+  const customMetrics = (get(evaluationMetrics, "custom_metrics", null) ||
     {}) as CustomMetrics;
   for (const [operatorUri, customMetric] of Object.entries(customMetrics)) {
-    const compareValue = _.get(
+    const compareValue = get(
       comparisonMetrics,
       `custom_metrics.${operatorUri}.value`,
       null

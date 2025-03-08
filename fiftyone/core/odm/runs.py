@@ -29,5 +29,5 @@ class RunDocument(Document):
     version = StringField()
     timestamp = DateTimeField()
     config = DictField()
-    view_stages = ListField(StringField())
+    view_stages = ListField(StringField(), default=None)
     results = FileField()

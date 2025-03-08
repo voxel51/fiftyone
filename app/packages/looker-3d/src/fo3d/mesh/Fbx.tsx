@@ -9,6 +9,7 @@ import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls"
 import { usePercolateMaterial } from "../../hooks/use-set-scene-transparency";
 import { useFo3dContext } from "../context";
 import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
+import { useFoLoader } from "../../hooks/use-fo-loaders";
 
 export const Fbx = ({
   name,
@@ -41,7 +42,7 @@ export const Fbx = ({
 
   const { material } = useMeshMaterialControls(name, defaultMaterial, true);
 
-  const fbx = useLoader(FBXLoader, fbxUrl, (loader) => {
+  const fbx = useFoLoader(FBXLoader, fbxUrl, (loader) => {
     loader.setResourcePath(resourcePath);
   });
 

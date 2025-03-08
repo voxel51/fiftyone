@@ -1,5 +1,5 @@
 import { getSampleSrc } from "@fiftyone/state";
-import { useLoader, useThree } from "@react-three/fiber";
+import { useThree } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import {
   Color,
@@ -7,6 +7,7 @@ import {
   CubeTextureLoader,
   TextureLoader,
 } from "three";
+import { useFoLoader } from "../hooks/use-fo-loaders";
 import type { FoSceneBackground } from "../utils";
 
 interface Fo3dBackgroundProps {
@@ -24,7 +25,7 @@ const CubeBackground = ({
   // images are assumed to correspond to px, nx, py, ny, pz, and nz
   const imageUrls = useMemo(() => cube.map(getSampleSrc), [cube]);
   // @ts-ignore - types are wrong for CubeTextureLoader
-  const [cubeMap]: [CubeTexture] = useLoader(CubeTextureLoader, [imageUrls]);
+  const [cubeMap]: [CubeTexture] = useFoLoader(CubeTextureLoader, [imageUrls]);
 
   useEffect(() => {
     if (cubeMap) {
@@ -49,7 +50,7 @@ const ImageBackground = ({
 }) => {
   const { scene } = useThree();
   const imageUrl = useMemo(() => getSampleSrc(image), [image]);
-  const texture = useLoader(TextureLoader, imageUrl);
+  const texture = useFoLoader(TextureLoader, imageUrl);
 
   useEffect(() => {
     scene.background = texture;

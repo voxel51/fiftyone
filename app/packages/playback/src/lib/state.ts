@@ -9,15 +9,10 @@ import {
   DEFAULT_SPEED,
   DEFAULT_TARGET_FRAME_RATE,
   DEFAULT_USE_TIME_INDICATOR,
-  LOAD_RANGE_SIZE,
+  MIN_LOAD_RANGE_SIZE,
+  PLAYHEAD_STATE_PAUSED,
+  PlayheadState,
 } from "./constants";
-
-export type PlayheadState =
-  | "buffering"
-  | "playing"
-  | "paused"
-  | "waitingToPlay"
-  | "waitingToPause";
 
 export type TimelineName = string;
 export type FrameNumber = number;
@@ -164,7 +159,7 @@ const _timelineConfigs = atomFamily((_timelineName: TimelineName) =>
 );
 
 const _playHeadStates = atomFamily((_timelineName: TimelineName) =>
-  atom<PlayheadState>("paused")
+  atom<PlayheadState>(PLAYHEAD_STATE_PAUSED)
 );
 
 // persist timline configs using LRU cache to prevent memory leaks
@@ -247,7 +242,7 @@ export const addTimelineAtom = atom(
     set(_subscribers(timelineName), new Map());
     set(_timelineConfigs(timelineName), configWithImputedValues);
     set(_dataLoadedBuffers(timelineName), new BufferManager());
-    set(_playHeadStates(timelineName), "paused");
+    set(_playHeadStates(timelineName), PLAYHEAD_STATE_PAUSED);
 
     if (timeline.waitUntilInitialized) {
       timeline
@@ -327,31 +322,42 @@ export const setFrameNumberAtom = atom(
     // verify that the frame number is valid, and is ready to be streamed
     // if not, we need to buffer the data before rendering
     const bufferManager = get(_dataLoadedBuffers(name));
+    const config = get(getTimelineConfigAtom(name));
 
-    if (!bufferManager.isValueInBuffer(newFrameNumber)) {
-      const { totalFrames } = get(getTimelineConfigAtom(name));
-      // need to buffer before rendering
+    const newLoadRange = getLoadRangeForFrameNumber(newFrameNumber, config);
+
+    const isCurrentValueNotInBuffer =
+      !bufferManager.isValueInBuffer(newFrameNumber);
+
+    if (!bufferManager.containsRange(newLoadRange)) {
       const rangeLoadPromises: ReturnType<
         SequenceTimelineSubscription["loadRange"]
       >[] = [];
-      const newLoadRange = getLoadRangeForFrameNumber(
-        newFrameNumber,
-        totalFrames
-      );
       subscribers.forEach((subscriber) => {
         rangeLoadPromises.push(subscriber.loadRange(newLoadRange));
       });
 
       set(_currentBufferingRange(name), newLoadRange);
 
-      try {
-        await Promise.allSettled(rangeLoadPromises);
-        bufferManager.addNewRange(newLoadRange);
-      } catch (e) {
-        // todo: handle error better, maybe retry
-        console.error(e);
-      } finally {
-        set(_currentBufferingRange(name), [0, 0]);
+      const allPromisesSettled = Promise.allSettled(rangeLoadPromises);
+      // we await only if isCurrentValueNotInBuffer
+      // otherwise we can render the frame immediately
+      // and load range in background
+      if (isCurrentValueNotInBuffer) {
+        try {
+          await allPromisesSettled;
+          bufferManager.addNewRange(newLoadRange);
+        } catch (e) {
+          // todo: handle error better, maybe retry
+          console.error(e);
+        } finally {
+          set(_currentBufferingRange(name), [0, 0]);
+        }
+      } else {
+        allPromisesSettled.then(() => {
+          bufferManager.addNewRange(newLoadRange);
+          set(_currentBufferingRange(name), [0, 0]);
+        });
       }
     }
 
@@ -454,13 +460,48 @@ export const getTimelineUpdateFreqAtom = atomFamily(
 /**
  * UTILS
  */
-const getLoadRangeForFrameNumber = (
+export const getLoadRangeForFrameNumber = (
   frameNumber: FrameNumber,
-  totalFrames: number
-) => {
-  // frame number cannot be lower than 1
-  const min = Math.max(1, frameNumber - LOAD_RANGE_SIZE);
-  // frame number cannot be higher than total frames
-  const max = Math.min(totalFrames, frameNumber + LOAD_RANGE_SIZE);
+  config: FoTimelineConfig
+): BufferRange => {
+  const { totalFrames, targetFrameRate, speed } = config;
+
+  // we'll keep behind-buffer size fixed
+  const behindBuffer = MIN_LOAD_RANGE_SIZE;
+  // adaptive ahead-buffer: at minimum MIN_LOAD_RANGE_SIZE,
+  // but scales with speed and target frame rate relative to a baseline
+
+  const baseAdaptiveBuffer =
+    MIN_LOAD_RANGE_SIZE *
+    (speed ?? 1) *
+    ((targetFrameRate ?? DEFAULT_TARGET_FRAME_RATE) /
+      DEFAULT_TARGET_FRAME_RATE);
+
+  // use weight = 2% of totalFrames to gently extend the buffer on larger timelines.
+  const totalFramesFactor = Math.ceil(totalFrames * 0.02);
+
+  const adaptiveAheadBuffer = Math.max(
+    MIN_LOAD_RANGE_SIZE,
+    Math.ceil(baseAdaptiveBuffer + totalFramesFactor)
+  );
+
+  // initial range centered on the current frame.
+  let min = frameNumber - behindBuffer;
+  let max = frameNumber + adaptiveAheadBuffer;
+
+  // if the range exceeds totalFrames at the end,
+  // pull extra frames from behind to maintain overall buffer size.
+  if (max > totalFrames) {
+    const extra = max - totalFrames;
+    min = Math.max(1, min - extra);
+    max = totalFrames;
+  }
+  // similarly, if the range goes below 1, extend the ahead buffer.
+  if (min < 1) {
+    const extra = 1 - min;
+    max = Math.min(totalFrames, max + extra);
+    min = 1;
+  }
+
   return [min, max] as const;
 };

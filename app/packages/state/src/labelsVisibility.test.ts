@@ -2,11 +2,21 @@ import { describe, expect, it } from "vitest";
 import { computeDefaultVisibleLabels } from "./labelsVisibility";
 
 const sampleSchemaMock = {
+  segmentation: {
+    ftype: "fiftyone.core.labels.Segmentation",
+    dbField: "segmentation",
+    name: "segmentation",
+    embeddedDocType: "fiftyone.core.labels.Segmentation",
+    path: "segmentation",
+    description: null,
+    info: null,
+    subfield: null,
+  },
   detection: {
-    ftype: "fiftyone.core.labels.Detections",
+    ftype: "fiftyone.core.labels.Detection",
     dbField: "detection",
     name: "detection",
-    embeddedDocType: "fiftyone.core.labels.Detections",
+    embeddedDocType: "fiftyone.core.labels.Detection",
     path: "detection",
     description: null,
     info: null,
@@ -25,12 +35,12 @@ const sampleSchemaMock = {
 } as const;
 
 const frameSchemaMock = {
-  detection: {
-    ftype: "fiftyone.core.labels.Detections",
-    dbField: "frames.detection",
-    name: "detection",
-    embeddedDocType: "fiftyone.core.labels.Detections",
-    path: "detection",
+  segmentation: {
+    ftype: "fiftyone.core.labels.Segmentation",
+    dbField: "frames.segmentation",
+    name: "segmentation",
+    embeddedDocType: "fiftyone.core.labels.Segmentation",
+    path: "segmentation",
     description: null,
     info: null,
     subfield: null,
@@ -39,8 +49,8 @@ const frameSchemaMock = {
 
 describe("computeDefaultVisibleLabels", () => {
   it("returns all non-dense labels when no config is provided", () => {
-    const allSampleLabels = ["detection", "classification"];
-    const allFrameLabels = ["frames.detection"];
+    const allSampleLabels = ["segmentation", "detection", "classification"];
+    const allFrameLabels = ["frames.segmentation"];
 
     const result = computeDefaultVisibleLabels(
       sampleSchemaMock,
@@ -50,12 +60,12 @@ describe("computeDefaultVisibleLabels", () => {
       undefined
     );
 
-    expect(result).toEqual(["classification"]);
+    expect(result).toEqual(["detection", "classification"]);
   });
 
   it("respects 'include' config only", () => {
-    const allSampleLabels = ["detection", "classification", "otherLabel"];
-    const allFrameLabels = ["frames.detection"];
+    const allSampleLabels = ["segmentation", "classification", "otherLabel"];
+    const allFrameLabels = ["frames.segmentation"];
 
     const result = computeDefaultVisibleLabels(
       sampleSchemaMock,
@@ -69,8 +79,8 @@ describe("computeDefaultVisibleLabels", () => {
   });
 
   it("respects 'exclude' config only", () => {
-    const allSampleLabels = ["detection", "classification", "otherLabel"];
-    const allFrameLabels = ["frames.detection"];
+    const allSampleLabels = ["segmentation", "classification", "otherLabel"];
+    const allFrameLabels = ["frames.segmentation"];
 
     const result = computeDefaultVisibleLabels(
       sampleSchemaMock,
@@ -80,12 +90,16 @@ describe("computeDefaultVisibleLabels", () => {
       { exclude: ["classification"] }
     );
 
-    expect(result).toEqual(["detection", "otherLabel", "frames.detection"]);
+    expect(result).toEqual([
+      "segmentation",
+      "otherLabel",
+      "frames.segmentation",
+    ]);
   });
 
   it("correctly applies both include & exclude", () => {
-    const allSampleLabels = ["detection", "classification", "otherLabel"];
-    const allFrameLabels = ["frames.detection"];
+    const allSampleLabels = ["segmentation", "classification", "otherLabel"];
+    const allFrameLabels = ["frames.segmentation"];
 
     const result = computeDefaultVisibleLabels(
       sampleSchemaMock,
@@ -93,11 +107,11 @@ describe("computeDefaultVisibleLabels", () => {
       allSampleLabels,
       allFrameLabels,
       {
-        include: ["detection", "classification", "otherLabel"],
+        include: ["segmentation", "classification", "otherLabel"],
         exclude: ["classification"],
       }
     );
 
-    expect(result).toEqual(["detection", "otherLabel"]);
+    expect(result).toEqual(["segmentation", "otherLabel"]);
   });
 });

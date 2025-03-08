@@ -1,37 +1,46 @@
+import { Toast, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { Snackbar as SnackbarMui } from "@material-ui/core";
-import MuiAlert, { AlertProps } from "@mui/material/Alert";
+import { Button } from "@mui/material";
 import React from "react";
 import { useRecoilState } from "recoil";
-
-const Alert = React.forwardRef<HTMLDivElement, AlertProps>(function Alert(
-  props,
-  ref
-) {
-  return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
-});
 
 const SNACK_VISIBLE_DURATION = 5000;
 
 export default function Snackbar() {
   const [snackErrors, setSnackErrors] = useRecoilState(fos.snackbarErrors);
-  return (
-    <SnackbarMui
-      open={!!snackErrors.length}
-      autoHideDuration={SNACK_VISIBLE_DURATION}
-      onClose={() => {
-        setSnackErrors([]);
+  const theme = useTheme();
+  return snackErrors.length ? (
+    <Toast
+      duration={SNACK_VISIBLE_DURATION}
+      layout={{
+        bottom: "50px !important",
+        vertical: "bottom",
+        horizontal: "center",
       }}
-    >
-      <Alert
-        onClose={() => {
-          setSnackErrors([]);
-        }}
-        severity="error"
-        sx={{ width: "100%" }}
-      >
-        {snackErrors}
-      </Alert>
-    </SnackbarMui>
-  );
+      message={<div style={{ width: "100%" }}>{snackErrors}</div>}
+      onHandleClose={() => setSnackErrors([])}
+      primary={() => {
+        return (
+          <div>
+            <Button
+              data-cy="btn-dismiss-alert"
+              variant="contained"
+              size="small"
+              onClick={() => {
+                setSnackErrors([]);
+              }}
+              sx={{
+                marginLeft: "auto",
+                backgroundColor: theme.primary.main,
+                color: theme.text.primary,
+                boxShadow: 0,
+              }}
+            >
+              Dismiss
+            </Button>
+          </div>
+        );
+      }}
+    />
+  ) : null;
 }
