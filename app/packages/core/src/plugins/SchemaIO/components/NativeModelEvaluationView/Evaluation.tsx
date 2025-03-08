@@ -67,7 +67,7 @@ const COMPARE_KEY_SECONDARY_COLOR = "#87D2FA";
 const DEFAULT_BAR_CONFIG = { sortBy: "default" };
 const NONE_CLASS = "(none)";
 
-const configure_subset_uri = "@voxel51/subset/configure_subset";
+const configure_subset_uri = "@voxel51/scenario/configure_scenario";
 
 export default function Evaluation(props: EvaluationProps) {
   const {
