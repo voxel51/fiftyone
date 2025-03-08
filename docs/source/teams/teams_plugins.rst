@@ -466,14 +466,40 @@ executed as resources are available on the targeted orchestrator.
 Runs page
 ---------
 
-The Runs page is accessible to all users with Can view access to the dataset.
+The Runs page is accessible to all users with at least **Can View** access to a dataset.
 
 You can access the Runs page by clicking on the "Runs" tab from the
-:ref:`Samples tab <teams-using-datasets>`.
+:ref:`Samples toolbar <teams-using-datasets>` under your dataset name.
 
-Once you are on the Runs page, you will see a table with the list of all
-operators scheduled by any user of your organization on the dataset. You can
-sort, search and filter runs listed to refine the list as you like:
+Once you are on the Runs page, you will see a table with the list of all operators scheduled for execution. 
+As an admin, you can see any scheduled or running operations by any user of your organization on any dataset. 
+While as an organization member with less than admin privileges, you can view your own operations, for only 
+datasets you have access to. You can sort, search, and filter runs shown to refine the list as you like:
+
+.. image:: /images/plugins/operators/runs/runs_page.png
+
+.. _teams-runs-statuses:
+
+Statuses
+^^^^^^^
+For any run in the Runs page, there are 5 potential statuses:
+
+- **Scheduled**: The run has been scheduled for execution but has not yet started.
+- **Queued**: The run is waiting for resources to become available on the orchestrator.
+- **Running**: The run is currently being executed.
+- **Completed**: The run has completed successfully.
+- **Failed**: The run failed to complete.
+
+All runs begin in the Scheduled state and move to the Queued state if a position is open in the execution queue. 
+At most there can be three Queued runs at any given time. If there are more than three operations that have not 
+entered the execution queue, then they will remain in the Scheduled state until a spot in the execution queue opens up.
+
+.. image:: /images/plugins/operators/runs/runs_page.png
+
+.. note::
+
+    Hovering over the status badge of a run in a Scheduled or Queued state will provide you with more information about its execution. 
+    Most importantly, you can view the position of where in the Scheduled ordering your run is if there are multiple by hovering over the badge.
 
 .. image:: /images/plugins/operators/runs/runs_page.png
 
@@ -482,9 +508,8 @@ sort, search and filter runs listed to refine the list as you like:
 Sorting
 ^^^^^^^
 
-By default, the runs table is sorted by recency, but you can use the dropdown
-menu in the upper left of table to sort by other fields like update time or the
-name of the operator:
+By default, the runs table is sorted by recency, the newest run to be added to the Runs page, but you can use the dropdown menu in the upper right 
+of the table to sort by other fields like: last updated, oldest, or the name of the operator.
 
 .. image:: /images/plugins/operators/runs/sort.png
 
@@ -495,12 +520,11 @@ Filtering
 
 You can also filter the runs table to see a subset of runs.
 
-Use the "My runs" radio button to see only the runs that you scheduled:
+Depending on your permissions, you can toggle between “My Runs” and “All Runs” to see what runs you have scheduled versus runs that others in your organization have scheduled:
 
 .. image:: /images/plugins/operators/runs/my_runs.png
 
-You can further refine the list of runs using the status dropdown to select one
-or more status you would like to filter by:
+You can further refine the list of runs using the Status dropdown to select one or more statuses you would like to filter by:
 
 .. image:: /images/plugins/operators/runs/filter_by_status.png
 
@@ -527,7 +551,7 @@ Re-running
 ^^^^^^^^^^
 
 From the Runs page, you can trigger a re-run of any listed run by clicking the
-three-dots to open actions menu and then clicking "Re-run":
+three-dots to open the actions menu and then clicking "Re-run":
 
 .. image:: /images/plugins/operators/runs/re_run.png
 
@@ -558,11 +582,10 @@ Renaming
 When delegating an operator multiple times on the same dataset, you may wish to
 give the runs custom labels so that you can easily identify each run later.
 
-To edit the label of an operator run, move your mouse cursor over the label of
-interest and click the pencil button as indicated by "1" below. This will
-present an input field indicated by "2" where you can update label to text of
-your choice. Once you are ready to apply changes, click the save button
-indicated by "3".
+To edit the label of an operator run, move your mouse cursor over the label of interest 
+and click the pencil button as indicated by “1” below. This will present an input field 
+indicated by “2” where you can update the label to the text of your choice. Once you are 
+ready to apply changes, click the save button indicated by “3”.
 
 .. image:: /images/plugins/operators/runs/edit_label.png
 
@@ -594,27 +617,25 @@ Monitoring progress
 Delegated operations can optionally
 :ref:`report their progress <operator-reporting-progress>` during execution.
 
-If a progress is available for a run, it will be displayed in the Runs table
-as indicated by "2". By default, the progress of running operations is
-automatically refreshed. You can disable auto-refresh of running operations by
-toggling the auto refresh setting indicated by "1".
+If progress is available for a run, it will be displayed in the Runs table as indicated by “2”. 
+By default, the general status of a run and the progress of running operations is automatically refreshed. 
+You can disable the auto-refresh of running operations by toggling the auto-refresh setting indicated by “1”.
 
 .. image:: /images/plugins/operators/runs/run_progress.png
 
-.. note::
-
-    Only the progress of running operations is automatically refreshed.
 
 .. _teams-run-page:
 
 Run page
 --------
 
-The Run page allows you to see information about a specific run such as inputs,
+The Run page for a specific run allows you to see information about a specific run such as inputs,
 outputs, and errors.
 
-You can visit the Run page for a run by clicking on a run in the runs table,
-the Pinned runs, or Recent runs widgets.
+You can visit the Run page for a run by clicking on a run in the runs table, 
+the Pinned runs, or the Recent runs widgets.
+
+.. _teams-run-page-input:
 
 Input
 ^^^^^
@@ -632,6 +653,8 @@ by clicking the "Show raw" toggle button:
 
 .. image:: /images/plugins/operators/runs/raw_input.png
 
+.. _teams-run-page-output:
+
 Output
 ^^^^^^
 
@@ -644,13 +667,17 @@ completed run:
 
 .. image:: /images/plugins/operators/runs/output.png
 
+.. _teams-run-page-errors:
+
 Errors
 ^^^^^^
 
-The Errors tab on the Run page will appear if the run failed and lets you see
-the errors that occurred:
+The Errors tab on the Run page will appear if the run failed and it lets you 
+see the errors that occurred:
 
 .. image:: /images/plugins/operators/runs/errors.png
+
+.. _teams-run-page-view:
 
 View
 ^^^^
@@ -660,3 +687,61 @@ scheduled:
 
 .. image:: /images/plugins/operators/runs/view.png
 
+.. _teams-run-page-logs:
+
+Logs
+^^^^
+
+The Logs tab on the Run page allows you to view any logging associated with your run:
+
+.. image:: /images/plugins/operators/runs/view.png
+
+**Logs setup**
+
+Setting up logs happens at the deployment level. In order for logs to appear on your Runs page, 
+you need to explicitly define log generation behavior in your FiftyOne Enterprise deployment when 
+setting up Delegated Operations.
+
+Here are the setup instructions for logging in the two deployment configurations we support: 
+`Helm <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/helm/docs/configuring-delegated-operators.md>`_ & 
+`Docker <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docker/docs/configuring-delegated-operators.md>`_.
+
+.. note::
+
+    If you set up logs with a third-party orchestrator like Airflow, logs will not be natively available, 
+    however, we will report the log location URI for the third-party path you defined in your FiftyOne Enterprise deployment.
+
+**Logs availability**
+
+If logs are set up, they will appear natively within the Logs tab after the completion of a run. 
+Logs will not appear before completion. If log creation errors out for any reason, 
+logs will not be available and a message will be shown indicating such.
+
+.. image:: /images/plugins/operators/runs/view.png
+
+**Logs structure**
+
+If logs are available, they are displayed in a structured format. 
+There will be 3 columns, and each row represents a singular line of a log file. 
+The columns Timestamp, Severity, and Message define the log structure and will be shown natively in table format up to 1 MB in total content size.
+
+.. image:: /images/plugins/operators/runs/view.png
+
+.. note::
+
+    If the content size of logs for a given run exceeds 1 MB, no content will be shown and instead a Download Logs button will appear.
+    Clicking this button will download the logs as a text file.
+
+.. image:: /images/plugins/operators/runs/view.png
+
+**Download logs**
+
+If logs are available, you can download them directly. 
+The text file generated for download is a line-by-line log output of the 
+logging for the attached orchestrator of the given run.
+
+.. image:: /images/plugins/operators/runs/view.png
+
+.. image:: /images/plugins/operators/runs/view.png
+
+.. image:: /images/plugins/operators/runs/view.png
