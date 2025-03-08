@@ -254,10 +254,9 @@ class EvaluationPanel(Panel):
             )
         except Exception as e:
             ctx.ops.notify(
-                f"Failed to delete evaluation successfully",
+                f"Failed to delete evaluation: {str(e)}",
                 variant="error",
             )
-
     def load_evaluation_view(self, ctx):
         view_state = ctx.panel.get_state("view") or {}
         eval_key = view_state.get("key")
