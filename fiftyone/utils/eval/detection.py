@@ -257,10 +257,10 @@ def evaluate_detections(
         for _, result in _samples.map_samples(
             _map_fnc,
             save=save,
-            progress=progress,
+            progress="workers",
             num_workers=num_workers,
             shard_method=shard_method,
-            backend="process",
+            backend="threading",
         ):
             matches.extend(result)
         # from pdb import set_trace; set_trace()

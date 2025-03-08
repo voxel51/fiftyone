@@ -45,11 +45,11 @@ def map_samples(
     return backend_instance.map_samples(
         sample_collection,
         map_fcn,
-        num_workers,
-        shard_method,
-        progress,
-        queue_batch_size,
-        save,
+        num_workers=num_workers,
+        shard_method=shard_method,
+        progress=progress,
+        queue_batch_size=queue_batch_size,
+        save=save,
     )
 
 

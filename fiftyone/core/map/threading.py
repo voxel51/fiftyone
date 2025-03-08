@@ -26,9 +26,10 @@ import numpy as np
 from tqdm import tqdm
 
 import fiftyone.core.utils as fou
-import fiftyone.core.view as fov
 import fiftyone.core.map.map as fomm
 import fiftyone.core.map.sequential as foms
+
+fov = fou.lazy_import("fiftyone.core.view")
 
 
 T = TypeVar("T")
@@ -105,7 +106,6 @@ class ThreadingMapBackend(foms.SequentialMapBackend):
         progress: bool,
     ):
         """Map samples"""
-
         samples = sample_collection.iter_samples(autosave=save)
 
         if progress:
@@ -210,8 +210,10 @@ class ThreadingMapBackend(foms.SequentialMapBackend):
         num_workers: Optional[int] = None,
         shard_method: str = Literal["id", "slice"],
         progress: Optional[bool] = None,
+        queue_batch_size: int = 1,
         save: Optional[bool] = None,
     ) -> Iterator[Tuple[bson.ObjectId, R]]:
+        print("ThreadingMapBackend.map_samples")
         yield from self.parallelize_samples(
             sample_collection,
             map_fcn,
