@@ -94,6 +94,8 @@ export default function NativeModelEvaluationView(props) {
     [triggerEvent, rename_evaluation, evaluations, onChange]
   );
 
+  const time = new Date().getTime();
+
   const onDelete = useCallback(
     (eval_id: string, eval_key: string) => {
       triggerEvent(
@@ -102,21 +104,26 @@ export default function NativeModelEvaluationView(props) {
         false,
         (results) => {
           if (results?.error === null) {
+            // update the current page display
             const updatedEvaluations = evaluations.filter(
               (evaluation) => evaluation.id !== eval_id
             );
             onChange("evaluations", updatedEvaluations);
-            triggerEvent(on_change_view);
+            onChange(
+              "view.key",
+              `${eval_id}_${updatedEvaluations.length}_${time}`
+            );
             if (page === "evaluation") {
               // should return to overview page
               onChange("view", { page: "overview" });
+              onChange("view.key", eval_id + "_deleted");
               triggerEvent(on_change_view);
             }
           }
         }
       );
     },
-    [triggerEvent, delete_evaluation, evaluations, onChange]
+    [triggerEvent, delete_evaluation, evaluations, onChange, time]
   );
 
   const handleClose = () => {
