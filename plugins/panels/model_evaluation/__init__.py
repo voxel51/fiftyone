@@ -759,8 +759,8 @@ class EvaluationPanel(Panel):
         if view is not None:
             ctx.ops.set_view(view)
 
-    def save_subset(self, ctx):
-        # Called when you click the "Save Subset" button
+    def save_scenario(self, ctx):
+        # Called when you click the "Save Scenario" button
         # Validates and stores a subset in the execution store for model eval
         # {
         #   id,
@@ -772,31 +772,30 @@ class EvaluationPanel(Panel):
         # TODO: implement
         pass
 
-    def extract_save_subset_params(self, ctx):
+    def extract_save_scenario_params(self, ctx):
+        print("ctx.params", ctx.params)
         params = ctx.params.get("subset", {}).get("subset", {})
-        subset_name = params.get("subset_name", None)
-        if subset_name is None:
-            raise ValueError("No subset name provided")
+        scenario_name = params.get("scenario_name", None)
+        if scenario_name is None:
+            raise ValueError("No scenario name provided")
 
-        subset_type = params.get("subset_type", None)
-        if subset_type is None:
-            raise ValueError("No subset type provided")
+        scenario_type = params.get("scenario_type", None)
+        if scenario_type is None:
+            raise ValueError("No scenario type provided")
 
-        subset_sample_field_values = params.get(
-            "subset_sample_field_values", None
-        )
+        sample_field_values = params.get("sample_field_values", None)
 
         label_attribute_values = params.get("label_attribute_values", None)
         saved_views = params.get("saved_views_values", None)
 
         return {
-            "name": subset_name,
-            "type": subset_type,
+            "name": scenario_name,
+            "type": scenario_type,
             "saved_views": saved_views,
             "sample_field": params.get("sample_field", None),
-            "subset_field": params.get("subset_field", None),
+            "scenario_field": params.get("scenario_field", None),
             "code_expr": params.get("code_expr", None),
-            "sample_field_values": subset_sample_field_values,
+            "sample_field_values": sample_field_values,
             "label_attribute_values": label_attribute_values,
         }
 
@@ -823,10 +822,10 @@ class EvaluationPanel(Panel):
             eval_b_results,
         )
 
-    def on_save_analyze_subset(self, ctx):
+    def on_save_analyze_scenario(self, ctx):
         label_attrs_classes = None
 
-        params = self.extract_save_subset_params(ctx)
+        params = self.extract_save_scenario_params(ctx)
         (
             eval_a_key,
             eval_a_results,
@@ -845,11 +844,11 @@ class EvaluationPanel(Panel):
             },
         }
 
-        subset_type = params.get("type", None)
-        subset_sample_field_values = params.get("sample_field_values", None)
+        scenario_type = params.get("type", None)
+        sample_field_values = params.get("sample_field_values", None)
 
         # I. Saved views
-        if subset_type == "saved_views":
+        if scenario_type == "saved_views":
             saved_views = params.get("saved_views", None)
 
             for saved_view in saved_views:
@@ -869,20 +868,20 @@ class EvaluationPanel(Panel):
                     ] = eval_b_results.metrics()
 
         # II. Sample Fields
-        elif subset_type == "sample_field":
-            subset_field = params.get("subset_field", None)
-            if subset_field is None:
-                raise ValueError("No subset field provided")
+        elif scenario_type == "sample_field":
+            scenario_field = params.get("scenario_field", None)
+            if scenario_field is None:
+                raise ValueError("No scenario field provided")
 
             # case sample fields: tags
-            if subset_field == "tags":
-                field_paths = list(subset_sample_field_values.keys())
+            if scenario_field == "tags":
+                field_paths = list(sample_field_values.keys())
 
                 for field_path in field_paths:
-                    if subset_sample_field_values[field_path] is True:
+                    if sample_field_values[field_path] is True:
                         subset_def = dict(
                             type="field",
-                            field=subset_field,
+                            field=scenario_field,
                             value=field_path,
                         )
 
@@ -901,7 +900,7 @@ class EvaluationPanel(Panel):
             # TODO: case discrete fields: < 100 categories
 
         # III. Custom Code
-        elif subset_type == "custom_code":
+        elif scenario_type == "custom_code":
             code_expr = params.get("code_expr", None)
             if code_expr is None:
                 raise ValueError("No code expression provided")
@@ -909,7 +908,7 @@ class EvaluationPanel(Panel):
             subset_def = dict(type="code", code=code_expr)
 
         # IV. Label Attributes
-        elif subset_type == "label_attribute":
+        elif scenario_type == "label_attribute":
             label_attrs_map = params.get("label_attribute_values", {})
             label_attrs_classes = list(label_attrs_map.keys()) or []
 
@@ -958,7 +957,7 @@ class EvaluationPanel(Panel):
                 load_view=self.load_view,
                 rename_evaluation=self.rename_evaluation,
                 delete_evaluation=self.delete_evaluation,
-                on_save_subset=self.on_save_analyze_subset,
+                on_save_subset=self.on_save_analyze_scenario,
             ),
         )
 
