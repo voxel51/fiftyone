@@ -5,6 +5,7 @@ Mixins and helpers for dataset backing documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import OrderedDict
 from datetime import datetime
 import itertools
@@ -305,7 +306,7 @@ class DatasetMixin(object):
 
         for path in new_schema.keys():
             _, _, _, root_doc = cls._parse_path(path)
-            if root_doc is not None and root_doc.read_only:
+            if root_doc is not None and getattr(root_doc, "read_only", False):
                 root = path.rsplit(".", 1)[0]
                 raise ValueError("Cannot edit read-only field '%s'" % root)
 
@@ -318,7 +319,10 @@ class DatasetMixin(object):
         # Silently skip updating metadata of any read-only fields
         for path in list(new_metadata.keys()):
             field = cls._get_field(path, allow_missing=True)
-            if field is not None and field.read_only:
+            if field is not None and (
+                not isinstance(field, fof.Field)
+                or getattr(field, "read_only", False)
+            ):
                 del new_metadata[path]
 
         for path, field in new_schema.items():
@@ -517,7 +521,7 @@ class DatasetMixin(object):
                     % (cls._doc_name().lower(), path)
                 )
 
-            if field is not None and field.read_only:
+            if field is not None and getattr(field, "read_only", False):
                 raise ValueError(
                     "Cannot rename read-only %s field '%s'"
                     % (cls._doc_name().lower(), path)
@@ -684,7 +688,7 @@ class DatasetMixin(object):
                     "%s field '%s' does not exist" % (cls._doc_name(), path)
                 )
 
-            if field is not None and field.read_only:
+            if field is not None and getattr(field, "read_only", False):
                 raise ValueError(
                     "Cannot rename read-only %s field '%s'"
                     % (cls._doc_name().lower(), path)
@@ -753,7 +757,7 @@ class DatasetMixin(object):
                 )
                 continue
 
-            if field is not None and field.read_only:
+            if field is not None and getattr(field, "read_only", False):
                 raise ValueError(
                     "Cannot delete read-only %s field '%s'"
                     % (cls._doc_name().lower(), path)
@@ -862,7 +866,7 @@ class DatasetMixin(object):
                 )
                 continue
 
-            if field is not None and field.read_only:
+            if field is not None and getattr(field, "read_only", False):
                 fou.handle_error(
                     ValueError(
                         "Cannot remove read-only %s field '%s'"
