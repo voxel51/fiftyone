@@ -92,6 +92,8 @@ class LabelData:
     field: str
     sample_id: str
     frame_number: t.Optional[int] = None
+    instance_id: t.Optional[str] = None
+    instance_name: t.Optional[str] = None
 
 
 @dataclass
