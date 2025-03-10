@@ -1996,22 +1996,35 @@ class ViewExpression(object):
             a :class:`ViewExpression`
         """
         keys, values = zip(*list(mapping.items()))
+
+        expr = {
+            "$cond": [
+                {"$in": ["$$this", "$$keys"]},
+                {
+                    "$arrayElemAt": [
+                        "$$values",
+                        {"$indexOfArray": ["$$keys", "$$this"]},
+                    ],
+                },
+                "$$this",
+            ]
+        }
+
+        if None in mapping:
+            none_value = mapping[None]
+            expr = {
+                "$cond": {
+                    "if": {"$gt": ["$$this", None]},
+                    "then": expr,
+                    "else": none_value,
+                }
+            }
+
         return ViewExpression(
             {
                 "$let": {
                     "vars": {"this": self, "keys": keys, "values": values},
-                    "in": {
-                        "$cond": [
-                            {"$in": ["$$this", "$$keys"]},
-                            {
-                                "$arrayElemAt": [
-                                    "$$values",
-                                    {"$indexOfArray": ["$$keys", "$$this"]},
-                                ],
-                            },
-                            "$$this",
-                        ]
-                    },
+                    "in": expr,
                 }
             }
         )

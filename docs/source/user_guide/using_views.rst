@@ -2410,14 +2410,15 @@ ___________________
 In certain situations, you may wish to temporarily modify the values of sample
 fields in the context of a |DatasetView| without modifying the underlying
 dataset. FiftyOne provides the
-:meth:`set_field() <fiftyone.core.collections.SampleCollection.set_field>`
+:meth:`set_field() <fiftyone.core.collections.SampleCollection.set_field>`,
+:meth:`map_values() <fiftyone.core.collections.SampleCollection.map_values>`,
 and
 :meth:`map_labels() <fiftyone.core.collections.SampleCollection.map_labels>`
 methods for this purpose.
 
 For example, suppose you would like to rename a group of labels to a single
 category in order to run your evaluation routine. You can use
-:meth:`map_labels() <fiftyone.core.collections.SampleCollection.map_labels>`
+:meth:`map_values() <fiftyone.core.collections.SampleCollection.map_values>`
 to do this:
 
 .. code-block:: python
@@ -2436,7 +2437,7 @@ to do this:
 
     # Replace all animal detection's labels with "animal"
     mapping = {k: "animal" for k in ANIMALS}
-    animals_view = dataset.map_labels("predictions", mapping)
+    animals_view = dataset.map_values("predictions.detections.label", mapping)
 
     counts = animals_view.count_values("predictions.detections.label")
     print(counts["animal"])
@@ -2529,7 +2530,9 @@ contents of a view you've created to the underlying dataset:
     dataset = foz.load_zoo_dataset("quickstart")
 
     # Capitalize some labels
-    rename_view = dataset.map_labels("predictions", {"cat": "CAT", "dog": "DOG"})
+    rename_view = dataset.map_values(
+        "predictions.detections.label", {"cat": "CAT", "dog": "DOG"}
+    )
     rename_view.save()
 
     print(dataset.count_values("predictions.detections.label"))
