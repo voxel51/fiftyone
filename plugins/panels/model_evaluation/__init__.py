@@ -774,7 +774,7 @@ class EvaluationPanel(Panel):
 
     def extract_save_scenario_params(self, ctx):
         print("ctx.params", ctx.params)
-        params = ctx.params.get("subset", {}).get("subset", {})
+        params = ctx.params.get("scenario", {}).get("subset", {})
         scenario_name = params.get("scenario_name", None)
         if scenario_name is None:
             raise ValueError("No scenario name provided")
@@ -940,6 +940,7 @@ class EvaluationPanel(Panel):
             )
 
         print("graph_data", graph_data)
+        ctx.panel.set_state("evaluations_scenario", graph_data)
 
     def render(self, ctx):
         panel = types.Object()

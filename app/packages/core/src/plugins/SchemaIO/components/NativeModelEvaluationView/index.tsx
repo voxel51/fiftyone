@@ -32,7 +32,7 @@ export default function NativeModelEvaluationView(props) {
     load_view,
     rename_evaluation,
     delete_evaluation,
-    on_save_subset,
+    on_save_scenario,
   } = view;
   const {
     evaluations = [],
@@ -160,9 +160,8 @@ export default function NativeModelEvaluationView(props) {
           loadView={(type, options) => {
             triggerEvent(load_view, { type, options });
           }}
-          onRename={onRename}
-          onSaveSubset={(subset: any) => {
-            triggerEvent(on_save_subset, { subset });
+          onSaveScenario={(scenario: any) => {
+            triggerEvent(on_save_scenario, { scenario });
           }}
         />
       )}
