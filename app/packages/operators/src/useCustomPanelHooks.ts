@@ -1,4 +1,4 @@
-import { debounce, merge } from "lodash";
+import { debounce, merge, mergeWith } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 
 import { usePanelState, useSetCustomPanelState } from "@fiftyone/spaces";
@@ -191,8 +191,12 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   ]);
 
   const handlePanelStateChange = (newState) => {
-    setCustomPanelState((state: any) => {
-      return merge({}, state, newState);
+    setCustomPanelState((state: unknown) => {
+      return mergeWith({}, state, newState, (objValue, srcValue) => {
+        if (Array.isArray(objValue)) {
+          return srcValue; // Overwrite instead of merging arrays
+        }
+      });
     });
   };
 
