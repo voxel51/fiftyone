@@ -5,10 +5,10 @@ Query Performance
 
 .. default-role:: code
 
-**Available in FiftyOne Teams v2.2+**
+**Available in FiftyOne Enterprise v2.2+**
 
 Query Performance is a builtin feature of the
-:ref:`FiftyOne Teams App <teams-app>` that leverages database indexes to
+:ref:`FiftyOne Enterprise App <enterprise-app>` that leverages database indexes to
 optimize your queries on large-scale datasets.
 
 Optimizing Query Performance
@@ -36,7 +36,7 @@ If you perform a filter that could benefit from an index and the query takes
 longer than a few seconds, you'll see a toast notification that nudges you to
 take the appropriate action to optimize the query:
 
-.. image:: /images/teams/qp_toast.png
+.. image:: /images/enterprise/qp_toast.png
     :alt: query-performance-toast
     :align: center
 
@@ -59,13 +59,13 @@ You can open the Query Performance panel manually either by clicking the "+"
 icon next to the Samples tab or by clicking the yellow lightning bolt in the
 top-right of the sidbar:
 
-.. image:: /images/teams/qp_tooltip.png
+.. image:: /images/enterprise/qp_tooltip.png
     :alt: query-performance-tooltip
     :align: center
 
 The first time you open the Query Performance panel, you'll see a welcome page:
 
-.. image:: /images/teams/qp_home.png
+.. image:: /images/enterprise/qp_home.png
     :alt: query-performance-home-tab
     :align: center
 
@@ -73,7 +73,7 @@ After you've created at least one custom index or summary field for a dataset,
 you'll instead see a list of the indexes and summary fields that exist on the
 dataset:
 
-.. image:: /images/teams/qp_tableview.png
+.. image:: /images/enterprise/qp_tableview.png
     :alt: query-performance-tableview
     :align: center
 
@@ -85,7 +85,7 @@ Creating indexes
 You can create a new index at any time by clicking the `Create Index` button
 in the top-right of the panel:
 
-.. image:: /images/teams/qp_create_index.png
+.. image:: /images/enterprise/qp_create_index.png
     :alt: query-performance-create-index
     :align: center
 
@@ -126,7 +126,7 @@ You can create a new summary field at any time by clicking the `Create Index`
 button in the top-right of the panel and selecting the "Summary field" type in
 the model:
 
-.. image:: /images/teams/qp_create_summary_field.png
+.. image:: /images/enterprise/qp_create_summary_field.png
     :alt: query-performance-create-summary-field
     :align: center
 
@@ -182,7 +182,7 @@ actions row:
 You can also enable/disable Query Performance via the status button in the
 upper right corner of the Query Performance panel:
 
-.. image:: /images/teams/qp_config.png
+.. image:: /images/enterprise/qp_config.png
     :alt: query-performance-config
     :align: center
 

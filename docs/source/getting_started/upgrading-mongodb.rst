@@ -8,7 +8,7 @@ data directory whenever performing a database upgrade.
 .. note::
 
     The following steps apply to FiftyOne users who utilize
-    the pre-packaged Fiftyone MongoDB instance. If you utilize
+    the pre-packaged FiftyOne MongoDB instance. If you utilize
     a :ref:`custom/shared MongoDB database <configuring-mongodb-connection>`,
     follow the upgrade path advised by your database provider.
 
@@ -17,7 +17,7 @@ data directory whenever performing a database upgrade.
 Upgrading Mongodb 7 to Mongodb 8
 ------------------------------------
 
-1. Stop the Fiftyone session and exit the python interpreter. 
+1. Stop the FiftyOne session and exit the python interpreter.
    Ensure that the mongo process has been shut down.
 
     **Mac/Linux users:**
@@ -36,13 +36,13 @@ Upgrading Mongodb 7 to Mongodb 8
                 -and $_.Name -like "*mongod*" \
             }
 
-2. Upgrade Fiftyone to 1.3.0+ and Fiftyone-db to 1.2.0+
+2. Upgrade FiftyOne to 1.3.0+ and fiftyone-db to 1.2.0+
 
     .. code-block:: shell
 
         pip install --upgrade fiftyone fiftyone[db]
 
-3. Relaunch Fiftyone
+3. Relaunch FiftyOne
 
 4. `Install mongosh <https://www.mongodb.com/docs/mongodb-shell/install/>`_
 
