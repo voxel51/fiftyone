@@ -94,34 +94,29 @@ class TestGroupModeSidebarCounts(unittest.IsolatedAsyncioTestCase):
             }
         """
 
-        result = await execute(
-            schema,
-            query,
-            {
-                "form": {
-                    "index": 0,
-                    "dataset": dataset.name,
-                    "extended_stages": {},
-                    "filters": {
-                        "label.label": {
-                            "values": [
-                                "default",
-                            ],
-                            "exclude": False,
-                            "isMatching": False,
-                        }
-                    },
-                    "group_id": None,
-                    "hidden_labels": [],
-                    "paths": ["label.label"],
-                    "mixed": True,
-                    "sample_ids": [],
-                    "slice": "default",
-                    "slices": None,
-                    "view": [],
+        form = {
+            "index": 0,
+            "dataset": dataset.name,
+            "extended_stages": {},
+            "filters": {
+                "label.label": {
+                    "values": [
+                        "default",
+                    ],
+                    "exclude": False,
+                    "isMatching": False,
                 }
             },
-        )
+            "group_id": None,
+            "hidden_labels": [],
+            "paths": ["label.label"],
+            "mixed": True,
+            "sample_ids": [],
+            "slice": "default",
+            "slices": None,
+            "view": [],
+        }
+        result = await execute(schema, query, {"form": form})
 
         # ensure only "default" count is returned, "other" should be omitted
         self.assertEqual(
@@ -133,6 +128,24 @@ class TestGroupModeSidebarCounts(unittest.IsolatedAsyncioTestCase):
                         "count": 1,
                         "exists": 1,
                         "values": [{"count": 1, "value": "default"}],
+                    },
+                ],
+            },
+        )
+
+        form["query_performance"] = True
+        result = await execute(schema, query, {"form": form})
+
+        # when query performance is on, omit values
+        self.assertEqual(
+            result.data,
+            {
+                "aggregations": [
+                    {
+                        "path": "label.label",
+                        "count": 1,
+                        "exists": 1,
+                        "values": None,
                     },
                 ],
             },
