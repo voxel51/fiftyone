@@ -6,25 +6,24 @@ Labels stored in dataset samples.
 |
 """
 
-from functools import partial
 import itertools
 import warnings
+from functools import partial
 
-from bson import ObjectId
 import cv2
+import eta.core.frameutils as etaf
+import eta.core.image as etai
+import eta.core.utils as etau
 import numpy as np
 import scipy.ndimage as spn
 import skimage.measure as skm
 import skimage.segmentation as sks
+from bson import ObjectId
 
-import eta.core.frameutils as etaf
-import eta.core.image as etai
-import eta.core.utils as etau
-
-from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
+from fiftyone.core.odm import DynamicEmbeddedDocument, EmbeddedDocument
 
 foue = fou.lazy_import("fiftyone.utils.eta")
 foug = fou.lazy_import("fiftyone.utils.geojson")
@@ -39,23 +38,6 @@ class _NoDefault(object):
 
 
 no_default = _NoDefault()
-
-
-class _HasUuid(object):
-    """Mixin for :class:`Label` classes that contain a UUID via an ``uuid``
-    attribute.
-
-    Contrary to the ``id`` field, which is unique to each label, the ``uuid``
-    field is unique to each label instance either temporally or across
-    various modalities, allowing you to identify the same logical label
-    across different samples.
-    """
-
-    uuid = fof.ObjectIdField(
-        required=True,
-        default=lambda: str(ObjectId()),
-        db_field="_uuid",
-    )
 
 
 class _HasMedia(object):
@@ -361,6 +343,66 @@ class _HasID(Label):
         self.id = str(value)
 
 
+class InstanceConfig(EmbeddedDocument):
+    """A named label instance.
+
+    Args:
+        id (None): the label instance ID
+        name (None): the label instance name
+    """
+
+    id = fof.ObjectIdField(default=lambda: str(ObjectId()), db_field="_id")
+    name = fof.StringField()
+
+    @property
+    def _id(self):
+        return ObjectId(self.id)
+
+    @_id.setter
+    def _id(self, value):
+        if not isinstance(value, ObjectId) and etau.is_str(value):
+            value = ObjectId(value)
+
+        self.id = value
+
+
+class _HasInstanceConfig(Label):
+    """Mixin for :class:`Label` classes that contain an instance configuration
+    via an ``instance_config`` attribute.
+
+    Contrary to the ``id`` field, which is unique to each label, the
+    ``instance_config`` field is unique to each label instance either temporally or
+    across different modalities, allowing you to identify the same logical label
+    across different samples.
+    """
+
+    instance_config = fof.EagerValidatingEmbeddedDocumentField(InstanceConfig)
+
+    @property
+    def instance_id(self):
+        """The ID of the label instance."""
+        if self.instance_config is None:
+            return None
+
+        return self.instance_config.id
+
+    @instance_id.setter
+    def instance_id(self, value):
+        if self.instance_config is None:
+            self.instance_config = InstanceConfig()
+
+        if not isinstance(value, ObjectId):
+            if etau.is_str(value):
+                value = ObjectId(value)
+            else:
+                raise ValueError(
+                    "Invalid instance ID '%s'; must be an ObjectId or string "
+                    "representation thereof" % value
+                )
+
+        self.instance_config.id = value
+
+
 class _HasLabelList(object):
     """Mixin for :class:`Label` classes that contain a list of :class:`Label`
     instances.
@@ -384,7 +426,7 @@ class Regression(_HasID, Label):
     confidence = fof.FloatField()
 
 
-class Classification(_HasID, _HasUuid, Label):
+class Classification(_HasID, _HasInstanceConfig, Label):
     """A classification label.
 
     Args:
@@ -412,7 +454,9 @@ class Classifications(_HasLabelList, Label):
     logits = fof.VectorField()
 
 
-class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasUuid, Label):
+class Detection(
+    _HasAttributesDict, _HasID, _HasMedia, _HasInstanceConfig, Label
+):
     """An object detection.
 
     Args:
@@ -601,7 +645,7 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasUuid, Label):
         return cls(label=label, bounding_box=bbox, mask=mask, **attributes)
 
 
-class Detections(_HasLabelList, _HasUuid, Label):
+class Detections(_HasLabelList, _HasInstanceConfig, Label):
     """A list of object detections in an image.
 
     Args:
@@ -681,7 +725,7 @@ class Detections(_HasLabelList, _HasUuid, Label):
         return Segmentation(mask=mask)
 
 
-class Polyline(_HasAttributesDict, _HasID, _HasUuid, Label):
+class Polyline(_HasAttributesDict, _HasID, _HasInstanceConfig, Label):
     """A set of semantically related polylines or polygons.
 
     Args:
@@ -1023,7 +1067,7 @@ class Polylines(_HasLabelList, Label):
         return Segmentation(mask=mask)
 
 
-class Keypoint(_HasAttributesDict, _HasID, _HasUuid, Label):
+class Keypoint(_HasAttributesDict, _HasID, _HasInstanceConfig, Label):
     """A list of keypoints in an image.
 
     Args:
