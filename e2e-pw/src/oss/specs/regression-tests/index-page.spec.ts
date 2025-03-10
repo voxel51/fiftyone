@@ -28,6 +28,13 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
 
 test.describe.serial("index page", () => {
   test("index page", async ({ pagePom, page }) => {
+    await page.addInitScript(() => {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore injecting IS_PLAYWRIGHT into window so that
+      // we can disable 1) analytics, and 2) QA performance toast banners
+      window.IS_PLAYWRIGHT = true;
+    });
+
     await pagePom.loadDataset();
     await pagePom.assert.verifyPage("index");
     await pagePom.assert.verifyPathname("/");
