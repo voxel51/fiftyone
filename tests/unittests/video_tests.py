@@ -5,6 +5,7 @@ FiftyOne video-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 from datetime import date, datetime
 
@@ -2397,7 +2398,13 @@ class VideoTests(unittest.TestCase):
         sample.frames[1] = fo.Frame(filepath="image.jpg")
 
         dataset = fo.Dataset()
+
         dataset.add_sample(sample)
+        dataset.add_frame_field(
+            "metadata",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.ImageMetadata,
+        )
 
         frames = dataset.to_frames()
         view = frames.select_fields()
