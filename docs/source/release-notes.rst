@@ -3,7 +3,7 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-FiftyOne Teams 2.6.1
+FiftyOne Enterprise 2.6.1
 --------------------
 *Released February 28, 2025*
 
@@ -26,7 +26,7 @@ App
 - Fixed a bug with sample updates after tagging in the modal
   `#5514 <https://github.com/voxel51/fiftyone/pull/5514>`_
 
-FiftyOne Teams 2.6.0
+FiftyOne Enterprise 2.6.0
 --------------------
 *Released February 10, 2025*
 
@@ -35,13 +35,13 @@ FiftyOne Teams 2.6.0
   often used for compliance reasons.
 - Fixed a bug where invite email smtp configuration was not saving correctly.
 
-FiftyOne Teams 2.5.1
+FiftyOne Enterprise 2.5.1
 --------------------
 *Released February 3, 2025*
 
 - Fixed a bug where we displayed a session error before initial user login
 
-FiftyOne Teams 2.5.0
+FiftyOne Enterprise 2.5.0
 --------------------
 *Released January 24, 2025*
 
