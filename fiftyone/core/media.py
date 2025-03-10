@@ -5,15 +5,17 @@ Sample media utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import eta.core.image as etai
 import eta.core.video as etav
 
 
 # Valid media types
-VIDEO = "video"
 IMAGE = "image"
+VIDEO = "video"
 POINT_CLOUD = "point-cloud"
 THREE_D = "3d"
-MEDIA_TYPES = {IMAGE, VIDEO, POINT_CLOUD, THREE_D}
+OTHER = "other"
+MEDIA_TYPES = {IMAGE, VIDEO, POINT_CLOUD, THREE_D, OTHER}
 
 # Special media types
 GROUP = "group"
@@ -29,6 +31,9 @@ def get_media_type(filepath):
     Returns:
         the media type
     """
+    if etai.is_image_mime_type(filepath):
+        return IMAGE
+
     if etav.is_video_mime_type(filepath):
         return VIDEO
 
@@ -38,7 +43,7 @@ def get_media_type(filepath):
     if filepath.endswith(".fo3d"):
         return THREE_D
 
-    return IMAGE
+    return OTHER
 
 
 class MediaTypeError(TypeError):
