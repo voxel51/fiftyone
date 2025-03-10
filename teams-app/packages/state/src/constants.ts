@@ -410,3 +410,5 @@ export const INVITE_URL_HELPER_TEXT = `
 export const INVITE_HELPER_TEXT_DATASET_ACCESS = `to retrieve the invite link for
             the new user, which you must send to them so they can login.`;
 export const INVITE_HELPER_TEXT_DATASET_ACCESS_CAN_MANAGE_DATASET = `You must contact an Admin of your deployment and ask them to retrieve the invite link and send it to the new user so they can login.`;
+export const FIFTYONE_APP_GET_STARTED_DISABLED_PATHS_ENV_KEY =
+  "FIFTYONE_APP_GET_STARTED_DISABLED_PATHS";

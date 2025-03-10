@@ -12,7 +12,7 @@ registerComponent({
   activator: () => true,
   panelOptions: {
     category: "import",
-    beta: true,
+    beta: false,
     isNew: false,
   },
 });

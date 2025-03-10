@@ -53,7 +53,6 @@ class EvaluationPanel(Panel):
             label="Model Evaluation",
             icon="ssid_chart",
             category=Categories.ANALYZE,
-            beta=True,
         )
 
     def get_dataset_id(self, ctx):
