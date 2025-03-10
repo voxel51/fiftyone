@@ -13,6 +13,7 @@ import { getLogStatus, LOG_STATUS } from "../utils/getLogStatus";
 import LogPreview from "./logs/LogPreview";
 
 type DefaultLog = {
+  title?: string; // defaulted to logs not available
   message?: string; // right underneath the logs not available message
   button?: {
     message: string; // button underneath the message
@@ -62,7 +63,7 @@ export const DefaultLog = (props: DefaultLog) => {
           sx={{ width: 50, height: 50 }}
         />
         <Typography variant="h6" color="secondary">
-          Logs are not available
+          {props?.title ?? "Logs not available"}
         </Typography>
         {props?.message && (
           <Typography variant="title" color="secondary">
@@ -74,6 +75,7 @@ export const DefaultLog = (props: DefaultLog) => {
             variant={
               props?.button?.icon === "download" ? "contained " : "outlined"
             }
+            color={props?.button?.icon === "download" ? "primary" : "secondary"}
             endIcon={
               props.button.icon === "download" ? (
                 <CloudDownloadIcon />
