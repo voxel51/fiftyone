@@ -7,6 +7,7 @@ import type { StlAsset } from "../../hooks";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { useFo3dContext } from "../context";
 import { getResolvedUrlForFo3dAsset } from "../utils";
+import { useFoLoader } from "../../hooks/use-fo-loaders";
 
 /**
  *  Renders a single STL mesh.
@@ -38,7 +39,7 @@ export const Stl = ({
     [stlPath, preTransformedStlPath, fo3dRoot]
   );
 
-  const points = useLoader(STLLoader, stlUrl);
+  const points = useFoLoader(STLLoader, stlUrl);
   const [mesh, setMesh] = useState(null);
 
   const { material } = useMeshMaterialControls(name, defaultMaterial);

@@ -45,7 +45,6 @@ class EvaluationPanel(Panel):
             label="Model Evaluation",
             icon="ssid_chart",
             category=Categories.ANALYZE,
-            beta=True,
         )
 
     def get_dataset_id(self, ctx):
@@ -65,6 +64,8 @@ class EvaluationPanel(Panel):
             "can_evaluate": True,
             "can_edit_note": True,
             "can_edit_status": True,
+            "can_delete_evaluation": True,
+            "can_rename": True,
         }
 
     def can_evaluate(self, ctx):
@@ -75,6 +76,12 @@ class EvaluationPanel(Panel):
 
     def can_edit_status(self, ctx):
         return self.get_permissions(ctx).get("can_edit_status", False)
+
+    def can_delete_evaluation(self, ctx):
+        return self.get_permissions(ctx).get("can_delete_evaluation", False)
+
+    def can_rename(self, ctx):
+        return self.get_permissions(ctx).get("can_rename", False)
 
     def on_load(self, ctx):
         store = self.get_store(ctx)
@@ -89,6 +96,10 @@ class EvaluationPanel(Panel):
                 evaluation = {
                     "key": key,
                     "id": self.get_evaluation_id(ctx.dataset, key),
+                    "type": ctx.dataset.get_evaluation_info(key).config.type,
+                    "method": ctx.dataset.get_evaluation_info(
+                        key
+                    ).config.method,
                 }
                 evaluations.append(evaluation)
         ctx.panel.set_state("evaluations", evaluations)
@@ -190,6 +201,62 @@ class EvaluationPanel(Panel):
         store.set("notes", notes)
         ctx.panel.set_data("notes", notes)
         ctx.ops.notify(f"Note updated successfully!", variant="success")
+
+    def rename_evaluation(self, ctx):
+        if not self.can_rename(ctx):
+            ctx.ops.notify(
+                "You do not have permission to rename this evaluation",
+                variant="error",
+            )
+            return
+        old_name = ctx.params.get("old_name", None)
+        new_name = ctx.params.get("new_name", None)
+        try:
+            ctx.dataset.rename_evaluation(old_name, new_name)
+            view_state = ctx.panel.get_state("view") or {}
+            eval_id = view_state.get("id")
+            store = self.get_store(ctx)
+            evaluation_data = store.get(eval_id)
+            if evaluation_data:
+                evaluation_data["info"]["name"] = new_name
+                evaluation_data["info"]["key"] = new_name
+                store.set(eval_id, evaluation_data, ttl=CACHE_TTL)
+            ctx.ops.notify(
+                f"Renamed evaluation '{old_name}' to '{new_name}' successfully!",
+                variant="success",
+            )
+        except Exception as e:
+            ctx.ops.notify(
+                f"Failed to rename evaluation '{old_name}' to '{new_name}'",
+                variant="error",
+            )
+
+    def delete_evaluation(self, ctx):
+        if not self.can_delete_evaluation(ctx):
+            ctx.ops.notify(
+                "You do not have permission to delete evaluations",
+                variant="error",
+            )
+            return
+
+        # use eval_id to delete the execution store
+        eval_id = ctx.params.get("eval_id", None)
+        # use eval_key to delete the evaluation from dataset
+        eval_key = ctx.params.get("eval_key", None)
+
+        try:
+            ctx.dataset.delete_evaluation(eval_key)
+            store = self.get_store(ctx)
+            store.delete(eval_id)
+            ctx.ops.notify(
+                "Evaluation deleted successfully!",
+                variant="success",
+            )
+        except Exception as e:
+            ctx.ops.notify(
+                f"Failed to delete evaluation successfully",
+                variant="error",
+            )
 
     def load_evaluation_view(self, ctx):
         view_state = ctx.panel.get_state("view") or {}
@@ -427,8 +494,15 @@ class EvaluationPanel(Panel):
                     pending
                 )
         for key in eval_keys:
+            conf = ctx.dataset.get_evaluation_info(key).config
             if not self.has_evaluation_results(ctx.dataset, key):
-                pending_evaluations.append({"eval_key": key})
+                pending_evaluations.append(
+                    {
+                        "eval_key": key,
+                        "type": conf.type,
+                        "method": conf.method,
+                    }
+                )
         if update_store:
             pending_evaluations_in_store[
                 dataset_id
@@ -691,6 +765,8 @@ class EvaluationPanel(Panel):
                 set_status=self.set_status,
                 set_note=self.set_note,
                 load_view=self.load_view,
+                rename_evaluation=self.rename_evaluation,
+                delete_evaluation=self.delete_evaluation,
             ),
         )
 

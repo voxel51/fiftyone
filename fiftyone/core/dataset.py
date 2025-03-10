@@ -7,6 +7,7 @@ FiftyOne datasets.
 """
 
 from collections import defaultdict
+from functools import partial
 import contextlib
 from datetime import datetime
 import fnmatch
@@ -3226,9 +3227,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             the ID of the sample in the dataset
         """
-        ids = self._add_samples_batch(
-            [sample], expand_schema, dynamic, validate
+        # call manually because this is typically done by the batcher
+        sample = self._transform_sample(
+            sample,
+            expand_schema=expand_schema,
+            dynamic=dynamic,
+            validate=validate,
+            copy=True,
         )
+
+        ids = self._add_samples_batch([sample])
         return ids[0]
 
     def add_samples(
@@ -3270,16 +3278,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if num_samples is None:
             num_samples = samples
 
+        transform_fn = partial(
+            self._transform_sample,
+            expand_schema=expand_schema,
+            dynamic=dynamic,
+            validate=validate,
+            copy=True,
+        )
+
         batcher = fou.get_default_batcher(
-            samples, progress=progress, total=num_samples
+            samples,
+            progress=progress,
+            total=num_samples,
+            transform_fn=transform_fn,
+            size_calc_fn=self._calculate_size,
         )
 
         sample_ids = []
         with batcher:
             for batch in batcher:
-                _ids = self._add_samples_batch(
-                    batch, expand_schema, dynamic, validate, batcher=batcher
-                )
+                _ids = self._add_samples_batch(batch)
                 sample_ids.extend(_ids)
 
         return sample_ids
@@ -3336,26 +3354,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
         return self.skip(num_samples).values("id")
 
-    def _add_samples_batch(
-        self, samples, expand_schema, dynamic, validate, batcher=None
-    ):
-        samples = [s.copy() if s._in_db else s for s in samples]
+    def _add_samples_batch(self, samples_and_docs):
+        """Writes the given samples and backing docs to the database and returns their IDs
 
-        if self.media_type is None and samples:
-            self.media_type = _get_media_type(samples[0])
-
-        if expand_schema:
-            self._expand_schema(samples, dynamic)
-
-        if validate:
-            self._validate_samples(samples)
-
-        now = datetime.utcnow()
-        dicts = [
-            self._make_dict(sample, created_at=now, last_modified_at=now)
-            for sample in samples
-        ]
-
+        Args:
+            samples_and_docs: a list of tuples of the form (sample, dict) where the dict
+                is the sample's backing document
+        Returns:
+            a list of IDs of the samples that were added to this dataset
+        """
+        dicts = [doc for _, doc in samples_and_docs]
         try:
             # adds `_id` to each dict
             self._sample_collection.insert_many(dicts)
@@ -3363,15 +3371,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             msg = bwe.details["writeErrors"][0]["errmsg"]
             raise ValueError(msg) from bwe
 
-        for sample, d in zip(samples, dicts):
+        for sample, d in samples_and_docs:
             doc = self._sample_dict_to_doc(d)
             sample._set_backing_doc(doc, dataset=self)
             if sample.media_type == fom.VIDEO:
                 sample.frames.save()
-
-        if batcher is not None and batcher.manual_backpressure:
-            # @todo can we infer content size from insert_many() above?
-            batcher.apply_backpressure(dicts)
 
         return [str(d["_id"]) for d in dicts]
 
@@ -3384,39 +3388,91 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         progress=None,
         num_samples=None,
     ):
-        if num_samples is None:
-            num_samples = samples
+        transform_fn = partial(
+            self._transform_sample,
+            expand_schema=expand_schema,
+            dynamic=dynamic,
+            validate=validate,
+            copy=False,
+            include_id=True,
+        )
 
-        batcher = fou.get_default_batcher(samples, progress=progress)
+        batcher = fou.get_default_batcher(
+            samples,
+            progress=progress,
+            transform_fn=transform_fn,
+            size_calc_fn=self._calculate_size,
+            total=num_samples,
+        )
 
         with batcher:
             for batch in batcher:
-                self._upsert_samples_batch(
-                    batch, expand_schema, dynamic, validate, batcher=batcher
-                )
+                self._upsert_samples_batch(batch)
 
-    def _upsert_samples_batch(
-        self, samples, expand_schema, dynamic, validate, batcher=None
+    def _transform_sample(
+        self,
+        sample,
+        expand_schema,
+        dynamic,
+        validate,
+        copy=False,
+        include_id=False,
     ):
-        if self.media_type is None and samples:
-            self.media_type = _get_media_type(samples[0])
+        """Transforms the given sample and returns the transformed sample and dict as a pair
+
+        This method handles schema expansion, validation, and preparing the sample's
+        backing document before adding it to the database.
+
+        Args:
+            sample: The sample to transform
+            expand_schema: Whether to dynamically add new sample fields encountered
+            dynamic: Whether to declare dynamic attributes of embedded document fields
+            validate: Whether to validate the sample against the dataset schema
+            copy: Whether to create a copy of the sample if it's already in a dataset
+            include_id: Whether to include the sample's ID in the backing document
+
+        Returns:
+            A tuple of (transformed_sample, backing_document_dict)
+        """
+        if copy and sample._in_db:
+            sample = sample.copy()
+
+        if self.media_type is None and sample:
+            self.media_type = _get_media_type(sample)
 
         if expand_schema:
-            self._expand_schema(samples, dynamic)
+            self._expand_schema(sample, dynamic)
 
         if validate:
-            self._validate_samples(samples)
+            self._validate_sample(sample)
 
         now = datetime.utcnow()
 
-        dicts = []
-        ops = []
-        for sample in samples:
-            d = self._make_dict(
-                sample, include_id=True, created_at=now, last_modified_at=now
-            )
-            dicts.append(d)
+        return (
+            sample,
+            self._make_dict(
+                sample,
+                include_id=include_id,
+                created_at=now,
+                last_modified_at=now,
+            ),
+        )
 
+    def _calculate_size(self, sample):
+        try:
+            return len(json_util.dumps(sample[1]))
+        except Exception:
+            return len(str(sample[1]))
+
+    def _upsert_samples_batch(self, samples_and_docs):
+        """Upserts the given samples and their backing docs to the database
+
+        Args:
+            samples_and_docs: a list of tuples of the form (sample, dict) where the dict
+                is the sample's backing document
+        """
+        ops = []
+        for sample, d in samples_and_docs:
             if sample.id:
                 ops.append(ReplaceOne({"_id": sample._id}, d, upsert=True))
             else:
@@ -3429,16 +3485,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             msg = bwe.details["writeErrors"][0]["errmsg"]
             raise ValueError(msg) from bwe
 
-        for sample, d in zip(samples, dicts):
+        for sample, d in samples_and_docs:
             doc = self._sample_dict_to_doc(d)
             sample._set_backing_doc(doc, dataset=self)
 
             if sample.media_type == fom.VIDEO:
                 sample.frames.save()
-
-        if batcher is not None and batcher.manual_backpressure:
-            # @todo can we infer content size from bulk_write() above?
-            batcher.apply_backpressure(dicts)
 
     def _make_dict(
         self,
@@ -7486,6 +7538,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         media_type=None,
         attach_frames=False,
         detach_frames=False,
+        limit_frames=None,
         frames_only=False,
         support=None,
         group_slice=None,
@@ -7538,7 +7591,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             _pipeline.extend(self._group_select_pipeline(group_slice))
 
         if attach_frames:
-            _pipeline.extend(self._attach_frames_pipeline(support=support))
+            _pipeline.extend(
+                self._attach_frames_pipeline(
+                    limit=limit_frames, support=support
+                )
+            )
 
         if pipeline is not None:
             _pipeline.extend(pipeline)
@@ -7560,7 +7617,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return _pipeline
 
-    def _attach_frames_pipeline(self, support=None):
+    def _attach_frames_pipeline(self, limit=None, support=None):
         """A pipeline that attaches the frame documents for each document."""
         if self._is_clips:
             first = {"$arrayElemAt": ["$support", 0]}
@@ -7591,15 +7648,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             let = {"sample_id": "$_id"}
             match_expr = {"$eq": ["$$sample_id", "$_sample_id"]}
 
+        pipeline = [
+            {"$match": {"$expr": match_expr}},
+            {"$sort": {"frame_number": 1}},
+        ]
+
+        if limit:
+            pipeline.append({"$limit": limit})
+
         return [
             {
                 "$lookup": {
                     "from": self._frame_collection_name,
                     "let": let,
-                    "pipeline": [
-                        {"$match": {"$expr": match_expr}},
-                        {"$sort": {"frame_number": 1}},
-                    ],
+                    "pipeline": pipeline,
                     "as": "frames",
                 }
             }
@@ -7789,58 +7851,55 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 embedded_doc_type=label_cls,
             )
 
-    def _expand_schema(self, samples, dynamic):
+    def _expand_schema(self, sample, dynamic):
         expanded = False
 
         if not dynamic:
             schema = self.get_field_schema(include_private=True)
 
-        for sample in samples:
-            for field_name in sample._get_field_names(include_private=True):
-                if field_name == "_id":
-                    continue
+        for field_name in sample._get_field_names(include_private=True):
+            if field_name == "_id":
+                continue
 
-                value = sample[field_name]
+            value = sample[field_name]
 
-                if value is None:
-                    continue
+            if value is None:
+                continue
 
-                if isinstance(value, fog.Group):
-                    self._expand_group_schema(
-                        field_name, value.name, sample.media_type
-                    )
+            if isinstance(value, fog.Group):
+                self._expand_group_schema(
+                    field_name, value.name, sample.media_type
+                )
 
-                if (
-                    self.media_type == fom.GROUP
-                    and sample.media_type
-                    not in set(self.group_media_types.values())
-                ):
-                    expanded |= self._sample_doc_cls.merge_field_schema(
-                        {
-                            "metadata": fo.EmbeddedDocumentField(
-                                fome.get_metadata_cls(sample.media_type)
-                            )
-                        },
-                        validate=False,
-                    )
+            if self.media_type == fom.GROUP and sample.media_type not in set(
+                self.group_media_types.values()
+            ):
+                expanded |= self._sample_doc_cls.merge_field_schema(
+                    {
+                        "metadata": fo.EmbeddedDocumentField(
+                            fome.get_metadata_cls(sample.media_type)
+                        )
+                    },
+                    validate=False,
+                )
 
-                if not dynamic and field_name in schema:
-                    continue
+            if not dynamic and field_name in schema:
+                continue
 
-                if isinstance(value, fog.Group):
-                    expanded |= self._add_group_field(
-                        field_name, default=value.name
-                    )
-                else:
-                    expanded |= self._sample_doc_cls.add_implied_field(
-                        field_name, value, dynamic=dynamic, validate=False
-                    )
+            if isinstance(value, fog.Group):
+                expanded |= self._add_group_field(
+                    field_name, default=value.name
+                )
+            else:
+                expanded |= self._sample_doc_cls.add_implied_field(
+                    field_name, value, dynamic=dynamic, validate=False
+                )
 
-                if not dynamic:
-                    schema = self.get_field_schema(include_private=True)
+            if not dynamic:
+                schema = self.get_field_schema(include_private=True)
 
-            if sample.media_type == fom.VIDEO:
-                expanded |= self._expand_frame_schema(sample.frames, dynamic)
+        if sample.media_type == fom.VIDEO:
+            expanded |= self._expand_frame_schema(sample.frames, dynamic)
 
         if expanded:
             self._reload()
@@ -7906,85 +7965,82 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             return self._frame_doc_cls.from_dict(d, extended=False)
 
-    def _validate_samples(self, samples):
+    def _validate_sample(self, sample):
         schema = self.get_field_schema(include_private=True)
 
-        for sample in samples:
-            if (
-                self.media_type != fom.GROUP
-                and sample.media_type != self.media_type
-            ):
-                raise fom.MediaTypeError(
-                    "Sample media type '%s' does not match dataset media type "
-                    "'%s'" % (sample.media_type, self.media_type)
-                )
+        if (
+            self.media_type != fom.GROUP
+            and sample.media_type != self.media_type
+        ):
+            raise fom.MediaTypeError(
+                "Sample media type '%s' does not match dataset media type "
+                "'%s'" % (sample.media_type, self.media_type)
+            )
 
-            non_existent_fields = None
-            found_group = False
+        non_existent_fields = None
+        found_group = False
 
-            for field_name, value in sample.iter_fields(
-                include_timestamps=True
-            ):
-                if isinstance(value, fog.Group):
-                    if self.media_type != fom.GROUP:
-                        raise ValueError(
-                            "Only datasets with media type '%s' may contain "
-                            "Group fields" % fom.GROUP
-                        )
-
-                    if field_name != self.group_field:
-                        raise ValueError(
-                            "Dataset has no group field '%s'" % field_name
-                        )
-
-                    slice_media_type = self._doc.group_media_types.get(
-                        value.name,
-                        None,
+        for field_name, value in sample.iter_fields(include_timestamps=True):
+            if isinstance(value, fog.Group):
+                if self.media_type != fom.GROUP:
+                    raise ValueError(
+                        "Only datasets with media type '%s' may contain "
+                        "Group fields" % fom.GROUP
                     )
-                    if slice_media_type is None:
-                        raise ValueError(
-                            "Dataset has no group slice '%s'" % value.name
-                        )
-                    elif sample.media_type != slice_media_type:
-                        raise ValueError(
-                            "Sample media type '%s' does not match group "
-                            "slice '%s' media type '%s'"
-                            % (
-                                sample.media_type,
-                                value.name,
-                                slice_media_type,
-                            )
-                        )
 
-                    found_group = True
+                if field_name != self.group_field:
+                    raise ValueError(
+                        "Dataset has no group field '%s'" % field_name
+                    )
 
-                field = schema.get(field_name, None)
-                if field is None:
-                    if value is not None:
-                        if non_existent_fields is None:
-                            non_existent_fields = {field_name}
-                        else:
-                            non_existent_fields.add(field_name)
-                else:
-                    if value is not None or not field.null:
-                        try:
-                            field.validate(value)
-                        except Exception as e:
-                            raise ValueError(
-                                "Invalid value for field '%s'. Reason: %s"
-                                % (field_name, str(e))
-                            )
-
-            if non_existent_fields:
-                raise ValueError(
-                    "Fields %s do not exist on dataset '%s'"
-                    % (non_existent_fields, self.name)
+                slice_media_type = self._doc.group_media_types.get(
+                    value.name,
+                    None,
                 )
+                if slice_media_type is None:
+                    raise ValueError(
+                        "Dataset has no group slice '%s'" % value.name
+                    )
+                elif sample.media_type != slice_media_type:
+                    raise ValueError(
+                        "Sample media type '%s' does not match group "
+                        "slice '%s' media type '%s'"
+                        % (
+                            sample.media_type,
+                            value.name,
+                            slice_media_type,
+                        )
+                    )
 
-            if self.media_type == fom.GROUP and not found_group:
-                raise ValueError(
-                    "Found sample missing group field '%s'" % self.group_field
-                )
+                found_group = True
+
+            field = schema.get(field_name, None)
+            if field is None:
+                if value is not None:
+                    if non_existent_fields is None:
+                        non_existent_fields = {field_name}
+                    else:
+                        non_existent_fields.add(field_name)
+            else:
+                if value is not None or not field.null:
+                    try:
+                        field.validate(value)
+                    except Exception as e:
+                        raise ValueError(
+                            "Invalid value for field '%s'. Reason: %s"
+                            % (field_name, str(e))
+                        )
+
+        if non_existent_fields:
+            raise ValueError(
+                "Fields %s do not exist on dataset '%s'"
+                % (non_existent_fields, self.name)
+            )
+
+        if self.media_type == fom.GROUP and not found_group:
+            raise ValueError(
+                "Found sample missing group field '%s'" % self.group_field
+            )
 
     def reload(self):
         """Reloads the dataset and any in-memory samples from the database."""
@@ -8476,7 +8532,6 @@ def _clone_collection(sample_collection, name, persistent):
     slug = _validate_dataset_name(name)
 
     contains_videos = sample_collection._contains_videos(any_slice=True)
-    contains_groups = sample_collection.media_type == fom.GROUP
 
     if isinstance(sample_collection, fov.DatasetView):
         dataset = sample_collection._dataset
@@ -8484,6 +8539,9 @@ def _clone_collection(sample_collection, name, persistent):
 
         if view.media_type == fom.MIXED:
             raise ValueError("Cloning mixed views is not allowed")
+
+        if view._is_dynamic_groups:
+            raise ValueError("Cloning dynamic grouped views is not allowed")
     else:
         dataset = sample_collection
         view = None
@@ -8517,10 +8575,9 @@ def _clone_collection(sample_collection, name, persistent):
     dataset_doc.sample_collection_name = sample_collection_name
     dataset_doc.frame_collection_name = frame_collection_name
     dataset_doc.media_type = sample_collection.media_type
-    if not contains_groups:
-        dataset_doc.group_field = None
-        dataset_doc.group_media_types = {}
-        dataset_doc.default_group_slice = None
+    dataset_doc.group_field = sample_collection.group_field
+    dataset_doc.group_media_types = sample_collection.group_media_types
+    dataset_doc.default_group_slice = sample_collection.default_group_slice
 
     for field in dataset_doc.sample_fields:
         field._set_created_at(now)

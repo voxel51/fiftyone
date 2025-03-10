@@ -563,6 +563,8 @@ class BaseRun(Configurable):
             cleanup (True): whether to execute an existing run's
                 :meth:`BaseRun.cleanup` method when overwriting it
         """
+        import fiftyone.core.view as fov
+
         key = run_info.key
 
         if key in cls.list_runs(samples):
@@ -577,16 +579,21 @@ class BaseRun(Configurable):
         dataset = samples._root_dataset
         run_docs = getattr(dataset._doc, cls._runs_field())
 
+        if isinstance(samples, fov.DatasetView):
+            view_stages = [
+                json_util.dumps(s)
+                for s in samples._serialize(include_uuids=False)
+            ]
+        else:
+            view_stages = None
+
         run_doc = RunDocument(
             dataset_id=dataset._doc.id,
             key=key,
             version=run_info.version,
             timestamp=run_info.timestamp,
             config=deepcopy(run_info.config.serialize()),
-            view_stages=[
-                json_util.dumps(s)
-                for s in samples.view()._serialize(include_uuids=False)
-            ],
+            view_stages=view_stages,
             results=None,
         )
         run_doc.save(upsert=True)
@@ -747,8 +754,7 @@ class BaseRun(Configurable):
 
     @classmethod
     def load_run_view(cls, samples, key, select_fields=False):
-        """Loads the :class:`fiftyone.core.view.DatasetView` on which the
-        specified run was performed.
+        """Loads the view on which the specified run was performed.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
@@ -757,13 +763,17 @@ class BaseRun(Configurable):
                 runs of the same type
 
         Returns:
-            a :class:`fiftyone.core.view.DatasetView`
+            a :class:`fiftyone.core.collections.SampleCollection`
         """
         import fiftyone.core.view as fov
 
         run_doc = cls._get_run_doc(samples, key)
-        stage_dicts = [json_util.loads(s) for s in run_doc.view_stages]
-        view = fov.DatasetView._build(samples._root_dataset, stage_dicts)
+
+        if run_doc.view_stages is not None:
+            stage_dicts = [json_util.loads(s) for s in run_doc.view_stages]
+            view = fov.DatasetView._build(samples._root_dataset, stage_dicts)
+        else:
+            view = samples._root_dataset
 
         if not select_fields:
             return view

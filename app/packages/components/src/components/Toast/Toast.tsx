@@ -1,6 +1,6 @@
+import { Box, Snackbar, SnackbarContent } from "@mui/material";
 import React from "react";
 import { atom, useRecoilState } from "recoil";
-import { Box, Snackbar, SnackbarContent } from "@mui/material";
 
 interface ToastProps {
   message: React.ReactNode;
@@ -63,10 +63,6 @@ const Toast: React.FC<ToastProps> = ({
 
   const [open, setOpen] = useRecoilState(toastStateAtom); // State management for toast visibility
 
-  const handleClose = (event, reason) => {
-    onHandleClose(event, reason);
-  };
-
   const action = (
     <div>
       <Box display="flex" justifyContent="flex-end">
@@ -85,7 +81,7 @@ const Toast: React.FC<ToastProps> = ({
         horizontal: layout?.horizontal || "center",
       }}
       open={open}
-      onClose={handleClose}
+      onClose={onHandleClose}
       autoHideDuration={duration}
       sx={snackbarStyle}
     >

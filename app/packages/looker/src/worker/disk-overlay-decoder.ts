@@ -142,7 +142,7 @@ export const decodeOverlayOnDisk = async (
     image: new ArrayBuffer(overlayWidth * overlayHeight * 4),
   } as IntermediateMask;
 
-  label.renderStatus = RENDER_STATUS_DECODED;
+  label._renderStatus = RENDER_STATUS_DECODED;
 
   // no need to transfer image's buffer
   //since we'll be constructing ImageBitmap and transfering that

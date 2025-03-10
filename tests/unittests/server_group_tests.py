@@ -12,6 +12,7 @@ from bson import ObjectId
 
 import fiftyone as fo
 from fiftyone import ViewExpression as F
+
 from fiftyone.server.aggregations import GroupElementFilter
 import fiftyone.server.view as fosv
 
@@ -121,3 +122,40 @@ class ServerGroupTests(unittest.TestCase):
             GroupElementFilter(id=group.id, slices=["one", "two"]),
         )
         self.assertEqual(len(without_slices), 2)
+
+    @drop_datasets
+    def test_slice_selection(self):
+        dataset: fo.Dataset = fo.Dataset()
+        dataset.media_type = "group"
+        dataset.add_group_slice("one", "image")
+        dataset.add_group_slice("two", "image")
+        dataset.add_group_slice("three", "image")
+
+        group = fo.Group()
+        one = fo.Sample(
+            filepath="image.png",
+            group=group.element("one"),
+        )
+        two = fo.Sample(
+            filepath="image.png",
+            group=group.element("two"),
+        )
+        three = fo.Sample(
+            filepath="image.png",
+            group=group.element("three"),
+        )
+        dataset.add_samples([one, two, three])
+
+        exclude_three, _ = fosv.handle_group_filter(
+            dataset,
+            dataset.exclude_group_slices("three"),
+            GroupElementFilter(id=group.id, slices=["one", "two"]),
+        )
+        self.assertEqual(len(exclude_three), 2)
+
+        select_one_two, _ = fosv.handle_group_filter(
+            dataset,
+            dataset.select_group_slices(("one", "two"), flat=False),
+            GroupElementFilter(id=group.id, slices=["one", "two"]),
+        )
+        self.assertEqual(len(select_one_two), 2)

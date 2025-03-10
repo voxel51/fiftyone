@@ -12,8 +12,10 @@ import typing as t
 
 
 from fiftyone.core.collections import SampleCollection
+from fiftyone.core.dataset import Dataset
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
+import fiftyone.core.stages as fos
 from fiftyone.core.utils import run_sync_task
 
 from fiftyone.server.filters import SampleFilter
@@ -96,33 +98,13 @@ async def paginate_samples(
     except:
         view = await run_sync_task(run, True)
 
-    # check frame field schema explicitly, media type is not reliable for groups
-    has_frames = view.get_frame_field_schema() is not None
-
-    # TODO: Remove this once we have a better way to handle large videos. This
-    # is a temporary fix to reduce the $lookup overhead for sample frames on
-    # full datasets.
-    full_lookup = has_frames and (filters or stages)
-    support = [1, 1] if not full_lookup else None
     if after is None:
         after = "-1"
 
     if int(after) > -1:
         view = view.skip(int(after) + 1)
 
-    pipeline = view._pipeline(
-        attach_frames=has_frames,
-        detach_frames=False,
-        manual_group_select=sample_filter
-        and sample_filter.group
-        and (sample_filter.group.id and not sample_filter.group.slices),
-        support=support,
-    )
-
-    # Only return the first frame of each video sample for the grid thumbnail
-    if has_frames:
-        pipeline.append({"$addFields": {"frames": {"$slice": ["$frames", 1]}}})
-
+    pipeline = await get_samples_pipeline(view, sample_filter)
     samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
         pipeline,
@@ -197,3 +179,76 @@ async def _create_sample_item(
         _id = f"{_id}-modal"
 
     return from_dict(cls, {"id": _id, "sample": sample, **metadata})
+
+
+async def get_samples_pipeline(
+    view: SampleCollection,
+    sample_filter: t.Optional[SampleFilter],
+):
+    frames, frames_pipeline = _handle_frames(view)
+    groups = _handle_groups(sample_filter)
+    pipeline = view._pipeline(
+        **groups,
+        **frames,
+    )
+
+    if frames_pipeline:
+        pipeline.extend(frames_pipeline)
+
+    return pipeline
+
+
+def _handle_frames(
+    view: SampleCollection,
+):
+    # check frame field schema explicitly, media type is not reliable for
+    # groups
+    attach_frames = view.get_frame_field_schema() is not None
+
+    # Only return the first frame of each video sample for the grid thumbnail
+    if attach_frames:
+        return dict(
+            attach_frames=attach_frames,
+            detach_frames=False,
+            limit_frames=None if _needs_full_lookup(view) else 1,
+        ), [{"$addFields": {"frames": {"$slice": ["$frames", 1]}}}]
+
+    return dict(), []
+
+
+def _needs_full_lookup(view: SampleCollection):
+    if isinstance(view, Dataset):
+        return False
+
+    for stage in view._stages:
+
+        if isinstance(
+            stage,
+            (
+                fos.ExcludeFields,
+                fos.ExcludeFrames,
+                fos.ExcludeLabels,
+                fos.SelectFields,
+                fos.SelectFrames,
+                fos.SelectLabels,
+            ),
+        ):
+            # these stages do not directly impact matched results
+            continue
+
+        if isinstance(stage, fos.SetField) and stage._allow_limit:
+            # manually override to support first frame label tag counts
+            continue
+
+        if stage._needs_frames(view):
+            return True
+
+    return False
+
+
+def _handle_groups(sample_filter: t.Optional[SampleFilter]):
+    return dict(
+        manual_group_select=sample_filter
+        and sample_filter.group
+        and (sample_filter.group.id and not sample_filter.group.slices)
+    )

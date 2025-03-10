@@ -1,4 +1,5 @@
-import { activeLabelFields, datasetName } from "@fiftyone/state";
+import { subscribe } from "@fiftyone/relay";
+import { activeLabelFields } from "@fiftyone/state";
 import { useCallback, useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import { syncAndGetNewLabels } from "./syncAndGetNewLabels";
@@ -8,6 +9,9 @@ export type CachedLabels = Set<string>;
 
 export const gridActivePathsLUT = new Map<LookerId, CachedLabels>();
 export const modalActivePathsLUT = new Map<LookerId, CachedLabels>();
+
+const clear = (modal: boolean) =>
+  modal ? modalActivePathsLUT.clear() : gridActivePathsLUT.clear();
 
 /**
  * Detects newly introduced active label fields for a given looker. Returns a
@@ -25,16 +29,8 @@ export const useDetectNewActiveLabelFields = ({
 }) => {
   const activeLabelFieldsValue = useRecoilValue(activeLabelFields({ modal }));
 
-  const datasetNameValue = useRecoilValue(datasetName);
-
-  // reset when dataset changes
-  useEffect(() => {
-    if (modal) {
-      modalActivePathsLUT.clear();
-    } else {
-      gridActivePathsLUT.clear();
-    }
-  }, [datasetNameValue]);
+  // reset for page transitions
+  useEffect(() => subscribe(() => clear(modal)), [modal]);
 
   const getNewFields = useCallback(
     (id: string) => {
@@ -44,7 +40,7 @@ export const useDetectNewActiveLabelFields = ({
         new Set(activeLabelFieldsValue)
       );
     },
-    [activeLabelFieldsValue]
+    [activeLabelFieldsValue, modal]
   );
 
   const getExistingFields = useCallback(
