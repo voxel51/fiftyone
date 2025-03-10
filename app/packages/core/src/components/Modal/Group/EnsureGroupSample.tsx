@@ -16,6 +16,7 @@ import {
   useRecoilValue,
   useRecoilValueLoadable,
 } from "recoil";
+import { is3d } from "@fiftyone/utilities";
 
 export default ({ children }: React.PropsWithChildren<{}>) => {
   const modal = useRecoilValueLoadable(modalSample);
@@ -26,7 +27,7 @@ export default ({ children }: React.PropsWithChildren<{}>) => {
         let slice = await snapshot.getPromise(groupSlice);
 
         const mediaTypes = await snapshot.getPromise(groupMediaTypesMap);
-        if (!slice || ["point_cloud", "three_d"].includes(mediaTypes[slice])) {
+        if (!slice || is3d(mediaTypes[slice])) {
           const samples = await snapshot.getPromise(non3dSamples);
           if (!samples.length) {
             slice = null;

@@ -7,6 +7,7 @@ import { Sample3d } from "../../../Sample3d";
 import { GroupSuspense } from "../../GroupSuspense";
 import { DynamicGroupCarousel } from ".././carousel/DynamicGroupCarousel";
 import { GroupElementsLinkBar } from "../pagination";
+import { is3d } from "@fiftyone/utilities";
 
 const RootContainer = styled.div`
   height: 100%;
@@ -46,11 +47,7 @@ export const NonNestedDynamicGroup = () => {
           )}
           {isBigLookerVisible && (
             <GroupSuspense>
-              {parent !== "point_cloud" && parent !== "three_d" ? (
-                <Sample2D />
-              ) : (
-                <Sample3d />
-              )}
+              {!is3d(parent) ? <Sample2D /> : <Sample3d />}
             </GroupSuspense>
           )}
         </>
