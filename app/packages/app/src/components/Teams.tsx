@@ -218,7 +218,11 @@ export default function Teams({
 
   useEffect(() => {
     const hasSeenTooltip = window.localStorage.getItem(ENTERPRISE_TOOLTIP_LS);
-    if (!hasSeenTooltip) {
+
+    // don't show intro popoverif we're in playwright
+    const isPlaywright = window["IS_PLAYWRIGHT"];
+    
+    if (!hasSeenTooltip && !isPlaywright) {
       setShowPopover(true);
     }
   }, []);
