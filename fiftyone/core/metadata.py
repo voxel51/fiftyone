@@ -459,8 +459,8 @@ def get_image_info(f):
     img = Image.open(f)
 
     # Flip the dimensions if image metadata requires us to. PIL.Image doesn't
-    #   handle by default.
-    if _image_has_flipped_dimensions(img):
+    #   handle by default. Image flipping only efficiently supported on JPEG.
+    if img.format == "JPEG" and _image_has_flipped_dimensions(img):
         width, height = img.height, img.width
     else:
         width, height = img.width, img.height
@@ -555,13 +555,12 @@ def _do_compute_metadata(args):
 def _compute_sample_metadata(
     filepath, media_type, skip_failures=False, cache=None
 ):
-    if not skip_failures:
-        return _get_metadata(filepath, media_type, cache=cache)
-
     try:
         return _get_metadata(filepath, media_type, cache=cache)
     except:
-        return None
+        if skip_failures:
+            return None
+        raise
 
 
 def _get_metadata(filepath, media_type, cache=None):
