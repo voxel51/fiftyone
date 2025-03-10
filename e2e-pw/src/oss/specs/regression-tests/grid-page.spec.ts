@@ -15,7 +15,13 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
 const datasetName = getUniqueDatasetNameWithPrefix("grid-page");
 const groupDatasetName = getUniqueDatasetNameWithPrefix("grid-page-group");
 
-test.beforeAll(async ({ fiftyoneLoader }) => {
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
+test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
+
   await fiftyoneLoader.executePythonCode(`
     import fiftyone as fo
 
@@ -38,43 +44,45 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
   `);
 });
 
-test("grid has correct second page (all 21 samples)", async ({
-  fiftyoneLoader,
-  grid,
-  page,
-}) => {
-  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  await grid.assert.isLookerCountEqualTo(21);
-});
-
-test("modal group carousel has correct second page (all 21 samples)", async ({
-  fiftyoneLoader,
-  grid,
-  modal,
-  page,
-}) => {
-  await fiftyoneLoader.waitUntilGridVisible(page, groupDatasetName);
-  await grid.openFirstSample();
-  await modal.sidebar.toggleSidebarGroup("GROUP");
-  await modal.waitForCarouselToLoad();
-  await modal.scrollCarousel();
-  await modal.navigateSlice("group.name", "20", true);
-  await modal.sidebar.assert.verifySidebarEntryText("group.name", "20");
-});
-
-test("modal dynamic group carousel has correct second page (all 21 samples)", async ({
-  fiftyoneLoader,
-  grid,
-  modal,
-  page,
-}) => {
-  await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
-    searchParams: new URLSearchParams({ view: "group" }),
+test.describe.serial("grid page", () => {
+  test("grid has correct second page (all 21 samples)", async ({
+    fiftyoneLoader,
+    grid,
+    page,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    await grid.assert.isLookerCountEqualTo(21);
   });
-  await grid.openFirstSample();
-  await modal.group.setDynamicGroupsNavigationMode("carousel");
-  await modal.waitForCarouselToLoad();
-  await modal.scrollCarousel();
-  await modal.navigateSlice("i", "20", true);
-  await modal.sidebar.assert.verifySidebarEntryText("i", "20");
+
+  test("modal group carousel has correct second page (all 21 samples)", async ({
+    fiftyoneLoader,
+    grid,
+    modal,
+    page,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, groupDatasetName);
+    await grid.openFirstSample();
+    await modal.sidebar.toggleSidebarGroup("GROUP");
+    await modal.waitForCarouselToLoad();
+    await modal.scrollCarousel();
+    await modal.navigateSlice("group.name", "20", true);
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "20");
+  });
+
+  test("modal dynamic group carousel has correct second page (all 21 samples)", async ({
+    fiftyoneLoader,
+    grid,
+    modal,
+    page,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ view: "group" }),
+    });
+    await grid.openFirstSample();
+    await modal.group.setDynamicGroupsNavigationMode("carousel");
+    await modal.waitForCarouselToLoad();
+    await modal.scrollCarousel();
+    await modal.navigateSlice("i", "20", true);
+    await modal.sidebar.assert.verifySidebarEntryText("i", "20");
+  });
 });

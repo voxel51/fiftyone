@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("recoil");
 vi.mock("recoil-relay");
 
-import type { TestSelectorFamily } from "../../../../__mocks__/recoil";
+import type {
+  TestSelector,
+  TestSelectorFamily,
+} from "../../../../__mocks__/recoil";
 import { setMockAtoms } from "../../../../__mocks__/recoil";
 import * as queryPerformance from "./queryPerformance";
 

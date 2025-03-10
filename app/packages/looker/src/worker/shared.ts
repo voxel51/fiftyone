@@ -1,5 +1,17 @@
 import { HEATMAP } from "@fiftyone/utilities";
 
+export const RENDER_STATUS_PENDING = "pending";
+export const RENDER_STATUS_PAINTING = "painting";
+export const RENDER_STATUS_PAINTED = "painted";
+export const RENDER_STATUS_DECODED = "decoded";
+
+export type DenseLabelRenderStatus =
+  | null
+  | typeof RENDER_STATUS_PENDING
+  | typeof RENDER_STATUS_PAINTING
+  | typeof RENDER_STATUS_PAINTED
+  | typeof RENDER_STATUS_DECODED;
+
 /**
  * Map the _id field to id
  */

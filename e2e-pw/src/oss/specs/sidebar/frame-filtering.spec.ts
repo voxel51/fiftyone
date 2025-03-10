@@ -19,26 +19,32 @@ const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
   },
 });
 
-test.describe("frame filtering", () => {
-  test.beforeAll(async ({ fiftyoneLoader }) => {
-    await fiftyoneLoader.executePythonCode(
-      `
-      import fiftyone.zoo as foz
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
 
-      datasets = [
-        ("${datasetNameFilteringEnabled}", False),
-        ("${datasetNameFilteringDisabled}", True),
-      ]
-      
-      for name, disable in datasets:
-        dataset = foz.load_zoo_dataset("quickstart-video", dataset_name=name, max_samples=1)
-        dataset.app_config.disable_frame_filtering = disable
-        dataset.persistent = True
-        dataset.save()
-      `
-    );
-  });
+test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
 
+  await fiftyoneLoader.executePythonCode(
+    `
+    import fiftyone.zoo as foz
+
+    datasets = [
+      ("${datasetNameFilteringEnabled}", False),
+      ("${datasetNameFilteringDisabled}", True),
+    ]
+    
+    for name, disable in datasets:
+      dataset = foz.load_zoo_dataset("quickstart-video", dataset_name=name, max_samples=1)
+      dataset.app_config.disable_frame_filtering = disable
+      dataset.persistent = True
+      dataset.save()
+    `
+  );
+});
+
+test.describe.serial("frame filtering", () => {
   test("assert enabled frame filtering", async ({
     sidebar,
     grid,

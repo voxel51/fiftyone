@@ -33,3 +33,4 @@ coverage.xml
 pyvenv.cfg
 
 __models__
+.env

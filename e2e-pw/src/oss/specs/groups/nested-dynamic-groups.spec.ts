@@ -45,7 +45,12 @@ const imagePaths = [1, 2, 3, 4]
   .flat()
   .map((imgName) => `/tmp/${imgName}o${orderGen.next().value}.png`);
 
-test.beforeAll(async ({ fiftyoneLoader }) => {
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
+test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
   // create a dataset with two groups, each with 2 image samples
   const imageCreatePromises = imagePaths.map(
     async (imgPath) =>
@@ -151,26 +156,20 @@ test(`dynamic groups of groups works`, async ({ grid, modal, sidebar }) => {
     scene_key: "1",
     order_key: "1",
   });
-  await modal.imavid.setSpeedTo("low");
+  await modal.imavid.toggleSettings();
+  await modal.imavid.setLooping(false);
+  await modal.imavid.toggleSettings();
+
   await modal.imavid.playUntilFrames("2 / 2", true);
 
-  await modal.sidebar.assert.verifySidebarEntryTexts({
+  await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
     scene_key: "1",
     order_key: "2",
   });
   await modal.navigateNextSample();
 
-  await modal.sidebar.assert.verifySidebarEntryTexts({
+  await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
     scene_key: "2",
     order_key: "1",
-  });
-
-  await modal.imavid.setSpeedTo("low");
-  await modal.imavid.playUntilFrames("2 / 2", true);
-
-  await modal.sidebar.assert.verifySidebarEntryTexts({
-    scene_key: "2",
-    // todo: investigate why this is failing intermittently :/
-    // order_key: "2",
   });
 });

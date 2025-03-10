@@ -62,7 +62,12 @@ const writeFrames = async () => {
   );
 };
 
-test.beforeAll(async ({ fiftyoneLoader }) => {
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
+test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
   await writeFrames();
 
   await fiftyoneLoader.executePythonCode(`
@@ -121,13 +126,7 @@ test("check modal playback and tagging behavior", async ({ modal, grid }) => {
 
   await modal.imavid.assert.isTimeTextEqualTo("1 / 150");
 
-  // change speed to the low for easy testing
-  await modal.imavid.setSpeedTo("low");
-
   await modal.imavid.playUntilFrames("13 / 150");
-
-  // todo: some problems with syncing of first few frames when done very fast
-  // which is why we're checking 13th frame instead of 3rd for now
 
   // verify it's the "13th" (todo: 3rd) frame that's rendered
   // TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL
@@ -135,8 +134,10 @@ test("check modal playback and tagging behavior", async ({ modal, grid }) => {
   //   mask: [modal.imavid.controls],
   //   animations: "allow",
   // });
-  await modal.sidebar.assert.verifySidebarEntryText("frame_number", "13");
-  await modal.sidebar.assert.verifySidebarEntryText("video_id", "1");
+  await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
+    frame_number: "13",
+    video_id: "1",
+  });
 
   // tag current frame and ensure sidebar updates
   const currentSampleTagCount = await modal.sidebar.getSampleTagCount();
@@ -147,7 +148,9 @@ test("check modal playback and tagging behavior", async ({ modal, grid }) => {
 
   // skip a couple of frames and see that sample tag count is zero
   await modal.imavid.playUntilFrames("20 / 150");
-  await modal.sidebar.assert.verifySidebarEntryText("frame_number", "20");
-  await modal.sidebar.assert.verifySidebarEntryText("video_id", "1");
+  await modal.sidebar.assert.waitUntilSidebarEntryTextEqualsMultiple({
+    frame_number: "20",
+    video_id: "1",
+  });
   await modal.sidebar.assert.verifySampleTagCount(0);
 });

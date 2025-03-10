@@ -16,4 +16,14 @@ export default [
     },
     rules: hooksPlugin.configs.recommended.rules,
   },
+  {
+    files: ["**/*.ts", "**/*.tsx"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+      "react/display-name": "off",
+    },
+  },
 ];

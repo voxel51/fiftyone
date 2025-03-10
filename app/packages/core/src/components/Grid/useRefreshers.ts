@@ -1,12 +1,10 @@
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { LRUCache } from "lru-cache";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
+import { useMemoOne } from "use-memo-one";
 import { gridAt, gridOffset, gridPage } from "./recoil";
-
-const MAX_LRU_CACHE_ITEMS = 510;
 
 export default function useRefreshers() {
   const cropToContent = useRecoilValue(fos.cropToContent(false));
@@ -27,10 +25,10 @@ export default function useRefreshers() {
   const shouldRenderImaVidLooker = useRecoilValue(
     fos.shouldRenderImaVidLooker(false)
   );
-  const view = fos.filterView(useRecoilValue(fos.view));
+  const view = fos.filterView(useRecoilValue(fos.view) ?? []);
 
   // only reload, attempt to return to the last grid location
-  const layoutReset = useMemo(() => {
+  const layoutReset = useMemoOne(() => {
     cropToContent;
     fieldVisibilityStage;
     mediaField;
@@ -39,7 +37,7 @@ export default function useRefreshers() {
   }, [cropToContent, fieldVisibilityStage, mediaField, refresher]);
 
   // the values reset the page, i.e. return to the top
-  const pageReset = useMemo(() => {
+  const pageReset = useMemoOne(() => {
     datasetName;
     extendedStagesUnsorted;
     filters;
@@ -58,41 +56,28 @@ export default function useRefreshers() {
     view,
   ]);
 
-  const reset = useMemo(() => {
+  const reset = useMemoOne(() => {
     layoutReset;
     pageReset;
     return uuid();
   }, [layoutReset, pageReset]);
 
-  useEffect(
-    () =>
-      subscribe(({ event }, { reset }) => {
-        if (event === "fieldVisibility") return;
+  useEffect(() => {
+    const unsubscribe = subscribe(({ event }, { reset }) => {
+      if (event === "fieldVisibility") return;
 
-        // if not a modal page change, reset the grid location
-        reset(gridAt);
-        reset(gridPage);
-        reset(gridOffset);
-      }),
-    []
-  );
-
-  const lookerStore = useMemo(() => {
-    /** LOOKER STORE REFRESHER */
-    reset;
-    /** LOOKER STORE REFRESHER */
-
-    return new LRUCache<string, fos.Lookers>({
-      dispose: (looker) => {
-        looker.destroy();
-      },
-      max: MAX_LRU_CACHE_ITEMS,
-      noDisposeOnSet: true,
+      // if not a modal page change, reset the grid location
+      reset(gridAt);
+      reset(gridPage);
+      reset(gridOffset);
     });
-  }, [reset]);
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   return {
-    lookerStore,
     pageReset,
     reset,
   };

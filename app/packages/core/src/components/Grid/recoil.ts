@@ -1,10 +1,28 @@
-import { atom, selector } from "recoil";
+import { DefaultValue, atom, atomFamily, selector } from "recoil";
 
+import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 
 export const defaultGridZoom = selector<number>({
   key: "defaultGridZoom",
   get: ({ get }) => get(fos.config)?.gridZoom,
+});
+
+const gridAutosizingStore = atomFamily<boolean, string>({
+  key: "gridAutosizingStore",
+  default: false,
+  effects: (datasetId) => [
+    fos.getBrowserStorageEffectForKey(`gridAutosizing-${datasetId}`, {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const gridAutosizing = selector({
+  key: "gridAutosizing",
+  get: ({ get }) => get(gridAutosizingStore(get(fos.datasetId) ?? "")),
+  set: ({ get, set }, value) =>
+    set(gridAutosizingStore(get(fos.datasetId) ?? ""), value),
 });
 
 export const gridPage = atom({
@@ -31,17 +49,39 @@ export const gridSpacing = atom({
   ],
 });
 
-export const gridZoom = atom<number>({
+export const gridZoom = selector<number>({
   key: "gridZoom",
-  default: defaultGridZoom,
-  effects: [
-    fos.getBrowserStorageEffectForKey("gridZoom", { valueClass: "number" }),
-  ],
+  get: ({ get }) => {
+    const recommended = get(recommendedGridZoom);
+    const setting = get(storedGridZoom) ?? get(defaultGridZoom);
+    if (
+      get(gridAutosizing) &&
+      typeof recommended === "number" &&
+      recommended > setting
+    ) {
+      return recommended;
+    }
+
+    return setting;
+  },
+  set: ({ get, reset, set }, value) => {
+    const result = value instanceof DefaultValue ? get(defaultGridZoom) : value;
+
+    const recommended = get(recommendedGridZoom);
+    if (typeof recommended === "number" && result < recommended) {
+      set(fos.snackbarErrors, ["Grid autosizing disabled"]);
+      set(gridAutosizing, false);
+      reset(recommendedGridZoom);
+    }
+
+    set(storedGridZoom, result);
+  },
 });
 
 export const gridZoomRange = atom<[number, number]>({
   key: "gridZoomRange",
   default: [-5, 10],
+  effects: [() => subscribe((_, { reset }) => reset(gridZoomRange))],
 });
 
 export const gridCropCallback = selector({
@@ -61,6 +101,21 @@ export const gridCrop = selector({
   get: ({ get }) => {
     return get(fos.isPatchesView) && get(fos.cropToContent(false));
   },
+});
+
+// ensure navigator is defined
+const deviceMemory =
+  // @ts-ignore
+  typeof navigator !== "undefined" ? navigator?.deviceMemory || 8 : 8;
+
+export const maxGridItemsSizeBytes = atom({
+  key: "maxGridItemsSizeBytes",
+  default: (deviceMemory / 16) * 1e9,
+  effects: [
+    fos.getBrowserStorageEffectForKey("maxGridItemsSizeBytes", {
+      valueClass: "number",
+    }),
+  ],
 });
 
 export const pageParameters = selector({
@@ -96,4 +151,25 @@ export const pageParameters = selector({
   },
 });
 
+export const recommendedGridZoom = atom<number | null>({
+  key: "recommendedGridZoom",
+  default: null,
+  effects: [
+    subscribe(
+      ({ event }, { reset }, prev) =>
+        event !== "modal" &&
+        prev?.event !== "modal" &&
+        reset(recommendedGridZoom)
+    ),
+  ],
+});
+
 export const showGridPixels = atom({ key: "showGridPixels", default: false });
+
+export const storedGridZoom = atom<number | null>({
+  key: "storedGridZoom",
+  default: null,
+  effects: [
+    fos.getBrowserStorageEffectForKey("gridZoom", { valueClass: "number" }),
+  ],
+});

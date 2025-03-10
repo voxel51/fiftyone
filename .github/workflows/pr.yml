@@ -29,6 +29,7 @@ jobs:
           filters: |
             app:
               - 'app/**'
+              - '.github/workflows/build.yml'
             e2e-pw:
               - 'e2e-pw/**'
               - '.github/workflows/e2e.yml'
@@ -39,6 +40,8 @@ jobs:
               - 'tests/**'
               - 'requirements.txt'
               - 'setup.py'
+              - '.github/workflows/build.yml'
+              - '.github/workflows/test.yml'
       - uses: dorny/paths-filter@v3
         id: teams-app-filter
         with:
