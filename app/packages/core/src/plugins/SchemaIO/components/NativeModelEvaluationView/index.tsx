@@ -105,6 +105,8 @@ export default function NativeModelEvaluationView(props) {
         (results) => {
           if (results?.error === null) {
             // update the current page display
+            // if after deletion, there is no evaluation left,
+            // go to the create evaluation page
             const updatedEvaluations = evaluations.filter(
               (evaluation) => evaluation.id !== eval_id
             );
