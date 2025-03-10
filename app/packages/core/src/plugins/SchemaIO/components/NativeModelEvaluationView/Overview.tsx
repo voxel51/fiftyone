@@ -10,7 +10,7 @@ import {
   EvaluationCardProps,
   OverviewProps,
 } from "./Types";
-import ActionMenu from "./actionMenu";
+import ActionMenu from "./ActionMenu";
 
 export default function Overview(props: OverviewProps) {
   const {

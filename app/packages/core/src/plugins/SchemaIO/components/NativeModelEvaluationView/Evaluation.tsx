@@ -44,7 +44,7 @@ import {
 import get from "lodash/get";
 import React, { useEffect, useMemo, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
-import ActionMenu from "./actionMenu";
+import ActionMenu from "./ActionMenu";
 import Error from "./Error";
 import EvaluationIcon from "./EvaluationIcon";
 import EvaluationNotes from "./EvaluationNotes";
