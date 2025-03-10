@@ -10,7 +10,7 @@ export const defaultGridZoom = selector<number>({
 
 const gridAutosizingStore = atomFamily<boolean, string>({
   key: "gridAutosizingStore",
-  default: !window.IS_PLAYWRIGHT,
+  default: false,
   effects: (datasetId) => [
     fos.getBrowserStorageEffectForKey(`gridAutosizing-${datasetId}`, {
       valueClass: "boolean",
