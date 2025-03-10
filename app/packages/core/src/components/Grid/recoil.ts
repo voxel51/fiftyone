@@ -1,7 +1,11 @@
-import { DefaultValue, atom, atomFamily, selector } from "recoil";
-
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
+import { DefaultValue, atom, atomFamily, selector } from "recoil";
+import { MANAGING_GRID_MEMORY } from "../../utils/links";
+
+const convertDefault = (defaultRange) => {
+  return -((defaultRange / 10) * 14 + 1);
+};
 
 export const defaultGridZoom = selector<number>({
   key: "defaultGridZoom",
@@ -53,7 +57,7 @@ export const gridZoom = selector<number>({
   key: "gridZoom",
   get: ({ get }) => {
     const recommended = get(recommendedGridZoom);
-    const setting = get(storedGridZoom) ?? get(defaultGridZoom);
+    const setting = get(storedGridZoom) ?? convertDefault(get(defaultGridZoom));
     if (
       get(gridAutosizing) &&
       typeof recommended === "number" &&
@@ -65,11 +69,17 @@ export const gridZoom = selector<number>({
     return setting;
   },
   set: ({ get, reset, set }, value) => {
-    const result = value instanceof DefaultValue ? get(defaultGridZoom) : value;
+    const result =
+      value instanceof DefaultValue
+        ? convertDefault(get(defaultGridZoom))
+        : value;
 
     const recommended = get(recommendedGridZoom);
     if (typeof recommended === "number" && result < recommended) {
-      set(fos.snackbarErrors, ["Grid autosizing disabled"]);
+      set(fos.snackbarLink, {
+        link: MANAGING_GRID_MEMORY,
+        message: "Grid autosizing disabled",
+      });
       set(gridAutosizing, false);
       reset(recommendedGridZoom);
     }
@@ -104,7 +114,7 @@ const deviceMemory =
 
 export const maxGridItemsSizeBytes = atom({
   key: "maxGridItemsSizeBytes",
-  default: (deviceMemory / 16) * 1e9,
+  default: (deviceMemory / 8) * 1e9,
   effects: [
     fos.getBrowserStorageEffectForKey("maxGridItemsSizeBytes", {
       valueClass: "number",
@@ -164,6 +174,8 @@ export const storedGridZoom = atom<number | null>({
   key: "storedGridZoom",
   default: null,
   effects: [
-    fos.getBrowserStorageEffectForKey("gridZoom", { valueClass: "number" }),
+    fos.getBrowserStorageEffectForKey("storedGridZoom", {
+      valueClass: "number",
+    }),
   ],
 });

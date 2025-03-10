@@ -6,6 +6,7 @@ import type { Rejected } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
 import { useLayoutEffect } from "react";
 import { useSetRecoilState } from "recoil";
+import { MANAGING_GRID_MEMORY } from "../../utils/links";
 import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
 import { recommendedGridZoom } from "./recoil";
 import type { LookerCache } from "./types";
@@ -26,7 +27,7 @@ export default ({
   set: (location: ScrollLocation) => void;
   spotlight?: Spotlight<number, fos.Sample>;
 }) => {
-  const handleError = useSetRecoilState(fos.snackbarErrors);
+  const handleAutosize = useSetRecoilState(fos.snackbarLink);
   const setRecommendedZoom = useSetRecoilState(recommendedGridZoom);
   useLayoutEffect(() => {
     if (resizing || !spotlight) {
@@ -55,7 +56,10 @@ export default ({
       clearTimeout(timeout);
       setRecommendedZoom(-event.recommendedRowAspectRatioThreshold);
       spotlight.loaded &&
-        handleError(["That's a lot of data! We've zoomed in a bit"]);
+        handleAutosize({
+          link: MANAGING_GRID_MEMORY,
+          message: "That's a lot of data! We've zoomed in a bit",
+        });
     };
 
     element && spotlight.attach(element);
@@ -75,7 +79,7 @@ export default ({
   }, [
     cache,
     id,
-    handleError,
+    handleAutosize,
     pixels,
     resizing,
     set,

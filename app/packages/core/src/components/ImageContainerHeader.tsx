@@ -4,12 +4,7 @@ import { isGroup as isGroupAtom } from "@fiftyone/state";
 import { Apps, ImageAspectRatio } from "@mui/icons-material";
 import Color from "color";
 import React, { Suspense, useMemo } from "react";
-import {
-  constSelector,
-  useRecoilCallback,
-  useRecoilValue,
-  useResetRecoilState,
-} from "recoil";
+import { constSelector, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import { GridActionsRow } from "./Actions";
 import { Slider } from "./Common/RangeSlider";
@@ -89,13 +84,7 @@ const Spacing = () => {
 };
 
 const Zoom = () => {
-  const resetZoom = useRecoilCallback(
-    ({ set }) =>
-      async () => {
-        set(gridZoom, Math.max(ZOOM_RANGE[0], 5));
-      },
-    []
-  );
+  const resetZoom = useResetRecoilState(gridZoom);
 
   const theme = useTheme();
   return (
