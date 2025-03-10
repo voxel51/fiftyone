@@ -1,2 +1,3 @@
 export { default } from "./Grid";
-export { gridZoom, gridZoomRange } from "./recoil";
+export { gridZoom } from "./recoil";
+export { ZOOM_RANGE } from "./useZoomSetting";

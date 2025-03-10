@@ -1,12 +1,12 @@
 import { useCallback } from "react";
-import useThreshold from "./useThreshold";
+import useZoomSetting from "./useZoomSetting";
 
 const MAX = 14;
 const MIN = 10;
 const SCALE_FACTOR = 0.09;
 
 export default (id: string) => {
-  const threshold = useThreshold();
+  const zoom = useZoomSetting();
 
   return useCallback(() => {
     const width = document.getElementById(id)?.getBoundingClientRect().width;
@@ -14,9 +14,6 @@ export default (id: string) => {
       throw new Error("unexpected");
     }
 
-    return Math.max(
-      Math.min((width / threshold(width)) * SCALE_FACTOR, MAX),
-      MIN
-    );
-  }, [id, threshold]);
+    return Math.max(Math.min((width / zoom(width)) * SCALE_FACTOR, MAX), MIN);
+  }, [id, zoom]);
 };
