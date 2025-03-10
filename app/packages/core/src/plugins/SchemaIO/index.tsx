@@ -20,13 +20,12 @@ export function SchemaIOComponent(props) {
 
   const onIOChange = useCallback(
     (path, value, schema, ancestors) => {
-      const computedValue = coerceValue(value, schema);
       const currentState = stateRef.current;
       const updatedState = cloneDeep(currentState);
-      set(updatedState, path, cloneDeep(computedValue));
+      set(updatedState, path, cloneDeep(value));
       stateRef.current = updatedState;
       if (onPathChange) {
-        onPathChange(path, computedValue, schema, updatedState);
+        onPathChange(path, value, schema, updatedState);
       }
       if (onChange) {
         onChange(updatedState);
@@ -63,18 +62,6 @@ export function SchemaIOComponent(props) {
     </SchemaIOContext.Provider>
   );
 }
-
-function coerceValue(value, schema) {
-  // coerce the value to None if it is an empty string or empty array
-  if (schema.type === "array" && Array.isArray(value) && value.length === 0) {
-    return null;
-  }
-  if (schema.type === "string" && value === "") {
-    return null;
-  }
-  return value;
-}
-
 registerComponent({
   name: "SchemaIOComponent",
   label: "SchemaIOComponent",
