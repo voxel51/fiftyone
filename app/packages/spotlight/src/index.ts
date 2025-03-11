@@ -127,8 +127,10 @@ export default class Spotlight<K, V> extends EventTarget {
       this.attached && this.#loaded && this.#render({ ...this.#race() });
     });
     observer.observe(this.#element);
-    this.#rect = this.#element.getBoundingClientRect();
-    this.#fill();
+    requestAnimationFrame(() => {
+      this.#rect = this.#element.getBoundingClientRect();
+      this.#fill();
+    });
   }
 
   destroy(): void {
