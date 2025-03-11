@@ -11,6 +11,7 @@ import { PreloadedQuery, useQueryLoader } from "react-relay";
 import { OperationType } from "relay-runtime";
 import { getLogStatus, LOG_STATUS } from "../utils/getLogStatus";
 import LogPreview from "./logs/LogPreview";
+import { useTheme } from "@mui/material";
 
 type DefaultLog = {
   title?: string; // defaulted to logs not available
@@ -23,6 +24,7 @@ type DefaultLog = {
 };
 
 export const DefaultLog = (props: DefaultLog) => {
+  const theme = useTheme();
   const [_, sendNotification] = useNotification();
   const handleButtonClick = (url: string) => {
     window.open(url, "_blank", "noopener,noreferrer");
@@ -75,7 +77,12 @@ export const DefaultLog = (props: DefaultLog) => {
             variant={
               props?.button?.icon === "download" ? "contained " : "outlined"
             }
-            color={props?.button?.icon === "download" ? "primary" : "secondary"}
+            sx={{
+              backgroundColor:
+                props?.button?.icon === "download"
+                  ? theme.palette.voxel["500"]
+                  : "",
+            }}
             endIcon={
               props.button.icon === "download" ? (
                 <CloudDownloadIcon />
