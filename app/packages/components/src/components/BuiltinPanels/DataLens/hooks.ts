@@ -1,6 +1,6 @@
 import { OperatorConfig, useOperatorExecutor } from "@fiftyone/operators";
 import { getLocalOrRemoteOperator } from "@fiftyone/operators/src/operators";
-import Spotlight, { ID } from "@fiftyone/spotlight";
+import Spotlight, { ID, ItemData } from "@fiftyone/spotlight";
 import type { Sample } from "@fiftyone/state";
 import {
   datasetName,
@@ -23,6 +23,7 @@ import {
 } from "./models";
 import { checkedFieldsAtom } from "./state";
 import { findFields, formatSchema } from "./utils";
+import { Response } from "@fiftyone/spotlight/src/types";
 
 /**
  * Hook which provides the active dataset.
@@ -185,33 +186,6 @@ type SampleUrls = {
 };
 
 /**
- * Sample metadata expected by the Spotlight.
- */
-type SampleMetadata = {
-  key: number;
-  aspectRatio: number;
-  id: {
-    description: string;
-  };
-  data: {
-    id: string;
-    sample: LensSample & {
-      _id: string;
-    };
-    urls: SampleUrls;
-  };
-};
-
-/**
- * Page of samples used by the Spotlight.
- */
-type SamplePage = {
-  items: SampleMetadata[];
-  next: number | null;
-  previous: number | null;
-};
-
-/**
  * Sample metadata expected by the Looker.
  */
 type SampleStoreEntry = {
@@ -296,6 +270,19 @@ export const useSpotlight = ({
     []
   );
 
+  const getAspectRatio = useCallback((s: LensSample): number => {
+    if (s.metadata?.width > 0 && s.metadata?.height > 0) {
+      return s.metadata.width / s.metadata.height;
+    }
+
+    return 1;
+  }, []);
+
+  const zoomLevel = useMemo(
+    () => Math.max(minZoomLevel, maxZoomLevel - zoom),
+    [minZoomLevel, maxZoomLevel, zoom]
+  );
+
   const spotlight = useMemo(() => {
     if (resizing) {
       return;
@@ -304,44 +291,36 @@ export const useSpotlight = ({
     return new Spotlight<number, Sample>({
       key: 0, // initial page index
       scrollbar: true,
-      rowAspectRatioThreshold: (width: number) => {
-        return Math.max(minZoomLevel, maxZoomLevel - zoom);
-      },
-      get: (page: number): Promise<SamplePage> => {
+      rowAspectRatioThreshold: () => zoomLevel,
+      get: (page: number): Promise<Response<number, Sample>> => {
         const pageSize = 20;
         const samplePage = samples.slice(
           page * pageSize,
           (page + 1) * pageSize
         );
 
-        const getAspectRatio = (s: LensSample): number => {
-          if (s.metadata?.width > 0 && s.metadata?.height > 0) {
-            return s.metadata.width / s.metadata.height;
-          }
+        const mappedSamples: ItemData<number, Sample>[] = samplePage.map(
+          (s) => {
+            const id = uuid();
+            const urls = buildUrls(s);
 
-          return 1;
-        };
-
-        const mappedSamples: SampleMetadata[] = samplePage.map((s) => {
-          const id = uuid();
-          const urls = buildUrls(s);
-
-          return {
-            key: page,
-            aspectRatio: getAspectRatio(s),
-            id: {
-              description: id,
-            },
-            data: {
-              id,
-              sample: {
-                _id: id,
-                ...s,
+            return {
+              key: page,
+              aspectRatio: getAspectRatio(s),
+              id: {
+                description: id,
               },
-              urls,
-            },
-          };
-        });
+              data: {
+                id,
+                sample: {
+                  _id: id,
+                  ...s,
+                },
+                urls,
+              } as Sample,
+            };
+          }
+        );
 
         // Store these samples in the sample store; this is where the renderer will pull from
         mappedSamples.forEach((s) => {
@@ -361,12 +340,26 @@ export const useSpotlight = ({
           previous: page > 0 ? page - 1 : null,
         });
       },
-      render: (
-        id: ID,
-        element: HTMLDivElement,
-        dimensions: [number, number],
-        zooming: boolean
-      ) => {
+      spacing: 7,
+      offset: 14,
+      maxRows: 80,
+      detachItem: (id: ID) => {
+        lookerStore.get(id)?.detach();
+      },
+      hideItem: ({ id }: { id: ID }) => {},
+      showItem: ({
+        id,
+        element,
+        dimensions,
+        zooming,
+        spotlight,
+      }: {
+        id: ID;
+        element: HTMLDivElement;
+        dimensions: [number, number];
+        zooming: boolean;
+        spotlight: Spotlight<number, Sample>;
+      }) => {
         if (!lookerStore.has(id) && !zooming) {
           const sample = sampleStore.get(id);
 
@@ -382,15 +375,20 @@ export const useSpotlight = ({
         }
 
         lookerStore.get(id)?.attach(element, dimensions);
-      },
-      spacing: 7,
-      offset: 14,
-      destroy: (id: ID) => {
-        lookerStore.get(id)?.destroy();
-        lookerStore.delete(id);
+
+        return 0;
       },
     });
-  }, [lookerStore, sampleStore, createLooker, samples, resizing, zoom]);
+  }, [
+    buildUrls,
+    getAspectRatio,
+    lookerStore,
+    sampleStore,
+    createLooker,
+    samples,
+    resizing,
+    zoomLevel,
+  ]);
 
   useRefresh(lookerOpts, lookerStore, spotlight);
 
