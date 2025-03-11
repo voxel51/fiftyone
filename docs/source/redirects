@@ -6,6 +6,24 @@
 #   from/broken/page2.ext to/existing/page2.ext
 #
 
+# Introduced in v2.7.0
+teams/data_lens.rst enterprise/data_lens.rst
+teams/data_quality.rst enterprise/data_quality.rst
+teams/query_performance.rst enterprise/query_performance.rst
+teams/api_connection.rst enterprise/api_connection.rst
+teams/cloud_media.rst enterprise/cloud_media.rst
+teams/dataset_versioning.rst enterprise/dataset_versioning.rst
+teams/teams_app.rst enterprise/app.rst
+teams/teams_plugins.rst enterprise/plugins.rst
+teams/installation.rst enterprise/installation.rst
+teams/management_sdk.rst enterprise/management_sdk.rst
+teams/migrations.rst enterprise/migrations.rst
+teams/overview.rst enterprise/overview.rst
+teams/roles_and_permissions.rst enterprise/roles_and_permissions.rst
+teams/secrets.rst enterprise/secrets.rst
+teams/index.rst enterprise/index.rst
+teams/pluggable_auth.md enterprise/pluggable_auth.md
+
 # Introduced in v1.0.0
 user_guide/brain.rst  brain.rst
 user_guide/dataset_zoo/index.rst  dataset_zoo/index.rst

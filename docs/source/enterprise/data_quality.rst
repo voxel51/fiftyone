@@ -5,10 +5,10 @@ Data Quality
 
 .. default-role:: code
 
-**Available in FiftyOne Teams v2.2+**
+**Available in FiftyOne Enterprise v2.2+**
 
 The Data Quality panel is a builtin feature of the
-:ref:`FiftyOne Teams App <teams-app>` that automatically scans your dataset
+:ref:`FiftyOne Enterprise App <enterprise-app>` that automatically scans your dataset
 for common quality issues and helps you explore and take action to resolve
 them.
 
@@ -34,7 +34,7 @@ current analysis/review status:
 
 Click on the right arrow of an issue type's card to open its expanded view.
 
-.. image:: /images/teams/data_quality_home.png
+.. image:: /images/enterprise/data_quality_home.png
     :alt: data-quality-home
     :align: center
 
@@ -46,13 +46,13 @@ ___________________
 If you have not yet scanned a dataset for a given issue type, you'll see a
 landing page like this:
 
-.. image:: /images/teams/data_quality_brightness_scan.png
+.. image:: /images/enterprise/data_quality_brightness_scan.png
     :alt: data-quality-brightness-scan
     :align: center
 
 Clicking the "Scan Dataset" button presents two choices for execution:
 
-.. image:: /images/teams/data_quality_brightness_scan_options.png
+.. image:: /images/enterprise/data_quality_brightness_scan_options.png
     :alt: data-quality-brightness-scan-options
     :align: center
 
@@ -63,17 +63,17 @@ Clicking the "Scan Dataset" button presents two choices for execution:
     few minutes.
 
     Choose "Schedule" for all production data, which schedules the scan for
-    :ref:`delegated execution <teams-delegated-operations>` on your compute
+    :ref:`delegated execution <enterprise-delegated-operations>` on your compute
     cluster.
 
 While a scan is in-progress, you'll see a status page like this:
 
-.. image:: /images/teams/data_quality_brightness_scheduled.png
+.. image:: /images/enterprise/data_quality_brightness_scheduled.png
     :alt: data-quality-brightness-scheduled
     :align: center
 
 Click the link in the notification to navigate to the dataset's
-:ref:`Runs page <teams-managing-delegated-operations>` where you can monitor
+:ref:`Runs page <enterprise-managing-delegated-operations>` where you can monitor
 the status of the task.
 
 .. _data-quality-analyze:
@@ -84,7 +84,7 @@ ______________________
 Once an issue scan is complete, its card will update to display an interactive
 histogram that you can use to analyze the findings:
 
-.. image:: /images/teams/data_quality_brightness_analysis.png
+.. image:: /images/enterprise/data_quality_brightness_analysis.png
     :alt: data-quality-brightness-analysis
     :align: center
 
@@ -120,7 +120,7 @@ You can also use the threshold slider to manually explore different threshold
 ranges. When you release the slider, the Samples panel will automatically
 update to show the corresponding samples:
 
-.. image:: /images/teams/data_quality_brightness_slider.gif
+.. image:: /images/enterprise/data_quality_brightness_slider.gif
     :alt: data-quality-brightness-slider
     :align: center
 
@@ -132,7 +132,7 @@ Once you've reviewed the potential issues in the grid, you can use the
 "Add Tags" button to take action on them. Clicking the button will display a
 modal like this:
 
-.. image:: /images/teams/data_quality_brightness_tag.png
+.. image:: /images/enterprise/data_quality_brightness_tag.png
     :alt: data-quality-brightness-tag
     :align: center
 
@@ -154,7 +154,7 @@ If you navigate away from an issue type that is currently "In Review", you'll
 be prompted to indicate whether or not you'd like to mark the issue type as
 "Reviewed":
 
-.. image:: /images/teams/data_quality_brightness_mark_as_reviewed.png
+.. image:: /images/enterprise/data_quality_brightness_mark_as_reviewed.png
     :alt: data-quality-brightness-mark-as-reviewed
     :align: center
 
@@ -176,7 +176,7 @@ the panel will automatically detect the presence of unscanned samples and will
 display contextual information from the :ref:`home page <data-quality-home>`
 and :ref:`analysis page <data-quality-analyze>`:
 
-.. image:: /images/teams/data_quality_new_samples_home.png
+.. image:: /images/enterprise/data_quality_new_samples_home.png
     :alt: data-quality-new-samples-home
     :align: center
 
@@ -185,7 +185,7 @@ To update an existing scan, open the issue type and click the
 :ref:`analysis page <data-quality-analyze>`. This will open a modal that
 provides additional context and prompts you to initiate the new samples scan:
 
-.. image:: /images/teams/data_quality_new_samples_modal.png
+.. image:: /images/enterprise/data_quality_new_samples_modal.png
     :alt: data-quality-new-samples-modal
     :align: center
 

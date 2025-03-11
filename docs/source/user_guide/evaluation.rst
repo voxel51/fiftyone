@@ -76,7 +76,7 @@ interactively explore the evaluation results in the App:
 
 .. note::
 
-    Did you know? With :ref:`FiftyOne Teams <fiftyone-teams>` you can execute
+    Did you know? With :ref:`FiftyOne Enterprise <fiftyone-enterprise>` you can execute
     model evaluations natively from the App
     :ref:`in the background <delegated-operations>` while you work.
 
@@ -2011,7 +2011,7 @@ You can add custom metrics to your evaluation runs in FiftyOne.
 Custom metrics are supported by all FiftyOne evaluation methods, and you can
 compute them via the SDK, or directly
 :ref:`from the App <model-evaluation-panel>` if you're running
-:ref:`FiftyOne Teams <fiftyone-teams>`.
+:ref:`FiftyOne Enterprise <fiftyone-enterprise>`.
 
 Using custom metrics
 --------------------
