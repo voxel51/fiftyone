@@ -63,6 +63,7 @@ export function computeSortedCompareKeys(
   currentType: string,
   currentMethod: string
 ): CompareKey[] {
+  console.log("evaluations", evaluations);
   return evaluations
     .filter((evaluation) => evaluation.key !== currentName)
     .map((evaluation) => ({
@@ -73,9 +74,7 @@ export function computeSortedCompareKeys(
         evaluation.type === currentType && evaluation.method === currentMethod
       ),
       tooltip: `Evaluation Type: ${capitalize(currentType)}`,
-      tooltipBody: !(
-        evaluation.type === currentType && evaluation.method === currentMethod
-      )
+      tooltipBody: !(evaluation.type === currentType)
         ? `Note: Comparisons are only valid between evaluations of the same type and method.`
         : undefined,
     }))
