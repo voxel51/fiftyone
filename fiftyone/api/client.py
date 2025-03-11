@@ -109,6 +109,7 @@ class Client:
         payload: str,
         stream: bool = False,
         timeout: Optional[int] = None,
+        is_idempotent: bool = True,
     ) -> Any:
         """Make post request"""
 
@@ -129,6 +130,7 @@ class Client:
             data=data,
             headers=headers,
             stream=stream,
+            is_idempotent=is_idempotent,
         )
         # Use response as context manager to ensure it's closed.
         # https://requests.readthedocs.io/en/latest/user/advanced/#body-content-workflow
@@ -257,25 +259,13 @@ class Client:
 
         return return_value
 
-    @backoff.on_exception(
-        backoff.expo, requests.exceptions.ConnectionError, max_tries=5
-    )
-    @backoff.on_exception(
-        backoff.expo, requests.exceptions.ReadTimeout, max_time=60
-    )
-    # 500 errors are possibly recoverable but 400 are not
-    @backoff.on_exception(
-        backoff.expo,
-        requests.exceptions.HTTPError,
-        max_time=60,
-        giveup=fatal_http_code,
-    )
     def __request(
         self,
         method: Literal["POST", "GET"],
         url_path: str,
         timeout: Optional[int] = None,
         data_generator_factory: Optional[Callable[[], Iterator[bytes]]] = None,
+        is_idempotent: bool = True,
         **request_kwargs,
     ):
         timeout = timeout or self._timeout
@@ -287,10 +277,37 @@ class Client:
             data_generator = data_generator_factory()
             request_kwargs["data"] = data_generator
 
-        response = self._session.request(
-            method, url=url, timeout=timeout, **request_kwargs
-        )
+        # If the request is not idempotent, don't automatically retry on read timeouts
+        # as the operation may have already been applied
+        max_tries = 5 if is_idempotent else 1
+        max_time = timeout * max_tries
 
+        # Using nested function to pass variables to the decorator
+        @backoff.on_exception(
+            backoff.expo,
+            requests.exceptions.HTTPError,
+            max_time=max_time,
+            giveup=fatal_http_code,  # 500 errors are possibly recoverable but 400 are not
+        )
+        @backoff.on_exception(
+            backoff.expo,
+            requests.exceptions.ConnectionError,
+            max_tries=max_tries,
+        )
+        @backoff.on_exception(
+            backoff.expo,
+            requests.exceptions.ReadTimeout,
+            max_time=max_time,
+            max_tries=max_tries,
+        )
+        def _request_with_backoff(_method, _url, _timeout, **_request_kwargs):
+            return self._session.request(
+                _method, url=_url, timeout=_timeout, **_request_kwargs
+            )
+
+        response = _request_with_backoff(
+            method, url, timeout, **request_kwargs
+        )
         if response.status_code == 401:
             raise errors.APIAuthenticationError(response.text)
 

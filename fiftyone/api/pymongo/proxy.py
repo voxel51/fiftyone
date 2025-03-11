@@ -32,6 +32,7 @@ class PymongoRestProxy(utils.IProxy, abc.ABC, metaclass=PymongoProxyMeta):
         name: str,
         args: Optional[Iterable[Any]] = None,
         kwargs: Optional[Mapping[str, Any]] = None,
+        is_idempotent: bool = True,
     ):
         """Send a marshalled REST request to the Teams API."""
 
@@ -44,7 +45,10 @@ class PymongoRestProxy(utils.IProxy, abc.ABC, metaclass=PymongoProxyMeta):
 
         # Get marshalled response from the server.
         marshalled_response = self.__proxy_api_client__.post(
-            "_pymongo", payload=marshalled_payload, stream=True
+            "_pymongo",
+            payload=marshalled_payload,
+            stream=True,
+            is_idempotent=is_idempotent,
         )
 
         return self.__proxy_api_handle_response__(marshalled_response)
