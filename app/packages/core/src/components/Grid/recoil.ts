@@ -3,8 +3,14 @@ import * as fos from "@fiftyone/state";
 import { DefaultValue, atom, atomFamily, selector } from "recoil";
 import { MANAGING_GRID_MEMORY } from "../../utils/links";
 
+/**
+ * Convert a [0, 10] zoom setting to [-15, -1]
+ *
+ * @param {number} defaultRange [0, 10] range
+ * @returns {number} [-15, -1]
+ */
 const convertDefault = (defaultRange) => {
-  return -((defaultRange / 10) * 14 + 1);
+  return -(14 - (defaultRange / 10) * 14 + 1);
 };
 
 export const defaultGridZoom = selector<number>({
