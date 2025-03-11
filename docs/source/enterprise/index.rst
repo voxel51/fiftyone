@@ -90,7 +90,7 @@ pages on this site apply to Enterprise deployments as well.
     :header: FiftyOne Enterprise App
     :description: See how you can collaboratively work on datasets in the FiftyOne Enterprise App.
     :button_text: Explore the Enterprise App
-    :button_link: enterprise_app.html
+    :button_link: app.html
 
 .. customcalloutitem::
     :header: Data Lens  __SUB_NEW__
@@ -120,7 +120,7 @@ pages on this site apply to Enterprise deployments as well.
     :header: Plugins
     :description: Learn how to install and manage shared plugins for your Enterprise deployment.
     :button_text: Get plugins for FiftyOne Enterprise
-    :button_link: enterprise_plugins.html
+    :button_link: plugins.html
 
 .. customcalloutitem::
     :header: Secrets
@@ -165,11 +165,11 @@ pages on this site apply to Enterprise deployments as well.
     Cloud-backed media <cloud_media>
     Roles and permissions <roles_and_permissions>
     Dataset Versioning <dataset_versioning>
-    FiftyOne Enterprise App <enterprise_app>
+    App <app>
     Data Lens __SUB_NEW__ <data_lens>
     Data Quality __SUB_NEW__ <data_quality>
     Query Performance __SUB_NEW__ <query_performance>
-    Plugins <enterprise_plugins>
+    Plugins <plugins>
     Secrets <secrets>
     Management SDK <management_sdk>
     Migrations <migrations>
