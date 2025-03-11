@@ -15,8 +15,8 @@ including annotation, evaluation, model training, and deployment.
 
 .. _fiftyone-vs-fiftyone-enterprise:
 
-FiftyOne vs FiftyOne Enterprise
-_______________________________
+Open Source vs Enterprise
+_________________________
 
 Here's a high-level overview of the capabilities that FiftyOne Enterprise brings:
 
@@ -26,7 +26,7 @@ Here's a high-level overview of the capabilities that FiftyOne Enterprise brings
     <thead>
     <tr class="row-odd"><th class="head stub"></th>
     <th class="head" style="text-align: center"><p>FiftyOne Enterprise</p></th>
-    <th class="head" style="text-align: center"><p>FiftyOne</p></th>
+    <th class="head" style="text-align: center"><p>FiftyOne Open Source</p></th>
     </tr>
     </thead>
     <tbody>
@@ -88,12 +88,12 @@ Here's a high-level overview of the capabilities that FiftyOne Enterprise brings
 Backwards compatibility
 _______________________
 
-FiftyOne Enterprise is fully backwards compatible with open-source FiftyOne. This
-means that all of your pre-existing FiftyOne workflows should be usable without
-modification.
+FiftyOne Enterprise is fully backwards compatible with FiftyOne Open Source. This
+means that all of your pre-existing FiftyOne Open Source workflows should be
+usable without modification.
 
 For example, you can continue running all of the workflows listed below as you
-would with open source FiftyOne:
+would with FiftyOne Open Source:
 
 .. list-table::
    :widths: 25 75
@@ -154,10 +154,10 @@ centralized database storing your Team’s dataset metadata.
 
 **Python/notebook users (your organization)**
 
-Similar to FiftyOne, technical users can install the FiftyOne Enterprise client in
-their working environment(s). These clients are configured to use the
-centralized database service and will additionally serve their own App
-instances (like open source FiftyOne) so that engineers can work locally,
+Similar to FiftyOne Open Source, technical users can install the FiftyOne
+Enterprise client in their working environment(s). These clients are configured
+to use the centralized database service and will additionally serve their own
+App instances (like FiftyOne Open Source) so that engineers can work locally,
 remotely, and in Jupyter notebooks.
 
 **Web users (your organization)**
