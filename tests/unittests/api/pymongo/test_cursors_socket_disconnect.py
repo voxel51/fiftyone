@@ -75,7 +75,7 @@ class TestSocketDisconnect:
 
     @staticmethod
     def create_mock_socket(next_return_values: List[Any]) -> mock.Mock:
-        "Create a mock Socket"
+        """Create a mock Socket"""
         m = mock.Mock(spec=socket.Socket)
         m.send = mock.Mock()
         m.__next__ = mock.Mock(

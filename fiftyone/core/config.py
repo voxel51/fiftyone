@@ -65,6 +65,18 @@ class FiftyOneConfig(EnvConfig):
         if d is None:
             d = {}
 
+        self.api_client_connect_timeout = self.parse_int(
+            d,
+            "api_client_connect_timeout",
+            "FIFTYONE_API_CLIENT_CONNECT_TIMEOUT",
+            default=10,
+        )
+        self.api_client_read_timeout = self.parse_int(
+            d,
+            "api_client_read_timeout",
+            "FIFTYONE_API_CLIENT_READ_TIMEOUT",
+            default=600,
+        )
         self.api_key = self.parse_string(
             d, "api_key", env_var="FIFTYONE_API_KEY", default=None
         )

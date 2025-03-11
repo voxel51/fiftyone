@@ -211,8 +211,10 @@ def establish_db_conn(config):
             )
 
         _connection_kwargs = {
-            "__teams_api_uri": config.api_uri,
+            "__teams_api_client_connect_timeout": config.api_client_connect_timeout,
+            "__teams_api_client_read_timeout": config.api_client_read_timeout,
             "__teams_api_key": config.api_key,
+            "__teams_api_uri": config.api_uri,
             "__teams_disable_websocket_info_logs": config.disable_websocket_info_logs,
         }
 

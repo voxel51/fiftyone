@@ -5,7 +5,16 @@
 """
 import posixpath
 from importlib import metadata
-from typing import Any, BinaryIO, Callable, Dict, Iterator, Mapping, Optional
+from typing import (
+    Any,
+    BinaryIO,
+    Callable,
+    Dict,
+    Iterator,
+    Mapping,
+    Optional,
+    Union,
+)
 
 import backoff
 import pymongo
@@ -41,7 +50,9 @@ class Client:
         base_url: str,
         key: str = None,
         token: str = None,
-        timeout: Optional[int] = constants.DEFAULT_TIMEOUT,
+        timeout: Optional[
+            Union[int, tuple[int, int]]
+        ] = constants.DEFAULT_TIMEOUT,
         disable_websocket_info_logs: bool = True,
     ):
         self.__base_url = base_url
