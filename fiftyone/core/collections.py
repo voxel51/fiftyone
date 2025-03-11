@@ -3242,12 +3242,12 @@ class SampleCollection(object):
         return foum.map_samples(
             self,
             map_fcn,
-            save,
-            num_workers,
-            shard_method,
-            progress,
-            queue_batch_size,
-            backend,
+            save=save,
+            num_workers=num_workers,
+            shard_method=shard_method,
+            progress=progress,
+            queue_batch_size=queue_batch_size,
+            backend=backend,
         )
 
     def update_samples(

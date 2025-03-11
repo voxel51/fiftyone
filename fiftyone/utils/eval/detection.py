@@ -87,6 +87,7 @@ def evaluate_detections(
     multiprocessing=False,
     num_workers=None,
     shard_method="id",
+    backend="threading",
     **kwargs,
 ):
     """Evaluates the predicted detections in the given samples with respect to
@@ -250,6 +251,9 @@ def evaluate_detections(
             fn_field=fn_field,
         )
 
+    # from pdb import set_trace; set_trace();
+    print("num workers:", num_workers)
+
     logger.info("Evaluating detections...")
     if multiprocessing:
         print("Multiprocessing")
@@ -260,10 +264,9 @@ def evaluate_detections(
             progress="workers",
             num_workers=num_workers,
             shard_method=shard_method,
-            backend="threading",
+            backend=backend,
         ):
             matches.extend(result)
-        # from pdb import set_trace; set_trace()
         print("Matches:", matches[:5])
         print("Len Matches:", len(matches))
     else:

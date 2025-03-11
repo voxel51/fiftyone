@@ -40,6 +40,8 @@ def map_samples(
     """
     # Get the correct backend implementation
     backend_instance = MapBackendFactory.get_backend(backend)
+    print("num workers in map:", num_workers)
+    # return
 
     # Execute map_samples with the chosen backend
     return backend_instance.map_samples(

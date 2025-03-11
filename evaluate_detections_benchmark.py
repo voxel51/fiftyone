@@ -33,6 +33,21 @@ def parse_worker_counts(workers_str: str) -> List[int]:
     return [int(w.strip()) for w in workers_str.split(",")]
 
 
+def parse_backends(backends_str: str) -> List[str]:
+    """Parse comma-separated backend types into a list of strings"""
+    valid_backends = ["threading", "process"]
+    backends = [b.strip().lower() for b in backends_str.split(",")]
+
+    # Validate backends
+    for backend in backends:
+        if backend not in valid_backends:
+            raise ValueError(
+                f"Invalid backend: {backend}. Must be one of: {valid_backends}"
+            )
+
+    return backends
+
+
 @cleanup_after
 def run_evaluation(dataset, config: dict) -> float:
     """Run evaluation with given configuration and return execution time"""
@@ -47,6 +62,8 @@ def run_evaluation(dataset, config: dict) -> float:
             multiprocessing=True,
             shard_method=config["shard_method"],
             num_workers=config["num_workers"],
+            backend=config.get("backend", "process"),
+            # Default to process if not specified
             progress="workers",
         )
     except Exception as e:
@@ -78,6 +95,7 @@ def profile_configurations(
     dataset_name: str = "bdd100k-validation",
     worker_counts: List[int] = [1, 2, 4, 8],
     shard_methods: List[str] = ["slice", "id"],
+    backends: List[str] = ["process"],
     run_baseline_eval: bool = True,
 ) -> pd.DataFrame:
     """Profile different configurations and return results as DataFrame"""
@@ -95,22 +113,25 @@ def profile_configurations(
                 "configuration": "baseline",
                 "shard_method": "none",
                 "num_workers": 0,
+                "backend": "none",
                 "duration": baseline_duration,
             }
         )
 
     # Generate configurations based on input parameters
     configs = []
-    for method in shard_methods:
-        for workers in worker_counts:
-            if workers > 0:
-                configs.append(
-                    {
-                        "name": f"{method}_{workers}w",
-                        "shard_method": method,
-                        "num_workers": workers,
-                    }
-                )
+    for backend in backends:
+        for method in shard_methods:
+            for workers in worker_counts:
+                if workers > 0:
+                    configs.append(
+                        {
+                            "name": f"{method}_{workers}w_{backend}",
+                            "shard_method": method,
+                            "num_workers": workers,
+                            "backend": backend,
+                        }
+                    )
 
     for config in configs:
         duration = run_evaluation(dataset, config)
@@ -119,6 +140,7 @@ def profile_configurations(
                 "configuration": config["name"],
                 "shard_method": config["shard_method"],
                 "num_workers": config["num_workers"],
+                "backend": config["backend"],
                 "duration": duration,
             }
         )
@@ -146,7 +168,7 @@ def main():
         "--workers",
         type=str,
         default="1,2,4,8,16",
-        help="Comma-separated list of worker counts to test (default: 1,2,4,8)",
+        help="Comma-separated list of worker counts to test (default: 1,2,4,8,16)",
     )
 
     parser.add_argument(
@@ -154,6 +176,13 @@ def main():
         type=str,
         default="slice,id",
         help="Comma-separated list of shard methods to test (default: slice,id)",
+    )
+
+    parser.add_argument(
+        "--backends",
+        type=str,
+        default="process",
+        help="Comma-separated list of backends to test (options: threading,process) (default: process)",
     )
 
     parser.add_argument(
@@ -171,15 +200,17 @@ def main():
 
     args = parser.parse_args()
 
-    # Parse worker counts and shard methods
+    # Parse worker counts, shard methods, and backends
     worker_counts = parse_worker_counts(args.workers)
     shard_methods = [m.strip() for m in args.shard_methods.split(",")]
+    backends = parse_backends(args.backends)
 
     # Run profiling
     results_df = profile_configurations(
         dataset_name=args.dataset,
         worker_counts=worker_counts,
         shard_methods=shard_methods,
+        backends=backends,
         run_baseline_eval=not args.skip_baseline,
     )
 
@@ -195,6 +226,10 @@ def main():
     # Analysis by number of workers
     print("\nAverage duration by number of workers:")
     print(results_df.groupby("num_workers")["duration"].mean())
+
+    # Analysis by backend
+    print("\nAverage duration by backend:")
+    print(results_df.groupby("backend")["duration"].mean())
 
     # Save results to CSV
     results_df.to_csv(args.output, index=False)
