@@ -54,8 +54,8 @@ class Aggregation:
 
 @gql.type
 class BooleanAggregation(Aggregation):
-    false: int
-    true: int
+    false: int = 0
+    true: int = 0
 
 
 @gql.type
@@ -71,11 +71,11 @@ class IntAggregation(Aggregation):
 
 @gql.type
 class FloatAggregation(Aggregation):
-    inf: int
+    inf: int = 0
     max: t.Optional[float]
     min: t.Optional[float]
-    nan: int
-    ninf: int
+    nan: int = 0
+    ninf: int = 0
 
 
 @gql.type

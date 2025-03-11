@@ -585,6 +585,7 @@ class Count(Aggregation):
             optimize=self._optimize,
         )
 
+        # todo: can we omit filtering out none in all situations
         if not self._optimize:
             if not sample_collection._contains_videos() or path != "frames":
                 pipeline.append(
