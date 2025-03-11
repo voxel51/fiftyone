@@ -53,7 +53,10 @@ function Run(props) {
   const runData = result.delegatedOperation;
   const timestamp = getTimestamp(runData);
   const [tab, setTab] = useState("inputs");
-  const [schemas, setSchemas] = useState<{ inputs?: any; outputs?: any }>({});
+  const [schemas, setSchemas] = useState<{ inputs?: any; outputs?: any }>({
+    inputs: "loading",
+    outputs: "loading",
+  });
   const [errors, setErrors] = useState<{ inputs?: Error; outputs?: Error }>({});
 
   const {
@@ -71,7 +74,6 @@ function Run(props) {
     pinned,
     runLink,
     logUrl,
-    logUploadError,
     logSize,
     metadata,
   } = runData;
@@ -87,7 +89,6 @@ function Run(props) {
     FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS_ENV_KEY
   );
   const { inputs_schema, outputs_schema } = metadata || {};
-  const hasExpired = runResult && runResult?.error?.includes("expired");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -98,7 +99,6 @@ function Run(props) {
       );
     }
     async function fetchIO(target: IOType) {
-      setSchemas((schemas) => ({ ...schemas, [target]: "loading" }));
       const ctx = new ExecutionContext(params, formatCtx(ctxData));
       try {
         const io = await resolveRemoteType(operator_uri, ctx, target);
