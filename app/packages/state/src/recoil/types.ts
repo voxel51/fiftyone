@@ -9,7 +9,8 @@ export namespace State {
     | "point-cloud"
     | "three_d"
     | "3d"
-    | "video";
+    | "video"
+    | "unknown";
 
   export enum SPACE {
     FRAME = "FRAME",

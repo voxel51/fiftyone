@@ -688,7 +688,12 @@ input SampleFilter {
   group: GroupElementFilter = null
 }
 
-union SampleItem = ImageSample | PointCloudSample | ThreeDSample | VideoSample
+union SampleItem =
+    ImageSample
+  | PointCloudSample
+  | ThreeDSample
+  | VideoSample
+  | UnknownSample
 
 type SampleItemStrConnection {
   pageInfo: SampleItemStrPageInfo!
@@ -812,6 +817,13 @@ enum Theme {
 }
 
 type ThreeDSample implements Sample {
+  id: ID!
+  sample: JSON!
+  urls: [MediaURL!]!
+  aspectRatio: Float!
+}
+
+type UnknownSample implements Sample {
   id: ID!
   sample: JSON!
   urls: [MediaURL!]!
