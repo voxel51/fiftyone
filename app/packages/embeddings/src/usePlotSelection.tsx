@@ -9,11 +9,16 @@ import { usePanelStatePartial } from "@fiftyone/spaces";
 import { useBrainResultInfo } from "./useBrainResultInfo";
 import { SELECTION_SCOPE } from "./constants";
 import { useResetExtendedSelection } from "@fiftyone/state";
+import { usePointsField } from "./useBrainResult";
 
 export const atoms = {
   lassoPoints: atom({
     key: "lassoPoints",
     default: { x: [], y: [] },
+  }),
+  plotSelection: atom({
+    key: "plotSelection",
+    default: [],
   }),
 };
 
@@ -27,11 +32,13 @@ export function usePlotSelection() {
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     fos.selectedSamples
   );
-  const [plotSelection, setPlotSelection] = usePanelStatePartial(
-    "plotSelection",
-    [],
-    true
-  );
+  // const [plotSelection, setPlotSelection] = usePanelStatePartial(
+  //   "plotSelection",
+  //   [],
+  //   true
+  // );
+  const pointField = usePointsField();
+  const [plotSelection, setPlotSelection] = useRecoilState(atoms.plotSelection);
   const [lassoPoints, setLassoPoints] = useRecoilState(atoms.lassoPoints);
   const selectedPatchIds = useRecoilValue(fos.selectedPatchIds(patchesField));
   const selectedPatchSampleIds = useRecoilValue(fos.selectedPatchSamples);
@@ -39,13 +46,19 @@ export function usePlotSelection() {
     selectedResults,
     lassoPoints: { x: number[]; y: number[] }
   ) {
+    console.log("selectedResults", selectedResults);
     setSelectedSamples(new Set());
-    setExtendedSelection({
-      selection: selectedResults,
-      scope: SELECTION_SCOPE,
-    });
+    // No need to set the extended selection here, as it is already provided to ctx.view and others
+    // setExtendedSelection({
+    //   selection: selectedResults,
+    //   scope: SELECTION_SCOPE,
+    // });
+    // if (!pointField) {
+    // setPlotSelection(selectedResults);
+    // }
+
     if (lassoPoints) {
-      // TODO: this handleSelected is called without lassoPoints in some unkown cases
+      // TODO: this handleSelected is called without lassoPoints in some unknown cases
       setLassoPoints(lassoPoints);
     }
     if (selectedResults === null) {

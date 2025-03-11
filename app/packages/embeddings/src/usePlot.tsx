@@ -13,7 +13,7 @@ export function usePlot({ clearSelection, setPlotSelection }) {
   );
 
   useViewChangeEffect();
-  useSelectionEffect();
+  // useSelectionEffect();
   useExtendedStageEffect();
 
   return {

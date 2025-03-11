@@ -61,17 +61,30 @@ export function EmbeddingsPlot({
   if (error) {
     return <Loading>{error.message}</Loading>;
   }
+  const data = useMemo(
+    () =>
+      tracesToData(
+        traces,
+        style,
+        getColor,
+        resolvedSelection,
+        selectionStyle,
+        fieldColorscale,
+        setting
+      ),
+    [
+      traces,
+      style,
+      getColor,
+      resolvedSelection,
+      selectionStyle,
+      fieldColorscale,
+      setting,
+    ]
+  );
+
   if (labelSelectorLoading || isLoading || !traces)
     return <Loading>Pixelating...</Loading>;
-  const data = tracesToData(
-    traces,
-    style,
-    getColor,
-    resolvedSelection,
-    selectionStyle,
-    fieldColorscale,
-    setting
-  );
   const isCategorical = style === "categorical";
 
   return (
@@ -80,7 +93,7 @@ export function EmbeddingsPlot({
         <Plot
           data={data}
           style={{ zIndex: 1 }}
-          onSelected={(selected, foo) => {
+          onSelected={(selected) => {
             if (!selected || selected?.points?.length === 0) return;
 
             const result = {};

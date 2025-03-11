@@ -17,6 +17,7 @@ export function tracesToData(
   colorscale,
   setting
 ) {
+  if (!traces) return null;
   const isCategorical = style === "categorical";
   const isContinuous = style === "continuous";
   const isUncolored = style === "uncolored";

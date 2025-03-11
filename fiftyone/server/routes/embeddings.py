@@ -153,6 +153,7 @@ class OnPlotLoad(HTTPEndpoint):
             "missing_count": missing_count,
             "patches_field": patches_field,
             "points_field": points_field,
+            "is_patches_view": is_patches_view,
         }
 
 
@@ -178,6 +179,10 @@ class EmbeddingsSelection(HTTPEndpoint):
 
         dataset = fosu.load_and_cache_dataset(dataset_name)
         results = dataset.load_brain_results(brain_key)
+        point_field = results.config.points_field
+
+        if point_field:
+            return {"selected": None}
 
         view = fosv.get_view(
             dataset_name,
@@ -245,8 +250,6 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
         lasso_points = data.get("lassoPoints", None)
         points_field = data.get("pointsField", None)
 
-        print(points_field)
-
         view = fosv.get_view(
             dataset_name,
             stages=stages,
@@ -255,6 +258,8 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
 
         is_patches_view = view._is_patches
         is_patches_plot = patches_field is not None
+
+        print(lasso_points)
 
         if (
             lasso_points is not None

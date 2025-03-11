@@ -2,10 +2,13 @@ import { useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
-import { useBrainResult } from "./useBrainResult";
+import { useBrainResult, usePointsField } from "./useBrainResult";
 import { fetchUpdatedSelection } from "./fetch";
 import { usePlotSelection } from "./usePlotSelection";
 
+//
+// NOTE: this is no longer in use
+//
 export function useSelectionEffect() {
   const { setPlotSelection } = usePlotSelection();
   const datasetName = useRecoilValue(fos.datasetName);
@@ -17,6 +20,7 @@ export function useSelectionEffect() {
   const extended = useRecoilValue(fos.extendedStagesUnsorted);
   const { selection } = useRecoilValue(fos.extendedSelection);
   const slices = useRecoilValue(fos.currentSlices(false));
+  const pointsField = usePointsField();
 
   // updated the selection when the extended view updates
   useEffect(() => {

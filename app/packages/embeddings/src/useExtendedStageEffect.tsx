@@ -13,7 +13,13 @@ export default function useExtendedStageEffect() {
   const setOverrideStage = useSetRecoilState(
     fos.extendedSelectionOverrideStage
   );
-  const { selection } = useRecoilValue(fos.extendedSelection);
+  // const { selection } = useRecoilValue(fos.extendedSelection);
+  // const [plotSelection, setPlotSelection] = usePanelStatePartial(
+  //   "plotSelection",
+  //   [],
+  //   true
+  // );
+  const plotSelection = useRecoilValue(selectionAtoms.plotSelection);
   const getCurrentDataset = useRecoilCallback(({ snapshot }) => async () => {
     return snapshot.getPromise(fos.datasetName);
   });
@@ -22,12 +28,13 @@ export default function useExtendedStageEffect() {
   const [pointsField] = usePointsField();
 
   useEffect(() => {
-    if (loadedPlot && Array.isArray(selection)) {
+    if (pointsField && !hasLassoPoints(lassoPoints)) return;
+    if (loadedPlot && Array.isArray(plotSelection)) {
       fetchExtendedStage({
         datasetName,
         view,
         patchesField: loadedPlot.patches_field,
-        selection,
+        selection: lassoPoints ? null : plotSelection,
         slices,
         lassoPoints,
         pointsField,
@@ -43,8 +50,12 @@ export default function useExtendedStageEffect() {
     datasetName,
     loadedPlot?.patches_field,
     view,
-    selection,
+    plotSelection,
     pointsField,
     lassoPoints,
   ]);
+}
+
+function hasLassoPoints(lasooPoints) {
+  return lasooPoints.x.length > 0 && lasooPoints.y.length > 0;
 }
