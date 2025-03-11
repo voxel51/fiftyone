@@ -3,7 +3,7 @@ import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import * as fos from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { fetchExtendedStage } from "./fetch";
-import { atoms as selectionAtoms } from "./usePlotSelection";
+import { atoms as selectionAtoms, usePlotSelection } from "./usePlotSelection";
 import { usePointsField } from "./useBrainResult";
 
 export default function useExtendedStageEffect() {
@@ -13,7 +13,9 @@ export default function useExtendedStageEffect() {
   const setOverrideStage = useSetRecoilState(
     fos.extendedSelectionOverrideStage
   );
-  const { selection } = useRecoilValue(fos.extendedSelection);
+  // const { selection } = useRecoilValue(fos.extendedSelection);
+  // const [plotSelection, setPlotSelection] = usePanelStatePartial("plotSelection", [], true);
+  const { resolvedSelection } = usePlotSelection();
   const getCurrentDataset = useRecoilCallback(({ snapshot }) => async () => {
     return snapshot.getPromise(fos.datasetName);
   });
@@ -22,12 +24,17 @@ export default function useExtendedStageEffect() {
   const [pointsField] = usePointsField();
 
   useEffect(() => {
-    if (loadedPlot && Array.isArray(selection)) {
+    if (
+      loadedPlot &&
+      resolvedSelection &&
+      Array.isArray(resolvedSelection) &&
+      resolvedSelection.length > 0
+    ) {
       fetchExtendedStage({
         datasetName,
         view,
         patchesField: loadedPlot.patches_field,
-        selection,
+        selection: pointsField ? null : resolvedSelection,
         slices,
         lassoPoints,
         pointsField,
@@ -43,7 +50,7 @@ export default function useExtendedStageEffect() {
     datasetName,
     loadedPlot?.patches_field,
     view,
-    selection,
+    resolvedSelection,
     pointsField,
     lassoPoints,
   ]);
