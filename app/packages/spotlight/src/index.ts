@@ -7,6 +7,7 @@ import "@af-utils/scrollend-polyfill";
 import styles from "./styles.module.css";
 
 import {
+  DEFAULT_MAX_ROWS,
   DEFAULT_OFFSET,
   DEFAULT_SPACING,
   DIRECTION,
@@ -64,6 +65,7 @@ export default class Spotlight<K, V> extends EventTarget {
   constructor(config: SpotlightConfig<K, V>) {
     super();
     this.#config = {
+      maxRows: DEFAULT_MAX_ROWS,
       offset: DEFAULT_OFFSET,
       spacing: DEFAULT_SPACING,
       ...config,

@@ -13,6 +13,7 @@ export enum DIRECTION {
   FORWARD = "forward",
 }
 export const DEFAULT_MARGIN = 8;
+export const DEFAULT_MAX_ROWS = 80;
 export const DEFAULT_SPACING = 3;
 export const DEFAULT_OFFSET = 48;
 export const DIV = "div";
