@@ -5,6 +5,7 @@ import sys
 import random
 from datetime import datetime, timedelta
 from bson import ObjectId
+import os
 
 import fiftyone.internal.util as foiu
 import fiftyone as fo
@@ -126,6 +127,9 @@ class ContinualExecutor:
             try:
                 logger.info(f"Flushing logs to {run_link}")
                 fos.copy_file(self.temp_log_path, run_link)
+                self.do_svc.set_log_size(
+                    doc_id, os.path.getsize(self.temp_log_path)
+                )
             except Exception as e:
                 logger.warning(
                     f"Failed to flush logs to bucket %s due to: %s",

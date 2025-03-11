@@ -36,7 +36,11 @@ class ContinualExecutorTests(unittest.IsolatedAsyncioTestCase):
         self.orch_svc = OrchestratorService()
         self.executor = foodx.ContinualExecutor(self.do_svc, self.orch_svc)
 
-    def test_logging_enabled(self):
+    @patch.object(
+        DelegatedOperationService,
+        "set_log_size",
+    )
+    def test_logging_enabled(self, mock_set_log_size):
         with tempfile.TemporaryDirectory() as log_directory_path:
             executor = foodx.ContinualExecutor(
                 self.do_svc,
@@ -60,6 +64,7 @@ class ContinualExecutorTests(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(expected_log_path, log_path)
             self.assertTrue(fos.exists(expected_log_path))
+            mock_set_log_size.assert_called_once()
 
     def test_logging_disabled(self):
         log_path = self.executor.create_log_path(DOC_ID)
