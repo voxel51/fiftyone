@@ -248,7 +248,7 @@ function Run(props) {
         )}
         {tab === "logs" && logSize && logSize >= 1 * 1024 * 1024 && (
           <DefaultLog
-            message="Logs size too large"
+            title="Logs size too large"
             button={{
               url: logUrl,
               message: "Download logs",
