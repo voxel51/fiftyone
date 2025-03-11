@@ -150,14 +150,9 @@ You can also load any of these models directly from the
     # model_name = "yolo11x-coco-torch"
     # model_name = "rtdetr-l-coco-torch"
 
-    model = foz.load_zoo_model(
-        model_name,
-        label_field="boxes", 
-        confidence_thresh=0.5, 
-        iou_thresh=0.5,
-    )
+    model = foz.load_zoo_model(model_name)
 
-    dataset.apply_model(model)
+    dataset.apply_model(model, label_field="boxes", confidence_thresh=0.5)
 
     session = fo.launch_app(dataset)
 
@@ -242,9 +237,9 @@ You can also load YOLOv8, YOLOv9, and YOLO11 segmentation models from the
     # model_name = "yolo11x-seg-coco-torch"
     
 
-    model = foz.load_zoo_model(model_name, label_field="yolo_seg")
+    model = foz.load_zoo_model(model_name)
 
-    dataset.apply_model(model)
+    dataset.apply_model(model, label_field="yolo_seg")
 
     session = fo.launch_app(dataset)
 
@@ -369,29 +364,29 @@ that you can set the classes that the model should detect:
 
     from ultralytics import YOLO
 
-    ## Load dataset
+    # Load dataset
     dataset = foz.load_zoo_dataset(
         "voc-2007", split="validation", max_samples=100
     )
     dataset.select_fields().keep_fields()
 
-    ## Load model
+    # Load model
     model = YOLO("yolov8l-world.pt")
     # model = YOLO("yolov8s-world.pt")
     # model =  YOLO("yolov8m-world.pt")
     # model =  YOLO("yolov8x-world.pt")
 
-    ## Set open vocabulary classes
+    # Set open vocabulary classes
     model.set_classes(
         ["plant", "window", "keyboard", "human baby", "computer monitor"]
     )
 
     label_field = "yolo_world_detections"
 
-    ## Apply model
+    # Apply model
     dataset.apply_model(model, label_field=label_field)
 
-    ## Visualize the detection patches
+    # Visualize the detection patches
     patches = dataset.to_patches(label_field)
     session = fo.launch_app(patches)
 
