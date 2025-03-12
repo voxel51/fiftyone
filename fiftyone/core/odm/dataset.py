@@ -514,23 +514,23 @@ class DatasetAppConfig(EmbeddedDocument):
     the App.
 
     Args:
-        color_scheme (None): an optional :class:`ColorScheme` for the dataset
-        default_visibility_labels (None): config with include and exclude lists
-            of labels to render by default in the App
+        color_scheme (None): an optional :class:`ColorScheme` dataset default
         disable_frame_filtering (False): whether to disable frame filtering for
             video datasets in the App's grid view
+        dynamic_groups_target_frame_rate (30): the target frame rate when
+            rendering ordered dynamic groups of images as videos
         grid_media_field ("filepath"): the default sample field from which to
             serve media in the App's grid view
             media_fallback (False): whether to fall back to the default media
             field (``"filepath"``) when the alternate media field value for a
             sample is not defined
+        label_visibility (None): an optional :class:`LabelVisibility` dataset
+            default
         media_fields (["filepath"]): the list of sample fields that contain
             media and should be available to choose from the App's settings
             menus
         modal_media_field ("filepath"): the default sample field from which to
             serve media in the App's modal view
-        dynamic_groups_target_frame_rate (30): the target frame rate when
-            rendering ordered dynamic groups of images as videos
         plugins ({}): an optional dict mapping plugin names to plugin
             configuration dicts. Builtin plugins include:
 
