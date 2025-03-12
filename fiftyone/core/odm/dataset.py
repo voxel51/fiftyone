@@ -521,7 +521,7 @@ class DatasetAppConfig(EmbeddedDocument):
             rendering ordered dynamic groups of images as videos
         grid_media_field ("filepath"): the default sample field from which to
             serve media in the App's grid view
-            media_fallback (False): whether to fall back to the default media
+        media_fallback (False): whether to fall back to the default media
             field (``"filepath"``) when the alternate media field value for a
             sample is not defined
         label_visibility (None): an optional :class:`LabelVisibility` dataset
@@ -548,10 +548,10 @@ class DatasetAppConfig(EmbeddedDocument):
     meta = {"strict": False}
 
     color_scheme = EmbeddedDocumentField(ColorScheme, default=None)
-    default_visibility_labels = DictField(default=None)
     disable_frame_filtering = BooleanField(default=None)
     dynamic_groups_target_frame_rate = IntField(default=30)
     grid_media_field = StringField(default="filepath")
+    label_visibility = DictField(default=None)
     media_fallback = BooleanField(default=False)
     media_fields = ListField(StringField(), default=["filepath"])
     modal_media_field = StringField(default="filepath")
