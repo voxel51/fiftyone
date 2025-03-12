@@ -2,6 +2,7 @@ import { EditableLabel, LoadingDots } from "@fiftyone/components";
 import { Card, CardActionArea, Chip, Stack, Typography } from "@mui/material";
 import React from "react";
 import Evaluate from "./Evaluate";
+import EvaluationIcon from "./EvaluationIcon";
 import EvaluationNotes from "./EvaluationNotes";
 import Status from "./Status";
 import {
@@ -9,7 +10,7 @@ import {
   EvaluationCardProps,
   OverviewProps,
 } from "./Types";
-import EvaluationIcon from "./EvaluationIcon";
+import ActionMenu from "./ActionMenu";
 
 export default function Overview(props: OverviewProps) {
   const {
@@ -101,7 +102,7 @@ function EvaluationCard(props: EvaluationCardProps) {
     >
       <Card
         sx={{ p: 2, cursor: "pointer" }}
-        onClick={() => {
+        onClick={(event: React.MouseEvent<HTMLDivElement>) => {
           onSelect(eval_key, id);
         }}
       >
@@ -124,19 +125,26 @@ function EvaluationCard(props: EvaluationCardProps) {
               showEditIcon={hovering}
             />
           </Stack>
-          {pending && (
-            <Chip
-              variant="filled"
-              size="small"
-              label={
-                <LoadingDots
-                  text="Evaluating"
-                  style={{ fontSize: "1rem", paddingLeft: 6, color: "#999999" }}
-                />
-              }
-            />
-          )}
-          {status && <Status status={status} readOnly />}
+          <Stack direction="row" spacing={0.5} alignItems={"center"}>
+            {pending && (
+              <Chip
+                variant="filled"
+                size="small"
+                label={
+                  <LoadingDots
+                    text="Evaluating"
+                    style={{
+                      fontSize: "1rem",
+                      paddingLeft: 6,
+                      color: "#999999",
+                    }}
+                  />
+                }
+              />
+            )}
+            {status && <Status status={status} readOnly />}
+            <ActionMenu evaluationName={eval_key} />
+          </Stack>
         </Stack>
         {note && <EvaluationNotes notes={note} variant="overview" />}
       </Card>
