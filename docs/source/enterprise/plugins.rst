@@ -472,8 +472,8 @@ You can access the Runs page by clicking on the "Runs" tab when viewing a datase
 
 Once you are on the Runs page, you will see a table with the list of all operators scheduled for execution.
 As an admin, you can see any scheduled or running operations by any user of your organization on any dataset.
-While as an organization member with less than admin privileges, you can view your own operations, for only
-datasets you have access to. You can sort, search, and filter runs shown to refine the list as you like:
+While as an organization member with less than admin privileges, view your own operations, for only datasets you have access to.
+You can sort, search, and filter runs shown to refine the list as you like:
 
 .. image:: /images/plugins/operators/runs/runs_general.png
 
@@ -498,7 +498,7 @@ entered the execution queue, then they will remain in the Scheduled state until 
 .. note::
 
     Hovering over the status badge of a run in a Scheduled or Queued state will provide you with more information about its execution.
-    Most importantly, you can view the position of where in the Scheduled ordering your run is if there are multiple by hovering over the badge.
+    Most importantly, you can view your run's position in the Scheduled queue, if there are multiple, by hovering over the badge.
 
 .. image:: /images/plugins/operators/runs/runs_hover_queued.png
 
@@ -548,7 +548,8 @@ updated to show only the runs matching your query:
 
     Search is case-sensitive and you can currently only search by operator
     name, not label. For example, the search "bright" does not match against the label
-    *compute_brightness* in the image above but instead the operator name *@voxel51/panels/compute_brightness*.
+    *compute_brightness* in the image above but instead the operator URI
+    *@voxel51/panels/compute_brightness*.
 
 .. _enterprise-runs-re-running:
 
@@ -615,7 +616,7 @@ updated and will now display as failed.
 
     If the delegated operation is, in fact, still in progress in your
     orchestrator, marking the run as failed will **not** terminate the
-    execution of operation. It will continue executiong until completion
+    execution of operation. It will continue executing until completion
     but the operation will be marked as failed regardless of its outcome.
 
 .. _enterprise-runs-monitoring-progress:
