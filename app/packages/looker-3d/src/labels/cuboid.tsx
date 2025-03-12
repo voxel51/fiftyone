@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
+import { useSimilarLabels3d } from "../hooks/use-similar-labels-3d";
 import { cuboidLabelLineWidthAtom } from "../state";
 import type { OverlayProps } from "./shared";
 
@@ -69,32 +70,58 @@ export const Cuboid = ({
     [edgesGeo]
   );
 
+  const isSimilarLabelHovered = useSimilarLabels3d(label);
+
+  const fillColor = useMemo(() => {
+    if (selected) return "orange";
+    if (isCuboidHovered || isSimilarLabelHovered) return "white";
+    return color;
+  }, [selected, isCuboidHovered, isSimilarLabelHovered, color]);
+
   const material = useMemo(
     () =>
       new LineMaterial({
         opacity: opacity,
         transparent: false,
-        color: selected ? "orange" : color,
+        color: fillColor,
         linewidth: lineWidth,
       }),
-    [selected, lineWidth, color, opacity]
+    [
+      selected,
+      lineWidth,
+      color,
+      opacity,
+      isCuboidHovered,
+      isSimilarLabelHovered,
+    ]
   );
+
+  const { onPointerOver, onPointerOut, ...restEventHandlers } = useMemo(() => {
+    return {
+      ...tooltip.getMeshProps(label),
+    };
+  }, [tooltip, label]);
 
   if (!location || !dimensions) return null;
 
   return (
     <group
-      onPointerOver={() => setIsCuboidHovered(true)}
+      onPointerOver={() => {
+        setIsCuboidHovered(true);
+        onPointerOver();
+      }}
       onPointerOut={() => {
         setIsCuboidHovered(false);
+        onPointerOut();
       }}
+      {...restEventHandlers}
     >
       <mesh position={loc} rotation={actualRotation}>
         <lineSegments2 geometry={geometry} material={material} />
       </mesh>
       <mesh
         onClick={onClick}
-        {...tooltip.getMeshProps(label)}
+        // {...tooltip.getMeshProps(label)}
         position={loc}
         rotation={actualRotation}
       >
@@ -102,7 +129,7 @@ export const Cuboid = ({
         <meshBasicMaterial
           transparent={true}
           opacity={opacity * 0.5}
-          color={selected ? "orange" : color}
+          color={fillColor}
         />
       </mesh>
     </group>

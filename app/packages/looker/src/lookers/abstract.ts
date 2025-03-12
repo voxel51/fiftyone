@@ -1,12 +1,17 @@
 import { Lookers } from "@fiftyone/state";
 import {
+  jotaiStore,
+  removeAllHoveredInstances,
+  updateHoveredInstances,
+} from "@fiftyone/state/src/jotai";
+import {
   AppError,
   DATE_FIELD,
   DATE_TIME_FIELD,
-  LABELS,
-  LABELS_PATH,
   LABEL_LISTS,
   LABEL_LISTS_MAP,
+  LABELS,
+  LABELS_PATH,
   LIST_FIELD,
   Schema,
   withPath,
@@ -23,6 +28,11 @@ import {
 } from "../constants";
 import { Events } from "../elements/base";
 import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
+import {
+  FO_LABEL_HOVERED_EVENT,
+  FO_LABEL_UNHOVERED_EVENT,
+  LabelHoveredEvent,
+} from "../events";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
 import { CONTAINS, Overlay } from "../overlays/base";
 import processOverlays from "../processOverlays";
@@ -183,7 +193,49 @@ export abstract class AbstractLooker<
     return state.overlaysPrepared && state.dimensions && state.loaded;
   }
 
-  protected init() {}
+  private labelHoveredListener = (e: LabelHoveredEvent) => {
+    const { instanceId } = e.detail;
+
+    // .find() instead of .filter() because label "instance" is unique per looker
+    const label = this.currentOverlays.find(
+      (o) => o.label.instance_config?._id === instanceId
+    );
+
+    if (!label) {
+      return;
+    }
+
+    jotaiStore.set(updateHoveredInstances, {
+      instanceId,
+      labelId: label.label.id,
+    });
+
+    this.updater({
+      mouseIsOnOverlay: true,
+    });
+  };
+
+  private labelUnhoveredListener = () => {
+    jotaiStore.set(removeAllHoveredInstances);
+
+    this.updater({
+      mouseIsOnOverlay: false,
+    });
+  };
+
+  protected init() {
+    document.addEventListener(
+      FO_LABEL_HOVERED_EVENT,
+      this.labelHoveredListener,
+      { signal: this.abortController.signal }
+    );
+
+    document.addEventListener(
+      FO_LABEL_UNHOVERED_EVENT,
+      this.labelUnhoveredListener,
+      { signal: this.abortController.signal }
+    );
+  }
 
   public subscribeToState(
     field: string,
@@ -662,11 +714,24 @@ export abstract class AbstractLooker<
             field: field,
             labelId: label.id,
             sampleId: this.sample.id,
+            instanceId: label.instanceId,
+            instanceName: label.instanceName,
           });
         }
       } else {
-        const { id: labelId, field } = overlay.getSelectData(this.state);
-        labels.push({ labelId, field, sampleId: this.sample.id });
+        const {
+          id: labelId,
+          field,
+          instanceId,
+          instanceName,
+        } = overlay.getSelectData(this.state);
+        labels.push({
+          labelId,
+          field,
+          instanceId,
+          instanceName,
+          sampleId: this.sample.id,
+        });
       }
     }
 
@@ -689,6 +754,15 @@ export abstract class AbstractLooker<
     this.abortController.abort();
     this.updater({ destroyed: true });
     this.sampleOverlays?.forEach((overlay) => overlay.cleanup?.());
+
+    document.removeEventListener(
+      FO_LABEL_HOVERED_EVENT,
+      this.labelHoveredListener
+    );
+    document.removeEventListener(
+      FO_LABEL_UNHOVERED_EVENT,
+      this.labelUnhoveredListener
+    );
   }
 
   disable() {
