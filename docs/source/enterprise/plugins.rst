@@ -477,7 +477,7 @@ datasets you have access to. You can sort, search, and filter runs shown to refi
 
 .. image:: /images/plugins/operators/runs/runs_general.png
 
-.. _teams-runs-statuses:
+.. _enterprise-runs-statuses:
 
 Statuses
 ^^^^^^^
@@ -604,7 +604,7 @@ Mark as failed
 If a delegated operation run terminates unexpectedly without reporting failure,
 you can manually mark it as failed from the Runs page.
 
-To mark a run as failed, first the run must be in the Running state. 
+To mark a run as failed, first the run must be in the Running state.
 While the run is in the Running state, click the three dots indicated by "1". Then, in the
 menu, click "Mark as failed" as indicated by "2". The run status will be
 updated and will now display as failed.
@@ -615,7 +615,7 @@ updated and will now display as failed.
 
     If the delegated operation is, in fact, still in progress in your
     orchestrator, marking the run as failed will **not** terminate the
-    execution of operation. It will continue executiong until completion 
+    execution of operation. It will continue executiong until completion
     but the operation will be marked as failed regardless of its outcome.
 
 .. _enterprise-runs-monitoring-progress:
@@ -626,14 +626,13 @@ Monitoring progress
 Delegated operations can optionally
 :ref:`report their progress <operator-reporting-progress>` during execution.
 
-If progress is available for a run, it will be displayed in the Runs table as indicated by “2”. 
-By default, the general status of a run and the progress of running operations is automatically refreshed. 
+If progress is available for a run, it will be displayed in the Runs table as indicated by “2”.
+By default, the general status of a run and the progress of running operations is automatically refreshed.
 You can disable the auto-refresh of running operations by toggling the auto-refresh setting indicated by “1”.
 
 .. image:: /images/plugins/operators/runs/runs_runnning_basic.png
 
 .. image:: /images/plugins/operators/runs/runs_progress_enabled.png
-
 
 .. _enterprise-run-page:
 
@@ -646,7 +645,7 @@ outputs, and errors.
 You can visit the Run page for a run by clicking on a run in the runs table, 
 the Pinned runs, or the Recent runs widgets.
 
-.. _teams-run-page-input:
+.. _enterprise-run-page-input:
 
 Input
 ^^^^^
@@ -664,7 +663,7 @@ by clicking the "Show raw" toggle button:
 
 .. image:: /images/plugins/operators/runs/run_input_raw.png
 
-.. _teams-run-page-output:
+.. _enterprise-run-page-output:
 
 Output
 ^^^^^^
@@ -678,7 +677,7 @@ completed run:
 
 .. image:: /images/plugins/operators/runs/run_output.png
 
-.. _teams-run-page-errors:
+.. _enterprise-run-page-errors:
 
 Errors
 ^^^^^^
@@ -688,7 +687,7 @@ see the errors that occurred:
 
 .. image:: /images/plugins/operators/runs/run_error.png
 
-.. _teams-run-page-view:
+.. _enterprise-run-page-view:
 
 View
 ^^^^
@@ -698,7 +697,7 @@ scheduled:
 
 .. image:: /images/plugins/operators/runs/run_view.png
 
-.. _teams-run-page-logs:
+.. _enterprise-run-page-logs:
 
 Logs
 ^^^^
