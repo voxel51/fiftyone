@@ -26,7 +26,7 @@ export const PINNED_DATASETS_ORDER_DIRECTION = "DESC";
 export const DATASETS_ORDER_DIRECTION_ASC = "ASC";
 export const DATASETS_ORDER_DIRECTION_DESC = "DESC";
 export const LEARN_MORE_ABOUT_ROLES_LINK =
-  "https://docs.voxel51.com/teams/roles_and_permissions.html";
+  "https://docs.voxel51.com/enterprise/roles_and_permissions.html";
 export const DEFAULT_PAGE = 1;
 export const DEFAULT_PAGE_SIZE = 25;
 export const DEFAULT_USERS_PAGE_SIZE = 25;
@@ -36,19 +36,19 @@ export const DEFAULT_LIST_PAGE_SIZES: string[] = ["25", "50", "100"];
 export const DEFAULT_USER_DATASETS_LIST_PAGE = 1;
 export const DEFAULT_USER_DATASETS_LIST_PAGE_SIZE = 3;
 export const HOW_TO_CONNECT_TO_GCP_LINK =
-  "https://docs.voxel51.com/teams/installation.html#google-cloud-storage";
+  "https://docs.voxel51.com/enterprise/installation.html#google-cloud-storage";
 export const HOW_TO_CONNECT_TO_AWS_LINK =
-  "https://docs.voxel51.com/teams/installation.html#amazon-s3";
+  "https://docs.voxel51.com/enterprise/installation.html#amazon-s3";
 export const HOW_TO_CONNECT_TO_MINIO_LINK =
-  "https://docs.voxel51.com/teams/installation.html#minio";
+  "https://docs.voxel51.com/enterprise/installation.html#minio";
 export const HOW_TO_CONNECT_TO_AZURE_LINK =
-  "https://docs.voxel51.com/teams/installation.html#microsoft-azure";
+  "https://docs.voxel51.com/enterprise/installation.html#microsoft-azure";
 export const DATASET_PERMISSION_LINK = "https://voxel51.com/docs/fiftyone";
 export const CLOUD_EXPORT_LINK = "#";
 export const CODE_EXPORT_LINK =
   "https://docs.voxel51.com/user_guide/export_datasets.html";
 export const ROLES_AND_PERMISSIONS_DOCUMENTATION_LINK =
-  "https://docs.voxel51.com/teams/roles_and_permissions.html";
+  "https://docs.voxel51.com/enterprise/roles_and_permissions.html";
 export const TEAM_USERS_PATH = "/settings/team/users";
 export const SETTINGS_NAV_ITEMS = {
   personal: [
@@ -299,7 +299,7 @@ export const DATASET_TABS = [
 ];
 export const SAMPLES_NEXT_PATH = "/datasets/[slug]/samples";
 export const LEARN_MORE_ABOUT_DATASET_SNAPSHOT_LINK =
-  "https://docs.voxel51.com/teams/dataset_versioning.html";
+  "https://docs.voxel51.com/enterprise/dataset_versioning.html";
 export const OPERATOR_RUN_STATES = {
   COMPLETED: "completed",
   FAILED: "failed",
@@ -337,7 +337,7 @@ export const FIFTYONE_SNAPSHOTS_ARCHIVE_PATH_ENV_KEY =
 export const PYTHON_START_TEXT = `import fiftyone as fo
 dataset = fo.load_dataset(...)`;
 export const API_CONNECTION =
-  "https://docs.voxel51.com/teams/api_connection.html";
+  "https://docs.voxel51.com/enterprise/api_connection.html";
 export const FIFTYONE_API_URI = "FIFTYONE_API_URI";
 export const FEATURE_FLAG_ENABLE_MANUAL_USER_GROUP_MANAGEMENT_ENV_KEY =
   "FEATURE_FLAG_ENABLE_MANUAL_USER_GROUP_MANAGEMENT";
