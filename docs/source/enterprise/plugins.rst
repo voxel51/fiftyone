@@ -475,7 +475,7 @@ As an admin, you can see any scheduled or running operations by any user of your
 While as an organization member with less than admin privileges, you can view your own operations, for only
 datasets you have access to. You can sort, search, and filter runs shown to refine the list as you like:
 
-.. image:: /images/plugins/operators/runs/runs_page.png
+.. image:: /images/plugins/operators/runs/runs_general.png
 
 .. _teams-runs-statuses:
 
@@ -493,14 +493,16 @@ All runs begin in the Scheduled state and move to the Queued state if a position
 At most there can be three Queued runs at any given time. If there are more than three operations that have not
 entered the execution queue, then they will remain in the Scheduled state until a spot in the execution queue opens up.
 
-.. image:: /images/plugins/operators/runs/runs_page.png
+.. image:: /images/plugins/operators/runs/runs_statuses.png
 
 .. note::
 
     Hovering over the status badge of a run in a Scheduled or Queued state will provide you with more information about its execution.
     Most importantly, you can view the position of where in the Scheduled ordering your run is if there are multiple by hovering over the badge.
 
-.. image:: /images/plugins/operators/runs/runs_page.png
+.. image:: /images/plugins/operators/runs/runs_hover_queued.png
+
+.. image:: /images/plugins/operators/runs/runs_hover_scheduled.png
 
 .. _enterprise-runs-sorting:
 
@@ -510,7 +512,7 @@ Sorting
 By default, the runs table is sorted by recency, the newest run to be added to the Runs page, but you can use the dropdown menu in the upper right
 of the table to sort by other fields like: last updated, oldest, or the name of the operator.
 
-.. image:: /images/plugins/operators/runs/sort.png
+.. image:: /images/plugins/operators/runs/runs_sorting.png
 
 .. _enterprise-runs-filtering:
 
@@ -521,11 +523,15 @@ You can also filter the runs table to see a subset of runs.
 
 Depending on your permissions, you can toggle between “My Runs” and “All Runs” to see what runs you have scheduled versus runs that others in your organization have scheduled:
 
-.. image:: /images/plugins/operators/runs/my_runs.png
+.. image:: /images/plugins/operators/runs/runs_my_vs_all.png
 
 You can further refine the list of runs using the Status dropdown to select one or more statuses you would like to filter by:
 
-.. image:: /images/plugins/operators/runs/filter_by_status.png
+.. image:: /images/plugins/operators/runs/runs_statuses.png
+
+If you have admin privileges, you can also toggle a filter to show "All Datasets" or "This Dataset" which will show all runs for your organization versus only runs for the dataset you are currently viewing:
+
+.. image:: /images/plugins/operators/runs/runs_this_vs_all.png
 
 .. _enterprise-runs-searching:
 
@@ -536,13 +542,13 @@ You can also use the search functionality to filter the list of runs by
 keyword. As you type your query in the search box, the list of runs will be
 updated to show only the runs matching your query:
 
-.. image:: /images/plugins/operators/runs/search_by_name.png
+.. image:: /images/plugins/operators/runs/runs_search.png
 
 .. note::
 
     Search is case-sensitive and you can currently only search by operator
-    name, not label. For example, searches will not match against
-    **Demo: Export to GCP** in the image above.
+    name, not label. For example, the search "bright" does not match against the label
+    *compute_brightness* in the image above but instead the operator name *@voxel51/panels/compute_brightness*.
 
 .. _enterprise-runs-re-running:
 
@@ -552,7 +558,7 @@ Re-running
 From the Runs page, you can trigger a re-run of any listed run by clicking the
 three-dots to open the actions menu and then clicking "Re-run":
 
-.. image:: /images/plugins/operators/runs/re_run.png
+.. image:: /images/plugins/operators/runs/run_re_run.png
 
 .. _enterprise-runs-pinning:
 
@@ -566,12 +572,14 @@ runs, you will see a button to expand the list.
 To pin a run, hover over its row in the runs table and click the pin icon that
 appears beside the operator label:
 
-.. image:: /images/plugins/operators/runs/pinning.png
+.. image:: /images/plugins/operators/runs/run_pinning.png
 
 .. note::
 
     Pinned runs are stored at the dataset-level and will be visible to all
-    users with access to the dataset.
+    users with access to that dataset.
+
+.. image:: /images/plugins/operators/runs/runs_pinned_sidebar.png
 
 .. _enterprise-runs-renaming:
 
@@ -586,7 +594,7 @@ and click the pencil button as indicated by “1” below. This will present an 
 indicated by “2” where you can update the label to the text of your choice. Once you are
 ready to apply changes, click the save button indicated by “3”.
 
-.. image:: /images/plugins/operators/runs/edit_label.png
+.. image:: /images/plugins/operators/runs/run_rename.png
 
 .. _enterprise-runs-mark-as-failed:
 
@@ -596,17 +604,19 @@ Mark as failed
 If a delegated operation run terminates unexpectedly without reporting failure,
 you can manually mark it as failed from the Runs page.
 
-To mark a run as failed, click the three dots indicated by "1". Then, in the
+To mark a run as failed, first the run must be in the Running state. 
+While the run is in the Running state, click the three dots indicated by "1". Then, in the
 menu, click "Mark as failed" as indicated by "2". The run status will be
 updated and will now display as failed.
 
-.. image:: /images/plugins/operators/runs/mark_as_failed.png
+.. image:: /images/plugins/operators/runs/runs_mark_as_failed.png
 
 .. note::
 
     If the delegated operation is, in fact, still in progress in your
     orchestrator, marking the run as failed will **not** terminate the
-    execution of operation.
+    execution of operation. It will continue executiong until completion 
+    but the operation will be marked as failed regardless of its outcome.
 
 .. _enterprise-runs-monitoring-progress:
 
@@ -620,7 +630,9 @@ If progress is available for a run, it will be displayed in the Runs table as in
 By default, the general status of a run and the progress of running operations is automatically refreshed. 
 You can disable the auto-refresh of running operations by toggling the auto-refresh setting indicated by “1”.
 
-.. image:: /images/plugins/operators/runs/run_progress.png
+.. image:: /images/plugins/operators/runs/runs_runnning_basic.png
+
+.. image:: /images/plugins/operators/runs/runs_progress_enabled.png
 
 
 .. _enterprise-run-page:
@@ -642,7 +654,7 @@ Input
 The Input tab on the Run page lets you see the input parameters that were
 provided when the run was scheduled:
 
-.. image:: /images/plugins/operators/runs/input.png
+.. image:: /images/plugins/operators/runs/run_input_general.png
 
 **Raw input**
 
@@ -650,7 +662,7 @@ By default, a rendered version (similar to what is displayed when invoking an
 operator) of input parameters is displayed. However, you can switch to raw view
 by clicking the "Show raw" toggle button:
 
-.. image:: /images/plugins/operators/runs/raw_input.png
+.. image:: /images/plugins/operators/runs/run_input_raw.png
 
 .. _teams-run-page-output:
 
@@ -662,9 +674,9 @@ completed run:
 
 .. note::
 
-    Output tab is only available for completed run.
+    The Output tab is only available for completed run.
 
-.. image:: /images/plugins/operators/runs/output.png
+.. image:: /images/plugins/operators/runs/run_output.png
 
 .. _teams-run-page-errors:
 
@@ -674,7 +686,7 @@ Errors
 The Errors tab on the Run page will appear if the run failed and it lets you 
 see the errors that occurred:
 
-.. image:: /images/plugins/operators/runs/errors.png
+.. image:: /images/plugins/operators/runs/run_error.png
 
 .. _teams-run-page-view:
 
@@ -684,7 +696,7 @@ View
 The View tab on the Run page lets you see the dataset view on which the run was
 scheduled:
 
-.. image:: /images/plugins/operators/runs/view.png
+.. image:: /images/plugins/operators/runs/run_view.png
 
 .. _teams-run-page-logs:
 
@@ -693,7 +705,7 @@ Logs
 
 The Logs tab on the Run page allows you to view any logging associated with your run:
 
-.. image:: /images/plugins/operators/runs/view.png
+.. image:: /images/plugins/operators/runs/logs_general.png
 
 **Logs setup**
 
@@ -705,18 +717,22 @@ Here are the setup instructions for logging in the two deployment configurations
 `Helm <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/helm/docs/configuring-delegated-operators.md>`_ & 
 `Docker <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docker/docs/configuring-delegated-operators.md>`_.
 
+.. image:: /images/plugins/operators/runs/logs_configure_not_setup.png
+
 .. note::
 
-    If you set up logs with a third-party orchestrator like Airflow, logs will not be natively available, 
+    If you set up logs with a third-party orchestrator like Airflow, logs will **not** be natively available, 
     however, we will report the log location URI for the third-party path you defined in your FiftyOne Enterprise deployment.
 
 **Logs availability**
 
 If logs are set up, they will appear natively within the Logs tab after the completion of a run. 
 Logs will not appear before completion. If log creation errors out for any reason, 
-logs will not be available and a message will be shown indicating such.
+logs will not be available and a generalized message will be shown indicating such.
 
-.. image:: /images/plugins/operators/runs/view.png
+.. image:: /images/plugins/operators/runs/logs_not_available_general.png
+
+.. image:: /images/plugins/operators/runs/logs_not_available_pre_completion.png
 
 **Logs structure**
 
@@ -724,14 +740,14 @@ If logs are available, they are displayed in a structured format.
 There will be 3 columns, and each row represents a singular line of a log file. 
 The columns Timestamp, Severity, and Message define the log structure and will be shown natively in table format up to 1 MB in total content size.
 
-.. image:: /images/plugins/operators/runs/view.png
+.. image:: /images/plugins/operators/runs/logs_general_with_columns.png
 
 .. note::
 
     If the content size of logs for a given run exceeds 1 MB, no content will be shown and instead a Download Logs button will appear.
     Clicking this button will download the logs as a text file.
 
-.. image:: /images/plugins/operators/runs/view.png
+.. image:: /images/plugins/operators/runs/logs_too_large.png
 
 **Download logs**
 
@@ -739,8 +755,6 @@ If logs are available, you can download them directly.
 The text file generated for download is a line-by-line log output of the 
 logging for the attached orchestrator of the given run.
 
-.. image:: /images/plugins/operators/runs/view.png
+.. image:: /images/plugins/operators/runs/logs_download_runs_list_kebab.png
 
-.. image:: /images/plugins/operators/runs/view.png
-
-.. image:: /images/plugins/operators/runs/view.png
+.. image:: /images/plugins/operators/runs/logs_download_preview_pane.png
