@@ -65,10 +65,16 @@ export class MetadataThumbnailElement extends BaseElement<BaseState> {
   }
 
   #handleScaling(state: Readonly<BaseState>) {
-    this.#container.style.scale = `${this.#getScaleFactor(
+    const scaleFactor = this.#getScaleFactor(
       state.windowBBox[2],
       state.windowBBox[3]
-    )}`;
+    );
+
+    this.#container.style.scale = `${scaleFactor}`;
+    if (!("scale" in this.#container.style)) {
+      // Fallback for browsers that do not support the `scale` property
+      this.#container.style.transform = `scale(${scaleFactor})`;
+    }
   }
 
   #getScaleFactor(width: number, height: number): number {

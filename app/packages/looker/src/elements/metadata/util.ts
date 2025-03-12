@@ -16,8 +16,8 @@ const iconMapping: { [extension: string]: string } = {
   py: terminalIcon,
 };
 
-export const getFileExtension = (path: string): string | undefined => {
-  if (path.includes(".")) {
+export const getFileExtension = (path?: string): string | undefined => {
+  if (path?.includes(".")) {
     return path.split(".").slice(-1)[0];
   } else {
     return undefined;
@@ -32,12 +32,9 @@ export const getIcon = (path: string): string => {
   return iconMapping[extension];
 };
 
-export const getFileName = (path: string): string => {
-  if (path.includes("/")) {
-    return path.split("/").slice(-1)[0];
-  } else {
-    return path;
-  }
+export const getFileName = (path?: string): string | undefined => {
+  // Split by "/" or "\" and return the last element
+  return path?.split(/[/\\]/).pop();
 };
 
 export const getFileSize = (sample: Sample): string => {
