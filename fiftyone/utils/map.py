@@ -6,20 +6,20 @@ Utility method for mapping samples
 |
 """
 
-from typing import Any, Iterator, Optional, Union
+from typing import Any, Callable, Literal, Optional, Union
 
-from fiftyone.core.map import MapBackendFactory, MapBackendType
+import fiftyone.core.map as focm
 
 
 def map_samples(
     sample_collection,
     map_fcn,
-    num_workers: Optional[int] = None,
-    shard_method: str = "id",
-    progress: Optional[bool] = None,
-    save: bool = False,
-    backend: Union[str, MapBackendType] = MapBackendType.sequential,
-) -> Iterator[Any]:
+    workers=None,
+    batch_method="id",
+    progress=None,
+    save=False,
+    parallelize_method="process",
+):
     """
     Applies `map_fcn` to each sample using the specified backend strategy and
     returns an iterator.
@@ -27,47 +27,48 @@ def map_samples(
     Args:
         sample_collection: The dataset or view to process.
         map_fcn: Function to apply to each sample.
-        save (False): Whether to save modified samples.
-        num_workers (None): Number of workers.
-        shard_method ("id"): Method for sharding ('id' or 'slice').
+        workers (None): Number of workers.
+        batch_method ("id"): Method for sharding ('id' or 'slice').
         progress (None): Whether to show progress bar.
-        backend (MapBackendType.sequential): Backend execution strategy.
+        save (False): Whether to save modified samples.
+        parallelize_method ("process"): Method for parallelization ('process'
+          or'thread').
 
     Returns:
-        Iterator[Any]: Processed sample results.
+        A generator yield processed sample results.
     """
-    # Get the correct backend implementation
-    backend_instance = MapBackendFactory.get_backend(backend)
-
-    # Execute map_samples with the chosen backend
-    return backend_instance.map_samples(
-        sample_collection, map_fcn, num_workers, shard_method, progress, save
+    mapper = focm.MapperFactory.create(
+        parallelize_method,
+        sample_collection,
+        workers,
+        batch_method,
     )
+
+    yield from mapper.map_samples(map_fcn, progress, save)
 
 
 def update_samples(
     sample_collection,
-    update_fcn,
-    num_workers: Optional[int] = None,
-    shard_method: str = "id",
-    progress: Optional[bool] = None,
-    backend: Union[str, MapBackendType] = MapBackendType.sequential,
+    update_fcn: Callable[[Any], None],
+    workers: Optional[int] = None,
+    batch_method: str = "id",
+    progress: Optional[Union[bool, Literal["worker"]]] = None,
+    parallelize_method: str = "process",
 ):
     """
     Applies `map_fcn` to each sample using the specified backend strategy.
 
     Args:
         sample_collection: The dataset or view to process.
-        map_fcn: Function to apply to each sample.
-        num_workers (None): Number of workers.
-        shard_method ("id"): Method for sharding ('id' or 'slice').
+        update_fcn: Function to apply to each sample.
+        workers (None): Number of workers.
+        batch_method ("id"): Method for sharding ('id' or 'slice').
         progress (None): Whether to show progress bar.
-        backend (MapBackendType.sequential): Backend execution strategy.
+        parallelize_method ("process"): Method for parallelization ('process'
+          or'thread').
     """
-    # Get the correct backend implementation
-    backend_instance = MapBackendFactory.get_backend(backend)
-
-    # Execute map_samples with the chosen backend
-    return backend_instance.update_samples(
-        sample_collection, update_fcn, num_workers, shard_method, progress
+    mapper = focm.MapperFactory.create(
+        parallelize_method, sample_collection, workers, batch_method
     )
+
+    return mapper.update_samples(update_fcn, progress)

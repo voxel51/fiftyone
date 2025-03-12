@@ -5,67 +5,74 @@ Factory for mapping backends
 |
 """
 
-from enum import Enum
-from typing import Union
+from typing import Dict, List, Optional, TypeVar, Type, Union
 
-import fiftyone.core.map.map as fomm
+
+import fiftyone.core.config as focc
+import fiftyone.core.map.batcher as fomb
+import fiftyone.core.map.mapper as fomm
 import fiftyone.core.map.process as fomp
-import fiftyone.core.map.sequential as foms
 import fiftyone.core.map.threading as fomt
 
-
-class MapBackendType(Enum):
-    """Enumeration of available map_samples execution backends."""
-
-    sequential = "sequential"
-    process = "process"
-    threading = "threading"
-
-    @classmethod
-    def from_string(cls, backend_str: str) -> "MapBackendType":
-        """Converts a string to a MapBackendType enum, case-insensitive."""
-        backend_str = backend_str.strip().lower()
-        try:
-            return cls(backend_str)
-        except ValueError as err:
-            raise ValueError(
-                f"Unknown map_samples backend '{backend_str}'"
-            ) from err
-
-    def to_string(self) -> str:
-        """Returns the string representation of the Enum value."""
-        return self.value
+T = TypeVar("T")
 
 
-class MapBackendFactory:
-    """Factory for creating MapBackend instances based on backend type."""
+class MapperFactory:
+    """Manage mapper implementations"""
 
-    _backends = {
-        MapBackendType.process: fomp.ProcessMapBackend,
-        MapBackendType.sequential: foms.SequentialMapBackend,
-        MapBackendType.threading: fomt.ThreadingMapBackend,
+    __MAPPER_CLASSES: Dict[str, Type[fomm.Mapper]] = {
+        "process": fomp.ProcessMapper,
+        "thread": fomt.ThreadMapper,
     }
 
+    __DEFAULT_KEY = "process"
+
     @classmethod
-    def get_backend(
-        cls, backend: Union[str, MapBackendType] = MapBackendType.sequential
-    ) -> fomm.MapBackend:
-        """
-        Returns an instance of the requested backend.
+    def available(cls) -> List[str]:
+        """Get available mapper class keys"""
+        return sorted([k for k, _ in cls.__MAPPER_CLASSES.items()])
 
-        Args:
-            backend (MapBackendType.sequential): Backend execution strategy.
-                - If a string, it is converted to `MapBackendType`.
-                - If not provided, defaults to `sequential`.
+    @classmethod
+    def default(cls) -> str:
+        """Get default mapper class key"""
+        # Using method to get default to allow for programmatic way to
+        # determine default.
+        return cls.__DEFAULT_KEY
 
-        Returns:
-            MapBackend: An instance of the selected backend.
+    @classmethod
+    def get(cls, key: str) -> Union[Type[fomm.Mapper], None]:
+        """Get mapper class"""
+        return cls.__MAPPER_CLASSES.get(key)
 
-        Raises:
-            ValueError: If the backend is unknown.
-        """
-        # Convert string backend to Enum
-        if isinstance(backend, str):
-            backend = MapBackendType.from_string(backend)
+    @classmethod
+    def create(
+        cls,
+        key: Optional[str],
+        sample_collection: fomm.SampleCollection[T],
+        workers: Optional[int],
+        batch_method: Optional[str] = None,
+        **mapper_extra_kwargs,
+    ) -> fomm.Mapper:
+        """Create a mapper instance"""
 
-        return cls._backends[backend]()
+        if workers is None:
+            cfg = focc.load_config()
+            workers = cfg.default_map_workers
+
+        if batch_method is not None and batch_method not in (
+            batch_methods := fomb.SampleBatcher.available()
+        ):
+            raise ValueError(
+                f"Invalid `batch_method`: {batch_method}. "
+                f"Choose from: {', '.join(batch_methods)}"
+            )
+
+        if key is None:
+            key = cls.default()
+
+        if key not in cls.__MAPPER_CLASSES:
+            raise ValueError(f"Could not create mapper for: '{key}'")
+
+        return cls.__MAPPER_CLASSES[key](
+            sample_collection, workers, batch_method, **mapper_extra_kwargs
+        )
