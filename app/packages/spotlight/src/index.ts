@@ -12,7 +12,6 @@ import {
   DEFAULT_SPACING,
   DIRECTION,
   DIV,
-  FOUR,
   MIN_ASPECT_RATIO_RECOMMENDATION,
   ONE,
   SCROLLBAR_WIDTH,
@@ -60,7 +59,7 @@ export default class Spotlight<K, V> extends EventTarget {
   #rejected = false;
   #scrollReader?: ReturnType<typeof createScrollReader>;
   #updater?: Updater;
-  #validate: (key: string, add: number) => void;
+  #validate?: (key: string, add: number) => void;
 
   constructor(config: SpotlightConfig<K, V>) {
     super();
@@ -162,7 +161,7 @@ export default class Spotlight<K, V> extends EventTarget {
   }
 
   sizeChange(key: string, add: number) {
-    this.#validate(key, add);
+    this.#validate?.(key, add);
   }
 
   updateItems(updater: Updater): void {
@@ -232,10 +231,10 @@ export default class Spotlight<K, V> extends EventTarget {
       }
 
       tiledAspectRatio = ONE / sum(rows);
-      // container aspect ratio divided by FOUR increases height by 4x
+      // container aspect ratio divided by THREE increases height by 3x
       // rendering virtualization attempts to fill 3x container height
-      // 4x gives a buffer so the recommendation is not invalidated as often
-    } while (tiledAspectRatio > this.#aspectRatio / FOUR);
+      // 3.5x gives a buffer so the recommendation is not invalidated as often
+    } while (tiledAspectRatio > this.#aspectRatio / 3.5);
 
     proposed = Math.max(proposed, MIN_ASPECT_RATIO_RECOMMENDATION);
     if (proposed < current) {
@@ -275,6 +274,11 @@ export default class Spotlight<K, V> extends EventTarget {
     let bytes = ZERO;
     let count = ZERO;
 
+    if (!this.#config.maxItemsSizeBytes) {
+      // No size measurements required
+      return {};
+    }
+
     const validate = (key: string, add: number) => {
       map.set(key, add);
       if (
@@ -286,11 +290,6 @@ export default class Spotlight<K, V> extends EventTarget {
     };
 
     this.#validate = validate;
-
-    if (!this.#config.maxItemsSizeBytes) {
-      // No size measurements required
-      return {};
-    }
 
     return {
       measure: (item: ItemData<K, V>, itemBytes: Promise<number>) => {
@@ -442,17 +441,17 @@ export default class Spotlight<K, V> extends EventTarget {
     }
 
     await this.#previous(false);
-
-    const measure = this.#measure();
     this.#render({
       at: this.#config.at,
       offset: -this.#pivot,
       zooming: false,
-      ...measure,
+      ...this.#measure(),
     });
-    this.addEventListener("load", () => {
-      this.#render({ zooming: false });
-    });
+
+    if (!this.#config.maxItemsSizeBytes) {
+      this.#loaded = true;
+      this.dispatchEvent(new Load(this.#config.key));
+    }
   }
 
   async #get(key: K): Promise<Response<K, V>> {
