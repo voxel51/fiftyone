@@ -1,3 +1,4 @@
+import { LabelHoveredEvent, LabelUnhoveredEvent } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useCallback } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
@@ -20,11 +21,28 @@ export default function useTooltip() {
       return {
         onPointerOver: () => {
           setTooltipDetail(getDetailsFromLabel(label));
+
+          if (!label.instance_config) {
+            return;
+          }
+
+          document.dispatchEvent(
+            new LabelHoveredEvent({
+              labelId: label.id,
+              instanceId: label.instance_config._id,
+            })
+          );
         },
         onPointerOut: () => {
           if (!isTooltipLocked) {
             setTooltipDetail(null);
           }
+
+          if (!label.instance_config) {
+            return;
+          }
+
+          document.dispatchEvent(new LabelUnhoveredEvent());
         },
         onPointerMissed: () => {
           if (!isTooltipLocked) {
@@ -86,6 +104,7 @@ const getDetailsFromLabel = (label) => {
     label,
     type: label.type,
     color: label.color,
+    sampleId: label.sampleId,
   };
 };
 

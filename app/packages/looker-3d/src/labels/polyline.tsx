@@ -22,6 +22,16 @@ export const Polyline = ({
   tooltip,
   label,
 }: PolyLineProps) => {
+  const { onPointerOver, onPointerOut, ...restEventHandlers } = useMemo(() => {
+    return {
+      ...tooltip.getMeshProps(label),
+    };
+  }, [tooltip, label]);
+
+  const [isPolylineHovered, setIsPolylineHovered] = useState(false);
+
+  useCursor(isPolylineHovered);
+
   const lines = useMemo(
     () =>
       points3d.map((points) => (
@@ -30,18 +40,12 @@ export const Polyline = ({
           rotation={rotation}
           points={points}
           opacity={opacity}
-          color={selected ? "orange" : color}
-          onClick={onClick}
-          tooltip={tooltip}
+          color={selected ? "orange" : isPolylineHovered ? "white" : color}
           label={label}
         />
       )),
-    [points3d, rotation, opacity, color, selected, onClick, tooltip, label]
+    [points3d, rotation, opacity, color, selected, isPolylineHovered, label]
   );
-
-  const [isPolylineHovered, setIsPolylineHovered] = useState(false);
-
-  useCursor(isPolylineHovered);
 
   if (filled) {
     // @todo: filled not yet supported
@@ -51,8 +55,16 @@ export const Polyline = ({
 
   return (
     <group
-      onPointerOver={() => setIsPolylineHovered(true)}
-      onPointerOut={() => setIsPolylineHovered(false)}
+      onPointerOver={() => {
+        setIsPolylineHovered(true);
+        onPointerOver();
+      }}
+      onPointerOut={() => {
+        setIsPolylineHovered(false);
+        onPointerOut();
+      }}
+      onClick={onClick}
+      {...restEventHandlers}
     >
       {lines}
     </group>
