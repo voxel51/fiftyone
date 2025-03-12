@@ -221,7 +221,7 @@ const resolveSize = <T extends Instance | Lookers = Lookers>(looker?: T) => {
   }
 
   if (looker.loaded) {
-    return looker.getSizeBytesEstimate();
+    return Promise.resolve(looker.getSizeBytesEstimate());
   }
 
   return new Promise<number>((resolve) => {

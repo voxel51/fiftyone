@@ -59,11 +59,23 @@ export const gridSpacing = atom({
   ],
 });
 
+const gridZoomStore = atomFamily<number | null, string>({
+  key: "gridZoomStore",
+  default: null,
+  effects: (datasetId) => [
+    fos.getBrowserStorageEffectForKey(`gridZoomStore-${datasetId}`, {
+      valueClass: "number",
+    }),
+  ],
+});
+
 export const gridZoom = selector<number>({
   key: "gridZoom",
   get: ({ get }) => {
     const recommended = get(recommendedGridZoom);
-    const setting = get(storedGridZoom) ?? convertDefault(get(defaultGridZoom));
+    const setting =
+      get(gridZoomStore(get(fos.datasetId) ?? "")) ??
+      convertDefault(get(defaultGridZoom));
     if (
       get(gridAutosizing) &&
       typeof recommended === "number" &&
@@ -90,7 +102,7 @@ export const gridZoom = selector<number>({
       reset(recommendedGridZoom);
     }
 
-    set(storedGridZoom, result);
+    set(gridZoomStore(get(fos.datasetId) ?? ""), result);
   },
 });
 

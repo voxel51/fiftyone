@@ -16,6 +16,7 @@ import {
   MIN_ASPECT_RATIO_RECOMMENDATION,
   ONE,
   SCROLLBAR_WIDTH,
+  THREE,
   TWO,
   ZERO,
   ZOOMING_COEFFICIENT,
@@ -38,7 +39,6 @@ import {
   create,
   findTop,
   handleRowChange,
-  runWhileWithHandler,
   scrollToPosition,
   sum,
 } from "./utilities";
@@ -124,9 +124,10 @@ export default class Spotlight<K, V> extends EventTarget {
     element.appendChild(this.#element);
 
     const observer = new ResizeObserver(() => {
-      this.attached && this.#loaded && this.#render({ ...this.#race() });
+      this.attached && this.#loaded && this.#render({ ...this.#measure() });
     });
     observer.observe(this.#element);
+    // Run in the next animation frame for a correct measurement;
     requestAnimationFrame(() => {
       this.#rect = this.#element.getBoundingClientRect();
       this.#fill();
@@ -192,12 +193,16 @@ export default class Spotlight<K, V> extends EventTarget {
     return this.#height;
   }
 
-  #handleHighMemoryUsage(items: ItemData<K, V>[], map: Map<string, number>) {
+  #handleHighMemoryUsage(
+    items: ItemData<K, V>[],
+    map: Map<string, number>,
+    average: number
+  ) {
     let bytes = ZERO;
     const threshold = this.#config.maxItemsSizeBytes;
     let use: typeof items = [];
     for (const item of items) {
-      bytes += map.get(item.id.description);
+      bytes += map.get(item.id.description) ?? average;
       use.push(item);
 
       if (bytes >= threshold) {
@@ -256,14 +261,19 @@ export default class Spotlight<K, V> extends EventTarget {
     this.#scrollReader = createScrollReader(
       this.#element,
       (zooming, dispatchOffset) =>
-        this.#render({ dispatchOffset, zooming, ...this.#race() }),
+        this.#render({ dispatchOffset, zooming, ...this.#measure() }),
       () => this.#zooming()
     );
   }
 
-  #race() {
+  #measure() {
+    const ar = this.#config.rowAspectRatioThreshold(this.#width);
     const items: ItemData<K, V>[] = [];
     const map = new Map<string, number>();
+    const promises: Promise<number>[] = [];
+
+    let bytes = ZERO;
+    let count = ZERO;
 
     const validate = (key: string, add: number) => {
       map.set(key, add);
@@ -271,49 +281,64 @@ export default class Spotlight<K, V> extends EventTarget {
         sum(Array.from(map.values())) >= this.#config.maxItemsSizeBytes &&
         this.#config.rowAspectRatioThreshold(this.#width) > ONE
       ) {
-        this.#handleHighMemoryUsage(items, map);
+        this.#handleHighMemoryUsage(items, map, bytes / count);
       }
     };
 
     this.#validate = validate;
 
-    const measure = (item: ItemData<K, V>, add: number) => {
-      // do not measure without a config value, or already REJECTED
-      if (!this.#config.maxItemsSizeBytes || this.#rejected) {
-        return;
-      }
-
-      const ar = this.#config.rowAspectRatioThreshold(this.#width);
-      if (ar <= MIN_ASPECT_RATIO_RECOMMENDATION) {
-        return;
-      }
-
-      items.push(item);
-      validate(item.id.description, add);
-    };
+    if (!this.#config.maxItemsSizeBytes) {
+      // No size measurements required
+      return {};
+    }
 
     return {
-      measure: (
-        item: ItemData<K, V>,
-        adder: () => number | Promise<number>
-      ) => {
+      measure: (item: ItemData<K, V>, itemBytes: Promise<number>) => {
+        if (this.#rejected || ar <= MIN_ASPECT_RATIO_RECOMMENDATION) {
+          return;
+        }
+
+        promises.push(itemBytes);
+        items.push(item);
+
+        itemBytes.then((add) => {
+          if (this.#rejected) {
+            return;
+          }
+
+          map.set(item.id.description, add);
+          bytes += add;
+          count++;
+          const max = this.#loaded
+            ? this.#config.maxItemsSizeBytes
+            : // For initial load, reduce by three as a simple adjustment
+              // because only only enough items to fill the screen have been
+              // loaded. As opposed a screen height + padding render
+              this.#config.maxItemsSizeBytes / THREE;
+
+          if (bytes >= max && ar > ONE) {
+            this.#handleHighMemoryUsage(items, map, bytes / count);
+            return;
+          }
+        });
+      },
+      close: async () => {
         if (this.#rejected) {
           return;
         }
 
-        const add = adder();
-        if (add instanceof Promise) {
-          add.then((add) => measure(item, add));
-          return;
+        await Promise.allSettled(promises);
+        if (!this.#loaded) {
+          this.#loaded = true;
+          this.dispatchEvent(new Load(this.#config.key));
         }
-
-        measure(item, add);
       },
     };
   }
 
   #render({
     at,
+    close,
     dispatchOffset = false,
     go = true,
     measure,
@@ -321,10 +346,11 @@ export default class Spotlight<K, V> extends EventTarget {
     zooming,
   }: {
     at?: At;
+    close?: () => Promise<void>;
     dispatchOffset?: boolean;
     go?: boolean;
     offset?: number | false;
-    measure: Measure<K, V>;
+    measure?: Measure<K, V>;
     zooming?: boolean;
   }) {
     if (this.#aborter.signal.aborted) {
@@ -385,8 +411,8 @@ export default class Spotlight<K, V> extends EventTarget {
     }
 
     scrollToPosition({ at, el: this.#element, offset, top, ...this.#sections });
-
     this.#attachScrollReader();
+    close?.();
     if (!zooming && backwardResult.more) this.#previous();
     if (!zooming && forwardResult.more) this.#next();
   }
@@ -411,73 +437,22 @@ export default class Spotlight<K, V> extends EventTarget {
     this.#forward.attach(this.#element);
 
     await this.#next(false);
-
-    while (!this.#forward.finished && this.#height > this.#forward.height) {
+    while (!this.#forward.finished && this.#forward.height < this.#height) {
       await this.#next(false);
     }
 
     await this.#previous(false);
 
-    let bytes = ZERO;
-    const items: ItemData<K, V>[] = [];
-    const map = new Map<string, number>();
-
-    await runWhileWithHandler(
-      () => {
-        this.#render({
-          at: this.#config.at,
-          offset: -this.#pivot,
-          measure: (item, adder) => {
-            const add = adder();
-            const ar = this.#config.rowAspectRatioThreshold(this.#width);
-            if (
-              this.#rejected ||
-              !this.#config.maxItemsSizeBytes ||
-              ar <= MIN_ASPECT_RATIO_RECOMMENDATION
-            ) {
-              return;
-            }
-
-            if (add instanceof Promise) {
-              throw add;
-            }
-
-            if (map.has(item.id.description)) {
-              return;
-            }
-
-            items.push(item);
-            map.set(item.id.description, add);
-            bytes += add;
-
-            if (bytes >= this.#config.maxItemsSizeBytes && ar > ONE) {
-              throw bytes;
-            }
-          },
-          zooming: false,
-        });
-        this.#loaded = true;
-      },
-      () => !this.#loaded,
-      async (response) => {
-        if (response instanceof Promise) {
-          await response;
-          return true;
-        }
-
-        if (typeof response === "number") {
-          this.#handleHighMemoryUsage(items, map);
-          return false;
-        }
-
-        console.error(response);
-        return false;
-      }
-    );
-
-    if (this.#loaded && !this.#aborter.signal.aborted) {
-      this.dispatchEvent(new Load(this.#config.key));
-    }
+    const measure = this.#measure();
+    this.#render({
+      at: this.#config.at,
+      offset: -this.#pivot,
+      zooming: false,
+      ...measure,
+    });
+    this.addEventListener("load", () => {
+      this.#render({ zooming: false });
+    });
   }
 
   async #get(key: K): Promise<Response<K, V>> {
@@ -527,7 +502,7 @@ export default class Spotlight<K, V> extends EventTarget {
 
           this.#render({
             at: { description: this.#focused.description, offset: ZERO },
-            ...this.#race(),
+            ...this.#measure(),
           });
           return this.#focused;
         },
@@ -572,7 +547,7 @@ export default class Spotlight<K, V> extends EventTarget {
               go: false,
               offset,
               zooming: false,
-              ...this.#race(),
+              ...this.#measure(),
             });
           });
 
@@ -601,7 +576,7 @@ export default class Spotlight<K, V> extends EventTarget {
 
           this.#render({
             at: { description: this.#focused.description, offset: ZERO },
-            ...this.#race(),
+            ...this.#measure(),
           });
           return this.#focused;
         },
@@ -645,7 +620,7 @@ export default class Spotlight<K, V> extends EventTarget {
               go: false,
               offset: typeof offset === "number" ? -offset : false,
               zooming: false,
-              ...this.#race(),
+              ...this.#measure(),
             });
           });
 

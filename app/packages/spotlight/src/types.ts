@@ -40,7 +40,7 @@ export interface ItemData<K, V> {
 
 export type Measure<K, V> = (
   id: ItemData<K, V>,
-  sizeBytes: () => number | Promise<number>
+  sizeBytes: Promise<number>
 ) => void;
 
 export interface Response<K, V> {
@@ -62,7 +62,7 @@ export type Show<K, V> = (ctx: {
   element: HTMLDivElement;
   spotlight: Spotlight<K, V>;
   zooming: boolean;
-}) => number | Promise<number>;
+}) => Promise<number>;
 
 export interface SpotlightConfig<K, V> {
   at?: At;
