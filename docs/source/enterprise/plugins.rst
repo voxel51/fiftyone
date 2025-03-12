@@ -630,7 +630,7 @@ If progress is available for a run, it will be displayed in the Runs table as in
 By default, the general status of a run and the progress of running operations is automatically refreshed.
 You can disable the auto-refresh of running operations by toggling the auto-refresh setting indicated by “1”.
 
-.. image:: /images/plugins/operators/runs/runs_runnning_basic.png
+.. image:: /images/plugins/operators/runs/runs_running_basic.png
 
 .. image:: /images/plugins/operators/runs/runs_progress_enabled.png
 
@@ -673,7 +673,7 @@ completed run:
 
 .. note::
 
-    The Output tab is only available for completed run.
+    The Output tab is only available for completed runs.
 
 .. image:: /images/plugins/operators/runs/run_output.png
 
