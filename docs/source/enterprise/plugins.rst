@@ -7,7 +7,8 @@ FiftyOne Enterprise Plugins
 
 FiftyOne Enterprise provides native support for installing and running
 :ref:`FiftyOne plugins <fiftyone-plugins>`, which offers powerful opportunities
-to extend and customize the functionality of your Enterprise deployment to suit your needs.
+to extend and customize the functionality of your Enterprise deployment to suit your
+needs.
 
 .. note::
 
