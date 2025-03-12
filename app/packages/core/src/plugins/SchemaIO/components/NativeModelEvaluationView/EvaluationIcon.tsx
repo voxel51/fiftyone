@@ -1,7 +1,6 @@
-import _, { capitalize } from "lodash";
+import { capitalize } from "lodash";
 
 import { IconButton } from "@mui/material";
-import React from "react";
 
 import CallSplitOutlinedIcon from "@mui/icons-material/CallSplitOutlined";
 import CrisisAlertOutlinedIcon from "@mui/icons-material/CrisisAlertOutlined";
@@ -15,10 +14,11 @@ import { ConcreteEvaluationType } from "./Types";
 interface Props {
   type: ConcreteEvaluationType;
   method?: string;
+  color?: string;
 }
 
 export default function EvaluationIcon(props: Props) {
-  const { type, method } = props;
+  const { type, method, color } = props;
 
   let evalIcon = <Layers />;
   if (type === "classification" && method === "binary") {
@@ -46,7 +46,7 @@ export default function EvaluationIcon(props: Props) {
       <IconButton
         size="small"
         sx={{
-          color: "#FFC48B",
+          color: color ?? "#FFC48B",
           "&:hover": {
             backgroundColor: "transparent",
           },

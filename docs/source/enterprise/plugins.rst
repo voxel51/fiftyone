@@ -7,14 +7,11 @@ FiftyOne Enterprise Plugins
 
 FiftyOne Enterprise provides native support for installing and running
 :ref:`FiftyOne plugins <fiftyone-plugins>`, which offers powerful opportunities
-to extend and customize the functionality of your Enterprise deployment to suit your
->>>>>>> develop
-needs.
+to extend and customize the functionality of your Enterprise deployment to suit your needs.
 
 .. note::
 
-    What can you do with plugins? Check out
-
+    What can you do with plugins? Check out 
     :ref:`delegated operations <enterprise-delegated-operations>` to see some quick
     examples, then check out the
     `FiftyOne plugins <https://github.com/voxel51/fiftyone-plugins>`_
@@ -549,7 +546,7 @@ updated to show only the runs matching your query:
 
 .. note::
 
-    Search is case-sensitive and you can currently only search by operator
+    Search is case-sensitive and you can currently only search by operator 
     name, not label. For example, the search "bright" does not match against the label
     *compute_brightness* in the image above but instead the operator name *@voxel51/panels/compute_brightness*.
 
@@ -558,7 +555,7 @@ updated to show only the runs matching your query:
 Re-running
 ^^^^^^^^^^
 
-From the Runs page, you can trigger a re-run of any listed run by clicking the
+From the Runs page, you can trigger a re-run of any listed run by clicking the 
 three-dots to open the actions menu and then clicking "Re-run":
 
 .. image:: /images/plugins/operators/runs/run_re_run.png

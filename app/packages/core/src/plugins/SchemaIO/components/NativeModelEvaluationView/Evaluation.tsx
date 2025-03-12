@@ -1,4 +1,4 @@
-import { Dialog } from "@fiftyone/components";
+import { Dialog, EditableLabel } from "@fiftyone/components";
 import { editingFieldAtom, view } from "@fiftyone/state";
 import {
   ArrowBack,
@@ -37,22 +37,30 @@ import {
   TextField,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
   useTheme,
 } from "@mui/material";
+import get from "lodash/get";
 import React, { useEffect, useMemo, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
+import ActionMenu from "./ActionMenu";
 import Error from "./Error";
+import EvaluationIcon from "./EvaluationIcon";
 import EvaluationNotes from "./EvaluationNotes";
 import EvaluationPlot from "./EvaluationPlot";
 import Status from "./Status";
-import { formatValue, getNumericDifference, useTriggerEvent } from "./utils";
-import EvaluationIcon from "./EvaluationIcon";
 import { ConcreteEvaluationType } from "./Types";
-import get from "lodash/get";
+import {
+  computeSortedCompareKeys,
+  formatValue,
+  getNumericDifference,
+  useTriggerEvent,
+} from "./utils";
 
 const KEY_COLOR = "#ff6d04";
 const COMPARE_KEY_COLOR = "#03a9f4";
+const COMPARE_KEY_SECONDARY_COLOR = "#87D2FA";
 const DEFAULT_BAR_CONFIG = { sortBy: "default" };
 const NONE_CLASS = "(none)";
 
@@ -70,6 +78,7 @@ export default function Evaluation(props: EvaluationProps) {
     setNoteEvent,
     notes = {},
     loadView,
+    onRename,
   } = props;
   const theme = useTheme();
   const [expanded, setExpanded] = React.useState("summary");
@@ -91,6 +100,7 @@ export default function Evaluation(props: EvaluationProps) {
     const evaluation = data?.[`evaluation_${name}`];
     return evaluation;
   }, [data]);
+
   const compareEvaluation = useMemo(() => {
     const evaluation = data?.[`evaluation_${compareKey}`];
     return evaluation;
@@ -99,6 +109,7 @@ export default function Evaluation(props: EvaluationProps) {
     const evaluation = data?.[`evaluation_${name}_error`];
     return evaluation;
   }, [data]);
+
   const compareEvaluationError = useMemo(() => {
     const evaluation = data?.[`evaluation_${compareKey}_error`];
     return evaluation;
@@ -129,17 +140,21 @@ export default function Evaluation(props: EvaluationProps) {
     evaluationMaskTargets,
     compareEvaluationMaskTargets,
   ]);
+
   const compareKeys = useMemo(() => {
-    const keys: Record<string, string>[] = [];
+    const currentEval = data.evaluations.find((item) => item.key === name);
+    const currentType = currentEval?.type || "";
+    const currentMethod = currentEval?.method || "";
     const evaluations = data?.evaluations || [];
-    for (const evaluation of evaluations) {
-      const { key, type, method } = evaluation;
-      if (key !== name) {
-        keys.push({ key, type, method });
-      }
-    }
-    return keys;
+
+    return computeSortedCompareKeys(
+      evaluations,
+      name,
+      currentType,
+      currentMethod
+    );
   }, [data, name]);
+
   const status = useMemo(() => {
     return statuses[id];
   }, [statuses, id]);
@@ -535,7 +550,12 @@ export default function Evaluation(props: EvaluationProps) {
             <ArrowBack />
           </IconButton>
           <EvaluationIcon type={evaluationType} method={evaluationMethod} />
-          <Typography>{name}</Typography>
+          <EditableLabel
+            label={name}
+            onSave={(newLabel) => {
+              onRename(name, newLabel);
+            }}
+          />
         </Stack>
         <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
           <Status
@@ -558,6 +578,7 @@ export default function Evaluation(props: EvaluationProps) {
               <Info />
             </ToggleButton>
           </ToggleButtonGroup>
+          <ActionMenu evaluationName={evaluation.info.key} />
         </Stack>
       </Stack>
 
@@ -577,7 +598,10 @@ export default function Evaluation(props: EvaluationProps) {
               borderColor: theme.palette.divider,
             }}
           >
-            <ColorSquare color={KEY_COLOR} />
+            <EvaluationIcon
+              type={evaluationType as ConcreteEvaluationType}
+              method={evaluationMethod}
+            />
             <Typography>{evaluationKey}</Typography>
           </Stack>
         </Stack>
@@ -601,7 +625,7 @@ export default function Evaluation(props: EvaluationProps) {
             <Select
               key={compareKey}
               sx={{
-                height: 28,
+                height: 40,
                 width: "100%",
                 background: theme.palette.background.card,
                 "& .MuiOutlinedInput-input": {
@@ -626,25 +650,41 @@ export default function Evaluation(props: EvaluationProps) {
                   </IconButton>
                 ) : null
               }
-              startAdornment={
-                compareKey ? (
-                  <Box sx={{ pr: 1 }}>
-                    <ColorSquare color={COMPARE_KEY_COLOR} />{" "}
-                  </Box>
-                ) : null
-              }
             >
-              {compareKeys.map(({ key, type, method }) => {
-                return (
-                  <MenuItem value={key} key={key} sx={{ p: 0 }}>
-                    <EvaluationIcon
-                      type={type as ConcreteEvaluationType}
-                      method={method}
-                    />
-                    <Typography>{key}</Typography>
-                  </MenuItem>
-                );
-              })}
+              {compareKeys.map(
+                ({ key, type, method, disabled, tooltip, tooltipBody }) => {
+                  const menuItem = (
+                    <MenuItem
+                      value={key}
+                      key={key}
+                      sx={{ p: 0 }}
+                      disabled={disabled}
+                    >
+                      <EvaluationIcon
+                        type={type as ConcreteEvaluationType}
+                        method={method}
+                        color={COMPARE_KEY_SECONDARY_COLOR}
+                      />
+                      <Typography>{key}</Typography>
+                    </MenuItem>
+                  );
+                  return disabled ? (
+                    <Tooltip
+                      key={key}
+                      title={
+                        <>
+                          <Typography variant="subtitle1">{tooltip}</Typography>
+                          <Typography variant="body2">{tooltipBody}</Typography>
+                        </>
+                      }
+                    >
+                      <span>{menuItem}</span>
+                    </Tooltip>
+                  ) : (
+                    menuItem
+                  );
+                }
+              )}
             </Select>
           )}
         </Stack>
@@ -1643,6 +1683,7 @@ type EvaluationProps = {
   setNoteEvent: string;
   notes: Record<string, string>;
   loadView: (type: string, params: any) => void;
+  onRename: (oldName: string, newName: string) => void;
 };
 
 function ColorSquare(props: { color: string }) {

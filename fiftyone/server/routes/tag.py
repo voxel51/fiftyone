@@ -19,7 +19,6 @@ from fiftyone.server.decorators import route
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 import fiftyone.server.tags as fost
 import fiftyone.server.utils as fosu
-import fiftyone.server.view as fosv
 
 
 class Tag(HTTPEndpoint):
@@ -96,7 +95,7 @@ class Tag(HTTPEndpoint):
         samples = []
         async for document in foo.aggregate(
             foo.get_async_db_conn()[view._dataset._sample_collection_name],
-            view._pipeline(attach_frames=is_video, detach_frames=is_video),
+            view._pipeline(attach_frames=is_video),
         ):
             samples.append(document)
 

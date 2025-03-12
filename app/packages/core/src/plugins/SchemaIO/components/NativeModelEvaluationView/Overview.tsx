@@ -1,7 +1,8 @@
-import { LoadingDots } from "@fiftyone/components";
+import { EditableLabel, LoadingDots } from "@fiftyone/components";
 import { Card, CardActionArea, Chip, Stack, Typography } from "@mui/material";
 import React from "react";
 import Evaluate from "./Evaluate";
+import EvaluationIcon from "./EvaluationIcon";
 import EvaluationNotes from "./EvaluationNotes";
 import Status from "./Status";
 import {
@@ -9,7 +10,7 @@ import {
   EvaluationCardProps,
   OverviewProps,
 } from "./Types";
-import EvaluationIcon from "./EvaluationIcon";
+import ActionMenu from "./ActionMenu";
 
 export default function Overview(props: OverviewProps) {
   const {
@@ -20,6 +21,7 @@ export default function Overview(props: OverviewProps) {
     notes = {},
     permissions = {},
     pending_evaluations,
+    onRename,
   } = props;
   const count = evaluations.length;
 
@@ -52,6 +54,7 @@ export default function Overview(props: OverviewProps) {
             type={type}
             method={method}
             onSelect={onSelect}
+            onRename={onRename}
           />
         );
       })}
@@ -73,13 +76,33 @@ export default function Overview(props: OverviewProps) {
 }
 
 function EvaluationCard(props: EvaluationCardProps) {
-  const { pending, onSelect, eval_key, note, status, id, type, method } = props;
+  const {
+    pending,
+    onSelect,
+    eval_key,
+    note,
+    status,
+    id,
+    type,
+    method,
+    onRename,
+  } = props;
+  const [hovering, setHovering] = React.useState(false);
 
   return (
-    <CardActionArea key={eval_key} disabled={pending}>
+    <CardActionArea
+      key={eval_key}
+      disabled={pending}
+      onMouseEnter={() => {
+        setHovering(true);
+      }}
+      onMouseLeave={() => {
+        setHovering(false);
+      }}
+    >
       <Card
         sx={{ p: 2, cursor: "pointer" }}
-        onClick={() => {
+        onClick={(event: React.MouseEvent<HTMLDivElement>) => {
           onSelect(eval_key, id);
         }}
       >
@@ -93,23 +116,35 @@ function EvaluationCard(props: EvaluationCardProps) {
               type={type as ConcreteEvaluationType}
               method={method}
             />
-            <Typography sx={{ fontSize: 16, fontWeight: 600 }}>
-              {eval_key}
-            </Typography>
-          </Stack>
-          {pending && (
-            <Chip
-              variant="filled"
-              size="small"
-              label={
-                <LoadingDots
-                  text="Evaluating"
-                  style={{ fontSize: "1rem", paddingLeft: 6, color: "#999999" }}
-                />
-              }
+            <EditableLabel
+              label={eval_key}
+              labelProps={{ sx: { fontSize: 16, fontWeight: 600 } }}
+              onSave={(newName) => {
+                onRename(eval_key, newName);
+              }}
+              showEditIcon={hovering}
             />
-          )}
-          {status && <Status status={status} readOnly />}
+          </Stack>
+          <Stack direction="row" spacing={0.5} alignItems={"center"}>
+            {pending && (
+              <Chip
+                variant="filled"
+                size="small"
+                label={
+                  <LoadingDots
+                    text="Evaluating"
+                    style={{
+                      fontSize: "1rem",
+                      paddingLeft: 6,
+                      color: "#999999",
+                    }}
+                  />
+                }
+              />
+            )}
+            {status && <Status status={status} readOnly />}
+            <ActionMenu evaluationName={eval_key} />
+          </Stack>
         </Stack>
         {note && <EvaluationNotes notes={note} variant="overview" />}
       </Card>

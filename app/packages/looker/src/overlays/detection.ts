@@ -45,7 +45,7 @@ export default class DetectionOverlay<
   }
 
   containsPoint(state: Readonly<State>): CONTAINS {
-    if ((this.label.mask || this.label.mask_path) && this.label.mask?.data) {
+    if ((this.label.mask || this.label.mask_path) && !this.label.mask?.data) {
       return CONTAINS.NONE;
     }
 
@@ -65,18 +65,18 @@ export default class DetectionOverlay<
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    // renderstatus is guaranteed to be undefined when there is no mask_path
+    // _renderStatus is guaranteed to be undefined when there is no mask_path
     // so if render status is not null, means there's a mask
     // we want to couple rendering of mask with bbox
     // so we return if render status is truthy and there's no mask
     // meaning mask is being processed
-    if (this.label.renderStatus && !this.label.mask) {
+    if (this.label._renderStatus && !this.label.mask) {
       return;
     }
 
     if (
       this.label.mask?.bitmap?.width &&
-      this.label.renderStatus === RENDER_STATUS_PAINTED
+      this.label._renderStatus === RENDER_STATUS_PAINTED
     ) {
       this.drawMask(ctx, state);
     }

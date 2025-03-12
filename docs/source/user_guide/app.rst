@@ -451,7 +451,7 @@ datasets:
 
 .. note::
 
-    Did you know? With :ref:`FiftyOne Teams <fiftyone-teams>` you can manage
+    Did you know? With :ref:`FiftyOne Enterprise <fiftyone-enterprise>` you can manage
     indexes natively in the App via the
     :ref:`Query Performance panel <query-performance>`.
 
@@ -1696,7 +1696,7 @@ samples/patches in the Samples panel:
 
 .. note::
 
-    Did you know? With :ref:`FiftyOne Teams <fiftyone-teams>` you can generate
+    Did you know? With :ref:`FiftyOne Enterprise <fiftyone-enterprise>` you can generate
     embeddings visualizations natively from the App
     :ref:`in the background <delegated-operations>` while you work.
 
@@ -1778,7 +1778,7 @@ that dives into various aspects of the model's performance:
 
 .. note::
 
-    Did you know? With :ref:`FiftyOne Teams <fiftyone-teams>` you can execute
+    Did you know? With :ref:`FiftyOne Enterprise <fiftyone-enterprise>` you can execute
     model evaluations natively from the App
     :ref:`in the background <delegated-operations>` while you work.
 
