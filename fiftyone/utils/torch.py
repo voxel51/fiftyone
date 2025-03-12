@@ -1654,7 +1654,7 @@ class FiftyOneTorchDataset(Dataset):
                 dataset = fo.load_dataset(dataset_name)
                 if view_name is not None:
                     dataset = dataset.load_saved_view(view_name)
-                torch.distributed.barrier(local_process_group)
+            torch.distributed.barrier(local_process_group)
 
         return dataset
 
