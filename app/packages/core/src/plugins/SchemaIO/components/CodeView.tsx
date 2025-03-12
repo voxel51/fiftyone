@@ -21,10 +21,6 @@ export default function CodeView(props) {
 
   const [key, setUserChanged] = useKey(path, schema, data, true);
 
-  console.log(
-    'getComponentProps(props, "editor")',
-    getComponentProps(props, "editor")
-  );
   return (
     <Box
       sx={{
