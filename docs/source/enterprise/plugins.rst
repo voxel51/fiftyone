@@ -12,7 +12,7 @@ needs.
 
 .. note::
 
-    What can you do with plugins? Check out 
+    What can you do with plugins? Check out
     :ref:`delegated operations <enterprise-delegated-operations>` to see some quick
     examples, then check out the
     `FiftyOne plugins <https://github.com/voxel51/fiftyone-plugins>`_
