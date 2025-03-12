@@ -118,7 +118,9 @@ def train_epoch(local_rank, model, dataloader, loss_function, optimizer):
         if local_rank == 0
         else enumerate(dataloader)
     )
+    final_batch_num = 0
     for batch_num, batch in pbar:
+        final_batch_num = batch_num
         batch["image"] = batch["image"].to(DEVICES[local_rank])
         batch["label"] = batch["label"].to(DEVICES[local_rank])
 
@@ -135,7 +137,7 @@ def train_epoch(local_rank, model, dataloader, loss_function, optimizer):
                 pbar.set_description(
                     f"Average Train Loss = {cumulative_loss / (batch_num + 1):10f}"
                 )
-    return cumulative_loss / (batch_num + 1)
+    return cumulative_loss / (final_batch_num + 1)
 
 
 @torch.no_grad()
@@ -150,7 +152,9 @@ def validation(
         if local_rank == 0
         else enumerate(dataloader)
     )
+    final_batch_num = 0
     for batch_num, batch in pbar:
+        final_batch_num = batch_num
         with torch.no_grad():
             batch["image"] = batch["image"].to(DEVICES[local_rank])
             batch["label"] = batch["label"].to(DEVICES[local_rank])
@@ -185,7 +189,7 @@ def validation(
                 pbar.set_description(
                     f"Average Validation Loss = {cumulative_loss / (batch_num + 1):10f}"
                 )
-    return cumulative_loss / (batch_num + 1)
+    return cumulative_loss / (final_batch_num + 1)
 
 
 if __name__ == "__main__":
