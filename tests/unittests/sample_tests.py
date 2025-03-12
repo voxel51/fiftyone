@@ -5,6 +5,7 @@ FiftyOne sample-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import os
 import tempfile
 import unittest
@@ -209,7 +210,7 @@ class SampleTests(unittest.TestCase):
                     expected_width, expected_height = height, width
                 img.save(image_file.name, "jpeg", exif=exif)
 
-                sample = fo.Sample(image_file.name)
+                sample = fo.Sample(image_file.name, media_type="image")
                 sample.compute_metadata()
 
                 self.assertEqual(sample.metadata.width, expected_width)
@@ -218,7 +219,7 @@ class SampleTests(unittest.TestCase):
 
             # Finally a normal non-exif file
             img.save(image_file.name, "jpeg")
-            sample = fo.Sample(image_file.name)
+            sample = fo.Sample(image_file.name, media_type="image")
             sample.compute_metadata()
             self.assertEqual(sample.metadata.width, width)
             self.assertEqual(sample.metadata.height, height)
