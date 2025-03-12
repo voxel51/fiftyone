@@ -13,7 +13,10 @@ import {
   runsMarkRunFailedMutation,
   runsReRunMutation,
 } from "@fiftyone/teams-state";
-import { OPERATOR_RUN_STATES } from "@fiftyone/teams-state/src/constants";
+import {
+  OPERATOR_RUN_STATES,
+  RUNS_LOG_DOCUMENTATION,
+} from "@fiftyone/teams-state/src/constants";
 import { DeleteOutline, DownloadOutlined } from "@mui/icons-material";
 import ReplayIcon from "@mui/icons-material/Replay";
 import SettingsSystemDaydreamOutlinedIcon from "@mui/icons-material/SettingsSystemDaydreamOutlined";
@@ -55,14 +58,13 @@ export default function RunActions(props: RunActionsPropsType) {
   const isExpired = result?.error?.includes("expired");
   const hasLogSetup = Boolean(logUrl);
 
-  // TODO: update the url (when we have the actual link) and move it to Constants.ts
-  const logDocUrl = "https://docs.voxel51.com/teams/teams_plugins.html";
+  const logDocUrl = RUNS_LOG_DOCUMENTATION;
 
   // success or fail: logUrl is null = the user never configured their log location
   // success or fail: logUrl is present and log_status is null and the result field is not "expired" = we successfully published logs
   // fail: logUrl is present and log_status is null and result field is "expired" = DO executor failed to exit we can't promise logs were ever flushed
   // success or fail: logUrl is present and log_status is some exception = we failed to publish logs
-  // when runstate is running, we can't download logs
+  // when run state is running, we can't download logs
 
   const canDownloadLogs =
     Boolean(logUrl) &&

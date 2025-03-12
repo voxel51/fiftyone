@@ -151,12 +151,11 @@ function LogsContent({ logQueryRef, logStatus, runData }: LogsContent) {
         />
       );
     case LOG_STATUS.UNSET:
-      //TODO: replace the doc url here with the correct one when it's ready
       return (
         <DefaultLog
           button={{
             icon: "externalLink",
-            url: CONSTANT_VARIABLES.HELM_DOC_URL,
+            url: CONSTANT_VARIABLES.RUNS_LOG_DOCUMENTATION,
             message: "Configure logs",
           }}
         />
