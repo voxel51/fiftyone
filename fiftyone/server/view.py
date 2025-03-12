@@ -81,6 +81,7 @@ def get_view(
     sample_filter=None,
     reload=True,
     awaitable=False,
+    optimize_frames=False,
 ):
     """Gets the view defined by the given request parameters.
 
@@ -99,6 +100,8 @@ def get_view(
             :class:`fiftyone.server.filters.SampleFilter`
         reload (True): whether to reload the dataset
         awaitable (False): whether to return an awaitable coroutine
+        optimize_frames (False): optimize the pipeline for a direct frame
+            collection call, when possible
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
@@ -127,7 +130,9 @@ def get_view(
                 )
 
             elif sample_filter.id:
-                view = fov.make_optimized_select_view(view, sample_filter.id)
+                view = fov.make_optimized_select_view(
+                    view, [sample_filter.id], optimize_frames=optimize_frames
+                )
 
         if filters or extended_stages or pagination_data:
             view = get_extended_view(
@@ -136,6 +141,7 @@ def get_view(
                 pagination_data=pagination_data,
                 extended_stages=extended_stages,
                 media_types=media_types,
+                optimize_frames=optimize_frames,
             )
 
         return view
@@ -152,6 +158,7 @@ def get_extended_view(
     extended_stages=None,
     pagination_data=False,
     media_types=None,
+    optimize_frames=False,
 ):
     """Create an extended view with the provided filters.
 
@@ -161,6 +168,8 @@ def get_extended_view(
         extended_stages (None): extended view stages
         pagination_data (False): filters label data
         media_types (None): the media types to consider
+        optimize_frames (False): optimize the pipeline for a direct frame
+            collection call, when possible
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
@@ -191,13 +200,23 @@ def get_extended_view(
         if label_tags:
             view = _match_label_tags(view, label_tags)
 
-        match_stage = _make_match_stage(view, filters)
+        match_stage = _make_match_stage(
+            view, filters, optimize_frames=optimize_frames
+        )
         stages = []
         if match_stage:
             stages = [match_stage]
 
-        stages.extend(_make_field_filter_stages(view, filters))
-        stages.extend(_make_label_filter_stages(view, filters))
+        stages.extend(
+            _make_field_filter_stages(
+                view, filters, optimize_frames=optimize_frames
+            )
+        )
+        stages.extend(
+            _make_label_filter_stages(
+                view, filters, optimize_frames=optimize_frames
+            )
+        )
 
         for stage in stages:
             view = view.add_stage(stage)
@@ -358,10 +377,10 @@ def _project_pagination_paths(
     )
 
 
-def _make_match_stage(view, filters):
+def _make_match_stage(view, filters, optimize_frames=False):
     queries = []
 
-    for path, parent_path, args in _iter_paths(view, filters):
+    for path, parent_path, args, is_frame_field in _iter_paths(view, filters):
         is_matching = args.get("isMatching", True)
         path_field = view.get_field(path)
 
@@ -377,15 +396,18 @@ def _make_match_stage(view, filters):
         if args.get("exclude") and not is_matching:
             continue
 
+        if is_frame_field and optimize_frames:
+            path = path[len("frames.") :]
+
         queries.append(_make_query(path, path_field, args))
 
     if queries:
         return fosg.Match({"$and": queries})
 
 
-def _make_field_filter_stages(view, filters):
+def _make_field_filter_stages(view, filters, optimize_frames=False):
     stages = []
-    for path, parent_path, args in _iter_paths(
+    for path, parent_path, args, is_frame_field in _iter_paths(
         view, filters, label_types=False
     ):
         if args.get("isMatching", False):
@@ -399,29 +421,32 @@ def _make_field_filter_stages(view, filters):
             continue
 
         set_field = parent_path
+        if is_frame_field and optimize_frames:
+            set_field = set_field[len("frames.") :]
 
         expr = _make_scalar_expression(F(path.split(".")[-1]), args, field)
 
         if expr is None:
             continue
 
-        expr = F(parent_path).filter(expr)
+        expr = F(set_field).filter(expr)
+
         stages.append(fosg.SetField(set_field, expr, _allow_missing=True))
 
     return stages
 
 
-def _make_label_filter_stages(
-    view,
-    filters,
-):
+def _make_label_filter_stages(view, filters, optimize_frames=False):
     stages = []
-    for path, label_path, args in _iter_paths(view, filters, label_types=True):
+    for path, label_path, args, is_frame_field in _iter_paths(
+        view, filters, label_types=True
+    ):
         if args.get("isMatching", False):
             continue
 
         field = view.get_field(path)
         label_field = view.get_field(label_path)
+
         if issubclass(
             label_field.document_type, (fol.Keypoint, fol.Keypoints)
         ) and isinstance(field, fof.ListField):
@@ -451,6 +476,7 @@ def _make_label_filter_stages(
                 label_path,
                 expr,
                 only_matches=not args.get("exclude", False),
+                _frames=is_frame_field and optimize_frames,
             )
         )
 
@@ -486,7 +512,7 @@ def _iter_paths(
             if label_types != _is_label:
                 continue
 
-        yield path, parent_path, filters[path]
+        yield path, parent_path, filters[path], view._is_frame_field(path)
 
 
 def _is_support(field):

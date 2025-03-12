@@ -45,13 +45,12 @@ class Values(HTTPEndpoint):
             sample_filter=SampleFilter(
                 group=GroupElementFilter(
                     slice=slice, id=group_id, slices=slices
-                )
+                ),
+                id=sample_id,
             ),
+            optimize_frames=bool(sample_id),
             awaitable=True,
         )
-
-        if sample_id is not None:
-            view = view.select(sample_id)
 
         sort_by = "count" if count else "_id"
 
@@ -70,7 +69,8 @@ class Values(HTTPEndpoint):
                 _sort_by=sort_by,
                 _search=regex_safe_search,
                 _selected=selected,
-            )
+            ),
+            optimize_frames=bool(sample_id),
         )
 
         return {

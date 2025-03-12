@@ -16,6 +16,7 @@ import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.stages as fos
 from fiftyone.core.utils import datetime_to_timestamp
 import fiftyone.core.view as fov
 
@@ -25,6 +26,15 @@ from fiftyone.server.inputs import SelectedLabel
 from fiftyone.server.scalars import BSON, BSONArray
 from fiftyone.server.utils import from_dict, meets_type
 import fiftyone.server.view as fosv
+
+
+_ALLOW_OPTIMIZED_FRAMES = {
+    fos.Exclude,
+    fos.ExcludeLabels,
+    fos.Limit,
+    fos.Select,
+    fos.Skip,
+}
 
 
 @gql.input
@@ -117,27 +127,43 @@ async def aggregate_resolver(
     if not form.paths:
         return []
 
-    view = await _load_view(form, form.slices)
-
+    optimize_frames = await _should_optimize_frames(form)
+    view = await _load_view(
+        form,
+        form.slices,
+        optimize_frames=optimize_frames,
+    )
     slice_view = None
 
     if form.mixed and "" in form.paths:
         slice_view = await _load_view(form, [form.slice])
 
     if form.sample_ids:
-        view = fov.make_optimized_select_view(view, form.sample_ids)
+        view = fov.make_optimized_select_view(
+            view, form.sample_ids, optimize_frames=optimize_frames
+        )
+
+    if form.mixed and view.media_type == fom.GROUP and view.group_slices:
+        view = view.select_group_slices(_force_mixed=True)
+        view = fosv.get_extended_view(
+            view, form.filters, optimize_frames=optimize_frames
+        )
 
     if form.hidden_labels:
-        view = view.exclude_labels(
-            [
-                {
-                    "sample_id": l.sample_id,
-                    "field": l.field,
-                    "label_id": l.label_id,
-                    "frame_number": l.frame_number,
-                }
-                for l in form.hidden_labels
-            ]
+        view = view.add_stage(
+            fos.ExcludeLabels(
+                [
+                    {
+                        "sample_id": l.sample_id,
+                        "field": l.field,
+                        "label_id": l.label_id,
+                        "frame_number": l.frame_number,
+                    }
+                    for l in form.hidden_labels
+                ],
+                omit_empty=False,
+                _frames=optimize_frames,
+            )
         )
 
     aggregations, deserializers = zip(
@@ -145,13 +171,9 @@ async def aggregate_resolver(
     )
     counts = [len(a) for a in aggregations]
     flattened = [item for sublist in aggregations for item in sublist]
-
-    # TODO: stop aggregate resolver from being called for non-existent fields,
-    #  but fail silently for now by just returning empty results
-    try:
-        result = await view._async_aggregate(flattened)
-    except:
-        return []
+    result = await view._async_aggregate(
+        flattened, optimize_frames=optimize_frames
+    )
 
     results = []
     offset = 0
@@ -188,7 +210,35 @@ RESULT_MAPPING = {
 }
 
 
-async def _load_view(form: AggregationForm, slices: t.List[str]):
+class _CountExists(foa.Count):
+    """Named helper aggregation for counting existence"""
+
+    def __init__(self, field):
+        super().__init__(field, _unwind=False)
+
+
+def _count_expanded_fields(collection: foc.SampleCollection) -> int:
+    schema = collection._root_dataset.get_field_schema()
+    count = 0
+    for field in schema.values():
+        while isinstance(field, fof.ListField):
+            field = field.field
+
+        if (
+            isinstance(field, fof.EmbeddedDocumentField)
+            and field.document_type is not None
+            and not issubclass(field.document_type, fol.Label)
+        ):
+            count += len(field.fields)
+        else:
+            count += 1
+
+    return count
+
+
+async def _load_view(
+    form: AggregationForm, slices: t.List[str], optimize_frames=False
+):
     return await fosv.get_view(
         form.dataset,
         view_name=form.view_name or None,
@@ -205,6 +255,7 @@ async def _load_view(form: AggregationForm, slices: t.List[str]):
             )
         ),
         awaitable=True,
+        optimize_frames=optimize_frames,
     )
 
 
@@ -300,27 +351,22 @@ def _resolve_path_aggregation(
     return aggregations, from_results
 
 
-class _CountExists(foa.Count):
-    """Named helper aggregation for counting existence"""
+async def _should_optimize_frames(form: AggregationForm):
+    if len(form.sample_ids) > 1:
+        return False
 
-    def __init__(self, field):
-        super().__init__(field, _unwind=False)
+    if not form.sample_ids and not form.group_id:
+        return False
 
+    view = await _load_view(form, [])
+    if view.media_type != fom.VIDEO:
+        return False
 
-def _count_expanded_fields(collection: foc.SampleCollection) -> int:
-    schema = collection._root_dataset.get_field_schema()
-    count = 0
-    for field in schema.values():
-        while isinstance(field, fof.ListField):
-            field = field.field
+    stages = set(type(stage) for stage in view._stages)
+    if not stages.issubset(_ALLOW_OPTIMIZED_FRAMES):
+        return False
 
-        if (
-            isinstance(field, fof.EmbeddedDocumentField)
-            and field.document_type is not None
-            and not issubclass(field.document_type, fol.Label)
-        ):
-            count += len(field.fields)
-        else:
-            count += 1
-
-    return count
+    return all(
+        path.startswith(foc.SampleCollection._FRAMES_PREFIX)
+        for path in form.paths
+    )
