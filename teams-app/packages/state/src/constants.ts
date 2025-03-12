@@ -17,7 +17,7 @@ export const PRIVACY_POLICY_LINK = "https://voxel51.com/privacy";
 export const CLONE_DATASET_DOCUMENTATION_LINK =
   "https://voxel51.com/docs/fiftyone/user_guide/using_datasets.html#cloning-datasets";
 export const RUNS_LOG_DOCUMENTATION =
-  "https://docs.voxel51.com/teams/teams_plugins.html#logs";
+  "https://docs.voxel51.com/enterprise/plugins.html#logs";
 export const INITIAL_PINNED_DATASETS_LIMIT = 5;
 export const INITIAL_PINNED_RUNS_LIMIT = 5;
 export const INITIAL_ORCHESTRATORS_LIMIT = 5;
