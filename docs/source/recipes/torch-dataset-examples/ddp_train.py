@@ -112,7 +112,7 @@ def main(local_rank, dataset_name, num_classes, num_epochs, save_dir):
 def train_epoch(local_rank, model, dataloader, loss_function, optimizer):
     model.train()
 
-    cummulative_loss = 0
+    cumulative_loss = 0
     pbar = (
         tqdm(enumerate(dataloader), total=len(dataloader))
         if local_rank == 0
@@ -129,13 +129,13 @@ def train_epoch(local_rank, model, dataloader, loss_function, optimizer):
         optimizer.step()
         optimizer.zero_grad()
 
-        cummulative_loss = cummulative_loss + loss.detach().cpu().numpy()
+        cumulative_loss = cumulative_loss + loss.detach().cpu().numpy()
         if local_rank == 0:
             if batch_num % 100 == 0:
                 pbar.set_description(
-                    f"Average Train Loss = {cummulative_loss / (batch_num + 1):10f}"
+                    f"Average Train Loss = {cumulative_loss / (batch_num + 1):10f}"
                 )
-    return cummulative_loss / (batch_num + 1)
+    return cumulative_loss / (batch_num + 1)
 
 
 @torch.no_grad()
@@ -144,7 +144,7 @@ def validation(
 ):
     model.eval()
 
-    cummulative_loss = 0
+    cumulative_loss = 0
     pbar = (
         tqdm(enumerate(dataloader), total=len(dataloader))
         if local_rank == 0
@@ -179,13 +179,13 @@ def validation(
             samples.set_values("predictions", fo_predictions)
             samples.save()
 
-        cummulative_loss = cummulative_loss + np.mean(loss_individual)
+        cumulative_loss = cumulative_loss + np.mean(loss_individual)
         if local_rank == 0:
             if batch_num % 100 == 0:
                 pbar.set_description(
-                    f"Average Validation Loss = {cummulative_loss / (batch_num + 1):10f}"
+                    f"Average Validation Loss = {cumulative_loss / (batch_num + 1):10f}"
                 )
-    return cummulative_loss / (batch_num + 1)
+    return cumulative_loss / (batch_num + 1)
 
 
 if __name__ == "__main__":
@@ -231,8 +231,8 @@ if __name__ == "__main__":
 
     local_rank = int(os.environ["LOCAL_RANK"])
 
-    torch.multiprocessing.set_start_method("forkserver")
-    torch.multiprocessing.set_forkserver_preload(["torch", "fiftyone"])
+    torch.multiprocessing.set_start_method("spawn")
+    # torch.multiprocessing.set_forkserver_preload(["torch", "fiftyone"])
 
     main(
         local_rank, args.dataset, args.num_classes, args.epochs, args.save_dir
