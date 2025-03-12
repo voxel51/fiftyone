@@ -4619,6 +4619,80 @@ class SampleCollection(object):
         return self._add_view_stage(fos.ExcludeGroups(group_ids))
 
     @view_stage
+    def exclude_group_slices(self, slices=None, media_type=None):
+        """Excludes the specified group slice(s) from the grouped collection.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+            dataset.add_group_field("group", default="ego")
+
+            group1 = fo.Group()
+            group2 = fo.Group()
+
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/left-image1.jpg",
+                        group=group1.element("left"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/video1.mp4",
+                        group=group1.element("ego"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/right-image1.jpg",
+                        group=group1.element("right"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/left-image2.jpg",
+                        group=group2.element("left"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/video2.mp4",
+                        group=group2.element("ego"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/right-image2.jpg",
+                        group=group2.element("right"),
+                    ),
+                ]
+            )
+
+            #
+            # Exclude the samples from the "ego" group slice
+            #
+
+            view = dataset.exclude_group_slices("ego")
+
+            #
+            # Exclude the samples from the "left" or "right" group slices
+            #
+
+            view = dataset.exclude_group_slices(["left", "right"])
+
+            #
+            # Exclude all image slices
+            #
+
+            view = dataset.exclude_group_slices(media_type="image")
+
+        Args:
+            slices (None): a group slice or iterable of group slices to
+                exclude
+            media_type (None): a media type or iterable of media types whose
+                slice(s) to exclude
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.ExcludeGroupSlices(slices=slices, media_type=media_type)
+        )
+
+    @view_stage
     def exclude_labels(
         self, labels=None, ids=None, tags=None, fields=None, omit_empty=True
     ):
@@ -6609,19 +6683,24 @@ class SampleCollection(object):
         self,
         slices=None,
         media_type=None,
+        flat=True,
         _allow_mixed=False,
         _force_mixed=False,
     ):
-        """Selects the samples in the group collection from the given slice(s).
+        """Selects the specified group slice(s) from the grouped collection.
 
-        The returned view is a flattened non-grouped view containing only the
-        slice(s) of interest.
+        When ``flat==True``, the returned view is a flattened non-grouped view
+        containing the samples from the slice(s) of interest.
+
+        When ``flat=False``, the returned view is a grouped collection
+        containing only the slice(s) of interest.
 
         .. note::
 
-            This stage performs a ``$lookup`` that pulls the requested slice(s)
-            for each sample in the input collection from the source dataset.
-            As a result, this stage always emits *unfiltered samples*.
+            When ``flat=True``, this stage performs a ``$lookup`` that pulls
+            the requested slice(s) for each sample in the input collection from
+            the source dataset. As a result, the stage emits
+            *unfiltered samples*.
 
         Examples::
 
@@ -6675,6 +6754,12 @@ class SampleCollection(object):
             view = dataset.select_group_slices(["left", "right"])
 
             #
+            # Select only the "left" and "right" group slices
+            #
+
+            view = dataset.select_group_slices(["left", "right"], flat=False)
+
+            #
             # Retrieve all image samples
             #
 
@@ -6684,7 +6769,10 @@ class SampleCollection(object):
             slices (None): a group slice or iterable of group slices to select.
                 If neither argument is provided, a flattened list of all
                 samples is returned
-            media_type (None): a media type whose slice(s) to select
+            media_type (None): a media type or iterable of media types whose
+                slice(s) to select
+            flat (True): whether to return a flattened collection (True) or a
+                grouped collection (False)
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -6693,6 +6781,7 @@ class SampleCollection(object):
             fos.SelectGroupSlices(
                 slices=slices,
                 media_type=media_type,
+                flat=flat,
                 _allow_mixed=_allow_mixed,
                 _force_mixed=_force_mixed,
             )
@@ -10587,24 +10676,23 @@ class SampleCollection(object):
             return True
 
         if self.media_type == fom.GROUP:
-            if self.group_media_types is None:
+            group_media_types = self.group_media_types
+            if group_media_types is None:
                 return self._dataset.media_type == media_type
 
             if any_slice:
                 return any(
                     slice_media_type == media_type
-                    for slice_media_type in self.group_media_types.values()
+                    for slice_media_type in group_media_types.values()
                 )
 
-            return (
-                self.group_media_types.get(self.group_slice, None)
-                == media_type
-            )
+            return group_media_types.get(self.group_slice, None) == media_type
 
         if self.media_type == fom.MIXED:
+            group_media_types = self._get_group_media_types()
             return any(
                 slice_media_type == media_type
-                for slice_media_type in self._get_group_media_types().values()
+                for slice_media_type in group_media_types.values()
             )
 
         return False

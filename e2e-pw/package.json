@@ -5,22 +5,22 @@
     "type": "commonjs",
     "license": "MIT",
     "devDependencies": {
-        "@eslint/js": "^9.19.0",
+        "@eslint/js": "^9.21.0",
         "@playwright/test": "^1.50.1",
-        "@types/node": "^22.13.0",
+        "@types/node": "^22.13.9",
         "@types/wait-on": "^5.3.4",
-        "@typescript-eslint/eslint-plugin": "^8.22.0",
-        "@typescript-eslint/parser": "^8.22.0",
+        "@typescript-eslint/eslint-plugin": "^8.26.0",
+        "@typescript-eslint/parser": "^8.26.0",
         "dotenv": "^16.4.7",
-        "eslint": "^9.19.0",
+        "eslint": "^9.21.0",
         "eslint-plugin-playwright": "^2.2.0",
         "jimp": "^1.6.0",
-        "mongodb": "^6.13.0",
+        "mongodb": "^6.14.2",
         "tree-kill": "^1.2.2",
         "ts-dedent": "^2.2.0",
-        "typescript": "^5.7.3",
-        "typescript-eslint": "^8.22.0",
-        "vitest": "^3.0.4",
+        "typescript": "^5.8.2",
+        "typescript-eslint": "^8.26.0",
+        "vitest": "^3.0.7",
         "wait-on": "^8.0.2"
     },
     "scripts": {
@@ -34,5 +34,5 @@
         "devserver": "VITE_API=http://localhost:8787 VITE_NO_STATE=true FIFTYONE_DEFAULT_APP_PORT=5193 && (cd ../app && yarn dev --host 0.0.0.0)",
         "remove-pw-dbs": "./scripts/del-pw-dbs.sh"
     },
-    "packageManager": "yarn@4.3.1"
+    "packageManager": "yarn@4.7.0"
 }

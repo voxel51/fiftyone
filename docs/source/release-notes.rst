@@ -3,6 +3,44 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 2.6.1
+--------------------
+*Released February 28, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.3.1 <release-notes-v1.3.1>`, plus:
+
+- Per-user cloud credentials now support masks and 3D media
+- Security fixes for nextjs, cookie, cross-spawn, and lodash
+- Bump node version to 22
+
+.. _release-notes-v1.3.1:
+
+FiftyOne 1.3.1
+--------------
+*Released February 28, 2025*
+
+App
+
+- Optimized modal tagger to support massive datasets
+  `#5417 <https://github.com/voxel51/fiftyone/pull/5417>`_
+- Fixed a bug with sample updates after tagging in the modal
+  `#5514 <https://github.com/voxel51/fiftyone/pull/5514>`_
+
+FiftyOne Teams 2.6.0
+--------------------
+*Released February 10, 2025*
+
+- Improved backwards compatibility between an older SDK and newer deployment.
+- Added a configurable banner which appears at top and bottom of every page,
+  often used for compliance reasons.
+- Fixed a bug where invite email smtp configuration was not saving correctly.
+
+FiftyOne Teams 2.5.1
+--------------------
+*Released February 3, 2025*
+
+- Fixed a bug where we displayed a session error before initial user login
+
 FiftyOne Teams 2.5.0
 --------------------
 *Released January 24, 2025*

@@ -588,6 +588,18 @@ class GroupTests(unittest.TestCase):
 
         view = dataset.select_fields()
 
+        # Selecting active slice maintains schema changes
+        video_view = view.select_group_slices("ego")
+
+        self.assertEqual(view.group_slice, "ego")
+        self.assertEqual(video_view.media_type, "video")
+        self.assertNotIn("field", video_view.get_field_schema())
+        self.assertNotIn("field", video_view.get_frame_field_schema())
+        for sample in video_view:
+            self.assertFalse(sample.has_field("field"))
+            for frame in sample.frames.values():
+                self.assertFalse(frame.has_field("field"))
+
         # Cloning a grouped dataset maintains schema changes
         group_dataset = view.clone()
 
@@ -611,7 +623,6 @@ class GroupTests(unittest.TestCase):
         for sample in image_dataset:
             self.assertFalse(sample.has_field("field"))
 
-        # @note(SelectGroupSlices)
         # Selecting group slices maintains frame schema changes
         video_view = view.select_group_slices(media_type="video")
 
@@ -630,6 +641,126 @@ class GroupTests(unittest.TestCase):
             self.assertFalse(sample.has_field("field"))
             for frame in sample.frames.values():
                 self.assertFalse(frame.has_field("field"))
+
+    @drop_datasets
+    def test_select_exclude_slices(self):
+        dataset = _make_group_dataset()
+
+        # Select slices by name
+        view = dataset.select_group_slices(["left", "right"], flat=False)
+
+        self.assertEqual(len(view), 2)
+        self.assertEqual(view.media_type, "group")
+        self.assertSetEqual(set(view.group_slices), {"left", "right"})
+        self.assertDictEqual(
+            view.group_media_types, {"left": "image", "right": "image"}
+        )
+        self.assertIn(view.group_slice, ["left", "right"])
+        self.assertIn(view.default_group_slice, ["left", "right"])
+
+        # Select slices by media type
+        view = dataset.select_group_slices(media_type="image", flat=False)
+
+        self.assertEqual(len(view), 2)
+        self.assertEqual(view.media_type, "group")
+        self.assertSetEqual(set(view.group_slices), {"left", "right"})
+        self.assertDictEqual(
+            view.group_media_types, {"left": "image", "right": "image"}
+        )
+        self.assertIn(view.group_slice, ["left", "right"])
+        self.assertIn(view.default_group_slice, ["left", "right"])
+
+        # Exclude slices by name
+        view = dataset.exclude_group_slices("ego")
+
+        self.assertEqual(len(view), 2)
+        self.assertEqual(view.media_type, "group")
+        self.assertSetEqual(set(view.group_slices), {"left", "right"})
+        self.assertDictEqual(
+            view.group_media_types, {"left": "image", "right": "image"}
+        )
+        self.assertIn(view.group_slice, ["left", "right"])
+        self.assertIn(view.default_group_slice, ["left", "right"])
+
+        # Exclude slices by media type
+        view = dataset.exclude_group_slices(media_type="video")
+
+        self.assertEqual(len(view), 2)
+        self.assertEqual(view.media_type, "group")
+        self.assertSetEqual(set(view.group_slices), {"left", "right"})
+        self.assertDictEqual(
+            view.group_media_types, {"left": "image", "right": "image"}
+        )
+        self.assertIn(view.group_slice, ["left", "right"])
+        self.assertIn(view.default_group_slice, ["left", "right"])
+
+        # Empty grouped view
+        view = dataset.select_group_slices(
+            ["left", "right"], flat=False
+        ).exclude_group_slices(media_type="image")
+
+        self.assertEqual(len(view), 0)
+        self.assertEqual(view.media_type, "group")
+        self.assertListEqual(view.group_slices, [])
+        self.assertDictEqual(view.group_media_types, {})
+        self.assertIsNone(view.group_slice)
+        self.assertIsNone(view.default_group_slice)
+
+        # Empty grouped view clone
+        dataset2 = view.clone()
+
+        self.assertEqual(len(dataset2), 0)
+        self.assertEqual(dataset2.media_type, "group")
+        self.assertListEqual(dataset2.group_slices, [])
+        self.assertDictEqual(dataset2.group_media_types, {})
+        self.assertIsNone(dataset2.group_slice)
+        self.assertIsNone(dataset2.default_group_slice)
+
+        # Select group slices with filtered schema
+        view = dataset.select_fields().select_group_slices(
+            media_type="video", flat=False
+        )
+
+        self.assertEqual(len(view), 2)
+        self.assertEqual(view.media_type, "group")
+        self.assertListEqual(view.group_slices, ["ego"])
+        self.assertDictEqual(view.group_media_types, {"ego": "video"})
+        self.assertEqual(view.group_slice, "ego")
+        self.assertEqual(view.default_group_slice, "ego")
+
+        schema = view.get_field_schema()
+        frame_schema = view.get_frame_field_schema()
+
+        self.assertNotIn("field", schema)
+        self.assertNotIn("field", frame_schema)
+
+        sample_view = view.first()
+        frame_view = sample_view.frames.first()
+
+        self.assertFalse(sample_view.has_field("field"))
+        self.assertFalse(frame_view.has_field("field"))
+
+        # Clone selected group slices with filtered schema
+        dataset2 = view.clone()
+
+        self.assertEqual(len(dataset2), 2)
+        self.assertEqual(dataset2.media_type, "group")
+        self.assertListEqual(dataset2.group_slices, ["ego"])
+        self.assertDictEqual(dataset2.group_media_types, {"ego": "video"})
+        self.assertEqual(dataset2.group_slice, "ego")
+        self.assertEqual(dataset2.default_group_slice, "ego")
+
+        schema = dataset2.get_field_schema()
+        frame_schema = dataset2.get_frame_field_schema()
+
+        self.assertNotIn("field", schema)
+        self.assertNotIn("field", frame_schema)
+
+        sample2 = dataset2.first()
+        frame2 = sample2.frames.first()
+
+        self.assertFalse(sample2.has_field("field"))
+        self.assertFalse(frame2.has_field("field"))
 
     @drop_datasets
     def test_attached_groups(self):

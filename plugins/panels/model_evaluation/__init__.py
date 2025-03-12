@@ -46,7 +46,6 @@ class EvaluationPanel(Panel):
             label="Model Evaluation",
             icon="ssid_chart",
             category=Categories.ANALYZE,
-            beta=True,
         )
 
     def get_dataset_id(self, ctx):
@@ -66,6 +65,8 @@ class EvaluationPanel(Panel):
             "can_evaluate": True,
             "can_edit_note": True,
             "can_edit_status": True,
+            "can_delete_evaluation": True,
+            "can_rename": True,
         }
 
     def can_evaluate(self, ctx):
@@ -76,6 +77,12 @@ class EvaluationPanel(Panel):
 
     def can_edit_status(self, ctx):
         return self.get_permissions(ctx).get("can_edit_status", False)
+
+    def can_delete_evaluation(self, ctx):
+        return self.get_permissions(ctx).get("can_delete_evaluation", False)
+
+    def can_rename(self, ctx):
+        return self.get_permissions(ctx).get("can_rename", False)
 
     def on_load(self, ctx):
         store = self.get_store(ctx)
@@ -90,6 +97,10 @@ class EvaluationPanel(Panel):
                 evaluation = {
                     "key": key,
                     "id": self.get_evaluation_id(ctx.dataset, key),
+                    "type": ctx.dataset.get_evaluation_info(key).config.type,
+                    "method": ctx.dataset.get_evaluation_info(
+                        key
+                    ).config.method,
                 }
                 evaluations.append(evaluation)
         ctx.panel.set_state("evaluations", evaluations)
@@ -191,6 +202,62 @@ class EvaluationPanel(Panel):
         store.set("notes", notes)
         ctx.panel.set_data("notes", notes)
         ctx.ops.notify(f"Note updated successfully!", variant="success")
+
+    def rename_evaluation(self, ctx):
+        if not self.can_rename(ctx):
+            ctx.ops.notify(
+                "You do not have permission to rename this evaluation",
+                variant="error",
+            )
+            return
+        old_name = ctx.params.get("old_name", None)
+        new_name = ctx.params.get("new_name", None)
+        try:
+            ctx.dataset.rename_evaluation(old_name, new_name)
+            view_state = ctx.panel.get_state("view") or {}
+            eval_id = view_state.get("id")
+            store = self.get_store(ctx)
+            evaluation_data = store.get(eval_id)
+            if evaluation_data:
+                evaluation_data["info"]["name"] = new_name
+                evaluation_data["info"]["key"] = new_name
+                store.set(eval_id, evaluation_data, ttl=CACHE_TTL)
+            ctx.ops.notify(
+                f"Renamed evaluation '{old_name}' to '{new_name}' successfully!",
+                variant="success",
+            )
+        except Exception as e:
+            ctx.ops.notify(
+                f"Failed to rename evaluation '{old_name}' to '{new_name}'",
+                variant="error",
+            )
+
+    def delete_evaluation(self, ctx):
+        if not self.can_delete_evaluation(ctx):
+            ctx.ops.notify(
+                "You do not have permission to delete evaluations",
+                variant="error",
+            )
+            return
+
+        # use eval_id to delete the execution store
+        eval_id = ctx.params.get("eval_id", None)
+        # use eval_key to delete the evaluation from dataset
+        eval_key = ctx.params.get("eval_key", None)
+
+        try:
+            ctx.dataset.delete_evaluation(eval_key)
+            store = self.get_store(ctx)
+            store.delete(eval_id)
+            ctx.ops.notify(
+                "Evaluation deleted successfully!",
+                variant="success",
+            )
+        except Exception as e:
+            ctx.ops.notify(
+                f"Failed to delete evaluation successfully",
+                variant="error",
+            )
 
     def load_evaluation_view(self, ctx):
         view_state = ctx.panel.get_state("view") or {}
@@ -428,12 +495,19 @@ class EvaluationPanel(Panel):
                     pending
                 )
         for key in eval_keys:
+            conf = ctx.dataset.get_evaluation_info(key).config
             if not self.has_evaluation_results(ctx.dataset, key):
-                pending_evaluations.append({"eval_key": key})
+                pending_evaluations.append(
+                    {
+                        "eval_key": key,
+                        "type": conf.type,
+                        "method": conf.method,
+                    }
+                )
         if update_store:
-            pending_evaluations_in_store[
-                dataset_id
-            ] = updated_pending_evaluations_for_dataset_in_stored
+            pending_evaluations_in_store[dataset_id] = (
+                updated_pending_evaluations_for_dataset_in_stored
+            )
             store.set("pending_evaluations", pending_evaluations_in_store)
         ctx.panel.set_data("pending_evaluations", pending_evaluations)
 
@@ -685,6 +759,189 @@ class EvaluationPanel(Panel):
         if view is not None:
             ctx.ops.set_view(view)
 
+    def save_scenario(self, ctx):
+        # Called when you click the "Save Scenario" button
+        # Validates and stores a subset in the execution store for model eval
+        # {
+        #   id,
+        #   name: string (unique),
+        #   type: 'sample_field' | 'saved_view' | 'custom_code' | "label_attributes",
+        #   sample_field: string (optional, only required if type == 'sample_field'),
+        #   code_expr: string (optional, only required if type == 'custom_code'),
+        # }
+        # TODO: implement
+        pass
+
+    def extract_save_scenario_params(self, ctx):
+        print("ctx.params", ctx.params)
+        params = ctx.params.get("scenario", {}).get("subset", {})
+        scenario_name = params.get("scenario_name", None)
+        if scenario_name is None:
+            raise ValueError("No scenario name provided")
+
+        scenario_type = params.get("scenario_type", None)
+        if scenario_type is None:
+            raise ValueError("No scenario type provided")
+
+        sample_field_values = params.get("sample_field_values", None)
+
+        label_attribute_values = params.get("label_attribute_values", None)
+        saved_views = params.get("saved_views_values", None)
+
+        return {
+            "name": scenario_name,
+            "type": scenario_type,
+            "saved_views": saved_views,
+            "sample_field": params.get("sample_field", None),
+            "scenario_field": params.get("scenario_field", None),
+            "code_expr": params.get("code_expr", None),
+            "sample_field_values": sample_field_values,
+            "label_attribute_values": label_attribute_values,
+        }
+
+    def load_compare_evaluation_results(self, ctx):
+        base_model_key = (
+            ctx.params.get("panel_state", {}).get("view", {}).get("key", None)
+        )
+        compare_model_key = (
+            ctx.params.get("panel_state", {})
+            .get("view", {})
+            .get("compareKey", None)
+        )
+
+        if base_model_key is None:
+            raise ValueError("No base model key provided")
+
+        eval_a_results = ctx.dataset.load_evaluation_results(base_model_key)
+        eval_b_results = ctx.dataset.load_evaluation_results(compare_model_key)
+
+        return (
+            base_model_key,
+            eval_a_results,
+            compare_model_key,
+            eval_b_results,
+        )
+
+    def on_save_analyze_scenario(self, ctx):
+        label_attrs_classes = None
+
+        params = self.extract_save_scenario_params(ctx)
+        (
+            eval_a_key,
+            eval_a_results,
+            eval_b_key,
+            eval_b_results,
+        ) = self.load_compare_evaluation_results(ctx)
+
+        graph_data = {
+            eval_a_key: {
+                "performance": {},
+                "confusion_matrix": {},
+            },
+            eval_b_key: {
+                "performance": {},
+                "confusion_matrix": {},
+            },
+        }
+
+        scenario_type = params.get("type", None)
+        sample_field_values = params.get("sample_field_values", None)
+
+        # I. Saved views
+        if scenario_type == "saved_views":
+            saved_views = params.get("saved_views", None)
+
+            for saved_view in saved_views:
+                subset_def = dict(
+                    type="view",
+                    view=saved_view,
+                )
+
+                # Graph I data - Model Performance
+                with eval_a_results.use_subset(subset_def):
+                    graph_data[eval_a_key]["performance"][
+                        saved_view
+                    ] = eval_a_results.metrics()
+                with eval_b_results.use_subset(subset_def):
+                    graph_data[eval_b_key]["performance"][
+                        saved_view
+                    ] = eval_b_results.metrics()
+
+        # II. Sample Fields
+        elif scenario_type == "sample_field":
+            scenario_field = params.get("scenario_field", None)
+            if scenario_field is None:
+                raise ValueError("No scenario field provided")
+
+            # case sample fields: tags
+            if scenario_field == "tags":
+                field_paths = list(sample_field_values.keys())
+
+                for field_path in field_paths:
+                    if sample_field_values[field_path] is True:
+                        subset_def = dict(
+                            type="field",
+                            field=scenario_field,
+                            value=field_path,
+                        )
+
+                        # Graph I data - Model Performance
+                        with eval_a_results.use_subset(subset_def):
+                            graph_data[eval_a_key]["performance"][
+                                field_path
+                            ] = eval_a_results.metrics()
+                        with eval_b_results.use_subset(subset_def):
+                            graph_data[eval_b_key]["performance"][
+                                field_path
+                            ] = eval_b_results.metrics()
+
+            # TODO: case continuous fields: confidence
+
+            # TODO: case discrete fields: < 100 categories
+
+        # III. Custom Code
+        elif scenario_type == "custom_code":
+            code_expr = params.get("code_expr", None)
+            if code_expr is None:
+                raise ValueError("No code expression provided")
+
+            subset_def = dict(type="code", code=code_expr)
+
+        # IV. Label Attributes
+        elif scenario_type == "label_attribute":
+            label_attrs_map = params.get("label_attribute_values", {})
+            label_attrs_classes = list(label_attrs_map.keys()) or []
+
+            # Graph I data - Model Performance
+            for label in label_attrs_classes:
+                subset_def = dict(
+                    type="attribute",
+                    field="label",  # TODO
+                    value=label,
+                )
+                with eval_a_results.use_subset(subset_def):
+                    graph_data[eval_a_key]["performance"][
+                        label
+                    ] = eval_a_results.metrics()
+                with eval_b_results.use_subset(subset_def):
+                    graph_data[eval_b_key]["performance"][
+                        label
+                    ] = eval_b_results.metrics()
+
+            # Graph II data - Prediction Statistics
+            # TODO
+
+            # Graph III data - Confusion Metrics
+            graph_data[eval_a_key]["confusion_matrix"] = (
+                eval_a_results.confusion_matrix(classes=label_attrs_classes)
+            )
+            graph_data[eval_b_key]["confusion_matrix"] = (
+                eval_b_results.confusion_matrix(classes=label_attrs_classes)
+            )
+
+        print("graph_data", graph_data)
+        ctx.panel.set_state("evaluations_scenario", graph_data)
+
     def render(self, ctx):
         panel = types.Object()
         return types.Property(
@@ -699,6 +956,9 @@ class EvaluationPanel(Panel):
                 set_status=self.set_status,
                 set_note=self.set_note,
                 load_view=self.load_view,
+                rename_evaluation=self.rename_evaluation,
+                delete_evaluation=self.delete_evaluation,
+                on_save_subset=self.on_save_analyze_scenario,
             ),
         )
 

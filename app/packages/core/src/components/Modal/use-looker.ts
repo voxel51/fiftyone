@@ -29,14 +29,29 @@ function useLooker<L extends fos.Lookers>({
   );
   const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
   const colorScheme = useRecoilValue(fos.colorScheme);
+
+  // use a ref for sample data to prevent instance recreation
+  //
+  // sample updates are handled via looker.updateSample(...)
+  const sampleRef = useRef(sample);
+  sampleRef.current = sample;
   const looker = React.useMemo(() => {
     /** start refreshers */
     reset;
     selectedMediaField;
     /** end refreshers */
 
-    return createLooker.current(sample);
-  }, [createLooker, reset, sample, selectedMediaField]) as L;
+    return createLooker.current(sampleRef.current);
+  }, [createLooker, reset, selectedMediaField]) as L;
+
+  useEffect(() => {
+    /** start refreshers */
+    colorScheme;
+    /** end refreshers */
+
+    !initialRef.current && looker.updateSample(sample.sample);
+  }, [colorScheme, looker, sample]);
+
   const handleError = useErrorHandler();
   const updateLookerOptions = useLookerOptionsUpdate();
 
@@ -50,14 +65,6 @@ function useLooker<L extends fos.Lookers>({
   useEffect(() => {
     !initialRef.current && looker.updateOptions(lookerOptions);
   }, [looker, lookerOptions]);
-
-  useEffect(() => {
-    /** start refreshers */
-    colorScheme;
-    /** end refreshers */
-
-    !initialRef.current && looker.updateSample(sample.sample);
-  }, [colorScheme, looker, sample]);
 
   useEffect(() => {
     initialRef.current = false;

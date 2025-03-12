@@ -45,7 +45,7 @@ done
 [ ${SHOW_HELP} = true ] && usage && exit 0
 
 set -e
-NODE_VERSION=17.9.0
+NODE_VERSION=22.14.0
 OS=$(uname -s)
 ARCH=$(uname -m)
 

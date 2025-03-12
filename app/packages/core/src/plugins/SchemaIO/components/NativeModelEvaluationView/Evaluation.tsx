@@ -1,5 +1,4 @@
-import _ from "lodash";
-import { Dialog } from "@fiftyone/components";
+import { Dialog, EditableLabel } from "@fiftyone/components";
 import { editingFieldAtom, view } from "@fiftyone/state";
 import {
   ArrowBack,
@@ -38,23 +37,40 @@ import {
   TextField,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
   useTheme,
 } from "@mui/material";
+import get from "lodash/get";
 import React, { useEffect, useMemo, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
+import ActionMenu from "./ActionMenu";
 import Error from "./Error";
+import EvaluationIcon from "./EvaluationIcon";
 import EvaluationNotes from "./EvaluationNotes";
 import EvaluationPlot from "./EvaluationPlot";
 import Status from "./Status";
-import { formatValue, getNumericDifference, useTriggerEvent } from "./utils";
+import { ConcreteEvaluationType } from "./Types";
+import {
+  computeSortedCompareKeys,
+  formatValue,
+  getNumericDifference,
+  useTriggerEvent,
+} from "./utils";
+import get from "lodash/get";
+import { usePanelId } from "@fiftyone/spaces";
+import { usePanelEvent } from "@fiftyone/operators";
 
 const KEY_COLOR = "#ff6d04";
 const COMPARE_KEY_COLOR = "#03a9f4";
+const COMPARE_KEY_SECONDARY_COLOR = "#87D2FA";
 const DEFAULT_BAR_CONFIG = { sortBy: "default" };
 const NONE_CLASS = "(none)";
 
+const configure_subset_uri = "@voxel51/scenario/configure_scenario";
+
 export default function Evaluation(props: EvaluationProps) {
+  console.log("Evaluation props", props);
   const {
     name,
     id,
@@ -68,6 +84,8 @@ export default function Evaluation(props: EvaluationProps) {
     setNoteEvent,
     notes = {},
     loadView,
+    onRename,
+    onSaveScenario,
   } = props;
   const theme = useTheme();
   const [expanded, setExpanded] = React.useState("summary");
@@ -75,6 +93,7 @@ export default function Evaluation(props: EvaluationProps) {
   const [editNoteState, setEditNoteState] = useState({ open: false, note: "" });
   const [classPerformanceConfig, setClassPerformanceConfig] =
     useState<PLOT_CONFIG_TYPE>({});
+  const panelId = usePanelId();
   const [classPerformanceDialogConfig, setClassPerformanceDialogConfig] =
     useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
   const [confusionMatrixConfig, setConfusionMatrixConfig] =
@@ -85,10 +104,29 @@ export default function Evaluation(props: EvaluationProps) {
   const [classMode, setClassMode] = useState("chart");
   const [performanceClass, setPerformanceClass] = useState("precision");
   const [loadingCompare, setLoadingCompare] = useState(false);
+  const scenarioData = useMemo(() => {
+    const scenarioData = data?.[`evaluations_scenario`];
+    return scenarioData;
+  }, [data]);
+  const scenarioDataAPerformance = useMemo(() => {
+    const scenarioDataA = scenarioData?.[name]?.["performance"];
+    return scenarioDataA;
+  }, [scenarioData]);
+  const scenarioDataBPerformance = useMemo(() => {
+    const scenarioDataB = scenarioData?.[compareKey]?.["performance"];
+    return scenarioDataB;
+  }, [scenarioData]);
+  const [selectedScenarioClass, setSelectedScenarioClass] = useState(
+    Object.keys(scenarioDataAPerformance || {})?.[0]
+  );
+  console.log("scenarioDataA", scenarioDataAPerformance);
+  console.log("scenarioDataB", scenarioDataBPerformance);
+  console.log("data", data);
   const evaluation = useMemo(() => {
     const evaluation = data?.[`evaluation_${name}`];
     return evaluation;
   }, [data]);
+
   const compareEvaluation = useMemo(() => {
     const evaluation = data?.[`evaluation_${compareKey}`];
     return evaluation;
@@ -97,6 +135,7 @@ export default function Evaluation(props: EvaluationProps) {
     const evaluation = data?.[`evaluation_${name}_error`];
     return evaluation;
   }, [data]);
+
   const compareEvaluationError = useMemo(() => {
     const evaluation = data?.[`evaluation_${compareKey}_error`];
     return evaluation;
@@ -127,17 +166,21 @@ export default function Evaluation(props: EvaluationProps) {
     evaluationMaskTargets,
     compareEvaluationMaskTargets,
   ]);
+
   const compareKeys = useMemo(() => {
-    const keys: string[] = [];
+    const currentEval = data.evaluations.find((item) => item.key === name);
+    const currentType = currentEval?.type || "";
+    const currentMethod = currentEval?.method || "";
     const evaluations = data?.evaluations || [];
-    for (const evaluation of evaluations) {
-      const { key } = evaluation;
-      if (key !== name) {
-        keys.push(key);
-      }
-    }
-    return keys;
+
+    return computeSortedCompareKeys(
+      evaluations,
+      name,
+      currentType,
+      currentMethod
+    );
   }, [data, name]);
+
   const status = useMemo(() => {
     return statuses[id];
   }, [statuses, id]);
@@ -160,6 +203,7 @@ export default function Evaluation(props: EvaluationProps) {
   }, [compareEvaluation, compareKey]);
 
   const triggerEvent = useTriggerEvent();
+  const promptOperator = usePanelEvent();
   const activeFilter = useActiveFilter(evaluation, compareEvaluation);
   const setEditingField = useSetRecoilState(editingFieldAtom);
 
@@ -520,10 +564,12 @@ export default function Evaluation(props: EvaluationProps) {
       ? [classPerformance.findIndex((c) => c.id === activeFilter.value)]
       : undefined;
 
+  const labels = ["Accuracy", "F-score", "Precision", "Recall", "Support"];
+
   return (
     <Stack spacing={2} sx={{ p: 2 }}>
       <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+        <Stack direction="row" spacing={0} sx={{ alignItems: "center" }}>
           <IconButton
             onClick={() => {
               navigateBack();
@@ -532,7 +578,13 @@ export default function Evaluation(props: EvaluationProps) {
           >
             <ArrowBack />
           </IconButton>
-          <Typography>{name}</Typography>
+          <EvaluationIcon type={evaluationType} method={evaluationMethod} />
+          <EditableLabel
+            label={name}
+            onSave={(newLabel) => {
+              onRename(name, newLabel);
+            }}
+          />
         </Stack>
         <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
           <Status
@@ -555,6 +607,7 @@ export default function Evaluation(props: EvaluationProps) {
               <Info />
             </ToggleButton>
           </ToggleButtonGroup>
+          <ActionMenu evaluationName={evaluation.info.key} />
         </Stack>
       </Stack>
 
@@ -574,7 +627,10 @@ export default function Evaluation(props: EvaluationProps) {
               borderColor: theme.palette.divider,
             }}
           >
-            <ColorSquare color={KEY_COLOR} />
+            <EvaluationIcon
+              type={evaluationType as ConcreteEvaluationType}
+              method={evaluationMethod}
+            />
             <Typography>{evaluationKey}</Typography>
           </Stack>
         </Stack>
@@ -598,9 +654,13 @@ export default function Evaluation(props: EvaluationProps) {
             <Select
               key={compareKey}
               sx={{
-                height: 28,
+                height: 40,
                 width: "100%",
                 background: theme.palette.background.card,
+                "& .MuiOutlinedInput-input": {
+                  display: "flex",
+                  alignItems: "center",
+                },
               }}
               defaultValue={compareKey}
               onChange={(e) => {
@@ -619,21 +679,41 @@ export default function Evaluation(props: EvaluationProps) {
                   </IconButton>
                 ) : null
               }
-              startAdornment={
-                compareKey ? (
-                  <Box sx={{ pr: 1 }}>
-                    <ColorSquare color={COMPARE_KEY_COLOR} />{" "}
-                  </Box>
-                ) : null
-              }
             >
-              {compareKeys.map((key) => {
-                return (
-                  <MenuItem value={key} key={key}>
-                    <Typography>{key}</Typography>
-                  </MenuItem>
-                );
-              })}
+              {compareKeys.map(
+                ({ key, type, method, disabled, tooltip, tooltipBody }) => {
+                  const menuItem = (
+                    <MenuItem
+                      value={key}
+                      key={key}
+                      sx={{ p: 0 }}
+                      disabled={disabled}
+                    >
+                      <EvaluationIcon
+                        type={type as ConcreteEvaluationType}
+                        method={method}
+                        color={COMPARE_KEY_SECONDARY_COLOR}
+                      />
+                      <Typography>{key}</Typography>
+                    </MenuItem>
+                  );
+                  return disabled ? (
+                    <Tooltip
+                      key={key}
+                      title={
+                        <>
+                          <Typography variant="subtitle1">{tooltip}</Typography>
+                          <Typography variant="body2">{tooltipBody}</Typography>
+                        </>
+                      }
+                    >
+                      <span>{menuItem}</span>
+                    </Tooltip>
+                  ) : (
+                    menuItem
+                  );
+                }
+              )}
             </Select>
           )}
         </Stack>
@@ -1132,6 +1212,9 @@ export default function Evaluation(props: EvaluationProps) {
                       }
                       loadView("class", { x: points[0]?.x });
                     }}
+                    layout={{
+                      xaxis: { type: "category" },
+                    }}
                   />
                 )}
                 {classMode === "table" && (
@@ -1341,6 +1424,131 @@ export default function Evaluation(props: EvaluationProps) {
           </Accordion>
         </Stack>
       )}
+      <Accordion
+        // expanded={expanded === "subset"}
+        expanded={true}
+        onChange={(e, expanded) => {
+          setExpanded(expanded ? "subset" : "");
+        }}
+        disableGutters
+        sx={{ borderRadius: 1, "&::before": { display: "none" } }}
+      >
+        <AccordionSummary expandIcon={<ExpandMore />}>
+          Scenario Analysis
+        </AccordionSummary>
+        <AccordionDetails>
+          <Stack direction="row" sx={{ justifyContent: "space-between" }}>
+            <Typography color="secondary">Subset</Typography>
+            {scenarioDataAPerformance?.[selectedScenarioClass] &&
+              scenarioDataBPerformance && (
+                <>
+                  <Stack spacing={1} pt={1}>
+                    <Typography color="secondary">Sort by:</Typography>
+
+                    <Select
+                      size="small"
+                      onChange={(e) => {
+                        setSelectedScenarioClass(e.target.value as string);
+                      }}
+                      defaultValue={selectedScenarioClass}
+                    >
+                      {Object.keys(scenarioDataAPerformance).map(
+                        (val: string) => {
+                          return (
+                            <MenuItem key={val} value={val}>
+                              {val}
+                            </MenuItem>
+                          );
+                        }
+                      )}
+                    </Select>
+                  </Stack>
+
+                  <EvaluationPlot
+                    data={[
+                      {
+                        type: "scatterpolar",
+                        r: [
+                          scenarioDataAPerformance[selectedScenarioClass]
+                            .accuracy,
+                          scenarioDataAPerformance[selectedScenarioClass]
+                            .fscore,
+                          scenarioDataAPerformance[selectedScenarioClass]
+                            .precision,
+                          scenarioDataAPerformance[selectedScenarioClass]
+                            .recall,
+                          scenarioDataAPerformance[selectedScenarioClass]
+                            .support / 100, // Normalize support
+                        ],
+                        theta: labels,
+                        fill: "toself",
+                        name: scenarioDataAPerformance[selectedScenarioClass]
+                          .label,
+                        fillcolor: "rgba(0, 123, 255, 0.2)", // Light transparent blue
+                        line: {
+                          color: "rgba(0, 123, 255, 1)", // Solid blue line
+                        },
+                      },
+                      {
+                        type: "scatterpolar",
+                        r: [
+                          scenarioDataBPerformance[selectedScenarioClass]
+                            .accuracy,
+                          scenarioDataBPerformance[selectedScenarioClass]
+                            .fscore,
+                          scenarioDataBPerformance[selectedScenarioClass]
+                            .precision,
+                          scenarioDataBPerformance[selectedScenarioClass]
+                            .recall,
+                          scenarioDataBPerformance[selectedScenarioClass]
+                            .support / 100, // Normalize support
+                        ],
+                        theta: labels,
+                        fill: "toself",
+                        name: scenarioDataBPerformance[selectedScenarioClass]
+                          .label,
+                        fillcolor: "rgba(255, 123, 0, 0.2)", // Light transparent orange
+                        line: {
+                          color: "rgba(255, 123, 0, 1)", // Solid orange line
+                        },
+                      },
+                    ]}
+                    layout={{
+                      polar: {
+                        radialaxis: {
+                          visible: true,
+                          range: [0, 1],
+                        },
+                      },
+                      showlegend: true,
+                    }}
+                  />
+                </>
+              )}
+            <Box>
+              <IconButton
+                onClick={() => {
+                  promptOperator(panelId, {
+                    params: { gt_field: evaluationConfig.gt_field },
+                    operator: configure_subset_uri,
+                    prompt: true,
+                    callback: (result, opts) => {
+                      console.log("params", opts.ctx.params);
+                      onSaveScenario({ subset: opts.ctx.params });
+                      // TODO: save the subset
+
+                      // TODO: error handling
+                    },
+                  });
+                }}
+              >
+                Create subset
+                <Settings />
+              </IconButton>
+            </Box>
+          </Stack>
+        </AccordionDetails>
+      </Accordion>
       {mode === "info" && (
         <Card sx={{ p: 2 }}>
           <EvaluationTable>
@@ -1629,6 +1837,8 @@ type EvaluationProps = {
   setNoteEvent: string;
   notes: Record<string, string>;
   loadView: (type: string, params: any) => void;
+  onRename: (oldName: string, newName: string) => void;
+  onSaveScenario: (scenario: any) => void;
 };
 
 function ColorSquare(props: { color: string }) {
@@ -1803,10 +2013,10 @@ type SummaryRow = {
 
 function formatCustomMetricRows(evaluationMetrics, comparisonMetrics) {
   const results = [] as SummaryRow[];
-  const customMetrics = (_.get(evaluationMetrics, "custom_metrics", null) ||
+  const customMetrics = (get(evaluationMetrics, "custom_metrics", null) ||
     {}) as CustomMetrics;
   for (const [operatorUri, customMetric] of Object.entries(customMetrics)) {
-    const compareValue = _.get(
+    const compareValue = get(
       comparisonMetrics,
       `custom_metrics.${operatorUri}.value`,
       null

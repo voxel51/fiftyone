@@ -20,7 +20,7 @@ export interface BaseLabel {
   frame_number?: number;
   tags: string[];
   index?: number;
-  renderStatus?: DenseLabelRenderStatus;
+  _renderStatus?: DenseLabelRenderStatus;
 }
 
 export interface PointInfo<Label extends BaseLabel = BaseLabel> {
