@@ -21,6 +21,18 @@ export interface BaseLabel {
   tags: string[];
   index?: number;
   _renderStatus?: DenseLabelRenderStatus;
+
+  /**
+   * Unlike id, instanceId is not guaranteed to be unique across samples.
+   * It is only guaranteed to be unique within a sample.
+   *
+   * It is commonly used to cross-link labels between samples.
+   */
+  instance_config?: {
+    _cls: "Instance";
+    name: string;
+    _id?: string;
+  };
 }
 
 export interface PointInfo<Label extends BaseLabel = BaseLabel> {
@@ -40,6 +52,15 @@ export interface SelectData {
   field: string;
   id: string;
   frameNumber?: number;
+
+  /**
+   * Unlike id, instanceId is not guaranteed to be unique across samples.
+   * It is only guaranteed to be unique within a sample.
+   *
+   * It is commonly used to cross-link labels between samples.
+   */
+  instanceId?: string;
+  instanceName?: string;
 }
 
 export type LabelMask = {
@@ -90,6 +111,13 @@ export abstract class CoordinateOverlay<
   constructor(field: string, label: Label) {
     this.field = field;
     this.label = label;
+
+    console.log(
+      "Creating overlay for label",
+      this.label.id,
+      "with instanceId",
+      this.label.instance_config?.instance_id
+    );
   }
 
   abstract draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void;
@@ -142,6 +170,8 @@ export abstract class CoordinateOverlay<
       field: this.field,
       // @ts-ignore
       frameNumber: state.frameNumber,
+      instanceId: this.label.instance_config?.instance_id,
+      instanceName: this.label.instance_config?.instance_name,
     };
   }
 

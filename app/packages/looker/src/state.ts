@@ -98,6 +98,15 @@ export interface LabelData {
   frameNumber?: number;
   sampleId: string;
   index?: number;
+
+  /**
+   * Unlike id, instanceId is not guaranteed to be unique across samples.
+   * It is only guaranteed to be unique within a sample.
+   *
+   * It is commonly used to cross-link labels between samples.
+   */
+  instanceId?: string;
+  instanceName?: string;
 }
 
 type MaskLabel = string;
