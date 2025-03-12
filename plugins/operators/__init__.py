@@ -9,6 +9,8 @@ Builtin operators.
 import json
 import os
 
+from bson import ObjectId
+
 import fiftyone as fo
 import fiftyone.core.media as fom
 import fiftyone.core.storage as fos
@@ -125,6 +127,204 @@ def _edit_field_info_inputs(ctx, inputs):
         label="Read only",
         description="Whether to mark the field as read-only",
     )
+
+
+class EditFieldValues(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="edit_field_values",
+            label="Edit field values",
+            dynamic=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        _edit_field_values_inputs(ctx, inputs)
+
+        return types.Property(
+            inputs, view=types.View(label="Edit field values")
+        )
+
+    def execute(self, ctx):
+        path = ctx.params["path"]
+        map = ctx.params["map"]
+        target = ctx.params.get("target", None)
+
+        target_view = _get_target_view(ctx, target)
+
+        f = _make_parse_field_fcn(ctx, path)
+
+        _map = {}
+        for d in map:
+            current = d["current"]
+            new = d["new"]
+
+            if not isinstance(current, list):
+                current = [current]
+
+            for c in current:
+                _map[f(c)] = f(new)
+
+        target_view.map_values(path, _map).save()
+        ctx.trigger("reload_dataset")
+
+
+def _make_parse_field_fcn(ctx, path):
+    field = ctx.dataset.get_field(path)
+
+    if isinstance(field, fo.StringField):
+        return lambda v: str(v) if v != "None" else None
+    elif isinstance(field, fo.BooleanField):
+        return lambda v: v == "True" if v != "None" else None
+    elif isinstance(field, fo.ObjectIdField):
+        return lambda v: ObjectId(v) if v != "None" else None
+    elif isinstance(field, fo.IntField):
+        return lambda v: int(v) if v != "None" else None
+    else:
+        return lambda v: v
+
+
+def _edit_field_values_inputs(ctx, inputs):
+    has_view = ctx.view != ctx.dataset.view()
+    has_selected = bool(ctx.selected)
+    default_target = None
+    if has_view or has_selected:
+        target_choices = types.RadioGroup()
+        target_choices.add_choice(
+            "DATASET",
+            label="Entire dataset",
+            description="Edit field values for the entire dataset",
+        )
+
+        if has_view:
+            target_choices.add_choice(
+                "CURRENT_VIEW",
+                label="Current view",
+                description="Edit field values for the current view",
+            )
+            default_target = "CURRENT_VIEW"
+
+        if has_selected:
+            target_choices.add_choice(
+                "SELECTED_SAMPLES",
+                label="Selected samples",
+                description="Edit field values for the selected samples",
+            )
+            default_target = "SELECTED_SAMPLES"
+
+        inputs.enum(
+            "target",
+            target_choices.values(),
+            default=default_target,
+            view=target_choices,
+        )
+
+    target = ctx.params.get("target", default_target)
+    target_view = _get_target_view(ctx, target)
+
+    schema = target_view.get_field_schema(flat=True)
+    if target_view._has_frame_fields():
+        frame_schema = target_view.get_frame_field_schema(flat=True)
+        schema.update(
+            {
+                target_view._FRAMES_PREFIX + path: field
+                for path, field in frame_schema.items()
+            }
+        )
+
+    valid_field_types = (
+        fo.StringField,
+        fo.BooleanField,
+        fo.ObjectIdField,
+        fo.IntField,
+    )
+
+    paths = sorted(
+        p
+        for p, f in schema.items()
+        if (
+            isinstance(f, valid_field_types)
+            or (
+                isinstance(f, fo.ListField)
+                and isinstance(f.field, valid_field_types)
+            )
+        )
+    )
+
+    path_choices = types.AutocompleteView()
+    for key in paths:
+        path_choices.add_choice(key, label=key)
+
+    path_prop = inputs.str(
+        "path",
+        path_choices.values(),
+        required=True,
+        label="Field",
+        description="Select a field whose values you wish to edit",
+        view=path_choices,
+    )
+
+    path = ctx.params.get("path", None)
+    if path is None:
+        return
+
+    root = path.split(".", 1)[0]
+    if not target_view.has_field(root):
+        path_prop.invalid = True
+        path_prop.error_message = f"Field '{path}' does not exist"
+        return
+
+    field = target_view.get_field(path)
+    if field is not None and field.read_only:
+        inputs.view(
+            "msg",
+            types.Notice(label=f"The '{path}' field is read-only"),
+        )
+    else:
+        inputs.list(
+            "map",
+            _build_map_values_entry(ctx, target_view, path),
+            required=True,
+            label="Values",
+            description="Specify the value(s) to edit",
+        )
+
+
+def _build_map_values_entry(ctx, target_view, path):
+    map_schema = types.Object()
+
+    target_counts = target_view.count_values(path)
+    if target_view.view() != ctx.dataset.view():
+        all_values = ctx.dataset.distinct(path)
+    else:
+        all_values = list(target_counts.keys())
+
+    current_choices = types.AutocompleteView(space=6)
+    for value, count in sorted(target_counts.items(), key=lambda kv: -kv[1]):
+        current_choices.add_choice(str(value), label=f"{value} ({count})")
+
+    map_schema.list(
+        "current",
+        types.String(),
+        required=True,
+        label="Current value(s)",
+        view=current_choices,
+    )
+
+    new_choices = types.AutocompleteView(space=6)
+    for value in sorted(all_values):
+        new_choices.add_choice(str(value), label=str(value))
+
+    map_schema.str(
+        "new",
+        required=True,
+        label="New value",
+        view=new_choices,
+    )
+
+    return map_schema
 
 
 class CloneSelectedSamples(foo.Operator):
@@ -2396,6 +2596,7 @@ def _parse_spaces(ctx, spaces):
 
 def register(p):
     p.register(EditFieldInfo)
+    p.register(EditFieldValues)
     p.register(CloneSelectedSamples)
     p.register(CloneSampleField)
     p.register(CloneFrameField)

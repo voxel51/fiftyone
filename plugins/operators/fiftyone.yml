@@ -6,6 +6,7 @@ fiftyone:
 url: https://github.com/voxel51/fiftyone/plugins/operators
 operators:
   - edit_field_info
+  - edit_field_values
   - clone_selected_samples
   - clone_sample_field
   - clone_frame_field
