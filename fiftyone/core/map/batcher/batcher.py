@@ -46,6 +46,18 @@ class SampleBatcher:
         return cls.__BATCH_CLASSES.get(key)
 
     @classmethod
+    def key(cls, batch_cls: Type[fomb.SampleBatch]) -> Union[str, None]:
+        """Get key for batch class"""
+        return next(
+            (
+                key
+                for key, value in cls.__BATCH_CLASSES.items()
+                if value == batch_cls
+            ),
+            None,
+        )
+
+    @classmethod
     def split(
         cls,
         key: Optional[str],

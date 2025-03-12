@@ -37,7 +37,7 @@ class Mapper(Generic[T], abc.ABC):
         self,
         sample_collection: SampleCollection[T],
         workers: Optional[int] = None,
-        batch_method: Literal["id", "slice"] = "id",
+        batch_method: Optional[str] = None,
         # kwargs are for sub-classes that have extra parameters
         **kwargs,  # pylint:disable=unused-argument
     ):
@@ -46,7 +46,12 @@ class Mapper(Generic[T], abc.ABC):
 
         self._sample_collection = sample_collection
         self._workers = workers
-        self._batch_method = batch_method
+        self._batch_method = batch_method or fomb.SampleBatcher.default()
+
+    @property
+    def batch_method(self) -> str:
+        """Number of workers"""
+        return self._batch_method
 
     @property
     def workers(self) -> int:

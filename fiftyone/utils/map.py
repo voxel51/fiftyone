@@ -44,7 +44,7 @@ def map_samples(
         batch_method,
     )
 
-    yield from mapper.map_samples(map_fcn, progress, save)
+    yield from mapper.map_samples(map_fcn, progress=progress, save=save)
 
 
 def update_samples(
@@ -71,4 +71,4 @@ def update_samples(
         parallelize_method, sample_collection, workers, batch_method
     )
 
-    return mapper.update_samples(update_fcn, progress)
+    return mapper.update_samples(update_fcn, progress=progress)

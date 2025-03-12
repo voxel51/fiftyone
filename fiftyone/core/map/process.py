@@ -45,7 +45,7 @@ class ProcessMapper(fomm.Mapper[T]):
         self,
         sample_collection: SampleCollection[T],
         workers: Optional[int] = None,
-        batch_method: Literal["id", "slice"] = "id",
+        batch_method: Optional[str] = None,
         **kwargs,
     ):
         # Check if running in sub-process and if so limit "workers" to 1.

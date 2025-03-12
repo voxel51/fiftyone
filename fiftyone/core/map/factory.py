@@ -45,6 +45,18 @@ class MapperFactory:
         return cls.__MAPPER_CLASSES.get(key)
 
     @classmethod
+    def key(cls, mapper_cls: Type[fomm.Mapper]) -> Union[str, None]:
+        """Get key for mapper class"""
+        return next(
+            (
+                key
+                for key, value in cls.__MAPPER_CLASSES.items()
+                if value == mapper_cls
+            ),
+            None,
+        )
+
+    @classmethod
     def create(
         cls,
         key: Optional[str],
