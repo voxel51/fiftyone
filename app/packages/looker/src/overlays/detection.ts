@@ -3,6 +3,7 @@
  */
 import { NONFINITES } from "@fiftyone/utilities";
 
+import { hoveredInstances, jotaiStore } from "@fiftyone/state/src/jotai";
 import { INFO_COLOR } from "../constants";
 import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
 import { distanceFromLineSegment } from "../util";
@@ -34,16 +35,6 @@ export default class DetectionOverlay<
   private is3D: boolean;
   private labelBoundingBox: BoundingBox;
 
-  constructor(field, label) {
-    super(field, label);
-
-    if (this.label.location && this.label.dimensions) {
-      this.is3D = true;
-    } else {
-      this.is3D = false;
-    }
-  }
-
   containsPoint(state: Readonly<State>): CONTAINS {
     if ((this.label.mask || this.label.mask_path) && !this.label.mask?.data) {
       return CONTAINS.NONE;
@@ -74,9 +65,23 @@ export default class DetectionOverlay<
       return;
     }
 
+<<<<<<< HEAD
     // this means we are re-recoloring
     if (this.label.mask && this.label._renderStatus === RENDER_STATUS_PENDING) {
       return;
+=======
+    const isHovered =
+      (this.label.instance_config &&
+        jotaiStore
+          .get(hoveredInstances)
+          ?.get(this.label.instance_config._id)
+          ?.has(this.label.id)) ??
+      false;
+
+    if (isHovered) {
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 2;
+>>>>>>> 777e62e813 (implement hover behavior)
     }
 
     if (
@@ -88,10 +93,13 @@ export default class DetectionOverlay<
 
     !state.config.thumbnail && this.drawLabelText(ctx, state);
 
+    const strokeColor =
+      !this.isSelected(state) && isHovered ? "white" : this.getColor(state);
+
     if (this.is3D && this.label.dimensions && this.label.location) {
-      this.fillRectFor3d(ctx, state, this.getColor(state));
+      this.fillRectFor3d(ctx, state, strokeColor);
     } else {
-      this.strokeRect(ctx, state, this.getColor(state));
+      this.strokeRect(ctx, state, strokeColor);
     }
 
     if (this.isSelected(state)) {
