@@ -2265,7 +2265,8 @@ def get_multiprocessing_context():
         # subsequent usage of things like `multiprocessing.Queue()` will not
         # cause the default start method to switch to 'spawn'
         multiprocessing.set_start_method("fork", force=True)
-    elif sys.platform == "win":
+    elif sys.platform == "win32":
+        # Windows typically does not support 'fork'
         multiprocessing.set_start_method("spawn", force=True)
 
     return multiprocessing.get_context()
