@@ -32,6 +32,7 @@ input AggregationForm {
   slices: [String!]
   view: BSONArray!
   viewName: String = null
+  queryPerformance: Boolean = false
 }
 
 union AggregationResponses =
@@ -240,7 +241,7 @@ type Dataset {
   appConfig: DatasetAppConfig
   info: JSON
   estimatedFrameCount: Int
-  estimatedSampleCount: Int!
+  estimatedSampleCount: Int
   frameIndexes: [Index!]
   sampleIndexes: [Index!]
   headName: String
@@ -799,7 +800,7 @@ type StringAggregation implements Aggregation {
   path: String!
   count: Int!
   exists: Int!
-  values: [StringAggregationValue!]!
+  values: [StringAggregationValue!]
 }
 
 type StringAggregationValue {

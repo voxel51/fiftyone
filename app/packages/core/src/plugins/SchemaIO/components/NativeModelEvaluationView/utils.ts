@@ -2,14 +2,20 @@ import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { capitalize } from "lodash";
 import { useCallback } from "react";
+import { atom } from "recoil";
 
 export function useTriggerEvent() {
   const panelId = usePanelId();
   const handleEvent = usePanelEvent();
 
   const triggerEvent = useCallback(
-    (event: string, params?: any, prompt?: boolean) => {
-      handleEvent(panelId, { operator: event, params, prompt });
+    (event: string, params?: any, prompt?: boolean, callback?: any) => {
+      handleEvent(panelId, {
+        operator: event,
+        params,
+        prompt,
+        callback,
+      });
     },
     [handleEvent, panelId]
   );
@@ -86,3 +92,20 @@ export function computeSortedCompareKeys(
       return a.key.localeCompare(b.key);
     });
 }
+
+/**
+ * Atom state to control the visibility of the delete evaluation dialog
+ */
+export const openModelEvalDialog = atom<boolean>({
+  key: "openModelEvalDialog",
+  default: false,
+});
+
+/**
+ * Atom state to store the currently selected model evaluation key to act on.
+ * Contains the name and id of the selected evaluation.
+ */
+export const selectedModelEvaluation = atom<string | null>({
+  key: "selectedEvalation",
+  default: null,
+});

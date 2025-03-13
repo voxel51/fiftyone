@@ -5,9 +5,9 @@ Data Lens
 
 .. default-role:: code
 
-**Available in FiftyOne Teams v2.2+**
+**Available in FiftyOne Enterprise v2.2+**
 
-Data Lens is a feature built into the :ref:`FiftyOne Teams App <teams-app>`
+Data Lens is a feature built into the :ref:`FiftyOne Enterprise App <enterprise-app>`
 which allows you to use FiftyOne to explore and import samples from external
 data sources.
 
@@ -17,7 +17,7 @@ Whether your data resides in a database like PostgreSQL or a data lake like
 data sources, visualize sample data, and import into FiftyOne for further
 analysis.
 
-.. image:: /images/teams/data_lens_home.png
+.. image:: /images/enterprise/data_lens_home.png
     :alt: data-lens-home-tab
     :align: center
 
@@ -59,7 +59,7 @@ Once your operator is defined, you can navigate to the "Data sources" tab by
 clicking on the tab header or by clicking on "Connect to a data source" from
 the "Home" tab.
 
-.. image:: /images/teams/data_lens_data_sources_empty.png
+.. image:: /images/enterprise/data_lens_data_sources_empty.png
     :alt: data-lens-data-sources-empty
     :align: center
 
@@ -68,13 +68,13 @@ Add a new data source by clicking on "Add data source".
 Enter a useful name for your data source and provide the URI for your operator.
 The URI should have the format `<your-plugin-name>/<your-operator-name>`.
 
-.. image:: /images/teams/data_lens_add_data_source.png
+.. image:: /images/enterprise/data_lens_add_data_source.png
     :alt: data-lens-add-data-source
     :align: center
 
 Click "Connect" once you're finished to save your configuration.
 
-.. image:: /images/teams/data_lens_data_sources.png
+.. image:: /images/enterprise/data_lens_data_sources.png
     :alt: data-lens-data-sources
     :align: center
 
@@ -107,7 +107,7 @@ allowing you to tailor your search experience to exactly what you need.
 Selecting a new data source will automatically update the query parameters to
 match those expected by your data source.
 
-.. image:: /images/teams/data_lens_query.png
+.. image:: /images/enterprise/data_lens_query.png
     :alt: data-lens-query
     :align: center
 
@@ -116,7 +116,7 @@ at the bottom of the page to fetch samples which match your query parameters.
 These samples will be displayed in the preview panel, along with any features
 associated with the sample like labels or bounding boxes.
 
-.. image:: /images/teams/data_lens_preview.png
+.. image:: /images/enterprise/data_lens_preview.png
     :alt: data-lens-preview
     :align: center
 
@@ -139,7 +139,7 @@ Importing samples to FiftyOne
 After generating a preview in Data Lens, you can click on the "Import data"
 button to open the import dialog.
 
-.. image:: /images/teams/data_lens_import_dialog.png
+.. image:: /images/enterprise/data_lens_import_dialog.png
     :alt: data-lens-import-dialog
     :align: center
 
@@ -166,7 +166,7 @@ sample.
 When you click import, you will have the option to either execute immediately
 or to schedule this import for asynchronous execution.
 
-.. image:: /images/teams/data_lens_import_options.png
+.. image:: /images/enterprise/data_lens_import_options.png
     :alt: data-lens-import-options
     :align: center
 
@@ -177,7 +177,7 @@ import, as this will result in more consistent and performant execution.
 .. note::
 
     Scheduled imports use the
-    :ref:`delegated operations <teams-delegated-operations>` framework to
+    :ref:`delegated operations <enterprise-delegated-operations>` framework to
     execute asynchronously on your connected compute cluster!
 
 After selecting your execution preference, you will be able to monitor the
@@ -187,20 +187,20 @@ In the case of immediate execution, you will be presented with an option to
 view your samples once the import is complete. Clicking on this button will
 open your destination dataset containing your imported samples.
 
-.. image:: /images/teams/data_lens_immediate_import.png
+.. image:: /images/enterprise/data_lens_immediate_import.png
     :alt: data-lens-immediate-import
     :align: center
 
 In the case of scheduled execution, you will be presented with an option to
-visit the :ref:`Runs page <teams-runs-page>`.
+visit the :ref:`Runs page <enterprise-runs-page>`.
 
-.. image:: /images/teams/data_lens_scheduled_import.png
+.. image:: /images/enterprise/data_lens_scheduled_import.png
     :alt: data-lens-scheduled-import
     :align: center
 
 From the Runs page, you can track the status of your import.
 
-.. image:: /images/teams/data_lens_runs_page.png
+.. image:: /images/enterprise/data_lens_runs_page.png
     :alt: data-lens-runs-page
     :align: center
 
@@ -208,7 +208,7 @@ Once your samples are imported, you will be able to leverage the full
 capabilities of FiftyOne to analyze and curate your data, and you can continue
 to use Data Lens to augment your datasets.
 
-.. image:: /images/teams/data_lens_imported_samples.png
+.. image:: /images/enterprise/data_lens_imported_samples.png
     :alt: data-lens-imported-samples
     :align: center
 
@@ -235,7 +235,7 @@ Setting up your operator
 
 To assist with Data Lens integration, we can use the
 :class:`DataLensOperator <fiftyone.operators.data_lens.operator.DataLensOperator>`
-base class provided with the Teams SDK. This base class handles the
+base class provided with the Enterprise SDK. This base class handles the
 implementation for the operator's `execute()` method, and defines a single
 abstract method that we'll implement.
 
@@ -282,7 +282,7 @@ Let's take a look at what we have so far.
 
 Our operator extends the
 :class:`DataLensOperator <fiftyone.operators.data_lens.operator.DataLensOperator>`
-provided by the Teams SDK. This base class defines the abstract
+provided by the Enterprise SDK. This base class defines the abstract
 :meth:`handle_lens_search_request() <fiftyone.operators.data_lens.operator.DataLensOperator.handle_lens_search_request>`
 method, which we will need to implement.
 
@@ -351,7 +351,7 @@ the following properties:
 The `ctx` argument provides access to a
 :ref:`range of useful capabilities <operator-execution-context>` which you can
 leverage in your operator, including things like
-:ref:`providing secrets to your operator <teams-secrets>`.
+:ref:`providing secrets to your operator <enterprise-secrets>`.
 
 Using these inputs, we are expected to return a generator which yields
 :class:`DataLensSearchResponse <fiftyone.operators.data_lens.models.DataLensSearchResponse>`
@@ -423,7 +423,7 @@ tab to interact with the operator. When we click the preview button, the Data
 Lens framework invokes our operator to retrieve sample data. Our operator
 yields a single sample, and we see that sample shown in the preview.
 
-.. image:: /images/teams/data_lens_synthetic_sample.png
+.. image:: /images/enterprise/data_lens_synthetic_sample.png
     :alt: data-lens-synthetic-sample
     :align: center
 
@@ -458,7 +458,7 @@ Let's modify our operator to incorporate the `request.batch_size` property.
 Now if we re-run our preview, we see that we get a number of samples equal to
 the "Number of preview samples" input.
 
-.. image:: /images/teams/data_lens_synthetic_batch.png
+.. image:: /images/enterprise/data_lens_synthetic_batch.png
     :alt: data-lens-synthetic-batch
     :align: center
 
@@ -502,7 +502,7 @@ method.
 With this method implemented, Data Lens will construct a form allowing users
 to define any or all of these inputs.
 
-.. image:: /images/teams/data_lens_synthetic_query.png
+.. image:: /images/enterprise/data_lens_synthetic_query.png
     :alt: data-lens-synthetic-query
     :align: center
 
@@ -554,7 +554,7 @@ Now when we run our preview, we can see that the text we provide as input is
 reflected in the samples returned by our operator. Modifying the text and
 regenerating the preview yields the expected result.
 
-.. image:: /images/teams/data_lens_synthetic_text.png
+.. image:: /images/enterprise/data_lens_synthetic_text.png
     :alt: data-lens-synthetic-text
     :align: center
 
@@ -1072,7 +1072,7 @@ Let's take a look at a few parts in detail.
     # Create our client
     client = bigquery.Client()
 
-In practice, you'll likely need to use :ref:`secrets <teams-secrets>` to
+In practice, you'll likely need to use :ref:`secrets <enterprise-secrets>` to
 securely provide credentials to connect to your data source.
 
 .. code-block:: python
