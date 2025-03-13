@@ -9,8 +9,10 @@ export type InstanceId = string;
 export type LabelId = string;
 
 export type LabelEventData = {
+  field: string;
   instanceId: InstanceId;
   labelId: LabelId;
+  frameNumber?: number;
 };
 
 export class LabelHoveredEvent extends CustomEvent<LabelEventData> {

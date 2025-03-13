@@ -1,15 +1,13 @@
 import { InstanceId, LabelEventData, LabelId } from "@fiftyone/looker";
 import { atom } from "jotai";
+import { jotaiStore } from "./jotai-store";
 
 /**
  * ======= TYPES =======
  */
 
-export type HoveredInstancesLabelIdsSet = Set<LabelId>;
-export type HoveredInstancesLabelsMap = Map<
-  InstanceId,
-  HoveredInstancesLabelIdsSet
->;
+export type LabelMap = Record<LabelId, LabelEventData>;
+export type HoveredInstancesLabelsTuple = [InstanceId, LabelMap];
 
 /**
  * ======= ATOMS AND SELECTORS =======
@@ -23,52 +21,61 @@ export const numConcurrentRenderingLabels = atom(0);
 /**
  * Set of hovered instances
  */
-export const hoveredInstances = atom<HoveredInstancesLabelsMap>(
-  new Map<InstanceId, HoveredInstancesLabelIdsSet>()
+export const hoveredInstances = atom<HoveredInstancesLabelsTuple | false>(
+  false
 );
 
 /**
- * Add a label instance to the hovered instances set
+ * Whether there are hovered instances
+ */
+export const isHoveringAnyLabelWithInstanceConfig = () => {
+  const currentHoveredInstances = jotaiStore.get(hoveredInstances);
+
+  return currentHoveredInstances && currentHoveredInstances.length === 2;
+};
+
+/**
+ * Whether there are hovered instances of a particular instance
+ */
+export const isHoveringParticularLabelWithInstanceConfig = (
+  instanceId: InstanceId
+) => {
+  const currentHoveredInstances = jotaiStore.get(hoveredInstances);
+
+  return (
+    currentHoveredInstances &&
+    currentHoveredInstances?.length === 2 &&
+    currentHoveredInstances[0] === instanceId
+  );
+};
+
+/**
+ * add a label instance to the hovered instances set
  */
 export const updateHoveredInstances = atom(
   null,
   (get, set, newValue: LabelEventData) => {
-    const currentMap = get(hoveredInstances);
-    if (currentMap.has(newValue.instanceId)) {
-      currentMap.get(newValue.instanceId)?.add(newValue.labelId);
-    } else {
-      currentMap.set(newValue.instanceId, new Set([newValue.labelId]));
-    }
-    set(hoveredInstances, currentMap);
-  }
-);
+    const currentHoveredInstances = get(hoveredInstances);
 
-/**
- * Remove a label instance from the hovered instances set
- * by either instanceId or labelId
- */
-export const removeHoveredInstance = atom(
-  null,
-  (get, set, { instanceId, labelId }: Partial<LabelEventData>) => {
-    const currentMap = get(hoveredInstances);
-    if (currentMap.has(instanceId)) {
-      if (labelId) {
-        currentMap.get(instanceId)?.delete(labelId);
-      } else {
-        currentMap.delete(instanceId);
-      }
+    if (!currentHoveredInstances || currentHoveredInstances?.length !== 2) {
+      set(hoveredInstances, [
+        newValue.instanceId,
+        { [newValue.labelId]: newValue },
+      ]);
+      return;
     }
-    set(hoveredInstances, currentMap);
+
+    set(hoveredInstances, (prev) => {
+      return [prev[0], { ...prev[1], [newValue.labelId]: newValue }];
+    });
   }
 );
 
 /**
  * Remove all hovered instances
  */
-export const removeAllHoveredInstances = atom(null, (get, set) => {
-  const currentMap = get(hoveredInstances);
-  currentMap.clear();
-  set(hoveredInstances, currentMap);
+export const removeAllHoveredInstances = atom(null, (_get, set) => {
+  set(hoveredInstances, false);
 });
 
 export * from "./jotai-store";

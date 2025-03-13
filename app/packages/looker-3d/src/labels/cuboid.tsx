@@ -72,9 +72,14 @@ export const Cuboid = ({
 
   const isSimilarLabelHovered = useSimilarLabels3d(label);
 
-  const fillColor = useMemo(() => {
+  const strokeColor = useMemo(() => {
+    const isHovered = isCuboidHovered || isSimilarLabelHovered;
+
+    // return "peach" color, a mix of orange and white
+    if (isHovered && selected) return "#de7e5d";
+
     if (selected) return "orange";
-    if (isCuboidHovered || isSimilarLabelHovered) return "white";
+    if (isHovered) return "white";
     return color;
   }, [selected, isCuboidHovered, isSimilarLabelHovered, color]);
 
@@ -83,7 +88,7 @@ export const Cuboid = ({
       new LineMaterial({
         opacity: opacity,
         transparent: false,
-        color: fillColor,
+        color: strokeColor,
         linewidth: lineWidth,
       }),
     [
@@ -106,6 +111,7 @@ export const Cuboid = ({
 
   return (
     <group
+      onClick={onClick}
       onPointerOver={() => {
         setIsCuboidHovered(true);
         onPointerOver();
@@ -119,17 +125,12 @@ export const Cuboid = ({
       <mesh position={loc} rotation={actualRotation}>
         <lineSegments2 geometry={geometry} material={material} />
       </mesh>
-      <mesh
-        onClick={onClick}
-        // {...tooltip.getMeshProps(label)}
-        position={loc}
-        rotation={actualRotation}
-      >
+      <mesh position={loc} rotation={actualRotation}>
         <boxGeometry args={dimensions} />
         <meshBasicMaterial
           transparent={true}
-          opacity={opacity * 0.5}
-          color={fillColor}
+          opacity={isSimilarLabelHovered ? opacity * 0.9 : opacity * 0.5}
+          color={strokeColor}
         />
       </mesh>
     </group>
