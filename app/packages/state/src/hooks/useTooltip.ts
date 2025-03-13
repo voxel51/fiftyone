@@ -30,6 +30,8 @@ export default function useTooltip() {
             new LabelHoveredEvent({
               labelId: label.id,
               instanceId: label.instance_config._id,
+              field: label.path,
+              frameNumber: label.frame_number,
             })
           );
         },

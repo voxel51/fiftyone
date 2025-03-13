@@ -270,14 +270,6 @@ export const MediaTypeFo3dComponent = () => {
     ({ set, snapshot }) =>
       () => {
         set(activeNodeAtom, null);
-
-        const isTooltipLocked = snapshot
-          .getLoadable(fos.isTooltipLocked)
-          .valueMaybe();
-
-        if (!isTooltipLocked) {
-          set(fos.tooltipDetail, null);
-        }
       },
     []
   );

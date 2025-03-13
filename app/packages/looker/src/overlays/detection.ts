@@ -3,7 +3,7 @@
  */
 import { NONFINITES } from "@fiftyone/utilities";
 
-import { hoveredInstances, jotaiStore } from "@fiftyone/state/src/jotai";
+import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
 import { INFO_COLOR } from "../constants";
 import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
 import { distanceFromLineSegment } from "../util";
@@ -65,15 +65,15 @@ export default class DetectionOverlay<
       return;
     }
 
-    const isHovered =
-      (this.label.instance_config &&
-        jotaiStore
-          .get(hoveredInstances)
-          ?.get(this.label.instance_config._id)
-          ?.has(this.label.id)) ??
-      false;
+    let doesInstanceMatch = false;
 
-    if (isHovered) {
+    if (
+      this.label.instance_config?._id &&
+      isHoveringParticularLabelWithInstanceConfig(
+        this.label.instance_config._id
+      )
+    ) {
+      doesInstanceMatch = true;
       ctx.strokeStyle = "white";
       ctx.lineWidth = 2;
     }
@@ -88,7 +88,9 @@ export default class DetectionOverlay<
     !state.config.thumbnail && this.drawLabelText(ctx, state);
 
     const strokeColor =
-      !this.isSelected(state) && isHovered ? "white" : this.getColor(state);
+      !this.isSelected(state) && doesInstanceMatch
+        ? "white"
+        : this.getColor(state);
 
     if (this.is3D && this.label.dimensions && this.label.location) {
       this.fillRectFor3d(ctx, state, strokeColor);

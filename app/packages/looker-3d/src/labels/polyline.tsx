@@ -1,6 +1,7 @@
 import { useCursor } from "@react-three/drei";
 import { useMemo, useState } from "react";
 import type * as THREE from "three";
+import { useSimilarLabels3d } from "../hooks/use-similar-labels-3d";
 import { Line } from "./line";
 import type { OverlayProps } from "./shared";
 
@@ -29,8 +30,20 @@ export const Polyline = ({
   }, [tooltip, label]);
 
   const [isPolylineHovered, setIsPolylineHovered] = useState(false);
+  const isSimilarLabelHovered = useSimilarLabels3d(label);
 
   useCursor(isPolylineHovered);
+
+  const strokeColor = useMemo(() => {
+    const isHovered = isPolylineHovered || isSimilarLabelHovered;
+
+    // return "peach" color, a mix of orange and white
+    if (isHovered && selected) return "#de7e5d";
+
+    if (selected) return "orange";
+    if (isHovered) return "white";
+    return color;
+  }, [selected, isPolylineHovered, isSimilarLabelHovered, color]);
 
   const lines = useMemo(
     () =>
@@ -40,11 +53,11 @@ export const Polyline = ({
           rotation={rotation}
           points={points}
           opacity={opacity}
-          color={selected ? "orange" : isPolylineHovered ? "white" : color}
+          color={strokeColor}
           label={label}
         />
       )),
-    [points3d, rotation, opacity, color, selected, isPolylineHovered, label]
+    [points3d, rotation, opacity, strokeColor, label]
   );
 
   if (filled) {
