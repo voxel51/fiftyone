@@ -133,6 +133,7 @@ from .core.models import (
     ModelManager,
 )
 from .core.odm import (
+    ActiveFields,
     ColorScheme,
     DatasetAppConfig,
     DynamicEmbeddedDocument,
