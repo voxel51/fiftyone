@@ -35,17 +35,17 @@ import {
   useRecoilStateLoadable,
   useRecoilValueLoadable,
 } from "recoil";
-import { collapseFields, getCurrentEnvironment } from "../utils";
-import * as atoms from "./atoms";
-import { getBrowserStorageEffectForKey } from "./customEffects";
+import { collapseFields, getCurrentEnvironment } from "../../utils";
+import * as atoms from "../atoms";
+import { getBrowserStorageEffectForKey } from "../customEffects";
 import {
   active3dSlices,
   active3dSlicesToSampleMap,
   activeModalSidebarSample,
   pinned3DSampleSlice,
-} from "./groups";
-import { isLargeVideo } from "./options";
-import { cumulativeValues, values } from "./pathData";
+} from "../groups";
+import { isLargeVideo } from "../options";
+import { cumulativeValues, values } from "../pathData";
 import {
   buildSchema,
   field,
@@ -54,23 +54,24 @@ import {
   filterPaths,
   isOfDocumentFieldList,
   pathIsShown,
-} from "./schema";
-import { isFieldVisibilityActive } from "./schemaSettings.atoms";
+} from "../schema";
+import { isFieldVisibilityActive } from "../schemaSettings.atoms";
 import {
   datasetName,
   disableFrameFiltering,
   isVideoDataset,
   stateSubscription,
-} from "./selectors";
-import { State } from "./types";
+} from "../selectors";
+import { State } from "../types";
 import {
   fieldsMatcher,
   groupFilter,
   labelsMatcher,
   primitivesMatcher,
   unsupportedMatcher,
-} from "./utils";
-import * as viewAtoms from "./view";
+} from "../utils";
+import * as viewAtoms from "../view";
+import { mergeGroups } from "./sidebar-utils";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -210,6 +211,10 @@ export const resolveGroups = (
     : frameFields.length
     ? DEFAULT_VIDEO_GROUPS
     : DEFAULT_IMAGE_GROUPS;
+
+  if (currentGroups.length && configGroups.length) {
+    groups = mergeGroups(groups, configGroups);
+  }
 
   const expanded = configGroups.reduce((map, { name, expanded }) => {
     map[name] = expanded;
