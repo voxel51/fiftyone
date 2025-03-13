@@ -1,80 +1,73 @@
-import unittest
+"""
+| Copyright 2017-2025, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 
-import fiftyone as fo
-import fiftyone.utils.map as foum
-import fiftyone.core.map as fomp
+import multiprocessing
+from unittest import mock
+
+import pytest
+
+import fiftyone.core.utils as fou
+import fiftyone.core.map.process as fomp
 
 
-class TestProcessMapBackend(unittest.TestCase):
-    """Unit test for ProcessMapBackend with a real FiftyOne dataset."""
+class TestConstructor:
+    """test generic constructor"""
 
-    def setUp(self):
-        self.process_backend = fomp.ProcessMapBackend()
+    @pytest.fixture(name="current_process")
+    def patch_multiprocessing_current_process(self):
+        """Patch method"""
+        with mock.patch.object(multiprocessing, "current_process") as m:
+            m.return_value = mock.Mock()
+            m.return_value.daemon = False
+            yield m.return_value
 
-    @classmethod
-    def setUpClass(cls):
-        """Set up a temporary FiftyOne dataset for testing."""
-        cls.dataset = fo.Dataset(name="test_process_map_backend")
-        cls.dataset.persistent = True
+    @pytest.fixture(name="recommend_process_pool_workers")
+    def patch_make_view(self):
+        """Patch method"""
+        with mock.patch.object(fou, "recommend_process_pool_workers") as m:
+            yield m
 
-        # Add five samples with an "input" field
-        for i in range(50):
-            sample = fo.Sample(filepath=f"/tmp/sample_{i}.jpg")
-            sample["input"] = i
-            cls.dataset.add_sample(sample)
+    @pytest.mark.parametrize(
+        ("workers"),
+        (
+            pytest.param(None, id="worker-is-unset"),
+            pytest.param(5, id="worker-is-set"),
+        ),
+    )
+    def test_daemon(
+        self, workers, current_process, recommend_process_pool_workers
+    ):
+        """test worker value"""
+        current_process.daemon = True
 
-        cls.empty_dataset = fo.Dataset(name="empty_dataset_process_backend")
+        #####
+        mapper = fomp.ProcessMapper(mock.Mock(), workers)
+        #####
 
-    @classmethod
-    def tearDownClass(cls):
-        """Cleanup: Delete the dataset after the test."""
-        cls.dataset.delete()
-        cls.empty_dataset.delete()
+        assert not recommend_process_pool_workers.called
+        assert mapper.workers == 1
 
-    def test_map_samples_process(self):
-        """Test ProcessMapBackend with map_samples"""
+    @pytest.mark.parametrize(
+        ("workers"),
+        (
+            pytest.param(None, id="worker-is-unset"),
+            pytest.param(5, id="worker-is-set"),
+        ),
+    )
+    def test_workers(self, workers, recommend_process_pool_workers):
+        """test worker value"""
 
-        def map_fcn(sample):
-            sample["field1"] = sample["input"] * 2
-            return sample["field1"]
+        #####
+        mapper = fomp.ProcessMapper(mock.Mock(), workers)
+        #####
 
-        # Run map_samples
-        results = list(
-            self.process_backend.map_samples(self.dataset, map_fcn, save=True)
-        )
-
-        # Verify results
-        for sample_id, output in results:
-            sample = self.dataset[sample_id]
-            expected_output = sample["input"] * 2
-
-            # Ensure the function applied correctly
-            self.assertEqual(output, expected_output)
-
-            # Ensure the value was saved in the dataset
-            self.assertEqual(sample["field1"], expected_output)
-
-    def test_update_samples_process(self):
-        """Test ProcessMapBackend with update_samples"""
-
-        def map_fcn(sample):
-            sample["field2"] = sample["input"] * 3
-
-        # Run update_samples
-        self.process_backend.update_samples(self.dataset, map_fcn)
-
-        dataset = fo.load_dataset("test_process_map_backend")
-
-        # Verify results
-        for sample in dataset.iter_samples():
-            self.assertEqual(sample["field2"], sample["input"] * 3)
-
-    def test_empty_dataset(self):
-        """Test ProcessMapBackend with an empty dataset."""
-
-        def map_fcn(sample):
-            sample["field1"] = sample["input"] * 2
-            return sample["field1"]
-
-        with self.assertRaises(StopIteration):
-            self.process_backend.map_samples(self.empty_dataset, map_fcn)
+        if workers is None:
+            recommend_process_pool_workers.assert_called_once()
+            assert (
+                mapper.workers == recommend_process_pool_workers.return_value
+            )
+        else:
+            assert mapper.workers == workers
