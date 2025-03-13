@@ -9,173 +9,60 @@ Multiprocessing utilities.
 import multiprocessing
 from queue import Empty
 import time
-from typing import Iterator, Any, Optional, Union
+from typing import (
+    Any,
+    Callable,
+    Iterator,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import dill as pickle
+import bson
 from tqdm.auto import tqdm
 
 import fiftyone as fo
 import fiftyone.core.utils as fou
-
-from .batcher import initialize_batches
-from .map import MapBackend
-from .sequential import SequentialMapBackend
+import fiftyone.core.map.batcher as fomb
+import fiftyone.core.map.mapper as fomm
+from fiftyone.core.map.typing import SampleCollection
 
 fov = fou.lazy_import("fiftyone.core.view")
 
 
-class ProcessMapBackend(MapBackend):
+T = TypeVar("T")
+R = TypeVar("R")
+
+
+class ProcessMapper(fomm.Mapper[T]):
     """Executes map_samples using multiprocessing."""
 
-    def update_samples(
+    def __init__(
         self,
-        sample_collection,
-        update_fcn,
-        num_workers: Optional[int] = None,
-        shard_method: str = "id",
-        progress: Optional[Union[str, bool]] = None,
+        sample_collection: SampleCollection[T],
+        workers: Optional[int] = None,
+        batch_method: Optional[str] = None,
+        **kwargs,
     ):
-        return self._map_samples(
-            sample_collection,
-            update_fcn,
-            return_outputs=False,
-            save=True,
-            num_workers=num_workers,
-            shard_method=shard_method,
-            progress=progress,
-        )
+        # Check if running in sub-process and if so limit "workers" to 1.
+        if multiprocessing.current_process().daemon:
+            workers = 1
+        elif workers is None:
+            workers = fou.recommend_process_pool_workers()
 
-    def map_samples(
+        super().__init__(sample_collection, workers, batch_method, **kwargs)
+
+    def _map_samples_parallel(
         self,
-        sample_collection,
-        map_fcn,
-        num_workers: Optional[int] = None,
-        shard_method: str = "id",
-        progress: Optional[Union[str, bool]] = None,
+        sample_batches: List[fomb.SampleBatch],
+        map_fcn: Callable[[T], R],
+        progress: Union[bool, Literal["workers"]],
         save: bool = False,
-    ) -> Iterator[Any]:
-        if len(sample_collection) == 0:
-            raise StopIteration()
-
-        return self._map_samples(
-            sample_collection,
-            map_fcn,
-            return_outputs=True,
-            save=save,
-            num_workers=num_workers,
-            shard_method=shard_method,
-            progress=progress,
-        )
-
-    def _map_samples(
-        self,
-        sample_collection,
-        map_fcn,
-        return_outputs: bool = True,
-        save: bool = False,
-        num_workers: Optional[int] = None,
-        shard_method: str = "id",
-        progress: Optional[Union[str, bool]] = None,
-    ) -> Optional[Iterator[Any]]:
-        """Applies the given function to each sample in the collection via a
-        multiprocessing pool, optionally saving any sample edits.
-
-        This function effectively performs the following map operation with the
-        outer loop in parallel::
-
-            for batch_view in fou.iter_slices(sample_collection, batch_size):
-                for sample in batch_view.iter_samples(autosave=save):
-                    sample_output = map_fcn(sample)
-                    yield sample.id, sample_output
-
-
-        Example::
-
-            from collections import Counter
-
-            import fiftyone as fo
-            import fiftyone.utils.multiprocessing as foum
-            import fiftyone.zoo as foz
-
-            dataset = foz.load_zoo_dataset("cifar10", split="train")
-            view = dataset.select_fields("ground_truth")
-
-            #
-            # Example 1: update
-            #
-
-            def map_fcn(sample):
-                sample.ground_truth.label = sample.ground_truth.label.upper()
-
-            foum.map_samples(view, map_fcn, return_outputs=False, save=True)
-
-            print(dataset.count_values("ground_truth.label"))
-
-            #
-            # Example 2: map
-            #
-
-            def map_fcn(sample):
-                return sample.ground_truth.label.lower()
-
-            counter = Counter()
-            for _, label in foum.map_samples(view, map_fcn):
-                counter[label] += 1
-
-            print(dict(counter))
-
-        Args:
-            sample_collection: a
-                :class:`fiftyone.core.collections.SampleCollection`
-            map_fcn: a function to apply to each sample
-            return_outputs (True): whether to return the map outputs.
-            save (False): whether to save any sample edits applied by ``map_fcn``
-            num_workers (None): the number of workers to use. The default is
-                :meth:`fiftyone.core.utils.recommend_process_pool_workers`. If this
-                value is <= 1, all work is done in the main process
-            shard_method ("id"): whether to use IDs (``"id"``) or slices
-                (``"slice"``) to assign samples to workers
-            progress (None): whether to render a progress bar (True/False), use the
-                default value ``fiftyone.config.show_progress_bars`` (None), or a
-                progress callback function to invoke instead, or "workers" to
-                render per-worker progress bars
-
-        Returns:
-            one of the following:
-            -   a generator that emits ``(sample_id, map_output)`` tuples, if
-                ``return_outputs`` is True
-            -   None, otherwise
-        """
-        if num_workers is None:
-            if multiprocessing.current_process().daemon:
-                num_workers = 1
-            elif fo.config.default_map_workers is not None:
-                num_workers = fo.config.default_map_workers
-            else:
-                num_workers = fou.recommend_process_pool_workers()
-
-        if num_workers <= 1:
-            return _map_samples_single(
-                sample_collection,
-                map_fcn,
-                return_outputs=return_outputs,
-                save=save,
-                progress=progress,
-            )
-
-        if isinstance(sample_collection, fov.DatasetView):
-            dataset_name = sample_collection._root_dataset.name
-            view_stages = sample_collection._serialize()
-        else:
-            dataset_name = sample_collection.name
-            view_stages = None
-
-        batches, num_workers, num_samples = initialize_batches(
-            sample_collection,
-            shard_method=shard_method,
-            num_workers=num_workers,
-        )
-
+    ) -> Iterator[Tuple[bson.ObjectId, R]]:
         ctx = fou.get_multiprocessing_context()
 
         if progress is None:
@@ -190,21 +77,24 @@ class ProcessMapBackend(MapBackend):
             worker_progress = False
             lock = None
 
-        if return_outputs:
-            batch_count = multiprocessing.Value("i", 0)
-            sample_count = None
-            queue = multiprocessing.Queue()
-        elif progress != False:
-            batch_count = multiprocessing.Value("i", 0)
-            sample_count = multiprocessing.Value("i", 0)
-            queue = None
+        queue = multiprocessing.Queue()
+        batch_count = multiprocessing.Value("i", 0)
+        sample_count = (
+            multiprocessing.Value("i", 0) if progress is not False else None
+        )
+
+        # Extract information from sample collection.
+        if isinstance(self._sample_collection, fov.DatasetView):
+            # pylint:disable-next=protected-access
+            dataset_name = self._sample_collection._root_dataset.name
+            # pylint:disable-next=protected-access
+            view_stages = self._sample_collection._serialize()
         else:
-            batch_count = None
-            sample_count = None
-            queue = None
+            dataset_name = self._sample_collection.name
+            view_stages = None
 
         pool = ctx.Pool(
-            processes=num_workers,
+            processes=len(sample_batches),
             initializer=_init_worker,
             initargs=(
                 dataset_name,
@@ -219,17 +109,29 @@ class ProcessMapBackend(MapBackend):
             ),
         )
 
-        pb = fou.ProgressBar(total=num_samples, progress=progress)
+        pb = fou.ProgressBar(
+            total=sum(batch.total for batch in sample_batches),
+            progress=progress,
+        )
 
         if queue is not None:
-            return _do_map_samples(pool, pb, batches, batch_count, queue)
+            return _do_map_samples(
+                pool, pb, sample_batches, batch_count, queue
+            )
         else:
+
             return _do_update_samples(
-                pool, pb, batches, batch_count, sample_count
+                pool, pb, sample_batches, batch_count, sample_count
             )
 
 
-def _do_update_samples(pool, pb, batches, batch_count, sample_count):
+def _do_update_samples(
+    pool: multiprocessing.Pool,  # type: ignore
+    pb: fou.ProgressBar,
+    batches: List[fomb.SampleBatch],
+    batch_count: multiprocessing.Value,  # type: ignore
+    sample_count: multiprocessing.Value,  # type: ignore
+):
     num_batches = len(batches)
 
     with pool, pb:
@@ -246,17 +148,31 @@ def _do_update_samples(pool, pb, batches, batch_count, sample_count):
         pool.join()
 
 
-def _do_map_samples(pool, pb, batches, batch_count, queue):
+def _do_map_samples(
+    pool: multiprocessing.Pool,  # type: ignore
+    pb: fou.ProgressBar,
+    batches: List[fomb.SampleBatch],
+    batch_count: multiprocessing.Value,  # type: ignore
+    queue: multiprocessing.Queue,
+):
     num_batches = len(batches)
 
     with pool, pb:
-        pool.map_async(_map_batch, batches)
+        pool.map_async(
+            _map_batch,
+            (
+                (idx + 1, num_batches, batch)
+                for idx, batch in enumerate(batches)
+            ),
+        )
 
+        count = 0
         while True:
             try:
                 result = queue.get(timeout=0.01)
                 pb.update()
                 yield result
+                count += 1
             except Empty:
                 if batch_count.value >= num_batches:
                     break
@@ -268,99 +184,86 @@ def _do_map_samples(pool, pb, batches, batch_count, queue):
         pool.join()
 
 
-def _map_samples_single(
-    sample_collection,
-    map_fcn,
-    return_outputs=True,
-    save=False,
-    progress=None,
-) -> Optional[Iterator[Any]]:
-    if progress == "workers":
-        progress = True
-
-    sequential_backend = SequentialMapBackend()
-
-    if return_outputs:
-        return sequential_backend.map_samples(
-            sample_collection, map_fcn, save=save, progress=progress
-        )
-    else:
-        return sequential_backend.update_samples(
-            sample_collection, map_fcn, progress=progress
-        )
-
-
-def _init_worker(dataset_name, view_stages, m, bc, sc, q, s, p, l):
+def _init_worker(
+    dataset_name: str,
+    view_stages: Any,
+    map_fcn: bytes,
+    batch_count: Optional[multiprocessing.Value],  # type: ignore
+    sample_count: Optional[multiprocessing.Value],  # type: ignore
+    queue: Optional[multiprocessing.Queue],
+    save: bool,
+    progress: bool,
+    lock: Optional[multiprocessing.RLock],  # type: ignore
+):
+    # pylint:disable=import-outside-toplevel
+    # pylint:disable=reimported
+    # pylint:disable=redefined-outer-name
     from tqdm.auto import tqdm
 
     import fiftyone as fo
     import fiftyone.core.odm.database as food
     import fiftyone.core.view as fov
 
-    global sample_collection
-    global map_fcn
-    global batch_count
-    global sample_count
-    global queue
-    global save
-    global progress
+    # pylint:disable=global-variable-undefined
+    global process_sample_collection
+    global process_map_fcn
+    global process_batch_count
+    global process_sample_count
+    global process_queue
+    global process_save
+    global process_progress
 
     # Ensure that each process creates its own MongoDB clients
     # https://pymongo.readthedocs.io/en/stable/faq.html#using-pymongo-with-multiprocessing
+    # pylint:disable-next=protected-access
     food._disconnect()
 
     dataset = fo.load_dataset(dataset_name)
     if view_stages:
-        sample_collection = fov.DatasetView._build(dataset, view_stages)
-    else:
-        sample_collection = dataset
-
-    map_fcn = pickle.loads(m)
-    batch_count = bc
-    sample_count = sc
-    queue = q
-    save = s
-    progress = p
-
-    if l is not None:
-        tqdm.set_lock(l)
-
-
-def _map_batch(input):
-    i, num_batches, batch = input
-
-    if isinstance(batch, tuple):
-        # Slice batches
-        start, stop = batch
-        total = stop - start
-        batch_view = sample_collection[start:stop]
-    else:
-        # ID batches
-        sample_ids = batch
-        total = len(sample_ids)
-        batch_view = fov.make_optimized_select_view(
-            sample_collection, sample_ids
+        # pylint:disable-next=protected-access
+        process_sample_collection = fov.DatasetView._build(
+            dataset, view_stages
         )
+    else:
+        process_sample_collection = dataset
 
-    if progress:
+    process_map_fcn = pickle.loads(map_fcn)
+    process_batch_count = batch_count
+    process_sample_count = sample_count
+    process_queue = queue
+    process_save = save
+    process_progress = progress
+
+    if lock is not None:
+        tqdm.set_lock(lock)
+
+
+def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
+    i, num_batches, batch = args
+
+    sample_collection = batch.create_subset(process_sample_collection)
+
+    if process_progress:
         desc = f"Batch {i + 1:0{len(str(num_batches))}}/{num_batches}"
-        with tqdm(total=total, desc=desc, position=i) as pb:
-            for sample in batch_view.iter_samples(autosave=save):
-                sample_output = map_fcn(sample)
-                if queue is not None:
-                    queue.put((sample.id, sample_output))
+        with tqdm(total=batch.total, desc=desc, position=i) as pb:
+            for sample in sample_collection.iter_samples(
+                autosave=process_save
+            ):
+                sample_output = process_map_fcn(sample)
+                if process_queue is not None:
+                    process_queue.put((sample.id, sample_output))
 
                 pb.update()
     else:
-        for sample in batch_view.iter_samples(autosave=save):
-            sample_output = map_fcn(sample)
-            if queue is not None:
-                queue.put((sample.id, sample_output))
+        for sample in sample_collection.iter_samples(autosave=process_save):
+            sample_output = process_map_fcn(sample)
+            if process_queue is not None:
+                process_queue.put((sample.id, sample_output))
 
-            if sample_count is not None:
-                with sample_count.get_lock():
-                    sample_count.value += 1
+            if process_sample_count is not None:
+                with process_sample_count.get_lock():
+                    process_sample_count.value += 1
 
-    if batch_count is not None:
-        with batch_count.get_lock():
-            batch_count.value += 1
+    if process_batch_count is not None:
+        with process_batch_count.get_lock():
+            process_batch_count.value += 1

@@ -1,5 +1,5 @@
 """
-Map package declaration.
+Sample batcher package declaration.
 
 | Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -8,8 +8,9 @@ Map package declaration.
 
 import types
 
-from fiftyone.core.map.mapper import Mapper
-from fiftyone.core.map.factory import MapperFactory
+from fiftyone.core.map.batcher.batch import SampleBatch
+from fiftyone.core.map.batcher.batcher import SampleBatcher
+
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [
