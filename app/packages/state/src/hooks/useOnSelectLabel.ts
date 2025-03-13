@@ -7,21 +7,39 @@ export interface SelectEvent {
     field: string;
     frameNumber?: number;
     sampleId: string;
+    instanceId?: string;
+    instanceName?: string;
+    isShiftPressed?: boolean;
   };
 }
 
 export function useOnSelectLabel() {
   return recoil.useRecoilCallback(
     ({ set, snapshot }) =>
-      async ({ detail: { id, field, frameNumber, sampleId } }: SelectEvent) => {
+      async ({
+        detail: {
+          id,
+          field,
+          frameNumber,
+          sampleId,
+          instanceId,
+          instanceName,
+          isShiftPressed,
+        },
+      }: SelectEvent) => {
         const labels = { ...(await snapshot.getPromise(fos.selectedLabelMap)) };
+
+        let isLabelRemoved = false;
         if (labels[id]) {
           delete labels[id];
+          isLabelRemoved = true;
         } else {
           labels[id] = {
             field,
-            sampleId: sampleId,
+            sampleId,
             frameNumber,
+            instanceId,
+            instanceName,
           };
         }
         set(
@@ -30,6 +48,18 @@ export function useOnSelectLabel() {
             ...data,
             labelId,
           }))
+        );
+
+        document.dispatchEvent(
+          new CustomEvent("newLabelToggled", {
+            detail: {
+              isShiftPressed,
+              sourceInstanceId: instanceId,
+              sourceInstanceName: instanceName,
+              sourceSampleId: sampleId,
+              sourceLabelId: id,
+            },
+          })
         );
       },
     []
