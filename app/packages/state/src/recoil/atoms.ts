@@ -111,6 +111,11 @@ export const snackbarErrors = atom<string[]>({
   default: [],
 });
 
+export const snackbarLink = atom<{ link: string; message: string } | null>({
+  key: "snackbarLink",
+  default: null,
+});
+
 // labels: whether label tag or sample tag
 export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   {

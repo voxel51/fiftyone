@@ -110,20 +110,5 @@ export const scrollToPosition = <K, V>({
   }
 };
 
-export const runWhileWithHandler = async <T>(
-  run: () => void,
-  guard: () => boolean,
-  handler: (response: T) => Promise<boolean>
-) => {
-  while (guard()) {
-    try {
-      run();
-    } catch (response) {
-      if (await handler(response)) continue;
-      break;
-    }
-  }
-};
-
 export const sum = (values: number[]) =>
   values.reduce((sum, next) => sum + next, 0);

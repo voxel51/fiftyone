@@ -395,6 +395,31 @@ only those samples and/or labels that match the filter.
    :alt: app-filters
    :align: center
 
+.. _app-managing-grid-memory:
+
+Managing Grid Memory Usage
+--------------------------
+
+When scrolling through the grid, a certain number samples are cached by the App
+to improve the navigation experience. The number of samples is thresholded by a
+size estimate in megabytes. The default grid cache size is 1/8 of your device's
+memory and only accounts for samples that are not currently visible on your
+screen.
+
+When autosizing is enabled, the cache size also serves as the threshold for
+visible items on screen. By default, autosizing is enabled for all datasets and
+will zoom in on page load or during scrolling, if necessary. When disabled, the
+setting is persisted to your browser's storage with respect to the dataset.
+
+Autosizing is particularly useful for high-resolution images and video and
+dense array data from large |Detection| and |Segmentation| masks and |Heatmap|
+maps. To disable autosizing, toggle the setting in the settings cog or simply
+zoom back out with the slider setting.
+
+.. image::/images/app/app-managing-grid-memory.gif
+    :alt: app-grid-memory
+    :align: center
+
 .. _app-optimizing-query-performance:
 
 Optimizing Query Performance
