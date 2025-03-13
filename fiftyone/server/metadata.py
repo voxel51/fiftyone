@@ -5,6 +5,7 @@ FiftyOne Server JIT metadata utilities
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from enum import Enum
 import logging
 import shutil
@@ -49,6 +50,7 @@ class MediaType(Enum):
     point_cloud = "point-cloud"
     three_d = "3d"
     video = "video"
+    unknown = "unknown"
 
 
 async def get_metadata(
