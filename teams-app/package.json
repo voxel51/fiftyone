@@ -38,6 +38,7 @@
         "sharp": "^0.33.5"
     },
     "devDependencies": {
+        "@svgr/webpack": "^8.1.0",
         "@types/case-sensitive-paths-webpack-plugin": "^2.1.9",
         "concurrently": "^8.2.2",
         "husky": "^8.0.1",
