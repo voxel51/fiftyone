@@ -1,4 +1,5 @@
 import type { useTooltip } from "@fiftyone/state";
+import { ThreeEvent } from "@react-three/fiber";
 import type { Vector3Tuple } from "three";
 import type { OverlayLabel } from "./loader";
 
@@ -8,7 +9,7 @@ export interface OverlayProps {
   tooltip: ReturnType<typeof useTooltip>;
   label: OverlayLabel;
   color: string;
-  onClick: () => void;
+  onClick: (e: ThreeEvent<MouseEvent>) => void;
 
   useLegacyCoordinates?: boolean;
   selected?: boolean;

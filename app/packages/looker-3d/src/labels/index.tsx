@@ -5,6 +5,7 @@ import {
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { fieldSchema } from "@fiftyone/state";
+import { ThreeEvent } from "@react-three/fiber";
 import { folder, useControls } from "leva";
 import { get as _get } from "lodash";
 import { useCallback, useMemo } from "react";
@@ -78,17 +79,22 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
   );
 
   const handleSelect = useCallback(
-    (label: OverlayLabel) => {
+    (label: OverlayLabel, e: ThreeEvent<MouseEvent>) => {
       onSelectLabel({
         detail: {
           id: label._id,
           field: label.path,
           sampleId: label.sampleId,
+          instanceId: label.instance_config?._id,
+          instanceName: label.instance_config?.name,
+          isShiftPressed: e.shiftKey,
         },
       });
     },
     [onSelectLabel]
   );
+
+  // useOnShiftClickLabel3d(sampleMap[], selectedLabels);
 
   const [overlayRotation, itemRotation] = useMemo(
     () => [
@@ -147,7 +153,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
             itemRotation={itemRotation}
             opacity={labelAlpha}
             {...(overlay as unknown as CuboidProps)}
-            onClick={() => handleSelect(overlay)}
+            onClick={(e) => handleSelect(overlay, e)}
             label={overlay}
             tooltip={tooltip}
             useLegacyCoordinates={settings.useLegacyCoordinates}

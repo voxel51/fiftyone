@@ -31,6 +31,7 @@ import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import { getStandardizedUrls } from "../utils";
+import { useOnShiftClickLabel } from "./useOnShiftClickLabel";
 
 export default <T extends AbstractLooker<BaseState>>(
   isModal: boolean,
@@ -81,8 +82,10 @@ export default <T extends AbstractLooker<BaseState>>(
     };
   }, []);
 
+  const getOnShiftClickLabelCallback = useOnShiftClickLabel();
+
   const create = useRecoilCallback(
-    ({ snapshot }) =>
+    ({ snapshot, set }) =>
       (
         { frameNumber, frameRate, sample, urls: rawUrls, symbol },
         extra: Partial<Omit<Parameters<T["updateOptions"]>[0], "selected">> = {}
@@ -273,6 +276,17 @@ export default <T extends AbstractLooker<BaseState>>(
           { signal: abortControllerRef.current.signal }
         );
 
+        document.addEventListener(
+          "newLabelToggled",
+          (e: CustomEvent) =>
+            getOnShiftClickLabelCallback(
+              sample._id,
+              looker.getCurrentSampleLabels(),
+              e
+            ),
+          { signal: abortControllerRef.current.signal }
+        );
+
         return looker;
       },
     [
@@ -291,8 +305,10 @@ export default <T extends AbstractLooker<BaseState>>(
       selected,
       thumbnail,
       view,
+      getOnShiftClickLabelCallback,
     ]
   );
+
   const createLookerRef = useRef(create);
 
   createLookerRef.current = create;

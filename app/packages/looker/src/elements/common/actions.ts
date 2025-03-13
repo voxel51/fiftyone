@@ -17,7 +17,7 @@ import {
 import { clampScale } from "../../util";
 import { getFrameNumber } from "../util";
 
-import { hoveredInstances, jotaiStore } from "@fiftyone/state/src/jotai";
+import { isHoveringAnyLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
 import { dispatchTooltipEvent } from "./util";
 
 const readActions = <State extends BaseState>(
@@ -122,10 +122,7 @@ export const toggleOverlays: Control = {
         }
 
         // don't hide overlays if we're hovering over a label with an instance config
-        const isHoveringLabelWithInstanceConfig =
-          jotaiStore.get(hoveredInstances).size;
-
-        if (isHoveringLabelWithInstanceConfig) {
+        if (isHoveringAnyLabelWithInstanceConfig()) {
           return {};
         }
 
@@ -137,10 +134,7 @@ export const toggleOverlays: Control = {
         }
 
         // don't hide overlays if we're hovering over a label with an instance config
-        const isHoveringLabelWithInstanceConfig =
-          jotaiStore.get(hoveredInstances).size;
-
-        if (!isHoveringLabelWithInstanceConfig) {
+        if (!isHoveringAnyLabelWithInstanceConfig()) {
           dispatchEvent("showOverlays", false);
           dispatchEvent("tooltip", null);
         }
