@@ -86,7 +86,7 @@ export const aggregationQuery = graphQLSelectorFamily<
         slices: mixed ? get(groupSlices) : get(currentSlices(modal)),
         slice: get(groupSlice),
         view: customView ? customView : !root ? get(viewAtoms.view) : [],
-        queryPerformance: get(queryPerformance),
+        queryPerformance: get(queryPerformance) && !modal,
       };
 
       return {
