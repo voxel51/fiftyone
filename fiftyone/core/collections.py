@@ -1829,7 +1829,7 @@ class SampleCollection(object):
                 return None, None, read_only
 
             resolved_keys.append(field.db_field or field.name)
-            read_only = field.read_only
+            read_only = getattr(field, "read_only", False)
             last_key = idx == len(keys) - 1
 
             if last_key and not leaf:

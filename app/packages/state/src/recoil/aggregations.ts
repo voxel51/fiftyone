@@ -13,6 +13,7 @@ import {
   groupStatistics,
 } from "./groups";
 import { sidebarSampleId } from "./modal";
+import { queryPerformance } from "./queryPerformance";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
@@ -85,6 +86,7 @@ export const aggregationQuery = graphQLSelectorFamily<
         slices: mixed ? get(groupSlices) : get(currentSlices(modal)),
         slice: get(groupSlice),
         view: customView ? customView : !root ? get(viewAtoms.view) : [],
+        queryPerformance: get(queryPerformance),
       };
 
       return {

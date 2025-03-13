@@ -6622,7 +6622,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     }
                 )
             elif label_type in ("instance", "instances"):
-                if det.has_mask is None:
+                if not det.has_mask:
                     continue
 
                 if self._server_version >= Version("2.3"):

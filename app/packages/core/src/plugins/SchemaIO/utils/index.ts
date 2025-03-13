@@ -9,6 +9,7 @@ import {
 } from "./types";
 import { getLayoutProps } from "./layout";
 import { isNullish } from "@fiftyone/utilities";
+import { isPathUserChanged } from "../hooks";
 
 export function log(...args: string[]) {
   console.groupCollapsed(">>>", ...args);
@@ -127,4 +128,47 @@ export function isInitialized(props: ViewPropsType) {
 
 export function isEditableView(schema: SchemaType) {
   return !NON_EDITABLE_VIEWS.includes(schema?.view?.component);
+}
+
+function shouldCoerceValue(path: string, schema: SchemaType) {
+  const { type, default: defaultValue } = schema;
+  const pathIsChangesByUser = isPathUserChanged(path);
+
+  // if the path is not changed by the user, we should not coerce the value
+  if (!pathIsChangesByUser) {
+    return false;
+  }
+
+  // coerce the value to None only if the default value is not an empty array
+  if (
+    type === "array" &&
+    Array.isArray(defaultValue) &&
+    defaultValue.length === 0
+  ) {
+    return false;
+  }
+
+  // coerce the value to None only if the default value is not an empty string
+  if (type === "string" && defaultValue === "") {
+    return false;
+  }
+
+  return true;
+}
+
+export function coerceValue(path, value, schema) {
+  const { type } = schema;
+
+  if (!shouldCoerceValue(path, schema)) {
+    return value;
+  }
+
+  // coerce the value to None if it is an empty string or empty array
+  if (type === "array" && Array.isArray(value) && value.length === 0) {
+    return null;
+  }
+  if (type === "string" && value === "") {
+    return null;
+  }
+  return value;
 }
