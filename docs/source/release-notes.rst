@@ -3,8 +3,27 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.6.2
+--------------------
+*Released March 12, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.3.2 <release-notes-v1.3.2>`
+
+.. _release-notes-v1.3.2:
+
+FiftyOne 1.3.2
+--------------
+*Released March 12, 2025*
+
+SDK
+
+- Fixed a bug
+  `#5486 <https://github.com/voxel51/fiftyone/issues/5486>`_
+  that caused model evaluation to fail in certain cases
+  `#5472 <https://github.com/voxel51/fiftyone/pull/5472>`_
+
 FiftyOne Enterprise 2.6.1
--------------------------
+--------------------
 *Released February 28, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.3.1 <release-notes-v1.3.1>`, plus:

@@ -15,6 +15,12 @@ export default function useLookerCache({
   onSet?: (key: string) => void;
   reset: string;
 }) {
+  useEffect(() => {
+    const listener = () => cache.empty();
+    document.addEventListener("visibilitychange", listener);
+    return () => document.removeEventListener("visibilitychange", listener);
+  }, []);
+
   const cache = useMemoOne(() => {
     /** CLEAR CACHE WHEN reset CHANGES */
     reset;

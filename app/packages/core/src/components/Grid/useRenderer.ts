@@ -49,7 +49,7 @@ export default function ({
 
       if (zooming) {
         // we are scrolling fast, skip creation
-        return 0;
+        return Promise.resolve(0);
       }
 
       const result = store.get(id);

@@ -133,7 +133,7 @@ export default class Section<K, V> {
     top,
     zooming,
   }: {
-    measure: Measure<K, V>;
+    measure?: Measure<K, V>;
     spotlight: Spotlight<K, V>;
     target: number;
     threshold: (n: number) => boolean;

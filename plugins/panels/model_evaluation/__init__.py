@@ -64,6 +64,7 @@ class EvaluationPanel(Panel):
             "can_evaluate": True,
             "can_edit_note": True,
             "can_edit_status": True,
+            "can_delete_evaluation": True,
             "can_rename": True,
         }
 
@@ -75,6 +76,9 @@ class EvaluationPanel(Panel):
 
     def can_edit_status(self, ctx):
         return self.get_permissions(ctx).get("can_edit_status", False)
+
+    def can_delete_evaluation(self, ctx):
+        return self.get_permissions(ctx).get("can_delete_evaluation", False)
 
     def can_rename(self, ctx):
         return self.get_permissions(ctx).get("can_rename", False)
@@ -224,6 +228,33 @@ class EvaluationPanel(Panel):
         except Exception as e:
             ctx.ops.notify(
                 f"Failed to rename evaluation '{old_name}' to '{new_name}'",
+                variant="error",
+            )
+
+    def delete_evaluation(self, ctx):
+        if not self.can_delete_evaluation(ctx):
+            ctx.ops.notify(
+                "You do not have permission to delete evaluations",
+                variant="error",
+            )
+            return
+
+        # use eval_id to delete the execution store
+        eval_id = ctx.params.get("eval_id", None)
+        # use eval_key to delete the evaluation from dataset
+        eval_key = ctx.params.get("eval_key", None)
+
+        try:
+            ctx.dataset.delete_evaluation(eval_key)
+            store = self.get_store(ctx)
+            store.delete(eval_id)
+            ctx.ops.notify(
+                "Evaluation deleted successfully!",
+                variant="success",
+            )
+        except Exception as e:
+            ctx.ops.notify(
+                f"Failed to delete evaluation successfully",
                 variant="error",
             )
 
@@ -735,6 +766,7 @@ class EvaluationPanel(Panel):
                 set_note=self.set_note,
                 load_view=self.load_view,
                 rename_evaluation=self.rename_evaluation,
+                delete_evaluation=self.delete_evaluation,
             ),
         )
 

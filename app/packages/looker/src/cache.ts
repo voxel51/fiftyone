@@ -15,11 +15,6 @@ export interface CacheOptions {
   onSet?: CacheCallback;
 }
 
-interface Entry<T extends Instance | Lookers = Lookers> {
-  dispose: boolean;
-  instance: T;
-}
-
 interface Instance extends EventTarget {
   loaded: boolean;
   destroy: () => void;
@@ -42,35 +37,30 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
 ) => {
   const { maxHiddenItems, maxHiddenItemsSizeBytes, onDispose, onSet } = options;
 
+  // shown instances
+  const shown = new Map<string, T>();
+
+  // hidden instances, i.e. instances that do not yet have a size estimate
+  const pending = new Map<string, T>();
+
   // hidden instances with a size estimate
-  const hidden = new LRUCache<string, Entry<T>>({
-    dispose: (entry, key) => {
-      if (!entry.dispose) return;
-      entry.instance.destroy();
+  const hidden = new LRUCache<string, T>({
+    dispose: (instance, key) => {
+      if (shown.has(key)) return;
+      instance.destroy();
       onDispose?.(key);
     },
     max: maxHiddenItems,
     maxSize: maxHiddenItemsSizeBytes,
     noDisposeOnSet: true,
-    sizeCalculation: (entry) => {
-      return entry.instance.getSizeBytesEstimate();
-    },
+    sizeCalculation: (instance) => instance.getSizeBytesEstimate(),
   });
-
-  // hidden instances, i.e. instances that do not yet have a size estimate
-  const pending = new Map<string, T>();
 
   // frozen instances, i.e. neither shown or hidden
   const frozen = new Map<string, T>();
 
-  // shown instances
-  const shown = new Map<string, T>();
-
   const get = (key: string) =>
-    shown.get(key) ??
-    hidden.get(key)?.instance ??
-    pending.get(key) ??
-    frozen.get(key);
+    frozen.get(key) ?? hidden.get(key) ?? pending.get(key) ?? shown.get(key);
 
   const hide = (key?: string) => {
     if (!key) {
@@ -86,7 +76,7 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
     }
 
     if (instance.loaded) {
-      !hidden.has(key) && hidden.set(key, { dispose: true, instance });
+      !hidden.has(key) && hidden.set(key, instance);
       return;
     }
 
@@ -96,7 +86,7 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
   const setLoading = (key: string, instance: T) => {
     const onReady = () => {
       if (pending.has(key)) {
-        hidden.set(key, { dispose: true, instance });
+        hidden.set(key, instance);
         pending.delete(key);
       }
 
@@ -121,21 +111,18 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
      * Delete all instances
      */
     delete: () => {
-      destroy(frozen);
+      destroy(frozen, onDispose);
       hidden.clear();
-      destroy(pending);
-      destroy(shown);
+      destroy(pending, onDispose);
+      destroy(shown, onDispose);
     },
 
     /**
      * Delete hidden instances
      */
     empty: () => {
-      for (const it of pending.keys()) {
-        pending.get(it)?.destroy();
-        pending.delete(it);
-      }
-      for (const it of hidden.keys()) hidden.delete(it);
+      hidden.clear();
+      destroy(pending, onDispose);
     },
 
     /**
@@ -182,6 +169,8 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
     set: (key: string, instance: T) => {
       shown.set(key, instance);
       frozen.delete(key);
+      hidden.delete(key);
+      pending.delete(key);
       onSet?.(key);
     },
 
@@ -199,16 +188,11 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
      * @param {string} key - the instance key
      */
     show: (key: string) => {
-      const entry = hidden.get(key);
-      if (entry) {
-        entry.dispose = false;
-      }
-
       const instance = get(key);
+      instance && shown.set(key, instance);
+      frozen.delete(key);
       hidden.delete(key);
       pending.delete(key);
-      frozen.delete(key);
-      instance && shown.set(key, instance);
     },
 
     /**
@@ -221,9 +205,13 @@ export const createCache = <T extends Instance | Lookers = Lookers>(
 };
 
 const destroy = <T extends Instance | Lookers = Lookers>(
-  map: Map<string, T>
+  map: Map<string, T>,
+  onDispose?: CacheCallback
 ) => {
-  for (const instance of map.values()) instance.destroy();
+  for (const [key, instance] of map.entries()) {
+    instance.destroy();
+    onDispose?.(key);
+  }
   map.clear();
 };
 
@@ -233,7 +221,7 @@ const resolveSize = <T extends Instance | Lookers = Lookers>(looker?: T) => {
   }
 
   if (looker.loaded) {
-    return looker.getSizeBytesEstimate();
+    return Promise.resolve(looker.getSizeBytesEstimate());
   }
 
   return new Promise<number>((resolve) => {

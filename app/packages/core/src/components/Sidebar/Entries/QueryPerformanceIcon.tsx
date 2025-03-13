@@ -1,5 +1,5 @@
 import { useTheme } from "@fiftyone/components";
-import { QP_MODE } from "@fiftyone/core";
+import { OPTIMIZING_QUERY_PERFORMANCE } from "@fiftyone/core";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { Bolt } from "@mui/icons-material";
 import { Box, Button, Tooltip } from "@mui/material";
@@ -68,7 +68,9 @@ const QueryPerformanceIcon = () => {
                     flexGrow: 1,
                   }}
                   onClick={() => {
-                    window.open(QP_MODE, "_blank")?.focus();
+                    window
+                      .open(OPTIMIZING_QUERY_PERFORMANCE, "_blank")
+                      ?.focus();
                   }}
                 >
                   View Documentation

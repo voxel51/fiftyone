@@ -2,15 +2,25 @@ import { PanelCTA } from "@fiftyone/components";
 import { constants } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import React, { useCallback, useMemo } from "react";
+import { useRecoilState } from "recoil";
+import ConfirmationDialog from "./ConfirmationDialog";
 import Evaluate from "./Evaluate";
 import Evaluation from "./Evaluation";
 import Overview from "./Overview";
-import { useTriggerEvent } from "./utils";
+import {
+  openModelEvalDialog,
+  selectedModelEvaluation,
+  useTriggerEvent,
+} from "./utils";
 
 const TRY_LINK = "http://voxel51.com/try-evaluation";
 
 export default function NativeModelEvaluationView(props) {
   const { data = {}, schema, onChange, layout } = props;
+  const [openDialog, setOpenDialog] = useRecoilState(openModelEvalDialog);
+  const [selectedEvaluation, setSelectedEvaluation] = useRecoilState(
+    selectedModelEvaluation
+  );
   const { view } = schema;
   const {
     on_change_view,
@@ -21,6 +31,7 @@ export default function NativeModelEvaluationView(props) {
     set_note,
     load_view,
     rename_evaluation,
+    delete_evaluation,
   } = view;
   const {
     evaluations = [],
@@ -58,6 +69,7 @@ export default function NativeModelEvaluationView(props) {
       triggerEvent(on_evaluate_model);
     }
   }, [triggerEvent, on_evaluate_model]);
+
   const onRename = useCallback(
     (old_name: string, new_name: string) => {
       triggerEvent(
@@ -81,6 +93,45 @@ export default function NativeModelEvaluationView(props) {
     },
     [triggerEvent, rename_evaluation, evaluations, onChange]
   );
+
+  const time = new Date().getTime();
+
+  const onDelete = useCallback(
+    (eval_id: string, eval_key: string) => {
+      triggerEvent(
+        delete_evaluation,
+        { eval_id, eval_key },
+        false,
+        (results) => {
+          if (results?.error === null) {
+            // update the current page display
+            // if after deletion, there is no evaluation left,
+            // go to the create evaluation page
+            const updatedEvaluations = evaluations.filter(
+              (evaluation) => evaluation.id !== eval_id
+            );
+            onChange("evaluations", updatedEvaluations);
+            onChange(
+              "view.key",
+              `${eval_id}_${updatedEvaluations.length}_${time}`
+            );
+            if (page === "evaluation") {
+              // should return to overview page
+              onChange("view", { page: "overview" });
+              onChange("view.key", eval_id + "_deleted");
+              triggerEvent(on_change_view);
+            }
+          }
+        }
+      );
+    },
+    [triggerEvent, delete_evaluation, evaluations, onChange, time]
+  );
+
+  const handleClose = () => {
+    setOpenDialog(false);
+    setSelectedEvaluation(null);
+  };
 
   return (
     <Box sx={{ height: "100%" }}>
@@ -153,6 +204,12 @@ export default function NativeModelEvaluationView(props) {
             onRename={onRename}
           />
         ))}
+      <ConfirmationDialog
+        open={openDialog}
+        handleClose={handleClose}
+        evaluations={evaluations}
+        handleDelete={onDelete}
+      />
     </Box>
   );
 }

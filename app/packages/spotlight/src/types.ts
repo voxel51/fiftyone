@@ -40,7 +40,7 @@ export interface ItemData<K, V> {
 
 export type Measure<K, V> = (
   id: ItemData<K, V>,
-  sizeBytes: () => number | Promise<number>
+  sizeBytes: Promise<number>
 ) => void;
 
 export interface Response<K, V> {
@@ -62,24 +62,24 @@ export type Show<K, V> = (ctx: {
   element: HTMLDivElement;
   spotlight: Spotlight<K, V>;
   zooming: boolean;
-}) => number | Promise<number>;
+}) => Promise<number>;
 
 export interface SpotlightConfig<K, V> {
   at?: At;
-  spacing?: number;
-  scrollbar?: boolean;
   key: K;
   maxRows?: number;
   maxItemsSizeBytes?: number;
   offset?: number;
+  scrollbar?: boolean;
+  spacing?: number;
 
   detachItem: (id: ID) => void;
   get: Get<K, V>;
   getItemSizeBytes?: (id: ID) => number;
   hideItem: Hide;
   onItemClick?: ItemClick<K, V>;
-  showItem: Show<K, V>;
   rowAspectRatioThreshold: (width: number) => number;
+  showItem: Show<K, V>;
 }
 
 export type Updater = (id: ID) => void;
