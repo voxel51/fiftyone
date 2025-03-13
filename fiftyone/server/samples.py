@@ -61,6 +61,11 @@ class VideoSample(Sample):
     frame_rate: float
 
 
+@gql.type
+class OtherSample(Sample):
+    pass
+
+
 SampleItem = gql.union(
     "SampleItem",
     types=(ImageSample, PointCloudSample, ThreeDSample, VideoSample),
@@ -71,6 +76,7 @@ MEDIA_TYPES = {
     fom.POINT_CLOUD: PointCloudSample,
     fom.VIDEO: VideoSample,
     fom.THREE_D: ThreeDSample,
+    fom.OTHER: OtherSample,
 }
 
 
