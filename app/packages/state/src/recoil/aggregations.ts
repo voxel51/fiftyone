@@ -36,9 +36,11 @@ export const aggregationQuery = graphQLSelectorFamily<
   {
     customView?: any;
     extended: boolean;
+    isQueryPerformance?: boolean;
     modal: boolean;
     mixed?: boolean;
     paths: string[];
+
     root?: boolean;
   },
   Aggregation[]
@@ -52,9 +54,11 @@ export const aggregationQuery = graphQLSelectorFamily<
     ({
       customView = undefined,
       extended,
+      isQueryPerformance = undefined,
       mixed = false,
       modal,
       paths,
+
       root = false,
     }) =>
     ({ get }) => {
@@ -70,6 +74,7 @@ export const aggregationQuery = graphQLSelectorFamily<
       }
 
       mixed = mixed || get(groupStatistics(modal)) === "group";
+
       const aggForm = {
         index: get(refresher),
         dataset,
@@ -86,7 +91,10 @@ export const aggregationQuery = graphQLSelectorFamily<
         slices: mixed ? get(groupSlices) : get(currentSlices(modal)),
         slice: get(groupSlice),
         view: customView ? customView : !root ? get(viewAtoms.view) : [],
-        queryPerformance: get(queryPerformance) && !modal,
+        queryPerformance:
+          isQueryPerformance === undefined
+            ? get(queryPerformance) && !modal
+            : isQueryPerformance,
       };
 
       return {
@@ -100,7 +108,7 @@ export const aggregations = selectorFamily({
   get:
     (params: {
       extended: boolean;
-      lightning?: boolean;
+      isQueryPerformance?: boolean;
       modal: boolean;
       paths: string[];
       mixed?: boolean;
@@ -126,7 +134,7 @@ export const aggregation = selectorFamily({
       ...params
     }: {
       extended: boolean;
-      lightning?: boolean;
+      isQueryPerformance?: boolean;
       mixed?: boolean;
       modal: boolean;
       path: string;
