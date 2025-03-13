@@ -376,7 +376,7 @@ export const useSpotlight = ({
 
         lookerStore.get(id)?.attach(element, dimensions);
 
-        return 0;
+        return Promise.resolve(0);
       },
     });
   }, [
