@@ -6,6 +6,7 @@ import { useColorByField } from "./useLabelSelector";
 // a react hook that fetches a list of brain results
 // and has a loading state and an error state
 export const useBrainResult = () => usePanelStatePartial("brainResult", null);
+export const usePointsField = () => usePanelStatePartial("pointsField", null);
 export function useBrainResultsSelector() {
   const [selected, setSelected] = useBrainResult();
   const dataset = useRecoilValue(fos.dataset);

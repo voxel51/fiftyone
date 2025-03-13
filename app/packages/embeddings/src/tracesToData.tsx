@@ -20,41 +20,63 @@ export function tracesToData(
   const isCategorical = style === "categorical";
   const isContinuous = style === "continuous";
   const isUncolored = style === "uncolored";
+
+  const hasSelection = Array.isArray(plotSelection) && plotSelection.length > 0;
+  const selectionSet = hasSelection ? new Set(plotSelection) : null;
+
+  const mappedColorscale = colorscale.map(([r, g, b], idx) => {
+    const color = Color.fromCSSRGBValues(r, g, b);
+    return [idx / (colorscale.length - 1), color.toCSSRGBString()];
+  });
+
   return Object.entries(traces)
     .sort((a, b) => sortStringsAlphabetically(a[0], b[0]))
     .map(addLineBreaks)
     .map(([key, trace]) => {
-      const selectedpoints = plotSelection?.length
-        ? plotSelection
-            .map((id) => getPointIndex(trace, id))
-            .filter((p) => p !== null)
-        : null;
       const color =
         getLabelColor(key, setting) ??
         getConvertedColor(getColor(key)) ??
         new Color(255, 165, 0);
 
-      const mappedColorscale = colorscale.map(
-        (c: [number, number, number], idx) => {
-          const color = Color.fromCSSRGBValues(...c);
-          return [idx / (colorscale.length - 1), color.toCSSRGBString()];
+      const x = new Array(trace.length);
+      const y = new Array(trace.length);
+      const ids = new Array(trace.length);
+      const labelsForColors =
+        isContinuous && !isUncolored ? new Array(trace.length) : null;
+
+      const selectedpoints = [];
+
+      for (let i = 0; i < trace.length; i++) {
+        const { points, id, sample_id, label } = trace[i];
+        x[i] = points[0];
+        y[i] = points[1];
+        ids[i] = id;
+
+        if (labelsForColors) {
+          labelsForColors[i] = label;
         }
-      );
+
+        if (hasSelection && selectionSet) {
+          if (selectionSet.has(id) || selectionSet.has(sample_id)) {
+            selectedpoints.push(i);
+          }
+        }
+      }
 
       return {
-        x: trace.map((d) => d.points[0]),
-        y: trace.map((d) => d.points[1]),
-        ids: trace.map((d) => d.id),
+        x,
+        y,
+        ids,
         type: "scattergl",
         mode: "markers",
         marker: {
-          autocolorscale: !isContinuous, // isCategorical || isUncolored,
+          autocolorscale: !isContinuous,
           colorscale: mappedColorscale,
           color: isCategorical
             ? color.toCSSRGBString()
             : isUncolored
             ? null
-            : trace.map((d) => d.label),
+            : labelsForColors,
           size: 6,
           colorbar:
             isCategorical || isUncolored
@@ -66,7 +88,7 @@ export function tracesToData(
                 },
         },
         name: key,
-        selectedpoints,
+        selectedpoints: selectedpoints.length ? selectedpoints : null,
         selected: {
           marker: {
             opacity: 1,
