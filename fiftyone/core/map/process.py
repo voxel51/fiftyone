@@ -166,13 +166,11 @@ def _do_map_samples(
             ),
         )
 
-        count = 0
         while True:
             try:
                 result = queue.get(timeout=0.01)
                 pb.update()
                 yield result
-                count += 1
             except Empty:
                 if batch_count.value >= num_batches:
                     break
