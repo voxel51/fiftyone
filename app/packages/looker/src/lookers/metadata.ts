@@ -51,4 +51,9 @@ export class MetadataLooker extends AbstractLooker<BaseState> {
       SHORTCUTS: COMMON_SHORTCUTS,
     };
   }
+
+  get loaded(): boolean {
+    // no media to load for this looker
+    return true;
+  }
 }
