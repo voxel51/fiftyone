@@ -836,6 +836,14 @@ export const sidebarGroup = selectorFamily<
   },
 });
 
+export const sidebarPaths = selector({
+  key: "sidebarPaths",
+  get: ({ get }) => {
+    const groups = get(sidebarGroupsDefinition(false));
+    return groups.flatMap(({ paths }) => paths);
+  },
+});
+
 export const sidebarGroupNames = selectorFamily<string[], boolean>({
   key: "sidebarGroupNames",
   get:

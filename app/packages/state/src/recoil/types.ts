@@ -1,5 +1,5 @@
-import { CustomizeColorInput } from "@fiftyone/relay";
-import { SpaceNodeJSON } from "@fiftyone/spaces";
+import type { CustomizeColorInput } from "@fiftyone/relay";
+import type { SpaceNodeJSON } from "@fiftyone/spaces";
 
 export namespace State {
   export type MediaType =
@@ -21,9 +21,9 @@ export namespace State {
    */
   export type PluginConfig = { [pluginName: string]: object };
 
-  export type DefaultVisibilityLabelsConfig = {
-    include?: string[];
-    exclude?: string[];
+  export type ActiveFields = {
+    exclude?: boolean | null;
+    paths: string[];
   };
   export interface Config {
     colorPool: string[];
@@ -124,7 +124,7 @@ export namespace State {
   }
 
   export interface DatasetAppConfig {
-    defaultVisibilityLabels?: DefaultVisibilityLabelsConfig;
+    activeFields?: ActiveFields;
     dynamicGroupsTargetFrameRate: number;
     gridMediaField?: string;
     modalMediaField?: string;

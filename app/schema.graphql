@@ -1,3 +1,8 @@
+type ActiveFields {
+  exclude: Boolean
+  paths: [String!]
+}
+
 input Aggregate {
   count: Count = null
   countValues: CountValues = null
@@ -247,8 +252,8 @@ type Dataset {
 }
 
 type DatasetAppConfig {
+  activeFields: ActiveFields
   colorScheme: ColorScheme
-  defaultVisibilityLabels: FieldVisibilityConfig
   disableFrameFiltering: Boolean
   dynamicGroupsTargetFrameRate: Int!
   gridMediaField: String!
@@ -329,11 +334,6 @@ input ExtendedViewForm {
   mixed: Boolean = null
   sampleIds: [String!] = null
   slice: String = null
-}
-
-type FieldVisibilityConfig {
-  include: [String!]
-  exclude: [String!]
 }
 
 type FloatAggregation implements Aggregation {
@@ -614,7 +614,6 @@ type Query {
     viewName: String = null
     form: ExtendedViewForm = null
   ): [AggregationResponses!]!
-  dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset
   datasets(
     search: String
     first: Int = 200
@@ -628,6 +627,7 @@ type Query {
   dev: Boolean!
   doNotTrack: Boolean!
   estimatedDatasetCount: Int!
+  dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset
   samples(
     dataset: String!
     view: BSONArray!

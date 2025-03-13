@@ -27,12 +27,13 @@ import {
   withPath,
 } from "@fiftyone/utilities";
 import { RecoilState, selector, selectorFamily } from "recoil";
-import { computeDefaultVisibleLabels } from "../labelsVisibility";
+import { computeActiveFields } from "../activeFields";
 import * as atoms from "./atoms";
 import { dataset as datasetAtom } from "./dataset";
 import { activeModalSample } from "./groups";
 import { labelPathsSetExpanded } from "./labels";
-import { defaultVisibilityLabels } from "./selectors";
+import { activeFieldsConfig } from "./selectors";
+import { sidebarPaths } from "./sidebar";
 import { State } from "./types";
 import { getLabelFields } from "./utils";
 
@@ -322,8 +323,8 @@ export const dbPath = selectorFamily({
     },
 });
 
-export const defaultVisibleLabels = selector<string[]>({
-  key: "defaultVisibleLabels",
+export const defaultActiveFields = selector<string[]>({
+  key: "defaultActiveFields",
   get: ({ get }) => {
     const sampleSchema = get(fieldSchema({ space: State.SPACE.SAMPLE }));
     const frameSchema = get(fieldSchema({ space: State.SPACE.FRAME }));
@@ -331,14 +332,15 @@ export const defaultVisibleLabels = selector<string[]>({
     const allSampleLabels = get(labelFields({ space: State.SPACE.SAMPLE }));
     const allFrameLabels = get(labelFields({ space: State.SPACE.FRAME }));
 
-    const defaultVisibleLabelsConfig = get(defaultVisibilityLabels);
+    const config = get(activeFieldsConfig);
 
-    return computeDefaultVisibleLabels(
+    return computeActiveFields(
+      get(sidebarPaths),
       sampleSchema,
       frameSchema,
       allSampleLabels,
       allFrameLabels,
-      defaultVisibleLabelsConfig
+      config
     );
   },
 });
@@ -536,7 +538,7 @@ export const activeFields = selectorFamily<string[], { modal: boolean }>({
     ({ modal }) =>
     ({ get }) => {
       return filterPaths(
-        get(_activeFields({ modal })) || get(defaultVisibleLabels),
+        get(_activeFields({ modal })) || get(defaultActiveFields),
         buildSchema(get(atoms.sampleFields), get(atoms.frameFields))
       );
     },

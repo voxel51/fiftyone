@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeDefaultVisibleLabels } from "./labelsVisibility";
+import { computeActiveFields } from "./activeFields";
 
 const sampleSchemaMock = {
   segmentation: {
@@ -47,12 +47,13 @@ const frameSchemaMock = {
   },
 } as const;
 
-describe("computeDefaultVisibleLabels", () => {
+describe("computeActiveFields", () => {
   it("returns all non-dense labels when no config is provided", () => {
     const allSampleLabels = ["segmentation", "detection", "classification"];
     const allFrameLabels = ["frames.segmentation"];
 
-    const result = computeDefaultVisibleLabels(
+    const result = computeActiveFields(
+      [...allSampleLabels, ...allFrameLabels],
       sampleSchemaMock,
       frameSchemaMock,
       allSampleLabels,
@@ -67,12 +68,13 @@ describe("computeDefaultVisibleLabels", () => {
     const allSampleLabels = ["segmentation", "classification", "otherLabel"];
     const allFrameLabels = ["frames.segmentation"];
 
-    const result = computeDefaultVisibleLabels(
+    const result = computeActiveFields(
+      [...allSampleLabels, ...allFrameLabels],
       sampleSchemaMock,
       frameSchemaMock,
       allSampleLabels,
       allFrameLabels,
-      { include: ["classification", "otherLabel"] }
+      { paths: ["classification", "otherLabel"] }
     );
 
     expect(result).toEqual(["classification", "otherLabel"]);
@@ -82,12 +84,13 @@ describe("computeDefaultVisibleLabels", () => {
     const allSampleLabels = ["segmentation", "classification", "otherLabel"];
     const allFrameLabels = ["frames.segmentation"];
 
-    const result = computeDefaultVisibleLabels(
+    const result = computeActiveFields(
+      [...allSampleLabels, ...allFrameLabels],
       sampleSchemaMock,
       frameSchemaMock,
       allSampleLabels,
       allFrameLabels,
-      { exclude: ["classification"] }
+      { paths: ["classification"], exclude: true }
     );
 
     expect(result).toEqual([
@@ -95,23 +98,5 @@ describe("computeDefaultVisibleLabels", () => {
       "otherLabel",
       "frames.segmentation",
     ]);
-  });
-
-  it("correctly applies both include & exclude", () => {
-    const allSampleLabels = ["segmentation", "classification", "otherLabel"];
-    const allFrameLabels = ["frames.segmentation"];
-
-    const result = computeDefaultVisibleLabels(
-      sampleSchemaMock,
-      frameSchemaMock,
-      allSampleLabels,
-      allFrameLabels,
-      {
-        include: ["segmentation", "classification", "otherLabel"],
-        exclude: ["classification"],
-      }
-    );
-
-    expect(result).toEqual(["segmentation", "otherLabel"]);
   });
 });

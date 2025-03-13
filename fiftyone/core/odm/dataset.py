@@ -177,6 +177,22 @@ class SidebarGroupDocument(EmbeddedDocument):
     expanded = BooleanField(default=None)
 
 
+class ActiveFields(EmbeddedDocument):
+    """Description of active fields in the App as definied by the sidebar's
+    checkboxes
+
+    Args:
+        exclude (None): whether the paths are exclusionary
+        paths ([]): the list of ``field`` or ``embedded.field.name`` paths
+    """
+
+    # strict=False lets this class ignore unknown fields from other versions
+    meta = {"strict": False}
+
+    exclude = BooleanField(default=None)
+    paths = ListField(StringField(), default=[])
+
+
 class ColorScheme(EmbeddedDocument):
     """Description of a color scheme in the App.
 
@@ -514,14 +530,15 @@ class DatasetAppConfig(EmbeddedDocument):
     the App.
 
     Args:
-        color_scheme (None): an optional :class:`ColorScheme` for the dataset
-        default_visibility_labels (None): config with include and exclude lists
-            of labels to render by default in the App
+        active_fields (None): an optional :class:`ActiveFields` dataset default
+        color_scheme (None): an optional :class:`ColorScheme` dataset default
         disable_frame_filtering (False): whether to disable frame filtering for
             video datasets in the App's grid view
+        dynamic_groups_target_frame_rate (30): the target frame rate when
+            rendering ordered dynamic groups of images as videos
         grid_media_field ("filepath"): the default sample field from which to
             serve media in the App's grid view
-            media_fallback (False): whether to fall back to the default media
+        media_fallback (False): whether to fall back to the default media
             field (``"filepath"``) when the alternate media field value for a
             sample is not defined
         media_fields (["filepath"]): the list of sample fields that contain
@@ -529,8 +546,6 @@ class DatasetAppConfig(EmbeddedDocument):
             menus
         modal_media_field ("filepath"): the default sample field from which to
             serve media in the App's modal view
-        dynamic_groups_target_frame_rate (30): the target frame rate when
-            rendering ordered dynamic groups of images as videos
         plugins ({}): an optional dict mapping plugin names to plugin
             configuration dicts. Builtin plugins include:
 
@@ -547,8 +562,8 @@ class DatasetAppConfig(EmbeddedDocument):
     # strict=False lets this class ignore unknown fields from other versions
     meta = {"strict": False}
 
+    active_fields = EmbeddedDocumentField(ActiveFields, default=None)
     color_scheme = EmbeddedDocumentField(ColorScheme, default=None)
-    default_visibility_labels = DictField(default=None)
     disable_frame_filtering = BooleanField(default=None)
     dynamic_groups_target_frame_rate = IntField(default=30)
     grid_media_field = StringField(default="filepath")
@@ -559,6 +574,30 @@ class DatasetAppConfig(EmbeddedDocument):
     sidebar_groups = ListField(
         EmbeddedDocumentField(SidebarGroupDocument), default=None
     )
+
+    @staticmethod
+    def default_active_fields(sample_collection):
+        """Generates the default ``active_fields`` for the given collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            active_fields = fo.DatasetAppConfig.default_active_fields(dataset)
+            dataset.app_config.active_fields = active_fields
+            print(dataset.app_config)
+
+        Args:
+            sample_collection: a
+                :class:`fiftyone.core.collections.SampleCollection`
+
+        Returns:
+            an :class:`ActiveFields` instance
+        """
+        return _make_default_active_fields(sample_collection)
 
     @staticmethod
     def default_sidebar_groups(sample_collection):
@@ -667,6 +706,28 @@ class DatasetAppConfig(EmbeddedDocument):
 
         if path not in index_group.paths:
             index_group.paths.append(path)
+
+
+def _make_default_active_fields(sample_collection):
+    # create sidebar groups as a simple way to find label fields
+    groups = _make_default_sidebar_groups(sample_collection)
+
+    paths = []
+    for group in groups:
+        if group.name == "labels" or group.name == "frame labels":
+            paths.extend(group.paths)
+
+    active_fields = ActiveFields()
+    for path in paths:
+        if sample_collection.get_field(path).document_type == fol.Heatmap:
+            continue
+
+        if sample_collection.get_field(path).document_type == fol.Segmentation:
+            continue
+
+        active_fields.paths.append(path)
+
+    return active_fields
 
 
 def _make_default_sidebar_groups(sample_collection):
