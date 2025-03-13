@@ -267,9 +267,17 @@ export const MediaTypeFo3dComponent = () => {
   }, []);
 
   const resetActiveNode = useRecoilCallback(
-    ({ set }) =>
+    ({ set, snapshot }) =>
       () => {
         set(activeNodeAtom, null);
+
+        const isTooltipLocked = snapshot
+          .getLoadable(fos.isTooltipLocked)
+          .valueMaybe();
+
+        if (!isTooltipLocked) {
+          set(fos.tooltipDetail, null);
+        }
       },
     []
   );

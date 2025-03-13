@@ -18,6 +18,7 @@ import {
   DispatchEvent,
 } from "../../state";
 
+import { LabelHoveredEvent, LabelUnhoveredEvent } from "../../events";
 import { getHashLabel } from "../../overlays/util";
 import { lookerCheckbox, lookerLabel } from "./util.module.css";
 
@@ -41,7 +42,17 @@ export const dispatchTooltipEvent = <State extends BaseState>(
         ? overlays[0].getPointInfo(state)
         : null;
 
-    // @ts-ignore
+    if (detail?.label?.instance_config) {
+      document.dispatchEvent(
+        new LabelHoveredEvent({
+          labelId: detail.label.id,
+          instanceId: detail.label.instance_config?._id,
+        })
+      );
+    } else if (!detail) {
+      document.dispatchEvent(new LabelUnhoveredEvent());
+    }
+
     if (state.frameNumber && detail) {
       // @ts-ignore
       detail.frameNumber = state.frameNumber;
@@ -52,6 +63,7 @@ export const dispatchTooltipEvent = <State extends BaseState>(
         ? {
             ...detail,
             coordinates: state.cursorCoordinates,
+            sampleId: state.config.sampleId,
           }
         : null
     );
