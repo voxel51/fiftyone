@@ -18,6 +18,7 @@ import {
 } from "@fiftyone/utilities";
 import { isEmpty } from "lodash";
 import { v4 as uuid } from "uuid";
+import { VideoLooker } from "..";
 import {
   BASE_ALPHA,
   DASH_LENGTH,
@@ -208,6 +209,8 @@ export abstract class AbstractLooker<
     jotaiStore.set(updateHoveredInstances, {
       instanceId,
       labelId: label.label.id,
+      field: label.field,
+      frameNumber: this instanceof VideoLooker ? this.frameNumber : undefined,
     });
 
     this.updater({
