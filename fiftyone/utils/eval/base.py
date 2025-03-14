@@ -15,6 +15,7 @@ import numpy as np
 import sklearn.metrics as skm
 from tabulate import tabulate
 
+import fiftyone.core.collections as foc
 import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.plots as fop
@@ -538,8 +539,13 @@ class BaseClassificationResults(BaseEvaluationResults):
                 results.print_report(classes=classes)
 
         Args:
-            subset_def: a dict or list of dicts defining the subset. See above
-                for examples and see :func:`get_subset_view` for full syntax
+            subset_def: the subset definition, which can be:
+
+                -   a dict or list of dicts defining the subset. See above
+                    for examples and see :func:`get_subset_view` for full
+                    syntax
+                -   a :class:`fiftyone.core.view.DatasetView` defining the
+                    subset
 
         Returns:
             self
@@ -551,7 +557,10 @@ class BaseClassificationResults(BaseEvaluationResults):
             )
 
         gt_field = self.config.gt_field
-        subset_view = get_subset_view(self.samples, gt_field, subset_def)
+        if isinstance(subset_def, foc.SampleCollection):
+            subset_view = subset_def
+        else:
+            subset_view = get_subset_view(self.samples, gt_field, subset_def)
 
         self._samples_orig = self.samples
         self._ytrue_orig = self.ytrue
