@@ -27,6 +27,7 @@ from torchvision.models.feature_extraction import create_feature_extractor
 import fiftyone.core.config as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
+import fiftyone.core.media as fomd
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.utils.image as foui
@@ -1544,6 +1545,11 @@ class FiftyOneTorchDataset(Dataset):
         if samples._dataset.persistent is False:
             raise ValueError(
                 "This class only works with persistent datasets. Please set your dataset to be persistent."
+            )
+
+        if samples.media_type == fomd.GROUP:
+            raise NotImplementedError(
+                "Not compatible with grouped datasets yet. If you want this feature, please let us know!"
             )
 
         start_method = multiprocessing.get_start_method(allow_none=True)
