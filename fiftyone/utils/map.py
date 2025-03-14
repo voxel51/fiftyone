@@ -19,6 +19,7 @@ def map_samples(
     progress=None,
     save=False,
     parallelize_method="process",
+    skip_failures=True,
 ):
     """
     Applies `map_fcn` to each sample using the specified backend strategy and
@@ -33,6 +34,8 @@ def map_samples(
         save (False): Whether to save modified samples.
         parallelize_method ("process"): Method for parallelization ('process'
           or'thread').
+        skip_failures (True): whether to gracefully continue without raising an
+            error if the map function raises an exception for a sample.
 
     Returns:
         A generator yield processed sample results.
@@ -44,7 +47,9 @@ def map_samples(
         batch_method,
     )
 
-    yield from mapper.map_samples(map_fcn, progress=progress, save=save)
+    yield from mapper.map_samples(
+        map_fcn, progress=progress, save=save, skip_failures=skip_failures
+    )
 
 
 def update_samples(
@@ -54,6 +59,7 @@ def update_samples(
     batch_method: str = "id",
     progress: Optional[Union[bool, Literal["worker"]]] = None,
     parallelize_method: str = "process",
+    skip_failures=True,
 ):
     """
     Applies `map_fcn` to each sample using the specified backend strategy.
@@ -66,9 +72,17 @@ def update_samples(
         progress (None): Whether to show progress bar.
         parallelize_method ("process"): Method for parallelization ('process'
           or'thread').
+        skip_failures (True): whether to gracefully continue without raising an
+            error if the update function raises an exception for a sample.
     """
     mapper = focm.MapperFactory.create(
         parallelize_method, sample_collection, workers, batch_method
     )
 
-    return mapper.update_samples(update_fcn, progress=progress)
+    for _ in mapper.map_samples(
+        update_fcn,
+        progress=progress,
+        save=True,
+        skip_failures=skip_failures,
+    ):
+        ...
