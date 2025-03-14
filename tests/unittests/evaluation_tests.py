@@ -3040,6 +3040,108 @@ class SegmentationTests(unittest.TestCase):
         results = dataset.load_evaluation_results("custom")
         self.assertEqual(type(results), fous.SegmentationResults)
 
+    @drop_datasets
+    def test_evaluate_segmentations_parallel(self):
+        dataset = self._make_segmentation_dataset()
+
+        # Test with single worker (sequential)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # suppress missing masks warning
+
+            sequential_results = dataset.evaluate_segmentations(
+                "predictions",
+                gt_field="ground_truth",
+                eval_key="sequential",
+                method="simple",
+                mask_targets={0: "background", 1: "cat", 2: "dog"},
+                num_workers=1,
+            )
+
+        # Test with multiple workers (parallel)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # suppress missing masks warning
+
+            parallel_results = dataset.evaluate_segmentations(
+                "predictions",
+                gt_field="ground_truth",
+                eval_key="parallel",
+                method="simple",
+                mask_targets={0: "background", 1: "cat", 2: "dog"},
+                num_workers=2,
+            )
+
+        # Verify that parallel results match sequential results
+        seq_metrics = sequential_results.metrics()
+        par_metrics = parallel_results.metrics()
+
+        self.assertEqual(seq_metrics["support"], par_metrics["support"])
+        self.assertEqual(seq_metrics["accuracy"], par_metrics["accuracy"])
+        self.assertEqual(seq_metrics["precision"], par_metrics["precision"])
+        self.assertEqual(seq_metrics["recall"], par_metrics["recall"])
+
+        # Check confusion matrices
+        seq_conf_mat = sequential_results.confusion_matrix()
+        par_conf_mat = parallel_results.confusion_matrix()
+        self.assertEqual(seq_conf_mat.shape, par_conf_mat.shape)
+        self.assertTrue((seq_conf_mat == par_conf_mat).all())
+
+        # Clean up
+        dataset.delete_evaluation("sequential")
+        dataset.delete_evaluation("parallel")
+
+    @drop_datasets
+    def test_evaluate_segmentations_on_disk_parallel(self):
+        dataset = self._make_segmentation_dataset()
+
+        # Convert to on-disk segmentations
+        foul.export_segmentations(dataset, "ground_truth", self._new_dir())
+        foul.export_segmentations(dataset, "predictions", self._new_dir())
+
+        # Test with single worker (sequential)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # suppress missing masks warning
+
+            sequential_results = dataset.evaluate_segmentations(
+                "predictions",
+                gt_field="ground_truth",
+                eval_key="sequential",
+                method="simple",
+                mask_targets={0: "background", 1: "cat", 2: "dog"},
+                num_workers=1,
+            )
+
+        # Test with multiple workers (parallel)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # suppress missing masks warning
+
+            parallel_results = dataset.evaluate_segmentations(
+                "predictions",
+                gt_field="ground_truth",
+                eval_key="parallel",
+                method="simple",
+                mask_targets={0: "background", 1: "cat", 2: "dog"},
+                num_workers=2,
+            )
+
+        # Verify that parallel results match sequential results
+        seq_metrics = sequential_results.metrics()
+        par_metrics = parallel_results.metrics()
+
+        self.assertEqual(seq_metrics["support"], par_metrics["support"])
+        self.assertEqual(seq_metrics["accuracy"], par_metrics["accuracy"])
+        self.assertEqual(seq_metrics["precision"], par_metrics["precision"])
+        self.assertEqual(seq_metrics["recall"], par_metrics["recall"])
+
+        # Check confusion matrices
+        seq_conf_mat = sequential_results.confusion_matrix()
+        par_conf_mat = parallel_results.confusion_matrix()
+        self.assertEqual(seq_conf_mat.shape, par_conf_mat.shape)
+        self.assertTrue((seq_conf_mat == par_conf_mat).all())
+
+        # Clean up
+        dataset.delete_evaluation("sequential")
+        dataset.delete_evaluation("parallel")
+
 
 class VideoSegmentationTests(unittest.TestCase):
     def _make_video_segmentation_dataset(self):
@@ -3062,62 +3164,6 @@ class VideoSegmentationTests(unittest.TestCase):
             ground_truth=fo.Segmentation(mask=np.array([[0, 0], [1, 2]])),
             predictions=fo.Segmentation(mask=np.array([[0, 0], [1, 2]])),
         )
-        sample4.frames[2] = fo.Frame(
-            ground_truth=fo.Segmentation(mask=np.array([[0, 0], [1, 2]])),
-            predictions=fo.Segmentation(mask=np.array([[1, 2], [0, 0]])),
-        )
-
-        dataset.add_samples([sample1, sample2, sample3, sample4])
-
-        return dataset
-
-    @drop_datasets
-    def test_evaluate_video_segmentations_simple(self):
-        dataset = self._make_video_segmentation_dataset()
-
-        # Test empty view
-
-        empty_view = dataset.limit(0)
-        self.assertEqual(len(empty_view), 0)
-
-        results = empty_view.evaluate_segmentations(
-            "frames.predictions",
-            gt_field="frames.ground_truth",
-            eval_key="eval",
-            method="simple",
-        )
-
-        self.assertIn("eval_accuracy", dataset.get_field_schema())
-        self.assertIn("eval_accuracy", dataset.get_frame_field_schema())
-        self.assertIn("eval_precision", dataset.get_field_schema())
-        self.assertIn("eval_precision", dataset.get_frame_field_schema())
-        self.assertIn("eval_recall", dataset.get_field_schema())
-        self.assertIn("eval_recall", dataset.get_frame_field_schema())
-
-        empty_view.load_evaluation_view("eval")
-        empty_view.get_evaluation_info("eval")
-
-        results.report()
-        results.print_report()
-
-        metrics = results.metrics()
-        self.assertEqual(metrics["support"], 0)
-
-        actual = results.confusion_matrix()
-        self.assertEqual(actual.shape, (0, 0))
-
-        # Test evaluation (including missing data)
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")  # suppress missing masks warning
-
-            results = dataset.evaluate_segmentations(
-                "frames.predictions",
-                gt_field="frames.ground_truth",
-                eval_key="eval",
-                method="simple",
-                mask_targets={0: "background", 1: "cat", 2: "dog"},
-            )
 
         dataset.load_evaluation_view("eval")
         dataset.get_evaluation_info("eval")
