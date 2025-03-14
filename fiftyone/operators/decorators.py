@@ -7,14 +7,17 @@ FiftyOne operator decorators.
 """
 import asyncio
 
+from bson import ObjectId
 from cachetools.keys import hashkey
 from contextlib import contextmanager
 from functools import wraps
+import json
 import signal
 import os
 
 import fiftyone as fo
 from fiftyone.plugins.core import _iter_plugin_metadata_files
+from fiftyone.operators.store import ExecutionStore
 
 
 def coroutine_timeout(seconds):
@@ -93,3 +96,116 @@ def dir_state(dirpath):
         state ^= hash(os.path.getmtime(os.path.dirname(p)))
 
     return state
+
+
+def execution_cache(
+    ttl=90,
+    link_to_dataset=True,
+    key_fn=None,
+    store_name=None,
+):
+    """
+    Decorator for caching function results in the ExecutionStore.
+
+    The function must:
+        - accept a `ctx` argument as the first parameter.
+        - return a serializable value.
+        - be idempotent (i.e., it should produce the same
+            output for the same input) and not have any side effects.
+        - have serializeable parameters or a custom ``key_fn`` to generate
+            cache keys.
+
+    Args:
+        ttl (90): Time-to-live for the cached value in seconds.
+        link_to_dataset (True): Whether to tie the cache entry to the dataset
+            (auto-cleans when the dataset is deleted).
+        key_fn (None): A custom function to generate cache keys.
+            If not provided, the function arguments are used as the key by serializing them as JSON.
+        store_name (None): Custom name for the execution store.
+            Defaults to the function name.
+
+    Example Usage:
+        # Standalone function with default caching
+        @execution_cache(ttl=60, store_name="query_cache")
+        def expensive_query(ctx, path):
+            return ctx.dataset.count_values(path)
+
+        # Instance method with dataset-scoped caching
+        class Processor:
+            @execution_cache(ttl=60, store_name="processor_cache")
+            def expensive_query(self, ctx, path):
+                return ctx.dataset.count_values(path)
+
+        # Using a custom key function
+        def custom_key_fn(ctx, path, user_id):
+            return f"{path}-{user_id}"
+
+        @execution_cache(ttl=90, key_fn=custom_key_fn)
+        def user_specific_query(ctx, path, user_id):
+            return ctx.dataset.count_values(path)
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            ctx, ctx_index = _get_ctx_from_args(args)
+
+            if ctx_index == -1 or ctx_index > 1:
+                raise ValueError(
+                    f"@execution_cache requires the first argument to be an ExecutionContext. index={ctx_index}"
+                )
+
+            dataset_id = ctx.dataset._doc.id if link_to_dataset else None
+
+            # Store name
+            resolved_store_name = store_name or func.__name__
+            if not isinstance(resolved_store_name, str):
+                raise ValueError("`store_name` must be a string if provided.")
+
+            # Cache key
+            key_args = args[
+                ctx_index + 1 :
+            ]  # Skip `ctx` and `self` if present
+            if key_fn:
+                try:
+                    cache_key = key_fn(*args, **kwargs)
+                    if not isinstance(cache_key, str):
+                        raise ValueError(
+                            "Custom key function must return a string."
+                        )
+                except Exception as e:
+                    raise ValueError(
+                        f"Custom key function failed in `{func.__name__}`: {e}"
+                    )
+            else:
+                try:
+                    cache_key = json.dumps(key_args, sort_keys=True)
+                except (TypeError, ValueError) as e:
+                    raise ValueError(
+                        f"Arguments to `{func.__name__}` are not serializable: {e}"
+                    )
+
+            store = ExecutionStore.create(
+                store_name=resolved_store_name, dataset_id=dataset_id
+            )
+
+            cached_value = store.get(cache_key)
+            if cached_value is not None:
+                return cached_value  # Cache hit
+
+            result = func(*args, **kwargs)
+            store.set(cache_key, result, ttl=ttl)
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+def _get_ctx_from_args(args):
+    ctx_index = -1
+    for i, arg in enumerate(args):
+        if hasattr(arg, "dataset"):
+            ctx_index = i
+            break
+    return args[ctx_index], ctx_index
