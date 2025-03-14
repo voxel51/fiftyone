@@ -55,7 +55,7 @@ class ProcessMapper(fomm.Mapper[T]):
 
         super().__init__(sample_collection, workers, batch_method, **kwargs)
 
-    def _map_samples_parallel(
+    def _map_sample_batches(
         self,
         sample_batches: List[fomb.SampleBatch],
         map_fcn: Callable[[T], R],

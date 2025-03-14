@@ -63,7 +63,7 @@ class Mapper(Generic[T], abc.ABC):
         return self._workers
 
     @abc.abstractmethod
-    def _map_samples_parallel(
+    def _map_sample_batches(
         self,
         sample_batches: List[fomb.SampleBatch],
         map_fcn: Callable[[T], R],
@@ -142,7 +142,7 @@ class Mapper(Generic[T], abc.ABC):
             )
 
             error: Union[Exception, None] = None
-            for sample_id, result in self._map_samples_parallel(
+            for sample_id, result in self._map_sample_batches(
                 batches,
                 map_fcn,
                 progress=progress,

@@ -57,7 +57,7 @@ def fixture_sample_collection(samples):
 class Mapper(fomm.Mapper):
     """Test implementation for abstract class"""
 
-    def _map_samples_parallel(
+    def _map_sample_batches(
         self,
         sample_batches: List[fomb.SampleBatch],
         map_fcn: Callable[[T], R],
@@ -103,7 +103,7 @@ class TestMapSamples:
         """Mapper instance"""
         mapper = Mapper(sample_collection, workers)
         # pylint:disable-next=protected-access
-        mapper._map_samples_parallel = mock.MagicMock()
+        mapper._map_sample_batches = mock.MagicMock()
         return mapper
 
     @pytest.fixture(name="map_fcn_side_effect")
@@ -116,21 +116,21 @@ class TestMapSamples:
         """Mock  map function"""
         return mock.Mock(side_effect=map_fcn_side_effect)
 
-    @pytest.fixture(name="map_samples_parallel_value")
-    def map_samples_parallel_value(self, samples, map_fcn):
+    @pytest.fixture(name="map_sample_batches_value")
+    def map_sample_batches_value(self, samples, map_fcn):
         """Private method return value"""
         return [[sample.id, map_fcn.return_value] for sample in samples]
 
-    @pytest.fixture(name="map_samples_parallel")
-    def map_samples_parallel(self, mapper, map_samples_parallel_value):
+    @pytest.fixture(name="map_sample_batches")
+    def map_sample_batches(self, mapper, map_sample_batches_value):
         """Mock private method"""
         # pylint:disable-next=protected-access
-        map_samples_parallel = mapper._map_samples_parallel
-        map_samples_parallel.return_value.__iter__.return_value = (
-            map_samples_parallel_value
+        map_sample_batches = mapper._map_sample_batches
+        map_sample_batches.return_value.__iter__.return_value = (
+            map_sample_batches_value
         )
 
-        return map_samples_parallel
+        return map_sample_batches
 
     @pytest.mark.parametrize(
         "skip_failures",
@@ -152,8 +152,8 @@ class TestMapSamples:
         samples,
         map_fcn,
         map_fcn_side_effect,
-        map_samples_parallel,
-        map_samples_parallel_value,
+        map_sample_batches,
+        map_sample_batches_value,
     ):
         """Test map function error"""
         with mock.patch.object(fomb.SampleBatcher, "split") as split:
@@ -170,7 +170,7 @@ class TestMapSamples:
                 if mapper.workers == 1:
                     map_fcn_side_effect[idx] = err
                 else:
-                    map_samples_parallel_value[idx][1] = err
+                    map_sample_batches_value[idx][1] = err
 
                 s = idx
 
@@ -199,7 +199,7 @@ class TestMapSamples:
                 assert err_ctx.excinfo.value == expected_err
 
             if mapper.workers == 1:
-                assert map_samples_parallel.assert_not_called
+                assert not map_sample_batches.called
 
                 sample_collection.iter_samples.assert_called_once_with(
                     progress=progress, autosave=save
@@ -226,7 +226,7 @@ class TestMapSamples:
                     assert len(returned_sample_ids) == map_fcn.call_count - 1
 
             else:
-                map_samples_parallel.assert_called_once_with(
+                map_sample_batches.assert_called_once_with(
                     split.return_value,
                     map_fcn,
                     progress=progress,
@@ -237,7 +237,7 @@ class TestMapSamples:
                 assert not sample_collection.iter_samples.called
 
                 assert len(returned_sample_ids) == (
-                    len(map_samples_parallel_value) - len(errors)
+                    len(map_sample_batches_value) - len(errors)
                 )
 
     def test_ok(
@@ -245,7 +245,7 @@ class TestMapSamples:
         mapper,
         sample_collection,
         samples,
-        map_samples_parallel,
+        map_sample_batches,
     ):
         """Test happy path"""
 
@@ -275,7 +275,7 @@ class TestMapSamples:
                 assert not sample_collection.iter_samples.called
                 assert not map_fcn.called
 
-                map_samples_parallel.assert_called_once_with(
+                map_sample_batches.assert_called_once_with(
                     split.return_value,
                     map_fcn,
                     progress=progress,

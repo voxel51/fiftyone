@@ -100,7 +100,7 @@ class TestMapperImplementations:
             assert err_sample_id not in return_sample_ids
 
             if not skip_failures:
-                assert err_ctx.excinfo.type == type(err)
+                assert err_ctx.excinfo.type is type(err)
                 assert err_ctx.excinfo.value.args == err.args
 
         @pytest.mark.parametrize(

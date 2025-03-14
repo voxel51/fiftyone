@@ -80,7 +80,7 @@ class ThreadMapper(fomm.Mapper[T]):
         finally:
             done_event.set()
 
-    def _map_samples_parallel(
+    def _map_sample_batches(
         self,
         sample_batches: List[fomb.SampleBatch],
         map_fcn: Callable[[T], R],
