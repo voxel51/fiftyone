@@ -743,10 +743,10 @@ def _get_mask_values(samples, pred_field, gt_field, progress=None):
     pred_field, processing_frames = samples._handle_frame_field(pred_field)
     gt_field, _ = samples._handle_frame_field(gt_field)
 
-    values = set()
-    is_rgb = False
+    def _process_sample(sample):
+        sample_values = set()
+        sample_is_rgb = False
 
-    for sample in _samples.iter_samples(progress=progress):
         if processing_frames:
             images = sample.frames.values()
         else:
@@ -758,12 +758,23 @@ def _get_mask_values(samples, pred_field, gt_field, progress=None):
                 if seg is not None and seg.has_mask:
                     mask = seg.get_mask()
                     if mask.ndim == 3:
-                        is_rgb = True
+                        sample_is_rgb = True
                         mask = fof.rgb_array_to_int(mask)
 
-                    values.update(mask.ravel())
+                    sample_values.update(mask.ravel())
 
-    values = sorted(values)
+        return sample_values, sample_is_rgb
+
+    # Process samples in parallel
+    all_values = set()
+    is_rgb = False
+
+    for _, result in _samples.map_samples(_process_sample, progress=progress):
+        sample_values, sample_is_rgb = result
+        all_values.update(sample_values)
+        is_rgb = is_rgb or sample_is_rgb
+
+    values = sorted(all_values)
 
     if is_rgb:
         classes = [fof.int_to_hex(v) for v in values]
