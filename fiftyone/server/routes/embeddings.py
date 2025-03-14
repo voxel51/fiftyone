@@ -301,6 +301,11 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
             # Samples plot and patches view
             stage = fos.SelectBy("sample_id", selected_ids)
 
+        # TODO: cleanup logic
+        if is_patches_view and not is_patches_plot:
+            # Samples plot and patches view
+            stage = fos.SelectBy("sample_id", selected_ids)
+
         d = stage._serialize(include_uuid=False)
         return {"_cls": d["_cls"], "kwargs": dict(d["kwargs"])}
 
