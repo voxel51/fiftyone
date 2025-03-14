@@ -17,7 +17,7 @@ models**
 <a href="https://voxel51.com/docs/fiftyone/tutorials/index.html">Tutorials</a> •
 <a href="https://github.com/voxel51/fiftyone-examples">Examples</a> •
 <a href="https://voxel51.com/blog/">Blog</a> •
-<a href="https://slack.voxel51.com">Community</a>
+<a href="https://discord.gg/fiftyone-community">Community</a>
 
 [![PyPI python](https://img.shields.io/pypi/pyversions/fiftyone)](https://pypi.org/project/fiftyone)
 [![PyPI version](https://badge.fury.io/py/fiftyone.svg)](https://pypi.org/project/fiftyone)
@@ -25,7 +25,6 @@ models**
 [![Docker Pulls](https://badgen.net/docker/pulls/voxel51/fiftyone?icon=docker&label=pulls)](https://hub.docker.com/r/voxel51/fiftyone/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Discord](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/fiftyone-community)
-[![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)](https://slack.voxel51.com)
 [![Medium](https://img.shields.io/badge/Medium-12100E?logo=medium&logoColor=white)](https://medium.com/voxel51)
 [![Mailing list](http://bit.ly/2Md9rxM)](https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk)
 [![Twitter](https://img.shields.io/twitter/follow/Voxel51?style=social)](https://twitter.com/voxel51)
@@ -41,7 +40,7 @@ data quality more efficiently than ever before 🤝
 
 If you're looking to scale to production-grade, collaborative, cloud-native
 enterprise workloads, check out
-**[FiftyOne Teams](http://voxel51.com/enterprise)** 🚀
+**[FiftyOne Enterprise](http://voxel51.com/enterprise)** 🚀
 
 ![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 
@@ -297,7 +296,7 @@ brew install python@3.9
 brew install protobuf
 ```
 
-#### 4. Create and activate a virtual nvironment
+#### 4. Create and activate a virtual environment
 
 ```shell
 python3 -m venv fiftyone_env
@@ -423,41 +422,41 @@ for more information.
     Easily explore images, videos, and associated labels in a powerful visual
     interface.
 
-https://github.com/user-attachments/assets/e6815108-aa4c-4021-a188-c93b3b75cc73
+https://github.com/user-attachments/assets/9dc2db88-967d-43fa-bda0-85e4d5ab6a7a
 
 -   **[Explore Embeddings:](https://docs.voxel51.com/user_guide/app.html#embeddings-panel)**
     Select points of interest and view the corresponding samples/labels.
 
-https://github.com/user-attachments/assets/261e2098-aace-4e5c-babb-d044d83a9a13
+https://github.com/user-attachments/assets/246faeb7-dcab-4e01-9357-e50f6b106da7
 
 -   **[Analyze and Improve Models:](https://docs.voxel51.com/user_guide/evaluation.html)**
     Evaluate model performance, identify failure modes, and fine-tune your
     models.
 
-https://github.com/user-attachments/assets/ef6ff28f-8f3e-4a0d-b172-07227559fa91
+https://github.com/user-attachments/assets/8c32d6c4-51e7-4fea-9a3c-2ffd9690f5d6
 
 -   **[Advanced Data Curation:](https://docs.voxel51.com/brain.html)** Quickly
     find and fix data issues, annotation errors, and edge cases.
 
-https://github.com/user-attachments/assets/95f65ffc-b3b0-428a-9d59-64d425e1fe74
+https://github.com/user-attachments/assets/24fa1960-c2dd-46ae-ae5f-d58b3b84cfe4
 
 -   **[Rich Integrations:](https://docs.voxel51.com/integrations/index.html)**
     Works with popular deep learning libraries like PyTorch, Hugging Face,
     Ultralytics, and more.
 
-https://github.com/user-attachments/assets/2e7e4046-5ec0-43b0-99c5-6cacd4743ed6
+https://github.com/user-attachments/assets/de5f25e1-a967-4362-9e04-616449e745e5
 
 -   **[Open and Extensible:](https://docs.voxel51.com/plugins/index.html)**
     Customize and extend FiftyOne to fit your specific needs.
 
-https://github.com/user-attachments/assets/7aa906c9-aab3-45c7-bd66-f388cac343e0
+https://github.com/user-attachments/assets/c7ed496d-0cf7-45d6-9853-e349f1abd6f8
 
 <div id='additional-resources'>
 
 ## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; additional resources &nbsp; 🚁
 
-| [FiftyOne Teams](https://voxel51.com/enterprise) | [VoxelGPT](https://github.com/voxel51/voxelgpt) | [Plugins](https://voxel51.com/plugins) | [Vector Search](https://voxel51.com/blog/the-computer-vision-interface-for-vector-search) | [Dataset Zoo](https://docs.voxel51.com/dataset_zoo/index.html) | [Model Zoo](https://docs.voxel51.com/model_zoo/index.html) | [FiftyOne Brain](https://docs.voxel51.com/brain.html) |
-| ------------------------------------------------ | ----------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
+| [FiftyOne Enterprise](https://voxel51.com/enterprise) | [VoxelGPT](https://github.com/voxel51/voxelgpt) | [Plugins](https://voxel51.com/plugins) | [Vector Search](https://voxel51.com/blog/the-computer-vision-interface-for-vector-search) | [Dataset Zoo](https://docs.voxel51.com/dataset_zoo/index.html) | [Model Zoo](https://docs.voxel51.com/model_zoo/index.html) | [FiftyOne Brain](https://docs.voxel51.com/brain.html) |
+| ----------------------------------------------------- | ----------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
 
 </div>
 
@@ -479,11 +478,11 @@ Full documentation for FiftyOne is available at
 
 <div id='fiftyone-teams'/>
 
-## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; FiftyOne Teams &nbsp; 🏎️
+## <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="20px"> &nbsp; FiftyOne Enterprise &nbsp; 🏎️
 
 Want to securely collaborate on billions of samples in the cloud and connect to
 your compute resources to automate your workflows? Check out
-[FiftyOne Teams](https://voxel51.com/enterprise).
+[FiftyOne Enterprise](https://voxel51.com/enterprise).
 
 ![------------------------------------------------------------------](https://github.com/user-attachments/assets/fb0573d0-bb56-40ff-9ae1-a5e8f62f5f42)
 
@@ -499,8 +498,7 @@ more answers.
 
 If you encounter an issue that the above resources don't help you resolve, feel
 free to [open an issue on GitHub](https://github.com/voxel51/fiftyone/issues)
-or contact us on [Slack](https://slack.voxel51.com/) or
-[Discord](https://discord.gg/fiftyone-community).
+or contact us on [Discord](https://discord.gg/fiftyone-community).
 
 </div>
 
@@ -513,7 +511,6 @@ or contact us on [Slack](https://slack.voxel51.com/) or
 Connect with us through your preferred channels:
 
 [![Discord](https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/fiftyone-community)
-[![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)](https://slack.voxel51.com)
 [![Medium](https://img.shields.io/badge/Medium-12100E?logo=medium&logoColor=white)](https://medium.com/voxel51)
 [![Twitter](https://img.shields.io/badge/Twitter-1DA1F2?logo=twitter&logoColor=white)](https://twitter.com/voxel51)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?logo=linkedin&logoColor=white)](https://www.linkedin.com/company/voxel51)

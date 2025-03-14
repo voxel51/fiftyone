@@ -2,12 +2,12 @@
 
 # Pluggable Authentication
 
-FiftyOne Teams v1.6.0 introduces Pluggable Authentication that provides the
-Central Authentication Service (CAS). CAS is a self-contained authentication
-system with two modes (`legacy` and `internal`). Legacy mode uses Auth0.
-Internal mode eliminates the Auth0 external dependency and may run in
-environments without egress to the internet. CAS provides a UI, REST API, and
-JavaScript (JS) Hook mechanism to manage FiftyOne Teams user data and
+FiftyOne Enterprise v1.6.0 introduces Pluggable Authentication that provides
+the Central Authentication Service (CAS). CAS is a self-contained
+authentication system with two modes (`legacy` and `internal`). Legacy mode
+uses Auth0. Internal mode eliminates the Auth0 external dependency and may run
+in environments without egress to the internet. CAS provides a UI, REST API,
+and JavaScript (JS) Hook mechanism to manage FiftyOne Enterprise user data and
 authentication.
 
 ## FiftyOne Authentication Modes
@@ -19,24 +19,24 @@ The setting `FIFTYONE_AUTH_MODE` specifies the authentication mode `legacy` or
 
 ### Legacy Mode
 
-In legacy mode, FiftyOne Teams uses Auth0 for user authentication and
+In legacy mode, FiftyOne Enterprise uses Auth0 for user authentication and
 authorization. This mode requires an external connection to Auth0 endpoints.
-User data is eventually consistent (where changes are reflected across
-FiftyOneTeams eventually). Auth0 contains the configuration for identity
-providers and the persistence of user data. Auth0 supports multiple providers
-(including SAML). For the supported IdPs, see
+User data is eventually consistent (where changes are reflected across FiftyOne
+Enterprise eventually). Auth0 contains the configuration for identity providers
+and the persistence of user data. Auth0 supports multiple providers (including
+SAML). For the supported IdPs, see
 [Auth0 Enterprise Identity Providers](https://auth0.com/docs/authenticate/identity-providers/enterprise-identity-providers).
 
 (internal-mode)=
 
 ### Internal Mode
 
-In internal mode, FiftyOne Teams the CAS replaces Auth0. FiftyOne Teams will
-not require network egress to external services. User data is immediately
-consistent (where changes are reflected across FiftyOne Teams instantly).
-Directory data is immediately written to MongoDB, and organizations have the
-autonomy to manage their Identity Provider Configuration. Internal mode
-supports
+In internal mode of FiftyOne Enterprise, the CAS replaces Auth0. FiftyOne
+Enterprise will not require network egress to external services. User data is
+immediately consistent (where changes are reflected across FiftyOne Enterprise
+instantly). Directory data is immediately written to MongoDB, and organizations
+have the autonomy to manage their Identity Provider Configuration. Internal
+mode supports
 [OpenID Connect (OIDC)](https://openid.net/developers/discover-openid-and-openid-connect/)
 and [OAuth2](https://oauth.net/2/).
 
@@ -48,10 +48,10 @@ and [OAuth2](https://oauth.net/2/).
 
 ## Super Admin UI
 
-![Super Admin UI](/images/teams/cas/cas_api_docs.png)
+![Super Admin UI](/images/enterprise/cas/cas_api_docs.png)
 
-The Super Admin UI contains FiftyOne Teams deployment wide configurations. When
-logging into FiftyOne Teams as an admin, you are in the context of an
+The Super Admin UI contains FiftyOne Enterprise deployment wide configurations.
+When logging into FiftyOne Enterprise as an admin, you are in the context of an
 organization. Settings are scoped by organization and only apply to that
 organization. The Super Admin UI allows you to administer all organizations and
 global configurations (Identity Providers, Session timeouts, and JS hooks).
@@ -59,7 +59,7 @@ global configurations (Identity Providers, Session timeouts, and JS hooks).
 > **NOTE**: In v1.6.0, the Super Admin UI is only available in
 > [internal mode](#internal-mode)
 
-![Sign In to CAS](/images/teams/cas/cas_sign_in.png)
+![Sign In to CAS](/images/enterprise/cas/cas_sign_in.png)
 
 To login to this application navigate to
 `https://<YOUR_FIFTYONE_TEAMS_URL>/cas/configurations`. In the top right of the
@@ -72,18 +72,18 @@ screen, and provide the `FIFTYONE_AUTH_SECRET` to login.
 
 ### New User Invitations
 
-As of FiftyOne Teams 2.1.0, onboarding new users can be done via invitation
-links. To do so, "Enable invitation" must be toggled on in the Organizations
-section of the [Super Admin UI](#super-admin-ui).
+As of FiftyOne Enterprise 2.1.0, onboarding new users can be done via
+invitation links. To do so, "Enable invitation" must be toggled on in the
+Organizations section of the [Super Admin UI](#super-admin-ui).
 
-![Enable Invitations](/images/teams/cas/org_enable_invitations.png)
+![Enable Invitations](/images/enterprise/cas/org_enable_invitations.png)
 
 This allows creating invitation links in [internal mode](#internal-mode) that
 can be manually sent to users. When those users click the links, they will be
 added to the Organization and prompted to log in.
 
-As of FiftyOne Teams 2.2.0, these invitation links can be automatically sent
-via an email through a configured SMTP server. This provides similar
+As of FiftyOne Enterprise 2.2.0, these invitation links can be automatically
+sent via an email through a configured SMTP server. This provides similar
 functionality to [legacy mode](#legacy-mode) email invitations, but without the
 need for Auth0 or any other external connections beyond the SMTP server itself.
 
@@ -95,26 +95,26 @@ need for Auth0 or any other external connections beyond the SMTP server itself.
 To do so, "Send email invitations" must be toggled on in the Organizations
 section of the [Super Admin UI](#super-admin-ui)
 
-![Send email invitations](/images/teams/cas/org_send_email_invitations.png)
+![Send email invitations](/images/enterprise/cas/org_send_email_invitations.png)
 
 To configure your SMTP connection, navigate to the SMTP section of the
 [Super Admin UI](#super-admin-ui)
 
-![SMTP Config](/images/teams/cas/SMTP_config.png)
+![SMTP Config](/images/enterprise/cas/SMTP_config.png)
 
 A notification at the top of the menu will inform if an SMTP configuration is
 already saved. Currently, only one SMTP configuration can be saved per
 Organization.
 
 Select the appropriate type of authentication for your SMTP server and fill out
-the associated fields. When you save the configuration, FiftyOne Teams will do
-a preliminary check to ensure that the SMTP server is reachable at the host
-provided. The configuration will not save otherwise.
+the associated fields. When you save the configuration, FiftyOne Enterprise
+will do a preliminary check to ensure that the SMTP server is reachable at the
+host provided. The configuration will not save otherwise.
 
 Additionally, users can enter a valid email address and click Send Test Email
 to test the connection.
 
-![SMTP Config test email](/images/teams/cas/SMTP_config_test_email.png)
+![SMTP Config test email](/images/enterprise/cas/SMTP_config_test_email.png)
 
 > **NOTE:** Emails and an SMTP connection are not required to use invitations.
 > Invitation links can still be generated and manually distributed without an
@@ -123,9 +123,9 @@ to test the connection.
 ## Identity Providers (IdP)
 
 In [internal mode](#internal-mode), use the CAS REST API or Super Admin UI to
-configure FiftyOne teams to authenticate users via OIDC or OAuth2 compatible
-Identity Providers. Below is an example configuration for KeyCloak as an
-Identity Provider.
+configure FiftyOne Enterprise to authenticate users via OIDC or OAuth2
+compatible Identity Providers. Below is an example configuration for KeyCloak
+as an Identity Provider.
 
 ```json
 {
@@ -169,7 +169,7 @@ API to ensure a comprehensive transfer of information.
 
 For each user, the migration involves several steps:
 
-1. Creating a FiftyOne Teams user profile via `POST /cas/api/users`.
+1. Creating a FiftyOne Enterprise user profile via `POST /cas/api/users`.
 1. Assigning the user to the default organization through a membership entry.
 1. Linking the user's account to the new authentication provider by creating an
    account reference via `POST /cas/api/accounts`.
@@ -181,7 +181,7 @@ Mode, completing the migration process.
 
 ## Getting Started with Internal Mode
 
-These steps are only required to run FiftyOne Teams in
+These steps are only required to run FiftyOne Enterprise in
 [internal mode](#internal-mode). Please skip when using Auth0 in
 [legacy mode](#legacy-mode).
 
@@ -216,10 +216,10 @@ These steps are only required to run FiftyOne Teams in
 
 ## Syncing with 3rd Party Directories (Open Directory, LDAP, and Active Directory)
 
-Below is an example of how to use JavaScript hooks to sync FiftyOne Teams with
-a corporate directory (such as Open Directory, LDAP, or Active Directory) via
-an intermediary REST API or Identity Provider. The recommended setup is with
-OAuth/OIDC claims, however the example below illustrates a more intricate
+Below is an example of how to use JavaScript hooks to sync FiftyOne Enterprise
+with a corporate directory (such as Open Directory, LDAP, or Active Directory)
+via an intermediary REST API or Identity Provider. The recommended setup is
+with OAuth/OIDC claims, however the example below illustrates a more intricate
 integration.
 
 This example specifically addresses a scenario in which additional actions are
