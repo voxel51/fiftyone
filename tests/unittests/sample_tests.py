@@ -9,7 +9,7 @@ import os
 import tempfile
 import unittest
 
-from bson import Binary, ObjectId
+from bson import Binary, ObjectId, SON
 import numpy as np
 from PIL import ExifTags, Image
 
@@ -1036,6 +1036,61 @@ class SampleFieldTests(unittest.TestCase):
         self.assertEqual(sample.custom_field.single.label, "single")
         self.assertEqual(len(sample.custom_field.list), 1)
         self.assertEqual(sample.custom_field.list[0].label, "list")
+
+    @drop_datasets
+    def test_patch_sample(self):
+        sample = fo.Sample(
+            filepath="image.jpg",
+            metadata=fo.ImageMetadata(),
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat"),
+                    fo.Detection(label="dog"),
+                ]
+            ),
+            predictions=fo.Detections(detections=[]),
+            object=fo.Detection(),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+
+        d = SON(
+            [
+                ("_id", ObjectId("5f452471ef00e6374aac53c8")),
+                ("_cls", "Detection"),
+                ("tags", ["test"]),
+                ("label", "bird"),
+                ("bounding_box", [0.21, 0.03, 0.46, 0.94]),
+            ]
+        )
+
+        edits = [
+            ("filepath", "IMAGE.JPG"),
+            ("metadata.size_bytes", 51),
+            ("ground_truth.detections.0.label", "CAT"),
+            ("ground_truth.detections.1.label", "DOG"),
+            ("predictions.detections", [d]),
+            ("object", d),
+        ]
+
+        def patch_sample(sample, edits):
+            for path, value in edits:
+                sample[path] = foo.deserialize_value(value)
+
+        patch_sample(sample, edits)
+        sample.save()
+
+        sample.reload()
+
+        self.assertEqual(sample.filepath, "IMAGE.JPG")
+        self.assertEqual(sample.metadata.size_bytes, 51)
+        self.assertEqual(sample.ground_truth.detections[0].label, "CAT")
+        self.assertEqual(sample.ground_truth.detections[1].label, "DOG")
+        self.assertEqual(
+            sample.predictions.detections[0], foo.deserialize_value(d)
+        )
+        self.assertEqual(sample.object, foo.deserialize_value(d))
 
 
 if __name__ == "__main__":
