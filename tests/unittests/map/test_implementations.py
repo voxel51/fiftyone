@@ -4,17 +4,19 @@
 |
 """
 
+import contextlib
+
 import pytest
 
 import fiftyone as fo
-import fiftyone.core.odm.database as food
-
 import fiftyone.core.map.process as fomp
 import fiftyone.core.map.threading as fomt
 
 
 INPUT_KEY = "input"
 OUTPUT_KEY = "output"
+WORKERS = 8
+SAMPLE_COUNT = 3
 
 
 @pytest.fixture(name="dataset")
@@ -22,18 +24,20 @@ def fixture_dataset():
     """A simple dataset to test with"""
 
     dataset_name = "test-mapper"
+
     dataset = fo.Dataset(name=dataset_name)
     dataset.persistent = True
 
-    # Add five samples with an "input" field
-    for i in range(8):
+    # Add samples with an "input" field
+    for i in range(SAMPLE_COUNT):
         sample = fo.Sample(filepath=f"/tmp/sample_{i}.jpg")
         sample[INPUT_KEY] = i
         dataset.add_sample(sample)
 
-    yield dataset
-
-    fo.delete_dataset(dataset_name)
+    try:
+        yield dataset
+    finally:
+        fo.delete_dataset(dataset_name)
 
 
 @pytest.mark.parametrize(
@@ -46,19 +50,64 @@ def fixture_dataset():
 class TestMapperImplementations:
     """test mapper implementations"""
 
-    @pytest.mark.parametrize(
-        "save",
-        (
-            pytest.param(False, id="no-save"),
-            pytest.param(True, id="save"),
-        ),
-    )
+    @pytest.fixture(name="mapper")
+    def fixture_mapper(self, mapper_cls, dataset):
+        """Mapper instance"""
+        return mapper_cls(dataset, workers=WORKERS)
+
     class TestMapSamples:
         """test Mapper.map_samples"""
 
-        def test_ok(self, mapper_cls, dataset, save):
-            """test no errors"""
-            mapper = mapper_cls(dataset)
+        @pytest.mark.parametrize(
+            "save",
+            (pytest.param(v, id=f"save={v}") for v in (True, False)),
+        )
+        @pytest.mark.parametrize(
+            "skip_failures",
+            (pytest.param(v, id=f"skip_failures={v}") for v in (True, False)),
+        )
+        def test_map_fcn_err(self, mapper, dataset, skip_failures, save):
+            """test error in map function"""
+
+            err = Exception("Something went wrong")
+
+            all_sample_ids = [sample.id for sample in dataset]
+            err_sample_id = all_sample_ids[len(all_sample_ids) // 2]
+
+            def map_fnc(err_sample_id):
+                def inner(sample):
+                    if sample.id == err_sample_id:
+                        raise err
+
+                return inner
+
+            return_sample_ids = set()
+            with contextlib.ExitStack() as ctx:
+                if not skip_failures:
+                    err_ctx = pytest.raises(Exception)
+                    ctx.enter_context(err_ctx)
+
+                #####
+                for sample_id, _ in mapper.map_samples(
+                    map_fnc(err_sample_id),
+                    save=save,
+                    progress=False,
+                    skip_failures=skip_failures,
+                ):
+                    #####
+                    return_sample_ids.add(sample_id)
+
+            assert err_sample_id not in return_sample_ids
+
+            if not skip_failures:
+                assert err_ctx.excinfo.type == type(err)
+                assert err_ctx.excinfo.value.args == err.args
+
+        @pytest.mark.parametrize(
+            "save", (pytest.param(v, id=f"save={v}") for v in (True, False))
+        )
+        def test_ok(self, mapper, dataset, save):
+            """test happy path"""
 
             def multiplied(value):
                 return value * 2
@@ -81,11 +130,7 @@ class TestMapperImplementations:
             for sample_id, output in results:
                 assert output == expected_output_map[str(sample_id)]
 
-            # pylint:disable-next=protected-access
-            food._disconnect()
-            result_dataset = fo.load_dataset(dataset.name)
-
-            for sample in result_dataset.iter_samples():
+            for sample in dataset.iter_samples():
                 if save:
                     assert (
                         sample[OUTPUT_KEY]
@@ -97,35 +142,3 @@ class TestMapperImplementations:
                         assert expected is None
                     except KeyError:
                         ...
-
-    class TestUpdateSamples:
-        """test Mapper.update_samples"""
-
-        def test_ok(self, mapper_cls, dataset):
-            """test no errors"""
-
-            mapper = mapper_cls(dataset)
-
-            def multiplied(value):
-                return value * 4
-
-            expected_output_map = {
-                str(sample.id): multiplied(sample[INPUT_KEY])
-                for sample in dataset.iter_samples()
-            }
-
-            def update_fcn(sample):
-                sample[OUTPUT_KEY] = multiplied(sample[INPUT_KEY])
-
-            #####
-            mapper.update_samples(update_fcn)
-            #####
-
-            # pylint:disable-next=protected-access
-            food._disconnect()
-            result_dataset = fo.load_dataset(dataset.name)
-
-            for sample in result_dataset.iter_samples():
-                assert (
-                    sample[OUTPUT_KEY] == expected_output_map[str(sample.id)]
-                )
