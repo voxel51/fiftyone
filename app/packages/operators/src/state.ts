@@ -39,6 +39,8 @@ import { OperatorPromptType, Places } from "./types";
 import { OperatorExecutorOptions } from "./types-internal";
 import { ValidationContext } from "./validation";
 import { Markdown } from "@fiftyone/components";
+import { generateOperatorSessionId } from "./utils";
+import { NonNullChain } from "typescript";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -83,11 +85,21 @@ export const usePromptOperatorInput = () => {
       params,
       options,
       initialParams: params,
+      id: generateOperatorSessionId(),
     });
   };
 
   return prompt;
 };
+
+/**
+ * The operator session ID is used to identify the operator session in the
+ * backend. It is generated when the operator client is initialized and is
+ * used to track the operator session across different calls to the backend.
+ *
+ * NOTE: the operator session ID is regenerated when the browser is refreshed.
+ */
+export const operatorSessionId = generateOperatorSessionId();
 
 const globalContextSelector = selector({
   key: "globalContext",
@@ -118,6 +130,7 @@ const globalContextSelector = selector({
       queryPerformance,
       spaces,
       workspaceName,
+      operatorSessionId,
     };
   },
 });
@@ -163,6 +176,9 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     workspaceName,
   } = curCtx;
   const [analyticsInfo] = useAnalyticsInfo();
+  const promptingOperator = useRecoilValue(promptingOperatorState);
+  const promptId = promptingOperator?.id || null;
+  const sessionId = promptingOperator?.sessionId || operatorSessionId;
   const ctx = useMemo(() => {
     return new ExecutionContext(
       params,
@@ -181,6 +197,8 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         queryPerformance,
         spaces,
         workspaceName,
+        promptId,
+        sessionId,
       },
       hooks
     );
