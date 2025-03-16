@@ -1,3 +1,4 @@
+import { LabelData, Sample } from "@fiftyone/looker";
 import {
   getLabelColor,
   shouldShowLabelTag,
@@ -12,6 +13,7 @@ import { useCallback, useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { PANEL_ORDER_LABELS } from "../constants";
 import { usePathFilter } from "../hooks";
+import { useOnShiftClickLabel3d } from "../hooks/use-similar-labels-3d";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
 import { cuboidLabelLineWidthAtom, polylineLabelLineWidthAtom } from "../state";
 import { toEulerFromDegreesArray } from "../utils";
@@ -20,7 +22,7 @@ import { type OverlayLabel, load3dOverlays } from "./loader";
 import { type PolyLineProps, Polyline } from "./polyline";
 
 export interface ThreeDLabelsProps {
-  sampleMap: Record<string, any>;
+  sampleMap: { [sliceOrFilename: string]: Sample } | fos.Sample[];
 }
 
 export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
@@ -94,8 +96,6 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     [onSelectLabel]
   );
 
-  // useOnShiftClickLabel3d(sampleMap[], selectedLabels);
-
   const [overlayRotation, itemRotation] = useMemo(
     () => [
       toEulerFromDegreesArray(_get(settings, "overlay.rotation", [0, 0, 0])),
@@ -105,6 +105,13 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     ],
     [settings]
   );
+
+  const canonicalSampleId = useMemo(() => {
+    const samples = Array.isArray(sampleMap)
+      ? sampleMap
+      : Object.values(sampleMap);
+    return samples[0].id ?? samples[0].sample?._id;
+  }, [sampleMap]);
 
   const rawOverlays = useMemo(
     () =>
@@ -170,7 +177,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
             opacity={labelAlpha}
             {...(overlay as unknown as PolyLineProps)}
             label={overlay}
-            onClick={() => handleSelect(overlay)}
+            onClick={(e) => handleSelect(overlay, e)}
             tooltip={tooltip}
           />
         );
@@ -186,6 +193,30 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     tooltip,
     settings,
   ]);
+
+  const allLabels = useMemo(() => {
+    const allLabels = [];
+
+    for (const overlay of rawOverlays) {
+      if (
+        overlay._cls === "Detection" ||
+        overlay._cls === "Detections" ||
+        overlay._cls === "Polyline"
+      ) {
+        allLabels.push({
+          labelId: overlay._id,
+          field: overlay.path,
+          sampleId: overlay.sampleId,
+          instanceId: overlay.instance_config?._id,
+          instanceName: overlay.instance_config?.name,
+        } as LabelData);
+      }
+    }
+
+    return allLabels;
+  }, [rawOverlays]);
+
+  useOnShiftClickLabel3d(canonicalSampleId, allLabels);
 
   return (
     <group>
