@@ -31,8 +31,6 @@ export const useOnShiftClickLabel = () => {
 
         const currentHoveredInstances = jotaiStore.get(hoveredInstances);
 
-        console.log("current hovered instances", currentHoveredInstances);
-
         if (!currentHoveredInstances || currentHoveredInstances.length !== 2) {
           return;
         }
