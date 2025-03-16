@@ -39,5 +39,6 @@ operators:
   - sync_last_modified_at
   - list_files
   - compute_visualization
+  - manage_visualization_indexes
 secrets:
   - FIFTYONE_ZOO_ALLOWED_MODEL_LICENSES
