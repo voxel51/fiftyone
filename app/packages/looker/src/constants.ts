@@ -14,6 +14,7 @@ export const BASE_ALPHA = 0.7;
 export const LINE_WIDTH = 3;
 export const DASH_LENGTH = 8;
 export const INFO_COLOR = "#ffffff";
+export const SELECTED_AND_HOVERED_COLOR = "#ff6f61";
 export const PAD = 4;
 export const TOLERANCE = 1.15;
 export const POINT_RADIUS = 4;

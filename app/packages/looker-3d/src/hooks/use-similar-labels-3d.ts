@@ -37,10 +37,6 @@ export const useSimilarLabels3d = (label: OverlayLabel) => {
 
   const getOnShiftClickLabelCallback = useOnShiftClickLabel();
 
-  useEventHandler(document, "newLabelToggled", (e) => {
-    return getOnShiftClickLabelCallback(label.sampleId, [label], e);
-  });
-
   return isSimilarLabelHovered;
 };
 
