@@ -4,7 +4,7 @@
 import { NONFINITES } from "@fiftyone/utilities";
 
 import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
-import { INFO_COLOR } from "../constants";
+import { INFO_COLOR, SELECTED_AND_HOVERED_COLOR } from "../constants";
 import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
 import { distanceFromLineSegment } from "../util";
 import { RENDER_STATUS_PAINTED, RENDER_STATUS_PENDING } from "../worker/shared";
@@ -79,9 +79,11 @@ export default class DetectionOverlay<
       )
     ) {
       doesInstanceMatch = true;
-      ctx.strokeStyle = "white";
+      ctx.strokeStyle = INFO_COLOR;
       ctx.lineWidth = 2;
     }
+
+    const isSelected = this.isSelected(state);
 
     if (
       this.label.mask?.bitmap?.width &&
@@ -93,9 +95,7 @@ export default class DetectionOverlay<
     !state.config.thumbnail && this.drawLabelText(ctx, state);
 
     const strokeColor =
-      !this.isSelected(state) && doesInstanceMatch
-        ? "white"
-        : this.getColor(state);
+      !isSelected && doesInstanceMatch ? INFO_COLOR : this.getColor(state);
 
     if (this.is3D && this.label.dimensions && this.label.location) {
       this.fillRectFor3d(ctx, state, strokeColor);
@@ -103,7 +103,9 @@ export default class DetectionOverlay<
       this.strokeRect(ctx, state, strokeColor);
     }
 
-    if (this.isSelected(state)) {
+    if (doesInstanceMatch && isSelected) {
+      this.strokeRect(ctx, state, SELECTED_AND_HOVERED_COLOR, state.dashLength);
+    } else if (isSelected) {
       this.strokeRect(ctx, state, INFO_COLOR, state.dashLength);
     }
   }
