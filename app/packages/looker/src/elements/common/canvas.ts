@@ -47,7 +47,6 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
             const top = overlays[0];
             const isShiftPressed = event.shiftKey;
 
-            debugger;
             top.containsPoint(state) &&
               dispatchEvent("select", {
                 ...top.getSelectData(state),
