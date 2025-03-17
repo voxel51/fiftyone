@@ -1130,9 +1130,6 @@ class DatasetMixin(object):
                     )
                 )
 
-        if isinstance(field, fof.ObjectIdField) and field_name.startswith("_"):
-            field_name = field_name[1:]
-
         if field_name in doc._fields:
             existing_field = doc._fields[field_name]
 
