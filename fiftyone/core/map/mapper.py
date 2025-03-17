@@ -91,6 +91,11 @@ class Mapper(Generic[T], abc.ABC):
         """
 
 
+MapSampleBatchesReturnType = Iterator[
+    Tuple[bson.ObjectId, Union[Exception, None], Union[R, None]]
+]
+
+
 class LocalMapper(Mapper[T], Generic[T], abc.ABC):
     """Base class for mapping samples in parallelizing on the same machine"""
 
@@ -103,7 +108,7 @@ class LocalMapper(Mapper[T], Generic[T], abc.ABC):
         progress: Union[bool, Literal["workers"]],
         save: bool,
         skip_failures: bool,
-    ) -> Iterator[Tuple[bson.ObjectId, Union[R, Exception]]]:
+    ) -> MapSampleBatchesReturnType[R]:
         """Applies map function to each sample batch and returns an iterator
           of the results.
 
@@ -120,8 +125,9 @@ class LocalMapper(Mapper[T], Generic[T], abc.ABC):
               for a sample. Defaults to True.
 
         Yields:
-            Iterator[Tuple[bson.ObjectId, R]]: The sample ID and the result of
-              the map function for the sample.
+            MapSampleBatchesReturnType: The sample ID, the exception raised
+              (if any), and the result of the map function for the sample
+              (if no exception).
         """
 
     def map_samples(
@@ -132,27 +138,27 @@ class LocalMapper(Mapper[T], Generic[T], abc.ABC):
         save: bool = False,
         skip_failures: bool = True,
     ) -> Iterator[Tuple[bson.ObjectId, R]]:
-        result_iter: Iterator[Tuple[bson.ObjectId, Union[R, Exception]]]
+        result_iter: MapSampleBatchesReturnType
 
         if self._workers <= 1:
             # If workers if 1 on a the same local machine, no need for the
             # overhead of trying to parallelize. If will not be beneficial.
+            def wrapped_map_fcn(sample):
+                try:
+                    result = map_fcn(sample)
+                except Exception as err:
+                    return sample.id, err, None
 
-            def map_iterative():
+                return sample.id, None, result
+
+            result_iter = (
+                wrapped_map_fcn(sample)
                 for sample in self._sample_collection.iter_samples(
                     progress=progress, autosave=save
-                ):
-                    try:
-                        result = map_fcn(sample)
-                    except Exception as err:
-                        yield sample.id, err
-                    else:
-                        yield sample.id, result
-
-            result_iter = map_iterative()
+                )
+            )
 
         else:
-
             result_iter = self._map_sample_batches(
                 fomb.SampleBatcher.split(
                     self._batch_method,
@@ -165,14 +171,15 @@ class LocalMapper(Mapper[T], Generic[T], abc.ABC):
                 skip_failures=skip_failures,
             )
 
-        for sample_id, result in result_iter:
-            if isinstance(result, Exception):
+        for sample_id, err, result in result_iter:
+            if err is not None:
                 if not skip_failures:
-                    raise result
+                    raise err
 
                 logger.warning(
                     "Sample failure: %s\nError: %s\n", sample_id, result
                 )
                 continue
 
+            # Only yield samples that have no exception.
             yield sample_id, result

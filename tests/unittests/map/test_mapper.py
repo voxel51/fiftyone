@@ -132,7 +132,7 @@ class TestMapSamples:
     @pytest.fixture(name="map_sample_batches_value")
     def map_sample_batches_value(self, samples, map_fcn):
         """Private method return value"""
-        return [[sample.id, map_fcn.return_value] for sample in samples]
+        return [[sample.id, None, map_fcn.return_value] for sample in samples]
 
     @pytest.fixture(name="map_sample_batches")
     def map_sample_batches(self, mapper, map_sample_batches_value):

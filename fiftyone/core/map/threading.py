@@ -34,6 +34,11 @@ T = TypeVar("T")
 R = TypeVar("R")
 
 
+ResultQueue = queue.Queue[
+    Tuple[bson.ObjectId, Union[Exception, None], Union[R, None]]
+]
+
+
 class ThreadMapper(fomm.LocalMapper[T]):
     """Executes map_samples with threading using iter_samples."""
 
@@ -54,31 +59,35 @@ class ThreadMapper(fomm.LocalMapper[T]):
     @staticmethod
     def __worker(
         *_,
-        sample_iter: Iterator[T],
-        q: queue.Queue[Tuple[bson.ObjectId, Union[T, Exception]]],
-        done_event: threading.Event,
-        err_event: threading.Event,
+        cancel_event: threading.Event,
+        result_queue: ResultQueue[R],
         map_fcn: Callable[[T], R],
+        sample_iter: Iterator[T],
         skip_failures: bool,
-    ) -> Iterator[Tuple[bson.ObjectId, R]]:
+        worker_done_event: threading.Event,
+    ) -> Iterator[Tuple[bson.ObjectId, Union[Exception, None], R]]:
+
         try:
-            while not err_event.is_set() and (
+            while not cancel_event.is_set() and (
                 sample := next(sample_iter, None)
             ):
                 try:
                     result = map_fcn(sample)
                 except Exception as err:
                     if skip_failures:
-                        err_event.set()
+                        # Cancel other workers as soon as possible.
+                        cancel_event.set()
 
-                    q.put((sample.id, err))
+                    # Add sample ID and error to the queue.
+                    result_queue.put((sample.id, err, None))
 
                     if skip_failures:
                         break
                 else:
-                    q.put((sample.id, result))
+                    # Add sample ID and result to the queue.
+                    result_queue.put((sample.id, None, result))
         finally:
-            done_event.set()
+            worker_done_event.set()
 
     def _map_sample_batches(
         self,
@@ -88,13 +97,11 @@ class ThreadMapper(fomm.LocalMapper[T]):
         progress: Union[bool, Literal["workers"]],
         save: bool,
         skip_failures: bool,
-    ) -> Iterator[Tuple[bson.ObjectId, R]]:
+    ) -> Iterator[Tuple[bson.ObjectId, Union[Exception, None], R]]:
         # Global synchronization primitives
-        q: queue.Queue[Tuple[bson.ObjectId, Union[T, Exception]]] = (
-            queue.Queue()
-        )
-        done_events: List[threading.Event] = []
-        err_event = threading.Event()
+        result_queue: ResultQueue = queue.Queue()
+        worker_done_events: List[threading.Event] = []
+        cancel_event = threading.Event()
 
         count = len(sample_batches)
         with concurrent.futures.ThreadPoolExecutor(
@@ -105,8 +112,8 @@ class ThreadMapper(fomm.LocalMapper[T]):
                 i = idx + 1
 
                 # Worker specific synchronization primitives
-                done_event = threading.Event()
-                done_events.append(done_event)
+                worker_done_event = threading.Event()
+                worker_done_events.append(worker_done_event)
 
                 sample_collection = batch.create_subset(
                     self._sample_collection
@@ -123,48 +130,49 @@ class ThreadMapper(fomm.LocalMapper[T]):
 
                 executor.submit(
                     self.__worker,
-                    sample_iter=sample_iter,
-                    q=q,
-                    done_event=done_event,
-                    err_event=err_event,
+                    cancel_event=cancel_event,
                     map_fcn=map_fcn,
+                    result_queue=result_queue,
+                    sample_iter=sample_iter,
                     skip_failures=skip_failures,
+                    worker_done_event=worker_done_event,
                 )
 
             # Iterate over queue until an error occurs of all threads are
             # finished.
             def get_results(
-                q: queue.Queue[Tuple[bson.ObjectId, Union[T, Exception]]],
-                events: List[threading.Event],
+                q: ResultQueue[R], evts: List[threading.Event]
             ) -> Iterator[R]:
-                error: Union[Exception, None] = None
+                sample_errors: List[Tuple[bson.ObjectId, Exception, None]] = []
                 while True:
                     try:
-                        sample_id, result = q.get(timeout=0.1)
+                        sample_id, err, result = q.get(timeout=0.1)
                     except queue.Empty:
-                        if not (
-                            events := [e for e in events if not e.is_set()]
-                        ):
+                        if not (evts := [e for e in evts if not e.is_set()]):
                             break
                     else:
-                        if isinstance(result, Exception):
-                            # It is possible for this iterator worker to raise
-                            # an error after an initial error was already
-                            # encountered. There might be a better way to
-                            # handle this in the future but for now it is
-                            # ignored, and the initial error will be raised
-                            # after exhausting the remaining successful maps in
-                            # the queue.
-                            if skip_failures and error is not None:
-                                error = result
+                        # An error was raised in the map_fcn for a sample.
+                        if err is not None:
+                            # When skipping failures, simply yield the the
+                            # sample ID and the error.
+                            if skip_failures:
+                                yield sample_id, err, None
+                            # When NOT skipping failures, aggregate any errors
+                            # to allow for all successfully mapped samples from
+                            # the various workers to be yielded first.
+                            else:
+                                sample_errors.append((sample_id, err, None))
+                        else:
+                            # Yield successfully mapped sample
+                            yield sample_id, None, result
 
-                        yield sample_id, result
+                # It is possible to aggregate one error per worker. There
+                # might be a better way to handle this in the future but for
+                # now, return the first error seen.
+                if sample_errors:
+                    yield sample_errors[0]
 
-                # Defer sending error until all valid samples have been yielded
-                if error is not None:
-                    yield sample_id, error
-
-            results = get_results(q, done_events)
+            results = get_results(result_queue, worker_done_events)
 
             # This is for the global progress bar.
             if progress is True:

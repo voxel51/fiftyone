@@ -83,7 +83,7 @@ class ProcessMapper(fomm.LocalMapper[T]):
         sample_count = (
             multiprocessing.Value("i", 0) if progress is not False else None
         )
-        err_event = multiprocessing.Event()
+        cancel_event = multiprocessing.Event()
 
         # Extract information from sample collection.
         if isinstance(self._sample_collection, fov.DatasetView):
@@ -105,7 +105,7 @@ class ProcessMapper(fomm.LocalMapper[T]):
                 batch_count,
                 sample_count,
                 queue,
-                err_event,
+                cancel_event,
                 save,
                 worker_progress,
                 skip_failures,
@@ -128,35 +128,39 @@ class ProcessMapper(fomm.LocalMapper[T]):
                 ),
             )
 
-            error: Union[Exception, None] = None
+            sample_errors: List[Tuple[bson.ObjectId, Exception, None]] = []
             while True:
                 try:
-                    sample_id, result = queue.get(timeout=0.01)
+                    sample_id, err, result = queue.get(timeout=0.01)
                 except Empty:
                     if batch_count.value >= num_batches:
                         break
                 else:
-                    if isinstance(result, Exception):
-                        # It is possible for this iterator worker to raise
-                        # an error after an initial error was already
-                        # encountered. There might be a better way to
-                        # handle this in the future but for now it is
-                        # ignored, and the initial error will be raised
-                        # after exhausting the remaining successful maps in
-                        # the queue.
-                        if skip_failures and error is not None:
-                            error = result
+                    if err is not None:
+                        # When skipping failures, simply yield the the
+                        # sample ID and the error.
+                        if skip_failures:
+                            yield sample_id, err, None
+                        # When NOT skipping failures, aggregate any errors
+                        # to allow for all successfully mapped samples from
+                        # the various workers to be yielded first.
+                        else:
+                            sample_errors.append((sample_id, err, None))
 
-                    yield sample_id, result
+                    else:
+                        # Yield successfully mapped sample
+                        yield sample_id, None, result
                 finally:
                     pb.update()
 
             queue.close()
             queue.join_thread()
 
-            # Defer sending error until all valid samples have been yielded
-            if error is not None:
-                yield sample_id, error
+            # It is possible to aggregate one error per worker. There
+            # might be a better way to handle this in the future but for
+            # now, return the first error seen.
+            if sample_errors:
+                yield sample_errors[0]
 
 
 def _init_worker(
@@ -166,7 +170,7 @@ def _init_worker(
     batch_count: Optional[multiprocessing.Value],  # type: ignore
     sample_count: Optional[multiprocessing.Value],  # type: ignore
     queue: Optional[multiprocessing.Queue],
-    err_event: multiprocessing.Event,  # type: ignore
+    cancel_event: multiprocessing.Event,  # type: ignore
     save: bool,
     progress: bool,
     skip_failures: bool,
@@ -187,7 +191,7 @@ def _init_worker(
     global process_batch_count
     global process_sample_count
     global process_queue
-    global process_err_event
+    global process_cancel_event
     global process_save
     global process_progress
     global process_skip_failures
@@ -210,7 +214,7 @@ def _init_worker(
     process_batch_count = batch_count
     process_sample_count = sample_count
     process_queue = queue
-    process_err_event = err_event
+    process_cancel_event = cancel_event
     process_save = save
     process_progress = progress
     process_skip_failures = skip_failures
@@ -233,21 +237,24 @@ def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
                 sample_iter, total=batch.total, desc=desc, position=i
             )
 
-        while not process_err_event.is_set() and (
+        while not process_cancel_event.is_set() and (
             sample := next(sample_iter, None)
         ):
             try:
                 sample_output = process_map_fcn(sample)
             except Exception as err:
                 if process_skip_failures:
-                    process_err_event.set()
+                    # Cancel other workers as soon as possible.
+                    process_cancel_event.set()
 
-                process_queue.put((sample.id, err))
+                # Add sample ID and error to the queue.
+                process_queue.put((sample.id, err, None))
 
                 if process_skip_failures:
                     break
             else:
-                process_queue.put((sample.id, sample_output))
+                # Add sample ID and result to the queue.
+                process_queue.put((sample.id, None, sample_output))
 
             finally:
                 if process_sample_count is not None:
