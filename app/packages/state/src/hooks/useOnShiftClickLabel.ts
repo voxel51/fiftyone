@@ -1,6 +1,7 @@
 import { LabelData } from "@fiftyone/looker";
 import { useRecoilCallback } from "recoil";
 import { hoveredInstances, jotaiStore } from "../jotai";
+import { selectedLabelMap } from "../recoil";
 import { selectedLabels } from "../recoil/atoms";
 
 export const useOnShiftClickLabel = () => {
@@ -9,7 +10,6 @@ export const useOnShiftClickLabel = () => {
       async (sampleId: string, labels: LabelData[], e: CustomEvent) => {
         const {
           isShiftPressed,
-          sourceLabelId,
           sourceInstanceId,
           sourceInstanceName,
           sourceSampleId,
@@ -38,18 +38,30 @@ export const useOnShiftClickLabel = () => {
         const [currentlyHoveredInstanceId, currentlyHoveredInstanceLabels] =
           currentHoveredInstances;
 
+        if (sourceInstanceId !== currentlyHoveredInstanceId) {
+          console.error(
+            "sourceInstanceId",
+            sourceInstanceId,
+            "does not match currentlyHoveredInstanceId",
+            currentlyHoveredInstanceId
+          );
+          return;
+        }
+
         const currentSelectedLabels = snapshot
-          .getLoadable(selectedLabels)
+          .getLoadable(selectedLabelMap)
           .getValue();
 
-        const currentSelectedInstances = currentSelectedLabels.filter(
-          (label) => sourceInstanceId === currentlyHoveredInstanceId
-        );
+        const currentSelectedInstances = Object.values(
+          currentSelectedLabels
+        ).filter((label) => sourceInstanceId === label.instanceId);
         const currentSelectedInstanceCount = currentSelectedInstances.length;
+        const currentHoveredInstanceCount = Object.keys(
+          currentlyHoveredInstanceLabels
+        ).length;
 
-        // scenario 1
+        // scenario 1, when no similar instances are selected
         if (currentSelectedInstanceCount === 0) {
-          // select all instances with that instance config
           set(selectedLabels, (prev) => {
             return [
               ...prev,
@@ -58,67 +70,43 @@ export const useOnShiftClickLabel = () => {
                 labelId: e.labelId,
                 frameNumber: e.frameNumber,
                 field: e.field,
+                instanceId: e.instanceId,
               })),
             ];
           });
+          e.stopImmediatePropagation();
           return;
         }
 
-        // scenario 2
-        if (
-          currentSelectedInstanceCount ===
-          Object.keys(currentlyHoveredInstanceLabels).length
-        ) {
+        // scenario 2, when all similar instances are selected
+        if (currentSelectedInstanceCount === currentHoveredInstanceCount) {
           set(selectedLabels, (prev) => {
             return prev.filter(
               (label) => label.instanceId !== currentlyHoveredInstanceId
             );
           });
+          e.stopImmediatePropagation();
           return;
         }
 
-        // scenario 3
+        // scenario 3, when some similar instances are selected
         if (currentSelectedInstanceCount > 0) {
-          set(selectedLabels, (prev) => {
-            return prev.filter(
-              (label) => label.instanceId !== currentlyHoveredInstanceId
-            );
-          });
-        }
+          const labelsToAdd = labels.filter(
+            (l) =>
+              l.instanceId === sourceInstanceId &&
+              !currentSelectedLabels[l.labelId]
+          );
 
-        // we don't react if event source is the same sample
-        if (sourceSampleId === sampleId) {
+          if (labelsToAdd.length > 0) {
+            set(selectedLabels, (prev) => {
+              return [...prev, ...labelsToAdd];
+            });
+          }
+
+          // note: don't stop event propagation here, because we want to allow
+          // the user to select multiple instances with the same instance config
+          // by shift + clicking on them
           return;
-        }
-
-        // const labels = looker.getCurrentSampleLabels();
-        const toggleLabel = labels.filter(
-          (l) => l.instanceId === sourceInstanceId
-        );
-
-        console.log(
-          "Toggle label of sample",
-          sampleId,
-          toggleLabel,
-          "there were ",
-          labels.length,
-          "labels with instanceIds",
-          labels.map((l) => l.instanceId)
-        );
-        if (toggleLabel.length > 0) {
-          set(selectedLabels, (prev) => {
-            return [
-              ...prev,
-              {
-                sampleId,
-                instanceId: sourceInstanceId,
-                instanceName: sourceInstanceName,
-                labelId: toggleLabel[0].labelId,
-                frameNumber: toggleLabel[0].frameNumber,
-                field: toggleLabel[0].field,
-              },
-            ];
-          });
         }
       },
     []
