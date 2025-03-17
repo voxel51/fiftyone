@@ -128,17 +128,35 @@ class ProcessMapper(fomm.Mapper[T]):
                 ),
             )
 
+            error: Union[Exception, None] = None
             while True:
                 try:
-                    result = queue.get(timeout=0.01)
-                    pb.update()
-                    yield result
+                    sample_id, result = queue.get(timeout=0.01)
                 except Empty:
                     if batch_count.value >= num_batches:
                         break
+                else:
+                    if isinstance(result, Exception):
+                        # It is possible for this iterator worker to raise
+                        # an error after an initial error was already
+                        # encountered. There might be a better way to
+                        # handle this in the future but for now it is
+                        # ignored, and the initial error will be raised
+                        # after exhausting the remaining successful maps in
+                        # the queue.
+                        if halt_on_error and error is not None:
+                            error = result
+
+                    yield sample_id, result
+                finally:
+                    pb.update()
 
             queue.close()
             queue.join_thread()
+
+            # Defer sending error until all valid samples have been yielded
+            if error is not None:
+                yield sample_id, error
 
 
 def _init_worker(

@@ -118,55 +118,45 @@ class Mapper(Generic[T], abc.ABC):
             Iterator[Tuple[bson.ObjectId, R]]: The sample ID and the result of
               the map function for the sample.
         """
+
+        result_iter: Iterator[Tuple[bson.ObjectId, Union[R, Exception]]]
         if self._workers <= 1:
-            for sample in self._sample_collection.iter_samples(
-                progress=progress, autosave=save
-            ):
-                try:
-                    result = map_fcn(sample)
-                except Exception as err:
-                    if not skip_failures:
-                        raise err
 
-                    logger.warning(
-                        "Sample failure: %s\nError: %s\n", sample.id, err
-                    )
-                else:
-                    # Only not yield samples that have a valid result
-                    yield sample.id, result
+            def map_iterative():
+                for sample in self._sample_collection.iter_samples(
+                    progress=progress, autosave=save
+                ):
+                    try:
+                        result = map_fcn(sample)
+                    except Exception as err:
+                        yield sample.id, err
+                    else:
+                        yield sample.id, result
+
+            result_iter = map_iterative()
+
         else:
-            batches = fomb.SampleBatcher.split(
-                self._batch_method,
-                self._sample_collection,
-                self._workers,
-            )
 
-            error: Union[Exception, None] = None
-            for sample_id, result in self._map_sample_batches(
-                batches,
+            result_iter = self._map_sample_batches(
+                fomb.SampleBatcher.split(
+                    self._batch_method,
+                    self._sample_collection,
+                    self._workers,
+                ),
                 map_fcn,
                 progress=progress,
                 save=save,
                 halt_on_error=skip_failures,
-            ):
-                if isinstance(result, Exception):
-                    if skip_failures:
-                        logger.warning(
-                            "Sample failure: %s\nError: %s\n",
-                            sample_id,
-                            result,
-                        )
-                    # It is possible for a worker to raise an error after an
-                    # initial error was already encountered. There might be a
-                    # better way to handle this in the future but for now it is
-                    # ignored, and the initial error will be raised after
-                    # exhausting the remaining valid sample results.
-                    elif error is None:
-                        error = result
+            )
 
-                else:
-                    # Only not yield samples that have a valid result
-                    yield sample_id, result
+        for sample_id, result in result_iter:
+            if isinstance(result, Exception):
+                if not skip_failures:
+                    raise result
 
-            if error:
-                raise error
+                logger.warning(
+                    "Sample failure: %s\nError: %s\n", sample_id, result
+                )
+                continue
+
+            yield sample_id, result

@@ -135,20 +135,34 @@ class ThreadMapper(fomm.Mapper[T]):
             # finished.
             def get_results(
                 q: queue.Queue[Tuple[bson.ObjectId, Union[T, Exception]]],
-                done_events: List[threading.Event],
+                events: List[threading.Event],
             ) -> Iterator[R]:
+                error: Union[Exception, None] = None
                 while True:
                     try:
                         sample_id, result = q.get(timeout=0.1)
                     except queue.Empty:
-                        done_events = [
-                            e for e in done_events if not e.is_set()
-                        ]
-
-                        if not done_events:
+                        if not (
+                            events := [e for e in events if not e.is_set()]
+                        ):
                             break
+                    else:
+                        if isinstance(result, Exception):
+                            # It is possible for this iterator worker to raise
+                            # an error after an initial error was already
+                            # encountered. There might be a better way to
+                            # handle this in the future but for now it is
+                            # ignored, and the initial error will be raised
+                            # after exhausting the remaining successful maps in
+                            # the queue.
+                            if halt_on_error and error is not None:
+                                error = result
 
-                    yield sample_id, result
+                        yield sample_id, result
+
+                # Defer sending error until all valid samples have been yielded
+                if error is not None:
+                    yield sample_id, error
 
             results = get_results(q, done_events)
 
