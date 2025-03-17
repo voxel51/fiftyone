@@ -179,7 +179,8 @@ def execution_cache(
                     )
             else:
                 try:
-                    cache_key = json.dumps(key_args, sort_keys=True)
+                    args_as_dict = _convert_args_to_dict(key_args)
+                    cache_key = json.dumps(args_as_dict, sort_keys=True)
                 except (TypeError, ValueError) as e:
                     raise ValueError(
                         f"Arguments to `{func.__name__}` are not serializable: {e}"
@@ -209,3 +210,12 @@ def _get_ctx_from_args(args):
             ctx_index = i
             break
     return args[ctx_index], ctx_index
+
+
+def _convert_args_to_dict(args):
+    result = []
+    for arg in args:
+        if isinstance(arg, object) and hasattr(arg, "to_dict"):
+            result.append(arg.to_dict())
+        else:
+            result.append(arg)
