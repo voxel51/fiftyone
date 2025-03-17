@@ -11,6 +11,7 @@ from datetime import datetime
 import itertools
 
 from bson import ObjectId
+import mongoengine
 from pymongo import UpdateOne
 
 import fiftyone.core.fields as fof
@@ -141,6 +142,12 @@ class DatasetMixin(object):
 
         if len(chunks) > 1:
             doc = self.get_field(chunks[0])
+
+            # handle sytnax: sample["field.0.attr"] = value
+            if isinstance(doc, (mongoengine.base.BaseList, fof.ListField)):
+                chunks = chunks[1].split(".", 1)
+                doc = doc[int(chunks[0])]
+
             return doc.set_field(chunks[1], value, create=create)
 
         if not self.has_field(field_name):
