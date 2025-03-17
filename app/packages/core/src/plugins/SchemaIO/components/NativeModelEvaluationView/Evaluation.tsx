@@ -1529,7 +1529,12 @@ export default function Evaluation(props: EvaluationProps) {
               <IconButton
                 onClick={() => {
                   promptOperator(panelId, {
-                    params: { gt_field: evaluationConfig.gt_field },
+                    params: {
+                      gt_field: evaluationConfig.gt_field,
+                      defaults: {
+                        selected_scenario_type: "custom_code",
+                      },
+                    },
                     operator: configure_subset_uri,
                     prompt: true,
                     callback: (result, opts) => {
