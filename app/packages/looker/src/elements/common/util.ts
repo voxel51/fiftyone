@@ -18,8 +18,13 @@ import {
   DispatchEvent,
 } from "../../state";
 
-import { LabelHoveredEvent, LabelUnhoveredEvent } from "../../events";
+import { isHoveringAnyLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
 import { getHashLabel } from "../../overlays/util";
+import {
+  LabelHoveredEvent,
+  LabelUnhoveredEvent,
+  selectiveRenderingEventBus,
+} from "../../selective-rendering-events";
 import { lookerCheckbox, lookerLabel } from "./util.module.css";
 
 export const dispatchTooltipEvent = <State extends BaseState>(
@@ -43,14 +48,15 @@ export const dispatchTooltipEvent = <State extends BaseState>(
         : null;
 
     if (detail?.label?.instance_config) {
-      document.dispatchEvent(
+      selectiveRenderingEventBus.emit(
         new LabelHoveredEvent({
           labelId: detail.label.id,
           instanceId: detail.label.instance_config?._id,
+          field: detail.label.field,
         })
       );
-    } else if (!detail) {
-      document.dispatchEvent(new LabelUnhoveredEvent());
+    } else if (!detail && isHoveringAnyLabelWithInstanceConfig()) {
+      selectiveRenderingEventBus.emit(new LabelUnhoveredEvent());
     }
 
     if (state.frameNumber && detail) {

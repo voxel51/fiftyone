@@ -1,5 +1,6 @@
 import {
   AbstractLooker,
+  FO_LABEL_TOGGLED_EVENT,
   FrameLooker,
   ImaVidLooker,
   ImageLooker,
@@ -7,6 +8,7 @@ import {
   Sample,
   ThreeDLooker,
   VideoLooker,
+  selectiveRenderingEventBus,
 } from "@fiftyone/looker";
 import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
 import { ImaVidFramesControllerStore } from "@fiftyone/looker/src/lookers/imavid/store";
@@ -283,15 +285,15 @@ export default <T extends AbstractLooker<BaseState>>(
           { signal: abortControllerRef.current.signal }
         );
 
-        document.addEventListener(
-          "newLabelToggled",
-          (e: CustomEvent) =>
+        selectiveRenderingEventBus.on(
+          FO_LABEL_TOGGLED_EVENT,
+          (e) =>
             getOnShiftClickLabelCallback(
               sample._id,
               looker.getCurrentSampleLabels(),
               e
             ),
-          { signal: abortControllerRef.current.signal }
+          abortControllerRef.current.signal
         );
 
         return looker;

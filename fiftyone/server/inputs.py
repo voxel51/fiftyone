@@ -15,4 +15,4 @@ class SelectedLabel:
     field: str
     sample_id: gql.ID
     frame_number: t.Optional[int] = None
-    instance_id: t.Optional[str] = None
+    instance_id: t.Optional[gql.ID] = None
