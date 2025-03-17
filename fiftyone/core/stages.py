@@ -3323,7 +3323,8 @@ class GeoWithin(_GeoStage):
         strict (True): whether a sample's location data must strictly fall
             within boundary (True) in order to match, or whether any
             intersection suffices (False)
-
+        create_index (True): whether to create the required spherical index,
+            if necessary
     """
 
     def __init__(
