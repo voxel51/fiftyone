@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<881e44ed7a20e117c89dd22661bc1a0d>>
+ * @generated SignedSource<<afc7787f03dfd8a09238e88628e317dd>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -28,6 +28,7 @@ export type AggregationForm = {
 export type SelectedLabel = {
   field: string;
   frameNumber?: number | null;
+  instanceId?: string | null;
   labelId: string;
   sampleId: string;
 };

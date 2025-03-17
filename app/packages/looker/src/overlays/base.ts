@@ -116,7 +116,7 @@ export abstract class CoordinateOverlay<
       "Creating overlay for label",
       this.label.id,
       "with instanceId",
-      this.label.instance_config?.instance_id
+      this.label.instance_config?._id
     );
   }
 
@@ -170,8 +170,8 @@ export abstract class CoordinateOverlay<
       field: this.field,
       // @ts-ignore
       frameNumber: state.frameNumber,
-      instanceId: this.label.instance_config?.instance_id,
-      instanceName: this.label.instance_config?.instance_name,
+      instanceId: this.label.instance_config?._id,
+      instanceName: this.label.instance_config?.name,
     };
   }
 

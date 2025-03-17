@@ -745,6 +745,7 @@ input SelectedLabel {
   field: String!
   sampleId: ID!
   frameNumber: Int = null
+  instanceId: ID = null
 }
 
 type SidebarGroup {
