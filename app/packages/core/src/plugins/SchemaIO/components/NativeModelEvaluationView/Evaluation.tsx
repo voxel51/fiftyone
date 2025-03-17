@@ -1531,9 +1531,8 @@ export default function Evaluation(props: EvaluationProps) {
                   promptOperator(panelId, {
                     params: {
                       gt_field: evaluationConfig.gt_field,
-                      defaults: {
-                        selected_scenario_type: "custom_code",
-                      },
+                      scenario_type: "custom_code",
+                      scenario_name: "", // # TODO: Edit will pass current name
                     },
                     operator: configure_subset_uri,
                     prompt: true,

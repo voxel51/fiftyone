@@ -5,17 +5,39 @@ import {
   RadioGroup as MUIRadioGroup,
   Radio,
 } from "@mui/material";
-import React from "react";
-import { HeaderView } from ".";
+import React, { useMemo } from "react";
+import { ButtonView, HeaderView } from ".";
 import { autoFocus, getComponentProps } from "../utils";
 import { useKey } from "../hooks";
 
 export default function RadioView(props: RadioGroupProps) {
   const { schema, onChange, path, data } = props;
   const { view = {} } = schema;
-  const { choices, label, description, orientation, readOnly } = view;
+  const {
+    choices,
+    label,
+    description,
+    orientation,
+    readOnly,
+    variant = "default",
+  } = view;
 
+  const useButtons = variant === "button";
   const [key, setUserChanged] = useKey(path, schema, data, true);
+
+  const radioGroupSx = useMemo(() => {
+    if (useButtons) {
+      return {
+        "> label": {
+          width: "50%",
+          margin: "0",
+          padding: ".25rem",
+          boxSizing: "border-box",
+        },
+      };
+    }
+    return { alignItems: "flex-start" };
+  }, [useButtons]);
 
   return (
     <FormControl {...getComponentProps(props, "container")}>
@@ -34,35 +56,58 @@ export default function RadioView(props: RadioGroupProps) {
           onChange(path, value);
           setUserChanged();
         }}
-        sx={{ alignItems: "flex-start" }}
+        sx={radioGroupSx}
         row={orientation !== "vertical"}
         {...getComponentProps(props, "radioGroup")}
       >
-        {choices.map(({ value, label, description, caption }, i) => (
+        {choices.map(({ value, label, description, caption, icon }, i) => (
           <FormControlLabel
             key={value}
             value={value}
             control={
-              <Radio
-                disabled={readOnly}
-                autoFocus={autoFocus(props)}
-                {...getComponentProps(props, "radio")}
-              />
+              useButtons ? (
+                <ButtonView
+                  schema={{
+                    view: {
+                      label,
+                      icon,
+                      componentsProps: {
+                        container: { width: "100%" },
+                        button: {
+                          sx: { width: "100%", justifyContent: "flex-start" },
+                        },
+                      },
+                    },
+                  }}
+                  onClick={() => {
+                    onChange(path, value);
+                    setUserChanged();
+                  }}
+                />
+              ) : (
+                <Radio
+                  disabled={readOnly}
+                  autoFocus={autoFocus(props)}
+                  {...getComponentProps(props, "radio")}
+                />
+              )
             }
             label={
-              <HeaderView
-                schema={{
-                  view: {
-                    label,
-                    description,
-                    caption,
-                    componentsProps: {
-                      header: getComponentProps(props, "radioHeader"),
+              useButtons ? null : (
+                <HeaderView
+                  schema={{
+                    view: {
+                      label,
+                      description,
+                      caption,
+                      componentsProps: {
+                        header: getComponentProps(props, "radioHeader"),
+                      },
                     },
-                  },
-                }}
-                nested
-              />
+                  }}
+                  nested
+                />
+              )
             }
             sx={{
               alignItems: "center",
