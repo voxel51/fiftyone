@@ -27,6 +27,21 @@ export function useOnSelectLabel() {
           isShiftPressed,
         },
       }: SelectEvent) => {
+        if (isShiftPressed) {
+          document.dispatchEvent(
+            new CustomEvent("newLabelToggled", {
+              detail: {
+                isShiftPressed,
+                sourceInstanceId: instanceId,
+                sourceInstanceName: instanceName,
+                sourceSampleId: sampleId,
+                sourceLabelId: id,
+              },
+            })
+          );
+          return;
+        }
+
         const labels = { ...(await snapshot.getPromise(fos.selectedLabelMap)) };
 
         let isLabelRemoved = false;
@@ -48,18 +63,6 @@ export function useOnSelectLabel() {
             ...data,
             labelId,
           }))
-        );
-
-        document.dispatchEvent(
-          new CustomEvent("newLabelToggled", {
-            detail: {
-              isShiftPressed,
-              sourceInstanceId: instanceId,
-              sourceInstanceName: instanceName,
-              sourceSampleId: sampleId,
-              sourceLabelId: id,
-            },
-          })
         );
       },
     []

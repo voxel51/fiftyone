@@ -29,6 +29,7 @@ export type AggregationForm = {
 export type SelectedLabel = {
   field: string;
   frameNumber?: number | null;
+  instanceId?: string | null;
   labelId: string;
   sampleId: string;
 };
