@@ -76,7 +76,11 @@ class OnPlotLoad(HTTPEndpoint):
 
         patches_field = results.config.patches_field
         is_patches_plot = patches_field is not None
-        points_field = results.config.points_field
+        points_field = (
+            results.config.points_field
+            if hasattr(results.config, "points_field")
+            else None
+        )
 
         # Determines which points from `results` are in `view`, which are the
         # only points we want to display in the embeddings plot
