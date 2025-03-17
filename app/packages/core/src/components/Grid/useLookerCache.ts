@@ -15,12 +15,6 @@ export default function useLookerCache({
   onSet?: (key: string) => void;
   reset: string;
 }) {
-  useEffect(() => {
-    const listener = () => cache.empty();
-    document.addEventListener("visibilitychange", listener);
-    return () => document.removeEventListener("visibilitychange", listener);
-  }, []);
-
   const cache = useMemoOne(() => {
     /** CLEAR CACHE WHEN reset CHANGES */
     reset;
@@ -36,6 +30,12 @@ export default function useLookerCache({
 
   // delete cache during cleanup
   useEffect(() => () => cache.delete(), [cache]);
+
+  useEffect(() => {
+    const listener = () => cache.empty();
+    document.addEventListener("visibilitychange", listener);
+    return () => document.removeEventListener("visibilitychange", listener);
+  }, [cache]);
 
   return cache;
 }
