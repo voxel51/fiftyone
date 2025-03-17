@@ -34,7 +34,12 @@ T = TypeVar("T")
 R = TypeVar("R")
 
 
-class ThreadMapper(fomm.Mapper[T]):
+ResultQueue = queue.Queue[
+    Tuple[bson.ObjectId, Union[Exception, None], Union[R, None]]
+]
+
+
+class ThreadMapper(fomm.LocalMapper[T]):
     """Executes map_samples with threading using iter_samples."""
 
     def __init__(
@@ -44,87 +49,132 @@ class ThreadMapper(fomm.Mapper[T]):
         batch_method: Optional[str] = None,
         **kwargs,
     ):
-        # Check if running in sub-process and if so limit "workers" to 1.
         if workers is None:
             # TODO: Using recommended process pool workers for now. There's
-            #  a opportunity to determine a better default for threads.
+            # a opportunity to determine a better default for threads.
             workers = fou.recommend_process_pool_workers()
 
         super().__init__(sample_collection, workers, batch_method, **kwargs)
 
     @staticmethod
     def __worker(
-        sample_collection: SampleCollection[T],
-        sample_count: int,
-        batch_number: int,
-        batch_count: int,
-        q: queue.Queue,
-        event: threading.Event,
+        *_,
+        cancel_event: threading.Event,
+        result_queue: ResultQueue[R],
         map_fcn: Callable[[T], R],
-        save: bool,
-        progress: bool,
-    ) -> Iterator[Tuple[bson.ObjectId, R]]:
-        samples = sample_collection.iter_samples(autosave=save)
+        sample_iter: Iterator[T],
+        skip_failures: bool,
+        worker_done_event: threading.Event,
+    ) -> Iterator[Tuple[bson.ObjectId, Union[Exception, None], R]]:
 
-        if progress:
-            desc = (
-                f"Batch {batch_number:0{len(str(batch_count))}}/{batch_count}"
-            )
-            samples = tqdm(
-                samples, total=sample_count, desc=desc, position=batch_number
-            )
+        try:
+            while not cancel_event.is_set() and (
+                sample := next(sample_iter, None)
+            ):
+                try:
+                    result = map_fcn(sample)
+                except Exception as err:
+                    if skip_failures:
+                        # Cancel other workers as soon as possible.
+                        cancel_event.set()
 
-        for sample in samples:
-            result = map_fcn(sample)
-            q.put((sample.id, result))
+                    # Add sample ID and error to the queue.
+                    result_queue.put((sample.id, err, None))
 
-        event.set()
+                    if skip_failures:
+                        break
+                else:
+                    # Add sample ID and result to the queue.
+                    result_queue.put((sample.id, None, result))
+        finally:
+            worker_done_event.set()
 
-    def _map_samples_parallel(
+    def _map_sample_batches(
         self,
         sample_batches: List[fomb.SampleBatch],
         map_fcn: Callable[[T], R],
+        /,
         progress: Union[bool, Literal["workers"]],
-        save: bool = False,
-    ) -> Iterator[Tuple[bson.ObjectId, R]]:
-        q = queue.Queue()
-        events: List[threading.Event] = []
+        save: bool,
+        skip_failures: bool,
+    ) -> Iterator[Tuple[bson.ObjectId, Union[Exception, None], R]]:
+        # Global synchronization primitives
+        result_queue: ResultQueue = queue.Queue()
+        worker_done_events: List[threading.Event] = []
+        cancel_event = threading.Event()
 
-        batch_count = len(sample_batches)
+        count = len(sample_batches)
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=batch_count
+            max_workers=count
         ) as executor:
-            worker_progress = progress == "workers"
-
             for idx, batch in enumerate(sample_batches):
-                batch_number = idx + 1
+                # Batch number (index starting at 1)
+                i = idx + 1
 
-                event = threading.Event()
-                events.append(event)
+                # Worker specific synchronization primitives
+                worker_done_event = threading.Event()
+                worker_done_events.append(worker_done_event)
+
+                sample_collection = batch.create_subset(
+                    self._sample_collection
+                )
+                sample_iter = sample_collection.iter_samples(autosave=save)
+
+                # This is for a per-worker progress bar.
+                if progress == "workers":
+                    desc = f"Batch {i:0{len(str(count))}}/{count}"
+
+                    sample_iter = tqdm(
+                        sample_iter, total=batch.total, desc=desc, position=i
+                    )
 
                 executor.submit(
                     self.__worker,
-                    batch.create_subset(self._sample_collection),
-                    batch.total,
-                    batch_number,
-                    batch_count,
-                    q,
-                    event,
-                    map_fcn,
-                    save,
-                    worker_progress,
+                    cancel_event=cancel_event,
+                    map_fcn=map_fcn,
+                    result_queue=result_queue,
+                    sample_iter=sample_iter,
+                    skip_failures=skip_failures,
+                    worker_done_event=worker_done_event,
                 )
 
-            def get_results(q, events):
+            # Iterate over queue until an error occurs of all threads are
+            # finished.
+            def get_results(
+                q: ResultQueue[R], evts: List[threading.Event]
+            ) -> Iterator[R]:
+                sample_errors: List[Tuple[bson.ObjectId, Exception, None]] = []
                 while True:
                     try:
-                        yield q.get(timeout=0.1)
+                        sample_id, err, result = q.get(timeout=0.1)
                     except queue.Empty:
-                        events = [e for e in events if not e.is_set()]
-                        if not events:
+                        if not (evts := [e for e in evts if not e.is_set()]):
                             break
+                    else:
+                        # An error was raised in the map_fcn for a sample.
+                        if err is not None:
+                            # When skipping failures, simply yield the the
+                            # sample ID and the error.
+                            if skip_failures:
+                                yield sample_id, err, None
+                            # When NOT skipping failures, aggregate any errors
+                            # to allow for all successfully mapped samples from
+                            # the various workers to be yielded first.
+                            else:
+                                sample_errors.append((sample_id, err, None))
+                        else:
+                            # Yield successfully mapped sample
+                            yield sample_id, None, result
 
-            results = get_results(q, events)
+                # It is possible to aggregate one error per worker. There
+                # might be a better way to handle this in the future but for
+                # now, return the first error seen.
+                if sample_errors:
+                    yield sample_errors[0]
+
+            results = get_results(result_queue, worker_done_events)
+
+            # This is for the global progress bar.
             if progress is True:
                 results = tqdm(
                     results, total=sum(batch.total for batch in sample_batches)
