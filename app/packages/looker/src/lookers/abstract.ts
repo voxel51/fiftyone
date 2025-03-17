@@ -29,14 +29,15 @@ import {
 } from "../constants";
 import { Events } from "../elements/base";
 import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
+import { ClassificationsOverlay, loadOverlays } from "../overlays";
+import { CONTAINS, Overlay } from "../overlays/base";
+import processOverlays from "../processOverlays";
 import {
   FO_LABEL_HOVERED_EVENT,
   FO_LABEL_UNHOVERED_EVENT,
   LabelHoveredEvent,
-} from "../events";
-import { ClassificationsOverlay, loadOverlays } from "../overlays";
-import { CONTAINS, Overlay } from "../overlays/base";
-import processOverlays from "../processOverlays";
+  selectiveRenderingEventBus,
+} from "../selective-rendering-events";
 import {
   BaseState,
   Coordinates,
@@ -227,16 +228,16 @@ export abstract class AbstractLooker<
   };
 
   protected init() {
-    document.addEventListener(
+    selectiveRenderingEventBus.on(
       FO_LABEL_HOVERED_EVENT,
       this.labelHoveredListener,
-      { signal: this.abortController.signal }
+      this.abortController.signal
     );
 
-    document.addEventListener(
+    selectiveRenderingEventBus.on(
       FO_LABEL_UNHOVERED_EVENT,
       this.labelUnhoveredListener,
-      { signal: this.abortController.signal }
+      this.abortController.signal
     );
   }
 
@@ -757,15 +758,6 @@ export abstract class AbstractLooker<
     this.abortController.abort();
     this.updater({ destroyed: true });
     this.sampleOverlays?.forEach((overlay) => overlay.cleanup?.());
-
-    document.removeEventListener(
-      FO_LABEL_HOVERED_EVENT,
-      this.labelHoveredListener
-    );
-    document.removeEventListener(
-      FO_LABEL_UNHOVERED_EVENT,
-      this.labelUnhoveredListener
-    );
   }
 
   disable() {
