@@ -1,4 +1,4 @@
-import { LabelData } from "@fiftyone/looker";
+import { LabelData, LabelToggledEvent } from "@fiftyone/looker";
 import { useRecoilCallback } from "recoil";
 import { hoveredInstances, jotaiStore } from "../jotai";
 import { selectedLabelMap } from "../recoil";
@@ -7,15 +7,10 @@ import { selectedLabels } from "../recoil/atoms";
 export const useOnShiftClickLabel = () => {
   return useRecoilCallback(
     ({ set, snapshot }) =>
-      async (sampleId: string, labels: LabelData[], e: CustomEvent) => {
-        const {
-          isShiftPressed,
-          sourceInstanceId,
-          sourceInstanceName,
-          sourceSampleId,
-        } = e.detail;
+      async (sampleId: string, labels: LabelData[], e: LabelToggledEvent) => {
+        const { sourceInstanceId } = e.detail;
 
-        if (!isShiftPressed) {
+        if (!sourceInstanceId) {
           return;
         }
 
@@ -90,7 +85,10 @@ export const useOnShiftClickLabel = () => {
         }
 
         // scenario 3, when some similar instances are selected
-        if (currentSelectedInstanceCount > 0) {
+        if (
+          currentSelectedInstanceCount > 0 &&
+          currentSelectedInstanceCount < currentHoveredInstanceCount
+        ) {
           const labelsToAdd = labels.filter(
             (l) =>
               l.instanceId === sourceInstanceId &&
@@ -99,13 +97,22 @@ export const useOnShiftClickLabel = () => {
 
           if (labelsToAdd.length > 0) {
             set(selectedLabels, (prev) => {
-              return [...prev, ...labelsToAdd];
+              const deduped = [...prev, ...labelsToAdd].filter(
+                (v, i, self) =>
+                  self.findIndex((t) => t.labelId === v.labelId) === i
+              );
+
+              if (deduped.length === currentHoveredInstanceCount) {
+                // if we don't stop propagation, it's possible that the
+                // in one of the handlers, scenario 2 is triggered again
+                // and we end up with all labels toggled off
+                e.stopImmediatePropagation();
+              }
+
+              return deduped;
             });
           }
 
-          // note: don't stop event propagation here, because we want to allow
-          // the user to select multiple instances with the same instance config
-          // by shift + clicking on them
           return;
         }
       },

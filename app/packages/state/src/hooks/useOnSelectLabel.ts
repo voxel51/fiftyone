@@ -1,3 +1,7 @@
+import {
+  LabelToggledEvent,
+  selectiveRenderingEventBus,
+} from "@fiftyone/looker";
 import * as recoil from "recoil";
 import * as fos from "..";
 
@@ -23,20 +27,15 @@ export function useOnSelectLabel() {
           frameNumber,
           sampleId,
           instanceId,
-          instanceName,
           isShiftPressed,
         },
       }: SelectEvent) => {
         if (isShiftPressed) {
-          document.dispatchEvent(
-            new CustomEvent("newLabelToggled", {
-              detail: {
-                isShiftPressed,
-                sourceInstanceId: instanceId,
-                sourceInstanceName: instanceName,
-                sourceSampleId: sampleId,
-                sourceLabelId: id,
-              },
+          selectiveRenderingEventBus.emit(
+            new LabelToggledEvent({
+              sourceInstanceId: instanceId,
+              sourceSampleId: sampleId,
+              sourceLabelId: id,
             })
           );
           return;
@@ -54,7 +53,6 @@ export function useOnSelectLabel() {
             sampleId,
             frameNumber,
             instanceId,
-            instanceName,
           };
         }
         set(
