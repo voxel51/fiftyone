@@ -67,7 +67,7 @@ def fixture_sample_collection(samples):
     return sample_collection
 
 
-class Mapper(fomm.Mapper):
+class Mapper(fomm.LocalMapper):
     """Test implementation for abstract class"""
 
     def _map_sample_batches(

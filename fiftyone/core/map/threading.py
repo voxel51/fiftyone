@@ -34,7 +34,7 @@ T = TypeVar("T")
 R = TypeVar("R")
 
 
-class ThreadMapper(fomm.Mapper[T]):
+class ThreadMapper(fomm.LocalMapper[T]):
     """Executes map_samples with threading using iter_samples."""
 
     def __init__(

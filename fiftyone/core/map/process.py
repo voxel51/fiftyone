@@ -37,7 +37,7 @@ T = TypeVar("T")
 R = TypeVar("R")
 
 
-class ProcessMapper(fomm.Mapper[T]):
+class ProcessMapper(fomm.LocalMapper[T]):
     """Executes map_samples using multiprocessing."""
 
     def __init__(

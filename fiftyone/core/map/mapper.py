@@ -63,6 +63,38 @@ class Mapper(Generic[T], abc.ABC):
         return self._workers
 
     @abc.abstractmethod
+    def map_samples(
+        self,
+        map_fcn: Callable[[T], R],
+        /,
+        progress: Optional[Union[bool, Literal["workers"]]] = None,
+        save: bool = False,
+        skip_failures: bool = True,
+    ) -> Iterator[Tuple[bson.ObjectId, R]]:
+        """Applies map function to each sample and returns an iterator of the
+        results.
+
+        Args:
+            map_fcn (Callable[[T], R]): The map function to apply to each
+              sample.
+            progress (Union[bool, Literal[&quot;workers&quot;]]): Whether or
+              not and how to render progress.
+            save (bool, optional): Whether to save mutated samples mutated in
+              the map function. Defaults to False.
+            skip_failures (bool, optional): Whether to gracefully continue
+              without raising an error if the map function raises an exception
+              for a sample. Defaults to True.
+
+        Yields:
+            Iterator[Tuple[bson.ObjectId, R]]: The sample ID and the result of
+              the map function for the sample.
+        """
+
+
+class LocalMapper(Mapper[T], Generic[T], abc.ABC):
+    """Base class for mapping samples in parallelizing on the same machine"""
+
+    @abc.abstractmethod
     def _map_sample_batches(
         self,
         sample_batches: List[fomb.SampleBatch],
@@ -100,27 +132,11 @@ class Mapper(Generic[T], abc.ABC):
         save: bool = False,
         skip_failures: bool = True,
     ) -> Iterator[Tuple[bson.ObjectId, R]]:
-        """Applies map function to each sample and returns an iterator of the
-        results.
-
-        Args:
-            map_fcn (Callable[[T], R]): The map function to apply to each
-              sample.
-            progress (Union[bool, Literal[&quot;workers&quot;]]): Whether or
-              not and how to render progress.
-            save (bool, optional): Whether to save mutated samples mutated in
-              the map function. Defaults to False.
-            skip_failures (bool, optional): Whether to gracefully continue
-              without raising an error if the map function raises an exception
-              for a sample. Defaults to True.
-
-        Yields:
-            Iterator[Tuple[bson.ObjectId, R]]: The sample ID and the result of
-              the map function for the sample.
-        """
-
         result_iter: Iterator[Tuple[bson.ObjectId, Union[R, Exception]]]
+
         if self._workers <= 1:
+            # If workers if 1 on a the same local machine, no need for the
+            # overhead of trying to parallelize. If will not be beneficial.
 
             def map_iterative():
                 for sample in self._sample_collection.iter_samples(
