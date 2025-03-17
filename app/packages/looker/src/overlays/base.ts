@@ -171,7 +171,7 @@ export abstract class CoordinateOverlay<
       // @ts-ignore
       frameNumber: state.frameNumber,
       instanceId: this.label.instance_config?._id,
-      instanceName: this.label.instance_config?.name,
+      // instanceName: this.label.instance_config?.name,
     };
   }
 

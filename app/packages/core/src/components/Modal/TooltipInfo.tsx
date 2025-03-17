@@ -626,7 +626,7 @@ const AttrInfo = ({ label, field, labelType, children = null }) => {
             v.length > 0 &&
             (k === "_id" || !k.startsWith("_"))
         )
-        .map(([k, v]) => ["instance." + (k === "_id" ? "id" : k), v])
+        .map(([k, v]) => ["instance " + (k === "_id" ? "id" : k), v])
     : null;
 
   return (
