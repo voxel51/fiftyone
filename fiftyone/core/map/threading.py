@@ -59,7 +59,7 @@ class ThreadMapper(fomm.Mapper[T]):
         done_event: threading.Event,
         err_event: threading.Event,
         map_fcn: Callable[[T], R],
-        halt_on_error: bool,
+        skip_failures: bool,
     ) -> Iterator[Tuple[bson.ObjectId, R]]:
         try:
             while not err_event.is_set() and (
@@ -68,12 +68,12 @@ class ThreadMapper(fomm.Mapper[T]):
                 try:
                     result = map_fcn(sample)
                 except Exception as err:
-                    if halt_on_error:
+                    if skip_failures:
                         err_event.set()
 
                     q.put((sample.id, err))
 
-                    if halt_on_error:
+                    if skip_failures:
                         break
                 else:
                     q.put((sample.id, result))
@@ -87,7 +87,7 @@ class ThreadMapper(fomm.Mapper[T]):
         /,
         progress: Union[bool, Literal["workers"]],
         save: bool,
-        halt_on_error: bool,
+        skip_failures: bool,
     ) -> Iterator[Tuple[bson.ObjectId, R]]:
         # Global synchronization primitives
         q: queue.Queue[Tuple[bson.ObjectId, Union[T, Exception]]] = (
@@ -128,7 +128,7 @@ class ThreadMapper(fomm.Mapper[T]):
                     done_event=done_event,
                     err_event=err_event,
                     map_fcn=map_fcn,
-                    halt_on_error=halt_on_error,
+                    skip_failures=skip_failures,
                 )
 
             # Iterate over queue until an error occurs of all threads are
@@ -155,7 +155,7 @@ class ThreadMapper(fomm.Mapper[T]):
                             # ignored, and the initial error will be raised
                             # after exhausting the remaining successful maps in
                             # the queue.
-                            if halt_on_error and error is not None:
+                            if skip_failures and error is not None:
                                 error = result
 
                         yield sample_id, result

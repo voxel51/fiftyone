@@ -70,7 +70,7 @@ class Mapper(Generic[T], abc.ABC):
         /,
         progress: Union[bool, Literal["workers"]],
         save: bool,
-        halt_on_error: bool,
+        skip_failures: bool,
     ) -> Iterator[Tuple[bson.ObjectId, Union[R, Exception]]]:
         """Applies map function to each sample batch and returns an iterator
           of the results.
@@ -83,7 +83,7 @@ class Mapper(Generic[T], abc.ABC):
               not and how to render progress.
             save (bool, optional): Whether to save mutated samples mutated in
               the map function. Defaults to False.
-            halt_on_error (bool, optional): Whether to gracefully continue
+            skip_failures (bool, optional): Whether to gracefully continue
               without raising an error if the map function raises an exception
               for a sample. Defaults to True.
 
@@ -146,7 +146,7 @@ class Mapper(Generic[T], abc.ABC):
                 map_fcn,
                 progress=progress,
                 save=save,
-                halt_on_error=skip_failures,
+                skip_failures=skip_failures,
             )
 
         for sample_id, result in result_iter:

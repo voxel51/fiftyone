@@ -77,7 +77,7 @@ class Mapper(fomm.Mapper):
         /,
         progress: Union[bool, Literal["workers"]],
         save: bool,
-        halt_on_error: bool,
+        skip_failures: bool,
     ) -> Iterator[Tuple[bson.ObjectId, Union[R, Exception]]]: ...
 
 
@@ -244,7 +244,7 @@ class TestMapSamples:
                 map_fcn,
                 progress=progress,
                 save=save,
-                halt_on_error=skip_failures,
+                skip_failures=skip_failures,
             )
 
             assert not sample_collection.iter_samples.called
@@ -293,7 +293,7 @@ class TestMapSamples:
                 map_fcn,
                 progress=progress,
                 save=save,
-                halt_on_error=skip_failures,
+                skip_failures=skip_failures,
             )
 
         assert {sample_id for sample_id, _ in results} == {

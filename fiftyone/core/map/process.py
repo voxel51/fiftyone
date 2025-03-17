@@ -62,7 +62,7 @@ class ProcessMapper(fomm.Mapper[T]):
         /,
         progress: Union[bool, Literal["workers"]],
         save: bool,
-        halt_on_error: bool,
+        skip_failures: bool,
     ) -> Iterator[Tuple[bson.ObjectId, R]]:
         ctx = fou.get_multiprocessing_context()
 
@@ -108,7 +108,7 @@ class ProcessMapper(fomm.Mapper[T]):
                 err_event,
                 save,
                 worker_progress,
-                halt_on_error,
+                skip_failures,
                 lock,
             ),
         )
@@ -144,7 +144,7 @@ class ProcessMapper(fomm.Mapper[T]):
                         # ignored, and the initial error will be raised
                         # after exhausting the remaining successful maps in
                         # the queue.
-                        if halt_on_error and error is not None:
+                        if skip_failures and error is not None:
                             error = result
 
                     yield sample_id, result
@@ -169,7 +169,7 @@ def _init_worker(
     err_event: multiprocessing.Event,  # type: ignore
     save: bool,
     progress: bool,
-    halt_on_error: bool,
+    skip_failures: bool,
     lock: Optional[multiprocessing.RLock],  # type: ignore
 ):
     # pylint:disable=import-outside-toplevel
@@ -190,7 +190,7 @@ def _init_worker(
     global process_err_event
     global process_save
     global process_progress
-    global process_halt_on_error
+    global process_skip_failures
 
     # Ensure that each process creates its own MongoDB clients
     # https://pymongo.readthedocs.io/en/stable/faq.html#using-pymongo-with-multiprocessing
@@ -213,7 +213,7 @@ def _init_worker(
     process_err_event = err_event
     process_save = save
     process_progress = progress
-    process_halt_on_error = halt_on_error
+    process_skip_failures = skip_failures
 
     if lock is not None:
         tqdm.set_lock(lock)
@@ -239,12 +239,12 @@ def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
             try:
                 sample_output = process_map_fcn(sample)
             except Exception as err:
-                if process_halt_on_error:
+                if process_skip_failures:
                     process_err_event.set()
 
                 process_queue.put((sample.id, err))
 
-                if process_halt_on_error:
+                if process_skip_failures:
                     break
             else:
                 process_queue.put((sample.id, sample_output))
