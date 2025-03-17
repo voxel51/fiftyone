@@ -5,9 +5,11 @@ FiftyOne operator decorators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import asyncio
 
 from cachetools.keys import hashkey
+from cachetools import TTLCache
 from contextlib import contextmanager
 from functools import wraps
 import signal
@@ -56,15 +58,24 @@ def raise_timeout_error(seconds):
 
 
 cache = {}
+ttl_cache = TTLCache(maxsize=128, ttl=fo.config.plugins_cache_ttl)
 dir_cache = {"state": None}
 
 
 def plugins_cache(func):
+    """Decorator that returns cached function results if plugins cache is enabled."""
+
+    if fo.config.plugins_cache_strategy == "ttl":
+        return plugins_ttl_cache(func)
+
+    return plugins_fs_cache(func)
+
+
+def plugins_fs_cache(func):
     """Decorator that returns cached function results as long as no plugins
     have been modified since last time.
     """
 
-    @wraps(func)
     def wrapper(*args, **kwargs):
         if not fo.config.plugins_cache_enabled:
             return func(*args, **kwargs)
@@ -79,6 +90,20 @@ def plugins_cache(func):
             cache[key] = func(*args, **kwargs)
 
         return cache[key]
+
+    return wrapper
+
+
+def plugins_ttl_cache(func):
+    """Decorator that returns cached function results for a certain amount of time."""
+
+    def wrapper(*args, **kwargs):
+        key = args + tuple(kwargs.items())  # Create a hashable key
+        if key in ttl_cache:
+            return ttl_cache[key]
+        result = func(*args, **kwargs)
+        ttl_cache[key] = result
+        return result
 
     return wrapper
 
