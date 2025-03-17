@@ -35,7 +35,7 @@ import {
   executeOperator,
   listLocalAndRemoteOperators,
 } from "./operators";
-import { useShowOperatorIO } from "./state";
+import { useCurrentSample, useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
 
 //
@@ -1155,11 +1155,13 @@ export class SetActiveFields extends Operator {
   useHooks(): {
     setActiveFields: (fields: string[]) => void;
   } {
+    // NOTE: useRecoilValue(fos.modal) is always false here
+    const currentSample = useCurrentSample();
     return {
+      modal: !!currentSample,
       setActiveFields: useRecoilCallback(
         ({ snapshot, set }) =>
-          async (fields) => {
-            const modal = !!(await snapshot.getPromise(fos.modal));
+          async (fields, modal) => {
             set(fos.activeFields({ modal }), fields);
           }
       ),
@@ -1174,7 +1176,7 @@ export class SetActiveFields extends Operator {
     return new types.Property(inputs);
   }
   async execute(ctx: ExecutionContext): Promise<void> {
-    ctx.hooks.setActiveFields(ctx.params.fields);
+    ctx.hooks.setActiveFields(ctx.params.fields, ctx.hooks.modal);
   }
 }
 
@@ -1474,6 +1476,36 @@ class ToggleSidebar extends Operator {
   }
 }
 
+class UpdateAppSamples extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "update_app_samples",
+      label: "Update app samples",
+    });
+  }
+  async resolveInput(): Promise<types.Property> {
+    const inputs = new types.Object();
+    const update = new types.Object();
+    update.str("id", { label: "Sample ID", required: true });
+    update.obj("values", { label: "Values", required: true });
+    inputs.list("updates", update, { label: "Updates", required: true });
+    return new types.Property(inputs);
+  }
+  useHooks(): object {
+    return {
+      update: fos.useUpdateSamples(),
+    };
+  }
+  async execute({ params, hooks }: ExecutionContext) {
+    const sampleUpdates = [];
+    for (const update of params.updates) {
+      sampleUpdates.push([update.id, update.values]);
+    }
+    hooks.update(sampleUpdates);
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -1530,6 +1562,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(ShowSidebar);
     _registerBuiltInOperator(HideSidebar);
     _registerBuiltInOperator(ToggleSidebar);
+    _registerBuiltInOperator(UpdateAppSamples);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);

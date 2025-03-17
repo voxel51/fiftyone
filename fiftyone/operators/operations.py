@@ -112,6 +112,20 @@ class Operations(object):
             params={"path": path, "list_filesystems": list_filesystems},
         )
 
+    def reload_sample(self, sample_id):
+        """Reload a sample in the App.
+
+        Args:
+            sample_id: the sample ID
+        """
+        return self._ctx.trigger(
+            "reload_sample", params={"sample_id": sample_id}
+        )
+
+    def reload_current_sample(self):
+        """Reload the current sample in the App."""
+        return self._ctx.trigger("reload_current_sample")
+
     ###########################################################################
     # Builtin JS operators
     ###########################################################################
@@ -691,6 +705,34 @@ class Operations(object):
     def toggle_sidebar(self):
         """Toggle the visibility of the App's sidebar."""
         return self._ctx.trigger("toggle_sidebar")
+
+    def update_app_samples(self, samples):
+        """Apply updates to samples in the App.
+
+        Example ``samples`` format::
+
+            [
+                {
+                    "id": "67ca305e17bddd69d65d76e4",
+                    "values": {"foo": "bar", "spam": "eggs"},
+                },
+                {
+                    "id": sample.id,
+                    "values": sample.to_dict(),
+                },
+                ...
+            ]
+
+        .. warning::
+
+            This method only update the App's representation of the sample; any
+            edits are not persisted to the database.
+
+        Args:
+            samples: a list of dicts describing sample updates to apply in the
+                format described above
+        """
+        return self._ctx.trigger("update_app_samples", {"updates": samples})
 
 
 def _serialize_view(view):
