@@ -114,6 +114,18 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_PLUGINS_CACHE_ENABLED",
             default=False,
         )
+        self.plugins_cache_ttl = self.parse_int(
+            d,
+            "plugins_cache_ttl",
+            env_var="FIFTYONE_PLUGINS_CACHE_TTL",
+            default=60,  # 60 seconds (1 minutes)
+        )
+        self.plugins_cache_strategy = self.parse_string(
+            d,
+            "plugins_cache_strategy",
+            env_var="FIFTYONE_PLUGINS_CACHE_STRATEGY",
+            default="fs",  # supported values: "fs", "ttl"
+        )
         self.operator_timeout = self.parse_int(
             d,
             "operator_timeout",
