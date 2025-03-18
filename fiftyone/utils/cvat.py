@@ -6442,18 +6442,21 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 ybr = float(round((y + h) * height))
                 bbox = [xtl, ytl, xbr, ybr]
 
-                curr_shapes.append(
-                    {
-                        "type": "rectangle",
-                        "occluded": is_occluded,
-                        "points": bbox,
-                        "label_id": class_name,
-                        "group": group_id,
-                        "frame": frame_id,
-                        "source": "manual",
-                        "attributes": attributes,
-                    }
-                )
+                shape = {
+                    "type": "rectangle",
+                    "occluded": is_occluded,
+                    "points": bbox,
+                    "label_id": class_name,
+                    "group": group_id,
+                    "frame": frame_id,
+                    "source": "manual",
+                    "attributes": attributes,
+                }
+
+                if det.has_attribute("rotation"):
+                    shape["rotation"] = det["rotation"] or 0.0
+
+                curr_shapes.append(shape)
             elif label_type in ("instance", "instances"):
                 if not det.has_mask:
                     continue
@@ -6469,19 +6472,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     rle = HasCVATBinaryMask._mask_to_cvat_rle(det.mask)
                     rle.extend([xtl, ytl, xbr - 1, ybr - 1])
 
-                    curr_shapes.append(
-                        {
-                            "type": "mask",
-                            "occluded": is_occluded,
-                            "z_order": 0,
-                            "points": rle,
-                            "label_id": class_name,
-                            "group": group_id,
-                            "frame": frame_id,
-                            "source": "manual",
-                            "attributes": deepcopy(attributes),
-                        }
-                    )
+                    shape = {
+                        "type": "mask",
+                        "occluded": is_occluded,
+                        "z_order": 0,
+                        "points": rle,
+                        "label_id": class_name,
+                        "group": group_id,
+                        "frame": frame_id,
+                        "source": "manual",
+                        "attributes": deepcopy(attributes),
+                    }
+                    curr_shapes.append(shape)
                 else:
                     polygon = det.to_polyline()
                     for points in polygon.points:
@@ -6495,19 +6497,18 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             itertools.chain.from_iterable(abs_points)
                         )
 
-                        curr_shapes.append(
-                            {
-                                "type": "polygon",
-                                "occluded": is_occluded,
-                                "z_order": 0,
-                                "points": flattened_points,
-                                "label_id": class_name,
-                                "group": group_id,
-                                "frame": frame_id,
-                                "source": "manual",
-                                "attributes": deepcopy(attributes),
-                            }
-                        )
+                        shape = {
+                            "type": "polygon",
+                            "occluded": is_occluded,
+                            "z_order": 0,
+                            "points": flattened_points,
+                            "label_id": class_name,
+                            "group": group_id,
+                            "frame": frame_id,
+                            "source": "manual",
+                            "attributes": deepcopy(attributes),
+                        }
+                        curr_shapes.append(shape)
 
             if not curr_shapes:
                 continue
