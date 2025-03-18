@@ -2451,6 +2451,9 @@ def get_multiprocessing_context():
         # subsequent usage of things like `multiprocessing.Queue()` will not
         # cause the default start method to switch to 'spawn'
         multiprocessing.set_start_method("fork", force=True)
+    elif sys.platform == "win32":
+        # Windows typically does not support 'fork'
+        multiprocessing.set_start_method("spawn", force=True)
 
     return multiprocessing.get_context()
 
@@ -2478,10 +2481,6 @@ def recommend_thread_pool_workers(num_workers=None):
 def recommend_process_pool_workers(num_workers=None):
     """Recommends a number of workers for a process pool.
 
-    By default, ``multiprocessing.cpu_count()`` workers will be recommended if
-    you are running on macOS or Linux, while a single worker will be
-    recommended on Windows.
-
     If a ``fo.config.max_process_pool_workers`` is set, this limit is applied.
 
     Args:
@@ -2491,11 +2490,7 @@ def recommend_process_pool_workers(num_workers=None):
         a number of workers
     """
     if num_workers is None:
-        if sys.platform.startswith("win"):
-            # Windows tends to have multiprocessing issues
-            num_workers = 1
-        else:
-            num_workers = multiprocessing.cpu_count()
+        num_workers = multiprocessing.cpu_count()
 
     if fo.config.max_process_pool_workers is not None:
         num_workers = min(num_workers, fo.config.max_process_pool_workers)
