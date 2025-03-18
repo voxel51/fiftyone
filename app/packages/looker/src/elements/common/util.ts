@@ -18,7 +18,6 @@ import {
   DispatchEvent,
 } from "../../state";
 
-import { isHoveringAnyLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
 import { getHashLabel } from "../../overlays/util";
 import {
   LabelHoveredEvent,
@@ -55,7 +54,7 @@ export const dispatchTooltipEvent = <State extends BaseState>(
           field: detail.label.field,
         })
       );
-    } else if (!detail && isHoveringAnyLabelWithInstanceConfig()) {
+    } else {
       selectiveRenderingEventBus.emit(new LabelUnhoveredEvent());
     }
 

@@ -1,4 +1,4 @@
-import { InstanceId, LabelEventData, LabelId } from "@fiftyone/looker";
+import { InstanceId, LabelHoveredEventData, LabelId } from "@fiftyone/looker";
 import { atom } from "jotai";
 import { jotaiStore } from "./jotai-store";
 
@@ -6,7 +6,7 @@ import { jotaiStore } from "./jotai-store";
  * ======= TYPES =======
  */
 
-export type LabelMap = Record<LabelId, LabelEventData>;
+export type LabelMap = Record<LabelId, LabelHoveredEventData>;
 export type HoveredInstancesLabelsTuple = [InstanceId, LabelMap];
 
 /**
@@ -54,7 +54,7 @@ export const isHoveringParticularLabelWithInstanceConfig = (
  */
 export const updateHoveredInstances = atom(
   null,
-  (get, set, newValue: LabelEventData) => {
+  (get, set, newValue: LabelHoveredEventData) => {
     const currentHoveredInstances = get(hoveredInstances);
 
     if (!currentHoveredInstances || currentHoveredInstances?.length !== 2) {
@@ -65,8 +65,18 @@ export const updateHoveredInstances = atom(
       return;
     }
 
-    set(hoveredInstances, (prev) => {
-      return [prev[0], { ...prev[1], [newValue.labelId]: newValue }];
+    set(hoveredInstances, (prev: HoveredInstancesLabelsTuple) => {
+      const prevWithCorrectInstanceId = Object.entries(prev[1])
+        .filter(([_labelId, label]) => label.instanceId === newValue.instanceId)
+        .reduce((acc, [labelId, label]) => {
+          acc[labelId] = label;
+          return acc;
+        }, {});
+
+      return [
+        newValue.instanceId,
+        { ...prevWithCorrectInstanceId, [newValue.labelId]: newValue },
+      ];
     });
   }
 );

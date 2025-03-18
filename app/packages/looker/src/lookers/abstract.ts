@@ -1,5 +1,6 @@
 import { Lookers } from "@fiftyone/state";
 import {
+  hoveredInstances,
   jotaiStore,
   removeAllHoveredInstances,
   updateHoveredInstances,

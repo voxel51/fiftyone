@@ -40,6 +40,8 @@ export const useSimilarLabels3d = (label: OverlayLabel) => {
             labelId: label._id,
             field: label.path,
           });
+        } else {
+          setIsSimilarLabelHovered(false);
         }
       }
     );
