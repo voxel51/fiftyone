@@ -178,7 +178,7 @@ class SidebarGroupDocument(EmbeddedDocument):
 
 
 class ActiveFields(EmbeddedDocument):
-    """Description of active fields in the App as definied by the sidebar's
+    """Description of active fields in the App as defined by the sidebar's
     checkboxes
 
     Args:
