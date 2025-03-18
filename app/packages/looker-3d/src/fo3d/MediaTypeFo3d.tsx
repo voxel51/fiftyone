@@ -267,7 +267,7 @@ export const MediaTypeFo3dComponent = () => {
   }, []);
 
   const resetActiveNode = useRecoilCallback(
-    ({ set, snapshot }) =>
+    ({ set }) =>
       () => {
         set(activeNodeAtom, null);
       },
