@@ -5816,6 +5816,72 @@ class SampleCollection(object):
         return self._add_view_stage(fos.MapLabels(field, map))
 
     @view_stage
+    def map_values(self, field, map):
+        """Maps the values in the given field to new values for each sample in
+        the collection.
+
+        Examples::
+
+            import random
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            ANIMALS = [
+                "bear", "bird", "cat", "cow", "dog", "elephant", "giraffe",
+                "horse", "sheep", "zebra"
+            ]
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            values = [random.choice(ANIMALS) for _ in range(len(dataset))]
+            dataset.set_values("str_field", values)
+            dataset.set_values("list_field", [[v] for v in values])
+
+            dataset.set_field("ground_truth.detections.tags", [F("label")]).save()
+
+            # Map all animals to string "animal"
+            mapping = {a: "animal" for a in ANIMALS}
+
+            #
+            # Map values in top-level fields
+            #
+
+            view = dataset.map_values("str_field", mapping)
+
+            print(view.count_values("str_field"))
+            # {"animal": 200}
+
+            view = dataset.map_values("list_field", mapping)
+
+            print(view.count_values("list_field"))
+            # {"animal": 200}
+
+            #
+            # Map values in nested fields
+            #
+
+            view = dataset.map_values("ground_truth.detections.label", mapping)
+
+            print(view.count_values("ground_truth.detections.label"))
+            # {"animal": 183, ...}
+
+            view = dataset.map_values("ground_truth.detections.tags", mapping)
+
+            print(view.count_values("ground_truth.detections.tags"))
+            # {"animal": 183, ...}
+
+        Args:
+            field: the field or ``embedded.field.name`` to map
+            map: a dict mapping values to new values
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.MapValues(field, map))
+
+    @view_stage
     def set_field(self, field, expr, _allow_missing=False):
         """Sets a field or embedded field on each sample in a collection by
         evaluating the given expression.
@@ -11138,6 +11204,12 @@ class SampleCollection(object):
             raise ValueError(f"Dataset has no store '{store_name}'")
 
         return foos.ExecutionStore(store_name, svc)
+
+    def to_torch(self, get_item, **kwargs):
+        """See fo.utils.torch.FiftyOneTorchDataset for documentation."""
+        from fiftyone.utils.torch import FiftyOneTorchDataset
+
+        return FiftyOneTorchDataset(self, get_item, **kwargs)
 
 
 def _iter_label_fields(sample_collection):
