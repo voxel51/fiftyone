@@ -12,6 +12,7 @@ import tempfile
 import unittest
 import time
 from unittest.mock import MagicMock, patch
+from cachetools.keys import hashkey
 
 from fiftyone.operators.decorators import (
     coroutine_timeout,
@@ -173,12 +174,16 @@ class MockOperator:
 
 # Custom key function for testing
 def custom_key_fn(ctx, a, b):
-    return f"custom-key-{a}-{b}"
+    return ["custom-key", a, b]
 
 
 @execution_cache(ttl=60, key_fn=custom_key_fn)
 def function_with_custom_key(ctx, a, b):
     return a + b
+
+
+def str_hk(args):
+    return str(hashkey(args))
 
 
 class TestExecutionCacheDecorator(unittest.TestCase):
@@ -195,7 +200,9 @@ class TestExecutionCacheDecorator(unittest.TestCase):
 
         self.assertEqual(result1, result2)
         self.assertEqual(result1, 3)
-        store_instance.set.assert_called_once_with("[1, 2]", result1, ttl=60)
+        store_instance.set.assert_called_once_with(
+            str_hk([1, 2]), result1, ttl=60
+        )
 
     @patch("fiftyone.operators.store.ExecutionStore.create")
     def test_method_caching(self, MockExecutionStore):
@@ -212,7 +219,9 @@ class TestExecutionCacheDecorator(unittest.TestCase):
 
         self.assertEqual(result1, result2)
         self.assertEqual(result1, 10)
-        store_instance.set.assert_called_once_with("[5, 5]", result1, ttl=60)
+        store_instance.set.assert_called_once_with(
+            str_hk([5, 5]), result1, ttl=60
+        )
 
     @patch("fiftyone.operators.store.ExecutionStore.create")
     def test_custom_key_function(self, MockExecutionStore):
@@ -230,8 +239,13 @@ class TestExecutionCacheDecorator(unittest.TestCase):
         self.assertEqual(result1, 5)
 
         # Verify that the custom key function was used
-        expected_key = "custom-key-2-3"
+        expected_key = str_hk(["custom-key", 2, 3])
         store_instance.get.assert_called_with(expected_key)
         store_instance.set.assert_called_once_with(
             expected_key, result1, ttl=60
         )
+
+    def test_missing_ctx_arg(self):
+        """Test that missing ctx argument raises an error."""
+        with self.assertRaises(ValueError):
+            example_function()
