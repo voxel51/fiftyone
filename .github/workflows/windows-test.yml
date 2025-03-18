@@ -1,27 +1,8 @@
-name: Test
+name: Windows Tests
 
 on: workflow_call
 
 jobs:
-  test-app:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Cache
-        id: node-cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            app/node_modules
-            app/.yarn/cache
-          key: node-modules-${{ hashFiles('app/yarn.lock') }}
-      - name: Install
-        if: steps.node-cache.outputs.cache-hit != 'true'
-        run: cd app && yarn install
-      - name: Run
-        run: cd app && yarn test
-
   test-python:
     runs-on: ${{ matrix.os }}
     env:
@@ -30,7 +11,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-latest-m
+          - windows-latest
         python:
           - "3.9"
           - "3.10"
@@ -86,13 +67,6 @@ jobs:
             --ignore tests/utils/ \
             --ignore tests/intensive/ \
             --ignore tests/no_wrapper
-      - name: Upload
-        if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.11' }}
-        uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.xml
-          flags: python
       - name: Run no wrapper tests
         run: |
           pytest tests/no_wrapper --verbose
