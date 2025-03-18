@@ -665,8 +665,6 @@ const DetectionInfo = ({ detail }) => {
         label={detail.label}
         labelType={detail.type}
       />
-      {/* for debugging */}
-      {detail.sampleId?.length && <div>{detail.sampleId}</div>}
     </AttrBlock>
   );
 };
