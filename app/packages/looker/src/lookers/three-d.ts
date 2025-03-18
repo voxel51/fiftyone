@@ -40,8 +40,13 @@ export class ThreeDLooker extends AbstractLooker<ThreeDState> {
     return DEFAULT_3D_OPTIONS;
   }
 
-  updateOptions(options: Partial<ThreeDState["options"]>) {
-    const reload = LookerUtils.shouldReloadSample(this.state.options, options);
+  updateOptions(
+    options: Partial<ThreeDState["options"]>,
+    disableReload = false
+  ) {
+    const reload =
+      !disableReload &&
+      LookerUtils.shouldReloadSample(this.state.options, options);
     const state: Partial<ThreeDState> = { options };
     if (reload) {
       this.updater({

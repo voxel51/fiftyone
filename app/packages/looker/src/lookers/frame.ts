@@ -1,7 +1,7 @@
 import { getFrameElements } from "../elements";
 import { COMMON_SHORTCUTS } from "../elements/common";
 import { Overlay } from "../overlays/base";
-import { DEFAULT_FRAME_OPTIONS, FrameState, Optional } from "../state";
+import { DEFAULT_FRAME_OPTIONS, FrameState } from "../state";
 import { AbstractLooker } from "./abstract";
 import { LookerUtils } from "./shared";
 
@@ -71,9 +71,15 @@ export class FrameLooker extends AbstractLooker<FrameState> {
     return super.postProcess();
   }
 
-  updateOptions(options: Partial<FrameState["options"]>) {
-    const reload = LookerUtils.shouldReloadSample(this.state.options, options);
+  updateOptions(
+    options: Partial<FrameState["options"]>,
+    disableReload = false
+  ) {
+    const reload =
+      !disableReload &&
+      LookerUtils.shouldReloadSample(this.state.options, options);
     const state: Partial<FrameState> = { options };
+
     if (options.zoom !== undefined) {
       state.setZoom = this.state.options.zoom !== options.zoom;
     }

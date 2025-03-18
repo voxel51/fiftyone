@@ -223,8 +223,13 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     return super.postProcess();
   }
 
-  updateOptions(options: Partial<ImaVidState["options"]>) {
-    const reload = LookerUtils.shouldReloadSample(this.state.options, options);
+  updateOptions(
+    options: Partial<ImaVidState["options"]>,
+    disableReload = false
+  ) {
+    const reload =
+      !disableReload &&
+      LookerUtils.shouldReloadSample(this.state.options, options);
 
     if (reload) {
       this.updater({ options, reloading: this.state.disabled });
