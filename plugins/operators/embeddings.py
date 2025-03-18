@@ -523,5 +523,16 @@ def _get_zoo_models_with_embeddings(ctx, inputs):
 
 
 def _get_label_fields(sample_collection, label_types):
-    schema = sample_collection.get_field_schema(embedded_doc_type=label_types)
-    return list(schema.keys())
+    schema = sample_collection.get_field_schema(flat=True)
+    bad_roots = tuple(
+        k + "." for k, v in schema.items() if isinstance(v, fo.ListField)
+    )
+    return [
+        path
+        for path, field in schema.items()
+        if (
+            isinstance(field, fo.EmbeddedDocumentField)
+            and issubclass(field.document_type, label_types)
+            and not path.startswith(bad_roots)
+        )
+    ]
