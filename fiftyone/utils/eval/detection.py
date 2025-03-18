@@ -19,6 +19,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
+import fiftyone.utils.map as fom
 
 from .base import (
     BaseEvaluationMethod,
@@ -87,6 +88,7 @@ def evaluate_detections(
     multiprocessing=False,
     num_workers=None,
     shard_method="id",
+    backend=None,
     **kwargs,
 ):
     """Evaluates the predicted detections in the given samples with respect to
@@ -183,9 +185,9 @@ def evaluate_detections(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
-        multiprocessing (False): whether to use beam map to compute detections
         num_workers (None): the number of workers to use to compute detections
         shard_method ("id"): the method to use to shard the dataset
+        backend ("process"): the backend to use for multiprocessing
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
 
@@ -251,17 +253,16 @@ def evaluate_detections(
         )
 
     logger.info("Evaluating detections...")
-    if multiprocessing:
-        print("Multiprocessing")
+    if backend is not None:
         matches = []
-        for _, result in fou.map.map_samples(
+        for _, result in fom.map_samples(
             _samples,
             _map_fnc,
             save=save,
+            workers=num_workers,
+            batch_method=shard_method,
             progress=progress,
-            num_workers=num_workers,
-            shard_method=shard_method,
-            parallelize_method="process",
+            parallelize_method=backend,
         ):
             matches.extend(result)
         print("Matches:", matches[:5])

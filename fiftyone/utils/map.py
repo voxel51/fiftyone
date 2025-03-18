@@ -13,13 +13,15 @@ import fiftyone.core.map as focm
 
 def map_samples(
     sample_collection,
-    map_fcn,
-    workers=None,
-    batch_method="id",
-    progress=None,
-    save=False,
-    parallelize_method="process",
-    skip_failures=True,
+    map_fcn: Callable[[Any], None],
+    workers: Optional[int] = None,
+    batch_method: Union[Literal["id"], Literal["slice"]] = "id",
+    progress: Optional[Union[bool, Literal["worker"]]] = None,
+    save: bool = False,
+    parallelize_method: Union[
+        Literal["process"], Literal["thread"]
+    ] = "process",
+    skip_failures: bool = False,
 ):
     """
     Applies `map_fcn` to each sample using the specified backend strategy and
@@ -33,7 +35,7 @@ def map_samples(
         progress (None): Whether to show progress bar.
         save (False): Whether to save modified samples.
         parallelize_method ("process"): Method for parallelization ('process'
-          or'thread').
+          or 'thread').
         skip_failures (True): whether to gracefully continue without raising an
             error if the map function raises an exception for a sample.
 
@@ -46,6 +48,11 @@ def map_samples(
         workers,
         batch_method,
     )
+    print("parallelize_method:", parallelize_method)
+    print("workers:", workers)
+    print("batch_method:", batch_method)
+    print("mapper:", mapper)
+    print("map_fcn:", map_fcn)
 
     yield from mapper.map_samples(
         map_fcn, progress=progress, save=save, skip_failures=skip_failures
@@ -56,10 +63,12 @@ def update_samples(
     sample_collection,
     update_fcn: Callable[[Any], None],
     workers: Optional[int] = None,
-    batch_method: str = "id",
+    batch_method: Union[Literal["id"], Literal["slice"]] = "id",
     progress: Optional[Union[bool, Literal["worker"]]] = None,
-    parallelize_method: str = "process",
-    skip_failures=True,
+    parallelize_method: Union[
+        Literal["process"], Literal["thread"]
+    ] = "process",
+    skip_failures: bool = False,
 ):
     """
     Applies `map_fcn` to each sample using the specified backend strategy.
@@ -71,7 +80,7 @@ def update_samples(
         batch_method ("id"): Method for sharding ('id' or 'slice').
         progress (None): Whether to show progress bar.
         parallelize_method ("process"): Method for parallelization ('process'
-          or'thread').
+          or 'thread').
         skip_failures (True): whether to gracefully continue without raising an
             error if the update function raises an exception for a sample.
     """
