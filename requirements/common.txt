@@ -8,7 +8,7 @@ ftfy==6.1.1
 httpx==0.23.0
 hypercorn==0.13.2
 kaleido==0.2.1
-matplotlib==3.10.1
+matplotlib==3.9.4
 mongoengine~=0.29.1
 motor~=3.6.0
 packaging==20.3
