@@ -189,7 +189,7 @@ export const Button: React.FC<
     disabled?: boolean;
     onClick?: React.MouseEventHandler<HTMLDivElement>;
     style?: React.CSSProperties;
-    text?: string;
+    text?: string | React.ReactNode;
     title?: string;
   }>
 > = ({
@@ -225,7 +225,7 @@ export const Button: React.FC<
       onClick={disabled ? undefined : onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      title={title ?? text}
+      title={title ?? (typeof text === "string" ? text : "")}
       data-cy={`button-${title ?? text}`}
       disabled={disabled}
     >
