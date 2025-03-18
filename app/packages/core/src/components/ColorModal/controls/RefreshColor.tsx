@@ -1,11 +1,11 @@
 import * as fos from "@fiftyone/state";
+import { useDebounceCallback } from "@fiftyone/state";
 import {
   jotaiStore,
   numConcurrentRenderingLabels,
 } from "@fiftyone/state/src/jotai";
 import { Autorenew } from "@mui/icons-material";
-import debounce from "lodash/debounce";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useSetRecoilState } from "recoil";
 import { Button } from "../../utils";
 
@@ -24,14 +24,11 @@ const ShuffleColor: React.FC = () => {
     };
   }, []);
 
-  const debouncedShuffle = useCallback(
-    debounce(() => {
-      if (!isRendering) {
-        setColorSeed((s) => s + 1);
-      }
-    }, 200),
-    [isRendering, setColorSeed]
-  );
+  const debouncedShuffle = useDebounceCallback(() => {
+    if (!isRendering) {
+      setColorSeed((s) => s + 1);
+    }
+  }, 200);
 
   return (
     <>

@@ -116,16 +116,6 @@ const useItemUpdater = (
           shouldHardReload
         );
 
-        console.log(">>> should hard reload is ", shouldHardReload);
-        if (shouldHardReload) {
-          console.log(
-            ">>> last key is ",
-            lastColoringKey,
-            "and current is ",
-            thisColoringKey
-          );
-        }
-
         if (shouldHardReload) {
           handleNetNewOverlays(entry, newFields ?? []);
         } else {
