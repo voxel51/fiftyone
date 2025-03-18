@@ -10,6 +10,10 @@ import itertools
 import multiprocessing
 import os
 import sys
+from typing import Callable, Any, Optional, List
+import pickle
+import functools
+import warnings
 
 import cv2
 import numpy as np
@@ -23,15 +27,20 @@ from torchvision.models.feature_extraction import create_feature_extractor
 import fiftyone.core.config as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
+import fiftyone.core.media as fomd
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.utils.image as foui
+import fiftyone.core.collections as focol
+import fiftyone.core.sample as fos
+import fiftyone.core.view as fov
 
 fou.ensure_torch()
 import torch
 import torchvision
 from torchvision.transforms import functional as F
 from torch.utils.data import Dataset
+import torch.distributed as dist
 
 
 logger = logging.getLogger(__name__)
@@ -1461,6 +1470,237 @@ def _is_string_array(targets):
         return False
 
 
+class FiftyOneTorchDataset(Dataset):
+    """A class that accepts a FO dataset and creates a corresponding torch.utils.data.Dataset
+
+    Args:
+        samples: a :class:`fo.core.collections.SampleCollection`
+        get_item: a `Callable[:class:`fo.core.sample.SampleView`, Any]`
+            Must be a serializable function.
+        cache_field_names (None): a list of strings. Fields to cache in memory. If this
+            argument is passed, get_item should be from a dict with keys and values
+            corresponding to the sample's fields and values to the model input.
+            This argument is highly recommended, as it offers a significant performance
+            boost.
+            Please note :   the field values must be pickle serializable i.e.
+                            `pickle.dumps(field_value)` should not raise an error.
+                            `pickle.loads(pickle.dumps(field_value))` should have all of the
+                            functionality of the original field value that you would need
+                            in your get_item function.
+
+        local_process_group (None) - only pass if running Distributed Data Parallel (DDP).
+            The process group with each of the processes running the main train script
+            on the machine this object is on.
+
+    Notes:
+        General:
+        - This only works with persistent datasets.
+            In order to make a dataset persistent, do `dataset.persistent = True`
+        - Process start methods
+            It is recommended to use the 'spawn' and 'forkserver' start methods over 'fork'
+            - Spawn and forkserver are safer when dealing with code that may be threaded (which a lot of code is, for example NumPy).
+            - MongoDB, which backs FiftyOne's database, is not fork safe. In theory nothing here should be breaking, but you will see a lot of warnings.
+            - When using persistent_workers=True, the overhead of 'spawn' and 'forkserver' is low.
+            - When using Jupyter notebooks, if you want all of your code to be in the notebook, rather than calling it from a python file, you'll have
+                to use fork. Do so at your own risk.
+                You can easily set the start method for all of your torch code with the following command:
+                `torch.multiprocessing.set_start_method('forkserver')`
+        - Make sure to not touch `self.samples` or subscript this object until after
+            all workers are initialized. This will help you avoid unnecessary memory
+            usage. If you're using DDP, this will help your code not crash.
+
+        DDP:
+        - A helper function ::method:`distributed_init` is provided to be called by each
+            trainer process in the beginning of DDP training. This function:
+            - Safely creates a database connection for each trainer
+            - Shares an authkey between all local processes to ensure they can communicate
+
+        torch.utils.data.Dataloader use:
+        - DO NOT use torch.Tensor.to in this function, do so in the train loop, or use
+            the `pin_memory` argument in your torch.utils.data.DataLoader
+        - If using a dataloader with many workers, remember to pass
+            :method:`fo.utils.torch.FiftyOneTorchDataset.worker_init` to the argument `worker_init_fn`.
+            This class will not work otherwise.
+        - Using `persistent_workers=True` is a good idea.
+
+        On reading and writing to the FO object during training:
+        - Reading
+            - Try to have as many of the reads as possible during `get_item` or
+             when caching fields rather than in the main training script loop.
+             Reads into the FO object during training may slow your code down significantly.
+        - Writing
+            - Writing currently happens on the process from which it is called. This
+            shows moderate slowdown, and will be adressed.
+
+    """
+
+    def __init__(
+        self,
+        samples: focol.SampleCollection,
+        get_item: Callable[fos.SampleView, Any],
+        cache_field_names: list[str] = None,
+        local_process_group=None,
+    ):
+        super().__init__()
+
+        if samples._dataset.persistent is False:
+            raise ValueError(
+                "This class only works with persistent datasets. Please set your dataset to be persistent."
+            )
+
+        if samples.media_type == fomd.GROUP:
+            raise NotImplementedError(
+                "Not compatible with grouped datasets yet. If you want this feature, please let us know!"
+            )
+
+        start_method = multiprocessing.get_start_method(allow_none=True)
+        if start_method not in ["spawn", "forkserver"]:
+            warnings.warn(
+                f"Your start method is {start_method}. It is recommended to use 'spawn' or 'forkserver' with this class."
+            )
+
+        self.name = samples._dataset.name
+        # either a whole dataset or a view
+        self.stages = (
+            samples._serialize()
+            if isinstance(samples, fov.DatasetView)
+            else None
+        )
+        self.get_item = get_item
+        # make this a file we call for very large datasets
+        # TODO: remove duplication with cached_fields, just have
+        # ids always be one of the cached fields.
+        self.ids = _to_bytes_array(samples.values("id"))
+
+        self.cached_fields = None
+        self.cache_field_names = cache_field_names
+        self._load_cached_fields(
+            samples, cache_field_names, local_process_group
+        )
+
+        # initialized in worker
+        self._dataset = None
+        self._samples = None
+
+    # need a better solution
+    def _load_cached_fields(
+        self, samples, cache_field_names, local_process_group
+    ):
+        if cache_field_names is None:
+            return
+
+        self.cached_fields = {}
+        for field_name in cache_field_names:
+            if not samples.has_field(field_name):
+                raise ValueError(
+                    f'Can\'t find field with name "{field_name}" in samples passed.'
+                )
+
+            # don't get fancy if you don't have to
+            if local_process_group is None:
+                self.cached_fields[field_name] = TorchSerializedList(
+                    samples.values(field_name)
+                )
+            # have to get fancy
+            else:
+                if get_local_rank(local_process_group) == 0:
+                    self.cached_fields[field_name] = TorchShmSerializedList(
+                        samples.values(field_name), local_process_group
+                    )
+                else:
+                    # don't need to pass actual data if not local rank 0
+                    # we read it from shared memory anyways
+                    self.cached_fields[field_name] = TorchShmSerializedList(
+                        [], local_process_group
+                    )
+
+    @property
+    def samples(self):
+        if self._samples == None:
+            self._load_samples()
+        return self._samples
+
+    # called on every worker init
+    @staticmethod
+    def worker_init(worker_id):
+        torch_dataset_object = torch.utils.data.get_worker_info().dataset
+
+        # if the samples are already loaded, fail loudly
+        if torch_dataset_object._samples is not None:
+            raise ValueError(
+                "Worker init called after samples have been loaded. This should not happen. "
+                "This will fail anyways if using 'spawn' or 'forkserver' and can lead"
+                " to unexpected behavior if using 'fork'."
+            )
+
+        torch_dataset_object._load_samples()
+
+    @staticmethod
+    def distributed_init(dataset_name, local_process_group, view_name=None):
+        """Function to be called by each trainer process in DDP training.
+        Facilitates communication between processes. Safely creates database connection for each trainer.
+
+        This function should be called at the beginning of the training script.
+
+        Args:
+            dataset_name: the name of the dataset to load
+            local_process_group: the process group with all the processes running the main training script
+            view_name (None): the name of the view to load. If None, the whole dataset is loaded.
+
+        Returns:
+            The loaded :class:`fiftyone.core.dataset.Dataset` or :class:`fiftyone.core.view.DatasetView`
+        """
+        import fiftyone as fo
+
+        # make sure all processes have the same authkey
+        local_broadcast_process_authkey(local_process_group)
+
+        for i in range(get_local_size(local_process_group)):
+            if get_local_rank(local_process_group) == i:
+                # load the dataset
+                dataset = fo.load_dataset(dataset_name)
+                if view_name is not None:
+                    dataset = dataset.load_saved_view(view_name)
+            torch.distributed.barrier(local_process_group)
+
+        return dataset
+
+    def _load_samples(self):
+        import fiftyone as fo
+
+        self._dataset = fo.load_dataset(self.name)
+        if self.stages is not None:
+            self._samples = fov.DatasetView._build(self._dataset, self.stages)
+        else:
+            self._samples = self._dataset
+
+    def __getitem__(self, index):
+
+        # if self._samples is None at this point then
+        # worker_init was probably never called
+        # meaning we are working on main process
+        # most likely num_workers=0 in dataloader
+        # or someone is testing this object
+        # load samples here instead
+        if self._samples is None:
+            self._load_samples()
+
+        if self.cached_fields is None:
+            # pylint: disable=unsubscriptable-object
+            sample = self._dataset[self.ids[index].decode()]
+            return self.get_item(sample)
+
+        else:
+            sample_dict = {
+                fn: self.cached_fields[fn][index]
+                for fn in self.cache_field_names
+            }
+            return self.get_item(sample_dict)
+
+    def __len__(self):
+        return len(self.ids)
+
+
 class TorchImageDataset(Dataset):
     """A :class:`torch:torch.utils.data.Dataset` of images.
 
@@ -2031,3 +2271,197 @@ def _load_image(image_path, use_numpy, force_rgb):
         img = img.convert("RGB")
 
     return img
+
+
+# taken from https://github.com/ppwwyyxx/RAM-multiprocess-dataloader/blob/795868a37446d61412b9a58dbb1b7c76e75d39c4/serialize.py#L19
+# as well as https://github.com/facebookresearch/detectron2/blob/main/detectron2/utils/comm.py
+class NumpySerializedList:
+    def __init__(self, lst: list):
+        def _serialize(data):
+            buffer = pickle.dumps(data, protocol=-1)
+            return np.frombuffer(buffer, dtype=np.uint8)
+
+        logger.info(
+            "Serializing {} elements to byte tensors and concatenating them all ...".format(
+                len(lst)
+            )
+        )
+        self._lst = [_serialize(x) for x in lst]
+        self._addr = np.asarray([len(x) for x in self._lst], dtype=np.int64)
+        self._addr = np.cumsum(self._addr)
+        self._lst = np.concatenate(self._lst)
+        logger.info(
+            "Serialized dataset takes {:.2f} MiB".format(
+                len(self._lst) / 1024**2
+            )
+        )
+
+    def __len__(self):
+        return len(self._addr)
+
+    def __getitem__(self, idx):
+        start_addr = 0 if idx == 0 else self._addr[idx - 1].item()
+        end_addr = self._addr[idx].item()
+        bytes = memoryview(self._lst[start_addr:end_addr])
+        return pickle.loads(bytes)
+
+
+class TorchSerializedList(NumpySerializedList):
+    def __init__(self, lst: list):
+        super().__init__(lst)
+        self._addr = torch.from_numpy(self._addr)
+        self._lst = torch.from_numpy(self._lst)
+
+    def __getitem__(self, idx):
+        start_addr = 0 if idx == 0 else self._addr[idx - 1].item()
+        end_addr = self._addr[idx].item()
+        bytes = memoryview(self._lst[start_addr:end_addr].numpy())
+        return pickle.loads(bytes)
+
+
+class TorchShmSerializedList(TorchSerializedList):
+    def __init__(self, lst: list, local_process_group):
+        if get_local_rank(local_process_group) == 0:
+            super().__init__(lst)
+            # Move data to shared memory, obtain a handle to send to each local worker.
+            # This is cheap because a tensor will only be moved to shared memory once.
+            handles = [None] + [
+                bytes(
+                    multiprocessing.reduction.ForkingPickler.dumps(
+                        (self._addr, self._lst)
+                    )
+                )
+                for _ in range(get_local_size(local_process_group) - 1)
+            ]
+        else:
+            handles = None
+        # Each worker receives the handle from local leader.
+        handle = local_scatter(handles, local_process_group)
+
+        if get_local_rank(local_process_group) > 0:
+            # Materialize the tensor from shared memory.
+            (
+                self._addr,
+                self._lst,
+            ) = multiprocessing.reduction.ForkingPickler.loads(handle)
+            logger.info(
+                f"Worker {get_rank()} obtains a dataset of length="
+                f"{len(self)} from its local leader."
+            )
+
+
+def get_local_size(local_process_group) -> int:
+    """
+    Returns:
+        The size of the per-machine process group,
+        i.e. the number of processes per machine.
+    """
+    if not dist.is_available():
+        return 1
+    if not dist.is_initialized():
+        return 1
+    return dist.get_world_size(group=local_process_group)
+
+
+def get_local_rank(local_process_group) -> int:
+    """
+    Returns:
+        The rank of the current process within the local (per-machine) process group.
+    """
+    if not dist.is_available():
+        return 0
+    if not dist.is_initialized():
+        return 0
+    return dist.get_rank(group=local_process_group)
+
+
+def get_rank() -> int:
+    if not dist.is_available():
+        return 0
+    if not dist.is_initialized():
+        return 0
+    return dist.get_rank()
+
+
+def local_scatter(array: Optional[List[Any]], local_process_group):
+    """
+    Scatter an array from local leader to all local workers.
+    The i-th local worker gets array[i].
+
+    Args:
+        array: Array with same size of #local workers.
+    """
+    if get_local_size(local_process_group) == 1:
+        # Just one worker. Do nothing.
+        return array[0]
+    if get_local_rank(local_process_group) == 0:
+        assert len(array) == get_local_size(local_process_group)
+        all_gather(array)
+    else:
+        all_data = all_gather(None)
+        array = all_data[get_rank() - get_local_rank(local_process_group)]
+    return array[get_local_rank(local_process_group)]
+
+
+def all_gather(data, group=None):
+    """
+    Run all_gather on arbitrary picklable data (not necessarily tensors).
+
+    Args:
+        data: any picklable object
+        group: a torch process group. By default, will use a group which
+            contains all ranks on gloo backend.
+
+    Returns:
+        list[data]: list of data gathered from each rank
+    """
+    if get_world_size() == 1:
+        return [data]
+    if group is None:
+        group = (
+            _get_global_gloo_group()
+        )  # use CPU group by default, to reduce GPU RAM usage.
+    world_size = dist.get_world_size(group)
+    if world_size == 1:
+        return [data]
+
+    output = [None for _ in range(world_size)]
+    dist.all_gather_object(output, data, group=group)
+    return output
+
+
+def get_world_size() -> int:
+    if not dist.is_available():
+        return 1
+    if not dist.is_initialized():
+        return 1
+    return dist.get_world_size()
+
+
+@functools.lru_cache()
+def _get_global_gloo_group():
+    """
+    Return a process group based on gloo backend, containing all the ranks
+    The result is cached.
+    """
+    if dist.get_backend() == "nccl":
+        return dist.new_group(backend="gloo")
+    else:
+        return dist.group.WORLD
+
+
+# see https://github.com/ppwwyyxx/RAM-multiprocess-dataloader/issues/5
+def local_broadcast_process_authkey(local_process_group):
+    if get_local_size(local_process_group) == 1:
+        return
+    local_rank = get_local_rank(local_process_group)
+    authkey = bytes(torch.multiprocessing.current_process().authkey)
+    all_keys = all_gather(authkey, local_process_group)
+    local_leader_key = all_keys[torch.distributed.get_rank() - local_rank]
+    if authkey != local_leader_key:
+        logger.info(
+            "Process authkey is different from the key of local leader. This might happen when "
+            "workers are launched independently."
+        )
+        logger.info("Overwriting local authkey ...")
+        multiprocessing.current_process().authkey = local_leader_key

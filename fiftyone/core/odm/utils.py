@@ -115,6 +115,9 @@ def deserialize_value(value):
         # Serialized array in non-extended format
         return fou.deserialize_numpy_array(value)
 
+    if isinstance(value, list):
+        return [deserialize_value(v) for v in value]
+
     return value
 
 

@@ -3,7 +3,7 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-FiftyOne Teams 2.6.2
+FiftyOne Enterprise 2.6.2
 --------------------
 *Released March 12, 2025*
 
@@ -22,7 +22,7 @@ SDK
   that caused model evaluation to fail in certain cases
   `#5472 <https://github.com/voxel51/fiftyone/pull/5472>`_
 
-FiftyOne Teams 2.6.1
+FiftyOne Enterprise 2.6.1
 --------------------
 *Released February 28, 2025*
 
