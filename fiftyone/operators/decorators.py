@@ -203,7 +203,7 @@ def _get_ctx_from_args(args):
         if hasattr(arg, "dataset"):
             ctx_index = i
             break
-    return args[ctx_index], ctx_index
+    return args[ctx_index] if ctx_index >= 0 else None, ctx_index
 
 
 def _convert_args_to_dict(args):
