@@ -36,6 +36,7 @@ jobs:
           - "3.9"
           - "3.10"
           - "3.11"
+          - "3.12"
         exclude:
           - os: windows-latest
             python: "3.9"
@@ -43,6 +44,8 @@ jobs:
             python: "3.10"
           - os: windows-latest
             python: "3.11"
+          - os: windows-latest
+            python: "3.12"
     defaults:
       run:
         shell: bash
