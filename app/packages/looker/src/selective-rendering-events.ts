@@ -154,24 +154,6 @@ export class SelectiveRenderingEventBus extends EventTarget {
   }
 
   /**
-   * Removes an event listener for a specific event.
-   * @param eventName - The name of the event.
-   * @param callback - The callback to remove.
-   */
-  off(eventName: string, callback: EventCallback): void {
-    this.removeEventListener(eventName, callback as EventListener);
-  }
-
-  /**
-   * Registers a one-time event listener for a specific event.
-   * @param eventName - The name of the event to listen for.
-   * @param callback - The callback to invoke once when the event is fired.
-   */
-  once(eventName: string, callback: EventCallback): void {
-    this.addEventListener(eventName, callback as EventListener, { once: true });
-  }
-
-  /**
    * Removes all event listeners registered via this bus.
    */
   removeAllListeners(): void {
