@@ -178,7 +178,7 @@ class SidebarGroupDocument(EmbeddedDocument):
 
 
 class ActiveFields(EmbeddedDocument):
-    """Description of active fields in the App as definied by the sidebar's
+    """Description of active fields in the App as defined by the sidebar's
     checkboxes
 
     Args:
@@ -632,6 +632,9 @@ class DatasetAppConfig(EmbeddedDocument):
         return self != self.__class__()
 
     def _delete_path(self, path):
+        if self.active_fields:
+            _delete_path(self.active_fields.paths, path)
+
         if self.sidebar_groups:
             for sidebar_group in self.sidebar_groups:
                 _delete_path(sidebar_group.paths, path)
@@ -649,6 +652,9 @@ class DatasetAppConfig(EmbeddedDocument):
             self._delete_path(path)
 
     def _rename_path(self, path, new_path):
+        if self.active_fields:
+            _rename_path(self.active_fields.paths, path, new_path)
+
         if self.sidebar_groups:
             for sidebar_group in self.sidebar_groups:
                 _rename_path(sidebar_group.paths, path, new_path)
@@ -709,25 +715,39 @@ class DatasetAppConfig(EmbeddedDocument):
 
 
 def _make_default_active_fields(sample_collection):
-    # create sidebar groups as a simple way to find label fields
-    groups = _make_default_sidebar_groups(sample_collection)
-
-    paths = []
-    for group in groups:
-        if group.name == "labels" or group.name == "frame labels":
-            paths.extend(group.paths)
-
     active_fields = ActiveFields()
-    for path in paths:
-        if sample_collection.get_field(path).document_type == fol.Heatmap:
-            continue
-
-        if sample_collection.get_field(path).document_type == fol.Segmentation:
-            continue
-
-        active_fields.paths.append(path)
-
+    active_fields.paths = _get_non_dense_label_paths(sample_collection)
     return active_fields
+
+
+def _get_non_dense_label_paths(sample_collection):
+    schema = sample_collection.get_field_schema(flat=True)
+    if sample_collection._has_frame_fields():
+        schema.update(
+            {
+                sample_collection._FRAMES_PREFIX + k: v
+                for k, v in sample_collection.get_frame_field_schema(
+                    flat=True
+                ).items()
+            }
+        )
+
+    bad_roots = tuple(
+        k + "." for k, v in schema.items() if isinstance(v, ListField)
+    )
+
+    return [
+        path
+        for path, field in schema.items()
+        if (
+            isinstance(field, EmbeddedDocumentField)
+            and issubclass(field.document_type, fol.Label)
+            and not issubclass(
+                field.document_type, (fol.Segmentation, fol.Heatmap)
+            )
+            and not path.startswith(bad_roots)
+        )
+    ]
 
 
 def _make_default_sidebar_groups(sample_collection):
@@ -752,7 +772,7 @@ def _make_default_sidebar_groups(sample_collection):
     )
 
     # Parse frame fields
-    if sample_collection._contains_videos():
+    if sample_collection._has_frame_fields():
         schema = sample_collection.get_frame_field_schema()
         _parse_schema(
             schema,
