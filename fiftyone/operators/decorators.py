@@ -99,7 +99,7 @@ def dir_state(dirpath):
 
 
 def execution_cache(
-    ttl=90,
+    ttl=None,
     link_to_dataset=True,
     key_fn=None,
     store_name=None,
@@ -116,7 +116,7 @@ def execution_cache(
             cache keys.
 
     Args:
-        ttl (90): Time-to-live for the cached value in seconds.
+        ttl (None): Time-to-live for the cached value in seconds.
         link_to_dataset (True): Whether to tie the cache entry to the dataset
             (auto-cleans when the dataset is deleted).
         key_fn (None): A custom function to generate cache keys.
@@ -138,7 +138,7 @@ def execution_cache(
 
         # Using a custom key function
         def custom_key_fn(ctx, path, user_id):
-            return f"{path}-{user_id}"
+            return [path, user_id]
 
         @execution_cache(ttl=90, key_fn=custom_key_fn)
         def user_specific_query(ctx, path, user_id):
@@ -152,7 +152,7 @@ def execution_cache(
 
             if ctx_index == -1 or ctx_index > 1:
                 raise ValueError(
-                    f"@execution_cache requires the first argument to be an ExecutionContext. index={ctx_index}"
+                    f"@execution_cache requires the first argument to be an ExecutionContext"
                 )
 
             dataset_id = ctx.dataset._doc.id if link_to_dataset else None
@@ -163,28 +163,22 @@ def execution_cache(
                 raise ValueError("`store_name` must be a string if provided.")
 
             # Cache key
-            key_args = args[
+            cache_key_list = args[
                 ctx_index + 1 :
             ]  # Skip `ctx` and `self` if present
             if key_fn:
                 try:
-                    cache_key = key_fn(*args, **kwargs)
-                    if not isinstance(cache_key, str):
+                    cache_key_list = key_fn(*args, **kwargs)
+                    if not isinstance(cache_key_list, list):
                         raise ValueError(
-                            "Custom key function must return a string."
+                            "Custom key function must return a list."
                         )
                 except Exception as e:
                     raise ValueError(
-                        f"Custom key function failed in `{func.__name__}`: {e}"
+                        f"Failed to create custom cache key `{func.__name__}`: {e}"
                     )
-            else:
-                try:
-                    args_as_dict = _convert_args_to_dict(key_args)
-                    cache_key = json.dumps(args_as_dict, sort_keys=True)
-                except (TypeError, ValueError) as e:
-                    raise ValueError(
-                        f"Arguments to `{func.__name__}` are not serializable: {e}"
-                    )
+
+            cache_key = str(hashkey(_convert_args_to_dict(cache_key_list)))
 
             store = ExecutionStore.create(
                 store_name=resolved_store_name, dataset_id=dataset_id
@@ -215,7 +209,10 @@ def _get_ctx_from_args(args):
 def _convert_args_to_dict(args):
     result = []
     for arg in args:
-        if isinstance(arg, object) and hasattr(arg, "to_dict"):
-            result.append(arg.to_dict())
-        else:
-            result.append(arg)
+        if isinstance(arg, object):
+            if hasattr(arg, "to_dict"):
+                arg = arg.to_dict()
+            elif hasattr(arg, "to_json"):
+                arg = arg.to_json()
+
+        result.append(arg)
