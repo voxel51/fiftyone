@@ -15,6 +15,7 @@ export const labelTagCounts = selectorFamily<
         get(
           aggregation({
             extended,
+            isQueryPerformance: false,
             modal,
             path: `${path}.tags`,
             mixed: get(groupStatistics(modal)) === "group",
@@ -56,6 +57,7 @@ export const sampleTagCounts = selectorFamily<
       const data = get(
         aggregation({
           ...params,
+          isQueryPerformance: false,
           path: "tags",
           mixed: get(groupStatistics(params.modal)) === "group",
         })

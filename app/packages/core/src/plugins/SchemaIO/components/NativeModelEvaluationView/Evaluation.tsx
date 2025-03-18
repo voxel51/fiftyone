@@ -44,6 +44,7 @@ import {
 import get from "lodash/get";
 import React, { useEffect, useMemo, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
+import ActionMenu from "./ActionMenu";
 import Error from "./Error";
 import EvaluationIcon from "./EvaluationIcon";
 import EvaluationNotes from "./EvaluationNotes";
@@ -577,6 +578,7 @@ export default function Evaluation(props: EvaluationProps) {
               <Info />
             </ToggleButton>
           </ToggleButtonGroup>
+          <ActionMenu evaluationName={evaluation.info.key} />
         </Stack>
       </Stack>
 

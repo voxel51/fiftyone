@@ -24,7 +24,7 @@ export const computeActiveFields = (
     return allLabels.filter((label) => !denseLabels.includes(label));
   }
 
-  // if only include is defined
+  // if the paths are excluded
   if (config?.exclude) {
     return paths.filter((path) => !config.paths.includes(path));
   }

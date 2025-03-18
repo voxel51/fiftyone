@@ -3338,6 +3338,68 @@ class ViewStageTests(unittest.TestCase):
                     else:
                         self.assertEqual(lv.label, l.label)
 
+    def test_map_values(self):
+        self._setUp_classification()
+        self._setUp_detection()
+
+        mapping = {"friend": "enemy", "hex": "curse", "enemy": "friend"}
+
+        view = self.dataset.map_values("test_clf.label", mapping).map_values(
+            "test_det.label", mapping
+        )
+        it = zip(view, self.dataset)
+        for sv, s in it:
+            self.assertEqual(sv.test_clf.label, mapping[s.test_clf.label])
+            self.assertEqual(sv.test_det.label, mapping[s.test_det.label])
+
+        self._setUp_classifications()
+        self._setUp_detections()
+        view = self.dataset.map_values(
+            "test_clfs.classifications.label", mapping
+        ).map_values("test_dets.detections.label", mapping)
+        it = zip(view, self.dataset)
+        for sv, s in it:
+            clfs = zip(
+                sv.test_clfs.classifications, s.test_clfs.classifications
+            )
+            dets = zip(sv.test_dets.detections, s.test_dets.detections)
+            for f in (clfs, dets):
+                for lv, l in f:
+                    if l.label in mapping:
+                        self.assertEqual(lv.label, mapping[l.label])
+                    else:
+                        self.assertEqual(lv.label, l.label)
+
+    def test_map_values_none(self):
+        self._setUp_detection()
+        self._setUp_detections()
+
+        counts = self.dataset.count_values("test_det.index")
+        self.assertDictEqual(counts, {None: 2})
+
+        counts = self.dataset.count_values("test_dets.detections.index")
+        self.assertDictEqual(counts, {None: 7})
+
+        self.dataset.map_values("test_det.index", {None: 1}).map_values(
+            "test_dets.detections.index", {None: 1}
+        ).save()
+
+        counts = self.dataset.count_values("test_det.index")
+        self.assertDictEqual(counts, {1: 2})
+
+        counts = self.dataset.count_values("test_dets.detections.index")
+        self.assertDictEqual(counts, {1: 7})
+
+        self.dataset.map_values("test_det.index", {1: None}).map_values(
+            "test_dets.detections.index", {1: None}
+        ).save()
+
+        counts = self.dataset.count_values("test_det.index")
+        self.assertDictEqual(counts, {None: 2})
+
+        counts = self.dataset.count_values("test_dets.detections.index")
+        self.assertDictEqual(counts, {None: 7})
+
     def test_set_field(self):
         self._setUp_numeric()
 

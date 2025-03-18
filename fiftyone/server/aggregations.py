@@ -42,6 +42,7 @@ class AggregationForm:
     slices: t.Optional[t.List[str]]
     view: BSONArray
     view_name: t.Optional[str] = None
+    query_performance: t.Optional[bool] = False
 
 
 @gql.interface
@@ -53,8 +54,8 @@ class Aggregation:
 
 @gql.type
 class BooleanAggregation(Aggregation):
-    false: int
-    true: int
+    false: int = 0
+    true: int = 0
 
 
 @gql.type
@@ -70,11 +71,11 @@ class IntAggregation(Aggregation):
 
 @gql.type
 class FloatAggregation(Aggregation):
-    inf: int
+    inf: int = 0
     max: t.Optional[float]
     min: t.Optional[float]
-    nan: int
-    ninf: int
+    nan: int = 0
+    ninf: int = 0
 
 
 @gql.type
@@ -92,7 +93,7 @@ class StringAggregationValue:
 
 @gql.type
 class StringAggregation(Aggregation):
-    values: t.List[StringAggregationValue]
+    values: t.Optional[t.List[StringAggregationValue]] = None
 
 
 AggregateResult = gql.union(
@@ -141,7 +142,10 @@ async def aggregate_resolver(
         )
 
     aggregations, deserializers = zip(
-        *[_resolve_path_aggregation(path, view) for path in form.paths]
+        *[
+            _resolve_path_aggregation(path, view, form.query_performance)
+            for path in form.paths
+        ]
     )
     counts = [len(a) for a in aggregations]
     flattened = [item for sublist in aggregations for item in sublist]
@@ -209,10 +213,12 @@ async def _load_view(form: AggregationForm, slices: t.List[str]):
 
 
 def _resolve_path_aggregation(
-    path: str, view: foc.SampleCollection
+    path: str, view: foc.SampleCollection, query_performance: bool
 ) -> AggregateResult:
     aggregations: t.List[foa.Aggregation] = [
-        foa.Count(path if path and path != "" else None)
+        foa.Count(
+            path if path and path != "" else None, _optimize=query_performance
+        )
     ]
     field = view.get_field(path)
 
@@ -225,23 +231,26 @@ def _resolve_path_aggregation(
         else RootAggregation
     )
 
-    if meets_type(field, fof.BooleanField):
-        aggregations.append(foa.CountValues(path))
+    if not query_performance:
+        if meets_type(field, fof.BooleanField):
+            aggregations.append(foa.CountValues(path))
 
-    elif meets_type(field, (fof.DateField, fof.DateTimeField, fof.IntField)):
-        aggregations.append(foa.Bounds(path))
+        elif meets_type(
+            field, (fof.DateField, fof.DateTimeField, fof.IntField)
+        ):
+            aggregations.append(foa.Bounds(path))
 
-    elif meets_type(field, fof.FloatField):
-        aggregations.append(
-            foa.Bounds(
-                path,
-                safe=True,
-                _count_nonfinites=True,
+        elif meets_type(field, fof.FloatField):
+            aggregations.append(
+                foa.Bounds(
+                    path,
+                    safe=True,
+                    _count_nonfinites=True,
+                )
             )
-        )
 
-    elif meets_type(field, (fof.ObjectIdField, fof.StringField)):
-        aggregations.append(foa.CountValues(path, _first=LIST_LIMIT))
+        elif meets_type(field, (fof.ObjectIdField, fof.StringField)):
+            aggregations.append(foa.CountValues(path, _first=LIST_LIMIT))
 
     data = {"path": path}
 
