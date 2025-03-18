@@ -316,7 +316,7 @@ interface ReaderMethod {
 
 export interface ProcessSample {
   uuid: string;
-  sample: Sample & FrameSample;
+  sample: Sample | FrameSample;
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
   labelTagColors: LabelTagColor;
@@ -385,25 +385,25 @@ const processSample = async ({
   }
 
   // this usually only applies to thumbnail frame
+  // sample.frames, if defined, should have only one frame
   // other frames are processed in the stream (see `getSendChunk`)
-  if (sample.frames?.length) {
+  if (sample.frames?.length > 0) {
     const allFramePromises: ReturnType<typeof processLabels>[] = [];
-    for (const frame of sample.frames) {
-      allFramePromises.push(
-        processLabels(
-          frame,
-          coloring,
-          "frames.",
-          sources,
-          customizeColorSetting,
-          colorscale,
-          labelTagColors,
-          selectedLabelTags,
-          schema,
-          activePaths
-        )
-      );
-    }
+    debugger;
+    allFramePromises.push(
+      processLabels(
+        sample.frames[0],
+        coloring,
+        "frames.",
+        sources,
+        customizeColorSetting,
+        colorscale,
+        labelTagColors,
+        selectedLabelTags,
+        schema,
+        activePaths
+      )
+    );
     const framePromisesResolved = await Promise.all(allFramePromises);
     for (const [bitmapPromises, buffers] of framePromisesResolved) {
       if (bitmapPromises.length !== 0) {
