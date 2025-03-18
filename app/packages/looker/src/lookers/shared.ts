@@ -1,64 +1,15 @@
 import { ClassificationsOverlay } from "../overlays";
 import type { Overlay } from "../overlays/base";
-import type {
-  BaseState,
-  FrameState,
-  ImaVidState,
-  ImageState,
-  VideoState,
-} from "../state";
+import type { FrameState, ImaVidState, ImageState, VideoState } from "../state";
 
 import { zoomToContent } from "../zoom";
 
 import { getColor } from "@fiftyone/utilities";
-import _ from "lodash";
-import { hasColorChanged } from "../util";
 
 /**
  * Shared util functions used by all lookers
  */
 export const LookerUtils = {
-  shouldReloadSample: (
-    current: Readonly<BaseState["options"]>,
-    next: Readonly<Partial<BaseState["options"]>>
-  ): boolean => {
-    let reloadSample = false;
-
-    if (next.coloring && current.coloring.seed !== next.coloring.seed) {
-      reloadSample = true;
-    } else if (next.coloring && next.coloring.by !== current.coloring.by) {
-      reloadSample = true;
-    } else if (!_.isEmpty(_.xor(next.coloring?.pool, current.coloring?.pool))) {
-      reloadSample = true;
-    } else if (
-      hasColorChanged(next.customizeColorSetting, current.customizeColorSetting)
-    ) {
-      reloadSample = true;
-    } else if (
-      !_.isEmpty(_.xor(next.selectedLabelTags, current.selectedLabelTags)) ||
-      current.selectedLabelTags?.length !== next.selectedLabelTags?.length
-    ) {
-      reloadSample = true;
-    } else if (!_.isEqual(next.labelTagColors, current.labelTagColors)) {
-      reloadSample = true;
-    } else if (
-      next.coloring &&
-      hasColorChanged(
-        current.coloring.defaultMaskTargetsColors,
-        next.coloring.defaultMaskTargetsColors
-      )
-    ) {
-      reloadSample = true;
-    } else if (
-      !_.isEqual(next.coloring?.scale, current.coloring?.scale) ||
-      current.coloring?.scale?.length !== next.coloring?.scale?.length
-    ) {
-      reloadSample = true;
-    }
-
-    return reloadSample;
-  },
-
   toggleZoom: <
     State extends FrameState | ImageState | VideoState | ImaVidState
   >(

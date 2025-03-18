@@ -19,6 +19,7 @@ export type {
   LabelData,
   Point,
   Sample,
+  SampleOptions,
   VideoConfig,
   VideoOptions,
 } from "./state";

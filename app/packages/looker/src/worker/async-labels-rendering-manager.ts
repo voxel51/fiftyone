@@ -2,22 +2,24 @@ import {
   jotaiStore,
   numConcurrentRenderingLabels,
 } from "@fiftyone/state/src/jotai";
-import { Schema } from "@fiftyone/utilities";
+import type { Schema } from "@fiftyone/utilities";
 import { v4 as uuid } from "uuid";
-import type { ProcessSample, ProcessSampleOptions } from ".";
+import type { ProcessSample } from ".";
 import type { Coloring, Sample } from "..";
 import { LookerUtils } from "../lookers/shared";
 import { retrieveTransferables } from "../lookers/utils";
 import { accumulateOverlays } from "../overlays";
+import type { SampleOptions, Sources } from "../state";
 import { createWorker } from "../util";
 
 export type AsyncLabelsRenderingJob<S extends Sample = Sample> = {
   labels: string[];
-  options: ProcessSampleOptions;
+  options: SampleOptions;
   resolve: (data: Omit<WorkerResponse<S>, "uuid">) => void;
   reject: (error: Error) => void;
-  schema: Schema;
   sample: S;
+  schema: Schema;
+  sources: Sources;
 };
 
 export type AsyncJobResolutionResult<S extends Sample = Sample> = {
@@ -146,9 +148,11 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
 
   const workerArgs: ProcessSample & { method: "processSample" } = {
     method: "processSample",
-    sample: filteredSample as ProcessSample["sample"],
-    uuid: messageUuid,
     options: job.options,
+    sample: filteredSample as ProcessSample["sample"],
+    schema: job.schema,
+    sources: job.sources,
+    uuid: messageUuid,
   };
 
   const { overlays: filteredOverlays } = accumulateOverlays(
@@ -170,7 +174,7 @@ export class AsyncLabelsRenderingManager<S extends Sample = Sample> {
   enqueueLabelPaintingJob(
     item: Omit<AsyncLabelsRenderingJob<S>, "resolve" | "reject">
   ): Promise<AsyncJobResolutionResult<S>> {
-    const { sample, labels } = item;
+    const { labels, options, sample } = item;
 
     return new Promise<AsyncJobResolutionResult<S>>((resolve, reject) => {
       const pendingJob = pendingJobs.get(sample);
@@ -187,8 +191,9 @@ export class AsyncLabelsRenderingManager<S extends Sample = Sample> {
         options,
         resolve,
         reject,
-        schema,
         sample,
+        schema: item.schema,
+        sources: item.sources,
       };
       pendingJobs.set(sample, job);
       jobQueue.push(job);

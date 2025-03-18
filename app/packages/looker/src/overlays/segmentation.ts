@@ -18,6 +18,7 @@ import { isRgbMaskTargets, strokeCanvasRect, t } from "./util";
 
 interface SegmentationLabel extends BaseLabel {
   mask?: LabelMask;
+  mask_path?: string;
 }
 
 interface SegmentationInfo extends BaseLabel {

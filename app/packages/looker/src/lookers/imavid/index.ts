@@ -60,7 +60,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
           );
 
           if (newFieldsIfAny && currentFrameNumber > 0) {
-            this.refreshSample(newFieldsIfAny, currentFrameNumber);
+            this.refreshSample(newFieldsIfAny, undefined, currentFrameNumber);
           } else {
             // worst case, only here for fail-safe
             this.refreshSample();
@@ -221,20 +221,6 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     }
 
     return super.postProcess();
-  }
-
-  updateOptions(options: Partial<ImaVidState["options"]>) {
-    const reload = LookerUtils.shouldReloadSample(this.state.options, options);
-
-    if (reload) {
-      this.updater({ options, reloading: this.state.disabled });
-      if (this.config.thumbnail) {
-        // `useImavidModalSelectiveRendering` takes care of it for modal
-        this.updateSample(this.sample);
-      }
-    } else {
-      this.updater({ options, disabled: false });
-    }
   }
 
   refreshOverlaysToCurrentFrame() {

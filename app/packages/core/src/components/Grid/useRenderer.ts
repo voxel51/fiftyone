@@ -18,7 +18,12 @@ export default function ({
   store: SampleStore;
 }) {
   const lookerOptions = fos.useLookerOptions(false);
-  const createLooker = fos.useCreateLooker(false, true, lookerOptions);
+  const lookerColoring = fos.useSampleOptions(false);
+  const options = useMemo(
+    () => ({ ...lookerColoring, ...lookerOptions }),
+    [lookerColoring, lookerOptions]
+  );
+  const createLooker = fos.useCreateLooker(false, true, options);
   const getFontSize = useFontSize(id);
   const selectSample = useSelectSample(records);
 
@@ -83,6 +88,7 @@ export default function ({
   return {
     getFontSize,
     lookerOptions,
+    lookerColoring,
     renderer: useMemo(
       () => ({
         detachItem,

@@ -2,22 +2,21 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import type { Schema, Stage } from "@fiftyone/utilities";
 import {
   DENSE_LABELS,
   DETECTION,
   DETECTIONS,
   DYNAMIC_EMBEDDED_DOCUMENT,
   EMBEDDED_DOCUMENT,
+  LABEL_LIST,
+  VALID_LABEL_TYPES,
   getCls,
   getFetchFunction,
-  LABEL_LIST,
-  Schema,
   setFetchFunction,
-  Stage,
-  VALID_LABEL_TYPES,
 } from "@fiftyone/utilities";
 import { CHUNK_SIZE } from "../constants";
-import {
+import type {
   BaseConfig,
   Coloring,
   Colorscale,
@@ -26,17 +25,19 @@ import {
   FrameSample,
   LabelTagColor,
   Sample,
+  SampleOptions,
+  Sources,
 } from "../state";
 import { DeserializerFactory } from "./deserializer";
 import { decodeOverlayOnDisk } from "./disk-overlay-decoder";
 import { PainterFactory } from "./painter";
 import colorResolve from "./resolve-color";
 import {
-  getOverlayFieldFromCls,
-  mapId,
   RENDER_STATUS_DECODED,
   RENDER_STATUS_PAINTED,
   RENDER_STATUS_PENDING,
+  getOverlayFieldFromCls,
+  mapId,
 } from "./shared";
 import { process3DLabels } from "./threed-label-processor";
 
@@ -314,50 +315,30 @@ interface ReaderMethod {
   method: string;
 }
 
-export interface ProcessSampleOptions {
-  coloring: Coloring;
-  customizeColorSetting: CustomizeColor[];
-  labelTagColors: LabelTagColor;
-  colorscale: Colorscale;
-  selectedLabelTags: string[];
-  sources: { [path: string]: string };
-  schema: Schema;
-  activePaths: string[];
-}
 export interface ProcessSample {
+  options: SampleOptions;
   sample: Sample & FrameSample;
-  options: ProcessSampleOptions;
+  sources: Sources;
+  schema: Schema;
   uuid: string;
 }
 
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
 
 const processSample = async ({
-  sample,
   options: {
     coloring,
-    sources,
     customizeColorSetting,
     colorscale,
     selectedLabelTags,
     labelTagColors,
-    schema,
     activePaths,
   },
+  sample,
+  schema,
+  sources,
   uuid,
 }: ProcessSample) => {
-  if (!sample) {
-    // edge case where looker hasn't been associated with a sample yet
-    // but `updateSample` was called anyway, say, due to user switching colors
-    // as soon as the app loads but before grid is ready
-    postMessage({
-      method: "processSample",
-      uuid,
-      error: "sample not attached",
-    });
-    return;
-  }
-
   mapId(sample);
 
   const imageBitmapPromises: Promise<ImageBitmap[]>[] = [];
@@ -657,7 +638,7 @@ const setStream = ({
   schema,
   activePaths,
 }: SetStream) => {
-  stream && stream.cancel();
+  stream?.cancel();
   streamId = uuid;
 
   stream = createReader({

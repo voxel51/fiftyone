@@ -1,12 +1,11 @@
-import {
-  FrameLooker,
+import type {
   FrameOptions,
-  ImageLooker,
   ImageOptions,
-  VideoLooker,
+  Lookers,
+  SampleOptions,
   VideoOptions,
 } from "@fiftyone/looker";
-import { selectorFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
+import { selectorFamily, useRecoilValue } from "recoil";
 import * as atoms from "./atoms";
 import { attributeVisibility } from "./attributeVisibility";
 import * as colorAtoms from "./color";
@@ -16,18 +15,46 @@ import { pathFilter } from "./pathFilters";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import skeletonFilter from "./skeletonFilter";
-import { State } from "./types";
+import type { State } from "./types";
 import * as viewAtoms from "./view";
 
-type Lookers = FrameLooker | ImageLooker | VideoLooker;
+const lookerSampleOptions = selectorFamily({
+  key: "lookerSampleOptions",
+  get:
+    ({ modal }: { modal: boolean }) =>
+    ({ get }) => {
+      const activePaths = get(schemaAtoms.activeFields({ modal }));
+
+      const activeFilter = modal ? get(modalFilters) : get(filters);
+
+      const isLabelTagActive = activePaths.includes("_label_tags");
+      const colorscale = {
+        default: get(atoms.colorScheme).defaultColorscale ?? {},
+        fields: get(atoms.colorScheme).colorscales ?? [],
+      };
+      const activeVisibility = get(attributeVisibility);
+
+      return {
+        coloring: get(colorAtoms.coloring),
+        customizeColorSetting: get(atoms.colorScheme).fields ?? [],
+        labelTagColors: get(atoms.colorScheme).labelTags ?? {},
+        colorscale: colorscale,
+        selectedLabelTags: getActiveLabelTags(
+          isLabelTagActive,
+          activeFilter,
+          activeVisibility
+        ),
+      };
+    },
+});
 
 export const lookerOptions = selectorFamily<
   Partial<Omit<ReturnType<Lookers["getDefaultOptions"]>, "selected">>,
-  { withFilter: boolean; modal: boolean }
+  { modal: boolean }
 >({
   key: "gridLookerOptions",
   get:
-    ({ modal, withFilter }) =>
+    ({ modal }) =>
     ({ get }) => {
       const panels = get(atoms.lookerPanels);
       const showConfidence = get(
@@ -64,17 +91,8 @@ export const lookerOptions = selectorFamily<
         : {};
 
       const activePaths = get(schemaAtoms.activeFields({ modal }));
-      const activeFilter = withFilter
-        ? modal
-          ? get(modalFilters)
-          : get(filters)
-        : {};
+
       const activeVisibility = get(attributeVisibility);
-      const isLabelTagActive = activePaths.includes("_label_tags");
-      const colorscale = {
-        default: get(atoms.colorScheme).defaultColorscale ?? {},
-        fields: get(atoms.colorScheme).colorscales ?? [],
-      };
 
       return {
         showJSON: panels.json.isOpen,
@@ -88,19 +106,10 @@ export const lookerOptions = selectorFamily<
         activePaths,
         ...video,
         isPointcloudDataset: get(selectors.is3DDataset),
-        coloring: get(colorAtoms.coloring),
-        customizeColorSetting: get(atoms.colorScheme).fields ?? [],
-        labelTagColors: get(atoms.colorScheme).labelTags ?? {},
-        colorscale: colorscale,
         attributeVisibility: activeVisibility,
         ...get(atoms.savedLookerOptions),
         selectedLabels: [...get(selectors.selectedLabelIds)],
-        selectedLabelTags: getActiveLabelTags(
-          isLabelTagActive,
-          activeFilter,
-          activeVisibility
-        ),
-        filter: withFilter ? get(pathFilter(modal)) : undefined,
+        filter: get(pathFilter(modal)),
         zoom: get(viewAtoms.isPatchesView) && get(atoms.cropToContent(modal)),
         timeZone: get(selectors.timeZone),
         showOverlays: modal ? get(atoms.showOverlays) : true,
@@ -116,16 +125,14 @@ export const lookerOptions = selectorFamily<
     },
 });
 
+export const useSampleOptions = (modal: boolean): SampleOptions => {
+  return useRecoilValue(lookerSampleOptions({ modal }));
+};
+
 export const useLookerOptions = (
   modal: boolean
 ): Partial<Omit<FrameOptions | ImageOptions | VideoOptions, "selected">> => {
-  const loaded = useRecoilValueLoadable(
-    lookerOptions({ modal, withFilter: true })
-  );
-
-  const loading = useRecoilValue(lookerOptions({ modal, withFilter: false }));
-
-  return loaded.contents instanceof Promise ? loading : loaded.contents;
+  return useRecoilValue(lookerOptions({ modal }));
 };
 
 const getActiveLabelTags = (
@@ -134,8 +141,8 @@ const getActiveLabelTags = (
   activeVisibility: State.Filters
 ) => {
   if (!isLabelTagActive) return null;
-  const labelTagFilters = activeFilter["_label_tags"]?.values ?? [];
-  const labelTagVisibility = activeVisibility["_label_tags"]?.values ?? [];
+  const labelTagFilters = activeFilter._label_tags?.values ?? [];
+  const labelTagVisibility = activeVisibility._label_tags?.values ?? [];
   if (labelTagFilters.length === 0) return labelTagVisibility;
   if (labelTagVisibility.length === 0) return labelTagFilters;
   return labelTagFilters.filter((tag) => labelTagVisibility.includes(tag));

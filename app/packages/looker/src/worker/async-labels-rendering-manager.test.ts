@@ -1,21 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const dummyLooker = {
-  state: {
-    options: {
-      coloring: "blue",
-      customizeColorSetting: {},
-      colorscale: [],
-      labelTagColors: {},
-      selectedLabelTags: [],
-      activePaths: [],
-    },
-    config: {
-      sources: [],
-      fieldSchema: {},
-    },
-  },
-} as unknown as Lookers;
+const options = {
+  activePaths: [],
+  coloring: "blue",
+  colorscale: [],
+  customizeColorSetting: {},
+  labelTagColors: {},
+  schema: {},
+  selectedLabelTags: [],
+};
 
 const sample1 = { a: 1, b: 2, c: 3 };
 
@@ -31,7 +24,7 @@ const { DummyWorker } = vi.hoisted(() => {
           const event = new MessageEvent("message", {
             data: {
               sample: args.sample,
-              coloring: args.coloring,
+              coloring: args.options.coloring,
               uuid: args.uuid,
             },
           });
@@ -64,7 +57,6 @@ vi.mock("../util", () => {
   };
 });
 
-import { Lookers } from "@fiftyone/state";
 import {
   AsyncJobResolutionResult,
   AsyncLabelsRenderingManager,
@@ -76,7 +68,7 @@ describe("AsyncLabelsRenderingManager", () => {
 
   beforeEach(() => {
     _internal_resetForTests();
-    manager = new AsyncLabelsRenderingManager(dummyLooker);
+    manager = new AsyncLabelsRenderingManager();
   });
 
   afterEach(() => {
@@ -85,8 +77,9 @@ describe("AsyncLabelsRenderingManager", () => {
 
   it("should enqueue a new job and resolve with merged sample", async () => {
     const promise = manager.enqueueLabelPaintingJob({
-      sample: sample1,
       labels: ["a", "c"],
+      options,
+      sample: sample1,
     });
 
     const result: AsyncJobResolutionResult = await promise;
@@ -101,7 +94,11 @@ describe("AsyncLabelsRenderingManager", () => {
   it("isProcessing() should reflect jobs in the queue", async () => {
     expect(manager.isProcessing()).toBe(false);
 
-    manager.enqueueLabelPaintingJob({ sample: sample1, labels: ["a"] });
+    manager.enqueueLabelPaintingJob({
+      labels: ["a"],
+      options,
+      sample: sample1,
+    });
     expect(manager.isProcessing()).toBe(true);
 
     await new Promise((r) => setTimeout(r, 20));
@@ -121,8 +118,9 @@ describe("AsyncLabelsRenderingManager", () => {
     );
 
     const promise = manager.enqueueLabelPaintingJob({
-      sample: sample1,
       labels: ["a"],
+      options,
+      sample: sample1,
     });
 
     await expect(promise).rejects.toThrow("Test error");

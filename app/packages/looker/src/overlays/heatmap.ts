@@ -25,6 +25,7 @@ import { strokeCanvasRect, t } from "./util";
 
 interface HeatmapLabel extends BaseLabel {
   map?: LabelMask;
+  map_path?: string;
   range?: [number, number];
 }
 
