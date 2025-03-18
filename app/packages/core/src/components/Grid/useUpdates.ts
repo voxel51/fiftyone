@@ -1,4 +1,7 @@
-import { RENDER_STATUS_PAINTING } from "@fiftyone/looker/src/worker/shared";
+import {
+  RENDER_STATUS_PAINTING,
+  RENDER_STATUS_PENDING,
+} from "@fiftyone/looker/src/worker/shared";
 import type Spotlight from "@fiftyone/spotlight";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
@@ -23,7 +26,7 @@ const handleNewOverlays = (entry: fos.Lookers, newFields: string[]) => {
     if (overlay.label) {
       // "pending" means we're marking this label for rendering or
       // painting, even if it's interrupted, say by unchecking sidebar
-      overlay.label._renderStatus = RENDER_STATUS_PAINTING;
+      overlay.label._renderStatus = RENDER_STATUS_PENDING;
     }
   }
 
@@ -76,6 +79,12 @@ const useItemUpdater = (
         newFields?.length
           ? handleNewOverlays(entry, newFields)
           : handleChangedOverlays(entry);
+
+        entry.updateOptions({
+          ...options,
+          fontSize,
+          selected: selected.has(id.description),
+        });
       };
     },
     [cache, getNewFields, options, selected]
