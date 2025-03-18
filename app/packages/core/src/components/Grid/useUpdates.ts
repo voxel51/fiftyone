@@ -29,9 +29,12 @@ const handleNewOverlays = (entry: fos.Lookers, newFields: string[]) => {
 
   for (const overlay of changed) {
     if (overlay.label) {
-      // "pending" means we're marking this label for rendering or
-      // painting, even if it's interrupted, say by unchecking sidebar
-      overlay.label._renderStatus = RENDER_STATUS_PENDING;
+      // "pending" means we're marking this label for rendering or painting,
+      // even if it's interrupted, say by unchecking sidebar
+      overlay.label = {
+        ...overlay.label,
+        _renderStatus: RENDER_STATUS_PENDING,
+      };
     }
   }
 

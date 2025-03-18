@@ -45,7 +45,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
           this.uuid
         }-${currentFrameNumber}-${this.state.options.coloring.targets.join(
           "-"
-        )}`;
+        )}-${this.options.activePaths.join("-")}`;
 
         if (
           gridActivePathsLUT.has(thisFrameId) &&
