@@ -6,10 +6,10 @@ import * as THREE from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
+import { use3dLabelColor } from "../hooks/use-3d-label-color";
 import { useSimilarLabels3d } from "../hooks/use-similar-labels-3d";
 import { cuboidLabelLineWidthAtom } from "../state";
 import type { OverlayProps } from "./shared";
-
 extend({ LineSegments2, LineMaterial, LineSegmentsGeometry });
 
 export interface CuboidProps extends OverlayProps {
@@ -72,32 +72,28 @@ export const Cuboid = ({
 
   const isSimilarLabelHovered = useSimilarLabels3d(label);
 
-  const strokeColor = useMemo(() => {
-    const isHovered = isCuboidHovered || isSimilarLabelHovered;
-
-    // return "peach" color, a mix of orange and white
-    if (isHovered && selected) return "#de7e5d";
-
-    if (selected) return "orange";
-    if (isHovered) return "white";
-    return color;
-  }, [selected, isCuboidHovered, isSimilarLabelHovered, color]);
+  const strokeAndFillColor = use3dLabelColor({
+    isSelected: selected,
+    isHovered: isCuboidHovered,
+    isSimilarLabelHovered,
+    defaultColor: color,
+  });
 
   const material = useMemo(
     () =>
       new LineMaterial({
         opacity: opacity,
         transparent: false,
-        color: strokeColor,
+        color: strokeAndFillColor,
         linewidth: lineWidth,
       }),
     [
       selected,
       lineWidth,
-      color,
       opacity,
       isCuboidHovered,
       isSimilarLabelHovered,
+      strokeAndFillColor,
     ]
   );
 
@@ -128,9 +124,9 @@ export const Cuboid = ({
       <mesh position={loc} rotation={actualRotation}>
         <boxGeometry args={dimensions} />
         <meshBasicMaterial
-          transparent={true}
-          opacity={isSimilarLabelHovered ? opacity * 0.9 : opacity * 0.5}
-          color={strokeColor}
+          transparent={isSimilarLabelHovered ? false : true}
+          opacity={isSimilarLabelHovered ? 0.95 : opacity * 0.5}
+          color={strokeAndFillColor}
         />
       </mesh>
     </group>

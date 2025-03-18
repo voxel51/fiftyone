@@ -1,5 +1,6 @@
 import { IconButton, Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { isHoveringAnyLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowDropDownIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import ArrowUpIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
@@ -30,7 +31,7 @@ const TooltipDiv = animated(styled(ContentDiv)<{ $isTooltipLocked: boolean }>`
   left: -1000;
   top: -1000;
   z-index: 20000;
-  min-width: 13rem;
+  min-width: 15rem;
   pointer-events: ${(props) => (props.$isTooltipLocked ? "auto" : "none")};
 `);
 
@@ -535,25 +536,29 @@ const Header = ({ title }: { title: string }) => {
 };
 
 const CtrlToLock = () => {
+  const shouldShowSimilar = isHoveringAnyLabelWithInstanceConfig();
+
   return (
     <CtrlToLockContainer>
       <ShortcutRow>
-        <ShortcutAction variant="caption" color="gray" fontSize={"0.43em"}>
+        <ShortcutAction variant="caption" color="gray" fontSize={"0.5rem"}>
           Lock tooltip
         </ShortcutAction>
         <ShortcutKey>
           <KeyboardKey>Ctrl</KeyboardKey>
         </ShortcutKey>
       </ShortcutRow>
-      <ShortcutRow>
-        <ShortcutAction variant="caption" color="gray" fontSize={"0.43em"}>
-          Select similar
-        </ShortcutAction>
-        <ShortcutKey>
-          <KeyboardKey>Shift</KeyboardKey>
-          <KeyboardKey>Click</KeyboardKey>
-        </ShortcutKey>
-      </ShortcutRow>
+      {shouldShowSimilar && (
+        <ShortcutRow>
+          <ShortcutAction variant="caption" color="gray" fontSize={"0.5rem"}>
+            Select similar
+          </ShortcutAction>
+          <ShortcutKey>
+            <KeyboardKey>Shift</KeyboardKey>
+            <KeyboardKey>Click</KeyboardKey>
+          </ShortcutKey>
+        </ShortcutRow>
+      )}
     </CtrlToLockContainer>
   );
 };
