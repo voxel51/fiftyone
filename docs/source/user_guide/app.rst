@@ -358,8 +358,8 @@ by toggling the corresponding checkboxes in the App's sidebar:
     :alt: app-fields
     :align: center
 
-You can also programmatically define a dataset's a default configuration for
-these checkboxes by setting the
+You can programmatically define a dataset's a default configuration for these
+checkboxes by setting the
 :class:`active_fields <fiftyone.core.odm.dataset.DatasetAppConfig>` property
 of the :ref:`dataset's App config <dataset-app-config>`:
 
