@@ -389,7 +389,6 @@ const processSample = async ({
   // other frames are processed in the stream (see `getSendChunk`)
   if (sample.frames?.length > 0) {
     const allFramePromises: ReturnType<typeof processLabels>[] = [];
-    debugger;
     allFramePromises.push(
       processLabels(
         sample.frames[0],

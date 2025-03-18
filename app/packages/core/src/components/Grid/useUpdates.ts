@@ -1,3 +1,4 @@
+import { VideoLooker } from "@fiftyone/looker";
 import {
   RENDER_STATUS_PAINTING,
   RENDER_STATUS_PENDING,
@@ -11,7 +12,11 @@ import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabe
 import type { LookerCache } from "./types";
 
 const handleNewOverlays = (entry: fos.Lookers, newFields: string[]) => {
-  const overlays = entry.getSampleOverlays() ?? [];
+  // todo: there should be consistency here between video looker and other looker
+  const overlays =
+    entry instanceof VideoLooker
+      ? entry.pluckedOverlays ?? []
+      : entry.getSampleOverlays() ?? [];
   const changed = overlays.filter(
     (o) =>
       o.field &&
