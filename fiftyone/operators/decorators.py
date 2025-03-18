@@ -216,3 +216,5 @@ def _convert_args_to_dict(args):
                 arg = arg.to_json()
 
         result.append(arg)
+
+    return result
