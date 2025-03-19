@@ -9,6 +9,7 @@ from copy import deepcopy
 import inspect
 import itertools
 import logging
+from typing import List, Any
 
 import numpy as np
 
@@ -40,7 +41,7 @@ def _compute_matches_single(
     tp_field=None,
     fp_field=None,
     fn_field=None,
-):
+) -> List[Any]:
     matches = []
     if processing_frames:
         docs = sample.frames.values()
@@ -240,7 +241,7 @@ def evaluate_detections(
     else:
         _samples = samples.select_fields([gt_field, pred_field])
 
-    def _map_fnc(sample):
+    def _map_fnc(sample) -> List[Any]:
         return _compute_matches_single(
             sample,
             eval_method,

@@ -136,8 +136,11 @@ class ProcessMapper(fomm.LocalMapper[T]):
                     if batch_count.value >= num_batches:
                         break
                 else:
+                    # Update progress bar
+                    pb.update()
+
                     if err is not None:
-                        # When skipping failures, simply yield the the
+                        # When skipping failures, simply yield the
                         # sample ID and the error.
                         if skip_failures:
                             yield sample_id, err, None
@@ -150,8 +153,6 @@ class ProcessMapper(fomm.LocalMapper[T]):
                     else:
                         # Yield successfully mapped sample
                         yield sample_id, None, result
-                finally:
-                    pb.update()
 
             queue.close()
             queue.join_thread()
@@ -225,6 +226,8 @@ def _init_worker(
 
 def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
     i, num_batches, batch = args
+    print("Starting worker with index:", i)
+    print("Num batches:", num_batches)
 
     try:
         sample_collection = batch.create_subset(process_sample_collection)
