@@ -52,7 +52,7 @@ function Grid() {
   });
 
   const { page, store } = useSpotlightPager({
-    clearRecords: pageReset,
+    clearRecords: reset,
     pageSelector: pageParameters,
     records,
     zoomSelector: gridCrop,

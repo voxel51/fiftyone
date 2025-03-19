@@ -10,9 +10,11 @@ import argparse
 from collections import defaultdict
 from cryptography.fernet import Fernet
 from datetime import datetime
+import fnmatch
 import json
 import os
 import signal
+import re
 import subprocess
 import sys
 import time
@@ -3107,6 +3109,9 @@ class OperatorsListCommand(Command):
         # List all available operators and panels
         fiftyone operators list
 
+        # List operators and panels whose URI matches the given glob pattern
+        fiftyone operators list --glob-patt '*/compute_*'
+
         # List enabled operators and panels
         fiftyone operators list --enabled
 
@@ -3122,6 +3127,12 @@ class OperatorsListCommand(Command):
 
     @staticmethod
     def setup(parser):
+        parser.add_argument(
+            "-g",
+            "--glob-patt",
+            metavar="PATT",
+            help="only show operators whose URI matches the glob pattern",
+        )
         parser.add_argument(
             "-e",
             "--enabled",
@@ -3194,16 +3205,26 @@ class OperatorsListCommand(Command):
         else:
             type = None
 
-        _print_operators_list(enabled, builtin, type, args.names_only)
+        _print_operators_list(
+            enabled, builtin, type, args.glob_patt, args.names_only
+        )
 
 
-def _print_operators_list(enabled, builtin, type, names_only):
+def _print_operators_list(enabled, builtin, type, glob_patt, names_only):
+    if glob_patt is not None:
+        regex = re.compile(fnmatch.translate(glob_patt))
+    else:
+        regex = None
+
     operators = foo.list_operators(enabled=enabled, builtin=builtin, type=type)
 
     if names_only:
         operators_map = defaultdict(list)
-        for operator in operators:
-            operators_map[operator.plugin_name].append(operator)
+        for op in operators:
+            if regex is not None and not regex.match(op.uri):
+                continue
+
+            operators_map[op.plugin_name].append(op)
 
         for pname, ops in operators_map.items():
             print(pname)
@@ -3218,6 +3239,9 @@ def _print_operators_list(enabled, builtin, type, names_only):
 
     rows = []
     for op in operators:
+        if regex is not None and not regex.match(op.uri):
+            continue
+
         rows.append(
             {
                 "uri": op.uri,
