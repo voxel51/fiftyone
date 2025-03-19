@@ -174,7 +174,7 @@ class TestUpdateFCV(unittest.TestCase):
 
         # Check that the warning is triggered for the oldest supported version
         mock_logger.warning.assert_any_call(
-            "You are running the oldest supported version of mongo. "
+            "You are running the oldest supported major version of mongodb. "
             "Please refer to https://deprecation.voxel51.com "
             "for deprecation notices."
         )
