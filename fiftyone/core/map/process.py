@@ -246,12 +246,13 @@ def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
             try:
                 sample_output = process_map_fcn(sample)
             except Exception as err:
-                if process_skip_failures:
-                    # Cancel other workers as soon as possible.
-                    process_cancel_event.set()
-
-                # Add sample ID and error to the queue.
-                process_queue.put((sample.id, err, None))
+                _process_worker_error(
+                    process_skip_failures,
+                    process_cancel_event,
+                    process_queue,
+                    sample.id,
+                    err,
+                )
 
                 if process_skip_failures:
                     break
@@ -263,7 +264,26 @@ def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
                 if process_sample_count is not None:
                     with process_sample_count.get_lock():
                         process_sample_count.value += 1
+    except Exception as err:
+        _process_worker_error(
+            process_skip_failures,
+            process_cancel_event,
+            process_queue,
+            None,
+            err,
+        )
     finally:
         if process_batch_count is not None:
             with process_batch_count.get_lock():
                 process_batch_count.value += 1
+
+
+def _process_worker_error(
+    process_skip_failures, process_cancel_event, process_queue, sample_id, err
+):
+    if process_skip_failures:
+        # Cancel other workers as soon as possible.
+        process_cancel_event.set()
+
+    # Add sample ID and error to the queue.
+    process_queue.put((sample_id, err, None))
