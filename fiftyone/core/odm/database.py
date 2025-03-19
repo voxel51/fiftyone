@@ -35,7 +35,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.migrations as fom
-from fiftyone.core.config import FiftyOneConfigError
+from fiftyone.core.config import FiftyOneConfig, FiftyOneConfigError
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 
@@ -215,6 +215,7 @@ def establish_db_conn(config):
         **_connection_kwargs, appname=foc.DATABASE_APPNAME
     )
     _validate_db_version(config, _client)
+    _update_fc_version(config.database_validation, _client)
 
     # Register cleanup method
     atexit.register(_delete_non_persistent_datasets_if_allowed)
@@ -229,10 +230,6 @@ def establish_db_conn(config):
         )
 
     if os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
-        if _db_service is not None and db_config.type == foc.CLIENT_TYPE:
-            # if this is a fiftyone-managed database and the database type
-            # is fiftyone, try to upgrade the feature compatibility version
-            _update_fc_version(_client)
         fom.migrate_database_if_necessary(config=db_config)
 
 
@@ -358,7 +355,7 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
 
         -   If both the server's version and FCV are the oldest supported
             version, warn about any upcoming deprecations
-        -   If the FCV isgreater than the server version, warn that this is an
+        -   If the FCV is greater than the server version, warn that this is an
             unexpected
         -   If the major versions between server and FCV is greater than we can
             handle, warn that this is unexpected
@@ -367,7 +364,8 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
     differ by two or more major versions, so this check may be redundant.
 
     Args:
-        client: a ``pymongo.MongoClient`` to connect to the database
+        fc_version: a ``packaging.Version`` representing the FCV
+        server_version: a ``packaging.Version`` representing the Server's version
 
     Returns:
         whether a version upgrade is possible
@@ -375,32 +373,44 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
 
     _logger = _get_logger()
 
-    if (fc_version == foc.MIN_MONGODB_VERSION) and (
-        server_version == foc.MIN_MONGODB_VERSION
-    ):
-        _logger.warning(
-            "You are running the oldest supported version of mongo. "
-            "Please refer to https://deprecation.voxel51.com "
-            "for deprecation notices."
-        )
-        return False
-
-    elif fc_version > server_version:
+    if fc_version > server_version:
         _logger.warning(
             "Your MongoDB feature compatibility is greater than your "
             "server version. "
             "This may result in unexpected consequences. "
             "Please manually update your database's feature compatibility "
-            "version."
+            "version. You can suppress this exception by setting your "
+            "`database_validation` config parameter to `False`. See "
+            "https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection "
+            "for more information"
         )
         return False
 
-    elif server_version.major - fc_version.major > foc.MAX_ALLOWABLE_FCV_DELTA:
+    elif (fc_version.major == foc.MIN_MONGODB_VERSION.major) and (
+        server_version.major == foc.MIN_MONGODB_VERSION.major
+    ):
+        _logger.warning(
+            "You are running the oldest supported major version of mongodb. "
+            "Please refer to https://deprecation.voxel51.com "
+            "for deprecation notices. You can suppress this exception by setting your "
+            "`database_validation` config parameter to `False`. See "
+            "https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection "
+            "for more information"
+        )
+        return False
+
+    elif (
+        server_version.major - fc_version.major
+        > foc.MONGODB_MAX_ALLOWABLE_FCV_DELTA
+    ):
         _logger.warning(
             "Your MongoDB server version is more than %s "
             "ahead of your database's feature compatibility version. "
             "Please manually update your database's feature "
-            "compatibility version." % str(foc.MAX_ALLOWABLE_FCV_DELTA)
+            "compatibility version. You can suppress this exception by setting your "
+            "`database_validation` config parameter to `False`. See "
+            "https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection "
+            "for more information" % str(foc.MONGODB_MAX_ALLOWABLE_FCV_DELTA)
         )
         return False
 
@@ -410,7 +420,7 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
     return False
 
 
-def _update_fc_version(client: pymongo.MongoClient):
+def _update_fc_version(database_validation: bool, client: pymongo.MongoClient):
     """Updates a database's feature compatibility version (FCV) if possible.
 
     Checks to see if a version upgrade for the FCV is required and possible.
@@ -420,13 +430,20 @@ def _update_fc_version(client: pymongo.MongoClient):
     differ by two or more major versions, so this check may be redundant.
 
     Args:
+        database_validation: a ``bool`` representing if DB validation is enabled
         client: a ``pymongo.MongoClient`` to connect to the database
     """
+
+    global _db_service
 
     fc_version, server_version = _get_fcv_and_version(client)
     _logger = _get_logger()
 
-    if _is_fcv_upgradeable(fc_version, server_version):
+    if (
+        database_validation
+        and _is_fcv_upgradeable(fc_version, server_version)
+        and _db_service is not None
+    ):
         bumped = f"{server_version.major}.0"
         cmd = {"setFeatureCompatibilityVersion": bumped}
 
@@ -441,7 +458,11 @@ def _update_fc_version(client: pymongo.MongoClient):
             _logger.warning(
                 "Your MongoDB server version is newer than your feature "
                 "compatibility version. "
-                "Upgrading the feature compatibility version now."
+                "Upgrading the feature compatibility version now. "
+                "You can suppress this exception by setting your "
+                "`database_validation` config parameter to `False`. See "
+                "https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection "
+                "for more information"
             )
             client.admin.command(cmd)
 
@@ -449,14 +470,22 @@ def _update_fc_version(client: pymongo.MongoClient):
             _logger.error(
                 "Operation failed while updating database's feature "
                 "compatibility version - %s. "
-                "Please manually set it to %s." % (str(e), bumped)
+                "Please manually set it to %s. "
+                "You can suppress this exception by setting your "
+                "`database_validation` config parameter to `False`. See "
+                "https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection "
+                "for more information" % (str(e), bumped)
             )
 
         except PyMongoError as e:
             _logger.error(
                 "MongoDB error while updating database's feature "
                 "compatibility version - %s. "
-                "Please manually set it to %s." % (str(e), bumped)
+                "Please manually set it to %s. "
+                "You can suppress this exception by setting your "
+                "`database_validation` config parameter to `False`. See "
+                "https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection "
+                "for more information" % (str(e), bumped)
             )
 
 
