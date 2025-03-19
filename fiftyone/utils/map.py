@@ -13,7 +13,7 @@ import fiftyone.core.map as focm
 
 def map_samples(
     sample_collection,
-    map_fcn: Callable[[Any], None],
+    map_fcn: Callable[[Any], Any],
     workers: Optional[int] = None,
     batch_method: str = "id",
     progress: Optional[Union[bool, Literal["worker"]]] = None,
