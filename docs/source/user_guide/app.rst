@@ -352,11 +352,46 @@ Using the sidebar
 _________________
 
 Any labels, tags, and scalar fields can be overlaid on the samples in the App
-by toggling the corresponding display options in the App's sidebar:
+by toggling the corresponding checkboxes in the App's sidebar:
 
 .. image:: /images/app/app-fields.gif
     :alt: app-fields
     :align: center
+
+You can programmatically define a dataset's a default configuration for these
+checkboxes by setting the
+:class:`active_fields <fiftyone.core.odm.dataset.DatasetAppConfig>` property
+of the :ref:`dataset's App config <dataset-app-config>`:
+
+.. code-block:: python
+    :linenos:
+
+    # By default all label fields excluding Heatmap and Segmentation are active
+    active_fields = fo.DatasetAppConfig.default_active_fields(dataset)
+
+    # Add filepath and id fields
+    active_fields.paths.extend(["id", "filepath"])
+
+    # Active fields can be inverted setting exclude to True
+    # active_fields.exclude = True
+
+    # Modify the dataset's App config
+    dataset.app_config.active_fields = active_fields
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
+
+You can conveniently reset the active fields to their default state by setting
+:class:`active_fields <fiftyone.core.odm.dataset.DatasetAppConfig>` to `None`:
+
+.. code-block:: python
+    :linenos:
+
+    # Reset active fields
+    dataset.app_config.active_fields = None
+    dataset.save()  # must save after edits
+
+    session = fo.launch_app(dataset)
 
 If you have :ref:`stored metadata <storing-field-metadata>` on your fields,
 then you can view this information in the App by hovering over field or

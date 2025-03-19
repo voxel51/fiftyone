@@ -58,9 +58,9 @@ DATASET_FILTER_STAGE = [{"$match": DATASET_FILTER[0]}]
 
 
 @gql.type
-class FieldVisibilityConfig:
-    include: t.Optional[t.List[str]]
-    exclude: t.Optional[t.List[str]]
+class ActiveFields:
+    exclude: t.Optional[bool]
+    paths: t.Optional[t.List[str]]
 
 
 @gql.type
@@ -213,8 +213,8 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 
 @gql.type
 class DatasetAppConfig:
+    active_fields: t.Optional[ActiveFields]
     color_scheme: t.Optional[ColorScheme]
-    default_visibility_labels: t.Optional[FieldVisibilityConfig]
     disable_frame_filtering: t.Optional[bool] = None
     dynamic_groups_target_frame_rate: int = 30
     grid_media_field: str = "filepath"
@@ -256,7 +256,7 @@ class Dataset:
     info: t.Optional[JSON]
 
     estimated_frame_count: t.Optional[int]
-    estimated_sample_count: t.Optional[int]
+    estimated_sample_count: int
     frame_indexes: t.Optional[t.List[Index]]
     sample_indexes: t.Optional[t.List[Index]]
 
@@ -432,7 +432,7 @@ class Query(fosa.AggregateQuery):
     async def estimated_dataset_count(self, info: Info = None) -> int:
         return await info.context.db.datasets.estimated_document_count()
 
-    dataset: Dataset = gql.field(resolver=Dataset.resolver)
+    dataset = gql.field(resolver=Dataset.resolver)
     datasets: Connection[Dataset, str] = gql.field(
         resolver=get_paginator_resolver(
             Dataset, "created_at", DATASET_FILTER_STAGE, "datasets"
