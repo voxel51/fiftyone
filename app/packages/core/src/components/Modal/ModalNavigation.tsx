@@ -2,8 +2,9 @@ import {
   LookerArrowLeftIcon,
   LookerArrowRightIcon,
 } from "@fiftyone/components";
+import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
 import { createDebouncedNavigator } from "./debouncedNavigator";
@@ -80,7 +81,10 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
         navigateFn: async (offset) => {
           const navigation = fos.modalNavigation.get();
           if (navigation) {
-            return await navigation.next(offset).then(setModal);
+            return await navigation.next(offset).then((s) => {
+              selectiveRenderingEventBus.removeAllListeners();
+              setModal(s);
+            });
           }
         },
         onNavigationStart: closePanels,
@@ -96,7 +100,10 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
         navigateFn: async (offset) => {
           const navigation = fos.modalNavigation.get();
           if (navigation) {
-            return await navigation.previous(offset).then(setModal);
+            return await navigation.previous(offset).then((s) => {
+              selectiveRenderingEventBus.removeAllListeners();
+              setModal(s);
+            });
           }
         },
         onNavigationStart: closePanels,

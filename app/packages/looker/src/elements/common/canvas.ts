@@ -45,10 +45,15 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
 
           if (!moved && overlays.length) {
             const top = overlays[0];
+            const isShiftPressed = event.shiftKey;
+
             top.containsPoint(state) &&
               dispatchEvent("select", {
                 ...top.getSelectData(state),
-                sampleId: sample.id,
+                sampleId: sample.id ?? sample._id,
+                instanceId: top.label.instance_config?._id,
+                instanceName: top.label.instance_config?.name,
+                isShiftPressed,
               });
           }
         });
