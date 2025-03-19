@@ -379,7 +379,7 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
         server_version.major == foc.MIN_MONGODB_VERSION.major
     ):
         _logger.warning(
-            "You are running the oldest supported major version of mongoDB. "
+            "You are running the oldest supported major version of mongodb. "
             "Please refer to https://deprecation.voxel51.com "
             "for deprecation notices."
         )
