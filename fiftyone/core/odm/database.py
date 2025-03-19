@@ -35,7 +35,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.migrations as fom
-from fiftyone.core.config import FiftyOneConfig, FiftyOneConfigError
+from fiftyone.core.config import FiftyOneConfigError
 import fiftyone.core.service as fos
 import fiftyone.core.utils as fou
 
