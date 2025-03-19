@@ -54,7 +54,7 @@ def map_samples(
 
 def update_samples(
     sample_collection,
-    update_fcn: Callable[[Any], None],
+    update_fcn: Callable[[Any], Any],
     workers: Optional[int] = None,
     batch_method: str = "id",
     progress: Optional[Union[bool, Literal["worker"]]] = None,
