@@ -358,7 +358,7 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
 
         -   If both the server's version and FCV are the oldest supported
             version, warn about any upcoming deprecations
-        -   If the FCV isgreater than the server version, warn that this is an
+        -   If the FCV is greater than the server version, warn that this is an
             unexpected
         -   If the major versions between server and FCV is greater than we can
             handle, warn that this is unexpected
