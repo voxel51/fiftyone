@@ -170,10 +170,6 @@ CLI
   list CLI commands
   `#5438 <https://github.com/voxel51/fiftyone/pull/5438>`_
 
-Brain
-
-- Added Pgvector integration for vector search
-
 Annotation
 
 - Updated the CVAT integration to support setting the rotation of 
@@ -184,10 +180,30 @@ Annotation
   for annotation backends.
   `#5502 <https://github.com/voxel51/fiftyone/pull/5502>`_
 
+Brain
+
+- Added PGVector integration for vector search
+  `#234 <https://github.com/voxel51/fiftyone-brain/pull/234>`_
+  `#222 <https://github.com/voxel51/fiftyone-brain/pull/222>`_
+- Added Mosaic integration for vector search
+  `#233 <https://github.com/voxel51/fiftyone-brain/pull/233>`_
+- Added optional ``create_index=True`` and ``points_field`` arguments 
+  to ``compute_visualization()`` to allow users to request that the 
+  visualization points are stored directly on the samples of their 
+  dataset, which allows for optimized lasso queries in the App.
+  `#236 <https://github.com/voxel51/fiftyone-brain/pull/236>`_
+- Fixed
+  `#237 <https://github.com/voxel51/fiftyone-brain/pull/237>`_
+  by always registering full dataset for similarity indexes.
+  `#238 <https://github.com/voxel51/fiftyone-brain/pull/238>`_
+- Fixed Redis vector search only returning 10 results
+  `#240 <https://github.com/voxel51/fiftyone-brain/pull/240>`_
+
 Docs
 
-- Fixed some documentation typos
-  `#5558 <https://github.com/voxel51/fiftyone/pull/5558>`_
+- Fixed some documentation typos / broken links
+  `#5558 <https://github.com/voxel51/fiftyone/pull/5558>`_, 
+  `#235 <https://github.com/voxel51/fiftyone-brain/pull/235>`_
 
 FiftyOne Enterprise 2.6.2
 --------------------
