@@ -327,7 +327,7 @@ class TestUpdateFCV(unittest.TestCase):
                         _update_fc_version(False, mock_client)
 
                         # Should issue a get to the fcv, but not a subsequent update
-                        mock_admin.command.call_count == 1
+                        assert mock_admin.command.call_count == 1
 
                         mock_logger.warning.assert_not_called()
 
@@ -360,7 +360,7 @@ class TestUpdateFCV(unittest.TestCase):
         _update_fc_version(True, mock_client)
 
         # Should issue a get to the fcv, but not a subsequent update
-        mock_admin.command.call_count == 1
+        assert mock_admin.command.call_count == 1
 
         # Check that the warning is triggered for FCV greater than server version
         mock_logger.warning.assert_any_call(
