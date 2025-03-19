@@ -60,7 +60,7 @@ class TestUpdateFCV(unittest.TestCase):
                         }
 
                         # Call the function to test
-                        _update_fc_version(True, mock_client)
+                        _update_fc_version(True, "fiftyone", mock_client)
 
                         # Check that the FCV update attempt was made with the correct version
                         expected_call = self._get_expected_update_call(
@@ -90,7 +90,7 @@ class TestUpdateFCV(unittest.TestCase):
         )
 
         with self.assertRaises(ConnectionError):
-            _update_fc_version(True, mock_client)
+            _update_fc_version(True, "fiftyone", mock_client)
 
     @patch("fiftyone.core.odm.database._db_service")
     @patch("pymongo.MongoClient")
@@ -118,7 +118,7 @@ class TestUpdateFCV(unittest.TestCase):
         }
 
         # Call the function
-        _update_fc_version(True, mock_client)
+        _update_fc_version(True, "fiftyone", mock_client)
 
         # Check that the warning is triggered due to a large version difference
         mock_logger.warning.assert_any_call(
@@ -158,7 +158,7 @@ class TestUpdateFCV(unittest.TestCase):
         }
 
         # Call the function
-        _update_fc_version(True, mock_client)
+        _update_fc_version(True, "fiftyone", mock_client)
 
         # Check that the warning is triggered for FCV greater than server version
         mock_logger.warning.assert_any_call(
@@ -199,7 +199,7 @@ class TestUpdateFCV(unittest.TestCase):
         }
 
         # Call the function
-        _update_fc_version(True, mock_client)
+        _update_fc_version(True, "fiftyone", mock_client)
 
         # Check that the warning is triggered for the oldest supported version
         mock_logger.warning.assert_any_call(
@@ -237,7 +237,7 @@ class TestUpdateFCV(unittest.TestCase):
 
         # Call the function
 
-        _update_fc_version(True, mock_client)
+        _update_fc_version(True, "fiftyone", mock_client)
 
         # Check that the warning is triggered for the oldest supported version
         mock_logger.error.assert_any_call(
@@ -275,7 +275,7 @@ class TestUpdateFCV(unittest.TestCase):
 
         # Call the function
 
-        _update_fc_version(True, mock_client)
+        _update_fc_version(True, "fiftyone", mock_client)
 
         # Check that the warning is triggered for the oldest supported version
         mock_logger.error.assert_any_call(
@@ -324,7 +324,7 @@ class TestUpdateFCV(unittest.TestCase):
                         }
 
                         # Call the function to test
-                        _update_fc_version(False, mock_client)
+                        _update_fc_version(False, "fiftyone", mock_client)
 
                         # Should issue a get to the fcv, but not a subsequent update
                         assert mock_admin.command.call_count == 1
@@ -357,7 +357,51 @@ class TestUpdateFCV(unittest.TestCase):
         }
 
         # Call the function
-        _update_fc_version(True, mock_client)
+        _update_fc_version(True, "fiftyone", mock_client)
+
+        # Should issue a get to the fcv, but not a subsequent update
+        assert mock_admin.command.call_count == 1
+
+        # Check that the warning is triggered for FCV greater than server version
+        mock_logger.warning.assert_any_call(
+            "Your MongoDB feature compatibility is greater than your "
+            "server version. "
+            "This may result in unexpected consequences. "
+            "Please manually update your database's feature compatibility "
+            "version. "
+            "You can suppress this exception by setting your "
+            "`database_validation` config parameter to `False`. See "
+            "https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection "
+            "for more information"
+        )
+
+    @patch("fiftyone.core.odm.database._db_service")
+    @patch("pymongo.MongoClient")
+    @patch("fiftyone.core.odm.database._get_logger")
+    def test_no_action_unless_client_type(
+        self, mock_get_logger, mock_client, mock_db_service
+    ):
+
+        mock_db_service = {}
+
+        server_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.0.0")
+        fc_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.1.0")
+
+        # Set up the mock client and server info
+        mock_admin = MagicMock()
+        mock_client.admin = mock_admin
+        mock_client.server_info.return_value = {"version": str(server_version)}
+
+        mock_get_logger.return_value = MagicMock()
+        mock_logger = mock_get_logger.return_value
+
+        # Mock the command responses
+        mock_admin.command.return_value = {
+            "featureCompatibilityVersion": {"version": str(fc_version)}
+        }
+
+        # Call the function
+        _update_fc_version(True, "fiftyone-enterprise", mock_client)
 
         # Should issue a get to the fcv, but not a subsequent update
         assert mock_admin.command.call_count == 1
