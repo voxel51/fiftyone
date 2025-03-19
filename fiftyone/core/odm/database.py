@@ -447,8 +447,7 @@ def _update_fc_version(
         database_validation
         and _is_fcv_upgradeable(fc_version, server_version)
         and _db_service is not None
-        and client_type
-        == "fiftyone"  # Ensure this is not run from a FOT context
+        and client_type == "fiftyone"
     ):
         bumped = f"{server_version.major}.0"
         cmd = {"setFeatureCompatibilityVersion": bumped}
