@@ -9,9 +9,7 @@ from packaging.version import Version
 from typing import Dict, Union
 
 import fiftyone.constants as foc
-from fiftyone.core.odm.database import (
-    _update_fc_version,
-)  # Replace with your actual import path
+from fiftyone.core.odm.database import _update_fc_version
 
 
 class TestUpdateFCV(unittest.TestCase):
