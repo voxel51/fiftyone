@@ -136,8 +136,11 @@ class ProcessMapper(fomm.LocalMapper[T]):
                     if batch_count.value >= num_batches:
                         break
                 else:
+                    # Update progress bar
+                    pb.update()
+
                     if err is not None:
-                        # When skipping failures, simply yield the the
+                        # When skipping failures, simply yield the
                         # sample ID and the error.
                         if skip_failures:
                             yield sample_id, err, None
@@ -150,8 +153,6 @@ class ProcessMapper(fomm.LocalMapper[T]):
                     else:
                         # Yield successfully mapped sample
                         yield sample_id, None, result
-                finally:
-                    pb.update()
 
             queue.close()
             queue.join_thread()
@@ -243,12 +244,13 @@ def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
             try:
                 sample_output = process_map_fcn(sample)
             except Exception as err:
-                if process_skip_failures:
-                    # Cancel other workers as soon as possible.
-                    process_cancel_event.set()
-
-                # Add sample ID and error to the queue.
-                process_queue.put((sample.id, err, None))
+                _process_worker_error(
+                    process_skip_failures,
+                    process_cancel_event,
+                    process_queue,
+                    sample.id,
+                    err,
+                )
 
                 if process_skip_failures:
                     break
@@ -264,3 +266,14 @@ def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
         if process_batch_count is not None:
             with process_batch_count.get_lock():
                 process_batch_count.value += 1
+
+
+def _process_worker_error(
+    process_skip_failures, process_cancel_event, process_queue, sample_id, err
+):
+    if process_skip_failures:
+        # Cancel other workers as soon as possible.
+        process_cancel_event.set()
+
+    # Add sample ID and error to the queue.
+    process_queue.put((sample_id, err, None))
