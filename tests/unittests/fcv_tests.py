@@ -24,7 +24,8 @@ class TestUpdateFCV(unittest.TestCase):
 
         return expected
 
-    def test_update_fcv_success(self):
+    @patch("fiftyone.core.odm.database._db_service")
+    def test_update_fcv_success(self, mock_db_service):
         test_cases = [
             (Version("5.0.4"), Version("4.4")),
             (Version("6.0.4"), Version("5.4")),
@@ -32,7 +33,7 @@ class TestUpdateFCV(unittest.TestCase):
             (Version("8.0.4"), Version("7.4")),
         ]
 
-        fo.core.odm.database._db_service = {}
+        mock_db_service = {}
 
         for server_version, fc_version in test_cases:
             with self.subTest(
@@ -77,10 +78,11 @@ class TestUpdateFCV(unittest.TestCase):
                             "for more information"
                         )
 
+    @patch("fiftyone.core.odm.database._db_service")
     @patch("pymongo.MongoClient")
-    def test_connection_error(self, mock_client):
+    def test_connection_error(self, mock_client, mock_db_service):
 
-        fo.core.odm.database._db_service = {}
+        mock_db_service = {}
 
         # Simulate a connection error by raising ServerSelectionTimeoutError
         mock_client.admin.command.side_effect = ServerSelectionTimeoutError(
@@ -90,12 +92,15 @@ class TestUpdateFCV(unittest.TestCase):
         with self.assertRaises(ConnectionError):
             _update_fc_version(True, mock_client)
 
+    @patch("fiftyone.core.odm.database._db_service")
     @patch("pymongo.MongoClient")
     @patch("fiftyone.core.odm.database._get_logger")
-    def test_version_diff_warning(self, mock_get_logger, mock_client):
+    def test_version_diff_warning(
+        self, mock_get_logger, mock_client, mock_db_service
+    ):
         # Set up the mock client and server info
 
-        fo.core.odm.database._db_service = {}
+        mock_db_service = {}
 
         server_version = Version(f"{foc.MIN_MONGODB_VERSION.major + 2}.0.0")
         fc_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.0.0")
@@ -127,13 +132,14 @@ class TestUpdateFCV(unittest.TestCase):
             "for more information"
         )
 
+    @patch("fiftyone.core.odm.database._db_service")
     @patch("pymongo.MongoClient")
     @patch("fiftyone.core.odm.database._get_logger")
     def test_fcv_greater_than_server_version_warning(
-        self, mock_get_logger, mock_client
+        self, mock_get_logger, mock_client, mock_db_service
     ):
 
-        fo.core.odm.database._db_service = {}
+        mock_db_service = {}
 
         server_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.0.0")
         fc_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.1.0")
@@ -167,12 +173,13 @@ class TestUpdateFCV(unittest.TestCase):
             "for more information"
         )
 
+    @patch("fiftyone.core.odm.database._db_service")
     @patch("pymongo.MongoClient")
     @patch("fiftyone.core.odm.database._get_logger")
     def test_oldest_supported_version_warning(
-        self, mock_get_logger, mock_client
+        self, mock_get_logger, mock_client, mock_db_service
     ):
-        fo.core.odm.database._db_service = {}
+        mock_db_service = {}
 
         # Set up the mock client and server info
         mock_admin = MagicMock()
@@ -205,12 +212,13 @@ class TestUpdateFCV(unittest.TestCase):
             "for more information"
         )
 
+    @patch("fiftyone.core.odm.database._db_service")
     @patch("pymongo.MongoClient")
     @patch("fiftyone.core.odm.database._get_logger")
     def test_update_fc_version_operation_failure(
-        self, mock_get_logger, mock_client
+        self, mock_get_logger, mock_client, mock_db_service
     ):
-        fo.core.odm.database._db_service = {}
+        mock_db_service = {}
 
         # Set up the mock client and server info
         server_version = Version(f"{foc.MIN_MONGODB_VERSION.major + 1}.0.0")
@@ -242,12 +250,13 @@ class TestUpdateFCV(unittest.TestCase):
             "for more information"
         )
 
+    @patch("fiftyone.core.odm.database._db_service")
     @patch("pymongo.MongoClient")
     @patch("fiftyone.core.odm.database._get_logger")
     def test_update_fc_version_pymongo_failure(
-        self, mock_get_logger, mock_client
+        self, mock_get_logger, mock_client, mock_db_service
     ):
-        fo.core.odm.database._db_service = {}
+        mock_db_service = {}
 
         # Set up the mock client and server info
         server_version = Version(f"{foc.MIN_MONGODB_VERSION.major + 1}.0.0")
@@ -279,7 +288,8 @@ class TestUpdateFCV(unittest.TestCase):
             "for more information"
         )
 
-    def test_logs_suppressed(self):
+    @patch("fiftyone.core.odm.database._db_service")
+    def test_logs_suppressed(self, mock_db_service):
         test_cases = [
             (Version("5.0.4"), Version("4.4")),
             (Version("6.0.4"), Version("5.4")),
@@ -287,7 +297,7 @@ class TestUpdateFCV(unittest.TestCase):
             (Version("8.0.4"), Version("7.4")),
         ]
 
-        fo.core.odm.database._db_service = {}
+        mock_db_service = {}
 
         for server_version, fc_version in test_cases:
             with self.subTest(
@@ -321,11 +331,14 @@ class TestUpdateFCV(unittest.TestCase):
 
                         mock_logger.warning.assert_not_called()
 
+    @patch("fiftyone.core.odm.database._db_service")
     @patch("pymongo.MongoClient")
     @patch("fiftyone.core.odm.database._get_logger")
-    def test_no_action_unless_managed(self, mock_get_logger, mock_client):
+    def test_no_action_unless_managed(
+        self, mock_get_logger, mock_client, mock_db_service
+    ):
 
-        fo.core.odm.database._db_service = None
+        mock_db_service = None
 
         server_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.0.0")
         fc_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.1.0")
