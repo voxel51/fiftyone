@@ -163,9 +163,13 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
   );
   const transfer = retrieveTransferables(filteredOverlays);
 
-  worker.postMessage(workerArgs, transfer);
-
-  updateRenderingCount(1);
+  try {
+    worker.postMessage(workerArgs, transfer);
+    updateRenderingCount(1);
+  } catch (error) {
+    console.error("Error posting message to worker", error);
+    updateRenderingCount(-1);
+  }
 };
 
 export class AsyncLabelsRenderingManager {
