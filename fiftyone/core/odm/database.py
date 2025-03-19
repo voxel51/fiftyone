@@ -375,8 +375,8 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
 
     _logger = _get_logger()
 
-    if (fc_version == foc.MIN_MONGODB_VERSION) and (
-        server_version == foc.MIN_MONGODB_VERSION
+    if (fc_version.major == foc.MIN_MONGODB_VERSION.major) and (
+        server_version.major == foc.MIN_MONGODB_VERSION.major
     ):
         _logger.warning(
             "You are running the oldest supported version of mongo. "
