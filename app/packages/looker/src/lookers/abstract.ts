@@ -1,4 +1,4 @@
-import { Lookers } from "@fiftyone/state";
+import { Optional } from "@fiftyone/state";
 import {
   AppError,
   DATE_FIELD,
@@ -30,8 +30,10 @@ import {
   BaseState,
   Coordinates,
   Dimensions,
+  Filter,
   LabelData,
   Sample,
+  SampleOptions,
   StateUpdate,
 } from "../state";
 import {
@@ -83,38 +85,35 @@ export abstract class AbstractLooker<
   State extends BaseState,
   S extends Sample = Sample
 > {
-  public readonly subscriptions: {
-    [fieldName: string]: ((newValue: any) => void)[];
-  };
-  private eventTarget: EventTarget;
-
-  private hideControlsTimeout: ReturnType<typeof setTimeout> | null = null;
-  protected lookerElement: LookerElement<State>;
-  private resizeObserver: ResizeObserver;
   private readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D;
-  private previousState?: Readonly<State>;
   private readonly rootEvents: Events<State>;
-  private isSampleUpdating: boolean = false;
+  private readonly subscriptions: {
+    [fieldName: string]: ((newValue: any) => void)[];
+  };
 
-  protected readonly abortController: AbortController;
-  protected currentOverlays: Overlay<State>[];
-  protected sample: S;
-  protected readonly updater: StateUpdate<State>;
+  private eventTarget: EventTarget;
+  private hideControlsTimeout: ReturnType<typeof setTimeout> | null = null;
+  private previousState?: Readonly<State>;
+  private resizeObserver: ResizeObserver;
 
   private batchMergedUpdates: Partial<State> = {};
   private isBatching = false;
   private isCommittingBatchUpdates = false;
 
+  protected readonly abortController: AbortController;
+  protected readonly updater: StateUpdate<State>;
+
+  protected asyncLabelsRenderingManager: AsyncLabelsRenderingManager<S>;
+  protected currentOverlays: Overlay<State>[];
+  protected lookerElement: LookerElement<State>;
+  protected rawSample: S;
+  protected sample: S;
+  protected state: State;
+
   public uuid = uuid();
-
-  /** @internal */
-  state: State;
-
   sampleOverlays: Overlay<State>[];
   pluckedOverlays: Overlay<State>[];
-
-  public asyncLabelsRenderingManager: AsyncLabelsRenderingManager;
 
   constructor(
     sample: S,
@@ -127,6 +126,7 @@ export abstract class AbstractLooker<
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
 
+    this.rawSample = sample;
     this.loadSample(sample);
     this.state.options.mimetype = getMimeType(sample);
     this.pluckedOverlays = [];
@@ -158,23 +158,23 @@ export abstract class AbstractLooker<
         });
     }
 
-    this.hideControlsTimeout = setTimeout(
-      () =>
-        this.updater(
-          ({ showOptions, hoveringControls, options: { showControls } }) => {
-            this.hideControlsTimeout = null;
-            if (!showOptions && !hoveringControls && showControls) {
-              return { options: { showControls: false } };
+    if (!this.state.config.thumbnail) {
+      this.hideControlsTimeout = setTimeout(
+        () =>
+          this.updater(
+            ({ showOptions, hoveringControls, options: { showControls } }) => {
+              this.hideControlsTimeout = null;
+              if (!showOptions && !hoveringControls && showControls) {
+                return { options: { showControls: false } };
+              }
+              return {};
             }
-            return {};
-          }
-        ),
-      3500
-    );
+          ),
+        3500
+      );
+    }
 
-    this.asyncLabelsRenderingManager = new AsyncLabelsRenderingManager(
-      this as unknown as Lookers
-    );
+    this.asyncLabelsRenderingManager = new AsyncLabelsRenderingManager();
 
     this.init();
   }
@@ -568,66 +568,61 @@ export abstract class AbstractLooker<
     parent?.removeChild(this.lookerElement.element);
   }
 
-  abstract updateOptions(options: Partial<State["options"]>): void;
+  updateOptions(options: Partial<State["options"]>) {
+    this.updater({ options, disabled: false });
+  }
 
-  private updateSampleDebounced = (() => {
+  updateSample(sample: Sample) {
+    this.loadSample(sample, retrieveTransferables(this.sampleOverlays));
+  }
+
+  updateSampleOptions = (() => {
     let timeoutId: ReturnType<typeof setTimeout>;
-    return (sample: Sample) => {
+    return (options: Partial<SampleOptions>) => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
-        // this crashes the app. this is a bug and should be fixed
-        if (!this.sample) {
-          return;
-        }
-
-        if (this.isSampleUpdating) {
-          return;
-        }
-
-        this.isSampleUpdating = true;
         try {
-          this.loadSample(sample, retrieveTransferables(this.sampleOverlays));
+          this.loadSample(this.rawSample, undefined, options);
         } catch (error) {
-          this.isSampleUpdating = false;
           console.error(error);
         }
       }, UPDATE_SAMPLE_DEBOUNCE_MS);
     };
   })();
 
-  updateSample(sample: Sample) {
-    this.updateSampleDebounced(sample);
+  getCurrentSampleOptions() {
+    return {
+      activePaths: this.state.options.activePaths,
+      coloring: this.state.options.coloring,
+      customizeColorSetting: this.state.options.customizeColorSetting,
+      colorscale: this.state.options.colorscale,
+      labelTagColors: this.state.options.labelTagColors,
+      selectedLabelTags: this.state.options.selectedLabelTags,
+    };
   }
 
-  refreshSample(renderLabels: string[] | null = null) {
-    // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
-    // this crashes the app. this is a bug and should be fixed
-    if (!this.sample) {
-      return;
-    }
-
-    if (!renderLabels?.length) {
-      this.updateSample(this.sample);
-      return;
-    }
-
+  refreshSample(
+    renderLabels: string[],
+    { filter, options }: { filter?: Filter; options: Optional<SampleOptions> }
+  ) {
+    const next = { ...this.getCurrentSampleOptions(), ...options };
     this.asyncLabelsRenderingManager
       .enqueueLabelPaintingJob({
-        sample: this.sample,
         labels: renderLabels,
+        options: next,
+        sample: this.sample,
+        schema: this.state.config.fieldSchema,
+        sources: this.state.config.sources,
       })
-      .then(({ sample, coloring }) => {
+      .then(({ sample }) => {
         this.sample = sample;
-        this.state.options.coloring = coloring;
         this.loadOverlays(sample);
-
-        this.dispatchEvent("refresh", {});
-
-        // to run looker reconciliation
         this.updater({
+          options: { filter, ...options },
           overlaysPrepared: true,
         });
+
+        this.dispatchEvent("refresh", {});
       })
       .catch((error) => {
         this.updater({ error });
@@ -821,67 +816,82 @@ export abstract class AbstractLooker<
     }
   }
 
-  private loadSample(sample: Sample, transfer: Transferable[] = []) {
-    const messageUUID = uuid();
+  private loadSample = (() => {
+    let current = null;
+    return (
+      sample: Sample,
+      transfer: Transferable[] = [],
+      options: Partial<SampleOptions> = {}
+    ) => {
+      current = uuid();
 
-    const labelsWorker = getLabelsWorker();
+      const labelsWorker = getLabelsWorker();
 
-    const listener = ({ data: { sample, coloring, uuid, error } }) => {
-      if (uuid === messageUUID) {
+      const listener = ({ data: { sample, uuid, error } }) => {
+        if (uuid !== current) {
+          return;
+        }
+
         if (error) {
           console.warn(error);
-          this.isSampleUpdating = false;
           labelsWorker.removeEventListener("message", listener);
           return;
         }
 
         // we paint overlays again, so cleanup the old ones
         // this helps prevent memory leaks from, for instance, dangling ImageBitmaps
-        this.cleanOverlays();
+        const old = this.sampleOverlays;
+
         this.sample = sample;
-        this.state.options.coloring = coloring;
         this.loadOverlays(sample);
         this.updater({
           overlaysPrepared: true,
           disabled: false,
           reloading: false,
+          options,
+          updating: false,
         });
 
-        labelsWorker.removeEventListener("message", listener);
+        for (const overlay of old ?? []) {
+          overlay.cleanup?.(false);
+        }
 
-        this.isSampleUpdating = false;
+        labelsWorker.removeEventListener("message", listener);
+      };
+
+      labelsWorker.addEventListener("message", listener);
+
+      const workerArgs: ProcessSample & { method: "processSample" } = {
+        method: "processSample",
+        options: {
+          coloring: this.state.options.coloring,
+          customizeColorSetting: this.state.options.customizeColorSetting,
+          colorscale: this.state.options.colorscale,
+          labelTagColors: this.state.options.labelTagColors,
+          selectedLabelTags: this.state.options.selectedLabelTags,
+          activePaths: this.state.options.activePaths,
+          ...options,
+        },
+        sample: sample as ProcessSample["sample"],
+        schema: this.state.config.fieldSchema,
+        sources: this.state.config.sources,
+        uuid: current,
+      };
+
+      try {
+        labelsWorker.postMessage(workerArgs, transfer);
+      } catch (error) {
+        // rarely we'll get a DataCloneError
+        // if one of the buffers is detached and we didn't catch it
+        // try again without transferring the buffers (copying them)
+        if (error.name === "DataCloneError") {
+          labelsWorker.postMessage(workerArgs);
+        } else {
+          throw error;
+        }
       }
     };
-
-    labelsWorker.addEventListener("message", listener);
-
-    const workerArgs = {
-      sample: sample as ProcessSample["sample"],
-      method: "processSample",
-      coloring: this.state.options.coloring,
-      customizeColorSetting: this.state.options.customizeColorSetting,
-      colorscale: this.state.options.colorscale,
-      labelTagColors: this.state.options.labelTagColors,
-      selectedLabelTags: this.state.options.selectedLabelTags,
-      sources: this.state.config.sources,
-      schema: this.state.config.fieldSchema,
-      uuid: messageUUID,
-      activePaths: this.state.options.activePaths,
-    } as ProcessSample;
-
-    try {
-      labelsWorker.postMessage(workerArgs, transfer);
-    } catch (error) {
-      // rarely we'll get a DataCloneError
-      // if one of the buffers is detached and we didn't catch it
-      // try again without transferring the buffers (copying them)
-      if (error.name === "DataCloneError") {
-        labelsWorker.postMessage(workerArgs);
-      } else {
-        throw error;
-      }
-    }
-  }
+  })();
 }
 
 const mapFields = (value, schema: Schema, ftype: string) => {

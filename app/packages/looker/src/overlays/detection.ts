@@ -14,7 +14,6 @@ import {
   RegularLabel,
 } from "./base";
 import { t } from "./util";
-import { RENDER_STATUS_PAINTED } from "../worker/shared";
 
 export interface DetectionLabel extends RegularLabel {
   mask?: LabelMask;
@@ -33,10 +32,12 @@ export default class DetectionOverlay<
 > extends CoordinateOverlay<State, DetectionLabel> {
   private is3D: boolean;
   private labelBoundingBox: BoundingBox;
+  private readonly hasMask: boolean;
 
   constructor(field, label) {
     super(field, label);
 
+    this.hasMask = Boolean(this.label.mask || this.label.mask_path);
     if (this.label.location && this.label.dimensions) {
       this.is3D = true;
     } else {
@@ -65,19 +66,11 @@ export default class DetectionOverlay<
   }
 
   draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void {
-    // _renderStatus is guaranteed to be undefined when there is no mask_path
-    // so if render status is not null, means there's a mask
-    // we want to couple rendering of mask with bbox
-    // so we return if render status is truthy and there's no mask
-    // meaning mask is being processed
-    if (this.label._renderStatus && !this.label.mask) {
+    if (this.hasMask && !this.label._renderStatus) {
       return;
     }
 
-    if (
-      this.label.mask?.bitmap?.width &&
-      this.label._renderStatus === RENDER_STATUS_PAINTED
-    ) {
+    if (this.hasMask) {
       this.drawMask(ctx, state);
     }
 
@@ -173,13 +166,15 @@ export default class DetectionOverlay<
     const tmp = ctx.globalAlpha;
     ctx.globalAlpha = state.options.alpha;
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(
-      this.label.mask.bitmap,
-      x,
-      y,
-      w * state.canvasBBox[2],
-      h * state.canvasBBox[3]
-    );
+    try {
+      ctx.drawImage(
+        this.label.mask.bitmap,
+        x,
+        y,
+        w * state.canvasBBox[2],
+        h * state.canvasBBox[3]
+      );
+    } catch (e) {}
     ctx.globalAlpha = tmp;
   }
 

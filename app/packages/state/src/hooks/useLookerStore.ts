@@ -1,7 +1,7 @@
 import {
   FrameLooker,
-  ImageLooker,
   ImaVidLooker,
+  ImageLooker,
   VideoLooker,
 } from "@fiftyone/looker";
 import { LRUCache } from "lru-cache";

@@ -2,11 +2,15 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { BufferManager } from "@fiftyone/utilities";
-import { ImaVidFramesController } from "./lookers/imavid/controller";
-import { Overlay } from "./overlays/base";
-
-import { AppError, COLOR_BY, Schema, Stage } from "@fiftyone/utilities";
+import type {
+  AppError,
+  BufferManager,
+  COLOR_BY,
+  Schema,
+  Stage,
+} from "@fiftyone/utilities";
+import type { ImaVidFramesController } from "./lookers/imavid/controller";
+import type { Overlay } from "./overlays/base";
 
 export type Optional<T> = {
   [P in keyof T]?: Optional<T[P]>;
@@ -152,17 +156,26 @@ export interface KeypointSkeleton {
   edges: number[][];
 }
 
-interface BaseOptions {
-  highlight: boolean;
-  activePaths: string[];
-  fontSize?: number;
-  filter: (path: string, value: unknown) => boolean;
+export interface ColoringOptions {
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
   colorscale: Colorscale;
   labelTagColors: CustomizeColor;
-  selectedLabels: string[];
   selectedLabelTags?: string[];
+}
+
+export interface SampleOptions extends ColoringOptions {
+  activePaths: string[];
+}
+
+export type Filter = (path: string, value: unknown) => boolean;
+
+interface BaseOptions extends SampleOptions {
+  filter: Filter;
+  highlight: boolean;
+  activePaths: string[];
+  fontSize?: number;
+  selectedLabels: string[];
   attributeVisibility: object;
   showConfidence: boolean;
   showControls: boolean;
@@ -196,11 +209,15 @@ export type Coordinates = [number, number];
 
 export type Dimensions = [number, number];
 
+export interface Sources {
+  [path: string]: string;
+}
+
 export interface BaseConfig {
   mediaField: string;
   thumbnail: boolean;
   src: string;
-  sources: { [path: string]: string };
+  sources: Sources;
   sampleId: string;
   symbol: symbol;
   fieldSchema: Schema;
@@ -253,12 +270,9 @@ export interface ThreeDConfig extends BaseConfig {
 
 export interface FrameOptions extends BaseOptions {
   useFrameNumber: boolean;
-  zoom: boolean;
 }
 
-export interface ImageOptions extends BaseOptions {
-  zoom: boolean;
-}
+export interface ImageOptions extends BaseOptions {}
 
 export interface VideoOptions extends BaseOptions {
   autoplay: boolean;
@@ -327,6 +341,7 @@ export interface BaseState {
   error: boolean | number | AppError;
   destroyed: boolean;
   reloading: boolean;
+  updating: boolean;
 }
 
 export interface FrameState extends BaseState {
@@ -469,12 +484,10 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {
   ...DEFAULT_BASE_OPTIONS,
   useFrameNumber: true,
-  zoom: false,
 };
 
 export const DEFAULT_IMAGE_OPTIONS: ImageOptions = {
   ...DEFAULT_BASE_OPTIONS,
-  zoom: false,
 };
 
 export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {

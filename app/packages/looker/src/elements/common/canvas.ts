@@ -178,7 +178,6 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
 
   renderSelf({
     loaded,
-    reloading,
     error,
     disabled,
     config: { thumbnail },
@@ -217,7 +216,7 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
       this.element.style.cursor = this.cursor;
     }
 
-    const hide = Boolean(!loaded || disabled || reloading || error);
+    const hide = Boolean(!loaded || disabled || error);
     if (this.hide !== hide) {
       this.hide = hide;
       this.hide

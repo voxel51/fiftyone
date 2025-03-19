@@ -384,17 +384,6 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     return super.postProcess();
   }
 
-  updateOptions(options: Partial<VideoState["options"]>) {
-    const reload = LookerUtils.shouldReloadSample(this.state.options, options);
-
-    if (reload) {
-      this.updater({ options, reloading: this.state.disabled });
-      this.updateSample(this.sample);
-    } else {
-      this.updater({ options, disabled: false });
-    }
-  }
-
   updateSample(sample: VideoSample) {
     if (LOOKER_WITH_READER === this) {
       LOOKER_WITH_READER?.pause();

@@ -3,7 +3,6 @@ import { COMMON_SHORTCUTS } from "../elements/common";
 import type { ThreeDState } from "../state";
 import { DEFAULT_3D_OPTIONS } from "../state";
 import { AbstractLooker } from "./abstract";
-import { LookerUtils } from "./shared";
 
 export class ThreeDLooker extends AbstractLooker<ThreeDState> {
   getElements(config) {
@@ -23,7 +22,7 @@ export class ThreeDLooker extends AbstractLooker<ThreeDState> {
     config: ThreeDState["config"],
     options: ThreeDState["options"]
   ) {
-    options = {
+    const initialOptions = {
       ...this.getDefaultOptions(),
       ...options,
     };
@@ -31,27 +30,12 @@ export class ThreeDLooker extends AbstractLooker<ThreeDState> {
     return {
       ...this.getInitialBaseState(),
       config: { ...config },
-      options,
+      options: initialOptions,
       SHORTCUTS: COMMON_SHORTCUTS,
     };
   }
 
   getDefaultOptions() {
     return DEFAULT_3D_OPTIONS;
-  }
-
-  updateOptions(options: Partial<ThreeDState["options"]>) {
-    const reload = LookerUtils.shouldReloadSample(this.state.options, options);
-    const state: Partial<ThreeDState> = { options };
-    if (reload) {
-      this.updater({
-        ...state,
-        reloading: this.state.disabled,
-        disabled: false,
-      });
-      this.updateSample(this.sample);
-    } else {
-      this.updater({ ...state, disabled: false });
-    }
   }
 }

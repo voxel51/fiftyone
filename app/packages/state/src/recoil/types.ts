@@ -174,7 +174,7 @@ export namespace State {
   type FilterValues = string | boolean | number | null | undefined;
 
   export interface Filter {
-    [key: string]: FilterValues | Array<FilterValues>;
+    [key: string]: Array<FilterValues>;
   }
 
   export interface Filters {
