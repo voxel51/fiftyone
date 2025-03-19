@@ -70,8 +70,6 @@ type AppConfig {
   useFrameNumber: Boolean!
   spaces: JSON
   disableFrameFiltering: Boolean!
-  defaultQueryPerformance: Boolean
-  enableQueryPerformance: Boolean
   mediaFallback: Boolean!
 }
 
@@ -246,7 +244,7 @@ type Dataset {
   appConfig: DatasetAppConfig
   info: JSON
   estimatedFrameCount: Int
-  estimatedSampleCount: Int
+  estimatedSampleCount: Int!
   frameIndexes: [Index!]
   sampleIndexes: [Index!]
   headName: String
