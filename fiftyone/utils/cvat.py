@@ -3252,7 +3252,7 @@ class CVATBackend(foua.AnnotationBackend):
 
     @property
     def supported_media_types(self):
-        return [fom.IMAGE, fom.VIDEO, fom.THREE_D]
+        return [fom.IMAGE, fom.VIDEO, fom.THREE_D, fom.POINT_CLOUD]
 
     @property
     def supported_label_types(self):
@@ -4406,9 +4406,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         has_ignored_attributes = False
         save_config = False
 
-        is_3d = samples.media_type == fom.THREE_D
-        media_field = config.media_field
-        if is_3d and media_field == "filepath":
+        if (
+            samples.media_type == fom.THREE_D
+            and config.media_field == "filepath"
+        ):
             raise ValueError(
                 "The `media_field` argument is required when annotating 3D "
                 "datasets. See the documentation for more details: "
@@ -5425,7 +5426,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         _issue_tracker = issue_tracker
 
         is_video = samples_batch.media_type == fom.VIDEO
-        is_3d = samples_batch.media_type == fom.THREE_D
+        is_3d = samples_batch.media_type in (fom.THREE_D, fom.POINT_CLOUD)
         is_clips = samples_batch._is_clips
 
         if is_clips:
@@ -6196,7 +6197,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         remapped_attrs = {}
 
         is_video = samples.media_type == fom.VIDEO
-        is_3d = samples.media_type == fom.THREE_D
+        is_3d = samples.media_type in (fom.THREE_D, fom.POINT_CLOUD)
         samples = samples.select_fields(label_field)
 
         if is_video:
@@ -7173,11 +7174,8 @@ class CVATShape(CVATLabel):
         Returns:
             a :class:`fiftyone.core.labels.Detection`
         """
-        bbox = None
-        location = None
-        dimensions = None
-        rotation = None
         if len(self.points) == 4:
+            # Bounding box
             xtl, ytl, xbr, ybr = self.points
             width, height = self.frame_size
             bbox = [
@@ -7186,16 +7184,20 @@ class CVATShape(CVATLabel):
                 (xbr - xtl) / width,
                 (ybr - ytl) / height,
             ]
+        else:
+            bbox = None
 
         label = fol.Detection(
             label=self.label, bounding_box=bbox, index=self.index
         )
         self._set_attributes(label)
+
         if len(self.points) > 4:
-            # 3d cuboid
+            # 3D cuboid
             label.location = self.points[:3]
             label.rotation = self.points[3:6]
             label.dimensions = self.points[6:9]
+
         return label
 
     def to_instance(self):
