@@ -1477,7 +1477,7 @@ export default function Evaluation(props: EvaluationProps) {
                     params: {
                       gt_field: evaluationConfig.gt_field,
                       scenario_type: "custom_code",
-                      scenario_name: "", // # TODO: Edit will pass current name
+                      scenario_name: "test", // # TODO: Edit will pass current name
                     },
                     operator: configure_subset_uri,
                     prompt: true,
