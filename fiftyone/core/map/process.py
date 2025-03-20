@@ -234,10 +234,11 @@ def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
 
         sample_iter = sample_collection.iter_samples(autosave=process_save)
 
+        pb = None
         if process_progress:
-            desc = f"Batch {i + 1:0{len(str(num_batches))}}/{num_batches}"
-            sample_iter = tqdm(
-                sample_iter, total=batch.total, desc=desc, position=i
+            desc = f"Batch {i:0{len(str(num_batches))}}/{num_batches}"
+            pb = tqdm(
+                iterable=sample_iter, total=batch.total, desc=desc, position=i
             )
 
         while not process_cancel_event.is_set() and (
@@ -264,6 +265,8 @@ def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
                 if process_sample_count is not None:
                     with process_sample_count.get_lock():
                         process_sample_count.value += 1
+                if pb:
+                    pb.update()
     except Exception as err:
         _process_worker_error(
             process_skip_failures,
