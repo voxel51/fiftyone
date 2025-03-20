@@ -120,7 +120,9 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
         kwargs["created_at"] = None
         kwargs["last_modified_at"] = None
         kwargs["_rand"] = _generate_rand(filepath=filepath)
-        kwargs["_media_type"] = fomm.get_media_type(filepath)
+        kwargs["_media_type"] = kwargs.get(
+            "media_type"
+        ) or fomm.get_media_type(filepath)
         kwargs["_dataset_id"] = None
 
         self._data = OrderedDict()
