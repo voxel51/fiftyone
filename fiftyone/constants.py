@@ -104,9 +104,8 @@ MIGRATIONS_HEAD_PATH = os.path.join(MIGRATIONS_PATH, "head.json")
 MIGRATIONS_REVISIONS_DIR = os.path.join(
     FIFTYONE_DIR, "migrations", "revisions"
 )
-MIN_MONGODB_VERSION = Version("5.0")
-MAX_ALLOWABLE_FCV_DELTA = 1
-MONGODB_SERVER_FCV_REQUIRED_CONFIRMATION = Version("7.0")
+
+MIN_MONGODB_VERSION = Version("4.4")
 DATABASE_APPNAME = "fiftyone"
 
 # Server setup
