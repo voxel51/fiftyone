@@ -74,7 +74,6 @@ export function useViewChangeEffect() {
         setLoadingPlotError(null);
         setLoadedPlot(res);
         setPointsField(res.points_field);
-        setPatchesField(res.patches_field);
       })
       .finally(() => setLoadingPlot(false));
   }, [datasetName, brainKey, labelField, view, colorSeed, slices, filters]);
