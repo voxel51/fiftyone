@@ -234,7 +234,7 @@ def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
 
         pb = None
         if process_progress:
-            desc = f"Batch {i + 1:0{len(str(num_batches))}}/{num_batches}"
+            desc = f"Batch {i:0{len(str(num_batches))}}/{num_batches}"
             pb = tqdm(sample_iter, total=batch.total, desc=desc, position=i)
 
         while not process_cancel_event.is_set() and (
