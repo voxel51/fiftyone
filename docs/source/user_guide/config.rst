@@ -373,7 +373,7 @@ You must also add `?authSource=admin` to your database URI:
 Using a different MongoDB version
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-FiftyOne is designed for **MongoDB v4.4 or later**.
+FiftyOne is designed for **MongoDB v5.0 or later**.
 
 If you wish to connect FiftyOne to a MongoDB database whose version is not
 explicitly supported, you will also need to set the `database_validation`
