@@ -223,7 +223,7 @@ def establish_db_conn(config):
 
     db_config = get_db_config()
 
-    _update_fc_version(config.database_validation, db_config.type, _client)
+    _update_fc_version(config.database_validation, _client)
 
     if db_config.type != foc.CLIENT_TYPE:
         raise ConnectionError(
@@ -422,9 +422,7 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
     return False
 
 
-def _update_fc_version(
-    database_validation: bool, client_type: str, client: pymongo.MongoClient
-):
+def _update_fc_version(database_validation: bool, client: pymongo.MongoClient):
     """Updates a database's feature compatibility version (FCV) if possible.
 
     Checks to see if a version upgrade for the FCV is required and possible.
@@ -447,7 +445,6 @@ def _update_fc_version(
         database_validation
         and _is_fcv_upgradeable(fc_version, server_version)
         and _db_service is not None
-        and client_type == "fiftyone"
     ):
         bumped = f"{server_version.major}.0"
         cmd = {"setFeatureCompatibilityVersion": bumped}

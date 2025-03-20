@@ -60,7 +60,7 @@ class TestUpdateFCV(unittest.TestCase):
                         }
 
                         # Call the function to test
-                        _update_fc_version(True, "fiftyone", mock_client)
+                        _update_fc_version(True, mock_client)
 
                         # Check that the FCV update attempt was made with the correct version
                         expected_call = self._get_expected_update_call(
@@ -90,7 +90,7 @@ class TestUpdateFCV(unittest.TestCase):
         )
 
         with self.assertRaises(ConnectionError):
-            _update_fc_version(True, "fiftyone", mock_client)
+            _update_fc_version(True, mock_client)
 
     @patch("fiftyone.core.odm.database._db_service")
     @patch("pymongo.MongoClient")
@@ -118,7 +118,7 @@ class TestUpdateFCV(unittest.TestCase):
         }
 
         # Call the function
-        _update_fc_version(True, "fiftyone", mock_client)
+        _update_fc_version(True, mock_client)
 
         # Check that the warning is triggered due to a large version difference
         mock_logger.warning.assert_any_call(
@@ -158,7 +158,7 @@ class TestUpdateFCV(unittest.TestCase):
         }
 
         # Call the function
-        _update_fc_version(True, "fiftyone", mock_client)
+        _update_fc_version(True, mock_client)
 
         # Check that the warning is triggered for FCV greater than server version
         mock_logger.warning.assert_any_call(
@@ -199,7 +199,7 @@ class TestUpdateFCV(unittest.TestCase):
         }
 
         # Call the function
-        _update_fc_version(True, "fiftyone", mock_client)
+        _update_fc_version(True, mock_client)
 
         # Check that the warning is triggered for the oldest supported version
         mock_logger.warning.assert_any_call(
@@ -237,7 +237,7 @@ class TestUpdateFCV(unittest.TestCase):
 
         # Call the function
 
-        _update_fc_version(True, "fiftyone", mock_client)
+        _update_fc_version(True, mock_client)
 
         # Check that the warning is triggered for the oldest supported version
         mock_logger.error.assert_any_call(
@@ -275,7 +275,7 @@ class TestUpdateFCV(unittest.TestCase):
 
         # Call the function
 
-        _update_fc_version(True, "fiftyone", mock_client)
+        _update_fc_version(True, mock_client)
 
         # Check that the warning is triggered for the oldest supported version
         mock_logger.error.assert_any_call(
@@ -324,7 +324,7 @@ class TestUpdateFCV(unittest.TestCase):
                         }
 
                         # Call the function to test
-                        _update_fc_version(False, "fiftyone", mock_client)
+                        _update_fc_version(False, mock_client)
 
                         # Should issue a get to the fcv, but not a subsequent update
                         assert mock_admin.command.call_count == 1
@@ -357,7 +357,7 @@ class TestUpdateFCV(unittest.TestCase):
         }
 
         # Call the function
-        _update_fc_version(True, "fiftyone", mock_client)
+        _update_fc_version(True, mock_client)
 
         # Should issue a get to the fcv, but not a subsequent update
         assert mock_admin.command.call_count == 1
@@ -401,7 +401,7 @@ class TestUpdateFCV(unittest.TestCase):
         }
 
         # Call the function
-        _update_fc_version(True, "fiftyone-enterprise", mock_client)
+        _update_fc_version(True, mock_client)
 
         # Should issue a get to the fcv, but not a subsequent update
         assert mock_admin.command.call_count == 1
