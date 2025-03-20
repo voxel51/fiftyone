@@ -3252,7 +3252,7 @@ class CVATBackend(foua.AnnotationBackend):
 
     @property
     def supported_media_types(self):
-        return [fom.IMAGE, fom.VIDEO]
+        return [fom.IMAGE, fom.VIDEO, fom.THREE_D, fom.POINT_CLOUD]
 
     @property
     def supported_label_types(self):
@@ -4406,6 +4406,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         has_ignored_attributes = False
         save_config = False
 
+        if (
+            samples.media_type == fom.THREE_D
+            and config.media_field == "filepath"
+        ):
+            raise ValueError(
+                "The `media_field` argument is required when annotating 3D "
+                "datasets. See the documentation for more details: "
+                "https://docs.voxel51.com/integrations/cvat.html#annotating-3d-data"
+            )
+
         # When using an existing project, we cannot support multiple label
         # fields of the same type, since it would not be clear which field
         # labels should be downloaded into
@@ -5416,6 +5426,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         _issue_tracker = issue_tracker
 
         is_video = samples_batch.media_type == fom.VIDEO
+        is_3d = samples_batch.media_type in (fom.THREE_D, fom.POINT_CLOUD)
         is_clips = samples_batch._is_clips
 
         if is_clips:
@@ -5431,7 +5442,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             else:
                 frame_stop = _frame_stop
 
-        if is_video:
+        if is_video or is_3d:
             # Videos are uploaded in multiple tasks with 1 job per task
             # Assign the correct users for the current task
             if job_assignees is not None:
@@ -5944,6 +5955,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if shape_type == "rectangle":
                 label_type = "detections"
                 label = cvat_shape.to_detection()
+            elif shape_type == "cuboid":
+                label_type = "detections"
+                label = cvat_shape.to_detection()
             elif shape_type == "mask":
                 label_type = "detections"
                 label = cvat_shape.to_instance()
@@ -6183,6 +6197,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         remapped_attrs = {}
 
         is_video = samples.media_type == fom.VIDEO
+        is_3d = samples.media_type in (fom.THREE_D, fom.POINT_CLOUD)
         samples = samples.select_fields(label_field)
 
         if is_video:
@@ -6198,6 +6213,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if is_video:
                 images = sample.frames.values()
                 frame_size = (metadata.frame_width, metadata.frame_height)
+            elif is_3d:
+                images = [sample]
+                frame_size = ()
             else:
                 images = [sample]
                 frame_size = (metadata.width, metadata.height)
@@ -6434,18 +6452,28 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             curr_shapes = []
 
             if label_type in ("detection", "detections"):
-                x, y, w, h = det.bounding_box
-                width, height = frame_size
-                xtl = float(round(x * width))
-                ytl = float(round(y * height))
-                xbr = float(round((x + w) * width))
-                ybr = float(round((y + h) * height))
-                bbox = [xtl, ytl, xbr, ybr]
+                if det.bounding_box:
+                    # 2D annotation
+                    x, y, w, h = det.bounding_box
+                    width, height = frame_size
+                    xtl = float(round(x * width))
+                    ytl = float(round(y * height))
+                    xbr = float(round((x + w) * width))
+                    ybr = float(round((y + h) * height))
+                    points = [xtl, ytl, xbr, ybr]
+                    shape_type = "rectangle"
+                else:
+                    # 3D annotation
+                    location = det.location
+                    dimensions = det.dimensions
+                    rotation = det.rotation
+                    points = location + rotation + dimensions + [0] * 7
+                    shape_type = "cuboid"
 
                 shape = {
-                    "type": "rectangle",
+                    "type": shape_type,
                     "occluded": is_occluded,
-                    "points": bbox,
+                    "points": points,
                     "label_id": class_name,
                     "group": group_id,
                     "frame": frame_id,
@@ -7105,7 +7133,10 @@ class CVATShape(CVATLabel):
             attributes=immutable_attrs,
         )
 
-        self.frame_size = (metadata["width"], metadata["height"])
+        self.frame_size = ()
+        if "width" in metadata and "height" in metadata:
+            self.frame_size = (metadata["width"], metadata["height"])
+
         self.points = label_dict["points"]
         self.index = index
 
@@ -7143,18 +7174,30 @@ class CVATShape(CVATLabel):
         Returns:
             a :class:`fiftyone.core.labels.Detection`
         """
-        xtl, ytl, xbr, ybr = self.points
-        width, height = self.frame_size
-        bbox = [
-            xtl / width,
-            ytl / height,
-            (xbr - xtl) / width,
-            (ybr - ytl) / height,
-        ]
+        if len(self.points) == 4:
+            # Bounding box
+            xtl, ytl, xbr, ybr = self.points
+            width, height = self.frame_size
+            bbox = [
+                xtl / width,
+                ytl / height,
+                (xbr - xtl) / width,
+                (ybr - ytl) / height,
+            ]
+        else:
+            bbox = None
+
         label = fol.Detection(
             label=self.label, bounding_box=bbox, index=self.index
         )
         self._set_attributes(label)
+
+        if len(self.points) > 4:
+            # 3D cuboid
+            label.location = self.points[:3]
+            label.rotation = self.points[3:6]
+            label.dimensions = self.points[6:9]
+
         return label
 
     def to_instance(self):
