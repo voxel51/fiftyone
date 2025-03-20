@@ -766,16 +766,17 @@ class EvaluationPanel(Panel):
         #   id,
         #   name: string (unique),
         #   type: 'sample_field' | 'saved_view' | 'custom_code' | "label_attributes",
-        #   sample_field: string (optional, only required if type == 'sample_field'),
         #   code_expr: string (optional, only required if type == 'custom_code'),
+        #   subsets: [string] (optional, only required if type != 'custom_code'),
         # }
         # TODO: implement
         pass
 
     def extract_save_scenario_params(self, ctx):
-        print("ctx.params", ctx.params)
+        print("extract_save_scenario_params", ctx.params)
         params = ctx.params.get("scenario", {}).get("subset", {})
         scenario_name = params.get("scenario_name", None)
+
         if scenario_name is None:
             raise ValueError("No scenario name provided")
 
@@ -783,18 +784,32 @@ class EvaluationPanel(Panel):
         if scenario_type is None:
             raise ValueError("No scenario type provided")
 
-        sample_field_values = params.get("sample_field_values", None)
+        # TODO: if name exists, show alert and halt
 
+        # custom code handling
+        custom_code_expression = None
+        if scenario_type == "custom_code":
+            custom_code_expression = (
+                params.get("custom_code_stack", {})
+                .get("body_stack", {})
+                .get("custom_code", None)
+            )
+
+            if custom_code_expression is None:
+                raise ValueError("No custom code expression provided")
+
+        # TODO: others handling
+        sample_field_values = params.get("sample_field_values", None)
         label_attribute_values = params.get("label_attribute_values", None)
         saved_views = params.get("saved_views_values", None)
 
         return {
             "name": scenario_name,
-            "type": scenario_type,
+            "scenario_type": scenario_type,
             "saved_views": saved_views,
             "sample_field": params.get("sample_field", None),
             "scenario_field": params.get("scenario_field", None),
-            "code_expr": params.get("code_expr", None),
+            "custom_code_expression": custom_code_expression,
             "sample_field_values": sample_field_values,
             "label_attribute_values": label_attribute_values,
         }
@@ -822,7 +837,7 @@ class EvaluationPanel(Panel):
             eval_b_results,
         )
 
-    def on_save_analyze_scenario(self, ctx):
+    def on_save_scenario(self, ctx):
         label_attrs_classes = None
 
         params = self.extract_save_scenario_params(ctx)
@@ -844,11 +859,31 @@ class EvaluationPanel(Panel):
             },
         }
 
-        scenario_type = params.get("type", None)
+        scenario_type = params.get("scenario_type", None)
         sample_field_values = params.get("sample_field_values", None)
 
-        # I. Saved views
-        if scenario_type == "saved_views":
+        # I. Custom code
+        if scenario_type == "custom_code":
+            custom_code_expression = params.get("custom_code_expression", None)
+            if custom_code_expression is None:
+                raise ValueError("No code expression provided")
+
+            # TODO:
+            # subset_def = dict(type="code", code=custom_code_expression)
+
+            # print("subset_def", subset_def)
+            # with eval_a_results.use_subset(subset_def):
+            #     graph_data[eval_a_key]["performance"][
+            #         "custom"
+            #     ] = eval_a_results.metrics()
+
+            # with eval_b_results.use_subset(subset_def):
+            #     graph_data[eval_b_key]["performance"][
+            #         "custom"
+            #     ] = eval_b_results.metrics()
+
+        # II. Saved views
+        elif scenario_type == "saved_views":
             saved_views = params.get("saved_views", None)
 
             for saved_view in saved_views:
@@ -859,7 +894,7 @@ class EvaluationPanel(Panel):
 
                 # Graph I data - Model Performance
                 with eval_a_results.use_subset(subset_def):
-                    graph_data[eval_a_key]["performance"][
+                    graph_data[eval_a_key]["x"][
                         saved_view
                     ] = eval_a_results.metrics()
                 with eval_b_results.use_subset(subset_def):
@@ -867,7 +902,7 @@ class EvaluationPanel(Panel):
                         saved_view
                     ] = eval_b_results.metrics()
 
-        # II. Sample Fields
+        # III. Sample Fields
         elif scenario_type == "sample_field":
             scenario_field = params.get("scenario_field", None)
             if scenario_field is None:
@@ -898,14 +933,6 @@ class EvaluationPanel(Panel):
             # TODO: case continuous fields: confidence
 
             # TODO: case discrete fields: < 100 categories
-
-        # III. Custom Code
-        elif scenario_type == "custom_code":
-            code_expr = params.get("code_expr", None)
-            if code_expr is None:
-                raise ValueError("No code expression provided")
-
-            subset_def = dict(type="code", code=code_expr)
 
         # IV. Label Attributes
         elif scenario_type == "label_attribute":
@@ -940,7 +967,9 @@ class EvaluationPanel(Panel):
             )
 
         print("graph_data", graph_data)
-        ctx.panel.set_state("evaluations_scenario", graph_data)
+        # TODO: save the subset
+
+        # ctx.panel.set_state("evaluations_scenario", graph_data)
 
     def render(self, ctx):
         panel = types.Object()
@@ -958,7 +987,7 @@ class EvaluationPanel(Panel):
                 load_view=self.load_view,
                 rename_evaluation=self.rename_evaluation,
                 delete_evaluation=self.delete_evaluation,
-                on_save_subset=self.on_save_analyze_scenario,
+                on_save_scenario=self.on_save_scenario,
             ),
         )
 
