@@ -13,14 +13,12 @@ import fiftyone.core.map as focm
 
 def map_samples(
     sample_collection,
-    map_fcn: Callable[[Any], None],
+    map_fcn: Callable[[Any], Any],
     workers: Optional[int] = None,
-    batch_method: Union[Literal["id"], Literal["slice"]] = "id",
+    batch_method: str = "id",
     progress: Optional[Union[bool, Literal["worker"]]] = None,
     save: bool = False,
-    parallelize_method: Union[
-        Literal["process"], Literal["thread"]
-    ] = "process",
+    parallelize_method: str = "process",
     skip_failures: bool = False,
 ):
     """
@@ -61,7 +59,7 @@ def map_samples(
 
 def update_samples(
     sample_collection,
-    update_fcn: Callable[[Any], None],
+    update_fcn: Callable[[Any], Any],
     workers: Optional[int] = None,
     batch_method: Union[Literal["id"], Literal["slice"]] = "id",
     progress: Optional[Union[bool, Literal["worker"]]] = None,
