@@ -26,13 +26,16 @@ RUN pip wheel --wheel-dir=/tmp/wheels \
         pydicom \
         pyproj \
         rasterio \
-        sam2 \
         segment-anything \
         super-gradients \
         shapely \
         transformers \
         "ultralytics>=8.3.0" \
         "umap-learn>=0.5"
+
+RUN pip wheel --no-build-isolation \
+    --wheel-dir=/tmp/wheels \
+        sam2
 
 FROM ${TORCH_IMAGE_NAME} AS teamscvfullrelease
 
