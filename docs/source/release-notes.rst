@@ -9,9 +9,38 @@ FiftyOne Enterprise 2.7.0
 
 Includes all updates from :ref:`FiftyOne 1.4.0 <release-notes-v1.4.0>`
 
-- Security fixes for vitest, and axios
 - Renamed FiftyOne Teams to FiftyOne Enterprise
-
+- Expanded functionality on the Runs page: clarifies the ordering
+  and status of the 
+  :ref:`delegated operations <enterprise-delegated-operations>` in
+  the queue, provides Admin users a view of 
+  :ref:`delegated operations <enterprise-delegated-operations>` 
+  across all datasets and users, and enables viewing and
+  downloading logs from the builtin orchestrator in a new Logs tab
+- Added a new ``cloud_storage_id`` argument to the CVAT annotation
+  integration to specify the id of the cloud storage to use
+  for the CVAT tasks that are created.
+- Added support for embedded fields in the builtin
+  ``evaluate_model`` and ``compute_visualization`` operators
+- Updated the builtin ``compute_visualization`` operator to support
+  generating spatial indexes
+- Added a new builtin ``manage_visualization_indexes`` operator for
+  adding/removing spatial indexes to existing visualization results
+- Added configurable connect and read timeouts for the API client.
+- Added support for filepath aliases/prefixes when using per-user
+  cloud credentials
+- Added support for 3d media to per-user cloud credentials
+- Optimized the :ref:`Data Quality Panel <data-quality>` when loading
+  large datasets
+- Optimized streaming api responses
+- Improved error messages related to license files and compliance
+- Security fixes for vitest, nanoid, setuptools, and axios
+- Fixed a bug where using the Query Performance Panel to
+  create an index could result in an error message.
+- Fixed a bug that allowed users to accidentally exceed license limits
+  when auto-join was enabled
+- Fixed a bug where, in certain cases, the system would incorrectly
+  retry ``insert_many``
 
 .. _release-notes-v1.4.0:
 
