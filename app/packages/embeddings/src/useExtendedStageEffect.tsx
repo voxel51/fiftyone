@@ -5,6 +5,7 @@ import { usePanelStatePartial } from "@fiftyone/spaces";
 import { fetchExtendedStage } from "./fetch";
 import { atoms as selectionAtoms } from "./usePlotSelection";
 import { usePointsField } from "./useBrainResult";
+import { shouldResolveSelection } from "./utils";
 
 export default function useExtendedStageEffect() {
   const datasetName = useRecoilValue(fos.datasetName);
@@ -23,11 +24,17 @@ export default function useExtendedStageEffect() {
 
   useEffect(() => {
     if (loadedPlot && Array.isArray(selection)) {
+      const shouldIncludeSelection = shouldResolveSelection(
+        view,
+        null,
+        loadedPlot.patches_field,
+        pointsField
+      );
       fetchExtendedStage({
         datasetName,
         view,
         patchesField: loadedPlot.patches_field,
-        selection,
+        selection: shouldIncludeSelection ? selection : null,
         slices,
         lassoPoints,
         pointsField,
