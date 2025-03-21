@@ -217,7 +217,9 @@ export class ImaVidFrameSamples {
       if (typeof value === "object" && value !== null && "_cls" in value) {
         if (value._cls === DETECTIONS) {
           for (const detection of value.detections) {
-            return checkMask(detection);
+            if (checkMask(detection)) {
+              return true;
+            }
           }
         } else if (
           value._cls === DETECTION ||
