@@ -15,10 +15,11 @@ import numpy as np
 
 from fiftyone import ViewField as F
 import fiftyone.core.fields as fof
+from fiftyone.core.plots.plotly import _to_log_colorscale
 from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
-from fiftyone.core.plots.plotly import _to_log_colorscale
 import fiftyone.operators.types as types
+import fiftyone.utils.eval as foue
 
 
 STORE_NAME = "model_evaluation_panel_builtin"
@@ -577,6 +578,13 @@ class EvaluationPanel(Panel):
         y = view_options.get("y", None)
         field = view_options.get("field", None)
         missing = ctx.panel.get_state("missing", "(none)")
+
+        # Restrict to subset, if applicable
+        subset_name = view_state.get("subset_name", None)
+        if subset_name is not None:
+            subsets = ctx.panel.get_state("subsets")
+            subset_def = subsets.get(subset_name, None)
+            eval_view = foue.get_subset_view(eval_view, gt_field, subset_def)
 
         view = None
         if info.config.type == "classification":
