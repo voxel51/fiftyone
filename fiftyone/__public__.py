@@ -138,6 +138,7 @@ from .core.models import (
     ModelManager,
 )
 from .core.odm import (
+    ActiveFields,
     ColorScheme,
     DatasetAppConfig,
     DynamicEmbeddedDocument,
@@ -216,6 +217,7 @@ from .core.stages import (
     Limit,
     LimitLabels,
     MapLabels,
+    MapValues,
     Match,
     MatchFrames,
     MatchLabels,

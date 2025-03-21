@@ -31,5 +31,11 @@ export default function useLookerCache({
   // delete cache during cleanup
   useEffect(() => () => cache.delete(), [cache]);
 
+  useEffect(() => {
+    const listener = () => cache.empty();
+    document.addEventListener("visibilitychange", listener);
+    return () => document.removeEventListener("visibilitychange", listener);
+  }, [cache]);
+
   return cache;
 }

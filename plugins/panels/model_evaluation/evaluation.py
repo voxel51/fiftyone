@@ -158,9 +158,7 @@ def evaluate_model(ctx, inputs):
         target_view, pred_field
     )
 
-    gt_fields = set(
-        target_view.get_field_schema(embedded_doc_type=label_type).keys()
-    )
+    gt_fields = set(_get_label_fields(target_view, label_type))
     gt_fields.discard(pred_field)
 
     if not gt_fields:
@@ -218,8 +216,19 @@ def evaluate_model(ctx, inputs):
 
 
 def _get_label_fields(sample_collection, label_types):
-    schema = sample_collection.get_field_schema(embedded_doc_type=label_types)
-    return list(schema.keys())
+    schema = sample_collection.get_field_schema(flat=True)
+    bad_roots = tuple(
+        k + "." for k, v in schema.items() if isinstance(v, fo.ListField)
+    )
+    return [
+        path
+        for path, field in schema.items()
+        if (
+            isinstance(field, fo.EmbeddedDocumentField)
+            and issubclass(field.document_type, label_types)
+            and not path.startswith(bad_roots)
+        )
+    ]
 
 
 def _get_evaluation_type(view, pred_field):

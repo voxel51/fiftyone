@@ -3335,7 +3335,8 @@ class GeoWithin(_GeoStage):
         strict (True): whether a sample's location data must strictly fall
             within boundary (True) in order to match, or whether any
             intersection suffices (False)
-
+        create_index (True): whether to create the required spherical index,
+            if necessary
     """
 
     def __init__(
@@ -4270,6 +4271,133 @@ class MapLabels(ViewStage):
 
     def validate(self, sample_collection):
         _parse_labels_field(sample_collection, self._field)
+
+
+class MapValues(ViewStage):
+    """Maps the values in the given field to new values for each sample in a
+    collection.
+
+    Examples::
+
+        import random
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        ANIMALS = [
+            "bear", "bird", "cat", "cow", "dog", "elephant", "giraffe",
+            "horse", "sheep", "zebra"
+        ]
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        values = [random.choice(ANIMALS) for _ in range(len(dataset))]
+        dataset.set_values("str_field", values)
+        dataset.set_values("list_field", [[v] for v in values])
+
+        dataset.set_field("ground_truth.detections.tags", [F("label")]).save()
+
+        # Map all animals to string "animal"
+        mapping = {a: "animal" for a in ANIMALS}
+
+        #
+        # Map values in top-level fields
+        #
+
+        stage = fo.MapValues("str_field", mapping)
+        view = dataset.add_stage(stage)
+
+        print(view.count_values("str_field"))
+        # {"animal": 200}
+
+        stage = fo.MapValues("list_field", mapping)
+        view = dataset.add_stage(stage)
+
+        print(view.count_values("list_field"))
+        # {"animal": 200}
+
+        #
+        # Map values in nested fields
+        #
+
+        stage = fo.MapValues("ground_truth.detections.label", mapping)
+        view = dataset.add_stage(stage)
+
+        print(view.count_values("ground_truth.detections.label"))
+        # {"animal": 183, ...}
+
+        stage = fo.MapValues("ground_truth.detections.tags", mapping)
+        view = dataset.add_stage(stage)
+
+        print(view.count_values("ground_truth.detections.tags"))
+        # {"animal": 183, ...}
+
+    Args:
+        field: the field or ``embedded.field.name`` to map
+        map: a dict mapping values to new values
+    """
+
+    def __init__(self, field, map):
+        self._field = field
+        self._map = map
+
+    @property
+    def field(self):
+        """The field to map."""
+        return self._field
+
+    @property
+    def map(self):
+        """The value map dict."""
+        return self._map
+
+    def get_edited_fields(self, sample_collection, frames=False):
+        field_name, is_frame_field = sample_collection._handle_frame_field(
+            self._field
+        )
+
+        if frames == is_frame_field:
+            return [field_name]
+
+        return None
+
+    def to_mongo(self, sample_collection):
+        leaf_field = sample_collection.get_field(self._field)
+        if isinstance(leaf_field, ListField):
+            expr = F().map(F().map_values(self._map))
+        else:
+            expr = F().map_values(self._map)
+
+        pipeline, _ = sample_collection._make_set_field_pipeline(
+            self._field, expr
+        )
+        return pipeline
+
+    def _needs_frames(self, sample_collection):
+        if not sample_collection._contains_videos():
+            return False
+
+        return sample_collection._is_frame_field(self._field)
+
+    def _needs_group_slices(self, sample_collection):
+        if sample_collection.media_type != fom.GROUP:
+            return None
+
+        return sample_collection._get_group_slices(self._field)
+
+    def _kwargs(self):
+        return [
+            ["field", self._field],
+            ["map", self._map],
+        ]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {"name": "field", "type": "field"},
+            {"name": "map", "type": "dict", "placeholder": "map"},
+        ]
 
 
 class SetField(ViewStage):
@@ -8933,6 +9061,7 @@ _STAGES = [
     Limit,
     LimitLabels,
     MapLabels,
+    MapValues,
     Match,
     MatchFrames,
     MatchLabels,

@@ -5,6 +5,7 @@ ODM package declaration.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import types
 
 from .database import (
@@ -51,6 +52,7 @@ from .database import (
     get_cloud_credentials,
 )
 from .dataset import (
+    ActiveFields,
     SampleFieldDocument,
     ColorScheme,
     KeypointSkeleton,
