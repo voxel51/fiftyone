@@ -19,9 +19,11 @@ export const Selectors = styled.div`
   > div {
     display: flex;
     column-gap: 1rem;
+    pointer-events: all;
   }
   justify-content: space-between;
   width: 100%;
+  pointer-events: none;
 `;
 
 export const PlotOption = styled(Link)`
