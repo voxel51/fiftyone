@@ -760,16 +760,7 @@ class EvaluationPanel(Panel):
             ctx.ops.set_view(view)
 
     def save_scenario(self, ctx):
-        # Called when you click the "Save Scenario" button
-        # Validates and stores a subset in the execution store for model eval
-        # {
-        #   id,
-        #   name: string (unique),
-        #   type: 'sample_field' | 'saved_view' | 'custom_code' | "label_attributes",
-        #   code_expr: string (optional, only required if type == 'custom_code'),
-        #   subsets: [string] (optional, only required if type != 'custom_code'),
-        # }
-        # TODO: implement
+        # callback
         pass
 
     def extract_save_scenario_params(self, ctx):
@@ -894,7 +885,7 @@ class EvaluationPanel(Panel):
 
                 # Graph I data - Model Performance
                 with eval_a_results.use_subset(subset_def):
-                    graph_data[eval_a_key]["x"][
+                    graph_data[eval_a_key]["performance"][
                         saved_view
                     ] = eval_a_results.metrics()
                 with eval_b_results.use_subset(subset_def):
