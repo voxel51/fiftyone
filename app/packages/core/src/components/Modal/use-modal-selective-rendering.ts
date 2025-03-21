@@ -1,76 +1,118 @@
 import { ImaVidLooker, VideoLooker } from "@fiftyone/looker";
+import { getSubscription } from "@fiftyone/looker/src/lookers/imavid/subscribe";
 import { Lookers, useLookerOptions } from "@fiftyone/state";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
+import {
+  getColoringKey,
+  getOverlays,
+  handleNetNewOverlays,
+  handlePotentiallyStillPendingOverlays,
+  markTheseOverlaysAsPending,
+} from "../Grid/useUpdates";
 import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
 
 export const useImageModalSelectiveRendering = (
-  id: string,
+  modalId: string,
   looker: Lookers
 ) => {
-  const lookerOptions = useLookerOptions(true);
-
   const { getNewFields } = useDetectNewActiveLabelFields({
     modal: true,
   });
+
+  const id = `${modalId}-${getColoringKey(
+    looker.state.options.coloring,
+    looker.state.options.colorscale
+  )}-image`;
 
   useEffect(() => {
     if (!looker) {
       return;
     }
 
-    const newFieldsIfAny = getNewFields(id);
+    const newFields = getNewFields(id) ?? [];
+    const shouldHardReload = Boolean(newFields?.length);
 
-    if (newFieldsIfAny) {
-      looker?.refreshSample(newFieldsIfAny);
+    if (shouldHardReload) {
+      const overlays = getOverlays(looker);
+      const newOverlays = overlays.filter(
+        (o) =>
+          o.field &&
+          (o.label?.mask_path?.length > 0 ||
+            o.label?.map_path?.length > 0 ||
+            o.label?.mask ||
+            o.label?.map) &&
+          newFields.includes(o.field)
+      );
+
+      if (newOverlays?.length) {
+        markTheseOverlaysAsPending(newOverlays);
+      }
+      looker?.refreshSample(newFields);
     }
-  }, [id, lookerOptions.activePaths, looker, getNewFields]);
+
+    // so that pending state is percolated to the overlay
+    looker.updateOptions({}, shouldHardReload);
+
+    if (shouldHardReload) {
+      handleNetNewOverlays(looker, newFields ?? []);
+    } else {
+      handlePotentiallyStillPendingOverlays(looker);
+    }
+
+    looker.updateOptions({}, shouldHardReload);
+  }, [id, looker, getNewFields]);
 };
 
 export const useImavidModalSelectiveRendering = (
   id: string,
   looker: ImaVidLooker
 ) => {
-  const { getNewFields } = useDetectNewActiveLabelFields({
-    modal: true,
-  });
+  const lookerRef = useRef(looker);
+  lookerRef.current = looker;
 
   const lookerOptions = useLookerOptions(true);
 
+  // const lookerOptionsRef = useRef(lookerOptions);
+  // lookerOptionsRef.current = lookerOptions;
+
   // this is for default view
   // subscription below will not have triggered for the first frame
-  useImageModalSelectiveRendering(id, looker);
+  // useImageModalSelectiveRendering(id, looker);
+  // useImageModalSelectiveRendering(id + "-" + looker.frameNumber, looker);
+  // useEffect(() => {
+  //   if (looker.frameNumber !== 0 && looker.frameNumber !== 1) {
+  //     return;
+  //   }
 
-  // using weak heuristic to detect coloring changes
-  // this is not perfect, but should be good enough
-  const getColoringHash = useCallback(() => {
-    return lookerOptions?.coloring?.targets.join("-") ?? "";
-  }, [lookerOptions]);
+  //   const newFields = getNewFields(`${id}-${looker.frameNumber}`) ?? [];
+  //   const shouldHardReload = Boolean(newFields?.length);
+
+  //   if (shouldHardReload) {
+  //     looker.refreshSample(newFields);
+  //   }
+  // }, [lookerOptions, looker, getNewFields]);
+
+  // useImageModalSelectiveRendering(id, looker);
 
   useEffect(() => {
-    const unsub = looker.subscribeToState(
-      "currentFrameNumber",
-      (currentFrameNumber: number) => {
-        if (!looker.thisFrameSample?.sample) {
-          return;
-        }
-
-        const thisFrameId = `${id}-${currentFrameNumber}-${getColoringHash()}`;
-
-        const newFieldsIfAny = getNewFields(thisFrameId);
-
-        if (newFieldsIfAny) {
-          looker.refreshSample(newFieldsIfAny, currentFrameNumber);
-        } else {
-          // repainting labels should be sufficient
-          looker.refreshOverlaysToCurrentFrame();
-        }
-      }
-    );
+    const unsub = getSubscription({
+      id,
+      looker: lookerRef.current,
+      modal: true,
+    });
 
     return () => {
       unsub();
     };
-  }, [getNewFields, getColoringHash, looker]);
+  }, [id]);
+
+  useEffect(() => {
+    if (!looker) {
+      return;
+    }
+
+    (looker as ImaVidLooker).pause();
+  }, [lookerOptions]);
 };
 
 export const useVideoModalSelectiveRendering = (
