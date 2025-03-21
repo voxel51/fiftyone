@@ -7,6 +7,7 @@ Multiprocessing utilities.
 """
 
 import multiprocessing
+import time
 from queue import Empty
 from typing import (
     Any,
@@ -63,8 +64,11 @@ class ProcessMapper(fomm.LocalMapper[T]):
         progress: Union[bool, Literal["workers"]],
         save: bool,
         skip_failures: bool,
+        use_backoff: bool,
     ) -> Iterator[Tuple[bson.ObjectId, R]]:
         ctx = fou.get_multiprocessing_context()
+
+        print("Using backoff:", use_backoff)
 
         if progress is None:
             progress = fo.config.show_progress_bars
@@ -129,10 +133,37 @@ class ProcessMapper(fomm.LocalMapper[T]):
             )
 
             sample_errors: List[Tuple[bson.ObjectId, Exception, None]] = []
+
+            # Initialize backoff parameters
+            initial_timeout = 0.1
+            max_timeout = 5.0
+            backoff_factor = 2
+            current_timeout = initial_timeout
+            consecutive_timeouts = 0
+            max_consecutive_timeouts = 5
+
             while True:
                 try:
-                    sample_id, err, result = queue.get(timeout=0.01)
+                    sample_id, err, result = queue.get(timeout=current_timeout)
+                    # Reset backoff on successful get
+                    if use_backoff:
+                        current_timeout = initial_timeout
+                        consecutive_timeouts = 0
                 except Empty:
+                    if use_backoff:
+                        consecutive_timeouts += 1
+                        # Apply exponential backoff, but cap at max_timeout
+                        current_timeout = min(
+                            current_timeout * backoff_factor, max_timeout
+                        )
+
+                        # Reset backoff if we've hit too many consecutive timeouts
+                        # This prevents getting stuck with very long timeouts
+                        if consecutive_timeouts >= max_consecutive_timeouts:
+                            current_timeout = initial_timeout
+                            consecutive_timeouts = 0
+
+                    # Check if done after applying backoff
                     if batch_count.value >= num_batches:
                         break
                 else:
@@ -226,6 +257,7 @@ def _init_worker(
 
 def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
     i, num_batches, batch = args
+    print("Starting worker with index:", i)
 
     try:
         sample_collection = batch.create_subset(process_sample_collection)
@@ -243,12 +275,13 @@ def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
             try:
                 sample_output = process_map_fcn(sample)
             except Exception as err:
-                if process_skip_failures:
-                    # Cancel other workers as soon as possible.
-                    process_cancel_event.set()
-
-                # Add sample ID and error to the queue.
-                process_queue.put((sample.id, err, None))
+                _process_worker_error(
+                    process_skip_failures,
+                    process_cancel_event,
+                    process_queue,
+                    sample.id,
+                    err,
+                )
 
                 if process_skip_failures:
                     break
@@ -260,9 +293,28 @@ def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
                 if process_sample_count is not None:
                     with process_sample_count.get_lock():
                         process_sample_count.value += 1
-                if pb is not None:
+                if pb:
                     pb.update()
+    except Exception as err:
+        _process_worker_error(
+            process_skip_failures,
+            process_cancel_event,
+            process_queue,
+            None,
+            err,
+        )
     finally:
         if process_batch_count is not None:
             with process_batch_count.get_lock():
                 process_batch_count.value += 1
+
+
+def _process_worker_error(
+    process_skip_failures, process_cancel_event, process_queue, sample_id, err
+):
+    if process_skip_failures:
+        # Cancel other workers as soon as possible.
+        process_cancel_event.set()
+
+    # Add sample ID and error to the queue.
+    process_queue.put((sample_id, err, None))

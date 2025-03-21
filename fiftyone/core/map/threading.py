@@ -97,6 +97,7 @@ class ThreadMapper(fomm.LocalMapper[T]):
         progress: Union[bool, Literal["workers"]],
         save: bool,
         skip_failures: bool,
+        use_backoff: bool,
     ) -> Iterator[Tuple[bson.ObjectId, Union[Exception, None], R]]:
         # Global synchronization primitives
         result_queue: ResultQueue = queue.Queue()

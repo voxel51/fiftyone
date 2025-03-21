@@ -20,6 +20,7 @@ def map_samples(
     save: bool = False,
     parallelize_method: str = "process",
     skip_failures: bool = False,
+    use_backoff: bool = False,
 ):
     """
     Applies `map_fcn` to each sample using the specified backend strategy and
@@ -36,6 +37,8 @@ def map_samples(
           or 'thread').
         skip_failures (True): whether to gracefully continue without raising an
             error if the map function raises an exception for a sample.
+        use_backoff (False): whether to use exponential backoff when retrying
+            failed operations
 
     Returns:
         A generator yield processed sample results.
@@ -46,9 +49,17 @@ def map_samples(
         workers,
         batch_method,
     )
+    print("parallelize_method:", parallelize_method)
+    print("workers:", workers)
+    print("batch_method:", batch_method)
+    print("backoff:", use_backoff)
 
     yield from mapper.map_samples(
-        map_fcn, progress=progress, save=save, skip_failures=skip_failures
+        map_fcn,
+        progress=progress,
+        save=save,
+        skip_failures=skip_failures,
+        use_backoff=use_backoff,
     )
 
 
@@ -56,10 +67,12 @@ def update_samples(
     sample_collection,
     update_fcn: Callable[[Any], Any],
     workers: Optional[int] = None,
-    batch_method: str = "id",
+    batch_method: Union[Literal["id"], Literal["slice"]] = "id",
     progress: Optional[Union[bool, Literal["worker"]]] = None,
-    parallelize_method: str = "process",
-    skip_failures=True,
+    parallelize_method: Union[
+        Literal["process"], Literal["thread"]
+    ] = "process",
+    skip_failures: bool = False,
 ):
     """
     Applies `map_fcn` to each sample using the specified backend strategy.

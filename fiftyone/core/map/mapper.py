@@ -70,6 +70,7 @@ class Mapper(Generic[T], abc.ABC):
         progress: Optional[Union[bool, Literal["workers"]]] = None,
         save: bool = False,
         skip_failures: bool = True,
+        use_backoff: bool = True,
     ) -> Iterator[Tuple[bson.ObjectId, R]]:
         """Applies map function to each sample and returns an iterator of the
         results.
@@ -84,6 +85,8 @@ class Mapper(Generic[T], abc.ABC):
             skip_failures (bool, optional): Whether to gracefully continue
               without raising an error if the map function raises an exception
               for a sample. Defaults to True.
+            use_backoff (bool, optional): Whether to use exponential backoff
+              when retrying failed operations. Defaults to True.
 
         Yields:
             Iterator[Tuple[bson.ObjectId, R]]: The sample ID and the result of
@@ -108,6 +111,7 @@ class LocalMapper(Mapper[T], Generic[T], abc.ABC):
         progress: Union[bool, Literal["workers"]],
         save: bool,
         skip_failures: bool,
+        use_backoff: bool,
     ) -> MapSampleBatchesReturnType[R]:
         """Applies map function to each sample batch and returns an iterator
           of the results.
@@ -123,6 +127,8 @@ class LocalMapper(Mapper[T], Generic[T], abc.ABC):
             skip_failures (bool, optional): Whether to gracefully continue
               without raising an error if the map function raises an exception
               for a sample. Defaults to True.
+            use_backoff (bool, optional): Whether to use exponential backoff
+              when retrying failed operations. Defaults to True.
 
         Yields:
             MapSampleBatchesReturnType: The sample ID, the exception raised
@@ -137,6 +143,7 @@ class LocalMapper(Mapper[T], Generic[T], abc.ABC):
         progress: Optional[Union[bool, Literal["workers"]]] = None,
         save: bool = False,
         skip_failures: bool = True,
+        use_backoff: bool = True,
     ) -> Iterator[Tuple[bson.ObjectId, R]]:
         result_iter: MapSampleBatchesReturnType
 
@@ -169,6 +176,7 @@ class LocalMapper(Mapper[T], Generic[T], abc.ABC):
                 progress=progress,
                 save=save,
                 skip_failures=skip_failures,
+                use_backoff=use_backoff,
             )
 
         for sample_id, err, result in result_iter:
