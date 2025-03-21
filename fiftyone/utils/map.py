@@ -20,6 +20,7 @@ def map_samples(
     save: bool = False,
     parallelize_method: str = "process",
     skip_failures: bool = False,
+    use_backoff: bool = False,
 ):
     """
     Applies `map_fcn` to each sample using the specified backend strategy and
@@ -36,6 +37,8 @@ def map_samples(
           or 'thread').
         skip_failures (True): whether to gracefully continue without raising an
             error if the map function raises an exception for a sample.
+        use_backoff (False): whether to use exponential backoff when retrying
+            failed operations
 
     Returns:
         A generator yield processed sample results.
@@ -49,11 +52,14 @@ def map_samples(
     print("parallelize_method:", parallelize_method)
     print("workers:", workers)
     print("batch_method:", batch_method)
-    print("mapper:", mapper)
-    print("map_fcn:", map_fcn)
+    print("backoff:", use_backoff)
 
     yield from mapper.map_samples(
-        map_fcn, progress=progress, save=save, skip_failures=skip_failures
+        map_fcn,
+        progress=progress,
+        save=save,
+        skip_failures=skip_failures,
+        use_backoff=use_backoff,
     )
 
 

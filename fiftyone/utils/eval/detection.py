@@ -86,10 +86,10 @@ def evaluate_detections(
     dynamic=True,
     custom_metrics=None,
     progress=None,
-    multiprocessing=False,
     num_workers=None,
     shard_method="id",
     backend=None,
+    use_backoff=False,
     **kwargs,
 ):
     """Evaluates the predicted detections in the given samples with respect to
@@ -189,6 +189,8 @@ def evaluate_detections(
         num_workers (None): the number of workers to use to compute detections
         shard_method ("id"): the method to use to shard the dataset
         backend ("process"): the backend to use for multiprocessing
+        use_backoff (False): whether to use exponential backoff when retrying
+            failed operations
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
 
@@ -264,6 +266,7 @@ def evaluate_detections(
             batch_method=shard_method,
             progress=progress,
             parallelize_method=backend,
+            use_backoff=use_backoff,
         ):
             matches.extend(result)
         print("Matches:", matches[:5])

@@ -7,6 +7,7 @@ Multiprocessing utilities.
 """
 
 import multiprocessing
+import time
 from queue import Empty
 from typing import (
     Any,
@@ -63,8 +64,11 @@ class ProcessMapper(fomm.LocalMapper[T]):
         progress: Union[bool, Literal["workers"]],
         save: bool,
         skip_failures: bool,
+        use_backoff: bool,
     ) -> Iterator[Tuple[bson.ObjectId, R]]:
         ctx = fou.get_multiprocessing_context()
+
+        print("Using backoff:", use_backoff)
 
         if progress is None:
             progress = fo.config.show_progress_bars
@@ -129,10 +133,37 @@ class ProcessMapper(fomm.LocalMapper[T]):
             )
 
             sample_errors: List[Tuple[bson.ObjectId, Exception, None]] = []
+
+            # Initialize backoff parameters
+            initial_timeout = 0.1
+            max_timeout = 5.0
+            backoff_factor = 2
+            current_timeout = initial_timeout
+            consecutive_timeouts = 0
+            max_consecutive_timeouts = 5
+
             while True:
                 try:
-                    sample_id, err, result = queue.get(timeout=0.01)
+                    sample_id, err, result = queue.get(timeout=current_timeout)
+                    # Reset backoff on successful get
+                    if use_backoff:
+                        current_timeout = initial_timeout
+                        consecutive_timeouts = 0
                 except Empty:
+                    if use_backoff:
+                        consecutive_timeouts += 1
+                        # Apply exponential backoff, but cap at max_timeout
+                        current_timeout = min(
+                            current_timeout * backoff_factor, max_timeout
+                        )
+
+                        # Reset backoff if we've hit too many consecutive timeouts
+                        # This prevents getting stuck with very long timeouts
+                        if consecutive_timeouts >= max_consecutive_timeouts:
+                            current_timeout = initial_timeout
+                            consecutive_timeouts = 0
+
+                    # Check if done after applying backoff
                     if batch_count.value >= num_batches:
                         break
                 else:
@@ -227,7 +258,6 @@ def _init_worker(
 def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
     i, num_batches, batch = args
     print("Starting worker with index:", i)
-    print("Num batches:", num_batches)
 
     try:
         sample_collection = batch.create_subset(process_sample_collection)

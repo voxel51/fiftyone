@@ -48,6 +48,20 @@ def parse_backends(backends_str: str) -> List[str]:
     return backends
 
 
+def parse_backoff_options(backoff_str: str) -> List[bool]:
+    """Parse backoff option into a list of boolean values to test"""
+    valid_options = ["true", "false", "both"]
+    option = backoff_str.strip().lower()
+    if option not in valid_options:
+        raise ValueError(
+            f"Invalid backoff option: {option}. Must be one of: {valid_options}"
+        )
+
+    if option == "both":
+        return [True, False]
+    return [option == "true"]
+
+
 @cleanup_after
 def run_evaluation(dataset, config: dict) -> float:
     """Run evaluation with given configuration and return execution time"""
@@ -55,21 +69,32 @@ def run_evaluation(dataset, config: dict) -> float:
 
     start_time = time.time()
     try:
+        # Create evaluation parameters
+        kwargs = {
+            "multiprocessing": config["num_workers"] > 0,
+            "progress": True,
+        }
+
+        # Only add these parameters if using parallel processing
+        if config["num_workers"] > 0:
+            kwargs.update(
+                {
+                    "shard_method": config["shard_method"],
+                    "num_workers": config["num_workers"],
+                    "backend": config.get("backend", "process"),
+                    "use_backoff": config.get("use_backoff", False),
+                }
+            )
+
         results = dataset.evaluate_detections(
             "detections",
             gt_field="detections",
             eval_key=f"eval_predictions_{int(time.time())}_{config['name']}",
-            multiprocessing=True,
-            shard_method=config["shard_method"],
-            num_workers=config["num_workers"],
-            backend=config.get("backend", "process"),
-            # Default to process if not specified
-            progress=True,
+            **kwargs,
         )
     except Exception as e:
         print(f"Error: {e}")
     duration = time.time() - start_time
-
     print(f"Duration: {duration:.2f} seconds")
     return duration
 
@@ -97,6 +122,7 @@ def profile_configurations(
     shard_methods: List[str] = ["slice", "id"],
     backends: List[str] = ["process"],
     run_baseline_eval: bool = True,
+    backoff_options: List[bool] = [False],
 ) -> pd.DataFrame:
     """Profile different configurations and return results as DataFrame"""
     # Load dataset
@@ -114,6 +140,7 @@ def profile_configurations(
                 "shard_method": "none",
                 "num_workers": 0,
                 "backend": "none",
+                "use_backoff": False,
                 "duration": baseline_duration,
             }
         )
@@ -123,13 +150,16 @@ def profile_configurations(
     for backend in backends:
         for method in shard_methods:
             for workers in worker_counts:
-                if workers > 0:
+                # Only test backoff with parallel processing
+                backoff_to_test = backoff_options if workers > 1 else [False]
+                for use_backoff in backoff_to_test:
                     configs.append(
                         {
-                            "name": f"{method}_{workers}w_{backend}",
+                            "name": f"{method}_{workers}w_{backend}_{'backoff' if use_backoff else 'no_backoff'}",
                             "shard_method": method,
                             "num_workers": workers,
                             "backend": backend,
+                            "use_backoff": use_backoff,
                         }
                     )
 
@@ -141,6 +171,7 @@ def profile_configurations(
                 "shard_method": config["shard_method"],
                 "num_workers": config["num_workers"],
                 "backend": config["backend"],
+                "use_backoff": config["use_backoff"],
                 "duration": duration,
             }
         )
@@ -198,12 +229,21 @@ def main():
         help="Skip running the baseline (non-parallel) evaluation",
     )
 
+    parser.add_argument(
+        "--use-backoff",
+        type=str,
+        default="both",
+        choices=["true", "false", "both"],
+        help="Use exponential backoff for retrying failed operations. Options: true, false, both",
+    )
+
     args = parser.parse_args()
 
     # Parse worker counts, shard methods, and backends
     worker_counts = parse_worker_counts(args.workers)
     shard_methods = [m.strip() for m in args.shard_methods.split(",")]
     backends = parse_backends(args.backends)
+    backoff_options = parse_backoff_options(args.use_backoff)
 
     # Run profiling
     results_df = profile_configurations(
@@ -212,6 +252,7 @@ def main():
         shard_methods=shard_methods,
         backends=backends,
         run_baseline_eval=not args.skip_baseline,
+        backoff_options=backoff_options,
     )
 
     # Print summary
