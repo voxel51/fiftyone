@@ -34,9 +34,9 @@ Includes all updates from :ref:`FiftyOne 1.4.0 <release-notes-v1.4.0>`
   large datasets
 - Optimized streaming api responses
 - Improved error messages related to license files and compliance
-- Security fixes for vitest, nanoid, setuptools, and axios
-- Fixed a bug where using the Query Performance Panel to
-  create an index could result in an error message.
+- Security fixes for vitest, nanoid, dompurify, setuptools, and axios
+- Fixed a bug where using the :ref:`Query Performance Panel <query-performance>`
+  to create an index could result in an error message.
 - Fixed a bug that allowed users to accidentally exceed license limits
   when auto-join was enabled
 - Fixed a bug where, in certain cases, the system would incorrectly
@@ -52,7 +52,7 @@ App
 
 - Improved performance of grid by setting default visibility of
   labels to false, and only rendering labels when visible.
-  Set ``app_config.default_visibility_labels`` to override default
+  Set ``app_config.active_fields`` to override default
   visibility.
   `#5356 <https://github.com/voxel51/fiftyone/pull/5356>`_
 - Improved performance and stability of the grid by explicitly
@@ -63,13 +63,14 @@ App
 - Improved buffering behavior in timeline, particularly for longer
   videos.
   `#5515 <https://github.com/voxel51/fiftyone/pull/5515>`_
-- Added Query Performance support for SelectGroupSlices views
+- Added :ref:Query Performance <app-optimizing-query-performance>
+  mode support for SelectGroupSlices views
   `#5428 <https://github.com/voxel51/fiftyone/pull/5428>`_
 - Custom metrics can now be added to existing evaluations via a new
   results.add_custom_metrics() method
   `#5436 <https://github.com/voxel51/fiftyone/pull/5436>`_
-- Added Query Performance support for ExcludeFields and SelectFields
-  views
+- Added :ref:Query Performance <app-optimizing-query-performance>
+  mode support for ``ExcludeFields`` and ``SelectFields`` views
   `#5460 <https://github.com/voxel51/fiftyone/pull/5460>`_
 - Improved performance of sample field filtering on large video
   samples in the grid
