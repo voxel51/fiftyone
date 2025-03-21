@@ -49,6 +49,7 @@ import Error from "./Error";
 import EvaluationIcon from "./EvaluationIcon";
 import EvaluationNotes from "./EvaluationNotes";
 import EvaluationPlot from "./EvaluationPlot";
+import EvaluationScenarioAnalysis from "./EvaluationScenarioAnalysis";
 import Status from "./Status";
 import { ConcreteEvaluationType } from "./Types";
 import {
@@ -79,6 +80,7 @@ export default function Evaluation(props: EvaluationProps) {
     notes = {},
     loadView,
     onRename,
+    loadScenario,
   } = props;
   const theme = useTheme();
   const [expanded, setExpanded] = React.useState("summary");
@@ -536,6 +538,8 @@ export default function Evaluation(props: EvaluationProps) {
     activeFilter?.type === "label"
       ? [classPerformance.findIndex((c) => c.id === activeFilter.value)]
       : undefined;
+
+  const labels = ["Accuracy", "F-score", "Precision", "Recall", "Support"];
 
   return (
     <Stack spacing={2} sx={{ p: 2 }}>
@@ -1393,6 +1397,21 @@ export default function Evaluation(props: EvaluationProps) {
               </Stack>
             </AccordionDetails>
           </Accordion>
+          <Accordion
+            disableGutters
+            sx={{ borderRadius: 1, "&::before": { display: "none" } }}
+          >
+            <AccordionSummary expandIcon={<ExpandMore />}>
+              Scenario Analysis
+            </AccordionSummary>
+            <AccordionDetails>
+              <EvaluationScenarioAnalysis
+                evaluation={evaluation}
+                data={data}
+                loadScenario={loadScenario}
+              />
+            </AccordionDetails>
+          </Accordion>
         </Stack>
       )}
       {mode === "info" && (
@@ -1675,6 +1694,7 @@ type EvaluationProps = {
   id: string;
   navigateBack: () => void;
   loadEvaluation: (key?: string) => void;
+  loadScenario: (id?: string, subset?: string) => void;
   onChangeCompareKey: (compareKey: string) => void;
   compareKey?: string;
   data: any;
