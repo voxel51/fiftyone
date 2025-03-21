@@ -128,13 +128,6 @@ Model Evaluation Panel
 
 Core
 
-- MongoDB compatibility change: only 5.0 and higher are compatible
-  `#5476 <https://github.com/voxel51/fiftyone/pull/5476>`_
-- FiftyOne will now manage the feature compatibility version (FCV) of
-  the FiftyOne-managed mongodb instance. This management will happen
-  during the first connection to the database. Users who utilize an
-  external/standalone instance will be unaffected.
-  `#5441 <https://github.com/voxel51/fiftyone/pull/5441>`_
 - Adds a ``map_values()`` view stage that generalizes ``map_labels()`` 
   to any field or embedded field.
 - Adds an ``edit_field_values`` operator that allows for editing field
