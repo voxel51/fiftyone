@@ -24,11 +24,7 @@ import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
 import { useClearSelectedLabels, useShowOverlays } from "./ModalLooker";
-import {
-  useInitializeImaVidSubscriptions,
-  useLookerOptionsUpdate,
-  useModalContext,
-} from "./hooks";
+import { useLookerOptionsUpdate, useModalContext } from "./hooks";
 import useKeyEvents from "./use-key-events";
 import { useImavidModalSelectiveRendering } from "./use-modal-selective-rendering";
 import { shortcutToHelpItems } from "./utils";
@@ -56,8 +52,6 @@ export const ImaVidLookerReact = React.memo(
     const [reset, setReset] = useState(false);
     const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
     const setModalLooker = useSetRecoilState(fos.modalLooker);
-    const { subscribeToImaVidStateChanges } =
-      useInitializeImaVidSubscriptions();
 
     const createLooker = fos.useCreateLooker(true, false, {
       ...lookerOptions,
@@ -74,10 +68,7 @@ export const ImaVidLookerReact = React.memo(
 
     useEffect(() => {
       setModalLooker(looker);
-      if (looker instanceof ImaVidLooker) {
-        subscribeToImaVidStateChanges();
-      }
-    }, [looker, subscribeToImaVidStateChanges]);
+    }, [looker]);
 
     useEffect(() => {
       if (looker) {
@@ -100,7 +91,6 @@ export const ImaVidLookerReact = React.memo(
     const handleError = useErrorHandler();
 
     const updateLookerOptions = useLookerOptionsUpdate();
-    useEventHandler(looker, "options", (e) => updateLookerOptions(e.detail));
     useEventHandler(looker, "showOverlays", useShowOverlays());
     useEventHandler(looker, "reset", () => {
       setReset((c) => !c);
