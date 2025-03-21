@@ -33,8 +33,6 @@ export default function NativeModelEvaluationView(props) {
     rename_evaluation,
     delete_evaluation,
     load_scenario,
-    on_save_scenario,
-    load_scenario,
   } = view;
   const {
     evaluations = [],
@@ -67,7 +65,7 @@ export default function NativeModelEvaluationView(props) {
   const [showCTA, setShowCTA] = React.useState(false);
   const onEvaluate = useCallback(() => {
     if (constants.IS_APP_MODE_FIFTYONE) {
-      // setShowCTA(true);
+      setShowCTA(true);
     } else {
       triggerEvent(on_evaluate_model);
     }
@@ -167,9 +165,6 @@ export default function NativeModelEvaluationView(props) {
             triggerEvent(load_view, { type, options });
           }}
           onRename={onRename}
-          onSaveScenario={(scenario: any) => {
-            triggerEvent(on_save_scenario, { scenario });
-          }}
         />
       )}
       {page === "overview" &&

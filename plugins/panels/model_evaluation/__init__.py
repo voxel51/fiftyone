@@ -893,7 +893,6 @@ class EvaluationPanel(Panel):
         if scenario_id:
             scenario = self.get_scenario(ctx, eval_id, scenario_id)
             scenario_data = self.get_scenario_data(ctx, scenario)
-            print("scenario_data", scenario_data)
             ctx.panel.set_data(f"scenario_{scenario_id}", scenario_data)
 
     def render(self, ctx):
