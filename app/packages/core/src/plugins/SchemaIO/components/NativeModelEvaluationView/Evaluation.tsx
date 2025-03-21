@@ -58,7 +58,6 @@ import {
   getNumericDifference,
   useTriggerEvent,
 } from "./utils";
-import { usePanelId } from "@fiftyone/spaces";
 
 const KEY_COLOR = "#ff6d04";
 const COMPARE_KEY_COLOR = "#03a9f4";
@@ -67,7 +66,6 @@ const DEFAULT_BAR_CONFIG = { sortBy: "default" };
 const NONE_CLASS = "(none)";
 
 export default function Evaluation(props: EvaluationProps) {
-  console.log("Evaluation props", props);
   const {
     name,
     id,
@@ -83,22 +81,27 @@ export default function Evaluation(props: EvaluationProps) {
     loadView,
     onRename,
     loadScenario,
-    onSaveScenario,
-    loadScenario,
   } = props;
   const theme = useTheme();
   const [expanded, setExpanded] = React.useState("summary");
   const [mode, setMode] = useState("chart");
   const [editNoteState, setEditNoteState] = useState({ open: false, note: "" });
-  const [classPerformanceConfig, setClassPerformanceConfig] =
-    useState<PLOT_CONFIG_TYPE>({});
-  const panelId = usePanelId();
-  const [classPerformanceDialogConfig, setClassPerformanceDialogConfig] =
-    useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
-  const [confusionMatrixConfig, setConfusionMatrixConfig] =
-    useState<PLOT_CONFIG_TYPE>({ log: true });
-  const [confusionMatrixDialogConfig, setConfusionMatrixDialogConfig] =
-    useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
+  const [
+    classPerformanceConfig,
+    setClassPerformanceConfig,
+  ] = useState<PLOT_CONFIG_TYPE>({});
+  const [
+    classPerformanceDialogConfig,
+    setClassPerformanceDialogConfig,
+  ] = useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
+  const [
+    confusionMatrixConfig,
+    setConfusionMatrixConfig,
+  ] = useState<PLOT_CONFIG_TYPE>({ log: true });
+  const [
+    confusionMatrixDialogConfig,
+    setConfusionMatrixDialogConfig,
+  ] = useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
   const [metricMode, setMetricMode] = useState("chart");
   const [classMode, setClassMode] = useState("chart");
   const [performanceClass, setPerformanceClass] = useState("precision");
@@ -1709,7 +1712,6 @@ type EvaluationProps = {
   notes: Record<string, string>;
   loadView: (type: string, params: any) => void;
   onRename: (oldName: string, newName: string) => void;
-  onSaveScenario: (scenario: any) => void;
 };
 
 function ColorSquare(props: { color: string }) {
@@ -1799,9 +1801,8 @@ function getConfigLabel({ config, type, dashed }) {
     type === "classPerformance"
       ? CLASS_PERFORMANCE_SORT_OPTIONS
       : CONFUSION_MATRIX_SORT_OPTIONS;
-  const sortByLabel = sortByLabels.find(
-    (option) => option.value === sortBy
-  )?.label;
+  const sortByLabel = sortByLabels.find((option) => option.value === sortBy)
+    ?.label;
   return dashed ? ` - ${sortByLabel}` : sortByLabel;
 }
 
