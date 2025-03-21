@@ -32,6 +32,24 @@ Kubernetes 1.27
 *Support ended November 1, 2024*
 
 `Kubernetes 1.27 <https://kubernetes.io/releases/>`_
-transitioned to `end-of-life` effective July of 2024. FiftyOne Teams 
+transitioned to `end-of-life` effective July of 2024. FiftyOne Enterprise
 releases after October 31, 2024 might no longer be compatible with
 Kubernetes 1.27 and older.
+
+MongoDB 4.4
+---------------
+*Support ended March 1, 2025*
+
+`MongoDB 4.4 <https://www.mongodb.com/legal/support-policy/lifecycles>`_
+transitioned to `end-of-life` effective February of 2024. FiftyOne 
+releases after March 1, 2025 might no longer be compatible with
+MongoDB 4.4 and older.
+
+MongoDB 5.0
+---------------
+*Support ending July 1, 2025*
+
+`MongoDB 5.0 <https://www.mongodb.com/legal/support-policy/lifecycles>`_
+transitioned to `end-of-life` effective October of 2024. FiftyOne 
+releases after July 1, 2025 might no longer be compatible with
+MongoDB 5.0 and older.

@@ -9,8 +9,10 @@ Definition of the `fiftyone` command-line interface (CLI).
 import argparse
 from collections import defaultdict
 from datetime import datetime
+import fnmatch
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -1728,6 +1730,9 @@ class DatasetZooListCommand(Command):
 
         # List available datasets with the given tag
         fiftyone zoo datasets list --tags <tag>
+
+        # List available datasets with the given license
+        fiftyone zoo datasets list --license <license>
     """
 
     @staticmethod
@@ -1756,6 +1761,15 @@ class DatasetZooListCommand(Command):
             metavar="TAGS",
             help="only show datasets with the specified tag or list,of,tags",
         )
+        parser.add_argument(
+            "-l",
+            "--license",
+            metavar="LICENSE",
+            help=(
+                "only show datasets distributed under the specified license "
+                "or any of the list,of,licenses"
+            ),
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -1763,6 +1777,7 @@ class DatasetZooListCommand(Command):
         downloaded_only = args.downloaded_only
         match_source = args.source
         match_tags = args.tags
+        match_license = args.license
 
         downloaded_datasets = fozd.list_downloaded_zoo_datasets()
         all_datasets, all_sources, default_source = fozd._get_zoo_datasets()
@@ -1775,6 +1790,7 @@ class DatasetZooListCommand(Command):
             downloaded_only=downloaded_only,
             match_tags=match_tags,
             match_source=match_source,
+            match_license=match_license,
             names_only=names_only,
         )
 
@@ -1787,10 +1803,14 @@ def _print_zoo_dataset_list(
     downloaded_only=False,
     match_tags=None,
     match_source=None,
+    match_license=None,
     names_only=False,
 ):
     if match_tags is not None:
         match_tags = match_tags.split(",")
+
+    if match_license is not None:
+        match_license = set(match_license.split(","))
 
     available_datasets = defaultdict(dict)
     for source, datasets in all_datasets.items():
@@ -1816,6 +1836,19 @@ def _print_zoo_dataset_list(
 
         if (match_tags is not None) and (
             tags is None or not all(tag in tags for tag in match_tags)
+        ):
+            continue
+
+        license = None
+        for source, zoo_dataset in dataset_sources.items():
+            if license is None or source == default_source:
+                license = zoo_dataset.license
+
+        if license is not None:
+            license = license.split(",")
+
+        if (match_license is not None) and (
+            license is None or not match_license.intersection(license)
         ):
             continue
 
@@ -1866,10 +1899,12 @@ def _print_zoo_dataset_list(
                 continue
 
             tags_str = ",".join(tags) if tags else ""
+            license_str = ",".join(license) if license else ""
             is_downloaded = "\u2713" if split_dir else ""
 
             records.append(
-                (name, tags_str, split, is_downloaded, split_dir) + tuple(srcs)
+                (name, tags_str, license_str, split, is_downloaded, split_dir)
+                + tuple(srcs)
             )
 
     if names_only:
@@ -1878,7 +1913,7 @@ def _print_zoo_dataset_list(
 
         return
 
-    headers = ["name", "tags", "split", "downloaded", "dataset_dir"]
+    headers = ["name", "tags", "license", "split", "downloaded", "dataset_dir"]
     for source in all_sources:
         if source == default_source:
             source += " (*)"
@@ -1967,6 +2002,10 @@ class DatasetZooInfoCommand(Command):
             description = textwrap.dedent("    " + zoo_dataset.__doc__)
             if description:
                 print("***** Dataset description *****\n%s" % description)
+
+            if zoo_dataset.license:
+                print("***** License *****")
+                print("%s\n" % zoo_dataset.license)
 
             if zoo_dataset.has_tags:
                 print("***** Tags *****")
@@ -2230,6 +2269,9 @@ class ModelZooListCommand(Command):
 
         # List available models from the given remote source
         fiftyone zoo models list --source <source>
+
+        # List available models with the given license
+        fiftyone zoo models list --license <license>
     """
 
     @staticmethod
@@ -2258,6 +2300,15 @@ class ModelZooListCommand(Command):
             metavar="SOURCE",
             help="only show models available from the specified remote source",
         )
+        parser.add_argument(
+            "-l",
+            "--license",
+            metavar="LICENSE",
+            help=(
+                "only show models distributed under the specified license or "
+                "any of the list,of,licenses"
+            ),
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -2265,11 +2316,17 @@ class ModelZooListCommand(Command):
         downloaded_only = args.downloaded_only
         tags = args.tags
         source = args.source
+        license = args.license
 
         if tags is not None:
             tags = tags.split(",")
 
-        models = fozm._list_zoo_models(tags=tags, source=source)
+        if license is not None:
+            license = license.split(",")
+
+        models = fozm._list_zoo_models(
+            tags=tags, source=source, license=license
+        )
         downloaded_models = fozm.list_downloaded_zoo_models()
 
         _print_zoo_models_list(
@@ -2314,7 +2371,9 @@ def _print_zoo_models_list(
 
         tags = ",".join(model.tags or [])
 
-        records.append((name, tags, is_remote, is_downloaded, model_path))
+        records.append(
+            (name, tags, model.license, is_remote, is_downloaded, model_path)
+        )
 
     if names_only:
         for name in records:
@@ -2322,7 +2381,7 @@ def _print_zoo_models_list(
 
         return
 
-    headers = ["name", "tags", "remote", "downloaded", "model_path"]
+    headers = ["name", "tags", "license", "remote", "downloaded", "model_path"]
     table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
     print(table_str)
 
@@ -2912,6 +2971,9 @@ class OperatorsListCommand(Command):
         # List all available operators and panels
         fiftyone operators list
 
+        # List operators and panels whose URI matches the given glob pattern
+        fiftyone operators list --glob-patt '*/compute_*'
+
         # List enabled operators and panels
         fiftyone operators list --enabled
 
@@ -2927,6 +2989,12 @@ class OperatorsListCommand(Command):
 
     @staticmethod
     def setup(parser):
+        parser.add_argument(
+            "-g",
+            "--glob-patt",
+            metavar="PATT",
+            help="only show operators whose URI matches the glob pattern",
+        )
         parser.add_argument(
             "-e",
             "--enabled",
@@ -2999,16 +3067,26 @@ class OperatorsListCommand(Command):
         else:
             type = None
 
-        _print_operators_list(enabled, builtin, type, args.names_only)
+        _print_operators_list(
+            enabled, builtin, type, args.glob_patt, args.names_only
+        )
 
 
-def _print_operators_list(enabled, builtin, type, names_only):
+def _print_operators_list(enabled, builtin, type, glob_patt, names_only):
+    if glob_patt is not None:
+        regex = re.compile(fnmatch.translate(glob_patt))
+    else:
+        regex = None
+
     operators = foo.list_operators(enabled=enabled, builtin=builtin, type=type)
 
     if names_only:
         operators_map = defaultdict(list)
-        for operator in operators:
-            operators_map[operator.plugin_name].append(operator)
+        for op in operators:
+            if regex is not None and not regex.match(op.uri):
+                continue
+
+            operators_map[op.plugin_name].append(op)
 
         for pname, ops in operators_map.items():
             print(pname)
@@ -3023,6 +3101,9 @@ def _print_operators_list(enabled, builtin, type, names_only):
 
     rows = []
     for op in operators:
+        if regex is not None and not regex.match(op.uri):
+            continue
+
         rows.append(
             {
                 "uri": op.uri,

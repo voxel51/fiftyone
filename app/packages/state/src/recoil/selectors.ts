@@ -142,6 +142,11 @@ export const datasetAppConfig = graphQLSyncFragmentAtom<
   }
 );
 
+export const activeFieldsConfig = selector({
+  key: "activeFieldsConfig",
+  get: ({ get }) => get(datasetAppConfig)?.activeFields,
+});
+
 export const disableFrameFiltering = selector<boolean>({
   key: "disableFrameFiltering",
   get: ({ get }) => {

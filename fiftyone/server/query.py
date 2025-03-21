@@ -60,6 +60,12 @@ DATASET_FILTER_STAGE = [{"$match": DATASET_FILTER[0]}]
 
 
 @gql.type
+class ActiveFields:
+    exclude: t.Optional[bool]
+    paths: t.Optional[t.List[str]]
+
+
+@gql.type
 class Group:
     name: str
     media_type: MediaType
@@ -209,6 +215,7 @@ class NamedKeypointSkeleton(KeypointSkeleton):
 
 @gql.type
 class DatasetAppConfig:
+    active_fields: t.Optional[ActiveFields]
     color_scheme: t.Optional[ColorScheme]
     disable_frame_filtering: t.Optional[bool] = None
     dynamic_groups_target_frame_rate: int = 30
@@ -251,7 +258,7 @@ class Dataset:
     info: t.Optional[JSON]
 
     estimated_frame_count: t.Optional[int]
-    estimated_sample_count: t.Optional[int]
+    estimated_sample_count: int
     frame_indexes: t.Optional[t.List[Index]]
     sample_indexes: t.Optional[t.List[Index]]
 
@@ -320,10 +327,7 @@ class Dataset:
             dict(name=name, **data)
             for name, data in doc.get("skeletons", {}).items()
         )
-        doc["group_media_types"] = [
-            Group(name=name, media_type=media_type)
-            for name, media_type in doc.get("group_media_types", {}).items()
-        ]
+        doc["group_media_types"] = []
         doc["default_skeletons"] = doc.get("default_skeletons", None)
 
         # gql private fields must always be present
@@ -426,7 +430,7 @@ class Query(fosa.AggregateQuery):
     async def estimated_dataset_count(self, info: Info = None) -> int:
         return await info.context.db.datasets.estimated_document_count()
 
-    dataset: Dataset = gql.field(resolver=Dataset.resolver)
+    dataset = gql.field(resolver=Dataset.resolver)
     datasets: Connection[Dataset, str] = gql.field(
         resolver=get_paginator_resolver(
             Dataset, "created_at", DATASET_FILTER_STAGE, "datasets"
@@ -597,7 +601,9 @@ async def serialize_dataset(
                 for stage in serialized_view:
                     view = view.add_stage(fosg.ViewStage._from_dict(stage))
         except:
-            view = fov.DatasetView._build(dataset, serialized_view or [])
+            view: fov.DatasetView = fov.DatasetView._build(
+                dataset, serialized_view or []
+            )
 
         doc = dataset._doc.to_dict(no_dereference=True)
         Dataset.modifier(doc)
@@ -605,6 +611,12 @@ async def serialize_dataset(
         data.view_cls = None
         data.view_name = view_name
         data.saved_view_slug = saved_view_slug
+
+        group_media_types = view._get_group_media_types() or {}
+        data.group_media_types = [
+            Group(name=name, media_type=media_type)
+            for name, media_type in group_media_types.items()
+        ]
 
         collection = dataset.view()
         if view is not None:

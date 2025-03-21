@@ -5,6 +5,7 @@
 import { getCls, sizeBytesEstimate } from "@fiftyone/utilities";
 import { OverlayMask } from "../numpy";
 import type { BaseState, Coordinates, NONFINITE } from "../state";
+import { DenseLabelRenderStatus } from "../worker/shared";
 import { getLabelColor, shouldShowLabelTag } from "./util";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
@@ -19,6 +20,7 @@ export interface BaseLabel {
   frame_number?: number;
   tags: string[];
   index?: number;
+  _renderStatus?: DenseLabelRenderStatus;
 }
 
 export interface PointInfo<Label extends BaseLabel = BaseLabel> {
@@ -74,7 +76,7 @@ export interface Overlay<State extends Partial<BaseState>> {
   getPoints(state: Readonly<State>): Coordinates[];
   getSelectData(state: Readonly<State>): SelectData;
   getSizeBytes(): number;
-  cleanup?(): void;
+  cleanup?(setTargetsToNull: boolean): void;
 }
 
 export abstract class CoordinateOverlay<

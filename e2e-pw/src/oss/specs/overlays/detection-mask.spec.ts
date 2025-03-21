@@ -22,7 +22,12 @@ const test = base.extend<{ modal: ModalPom; grid: GridPom }>({
   },
 });
 
-test.beforeAll(async ({ fiftyoneLoader, mediaFactory }) => {
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
+test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
+  await foWebServer.startWebServer();
   await Promise.all(
     [
       badDetectionMaskSampleImage,
@@ -90,6 +95,9 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory }) => {
         samples.append(goodDetectionMaskPathSample)
         
         dataset.add_samples(samples)
+
+        dataset.app_config.default_visibility_labels = {"include": ["ground_truth", "prediction"]}
+        dataset.save()
         `
   );
 });
@@ -98,7 +106,7 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test.describe("detection-mask", () => {
+test.describe.serial("detection-mask", () => {
   test("should load all masks fine", async ({ grid, modal }) => {
     await grid.assert.isEntryCountTextEqualTo("3 samples");
 

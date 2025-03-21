@@ -1425,7 +1425,7 @@ class SampleCollection(object):
                 return None, None, read_only
 
             resolved_keys.append(field.db_field or field.name)
-            read_only = field.read_only
+            read_only = getattr(field, "read_only", False)
             last_key = idx == len(keys) - 1
 
             if last_key and not leaf:
@@ -4619,6 +4619,80 @@ class SampleCollection(object):
         return self._add_view_stage(fos.ExcludeGroups(group_ids))
 
     @view_stage
+    def exclude_group_slices(self, slices=None, media_type=None):
+        """Excludes the specified group slice(s) from the grouped collection.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+            dataset.add_group_field("group", default="ego")
+
+            group1 = fo.Group()
+            group2 = fo.Group()
+
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/left-image1.jpg",
+                        group=group1.element("left"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/video1.mp4",
+                        group=group1.element("ego"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/right-image1.jpg",
+                        group=group1.element("right"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/left-image2.jpg",
+                        group=group2.element("left"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/video2.mp4",
+                        group=group2.element("ego"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/right-image2.jpg",
+                        group=group2.element("right"),
+                    ),
+                ]
+            )
+
+            #
+            # Exclude the samples from the "ego" group slice
+            #
+
+            view = dataset.exclude_group_slices("ego")
+
+            #
+            # Exclude the samples from the "left" or "right" group slices
+            #
+
+            view = dataset.exclude_group_slices(["left", "right"])
+
+            #
+            # Exclude all image slices
+            #
+
+            view = dataset.exclude_group_slices(media_type="image")
+
+        Args:
+            slices (None): a group slice or iterable of group slices to
+                exclude
+            media_type (None): a media type or iterable of media types whose
+                slice(s) to exclude
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.ExcludeGroupSlices(slices=slices, media_type=media_type)
+        )
+
+    @view_stage
     def exclude_labels(
         self, labels=None, ids=None, tags=None, fields=None, omit_empty=True
     ):
@@ -5742,6 +5816,72 @@ class SampleCollection(object):
         return self._add_view_stage(fos.MapLabels(field, map))
 
     @view_stage
+    def map_values(self, field, map):
+        """Maps the values in the given field to new values for each sample in
+        the collection.
+
+        Examples::
+
+            import random
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            ANIMALS = [
+                "bear", "bird", "cat", "cow", "dog", "elephant", "giraffe",
+                "horse", "sheep", "zebra"
+            ]
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            values = [random.choice(ANIMALS) for _ in range(len(dataset))]
+            dataset.set_values("str_field", values)
+            dataset.set_values("list_field", [[v] for v in values])
+
+            dataset.set_field("ground_truth.detections.tags", [F("label")]).save()
+
+            # Map all animals to string "animal"
+            mapping = {a: "animal" for a in ANIMALS}
+
+            #
+            # Map values in top-level fields
+            #
+
+            view = dataset.map_values("str_field", mapping)
+
+            print(view.count_values("str_field"))
+            # {"animal": 200}
+
+            view = dataset.map_values("list_field", mapping)
+
+            print(view.count_values("list_field"))
+            # {"animal": 200}
+
+            #
+            # Map values in nested fields
+            #
+
+            view = dataset.map_values("ground_truth.detections.label", mapping)
+
+            print(view.count_values("ground_truth.detections.label"))
+            # {"animal": 183, ...}
+
+            view = dataset.map_values("ground_truth.detections.tags", mapping)
+
+            print(view.count_values("ground_truth.detections.tags"))
+            # {"animal": 183, ...}
+
+        Args:
+            field: the field or ``embedded.field.name`` to map
+            map: a dict mapping values to new values
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.MapValues(field, map))
+
+    @view_stage
     def set_field(self, field, expr, _allow_missing=False):
         """Sets a field or embedded field on each sample in a collection by
         evaluating the given expression.
@@ -6609,19 +6749,24 @@ class SampleCollection(object):
         self,
         slices=None,
         media_type=None,
+        flat=True,
         _allow_mixed=False,
         _force_mixed=False,
     ):
-        """Selects the samples in the group collection from the given slice(s).
+        """Selects the specified group slice(s) from the grouped collection.
 
-        The returned view is a flattened non-grouped view containing only the
-        slice(s) of interest.
+        When ``flat==True``, the returned view is a flattened non-grouped view
+        containing the samples from the slice(s) of interest.
+
+        When ``flat=False``, the returned view is a grouped collection
+        containing only the slice(s) of interest.
 
         .. note::
 
-            This stage performs a ``$lookup`` that pulls the requested slice(s)
-            for each sample in the input collection from the source dataset.
-            As a result, this stage always emits *unfiltered samples*.
+            When ``flat=True``, this stage performs a ``$lookup`` that pulls
+            the requested slice(s) for each sample in the input collection from
+            the source dataset. As a result, the stage emits
+            *unfiltered samples*.
 
         Examples::
 
@@ -6675,6 +6820,12 @@ class SampleCollection(object):
             view = dataset.select_group_slices(["left", "right"])
 
             #
+            # Select only the "left" and "right" group slices
+            #
+
+            view = dataset.select_group_slices(["left", "right"], flat=False)
+
+            #
             # Retrieve all image samples
             #
 
@@ -6684,7 +6835,10 @@ class SampleCollection(object):
             slices (None): a group slice or iterable of group slices to select.
                 If neither argument is provided, a flattened list of all
                 samples is returned
-            media_type (None): a media type whose slice(s) to select
+            media_type (None): a media type or iterable of media types whose
+                slice(s) to select
+            flat (True): whether to return a flattened collection (True) or a
+                grouped collection (False)
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -6693,6 +6847,7 @@ class SampleCollection(object):
             fos.SelectGroupSlices(
                 slices=slices,
                 media_type=media_type,
+                flat=flat,
                 _allow_mixed=_allow_mixed,
                 _force_mixed=_force_mixed,
             )
@@ -10587,24 +10742,23 @@ class SampleCollection(object):
             return True
 
         if self.media_type == fom.GROUP:
-            if self.group_media_types is None:
+            group_media_types = self.group_media_types
+            if group_media_types is None:
                 return self._dataset.media_type == media_type
 
             if any_slice:
                 return any(
                     slice_media_type == media_type
-                    for slice_media_type in self.group_media_types.values()
+                    for slice_media_type in group_media_types.values()
                 )
 
-            return (
-                self.group_media_types.get(self.group_slice, None)
-                == media_type
-            )
+            return group_media_types.get(self.group_slice, None) == media_type
 
         if self.media_type == fom.MIXED:
+            group_media_types = self._get_group_media_types()
             return any(
                 slice_media_type == media_type
-                for slice_media_type in self._get_group_media_types().values()
+                for slice_media_type in group_media_types.values()
             )
 
         return False
@@ -11050,6 +11204,12 @@ class SampleCollection(object):
             raise ValueError(f"Dataset has no store '{store_name}'")
 
         return foos.ExecutionStore(store_name, svc)
+
+    def to_torch(self, get_item, **kwargs):
+        """See fo.utils.torch.FiftyOneTorchDataset for documentation."""
+        from fiftyone.utils.torch import FiftyOneTorchDataset
+
+        return FiftyOneTorchDataset(self, get_item, **kwargs)
 
 
 def _iter_label_fields(sample_collection):

@@ -1,12 +1,14 @@
-import { Locator, Page } from "src/oss/fixtures";
+import { Locator, Page, expect } from "src/oss/fixtures";
 
 export class ColorModalPom {
   readonly page: Page;
   readonly colorModal: Locator;
+  readonly assert: ColorModalAsserter;
 
   constructor(page: Page) {
     this.page = page;
     this.colorModal = page.locator("#colorModal");
+    this.assert = new ColorModalAsserter(this);
   }
 
   getFieldSelector(fieldName: string) {
@@ -124,5 +126,17 @@ export class ColorModalPom {
   async clearDefault() {
     const clearDefaultButton = this.page.getByTestId("button-Clear default");
     await clearDefaultButton.click();
+  }
+}
+
+class ColorModalAsserter {
+  constructor(private readonly colorModalPom: ColorModalPom) {}
+
+  async isColorByModeEqualTo(mode: "value" | "field" | "instance") {
+    await expect(
+      this.colorModalPom.colorModal
+        .getByTestId(`radio-button-${mode}`)
+        .getByRole("radio")
+    ).toBeChecked();
   }
 }

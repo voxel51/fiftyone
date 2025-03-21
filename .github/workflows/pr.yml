@@ -12,7 +12,7 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-  
+
 jobs:
   modified-files:
     runs-on: ubuntu-latest
@@ -28,6 +28,7 @@ jobs:
           filters: |
             app:
               - 'app/**'
+              - '.github/workflows/build.yml'
             e2e-pw:
               - 'e2e-pw/**'
               - '.github/workflows/e2e.yml'
@@ -38,6 +39,8 @@ jobs:
               - 'tests/**'
               - 'requirements.txt'
               - 'setup.py'
+              - '.github/workflows/build.yml'
+              - '.github/workflows/test.yml'
 
   build:
     needs: modified-files
@@ -90,5 +93,5 @@ jobs:
       - run: sh -c ${{
           (needs.build.result == 'success' || needs.build.result == 'skipped') &&
           (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
-          (needs.test.result == 'success' || needs.test.result == 'skipped') && 
+          (needs.test.result == 'success' || needs.test.result == 'skipped') &&
           (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') }}

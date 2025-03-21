@@ -21,7 +21,17 @@ const extensionDatasetNamePairs = ["mp4", "png"].map(
     ] as const
 );
 
-test.beforeAll(async ({ fiftyoneLoader }) => {
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
+test.afterEach(async ({ modal, page }) => {
+  await modal.close({ ignoreError: true });
+  await page.reload();
+});
+
+test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
+  await foWebServer.startWebServer();
   let pythonCode = `
       import fiftyone as fo
   `;
@@ -50,64 +60,71 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
   await fiftyoneLoader.executePythonCode(pythonCode);
 });
 
-extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
-  test(`${extension} default slice`, async ({
-    fiftyoneLoader,
-    page,
-    grid,
-    modal,
-  }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-    await grid.assert.isEntryCountTextEqualTo("1 group with slice");
-    await grid.openFirstSample();
-    await modal.sidebar.toggleSidebarGroup("GROUP");
-    await modal.sidebar.assert.verifySidebarEntryText("group.name", "first");
-    await modal.navigateSlice("group.name", "shared", true);
-    await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
-    await modal.close();
-  });
+test.afterEach(async ({ modal, page }) => {
+  await modal.close({ ignoreError: true });
+  await page.reload();
+});
 
-  test(`${extension} shared slice`, async ({
-    fiftyoneLoader,
-    page,
-    grid,
-    modal,
-  }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-    await grid.assert.isEntryCountTextEqualTo("1 group with slice");
-    await grid.selectSlice("shared");
-    await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
-    await grid.openFirstSample();
-    await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
-    await modal.sidebar.toggleSidebarGroup("GROUP");
-    await modal.navigateSlice("group.name", "first", true);
-    await modal.sidebar.assert.verifySidebarEntryText("group.name", "first");
-    await modal.navigateNextSample(true);
-    await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
-    await modal.navigateSlice("group.name", "second", true);
-    await modal.sidebar.assert.verifySidebarEntryText("group.name", "second");
-    await modal.navigatePreviousSample(true);
-    await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
-    await modal.navigateSlice("group.name", "first", true);
-    await modal.sidebar.assert.verifySidebarEntryText("group.name", "first");
-    await modal.close();
-  });
+test.describe.serial("sparse groups tests", () => {
+  extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
+    test(`${extension} default slice`, async ({
+      fiftyoneLoader,
+      page,
+      grid,
+      modal,
+    }) => {
+      await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+      await grid.assert.isEntryCountTextEqualTo("1 group with slice");
+      await grid.openFirstSample();
+      await modal.sidebar.toggleSidebarGroup("GROUP");
+      await modal.sidebar.assert.verifySidebarEntryText("group.name", "first");
+      await modal.navigateSlice("group.name", "shared", true);
+      await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
+      await modal.close();
+    });
 
-  test(`${extension} second slice`, async ({
-    fiftyoneLoader,
-    page,
-    grid,
-    modal,
-  }) => {
-    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-    await grid.assert.isEntryCountTextEqualTo("1 group with slice");
-    await grid.selectSlice("second");
-    await grid.assert.isEntryCountTextEqualTo("1 group with slice");
-    await grid.openFirstSample();
-    await modal.sidebar.toggleSidebarGroup("GROUP");
-    await modal.sidebar.assert.verifySidebarEntryText("group.name", "second");
-    await modal.navigateSlice("group.name", "shared", true);
-    await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
-    await modal.close();
+    test(`${extension} shared slice`, async ({
+      fiftyoneLoader,
+      page,
+      grid,
+      modal,
+    }) => {
+      await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+      await grid.assert.isEntryCountTextEqualTo("1 group with slice");
+      await grid.selectSlice("shared");
+      await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
+      await grid.openFirstSample();
+      await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
+      await modal.sidebar.toggleSidebarGroup("GROUP");
+      await modal.navigateSlice("group.name", "first", true);
+      await modal.sidebar.assert.verifySidebarEntryText("group.name", "first");
+      await modal.navigateNextSample(true);
+      await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
+      await modal.navigateSlice("group.name", "second", true);
+      await modal.sidebar.assert.verifySidebarEntryText("group.name", "second");
+      await modal.navigatePreviousSample(true);
+      await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
+      await modal.navigateSlice("group.name", "first", true);
+      await modal.sidebar.assert.verifySidebarEntryText("group.name", "first");
+      await modal.close();
+    });
+
+    test(`${extension} second slice`, async ({
+      fiftyoneLoader,
+      page,
+      grid,
+      modal,
+    }) => {
+      await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+      await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
+      await grid.selectSlice("second");
+      await grid.assert.isEntryCountTextEqualTo("1 group with slice");
+      await grid.openFirstSample();
+      await modal.sidebar.toggleSidebarGroup("GROUP");
+      await modal.sidebar.assert.verifySidebarEntryText("group.name", "second");
+      await modal.navigateSlice("group.name", "shared", true);
+      await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
+      await modal.close();
+    });
   });
 });
