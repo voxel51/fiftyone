@@ -74,7 +74,6 @@ jobs:
           pip install fiftyone-brain fiftyone-db
           pip install pycocotools tensorflow torch torchvision
           pip install typing_extensions==4.10.0
-          pip install Jinja2==3.0.3 flask==2.3.3 open3d==0.17.0
           pip install .
       - name: Cache Node Modules
         id: node-cache
