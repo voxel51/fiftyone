@@ -6,7 +6,7 @@ import { NONFINITES } from "@fiftyone/utilities";
 import { INFO_COLOR } from "../constants";
 import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
 import { distanceFromLineSegment } from "../util";
-import { RENDER_STATUS_PAINTED } from "../worker/shared";
+import { RENDER_STATUS_PAINTED, RENDER_STATUS_PENDING } from "../worker/shared";
 import {
   CONTAINS,
   CoordinateOverlay,
@@ -71,6 +71,11 @@ export default class DetectionOverlay<
     // so we return if render status is truthy and there's no mask
     // meaning mask is being processed
     if (this.label._renderStatus && !this.label.mask) {
+      return;
+    }
+
+    // this means we are re-recoloring
+    if (this.label.mask && this.label._renderStatus === RENDER_STATUS_PENDING) {
       return;
     }
 

@@ -90,7 +90,7 @@ export type Sample = {
   _id: string;
   id: string;
   filepath: string;
-  frames?: Sample[];
+  frames?: FrameSample[];
   tags: string[];
   _label_tags: string[];
   _media_type: "image" | "video" | "point-cloud" | "3d";

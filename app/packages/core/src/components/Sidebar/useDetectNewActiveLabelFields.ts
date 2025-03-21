@@ -53,6 +53,17 @@ export const useDetectNewActiveLabelFields = ({
     [modal]
   );
 
+  const removeField = useCallback(
+    (id: string) => {
+      if (modal) {
+        modalActivePathsLUT.delete(id);
+      } else {
+        gridActivePathsLUT.delete(id);
+      }
+    },
+    [modal]
+  );
+
   /**
    * clear look up table when component unmounts
    */
@@ -66,5 +77,5 @@ export const useDetectNewActiveLabelFields = ({
     };
   }, [modal]);
 
-  return { getNewFields, getExistingFields };
+  return { getNewFields, getExistingFields, removeField };
 };

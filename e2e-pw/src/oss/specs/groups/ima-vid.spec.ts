@@ -124,7 +124,7 @@ test("check modal playback and tagging behavior", async ({ modal, grid }) => {
   await grid.openFirstSample();
   await modal.waitForSampleLoadDomAttribute();
 
-  await modal.imavid.assert.isTimeTextEqualTo("1 / 150");
+  await modal.imavid.waitUntilFrameTextIs("1 / 150");
 
   await modal.imavid.playUntilFrames("13 / 150");
 

@@ -2396,6 +2396,59 @@ every 10th frame as a keyframe to provide a better editing experience in CVAT:
     with the shape's contents. See :ref:`this section <cvat-limitations>` for
     details.
 
+.. _cvat-3d:
+
+Annotating 3D data
+__________________
+
+CVAT supports annotating 3D detections on point cloud data.
+
+In order to perform 3D annotation with CVAT on :ref:`3D datasets <3d-datasets>`
+in FiftyOne, you must populate a field on your FiftyOne dataset for each sample
+that you wish to annotate that contains the path to the 3D asset(s) to upload
+in one of
+`CVAT's supported formats <https://docs.cvat.ai/docs/manual/basics/create_an_annotation_task/#data-formats-for-a-3d-task>`_,
+which includes:
+
+-   the path to the `.pcd` file to upload
+-   the path to a structured zip archive including the PCD file and optional
+    reference images
+
+Then simply provide this field name via the `media_field` argument when you
+call :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-groups")
+    view = dataset.select_group_slices("pcd")
+
+    #
+    # Populate a field on the dataset that points to the data to upload to CVAT
+    #
+    # This data can be as simple as a filepath to a .pcd file, or it could be a
+    # structured zip archive including reference images along with the PCD
+    #
+    pcd_filepaths = [f.replace(".fo3d", ".pcd") for f in view.values("filepath")]
+    view.set_values("pcd_filepath", pcd_filepaths)
+
+    results = view[1:2].annotate(
+        "test",
+        label_field="ground_truth",
+        media_field="pcd_filepath",
+        launch_editor=True,
+    )
+
+    # Annotate the cuboids in CVAT...
+
+    view.load_annotations("test")
+
+    # View the newly created/edited cuboids in FiftyOne
+    session = fo.launch_app(dataset)
+
 .. _cvat-existing-tasks:
 
 Importing existing tasks

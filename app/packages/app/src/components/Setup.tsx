@@ -188,7 +188,7 @@ const Setup = () => {
 
   return (
     <div data-cy="setup-page">
-      <Header title={"FiftyOne Teams"}>
+      <Header title={"FiftyOne Enterprise"}>
         <div className={iconContainer} style={{ flex: 1 }}>
           <DiscordLink />
           <GitHubLink />
