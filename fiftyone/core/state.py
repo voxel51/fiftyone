@@ -83,6 +83,8 @@ class StateDescription(etas.Serializable):
         self.sample_id = sample_id
         self.selected = selected or []
         self.selected_labels = selected_labels or []
+        self.spaces = spaces
+
         self.view = (
             dataset.load_saved_view(view_name)
             if dataset is not None and view_name
