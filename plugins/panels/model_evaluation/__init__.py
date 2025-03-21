@@ -1008,7 +1008,8 @@ class EvaluationPanel(Panel):
         scenario_type = scenario.get("type", None)
         scenario_data = scenario.copy()
         scenario_data["subsets_data"] = {}
-        if scenario_type == "view":
+
+        if scenario_type == "saved_views":
             scenario_subsets = scenario.get("subsets", [])
             for subset in scenario_subsets:
                 subset_def = dict(type="view", view=subset)
@@ -1016,15 +1017,19 @@ class EvaluationPanel(Panel):
                     ctx, info, results, subset_def
                 )
                 scenario_data["subsets_data"][subset] = subset_data
+
         return scenario_data
 
     def load_scenario(self, ctx):
         view_state = ctx.panel.get_state("view") or {}
         eval_id = view_state.get("id")
-        scenario_id = ctx.params.get("id", None)
-        scenario = self.get_scenario(ctx, eval_id, scenario_id)
-        scenario_data = self.get_scenario_data(ctx, scenario)
-        ctx.panel.set_data(f"scenario_{scenario_id}", scenario_data)
+        scenario_id = str(ctx.params.get("id", "") or "")
+
+        if scenario_id:
+            scenario = self.get_scenario(ctx, eval_id, scenario_id)
+            scenario_data = self.get_scenario_data(ctx, scenario)
+            print("scenario_data", scenario_data)
+            ctx.panel.set_data(f"scenario_{scenario_id}", scenario_data)
 
     def render(self, ctx):
         panel = types.Object()
