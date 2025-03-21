@@ -33,6 +33,7 @@ export default function NativeModelEvaluationView(props) {
     rename_evaluation,
     delete_evaluation,
     on_save_scenario,
+    load_scenario,
   } = view;
   const {
     evaluations = [],
@@ -149,6 +150,9 @@ export default function NativeModelEvaluationView(props) {
           data={data}
           loadEvaluation={(key?: string) => {
             triggerEvent(load_evaluation, { key, id: keyToId[key as string] });
+          }}
+          loadScenario={(id?: string, subset?: string) => {
+            triggerEvent(load_scenario, { id, subset });
           }}
           onChangeCompareKey={(compareKey) => {
             onChange("view.compareKey", compareKey);
