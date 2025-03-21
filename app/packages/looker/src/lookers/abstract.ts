@@ -99,7 +99,6 @@ export abstract class AbstractLooker<
 
   protected readonly abortController: AbortController;
   protected currentOverlays: Overlay<State>[];
-  protected sample: S;
   protected readonly updater: StateUpdate<State>;
 
   private batchMergedUpdates: Partial<State> = {};
