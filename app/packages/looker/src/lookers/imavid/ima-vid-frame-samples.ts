@@ -189,7 +189,7 @@ export class ImaVidFrameSamples {
     }
   }
 
-  shouldReloadMasksForFrame(frameNumber: number) {
+  hasAtLeastOneLoadedMask(frameNumber: number) {
     const sampleId = this.frameIndex.get(frameNumber);
     if (!sampleId) {
       return false;
@@ -229,7 +229,7 @@ export class ImaVidFrameSamples {
       }
     }
 
-    return true;
+    return false;
   }
 
   reset() {

@@ -59,7 +59,7 @@ export const getSubscription = ({
 
         lastSyncKey = syncKey;
       }
-      if (looker.frameStoreController.store.shouldReloadMasksForFrame(1)) {
+      if (looker.frameStoreController.store.hasAtLeastOneLoadedMask(1)) {
         lut.delete(thisFrameLutId);
         looker.frameStoreController.store.resetMaskForFrame(1);
         const newFields = syncAndGetNewLabels(
@@ -83,7 +83,7 @@ export const getSubscription = ({
     if (lut.has(thisFrameLutId)) {
       if (
         !(modal && newFrameNumber === 1) &&
-        looker.frameStoreController.store.shouldReloadMasksForFrame(
+        looker.frameStoreController.store.hasAtLeastOneLoadedMask(
           newFrameNumber
         )
       ) {
