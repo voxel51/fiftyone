@@ -1,5 +1,6 @@
-import _ from "lodash";
 import { Dialog } from "@fiftyone/components";
+import { usePanelEvent } from "@fiftyone/operators";
+import { usePanelId } from "@fiftyone/spaces";
 import { editingFieldAtom, view } from "@fiftyone/state";
 import {
   ArrowBack,
@@ -41,22 +42,20 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
+import { get } from "lodash";
 import React, { useEffect, useMemo, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import Error from "./Error";
 import EvaluationNotes from "./EvaluationNotes";
 import EvaluationPlot from "./EvaluationPlot";
+import EvaluationScenarioAnalysis from "./EvaluationScenarioAnalysis";
 import Status from "./Status";
 import { formatValue, getNumericDifference, useTriggerEvent } from "./utils";
-import { usePanelEvent } from "@fiftyone/operators";
-import { usePanelId } from "@fiftyone/spaces";
 
 const KEY_COLOR = "#ff6d04";
 const COMPARE_KEY_COLOR = "#03a9f4";
 const DEFAULT_BAR_CONFIG = { sortBy: "default" };
 const NONE_CLASS = "(none)";
-
-const configure_subset_uri = "@voxel51/scenario/configure_scenario";
 
 export default function Evaluation(props: EvaluationProps) {
   console.log("Evaluation props", props);
@@ -74,6 +73,7 @@ export default function Evaluation(props: EvaluationProps) {
     notes = {},
     loadView,
     onSaveScenario,
+    loadScenario,
   } = props;
   const theme = useTheme();
   const [expanded, setExpanded] = React.useState("summary");
@@ -92,24 +92,6 @@ export default function Evaluation(props: EvaluationProps) {
   const [classMode, setClassMode] = useState("chart");
   const [performanceClass, setPerformanceClass] = useState("precision");
   const [loadingCompare, setLoadingCompare] = useState(false);
-  const scenarioData = useMemo(() => {
-    const scenarioData = data?.[`evaluations_scenario`];
-    return scenarioData;
-  }, [data]);
-  const scenarioDataAPerformance = useMemo(() => {
-    const scenarioDataA = scenarioData?.[name]?.["performance"];
-    return scenarioDataA;
-  }, [scenarioData]);
-  const scenarioDataBPerformance = useMemo(() => {
-    const scenarioDataB = scenarioData?.[compareKey]?.["performance"];
-    return scenarioDataB;
-  }, [scenarioData]);
-  const [selectedScenarioClass, setSelectedScenarioClass] = useState(
-    Object.keys(scenarioDataAPerformance || {})?.[0]
-  );
-  console.log("scenarioDataA", scenarioDataAPerformance);
-  console.log("scenarioDataB", scenarioDataBPerformance);
-  console.log("data", data);
   const evaluation = useMemo(() => {
     const evaluation = data?.[`evaluation_${name}`];
     return evaluation;
@@ -185,7 +167,6 @@ export default function Evaluation(props: EvaluationProps) {
   }, [compareEvaluation, compareKey]);
 
   const triggerEvent = useTriggerEvent();
-  const promptOperator = usePanelEvent();
   const activeFilter = useActiveFilter(evaluation, compareEvaluation);
   const setEditingField = useSetRecoilState(editingFieldAtom);
 
@@ -1367,137 +1348,23 @@ export default function Evaluation(props: EvaluationProps) {
               </Stack>
             </AccordionDetails>
           </Accordion>
+          <Accordion
+            disableGutters
+            sx={{ borderRadius: 1, "&::before": { display: "none" } }}
+          >
+            <AccordionSummary expandIcon={<ExpandMore />}>
+              Scenario Analysis
+            </AccordionSummary>
+            <AccordionDetails>
+              <EvaluationScenarioAnalysis
+                evaluation={evaluation}
+                data={data}
+                loadScenario={loadScenario}
+              />
+            </AccordionDetails>
+          </Accordion>
         </Stack>
       )}
-      <Accordion
-        // expanded={expanded === "subset"}
-        expanded={true}
-        onChange={(e, expanded) => {
-          setExpanded(expanded ? "subset" : "");
-        }}
-        disableGutters
-        sx={{ borderRadius: 1, "&::before": { display: "none" } }}
-      >
-        <AccordionSummary expandIcon={<ExpandMore />}>
-          Scenario Analysis
-        </AccordionSummary>
-        <AccordionDetails>
-          <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-            <Typography color="secondary">Subset</Typography>
-            {scenarioDataAPerformance?.[selectedScenarioClass] &&
-              scenarioDataBPerformance && (
-                <>
-                  <Stack spacing={1} pt={1}>
-                    <Typography color="secondary">Sort by:</Typography>
-
-                    <Select
-                      size="small"
-                      onChange={(e) => {
-                        setSelectedScenarioClass(e.target.value as string);
-                      }}
-                      defaultValue={selectedScenarioClass}
-                    >
-                      {Object.keys(scenarioDataAPerformance).map(
-                        (val: string) => {
-                          return (
-                            <MenuItem key={val} value={val}>
-                              {val}
-                            </MenuItem>
-                          );
-                        }
-                      )}
-                    </Select>
-                  </Stack>
-
-                  <EvaluationPlot
-                    data={[
-                      {
-                        type: "scatterpolar",
-                        r: [
-                          scenarioDataAPerformance[selectedScenarioClass]
-                            .accuracy,
-                          scenarioDataAPerformance[selectedScenarioClass]
-                            .fscore,
-                          scenarioDataAPerformance[selectedScenarioClass]
-                            .precision,
-                          scenarioDataAPerformance[selectedScenarioClass]
-                            .recall,
-                          scenarioDataAPerformance[selectedScenarioClass]
-                            .support / 100, // Normalize support
-                        ],
-                        theta: labels,
-                        fill: "toself",
-                        name: scenarioDataAPerformance[selectedScenarioClass]
-                          .label,
-                        fillcolor: "rgba(0, 123, 255, 0.2)", // Light transparent blue
-                        line: {
-                          color: "rgba(0, 123, 255, 1)", // Solid blue line
-                        },
-                      },
-                      {
-                        type: "scatterpolar",
-                        r: [
-                          scenarioDataBPerformance[selectedScenarioClass]
-                            .accuracy,
-                          scenarioDataBPerformance[selectedScenarioClass]
-                            .fscore,
-                          scenarioDataBPerformance[selectedScenarioClass]
-                            .precision,
-                          scenarioDataBPerformance[selectedScenarioClass]
-                            .recall,
-                          scenarioDataBPerformance[selectedScenarioClass]
-                            .support / 100, // Normalize support
-                        ],
-                        theta: labels,
-                        fill: "toself",
-                        name: scenarioDataBPerformance[selectedScenarioClass]
-                          .label,
-                        fillcolor: "rgba(255, 123, 0, 0.2)", // Light transparent orange
-                        line: {
-                          color: "rgba(255, 123, 0, 1)", // Solid orange line
-                        },
-                      },
-                    ]}
-                    layout={{
-                      polar: {
-                        radialaxis: {
-                          visible: true,
-                          range: [0, 1],
-                        },
-                      },
-                      showlegend: true,
-                    }}
-                  />
-                </>
-              )}
-            <Box>
-              <IconButton
-                onClick={() => {
-                  promptOperator(panelId, {
-                    params: {
-                      gt_field: evaluationConfig.gt_field,
-                      scenario_type: "custom_code",
-                      scenario_name: "test", // # TODO: Edit will pass current name
-                    },
-                    operator: configure_subset_uri,
-                    prompt: true,
-                    callback: (result, opts) => {
-                      console.log("params", opts.ctx.params);
-                      onSaveScenario({ subset: opts.ctx.params });
-                      // TODO: save the subset
-
-                      // TODO: error handling
-                    },
-                  });
-                }}
-              >
-                Create subset
-                <Settings />
-              </IconButton>
-            </Box>
-          </Stack>
-        </AccordionDetails>
-      </Accordion>
       {mode === "info" && (
         <Card sx={{ p: 2 }}>
           <EvaluationTable>
@@ -1778,6 +1645,7 @@ type EvaluationProps = {
   id: string;
   navigateBack: () => void;
   loadEvaluation: (key?: string) => void;
+  loadScenario: (id?: string, subset?: string) => void;
   onChangeCompareKey: (compareKey: string) => void;
   compareKey?: string;
   data: any;
@@ -1961,10 +1829,10 @@ type SummaryRow = {
 
 function formatCustomMetricRows(evaluationMetrics, comparisonMetrics) {
   const results = [] as SummaryRow[];
-  const customMetrics = (_.get(evaluationMetrics, "custom_metrics", null) ||
+  const customMetrics = (get(evaluationMetrics, "custom_metrics", null) ||
     {}) as CustomMetrics;
   for (const [operatorUri, customMetric] of Object.entries(customMetrics)) {
-    const compareValue = _.get(
+    const compareValue = get(
       comparisonMetrics,
       `custom_metrics.${operatorUri}.value`,
       null
