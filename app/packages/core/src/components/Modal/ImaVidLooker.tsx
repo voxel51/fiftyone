@@ -24,7 +24,11 @@ import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
 import { useClearSelectedLabels, useShowOverlays } from "./ModalLooker";
-import { useLookerOptionsUpdate, useModalContext } from "./hooks";
+import {
+  useInitializeImaVidSubscriptions,
+  useLookerOptionsUpdate,
+  useModalContext,
+} from "./hooks";
 import useKeyEvents from "./use-key-events";
 import { useImavidModalSelectiveRendering } from "./use-modal-selective-rendering";
 import { shortcutToHelpItems } from "./utils";
@@ -66,9 +70,15 @@ export const ImaVidLookerReact = React.memo(
       [reset, createLooker, selectedMediaField]
     ) as ImaVidLooker;
 
+    const { subscribeToImaVidStateChanges } =
+      useInitializeImaVidSubscriptions();
+
     useEffect(() => {
       setModalLooker(looker);
-    }, [looker]);
+      if (looker instanceof ImaVidLooker) {
+        subscribeToImaVidStateChanges();
+      }
+    }, [looker, subscribeToImaVidStateChanges]);
 
     useEffect(() => {
       if (looker) {
