@@ -97,6 +97,8 @@ export type RawContext = {
   queryPerformance?: boolean;
   spaces: SpaceNodeJSON;
   workspaceName: string;
+  promptId: string | null;
+  sessionId: string;
 };
 
 export class ExecutionContext {
@@ -151,7 +153,9 @@ export class ExecutionContext {
   public get workspaceName(): string {
     return this._currentContext.workspaceName;
   }
-
+  public get promptId(): string | null {
+    return this._currentContext.promptId;
+  }
   getCurrentPanelId(): string | null {
     return this.params.panel_id || this.currentPanel?.id || null;
   }
@@ -562,6 +566,8 @@ async function executeOperatorAsGenerator(
       query_performance: currentContext.queryPerformance,
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
+      prompt_id: ctx.promptId,
+      session_id: currentContext.sessionId,
     },
     "json-stream"
   );
@@ -728,6 +734,8 @@ export async function executeOperatorWithContext(
           query_performance: currentContext.queryPerformance,
           spaces: currentContext.spaces,
           workspace_name: currentContext.workspaceName,
+          prompt_id: ctx.promptId,
+          session_id: currentContext.sessionId,
         }
       );
       result = serverResult.result;
@@ -834,6 +842,8 @@ export async function resolveRemoteType(
       query_performance: currentContext.queryPerformance,
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
+      prompt_id: ctx.promptId,
+      session_id: currentContext.sessionId,
     }
   );
 
