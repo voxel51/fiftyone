@@ -1053,6 +1053,47 @@ class TestStringLightningQueries(unittest.IsolatedAsyncioTestCase):
             ],
         )
 
+        # test search
+        result = await _execute(
+            query, dataset, fo.StringField, keys, search="lower"
+        )
+        self.assertListEqual(
+            result.data["lightning"],
+            [
+                {"path": "classification.none", "values": []},
+                {"path": "classification.str", "values": ["lower"]},
+                {"path": "classification.str_list", "values": ["lower"]},
+                {"path": "detections.detections.none", "values": []},
+                {"path": "detections.detections.str", "values": ["lower"]},
+                {
+                    "path": "detections.detections.str_list",
+                    "values": ["lower"],
+                },
+                {"path": "frames.classification.none", "values": []},
+                {"path": "frames.classification.str", "values": ["lower"]},
+                {
+                    "path": "frames.classification.str_list",
+                    "values": ["lower"],
+                },
+                {"path": "frames.detections.detections.none", "values": []},
+                {
+                    "path": "frames.detections.detections.str",
+                    "values": ["lower"],
+                },
+                {
+                    "path": "frames.detections.detections.str_list",
+                    "values": ["lower"],
+                },
+                {"path": "frames.none", "values": []},
+                {"path": "frames.str", "values": ["lower"]},
+                {"path": "frames.str_list", "values": ["lower"]},
+                {"path": "metadata.encoding_str", "values": []},
+                {"path": "none", "values": []},
+                {"path": "str", "values": ["lower"]},
+                {"path": "str_list", "values": ["lower"]},
+            ],
+        )
+
 
 class TestGroupDatasetLightningQueries(unittest.IsolatedAsyncioTestCase):
     @drop_async_dataset

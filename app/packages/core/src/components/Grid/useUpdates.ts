@@ -1,4 +1,4 @@
-import { Coloring, VideoLooker } from "@fiftyone/looker";
+import { Coloring, ImaVidLooker, VideoLooker } from "@fiftyone/looker";
 import { Colorscale } from "@fiftyone/looker/src/state";
 import { RENDER_STATUS_PENDING } from "@fiftyone/looker/src/worker/shared";
 import type Spotlight from "@fiftyone/spotlight";
@@ -9,14 +9,14 @@ import { useRecoilValue } from "recoil";
 import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
 import type { LookerCache } from "./types";
 
-const getOverlays = (entry: fos.Lookers) => {
+export const getOverlays = (entry: fos.Lookers) => {
   // todo: there should be consistency here between video looker and other looker
   return entry instanceof VideoLooker
     ? entry.pluckedOverlays ?? []
     : entry.getSampleOverlays() ?? [];
 };
 
-const markTheseOverlaysAsPending = (
+export const markTheseOverlaysAsPending = (
   overlays: ReturnType<typeof getOverlays>
 ) => {
   for (const overlay of overlays) {
@@ -34,11 +34,19 @@ const markOverlayAsPending = (
     };
   }
 };
-const handleNetNewOverlays = (entry: fos.Lookers, newFields: string[]) => {
-  entry.refreshSample(newFields);
+
+export const handleNetNewOverlays = (
+  entry: fos.Lookers,
+  newFields: string[]
+) => {
+  if (entry instanceof ImaVidLooker) {
+    entry.refreshSample(newFields, entry.frameNumber);
+  } else {
+    entry.refreshSample(newFields);
+  }
 };
 
-const handlePotentiallyStillPendingOverlays = (entry: fos.Lookers) => {
+export const handlePotentiallyStillPendingOverlays = (entry: fos.Lookers) => {
   const overlays = entry.getSampleOverlays() ?? [];
   const rerender: string[] = [];
 
@@ -84,10 +92,10 @@ const useItemUpdater = (
           removeField(id.description);
         }
 
-        const newFields = getNewFields(id.description);
+        const newFields = getNewFields(id.description) ?? [];
         const shouldHardReload = Boolean(newFields?.length);
 
-        if (newFields?.length) {
+        if (shouldHardReload) {
           const overlays = getOverlays(entry);
           const newOverlays = overlays.filter(
             (o) =>
@@ -168,13 +176,14 @@ export default function useUpdates({
   }, [spotlight, init]);
 }
 
-const getColoringKey = (
+export const getColoringKey = (
   coloring: Coloring | undefined,
-  colorscale: Colorscale | undefined
+  colorscale: Colorscale | undefined,
+  suffix?: string
 ) => {
   if (!coloring) {
     return null;
   }
 
-  return `${coloring?.seed}-${coloring?.by}-${coloring.scale.length}-${coloring.pool.length}-${colorscale?.fields.length}-${colorscale?.default.name}`;
+  return `${coloring?.seed}-${coloring?.by}-${coloring.scale.length}-${coloring.pool.length}-${colorscale?.fields.length}-${colorscale?.default.name}-${suffix}`;
 };

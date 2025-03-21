@@ -56,8 +56,6 @@ export const ImaVidLookerReact = React.memo(
     const [reset, setReset] = useState(false);
     const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
     const setModalLooker = useSetRecoilState(fos.modalLooker);
-    const { subscribeToImaVidStateChanges } =
-      useInitializeImaVidSubscriptions();
 
     const createLooker = fos.useCreateLooker(true, false, {
       ...lookerOptions,
@@ -71,6 +69,9 @@ export const ImaVidLookerReact = React.memo(
       () => createLooker.current(sampleDataWithExtraParams),
       [reset, createLooker, selectedMediaField]
     ) as ImaVidLooker;
+
+    const { subscribeToImaVidStateChanges } =
+      useInitializeImaVidSubscriptions();
 
     useEffect(() => {
       setModalLooker(looker);
@@ -100,7 +101,6 @@ export const ImaVidLookerReact = React.memo(
     const handleError = useErrorHandler();
 
     const updateLookerOptions = useLookerOptionsUpdate();
-    useEventHandler(looker, "options", (e) => updateLookerOptions(e.detail));
     useEventHandler(looker, "showOverlays", useShowOverlays());
     useEventHandler(looker, "reset", () => {
       setReset((c) => !c);
