@@ -142,7 +142,7 @@ def _validate_dataset_name(name, skip=None):
     return slug
 
 
-def load_dataset(name, create_if_necessary=False):
+def load_dataset(name, create_if_necessary=False, reload=False):
     """Loads the FiftyOne dataset with the given name.
 
     To create a new dataset, use the :class:`Dataset` constructor.
@@ -156,6 +156,7 @@ def load_dataset(name, create_if_necessary=False):
     Args:
         name: the name of the dataset
         create_if_necessary (False): if no dataset exists, create an empty one
+        reload (False): whether to reload the dataset if necessary
 
     Raises:
         DatasetNotFoundError: if the dataset does not exist and
@@ -165,7 +166,7 @@ def load_dataset(name, create_if_necessary=False):
         a :class:`Dataset`
     """
     try:
-        return Dataset(name, _create=False)
+        return Dataset(name, _create=False, _reload=reload)
     except DatasetNotFoundError as ex:
         if create_if_necessary:
             return Dataset(name, _create=True)
@@ -316,6 +317,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         overwrite=False,
         _create=True,
         _virtual=False,
+        _reload=False,
         **kwargs,
     ):
         if name is None and _create:

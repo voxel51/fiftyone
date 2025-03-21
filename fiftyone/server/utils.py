@@ -39,7 +39,7 @@ def load_and_cache_dataset(name):
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
     """
-    dataset = fod.load_dataset(name)
+    dataset = fod.load_dataset(name, reload=True)
 
     # Store reference in TTL cache to defer garbage collection
     # IMPORTANT: we don't return already cached objects here because a dataset
