@@ -81,14 +81,29 @@ const nextConfig: NextConfig = {
 
     config.plugins.push(new CaseSensitivePathsPlugin());
 
-    config.module.rules.push({
-      test: /\.svg$/,
-      // Using asset modules instead of file-loader
-      type: "asset",
-      generator: {
-        filename: "static/images/[hash][ext]",
+    // grab the existing rule that handles SVG imports
+    const fileLoaderRule = config.module.rules.find((rule: any) =>
+      rule.test?.test?.(".svg")
+    );
+
+    config.module.rules.push(
+      // reapply the existing rule, but only for svg imports NOT ending in ?react
+      {
+        ...fileLoaderRule,
+        test: /\.svg$/i,
+        resourceQuery: { not: [...fileLoaderRule.resourceQuery.not, /react/] }, // *.svg?react
       },
-    });
+      // convert only the imports ending in ?react to React components
+      {
+        test: /\.svg$/i,
+        issuer: fileLoaderRule.issuer,
+        resourceQuery: /react/, // *.svg?react
+        use: ["@svgr/webpack"],
+      }
+    );
+
+    // modify the file loader rule to ignore *.svg, since we have it handled now.
+    fileLoaderRule.exclude = /\.svg$/i;
 
     return config;
   },

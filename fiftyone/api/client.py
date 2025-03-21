@@ -3,10 +3,18 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import functools
 import posixpath
 from importlib import metadata
-from typing import Any, BinaryIO, Callable, Dict, Iterator, Mapping, Optional
+from typing import (
+    Any,
+    BinaryIO,
+    Callable,
+    Dict,
+    Iterator,
+    Mapping,
+    Optional,
+    Union,
+)
 
 import backoff
 import pymongo
@@ -21,7 +29,7 @@ def fatal_http_code(e):
 
 
 class Client:
-    """Class for communicating with Teams API"""
+    """Class for communicating with Enterprise API"""
 
     @staticmethod
     def _chunk_generator_factory(
@@ -42,7 +50,9 @@ class Client:
         base_url: str,
         key: str = None,
         token: str = None,
-        timeout: Optional[int] = constants.DEFAULT_TIMEOUT,
+        timeout: Optional[
+            Union[int, tuple[int, int]]
+        ] = constants.DEFAULT_TIMEOUT,
         disable_websocket_info_logs: bool = True,
     ):
         self.__base_url = base_url
@@ -57,7 +67,7 @@ class Client:
         except metadata.PackageNotFoundError:
             version = ""
         self._extra_headers = {
-            "User-Agent": f"FiftyOne Teams client/{version}",
+            "User-Agent": f"FiftyOne Enterprise client/{version}",
             "X-FiftyOne-SDK-Version": version,
             "X-FiftyOne-Pymongo-Version": pymongo.version,
         }
@@ -82,12 +92,12 @@ class Client:
 
     @property
     def base_url(self):
-        """Base URL to Teams Api"""
+        """Base URL to Enterprise Api"""
         return self.__base_url
 
     @property
     def key(self):
-        """Key for authenticating Teams Api"""
+        """Key for authenticating Enterprise Api"""
         return self.__key
 
     def get(self, url_path: str) -> requests.Response:
@@ -99,6 +109,7 @@ class Client:
         payload: str,
         stream: bool = False,
         timeout: Optional[int] = None,
+        is_idempotent: bool = True,
     ) -> Any:
         """Make post request"""
 
@@ -119,13 +130,19 @@ class Client:
             data=data,
             headers=headers,
             stream=stream,
+            is_idempotent=is_idempotent,
         )
         # Use response as context manager to ensure it's closed.
         # https://requests.readthedocs.io/en/latest/user/advanced/#body-content-workflow
         with response:
             if stream:
-                return functools.reduce(
-                    lambda res, line: res + line, response.iter_lines(), b""
+                # Iter in chunks rather than lines since data isn't newline delimited
+                return b"".join(
+                    chunk
+                    for chunk in response.iter_content(
+                        chunk_size=constants.CHUNK_SIZE
+                    )
+                    if chunk
                 )
 
             return response.content
@@ -188,7 +205,7 @@ class Client:
         response_json = self.post_json(url_path, payload, timeout)
 
         if "errors" in response_json:
-            raise errors.FiftyOneTeamsAPIError(
+            raise errors.FiftyOneEnterpriseAPIError(
                 *[err["message"] for err in response_json["errors"]]
             )
 
@@ -242,25 +259,13 @@ class Client:
 
         return return_value
 
-    @backoff.on_exception(
-        backoff.expo, requests.exceptions.ConnectionError, max_tries=5
-    )
-    @backoff.on_exception(
-        backoff.expo, requests.exceptions.ReadTimeout, max_time=60
-    )
-    # 500 errors are possibly recoverable but 400 are not
-    @backoff.on_exception(
-        backoff.expo,
-        requests.exceptions.HTTPError,
-        max_time=60,
-        giveup=fatal_http_code,
-    )
     def __request(
         self,
         method: Literal["POST", "GET"],
         url_path: str,
         timeout: Optional[int] = None,
         data_generator_factory: Optional[Callable[[], Iterator[bytes]]] = None,
+        is_idempotent: bool = True,
         **request_kwargs,
     ):
         timeout = timeout or self._timeout
@@ -272,10 +277,37 @@ class Client:
             data_generator = data_generator_factory()
             request_kwargs["data"] = data_generator
 
-        response = self._session.request(
-            method, url=url, timeout=timeout, **request_kwargs
-        )
+        # If the request is not idempotent, don't automatically retry on read timeouts
+        # as the operation may have already been applied
+        max_tries = 5 if is_idempotent else 1
+        max_time = timeout * max_tries
 
+        # Using nested function to pass variables to the decorator
+        @backoff.on_exception(
+            backoff.expo,
+            requests.exceptions.HTTPError,
+            max_time=max_time,
+            giveup=fatal_http_code,  # 500 errors are possibly recoverable but 400 are not
+        )
+        @backoff.on_exception(
+            backoff.expo,
+            requests.exceptions.ConnectionError,
+            max_tries=max_tries,
+        )
+        @backoff.on_exception(
+            backoff.expo,
+            requests.exceptions.ReadTimeout,
+            max_time=max_time,
+            max_tries=max_tries,
+        )
+        def _request_with_backoff(_method, _url, _timeout, **_request_kwargs):
+            return self._session.request(
+                _method, url=_url, timeout=_timeout, **_request_kwargs
+            )
+
+        response = _request_with_backoff(
+            method, url, timeout, **request_kwargs
+        )
         if response.status_code == 401:
             raise errors.APIAuthenticationError(response.text)
 

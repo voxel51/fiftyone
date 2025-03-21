@@ -1,4 +1,5 @@
 import { deserialize } from "../numpy";
+import { RENDER_STATUS_DECODED } from "./shared";
 
 const extractSerializedMask = (
   label: object,
@@ -25,12 +26,21 @@ export const DeserializerFactory = {
         image: new ArrayBuffer(width * height * 4),
       };
       buffers.push(data.buffer);
+      label._renderStatus = RENDER_STATUS_DECODED;
     }
   },
   Detections: (labels, buffers) => {
     const list = labels?.detections || [];
     for (const label of list) {
       DeserializerFactory.Detection(label, buffers);
+    }
+
+    const allLabelsDecoded =
+      list.length > 0 &&
+      list.every((label) => label._renderStatus === RENDER_STATUS_DECODED);
+
+    if (allLabelsDecoded) {
+      labels._renderStatus = RENDER_STATUS_DECODED;
     }
   },
   Heatmap: (label, buffers) => {
@@ -46,6 +56,7 @@ export const DeserializerFactory = {
       };
 
       buffers.push(data.buffer);
+      label._renderStatus = RENDER_STATUS_DECODED;
     }
   },
   Segmentation: (label, buffers) => {
@@ -61,6 +72,7 @@ export const DeserializerFactory = {
       };
 
       buffers.push(data.buffer);
+      label._renderStatus = RENDER_STATUS_DECODED;
     }
   },
 };

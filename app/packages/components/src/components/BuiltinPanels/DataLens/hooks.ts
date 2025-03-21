@@ -1,3 +1,19 @@
+import { OperatorConfig, useOperatorExecutor } from "@fiftyone/operators";
+import { getLocalOrRemoteOperator } from "@fiftyone/operators/src/operators";
+import Spotlight, { ID, ItemData } from "@fiftyone/spotlight";
+import type { Sample } from "@fiftyone/state";
+import {
+  datasetName,
+  Lookers,
+  useCreateLooker,
+  useDeferrer,
+  useLookerOptions as fosUseLookerOptions,
+} from "@fiftyone/state";
+import { Schema } from "@fiftyone/utilities";
+import { useAtom } from "jotai";
+import { Dispatch, useCallback, useEffect, useMemo, useState } from "react";
+import { useRecoilValue } from "recoil";
+import { v4 as uuid } from "uuid";
 import {
   LensConfig,
   LensSample,
@@ -5,20 +21,9 @@ import {
   ListLensConfigsResponse,
   OperatorResponse,
 } from "./models";
-import { Dispatch, useCallback, useEffect, useMemo, useState } from "react";
-import { OperatorConfig, useOperatorExecutor } from "@fiftyone/operators";
-import { useRecoilValue } from "recoil";
-import type { Sample } from "@fiftyone/state";
-import {
-  datasetName,
-  Lookers,
-  useCreateLooker,
-  useLookerOptions as fosUseLookerOptions,
-} from "@fiftyone/state";
-import { v4 as uuid } from "uuid";
-import Spotlight, { ID } from "@fiftyone/spotlight";
-import { findFields } from "./utils";
-import { getLocalOrRemoteOperator } from "@fiftyone/operators/src/operators";
+import { checkedFieldsAtom } from "./state";
+import { findFields, formatSchema } from "./utils";
+import { Response } from "@fiftyone/spotlight/src/types";
 
 /**
  * Hook which provides the active dataset.
@@ -115,8 +120,9 @@ const useLookerOptions = ({ samples }: { samples: LensSample[] }) => {
   // Use the same looker options as the Grid as a starting point.
   const baseOpts = fosUseLookerOptions(false);
 
-  // Augment the looker options with data specific to these samples.
-  return useMemo(() => {
+  const [checkedFields, setCheckedFields] = useAtom(checkedFieldsAtom);
+
+  const labelFields = useMemo(() => {
     // Detect presence of labels
     const labelFields = new Set<string>();
     samples.forEach((sample) => {
@@ -130,79 +136,45 @@ const useLookerOptions = ({ samples }: { samples: LensSample[] }) => {
         }
       }
     });
+    return labelFields;
+  }, [samples]);
 
+  useEffect(() => {
+    setCheckedFields(Array.from(labelFields));
+  }, [labelFields]);
+
+  return useMemo(() => {
     return {
       ...baseOpts,
-      // Render all labels
       filter: () => true,
-      activePaths: Array.from(labelFields.values()),
+      activePaths: checkedFields,
     };
-  }, [samples, baseOpts]);
+  }, [checkedFields, baseOpts]);
 };
 
 /**
  * Hook which generates a looker-compatible field schema based on one generated
  * by the SDK.
  */
-const useSampleSchemaGenerator = ({ baseSchema }: { baseSchema: object }) => {
-  // Generate a valid field schema for use by the looker.
+export const useSampleSchemaGenerator = ({
+  baseSchema,
+}: {
+  baseSchema: { [k: string]: any };
+}) => {
   return useMemo(() => {
-    // Helper method for converting from snake_case to camelCase
-    const toCamelCase = (str: string): string => {
-      const s = str
-        .match(
-          /[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g
-        )
-        ?.map(
-          (x: string) => x.slice(0, 1).toUpperCase() + x.slice(1).toLowerCase()
-        )
-        .join("");
-      return s && s.slice(0, 1).toLowerCase() + s.slice(1);
-    };
-
-    // The schema returned by the SDK needs to be massaged for the looker
-    //   to render properly.
-    // This method achieves the following:
-    //   1. Convert keys from snake_case to camelCase
-    //   2. Convert the 'fields' property from an array to a nested object
-    //   3. Ensure 'path' is available as a top-level property
-    //   4. Do (1) - (3) recursively for nested objects
-    const formatSchema = (schema: object) => {
-      const formatted = {};
-
-      // Convert top-level keys to camelCase
-      for (let k of Object.keys(schema)) {
-        formatted[toCamelCase(k)] = schema[k];
-      }
-
-      // Ensure 'path' is defined
-      formatted["path"] = schema["name"];
-
-      // 'fields' is formatted as an array, but looker expects this
-      //   to be a nested object instead.
-      if (formatted["fields"] instanceof Array) {
-        const remapped = {};
-        for (let subfield of formatted["fields"]) {
-          // Recurse for each nested object
-          remapped[subfield["name"]] = formatSchema(subfield);
-        }
-        formatted["fields"] = remapped;
-      }
-
-      return formatted;
-    };
-
-    const formattedSchema = {};
-    for (let k of Object.keys(baseSchema)) {
+    const formattedSchema: { [k: string]: any } = {};
+    for (const k of Object.keys(baseSchema)) {
       if (baseSchema[k] instanceof Object) {
+        // Convert top-level objects
         formattedSchema[k] = formatSchema(baseSchema[k]);
         formattedSchema[k]["path"] = baseSchema[k]["name"];
       } else {
+        // Copy top-level scalars
         formattedSchema[k] = baseSchema[k];
       }
     }
 
-    return formattedSchema;
+    return formattedSchema as Schema;
   }, [baseSchema]);
 };
 
@@ -211,33 +183,6 @@ const useSampleSchemaGenerator = ({ baseSchema }: { baseSchema: object }) => {
  */
 type SampleUrls = {
   [field: string]: string;
-};
-
-/**
- * Sample metadata expected by the Spotlight.
- */
-type SampleMetadata = {
-  key: number;
-  aspectRatio: number;
-  id: {
-    description: string;
-  };
-  data: {
-    id: string;
-    sample: LensSample & {
-      _id: string;
-    };
-    urls: SampleUrls;
-  };
-};
-
-/**
- * Page of samples used by the Spotlight.
- */
-type SamplePage = {
-  items: SampleMetadata[];
-  next: number | null;
-  previous: number | null;
 };
 
 /**
@@ -251,6 +196,36 @@ type SampleStoreEntry = {
 };
 
 const sampleMediaFields = ["filepath"];
+
+/**
+ * Hook to repaint lookers when the options change.
+ */
+const useRefresh = (
+  options: ReturnType<typeof useLookerOptions>,
+  store: WeakMap<ID, Lookers>,
+  spotlight?: Spotlight<number, Sample>
+) => {
+  const { init, deferred } = useDeferrer();
+
+  useEffect(() => {
+    deferred(() => {
+      spotlight?.updateItems((id) => {
+        const instance = store.get(id);
+        if (!instance) {
+          return;
+        }
+
+        instance.updateOptions({
+          ...options,
+        });
+      });
+    });
+  }, [deferred, options, spotlight, store]);
+
+  useEffect(() => {
+    return spotlight ? init() : undefined;
+  }, [spotlight, init]);
+};
 
 /**
  * Hook which manages a spotlight instance used to render samples.
@@ -270,7 +245,7 @@ export const useSpotlight = ({
   zoom,
 }: {
   samples: LensSample[];
-  sampleSchema: object;
+  sampleSchema: Schema;
   resizing: boolean;
   minZoomLevel: number;
   maxZoomLevel: number;
@@ -280,7 +255,6 @@ export const useSpotlight = ({
   const sampleStore = useMemo(() => new WeakMap<ID, SampleStoreEntry>(), []);
 
   const lookerOpts = useLookerOptions({ samples });
-  const cleanedSchema = useSampleSchemaGenerator({ baseSchema: sampleSchema });
 
   const createLooker = useCreateLooker(
     false,
@@ -288,7 +262,7 @@ export const useSpotlight = ({
     lookerOpts,
     undefined,
     undefined,
-    cleanedSchema
+    sampleSchema
   );
 
   const buildUrls = useCallback(
@@ -296,7 +270,20 @@ export const useSpotlight = ({
     []
   );
 
-  return useMemo(() => {
+  const getAspectRatio = useCallback((s: LensSample): number => {
+    if (s.metadata?.width > 0 && s.metadata?.height > 0) {
+      return s.metadata.width / s.metadata.height;
+    }
+
+    return 1;
+  }, []);
+
+  const zoomLevel = useMemo(
+    () => Math.max(minZoomLevel, maxZoomLevel - zoom),
+    [minZoomLevel, maxZoomLevel, zoom]
+  );
+
+  const spotlight = useMemo(() => {
     if (resizing) {
       return;
     }
@@ -304,45 +291,36 @@ export const useSpotlight = ({
     return new Spotlight<number, Sample>({
       key: 0, // initial page index
       scrollbar: true,
-      rowAspectRatioThreshold: (width: number) => {
-        let min = 1;
-        if (width >= 1200) {
-          min = -5;
-        } else if (width >= 1000) {
-          min = -3;
-        } else if (width >= 800) {
-          min = -1;
-        }
-
-        return Math.max(minZoomLevel, maxZoomLevel - Math.max(min, zoom));
-      },
-      get: (page: number): Promise<SamplePage> => {
+      rowAspectRatioThreshold: () => zoomLevel,
+      get: (page: number): Promise<Response<number, Sample>> => {
         const pageSize = 20;
         const samplePage = samples.slice(
           page * pageSize,
           (page + 1) * pageSize
         );
 
-        const mappedSamples: SampleMetadata[] = samplePage.map((s) => {
-          const id = uuid();
-          const urls = buildUrls(s);
+        const mappedSamples: ItemData<number, Sample>[] = samplePage.map(
+          (s) => {
+            const id = uuid();
+            const urls = buildUrls(s);
 
-          return {
-            key: page,
-            aspectRatio: 1,
-            id: {
-              description: id,
-            },
-            data: {
-              id,
-              sample: {
-                _id: id,
-                ...s,
+            return {
+              key: page,
+              aspectRatio: getAspectRatio(s),
+              id: {
+                description: id,
               },
-              urls,
-            },
-          };
-        });
+              data: {
+                id,
+                sample: {
+                  _id: id,
+                  ...s,
+                },
+                urls,
+              } as Sample,
+            };
+          }
+        );
 
         // Store these samples in the sample store; this is where the renderer will pull from
         mappedSamples.forEach((s) => {
@@ -362,12 +340,26 @@ export const useSpotlight = ({
           previous: page > 0 ? page - 1 : null,
         });
       },
-      render: (
-        id: ID,
-        element: HTMLDivElement,
-        dimensions: [number, number],
-        zooming: boolean
-      ) => {
+      spacing: 7,
+      offset: 14,
+      maxRows: 80,
+      detachItem: (id: ID) => {
+        lookerStore.get(id)?.detach();
+      },
+      hideItem: ({ id }: { id: ID }) => {},
+      showItem: ({
+        id,
+        element,
+        dimensions,
+        zooming,
+        spotlight,
+      }: {
+        id: ID;
+        element: HTMLDivElement;
+        dimensions: [number, number];
+        zooming: boolean;
+        spotlight: Spotlight<number, Sample>;
+      }) => {
         if (!lookerStore.has(id) && !zooming) {
           const sample = sampleStore.get(id);
 
@@ -383,14 +375,24 @@ export const useSpotlight = ({
         }
 
         lookerStore.get(id)?.attach(element, dimensions);
-      },
-      spacing: 20,
-      destroy: (id: ID) => {
-        lookerStore.get(id)?.destroy();
-        lookerStore.delete(id);
+
+        return Promise.resolve(0);
       },
     });
-  }, [lookerStore, sampleStore, createLooker, samples, resizing, zoom]);
+  }, [
+    buildUrls,
+    getAspectRatio,
+    lookerStore,
+    sampleStore,
+    createLooker,
+    samples,
+    resizing,
+    zoomLevel,
+  ]);
+
+  useRefresh(lookerOpts, lookerStore, spotlight);
+
+  return spotlight;
 };
 
 /**

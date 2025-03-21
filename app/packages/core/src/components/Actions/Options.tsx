@@ -1,12 +1,26 @@
-import { PopoutSectionTitle, TabOption, useTheme } from "@fiftyone/components";
+import {
+  PopoutSectionTitle,
+  Selector,
+  TabOption,
+  useTheme,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { groupStatistics } from "@fiftyone/state";
 import type { RefObject } from "react";
 import { default as React, useMemo } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
-import { QP_MODE } from "../../utils/links";
+import {
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+  useSetRecoilState,
+} from "recoil";
+import {
+  MANAGING_GRID_MEMORY,
+  OPTIMIZING_QUERY_PERFORMANCE,
+} from "../../utils/links";
 import Checkbox from "../Common/Checkbox";
 import RadioGroup from "../Common/RadioGroup";
+import { gridAutosizing, maxGridItemsSizeBytes } from "../Grid/recoil";
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
 
@@ -14,6 +28,11 @@ const SortFilterResults = ({ modal }) => {
   const [{ count, asc }, setSortFilterResults] = useRecoilState(
     fos.sortFilterResults(modal)
   );
+  const queryPerformance = useRecoilValue(fos.queryPerformance);
+  if (queryPerformance) {
+    // sidebar sorting is not configurable
+    return null;
+  }
 
   return (
     <>
@@ -42,7 +61,7 @@ const SortFilterResults = ({ modal }) => {
   );
 };
 
-const Patches = ({ modal }) => {
+const Patches = ({ modal }: { modal: boolean }) => {
   const isPatches = useRecoilValue(fos.isPatchesView);
   const [crop, setCrop] = useRecoilState(fos.cropToContent(modal));
 
@@ -183,7 +202,7 @@ const QueryPerformance = () => {
       <ActionOption
         id="qp-mode"
         text="Query Performance mode"
-        href={QP_MODE}
+        href={OPTIMIZING_QUERY_PERFORMANCE}
         title={"More on Query Performance mode"}
         style={{
           background: "unset",
@@ -266,6 +285,72 @@ const ShowModalNav = () => {
   );
 };
 
+const Grid = () => {
+  const [autosizing, setAutosizing] = useRecoilState(gridAutosizing);
+  const resetSizeBytes = useResetRecoilState(maxGridItemsSizeBytes);
+  const [sizeBytes, setSizeBytes] = useRecoilState(maxGridItemsSizeBytes);
+  const theme = useTheme();
+
+  return (
+    <>
+      <ActionOption
+        id="grid-options"
+        href={MANAGING_GRID_MEMORY}
+        style={{
+          background: "unset",
+          color: theme.text.primary,
+          paddingTop: 0,
+          paddingBottom: 0,
+        }}
+        svgStyles={{ height: "1rem", marginTop: 7.5 }}
+        text="Grid settings"
+        title={"More on grid settings"}
+      />
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          columnGap: "0.5rem",
+        }}
+      >
+        <Selector
+          placeholder="size"
+          onSelect={async (text) => {
+            if (text === "") {
+              resetSizeBytes();
+              return "";
+            }
+            const value = Number.parseInt(text);
+
+            if (!Number.isNaN(value)) {
+              setSizeBytes(value * 1e6);
+              return text;
+            }
+
+            return "";
+          }}
+          inputStyle={{
+            fontSize: "1rem",
+            textAlign: "right",
+            float: "right",
+          }}
+          key={"grid-cache-size"}
+          value={(sizeBytes / 1e6).toString()}
+          containerStyle={{ display: "flex", justifyContent: "right", flex: 1 }}
+        />
+        <div>MB cache</div>
+      </div>
+      <Checkbox
+        name={"Autosizing"}
+        value={autosizing}
+        setValue={(value) => {
+          setAutosizing(value);
+        }}
+      />
+    </>
+  );
+};
+
 type OptionsProps = {
   modal?: boolean;
   anchorRef: RefObject<HTMLElement>;
@@ -283,9 +368,10 @@ const Options = ({ modal, anchorRef }: OptionsProps) => {
       {isDynamicGroup && <DynamicGroupsViewMode modal={!!modal} />}
       {isGroup && !isDynamicGroup && <GroupStatistics modal={modal} />}
       <MediaFields modal={modal} />
-      <Patches modal={modal} />
+      <Patches modal={!!modal} />
       {!view?.length && <QueryPerformance />}
       <SortFilterResults modal={modal} />
+      {!modal && <Grid />}
     </Popout>
   );
 };

@@ -327,7 +327,7 @@ def list_users(verbose=True) -> Union[List[User], List[str]]:
 
 
 def send_user_invitation(email: str, role: UserRole) -> str:
-    """Sends an email invitation to join your FiftyOne Teams organization.
+    """Sends an email invitation to join your FiftyOne Enterprise organization.
 
     .. note::
 

@@ -264,7 +264,7 @@ def calculate_dataset_latest_changes_summary(
             },
             timeout=CALCULATE_CHANGES_TIMEOUT,
         )
-    except errors.FiftyOneTeamsAPIError:
+    except errors.FiftyOneEnterpriseAPIError:
         raise
     except Exception as og_err:
         # With any unexpected error, check if we actually succeeded, if so,
@@ -319,7 +319,7 @@ def create_snapshot(
             timeout=MATERIALIZE_SNAPSHOT_TIMEOUT,
         )
         snapshot = result["createDatasetSnapshot"]
-    except errors.FiftyOneTeamsAPIError:
+    except errors.FiftyOneEnterpriseAPIError:
         raise
     except Exception as og_err:
         # With any unexpected error, check if we actually succeeded, if so,
@@ -545,7 +545,7 @@ def revert_dataset_to_snapshot(dataset_name: str, snapshot_name: str):
             },
             timeout=MATERIALIZE_SNAPSHOT_TIMEOUT,
         )
-    except errors.FiftyOneTeamsAPIError:
+    except errors.FiftyOneEnterpriseAPIError:
         raise
     except Exception as og_err:
         # With any unexpected error, check if we actually succeeded, if so,

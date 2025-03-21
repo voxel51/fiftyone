@@ -3,15 +3,14 @@
  */
 import styles from "./styles.module.css";
 
-import type Iter from "./iter";
-import type { Focus, ID, ItemData, SpotlightConfig } from "./types";
-
 import { BOTTOM, DIV, ONE, TOP, UNSET, ZERO } from "./constants";
+import type Spotlight from "./index";
+import type Iter from "./iter";
+import type { Focus, ID, ItemData, Measure, SpotlightConfig } from "./types";
 import { create, pixels } from "./utilities";
 
 export default class Row<K, V> {
   #from: number;
-  #hidden: boolean;
 
   readonly #aborter: AbortController = new AbortController();
   readonly #config: SpotlightConfig<K, V>;
@@ -119,8 +118,17 @@ export default class Row<K, V> {
     return this.#row[this.#row.length - ONE].item.id;
   }
 
-  destroy(destroyItems = false) {
-    this.#destroyItems(destroyItems);
+  get sizeBytes() {
+    let size = ZERO;
+    for (const item of this.#row)
+      size += this.#config.getItemSizeBytes(item.item.id);
+    return size;
+  }
+
+  destroy() {
+    for (const { item } of this.#row) {
+      this.#config.detachItem(item.id);
+    }
     this.#aborter.abort();
   }
 
@@ -134,36 +142,46 @@ export default class Row<K, V> {
   }
 
   hide(): void {
-    if (!this.attached) {
-      throw new Error("row is not attached");
-    }
-
-    if (!this.#config.retainItems) {
-      this.#destroyItems();
+    for (const { item } of this.#row) {
+      this.#config.hideItem({ id: item.id });
     }
 
     this.#container.remove();
   }
 
-  show(
-    element: HTMLDivElement,
-    attr: typeof BOTTOM | typeof TOP,
-    zooming: boolean,
-    config: SpotlightConfig<K, V>
-  ): void {
+  show({
+    attr,
+    element,
+    measure,
+    spotlight,
+    zooming,
+  }: {
+    attr: typeof BOTTOM | typeof TOP;
+    element: HTMLDivElement;
+    measure?: Measure<K, V>;
+    spotlight: Spotlight<K, V>;
+    zooming: boolean;
+  }) {
     if (!this.attached) {
       this.#container.style[attr] = `${this.#from}px`;
       this.#container.style[attr === BOTTOM ? TOP : BOTTOM] = UNSET;
       element.appendChild(this.#container);
     }
 
-    if (this.#hidden) {
-      return;
-    }
-
     for (const { element, item } of this.#row) {
       const width = item.aspectRatio * this.height;
-      config.render(item.id, element, [width, this.height], zooming);
+      if (this.#aborter.signal.aborted) {
+        return;
+      }
+
+      const bytes = this.#config.showItem({
+        id: item.id,
+        dimensions: [width, this.height],
+        element,
+        spotlight,
+        zooming,
+      });
+      measure?.(item, bytes);
     }
   }
 
@@ -221,25 +239,5 @@ export default class Row<K, V> {
   get #singleAspectRatio() {
     const set = new Set(this.#row.map(({ item }) => item.aspectRatio));
     return set.size === ONE ? this.#row[ZERO].item.aspectRatio : null;
-  }
-
-  #destroyItems(destroyItems = false) {
-    const destroy = destroyItems ? this.#config.destroy : this.#config.detach;
-    if (!destroy) {
-      return;
-    }
-
-    const errors = [];
-    for (const item of this.#row) {
-      try {
-        destroy(item.item.id);
-      } catch (e) {
-        errors.push(e);
-      }
-    }
-
-    if (errors.length > 0) {
-      console.error("Errors occurred during row destruction:", errors);
-    }
   }
 }

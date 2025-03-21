@@ -1,7 +1,7 @@
 # If you are using the `Building and Deploying FiftyOne Teams (internal use)` doc
 # https://docs.google.com/document/d/1Tn-gf4XKKF3P2fUIVPF0xGDuidbI04WvKmnPlPKTVSQ
-# Then `TORCH_IMAGE_NAME` should already be set, just reuse it here...
-ARG TORCH_IMAGE_NAME
+# Then `CV_BASE_IMAGE_NAME` should already be set, just reuse it here...
+ARG CV_BASE_IMAGE_NAME=fiftyone-teams-cv-full:local
 ARG PYTHON_VERSION=3.11
 
 FROM python:${PYTHON_VERSION} AS wheelhouse
@@ -10,7 +10,7 @@ ARG PIP_INDEX_URL=https://pypi.org/simple
 RUN pip wheel --wheel-dir=/tmp/wheels qdrant-client open-clip-torch
 
 
-FROM ${TORCH_IMAGE_NAME} AS zefrplugins
+FROM ${CV_BASE_IMAGE_NAME} AS zefrplugins
 
 RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     pip --no-cache-dir install -q --no-index \
@@ -20,7 +20,12 @@ RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
 # run as the voxel51 user
 USER 1000:1000
 
+# Default hypercorn settings.
+ENV HYPERCORN_WORKERS=4 
+
 #
-# Serve the app
+# Serve the app. Kept as a CMD and not an 
+# ENTRYPOINT so existing customers not impacted
+# if they override these
 #
-CMD hypercorn fiftyone.teams.app:app --bind "${FIFTYONE_DEFAULT_APP_ADDRESS:-0.0.0.0}":"${FIFTYONE_DEFAULT_APP_PORT:-5151}" --workers "${HYPERCORN_WORKERS:-4}"
+CMD [ "/opt/entrypoint.sh" ]

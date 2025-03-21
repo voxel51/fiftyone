@@ -88,7 +88,7 @@ const Nav: React.FC<
   return (
     <>
       <Header
-        title={"FiftyOne Teams"}
+        title={"FiftyOne Enterprise"}
         onRefresh={refresh}
         navChildren={<DatasetSelector useSearch={useSearch} />}
       >

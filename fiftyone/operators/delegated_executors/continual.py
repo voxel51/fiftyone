@@ -4,6 +4,8 @@ import logging.handlers
 import sys
 import random
 from datetime import datetime, timedelta
+from bson import ObjectId
+import os
 
 import fiftyone.internal.util as foiu
 import fiftyone as fo
@@ -30,7 +32,7 @@ class ContinualExecutor:
         registration_interval: int = 600,
         instance_id: str = "builtin",
         instance_desc: str = "Builtin",
-        run_link_path: str = None,
+        log_directory_path: str = None,
     ):
         self.running = True
         self.execution_interval = execution_interval
@@ -40,9 +42,9 @@ class ContinualExecutor:
         self.do_svc = do_svc
         self.orch_svc = orch_svc
         self.file_handler = None
-        self.temp_dir = None
-        self.log_path = None
-        self.run_link_path = run_link_path
+        self.temp_log_dir_path = None
+        self.temp_log_path = None
+        self.log_directory_path = log_directory_path
 
         self.configure_logging()
 
@@ -62,14 +64,14 @@ class ContinualExecutor:
             delegation_target=self.instance_id,
         )
         for queued_op in queued_ops:
-            run_link = self.create_run_link(str(queued_op.id))
+            log_path = self.create_log_path(str(queued_op.id))
             if self.file_handler is not None:
                 self.file_handler.doRollover()
             results = self.do_svc.execute_operation(
-                queued_op, log=True, run_link=run_link
+                queued_op, log=True, log_path=log_path
             )
             if results:
-                self.flush_logs(run_link)
+                self.flush_logs(queued_op.id, log_path)
 
     def register(self):
         logger.info(f"Registering executor {self.instance_id}")
@@ -80,18 +82,18 @@ class ContinualExecutor:
         register_delta = random.gauss(self.registration_interval, 120)
         return datetime.utcnow() + timedelta(seconds=register_delta)
 
-    def create_run_link(self, op_id: str):
+    def create_log_path(self, op_id: str):
         now = datetime.utcnow()
         return (
             fos.join(
-                self.run_link_path,
+                self.log_directory_path,
                 self.DO_LOGS,
                 str(now.year),
                 str(now.month),
                 str(now.day),
                 op_id + ".log",
             )
-            if self.run_link_path
+            if self.log_directory_path
             else None
         )
 
@@ -105,32 +107,39 @@ class ContinualExecutor:
         self.running = False
 
     def configure_logging(self):
-        if self.run_link_path:
-            self.temp_dir = fos.make_temp_dir(ensure_writeable=True)
-            self.log_path = fos.join(
-                self.temp_dir, "fiftyone_delegated_executor.log"
+        if self.log_directory_path:
+            self.temp_log_dir_path = fos.make_temp_dir(ensure_writeable=True)
+            self.temp_log_path = fos.join(
+                self.temp_log_dir_path, "fiftyone_delegated_executor.log"
             )
-            formatter = logging.Formatter(fmt="%(message)s")
+            formatter = logging.Formatter(
+                fmt="%(asctime)s - %(levelname)s - %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
             self.file_handler = logging.handlers.RotatingFileHandler(
-                filename=self.log_path, mode="w"
+                filename=self.temp_log_path, mode="w"
             )
             self.file_handler.setFormatter(formatter)
             root_logger.addHandler(self.file_handler)
 
-    def flush_logs(self, run_link: str = None):
+    def flush_logs(self, doc_id: ObjectId, run_link: str = None):
         if run_link:
             try:
                 logger.info(f"Flushing logs to {run_link}")
-                fos.copy_file(self.log_path, run_link)
+                fos.copy_file(self.temp_log_path, run_link)
+                self.do_svc.set_log_size(
+                    doc_id, os.path.getsize(self.temp_log_path)
+                )
             except Exception as e:
                 logger.warning(
                     f"Failed to flush logs to bucket %s due to: %s",
                     run_link,
                     e,
                 )
+                self.do_svc.set_log_upload_error(doc_id, str(e))
             if not self.running:
                 self.file_handler.close()
-                fos.delete_dir(self.temp_dir)
+                fos.delete_dir(self.temp_log_dir_path)
 
     def validate(self):
         """Ensure conditions this executor expects to be operating under.

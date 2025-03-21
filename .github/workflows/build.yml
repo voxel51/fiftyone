@@ -20,7 +20,7 @@ jobs:
               - 'setup.py'
 
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v4

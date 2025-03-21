@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<67543879e3e2987632bd17a53759bb4f>>
+ * @generated SignedSource<<c70eb03201df8d728e6127a7238d00e9>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,6 +11,10 @@
 import { Fragment, ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type datasetAppConfigFragment$data = {
+  readonly activeFields: {
+    readonly exclude: boolean | null;
+    readonly paths: ReadonlyArray<string> | null;
+  } | null;
   readonly colorScheme: {
     readonly " $fragmentSpreads": FragmentRefs<"colorSchemeFragment">;
   } | null;
@@ -34,6 +38,31 @@ const node: ReaderFragment = {
   "metadata": null,
   "name": "datasetAppConfigFragment",
   "selections": [
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "ActiveFields",
+      "kind": "LinkedField",
+      "name": "activeFields",
+      "plural": false,
+      "selections": [
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "exclude",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "paths",
+          "storageKey": null
+        }
+      ],
+      "storageKey": null
+    },
     {
       "alias": null,
       "args": null,
@@ -104,6 +133,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "ee329c6ed9452236fb9ea680bea410e3";
+(node as any).hash = "81936b2f058c29fbbde50f9e4b276a65";
 
 export default node;

@@ -1475,15 +1475,37 @@ class DelegatedOperationServiceTests(unittest.IsolatedAsyncioTestCase):
     ):
         mock_is_remote_service.return_value = True
         db = delegated_operation.MongoDelegatedOperationRepo()
+        self.assertTrue(db.is_remote)
         dos = DelegatedOperationService(repo=db)
         ctx = ExecutionContext()
         ctx.request_params = {"foo": "bar"}
+
+        #####
         doc = dos.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             label=mock_get_operator.return_value.name,
             delegation_target="test_target",
             context=ctx.serialize(),
         )
+        #####
+
         self.docs_to_delete.append(doc)
-        self.assertTrue(db.is_remote)
         self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
+
+    def test_set_queue_remote_service(
+        self,
+        mock_get_operator,
+        mock_operator_exists,
+        mock_is_remote_service,
+        mock_resolve_operation_user,
+    ):
+        mock_is_remote_service.return_value = True
+        db = delegated_operation.MongoDelegatedOperationRepo()
+        self.assertTrue(db.is_remote)
+        dos = DelegatedOperationService(repo=db)
+
+        op_id = bson.ObjectId()
+
+        #####
+        self.assertRaises(PermissionError, dos.set_queued, op_id)
+        #####

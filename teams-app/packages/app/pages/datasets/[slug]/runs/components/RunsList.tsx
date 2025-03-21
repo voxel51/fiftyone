@@ -1,4 +1,5 @@
-import { useCurrentDataset } from "@fiftyone/hooks";
+import { useCurrentUser } from "@fiftyone/hooks";
+import { useBooleanEnv } from "@fiftyone/hooks/src/common/useEnv";
 import {
   BasicTable,
   Box,
@@ -8,7 +9,6 @@ import {
   Timestamp,
 } from "@fiftyone/teams-components";
 import {
-  Dataset,
   autoRefreshRunsStatus,
   runsPageQuery,
   runsPageQueryDynamicVariables,
@@ -24,17 +24,20 @@ import { useRouter } from "next/router";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { usePreloadedQuery, useQueryLoader } from "react-relay";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
-import getTimestamp from "../utils/getTimestamp";
 import useRefresher, { RUNS_STATUS_REFRESHER_ID } from "../utils/useRefresher";
 import RunActions from "./RunActions";
 import RunLabel from "./RunLabel";
 import RunStatus from "./RunStatus";
 import RunsPin from "./RunsPin";
-import { useBooleanEnv } from "@fiftyone/hooks/src/common/useEnv";
+
+const NON_FINAL_RUN_STATES = [
+  OPERATOR_RUN_STATES.QUEUED,
+  OPERATOR_RUN_STATES.SCHEDULED,
+  OPERATOR_RUN_STATES.RUNNING,
+];
 
 function RunsListWithQuery(props) {
   const { queryRef, refresh, refreshStatus } = props;
-  const { asPath } = useRouter();
   const result = usePreloadedQuery<runsPageQueryT>(runsPageQuery, queryRef);
   const [vars, setVars] = useRecoilState(runsPageQueryDynamicVariables);
   const setAutoRefresh = useSetRecoilState(autoRefreshRunsStatus);
@@ -44,9 +47,16 @@ function RunsListWithQuery(props) {
     FIFTYONE_ALLOW_LEGACY_ORCHESTRATORS_ENV_KEY
   );
 
+  const { query } = useRouter();
+  const { slug: currentDatasetSlug } = query;
+  const [user] = useCurrentUser();
+  const isAdmin = user?.role === "ADMIN";
+
+  const showRunsForAllDatasets = isAdmin;
+
   const { nodes, pageTotal } = result.delegatedOperationsPage;
-  const hasRunningRuns = nodes.some(
-    (node) => node.runState === OPERATOR_RUN_STATES.RUNNING
+  const hasRunningRuns = nodes.some((node) =>
+    NON_FINAL_RUN_STATES.includes(node.runState)
   );
 
   useEffect(() => {
@@ -56,18 +66,39 @@ function RunsListWithQuery(props) {
     setRefresher(refreshStatus);
   }, [refreshStatus, setRefresher]);
 
+  const tableColumns = useMemo(() => {
+    if (showRunsForAllDatasets) {
+      return ["Operator", "Dataset", "Status", "Updated", "Run by", ""];
+    }
+    return ["Operator", "Status", "Updated", "Run by", ""];
+  }, [showRunsForAllDatasets]);
+
   if (nodes.length === 0) return <EmptyState resource="runs" />;
 
+  const runIdToDatasetId: Record<string, string> = {};
   const rows = nodes.map((node) => {
-    const { id, operator, label, runBy, runState, pinned, status } = node;
-    const timestamp = getTimestamp(node);
+    const {
+      id,
+      operator,
+      label,
+      runBy,
+      runState,
+      pinned,
+      status,
+      datasetId,
+      datasetSlug,
+    } = node;
+    runIdToDatasetId[id] = datasetId as string;
+    const timestamp = node.updatedAt;
     const isHovering = hovered === id;
     const showProgress =
       status !== null && runState === OPERATOR_RUN_STATES.RUNNING;
+    const link = `/datasets/${datasetSlug}/runs/${encodeURIComponent(id)}`;
 
     return {
       id,
-      link: `${asPath}/${id}`,
+      link,
+      newWindow: currentDatasetSlug !== datasetSlug,
       onHover: (e, row, hovered) => {
         if (hovered) setHovered(row.id);
         else setHovered("");
@@ -96,12 +127,22 @@ function RunsListWithQuery(props) {
             </Box>
           ),
         },
+        ...(showRunsForAllDatasets
+          ? [
+              {
+                id: `${id}-dataset`,
+                value: node.datasetName,
+              },
+            ]
+          : []),
         {
           id: `${id}-status`,
           Component: (
             <RunStatus
               status={runState}
               progress={showProgress ? status : undefined}
+              priority={node.priority}
+              maxPriority={node.priorityTotal}
             />
           ),
         },
@@ -129,7 +170,7 @@ function RunsListWithQuery(props) {
 
   return (
     <Stack>
-      <BasicTable rows={rows} />
+      <BasicTable rows={rows} columns={tableColumns} />
       <Pagination
         page={vars.page}
         count={pageTotal}
@@ -152,15 +193,13 @@ export default function RunsList() {
   const [queryRef, loadQuery] = useQueryLoader(runsPageQuery);
   const [statusQueryRef, loadStatusQuery] = useQueryLoader(runsPageStatusQuery);
   const dynamicVars = useRecoilValue(runsPageQueryDynamicVariables);
-  const dataset = useCurrentDataset() as Dataset;
-  const { id } = dataset;
 
   const loadQueryVariables = useMemo(
     () => ({
       ...dynamicVars,
-      filter: { ...(dynamicVars.filter || {}), datasetIdentifier: { eq: id } },
+      filter: { ...(dynamicVars.filter || {}) },
     }),
-    [dynamicVars, id]
+    [dynamicVars]
   );
 
   const refresh = useCallback(() => {

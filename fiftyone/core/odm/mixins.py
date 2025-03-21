@@ -5,11 +5,13 @@ Mixins and helpers for dataset backing documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import OrderedDict
 from datetime import datetime
 import itertools
 
 from bson import ObjectId
+import mongoengine
 from pymongo import UpdateOne
 
 import fiftyone.core.fields as fof
@@ -140,6 +142,12 @@ class DatasetMixin(object):
 
         if len(chunks) > 1:
             doc = self.get_field(chunks[0])
+
+            # handle sytnax: sample["field.0.attr"] = value
+            if isinstance(doc, (mongoengine.base.BaseList, fof.ListField)):
+                chunks = chunks[1].split(".", 1)
+                doc = doc[int(chunks[0])]
+
             return doc.set_field(chunks[1], value, create=create)
 
         if not self.has_field(field_name):
@@ -305,7 +313,7 @@ class DatasetMixin(object):
 
         for path in new_schema.keys():
             _, _, _, root_doc = cls._parse_path(path)
-            if root_doc is not None and root_doc.read_only:
+            if root_doc is not None and getattr(root_doc, "read_only", False):
                 root = path.rsplit(".", 1)[0]
                 raise ValueError("Cannot edit read-only field '%s'" % root)
 
@@ -318,7 +326,10 @@ class DatasetMixin(object):
         # Silently skip updating metadata of any read-only fields
         for path in list(new_metadata.keys()):
             field = cls._get_field(path, allow_missing=True)
-            if field is not None and field.read_only:
+            if field is not None and (
+                not isinstance(field, fof.Field)
+                or getattr(field, "read_only", False)
+            ):
                 del new_metadata[path]
 
         for path, field in new_schema.items():
@@ -517,7 +528,7 @@ class DatasetMixin(object):
                     % (cls._doc_name().lower(), path)
                 )
 
-            if field is not None and field.read_only:
+            if field is not None and getattr(field, "read_only", False):
                 raise ValueError(
                     "Cannot rename read-only %s field '%s'"
                     % (cls._doc_name().lower(), path)
@@ -684,7 +695,7 @@ class DatasetMixin(object):
                     "%s field '%s' does not exist" % (cls._doc_name(), path)
                 )
 
-            if field is not None and field.read_only:
+            if field is not None and getattr(field, "read_only", False):
                 raise ValueError(
                     "Cannot rename read-only %s field '%s'"
                     % (cls._doc_name().lower(), path)
@@ -753,7 +764,7 @@ class DatasetMixin(object):
                 )
                 continue
 
-            if field is not None and field.read_only:
+            if field is not None and getattr(field, "read_only", False):
                 raise ValueError(
                     "Cannot delete read-only %s field '%s'"
                     % (cls._doc_name().lower(), path)
@@ -862,7 +873,7 @@ class DatasetMixin(object):
                 )
                 continue
 
-            if field is not None and field.read_only:
+            if field is not None and getattr(field, "read_only", False):
                 fou.handle_error(
                     ValueError(
                         "Cannot remove read-only %s field '%s'"
@@ -1125,9 +1136,6 @@ class DatasetMixin(object):
                         fof.EmbeddedDocumentField,
                     )
                 )
-
-        if isinstance(field, fof.ObjectIdField) and field_name.startswith("_"):
-            field_name = field_name[1:]
 
         if field_name in doc._fields:
             existing_field = doc._fields[field_name]

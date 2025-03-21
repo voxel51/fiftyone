@@ -3,15 +3,17 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import abc
 from typing import TYPE_CHECKING, Any, Union
 
 import pymongo
+import pymongo.change_stream
 
 from fiftyone.api.pymongo import mixin, proxy
 
 if TYPE_CHECKING:
-    from fiftyone.api import pymongo as fomongo
+    from fiftyone.api.pymongo import client, collection, database
 
 
 class AbstractChangeStream(proxy.PymongoWebsocketProxy, abc.ABC):
@@ -20,9 +22,9 @@ class AbstractChangeStream(proxy.PymongoWebsocketProxy, abc.ABC):
     def __init__(
         self,
         target: Union[
-            "fomongo.MongoClient",
-            "fomongo.database.Database",
-            "fomongo.collection.Collection",
+            "client.MongoClient",
+            "database.Database",
+            "collection.Collection",
         ],
         *args: Any,
         **kwargs: Any
@@ -58,7 +60,7 @@ class ClusterChangeStream(ChangeStream):
     __proxy_class__ = pymongo.change_stream.ClusterChangeStream
 
     def __init__(
-        self, client: "fomongo.MongoClient", *args: Any, **kwargs: Any
+        self, client: "client.MongoClient", *args: Any, **kwargs: Any
     ):
         super().__init__(client, *args, **kwargs)
 
@@ -69,10 +71,7 @@ class CollectionChangeStream(ChangeStream):
     __proxy_class__ = pymongo.change_stream.CollectionChangeStream
 
     def __init__(
-        self,
-        collection: "fomongo.collection.Collection",
-        *args: Any,
-        **kwargs: Any
+        self, collection: "collection.Collection", *args: Any, **kwargs: Any
     ):
         super().__init__(collection, *args, **kwargs)
 
@@ -83,6 +82,6 @@ class DatabaseChangeStream(ChangeStream):
     __proxy_class__ = pymongo.change_stream.DatabaseChangeStream
 
     def __init__(
-        self, database: "fomongo.database.Database", *args: Any, **kwargs: Any
+        self, database: "database.Database", *args: Any, **kwargs: Any
     ):
         super().__init__(database, *args, **kwargs)

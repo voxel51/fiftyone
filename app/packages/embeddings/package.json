@@ -16,12 +16,12 @@
         "@fiftyone/components": "*",
         "@fiftyone/plugins": "*",
         "@fiftyone/state": "*",
-        "plotly.js": "^2.32.0",
+        "plotly.js": "^3.0.1",
         "use-resize-observer": "^9.0.2"
     },
     "devDependencies": {
         "typescript": "^4.7.4",
-        "vite": "^5.2.14",
+        "vite": "^5.4.12",
         "vite-plugin-externals": "^0.5.0"
     },
     "fiftyone": {

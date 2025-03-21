@@ -305,10 +305,10 @@ class MigrationRunner(object):
         teams_ver = Version(foc.TEAMS_VERSION)
         if head_ver > pkg_ver or dest_ver > pkg_ver:
             raise EnvironmentError(
-                "You must have a FiftyOne Teams version with open source "
+                "You must have a FiftyOne Enterprise version with open source "
                 "compatibility fiftyone>=%s installed in order to migrate "
                 "from v%s to v%s, but you are currently running FiftyOne "
-                "Teams v%s with open source compatibility fiftyone==%s."
+                "Enterprise v%s with open source compatibility fiftyone==%s."
                 "\n\nSee https://docs.voxel51.com/getting_started/install.html#downgrading-fiftyone "
                 "for information about downgrading FiftyOne."
                 % (

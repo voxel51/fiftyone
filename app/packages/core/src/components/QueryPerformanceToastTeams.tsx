@@ -5,6 +5,8 @@ import { useSpaces, useSpaceNodes, SpaceNode } from "@fiftyone/spaces";
 import { usePanelEvent } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 
+const PANELS_URI = "@voxel51/panels";
+
 const QueryPerformanceToastTeams = () => {
   const [path, setPath] = useState<string | undefined>(undefined);
   const promptForOperator = usePromptOperatorInput();
@@ -28,12 +30,12 @@ const QueryPerformanceToastTeams = () => {
     spaces.setNodeActive(openedPanel);
     if (path) {
       promptForOperator(
-        "@voxel51/panels/create_index_or_summary_field",
+        `${PANELS_URI}/create_index_or_summary_field`,
         { path: path },
         {
           callback: () => {
             triggerPanelEvent(openedPanel.id, {
-              operator: PANEL_NAME + "#refresh",
+              operator: `${PANELS_URI}/${PANEL_NAME}#refresh`,
             });
           },
         }

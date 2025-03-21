@@ -11,6 +11,7 @@ import os
 from unittest import mock
 from unittest.mock import patch
 from datetime import datetime
+from bson import ObjectId
 
 import fiftyone as fo
 import fiftyone.operators.delegated_executors as foodx
@@ -19,6 +20,9 @@ import fiftyone.core.storage as fos
 from fiftyone.operators.orchestrator import OrchestratorService
 from fiftyone.operators.delegated import DelegatedOperationService
 from fiftyone.operators.executor import ExecutionResult
+
+
+DOC_ID = "6798fd25cc70090ac85e4104"
 
 
 class MockOperator:
@@ -32,38 +36,43 @@ class ContinualExecutorTests(unittest.IsolatedAsyncioTestCase):
         self.orch_svc = OrchestratorService()
         self.executor = foodx.ContinualExecutor(self.do_svc, self.orch_svc)
 
-    def test_logging_enabled(self):
-        with tempfile.TemporaryDirectory() as run_link_path:
-            doc_id = "test"
+    @patch.object(
+        DelegatedOperationService,
+        "set_log_size",
+    )
+    def test_logging_enabled(self, mock_set_log_size):
+        with tempfile.TemporaryDirectory() as log_directory_path:
             executor = foodx.ContinualExecutor(
-                self.do_svc, self.orch_svc, run_link_path=run_link_path
+                self.do_svc,
+                self.orch_svc,
+                log_directory_path=log_directory_path,
             )
-            run_link = executor.create_run_link(doc_id)
+            log_path = executor.create_log_path(DOC_ID)
             self.assertIsNotNone(executor.file_handler)
-            self.assertIsNotNone(executor.temp_dir)
-            self.assertIsNotNone(executor.log_path)
-            self.assertTrue(fos.exists(executor.log_path))
-            executor.flush_logs(run_link)
+            self.assertIsNotNone(executor.temp_log_dir_path)
+            self.assertIsNotNone(executor.temp_log_path)
+            self.assertTrue(fos.exists(executor.temp_log_path))
+            executor.flush_logs(ObjectId(DOC_ID), log_path)
             now = datetime.utcnow()
-            expected_run_link = fos.join(
-                run_link_path,
+            expected_log_path = fos.join(
+                log_directory_path,
                 "do_logs",
                 str(now.year),
                 str(now.month),
                 str(now.day),
-                str(doc_id) + ".log",
+                str(DOC_ID) + ".log",
             )
-            self.assertEqual(expected_run_link, run_link)
-            self.assertTrue(fos.exists(expected_run_link))
+            self.assertEqual(expected_log_path, log_path)
+            self.assertTrue(fos.exists(expected_log_path))
+            mock_set_log_size.assert_called_once()
 
     def test_logging_disabled(self):
-        doc_id = "test"
-        run_link = self.executor.create_run_link(doc_id)
-        self.executor.flush_logs(run_link)
+        log_path = self.executor.create_log_path(DOC_ID)
+        self.executor.flush_logs(ObjectId(DOC_ID), log_path)
         self.assertIsNone(self.executor.file_handler)
-        self.assertIsNone(self.executor.temp_dir)
-        self.assertIsNone(self.executor.log_path)
-        self.assertIsNone(run_link)
+        self.assertIsNone(self.executor.temp_log_dir_path)
+        self.assertIsNone(self.executor.temp_log_path)
+        self.assertIsNone(log_path)
 
     @patch.object(
         DelegatedOperationService,
@@ -85,7 +94,7 @@ class ContinualExecutorTests(unittest.IsolatedAsyncioTestCase):
             delegation_target=self.executor.instance_id,
         )
         mock_execute_operation.assert_called_once_with(
-            mock_operator, log=True, run_link=None
+            mock_operator, log=True, log_path=None
         )
 
     @patch.object(

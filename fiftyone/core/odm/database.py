@@ -5,6 +5,7 @@ Database utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import atexit
 import dataclasses
 from datetime import datetime, timedelta
@@ -204,8 +205,10 @@ def establish_db_conn(config):
             )
 
         _connection_kwargs = {
-            "__teams_api_uri": config.api_uri,
+            "__teams_api_client_connect_timeout": config.api_client_connect_timeout,
+            "__teams_api_client_read_timeout": config.api_client_read_timeout,
             "__teams_api_key": config.api_key,
+            "__teams_api_uri": config.api_uri,
             "__teams_disable_websocket_info_logs": config.disable_websocket_info_logs,
         }
 
@@ -890,9 +893,6 @@ def insert_documents(docs, coll, ordered=False, progress=None, num_docs=None):
                 batch = list(batch)
                 coll.insert_many(batch, ordered=ordered)
                 ids.extend(b["_id"] for b in batch)
-                if batcher.manual_backpressure:
-                    # @todo can we infer content size from insert_many() above?
-                    batcher.apply_backpressure(batch)
 
     except BulkWriteError as bwe:
         msg = bwe.details["writeErrors"][0]["errmsg"]
@@ -919,11 +919,6 @@ def bulk_write(ops, coll, ordered=False, progress=False):
             for batch in batcher:
                 batch = list(batch)
                 coll.bulk_write(batch, ordered=ordered)
-                if batcher.manual_backpressure:
-                    # @todo can we infer content size from bulk_write() above?
-                    # @todo do we need a more accurate measure of size here?
-                    content_size = sum(len(str(b)) for b in batch)
-                    batcher.apply_backpressure(content_size)
 
     except BulkWriteError as bwe:
         msg = bwe.details["writeErrors"][0]["errmsg"]

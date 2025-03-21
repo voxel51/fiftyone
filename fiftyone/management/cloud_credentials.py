@@ -193,7 +193,7 @@ def add_cloud_credentials(
                 "overwrite": overwrite,
             },
         )
-    except errors.FiftyOneTeamsAPIError:
+    except errors.FiftyOneEnterpriseAPIError:
         raise fom_exc.FiftyOneManagementError(
             f"Error adding cloud credentials for provider {provider} and "
             f"prefixes {prefixes}; try again with `overwrite=True` or change "

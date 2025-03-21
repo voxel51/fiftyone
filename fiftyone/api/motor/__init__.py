@@ -3,9 +3,10 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 # Match the import style of motor
 
-from fiftyone.api.motor.defintions import (
+from fiftyone.api.motor.definitions import (
     AsyncIOMotorChangeStream,
     AsyncIOMotorClient,
     AsyncIOMotorCollection,

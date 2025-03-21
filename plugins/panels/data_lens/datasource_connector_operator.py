@@ -248,6 +248,8 @@ class DatasourceConnectorOperator(foo.Operator):
         self, base_ctx: foo.ExecutionContext, overrides: dict = None
     ) -> dict:
         return {
+            "dataset": base_ctx.dataset,
+            "selected": base_ctx.selected,
             "params": self._build_params(base_ctx, overrides),
         }
 

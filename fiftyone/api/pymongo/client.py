@@ -9,6 +9,7 @@ import bson
 import pymongo
 
 from fiftyone.api import client as api_client
+from fiftyone.api import constants
 from fiftyone.api.pymongo import change_stream, command_cursor, database, proxy
 
 
@@ -21,6 +22,12 @@ class MongoClient(proxy.PymongoRestProxy):
         # Initialize Teams API client
         api_url = kwargs.pop("__teams_api_uri")
         api_key = kwargs.pop("__teams_api_key")
+        connect_timeout = kwargs.pop(
+            "__teams_api_client_connect_timeout", constants.DEFAULT_TIMEOUT
+        )
+        read_timeout = kwargs.pop(
+            "__teams_api_client_read_timeout", constants.DEFAULT_TIMEOUT
+        )
         disable_websocket_info_logs = kwargs.pop(
             "__teams_disable_websocket_info_logs", True
         )
@@ -32,6 +39,7 @@ class MongoClient(proxy.PymongoRestProxy):
             api_url,
             api_key,
             disable_websocket_info_logs=disable_websocket_info_logs,
+            timeout=(connect_timeout, read_timeout),
         )
 
         super().__init__(*args, **kwargs)

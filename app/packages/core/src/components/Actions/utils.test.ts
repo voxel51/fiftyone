@@ -1,20 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
+import * as utils from "../../../src/components/Actions/utils";
 
 vi.mock("recoil");
 vi.mock("recoil-relay");
-import * as utils from "../../../src/components/Actions/utils";
 
 import {
-  setMockAtoms,
-  TestSelector,
   TestSelectorFamily,
+  setMockAtoms,
 } from "../../../../../__mocks__/recoil";
 
 describe("Resolves tag counts", () => {
   it("resolves all", () => {
     setMockAtoms({
-      labelTagCounts: (params) => ({ one: 1, two: 1 }),
-      sampleTagCounts: (params) => ({ one: 1, two: 1 }),
+      labelTagCounts: (params) => ({ one: 1, two: 1, three: 1 }),
+      sampleTagCounts: (params) => ({ one: 1, two: 1, three: 1 }),
       tagStatistics: (modal) => ({
         count: 2,
         items: 1,
@@ -25,11 +24,21 @@ describe("Resolves tag counts", () => {
     const samples = <TestSelectorFamily<typeof utils.tagStats>>(
       (<unknown>utils.tagStats({ modal: false, labels: false }))
     );
-    expect(samples()).toStrictEqual({ one: 1, two: 1 });
+    expect(samples()).toStrictEqual({ one: 1, two: 1, three: 0 });
 
     const labels = <TestSelectorFamily<typeof utils.tagStats>>(
       (<unknown>utils.tagStats({ modal: false, labels: true }))
     );
-    expect(labels()).toStrictEqual({ one: 1, two: 1 });
+    expect(labels()).toStrictEqual({ one: 1, two: 1, three: 0 });
+
+    const samplesModal = <TestSelectorFamily<typeof utils.tagStats>>(
+      (<unknown>utils.tagStats({ modal: true, labels: false }))
+    );
+    expect(samplesModal()).toStrictEqual({ one: 1, two: 1 });
+
+    const labelsModal = <TestSelectorFamily<typeof utils.tagStats>>(
+      (<unknown>utils.tagStats({ modal: true, labels: true }))
+    );
+    expect(labelsModal()).toStrictEqual({ one: 1, two: 1 });
   });
 });

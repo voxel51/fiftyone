@@ -27,10 +27,13 @@ import {
   withPath,
 } from "@fiftyone/utilities";
 import { RecoilState, selector, selectorFamily } from "recoil";
+import { computeActiveFields } from "../activeFields";
 import * as atoms from "./atoms";
 import { dataset as datasetAtom } from "./dataset";
 import { activeModalSample } from "./groups";
 import { labelPathsSetExpanded } from "./labels";
+import { activeFieldsConfig } from "./selectors";
+import { sidebarPaths } from "./sidebar";
 import { State } from "./types";
 import { getLabelFields } from "./utils";
 
@@ -320,6 +323,28 @@ export const dbPath = selectorFamily({
     },
 });
 
+export const defaultActiveFields = selector<string[]>({
+  key: "defaultActiveFields",
+  get: ({ get }) => {
+    const sampleSchema = get(fieldSchema({ space: State.SPACE.SAMPLE }));
+    const frameSchema = get(fieldSchema({ space: State.SPACE.FRAME }));
+
+    const allSampleLabels = get(labelFields({ space: State.SPACE.SAMPLE }));
+    const allFrameLabels = get(labelFields({ space: State.SPACE.FRAME }));
+
+    const config = get(activeFieldsConfig);
+
+    return computeActiveFields(
+      get(sidebarPaths),
+      sampleSchema,
+      frameSchema,
+      allSampleLabels,
+      allFrameLabels,
+      config
+    );
+  },
+});
+
 export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
   key: "labelFields",
   get:
@@ -513,7 +538,7 @@ export const activeFields = selectorFamily<string[], { modal: boolean }>({
     ({ modal }) =>
     ({ get }) => {
       return filterPaths(
-        get(_activeFields({ modal })) || get(labelFields({})),
+        get(_activeFields({ modal })) || get(defaultActiveFields),
         buildSchema(get(atoms.sampleFields), get(atoms.frameFields))
       );
     },

@@ -2,15 +2,25 @@ import { PanelCTA } from "@fiftyone/components";
 import { constants } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import React, { useCallback, useMemo } from "react";
+import { useRecoilState } from "recoil";
+import ConfirmationDialog from "./ConfirmationDialog";
 import Evaluate from "./Evaluate";
 import Evaluation from "./Evaluation";
 import Overview from "./Overview";
-import { useTriggerEvent } from "./utils";
+import {
+  openModelEvalDialog,
+  selectedModelEvaluation,
+  useTriggerEvent,
+} from "./utils";
 
 const TRY_LINK = "http://voxel51.com/try-evaluation";
 
 export default function NativeModelEvaluationView(props) {
   const { data = {}, schema, onChange, layout } = props;
+  const [openDialog, setOpenDialog] = useRecoilState(openModelEvalDialog);
+  const [selectedEvaluation, setSelectedEvaluation] = useRecoilState(
+    selectedModelEvaluation
+  );
   const { view } = schema;
   const {
     on_change_view,
@@ -20,6 +30,8 @@ export default function NativeModelEvaluationView(props) {
     set_status,
     set_note,
     load_view,
+    rename_evaluation,
+    delete_evaluation,
   } = view;
   const {
     evaluations = [],
@@ -30,9 +42,11 @@ export default function NativeModelEvaluationView(props) {
     pending_evaluations = [],
   } = data;
   const computedEvaluations = useMemo(() => {
-    return evaluations.map(({ key, id }) => ({
+    return evaluations.map(({ key, id, type, method }) => ({
       key,
       id,
+      type,
+      method,
       description: "The description for evaluation " + key,
       status: "reviewed",
     }));
@@ -55,6 +69,70 @@ export default function NativeModelEvaluationView(props) {
       triggerEvent(on_evaluate_model);
     }
   }, [triggerEvent, on_evaluate_model]);
+
+  const onRename = useCallback(
+    (old_name: string, new_name: string) => {
+      triggerEvent(
+        rename_evaluation,
+        { old_name, new_name },
+        false,
+        (results) => {
+          if (results?.error === null) {
+            const updatedEvaluations = evaluations.map((evaluation) => {
+              if (evaluation.key === old_name) {
+                return { ...evaluation, key: new_name };
+              }
+              return evaluation;
+            });
+            onChange("evaluations", updatedEvaluations);
+            if (page === "evaluation") {
+              onChange("view.key", new_name);
+            }
+          }
+        }
+      );
+    },
+    [triggerEvent, rename_evaluation, evaluations, onChange]
+  );
+
+  const time = new Date().getTime();
+
+  const onDelete = useCallback(
+    (eval_id: string, eval_key: string) => {
+      triggerEvent(
+        delete_evaluation,
+        { eval_id, eval_key },
+        false,
+        (results) => {
+          if (results?.error === null) {
+            // update the current page display
+            // if after deletion, there is no evaluation left,
+            // go to the create evaluation page
+            const updatedEvaluations = evaluations.filter(
+              (evaluation) => evaluation.id !== eval_id
+            );
+            onChange("evaluations", updatedEvaluations);
+            onChange(
+              "view.key",
+              `${eval_id}_${updatedEvaluations.length}_${time}`
+            );
+            if (page === "evaluation") {
+              // should return to overview page
+              onChange("view", { page: "overview" });
+              onChange("view.key", eval_id + "_deleted");
+              triggerEvent(on_change_view);
+            }
+          }
+        }
+      );
+    },
+    [triggerEvent, delete_evaluation, evaluations, onChange, time]
+  );
+
+  const handleClose = () => {
+    setOpenDialog(false);
+    setSelectedEvaluation(null);
+  };
 
   return (
     <Box sx={{ height: "100%" }}>
@@ -82,13 +160,14 @@ export default function NativeModelEvaluationView(props) {
           loadView={(type, options) => {
             triggerEvent(load_view, { type, options });
           }}
+          onRename={onRename}
         />
       )}
       {page === "overview" &&
         (showEmptyOverview || showCTA ? (
           <PanelCTA
             label="Create your first model evaluation"
-            demoLabel="Upgrade to FiftyOne Teams to Evaluate Models"
+            demoLabel="Upgrade to FiftyOne Enterprise to Evaluate Models"
             description="Analyze and improve models collaboratively with your team"
             docLink="https://docs.voxel51.com/user_guide/evaluation.html"
             docCaption="Learn how to evaluate models via code."
@@ -123,8 +202,15 @@ export default function NativeModelEvaluationView(props) {
             notes={notes}
             permissions={permissions}
             pending_evaluations={pending_evaluations}
+            onRename={onRename}
           />
         ))}
+      <ConfirmationDialog
+        open={openDialog}
+        handleClose={handleClose}
+        evaluations={evaluations}
+        handleDelete={onDelete}
+      />
     </Box>
   );
 }

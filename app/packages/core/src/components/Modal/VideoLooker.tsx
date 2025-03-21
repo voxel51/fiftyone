@@ -9,6 +9,7 @@ import {
 import * as fos from "@fiftyone/state";
 import React, { useEffect, useMemo, useState } from "react";
 import useLooker from "./use-looker";
+import { useVideoModalSelectiveRendering } from "./use-modal-selective-rendering";
 
 interface VideoLookerReactProps {
   sample: fos.ModalSample;
@@ -21,6 +22,8 @@ export const VideoLookerReact = (props: VideoLookerReactProps) => {
   const frameRate = useMemo(() => {
     return sample.frameRate;
   }, [sample]);
+
+  useVideoModalSelectiveRendering(id, looker);
 
   useEffect(() => {
     const load = () => {

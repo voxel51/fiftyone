@@ -842,7 +842,7 @@ List operators and panels that are installed locally.
 
 .. code-block:: text
 
-    fiftyone operators list [-h] [-e] [-d] [-b] [-c] [-o] [-p] [-n]
+    fiftyone operators list [-h] [-g PATT] [-e] [-d] [-b] [-c] [-o] [-p] [-n]
 
 **Arguments**
 
@@ -850,6 +850,8 @@ List operators and panels that are installed locally.
 
     optional arguments:
       -h, --help            show this help message and exit
+      -g PATT, --glob-patt PATT
+                            only show operators whose URI matches the glob pattern
       -e, --enabled         only show enabled operators and panels
       -d, --disabled        only show disabled operators and panels
       -b, --builtins-only   only show builtin operators and panels
@@ -864,6 +866,11 @@ List operators and panels that are installed locally.
 
     # List all available operators and panels
     fiftyone operators list
+
+.. code-block:: shell
+
+    # List operators and panels whose URI matches the given glob pattern
+    fiftyone operators list --glob-patt '*/compute_*'
 
 .. code-block:: shell
 
@@ -2265,7 +2272,7 @@ List datasets in the FiftyOne Dataset Zoo.
 
 .. code-block:: text
 
-    fiftyone zoo datasets list [-h] [-n] [-d] [-s SOURCE] [-t TAGS]
+    fiftyone zoo datasets list [-h] [-n] [-d] [-s SOURCE] [-t TAGS] [-l LICENSE]
 
 **Arguments**
 
@@ -2279,6 +2286,9 @@ List datasets in the FiftyOne Dataset Zoo.
       -s SOURCE, --source SOURCE
                             only show datasets available from the specified source
       -t TAGS, --tags TAGS  only show datasets with the specified tag or list,of,tags
+      -l LICENSE, --license LICENSE
+                            only show datasets with the specified license or
+                            any of the list,of,licenses
 
 **Examples**
 
@@ -2306,6 +2316,11 @@ List datasets in the FiftyOne Dataset Zoo.
 
     # List available datasets with the given tag
     fiftyone zoo datasets list --tags <tag>
+
+.. code-block:: shell
+
+    # List available datasets with the given license
+    fiftyone zoo datasets list --license <license>
 
 .. _cli-fiftyone-zoo-datasets-find:
 
@@ -2608,7 +2623,7 @@ List models in the FiftyOne Model Zoo.
 
 .. code-block:: text
 
-    fiftyone zoo models list [-h] [-n] [-d] [-t TAGS] [-s SOURCE]
+    fiftyone zoo models list [-h] [-n] [-d] [-t TAGS] [-s SOURCE] [-l LICENSE]
 
 **Arguments**
 
@@ -2622,6 +2637,9 @@ List models in the FiftyOne Model Zoo.
       -t TAGS, --tags TAGS  only show models with the specified tag or list,of,tags
       -s SOURCE, --source SOURCE
                             only show models available from the specified remote source
+      -l LICENSE, --license LICENSE
+                            only show models with the specified license or any
+                            of the list,of,licenses
 
 **Examples**
 
@@ -2649,6 +2667,11 @@ List models in the FiftyOne Model Zoo.
 
     # List available models from the given remote source
     fiftyone zoo models list --source <source>
+
+.. code-block:: shell
+
+    # List available models with the given license
+    fiftyone zoo models list --license <license>
 
 .. _cli-fiftyone-zoo-models-find:
 

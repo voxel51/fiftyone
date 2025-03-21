@@ -1,6 +1,6 @@
 """
 Utilities for working with datasets in
-`Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
+`Berkeley DeepDrive (BDD) format <http://bdd-data.berkeley.edu>`_.
 
 | Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_

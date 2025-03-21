@@ -4,7 +4,7 @@ import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from "../constants";
 
 export const runsPageQueryDefaultVariables = {
   filter: {},
-  order: { direction: "DESC", field: "updatedAt" },
+  order: { direction: "DESC", field: "scheduledAt" },
   page: DEFAULT_PAGE,
   pageSize: DEFAULT_PAGE_SIZE,
   search: null,
@@ -13,6 +13,11 @@ export const runsPageQueryDefaultVariables = {
 export const runsPageQueryDynamicVariables = atom({
   key: "runsPageQueryDynamicVariables",
   default: runsPageQueryDefaultVariables,
+});
+
+export const runsPageFilterDatasetSelectionState = atom<"this" | "all">({
+  key: "runsPageFilterDatasetSelectionState",
+  default: "this",
 });
 
 export const orchestratorDialogAtom = atom({
@@ -49,22 +54,31 @@ export const runsPageQuery = graphql`
     ) {
       nodeTotal
       nodes {
-        operator
-        label
-        id
-        runState
-        startedAt
-        queuedAt
         completedAt
+        datasetId
+        datasetName
+        datasetSlug
         failedAt
-        runBy {
-          name
-          id
-        }
+        id
+        label
+        logPath
+        logUploadError
+        logUrl
+        operator
         pinned
+        priority
+        priorityTotal
+        queuedAt
+        runBy {
+          id
+          name
+        }
         runLink
+        runState
         scheduledAt
+        startedAt
         status
+        updatedAt
       }
       pageTotal
     }
@@ -87,8 +101,16 @@ export const runsPageStatusQuery = graphql`
       search: $search
     ) {
       nodes {
+        completedAt
+        failedAt
         id
+        queuedAt
+        runState
+        scheduledAt
+        startedAt
         status
+        priority
+        priorityTotal
       }
     }
   }
@@ -139,6 +161,58 @@ export const runsItemQuery = graphql`
       startedAt
       status
       runLink
+      priority
+      logPath
+      logUrl
+      logSize
+      logUploadError
+      metadata
+    }
+  }
+`;
+export const runsLogQuery = graphql`
+  query runsLogQuery($run: String!) {
+    delegatedOperation(operationId: $run) {
+      id
+      logConnection(first: 200000, after: null) {
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          startCursor
+          endCursor
+        }
+        edges {
+          node {
+            content
+            date
+            level
+          }
+          cursor
+        }
+      }
+      completedAt
+      context
+      datasetId
+      failedAt
+      operator
+      label
+      pinned
+      queuedAt
+      result
+      runBy {
+        name
+        id
+      }
+      runState
+      scheduledAt
+      startedAt
+      status
+      runLink
+      priority
+      logPath
+      logUrl
+      logSize
+      logUploadError
       metadata
     }
   }

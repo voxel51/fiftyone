@@ -4,15 +4,6 @@
 
 import styles from "./styles.module.css";
 
-import type {
-  Edge,
-  ID,
-  ItemData,
-  Request,
-  SpotlightConfig,
-  Updater,
-} from "./types";
-
 import { closest } from "./closest";
 import {
   BOTTOM,
@@ -23,14 +14,24 @@ import {
   FIRST,
   LAST,
   ONE,
-  SECTION_ROW_LIMIT,
   SLOW_DOWN,
   TOP,
+  TWO,
   ZERO,
 } from "./constants";
+import type Spotlight from "./index";
 import Iter from "./iter";
 import Row from "./row";
 import tile from "./tile";
+import type {
+  Edge,
+  ID,
+  ItemData,
+  Measure,
+  Request,
+  SpotlightConfig,
+  Updater,
+} from "./types";
 import { create } from "./utilities";
 
 export type Renderer<K, V> = (
@@ -108,9 +109,9 @@ export default class Section<K, V> {
       : element.appendChild(this.#section);
   }
 
-  destroy(destroyItems = false) {
+  destroy() {
     this.#section.remove();
-    for (const row of this.#rows) row.destroy(destroyItems);
+    for (const row of this.#rows) row.destroy();
     this.#rows = [];
   }
 
@@ -125,13 +126,15 @@ export default class Section<K, V> {
   }
 
   render({
-    config,
+    measure,
+    spotlight,
     target,
     threshold,
     top,
     zooming,
   }: {
-    config: SpotlightConfig<K, V>;
+    measure?: Measure<K, V>;
+    spotlight: Spotlight<K, V>;
     target: number;
     threshold: (n: number) => boolean;
     top: number;
@@ -148,9 +151,7 @@ export default class Section<K, V> {
     const match = closest(
       this.#rows,
       this.#direction === DIRECTION.BACKWARD ? this.height - target : target,
-      (row) => {
-        return row.from + row.height;
-      }
+      (row) => row.from + row.height
     );
 
     let pageRow: Row<K, V>;
@@ -180,12 +181,13 @@ export default class Section<K, V> {
           break;
         }
 
-        row.show(
-          this.#container,
-          this.#direction === DIRECTION.FORWARD ? TOP : BOTTOM,
+        row.show({
+          attr: this.#direction === DIRECTION.FORWARD ? TOP : BOTTOM,
+          element: this.#container,
+          measure,
+          spotlight,
           zooming,
-          config
-        );
+        });
 
         this.#shown.add(row);
         hide.delete(row);
@@ -199,6 +201,8 @@ export default class Section<K, V> {
       }
     }
 
+    for (const row of hide) row.hide();
+
     if (
       index >= this.#rows.length - ONE &&
       this.#end &&
@@ -207,12 +211,10 @@ export default class Section<K, V> {
       requestMore = true;
     }
 
-    for (const row of hide) row.hide();
-
     this.#container.style.height = `${this.height}px`;
     return {
-      more: requestMore && this.ready,
       match: pageRow ? { row: pageRow, delta } : undefined,
+      more: requestMore && this.ready,
     };
   }
 
@@ -333,7 +335,7 @@ export default class Section<K, V> {
         ZERO
       );
 
-      if (this.#rows.length < SECTION_ROW_LIMIT) {
+      if (this.#rows.length < this.#maxRows) {
         this.#end = newEnd;
         return { section: null, offset: height };
       }
@@ -363,6 +365,10 @@ export default class Section<K, V> {
     if (!this.#rows.length) return ZERO;
     const row = this.#rows[this.length - ONE];
     return row.from + row.height;
+  }
+
+  get #maxRows() {
+    return Math.floor(this.#config.maxRows / TWO);
   }
 
   #reverse() {

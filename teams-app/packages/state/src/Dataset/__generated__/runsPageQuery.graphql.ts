@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2052ae65f6202c5a92e239d7d8f615f6>>
+ * @generated SignedSource<<6ffec5bf38a024729a082a0743c38de0>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -46,11 +46,19 @@ export type runsPageQuery$data = {
     readonly nodeTotal: number;
     readonly nodes: ReadonlyArray<{
       readonly completedAt: string | null;
+      readonly datasetId: string | null;
+      readonly datasetName: string | null;
+      readonly datasetSlug: string | null;
       readonly failedAt: string | null;
       readonly id: string;
       readonly label: string | null;
+      readonly logPath: string | null;
+      readonly logUploadError: string | null;
+      readonly logUrl: string | null;
       readonly operator: string;
       readonly pinned: boolean | null;
+      readonly priority: number | null;
+      readonly priorityTotal: number | null;
       readonly queuedAt: string | null;
       readonly runBy: {
         readonly id: string;
@@ -61,6 +69,7 @@ export type runsPageQuery$data = {
       readonly scheduledAt: string | null;
       readonly startedAt: string | null;
       readonly status: any | null;
+      readonly updatedAt: string | null;
     }>;
     readonly pageTotal: number;
   };
@@ -159,43 +168,28 @@ v2 = [
             "alias": null,
             "args": null,
             "kind": "ScalarField",
-            "name": "operator",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "label",
-            "storageKey": null
-          },
-          (v1/*: any*/),
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "runState",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "startedAt",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "queuedAt",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
             "name": "completedAt",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "datasetId",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "datasetName",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "datasetSlug",
             "storageKey": null
           },
           {
@@ -205,23 +199,40 @@ v2 = [
             "name": "failedAt",
             "storageKey": null
           },
+          (v1/*: any*/),
           {
             "alias": null,
             "args": null,
-            "concreteType": "User",
-            "kind": "LinkedField",
-            "name": "runBy",
-            "plural": false,
-            "selections": [
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "name",
-                "storageKey": null
-              },
-              (v1/*: any*/)
-            ],
+            "kind": "ScalarField",
+            "name": "label",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "logPath",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "logUploadError",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "logUrl",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "operator",
             "storageKey": null
           },
           {
@@ -235,7 +246,54 @@ v2 = [
             "alias": null,
             "args": null,
             "kind": "ScalarField",
+            "name": "priority",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "priorityTotal",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "queuedAt",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "User",
+            "kind": "LinkedField",
+            "name": "runBy",
+            "plural": false,
+            "selections": [
+              (v1/*: any*/),
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "name",
+                "storageKey": null
+              }
+            ],
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
             "name": "runLink",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "runState",
             "storageKey": null
           },
           {
@@ -249,7 +307,21 @@ v2 = [
             "alias": null,
             "args": null,
             "kind": "ScalarField",
+            "name": "startedAt",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
             "name": "status",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "updatedAt",
             "storageKey": null
           }
         ],
@@ -284,16 +356,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "541853798d4ba15d9994364eb3c89761",
+    "cacheID": "6d391d736bb2c3a4c9cc0dd2a87a33d4",
     "id": null,
     "metadata": {},
     "name": "runsPageQuery",
     "operationKind": "query",
-    "text": "query runsPageQuery(\n  $filter: DelegatedOperationFilter = null\n  $order: DelegatedOperationOrderFieldsOrder = null\n  $page: Int!\n  $pageSize: Int!\n  $search: DelegatedOperationSearchFieldsSearch = null\n) {\n  delegatedOperationsPage(filter: $filter, order: $order, page: $page, pageSize: $pageSize, search: $search) {\n    nodeTotal\n    nodes {\n      operator\n      label\n      id\n      runState\n      startedAt\n      queuedAt\n      completedAt\n      failedAt\n      runBy {\n        name\n        id\n      }\n      pinned\n      runLink\n      scheduledAt\n      status\n    }\n    pageTotal\n  }\n}\n"
+    "text": "query runsPageQuery(\n  $filter: DelegatedOperationFilter = null\n  $order: DelegatedOperationOrderFieldsOrder = null\n  $page: Int!\n  $pageSize: Int!\n  $search: DelegatedOperationSearchFieldsSearch = null\n) {\n  delegatedOperationsPage(filter: $filter, order: $order, page: $page, pageSize: $pageSize, search: $search) {\n    nodeTotal\n    nodes {\n      completedAt\n      datasetId\n      datasetName\n      datasetSlug\n      failedAt\n      id\n      label\n      logPath\n      logUploadError\n      logUrl\n      operator\n      pinned\n      priority\n      priorityTotal\n      queuedAt\n      runBy {\n        id\n        name\n      }\n      runLink\n      runState\n      scheduledAt\n      startedAt\n      status\n      updatedAt\n    }\n    pageTotal\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d073322cced65929d7ca645ac32656ce";
+(node as any).hash = "35263cc9e45abddbc1a6d2c57303b637";
 
 export default node;

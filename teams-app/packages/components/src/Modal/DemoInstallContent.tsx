@@ -43,7 +43,7 @@ export default function DemoInstallContent() {
         />
       </Box>
       <Typography component="span" sx={{ pt: 2 }}>
-        Want to try the full version of FiftyOne Teams?&nbsp;
+        Want to try the full version of FiftyOne Enterprise?&nbsp;
         <Link
           href="https://voxel51.com/book-a-demo/"
           target="_blank"

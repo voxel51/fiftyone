@@ -10,12 +10,14 @@ export const DATASET_CREATION_DOCUMENTATION_LINK =
   "https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/index.html";
 export const DOCUMENTATION_LINK = "https://docs.fiftyone.ai/";
 export const CONTACT_LINK = "mailto:support@voxel51.com";
-export const SLACK_LINK = "https://slack.voxel51.com";
+export const DISCORD_LINK = "https://community.voxel51.com";
 export const GITHUB_LINK = "https://github.com/voxel51/fiftyone";
 export const TERMS_OF_SERVICE_LINK = "https://voxel51.com/terms";
 export const PRIVACY_POLICY_LINK = "https://voxel51.com/privacy";
 export const CLONE_DATASET_DOCUMENTATION_LINK =
   "https://voxel51.com/docs/fiftyone/user_guide/using_datasets.html#cloning-datasets";
+export const RUNS_LOG_DOCUMENTATION =
+  "https://docs.voxel51.com/enterprise/plugins.html#logs";
 export const INITIAL_PINNED_DATASETS_LIMIT = 5;
 export const INITIAL_PINNED_RUNS_LIMIT = 5;
 export const INITIAL_ORCHESTRATORS_LIMIT = 5;
@@ -24,7 +26,7 @@ export const PINNED_DATASETS_ORDER_DIRECTION = "DESC";
 export const DATASETS_ORDER_DIRECTION_ASC = "ASC";
 export const DATASETS_ORDER_DIRECTION_DESC = "DESC";
 export const LEARN_MORE_ABOUT_ROLES_LINK =
-  "https://docs.voxel51.com/teams/roles_and_permissions.html";
+  "https://docs.voxel51.com/enterprise/roles_and_permissions.html";
 export const DEFAULT_PAGE = 1;
 export const DEFAULT_PAGE_SIZE = 25;
 export const DEFAULT_USERS_PAGE_SIZE = 25;
@@ -34,19 +36,19 @@ export const DEFAULT_LIST_PAGE_SIZES: string[] = ["25", "50", "100"];
 export const DEFAULT_USER_DATASETS_LIST_PAGE = 1;
 export const DEFAULT_USER_DATASETS_LIST_PAGE_SIZE = 3;
 export const HOW_TO_CONNECT_TO_GCP_LINK =
-  "https://docs.voxel51.com/teams/installation.html#google-cloud-storage";
+  "https://docs.voxel51.com/enterprise/installation.html#google-cloud-storage";
 export const HOW_TO_CONNECT_TO_AWS_LINK =
-  "https://docs.voxel51.com/teams/installation.html#amazon-s3";
+  "https://docs.voxel51.com/enterprise/installation.html#amazon-s3";
 export const HOW_TO_CONNECT_TO_MINIO_LINK =
-  "https://docs.voxel51.com/teams/installation.html#minio";
+  "https://docs.voxel51.com/enterprise/installation.html#minio";
 export const HOW_TO_CONNECT_TO_AZURE_LINK =
-  "https://docs.voxel51.com/teams/installation.html#microsoft-azure";
+  "https://docs.voxel51.com/enterprise/installation.html#microsoft-azure";
 export const DATASET_PERMISSION_LINK = "https://voxel51.com/docs/fiftyone";
 export const CLOUD_EXPORT_LINK = "#";
 export const CODE_EXPORT_LINK =
   "https://docs.voxel51.com/user_guide/export_datasets.html";
 export const ROLES_AND_PERMISSIONS_DOCUMENTATION_LINK =
-  "https://docs.voxel51.com/teams/roles_and_permissions.html";
+  "https://docs.voxel51.com/enterprise/roles_and_permissions.html";
 export const TEAM_USERS_PATH = "/settings/team/users";
 export const SETTINGS_NAV_ITEMS = {
   personal: [
@@ -297,7 +299,7 @@ export const DATASET_TABS = [
 ];
 export const SAMPLES_NEXT_PATH = "/datasets/[slug]/samples";
 export const LEARN_MORE_ABOUT_DATASET_SNAPSHOT_LINK =
-  "https://docs.voxel51.com/teams/dataset_versioning.html";
+  "https://docs.voxel51.com/enterprise/dataset_versioning.html";
 export const OPERATOR_RUN_STATES = {
   COMPLETED: "completed",
   FAILED: "failed",
@@ -326,13 +328,16 @@ export const FIFTYONE_APP_BANNER_TEXT_ENV_KEY = "FIFTYONE_APP_BANNER_TEXT";
 export const FIFTYONE_APP_BANNER_COLOR_ENV_KEY = "FIFTYONE_APP_BANNER_COLOR";
 export const FIFTYONE_APP_BANNER_TEXT_COLOR_ENV_KEY =
   "FIFTYONE_APP_BANNER_TEXT_COLOR";
+export const FIFTYONE_APP_TERMS_URL_ENV_KEY = "FIFTYONE_APP_TERMS_URL";
+export const FIFTYONE_APP_PRIVACY_URL_ENV_KEY = "FIFTYONE_APP_PRIVACY_URL";
+export const FIFTYONE_APP_IMPRINT_URL_ENV_KEY = "FIFTYONE_APP_IMPRINT_URL";
 export const FIFTYONE_SNAPSHOTS_ARCHIVE_PATH_ENV_KEY =
   "FIFTYONE_SNAPSHOTS_ARCHIVE_PATH";
 
 export const PYTHON_START_TEXT = `import fiftyone as fo
 dataset = fo.load_dataset(...)`;
 export const API_CONNECTION =
-  "https://docs.voxel51.com/teams/api_connection.html";
+  "https://docs.voxel51.com/enterprise/api_connection.html";
 export const FIFTYONE_API_URI = "FIFTYONE_API_URI";
 export const FEATURE_FLAG_ENABLE_MANUAL_USER_GROUP_MANAGEMENT_ENV_KEY =
   "FEATURE_FLAG_ENABLE_MANUAL_USER_GROUP_MANAGEMENT";
@@ -403,3 +408,5 @@ export const INVITE_URL_HELPER_TEXT = `
 export const INVITE_HELPER_TEXT_DATASET_ACCESS = `to retrieve the invite link for
             the new user, which you must send to them so they can login.`;
 export const INVITE_HELPER_TEXT_DATASET_ACCESS_CAN_MANAGE_DATASET = `You must contact an Admin of your deployment and ask them to retrieve the invite link and send it to the new user so they can login.`;
+export const FIFTYONE_APP_GET_STARTED_DISABLED_PATHS_ENV_KEY =
+  "FIFTYONE_APP_GET_STARTED_DISABLED_PATHS";

@@ -1,4 +1,10 @@
-import { BufferManager } from "@fiftyone/utilities";
+import {
+  BufferManager,
+  DETECTION,
+  DETECTIONS,
+  HEATMAP,
+  SEGMENTATION,
+} from "@fiftyone/utilities";
 import { getImaVidElements } from "../../elements";
 import { IMAVID_SHORTCUTS } from "../../elements/common/actions";
 import { ImaVidElement } from "../../elements/imavid";
@@ -14,6 +20,8 @@ import {
   DEFAULT_PLAYBACK_RATE,
   IMAVID_PLAYBACK_RATE_LOCAL_STORAGE_KEY,
 } from "./constants";
+import { ModalSampleExtendedWithImage } from "./ima-vid-frame-samples";
+import { getSubscription } from "./subscribe";
 
 export { BUFFERING_PAUSE_TIMEOUT } from "./constants";
 
@@ -30,10 +38,16 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   private unsubscribe: ReturnType<typeof this.subscribeToState>;
 
   init() {
+    // we have other mechanism for the modal
+    if (!this.state.config.thumbnail) {
+      return;
+    }
+
     // subscribe to frame number and update sample when frame number changes
-    this.unsubscribe = this.subscribeToState("currentFrameNumber", () => {
-      this.thisFrameSample?.sample &&
-        this.updateSample(this.thisFrameSample.sample);
+    this.unsubscribe = getSubscription({
+      id: this.uuid,
+      looker: this,
+      modal: false,
     });
   }
 
@@ -158,7 +172,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   pause(): void {
     this.updater(({ playing }) => {
       if (playing) {
-        return { playing: false };
+        return { playing: false, currentFrameNumber: this.frameNumber };
       }
       return {};
     });
@@ -190,8 +204,13 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     return super.postProcess();
   }
 
-  updateOptions(options: Partial<ImaVidState["options"]>) {
-    const reload = LookerUtils.shouldReloadSample(this.state.options, options);
+  updateOptions(
+    options: Partial<ImaVidState["options"]>,
+    disableReload = false
+  ) {
+    const reload =
+      !disableReload &&
+      LookerUtils.shouldReloadSample(this.state.options, options);
 
     if (reload) {
       this.updater({ options, reloading: this.state.disabled });
@@ -200,4 +219,137 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
       this.updater({ options, disabled: false });
     }
   }
+
+  refreshOverlaysToCurrentFrame(useLookerDefaultSample = false) {
+    if (useLookerDefaultSample && this.sample) {
+      this.loadOverlays(this.sample);
+      return;
+    }
+
+    let thisFrameSample = this.sample;
+
+    const thisFrameSampleWithCachedImage =
+      this.frameStoreController.store.getSampleAtFrame(
+        this.frameNumber
+      )?.sample;
+
+    if (thisFrameSampleWithCachedImage) {
+      const { image: _cachedImage, ...thisFrameSampleWithoutImage } =
+        thisFrameSampleWithCachedImage;
+      thisFrameSample = thisFrameSampleWithoutImage;
+    }
+
+    this.loadOverlays(thisFrameSample);
+  }
+
+  refreshSample(renderLabels: string[] | null = null, frameNumber?: number) {
+    if (!this.sample) {
+      // looker not initialized yet
+      return;
+    }
+
+    if (!renderLabels?.length && this.sample) {
+      this.updateSample(this.sample);
+      return;
+    }
+
+    const sampleIdFromFramesStore =
+      this.frameStoreController.store.frameIndex.get(frameNumber);
+
+    let sample: Sample;
+
+    // if sampleIdFromFramesStore is not found, it means we're in grid thumbnail view
+    if (sampleIdFromFramesStore) {
+      const { image: _cachedImage, ...sampleWithoutImage } =
+        this.frameStoreController.store.samples.get(sampleIdFromFramesStore);
+      sample = sampleWithoutImage.sample;
+    } else if (this.sample) {
+      sample = this.sample;
+    }
+
+    if (!sample) {
+      return;
+    }
+
+    sample = getSampleWithResettedMasks(sample);
+
+    this.asyncLabelsRenderingManager
+      .enqueueLabelPaintingJob({
+        sample: sample as Sample,
+        labels: renderLabels,
+      })
+      .then(({ sample, coloring }) => {
+        if (sampleIdFromFramesStore) {
+          this.frameStoreController.store.updateSample(
+            sampleIdFromFramesStore,
+            sample
+          );
+        } else {
+          // get current sample from frame number and update it
+          const sampleId = this.frameStoreController.store.frameIndex.get(
+            this.frameNumber
+          );
+          if (sampleId) {
+            this.frameStoreController.store.updateSample(sampleId, sample);
+          } else {
+            this.sample = sample;
+          }
+        }
+        this.state.options.coloring = coloring;
+        this.loadOverlays(sample);
+
+        // to run looker reconciliation
+        this.updater({
+          overlaysPrepared: true,
+        });
+      });
+  }
 }
+
+export const getSampleWithResettedMasks = (
+  sample: ModalSampleExtendedWithImage["sample"]
+) => {
+  const getFieldWithMaskResetted = (value) => {
+    if (!value.mask_path?.length && !value.map_path?.length) {
+      return value;
+    }
+
+    if (value?.map?.bitmap?.width) {
+      value?.map?.bitmap?.close();
+    }
+    if (value?.mask?.bitmap?.width) {
+      value?.mask?.bitmap?.close();
+    }
+
+    return {
+      ...value,
+      [value._cls === HEATMAP ? "map" : "mask"]: null,
+      data: null,
+      _renderStatus: null,
+    };
+  };
+
+  const newSample = {
+    ...sample,
+  };
+
+  for (const [field, value] of Object.entries(sample)) {
+    if (typeof value === "object" && value !== null && "_cls" in value) {
+      if (value._cls === DETECTIONS) {
+        newSample[field] = {
+          ...value,
+          detections: value.detections.map(getFieldWithMaskResetted),
+        };
+      } else if (
+        (value._cls === DETECTION ||
+          value._cls === HEATMAP ||
+          value._cls === SEGMENTATION) &&
+        (value?.mask || value?.map)
+      ) {
+        newSample[field] = getFieldWithMaskResetted(value);
+      }
+    }
+  }
+
+  return newSample;
+};

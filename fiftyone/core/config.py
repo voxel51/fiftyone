@@ -65,6 +65,18 @@ class FiftyOneConfig(EnvConfig):
         if d is None:
             d = {}
 
+        self.api_client_connect_timeout = self.parse_int(
+            d,
+            "api_client_connect_timeout",
+            "FIFTYONE_API_CLIENT_CONNECT_TIMEOUT",
+            default=10,
+        )
+        self.api_client_read_timeout = self.parse_int(
+            d,
+            "api_client_read_timeout",
+            "FIFTYONE_API_CLIENT_READ_TIMEOUT",
+            default=600,
+        )
         self.api_key = self.parse_string(
             d, "api_key", env_var="FIFTYONE_API_KEY", default=None
         )
@@ -249,11 +261,17 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_REQUIREMENT_ERROR_LEVEL",
             default=0,
         )
-        self.delegated_operation_run_link_path = self.parse_string(
+        delegated_operation_legacy_log_path = self.parse_string(
             d,
             "delegated_operation_run_link_path",
             env_var="FIFTYONE_DELEGATED_OPERATION_RUN_LINK_PATH",
             default=None,
+        )
+        self.delegated_operation_log_path = self.parse_string(
+            d,
+            "delegated_operation_log_path",
+            env_var="FIFTYONE_DELEGATED_OPERATION_LOG_PATH",
+            default=delegated_operation_legacy_log_path,
         )
         self.timezone = self.parse_string(
             d, "timezone", env_var="FIFTYONE_TIMEZONE", default=None
@@ -281,6 +299,19 @@ class FiftyOneConfig(EnvConfig):
             "signed_url_expiration",
             env_var="FIFTYONE_SIGNED_URL_EXPIRATION",
             default=24,
+        )
+        # Enable using aliased media URLs in the service worker after removing global creds
+        self.media_filepath_prefix_alias = self.parse_string(
+            d,
+            "media_filepath_prefix_alias",
+            default=None,
+            env_var="FIFTYONE_MEDIA_FILEPATH_PREFIX_ALIAS",
+        )
+        self.media_filepath_prefix_url = self.parse_string(
+            d,
+            "media_filepath_prefix_url",
+            default=None,
+            env_var="FIFTYONE_MEDIA_FILEPATH_PREFIX_URL",
         )
 
         self._init()
@@ -384,7 +415,7 @@ class AppConfig(EnvConfig):
             default="viridis",
         )
         self.grid_zoom = self.parse_int(
-            d, "grid_zoom", env_var="FIFTYONE_APP_GRID_ZOOM", default=5
+            d, "grid_zoom", env_var="FIFTYONE_APP_GRID_ZOOM", default=7
         )
         self.enable_query_performance = self.parse_bool(
             d,
@@ -870,13 +901,14 @@ class EvaluationConfig(EnvConfig):
         if f"FIFTYONE_{TYPE}_BACKENDS" in env_vars:
             backends = env_vars[f"FIFTYONE_{TYPE}_BACKENDS"].split(",")
 
-            # Declare new backends and omit any others not in `backends`
+            # Special syntax to append rather than override default backends
+            if "*" in backends:
+                backends = set(b for b in backends if b != "*")
+                backends |= set(self._BUILTIN_BACKENDS[type].keys())
+
             d = {backend: d.get(backend, {}) for backend in backends}
         else:
-            backends = sorted(self._BUILTIN_BACKENDS[type].keys())
-
-            # Declare builtin backends if necessary
-            for backend in backends:
+            for backend in self._BUILTIN_BACKENDS[type].keys():
                 if backend not in d:
                     d[backend] = {}
 
@@ -885,14 +917,14 @@ class EvaluationConfig(EnvConfig):
         # `FIFTYONE_{TYPE}_{BACKEND}_{PARAMETER}`
         #
 
-        for backend, parameters in d.items():
+        for backend, d_backend in d.items():
             BACKEND = backend.upper()
             prefix = f"FIFTYONE_{TYPE}_{BACKEND}_"
             for env_name, env_value in env_vars.items():
                 if env_name.startswith(prefix):
-                    type = env_name[len(prefix) :].lower()
+                    name = env_name[len(prefix) :].lower()
                     value = _parse_env_value(env_value)
-                    parameters[type] = value
+                    d_backend[name] = value
 
         #
         # Set default parameters for builtin similarity backends
@@ -903,9 +935,9 @@ class EvaluationConfig(EnvConfig):
                 continue
 
             d_backend = d[backend]
-            for type, value in defaults.items():
-                if type not in d_backend:
-                    d_backend[type] = value
+            for name, value in defaults.items():
+                if name not in d_backend:
+                    d_backend[name] = value
 
         return d
 

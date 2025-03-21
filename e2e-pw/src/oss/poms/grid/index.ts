@@ -1,4 +1,5 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { Duration } from "src/oss/utils";
 import { EventUtils } from "src/shared/event-utils";
 import { GridActionsRowPom } from "../action-row/grid-actions-row";
 import { GridSliceSelectorPom } from "../action-row/grid-slice-selector";
@@ -64,17 +65,19 @@ export class GridPom {
   }
 
   async scrollBottom() {
-    return this.getForwardSection()
-      .locator("div")
-      .last()
-      .scrollIntoViewIfNeeded();
+    const forwardSectionDiv = this.getForwardSection().locator("div").last();
+    await forwardSectionDiv.waitFor({ state: "visible" });
+    return forwardSectionDiv.scrollIntoViewIfNeeded({
+      timeout: Duration.Seconds(20),
+    });
   }
 
   async scrollTop() {
-    return this.getBackwardSection()
-      .locator("div")
-      .first()
-      .scrollIntoViewIfNeeded();
+    const backwardSectionDiv = this.getBackwardSection().locator("div").first();
+    await backwardSectionDiv.waitFor({ state: "visible" });
+    return backwardSectionDiv.scrollIntoViewIfNeeded({
+      timeout: Duration.Seconds(20),
+    });
   }
 
   async selectSlice(slice: string) {

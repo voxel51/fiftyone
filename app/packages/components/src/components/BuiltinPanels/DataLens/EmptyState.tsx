@@ -1,8 +1,9 @@
-import { Box, Button, Card, Grid, Tooltip, Typography } from "@mui/material";
+import CenterFocusWeakIcon from "@mui/icons-material/CenterFocusWeak";
 import CodeIcon from "@mui/icons-material/Code";
 import HubIcon from "@mui/icons-material/HubOutlined";
-import CenterFocusWeakIcon from "@mui/icons-material/CenterFocusWeak";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import { Box, Button, Card, Grid, Tooltip, Typography } from "@mui/material";
+import React from "react";
 
 /**
  * Model defining the UX for an onboarding step.
@@ -113,27 +114,25 @@ export const EmptyState = ({
   };
 
   return (
-    <>
-      <Box sx={{ maxWidth: "750px", m: "auto" }}>
-        <Box sx={{ display: "flex", alignItems: "bottom", mb: 2 }}>
-          <CenterFocusWeakIcon sx={{ fontSize: "3rem", mr: 2 }} />
-          <Typography variant="h4">Data Lens</Typography>
-        </Box>
-
-        <Typography sx={{ mb: 3 }} variant="h6">
-          Data Lens enables you to seamlessly explore samples in your external
-          data sources and import content directly into a FiftyOne Dataset.
-        </Typography>
-
-        <Typography sx={{ mb: 1 }} color="secondary">
-          How to get started with the Beta experience:
-        </Typography>
-        <Card square={false}>
-          <Box sx={{ margin: "3rem 1rem" }}>
-            {steps.map((step, idx) => renderStep(step, 1 + idx))}
-          </Box>
-        </Card>
+    <Box sx={{ maxWidth: "750px", m: "auto" }}>
+      <Box sx={{ display: "flex", alignItems: "bottom", mb: 2 }}>
+        <CenterFocusWeakIcon sx={{ fontSize: "3rem", mr: 2 }} />
+        <Typography variant="h4">Data Lens</Typography>
       </Box>
-    </>
+
+      <Typography sx={{ mb: 3 }} variant="h6">
+        Data Lens enables you to seamlessly explore samples in your external
+        data sources and import content directly into a FiftyOne Dataset.
+      </Typography>
+
+      <Typography sx={{ mb: 1 }} color="secondary">
+        How to get started with the Beta experience:
+      </Typography>
+      <Card square={false}>
+        <Box sx={{ margin: "3rem 1rem" }}>
+          {steps.map((step, idx) => renderStep(step, 1 + idx))}
+        </Box>
+      </Card>
+    </Box>
   );
 };

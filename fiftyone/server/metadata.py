@@ -12,7 +12,6 @@ import shutil
 import struct
 import typing as t
 from enum import Enum
-from functools import reduce
 from pydash import get
 
 import aiofiles
@@ -600,6 +599,9 @@ async def _create_media_urls(
             # cause fatal App errors
             url = path
 
+        # If an alias is configured for the service worker,
+        # replace the alias in the url with the real endpoint
+        url = resolve_media_alias_to_url(url)
         cache[path] = url
         media_urls.append(dict(field=field, url=url))
         if use_opm and opm_filepath == field:
@@ -641,3 +643,12 @@ def _get_additional_media_fields(
                 additional.append(f"{field_name}.{subfield_name}")
 
     return opm_field, detections_fields, additional
+
+
+def resolve_media_alias_to_url(url):
+    alias = fo.config.media_filepath_prefix_alias
+    endpoint = fo.config.media_filepath_prefix_url
+    # specifically check for None in case alias or endpoint is set to an empty string
+    if alias is not None and endpoint is not None and url.startswith(alias):
+        url = endpoint + url[len(alias) :]
+    return url

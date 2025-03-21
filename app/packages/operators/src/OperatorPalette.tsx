@@ -25,6 +25,7 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
     onCancel,
     onClose,
     onOutsideClick,
+    isExecuting,
     allowPropagation,
     submitOnControlEnter,
     title,
@@ -64,11 +65,32 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
     };
   }, [paletteElem, keyDownHandler]);
 
+  const handleClose = (
+    event: React.MouseEvent<HTMLDivElement, MouseEvent>,
+    reason: "escapeKeyDown" | "backdropClick"
+  ) => {
+    // Prevent closing if an action is in progress
+    if (isExecuting) return;
+
+    switch (reason) {
+      case "escapeKeyDown":
+      case "backdropClick":
+        if (onOutsideClick) {
+          onOutsideClick();
+        } else if (onClose) {
+          onClose();
+        }
+        break;
+      default:
+        onClose?.();
+    }
+  };
+
   return (
     <Dialog
       {...dialogProps}
       open
-      onClose={onClose || onOutsideClick}
+      onClose={handleClose}
       scroll={scroll}
       maxWidth={false}
       aria-labelledby=""
@@ -135,4 +157,5 @@ export type OperatorPaletteProps = PropsWithChildren & {
   warningTitle?: string;
   warningMessage?: string;
   dialogProps?: Omit<DialogProps, "open">;
+  isExecuting?: boolean;
 };

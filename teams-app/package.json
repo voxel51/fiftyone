@@ -1,6 +1,6 @@
 {
     "name": "fiftyone-teams-app-packages",
-    "version": "2.6.2",
+    "version": "2.7.0-rc.19",
     "private": true,
     "workspaces": [
         "packages/*",
@@ -38,6 +38,7 @@
         "sharp": "^0.33.5"
     },
     "devDependencies": {
+        "@svgr/webpack": "^8.1.0",
         "@types/case-sensitive-paths-webpack-plugin": "^2.1.9",
         "concurrently": "^8.2.2",
         "husky": "^8.0.1",
@@ -60,7 +61,9 @@
         "postcss": "^8.4.31",
         "graphql": "^16.8.1",
         "ip": "^2.0.1",
-        "es5-ext": "0.10.63"
+        "es5-ext": "0.10.63",
+        "@babel/runtime": "^7.24.6",
+        "nanoid": "^3.3.8"
     },
     "packageManager": "yarn@3.2.1"
 }

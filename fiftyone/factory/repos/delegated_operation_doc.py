@@ -57,6 +57,9 @@ class DelegatedOperationDocument(object):
         self.id = None
         self._doc = None
         self.metadata = None
+        self.log_upload_error = None
+        self.log_size = None
+        self.log_path = None
         self.scoped_access_key = None
 
     def from_pymongo(self, doc: dict):
@@ -74,6 +77,9 @@ class DelegatedOperationDocument(object):
         self.pinned = doc.get("pinned", None)
         self.dataset_id = doc.get("dataset_id", None)
         self.run_link = doc.get("run_link", None)
+        self.log_upload_error = doc.get("log_upload_error", None)
+        self.log_size = doc.get("log_size", None)
+        self.log_path = doc.get("log_path", None)
         self.metadata = doc.get("metadata", None)
         self.label = doc.get("label", None)
         self.updated_at = doc.get("updated_at", None)
@@ -123,7 +129,7 @@ class DelegatedOperationDocument(object):
         if self.context:
             d["context"] = {
                 "request_params": self.context._get_serialized_request_params(),
-                "user": self.context.user.id if self.context.user else None
+                "user": self.context.user.id if self.context.user else None,
                 # user may be none if triggered outside the api
             }
         d.pop("_doc")

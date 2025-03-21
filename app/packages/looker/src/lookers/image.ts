@@ -91,8 +91,13 @@ export class ImageLooker extends AbstractLooker<ImageState> {
     return super.postProcess();
   }
 
-  updateOptions(options: Partial<ImageState["options"]>) {
-    const reload = LookerUtils.shouldReloadSample(this.state.options, options);
+  updateOptions(
+    options: Partial<ImageState["options"]>,
+    disableReload = false
+  ) {
+    const reload =
+      !disableReload &&
+      LookerUtils.shouldReloadSample(this.state.options, options);
     const state: Partial<ImageState> = { options };
     if (options.zoom !== undefined) {
       state.setZoom =

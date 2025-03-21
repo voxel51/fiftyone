@@ -373,8 +373,10 @@ def _get_embeddings_inputs(ctx, inputs):
     for field_name in sorted(embeddings_fields):
         embeddings_choices.add_choice(field_name, label=field_name)
 
+    model_names, licenses = _get_zoo_models_with_embeddings(ctx, inputs)
+
     model_choices = types.AutocompleteView()
-    for name in sorted(_get_zoo_models_with_embeddings()):
+    for name in sorted(model_names):
         model_choices.add_choice(name, label=name)
 
     prop = inputs.enum(
@@ -408,16 +410,44 @@ def _get_embeddings_inputs(ctx, inputs):
     embeddings = ctx.params.get("embeddings", None)
 
     if not model and embeddings not in embeddings_fields:
-        prop.error_message = (
-            "You must choose a model or an existing embeddings field"
-        )
+        if licenses is not None and not model_names:
+            prop.error_message = (
+                "There are no models with allowed licenses. You must choose "
+                "an existing embeddings field"
+            )
+        else:
+            prop.error_message = (
+                "You must choose a model or an existing embeddings field"
+            )
+
         prop.invalid = True
 
 
-def _get_zoo_models_with_embeddings():
+def _get_allowed_model_licenses(ctx, inputs):
+    license = ctx.secrets.get("FIFTYONE_ZOO_ALLOWED_MODEL_LICENSES", None)
+    if license is None:
+        return None
+
+    licenses = license.split(",")
+
+    inputs.view(
+        "licenses",
+        types.Notice(
+            label=(
+                f"Only models with licenses {licenses} will be available below"
+            )
+        ),
+    )
+
+    return licenses
+
+
+def _get_zoo_models_with_embeddings(ctx, inputs):
+    licenses = _get_allowed_model_licenses(ctx, inputs)
+
     available_models = set()
-    for model in fozm._list_zoo_models():
+    for model in fozm._list_zoo_models(license=licenses):
         if model.has_tag("embeddings"):
             available_models.add(model.name)
 
-    return available_models
+    return available_models, licenses

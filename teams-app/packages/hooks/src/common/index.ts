@@ -7,3 +7,4 @@ export { default as useLazyLoadLatestQuery } from "./useLazyLoadLatestQuery";
 export { default as useMutation } from "./useMutation";
 export { default as useProductVersion } from "./useProductVersion";
 export { default as useSearchAdornment } from "./useSearchAdornment";
+export { default as useInitializeGettingStarted } from "./useInitializeGettingStarted";

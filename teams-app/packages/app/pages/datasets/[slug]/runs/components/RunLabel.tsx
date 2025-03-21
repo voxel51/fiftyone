@@ -47,6 +47,7 @@ export default function RunLabel(props: RunLabelPropsType) {
         defaultValue={label}
         focused
         onClick={(e) => {
+          e.preventDefault();
           e.stopPropagation();
         }}
         onKeyDown={(e) => {
@@ -105,6 +106,7 @@ export default function RunLabel(props: RunLabelPropsType) {
           color="secondary"
           size="small"
           onClick={(e) => {
+            e.preventDefault();
             e.stopPropagation();
             setEditing(true);
           }}

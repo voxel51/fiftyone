@@ -13,7 +13,7 @@ from importlib import metadata
 
 from setuptools import find_packages, setup
 
-VERSION = "2.6.2"
+VERSION = "2.7.0"
 
 
 def get_version():
@@ -89,7 +89,7 @@ INSTALL_REQUIRES = [
     "yarl",
     "wcmatch",
     # internal packages
-    "fiftyone-brain>=0.19.0,<0.20",
+    "fiftyone-brain>=0.20.1,<0.21",
     "fiftyone-db~=0.4",  # pinned to legacy db, do not remove
     "voxel51-eta>=0.14.0,<0.15",
 ]
@@ -128,13 +128,13 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-with open("README.md", "r") as fh:
+with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 
 setup(
     name="fiftyone",
-    version="2.6.2",
+    version="2.7.0rc20",
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"
@@ -159,7 +159,7 @@ setup(
     ),
     include_package_data=True,
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: Apache Software License",
@@ -175,6 +175,7 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=3.9",

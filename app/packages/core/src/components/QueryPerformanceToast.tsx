@@ -1,6 +1,6 @@
 import { useTrackEvent } from "@fiftyone/analytics";
 import { Toast, useTheme } from "@fiftyone/components";
-import { QP_MODE, QP_MODE_SUMMARY } from "@fiftyone/core";
+import { OPTIMIZING_QUERY_PERFORMANCE, SUMMARY_FIELDS } from "@fiftyone/core";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { Bolt } from "@mui/icons-material";
 import { Box, Button, Typography } from "@mui/material";
@@ -43,7 +43,7 @@ const hideQueryPerformanceToast = atom({
 
 const QueryPerformanceToast = ({
   onClick = (isFrameFilter: boolean) => {
-    const link = isFrameFilter ? QP_MODE_SUMMARY : QP_MODE;
+    const link = isFrameFilter ? SUMMARY_FIELDS : OPTIMIZING_QUERY_PERFORMANCE;
     window.open(link, "_blank")?.focus();
   },
   onDispatch = (event) => {
@@ -74,6 +74,16 @@ const QueryPerformanceToast = ({
   }
 
   if (!data || disabled) {
+    return null;
+  }
+
+  // NOTE: this is a one-off case where we disable the component in playwright
+  // so that this banner doesn't interfere with the tests.
+  // waiting for analytics to show up before we can dismiss it is a pain
+  // and adds significant time to the tests.
+  // we should usually _never_ have any divergence between tests and prod.
+  if (window.IS_PLAYWRIGHT) {
+    console.log("Query performance toast is disabled in playwright");
     return null;
   }
 

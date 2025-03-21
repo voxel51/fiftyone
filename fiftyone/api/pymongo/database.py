@@ -3,10 +3,12 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 import bson
 import pymongo
+import pymongo.database
 
 from fiftyone.api.pymongo import (
     change_stream,
@@ -16,7 +18,7 @@ from fiftyone.api.pymongo import (
 )
 
 if TYPE_CHECKING:
-    from fiftyone.api import pymongo as fomongo
+    from fiftyone.api.pymongo import client
 
 
 class Database(proxy.PymongoRestProxy):
@@ -26,7 +28,7 @@ class Database(proxy.PymongoRestProxy):
 
     def __init__(
         self,
-        client: "fomongo.MongoClient",
+        client: "client.MongoClient",
         name: str,
         codec_options: Optional[bson.codec_options.CodecOptions] = None,
         read_preference: Optional[pymongo.read_preferences._ServerMode] = None,
@@ -117,7 +119,7 @@ class Database(proxy.PymongoRestProxy):
     def aggregate(
         self, *args: Any, **kwargs: Any
     ) -> command_cursor.CommandCursor:
-        return command_cursor.CommandCursor(self, *args, **kwargs)
+        return command_cursor.CommandCursor(self, "aggregate", *args, **kwargs)
 
     # pylint: disable-next=missing-function-docstring
     def create_collection(

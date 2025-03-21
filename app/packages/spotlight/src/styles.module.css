@@ -28,10 +28,6 @@
   outline: none;
 }
 
-.spotlightLoaded {
-  background: var(--fo-palette-background-level2);
-}
-
 @-moz-document {
   .spotlight {
     scrollbar-width: none;
@@ -69,7 +65,7 @@
   --scrollbar-color: var(--fo-palette-text-tertiary);
 }
 
-@-moz-document url-prefix() {
+@-moz-document url-prefix("") {
   .scrollbar {
     scrollbar-color: var(--scrollbar-color) transparent;
     scrollbar-width: thin;
