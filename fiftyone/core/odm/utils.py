@@ -698,13 +698,14 @@ class DocumentRegistryError(Exception):
 _document_registry = DocumentRegistry()
 
 
-def load_dataset(id=None, name=None):
+def load_dataset(id=None, name=None, reload=False):
     """Loads the dataset from the database by its unique id or name. Throws
     an error if neither id nor name is provided.
 
     Args:
         id (None): the unique id of the dataset
         name (None): the name of the dataset
+        reload (False): whether to reload the dataset if necessary
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -720,13 +721,14 @@ def load_dataset(id=None, name=None):
 
     db = foo.get_db_conn()
     try:
-        uid = ObjectId(id)
+        _id = ObjectId(id)
     except:
         # Although _id is an ObjectId by default, it's possible to set it to
         # something else
-        uid = id
+        _id = id
 
-    res = db.datasets.find_one({"_id": uid}, {"name": True})
+    res = db.datasets.find_one({"_id": _id}, {"name": True})
     if not res:
-        raise ValueError(f"Dataset with _id={uid} does not exist")
-    return fod.load_dataset(res.get("name"))
+        raise ValueError(f"Dataset with _id={_id} does not exist")
+
+    return fod.load_dataset(res.get("name"), reload=reload)

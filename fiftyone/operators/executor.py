@@ -513,7 +513,7 @@ class ExecutionContext(object):
         # id if it is available
         uid = self.request_params.get("dataset_id", None)
         if uid:
-            self._dataset = focu.load_dataset(id=uid)
+            self._dataset = focu.load_dataset(id=uid, reload=True)
 
             # Set the dataset_name using the dataset object in case the dataset
             # has been renamed or changed since the context was created
@@ -521,12 +521,7 @@ class ExecutionContext(object):
         else:
             uid = self.request_params.get("dataset_name", None)
             if uid:
-                self._dataset = focu.load_dataset(name=uid)
-
-        # TODO: refactor so that this additional reload post-load is not
-        #  required
-        if self._dataset is not None:
-            self._dataset.reload()
+                self._dataset = focu.load_dataset(name=uid, reload=True)
 
         if (
             self.group_slice is not None
@@ -556,7 +551,6 @@ class ExecutionContext(object):
         if self._view is not None:
             return self._view
 
-        # Always derive the view from the context's dataset
         dataset = self.dataset
         view_name = self.request_params.get("view_name", None)
         stages = self.request_params.get("view", None)
@@ -572,7 +566,6 @@ class ExecutionContext(object):
                 stages=stages,
                 filters=filters,
                 extended_stages=extended,
-                reload=False,
             )
         else:
             self._view = dataset.load_saved_view(view_name)

@@ -26,7 +26,7 @@ class DatasetSingleton(type):
         cls._instances = weakref.WeakValueDictionary()
         return cls
 
-    def __call__(cls, name=None, _create=True, *args, **kwargs):
+    def __call__(cls, name=None, _create=True, _reload=False, *args, **kwargs):
         instance = cls._instances.pop(name, None)
 
         if (
@@ -48,6 +48,9 @@ class DatasetSingleton(type):
                 return cls.__call__(
                     name=name, _create=_create, *args, **kwargs
                 )
+
+            if _reload:
+                instance.reload()
 
         if fo.config.singleton_cache:
             cls._instances[name] = instance

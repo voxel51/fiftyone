@@ -43,7 +43,7 @@ async def load_view(
     view_name: Optional[str] = None,
 ) -> foc.SampleCollection:
     def run() -> foc.SampleCollection:
-        dataset = fod.load_dataset(dataset_name)
+        dataset = fod.load_dataset(dataset_name, reload=True)
         if view_name:
             view = dataset.load_saved_view(view_name)
             if serialized_view:
@@ -106,39 +106,38 @@ def get_view(
 
     def run(dataset, stages):
         if isinstance(dataset, str):
-            dataset = fod.load_dataset(dataset)
+            dataset = fod.load_dataset(dataset, reload=reload)
 
-        if reload:
-            dataset.reload()
+            if view_name is not None:
+                return dataset.load_saved_view(view_name)
 
-        if view_name is not None:
-            return dataset.load_saved_view(view_name)
+            if stages:
+                view = fov.DatasetView._build(dataset, stages)
+            else:
+                view = dataset.view()
 
-        if stages:
-            view = fov.DatasetView._build(dataset, stages)
-        else:
-            view = dataset.view()
+            media_types = None
+            if sample_filter is not None:
+                if sample_filter.group:
+                    view, media_types = handle_group_filter(
+                        dataset, view, sample_filter.group
+                    )
 
-        media_types = None
-        if sample_filter is not None:
-            if sample_filter.group:
-                view, media_types = handle_group_filter(
-                    dataset, view, sample_filter.group
+                elif sample_filter.id:
+                    view = fov.make_optimized_select_view(
+                        view, sample_filter.id
+                    )
+
+            if filters or extended_stages or pagination_data:
+                view = get_extended_view(
+                    view,
+                    filters,
+                    pagination_data=pagination_data,
+                    extended_stages=extended_stages,
+                    media_types=media_types,
                 )
 
-            elif sample_filter.id:
-                view = fov.make_optimized_select_view(view, sample_filter.id)
-
-        if filters or extended_stages or pagination_data:
-            view = get_extended_view(
-                view,
-                filters,
-                pagination_data=pagination_data,
-                extended_stages=extended_stages,
-                media_types=media_types,
-            )
-
-        return view
+            return view
 
     if awaitable:
         return fou.run_sync_task(run, dataset, stages)
