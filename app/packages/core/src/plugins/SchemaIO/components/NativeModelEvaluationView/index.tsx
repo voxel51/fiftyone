@@ -34,6 +34,7 @@ export default function NativeModelEvaluationView(props) {
     delete_evaluation,
     load_scenario,
     on_save_scenario,
+    load_scenario,
   } = view;
   const {
     evaluations = [],
