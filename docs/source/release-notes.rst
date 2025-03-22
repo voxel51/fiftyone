@@ -3,6 +3,231 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.7.0
+--------------------
+*Released March 21, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.4.0 <release-notes-v1.4.0>`
+
+- Renamed FiftyOne Teams to FiftyOne Enterprise
+- Expanded functionality on the Runs page: clarifies the ordering
+  and status of the 
+  :ref:`delegated operations <enterprise-delegated-operations>` in
+  the queue, provides Admin users a view of 
+  :ref:`delegated operations <enterprise-delegated-operations>` 
+  across all datasets and users, and enables viewing and
+  downloading logs from the builtin orchestrator in a new Logs tab
+- Added a new ``cloud_storage_id`` argument to the CVAT annotation
+  integration to specify the id of the cloud storage to use
+  for the CVAT tasks that are created.
+- Added support for embedded fields in the builtin
+  ``evaluate_model`` and ``compute_visualization`` operators
+- Updated the builtin ``compute_visualization`` operator to support
+  generating spatial indexes
+- Added a new builtin ``manage_visualization_indexes`` operator for
+  adding/removing spatial indexes to existing visualization results
+- Added configurable connect and read timeouts for the API client.
+- Added support for filepath aliases/prefixes when using per-user
+  cloud credentials
+- Added support for 3d media to per-user cloud credentials
+- Optimized the :ref:`Data Quality Panel <data-quality>` when loading
+  large datasets
+- Optimized streaming api responses
+- Improved error messages related to license files and compliance
+- Security fixes for vitest, nanoid, dompurify, setuptools, and axios
+- Fixed a bug where using the :ref:`Query Performance Panel <query-performance>`
+  to create an index could result in an error message.
+- Fixed a bug that allowed users to accidentally exceed license limits
+  when auto-join was enabled
+- Fixed a bug where, in certain cases, the system would incorrectly
+  retry ``insert_many``
+
+.. _release-notes-v1.4.0:
+
+FiftyOne 1.4.0
+--------------
+*Released March 21, 2025*
+
+App
+
+- Improved performance of grid by setting default visibility of
+  labels to false, and only rendering labels when visible.
+  Set ``app_config.active_fields`` to override default
+  visibility.
+  `#5356 <https://github.com/voxel51/fiftyone/pull/5356>`_
+- Improved performance and stability of the grid by explicitly
+  managing memory usage of the grid cache, and allowing users to
+  set the memory limit for that cache.
+  `#5214 <https://github.com/voxel51/fiftyone/pull/5214>`_
+  `#5548 <https://github.com/voxel51/fiftyone/pull/5548>`_
+- Improved buffering behavior in timeline, particularly for longer
+  videos.
+  `#5515 <https://github.com/voxel51/fiftyone/pull/5515>`_
+- Added :ref:Query Performance <app-optimizing-query-performance>
+  mode support for SelectGroupSlices views
+  `#5428 <https://github.com/voxel51/fiftyone/pull/5428>`_
+- Custom metrics can now be added to existing evaluations via a new
+  results.add_custom_metrics() method
+  `#5436 <https://github.com/voxel51/fiftyone/pull/5436>`_
+- Added :ref:Query Performance <app-optimizing-query-performance>
+  mode support for ``ExcludeFields`` and ``SelectFields`` views
+  `#5460 <https://github.com/voxel51/fiftyone/pull/5460>`_
+- Improved performance of sample field filtering on large video
+  samples in the grid
+  `#5450 <https://github.com/voxel51/fiftyone/pull/5450>`_
+- Improved performance of the embeddings visualization
+  `#5500 <https://github.com/voxel51/fiftyone/pull/5500>`_
+  `#5534 <https://github.com/voxel51/fiftyone/pull/5534>`_
+  `#5539 <https://github.com/voxel51/fiftyone/pull/5539>`_
+- Optimized sidebar counts for 
+  :ref:Query Performance <app-optimizing-query-performance> mode
+  `#5538 <https://github.com/voxel51/fiftyone/pull/5538>`_
+- Updates App to use ``view.group_slices/view.group_media_types`` 
+  rather than ``dataset.group_slices/dataset.group_media_types``, 
+  as the former may no longer always match the latter.
+  `#5198 <https://github.com/voxel51/fiftyone/pull/5198>`_
+- Fixed hard errors related to invalid ID searches in the sidebar
+  `#5415 <https://github.com/voxel51/fiftyone/pull/5415>`_
+- Fixed masks loading bug related to missing mime type
+  `#5419 <https://github.com/voxel51/fiftyone/pull/5419>`_
+- Fixed session.wait() after closing all App windows
+  `#5437 <https://github.com/voxel51/fiftyone/pull/5437>`_
+- Fixed ImaVid to return 0 (not NaN) when total frames is 1 or 0
+  `#5442 <https://github.com/voxel51/fiftyone/pull/5442>`_
+- Fixed color scheme when switching datasets, it now correctly resets
+  to what is set in dataset app config, if specified
+  `#5485 <https://github.com/voxel51/fiftyone/pull/5485>`_
+- Fixed sample updates after tagging in the modal
+  `#5514 <https://github.com/voxel51/fiftyone/pull/5514>`_
+- Fixed
+  `#5530 <https://github.com/voxel51/fiftyone/pull/5530>`_
+  by removing incorrectly shown sidebar sorting option when 
+  :ref:Query Performance <app-optimizing-query-performance> is 
+  enabled.
+  `#5531 <https://github.com/voxel51/fiftyone/pull/5531>`_
+- Fixed 
+  :attr:Session.selected_labels <fiftyone.core.session.Session.selected_labels> 
+  events.
+  `#5533 <https://github.com/voxel51/fiftyone/pull/5533>`_
+- Fixed bug that prevented user from deleting a Workspace
+  `#5590 <https://github.com/voxel51/fiftyone/pull/5590>`_
+
+Model Evaluation Panel
+
+- Clarify evaluation types in the Model Evaluation Panel
+  `#5509 <https://github.com/voxel51/fiftyone/pull/5509>`_
+  and only allow comparison of models of the same type and
+  method.
+  `#5541 <https://github.com/voxel51/fiftyone/pull/5541>`_
+- Use category as xaxis type for per-class perf charts in
+  the Model Evaluation Panel
+  `#5504 <https://github.com/voxel51/fiftyone/pull/5504>`_
+- Users can now rename and delete evaluations in the Model
+  Evaluation Panel.
+  `#5553 <https://github.com/voxel51/fiftyone/pull/5553>`_
+  `#5559 <https://github.com/voxel51/fiftyone/pull/5559>`_
+
+Core
+
+- Adds a ``map_values()`` view stage that generalizes ``map_labels()`` 
+  to any field or embedded field.
+- Adds an ``edit_field_values`` operator that allows for editing field
+  values from the App
+- ``ViewExpression.map_values(mapping)`` now supports mapping dict 
+  with None keys
+  `#5561 <https://github.com/voxel51/fiftyone/pull/5561>`_
+- Relaxed SDK <=> DB compatibility ranges to allow connection when both
+  are within the same major version, starting from this release.
+  `#5581 <https://github.com/voxel51/fiftyone/pull/5581>`_
+- New ``to_torch`` method allows for easy transfer to a fully functional
+  ``torch.utils.data.Dataset`` object.
+  `#5321 <https://github.com/voxel51/fiftyone/pull/5321>`_
+- Fixed installation on Windows from source
+  `#5481 <https://github.com/voxel51/fiftyone/pull/5481>`_
+- Fixed recomputing frames on a video dataset
+  `#5554 <https://github.com/voxel51/fiftyone/pull/5554>`_
+
+SDK
+
+- Adds a ``binarize_instances()`` utility for converting instance
+  segmentation masks in [0, 255] into binary instance masks according
+  to a specified threshold.
+  `#5516 <https://github.com/voxel51/fiftyone/pull/5516>`_
+- Adds support for list values to ``foo.deserialize_value()``
+- Adds support for setting nested list attributes directly via 
+  ``Sample.__setitem__``
+  `#5582 <https://github.com/voxel51/fiftyone/pull/5582>`_
+- Adds a ``select_group_slices(..., flat=False)`` syntax for 
+  selecting group slices w/o flattening
+- Adds an ``exclude_group_slices()`` method for excluding group 
+  slices
+  `#5198 <https://github.com/voxel51/fiftyone/pull/5198>`_
+- Optimize ``compute_metadata()`` for PNGs
+  `#5564 <https://github.com/voxel51/fiftyone/pull/5564>`_
+- Adds support for renaming and deleting embedded label fields
+  `#5594 <https://github.com/voxel51/fiftyone/pull/5594>`_
+- Populates the author and license fields of all zoo models
+- Adds support for filtering zoo models by license via 
+  ``foz.list_zoo_models(..., license="MIT")``
+- Adds support for filtering zoo datasets by license via 
+  ``foz.list_zoo_datasets(..., license="CC-BY-4.0")``
+  `#5438 <https://github.com/voxel51/fiftyone/pull/5438>`_
+- Adds resolve_input() and parse_parameters() methods to the
+  remote zoo model interface. These methods allow remote zoo
+  models to inject custom parameters into an operator's input form.
+  `#5439 <https://github.com/voxel51/fiftyone/pull/5439>`_
+- Updates the ``register_run()`` and ``load_run_view()`` interface
+  so that runs that are performed on full datasets will still reflect 
+  this fact when ``load_run_view()`` is called later.
+  `#5519 <https://github.com/voxel51/fiftyone/pull/5519>`_
+- Fixed
+  `#5570 <https://github.com/voxel51/fiftyone/pull/5570>`_
+  Unable to import FiftyOneDataset that was exported
+  `#5586 <https://github.com/voxel51/fiftyone/pull/5586>`_
+
+CLI
+
+- Adds support for listing operators with glob pattern via CLI
+  `#5587 <https://github.com/voxel51/fiftyone/pull/5587>`_
+- Adds a license column to the fiftyone zoo models list and datasets
+  list CLI commands
+  `#5438 <https://github.com/voxel51/fiftyone/pull/5438>`_
+
+Annotation
+
+- Updated the CVAT integration to support setting the rotation of 
+  bounding boxes uploaded to new tasks in CVAT from FiftyOne based 
+  on the rotation attribute of the detections in FiftyOne.
+  `#5457 <https://github.com/voxel51/fiftyone/pull/5457>`_
+- Annotation label schema attributes now support custom attributes
+  for annotation backends.
+  `#5502 <https://github.com/voxel51/fiftyone/pull/5502>`_
+
+Brain
+
+- Added PGVector integration for vector search
+  `#234 <https://github.com/voxel51/fiftyone-brain/pull/234>`_
+  `#222 <https://github.com/voxel51/fiftyone-brain/pull/222>`_
+- Added Mosaic integration for vector search
+  `#233 <https://github.com/voxel51/fiftyone-brain/pull/233>`_
+- Added optional ``create_index=True`` and ``points_field`` arguments 
+  to ``compute_visualization()`` to allow users to request that the 
+  visualization points are stored directly on the samples of their 
+  dataset, which allows for optimized lasso queries in the App.
+  `#236 <https://github.com/voxel51/fiftyone-brain/pull/236>`_
+- Fixed
+  `#237 <https://github.com/voxel51/fiftyone-brain/pull/237>`_
+  by always registering full dataset for similarity indexes.
+  `#238 <https://github.com/voxel51/fiftyone-brain/pull/238>`_
+- Fixed Redis vector search only returning 10 results
+  `#240 <https://github.com/voxel51/fiftyone-brain/pull/240>`_
+
+Docs
+
+- Fixed some documentation typos / broken links
+  `#5558 <https://github.com/voxel51/fiftyone/pull/5558>`_, 
+  `#235 <https://github.com/voxel51/fiftyone-brain/pull/235>`_
+
 FiftyOne Enterprise 2.6.2
 --------------------
 *Released March 12, 2025*
