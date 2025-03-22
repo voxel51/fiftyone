@@ -6,7 +6,7 @@ export type Filters = {
   [key: string]: {};
 } | null;
 
-const PATCHES_VIEW_STAGE = "fiftyone.core.stages.PatchesView";
+const PATCHES_VIEW_STAGE = "fiftyone.core.stages.ToPatches";
 
 export function shouldResolveSelection(
   view: ViewStage[],

@@ -253,11 +253,12 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
 
         is_patches_view = view._is_patches
         is_patches_plot = patches_field is not None
+        view_and_plot_source_are_equal = is_patches_view == is_patches_plot
 
         if (
             lasso_points is not None
             and points_field is not None
-            and (patches_field is None or is_patches_view)
+            and view_and_plot_source_are_equal
         ):
             # Lasso points via spatial index
             # Unfortunately we can't use $geoWithin to filter nested arrays.

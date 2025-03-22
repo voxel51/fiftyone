@@ -438,7 +438,7 @@ def _add_search(query: DistinctQuery):
             # search is not valid
             value = {"$lt": ObjectId("0" * _TWENTY_FOUR)}
     else:
-        value = Regex(f"^{search}")
+        value = Regex(f"^{query.search}")
     return {"$match": {query.path: value}}
 
 

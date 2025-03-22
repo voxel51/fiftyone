@@ -78,6 +78,11 @@ export const processQueue = () => {
 };
 
 const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
+  if (!job?.sample) {
+    console.error("No sample to assign to worker");
+    return;
+  }
+
   const worker = freeWorkers.shift()!;
   const messageUuid = uuid();
 
