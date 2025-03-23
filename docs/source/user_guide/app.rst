@@ -358,8 +358,10 @@ by toggling the corresponding checkboxes in the App's sidebar:
     :alt: app-fields
     :align: center
 
-You can programmatically define a dataset's a default configuration for these
-checkboxes by setting the
+By default, only label fields (excluding :ref:`heatmaps <heatmaps>` and
+:ref:`semantic segmentations <semantic-segmentation>`) are visible by default,
+but you can programmatically define a dataset's a default configuration for
+these checkboxes by setting the
 :class:`active_fields <fiftyone.core.odm.dataset.DatasetAppConfig>` property
 of the :ref:`dataset's App config <dataset-app-config>`:
 
