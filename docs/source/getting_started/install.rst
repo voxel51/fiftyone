@@ -216,7 +216,7 @@ option to ``pip install``:
 
 .. note::
 
-  FiftyOne versions greater than 1.4.1 will manage the MongoDB feature
+  FiftyOne versions greater than 1.4.0 will manage the MongoDB feature
   compatibility version if you are using the default `fiftyone-db` database
   binary. Because of this addition, Voxel51 recommends backing up your database
   between upgrades. Alternatively, you can configure your own
