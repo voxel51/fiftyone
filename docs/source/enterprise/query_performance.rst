@@ -5,11 +5,9 @@ Query Performance
 
 .. default-role:: code
 
-**Available in FiftyOne Enterprise v2.2+**
-
 Query Performance is a builtin feature of the
-:ref:`FiftyOne Enterprise App <enterprise-app>` that leverages database indexes to
-optimize your queries on large-scale datasets.
+:ref:`FiftyOne Enterprise App <enterprise-app>` that leverages database indexes
+to optimize your queries on large-scale datasets.
 
 Optimizing Query Performance
 ____________________________
