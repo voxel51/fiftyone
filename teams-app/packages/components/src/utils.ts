@@ -1,5 +1,7 @@
 // common helper functions
 
+import { UserRole } from "@fiftyone/hooks/src/user/__generated__/CurrentUserFragment.graphql";
+
 // get the first two letter initials of a name
 export const getInitials = (name: string) => {
   if (name.startsWith("+")) return name;
@@ -32,4 +34,19 @@ export const stringToColor = (text: string) => {
   /* eslint-enable no-bitwise */
 
   return color;
+};
+
+// use typescript and compares two roles and returns true if the first role is higher than the second
+export const isDowngradeRole = (
+  currentRole: UserRole,
+  newRole: UserRole
+): boolean => {
+  enum rolePriority {
+    ADMIN = 3,
+    MEMBER = 2,
+    COLLABORATOR = 1,
+    GUEST = 0,
+  }
+
+  return rolePriority[currentRole] > rolePriority[newRole];
 };

@@ -1,19 +1,25 @@
-import { useSetRecoilState } from "recoil";
+import {
+  useMutation,
+  useNotification,
+  useUserDowngrade,
+} from "@fiftyone/hooks";
+import {
+  OverflowMenu,
+  RoleSelection,
+  UserCard,
+} from "@fiftyone/teams-components";
 import {
   settingsTeamSelectedUserId,
   teamRemoveTeammateOpenState,
   teamRemoveTeammateTargetState,
   teamSetUserRoleMutation,
 } from "@fiftyone/teams-state";
-import { Button, TableCell, TableRow } from "@mui/material";
 import { RemoveCircleOutline as RemoveCircleOutlineIcon } from "@mui/icons-material";
-import {
-  OverflowMenu,
-  RoleSelection,
-  UserCard,
-} from "@fiftyone/teams-components";
-import { useMutation, useNotification } from "@fiftyone/hooks";
-import { useState } from "react";
+import { Button, TableCell, TableRow } from "@mui/material";
+import { useCallback, useState } from "react";
+import { useSetRecoilState } from "recoil";
+import { isDowngradeRole } from "../utils";
+import { UserRole } from "@fiftyone/hooks/src/user/__generated__/CurrentUserFragment.graphql";
 
 type UsersTableRowProps = {
   datasetsCount: number;
@@ -41,6 +47,12 @@ export default function UsersTableRow(props: UsersTableRowProps) {
   const restProps = { name, role, id, picture, email };
 
   const [_, sendNotification] = useNotification();
+  const {
+    setDowngradeUserRoleState,
+    setDowngradeUserRoleModalOpen,
+    onClose,
+    setIsLoading,
+  } = useUserDowngrade();
   const [currentRole, setCurrentRole] = useState(role);
   const roleOptions = getOpenRoles(role);
 
@@ -58,6 +70,34 @@ export default function UsersTableRow(props: UsersTableRowProps) {
 
   // To be supported in future
   const setSelectedUser = useSetRecoilState(settingsTeamSelectedUserId);
+
+  const updateUserRole = useCallback(
+    (id, newRole) => {
+      setIsLoading(true);
+      setUserRole({
+        variables: { userId: id, role: newRole },
+        onSuccess: () => {
+          setIsLoading(false);
+          setCurrentRole(newRole);
+          sendNotification({
+            msg: "Successfully updated user role",
+            variant: "success",
+          });
+          refetchOpenRoles();
+          onClose();
+        },
+        onError: (error) => {
+          setIsLoading(false);
+          console.log("error", error);
+          sendNotification({
+            msg: "Error updating user role",
+            variant: "error",
+          });
+        },
+      });
+    },
+    [setUserRole, sendNotification, refetchOpenRoles, setCurrentRole]
+  );
 
   return (
     <TableRow data-testid={`user-table-row-${name}`}>
@@ -81,21 +121,20 @@ export default function UsersTableRow(props: UsersTableRowProps) {
           defaultValue={role}
           value={currentRole}
           selectProps={{ sx: { minWidth: "8rem" } }}
-          onChange={(role) => {
-            setUserRole({
-              variables: { userId: id, role: role },
-              onSuccess: () => {
-                setCurrentRole(role);
-                sendNotification({
-                  msg: "Successfully updated user role",
-                  variant: "success",
-                });
-                refetchOpenRoles();
-              },
-              onError: (error) => {
-                console.log("error", error);
-              },
-            });
+          onChange={(newRole) => {
+            if (isDowngradeRole(role as UserRole, newRole)) {
+              // Show confirmation dialog
+              setDowngradeUserRoleState({
+                userId: id,
+                userName: name,
+                currentRole: role as UserRole,
+                newRole: newRole as UserRole,
+                onConfirm: updateUserRole(id, newRole),
+              });
+              setDowngradeUserRoleModalOpen(true);
+            } else {
+              updateUserRole(id, newRole);
+            }
           }}
         />
       </TableCell>

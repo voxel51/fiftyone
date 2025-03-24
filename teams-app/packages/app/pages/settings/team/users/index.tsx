@@ -1,6 +1,7 @@
 import {
   useCurrentOrganization,
   useCurrentUser,
+  useUserDowngrade,
   useUserRole,
   withPermissions,
 } from "@fiftyone/hooks";
@@ -19,15 +20,15 @@ import {
   settingsTeamInviteTeammateOpen,
   settingsTeamSelectedUserId,
   teamUsersListQuery,
-  userListInvitationsCountState,
   userListPageInfoState,
   userListSortState,
-  userListUsersCountState,
   userSearchTermState,
 } from "@fiftyone/teams-state";
 import { LEARN_MORE_ABOUT_ROLES_LINK } from "@fiftyone/teams-state/src/constants";
 import { Add as AddIcon } from "@mui/icons-material";
-import { Button, Tab, Tabs } from "@mui/material";
+import Button from "@mui/material/Button";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryLoader } from "react-relay";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
@@ -35,6 +36,8 @@ import UserListFilterBar from "../components/UserFilter/UserListFilterBar";
 import InvitationsTable from "./components/InvitationsTable";
 import InviteTeammate from "./components/InviteTeammate";
 import RemoveTeammate from "./components/RemoveTeammate";
+import DowngradeUserCard from "./components/DowngradeUserCard";
+import _ from "lodash";
 
 const TABS = { USERS: "users", INVITATIONS: "invitations" };
 type TabType = "users" | "invitations";
@@ -58,6 +61,7 @@ function TeamUsers() {
 
   const currentOrganization = useCurrentOrganization();
   const organizationDisplayName = currentOrganization?.displayName;
+  const downgradeController = useUserDowngrade();
 
   const canFilterUsers = useCurrentUser()[0]?.role === "ADMIN";
 
@@ -164,6 +168,20 @@ function TeamUsers() {
           }}
         >
           <UserAccessOverviewCard />
+        </Dialog>
+        <Dialog
+          fullWidth
+          open={downgradeController.downgradeUserRoleModalOpen}
+          onConfrim={downgradeController.onConfirm}
+          onClose={downgradeController.onClose}
+          loading={downgradeController.loading}
+          title="Confirm Role Downgrade"
+          cancelButtonText="Cancel"
+          confirmationButtonText={`Yes, downgrade role to ${_.capitalize(
+            _.toLower(downgradeController?.newRole)
+          )}`}
+        >
+          <DowngradeUserCard />
         </Dialog>
         <RemoveTeammate />
       </Box>
