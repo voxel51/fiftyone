@@ -858,6 +858,7 @@ The dataset is intended for:
 
         source_dir/
             leftImg8bit_trainvaltest.zip
+            leftImg8bit_trainextra.zip          # optional, for train_extra split
             gtFine_trainvaltest.zip             # optional
             gtCoarse.zip                        # optional
             gtBbox_cityPersons_trainval.zip     # optional
