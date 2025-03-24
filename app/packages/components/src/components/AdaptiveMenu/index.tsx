@@ -48,7 +48,7 @@ export default function AdaptiveMenu<T extends AdaptiveMenuItemPropsType>(
     return items.slice(items.length - hidden);
   }, [items, hidden]);
 
-  const handleOrderChange = (updatedItems: AdaptiveMenuItems) => {
+  const handleOrderChange = (updatedItems: T[]) => {
     onOrderChange?.(updatedItems);
   };
 
