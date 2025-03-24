@@ -145,7 +145,7 @@ export default ({
   }
 
   return (
-    <Popout modal={false} fixed anchorRef={anchorRef}>
+    <Popout modal={true} fixed anchorRef={anchorRef}>
       {items.map(({ key, ...props }) => (
         <ActionOption key={key} {...props} />
       ))}

@@ -40,14 +40,14 @@ export default ({
     };
   }, []);
 
-  if (samples.size < 1 && !modal) {
+  if (samples.size < 1 && labels.size < 1 && !modal) {
     return null;
   }
 
   let text = samples.size.toLocaleString();
-  if (samples.size > 0 && labels.size > 0 && modal) {
+  if (samples.size > 0 && labels.size > 0) {
     text = `${text} | ${labels.size.toLocaleString()}`;
-  } else if (labels.size > 0 && modal) {
+  } else if (labels.size > 0) {
     text = labels.size.toLocaleString();
   }
 

@@ -4,7 +4,7 @@ import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { ActionOption } from "../Common";
 import Popout from "../Popout";
-import { useClearSampleSelection } from "./hooks";
+import { useClearSampleSelection, useClearSelectedLabels } from "./hooks";
 
 export default ({
   anchorRef,
@@ -30,10 +30,20 @@ export default ({
     },
     [close, selected, setView]
   );
+  const selectedLabels = useRecoilValue(fos.selectedLabelIds);
+  const items = [
+    {
+      key: "clear-labels",
+      text: "Clear selected labels",
+      hidden: !selectedLabels.size,
+      onClick: useClearSelectedLabels(close),
+    },
+  ];
 
   return (
-    <Popout modal={true} fixed anchorRef={anchorRef}>
+    <Popout modal={false} fixed anchorRef={anchorRef}>
       {[
+        ...items,
         {
           key: "clear",
           onClick: clearSelection,
