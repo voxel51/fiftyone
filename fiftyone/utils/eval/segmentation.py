@@ -439,7 +439,14 @@ class SimpleEvaluation(SegmentationEvaluation):
         else:
             logger.info("Computing possible mask values...")
             values, classes = _get_mask_values(
-                samples, pred_field, gt_field, progress=progress
+                samples,
+                pred_field,
+                gt_field,
+                progress=progress,
+                num_workers=num_workers,
+                shard_method=shard_method,
+                backend=backend,
+                use_backoff=use_backoff,
             )
 
         _samples = samples.select_fields([gt_field, pred_field])
@@ -785,15 +792,28 @@ def _compute_accuracy_precision_recall(confusion_matrix, values, average):
     return metrics["accuracy"], metrics["precision"], metrics["recall"]
 
 
-def _get_mask_values(samples, pred_field, gt_field, progress=None):
+def _get_mask_values(
+    samples,
+    pred_field,
+    gt_field,
+    progress=None,
+    num_workers=1,
+    shard_method="id",
+    backend=None,
+    use_backoff=False,
+):
     _samples = samples.select_fields([gt_field, pred_field])
     pred_field, processing_frames = samples._handle_frame_field(pred_field)
     gt_field, _ = samples._handle_frame_field(gt_field)
 
+    # Use a shared set to collect values across processes
     values = set()
     is_rgb = False
 
-    for sample in _samples.iter_samples(progress=progress):
+    def _get_sample_values(sample):
+        sample_values = set()
+        sample_is_rgb = False
+
         if processing_frames:
             images = sample.frames.values()
         else:
@@ -805,10 +825,33 @@ def _get_mask_values(samples, pred_field, gt_field, progress=None):
                 if seg is not None and seg.has_mask:
                     mask = seg.get_mask()
                     if mask.ndim == 3:
-                        is_rgb = True
+                        sample_is_rgb = True
                         mask = fof.rgb_array_to_int(mask)
 
-                    values.update(mask.ravel())
+                    sample_values.update(mask.ravel())
+
+        return sample_values, sample_is_rgb
+
+    # Use parallel processing if backend is provided
+    if backend is not None and num_workers > 1:
+        import fiftyone.utils.map as fom
+
+        for _, (sample_values, sample_is_rgb) in fom.map_samples(
+            _samples,
+            _get_sample_values,
+            workers=num_workers,
+            batch_method=shard_method,
+            progress=progress,
+            use_backoff=use_backoff,
+        ):
+            values.update(sample_values)
+            is_rgb = is_rgb or sample_is_rgb
+    else:
+        # Use sequential processing
+        for sample in _samples.iter_samples(progress=progress):
+            sample_values, sample_is_rgb = _get_sample_values(sample)
+            values.update(sample_values)
+            is_rgb = is_rgb or sample_is_rgb
 
     values = sorted(values)
 
