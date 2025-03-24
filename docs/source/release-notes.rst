@@ -3,6 +3,14 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.7.1
+-------------------------
+*Released March 24, 2025*
+
+- Fixed the 
+  `CVE-2025-29927 <https://github.com/advisories/GHSA-f82v-jwr5-mffw>`_
+  vulnerability related to next.js
+
 FiftyOne Enterprise 2.7.0
 -------------------------
 *Released March 21, 2025*
