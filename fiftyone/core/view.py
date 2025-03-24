@@ -29,7 +29,7 @@ import fiftyone.core.utils as fou
 
 from fiftyone.internal.dataset_permissions import (
     requires_can_edit,
-    requires_can_tag,
+    requires_can_manage,
 )
 
 fost = fou.lazy_import("fiftyone.core.stages")
@@ -340,7 +340,7 @@ class DatasetView(foc.SampleCollection):
         return self._root_dataset.tags
 
     @tags.setter
-    @requires_can_tag
+    @requires_can_manage
     def tags(self, tags):
         self._root_dataset.tags = tags
 
@@ -349,7 +349,7 @@ class DatasetView(foc.SampleCollection):
         return self._root_dataset.description
 
     @description.setter
-    @requires_can_tag
+    @requires_can_manage
     def description(self, description):
         self._root_dataset.description = description
 
