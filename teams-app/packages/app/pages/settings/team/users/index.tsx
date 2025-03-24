@@ -172,7 +172,7 @@ function TeamUsers() {
         <Dialog
           fullWidth
           open={downgradeController.downgradeUserRoleModalOpen}
-          onConfrim={downgradeController.onConfirm}
+          onConfirm={downgradeController.onConfirm}
           onClose={downgradeController.onClose}
           loading={downgradeController.loading}
           title="Confirm Role Downgrade"
