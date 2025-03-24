@@ -1,3 +1,4 @@
+import type { AdaptiveMenuItemComponentPropsType } from "@fiftyone/components";
 import { AdaptiveMenu } from "@fiftyone/components";
 import {
   OperatorPlacementWithErrorBoundary,
@@ -11,70 +12,53 @@ import BrowseOperationsAction from "../../Actions/BrowseOperations";
 import ColorSchemeAction from "../../Actions/ColorScheme";
 import OptionsAction from "../../Actions/Options";
 import SelectedAction from "../../Actions/Selected";
-import Similarity from "../../Actions/Similarity";
+import SimilarityAction from "../../Actions/Similarity";
 import TagAction from "../../Actions/Tag";
 import ToggleSidebarAction from "../../Actions/ToggleSidebar";
-import type { ActionProps } from "../../Actions/types";
 import DynamicGroupAction from "./DynamicGroup";
 import PatchesAction from "./Patches";
 import SaveFiltersAction from "./SaveFilters";
 
-const ToggleSidebar = (props: ActionProps) => (
-  <ToggleSidebarAction
-    modal={false}
-    adaptiveMenuItemProps={props.adaptiveMenuItemProps}
-  />
+const ToggleSidebar = (props: AdaptiveMenuItemComponentPropsType) => (
+  <ToggleSidebarAction modal={false} adaptiveMenuItemProps={props} />
 );
 
-const ColorScheme = (props: ActionProps) => (
-  <ColorSchemeAction
-    modal={false}
-    adaptiveMenuItemProps={props.adaptiveMenuItemProps}
-  />
+const ColorScheme = (props: AdaptiveMenuItemComponentPropsType) => (
+  <ColorSchemeAction modal={false} adaptiveMenuItemProps={props} />
 );
 
-const Tag = (props: ActionProps) => (
-  <TagAction
-    modal={false}
-    adaptiveMenuItemProps={props.adaptiveMenuItemProps}
-  />
+const Tag = (props: AdaptiveMenuItemComponentPropsType) => (
+  <TagAction modal={false} adaptiveMenuItemProps={props} />
 );
 
-const Patches = (props: ActionProps) => (
-  <PatchesAction adaptiveMenuItemProps={props.adaptiveMenuItemProps} />
+const Patches = (props: AdaptiveMenuItemComponentPropsType) => (
+  <PatchesAction adaptiveMenuItemProps={props} />
 );
 
-const SimilarityAction = (props: ActionProps) => (
-  <SimilarityAction adaptiveMenuItemProps={props.adaptiveMenuItemProps} />
+const Similarity = (props: AdaptiveMenuItemComponentPropsType) => (
+  <SimilarityAction modal={false} adaptiveMenuItemProps={props} />
 );
 
-const SaveFilters = (props: ActionProps) => (
-  <SaveFiltersAction adaptiveMenuItemProps={props.adaptiveMenuItemProps} />
+const SaveFilters = (props: AdaptiveMenuItemComponentPropsType) => (
+  <SaveFiltersAction adaptiveMenuItemProps={props} />
 );
 
-const Selected = (props: ActionProps) => (
-  <SelectedAction
-    modal={false}
-    adaptiveMenuItemProps={props.adaptiveMenuItemProps}
-  />
+const Selected = (props: AdaptiveMenuItemComponentPropsType) => (
+  <SelectedAction modal={false} adaptiveMenuItemProps={props} />
 );
 
-const DynamicGroup = (props: ActionProps) => (
-  <DynamicGroupAction adaptiveMenuItemProps={props.adaptiveMenuItemProps} />
+const DynamicGroup = (props: AdaptiveMenuItemComponentPropsType) => {
+  return <DynamicGroupAction adaptiveMenuItemProps={props} />;
+};
+const BrowseOperations = (props: AdaptiveMenuItemComponentPropsType) => (
+  <BrowseOperationsAction adaptiveMenuItemProps={props} />
 );
 
-const BrowseOperations = (props: ActionProps) => (
-  <BrowseOperationsAction adaptiveMenuItemProps={props.adaptiveMenuItemProps} />
+const Options = (props: AdaptiveMenuItemComponentPropsType) => (
+  <OptionsAction modal={false} adaptiveMenuItemProps={props} />
 );
 
-const Options = (props: ActionProps) => (
-  <OptionsAction
-    modal={false}
-    adaptiveMenuItemProps={props.adaptiveMenuItemProps}
-  />
-);
-
-export const GridActionsRow = () => {
+export default () => {
   const { placements: primaryPlacements } = useOperatorPlacements(
     types.Places.SAMPLES_GRID_ACTIONS
   );

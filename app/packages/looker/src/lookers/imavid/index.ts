@@ -1,6 +1,10 @@
-import { syncAndGetNewLabels } from "@fiftyone/core/src/components/Sidebar/syncAndGetNewLabels";
-import { gridActivePathsLUT } from "@fiftyone/core/src/components/Sidebar/useDetectNewActiveLabelFields";
-import { BufferManager } from "@fiftyone/utilities";
+import {
+  BufferManager,
+  DETECTION,
+  DETECTIONS,
+  HEATMAP,
+  SEGMENTATION,
+} from "@fiftyone/utilities";
 import { getImaVidElements } from "../../elements";
 import { IMAVID_SHORTCUTS } from "../../elements/common/actions";
 import { ImaVidElement } from "../../elements/imavid";
@@ -16,6 +20,8 @@ import {
   DEFAULT_PLAYBACK_RATE,
   IMAVID_PLAYBACK_RATE_LOCAL_STORAGE_KEY,
 } from "./constants";
+import { ModalSampleExtendedWithImage } from "./ima-vid-frame-samples";
+import { getSubscription } from "./subscribe";
 
 export { BUFFERING_PAUSE_TIMEOUT } from "./constants";
 
@@ -38,36 +44,11 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     }
 
     // subscribe to frame number and update sample when frame number changes
-    this.unsubscribe = this.subscribeToState(
-      "currentFrameNumber",
-      (currentFrameNumber: number) => {
-        const thisFrameId = `${
-          this.uuid
-        }-${currentFrameNumber}-${this.state.options.coloring.targets.join(
-          "-"
-        )}`;
-
-        if (
-          gridActivePathsLUT.has(thisFrameId) &&
-          this.thisFrameSample?.sample
-        ) {
-          this.refreshOverlaysToCurrentFrame();
-        } else {
-          const newFieldsIfAny = syncAndGetNewLabels(
-            thisFrameId,
-            gridActivePathsLUT,
-            new Set(this.options.activePaths)
-          );
-
-          if (newFieldsIfAny && currentFrameNumber > 0) {
-            this.refreshSample(newFieldsIfAny, currentFrameNumber);
-          } else {
-            // worst case, only here for fail-safe
-            this.refreshSample();
-          }
-        }
-      }
-    );
+    this.unsubscribe = getSubscription({
+      id: this.uuid,
+      looker: this,
+      modal: false,
+    });
   }
 
   get thisFrameSample() {
@@ -191,7 +172,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   pause(): void {
     this.updater(({ playing }) => {
       if (playing) {
-        return { playing: false };
+        return { playing: false, currentFrameNumber: this.frameNumber };
       }
       return {};
     });
@@ -223,41 +204,51 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     return super.postProcess();
   }
 
-  updateOptions(options: Partial<ImaVidState["options"]>) {
-    const reload = LookerUtils.shouldReloadSample(this.state.options, options);
+  updateOptions(
+    options: Partial<ImaVidState["options"]>,
+    disableReload = false
+  ) {
+    const reload =
+      !disableReload &&
+      LookerUtils.shouldReloadSample(this.state.options, options);
 
     if (reload) {
       this.updater({ options, reloading: this.state.disabled });
-      if (this.config.thumbnail) {
-        // `useImavidModalSelectiveRendering` takes care of it for modal
-        this.updateSample(this.sample);
-      }
+      this.updateSample(this.sample);
     } else {
       this.updater({ options, disabled: false });
     }
   }
 
-  refreshOverlaysToCurrentFrame() {
-    let { image: _cachedImage, ...thisFrameSample } =
+  refreshOverlaysToCurrentFrame(useLookerDefaultSample = false) {
+    if (useLookerDefaultSample && this.sample) {
+      this.loadOverlays(this.sample);
+      return;
+    }
+
+    let thisFrameSample = this.sample;
+
+    const thisFrameSampleWithCachedImage =
       this.frameStoreController.store.getSampleAtFrame(
         this.frameNumber
       )?.sample;
 
-    if (!thisFrameSample) {
-      thisFrameSample = this.sample;
+    if (thisFrameSampleWithCachedImage) {
+      const { image: _cachedImage, ...thisFrameSampleWithoutImage } =
+        thisFrameSampleWithCachedImage;
+      thisFrameSample = thisFrameSampleWithoutImage;
     }
 
     this.loadOverlays(thisFrameSample);
   }
 
   refreshSample(renderLabels: string[] | null = null, frameNumber?: number) {
-    // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
-    // this crashes the app. this is a bug and should be fixed
     if (!this.sample) {
+      // looker not initialized yet
       return;
     }
 
-    if (!renderLabels?.length) {
+    if (!renderLabels?.length && this.sample) {
       this.updateSample(this.sample);
       return;
     }
@@ -272,9 +263,15 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
       const { image: _cachedImage, ...sampleWithoutImage } =
         this.frameStoreController.store.samples.get(sampleIdFromFramesStore);
       sample = sampleWithoutImage.sample;
-    } else {
+    } else if (this.sample) {
       sample = this.sample;
     }
+
+    if (!sample) {
+      return;
+    }
+
+    sample = getSampleWithResettedMasks(sample);
 
     this.asyncLabelsRenderingManager
       .enqueueLabelPaintingJob({
@@ -288,7 +285,15 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
             sample
           );
         } else {
-          this.sample = sample;
+          // get current sample from frame number and update it
+          const sampleId = this.frameStoreController.store.frameIndex.get(
+            this.frameNumber
+          );
+          if (sampleId) {
+            this.frameStoreController.store.updateSample(sampleId, sample);
+          } else {
+            this.sample = sample;
+          }
         }
         this.state.options.coloring = coloring;
         this.loadOverlays(sample);
@@ -300,3 +305,51 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
       });
   }
 }
+
+export const getSampleWithResettedMasks = (
+  sample: ModalSampleExtendedWithImage["sample"]
+) => {
+  const getFieldWithMaskResetted = (value) => {
+    if (!value.mask_path?.length && !value.map_path?.length) {
+      return value;
+    }
+
+    if (value?.map?.bitmap?.width) {
+      value?.map?.bitmap?.close();
+    }
+    if (value?.mask?.bitmap?.width) {
+      value?.mask?.bitmap?.close();
+    }
+
+    return {
+      ...value,
+      [value._cls === HEATMAP ? "map" : "mask"]: null,
+      data: null,
+      _renderStatus: null,
+    };
+  };
+
+  const newSample = {
+    ...sample,
+  };
+
+  for (const [field, value] of Object.entries(sample)) {
+    if (typeof value === "object" && value !== null && "_cls" in value) {
+      if (value._cls === DETECTIONS) {
+        newSample[field] = {
+          ...value,
+          detections: value.detections.map(getFieldWithMaskResetted),
+        };
+      } else if (
+        (value._cls === DETECTION ||
+          value._cls === HEATMAP ||
+          value._cls === SEGMENTATION) &&
+        (value?.mask || value?.map)
+      ) {
+        newSample[field] = getFieldWithMaskResetted(value);
+      }
+    }
+  }
+
+  return newSample;
+};

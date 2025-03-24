@@ -16,7 +16,7 @@ export default ({
   adaptiveMenuItemProps,
 }: ActionProps & {
   modal: boolean;
-  lookerRef?: MutableRefObject<Lookers>;
+  lookerRef?: MutableRefObject<Lookers | undefined>;
 }) => {
   const [open, setOpen] = useState(false);
   const [available, setAvailable] = useState(true);
@@ -31,6 +31,12 @@ export default ({
   fos.useOutsideClick(ref, () => open && setOpen(false));
   const disabled = tagging || disableTag;
 
+  const baseTitle = `Tag sample${modal ? "" : "s"} or labels`;
+
+  const title = disabled
+    ? (canTag.message || "").replace("#action", baseTitle.toLowerCase())
+    : baseTitle;
+
   lookerRef &&
     fos.useEventHandler(lookerRef.current, "play", () => {
       open && setOpen(false);
@@ -38,12 +44,6 @@ export default ({
     });
   lookerRef &&
     fos.useEventHandler(lookerRef.current, "pause", () => setAvailable(true));
-
-  const baseTitle = `Tag sample${modal ? "" : "s"} or labels`;
-
-  const title = disabled
-    ? (canTag.message || "").replace("#action", baseTitle.toLowerCase())
-    : baseTitle;
 
   return (
     <ActionDiv

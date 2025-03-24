@@ -149,8 +149,8 @@ export const TabOption = ({ active, options, color }: TabOptionProps) => {
   );
 };
 
-const ButtonDiv = animated(styled.div`
-  cursor: pointer;
+const ButtonDiv = animated(styled.div<{ disabled?: boolean }>`
+  cursor: ${({ disabled }) => (disabled ? "not-allowed" : "pointer")};
   margin-left: 0;
   margin-right: 0;
   padding: 2.5px 0.5rem;
@@ -186,9 +186,10 @@ export const OptionText = ({ style, children }) => {
 export const Button: React.FC<
   React.PropsWithChildren<{
     color?: string;
+    disabled?: boolean;
     onClick?: React.MouseEventHandler<HTMLDivElement>;
     style?: React.CSSProperties;
-    text?: string;
+    text?: string | React.ReactNode;
     title?: string;
   }>
 > = ({
@@ -198,13 +199,22 @@ export const Button: React.FC<
   style = {},
   color = null,
   title = null,
+  disabled = false,
 }) => {
   const theme = useTheme();
   const [hover, setHover] = useState(false);
   color = color ?? theme.primary.plainColor;
   const props = useSpring({
-    backgroundColor: hover ? color : theme.background.body,
-    color: hover ? theme.text.buttonHighlight : theme.text.secondary,
+    backgroundColor: disabled
+      ? theme.background.paper
+      : hover
+      ? color
+      : theme.background.body,
+    color: disabled
+      ? theme.text.secondary
+      : hover
+      ? theme.text.buttonHighlight
+      : theme.text.secondary,
     config: {
       duration: 150,
     },
@@ -212,11 +222,12 @@ export const Button: React.FC<
   return (
     <ButtonDiv
       style={{ ...props, userSelect: "none", ...style }}
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      title={title ?? text}
+      title={title ?? (typeof text === "string" ? text : "")}
       data-cy={`button-${title ?? text}`}
+      disabled={disabled}
     >
       <OptionText key={"button"} style={{ fontWeight: "bold", width: "100%" }}>
         {text}

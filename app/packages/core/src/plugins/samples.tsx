@@ -7,7 +7,7 @@ import React from "react";
 import { useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import Grid from "../components/Grid/Grid";
-import ContainerHeader from "../components/ImageContainerHeader";
+import Header from "../components/Grid/Header";
 
 const Container = styled.div`
   position: relative;
@@ -23,7 +23,7 @@ registerComponent({
     return (
       <Container>
         <Grid key={"grid"} />
-        <ContainerHeader key={"header"} />
+        <Header key={"header"} />
       </Container>
     );
   },

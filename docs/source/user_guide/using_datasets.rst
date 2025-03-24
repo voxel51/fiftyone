@@ -449,6 +449,32 @@ You can configure the organization and default expansion state of the
 
     session.refresh()
 
+.. _dataset-app-config-active-fields:
+
+Active fields
+~~~~~~~~~~~~~
+
+You can configure the default state of the
+:ref:`sidebar's checkboxes <app-fields-sidebar>`:
+
+.. code-block:: python
+    :linenos:
+
+    # By default all label fields excluding Heatmap and Segmentation are active
+    active_fields = fo.DatasetAppConfig.default_active_fields(dataset)
+
+    # Add filepath and id fields
+    active_fields.paths.extend(["id", "filepath"])
+
+    # Active fields can be inverted setting exclude to True
+    # active_fields.exclude = True
+
+    # Modify the dataset's App config
+    dataset.app_config.active_fields = active_fields
+    dataset.save()  # must save after edits
+
+    session.refresh()
+
 .. _dataset-app-config-disable-frame-filtering:
 
 Disable frame filtering

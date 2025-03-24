@@ -352,7 +352,7 @@ class AppConfig(EnvConfig):
             default="viridis",
         )
         self.grid_zoom = self.parse_int(
-            d, "grid_zoom", env_var="FIFTYONE_APP_GRID_ZOOM", default=5
+            d, "grid_zoom", env_var="FIFTYONE_APP_GRID_ZOOM", default=7
         )
         self.enable_query_performance = self.parse_bool(
             d,

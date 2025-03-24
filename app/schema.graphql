@@ -1,3 +1,8 @@
+type ActiveFields {
+  exclude: Boolean
+  paths: [String!]
+}
+
 input Aggregate {
   count: Count = null
   countValues: CountValues = null
@@ -32,6 +37,7 @@ input AggregationForm {
   slices: [String!]
   view: BSONArray!
   viewName: String = null
+  queryPerformance: Boolean = false
 }
 
 union AggregationResponses =
@@ -238,7 +244,7 @@ type Dataset {
   appConfig: DatasetAppConfig
   info: JSON
   estimatedFrameCount: Int
-  estimatedSampleCount: Int!
+  estimatedSampleCount: Int
   frameIndexes: [Index!]
   sampleIndexes: [Index!]
   stages(slug: String = null, view: BSONArray = null): BSONArray
@@ -246,8 +252,8 @@ type Dataset {
 }
 
 type DatasetAppConfig {
+  activeFields: ActiveFields
   colorScheme: ColorScheme
-  defaultVisibilityLabels: FieldVisibilityConfig
   disableFrameFiltering: Boolean
   dynamicGroupsTargetFrameRate: Int!
   gridMediaField: String!
@@ -328,11 +334,6 @@ input ExtendedViewForm {
   mixed: Boolean = null
   sampleIds: [String!] = null
   slice: String = null
-}
-
-type FieldVisibilityConfig {
-  include: [String!]
-  exclude: [String!]
 }
 
 type FloatAggregation implements Aggregation {
@@ -613,7 +614,6 @@ type Query {
     viewName: String = null
     form: ExtendedViewForm = null
   ): [AggregationResponses!]!
-  dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset
   datasets(
     search: String
     first: Int = 200
@@ -627,6 +627,7 @@ type Query {
   dev: Boolean!
   doNotTrack: Boolean!
   estimatedDatasetCount: Int!
+  dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset
   samples(
     dataset: String!
     view: BSONArray!
@@ -795,7 +796,7 @@ type StringAggregation implements Aggregation {
   path: String!
   count: Int!
   exists: Int!
-  values: [StringAggregationValue!]!
+  values: [StringAggregationValue!]
 }
 
 type StringAggregationValue {

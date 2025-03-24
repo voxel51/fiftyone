@@ -21,9 +21,10 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
+import { Button } from "../../utils";
 import Checker, { CheckState } from "../Checker";
 import Popout from "../Popout";
-import { Button, SwitchDiv, SwitcherDiv } from "../utils";
+import { SwitchDiv, SwitcherDiv } from "../utils";
 import {
   numItemsInSelection,
   selectedSamplesCount,

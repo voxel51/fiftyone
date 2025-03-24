@@ -9,7 +9,9 @@ import styled from "styled-components";
 import { Slider } from "../Common/RangeSlider";
 import GroupSliceSelector from "../GroupSliceSelector";
 import ResourceCount from "../ResourceCount";
+import Actions from "./Actions";
 import { gridSpacing, gridZoom } from "./recoil";
+import { ZOOM_RANGE } from "./useZoomSetting";
 
 export const SamplesHeader = styled.div`
   position: absolute;

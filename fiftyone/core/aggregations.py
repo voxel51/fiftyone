@@ -5,6 +5,7 @@ Aggregations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict, OrderedDict
 from copy import deepcopy
 from datetime import date, datetime
@@ -537,9 +538,15 @@ class Count(Aggregation):
     """
 
     def __init__(
-        self, field_or_expr=None, expr=None, safe=False, _unwind=True
+        self,
+        field_or_expr=None,
+        expr=None,
+        safe=False,
+        _optimize=False,
+        _unwind=True,
     ):
         super().__init__(field_or_expr, expr=expr, safe=safe)
+        self._optimize = _optimize
         self._unwind = _unwind
 
     def _kwargs(self):
@@ -575,10 +582,15 @@ class Count(Aggregation):
             safe=self._safe,
             unwind=self._unwind,
             context=context,
+            optimize=self._optimize,
         )
 
-        if not sample_collection._contains_videos() or path != "frames":
-            pipeline.append({"$match": {"$expr": {"$gt": ["$" + path, None]}}})
+        # todo: can we omit filtering out none in all situations
+        if not self._optimize:
+            if not sample_collection._contains_videos() or path != "frames":
+                pipeline.append(
+                    {"$match": {"$expr": {"$gt": ["$" + path, None]}}}
+                )
 
         pipeline.append({"$count": "count"})
 
@@ -795,9 +807,9 @@ class CountValues(Aggregation):
             pipeline += [
                 {
                     "$match": {
-                        "$expr": {"$and": exprs}
-                        if len(exprs) > 1
-                        else exprs[0]
+                        "$expr": (
+                            {"$and": exprs} if len(exprs) > 1 else exprs[0]
+                        )
                     }
                 }
             ]
@@ -2992,6 +3004,7 @@ def _parse_field_and_expr(
     unwind=True,
     allow_missing=False,
     context=None,
+    optimize=False,
 ):
     # unwind can be {True, False, -1}
     auto_unwind = unwind != False
@@ -3098,7 +3111,7 @@ def _parse_field_and_expr(
                         {"$replaceRoot": {"newRoot": "$frames"}},
                     ]
                 )
-        elif not context:
+        elif not context and not optimize:
             pipeline.append({"$project": {path: True}})
     elif unwind_list_fields:
         pipeline.append({"$project": {path: True}})

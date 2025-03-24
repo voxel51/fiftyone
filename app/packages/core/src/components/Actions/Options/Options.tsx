@@ -14,7 +14,10 @@ import {
   useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
-import { GRID_SETTINGS, QP_MODE } from "../../../utils/links";
+import {
+  MANAGING_GRID_MEMORY,
+  OPTIMIZING_QUERY_PERFORMANCE,
+} from "../../../utils/links";
 import Checkbox from "../../Common/Checkbox";
 import RadioGroup from "../../Common/RadioGroup";
 import { gridAutosizing, maxGridItemsSizeBytes } from "../../Grid/recoil";
@@ -199,7 +202,7 @@ const QueryPerformance = () => {
       <ActionOption
         id="qp-mode"
         text="Query Performance mode"
-        href={QP_MODE}
+        href={OPTIMIZING_QUERY_PERFORMANCE}
         title={"More on Query Performance mode"}
         style={{
           background: "unset",
@@ -292,7 +295,7 @@ const Grid = () => {
     <>
       <ActionOption
         id="grid-options"
-        href={GRID_SETTINGS}
+        href={MANAGING_GRID_MEMORY}
         style={{
           background: "unset",
           color: theme.text.primary,

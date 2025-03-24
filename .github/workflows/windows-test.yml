@@ -1,0 +1,77 @@
+name: Windows Tests
+
+on: workflow_call
+
+jobs:
+  test-python:
+    runs-on: ${{ matrix.os }}
+    env:
+      FIFTYONE_DO_NOT_TRACK: true
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+        python:
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup
+        uses: actions/setup-python@v5
+        id: pip-cache
+        with:
+          python-version: ${{ matrix.python }}
+          cache: "pip"
+          cache-dependency-path: |
+            requirements/common.txt
+            requirements/github.txt
+            requirements/test.txt
+      - name: Install requirements
+        if: steps.pip-cache.outputs.cache-hit != true
+        run: |
+          pip install -U pip wheel setuptools
+          pip install -r requirements/github.txt
+      - name: Install fiftyone
+        run: |
+          pip install .
+      - name: Configure
+        id: test_config
+        run: |
+          python tests/utils/setup_config.py
+          python tests/utils/github_actions_flags.py
+
+      # - name: Setup FFmpeg (with retries)
+      #   uses: FedericoCarboni/setup-ffmpeg@v3
+
+      # Use this until https://github.com/federicocarboni/setup-ffmpeg/pull/23
+      # is merged or the maintainer addresses the root issue.
+      - name: Setup FFmpeg (with retries)
+        uses: afoley587/setup-ffmpeg@main
+
+      # Important: use pytest_wrapper.py instead of pytest directly to ensure
+      # that services shut down cleanly and do not conflict with steps later in
+      # this workflow
+      - name: Run tests
+        run: |
+          python tests/utils/pytest_wrapper.py tests/ --verbose \
+            --cov --cov-report xml \
+            --ignore tests/benchmarking/ \
+            --ignore tests/isolated/ \
+            --ignore tests/utils/ \
+            --ignore tests/intensive/ \
+            --ignore tests/no_wrapper
+      - name: Run no wrapper tests
+        run: |
+          pytest tests/no_wrapper --verbose
+      # Intended to run even if the tests above failed
+      - name: Run isolated tests
+        if: success() || failure()
+        run: |
+          find tests/isolated/ -name '*.py' -print0 | xargs -0 --verbose -n1 python tests/utils/pytest_wrapper.py --verbose

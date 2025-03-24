@@ -16,7 +16,7 @@ export default ({
   adaptiveMenuItemProps,
 }: ActionProps & {
   modal: boolean;
-  lookerRef?: MutableRefObject<fos.Lookers>;
+  lookerRef?: MutableRefObject<fos.Lookers | undefined>;
 }) => {
   const { refresh } = adaptiveMenuItemProps || {};
   const [open, setOpen] = useState(false);

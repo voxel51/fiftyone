@@ -25,14 +25,14 @@ export default ({
 }: {
   anchorRef: MutableRefObject<HTMLDivElement | null>;
   close: () => void;
-  lookerRef: MutableRefObject<Lookers>;
+  lookerRef: MutableRefObject<Lookers | undefined>;
 }) => {
   const selected = useRecoilValue(fos.selectedSamples);
   const clearSelection = useClearSampleSelection(close);
   const selectedLabels = useRecoilValue(fos.selectedLabelIds);
   const visibleSampleLabels = useVisibleSampleLabels(lookerRef);
-  const isVideo =
-    useRecoilValue(fos.isVideoDataset) && useRecoilValue(fos.isRootView);
+  const isRoot = useRecoilValue(fos.isRootView);
+  const isVideo = useRecoilValue(fos.isVideoDataset) && isRoot;
   const visibleFrameLabels =
     lookerRef.current instanceof VideoLooker
       ? lookerRef.current.getCurrentFrameLabels()
@@ -45,7 +45,7 @@ export default ({
       lookerRef.current.pause();
   });
 
-  fos.useEventHandler(lookerRef.current, "play", close);
+  lookerRef.current && fos.useEventHandler(lookerRef.current, "play", close);
 
   const closeAndCall = (callback) => {
     return useCallback(() => {

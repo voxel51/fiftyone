@@ -1,12 +1,21 @@
-import { types } from "@fiftyone/operators";
+import { OperatorPlacements, types } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import React, { useMemo } from "react";
 import Draggable from "react-draggable";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
+import BrowseOperations from "../../Actions/BrowseOperations";
+import ColorScheme from "../../Actions/ColorScheme";
+import Options from "../../Actions/Options";
+import Selected from "../../Actions/Selected";
+import Similarity from "../../Actions/Similarity";
+import Tag from "../../Actions/Tag";
+import ToggleSidebar from "../../Actions/ToggleSidebar";
 import { useModalContext } from "../hooks";
+import GroupVisibility from "./GroupVisibility";
 import HiddenLabels from "./HiddenLabels";
+import ToggleFullscreen from "./ToggleFullscreen";
 
 const MODAL_ACTION_BAR_HANDLE_CLASS = "fo-modal-action-bar-handle";
 
@@ -59,7 +68,7 @@ const DragActionsRow = () => {
   );
 };
 
-export const ModalActionsRow = () => {
+export default () => {
   const { activeLookerRef } = useModalContext();
 
   const isActualGroup = useRecoilValue(fos.isGroup);
@@ -88,16 +97,16 @@ export const ModalActionsRow = () => {
       <Container>
         <DragActionsRow />
         <HiddenLabels modal />
-        <Selected modal={true} lookerRef={activeLookerRef} />
-        <Colors modal />
-        <Similarity modal={true} />
-        <Tag modal={true} lookerRef={activeLookerRef} />
-        <Options modal={true} />
-        {isGroup && <GroupMediaVisibilityContainer modal={true} />}
+        <Selected modal lookerRef={activeLookerRef} />
+        <ColorScheme modal />
+        <Similarity modal />
+        <Tag modal lookerRef={activeLookerRef} />
+        <Options modal />
+        {isGroup && <GroupVisibility />}
         <BrowseOperations modal />
         <OperatorPlacements modal place={types.Places.SAMPLES_VIEWER_ACTIONS} />
-        <ToggleModalFullScreen />
-        <ToggleSidebar modal={true} />
+        <ToggleFullscreen />
+        <ToggleSidebar modal />
       </Container>
     </Draggable>
   );

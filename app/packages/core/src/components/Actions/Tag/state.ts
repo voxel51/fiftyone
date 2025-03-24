@@ -19,7 +19,7 @@ export const tagStatistics = selectorFamily<
         "/tagging",
         tagParameters({
           activeFields: get(fos.activeLabelFields({ modal })),
-          dataset: get(fos.datasetName),
+          dataset: get(fos.datasetName) ?? "",
           filters: get(modal ? fos.modalFilters : fos.filters) ?? {},
           groupData:
             get(fos.isGroup) && get(fos.groupField)
@@ -73,7 +73,20 @@ export const tagStats = selectorFamily<
   get:
     ({ modal, labels }) =>
     ({ get }) => {
-      return get(tagStatistics({ modal, labels })).tags;
+      const data = modal
+        ? []
+        : Object.keys(
+            get(
+              labels
+                ? fos.labelTagCounts({ modal: false, extended: false })
+                : fos.sampleTagCounts({ modal: false, extended: false })
+            )
+          ).map((t) => [t, 0]);
+
+      return {
+        ...Object.fromEntries(data),
+        ...get(tagStatistics({ modal, labels })).tags,
+      };
     },
 });
 

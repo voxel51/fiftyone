@@ -78,6 +78,11 @@ export const processQueue = () => {
 };
 
 const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
+  if (!job?.sample) {
+    console.error("No sample to assign to worker");
+    return;
+  }
+
   const worker = freeWorkers.shift()!;
   const messageUuid = uuid();
 
@@ -163,9 +168,13 @@ const assignJobToFreeWorker = (job: AsyncLabelsRenderingJob) => {
   );
   const transfer = retrieveTransferables(filteredOverlays);
 
-  worker.postMessage(workerArgs, transfer);
-
-  updateRenderingCount(1);
+  try {
+    worker.postMessage(workerArgs, transfer);
+    updateRenderingCount(1);
+  } catch (error) {
+    console.error("Error posting message to worker", error);
+    updateRenderingCount(-1);
+  }
 };
 
 export class AsyncLabelsRenderingManager {
