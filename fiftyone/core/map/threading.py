@@ -144,10 +144,29 @@ class ThreadMapper(fomm.LocalMapper[T]):
                 q: ResultQueue[R], evts: List[threading.Event]
             ) -> Iterator[R]:
                 sample_errors: List[Tuple[bson.ObjectId, Exception, None]] = []
+
+                # Initialize backoff parameters
+                initial_timeout = 0.1
+                max_timeout = 5.0
+                backoff_factor = 2
+                current_timeout = initial_timeout
+
                 while True:
                     try:
-                        sample_id, err, result = q.get(timeout=0.1)
+                        sample_id, err, result = q.get(timeout=current_timeout)
+                        # Reset backoff on successful get
+                        current_timeout = initial_timeout
                     except queue.Empty:
+                        # Apply exponential backoff, but cap at max_timeout
+                        current_timeout = min(
+                            current_timeout * backoff_factor, max_timeout
+                        )
+
+                        # Reset backoff if we've hit too many consecutive timeouts
+                        # This prevents getting stuck with very long timeouts
+                        if current_timeout == max_timeout:
+                            current_timeout = initial_timeout
+
                         if not (evts := [e for e in evts if not e.is_set()]):
                             break
                     else:
