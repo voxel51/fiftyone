@@ -1,14 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
+import type { TestSelectorFamily } from "../../../../../../../__mocks__/recoil";
+import { setMockAtoms } from "../../../../../../../__mocks__/recoil";
+import { tagStats } from "./state";
 
 vi.mock("recoil");
 vi.mock("recoil-relay");
-import * as utils from "../../../src/components/Actions/utils";
-
-import {
-  setMockAtoms,
-  TestSelector,
-  TestSelectorFamily,
-} from "../../../../../__mocks__/recoil";
 
 describe("Resolves tag counts", () => {
   it("resolves all", () => {
@@ -22,13 +18,13 @@ describe("Resolves tag counts", () => {
       }),
     });
 
-    const samples = <TestSelectorFamily<typeof utils.tagStats>>(
-      (<unknown>utils.tagStats({ modal: false, labels: false }))
+    const samples = <TestSelectorFamily<typeof tagStats>>(
+      (<unknown>tagStats({ modal: false, labels: false }))
     );
     expect(samples()).toStrictEqual({ one: 1, two: 1 });
 
-    const labels = <TestSelectorFamily<typeof utils.tagStats>>(
-      (<unknown>utils.tagStats({ modal: false, labels: true }))
+    const labels = <TestSelectorFamily<typeof tagStats>>(
+      (<unknown>tagStats({ modal: false, labels: true }))
     );
     expect(labels()).toStrictEqual({ one: 1, two: 1 });
   });

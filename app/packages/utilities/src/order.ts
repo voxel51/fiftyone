@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 
-export function useItemsWithOrderPersistence(
-  items: SortableItemsType,
+export function useItemsWithOrderPersistence<T extends SortableItemType>(
+  items: T[],
   key: string
 ) {
   const initialOrder = localStorage.getItem(key);
@@ -19,7 +19,7 @@ export function useItemsWithOrderPersistence(
     return items;
   }, [items, order]);
 
-  const setOrder = (items: SortableItemsType) => {
+  const setOrder = (items: T[]) => {
     const orderCache = JSON.stringify(
       items.reduce((acc, item, index) => {
         acc[item.id] = index;
@@ -32,7 +32,10 @@ export function useItemsWithOrderPersistence(
   return { orderedItems, setOrder };
 }
 
-function sortItems(items: SortableItemsType, idToIndex: IdToIndexType) {
+function sortItems<T extends SortableItemType>(
+  items: T[],
+  idToIndex: IdToIndexType
+) {
   const sortedItems = [...items];
   const totalItems = items.length;
   return sortedItems.sort((a, b) => {
@@ -51,8 +54,6 @@ type SortableItemType = {
   id: string;
   priority?: number;
 };
-
-type SortableItemsType = SortableItemType[];
 
 type IdToIndexType = {
   [key: string]: number;

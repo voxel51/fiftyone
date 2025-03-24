@@ -1,10 +1,11 @@
-import React from "react";
-import SettingsIcon from "@mui/icons-material/Settings";
+import { IconButton, Tooltip } from "@fiftyone/components";
 import InfoIcon from "@mui/icons-material/Info";
 import SearchIcon from "@mui/icons-material/Search";
+import SettingsIcon from "@mui/icons-material/Settings";
 import CircularProgress from "@mui/material/CircularProgress";
+import type { CSSProperties } from "react";
+import React from "react";
 import styled from "styled-components";
-import { IconButton, Tooltip } from "@fiftyone/components";
 
 type GroupButtonProps = {
   buttons: ButtonDetail[];
@@ -15,7 +16,7 @@ export type ButtonDetail = {
   ariaLabel: string;
   tooltipText: string;
   onClick: () => void;
-  sx?: React.CSSProperties;
+  sx?: CSSProperties;
 };
 
 const Container = styled.div`
@@ -24,9 +25,7 @@ const Container = styled.div`
   justify-content: center;
 `;
 
-const GroupButton: React.FunctionComponent<GroupButtonProps> = ({
-  buttons,
-}) => {
+const GroupButton = ({ buttons }: GroupButtonProps) => {
   return (
     <div style={{ display: "flex", flexDirection: "row" }}>
       {buttons.map((button) => (

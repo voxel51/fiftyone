@@ -1,15 +1,14 @@
-import { Launch } from "@mui/icons-material";
-import React from "react";
-
 import { useTheme } from "@fiftyone/components";
 import ExternalLink from "@fiftyone/components/src/components/ExternalLink";
-import { useExternalLink } from "@fiftyone/utilities";
+import { Launch } from "@mui/icons-material";
+import type { MouseEventHandler } from "react";
+import React from "react";
 import { ItemAction } from "./ItemAction";
 import { useHighlightHover } from "./utils";
 
-type ActionOptionProps = {
-  id: string;
-  onClick?: (event?: Event) => void;
+export type ActionOptionProps = {
+  id?: string;
+  onClick?: MouseEventHandler;
   href?: string;
   text: string;
   title?: string;
@@ -33,9 +32,6 @@ export const ActionOption = React.memo(
   }: ActionOptionProps) => {
     const { style: animationStyles, ...rest } = useHighlightHover(disabled);
     const theme = useTheme();
-    onClick = href ? useExternalLink(href) : onClick;
-
-    const convertedText = text.replace(/[\s.,/]/g, "-").toLowerCase();
 
     if (hidden) {
       return null;
@@ -44,10 +40,9 @@ export const ActionOption = React.memo(
       <ItemAction
         data-cy={`${id}-${text}`}
         title={title ? title : text}
-        onClick={disabled ? null : onClick}
+        onClick={disabled ? undefined : onClick}
         {...rest}
         style={style ?? animationStyles}
-        data-cy={`item-action-${convertedText}`}
       >
         <span style={href ? { textDecoration: "underline" } : {}}>
           {href ? (

@@ -14,12 +14,12 @@ import {
   useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
-import { GRID_SETTINGS, QP_MODE } from "../../utils/links";
-import Checkbox from "../Common/Checkbox";
-import RadioGroup from "../Common/RadioGroup";
-import { gridAutosizing, maxGridItemsSizeBytes } from "../Grid/recoil";
-import { ActionOption } from "./Common";
-import Popout from "./Popout";
+import { GRID_SETTINGS, QP_MODE } from "../../../utils/links";
+import Checkbox from "../../Common/Checkbox";
+import RadioGroup from "../../Common/RadioGroup";
+import { gridAutosizing, maxGridItemsSizeBytes } from "../../Grid/recoil";
+import { ActionOption } from "../Common";
+import Popout from "../Popout";
 
 const SortFilterResults = ({ modal }) => {
   const [{ count, asc }, setSortFilterResults] = useRecoilState(
