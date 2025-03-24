@@ -88,6 +88,60 @@ class TestUpdateFCV(unittest.TestCase):
     @patch("fiftyone.core.odm.database._db_service")
     @patch("pymongo.MongoClient")
     @patch("fiftyone.core.odm.database._get_logger")
+    def test_update_fcv_success_minor_and_patch_versions(
+        self, mock_get_logger, mock_client, mock_db_service
+    ):
+        """Tests that minor and patch mongoDB versions are upgraded
+        as expected.
+        """
+
+        mock_db_service = {}
+
+        server_version = Version(f"{foc.MIN_MONGODB_VERSION.major + 1}.7.6")
+        fc_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.2.3")
+
+        mock_admin = MagicMock()
+        mock_client.admin = mock_admin
+        mock_client.server_info.return_value = {"version": str(server_version)}
+
+        mock_get_logger.return_value = MagicMock()
+        mock_logger = mock_get_logger.return_value
+
+        mock_admin.command.return_value = {
+            "featureCompatibilityVersion": {"version": str(fc_version)}
+        }
+
+        _update_fc_version(mock_client)
+
+        # Check that the FCV update attempt was made with the correct version
+        expected_call = self._get_expected_update_call(
+            Version(f"{server_version.major}.0")
+        )
+        mock_admin.command.assert_any_call(expected_call)
+
+        mock_logger.warning.assert_any_call(
+            "You are running the oldest supported major version of mongodb. "
+            "Please refer to https://deprecation.voxel51.com "
+            "for deprecation notices. "
+            "You can suppress this exception by setting your "
+            "`database_validation` config parameter to `False`. See "
+            "https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection "
+            "for more information"
+        )
+
+        mock_logger.warning.assert_any_call(
+            "Your MongoDB server version is newer than your feature "
+            "compatibility version. "
+            "Upgrading the feature compatibility version now. "
+            "You can suppress this exception by setting your "
+            "`database_validation` config parameter to `False`. See "
+            "https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection "
+            "for more information"
+        )
+
+    @patch("fiftyone.core.odm.database._db_service")
+    @patch("pymongo.MongoClient")
+    @patch("fiftyone.core.odm.database._get_logger")
     def test_update_fcv_success_fcv_less_than_min_version(
         self, mock_get_logger, mock_client, mock_db_service
     ):
