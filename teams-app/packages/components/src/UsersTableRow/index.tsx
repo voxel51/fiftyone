@@ -129,7 +129,7 @@ export default function UsersTableRow(props: UsersTableRowProps) {
                 userName: name,
                 currentRole: role as UserRole,
                 newRole: newRole as UserRole,
-                onConfirm: updateUserRole(id, newRole),
+                onConfirm: () => updateUserRole(id, newRole),
               });
               setDowngradeUserRoleModalOpen(true);
             } else {
