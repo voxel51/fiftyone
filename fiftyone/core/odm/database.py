@@ -1685,12 +1685,13 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
 
     The following conditions return ``False``:
 
-        -   If both the server's version and FCV are the oldest supported
-            version, warn about any upcoming deprecations
         -   If the FCV is greater than the server version, warn that this is an
-            unexpected
+            unexpected and return ``False``.
         -   If the major versions between server and FCV is greater than we can
-            handle, warn that this is unexpected
+            handle, warn that this is unexpected and return ``False``.
+        -   If either the server's version are FCV are the oldest supported
+            version, warn about any upcoming deprecations. If the server version
+            is not greater than the FCV return ``False``.
 
     Note that MongoDB will fail to initialize if the server version and FCV
     differ by two or more major versions, so this check may be redundant.
