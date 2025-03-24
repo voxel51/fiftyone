@@ -157,8 +157,6 @@ Core
   :meth:`compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`
   for PNGs
   `#5564 <https://github.com/voxel51/fiftyone/pull/5564>`_
-- Added support for renaming and deleting embedded label fields
-  `#5594 <https://github.com/voxel51/fiftyone/pull/5594>`_
 - Added a :func:`binarize_instances() <fiftyone.utils.labels.binarize_instances>`
   utility for converting instance segmentation masks in ``[0, 255]`` into
   binary instance masks
