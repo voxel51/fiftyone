@@ -4851,6 +4851,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             workspace_doc.name for workspace_doc in self._doc.get_workspaces()
         ]
 
+    @requires_can_edit
     def save_workspace(
         self,
         name,
@@ -4997,6 +4998,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             for f in workspace_doc._EDITABLE_FIELDS
         }
 
+    @requires_can_edit
     def update_workspace_info(self, name, info):
         """Updates the editable information for the saved view with the given
         name.
@@ -5045,6 +5047,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if edited:
             workspace_doc.save()
 
+    @requires_can_edit
     def delete_workspace(self, name):
         """Deletes the saved workspace with the given name.
 
@@ -5056,6 +5059,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._delete_workspace(name)
 
+    @requires_can_edit
     def delete_workspaces(self):
         """Deletes all saved workspaces from this dataset."""
 

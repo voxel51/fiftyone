@@ -890,6 +890,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement summary()")
 
+    @requires_can_edit
     def sync_last_modified_at(self, include_frames=True):
         """Syncs the ``last_modified_at`` property(s) of the dataset.
 
