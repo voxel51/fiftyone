@@ -105,23 +105,33 @@ export const Cuboid = ({
 
   if (!location || !dimensions) return null;
 
+  /**
+   * note: it's important to not set event handlers on the group,
+   * because raycasting for line2 is unstable.
+   * so we skip the border and only use the volume instead, which is more stable.
+   *
+   * we're using line2 over core line because line2 allows configurable line width
+   */
+
   return (
-    <group
-      onClick={onClick}
-      onPointerOver={() => {
-        setIsCuboidHovered(true);
-        onPointerOver();
-      }}
-      onPointerOut={() => {
-        setIsCuboidHovered(false);
-        onPointerOut();
-      }}
-      {...restEventHandlers}
-    >
+    <group>
       <mesh position={loc} rotation={actualRotation}>
         <lineSegments2 geometry={geometry} material={material} />
       </mesh>
-      <mesh position={loc} rotation={actualRotation}>
+      <mesh
+        position={loc}
+        rotation={actualRotation}
+        onClick={onClick}
+        onPointerOver={() => {
+          setIsCuboidHovered(true);
+          onPointerOver();
+        }}
+        onPointerOut={() => {
+          setIsCuboidHovered(false);
+          onPointerOut();
+        }}
+        {...restEventHandlers}
+      >
         <boxGeometry args={dimensions} />
         <meshBasicMaterial
           transparent={isSimilarLabelHovered ? false : true}
