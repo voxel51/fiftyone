@@ -3951,7 +3951,6 @@ class SampleCollection(object):
         Applies `map_fcn` to each sample using the specified backend strategy.
 
         Args:
-            sample_collection: The dataset or view to process.
             update_fcn: Function to apply to each sample.
             workers (None): Number of workers.
             batch_method ("id"): Method for sharding ('id' or 'slice').
