@@ -20,6 +20,7 @@ from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
 import fiftyone.operators.types as types
 import fiftyone.utils.eval as foue
+import uuid
 
 
 STORE_NAME = "model_evaluation_panel_builtin"
@@ -829,7 +830,7 @@ class EvaluationPanel(Panel):
         scenario_data = scenario.copy()
         scenario_data["subsets_data"] = {}
 
-        if scenario_type == "saved_views":
+        if scenario_type == "view":
             scenario_subsets = scenario.get("subsets", [])
             for subset in scenario_subsets:
                 subset_def = dict(type="view", view=subset)
@@ -849,6 +850,22 @@ class EvaluationPanel(Panel):
             scenario = self.get_scenario(ctx, eval_id, scenario_id)
             scenario_data = self.get_scenario_data(ctx, scenario)
             ctx.panel.set_data(f"scenario_{scenario_id}", scenario_data)
+
+    def generate(self, ctx):
+        store = self.get_store(ctx)
+        view_state = ctx.panel.get_state("view") or {}
+        eval_id = view_state.get("id")
+        scenarios = store.get("scenarios") or {}
+        scenario_id = str(uuid.uuid4())
+        eval_scenarios = scenarios.get(eval_id, {})
+        eval_scenarios[scenario_id] = {
+            "id": scenario_id,
+            "name": "4 Saved Views",
+            "type": "view",
+            "subsets": ["limit5", "limit10", "limit50", "limit100"],
+        }
+        scenarios[eval_id] = eval_scenarios
+        store.set("scenarios", scenarios)
 
     def render(self, ctx):
         panel = types.Object()

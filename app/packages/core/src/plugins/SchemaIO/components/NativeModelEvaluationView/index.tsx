@@ -83,6 +83,7 @@ export default function NativeModelEvaluationView(props) {
               if (evaluation.key === old_name) {
                 return { ...evaluation, key: new_name };
               }
+              return evaluation;
             });
             onChange("evaluations", updatedEvaluations);
             if (page === "evaluation") {
