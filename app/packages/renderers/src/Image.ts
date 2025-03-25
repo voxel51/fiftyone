@@ -8,9 +8,6 @@ export class Image {
       const image = new Sprite(tex);
 
       this.view.addChild(image);
-
-      this.view.addChild();
-
       this.view.pivot.x = this.view.width / 2;
       this.view.pivot.y = this.view.height / 2;
     });

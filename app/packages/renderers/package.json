@@ -1,5 +1,5 @@
 {
-    "name": "@fiftyone/renderer",
+    "name": "@fiftyone/renderers",
     "version": "0.1.0",
     "author": "Voxel51, Inc.",
     "description": "Renderer",
@@ -19,6 +19,11 @@
         "dist",
         "README.md"
     ],
+    "peerDependencies": {
+        "@fiftyone/state": "*",
+        "react": "*",
+        "recoil": "*"
+    },
     "devDependencies": {
         "@biomejs/biome": "^1.7.1",
         "@pixi/storybook-renderer": "^1.0.0",
