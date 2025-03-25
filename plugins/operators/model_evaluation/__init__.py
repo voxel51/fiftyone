@@ -458,7 +458,6 @@ class ConfigureScenario(foo.Operator):
 
     def render_saved_views(self, ctx, inputs):
         view_names = ctx.dataset.list_saved_views()
-
         if view_names:
             sorted_view_names = sorted(view_names)
             obj = types.Object()
@@ -472,6 +471,15 @@ class ConfigureScenario(foo.Operator):
                 )
 
             inputs.define_property("saved_views_values", obj)
+        else:
+            # TODO: Sejal has new design for this - do this last
+            inputs.view(
+                "no_views",
+                types.AlertView(
+                    severity="warning",
+                    label="Could not find any saved views",
+                ),
+            )
 
     def render_sample_fields(
         self, ctx, inputs, chosen_scenario_field_name=None
