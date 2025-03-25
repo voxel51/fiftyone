@@ -12,11 +12,11 @@ from datetime import datetime
 import fnmatch
 import itertools
 import logging
-import numbers
 import os
 import random
 import string
 import timeit
+from typing import Any, Callable, Literal, Optional, Union
 import warnings
 
 from bson import ObjectId
@@ -49,6 +49,7 @@ fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
+foum = fou.lazy_import("fiftyone.utils.map")
 foos = fou.lazy_import("fiftyone.operators.store")
 
 
@@ -3896,6 +3897,79 @@ class SampleCollection(object):
         """
         return foev.EvaluationMethod.list_runs(
             self, type=type, method=method, **kwargs
+        )
+
+    def map_samples(
+        self,
+        map_fcn: Callable[[Any], Any],
+        workers: Optional[int] = None,
+        batch_method: str = "id",
+        progress: Optional[Union[bool, Literal["worker"]]] = None,
+        save: bool = False,
+        parallelize_method: str = "process",
+        skip_failures: bool = False,
+    ):
+        """
+        Applies `map_fcn` to each sample using the specified backend strategy and
+        returns an iterator.
+
+        Args:
+            map_fcn: Function to apply to each sample.
+            workers (None): Number of workers.
+            batch_method ("id"): Method for sharding ('id' or 'slice').
+            progress (None): Whether to show progress bar.
+            save (False): Whether to save modified samples.
+            parallelize_method ("process"): Method for parallelization ('process'
+              or 'thread').
+            skip_failures (True): whether to gracefully continue without raising an
+                error if the map function raises an exception for a sample.
+
+        Returns:
+            A generator yield processed sample results.
+        """
+        return foum.map_samples(
+            self,
+            map_fcn,
+            workers=workers,
+            batch_method=batch_method,
+            progress=progress,
+            save=save,
+            parallelize_method=parallelize_method,
+            skip_failures=skip_failures,
+        )
+
+    def update_samples(
+        self,
+        update_fcn: Callable[[Any], Any],
+        workers: Optional[int] = None,
+        batch_method: str = "id",
+        progress: Optional[Union[bool, Literal["worker"]]] = None,
+        parallelize_method: str = "process",
+        skip_failures=True,
+    ):
+        """
+        Applies `map_fcn` to each sample using the specified backend strategy.
+
+        Args:
+            sample_collection: The dataset or view to process.
+            update_fcn: Function to apply to each sample.
+            workers (None): Number of workers.
+            batch_method ("id"): Method for sharding ('id' or 'slice').
+            progress (None): Whether to show progress bar.
+            parallelize_method ("process"): Method for parallelization ('process'
+              or 'thread'). Default to process.
+            skip_failures (True): whether to gracefully continue without raising an
+                error if the update function raises an exception for a sample.
+        """
+
+        return foum.update_samples(
+            self,
+            update_fcn,
+            workers=workers,
+            batch_method=batch_method,
+            progress=progress,
+            parallelize_method=parallelize_method,
+            skip_failures=skip_failures,
         )
 
     def rename_evaluation(self, eval_key, new_eval_key):
