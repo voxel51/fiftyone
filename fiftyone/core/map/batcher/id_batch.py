@@ -12,9 +12,10 @@ from typing import List, Optional, TypeVar
 import bson
 
 import fiftyone.core.utils as fou
-import fiftyone.core.view as fov
 import fiftyone.core.map.batcher.batch as fomb
 from fiftyone.core.map.typing import SampleCollection
+
+fov = fou.lazy_import("fiftyone.core.view")
 
 T = TypeVar("T")
 

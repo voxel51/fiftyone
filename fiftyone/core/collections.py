@@ -34,6 +34,7 @@ import fiftyone.core.evaluation as foev
 import fiftyone.core.fields as fof
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
+import fiftyone.core.map as focm
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
@@ -49,7 +50,6 @@ fov = fou.lazy_import("fiftyone.core.view")
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
-foum = fou.lazy_import("fiftyone.utils.map")
 foos = fou.lazy_import("fiftyone.operators.store")
 
 
@@ -3927,15 +3927,15 @@ class SampleCollection(object):
         Returns:
             A generator yield processed sample results.
         """
-        return foum.map_samples(
+        mapper = focm.MapperFactory.create(
+            parallelize_method,
             self,
-            map_fcn,
-            workers=workers,
-            batch_method=batch_method,
-            progress=progress,
-            save=save,
-            parallelize_method=parallelize_method,
-            skip_failures=skip_failures,
+            workers,
+            batch_method,
+        )
+
+        yield from mapper.map_samples(
+            map_fcn, progress=progress, save=save, skip_failures=skip_failures
         )
 
     def update_samples(
@@ -3960,16 +3960,17 @@ class SampleCollection(object):
             skip_failures (True): whether to gracefully continue without raising an
                 error if the update function raises an exception for a sample.
         """
-
-        return foum.update_samples(
-            self,
-            update_fcn,
-            workers=workers,
-            batch_method=batch_method,
-            progress=progress,
-            parallelize_method=parallelize_method,
-            skip_failures=skip_failures,
+        mapper = focm.MapperFactory.create(
+            parallelize_method, self, workers, batch_method
         )
+
+        for _ in mapper.map_samples(
+            update_fcn,
+            progress=progress,
+            save=True,
+            skip_failures=skip_failures,
+        ):
+            ...
 
     def rename_evaluation(self, eval_key, new_eval_key):
         """Replaces the key for the given evaluation with a new key.
