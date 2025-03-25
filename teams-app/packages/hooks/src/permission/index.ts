@@ -7,6 +7,7 @@ export {
   default as usePermissionedItems,
 } from "./usePermissionedItems";
 export { default as useSecurityRole } from "./useSecurityRole";
+export { default as useUserDowngrade } from "./useUserDowngrade";
 export { default as useUserRole } from "./useUserRole";
 export * from "./utils";
 export { default as withPermissions } from "./withPermissions";
