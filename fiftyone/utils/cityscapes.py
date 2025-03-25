@@ -88,7 +88,7 @@ def parse_cityscapes_dataset(
 
     # Extract trainextra images if needed
     if trainextra_images_zip_path and "train_extra" in splits:
-        if coarse_annos is False:
+        if fine_annos and not coarse_annos:
             logger.warning(
                 "Cityscapes only provides coarse annotations for the "
                 "train_extra split.\n"
