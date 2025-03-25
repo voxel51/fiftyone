@@ -48,42 +48,42 @@ class TestUpdateFCV(unittest.TestCase):
             with self.subTest(
                 server_version=server_version, fc_version=fc_version
             ):
-                with patch("pymongo.MongoClient") as mock_client:
-                    with patch(
-                        "fiftyone.core.odm.database._get_logger"
-                    ) as mock_get_logger:
-                        mock_admin = MagicMock()
-                        mock_client.admin = mock_admin
-                        mock_client.server_info.return_value = {
-                            "version": str(server_version)
+                with patch("pymongo.MongoClient") as mock_client, patch(
+                    "fiftyone.core.odm.database._get_logger"
+                ) as mock_get_logger:
+
+                    mock_admin = MagicMock()
+                    mock_client.admin = mock_admin
+                    mock_client.server_info.return_value = {
+                        "version": str(server_version)
+                    }
+
+                    mock_get_logger.return_value = MagicMock()
+                    mock_logger = mock_get_logger.return_value
+
+                    mock_admin.command.return_value = {
+                        "featureCompatibilityVersion": {
+                            "version": str(fc_version)
                         }
+                    }
 
-                        mock_get_logger.return_value = MagicMock()
-                        mock_logger = mock_get_logger.return_value
+                    _update_fc_version(mock_client)
 
-                        mock_admin.command.return_value = {
-                            "featureCompatibilityVersion": {
-                                "version": str(fc_version)
-                            }
-                        }
+                    # Check that the FCV update attempt was made with the correct version
+                    expected_call = self._get_expected_update_call(
+                        Version(f"{server_version.major}.0")
+                    )
+                    mock_admin.command.assert_any_call(expected_call)
 
-                        _update_fc_version(mock_client)
-
-                        # Check that the FCV update attempt was made with the correct version
-                        expected_call = self._get_expected_update_call(
-                            Version(f"{server_version.major}.0")
-                        )
-                        mock_admin.command.assert_any_call(expected_call)
-
-                        mock_logger.warning.assert_any_call(
-                            "Your MongoDB server version is newer than your feature "
-                            "compatibility version. "
-                            "Upgrading the feature compatibility version now. "
-                            "You can suppress this exception by setting your "
-                            "`database_validation` config parameter to `False`. See "
-                            "https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection "
-                            "for more information"
-                        )
+                    mock_logger.warning.assert_any_call(
+                        "Your MongoDB server version is newer than your feature "
+                        "compatibility version. "
+                        "Upgrading the feature compatibility version now. "
+                        "You can suppress this exception by setting your "
+                        "`database_validation` config parameter to `False`. See "
+                        "https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection "
+                        "for more information"
+                    )
 
     @patch("fiftyone.core.odm.database._db_service")
     @patch("pymongo.MongoClient")

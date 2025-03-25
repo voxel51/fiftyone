@@ -220,8 +220,8 @@ option to ``pip install``:
   compatibility version if you are using the default `fiftyone-db` database
   binary. Because of this addition, Voxel51 recommends backing up your database
   between upgrades. Alternatively, you can configure your own
-  :ref:`MongoDB conection <configuring-mongodb-connection>`
-  outside of FiftyOnes administrative management.
+  :ref:`MongoDB connection <configuring-mongodb-connection>`
+  outside of FiftyOne's administrative management.
 
 .. _downgrading-fiftyone:
 
