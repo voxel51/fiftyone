@@ -27,7 +27,7 @@ class ConfigureScenario(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
-            name="configure_scenario",
+            name="model_evaluation_configure_scenario",
             label="Configure scenario",
             dynamic=True,
             unlisted=True,
@@ -617,7 +617,3 @@ class ConfigureScenario(foo.Operator):
             "scenario_field": ctx.params.get("scenario_field", ""),
             "label_attribute": ctx.params.get("label_attribute", ""),
         }
-
-
-def register(p):
-    p.register(ConfigureScenario)
