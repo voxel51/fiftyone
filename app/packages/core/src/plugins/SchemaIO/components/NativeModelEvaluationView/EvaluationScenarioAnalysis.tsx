@@ -11,6 +11,7 @@ import EvaluationPlot from "./EvaluationPlot";
 import { isNullish } from "@fiftyone/utilities";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
+import { useTriggerEvent } from "./utils";
 
 const CONFIGURE_SCENARIO_ACTION = "@voxel51/scenario/configure_scenario";
 
@@ -20,6 +21,7 @@ export default function EvaluationScenarioAnalysis(props) {
   const [selectedScenario, setSelectedScenario] = useState(null);
   const panelId = usePanelId();
   const promptOperator = usePanelEvent();
+  const triggerEvent = useTriggerEvent();
   const evaluationInfo = evaluation.info;
   const evaluationConfig = evaluationInfo.config;
 
@@ -28,7 +30,18 @@ export default function EvaluationScenarioAnalysis(props) {
 
   return (
     <Stack spacing={2}>
-      <Stack direction="row" sx={{ justifyContent: "flex-end" }}>
+      <Stack direction="row" sx={{ justifyContent: "flex-end" }} spacing={2}>
+        {/* todo@im: remove button below. Only for generating mock data */}
+        <Button
+          variant="outlined"
+          onClick={() => {
+            triggerEvent(
+              "@voxel51/panels/model_evaluation_panel_builtin#generate"
+            );
+          }}
+        >
+          Generate
+        </Button>
         <Button
           variant="contained"
           onClick={() => {
