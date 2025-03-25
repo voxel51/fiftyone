@@ -238,12 +238,23 @@ def main():
     parser.add_argument(
         "--use-backoff",
         type=str,
-        default="false",
+        default="both",
         choices=["true", "false", "both"],
         help="Use exponential backoff for retrying failed operations. Options: true, false, both",
     )
 
     args = parser.parse_args()
+
+    # Print command-line parameters
+    print("\n=== Benchmark Configuration ===")
+    print(f"Dataset: {args.dataset}")
+    print(f"Worker counts: {args.workers}")
+    print(f"Shard methods: {args.shard_methods}")
+    print(f"Backends: {args.backends}")
+    print(f"Use backoff: {args.use_backoff}")
+    print(f"Skip baseline: {args.skip_baseline}")
+    print(f"Output file: {args.output}")
+    print("=============================\n")
 
     # Parse worker counts, shard methods, and backends
     worker_counts = parse_worker_counts(args.workers)
