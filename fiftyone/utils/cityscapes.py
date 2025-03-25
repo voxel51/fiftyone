@@ -84,7 +84,9 @@ def parse_cityscapes_dataset(
 
     _splits = [_parse_split(s) for s in splits]
 
-    images_dir = _extract_images(images_zip_path, scratch_dir)
+    images_dir = _extract_archive(
+        images_zip_path, scratch_dir, "images", "leftImg8bit"
+    )
 
     # Extract trainextra images if needed
     if trainextra_images_zip_path and "train_extra" in splits:
@@ -94,8 +96,11 @@ def parse_cityscapes_dataset(
                 "train_extra split.\n"
                 "No annotations will be loaded for train_extra split. "
             )
-        trainextra_images_dir = _extract_trainextra_images(
-            trainextra_images_zip_path, scratch_dir
+        trainextra_images_dir = _extract_archive(
+            trainextra_images_zip_path,
+            scratch_dir,
+            "trainextra-images",
+            "leftImg8bit",
         )
     else:
         trainextra_images_dir = None
@@ -326,28 +331,15 @@ def _export_split(
     dataset.delete()
 
 
-def _extract_images(images_zip_path, scratch_dir):
-    tmp_dir = os.path.join(scratch_dir, "images")
-    images_dir = os.path.join(tmp_dir, "leftImg8bit")
+def _extract_archive(zip_path, scratch_dir, subdir_name, target_subdir):
+    tmp_dir = os.path.join(scratch_dir, subdir_name)
+    target_dir = os.path.join(tmp_dir, target_subdir)
 
-    if not os.path.isdir(images_dir):
-        logger.info("Extracting images...")
-        etau.extract_zip(images_zip_path, outdir=tmp_dir, delete_zip=False)
+    if not os.path.isdir(target_dir):
+        logger.info(f"Extracting {subdir_name}...")
+        etau.extract_zip(zip_path, outdir=tmp_dir, delete_zip=False)
 
-    return images_dir
-
-
-def _extract_trainextra_images(trainextra_images_zip_path, scratch_dir):
-    tmp_dir = os.path.join(scratch_dir, "trainextra-images")
-    trainextra_images_dir = os.path.join(tmp_dir, "leftImg8bit")
-
-    if not os.path.isdir(trainextra_images_dir):
-        logger.info("Extracting trainextra images...")
-        etau.extract_zip(
-            trainextra_images_zip_path, outdir=tmp_dir, delete_zip=False
-        )
-
-    return trainextra_images_dir
+    return target_dir
 
 
 def _extract_fine_annos(fine_annos_zip_path, scratch_dir):
