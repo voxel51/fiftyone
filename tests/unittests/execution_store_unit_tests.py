@@ -15,7 +15,7 @@ from bson import ObjectId
 
 from fiftyone.operators.store import ExecutionStoreService
 from fiftyone.operators.store.models import KeyDocument
-from fiftyone.factory.repo_factory import ExecutionStoreRepo
+from fiftyone.factory.repo_factory import MongoExecutionStoreRepo
 from fiftyone.operators.store import ExecutionStore
 
 
@@ -49,7 +49,7 @@ class TestKeyDocument(unittest.TestCase):
 class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
     def setUp(self) -> None:
         self.mock_collection = MagicMock()
-        self.store_repo = ExecutionStoreRepo(self.mock_collection)
+        self.store_repo = MongoExecutionStoreRepo(self.mock_collection)
         self.store_service = ExecutionStoreService(self.store_repo)
 
     def test_set_key(self):
@@ -170,7 +170,7 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
 class TestExecutionStoreIntegration(unittest.TestCase):
     def setUp(self) -> None:
         self.mock_collection = MagicMock()
-        self.store_repo = ExecutionStoreRepo(self.mock_collection)
+        self.store_repo = MongoExecutionStoreRepo(self.mock_collection)
         self.store_service = ExecutionStoreService(self.store_repo)
         self.store = ExecutionStore("mock_store", self.store_service)
 
@@ -239,7 +239,7 @@ class ExecutionStoreServiceDatasetIdTests(unittest.TestCase):
     def setUp(self) -> None:
         self.mock_collection = MagicMock()
         self.dataset_id = ObjectId()
-        self.store_repo = ExecutionStoreRepo(
+        self.store_repo = MongoExecutionStoreRepo(
             self.mock_collection, dataset_id=self.dataset_id
         )
         self.store_service = ExecutionStoreService(self.store_repo)
