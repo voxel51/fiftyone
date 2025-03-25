@@ -20,6 +20,7 @@ from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
 import fiftyone.operators.types as types
 import fiftyone.utils.eval as foue
+import uuid
 
 
 STORE_NAME = "model_evaluation_panel_builtin"
@@ -829,7 +830,7 @@ class EvaluationPanel(Panel):
         scenario_data = scenario.copy()
         scenario_data["subsets_data"] = {}
 
-        if scenario_type == "saved_views":
+        if scenario_type == "view":
             scenario_subsets = scenario.get("subsets", [])
             for subset in scenario_subsets:
                 subset_def = dict(type="view", view=subset)
