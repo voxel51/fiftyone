@@ -20,7 +20,6 @@ export type ActionOptionProps = {
 
 export const ActionOption = React.memo(
   ({
-    id,
     onClick,
     text,
     href,
@@ -32,13 +31,13 @@ export const ActionOption = React.memo(
   }: ActionOptionProps) => {
     const { style: animationStyles, ...rest } = useHighlightHover(disabled);
     const theme = useTheme();
-
+    const convertedText = text.replace(/[\s.,/]/g, "-").toLowerCase();
     if (hidden) {
       return null;
     }
     return (
       <ItemAction
-        data-cy={`${id}-${text}`}
+        data-cy={`item-action-${convertedText}`}
         title={title ? title : text}
         onClick={disabled ? undefined : onClick}
         {...rest}
