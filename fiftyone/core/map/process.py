@@ -139,8 +139,6 @@ class ProcessMapper(fomm.LocalMapper[T]):
             max_timeout = 5.0
             backoff_factor = 2
             current_timeout = initial_timeout
-            consecutive_timeouts = 0
-            max_consecutive_timeouts = 5
 
             while True:
                 try:
@@ -148,10 +146,8 @@ class ProcessMapper(fomm.LocalMapper[T]):
                     # Reset backoff on successful get
                     if use_backoff:
                         current_timeout = initial_timeout
-                        consecutive_timeouts = 0
                 except Empty:
                     if use_backoff:
-                        consecutive_timeouts += 1
                         # Apply exponential backoff, but cap at max_timeout
                         current_timeout = min(
                             current_timeout * backoff_factor, max_timeout
@@ -159,9 +155,8 @@ class ProcessMapper(fomm.LocalMapper[T]):
 
                         # Reset backoff if we've hit too many consecutive timeouts
                         # This prevents getting stuck with very long timeouts
-                        if consecutive_timeouts >= max_consecutive_timeouts:
+                        if current_timeout == max_timeout:
                             current_timeout = initial_timeout
-                            consecutive_timeouts = 0
 
                     # Check if done after applying backoff
                     if batch_count.value >= num_batches:
