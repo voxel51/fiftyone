@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       app-changes: ${{ steps.filter.outputs.app }}
+      docs-changes: ${{ steps.filter.outputs.docs }}
       e2e-changes: ${{ steps.filter.outputs.e2e-pw }}
       fiftyone-changes: ${{ steps.filter.outputs.fiftyone }}
     steps:
@@ -29,6 +30,8 @@ jobs:
             app:
               - 'app/**'
               - '.github/workflows/build.yml'
+            docs:
+              - 'docs/**'
             e2e-pw:
               - 'e2e-pw/**'
               - '.github/workflows/e2e.yml'
@@ -51,6 +54,17 @@ jobs:
     needs: modified-files
     if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.e2e-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' }}
     uses: ./.github/workflows/e2e.yml
+
+  frozen-docs:
+    runs-on: ubuntu-latest
+    needs: modified-files
+    if: ${{ needs.modified-files.outputs.docs-changes == 'true' }}
+    steps:
+      - run: echo "Voxel51 is in the process of migrating to a new documentation repository."
+      - run: echo "Please target your change at https://github.com/voxel51/voxel51-docs."
+      - run: echo "For more details, please visit our Discord server by visiting"
+      - run: echo "https://discord.voxel51.com"
+      - run: exit 1
 
   lint:
     needs: modified-files
@@ -87,11 +101,12 @@ jobs:
 
   all-tests:
     runs-on: ubuntu-latest
-    needs: [build, lint, test, e2e]
+    needs: [build, e2e, frozen-docs, lint, test]
     if: always()
     steps:
       - run: sh -c ${{
           (needs.build.result == 'success' || needs.build.result == 'skipped') &&
+          (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') &&
+          (needs.frozen-docs.result == 'success' || needs.frozen-docs.result == 'skipped') &&
           (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
-          (needs.test.result == 'success' || needs.test.result == 'skipped') &&
-          (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') }}
+          (needs.test.result == 'success' || needs.test.result == 'skipped') }}
