@@ -13,7 +13,7 @@ import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
 import { useTriggerEvent } from "./utils";
 
-const CONFIGURE_SCENARIO_ACTION = "configure_scenario";
+const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 
 export default function EvaluationScenarioAnalysis(props) {
   const { evaluation, data, loadScenario } = props;
