@@ -1,0 +1,115 @@
+name: Build docs
+
+on:
+  push:
+    branches:
+      # - develop
+      - rel-*
+      - release-*
+      - release/*
+      - docs-*
+      - github-actions-*
+    tags:
+      - v*
+      - docs-publish
+    paths:
+      - .github/workflows/build-docs.yml
+      - docs/**
+      - examples/**
+      - fiftyone/**
+      - "**.py"
+      - "**.md"
+      - "**.rst"
+  pull_request:
+    branches:
+      - develop
+      - feat/*
+      - main
+      - rel-*
+      - release-*
+      - release/*
+    paths:
+      - .github/workflows/build-docs.yml
+      - docs/**
+      - examples/**
+      - fiftyone/**
+      - requirements/**
+      - "**.py"
+      - "**.md"
+      - "**.rst"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest-m
+    env:
+      FIFTYONE_DO_NOT_TRACK: true
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v4
+      - name: Checkout fiftyone-teams
+        uses: actions/checkout@v4
+        with:
+          repository: voxel51/fiftyone-teams
+          path: fiftyone-teams
+          token: ${{ secrets.RO_FOT_FG_PAT }}
+          ref: main
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      - name: Install pip dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel build
+      - name: Install ETA from source
+        run: |
+          git clone https://github.com/voxel51/eta eta --depth 1 --branch develop
+          cd eta
+          python -Im build
+          pip install ./dist/*.whl
+      - name: Install
+        run: |
+          sudo apt-get install pandoc
+          pip install -r requirements/dev.txt
+          pip install -r fiftyone-teams/requirements/dev.txt
+          pip install fiftyone-brain fiftyone-db
+          pip install pycocotools tensorflow torch torchvision
+          pip install typing_extensions==4.10.0
+          pip install .
+      - name: Cache Node Modules
+        id: node-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            app/node_modules
+            app/.yarn/cache
+          key: node-modules-${{ hashFiles('app/yarn.lock') }}
+      - name: Install app
+        if: steps.node-cache.outputs.cache-hit != 'true'
+        run: cd app && yarn install
+      - name: Build docs
+        run: |
+          ./docs/generate_docs.bash -t fiftyone-teams
+      - name: Upload docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs
+          path: docs/build/html/
+
+  publish:
+    needs: [build]
+    if: (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, 'rc')) || github.ref == 'refs/tags/docs-publish'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download docs
+        uses: actions/download-artifact@v4
+        with:
+          name: docs
+          path: docs-download/
+      - name: Authorize gcloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: "${{ secrets.DOCS_GCP_CREDENTIALS }}"
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+      - name: publish
+        run: gsutil -m rsync -dR docs-download gs://docs.voxel51.com
