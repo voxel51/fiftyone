@@ -750,12 +750,9 @@ class ExecutionContext(object):
         return self._prompt_id
 
     @property
-    def session_id(self):
-        """An identifier for the operator client session, unique to each instance of a browser loading the FiftyOne App.
-
-        Note that this is generated when a user opens or refreshes the FiftyOne App in a browser.
-        """
-        return self._session_id
+    def operator_uri(self):
+        """The URI of the target operator."""
+        return self._operator_uri
 
     def prompt(
         self,

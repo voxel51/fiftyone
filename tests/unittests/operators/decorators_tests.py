@@ -11,7 +11,7 @@ import shutil
 import tempfile
 import unittest
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, create_autospec
 from cachetools.keys import hashkey
 
 from fiftyone.operators.decorators import (
@@ -19,6 +19,7 @@ from fiftyone.operators.decorators import (
     dir_state,
     execution_cache,
 )
+from fiftyone.operators.executor import ExecutionContext
 
 
 class DirStateTests(unittest.TestCase):
@@ -153,10 +154,11 @@ class TestCoroutineTimeoutDecorator(unittest.TestCase):
 
 
 # Mock Execution Context with dataset
-class MockExecutionContext:
-    def __init__(self):
-        self.dataset = MagicMock()
-        self.dataset._doc = MagicMock(id="mock_dataset_id")
+def create_mock_ctx():
+    ctx = MagicMock(spec=ExecutionContext)
+    ctx.dataset = MagicMock()
+    ctx.dataset.name = "test-dataset"
+    return ctx
 
 
 # Sample function with caching
@@ -190,7 +192,7 @@ class TestExecutionCacheDecorator(unittest.TestCase):
     @patch("fiftyone.operators.store.ExecutionStore.create")
     def test_function_caching(self, MockExecutionStore):
         """Test that cached function calls return the same result and avoid re-execution."""
-        ctx = MockExecutionContext()
+        ctx = create_mock_ctx()
         store_instance = MockExecutionStore.return_value
         store_instance.get.return_value = None  # Simulate cache miss
 
@@ -207,7 +209,7 @@ class TestExecutionCacheDecorator(unittest.TestCase):
     @patch("fiftyone.operators.store.ExecutionStore.create")
     def test_method_caching(self, MockExecutionStore):
         """Test that instance methods cache results correctly."""
-        ctx = MockExecutionContext()
+        ctx = create_mock_ctx()
         obj = MockOperator()
 
         store_instance = MockExecutionStore.return_value
@@ -226,7 +228,7 @@ class TestExecutionCacheDecorator(unittest.TestCase):
     @patch("fiftyone.operators.store.ExecutionStore.create")
     def test_custom_key_function(self, MockExecutionStore):
         """Test that custom key functions generate expected cache keys."""
-        ctx = MockExecutionContext()
+        ctx = create_mock_ctx()
 
         store_instance = MockExecutionStore.return_value
         store_instance.get.return_value = None  # Simulate cache miss
@@ -248,4 +250,4 @@ class TestExecutionCacheDecorator(unittest.TestCase):
     def test_missing_ctx_arg(self):
         """Test that missing ctx argument raises an error."""
         with self.assertRaises(ValueError):
-            example_function()
+            example_function()  # pylint: disable=no-value-for-parameter
