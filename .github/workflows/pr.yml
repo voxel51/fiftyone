@@ -60,7 +60,10 @@ jobs:
     needs: modified-files
     if: ${{ needs.modified-files.outputs.docs-changes == 'true' }}
     steps:
-      - run: echo "please target your docs changes to the voxel51-docs repository"
+      - run: echo "Voxel51 is in the process of migrating to a new documentation repository."
+      - run: echo "Please target your change at https://github.com/voxel51/voxel51-docs."
+      - run: echo "For more details, please visit our Discord server by visiting"
+      - run: echo "https://discord.voxel51.com"
       - run: exit 1
 
   lint:
