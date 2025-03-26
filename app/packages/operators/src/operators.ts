@@ -98,7 +98,6 @@ export type RawContext = {
   spaces: SpaceNodeJSON;
   workspaceName: string;
   promptId: string | null;
-  sessionId: string;
 };
 
 export class ExecutionContext {
@@ -567,7 +566,6 @@ async function executeOperatorAsGenerator(
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
       prompt_id: ctx.promptId,
-      session_id: currentContext.sessionId,
     },
     "json-stream"
   );
@@ -735,7 +733,6 @@ export async function executeOperatorWithContext(
           spaces: currentContext.spaces,
           workspace_name: currentContext.workspaceName,
           prompt_id: ctx.promptId,
-          session_id: currentContext.sessionId,
         }
       );
       result = serverResult.result;
@@ -843,7 +840,6 @@ export async function resolveRemoteType(
       spaces: currentContext.spaces,
       workspace_name: currentContext.workspaceName,
       prompt_id: ctx.promptId,
-      session_id: currentContext.sessionId,
     }
   );
 
