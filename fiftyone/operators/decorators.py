@@ -99,6 +99,8 @@ def dir_state(dirpath):
 
 
 def execution_cache(
+    _func=None,
+    *,
     ttl=None,
     link_to_dataset=True,
     key_fn=None,
@@ -194,7 +196,10 @@ def execution_cache(
 
         return wrapper
 
-    return decorator
+    if _func is None:
+        return decorator
+    else:
+        return decorator(_func)
 
 
 def _resolve_store_name(ctx, func, store_name=None):

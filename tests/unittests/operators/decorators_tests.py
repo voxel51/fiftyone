@@ -161,6 +161,12 @@ def create_mock_ctx():
     return ctx
 
 
+# Default usage
+@execution_cache
+def example_default_cache_usage(ctx, a, b):
+    return a * b
+
+
 # Sample function with caching
 @execution_cache(ttl=60)
 def example_function(ctx, a, b):
@@ -189,6 +195,18 @@ def str_hk(args):
 
 
 class TestExecutionCacheDecorator(unittest.TestCase):
+    @patch("fiftyone.operators.store.ExecutionStore.create")
+    def test_default_cache_usage(self, MockExecutionStore):
+        """Test that default cache usage works as expected."""
+        ctx = create_mock_ctx()
+        store_instance = MockExecutionStore.return_value
+        store_instance.get.return_value = None
+        result1 = example_default_cache_usage(ctx, 1, 2)
+        store_instance.get.return_value = result1
+        result2 = example_default_cache_usage(ctx, 1, 2)
+        self.assertEqual(result1, result2)
+        self.assertEqual(result1, 2)
+
     @patch("fiftyone.operators.store.ExecutionStore.create")
     def test_function_caching(self, MockExecutionStore):
         """Test that cached function calls return the same result and avoid re-execution."""
