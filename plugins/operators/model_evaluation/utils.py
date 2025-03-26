@@ -5,12 +5,12 @@ import fiftyone.core.fields as fof
 KEY_COLOR = "#ff6d04"
 COMPARE_KEY_COLOR = "#03a9f4"
 
-MAX_CATEGORIES = 100
+MAX_CATEGORIES = 10
 ALLOWED_BY_TYPES = (
-    fof.StringField,
-    fof.BooleanField,
+    fof.StringField,  # TODO: needs a dropdown - call distinct on the field - if too many, show code view
+    fof.BooleanField,  # TODO: needs two checkboxes
     fof.IntField,
-    fof.FloatField,
+    fof.FloatField,  # TODO: always defaults to code view
 )
 
 SCENARIO_BUILDING_CHOICES = [
