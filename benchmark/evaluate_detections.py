@@ -72,7 +72,7 @@ def run_evaluation(dataset, config: dict) -> float:
         # Create evaluation parameters
         kwargs = {
             "multiprocessing": config["num_workers"] > 0,
-            "progress": True,
+            "progress": "workers" if config["num_workers"] > 1 else True,
         }
 
         # Only add these parameters if using parallel processing
