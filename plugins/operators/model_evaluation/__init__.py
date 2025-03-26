@@ -17,6 +17,7 @@ from .utils import (
     ALLOWED_BY_TYPES,
     KEY_COLOR,
     COMPARE_KEY_COLOR,
+    MAX_CATEGORIES,
 )
 
 # STORE_NAME = "scenarios"
@@ -396,19 +397,102 @@ class ConfigureScenario(foo.Operator):
                     ctx, inputs, custom_code_expression
                 )
 
-    def render_label_attribute(
-        self, ctx, inputs, gt_field, chosen_scenario_label_attribute=None
-    ):
-        # TODO: refine the logic with bmoore/ritchie
-        label_choices = types.Choices()
+    def render_no_values_warning(self, inputs, field_name):
+        inputs.view(
+            "no_values_warning",
+            types.AlertView(
+                severity="warning",
+                label="No values found",
+                description=(f"Field {field_name} has no values to display. "),
+            ),
+        )
 
+    def render_too_many_values_warning(self, inputs, field_name):
+        inputs.view(
+            "too_many_values_warning",
+            types.AlertView(
+                severity="warning",
+                label="Too many values",
+                description=(
+                    f"Field {field_name} has too many values to display. "
+                    "Please use custom code to define the scenario."
+                ),
+            ),
+        )
+
+    def render_saved_views(self, ctx, inputs):
+        view_names = ctx.dataset.list_saved_views()
+
+        if view_names:
+            inputs.view(
+                "info_header_4_saved_views",
+                types.Header(
+                    label=f"{len(view_names)} saved views available",
+                    divider=False,
+                ),
+            )
+            self.render_checkbox_view_options(
+                "saved_views_values", sorted(view_names), inputs
+            )
+        else:
+            # TODO: there is design for this - replace
+            inputs.view(
+                "no_views",
+                types.AlertView(
+                    severity="warning",
+                    label="Could not find any saved views",
+                ),
+            )
+
+    def render_checkbox_view_options(self, key, values, inputs):
+        obj = types.Object()
+        if isinstance(values, list):
+            values = {v: 0 for v in values}
+
+        for label, count in values.items():
+            formatted_count = f"{count:,}"
+            label = f"{label}" + (f"- {formatted_count}" if count > 0 else "")
+            obj.bool(
+                label,
+                default=False,
+                label=label,
+                view=types.CheckboxView(space=4),
+            )
+
+        inputs.define_property(key, obj)
+
+    def render_checkbox_view(self, ctx, field_name, inputs):
+        """
+        Render checkbox view for the given field value options based on schema and
+        other conditions.
+        """
+        # validate field name by checking if it exists in the schema
         schema = ctx.dataset.get_field_schema(flat=True)
-        # bad_roots = tuple(
-        #     k + "."
-        #     for k, v in schema.items()
-        #     if isinstance(v, fof.ListField)
-        # )
-        fields = [
+        if schema[field_name] is None:
+            raise ValueError(f"Field {field_name} does not exist")
+
+        # NOTE: can be slow for large datasets
+        values = ctx.dataset.distinct(field_name)
+
+        if len(values) > MAX_CATEGORIES:
+            # TODO: show code view instead? (worth negotiating with design/product)
+            self.render_too_many_values_warning(inputs, field_name)
+        else:
+            # NOTE: can be slow for large datasets
+            values = ctx.dataset.count_values(field_name)
+
+            if len(values) == 0:
+                # TODO: let design know (negotiate current state)
+                self.render_no_values_warning(inputs, field_name)
+                return
+
+            sorted_values = {k: v for k, v in sorted(values.items())}
+            self.render_checkbox_view_options(
+                "field_option_values", sorted_values, inputs
+            )
+
+    def get_valid_label_attribute_path_options(self, schema, gt_field):
+        return [
             path
             for path, field in schema.items()
             if (
@@ -420,16 +504,18 @@ class ConfigureScenario(foo.Operator):
                     )
                 )
                 and path.startswith(f"{gt_field}.")
-                # and not path.startswith(bad_roots)
             )
         ]
 
-        # label_fields = ctx.dataset._get_label_fields()
-        # for label_field in label_fields:
-        # for label_field in fields:
-        for label_path in fields:
-            # _, label_path = ctx.dataset._get_label_field_path(label_field)
-            label_choices.add_choice(label_path, label=label_path)
+    def render_label_attribute(self, ctx, inputs, gt_field, label_attr=None):
+        schema = ctx.dataset.get_field_schema(flat=True)
+        valid_options = self.get_valid_label_attribute_path_options(
+            schema, gt_field
+        )
+
+        label_choices = types.Choices()
+        for option in valid_options:
+            label_choices.add_choice(option, label=option)
 
         inputs.enum(
             "scenario_label_attribute",
@@ -441,59 +527,37 @@ class ConfigureScenario(foo.Operator):
             required=True,
         )
 
-        if chosen_scenario_label_attribute is not None:
-            counts = ctx.dataset.count_values(chosen_scenario_label_attribute)
-            sorted_data = {k: v for k, v in sorted(counts.items())}
+        if label_attr:
+            self.render_checkbox_view(ctx, label_attr, inputs)
 
-            obj = types.Object()
-            for value, count in sorted_data.items():
-                obj.bool(
-                    value,
-                    default=True,
-                    label=f"{value} - {count}",
-                    view=types.CheckboxView(space=3),
-                )
+    def get_valid_sample_field_path_options(self, flat_field_schema):
+        options = []
 
-            inputs.define_property("label_attribute_values", obj)
+        bad_roots = tuple(
+            k + "."
+            for k, v in flat_field_schema.items()
+            if isinstance(v, fof.ListField)
+        )
 
-    def render_saved_views(self, ctx, inputs):
-        view_names = ctx.dataset.list_saved_views()
-        if view_names:
-            sorted_view_names = sorted(view_names)
-            obj = types.Object()
-
-            for name in sorted_view_names:
-                obj.bool(
-                    name,
-                    default=True,
-                    label=name,
-                    view=types.CheckboxView(space=3),
-                )
-
-            inputs.define_property("saved_views_values", obj)
-        else:
-            # TODO: Sejal has new design for this - do this last
-            inputs.view(
-                "no_views",
-                types.AlertView(
-                    severity="warning",
-                    label="Could not find any saved views",
-                ),
-            )
-
-    def render_sample_fields(
-        self, ctx, inputs, chosen_scenario_field_name=None
-    ):
-        # TODO: check if we need flat=True
-        all_fields = ctx.dataset.get_field_schema(flat=True)
-        field_choices = types.Choices()
-
-        for field_path, field in all_fields.items():
+        # TODO: any field inside a list of documents not allowed
+        for field_path, field in flat_field_schema.items():
+            if field_path.startswith(bad_roots):
+                continue
             if isinstance(field, ALLOWED_BY_TYPES):
-                field_choices.add_choice(field_path, label=field_path)
+                options.append(field_path)
             if isinstance(field, fof.ListField):
                 if isinstance(field.field, ALLOWED_BY_TYPES):
-                    field_choices.add_choice(field_path, label=field_path)
+                    options.append(field_path)
+
+        return options
+
+    def render_sample_fields(self, ctx, inputs, field_name=None):
+        schema = ctx.dataset.get_field_schema(flat=True)
+        valid_options = self.get_valid_sample_field_path_options(schema)
+
+        field_choices = types.Choices()
+        for option in valid_options:
+            field_choices.add_choice(option, label=option)
 
         inputs.str(
             "scenario_field",
@@ -504,31 +568,8 @@ class ConfigureScenario(foo.Operator):
             required=True,
         )
 
-        if chosen_scenario_field_name:
-            chosen_scenario_field = ctx.dataset.get_field_schema(flat=True)[
-                chosen_scenario_field_name
-            ]
-
-            if chosen_scenario_field is None:
-                raise ValueError(
-                    f"Field {chosen_scenario_field_name} does not exist"
-                )
-
-            values = ctx.dataset.distinct(chosen_scenario_field_name)
-
-            # TODO: check the field type and show the custom code for continuous values or > 100 categories
-
-            # for discrete values
-            obj = types.Object()
-            for value in values:
-                obj.bool(
-                    value,
-                    default=True,
-                    label=value,
-                    view=types.CheckboxView(space=3),
-                )
-
-            inputs.define_property("sample_field_values", obj)
+        if field_name:
+            self.render_checkbox_view(ctx, field_name, inputs)
 
     def resolve_input(self, ctx):
         inputs = types.Object()

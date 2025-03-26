@@ -821,6 +821,15 @@ class EvaluationPanel(Panel):
             metrics["iou"] = self.get_avg_iou(per_class_metrics)
             return metrics
 
+    def process_custom_code(self, ctx, custom_code):
+        try:
+            local_vars = {}
+            exec(custom_code, {"ctx": ctx}, local_vars)
+            data = local_vars.get("subsets", {})
+            return data, None
+        except Exception as e:
+            return None, str(e)
+
     def get_scenario_data(self, ctx, scenario):
         view_state = ctx.panel.get_state("view") or {}
         eval_key = view_state.get("key")
@@ -829,6 +838,32 @@ class EvaluationPanel(Panel):
         scenario_type = scenario.get("type", None)
         scenario_data = scenario.copy()
         scenario_data["subsets_data"] = {}
+
+        if scenario_type == "custom_code":
+            custom_code = scenario.get("subsets", None)
+            cc_expr, cc_error = self.process_custom_code(ctx, custom_code)
+
+            if cc_error:
+                # TODO
+                print("TODO: custom code load error handling")
+            else:
+                # NOTE: subset expression could be a dict or an array
+                if isinstance(cc_expr, dict):
+                    for subset_name, subset_def in cc_expr.items():
+                        subset_data = self.get_subset_def_data(
+                            ctx, info, results, subset_def
+                        )
+                        scenario_data["subsets_data"][
+                            subset_name
+                        ] = subset_data
+                elif isinstance(cc_expr, list):
+                    subset_data = self.get_subset_def_data(
+                        ctx, info, results, subset_def
+                    )
+                    scenario_data["subsets_data"]["All"] = subset_data
+
+                # TODO: talk to bmoore and ibrahim about this
+                scenario_data["subsets_data"]["All"] = subset_data
 
         if scenario_type == "view":
             scenario_subsets = scenario.get("subsets", [])
