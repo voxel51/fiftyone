@@ -407,15 +407,30 @@ class ConfigureScenario(foo.Operator):
             ),
         )
 
-    def render_too_many_values_warning(self, inputs, field_name):
+    def render_use_custom_code_instead(
+        self, inputs, field_name, reason="TOO_MANY_CATEGORIES"
+    ):
+        label, description = None, None
+
+        if reason == "TOO_MANY_CATEGORIES":
+            label = "Too many categories"
+            description = (
+                f"Field {field_name} has too many values to display. "
+            )
+        if reason == "FLOAT_TYPE_SUPPORT":
+            label = "Float type."
+            description = (
+                f"Field with  is only supported in custom code mode. "
+            )
+
         inputs.view(
-            "too_many_values_warning",
+            "use_custom_code_instead",
             types.AlertView(
                 severity="warning",
-                label="Too many values",
+                label=label,
                 description=(
-                    f"Field {field_name} has too many values to display. "
-                    "Please use custom code to define the scenario."
+                    description
+                    + "Please use custom code to define the scenario."
                 ),
             ),
         )
@@ -427,7 +442,8 @@ class ConfigureScenario(foo.Operator):
             inputs.view(
                 "info_header_4_saved_views",
                 types.Header(
-                    label=f"{len(view_names)} saved views available",
+                    label="",
+                    description=f"{len(view_names)} saved views available",
                     divider=False,
                 ),
             )
@@ -451,7 +467,7 @@ class ConfigureScenario(foo.Operator):
 
         for label, count in values.items():
             formatted_count = f"{count:,}"
-            label = f"{label}" + (f"- {formatted_count}" if count > 0 else "")
+            label = f"{label}" + (f" - {formatted_count}" if count > 0 else "")
             obj.bool(
                 label,
                 default=False,
@@ -468,21 +484,37 @@ class ConfigureScenario(foo.Operator):
         """
         # validate field name by checking if it exists in the schema
         schema = ctx.dataset.get_field_schema(flat=True)
-        if schema[field_name] is None:
+        field = schema[field_name]
+        if field is None:
             raise ValueError(f"Field {field_name} does not exist")
+
+        # Float type should show custom code view
+        if isinstance(field, fof.FloatField):
+            print("field", field)
+            self.render_use_custom_code_instead(
+                inputs, field_name, reason="FLOAT_TYPE_SUPPORT"
+            )
+            return
+
+        # Checkbox type should show two checkboxes
+        if isinstance(field, fof.BooleanField):
+            self.render_checkbox_view_options(
+                "field_option_values", [True, False], inputs
+            )
+            return
 
         # NOTE: can be slow for large datasets
         values = ctx.dataset.distinct(field_name)
 
         if len(values) > MAX_CATEGORIES:
             # TODO: show code view instead? (worth negotiating with design/product)
-            self.render_too_many_values_warning(inputs, field_name)
+            self.render_use_custom_code_instead(inputs, field_name)
         else:
             # NOTE: can be slow for large datasets
             values = ctx.dataset.count_values(field_name)
 
             if len(values) == 0:
-                # TODO: let design know (negotiate current state)
+                # TODO: design (negotiate current state)
                 self.render_no_values_warning(inputs, field_name)
                 return
 
@@ -531,6 +563,9 @@ class ConfigureScenario(foo.Operator):
             self.render_checkbox_view(ctx, label_attr, inputs)
 
     def get_valid_sample_field_path_options(self, flat_field_schema):
+        """
+        Get valid sample field path options based on the schema.
+        """
         options = []
 
         bad_roots = tuple(
