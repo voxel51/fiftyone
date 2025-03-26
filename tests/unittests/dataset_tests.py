@@ -5,12 +5,17 @@ FiftyOne dataset-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+<<<<<<< HEAD
 
 <<<<<<< HEAD
 from collections import Counter
 =======
 import time
 >>>>>>> 27e82bbb93 (Removed map_samples from collections)
+=======
+import time
+from collections import Counter
+>>>>>>> 54e8d07916 (Expose map_samples to dataset collection and dataset view (#5643))
 from copy import deepcopy, copy
 from datetime import date, datetime, timedelta
 import gc
@@ -1066,6 +1071,89 @@ class DatasetTests(unittest.TestCase):
                 m3 < m4 for m3, m4 in zip(last_modified_at3, last_modified_at4)
             )
         )
+
+    @drop_datasets
+    def test_update_samples(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [fo.Sample(filepath="image%d.jpg" % i, int=i) for i in range(50)]
+        )
+
+        self.assertTupleEqual(dataset.bounds("int"), (0, 49))
+
+        def update_fcn(sample):
+            sample.int += 1
+
+        #
+        # Multiple workers
+        #
+
+        dataset.update_samples(
+            update_fcn,
+            workers=2,
+            batch_method="id",
+            parallelize_method="process",
+        )
+
+        self.assertTupleEqual(dataset.bounds("int"), (1, 50))
+
+        dataset.update_samples(
+            update_fcn,
+            workers=2,
+            batch_method="slice",
+            parallelize_method="process",
+        )
+
+        self.assertTupleEqual(dataset.bounds("int"), (2, 51))
+
+        #
+        # Main process
+        #
+
+        dataset.update_samples(
+            update_fcn, workers=1, parallelize_method="process"
+        )
+
+        self.assertTupleEqual(dataset.bounds("int"), (3, 52))
+
+    @drop_datasets
+    def test_map_samples(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image%d.jpg" % i, foo="bar")
+                for i in range(50)
+            ]
+        )
+
+        self.assertDictEqual(dataset.count_values("foo"), {"bar": 50})
+
+        def map_fcn(sample):
+            return sample.foo.upper()
+
+        #
+        # Multiple workers
+        #
+
+        counter = Counter()
+        for _, value in dataset.map_samples(
+            map_fcn, workers=2, parallelize_method="process"
+        ):
+            counter[value] += 1
+
+        self.assertDictEqual(dict(counter), {"BAR": 50})
+
+        #
+        # Main process
+        #
+
+        counter = Counter()
+        for _, value in dataset.map_samples(
+            map_fcn, workers=1, parallelize_method="process"
+        ):
+            counter[value] += 1
+
+        self.assertDictEqual(dict(counter), {"BAR": 50})
 
     @drop_datasets
     def test_date_fields(self):
