@@ -1378,6 +1378,8 @@ type Organization {
   name: String!
   displayName: String!
   pypiToken: String
+  roleReupgradeGracePeriod: Int
+  roleReupgradePeriod: Int
 }
 
 type OrganizationSettings {
