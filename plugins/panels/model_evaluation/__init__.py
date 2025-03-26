@@ -529,9 +529,9 @@ class EvaluationPanel(Panel):
                     }
                 )
         if update_store:
-            pending_evaluations_in_store[dataset_id] = (
-                updated_pending_evaluations_for_dataset_in_stored
-            )
+            pending_evaluations_in_store[
+                dataset_id
+            ] = updated_pending_evaluations_for_dataset_in_stored
             store.set("pending_evaluations", pending_evaluations_in_store)
         ctx.panel.set_data("pending_evaluations", pending_evaluations)
 
@@ -866,51 +866,6 @@ class EvaluationPanel(Panel):
                 scenario_data["subsets_data"]["All"] = subset_data
 
         if scenario_type == "view":
-            scenario_subsets = scenario.get("subsets", [])
-            for subset in scenario_subsets:
-                subset_def = dict(type="view", view=subset)
-                subset_data = self.get_subset_def_data(
-                    ctx, info, results, subset_def
-                )
-                scenario_data["subsets_data"][subset] = subset_data
-
-        return scenario_data
-
-    def load_scenario(self, ctx):
-        view_state = ctx.panel.get_state("view") or {}
-        eval_id = view_state.get("id")
-        scenario_id = str(ctx.params.get("id", "") or "")
-
-        if scenario_id:
-            scenario = self.get_scenario(ctx, eval_id, scenario_id)
-            scenario_data = self.get_scenario_data(ctx, scenario)
-            ctx.panel.set_data(f"scenario_{scenario_id}", scenario_data)
-
-    def get_subset_def_data(self, ctx, info, results, subset_def):
-        with results.use_subset(subset_def):
-            metrics = results.metrics()
-            per_class_metrics = self.get_per_class_metrics(info, results)
-            metrics["average_confidence"] = self.get_avg_confidence(
-                per_class_metrics
-            )
-            metrics["tp"], metrics["fp"], metrics["fn"] = self.get_tp_fp_fn(
-                info, results
-            )
-            metrics["mAP"] = self.get_map(results)
-            metrics["mAR"] = self.get_mar(results)
-            metrics["iou"] = self.get_avg_iou(per_class_metrics)
-            return metrics
-
-    def get_scenario_data(self, ctx, scenario):
-        view_state = ctx.panel.get_state("view") or {}
-        eval_key = view_state.get("key")
-        results = ctx.dataset.load_evaluation_results(eval_key)
-        info = ctx.dataset.get_evaluation_info(eval_key)
-        scenario_type = scenario.get("type", None)
-        scenario_data = scenario.copy()
-        scenario_data["subsets_data"] = {}
-
-        if scenario_type == "saved_views":
             scenario_subsets = scenario.get("subsets", [])
             for subset in scenario_subsets:
                 subset_def = dict(type="view", view=subset)
