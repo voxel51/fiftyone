@@ -168,7 +168,6 @@ const useExecutionContext = (operatorName, hooks = {}) => {
   const [analyticsInfo] = useAnalyticsInfo();
   const promptingOperator = useRecoilValue(promptingOperatorState);
   const promptId = promptingOperator?.id || null;
-  const sessionId = promptingOperator?.sessionId || operatorSessionId;
   const ctx = useMemo(() => {
     return new ExecutionContext(
       params,
@@ -188,7 +187,6 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         spaces,
         workspaceName,
         promptId,
-        sessionId,
       },
       hooks
     );
