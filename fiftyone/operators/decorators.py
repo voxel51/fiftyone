@@ -105,7 +105,7 @@ def execution_cache(
     store_name=None,
 ):
     """
-    Decorator for caching function results in the ExecutionStore.
+    Decorator for caching function results in an ``ExecutionStore``.
 
     The function must:
         - accept a `ctx` argument as the first parameter.
@@ -126,7 +126,7 @@ def execution_cache(
 
     Example Usage:
         # Standalone function with default caching
-        @execution_cache(ttl=60, store_name="query_cache")
+        @execution_cache
         def expensive_query(ctx, path):
             return ctx.dataset.count_values(path)
 
@@ -158,7 +158,7 @@ def execution_cache(
             dataset_id = ctx.dataset._doc.id if link_to_dataset else None
 
             # Store name
-            resolved_store_name = store_name or func.__name__
+            resolved_store_name = _resolve_store_name(ctx, func, store_name)
             if not isinstance(resolved_store_name, str):
                 raise ValueError("`store_name` must be a string if provided.")
 
@@ -197,10 +197,19 @@ def execution_cache(
     return decorator
 
 
+def _resolve_store_name(ctx, func, store_name=None):
+    if store_name is None:
+        return f"{ctx.operator_uri}#{func.__name__}"
+
+    return store_name
+
+
 def _get_ctx_from_args(args):
+    from fiftyone.operators import ExecutionContext
+
     ctx_index = -1
     for i, arg in enumerate(args):
-        if hasattr(arg, "dataset"):
+        if isinstance(arg, ExecutionContext):
             ctx_index = i
             break
     return args[ctx_index] if ctx_index >= 0 else None, ctx_index
