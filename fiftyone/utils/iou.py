@@ -681,16 +681,10 @@ def _compute_bbox_ious(
                 ious[i, j] = iou
                 if is_symmetric:
                     ious[j, i] = iou
-        # If a prediction has no intersection with a ground_truth,
-        # find the nearest and assign iou=0
+        # If a prediction has no intersection, we need to add it to the ious dict
+        # to account for it downstream
         if sparse and not ious.get(pred.id):
-            # pylint: disable=not-an-iterable
-            for nearest in rtree_index.nearest(box, 1):
-                gt = gts[nearest]
-                iou = 0
-                ious[pred.id].append((gt.id, iou))
-                if is_symmetric:
-                    ious[gt.id].append((pred.id, iou))
+            ious[pred.id] = []
     return ious
 
 

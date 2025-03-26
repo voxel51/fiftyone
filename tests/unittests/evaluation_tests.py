@@ -2024,8 +2024,11 @@ class CuboidTests(unittest.TestCase):
         ious = foui.compute_ious(dets1, dets2, sparse=True)
         result = next(iter(ious.values()), [])
 
-        _, actual_iou = result[0]
-        self.assertTrue(np.isclose(actual_iou, expected_iou))
+        if expected_iou == 0:
+            self.assertTrue(len(result) == 0)
+        else:
+            _, actual_iou = result[0]
+            self.assertTrue(np.isclose(actual_iou, expected_iou))
 
     @drop_datasets
     def test_non_overlapping_boxes(self):

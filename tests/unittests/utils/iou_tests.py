@@ -48,7 +48,7 @@ class ComputeIouTests(unittest.TestCase):
                 **eval_results
             ),
         ]
-        detection_with_intersection = str(ids[1])
+        detections_with_intersection = [str(ids[1]), str(ids[2])]
 
         results = compute_ious(
             preds, gt, iscrowd=iscrowd, classwise=classwise, sparse=sparse
@@ -56,8 +56,8 @@ class ComputeIouTests(unittest.TestCase):
 
         for pred in preds:
             assert pred.id in results
-            assert results[pred.id][0][0] == gt[0].id
-            if pred.id == detection_with_intersection:
-                assert results[pred.id][0][1] > 0.0
+            if pred.id in detections_with_intersection:
+                assert results[pred.id][0][0] == gt[0].id
+                assert results[pred.id][0][1] >= 0.0
             else:
-                assert results[pred.id][0][1] == 0.0
+                assert not results[pred.id]
