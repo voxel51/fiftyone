@@ -27,6 +27,7 @@ from fiftyone.core.expressions import VALUE
 import fiftyone.core.frame as fofr
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
+import fiftyone.core.materialize as foma
 import fiftyone.core.media as fom
 from fiftyone.core.odm.document import MongoEngineBaseDocument
 import fiftyone.core.sample as fos
@@ -5935,6 +5936,74 @@ class MatchTags(ViewStage):
         ]
 
 
+class Materialize(ViewStage):
+    """Materializes the current view into a temporary database collection.
+
+    Apply this stage to an expensive view (eg an unindexed filtering operation
+    on a large dataset) if you plan to perform multiple downstream operations
+    on the view.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        view = dataset.filter_labels("ground_truth", F("label") == "cat")
+
+        stage = fo.Materialize()
+        materialized_view = view.add_stage(stage)
+
+        print(view.count("ground_truth.detections"))
+        print(materialized_view.count("ground_truth.detections"))
+    """
+
+    def __init__(self, _state=None):
+        self._state = _state
+
+    @property
+    def has_view(self):
+        return True
+
+    def load_view(self, sample_collection):
+        state = {
+            "dataset": sample_collection.dataset_name,
+            "stages": sample_collection.view()._serialize(include_uuids=False),
+        }
+
+        last_state = deepcopy(self._state)
+        if last_state is not None:
+            name = last_state.pop("name", None)
+        else:
+            name = None
+
+        if state != last_state or not fod.dataset_exists(name):
+            materialized_dataset = foma.materialize_view(sample_collection)
+
+            # Other views may use the same generated dataset, so reuse the old
+            # name if possible
+            if name is not None and state == last_state:
+                materialized_dataset.name = name
+
+            state["name"] = materialized_dataset.name
+            self._state = state
+        else:
+            materialized_dataset = fod.load_dataset(name)
+
+        return foma.MaterializedView(
+            sample_collection, self, materialized_dataset
+        )
+
+    def _kwargs(self):
+        return [["_state", self._state]]
+
+    @classmethod
+    def _params(self):
+        return [{"name": "_state", "type": "NoneType|json", "default": "None"}]
+
+
 class Mongo(ViewStage):
     """A view stage defined by a raw MongoDB aggregation pipeline.
 
@@ -9034,6 +9103,7 @@ _STAGES = [
     MatchFrames,
     MatchLabels,
     MatchTags,
+    Materialize,
     Mongo,
     Select,
     SelectBy,

@@ -217,6 +217,7 @@ from .core.stages import (
     MatchFrames,
     MatchLabels,
     MatchTags,
+    Materialize,
     Mongo,
     Select,
     SelectBy,
