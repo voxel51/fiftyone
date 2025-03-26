@@ -41,4 +41,5 @@ export type ConcreteEvaluationType =
   | "classification"
   | "detection"
   | "segmentation"
-  | "regression";
+  | "regression"
+  | "scenario";

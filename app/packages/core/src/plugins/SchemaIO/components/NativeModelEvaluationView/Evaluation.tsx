@@ -40,6 +40,8 @@ import {
   Tooltip,
   Typography,
   useTheme,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import get from "lodash/get";
 import React, { useEffect, useMemo, useState } from "react";
@@ -58,10 +60,16 @@ import {
   getNumericDifference,
   useTriggerEvent,
 } from "./utils";
+import {
+  KEY_COLOR,
+  COMPARE_KEY_COLOR,
+  COMPARE_KEY_SECONDARY_COLOR,
+  tabStyles,
+} from "./styles";
+import Overview from "./tabs/Overview";
+import ScenarioAnalysis from "./tabs/ScenarioAnalysis";
+import ExecutionInfo from "./tabs/ExecutionInfo";
 
-const KEY_COLOR = "#ff6d04";
-const COMPARE_KEY_COLOR = "#03a9f4";
-const COMPARE_KEY_SECONDARY_COLOR = "#87D2FA";
 const DEFAULT_BAR_CONFIG = { sortBy: "default" };
 const NONE_CLASS = "(none)";
 
@@ -86,50 +94,44 @@ export default function Evaluation(props: EvaluationProps) {
   const [expanded, setExpanded] = React.useState("summary");
   const [mode, setMode] = useState("chart");
   const [editNoteState, setEditNoteState] = useState({ open: false, note: "" });
-  const [
-    classPerformanceConfig,
-    setClassPerformanceConfig,
-  ] = useState<PLOT_CONFIG_TYPE>({});
-  const [
-    classPerformanceDialogConfig,
-    setClassPerformanceDialogConfig,
-  ] = useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
-  const [
-    confusionMatrixConfig,
-    setConfusionMatrixConfig,
-  ] = useState<PLOT_CONFIG_TYPE>({ log: true });
-  const [
-    confusionMatrixDialogConfig,
-    setConfusionMatrixDialogConfig,
-  ] = useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
+  const [classPerformanceConfig, setClassPerformanceConfig] =
+    useState<PLOT_CONFIG_TYPE>({});
+  const [classPerformanceDialogConfig, setClassPerformanceDialogConfig] =
+    useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
+  const [confusionMatrixConfig, setConfusionMatrixConfig] =
+    useState<PLOT_CONFIG_TYPE>({ log: true });
+  const [confusionMatrixDialogConfig, setConfusionMatrixDialogConfig] =
+    useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
   const [metricMode, setMetricMode] = useState("chart");
   const [classMode, setClassMode] = useState("chart");
   const [performanceClass, setPerformanceClass] = useState("precision");
   const [loadingCompare, setLoadingCompare] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+
   const evaluation = useMemo(() => {
-    const evaluation = data?.[`evaluation_${name}`];
-    return evaluation;
+    return data?.[`evaluation_${name}`];
   }, [data]);
 
   const compareEvaluation = useMemo(() => {
-    const evaluation = data?.[`evaluation_${compareKey}`];
-    return evaluation;
+    return data?.[`evaluation_${compareKey}`];
   }, [data]);
+
   const evaluationError = useMemo(() => {
-    const evaluation = data?.[`evaluation_${name}_error`];
-    return evaluation;
+    return data?.[`evaluation_${name}_error`];
   }, [data]);
 
   const compareEvaluationError = useMemo(() => {
-    const evaluation = data?.[`evaluation_${compareKey}_error`];
-    return evaluation;
+    return data?.[`evaluation_${compareKey}_error`];
   }, [data]);
+
   const evaluationMaskTargets = useMemo(() => {
     return evaluation?.mask_targets || {};
   }, [evaluation]);
+
   const compareEvaluationMaskTargets = useMemo(() => {
     return compareEvaluation?.mask_targets || {};
   }, [compareEvaluation]);
+
   const confusionMatrix = useMemo(() => {
     return getMatrix(
       evaluation?.confusion_matrices,
@@ -137,6 +139,7 @@ export default function Evaluation(props: EvaluationProps) {
       evaluationMaskTargets
     );
   }, [evaluation, confusionMatrixConfig, evaluationMaskTargets]);
+
   const compareConfusionMatrix = useMemo(() => {
     return getMatrix(
       compareEvaluation?.confusion_matrices,
@@ -168,9 +171,11 @@ export default function Evaluation(props: EvaluationProps) {
   const status = useMemo(() => {
     return statuses[id];
   }, [statuses, id]);
+
   const evaluationNotes = useMemo(() => {
     return notes[id];
   }, [notes, id]);
+
   const { can_edit_note, can_edit_status } = data?.permissions || {};
 
   useEffect(() => {
@@ -193,9 +198,11 @@ export default function Evaluation(props: EvaluationProps) {
   const closeNoteDialog = () => {
     setEditNoteState((note) => ({ ...note, open: false }));
   };
+
   const closeClassPerformanceConfigDialog = () => {
     setClassPerformanceDialogConfig((state) => ({ ...state, open: false }));
   };
+
   const closeConfusionMatrixConfigDialog = () => {
     setConfusionMatrixDialogConfig((state) => ({ ...state, open: false }));
   };
@@ -219,340 +226,21 @@ export default function Evaluation(props: EvaluationProps) {
     );
   }
 
-  const evaluationInfo = evaluation.info;
-  const evaluationKey = evaluationInfo.key;
-  const evaluationTimestamp = evaluationInfo.timestamp;
-  const evaluationConfig = evaluationInfo.config;
-  const evaluationMetrics = evaluation.metrics;
-  const evaluationType = evaluationConfig.type;
-  const evaluationMethod = evaluationConfig.method;
-  const compareEvaluationInfo = compareEvaluation?.info || {};
-  const compareEvaluationKey = compareEvaluationInfo?.key;
-  const compareEvaluationTimestamp = compareEvaluationInfo?.timestamp;
-  const compareEvaluationConfig = compareEvaluationInfo?.config || {};
-  const compareEvaluationMetrics = compareEvaluation?.metrics || {};
-  const compareEvaluationType = compareEvaluationConfig.type;
-  const isObjectDetection = evaluationType === "detection";
-  const isClassification = evaluationType === "classification";
-  const isSegmentation = evaluationType === "segmentation";
-  const isBinaryClassification =
-    evaluationType === "classification" && evaluationMethod === "binary";
-  const showTpFpFn = isObjectDetection || isBinaryClassification;
-  const isNoneBinaryClassification =
-    isClassification && evaluationMethod !== "binary";
-  const infoRows = [
-    {
-      id: "evaluation_key",
-      property: "Evaluation Key",
-      value: evaluationKey,
-      compareValue: compareEvaluationKey,
-    },
-    {
-      id: "type",
-      property: "Type",
-      value: evaluationType,
-      compareValue: compareEvaluationType,
-    },
-    {
-      id: "method",
-      property: "Method",
-      value: evaluationConfig.method,
-      compareValue: compareEvaluationConfig.method,
-    },
-    {
-      id: "cls",
-      property: "Classes",
-      value: evaluationConfig.cls,
-      compareValue: compareEvaluationConfig.cls,
-    },
-    {
-      id: "pf",
-      property: "Prediction Field",
-      value: evaluationConfig.pred_field,
-      compareValue: compareEvaluationConfig.pred_field,
-    },
-    {
-      id: "gtf",
-      property: "Ground Truth Field",
-      value: evaluationConfig.gt_field,
-      compareValue: compareEvaluationConfig.gt_field,
-    },
-    {
-      id: "map",
-      property: "mAP Computed",
-      value: Boolean(evaluationConfig.compute_mAP).toString(),
-      compareValue: Boolean(compareEvaluationConfig.compute_mAP).toString(),
-    },
-    {
-      id: "iou",
-      property: "IoU Threshold",
-      value: evaluationConfig.iou,
-      compareValue: compareEvaluationConfig.iou,
-      hide: !isObjectDetection,
-    },
-    {
-      id: "classwise",
-      property: "Classwise",
-      value: Boolean(evaluationConfig.classwise).toString(),
-      compareValue: Boolean(compareEvaluationConfig.classwise).toString(),
-    },
-    {
-      id: "iscrowd",
-      property: "IsCrowd",
-      value: Boolean(evaluationConfig.iscrowd).toString(),
-      compareValue: Boolean(compareEvaluationConfig.iscrowd).toString(),
-    },
-    {
-      id: "use_masks",
-      property: "Use Masks",
-      value: Boolean(evaluationConfig.use_masks).toString(),
-      compareValue: Boolean(compareEvaluationConfig.use_masks).toString(),
-    },
-    {
-      id: "use_boxes",
-      property: "Use Boxes",
-      value: Boolean(evaluationConfig.use_boxes).toString(),
-      compareValue: Boolean(compareEvaluationConfig.use_boxes).toString(),
-    },
-    {
-      id: "tolerance",
-      property: "Tolerance",
-      value: evaluationConfig.tolerance,
-      compareValue: compareEvaluationConfig.tolerance,
-    },
-    {
-      id: "iou_threshs",
-      property: "IoU Thresholds",
-      value: Array.isArray(evaluationConfig.iou_threshs)
-        ? evaluationConfig.iou_threshs.join(", ")
-        : "",
-      compareValue: Array.isArray(compareEvaluationConfig.iou_threshs)
-        ? compareEvaluationConfig.iou_threshs.join(", ")
-        : "",
-      hide: !isObjectDetection,
-    },
-    {
-      id: "max_preds",
-      property: "Max Predictions",
-      value: evaluationConfig.max_preds,
-      compareValue: compareEvaluationConfig.max_preds,
-    },
-    {
-      id: "error_level",
-      property: "Error Level",
-      value: evaluationConfig.error_level,
-      compareValue: compareEvaluationConfig.error_level,
-    },
-    {
-      id: "timestamp",
-      property: "Creation Time",
-      value: evaluationTimestamp?.$date || evaluationTimestamp,
-      compareValue:
-        compareEvaluationTimestamp?.$date || compareEvaluationTimestamp,
-    },
-    {
-      id: "version",
-      property: "Version",
-      value: evaluationInfo.version,
-      compareValue: compareEvaluationInfo.version,
-    },
-  ];
-  const metricPerformance = [
-    {
-      id: "average_confidence",
-      property: "Average Confidence",
-      value: evaluationMetrics.average_confidence,
-      compareValue: compareEvaluationMetrics.average_confidence,
-      hide: isSegmentation,
-    },
-    {
-      id: "iou",
-      property: "IoU Threshold",
-      value: evaluationConfig.iou,
-      compareValue: compareEvaluationConfig.iou,
-      hide: !isObjectDetection,
-    },
-    {
-      id: "precision",
-      property: "Precision",
-      value: evaluationMetrics.precision,
-      compareValue: compareEvaluationMetrics.precision,
-    },
-    {
-      id: "recall",
-      property: "Recall",
-      value: evaluationMetrics.recall,
-      compareValue: compareEvaluationMetrics.recall,
-    },
-    {
-      id: "fscore",
-      property: "F1-Score",
-      value: evaluationMetrics.fscore,
-      compareValue: compareEvaluationMetrics.fscore,
-    },
-  ];
-  const computedMetricPerformance = metricPerformance.filter((m) => !m.hide);
-  const summaryRows = [
-    {
-      id: "average_confidence",
-      property: "Average Confidence",
-      value: evaluationMetrics.average_confidence,
-      compareValue: compareEvaluationMetrics.average_confidence,
-      hide: isSegmentation,
-    },
-    {
-      id: "support",
-      property: "Support",
-      value: evaluationMetrics.support,
-      compareValue: compareEvaluationMetrics.support,
-    },
-    {
-      id: "accuracy",
-      property: "Accuracy",
-      value: evaluationMetrics.accuracy,
-      compareValue: compareEvaluationMetrics.accuracy,
-    },
-    {
-      id: "iou",
-      property: "IoU Threshold",
-      value: evaluationConfig.iou,
-      compareValue: compareEvaluationConfig.iou,
-      hide: !isObjectDetection,
-    },
-    {
-      id: "precision",
-      property: "Precision",
-      value: evaluationMetrics.precision,
-      compareValue: compareEvaluationMetrics.precision,
-    },
-    {
-      id: "recall",
-      property: "Recall",
-      value: evaluationMetrics.recall,
-      compareValue: compareEvaluationMetrics.recall,
-    },
-    {
-      id: "fscore",
-      property: "F1-Score",
-      value: evaluationMetrics.fscore,
-      compareValue: compareEvaluationMetrics.fscore,
-    },
-    {
-      id: "mAP",
-      property: "mAP",
-      value: evaluationMetrics.mAP,
-      compareValue: compareEvaluationMetrics.mAP,
-      hide: !isObjectDetection,
-    },
-    {
-      id: "mAR",
-      property: "mAR",
-      value: evaluationMetrics.mAR,
-      compareValue: compareEvaluationMetrics.mAR,
-      hide: !isObjectDetection,
-    },
-    {
-      id: "tp",
-      property: "True Positives",
-      value: evaluationMetrics.tp,
-      compareValue: compareEvaluationMetrics.tp,
-      filterable: true,
-      active:
-        activeFilter?.value === "tp"
-          ? activeFilter.isCompare
-            ? "compare"
-            : "selected"
-          : false,
-      hide: !showTpFpFn,
-    },
-    {
-      id: "fp",
-      property: "False Positives",
-      value: evaluationMetrics.fp,
-      compareValue: compareEvaluationMetrics.fp,
-      lesserIsBetter: true,
-      filterable: true,
-      active:
-        activeFilter?.value === "fp"
-          ? activeFilter.isCompare
-            ? "compare"
-            : "selected"
-          : false,
-      hide: !showTpFpFn,
-    },
-    {
-      id: "fn",
-      property: "False Negatives",
-      value: evaluationMetrics.fn,
-      compareValue: compareEvaluationMetrics.fn,
-      lesserIsBetter: true,
-      filterable: true,
-      active:
-        activeFilter?.value === "fn"
-          ? activeFilter.isCompare
-            ? "compare"
-            : "selected"
-          : false,
-      hide: !showTpFpFn,
-    },
-    {
-      id: true,
-      property: "Correct",
-      value: evaluationMetrics.num_correct,
-      compareValue: compareEvaluationMetrics.num_correct,
-      lesserIsBetter: false,
-      filterable: true,
-      hide: !isNoneBinaryClassification,
-    },
-    {
-      id: false,
-      property: "Incorrect",
-      value: evaluationMetrics.num_incorrect,
-      compareValue: compareEvaluationMetrics.num_incorrect,
-      lesserIsBetter: false,
-      filterable: true,
-      hide: !isNoneBinaryClassification,
-    },
-    ...formatCustomMetricRows(evaluation, compareEvaluation),
-  ];
-
-  const perClassPerformance = {};
-  for (const key in evaluation?.per_class_metrics) {
-    if (EXCLUDED_CLASSES.includes(key)) continue;
-    const metrics = evaluation?.per_class_metrics[key];
-    const compareMetrics = compareEvaluation?.per_class_metrics[key] || {};
-    for (const metric in metrics) {
-      if (!CLASSES.includes(metric)) continue;
-      if (!perClassPerformance[metric]) {
-        perClassPerformance[metric] = [];
-      }
-      const maskTarget = evaluationMaskTargets?.[key];
-      const compareMaskTarget = compareEvaluationMaskTargets?.[key];
-      perClassPerformance[metric].push({
-        id: key,
-        property: maskTarget || key,
-        compareProperty: compareMaskTarget || maskTarget || key,
-        value: metrics[metric],
-        compareValue: compareMetrics[metric],
-      });
-    }
-  }
-  const performanceClasses = Object.keys(perClassPerformance);
-  const classPerformance = formatPerClassPerformance(
-    perClassPerformance[performanceClass],
-    classPerformanceConfig
-  );
-  const selectedPoints =
-    activeFilter?.type === "label"
-      ? [classPerformance.findIndex((c) => c.id === activeFilter.value)]
-      : undefined;
-
-  const labels = ["Accuracy", "F-score", "Precision", "Recall", "Support"];
-
   return (
     <Stack spacing={2} sx={{ p: 2 }}>
       <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-        <Stack direction="row" spacing={0} sx={{ alignItems: "center" }}>
+        <Stack
+          id="evaluation-header"
+          direction="row"
+          spacing={2}
+          sx={{
+            alignItems: "center",
+            flex: 1,
+            "& > *": {
+              marginLeft: "0px !important",
+            },
+          }}
+        >
           <IconButton
             onClick={() => {
               navigateBack();
@@ -561,14 +249,137 @@ export default function Evaluation(props: EvaluationProps) {
           >
             <ArrowBack />
           </IconButton>
-          <EvaluationIcon type={evaluationType} method={evaluationMethod} />
-          <EditableLabel
-            label={name}
-            onSave={(newLabel) => {
-              onRename(name, newLabel);
+
+          {/* First evaluation section */}
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <EvaluationIcon
+              type={evaluation.info.config.type}
+              method={evaluation.info.config.method}
+            />
+            <EditableLabel
+              label={name}
+              onSave={(newLabel) => {
+                onRename(name, newLabel);
+              }}
+              onCancel={() => {}}
+            />
+          </Stack>
+
+          {/* VS text */}
+          <Typography
+            variant="body2"
+            sx={{
+              color: (theme) => theme.palette.text.secondary,
+              px: 1,
             }}
-          />
+          >
+            vs
+          </Typography>
+
+          {/* Compare dropdown section */}
+          <Stack sx={{ minWidth: 225 }}>
+            {compareKeys.length === 0 ? (
+              <Typography
+                variant="body2"
+                sx={{ color: (theme) => theme.palette.text.secondary }}
+              >
+                You need at least one more evaluation to compare.
+              </Typography>
+            ) : (
+              <Select
+                key={compareKey}
+                sx={{
+                  height: 40,
+                  width: "100%",
+                  minWidth: 225,
+                  background: theme.palette.background.paper,
+                  "& .MuiOutlinedInput-input": {
+                    display: "flex",
+                    alignItems: "center",
+                  },
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    border: "none",
+                  },
+                  "&:hover .MuiOutlinedInput-notchedOutline": {
+                    border: "none",
+                  },
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    border: "none",
+                  },
+                }}
+                defaultValue={compareKey}
+                displayEmpty
+                placeholder="Select a comparison"
+                renderValue={(selected) => {
+                  if (!selected) {
+                    return (
+                      <Typography sx={{ color: "text.secondary" }}>
+                        Select a comparison
+                      </Typography>
+                    );
+                  }
+                  return selected;
+                }}
+                onChange={(e) => {
+                  setLoadingCompare(false);
+                  onChangeCompareKey(e.target.value as string);
+                }}
+                endAdornment={
+                  compareKey ? (
+                    <IconButton
+                      sx={{ mr: 1 }}
+                      onClick={() => {
+                        onChangeCompareKey("");
+                      }}
+                    >
+                      <Close />
+                    </IconButton>
+                  ) : null
+                }
+              >
+                {compareKeys.map(
+                  ({ key, type, method, disabled, tooltip, tooltipBody }) => {
+                    const menuItem = (
+                      <MenuItem
+                        value={key}
+                        key={key}
+                        sx={{ p: 0 }}
+                        disabled={disabled}
+                      >
+                        <EvaluationIcon
+                          type={type as ConcreteEvaluationType}
+                          method={method}
+                          color={COMPARE_KEY_SECONDARY_COLOR}
+                        />
+                        <Typography>{key}</Typography>
+                      </MenuItem>
+                    );
+                    return disabled ? (
+                      <Tooltip
+                        key={key}
+                        title={
+                          <>
+                            <Typography variant="subtitle1">
+                              {tooltip}
+                            </Typography>
+                            <Typography variant="body2">
+                              {tooltipBody}
+                            </Typography>
+                          </>
+                        }
+                      >
+                        <span>{menuItem}</span>
+                      </Tooltip>
+                    ) : (
+                      menuItem
+                    );
+                  }
+                )}
+              </Select>
+            )}
+          </Stack>
         </Stack>
+
         <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
           <Status
             setStatusEvent={setStatusEvent}
@@ -594,951 +405,58 @@ export default function Evaluation(props: EvaluationProps) {
         </Stack>
       </Stack>
 
-      <Stack direction="row" spacing={1} sx={{ pb: 1 }}>
-        <Stack sx={{ width: "50%" }} spacing={0.5}>
-          <Typography color="secondary">Prediction set</Typography>
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{
-              alignItems: "center",
-              background: theme.palette.background.card,
-              p: "3px",
-              borderRadius: 0.5,
-              pl: 1.5,
-              border: "1px solid",
-              borderColor: theme.palette.divider,
-            }}
-          >
-            <EvaluationIcon
-              type={evaluationType as ConcreteEvaluationType}
-              method={evaluationMethod}
-            />
-            <Typography>{evaluationKey}</Typography>
-          </Stack>
-        </Stack>
-        <Stack sx={{ width: "50%" }} spacing={0.5}>
-          <Stack direction="row" spacing={1}>
-            <Typography color="secondary">Compare against</Typography>
-            {compareEvaluationError && (
-              <Typography sx={{ color: theme.palette.error.main }}>
-                Unsupported model evaluation type
-              </Typography>
-            )}
-          </Stack>
-          {compareKeys.length === 0 ? (
-            <Typography
-              variant="body2"
-              sx={{ color: (theme) => theme.palette.text.tertiary }}
-            >
-              You need at least one more evaluation to compare.
-            </Typography>
-          ) : (
-            <Select
-              key={compareKey}
-              sx={{
-                height: 40,
-                width: "100%",
-                background: theme.palette.background.card,
-                "& .MuiOutlinedInput-input": {
-                  display: "flex",
-                  alignItems: "center",
-                },
-              }}
-              defaultValue={compareKey}
-              onChange={(e) => {
-                setLoadingCompare(false);
-                onChangeCompareKey(e.target.value as string);
-              }}
-              endAdornment={
-                compareKey ? (
-                  <IconButton
-                    sx={{ mr: 1 }}
-                    onClick={() => {
-                      onChangeCompareKey("");
-                    }}
-                  >
-                    <Close />
-                  </IconButton>
-                ) : null
-              }
-            >
-              {compareKeys.map(
-                ({ key, type, method, disabled, tooltip, tooltipBody }) => {
-                  const menuItem = (
-                    <MenuItem
-                      value={key}
-                      key={key}
-                      sx={{ p: 0 }}
-                      disabled={disabled}
-                    >
-                      <EvaluationIcon
-                        type={type as ConcreteEvaluationType}
-                        method={method}
-                        color={COMPARE_KEY_SECONDARY_COLOR}
-                      />
-                      <Typography>{key}</Typography>
-                    </MenuItem>
-                  );
-                  return disabled ? (
-                    <Tooltip
-                      key={key}
-                      title={
-                        <>
-                          <Typography variant="subtitle1">{tooltip}</Typography>
-                          <Typography variant="body2">{tooltipBody}</Typography>
-                        </>
-                      }
-                    >
-                      <span>{menuItem}</span>
-                    </Tooltip>
-                  ) : (
-                    menuItem
-                  );
-                }
-              )}
-            </Select>
-          )}
-        </Stack>
-      </Stack>
-      <Card sx={{ p: 2 }}>
-        <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-          <Typography color="secondary">Evaluation notes</Typography>
-          <Box
-            title={
-              can_edit_note
-                ? ""
-                : "You do not have permission to edit evaluation notes"
-            }
-            sx={{ cursor: can_edit_note ? "pointer" : "not-allowed" }}
-          >
-            <IconButton
-              size="small"
-              color="secondary"
-              sx={{ borderRadius: 16 }}
-              onClick={() => {
-                setEditNoteState((note) => ({ ...note, open: true }));
-              }}
-              disabled={!can_edit_note}
-            >
-              <EditNote />
-            </IconButton>
-          </Box>
-        </Stack>
-        <EvaluationNotes notes={evaluationNotes} variant="details" />
-      </Card>
-      {mode === "chart" && (
-        <Stack spacing={1}>
-          <Accordion
-            expanded={expanded === "summary"}
-            onChange={(e, expanded) => {
-              setExpanded(expanded ? "summary" : "");
-            }}
-            disableGutters
-            sx={{ borderRadius: 1, "&::before": { display: "none" } }}
-          >
-            <AccordionSummary expandIcon={<ExpandMore />}>
-              Summary
-            </AccordionSummary>
-            <AccordionDetails>
-              <EvaluationTable>
-                <TableHead>
-                  <TableRow
-                    sx={{
-                      "th p": {
-                        color: (theme) => theme.palette.text.secondary,
-                        fontSize: "1rem",
-                        fontWeight: 600,
-                      },
-                    }}
-                  >
-                    <TableCell>
-                      <Typography>Metric</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Stack
-                        direction="row"
-                        spacing={1}
-                        sx={{ alignItems: "center" }}
-                      >
-                        <ColorSquare color={KEY_COLOR} />
-                        <Typography>{name}</Typography>
-                      </Stack>
-                    </TableCell>
-                    {compareKey && (
-                      <>
-                        <TableCell>
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            sx={{ alignItems: "center" }}
-                          >
-                            <ColorSquare color={COMPARE_KEY_COLOR} />
-                            <Typography>{compareKey}</Typography>
-                          </Stack>
-                        </TableCell>
-                        <TableCell>
-                          <Typography>Difference</Typography>
-                        </TableCell>
-                      </>
-                    )}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {summaryRows.map((row) => {
-                    const {
-                      property,
-                      value,
-                      compareValue,
-                      lesserIsBetter,
-                      filterable,
-                      id: rowId,
-                      active,
-                      hide,
-                    } = row;
-                    if (hide) return null;
-                    const difference = getNumericDifference(
-                      value,
-                      compareValue
-                    );
-                    const ratio = getNumericDifference(
-                      value,
-                      compareValue,
-                      true,
-                      1
-                    );
-                    const positiveRatio = ratio > 0;
-                    const zeroRatio = ratio === 0;
-                    const negativeRatio = ratio < 0;
-                    const ratioColor = positiveRatio
-                      ? "#8BC18D"
-                      : negativeRatio
-                      ? "#FF6464"
-                      : theme.palette.text.tertiary;
-                    const showTrophy = lesserIsBetter
-                      ? difference < 0
-                      : difference > 0;
-                    const activeStyle: SxProps = {
-                      backgroundColor: theme.palette.voxel["500"],
-                      color: "#FFFFFF",
-                    };
+      {/* Tab navigation */}
+      <Box sx={tabStyles.container}>
+        <Tabs
+          value={activeTab}
+          onChange={(e, newValue) => setActiveTab(newValue)}
+          TabIndicatorProps={{
+            style: { display: "none" },
+          }}
+          sx={tabStyles.tabs}
+        >
+          <Tab label="Overview" value="overview" />
+          <Tab label="Scenario Analysis" value="scenario" />
+          <Tab label="Execution Info" value="execution" />
+        </Tabs>
+      </Box>
 
-                    return (
-                      <TableRow key={rowId}>
-                        <TableCell component="th" scope="row">
-                          {property}
-                        </TableCell>
-                        <TableCell>
-                          <Stack
-                            direction="row"
-                            sx={{
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                            }}
-                          >
-                            <Typography>
-                              {value ? (
-                                formatValue(value)
-                              ) : (
-                                <Typography color="text.tertiary">—</Typography>
-                              )}
-                            </Typography>
-                            <Stack direction="row" spacing={1}>
-                              {showTrophy && (
-                                <Typography sx={{ fontSize: 12 }}>
-                                  🏆
-                                </Typography>
-                              )}
-                              {filterable && (
-                                <IconButton
-                                  sx={{
-                                    p: 0.25,
-                                    borderRadius: 0.5,
-                                    ...(active === "selected"
-                                      ? activeStyle
-                                      : {}),
-                                  }}
-                                  onClick={() => {
-                                    loadView("field", { field: rowId });
-                                  }}
-                                  title="Load view"
-                                >
-                                  <GridView sx={{ fontSize: 14 }} />
-                                </IconButton>
-                              )}
-                            </Stack>
-                          </Stack>
-                        </TableCell>
-                        {compareKey && (
-                          <>
-                            <TableCell>
-                              <Stack
-                                direction="row"
-                                spacing={1}
-                                sx={{ justifyContent: "space-between" }}
-                              >
-                                <Typography>
-                                  {compareValue ? (
-                                    formatValue(compareValue)
-                                  ) : (
-                                    <Typography color="text.tertiary">
-                                      —
-                                    </Typography>
-                                  )}
-                                </Typography>
+      {/* Tab content */}
+      {activeTab === "overview" && (
+        <Overview
+          mode={mode}
+          expanded={expanded}
+          setExpanded={setExpanded}
+          evaluationNotes={evaluationNotes}
+          can_edit_note={can_edit_note}
+          setEditNoteState={setEditNoteState}
+          evaluation={evaluation}
+          compareKey={compareKey}
+          name={name}
+          compareEvaluation={compareEvaluation}
+          activeFilter={activeFilter}
+          loadView={loadView}
+          setNoteEvent={setNoteEvent}
+          triggerEvent={triggerEvent}
+          closeNoteDialog={closeNoteDialog}
+          editNoteState={editNoteState}
+          KEY_COLOR={KEY_COLOR}
+          COMPARE_KEY_COLOR={COMPARE_KEY_COLOR}
+        />
+      )}
 
-                                {filterable && (
-                                  <IconButton
-                                    sx={{
-                                      p: 0.25,
-                                      borderRadius: 0.5,
-                                      ...(active === "compare"
-                                        ? activeStyle
-                                        : {}),
-                                    }}
-                                    onClick={() => {
-                                      loadView("field", {
-                                        field: rowId,
-                                        key: compareKey,
-                                      });
-                                    }}
-                                    title="Load view"
-                                  >
-                                    <GridView sx={{ fontSize: 16 }} />
-                                  </IconButton>
-                                )}
-                              </Stack>
-                            </TableCell>
-                            <TableCell>
-                              <Stack
-                                direction="row"
-                                sx={{ justifyContent: "space-between" }}
-                              >
-                                <Typography>{difference}</Typography>
-                                {!isNaN(ratio) && (
-                                  <Stack
-                                    direction="row"
-                                    sx={{ alignItems: "center" }}
-                                  >
-                                    {positiveRatio && (
-                                      <ArrowDropUp sx={{ color: ratioColor }} />
-                                    )}
-                                    {negativeRatio && (
-                                      <ArrowDropDown
-                                        sx={{ color: ratioColor }}
-                                      />
-                                    )}
-                                    {zeroRatio && (
-                                      <Typography
-                                        pr={1}
-                                        sx={{ color: ratioColor }}
-                                      >
-                                        —
-                                      </Typography>
-                                    )}
-                                    <Typography
-                                      sx={{
-                                        fontSize: "12px",
-                                        color: ratioColor,
-                                      }}
-                                    >
-                                      {ratio}%
-                                    </Typography>
-                                  </Stack>
-                                )}
-                              </Stack>
-                            </TableCell>
-                          </>
-                        )}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </EvaluationTable>
-            </AccordionDetails>
-          </Accordion>
-          <Accordion
-            expanded={expanded === "metric"}
-            onChange={(e, expanded) => {
-              setExpanded(expanded ? "metric" : "");
-            }}
-            disableGutters
-            sx={{ borderRadius: 1, "&::before": { display: "none" } }}
-          >
-            <AccordionSummary expandIcon={<ExpandMore />}>
-              Metric Performance
-            </AccordionSummary>
-            <AccordionDetails>
-              <Stack spacing={1}>
-                <Stack alignItems="flex-end">
-                  <ToggleButtonGroup
-                    exclusive
-                    value={metricMode}
-                    onChange={(e, mode) => {
-                      if (mode) setMetricMode(mode);
-                    }}
-                    sx={{ height: "28px" }}
-                  >
-                    <ToggleButton value="chart">
-                      <InsertChart />
-                    </ToggleButton>
-                    <ToggleButton value="table">
-                      <TableRows />
-                    </ToggleButton>
-                  </ToggleButtonGroup>
-                </Stack>
-                {metricMode === "chart" && (
-                  <EvaluationPlot
-                    data={[
-                      {
-                        histfunc: "sum",
-                        y: computedMetricPerformance.map((m) => m.value),
-                        x: computedMetricPerformance.map((m) => m.property),
-                        type: "histogram",
-                        name: name,
-                        marker: {
-                          color: KEY_COLOR,
-                        },
-                      },
-                      {
-                        histfunc: "sum",
-                        y: computedMetricPerformance.map((m) => m.compareValue),
-                        x: computedMetricPerformance.map((m) => m.property),
-                        type: "histogram",
-                        name: compareKey,
-                        marker: {
-                          color: COMPARE_KEY_COLOR,
-                        },
-                      },
-                    ]}
-                  />
-                )}
-                {metricMode === "table" && (
-                  <EvaluationTable>
-                    <TableHead>
-                      <TableRow
-                        sx={{
-                          "th p": {
-                            color: (theme) => theme.palette.text.secondary,
-                            fontSize: "1rem",
-                            fontWeight: 600,
-                          },
-                        }}
-                      >
-                        <TableCell>
-                          <Typography>Metric</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            sx={{ alignItems: "center" }}
-                          >
-                            <ColorSquare color={KEY_COLOR} />
-                            <Typography>{name}</Typography>
-                          </Stack>
-                        </TableCell>
-                        {compareKey && (
-                          <>
-                            <TableCell>
-                              <Stack
-                                direction="row"
-                                spacing={1}
-                                sx={{ alignItems: "center" }}
-                              >
-                                <ColorSquare color={COMPARE_KEY_COLOR} />
-                                <Typography>{compareKey}</Typography>
-                              </Stack>
-                            </TableCell>
-                            <TableCell>
-                              <Typography>Difference</Typography>
-                            </TableCell>
-                          </>
-                        )}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {computedMetricPerformance.map((row) => (
-                        <TableRow key={row.id}>
-                          <TableCell component="th" scope="row">
-                            {row.property}
-                          </TableCell>
-                          <TableCell>{formatValue(row.value)}</TableCell>
-                          {compareKey && (
-                            <>
-                              <TableCell>
-                                {formatValue(row.compareValue)}
-                              </TableCell>
-                              <TableCell>
-                                {getNumericDifference(
-                                  row.value,
-                                  row.compareValue
-                                )}
-                              </TableCell>
-                            </>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </EvaluationTable>
-                )}
-              </Stack>
-            </AccordionDetails>
-          </Accordion>
-          <Accordion
-            expanded={expanded === "class"}
-            onChange={(e, expanded) => {
-              setExpanded(expanded ? "class" : "");
-            }}
-            disableGutters
-            sx={{ borderRadius: 1, "&::before": { display: "none" } }}
-          >
-            <AccordionSummary expandIcon={<ExpandMore />}>
-              Class Performance
-            </AccordionSummary>
-            <AccordionDetails>
-              <Stack spacing={1}>
-                <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                  <Typography color="secondary">
-                    {CLASS_LABELS[performanceClass]} Per Class
-                    {getConfigLabel({
-                      config: classPerformanceConfig,
-                      type: "classPerformance",
-                      dashed: true,
-                    })}
-                  </Typography>
-                  <Stack
-                    alignItems="flex-end"
-                    direction="row"
-                    spacing={1}
-                    sx={{ alignItems: "center" }}
-                  >
-                    <ToggleButtonGroup
-                      exclusive
-                      value={classMode}
-                      onChange={(e, mode) => {
-                        if (mode) setClassMode(mode);
-                      }}
-                      sx={{ height: "28px" }}
-                    >
-                      <ToggleButton value="chart">
-                        <InsertChart />
-                      </ToggleButton>
-                      <ToggleButton value="table">
-                        <TableRows />
-                      </ToggleButton>
-                    </ToggleButtonGroup>
-                    <Select
-                      value={performanceClass}
-                      size="small"
-                      sx={{ height: 28 }}
-                      onChange={(e) => {
-                        setPerformanceClass(e.target.value as string);
-                      }}
-                    >
-                      {performanceClasses.map((cls) => {
-                        return (
-                          <MenuItem key={cls} value={cls}>
-                            {CLASS_LABELS[cls]}
-                          </MenuItem>
-                        );
-                      })}
-                    </Select>
-                    <IconButton
-                      onClick={() => {
-                        setClassPerformanceDialogConfig((state) => ({
-                          ...state,
-                          open: true,
-                        }));
-                      }}
-                    >
-                      <Settings />
-                    </IconButton>
-                  </Stack>
-                </Stack>
-                {classMode === "chart" && (
-                  <EvaluationPlot
-                    data={[
-                      {
-                        histfunc: "sum",
-                        y: classPerformance.map((metrics) => metrics.value),
-                        x: classPerformance.map((metrics) => metrics.property),
-                        type: "histogram",
-                        name: `${CLASS_LABELS[performanceClass]} per class`,
-                        marker: {
-                          color: KEY_COLOR,
-                        },
-                        key: name,
-                        selectedpoints: selectedPoints,
-                      },
-                      {
-                        histfunc: "sum",
-                        y: classPerformance.map(
-                          (metrics) => metrics.compareValue
-                        ),
-                        x: classPerformance.map(
-                          (metrics) =>
-                            metrics.compareProperty || metrics.property
-                        ),
-                        type: "histogram",
-                        name: `${CLASS_LABELS[performanceClass]} per class`,
-                        marker: {
-                          color: COMPARE_KEY_COLOR,
-                        },
-                        key: compareKey,
-                        selectedpoints: selectedPoints,
-                      },
-                    ]}
-                    onClick={({ points }) => {
-                      if (selectedPoints?.[0] === points[0]?.pointIndices[0]) {
-                        return loadView("clear", {});
-                      }
-                      loadView("class", { x: points[0]?.x });
-                    }}
-                    layout={{
-                      xaxis: { type: "category" },
-                    }}
-                  />
-                )}
-                {classMode === "table" && (
-                  <EvaluationTable>
-                    <TableHead>
-                      <TableRow
-                        sx={{
-                          "th p": {
-                            color: (theme) => theme.palette.text.secondary,
-                            fontSize: "1rem",
-                            fontWeight: 600,
-                          },
-                        }}
-                      >
-                        <TableCell>
-                          <Typography>Metric</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            sx={{ alignItems: "center" }}
-                          >
-                            <ColorSquare color={KEY_COLOR} />
-                            <Typography>{name}</Typography>
-                          </Stack>
-                        </TableCell>
-                        {compareKey && (
-                          <>
-                            <TableCell>
-                              <Stack
-                                direction="row"
-                                spacing={1}
-                                sx={{ alignItems: "center" }}
-                              >
-                                <ColorSquare color={COMPARE_KEY_COLOR} />
-                                <Typography>{compareKey}</Typography>
-                              </Stack>
-                            </TableCell>{" "}
-                            <TableCell>
-                              <Typography>Difference</Typography>
-                            </TableCell>
-                          </>
-                        )}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {classPerformance.map((row) => (
-                        <TableRow key={row.id}>
-                          <TableCell component="th" scope="row">
-                            {row.property}
-                          </TableCell>
-                          <TableCell>{formatValue(row.value)}</TableCell>
-                          {compareKey && (
-                            <>
-                              <TableCell>
-                                {formatValue(row.compareValue)}
-                              </TableCell>
-                              <TableCell>
-                                {getNumericDifference(
-                                  row.value,
-                                  row.compareValue
-                                )}
-                              </TableCell>
-                            </>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </EvaluationTable>
-                )}
-              </Stack>
-            </AccordionDetails>
-          </Accordion>
-          <Accordion
-            expanded={expanded === "matrices"}
-            onChange={(e, expanded) => {
-              setExpanded(expanded ? "matrices" : "");
-            }}
-            disableGutters
-            sx={{ borderRadius: 1, "&::before": { display: "none" } }}
-          >
-            <AccordionSummary expandIcon={<ExpandMore />}>
-              Confusion Matrices
-            </AccordionSummary>
-            <AccordionDetails>
-              <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                <Typography color="secondary">
-                  {getConfigLabel({ config: confusionMatrixConfig })}
-                </Typography>
-                <Box>
-                  <IconButton
-                    onClick={() => {
-                      setConfusionMatrixDialogConfig((state) => ({
-                        ...state,
-                        open: true,
-                      }));
-                    }}
-                  >
-                    <Settings />
-                  </IconButton>
-                </Box>
-              </Stack>
-              <Stack direction={"row"} key={compareKey}>
-                <Stack sx={{ width: "100%" }}>
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{ alignItems: "center", justifyContent: "center" }}
-                  >
-                    <ColorSquare color={KEY_COLOR} />
-                    <Typography>{name}</Typography>
-                  </Stack>
-                  <EvaluationPlot
-                    data={[
-                      {
-                        z: confusionMatrix?.matrix,
-                        x: confusionMatrix?.labels,
-                        y: confusionMatrix?.labels,
-                        type: "heatmap",
-                        colorscale: confusionMatrixConfig.log
-                          ? confusionMatrix?.colorscale || "viridis"
-                          : "viridis",
-                        hovertemplate:
-                          [
-                            "<b>count: %{z:d}</b>",
-                            `${
-                              evaluation?.info?.config?.gt_field || "truth"
-                            }: %{y}`,
-                            `${
-                              evaluation?.info?.config?.pred_field ||
-                              "predicted"
-                            }: %{x}`,
-                          ].join(" <br>") + "<extra></extra>",
-                      },
-                    ]}
-                    onClick={({ points }) => {
-                      const firstPoint = points[0];
-                      loadView("matrix", { x: firstPoint.x, y: firstPoint.y });
-                    }}
-                    layout={{
-                      yaxis: {
-                        autorange: "reversed",
-                        type: "category",
-                      },
-                      xaxis: {
-                        type: "category",
-                      },
-                    }}
-                  />
-                </Stack>
-                {compareKey && (
-                  <Stack sx={{ width: "100%" }}>
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      sx={{ alignItems: "center", justifyContent: "center" }}
-                    >
-                      <ColorSquare color={COMPARE_KEY_COLOR} />
-                      <Typography>{compareKey}</Typography>
-                    </Stack>
-                    <EvaluationPlot
-                      data={[
-                        {
-                          z: compareConfusionMatrix?.matrix,
-                          x: compareConfusionMatrix?.labels,
-                          y: compareConfusionMatrix?.labels,
-                          type: "heatmap",
-                          colorscale: confusionMatrixConfig.log
-                            ? compareConfusionMatrix?.colorscale || "viridis"
-                            : "viridis",
-                          hovertemplate:
-                            [
-                              "<b>count: %{z:d}</b>",
-                              `${
-                                evaluation?.info?.config?.gt_field || "truth"
-                              }: %{y}`,
-                              `${
-                                evaluation?.info?.config?.pred_field ||
-                                "predicted"
-                              }: %{x}`,
-                            ].join(" <br>") + "<extra></extra>",
-                        },
-                      ]}
-                      onClick={({ points }) => {
-                        const firstPoint = points[0];
-                        loadView("matrix", {
-                          x: firstPoint.x,
-                          y: firstPoint.y,
-                          key: compareKey,
-                        });
-                      }}
-                      layout={{
-                        yaxis: {
-                          autorange: "reversed",
-                          type: "category",
-                        },
-                        xaxis: {
-                          type: "category",
-                        },
-                      }}
-                    />
-                  </Stack>
-                )}
-              </Stack>
-            </AccordionDetails>
-          </Accordion>
-          <Accordion
-            disableGutters
-            sx={{ borderRadius: 1, "&::before": { display: "none" } }}
-          >
-            <AccordionSummary expandIcon={<ExpandMore />}>
-              Scenario Analysis
-            </AccordionSummary>
-            <AccordionDetails>
-              <EvaluationScenarioAnalysis
-                evaluation={evaluation}
-                data={data}
-                loadScenario={loadScenario}
-              />
-            </AccordionDetails>
-          </Accordion>
-        </Stack>
+      {activeTab === "scenario" && (
+        <ScenarioAnalysis onCreateScenario={() => loadScenario()} />
       )}
-      {mode === "info" && (
-        <Card sx={{ p: 2 }}>
-          <EvaluationTable>
-            <TableHead>
-              <TableRow
-                sx={{
-                  "th p": {
-                    color: (theme) => theme.palette.text.secondary,
-                    fontSize: "1rem",
-                    fontWeight: 600,
-                  },
-                }}
-              >
-                <TableCell>
-                  <Typography>Property</Typography>
-                </TableCell>
-                <TableCell align="right" sx={{ fontSize: 16 }}>
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{ alignItems: "center" }}
-                  >
-                    <ColorSquare color={KEY_COLOR} />
-                    <Typography>{name}</Typography>
-                  </Stack>
-                </TableCell>
-                {compareKey && (
-                  <TableCell>
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      sx={{ alignItems: "center" }}
-                    >
-                      <ColorSquare color={COMPARE_KEY_COLOR} />
-                      <Typography>{compareKey}</Typography>
-                    </Stack>
-                  </TableCell>
-                )}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {infoRows.map((row) =>
-                row.hide ? null : (
-                  <TableRow key={row.id}>
-                    <TableCell component="th" scope="row">
-                      {row.property}
-                    </TableCell>
-                    <TableCell>{formatValue(row.value)}</TableCell>
-                    {compareKey && (
-                      <TableCell>{formatValue(row.compareValue)}</TableCell>
-                    )}
-                  </TableRow>
-                )
-              )}
-            </TableBody>
-          </EvaluationTable>
-        </Card>
-      )}
-      <Dialog
-        open={editNoteState.open}
-        fullWidth
-        onClose={closeNoteDialog}
-        PaperProps={{
-          sx: { background: (theme) => theme.palette.background.level2 },
-        }}
-      >
-        <Stack spacing={2} sx={{ p: 2 }}>
-          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-            <EditNote sx={{ fontSize: 16 }} color="secondary" />
-            <Typography sx={{ fontSize: 16 }} color="secondary">
-              {evaluationNotes ? "Edit" : "Add"} evaluation notes
-            </Typography>
-          </Stack>
-          <TextField
-            onFocus={() => {
-              setEditingField(true);
-            }}
-            onBlur={() => {
-              setEditingField(false);
-            }}
-            multiline
-            rows={10}
-            defaultValue={evaluationNotes}
-            placeholder="Note (markdown) for the evaluation..."
-            onChange={(e) => {
-              setEditNoteState((note) => ({ ...note, note: e.target.value }));
-            }}
-          />
-          <Stack direction={"row"} spacing={1}>
-            <Button
-              variant="outlined"
-              color="secondary"
-              sx={{ width: "50%" }}
-              onClick={closeNoteDialog}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              sx={{ width: "50%" }}
-              onClick={() => {
-                triggerEvent(setNoteEvent, { note: editNoteState.note });
-                closeNoteDialog();
-              }}
-            >
-              Save
-            </Button>
-          </Stack>
-        </Stack>
-      </Dialog>
+
+      {activeTab === "execution" && <ExecutionInfo />}
+
       <Dialog
         open={Boolean(classPerformanceDialogConfig.open)}
         fullWidth
         onClose={closeClassPerformanceConfigDialog}
         PaperProps={{
-          sx: { background: (theme) => theme.palette.background.level2 },
+          sx: { background: (theme) => theme.palette.background.paper },
         }}
       >
         <Stack spacing={2} sx={{ p: 2 }}>
@@ -1611,7 +529,7 @@ export default function Evaluation(props: EvaluationProps) {
         fullWidth
         onClose={closeConfusionMatrixConfigDialog}
         PaperProps={{
-          sx: { background: (theme) => theme.palette.background.level2 },
+          sx: { background: (theme) => theme.palette.background.paper },
         }}
       >
         <Stack spacing={2} sx={{ p: 2 }}>
@@ -1714,6 +632,32 @@ type EvaluationProps = {
   onRename: (oldName: string, newName: string) => void;
 };
 
+const CLASS_PERFORMANCE_SORT_OPTIONS = [
+  { value: "default", label: "Default" },
+  { value: "az", label: "Alphabetical (A-Z)" },
+  { value: "za", label: "Alphabetical (Z-A)" },
+  { value: "best", label: "Best performing" },
+  { value: "worst", label: "Worst performing" },
+];
+
+const CONFUSION_MATRIX_SORT_OPTIONS = [
+  { value: "default", label: "Default" },
+  { value: "az", label: "Alphabetical (A-Z)" },
+  { value: "za", label: "Alphabetical (Z-A)" },
+  { value: "mc", label: "Most common classes" },
+  { value: "lc", label: "Least common classes" },
+];
+
+type PLOT_CONFIG_TYPE = {
+  sortBy?: string;
+  limit?: number;
+  log?: boolean;
+};
+
+type PLOT_CONFIG_DIALOG_TYPE = PLOT_CONFIG_TYPE & {
+  open?: boolean;
+};
+
 function ColorSquare(props: { color: string }) {
   return (
     <div
@@ -1801,8 +745,9 @@ function getConfigLabel({ config, type, dashed }) {
     type === "classPerformance"
       ? CLASS_PERFORMANCE_SORT_OPTIONS
       : CONFUSION_MATRIX_SORT_OPTIONS;
-  const sortByLabel = sortByLabels.find((option) => option.value === sortBy)
-    ?.label;
+  const sortByLabel = sortByLabels.find(
+    (option) => option.value === sortBy
+  )?.label;
   return dashed ? ` - ${sortByLabel}` : sortByLabel;
 }
 
@@ -1834,77 +779,4 @@ function useActiveFilter(evaluation, compareEvaluation) {
       }
     }
   }
-}
-
-const CLASS_PERFORMANCE_SORT_OPTIONS = [
-  { value: "default", label: "Default" },
-  { value: "az", label: "Alphabetical (A-Z)" },
-  { value: "za", label: "Alphabetical (Z-A)" },
-  { value: "best", label: "Best performing" },
-  { value: "worst", label: "Worst performing" },
-];
-const CONFUSION_MATRIX_SORT_OPTIONS = [
-  { value: "default", label: "Default" },
-  { value: "az", label: "Alphabetical (A-Z)" },
-  { value: "za", label: "Alphabetical (Z-A)" },
-  { value: "mc", label: "Most common classes" },
-  { value: "lc", label: "Least common classes" },
-];
-
-type PLOT_CONFIG_TYPE = {
-  sortBy?: string;
-  limit?: number;
-  log?: boolean;
-};
-
-type PLOT_CONFIG_DIALOG_TYPE = PLOT_CONFIG_TYPE & {
-  open?: boolean;
-};
-
-type CustomMetric = {
-  label: string;
-  key: any;
-  value: any;
-  lower_is_better: boolean;
-};
-
-type CustomMetrics = {
-  [operatorUri: string]: CustomMetric;
-};
-
-type SummaryRow = {
-  id: string;
-  property: string;
-  value: any;
-  compareValue: any;
-  lesserIsBetter: boolean;
-  filterable: boolean;
-  active: boolean;
-  hide: boolean;
-};
-
-function formatCustomMetricRows(evaluationMetrics, comparisonMetrics) {
-  const results = [] as SummaryRow[];
-  const customMetrics = (get(evaluationMetrics, "custom_metrics", null) ||
-    {}) as CustomMetrics;
-  for (const [operatorUri, customMetric] of Object.entries(customMetrics)) {
-    const compareValue = get(
-      comparisonMetrics,
-      `custom_metrics.${operatorUri}.value`,
-      null
-    );
-    const hasOneValue = customMetric.value !== null || compareValue !== null;
-
-    results.push({
-      id: operatorUri,
-      property: customMetric.label,
-      value: customMetric.value,
-      compareValue,
-      lesserIsBetter: customMetric.lower_is_better,
-      filterable: false,
-      active: false,
-      hide: !hasOneValue,
-    });
-  }
-  return results;
 }

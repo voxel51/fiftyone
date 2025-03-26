@@ -7,6 +7,7 @@ import CrisisAlertOutlinedIcon from "@mui/icons-material/CrisisAlertOutlined";
 import Layers from "@mui/icons-material/Layers";
 import PieChartOutlinedIcon from "@mui/icons-material/PieChartOutlined";
 import ShowChartOutlinedIcon from "@mui/icons-material/ShowChartOutlined";
+import DatasetOutlinedIcon from "@mui/icons-material/DatasetOutlined";
 
 import TooltipProvider from "../TooltipProvider";
 import { ConcreteEvaluationType } from "./Types";
@@ -31,6 +32,8 @@ export default function EvaluationIcon(props: Props) {
     evalIcon = <PieChartOutlinedIcon />;
   } else if (type === "regression") {
     evalIcon = <ShowChartOutlinedIcon />;
+  } else if (type === "scenario") {
+    evalIcon = <DatasetOutlinedIcon />;
   }
 
   return (
