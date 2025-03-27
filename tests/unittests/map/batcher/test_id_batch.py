@@ -8,7 +8,6 @@ from unittest import mock
 
 import pytest
 
-import fiftyone.core.view as fov
 import fiftyone.core.map.batcher.id_batch as fomi
 
 
