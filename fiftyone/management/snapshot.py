@@ -8,6 +8,7 @@ Dataset snapshot management.
 import dataclasses
 import datetime
 import enum
+import time
 from typing import List, Optional
 
 from fiftyone.api import errors
@@ -283,6 +284,19 @@ def calculate_dataset_latest_changes_summary(
     return SampleChangeSummary(**util.camel_to_snake_container(change_summary))
 
 
+def _wrap_snapshot_exception(og_error, start_time):
+    end_time = time.time()
+    # This is an arbitrary heuristic but if the call took longer than 20s it
+    #   likely was due to a timeout error and not a fast failure or even a
+    #   connection timeout.
+    if end_time - start_time > 20:
+        raise RuntimeError(
+            "An error was returned but the snapshot may still be in progress. "
+            "Check back later to see if the snapshot has completed."
+        ) from og_error
+    raise og_error
+
+
 def create_snapshot(
     dataset_name: str, snapshot_name: str, description: Optional[str] = None
 ) -> DatasetSnapshot:
@@ -308,6 +322,8 @@ def create_snapshot(
         description (None): Optional description to attach to this snapshot
     """
     client = connection.APIClientConnection().client
+    snapshot = None
+    start_time = time.time()
     try:
         result = client.post_graphql_request(
             query=_CREATE_SNAPSHOT_QUERY,
@@ -326,8 +342,11 @@ def create_snapshot(
         #   swallow the error
         try:
             snapshot = get_snapshot_info(dataset_name, snapshot_name)
+            # Nope we didn't succeed so raise the error
+            if not snapshot:
+                _wrap_snapshot_exception(og_err, start_time)
         except ValueError:
-            raise og_err
+            _wrap_snapshot_exception(og_err, start_time)
     return DatasetSnapshot(**util.camel_to_snake_container(snapshot))
 
 
