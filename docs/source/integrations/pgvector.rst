@@ -1,13 +1,13 @@
 .. _pgvector-integration:
 
 Pgvector Vector Search Integration
-=======================================
+==================================
 
 .. default-role:: code
 
 `Pgvector <https://github.com/pgvector/pgvector>`_ is a vector search extension
-to PostgreSQL, one of the most popular open source databases, and we've made it easy to
-use Pgvector on your computer vision data directly from FiftyOne!
+to PostgreSQL, one of the most popular open source databases, and we've made it
+easy to use Pgvector on your computer vision data directly from FiftyOne!
 
 Follow these :ref:`simple instructions <pgvector-setup>` to get started
 using Pgvector + FiftyOne.
