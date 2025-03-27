@@ -79,6 +79,15 @@ def get_scenario_example(reason="float"):
             }
             """
         ).strip(),
+        "TOO_MANY_INT_CATEGORIES": dedent(
+            """
+            from fiftyone import ViewField as F
+            subsets = {
+                "few ints": dict(type="field", expr=F("int_field") > 100),
+                "many ints": dict(type="field", expr=F("int_field") <= 100),
+            }
+            """
+        ).strip(),
         "OTHER": dedent(
             """
             from fiftyone import ViewField as F
