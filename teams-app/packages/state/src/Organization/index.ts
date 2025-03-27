@@ -5,6 +5,8 @@ export const currentOrganizationQuery = graphql`
     organization {
       displayName
       pypiToken
+      roleReupgradeGracePeriod
+      roleReupgradePeriod
     }
   }
 `;

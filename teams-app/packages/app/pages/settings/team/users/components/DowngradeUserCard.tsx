@@ -1,4 +1,4 @@
-import { useUserDowngrade } from "@fiftyone/hooks";
+import { useCurrentOrganization, useUserDowngrade } from "@fiftyone/hooks";
 import { Box } from "@fiftyone/teams-components";
 import NotificationActivationIcon from "@mui/icons-material/NotificationsActive";
 import List from "@mui/material/List";
@@ -13,6 +13,7 @@ import React from "react";
 export const DowngradeUserCard: React.FC = () => {
   const theme = useTheme();
   const downgradeController = useUserDowngrade();
+  const org = useCurrentOrganization();
 
   return (
     <div className="downgrade-user-card">
@@ -62,7 +63,7 @@ export const DowngradeUserCard: React.FC = () => {
                 <Typography variant="subtitle1" component="span">
                   You have a{" "}
                   <Typography component="span" variant="body2">
-                    5-minute grace period
+                    {org.roleReupgradeGracePeriod}-minute grace period
                   </Typography>{" "}
                   to reverse this change
                 </Typography>
@@ -75,7 +76,7 @@ export const DowngradeUserCard: React.FC = () => {
                 <Typography variant="subtitle1" component="span">
                   After the grace period, you cannot upgrade this user again for{" "}
                   <Typography component="span" variant="body2">
-                    90 days
+                    {org.roleReupgradePeriod} days
                   </Typography>
                 </Typography>
               }

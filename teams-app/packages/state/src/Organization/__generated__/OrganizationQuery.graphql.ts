@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9a24fa12f74ebf7e76a500237ca59387>>
+ * @generated SignedSource<<902c1d91ba21e9e048560dc791194b3e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,6 +14,8 @@ export type OrganizationQuery$data = {
   readonly organization: {
     readonly displayName: string;
     readonly pypiToken: string | null;
+    readonly roleReupgradeGracePeriod: number | null;
+    readonly roleReupgradePeriod: number | null;
   };
 };
 export type OrganizationQuery = {
@@ -44,6 +46,20 @@ var v0 = [
         "kind": "ScalarField",
         "name": "pypiToken",
         "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "roleReupgradeGracePeriod",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "roleReupgradePeriod",
+        "storageKey": null
       }
     ],
     "storageKey": null
@@ -67,16 +83,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "55439e566a0288ed387e9f7a6b340c03",
+    "cacheID": "0019b01942f901517efeba5dcdec613f",
     "id": null,
     "metadata": {},
     "name": "OrganizationQuery",
     "operationKind": "query",
-    "text": "query OrganizationQuery {\n  organization {\n    displayName\n    pypiToken\n  }\n}\n"
+    "text": "query OrganizationQuery {\n  organization {\n    displayName\n    pypiToken\n    roleReupgradeGracePeriod\n    roleReupgradePeriod\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "150a7f11aa4603096f1e13f29b4cb332";
+(node as any).hash = "f92155551d83cc8d38023c79a30e30b2";
 
 export default node;
