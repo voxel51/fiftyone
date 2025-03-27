@@ -578,17 +578,13 @@ def _make_range_query(path: str, field: fof.Field, args):
         ops["$gte"] = mn
     if mx is not None:
         ops["$lte"] = mx
-    if not exclude and range_:
+    if range_:
+        if exclude:
+            return {
+                path: {"$not": ops},
+            }
         return {
             path: ops,
-        }
-
-    if range_:
-        expr = [{path: {k: v}} for k, v in ops.items()]
-        if len(expr) == 1:
-            return expr[0]
-        return {
-            "$or": expr,
         }
 
     if exclude:
