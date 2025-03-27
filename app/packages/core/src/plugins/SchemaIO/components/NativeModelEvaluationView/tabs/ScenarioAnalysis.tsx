@@ -2,14 +2,37 @@ import React from "react";
 import { Box, Button, Card, Stack, Typography } from "@mui/material";
 import { scenarioCardStyles } from "../styles";
 import EvaluationIcon from "../EvaluationIcon";
+import { usePanelEvent } from "@fiftyone/operators";
+import { usePanelId } from "@fiftyone/spaces";
+
+const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 
 interface ScenarioAnalysisProps {
   onCreateScenario: () => void;
+  evaluationConfig?: {
+    gt_field: string;
+  };
 }
 
 export default function ScenarioAnalysis({
   onCreateScenario,
+  evaluationConfig,
 }: ScenarioAnalysisProps) {
+  const panelId = usePanelId();
+  const promptOperator = usePanelEvent();
+
+  const handleCreateScenario = () => {
+    promptOperator(panelId, {
+      params: {
+        gt_field: evaluationConfig?.gt_field,
+        scenario_type: "custom_code",
+        scenario_name: "test", // TODO: Edit will pass current name
+      },
+      operator: CONFIGURE_SCENARIO_ACTION,
+      prompt: true,
+    });
+  };
+
   return (
     <Card sx={scenarioCardStyles.card}>
       <Stack direction="row" sx={scenarioCardStyles.header}>
@@ -38,7 +61,7 @@ export default function ScenarioAnalysis({
         <Button
           variant="contained"
           sx={scenarioCardStyles.createButton}
-          onClick={onCreateScenario}
+          onClick={handleCreateScenario}
         >
           Create scenario
         </Button>
