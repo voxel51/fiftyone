@@ -372,34 +372,43 @@ class ConfigureScenario(foo.Operator):
             ),
         )
 
-    def render_use_custom_code_instead(
-        self, ctx, inputs, field_name, reason="TOO_MANY_CATEGORIES"
+    def render_use_custom_code_warning(
+        self, inputs, field_name, reason="TOO_MANY_CATEGORIES"
     ):
         label, description = None, None
 
         if reason == "TOO_MANY_CATEGORIES":
-            label = "Too many categories"
+            label = "Too many categories."
             description = (
                 f"Field {field_name} has too many values to display. "
+                + "Please use custom code to define the scenario."
+            )
+        if reason == "TOO_MANY_INT_CATEGORIES":
+            label = "Too many integer values."
+            description = (
+                f"Field {field_name} has too many values to display. "
+                + "Please use custom code to define the scenario."
             )
         if reason == "FLOAT_TYPE":
             label = "Float type."
-            description = (
-                f"Field with  is only supported in custom code mode. "
-            )
+            description = f"Field {field_name} with is only supported in custom code mode. "
+        if reason == "SLOW":
+            label = "Too many values."
+            description = f"Found too many distinct values for this field. "
 
         inputs.view(
-            "use_custom_code_instead",
+            "use_custom_code_instead_warning",
             types.AlertView(
                 severity="warning",
                 label=label,
-                description=(
-                    description
-                    + "Please use custom code to define the scenario."
-                ),
+                description=description,
             ),
         )
 
+    def render_use_custom_code_instead(
+        self, ctx, inputs, field_name, reason="TOO_MANY_CATEGORIES"
+    ):
+        self.render_use_custom_code_warning(inputs, field_name, reason)
         self.render_custom_code(ctx, inputs, example_type=reason)
 
     def render_saved_views(self, ctx, inputs):
@@ -471,11 +480,12 @@ class ConfigureScenario(foo.Operator):
             return "EMPTY", None
 
         if distinct_count > MAX_CATEGORIES:
-            return (
-                ("AUTO-COMPLETE", distinct_values)
-                if isinstance(field, fof.StringField)
-                else ("CODE", "TOO_MANY_CATEGORIES")
-            )
+            if isinstance(field, fof.StringField):
+                return "AUTO-COMPLETE", distinct_values
+            if isinstance(field, fof.IntField):
+                return "CODE", "TOO_MANY_INT_CATEGORIES"
+            else:
+                return "CODE", "TOO_MANY_CATEGORIES"
 
         # NOTE: may be slow for large datasets
         values = ctx.dataset.count_values(field_name)
@@ -485,7 +495,9 @@ class ConfigureScenario(foo.Operator):
             else ("CHECKBOX", dict(sorted(values.items())))
         )
 
-    def render_auto_complete_view(self, values, inputs):
+    def render_auto_complete_view(self, field_name, values, inputs):
+        self.render_use_custom_code_warning(inputs, field_name, reason="SLOW")
+
         inputs.list(
             "classes",
             types.String(),
@@ -515,7 +527,7 @@ class ConfigureScenario(foo.Operator):
                 ctx, inputs, field_name, reason=values
             ),
             "AUTO-COMPLETE": lambda: self.render_auto_complete_view(
-                values, inputs
+                field_name, values, inputs
             ),
             "CHECKBOX": lambda: self.render_checkbox_view(
                 "field_option_values", values, inputs
