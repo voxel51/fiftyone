@@ -164,6 +164,9 @@ def export_segmentations(
     update=True,
     overwrite=False,
     progress=None,
+    workers=None,
+    batch_method="id",
+    parallelize_method=None,
 ):
     """Exports the semantic segmentations, instance segmentations, or heatmaps
     stored as in-database arrays in the specified field to images on disk.
@@ -192,6 +195,9 @@ def export_segmentations(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
+        workers (None): the number of workers to use to compute detections
+        batch_method ("id"): the method to use to shard the dataset
+        parallelize_method ("process"): the backend to use for multiprocessing
     """
     fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
@@ -212,11 +218,11 @@ def export_segmentations(
     if overwrite:
         etau.delete_dir(output_dir)
 
-    filename_maker = fou.UniqueFilenameMaker(
-        output_dir=output_dir, rel_dir=rel_dir, idempotent=False
-    )
+    def _map_fnc(sample) -> None:
+        filename_maker = fou.UniqueFilenameMaker(
+            output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+        )
 
-    for sample in samples.iter_samples(autosave=True, progress=progress):
         if processing_frames:
             images = sample.frames.values()
         else:
@@ -252,6 +258,14 @@ def export_segmentations(
                         _get_filepath(image, sample), output_ext=".png"
                     )
                     label.export_map(outpath, update=update)
+
+    samples.update_samples(
+        _map_fnc,
+        progress=progress,
+        workers=workers,
+        batch_method=batch_method,
+        parallelize_method=parallelize_method,
+    )
 
 
 def import_segmentations(

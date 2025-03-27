@@ -9,6 +9,7 @@ from copy import deepcopy
 import inspect
 import itertools
 import logging
+from typing import List, Any
 
 import numpy as np
 
@@ -19,6 +20,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
+import fiftyone.utils.map as fom
 
 from .base import (
     BaseEvaluationMethod,
@@ -28,6 +30,45 @@ from .base import (
 
 
 logger = logging.getLogger(__name__)
+
+
+def _compute_matches_single(
+    sample,
+    eval_method,
+    eval_key,
+    save=False,
+    processing_frames=False,
+    tp_field=None,
+    fp_field=None,
+    fn_field=None,
+) -> List[Any]:
+    matches = []
+    if processing_frames:
+        docs = sample.frames.values()
+    else:
+        docs = [sample]
+
+    sample_tp = 0
+    sample_fp = 0
+    sample_fn = 0
+    for doc in docs:
+        doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
+        matches.extend(doc_matches)
+        tp, fp, fn = _tally_matches(doc_matches)
+        sample_tp += tp
+        sample_fp += fp
+        sample_fn += fn
+
+        if processing_frames and save:
+            doc[tp_field] = tp
+            doc[fp_field] = fp
+            doc[fn_field] = fn
+
+    if save:
+        sample[tp_field] = sample_tp
+        sample[fp_field] = sample_fp
+        sample[fn_field] = sample_fn
+    return matches
 
 
 def evaluate_detections(
@@ -45,6 +86,10 @@ def evaluate_detections(
     dynamic=True,
     custom_metrics=None,
     progress=None,
+    num_workers=None,
+    shard_method="id",
+    backend=None,
+    use_backoff=False,
     **kwargs,
 ):
     """Evaluates the predicted detections in the given samples with respect to
@@ -141,6 +186,11 @@ def evaluate_detections(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
+        num_workers (None): the number of workers to use to compute detections
+        shard_method ("id"): the method to use to shard the dataset
+        backend ("process"): the backend to use for multiprocessing
+        use_backoff (False): whether to use exponential backoff when retrying
+            failed operations
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
 
@@ -193,34 +243,48 @@ def evaluate_detections(
     else:
         _samples = samples.select_fields([gt_field, pred_field])
 
-    matches = []
+    def _map_fnc(sample) -> List[Any]:
+        return _compute_matches_single(
+            sample,
+            eval_method,
+            eval_key,
+            save=save,
+            processing_frames=processing_frames,
+            tp_field=tp_field,
+            fp_field=fp_field,
+            fn_field=fn_field,
+        )
+
     logger.info("Evaluating detections...")
-    for sample in _samples.iter_samples(progress=progress, autosave=save):
-        if processing_frames:
-            docs = sample.frames.values()
-        else:
-            docs = [sample]
-
-        sample_tp = 0
-        sample_fp = 0
-        sample_fn = 0
-        for doc in docs:
-            doc_matches = eval_method.evaluate(doc, eval_key=eval_key)
-            matches.extend(doc_matches)
-            tp, fp, fn = _tally_matches(doc_matches)
-            sample_tp += tp
-            sample_fp += fp
-            sample_fn += fn
-
-            if processing_frames and save:
-                doc[tp_field] = tp
-                doc[fp_field] = fp
-                doc[fn_field] = fn
-
-        if save:
-            sample[tp_field] = sample_tp
-            sample[fp_field] = sample_fp
-            sample[fn_field] = sample_fn
+    if backend is not None:
+        matches = []
+        for _, result in fom.map_samples(
+            _samples,
+            _map_fnc,
+            save=save,
+            workers=num_workers,
+            batch_method=shard_method,
+            progress=progress,
+            parallelize_method=backend,
+            use_backoff=use_backoff,
+        ):
+            matches.extend(result)
+        print("Matches:", matches[:5])
+        print("Len Matches:", len(matches))
+    else:
+        matches = []
+        for sample in _samples.iter_samples(progress=progress, autosave=save):
+            results = _compute_matches_single(
+                sample,
+                eval_method,
+                eval_key,
+                save=save,
+                processing_frames=processing_frames,
+                tp_field=tp_field,
+                fp_field=fp_field,
+                fn_field=fn_field,
+            )
+            matches.extend(results)
 
     results = eval_method.generate_results(
         samples,

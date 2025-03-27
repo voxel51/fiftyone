@@ -7,6 +7,7 @@ Multiprocessing utilities.
 """
 
 import multiprocessing
+import time
 from queue import Empty
 from typing import (
     Any,
@@ -37,6 +38,22 @@ T = TypeVar("T")
 R = TypeVar("R")
 
 
+class ProgressBarsContextManager:
+    def __init__(self, progress_bars=None):
+        self.progress_bars = progress_bars or {}
+
+    def __enter__(self):
+        return self.progress_bars
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # Cleanup operations could go here
+        for pb in self.progress_bars.values():
+            pb.close()
+
+    def update(self, idx):
+        self.progress_bars[idx].update()
+
+
 class ProcessMapper(fomm.LocalMapper[T]):
     """Executes map_samples using multiprocessing."""
 
@@ -63,8 +80,11 @@ class ProcessMapper(fomm.LocalMapper[T]):
         progress: Union[bool, Literal["workers"]],
         save: bool,
         skip_failures: bool,
+        use_backoff: bool,
     ) -> Iterator[Tuple[bson.ObjectId, R]]:
         ctx = fou.get_multiprocessing_context()
+
+        print("Using backoff:", use_backoff)
 
         if progress is None:
             progress = fo.config.show_progress_bars
@@ -113,12 +133,26 @@ class ProcessMapper(fomm.LocalMapper[T]):
             ),
         )
 
-        pb = fou.ProgressBar(
-            total=sum(batch.total for batch in sample_batches),
-            progress=progress,
-        )
-
         num_batches = len(sample_batches)
+        if worker_progress:
+            # Create progress bars for each task
+            pbars = {}
+
+            # Create all progress bars at the start
+            for idx, batch in enumerate(sample_batches):
+                desc = (
+                    f"Batch {idx + 1:0{len(str(num_batches))}}/{num_batches}"
+                )
+                pbars[idx + 1] = tqdm(
+                    total=batch.total, desc=desc, position=idx, leave=True
+                )
+            pb = ProgressBarsContextManager(pbars)
+        else:
+            pb = fou.ProgressBar(
+                total=sum(batch.total for batch in sample_batches),
+                progress=progress,
+            )
+
         with pool, pb:
             pool.map_async(
                 _map_batch,
@@ -138,26 +172,33 @@ class ProcessMapper(fomm.LocalMapper[T]):
 
             while True:
                 try:
-                    sample_id, err, result = queue.get(timeout=current_timeout)
-                    # Reset backoff on successful get
-                    current_timeout = initial_timeout
-                except Empty:
-                    # Apply exponential backoff, but cap at max_timeout
-                    current_timeout = min(
-                        current_timeout * backoff_factor, max_timeout
+                    batch_id, sample_id, err, result = queue.get(
+                        timeout=current_timeout
                     )
-
-                    # Reset backoff if we've hit too many consecutive timeouts
-                    # This prevents getting stuck with very long timeouts
-                    if current_timeout == max_timeout:
+                    # Reset backoff on successful get
+                    if use_backoff:
                         current_timeout = initial_timeout
+                except Empty:
+                    if use_backoff:
+                        # Apply exponential backoff, but cap at max_timeout
+                        current_timeout = min(
+                            current_timeout * backoff_factor, max_timeout
+                        )
+
+                        # Reset backoff if we've hit too many consecutive timeouts
+                        # This prevents getting stuck with very long timeouts
+                        if current_timeout == max_timeout:
+                            current_timeout = initial_timeout
 
                     # Check if done after applying backoff
                     if batch_count.value >= num_batches:
                         break
                 else:
-                    # Update progress bar
-                    pb.update()
+                    if worker_progress:
+                        pb.update(batch_id)
+                    elif progress:
+                        # Update progress bar
+                        pb.update()
 
                     if err is not None:
                         # When skipping failures, simply yield the
@@ -245,17 +286,20 @@ def _init_worker(
 
 
 def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
-    i, num_batches, batch = args
+    batch_index, num_batches, batch = args
+    tqdm.write(f"Starting worker with index:{batch_index}")
 
     try:
         sample_collection = batch.create_subset(process_sample_collection)
-
         sample_iter = sample_collection.iter_samples(autosave=process_save)
 
-        pb = None
         if process_progress:
-            desc = f"Batch {i:0{len(str(num_batches))}}/{num_batches}"
-            pb = tqdm(sample_iter, total=batch.total, desc=desc, position=i)
+            desc = (
+                f"Batch {batch_index:0{len(str(num_batches))}}/{num_batches}"
+            )
+            pb = tqdm(
+                sample_iter, total=batch.total, desc=desc, position=batch_index
+            )
 
         while not process_cancel_event.is_set() and (
             sample := next(sample_iter, None)
@@ -263,26 +307,52 @@ def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
             try:
                 sample_output = process_map_fcn(sample)
             except Exception as err:
-                if process_skip_failures:
-                    # Cancel other workers as soon as possible.
-                    process_cancel_event.set()
-
-                # Add sample ID and error to the queue.
-                process_queue.put((sample.id, err, None))
+                _process_worker_error(
+                    process_skip_failures,
+                    process_cancel_event,
+                    process_queue,
+                    sample.id,
+                    err,
+                )
 
                 if process_skip_failures:
                     break
             else:
                 # Add sample ID and result to the queue.
-                process_queue.put((sample.id, None, sample_output))
+                process_queue.put(
+                    (batch_index, sample.id, None, sample_output)
+                )
 
             finally:
                 if process_sample_count is not None:
                     with process_sample_count.get_lock():
                         process_sample_count.value += 1
-                if pb is not None:
-                    pb.update()
+    except Exception as err:
+        _process_worker_error(
+            process_skip_failures,
+            process_cancel_event,
+            process_queue,
+            None,
+            batch_index,
+            err,
+        )
     finally:
         if process_batch_count is not None:
             with process_batch_count.get_lock():
                 process_batch_count.value += 1
+
+
+def _process_worker_error(
+    process_skip_failures,
+    process_cancel_event,
+    process_queue,
+    sample_id,
+    batch_index,
+    err,
+):
+    if process_skip_failures:
+        # Cancel other workers as soon as possible.
+        process_cancel_event.set()
+
+    # Add sample ID and error to the queue.
+    process_queue.put((batch_index, sample_id, err, None))
