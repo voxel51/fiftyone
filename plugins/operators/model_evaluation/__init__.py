@@ -472,7 +472,7 @@ class ConfigureScenario(foo.Operator):
 
         if distinct_count > MAX_CATEGORIES:
             return (
-                ("AUTO-COMPLETE", None)
+                ("AUTO-COMPLETE", distinct_values)
                 if isinstance(field, fof.StringField)
                 else ("CODE", "TOO_MANY_CATEGORIES")
             )
@@ -483,6 +483,24 @@ class ConfigureScenario(foo.Operator):
             ("EMPTY", None)
             if not values
             else ("CHECKBOX", dict(sorted(values.items())))
+        )
+
+    def render_auto_complete_view(self, values, inputs):
+        inputs.list(
+            "classes",
+            types.String(),
+            default=None,
+            required=False,
+            label="Classes",
+            description=(
+                "Optional required class(es) to load. If provided, only samples "
+                "containing at least one instance of a specified class will be "
+                "loaded"
+            ),
+            view=types.AutocompleteView(
+                multiple=True,
+                choices=[types.Choice(value=v, label=v) for v in values],
+            ),
         )
 
     def render_scenario_picker_view(self, ctx, field_name, inputs):
@@ -496,7 +514,9 @@ class ConfigureScenario(foo.Operator):
             "CODE": lambda: self.render_use_custom_code_instead(
                 ctx, inputs, field_name, reason=values
             ),
-            "AUTO-COMPLETE": lambda: print("TODO"),
+            "AUTO-COMPLETE": lambda: self.render_auto_complete_view(
+                values, inputs
+            ),
             "CHECKBOX": lambda: self.render_checkbox_view(
                 "field_option_values", values, inputs
             ),
