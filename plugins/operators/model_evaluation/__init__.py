@@ -411,30 +411,37 @@ class ConfigureScenario(foo.Operator):
         self.render_use_custom_code_warning(inputs, field_name, reason)
         self.render_custom_code(ctx, inputs, example_type=reason)
 
-    def render_saved_views(self, ctx, inputs):
+    def get_saved_view_scenarios_picker_type(self, ctx):
         view_names = ctx.dataset.list_saved_views()
+        if not view_names:
+            return "EMPTY", None
 
-        if view_names:
+        view_names = sorted(view_names)
+        view_len = len(view_names)
+
+        if view_len > MAX_CATEGORIES:
+            return "AUTO-COMPLETE", view_names
+
+        return "CHECKBOX", view_names
+
+    def render_saved_views(self, ctx, inputs):
+        view_type, view_names = self.get_saved_view_scenarios_picker_type(ctx)
+
+        if view_type == "EMPTY":
+            self.render_no_values_warning(inputs, "saved views")
+            # TODO: we have design for this
+        elif view_type == "AUTO-COMPLETE":
+            self.render_auto_complete_view("saved views", view_names, inputs)
+        elif view_type == "CHECKBOX":
             inputs.view(
-                "info_header_4_saved_views",
+                "info_header_saved_views",
                 types.Header(
                     label="",
                     description=f"{len(view_names)} saved views available",
                     divider=False,
                 ),
             )
-            self.render_checkbox_view(
-                "saved_views_values", sorted(view_names), inputs
-            )
-        else:
-            # TODO: there is design for this - replace
-            inputs.view(
-                "no_views",
-                types.AlertView(
-                    severity="warning",
-                    label="Could not find any saved views",
-                ),
-            )
+            self.render_checkbox_view("saved_views_values", view_names, inputs)
 
     def render_checkbox_view(self, key, values, inputs):
         obj = types.Object()
@@ -499,19 +506,17 @@ class ConfigureScenario(foo.Operator):
         self.render_use_custom_code_warning(inputs, field_name, reason="SLOW")
 
         inputs.list(
-            "classes",
+            f"classes_{field_name}",
             types.String(),
             default=None,
-            required=False,
+            required=True,
             label="Classes",
-            description=(
-                "Optional required class(es) to load. If provided, only samples "
-                "containing at least one instance of a specified class will be "
-                "loaded"
-            ),
+            description=("Select saved views to get started..."),
             view=types.AutocompleteView(
                 multiple=True,
                 choices=[types.Choice(value=v, label=v) for v in values],
+                allow_duplicates=False,
+                allow_user_input=False,
             ),
         )
 
