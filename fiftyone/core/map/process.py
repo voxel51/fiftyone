@@ -287,7 +287,7 @@ def _init_worker(
 
 def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
     batch_index, num_batches, batch = args
-    print("Starting worker with index:", batch_index)
+    tqdm.write(f"Starting worker with index:{batch_index}")
 
     try:
         sample_collection = batch.create_subset(process_sample_collection)
