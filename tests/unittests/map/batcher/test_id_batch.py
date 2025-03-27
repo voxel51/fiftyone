@@ -15,8 +15,9 @@ import fiftyone.core.map.batcher.id_batch as fomi
 @pytest.fixture(name="make_optimized_select_view")
 def patch_make_view():
     """Patch method"""
-    with mock.patch.object(fov, "make_optimized_select_view") as m:
-        yield m
+    with mock.patch.object(fomi, "fov") as m:
+        m.make_optimized_select_view = mock.Mock()
+        yield m.make_optimized_select_view
 
 
 @pytest.mark.parametrize(
