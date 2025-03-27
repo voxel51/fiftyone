@@ -167,7 +167,6 @@ def export_segmentations(
     workers=None,
     batch_method="id",
     parallelize_method=None,
-    use_backoff=True,
 ):
     """Exports the semantic segmentations, instance segmentations, or heatmaps
     stored as in-database arrays in the specified field to images on disk.
@@ -199,8 +198,6 @@ def export_segmentations(
         workers (None): the number of workers to use to compute detections
         batch_method ("id"): the method to use to shard the dataset
         parallelize_method ("process"): the backend to use for multiprocessing
-        use_backoff (False): whether to use exponential backoff when retrying
-            failed operations
     """
     fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
