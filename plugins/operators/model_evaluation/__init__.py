@@ -38,7 +38,7 @@ class ConfigureScenario(foo.Operator):
         inputs.view(
             "header",
             types.Header(
-                label="Configure scenario",
+                label="Create scenario",  # TODO: adapt for edit
                 divider=True,
                 description="Create a scenario of your dataset to analyze",
             ),
@@ -201,71 +201,21 @@ class ConfigureScenario(foo.Operator):
             plot_data = plot_data[::-1]
         return plot_data
 
-    def render_sample_distribution(self, ctx, inputs, subset_expressions):
-        show_sample_distribution = (
-            ctx.params.get("custom_code_stack", {})
+    def should_render_sample_distribution(self, params):
+        return (
+            params.get("custom_code_stack", {})
             .get("control_stack", {})
             .get("view_sample_distribution", False)
         )
 
-        if not show_sample_distribution:
+    def render_sample_distribution(self, ctx, inputs, subset_expressions):
+        if not self.should_render_sample_distribution(ctx.params):
             return
-
-        # render controls
-        stack = inputs.v_stack(
-            "plot_controls",
-            width="100%",
-            align_x="center",
-            gap=2,
-            align_y="start",
-            componentsProps={
-                "grid": {
-                    "sx": {
-                        "display": "flex",
-                        "flexDirection": "row",
-                    }
-                },
-            },
-        )
-        order_choices = types.Choices(label="Order", space=3)
-        order_choices.add_choice(
-            "alphabetical",
-            label="Alphabetical",
-            description="Sort categories alphabetically",
-        )
-        order_choices.add_choice(
-            "frequency",
-            label="Frequency",
-            description="Sort categories by frequency",
-        )
-        stack.enum(
-            "order",
-            values=order_choices.values(),
-            view=order_choices,
-            default="alphabetical",
-            label="Order",
-            description="The order to display the categories",
-            space=3,
-        )
-        stack.int(
-            "limit",
-            default=None,
-            label="Limit bars",
-            view=types.View(space=3),
-            description="Optional max bars to display",
-            space=3,
-        )
-        stack.bool(
-            "reverse",
-            default=False,
-            label="Reverse order",
-            description="Reverse the order of the categories",
-            view=types.View(space=3),
-        )
 
         # render plot
         preview_data = self.get_sample_distribution(ctx, subset_expressions)
         plot_data = self.convert_to_plotly_data(ctx, preview_data)
+
         preview_container = inputs.grid("grid", height="400px", width="100%")
         preview_height = "300px"
         preview_container.plot(
@@ -288,12 +238,28 @@ class ConfigureScenario(foo.Operator):
             xaxis=dict(
                 title=dict(
                     text="Count",
-                    # standoff=20,
                 ),
             ),
         )
 
-    def render_custom_code(self, ctx, inputs, custom_code=None):
+    def extract_custom_code(self, ctx, example_type):
+        active_scenario_type = self.get_scenario_type(ctx.params)
+        code_key = f"code|{active_scenario_type}|{example_type}"
+
+        custom_code = (
+            ctx.params.get("custom_code_stack", {})
+            .get("body_stack", {})
+            .get(code_key, "")
+        )
+
+        if not custom_code:
+            custom_code = get_scenario_example(example_type)
+
+        return custom_code, code_key
+
+    def render_custom_code(self, ctx, inputs, example_type="NORMAL"):
+        custom_code, code_key = self.extract_custom_code(ctx, example_type)
+
         stack = inputs.v_stack(
             "custom_code_stack",
             width="100%",
@@ -332,7 +298,7 @@ class ConfigureScenario(foo.Operator):
         custom_code_controls.view(
             "info_header_3",
             types.Header(
-                label="Code Editor",
+                label="Custom code",
                 divider=False,
             ),
         )
@@ -340,7 +306,7 @@ class ConfigureScenario(foo.Operator):
         custom_code_controls.bool(
             "view_sample_distribution",
             required=True,
-            default=False,
+            default=True,
             label="View sample distribution",
             view=types.CheckboxView(
                 componentsProps={
@@ -355,12 +321,12 @@ class ConfigureScenario(foo.Operator):
         )
 
         body_stack.view(
-            "custom_code",
-            default=get_scenario_example(),
+            code_key,
+            default=custom_code,
             view=types.CodeView(
                 language="python",
                 space=2,
-                height=175,
+                height=250,
                 width="100%",
                 componentsProps={
                     "editor": {
@@ -392,7 +358,6 @@ class ConfigureScenario(foo.Operator):
                     ),
                 )
             else:
-                print("custom_code_expression", custom_code_expression)
                 self.render_sample_distribution(
                     ctx, inputs, custom_code_expression
                 )
@@ -408,7 +373,7 @@ class ConfigureScenario(foo.Operator):
         )
 
     def render_use_custom_code_instead(
-        self, inputs, field_name, reason="TOO_MANY_CATEGORIES"
+        self, ctx, inputs, field_name, reason="TOO_MANY_CATEGORIES"
     ):
         label, description = None, None
 
@@ -417,7 +382,7 @@ class ConfigureScenario(foo.Operator):
             description = (
                 f"Field {field_name} has too many values to display. "
             )
-        if reason == "FLOAT_TYPE_SUPPORT":
+        if reason == "FLOAT_TYPE":
             label = "Float type."
             description = (
                 f"Field with  is only supported in custom code mode. "
@@ -434,6 +399,8 @@ class ConfigureScenario(foo.Operator):
                 ),
             ),
         )
+
+        self.render_custom_code(ctx, inputs, example_type=reason)
 
     def render_saved_views(self, ctx, inputs):
         view_names = ctx.dataset.list_saved_views()
@@ -490,9 +457,8 @@ class ConfigureScenario(foo.Operator):
 
         # Float type should show custom code view
         if isinstance(field, fof.FloatField):
-            print("field", field)
             self.render_use_custom_code_instead(
-                inputs, field_name, reason="FLOAT_TYPE_SUPPORT"
+                ctx, inputs, field_name, reason="FLOAT_TYPE"
             )
             return
 
@@ -507,8 +473,9 @@ class ConfigureScenario(foo.Operator):
         values = ctx.dataset.distinct(field_name)
 
         if len(values) > MAX_CATEGORIES:
-            # TODO: show code view instead? (worth negotiating with design/product)
-            self.render_use_custom_code_instead(inputs, field_name)
+            self.render_use_custom_code_instead(
+                ctx, inputs, field_name, reason="TOO_MANY_CATEGORIES"
+            )
         else:
             # NOTE: can be slow for large datasets
             values = ctx.dataset.count_values(field_name)
@@ -606,40 +573,47 @@ class ConfigureScenario(foo.Operator):
         if field_name:
             self.render_checkbox_view(ctx, field_name, inputs)
 
+    def get_scenario_type(self, params):
+        scenario_type = params.get("scenario_type", None)
+        # TODO: constant and typed enum
+        if scenario_type not in [
+            "view",
+            "custom_code",
+            "label_attribute",
+            "sample_field",
+        ]:
+            raise ValueError("Invalid scenario type")
+        return scenario_type
+
     def resolve_input(self, ctx):
         inputs = types.Object()
         self.render_header(inputs)
 
-        # model name
         chosen_scenario_name = ctx.params.get("scenario_name", None)
         self.render_name_input(inputs, chosen_scenario_name)
 
-        chosen_scenario_type = ctx.params.get("scenario_type", None)
-        self.render_scenario_types(inputs, chosen_scenario_type)
+        scenario_type = self.get_scenario_type(ctx.params)
+        self.render_scenario_types(inputs, scenario_type)
 
         chosen_scenario_field_name = ctx.params.get("scenario_field", None)
         chosen_scenario_label_attribute = ctx.params.get(
             "scenario_label_attribute", None
         )
-        chosen_custom_code = (
-            ctx.params.get("custom_code_stack", {})
-            .get("body_stack", {})
-            .get("custom_code", "")
-        )
+
         gt_field = ctx.params.get("gt_field", None)
 
-        if chosen_scenario_type == "custom_code":
-            self.render_custom_code(ctx, inputs, chosen_custom_code)
+        if scenario_type == "custom_code":
+            self.render_custom_code(ctx, inputs)
 
-        if chosen_scenario_type == "label_attribute":
+        if scenario_type == "label_attribute":
             self.render_label_attribute(
                 ctx, inputs, gt_field, chosen_scenario_label_attribute
             )
 
-        if chosen_scenario_type == "view":
+        if scenario_type == "view":
             self.render_saved_views(ctx, inputs)
 
-        if chosen_scenario_type == "sample_field":
+        if scenario_type == "sample_field":
             self.render_sample_fields(ctx, inputs, chosen_scenario_field_name)
 
         prompt = types.PromptView(submit_button_label="Analyze scenario")

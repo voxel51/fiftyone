@@ -77,10 +77,13 @@ export default function RadioView(props: RadioGroupProps) {
                         button: {
                           sx: {
                             width: "100%",
+                            background: "none",
                             justifyContent: "flex-start",
                             color: data === value ? "#FF6D04" : "auto",
                             border:
-                              data === value ? "1px solid #FF6D04" : "none",
+                              data === value
+                                ? "1px solid #FF6D04"
+                                : "1px solid #333",
                           },
                         },
                         icon: {
