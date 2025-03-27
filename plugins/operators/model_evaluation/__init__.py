@@ -414,7 +414,7 @@ class ConfigureScenario(foo.Operator):
                     divider=False,
                 ),
             )
-            self.render_checkbox_view_options(
+            self.render_checkbox_view(
                 "saved_views_values", sorted(view_names), inputs
             )
         else:
@@ -427,7 +427,7 @@ class ConfigureScenario(foo.Operator):
                 ),
             )
 
-    def render_checkbox_view_options(self, key, values, inputs):
+    def render_checkbox_view(self, key, values, inputs):
         obj = types.Object()
         if isinstance(values, list):
             values = {v: 0 for v in values}
@@ -444,51 +444,65 @@ class ConfigureScenario(foo.Operator):
 
         inputs.define_property(key, obj)
 
-    def render_checkbox_view(self, ctx, field_name, inputs):
+    def get_scenarios_picker_type(self, ctx, field_name):
         """
-        Render checkbox view for the given field value options based on schema and
-        other conditions.
+        Determines the picker type for a given field.
+
+        Returns:
+            Tuple[str, Any]: Picker type and corresponding values.
         """
-        # validate field name by checking if it exists in the schema
+        # Validate field name
         schema = ctx.dataset.get_field_schema(flat=True)
-        field = schema[field_name]
+        field = schema.get(field_name)
         if field is None:
             raise ValueError(f"Field {field_name} does not exist")
 
-        # Float type should show custom code view
+        # Field type-based selection
         if isinstance(field, fof.FloatField):
-            self.render_use_custom_code_instead(
-                ctx, inputs, field_name, reason="FLOAT_TYPE"
-            )
-            return
-
-        # Checkbox type should show two checkboxes
+            return "CODE", "FLOAT_TYPE"
         if isinstance(field, fof.BooleanField):
-            self.render_checkbox_view_options(
-                "field_option_values", [True, False], inputs
+            return "CHECKBOX", [True, False]
+
+        # Retrieve distinct values (may be slow for large datasets)
+        distinct_values = ctx.dataset.distinct(field_name)
+        distinct_count = len(distinct_values)
+
+        if distinct_count == 0:
+            return "EMPTY", None
+
+        if distinct_count > MAX_CATEGORIES:
+            return (
+                ("AUTO-COMPLETE", None)
+                if isinstance(field, fof.StringField)
+                else ("CODE", "TOO_MANY_CATEGORIES")
             )
-            return
 
-        # NOTE: can be slow for large datasets
-        values = ctx.dataset.distinct(field_name)
+        # NOTE: may be slow for large datasets
+        values = ctx.dataset.count_values(field_name)
+        return (
+            ("EMPTY", None)
+            if not values
+            else ("CHECKBOX", dict(sorted(values.items())))
+        )
 
-        if len(values) > MAX_CATEGORIES:
-            self.render_use_custom_code_instead(
-                ctx, inputs, field_name, reason="TOO_MANY_CATEGORIES"
-            )
-        else:
-            # NOTE: can be slow for large datasets
-            values = ctx.dataset.count_values(field_name)
+    def render_scenario_picker_view(self, ctx, field_name, inputs):
+        """
+        Renders the appropriate UI component based on the picker type.
+        """
+        view_type, values = self.get_scenarios_picker_type(ctx, field_name)
 
-            if len(values) == 0:
-                # TODO: design (negotiate current state)
-                self.render_no_values_warning(inputs, field_name)
-                return
+        render_methods = {
+            "EMPTY": lambda: self.render_no_values_warning(inputs, field_name),
+            "CODE": lambda: self.render_use_custom_code_instead(
+                ctx, inputs, field_name, reason=values
+            ),
+            "AUTO-COMPLETE": lambda: print("TODO"),
+            "CHECKBOX": lambda: self.render_checkbox_view(
+                "field_option_values", values, inputs
+            ),
+        }
 
-            sorted_values = {k: v for k, v in sorted(values.items())}
-            self.render_checkbox_view_options(
-                "field_option_values", sorted_values, inputs
-            )
+        render_methods.get(view_type, lambda: None)()
 
     def get_valid_label_attribute_path_options(self, schema, gt_field):
         return [
@@ -527,7 +541,7 @@ class ConfigureScenario(foo.Operator):
         )
 
         if label_attr:
-            self.render_checkbox_view(ctx, label_attr, inputs)
+            self.render_scenario_picker_view(ctx, label_attr, inputs)
 
     def get_valid_sample_field_path_options(self, flat_field_schema):
         """
@@ -571,7 +585,7 @@ class ConfigureScenario(foo.Operator):
         )
 
         if field_name:
-            self.render_checkbox_view(ctx, field_name, inputs)
+            self.render_scenario_picker_view(ctx, field_name, inputs)
 
     def get_scenario_type(self, params):
         scenario_type = params.get("scenario_type", None)
