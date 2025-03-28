@@ -17,12 +17,12 @@ import {
 import {
   MANAGING_GRID_MEMORY,
   OPTIMIZING_QUERY_PERFORMANCE,
-} from "../../utils/links";
-import Checkbox from "../Common/Checkbox";
-import RadioGroup from "../Common/RadioGroup";
-import { gridAutosizing, maxGridItemsSizeBytes } from "../Grid/recoil";
-import { ActionOption } from "./Common";
-import Popout from "./Popout";
+} from "../../../utils/links";
+import Checkbox from "../../Common/Checkbox";
+import RadioGroup from "../../Common/RadioGroup";
+import { gridAutosizing, maxGridItemsSizeBytes } from "../../Grid/recoil";
+import { ActionOption } from "../Common";
+import Popout from "../Popout";
 
 const SortFilterResults = ({ modal }) => {
   const [{ count, asc }, setSortFilterResults] = useRecoilState(

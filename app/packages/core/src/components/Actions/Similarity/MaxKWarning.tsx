@@ -1,6 +1,6 @@
-import React from "react";
 import { useTheme } from "@fiftyone/components";
 import ClearOutlinedIcon from "@mui/icons-material/ClearOutlined";
+import React from "react";
 
 type Props = {
   onClose: () => void;
@@ -8,7 +8,7 @@ type Props = {
   currentK: number | undefined;
 };
 
-const MaxKWarning: React.FunctionComponent<Props> = (props) => {
+const MaxKWarning = (props: Props) => {
   const theme = useTheme();
 
   return (
@@ -17,14 +17,14 @@ const MaxKWarning: React.FunctionComponent<Props> = (props) => {
         display: "flex",
         flexDirection: "row",
         justifyContent: "space-between",
-        border: "1px solid " + theme.divider,
+        border: `1px solid ${theme.divider}`,
         padding: "0.2rem",
       }}
     >
       <div style={{ color: theme.warning[400] }}>
         {props.currentK
           ? `Max K of selected model: ${props.maxK}`
-          : `K cannot be empty`}
+          : "K cannot be empty"}
       </div>
       <ClearOutlinedIcon
         onClick={props.onClose}
