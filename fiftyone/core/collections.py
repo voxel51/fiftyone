@@ -3098,6 +3098,7 @@ class SampleCollection(object):
                     )
                 )
 
+        # blah
         if ops:
             self._dataset._bulk_write(
                 ops, ids=ids, frames=frames, progress=progress
