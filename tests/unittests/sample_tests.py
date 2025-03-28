@@ -197,7 +197,8 @@ class SampleTests(unittest.TestCase):
         self.assertEqual(img.width, width)
         self.assertEqual(img.height, height)
 
-        with tempfile.NamedTemporaryFile("w") as image_file:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            file_name = os.path.join(tmp_dir, "image", "jpeg")
             # Test all possible orientations. width/height only flipped with
             #   5, 6, 7, 8
             for orientation in range(1, 10):
@@ -207,9 +208,9 @@ class SampleTests(unittest.TestCase):
                 expected_width, expected_height = width, height
                 if orientation in {5, 6, 7, 8}:
                     expected_width, expected_height = height, width
-                img.save(image_file.name, "jpeg", exif=exif)
+                img.save(file_name, "jpeg", exif=exif)
 
-                sample = fo.Sample(image_file.name)
+                sample = fo.Sample(file_name)
                 sample.compute_metadata()
 
                 self.assertEqual(sample.metadata.width, expected_width)
@@ -217,8 +218,8 @@ class SampleTests(unittest.TestCase):
                 self.assertEqual(sample.metadata.num_channels, 3)
 
             # Finally a normal non-exif file
-            img.save(image_file.name, "jpeg")
-            sample = fo.Sample(image_file.name)
+            img.save(file_name, "jpeg")
+            sample = fo.Sample(file_name)
             sample.compute_metadata()
             self.assertEqual(sample.metadata.width, width)
             self.assertEqual(sample.metadata.height, height)

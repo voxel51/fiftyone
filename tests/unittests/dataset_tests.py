@@ -5,7 +5,7 @@ FiftyOne dataset-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
+import sys
 import time
 from copy import deepcopy, copy
 from datetime import date, datetime, timedelta
@@ -1022,6 +1022,10 @@ class DatasetTests(unittest.TestCase):
             )
         )
 
+    @unittest.skipIf(
+        sys.platform.startswith("win"),
+        "time.tzset() not available on Windows and no good alternative",
+    )
     @drop_datasets
     def test_date_fields(self):
         dataset = fo.Dataset()
