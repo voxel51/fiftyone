@@ -5,16 +5,17 @@ Factory for mapping backends
 |
 """
 
-from typing import Dict, List, Optional, TypeVar, Type, Union
-
+from typing import Callable, Dict, List, Optional, Type, TypeVar, Union
 
 import fiftyone.core.config as focc
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.mapper as fomm
 import fiftyone.core.map.process as fomp
 import fiftyone.core.map.threading as fomt
+import fiftyone.core.sample as fos
 
 T = TypeVar("T")
+R = TypeVar("R")
 
 
 class MapperFactory:
@@ -62,6 +63,7 @@ class MapperFactory:
         key: Optional[str],
         sample_collection: fomm.SampleCollection[T],
         workers: Optional[int],
+        map_fcn: Callable[[T], R],
         batch_method: Optional[str] = None,
         **mapper_extra_kwargs,
     ) -> fomm.Mapper:
@@ -85,6 +87,36 @@ class MapperFactory:
         if key not in cls.__MAPPER_CLASSES:
             raise ValueError(f"Could not create mapper for: '{key}'")
 
+        # check here if the map fcn returns a sample and raise if it do
+        if cls.__check_if_return_is_sample(sample_collection, map_fcn):
+            raise ValueError(
+                "The map function must not return a Sample object"
+            )
+
         return cls.__MAPPER_CLASSES[key](
             sample_collection, workers, batch_method, **mapper_extra_kwargs
         )
+
+    @classmethod
+    def __check_if_return_is_sample(
+        cls,
+        sample_collection: fomm.SampleCollection[T],
+        map_fcn: Callable[[T], R],
+    ) -> bool:
+        """
+        Check if the map function returns a sample and raise if it does not
+        """
+
+        first_sample = sample_collection.first()
+        if first_sample is None:
+            raise ValueError("Sample collection is empty")
+
+        # make a copy outside of the db
+        sample_copy = first_sample.copy()
+
+        # run the map function on just the copy
+        # if it returns a Sample object, raise
+        if isinstance(map_fcn(sample_copy), fos.Sample):
+            return True
+
+        return False
