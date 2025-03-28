@@ -7,8 +7,14 @@ Execution cache utils.
 """
 from cachetools.keys import hashkey
 import numpy as np
+import json
+import hashlib
 
 from fiftyone.operators.store import ExecutionStore
+
+
+def get_function_id(func):
+    return f"{func.__module__}.{func.__qualname__}"
 
 
 def get_ctx_from_args(args):
@@ -31,8 +37,19 @@ def get_ctx_idx(args):
 
 
 def resolve_store_name(ctx, func):
-    store_name = func.store_name if hasattr(func, "store_name") else None
-    return store_name or func.__name__
+    store_name = (
+        func.store_name
+        if hasattr(func, "store_name")
+        else get_function_id(func)
+    )
+    version = (
+        func.exec_cache_version
+        if hasattr(func, "exec_cache_version")
+        else None
+    )
+    if version:
+        store_name = f"{store_name}#v{version}"
+    return store_name
 
 
 def convert_args_to_dict(args):
@@ -47,16 +64,29 @@ def convert_args_to_dict(args):
 
 
 def make_mongo_safe_dict(data):
-    return {
-        k: make_mongo_safe_list(v) if isinstance(v, np.ndarray) else v
-        for k, v in data.items()
-    }
+    return {k: make_mongo_safe_value(v) for k, v in data.items()}
 
 
-def make_mongo_safe_list(data):
-    if len(data) == 0:
-        return data
-    return [float(v) for v in data.tolist()]
+def make_mongo_safe_value(value):
+    if isinstance(value, dict):
+        return {str(k): make_mongo_safe_value(v) for k, v in value.items()}
+    elif isinstance(value, (list, tuple, set)):
+        return [make_mongo_safe_value(v) for v in value]
+    elif isinstance(value, np.ndarray):
+        return [make_mongo_safe_value(v) for v in value.tolist()]
+    elif isinstance(value, (np.integer,)):
+        return int(value)
+    elif isinstance(value, (np.floating,)):
+        val = float(value)
+        if not np.isfinite(val):
+            raise ValueError(
+                "Non-finite float value cannot be stored in Execution Cache."
+            )
+        return val
+    elif isinstance(value, (np.bool_, bool)):
+        return bool(value)
+    else:
+        return value
 
 
 def get_store_for_func(ctx, func):
@@ -68,9 +98,12 @@ def get_store_for_func(ctx, func):
     )
 
 
-def build_cache_key(ctx, func, cache_key_list):
-    ckl = str(hashkey(convert_args_to_dict(cache_key_list)))
-    return f"{ctx.operator_uri}?ckl={ckl}"
+def build_cache_key(operator_uri, cache_key_list):
+    structured_key = hashkey(*cache_key_list)
+    key_string = json.dumps(structured_key, sort_keys=True)
+    sha = hashlib.sha256(key_string.encode("utf-8")).hexdigest()
+
+    return f"{operator_uri}?sha={sha}"
 
 
 def get_cache_key_list(ctx, ctx_index, args, kwargs, key_fn):
@@ -84,12 +117,4 @@ def get_cache_key_list(ctx, ctx_index, args, kwargs, key_fn):
     else:
         cache_key_list = args[ctx_index + 1 :]
 
-    return cache_key_list
-
-
-def make_mongo_safe_result(result):
-    if isinstance(result, dict):
-        return make_mongo_safe_dict(result)
-    if isinstance(result, list):
-        return [make_mongo_safe_dict(d) for d in result]
-    return result
+    return convert_args_to_dict(cache_key_list)
