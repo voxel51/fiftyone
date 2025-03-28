@@ -44,7 +44,7 @@ async def load_view(
     view_name: Optional[str] = None,
 ) -> foc.SampleCollection:
     def run() -> foc.SampleCollection:
-        dataset = fod.load_dataset(dataset_name)
+        dataset = fod.load_dataset(dataset_name, reload=True)
         if view_name:
             view = dataset.load_saved_view(view_name)
             if serialized_view:
@@ -107,10 +107,7 @@ def get_view(
 
     def run(dataset, stages):
         if isinstance(dataset, str):
-            dataset = fod.load_dataset(dataset)
-
-        if reload:
-            dataset.reload()
+            dataset = fod.load_dataset(dataset, reload=reload)
 
         if view_name is not None:
             return dataset.load_saved_view(view_name)

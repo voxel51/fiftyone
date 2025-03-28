@@ -125,7 +125,11 @@ FiftyOne supports the configuration options described below:
 |                               |                                       |                               | operations such reading/writing large datasets or activating FiftyOne                  |
 |                               |                                       |                               | Brain methods on datasets.                                                             |
 +-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `timezone`                    | `FIFTYONE_TIMEZONE`                   | `None`                        | An optional timezone string. If provided, all datetimes read from FiftyOne datasets    |
+| `singleton_cache`             | `FIFTYONE_SINGLETON_CACHE`            | `True`                        | Whether to treat :class:`Dataset <fiftyone.core.dataset.Dataset>`,                     |
+|                               |                                       |                               | :class:`Sample <fiftyone.core.sample.Sample>`, and                                     |
+|                               |                                       |                               | :class:`Frame <fiftyone.core.frame.Frame>` instances as singletons.                    |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `timezone`                    | `FIFTYONE_TIMEZONE`                   | `None`                        | An optional timzone string. If provided, all datetimes read from FiftyOne datasets     |
 |                               |                                       |                               | will be expressed in this timezone. See :ref:`this section <configuring-timezone>` for |
 |                               |                                       |                               | more information.                                                                      |
 +-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
@@ -185,6 +189,7 @@ and the CLI:
             "plugins_dir": null,
             "requirement_error_level": 0,
             "show_progress_bars": true,
+            "singleton_cache": true,
             "timezone": null
         }
 
@@ -235,6 +240,7 @@ and the CLI:
             "plugins_dir": null,
             "requirement_error_level": 0,
             "show_progress_bars": true,
+            "singleton_cache": true,
             "timezone": null
         }
 

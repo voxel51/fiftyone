@@ -126,7 +126,7 @@ LightningResults = gql.union(
 async def lightning_resolver(
     input: LightningInput, info: Info
 ) -> t.List[LightningResults]:
-    dataset: fo.Dataset = fo.load_dataset(input.dataset)
+    dataset: fo.Dataset = fo.load_dataset(input.dataset, reload=True)
     collections, queries, resolvers, is_frames = zip(
         *[
             _resolve_lightning_path_queries(path, dataset, info)
