@@ -44,6 +44,7 @@ def map_samples(
         parallelize_method,
         sample_collection,
         workers,
+        map_fcn,
         batch_method,
     )
 
@@ -76,7 +77,11 @@ def update_samples(
             error if the update function raises an exception for a sample.
     """
     mapper = focm.MapperFactory.create(
-        parallelize_method, sample_collection, workers, batch_method
+        parallelize_method,
+        sample_collection,
+        workers,
+        update_fcn,
+        batch_method,
     )
 
     for _ in mapper.map_samples(
