@@ -70,6 +70,14 @@ class ExecutionStoreService(object):
         """
         return self._repo.create_store(store_name, metadata=metadata)
 
+    def clear_all(self, cache_only: bool = False) -> None:
+        """Clears all stores for the current context.
+
+        Args:
+            cache_only (False): whether to clear only cache stores
+        """
+        self._repo.clear_all(cache_only=cache_only)
+
     def get_store(self, store_name: str) -> StoreDocument:
         """Gets the specified store for the current context.
 

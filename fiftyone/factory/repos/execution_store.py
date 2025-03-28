@@ -26,11 +26,12 @@ class ExecutionStoreRepo(ABC):
     methods that this class provides.
     """
 
-    def __init__(self, dataset_id: Optional[ObjectId] = None):
+    def __init__(self, dataset_id: Optional[ObjectId] = None, is_cache=False):
         """Initialize the execution store repository.
 
         Args:
             dataset_id (Optional[ObjectId]): the dataset ID to operate on
+            is_cache (False): whether the store is a cache store
         """
         self._dataset_id = dataset_id
 
@@ -46,6 +47,15 @@ class ExecutionStoreRepo(ABC):
 
         Returns:
             StoreDocument: the created store document
+        """
+        pass
+
+    @abstractmethod
+    def clear_all(self, cache_only=False) -> None:
+        """Clear all stores in the store collection.
+
+        Args:
+            cache_only (False): whether to clear only cache stores
         """
         pass
 
@@ -248,8 +258,10 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
 
     COLLECTION_NAME = "execution_store"
 
-    def __init__(self, collection, dataset_id: Optional[ObjectId] = None):
-        super().__init__(dataset_id)
+    def __init__(
+        self, collection, dataset_id: Optional[ObjectId] = None, is_cache=False
+    ):
+        super().__init__(dataset_id, is_cache)
         self._collection = collection
         self._create_indexes()
 
@@ -260,6 +272,7 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
         key_name = "key"
         full_key_name = "unique_store_index"
         dataset_id_name = "dataset_id"
+        is_cache_name = "is_cache"
 
         if expires_at_name not in indices:
             self._collection.create_index(
@@ -271,7 +284,12 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
                 name=full_key_name,
                 unique=True,
             )
-        for name in [store_name_name, key_name, dataset_id_name]:
+        for name in [
+            store_name_name,
+            key_name,
+            dataset_id_name,
+            is_cache_name,
+        ]:
             if name not in indices:
                 self._collection.create_index(name, name=name)
 
@@ -285,6 +303,16 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
         )
         self._collection.insert_one(store_doc.to_mongo_dict())
         return store_doc
+
+    def clear_all(self, cache_only=False) -> None:
+        query = {}
+        if cache_only:
+            query = {"is_cache": True}
+
+        if self._dataset_id:
+            query["dataset_id"] = self._dataset_id
+
+        self._collection.delete_many(query)
 
     def get_store(self, store_name: str) -> Optional[StoreDocument]:
         raw_store_doc = self._collection.find_one(
@@ -517,6 +545,19 @@ class InMemoryExecutionStoreRepo(ExecutionStoreRepo):
         key = self._doc_key(store_name, "__store__")
         self._docs[key] = store_doc.to_mongo_dict()
         return store_doc
+
+    def clear_all(self, cache_only=False) -> None:
+        keys_to_delete = [
+            key for key in self._docs if key[2] == self._dataset_id
+        ]
+        if cache_only:
+            keys_to_delete = [
+                key
+                for key in keys_to_delete
+                if self._docs[key].get("is_cache", False)
+            ]
+        for key in keys_to_delete:
+            del self._docs[key]
 
     def get_store(self, store_name: str) -> Optional[StoreDocument]:
         key = self._doc_key(store_name, "__store__")
