@@ -1,0 +1,96 @@
+"""
+Execution cache decorator.
+
+| Copyright 2017-2025, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
+from functools import wraps
+import numpy as np
+
+from fiftyone.operators.store import ExecutionStore
+from .utils import (
+    get_ctx_from_args,
+    make_mongo_safe_result,
+    build_cache_key,
+    get_store_for_func,
+    get_cache_key_list,
+)
+
+
+def execution_cache(
+    _func=None, *, ttl=None, link_to_dataset=True, key_fn=None, store_name=None
+):
+    """
+    Decorator for caching function results in an ``ExecutionStore``.
+
+    The function must:
+        - accept a `ctx` argument as the first parameter
+        - return a serializable value
+        - be idempotent (i.e., it should produce the same
+            output for the same input) and not have any side effects
+        - have serializeable parameters or a custom ``key_fn`` to generate
+            cache keys
+
+    Args:
+        ttl (None): Time-to-live for the cached value in seconds.
+        link_to_dataset (True): Whether to tie the cache entry to the dataset
+        key_fn (None): A custom function to generate cache keys.
+            If not provided, the function arguments are used as the key by serializing them as JSON.
+        store_name (None): Custom name for the execution store.
+            Defaults to the function name.
+
+    note::
+
+        When using ``link_to_dataset=True``:
+            - the associated store is deleted the dataset is deleted
+            - the cache entry is namespaced to the dataset
+
+    Example Usage:
+        # Standalone function with default caching
+        @execution_cache
+        def expensive_query(ctx, path):
+            return ctx.dataset.count_values(path)
+
+        # Instance method with dataset-scoped caching
+        class Processor:
+            @execution_cache(ttl=60, store_name="processor_cache")
+            def expensive_query(self, ctx, path):
+                return ctx.dataset.count_values(path)
+
+        # Using a custom key function
+        def custom_key_fn(ctx, path, user_id):
+            return [path, user_id]
+
+        @execution_cache(ttl=90, key_fn=custom_key_fn)
+        def user_specific_query(ctx, path, user_id):
+            return ctx.dataset.count_values(path)
+    """
+
+    def decorator(func):
+        func.store_name = store_name
+        func.link_to_dataset = link_to_dataset
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            ctx, ctx_index = get_ctx_from_args(args)
+            cache_key_list = get_cache_key_list(
+                ctx, ctx_index, args, kwargs, key_fn
+            )
+            cache_key = build_cache_key(ctx, func, cache_key_list)
+            store = get_store_for_func(ctx, func)
+
+            cached_value = store.get(cache_key)
+            if cached_value is not None:
+                return cached_value
+
+            result = func(*args, **kwargs)
+            result = make_mongo_safe_result(result)
+            store.set(cache_key, result, ttl=ttl)
+
+            return result
+
+        return wrapper
+
+    return decorator if _func is None else decorator(_func)

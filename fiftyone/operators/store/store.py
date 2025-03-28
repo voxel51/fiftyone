@@ -35,6 +35,14 @@ class ExecutionStore(object):
             store_name, ExecutionStoreService(dataset_id=dataset_id)
         )
 
+    def clear_all(self, cache_only=False) -> None:
+        """Clears all execution stores.
+
+        Args:
+            cache_only (False): whether to clear only cache stores
+        """
+        self._store_service.clear_all(cache_only=cache_only)
+
     def list_stores(self) -> list[str]:
         """Lists all stores in the execution store.
 

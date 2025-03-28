@@ -17,8 +17,8 @@ from cachetools.keys import hashkey
 from fiftyone.operators.decorators import (
     coroutine_timeout,
     dir_state,
-    execution_cache,
 )
+from fiftyone.operators.cache import execution_cache
 from fiftyone.operators.executor import ExecutionContext
 
 
@@ -158,6 +158,7 @@ def create_mock_ctx():
     ctx = MagicMock(spec=ExecutionContext)
     ctx.dataset = MagicMock()
     ctx.dataset.name = "test-dataset"
+    ctx.operator_uri = "@org/plugin/operator"
     return ctx
 
 
@@ -190,8 +191,8 @@ def function_with_custom_key(ctx, a, b):
     return a + b
 
 
-def str_hk(args):
-    return str(hashkey(args))
+def str_hk(ctx, args):
+    return f"{ctx.operator_uri}?ckl={str(hashkey(args))}"
 
 
 class TestExecutionCacheDecorator(unittest.TestCase):
@@ -221,7 +222,7 @@ class TestExecutionCacheDecorator(unittest.TestCase):
         self.assertEqual(result1, result2)
         self.assertEqual(result1, 3)
         store_instance.set.assert_called_once_with(
-            str_hk([1, 2]), result1, ttl=60
+            str_hk(ctx, [1, 2]), result1, ttl=60
         )
 
     @patch("fiftyone.operators.store.ExecutionStore.create")
@@ -240,7 +241,7 @@ class TestExecutionCacheDecorator(unittest.TestCase):
         self.assertEqual(result1, result2)
         self.assertEqual(result1, 10)
         store_instance.set.assert_called_once_with(
-            str_hk([5, 5]), result1, ttl=60
+            str_hk(ctx, [5, 5]), result1, ttl=60
         )
 
     @patch("fiftyone.operators.store.ExecutionStore.create")
@@ -259,7 +260,7 @@ class TestExecutionCacheDecorator(unittest.TestCase):
         self.assertEqual(result1, 5)
 
         # Verify that the custom key function was used
-        expected_key = str_hk(["custom-key", 2, 3])
+        expected_key = str_hk(ctx, ["custom-key", 2, 3])
         store_instance.get.assert_called_with(expected_key)
         store_instance.set.assert_called_once_with(
             expected_key, result1, ttl=60
