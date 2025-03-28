@@ -205,6 +205,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     queryPerformance,
     spaces,
     workspaceName,
+    promptId,
   ]);
 
   return ctx;
