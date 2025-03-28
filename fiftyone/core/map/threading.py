@@ -172,7 +172,7 @@ class ThreadMapper(fomm.LocalMapper[T]):
                     else:
                         # An error was raised in the map_fcn for a sample.
                         if err is not None:
-                            # When skipping failures, simply yield the the
+                            # When skipping failures, simply yield the
                             # sample ID and the error.
                             if skip_failures:
                                 yield sample_id, err, None
