@@ -2078,7 +2078,12 @@ def safe_relpath(path, start=None, default=None):
     Returns:
         the relative path
     """
-    relpath = os.path.relpath(path, start)
+    try:
+        relpath = os.path.relpath(path, start)
+    except ValueError:
+        # Some OS error occurred so assume given path does not lie within start
+        relpath = ".."
+
     if relpath.startswith(".."):
         if default is not None:
             return default
