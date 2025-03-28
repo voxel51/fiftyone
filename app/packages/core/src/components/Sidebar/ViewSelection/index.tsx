@@ -1,3 +1,4 @@
+import { useTrackEvent } from "@fiftyone/analytics";
 import { Selection } from "@fiftyone/components";
 import { useRefetchableSavedViews } from "@fiftyone/core";
 import * as fos from "@fiftyone/state";
@@ -9,10 +10,9 @@ import {
   useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
-import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
+import { shouldToggleBookMarkIconOnSelector } from "../../Grid/Actions/SaveFilters";
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
 import { AddIcon, Box, LastOption, TextContainer } from "./styledComponents";
-import { useTrackEvent } from "@fiftyone/analytics";
 
 export const viewSearchTerm = atom<string>({
   key: "viewSearchTerm",
@@ -240,7 +240,7 @@ export default function ViewSelection() {
           }}
           lastFixedOption={
             <LastOption
-              data-cy={`saved-views-create-new`}
+              data-cy={"saved-views-create-new"}
               onClick={() => !disabled && !isEmptyView && setIsOpen(true)}
               disabled={isEmptyView || disabled}
               title={disabledMsg}

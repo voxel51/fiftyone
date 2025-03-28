@@ -3,6 +3,7 @@ import _ from "lodash";
 import mime from "mime";
 import { Field } from "./schema";
 
+export * from "./Resource";
 export * from "./buffer-manager";
 export * from "./color";
 export * as constants from "./constants";
@@ -10,7 +11,6 @@ export * from "./errors";
 export * from "./fetch";
 export * from "./order";
 export * from "./paths";
-export * from "./Resource";
 export * from "./schema";
 export { default as sizeBytesEstimate } from "./size-bytes-estimate";
 export * as styles from "./styles";

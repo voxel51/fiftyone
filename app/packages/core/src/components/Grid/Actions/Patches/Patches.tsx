@@ -12,16 +12,17 @@ import {
   PATCHES_FIELDS,
 } from "@fiftyone/utilities";
 import { useSpring } from "@react-spring/web";
-import React, { MutableRefObject, useState } from "react";
+import type { MutableRefObject } from "react";
+import React, { useState } from "react";
 import { selector, useRecoilValue } from "recoil";
 import {
   CLIPS_VIEWS,
   EVALUATION_PATCHES,
   OBJECT_PATCHES,
-} from "../../utils/links";
-import { ActionOption } from "./Common";
-import Popout from "./Popout";
-import { SwitchDiv, SwitcherDiv } from "./utils";
+} from "../../../../utils/links";
+import { SwitchDiv, SwitcherDiv } from "../../../Actions/utils";
+import { ActionOption } from "./../../../Actions/Common";
+import Popout from "./../../../Actions/Popout";
 
 export const patchesFields = selector<string[]>({
   key: "patchesFields",
@@ -74,14 +75,15 @@ const evaluationKeys = selector<string[]>({
       )
     );
 
-    const evals = get(fos.dataset).evaluations.filter(
-      (e) =>
-        valid.includes(e.config.predField) || valid.includes(e.config.gtField)
+    return (
+      get(fos.dataset)
+        ?.evaluations.filter(
+          (e) =>
+            valid.includes(e.config.predField) ||
+            valid.includes(e.config.gtField)
+        )
+        .map(({ key }) => key) ?? []
     );
-
-    const keys = evals.map(({ key }) => key);
-
-    return keys;
   },
 });
 
@@ -175,15 +177,15 @@ const EvaluationPatches = ({ close }) => {
 
 type PatcherProps = {
   close: () => void;
-  anchorRef?: MutableRefObject<HTMLElement>;
+  anchorRef?: MutableRefObject<HTMLElement | null>;
 };
 
 const Patcher = ({ close, anchorRef }: PatcherProps) => {
-  const theme = useTheme();
-  const isVideo =
-    useRecoilValue(fos.isVideoDataset) && useRecoilValue(fos.isRootView);
+  const isRoot = useRecoilValue(fos.isRootView);
+  const isVideo = useRecoilValue(fos.isVideoDataset) && isRoot;
   const isClips = useRecoilValue(fos.isClipsView);
   const [labels, setLabels] = useState(true);
+  const theme = useTheme();
 
   const labelProps = useSpring({
     borderBottomColor: labels

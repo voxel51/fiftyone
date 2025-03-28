@@ -1,7 +1,6 @@
 import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
+import { useSimilarityType } from "@fiftyone/state";
 import React from "react";
-
-import useSimilarityType from "@fiftyone/state/src/hooks/similaritySearch/useSimilarityType";
 import { SORT_BY_SIMILARITY } from "../../../utils/links";
 import { ActionOption } from "../Common";
 
@@ -10,7 +9,7 @@ interface Props {
   isImageSearch: boolean;
 }
 
-const Helper: React.FunctionComponent<Props> = (props) => {
+const Helper = (props: Props) => {
   const theme = useTheme();
   const { isImageSearch } = props;
   const { text } = useSimilarityType({ isImageSearch });

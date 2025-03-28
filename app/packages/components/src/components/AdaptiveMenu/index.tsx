@@ -1,6 +1,7 @@
 import { escapeKeyHandlerIdsAtom, useKeyDown } from "@fiftyone/state";
 import { ExpandMore } from "@mui/icons-material";
-import { Box, BoxProps } from "@mui/material";
+import type { BoxProps } from "@mui/material";
+import { Box } from "@mui/material";
 import { throttle } from "lodash";
 import React, {
   useCallback,
@@ -9,13 +10,16 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { MoveEvent, ReactSortable, SortableEvent } from "react-sortablejs";
+import type { MoveEvent, SortableEvent } from "react-sortablejs";
+import { ReactSortable } from "react-sortablejs";
 import { useSetRecoilState } from "recoil";
 import PillButton from "../PillButton";
 import PopoutButton from "../PopoutButton";
-import { hideOverflowingNodes, SHOW_MORE_ACTIONS_BUTTON_WIDTH } from "./utils";
+import { SHOW_MORE_ACTIONS_BUTTON_WIDTH, hideOverflowingNodes } from "./utils";
 
-export default function AdaptiveMenu(props: AdaptiveMenuPropsType) {
+export default function AdaptiveMenu<T extends AdaptiveMenuItemPropsType>(
+  props: AdaptiveMenuPropsType<T>
+) {
   const {
     id,
     items,
@@ -26,7 +30,7 @@ export default function AdaptiveMenu(props: AdaptiveMenuPropsType) {
   } = props;
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [hidden, setHidden] = React.useState(0);
-  const [previewItems, setPreviewItems] = React.useState<AdaptiveMenuItems>();
+  const [previewItems, setPreviewItems] = React.useState<T[]>();
   const draggingEndedRef = useRef(false);
   const lastSwapRef = useRef<Array<number>>([]);
   const pendingMoveRef = useRef<Array<number>>([]);
@@ -44,7 +48,7 @@ export default function AdaptiveMenu(props: AdaptiveMenuPropsType) {
     return items.slice(items.length - hidden);
   }, [items, hidden]);
 
-  const handleOrderChange = (updatedItems: AdaptiveMenuItems) => {
+  const handleOrderChange = (updatedItems: T[]) => {
     onOrderChange?.(updatedItems);
   };
 
@@ -205,7 +209,9 @@ export default function AdaptiveMenu(props: AdaptiveMenuPropsType) {
   );
 }
 
-function AdaptiveMenuItems(props: AdaptiveMenuItemsPropsType) {
+function AdaptiveMenuItems<T extends AdaptiveMenuItemPropsType>(
+  props: AdaptiveMenuItemsPropsType<T>
+) {
   const { items, variant, closeOverflow, refresh } = props;
   return items.map((item) => {
     const { Component, id } = item;
@@ -221,7 +227,9 @@ function AdaptiveMenuItems(props: AdaptiveMenuItemsPropsType) {
   });
 }
 
-function MoreItems(props: MoreItemsPropsType) {
+function MoreItems<T extends AdaptiveMenuItemPropsType>(
+  props: MoreItemsPropsType<T>
+) {
   const { id, items, onMove, onEnd, onStart, orientation, refresh } = props;
   const [open, setOpen] = React.useState(false);
   const setEscapeHandlerIds = useSetRecoilState(escapeKeyHandlerIdsAtom);
@@ -304,24 +312,22 @@ type AdaptiveMenuItemPropsType = {
   Component: React.FunctionComponent<AdaptiveMenuItemComponentPropsType>;
 };
 
-type AdaptiveMenuItems = AdaptiveMenuItemPropsType[];
-
-type AdaptiveMenuPropsType = {
+type AdaptiveMenuPropsType<T extends AdaptiveMenuItemPropsType> = {
   id: string;
-  items: AdaptiveMenuItems;
-  onOrderChange?: (items: AdaptiveMenuItems) => void;
+  items: T[];
+  onOrderChange?: (items: T[]) => void;
   containerProps?: BoxProps;
   right?: boolean;
   moreItemsOrientation?: MenuOrientation;
 };
 
-type MoreItemsPropsType = {
+type MoreItemsPropsType<T extends AdaptiveMenuItemPropsType> = {
   id: string;
-  items: AdaptiveMenuItems;
+  items: T[];
   onMove: (e: MoveEvent, source: MenuVariant) => boolean;
   onEnd: () => void;
   onStart: () => void;
-  onOrderChange?: (items: AdaptiveMenuItems) => void;
+  onOrderChange?: (items: T[]) => void;
   orientation?: MenuOrientation;
   refresh?: () => void;
 };
@@ -329,8 +335,8 @@ type MoreItemsPropsType = {
 type MenuVariant = "visible" | "overflow";
 type MenuOrientation = "horizontal" | "vertical";
 
-type AdaptiveMenuItemsPropsType = {
-  items: AdaptiveMenuItems;
+type AdaptiveMenuItemsPropsType<T extends AdaptiveMenuItemPropsType> = {
+  items: T[];
   variant: MenuVariant;
   closeOverflow?: () => void;
   refresh?: () => void;

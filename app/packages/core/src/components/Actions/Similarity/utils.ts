@@ -1,8 +1,10 @@
+import type { Method } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
-import { Method, selectedLabels, useBrowserStorage } from "@fiftyone/state";
+import { selectedLabels, useBrowserStorage } from "@fiftyone/state";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useMemo } from "react";
-import { Snapshot, selectorFamily, useRecoilCallback } from "recoil";
+import type { Snapshot } from "recoil";
+import { selectorFamily, useRecoilCallback } from "recoil";
 
 export const getQueryIds = async (
   snapshot: Snapshot,
@@ -67,7 +69,7 @@ export const useSortBySimilarity = (close) => {
         }
 
         const queryIds = parameters.query
-          ? null
+          ? undefined
           : await getQueryIds(snapshot, parameters.brainKey);
 
         const view = await snapshot.getPromise(fos.view);
@@ -76,11 +78,11 @@ export const useSortBySimilarity = (close) => {
 
         const { query, ...commonParams } = parameters;
 
-        const combinedParameters = {
+        const combinedParameters: fos.State.SortBySimilarityParameters = {
           ...commonParams,
         };
 
-        combinedParameters["query"] = query ?? queryIds;
+        combinedParameters.query = query ?? queryIds;
         const filters = await snapshot.getPromise(fos.filters);
 
         // save the brainkey into local storage
@@ -162,11 +164,10 @@ const availablePatchesSimilarityKeys = selectorFamily<
           return patches
             .filter(([_, field]) => fields.has(field))
             .map(([key]) => key);
-        } else {
-          const { sample } = get(fos.modalSample);
-
-          return patches.filter(([_, v]) => sample[v]).map(([key]) => key);
         }
+        const { sample } = get(fos.modalSample);
+
+        return patches.filter(([_, v]) => sample[v]).map(([key]) => key);
       }
 
       return patches
@@ -218,7 +219,7 @@ export const currentBrainConfig = selectorFamily<Method | undefined, string>({
     (key) =>
     ({ get }) => {
       if (get(fos.isPatchesView)) {
-        const { patches: patches } = get(fos.similarityMethods);
+        const { patches } = get(fos.similarityMethods);
         const patch = patches.find(([method, _]) => method.key === key);
         if (patch) {
           return patch[0];

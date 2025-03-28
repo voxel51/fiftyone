@@ -1,30 +1,19 @@
-import { PillButton, PopoutSectionTitle } from "@fiftyone/components";
+import { PopoutSectionTitle } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { useOutsideClick } from "@fiftyone/state";
-import ViewComfyIcon from "@mui/icons-material/ViewComfy";
-import React, { RefObject, useMemo } from "react";
+import type { MutableRefObject, ReactNode } from "react";
+import React, { useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
-import styled from "styled-components";
-import Checkbox from "../Common/Checkbox";
-import style from "../Modal/Group/Group.module.css";
-import Popout from "./Popout";
+import Popout from "../../../Actions/Popout";
+import Checkbox from "../../../Common/Checkbox";
 
-interface GroupMediaVisibilityProps {
-  modal: boolean;
-}
+export const TITLE = "Toggle media";
 
-const TITLE = "Toggle media";
-
-const Container = styled.div`
-  position: relative;
-`;
-
-const GroupMediaVisibilityPopout = ({
+export default ({
   modal,
   anchorRef,
 }: {
   modal: boolean;
-  anchorRef: RefObject<HTMLDivElement>;
+  anchorRef: MutableRefObject<HTMLDivElement | null>;
 }) => {
   const [isSlotVisible, setIsSlotVisible] = useRecoilState(
     fos.groupMedia3dVisibleSetting
@@ -49,7 +38,7 @@ const GroupMediaVisibilityPopout = ({
   const isImavidInNestedGroup = isNestedDynamicGroup && shouldRenderImaVid;
 
   const checkboxes = useMemo(() => {
-    const toReturn: React.ReactNode[] = [];
+    const toReturn: ReactNode[] = [];
 
     if (threeDSliceExists) {
       toReturn.push(
@@ -101,6 +90,10 @@ const GroupMediaVisibilityPopout = ({
     isCarouselVisible,
     isMainVisible,
     isSlotVisible,
+    setIsMainVisible,
+    isImavidInNestedGroup,
+    setIsCarouselVisible,
+    setIsSlotVisible,
   ]);
 
   return (
@@ -113,31 +106,5 @@ const GroupMediaVisibilityPopout = ({
       <PopoutSectionTitle>{TITLE}</PopoutSectionTitle>
       {checkboxes}
     </Popout>
-  );
-};
-
-export const GroupMediaVisibilityContainer = ({
-  modal,
-}: GroupMediaVisibilityProps) => {
-  const [open, setOpen] = React.useState(false);
-  const ref = React.useRef<HTMLDivElement>(null);
-  useOutsideClick(ref, () => open && setOpen(false));
-
-  return (
-    <Container ref={ref} data-cy="action-toggle-group-media-visibility">
-      <PillButton
-        tooltipPlacement={modal ? "top" : "bottom"}
-        icon={
-          <ViewComfyIcon classes={{ root: style.groupMediaVisibilityIcon }} />
-        }
-        open={open}
-        onClick={() => {
-          setOpen((current) => !current);
-        }}
-        title={TITLE}
-        highlight={open}
-      />
-      {open && <GroupMediaVisibilityPopout anchorRef={ref} modal={modal} />}
-    </Container>
   );
 };

@@ -293,7 +293,7 @@ export const similarityParameters = (() => {
 
   return graphQLSyncFragmentAtom<
     datasetFragment$key,
-    State.SortBySimilarityParameters | null
+    State.SortBySimilarityParameters
   >(
     {
       fragments: [datasetFragment],

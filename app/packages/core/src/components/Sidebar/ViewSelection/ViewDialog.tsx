@@ -26,7 +26,7 @@ import {
   useResetRecoilState,
 } from "recoil";
 import { viewDialogOpen } from ".";
-import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
+import { shouldToggleBookMarkIconOnSelector } from "../../Grid/Actions/SaveFilters";
 import {
   Box,
   DescriptionInput,

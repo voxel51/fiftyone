@@ -6,12 +6,12 @@ import Color from "color";
 import React, { Suspense, useMemo } from "react";
 import { constSelector, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
-import { GridActionsRow } from "./Actions";
-import { Slider } from "./Common/RangeSlider";
-import { ZOOM_RANGE, gridZoom } from "./Grid";
-import { gridSpacing } from "./Grid/recoil";
-import GroupSliceSelector from "./GroupSliceSelector";
-import ResourceCount from "./ResourceCount";
+import { Slider } from "../Common/RangeSlider";
+import GroupSliceSelector from "../GroupSliceSelector";
+import ResourceCount from "../ResourceCount";
+import Actions from "./Actions";
+import { gridSpacing, gridZoom } from "./recoil";
+import { ZOOM_RANGE } from "./useZoomSetting";
 
 export const SamplesHeader = styled.div`
   position: absolute;
@@ -122,8 +122,8 @@ const ImageContainerHeader = () => {
 
   return (
     <SamplesHeader data-cy={"fo-grid-actions"}>
-      <GridActionsRow />
-      <RightContainer>
+      <Actions key={"actions"} />
+      <RightContainer key={"options"}>
         <Suspense
           fallback={
             <RightDiv>

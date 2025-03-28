@@ -221,7 +221,7 @@ const SortBySimilarity = ({
           {hasSorting && (
             <Button
               text={"Reset"}
-              title={`Clear sorting`}
+              title={"Clear sorting"}
               onClick={() => {
                 close();
                 reset();
@@ -242,7 +242,7 @@ const SortBySimilarity = ({
               validator={(value) => /^[0-9\b]+$/.test(value) || value === ""}
               value={state?.k ? String(state.k) : ""}
               setter={(value) => {
-                updateState({ k: value == "" ? undefined : Number(value) });
+                updateState({ k: value === "" ? undefined : Number(value) });
               }}
               style={{
                 width: 40,
@@ -255,7 +255,7 @@ const SortBySimilarity = ({
             ) : (
               <Button
                 text={state.reverse ? "least" : "most"}
-                title={`select most or least`}
+                title={"select most or least"}
                 onClick={() => updateState({ reverse: !state.reverse })}
                 style={{
                   textAlign: "center",
@@ -265,7 +265,7 @@ const SortBySimilarity = ({
                 }}
               />
             )}
-            {`similar samples `}
+            {"similar samples "}
             {showMaxKWarning && (
               <MaxKWarning
                 maxK={brainConfig?.maxK}

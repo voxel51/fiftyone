@@ -1,3 +1,4 @@
+import { useTrackEvent } from "@fiftyone/analytics";
 import {
   Button,
   PopoutSectionTitle,
@@ -8,8 +9,8 @@ import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useSetView } from "@fiftyone/state";
 import { Alert } from "@mui/material";
+import type { MouseEvent, MutableRefObject } from "react";
 import React, {
-  MutableRefObject,
   useCallback,
   useEffect,
   useMemo,
@@ -18,8 +19,7 @@ import React, {
 } from "react";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
-import Popout from "./Popout";
-import { useTrackEvent } from "@fiftyone/analytics";
+import Popout from "../../../Actions/Popout";
 
 const SELECTOR_RESULTS_ID = "dynamic-group-selector-results";
 
@@ -39,10 +39,10 @@ export default ({
   setIsProcessing,
   anchorRef,
 }: {
-  close: (e?: React.MouseEvent<Element>) => void;
+  close: (e?: MouseEvent<Element>) => void;
   isProcessing: boolean;
   setIsProcessing: (value: boolean) => void;
-  anchorRef: MutableRefObject<HTMLElement>;
+  anchorRef: MutableRefObject<HTMLElement | null>;
 }) => {
   const [groupBy, setGroupBy] = useState<string>("");
   const [orderBy, setOrderBy] = useState<string>("");
@@ -51,9 +51,9 @@ export default ({
   fos.useOutsideClick(
     ref,
     useCallback(
-      (event) => {
+      (event: MouseEvent<HTMLElement>) => {
         const exceptionEl = document.getElementById(SELECTOR_RESULTS_ID);
-        if (exceptionEl && exceptionEl.contains(event.target as HTMLElement)) {
+        if (exceptionEl?.contains(event.target as HTMLElement)) {
           return;
         }
 
@@ -79,6 +79,9 @@ export default ({
   }, [useOrdered, groupBy, orderBy, isProcessing]);
 
   useEffect(() => {
+    /** refresh **/
+    useOrdered;
+    /** refresh */
     setOrderBy("");
   }, [useOrdered]);
 
@@ -106,7 +109,7 @@ export default ({
       useOrdered,
     });
     setView((v) => [
-      ...v,
+      ...(v ?? []),
       {
         _cls: fos.GROUP_BY_VIEW_STAGE,
         kwargs: [
@@ -127,11 +130,12 @@ export default ({
     useOrdered,
     setIsProcessing,
     setView,
+    trackEvent,
   ]);
 
   const onClear = useCallback(() => {
     setView((v) => {
-      const newView = [...v];
+      const newView = [...(v ?? [])];
       const groupByIndex = newView.findIndex(
         (stage) => stage._cls === fos.GROUP_BY_VIEW_STAGE
       );

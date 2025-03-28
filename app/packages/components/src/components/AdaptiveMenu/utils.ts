@@ -27,7 +27,7 @@ export const hideOverflowingNodes = throttle(
         lastVisibleItemId = item.getAttribute("data-item-id") as string;
       }
     });
-    itemsContainer.style.width = `${lastRightEdge - 8}px`;
+    itemsContainer.style.width = `${lastRightEdge - 4}px`;
     onHide(hiddenItems, lastVisibleItemId);
   },
   ADAPT_THROTTLE,
