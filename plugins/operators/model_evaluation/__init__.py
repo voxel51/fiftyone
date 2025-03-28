@@ -391,7 +391,7 @@ class ConfigureScenario(foo.Operator):
             )
         if reason == "FLOAT_TYPE":
             label = "Float type."
-            description = f"Field {field_name} with is only supported in custom code mode. "
+            description = f"To create scenarios based on float fields, please use the custom code mode. "
         if reason == "SLOW":
             label = "Too many values."
             description = f"Found too many distinct values for this field. "
@@ -433,7 +433,23 @@ class ConfigureScenario(foo.Operator):
         elif view_type == "AUTO-COMPLETE":
             self.render_auto_complete_view("saved views", view_names, inputs)
         elif view_type == "CHECKBOX":
-            inputs.view(
+            stack = inputs.v_stack(
+                "checkbox_view_stack",
+                width="100%",
+                componentsProps={
+                    "grid": {
+                        "sx": {
+                            "border": "1px solid #333",
+                            "display": "flex",
+                            "flexDirection": "column",
+                            "padding": "1rem",
+                            "height": "210px",
+                            "overflowY": "auto",
+                        }
+                    },
+                },
+            )
+            stack.view(
                 "info_header_saved_views",
                 types.Header(
                     label="",
@@ -441,9 +457,9 @@ class ConfigureScenario(foo.Operator):
                     divider=False,
                 ),
             )
-            self.render_checkbox_view("saved_views_values", view_names, inputs)
+            self.render_checkbox_view("saved_views_values", view_names, stack)
 
-    def render_checkbox_view(self, key, values, inputs):
+    def render_checkbox_view(self, key, values, stack):
         obj = types.Object()
         if isinstance(values, list):
             values = {v: 0 for v in values}
@@ -458,7 +474,7 @@ class ConfigureScenario(foo.Operator):
                 view=types.CheckboxView(space=4),
             )
 
-        inputs.define_property(key, obj)
+        stack.define_property(key, obj)
 
     def get_scenarios_picker_type(self, ctx, field_name):
         """
