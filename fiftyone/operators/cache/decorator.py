@@ -12,7 +12,7 @@ import numpy as np
 from fiftyone.operators.store import ExecutionStore
 from .utils import (
     get_ctx_from_args,
-    make_mongo_safe_result,
+    make_mongo_safe_value,
     build_cache_key,
     get_store_for_func,
     get_cache_key_list,
@@ -20,7 +20,13 @@ from .utils import (
 
 
 def execution_cache(
-    _func=None, *, ttl=None, link_to_dataset=True, key_fn=None, store_name=None
+    _func=None,
+    *,
+    ttl=None,
+    link_to_dataset=True,
+    key_fn=None,
+    store_name=None,
+    version=None
 ):
     """
     Decorator for caching function results in an ``ExecutionStore``.
@@ -40,12 +46,21 @@ def execution_cache(
             If not provided, the function arguments are used as the key by serializing them as JSON.
         store_name (None): Custom name for the execution store.
             Defaults to the function name.
+        version (None): Set a version number to prevent cache collisions
+            when the function implementation changes.
 
     note::
 
         When using ``link_to_dataset=True``:
             - the associated store is deleted the dataset is deleted
             - the cache entry is namespaced to the dataset
+
+    note::
+
+        Return values will be coerced from JSON unsafe types to safe types.
+        This may yield unexpected return values if the cached function returns
+        non-serializable types (e.g., NumPy arrays), since they are converted
+        to a JSON-compatible format.
 
     Example Usage:
         # Standalone function with default caching
@@ -71,6 +86,7 @@ def execution_cache(
     def decorator(func):
         func.store_name = store_name
         func.link_to_dataset = link_to_dataset
+        func.exec_cache_version = version
 
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -78,7 +94,7 @@ def execution_cache(
             cache_key_list = get_cache_key_list(
                 ctx, ctx_index, args, kwargs, key_fn
             )
-            cache_key = build_cache_key(ctx, func, cache_key_list)
+            cache_key = build_cache_key(ctx.operator_uri, cache_key_list)
             store = get_store_for_func(ctx, func)
 
             cached_value = store.get(cache_key)
@@ -86,7 +102,7 @@ def execution_cache(
                 return cached_value
 
             result = func(*args, **kwargs)
-            result = make_mongo_safe_result(result)
+            result = make_mongo_safe_value(result)
             store.set(cache_key, result, ttl=ttl)
 
             return result
