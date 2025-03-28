@@ -1004,54 +1004,55 @@ class TestStringLightningQueries(unittest.IsolatedAsyncioTestCase):
         """
 
         result = await _execute(query, dataset, fo.StringField, keys)
-        self.assertListEqual(
-            result.data["lightning"],
-            [
-                {"path": "classification.none", "values": ["none"]},
-                {"path": "classification.str", "values": ["lower", "upper"]},
-                {
-                    "path": "classification.str_list",
-                    "values": ["lower", "upper"],
-                },
-                {"path": "detections.detections.none", "values": ["none"]},
-                {
-                    "path": "detections.detections.str",
-                    "values": ["lower", "upper"],
-                },
-                {
-                    "path": "detections.detections.str_list",
-                    "values": ["lower", "upper"],
-                },
-                {"path": "frames.classification.none", "values": ["none"]},
-                {
-                    "path": "frames.classification.str",
-                    "values": ["lower", "upper"],
-                },
-                {
-                    "path": "frames.classification.str_list",
-                    "values": ["lower", "upper"],
-                },
-                {
-                    "path": "frames.detections.detections.none",
-                    "values": ["none"],
-                },
-                {
-                    "path": "frames.detections.detections.str",
-                    "values": ["lower", "upper"],
-                },
-                {
-                    "path": "frames.detections.detections.str_list",
-                    "values": ["lower", "upper"],
-                },
-                {"path": "frames.none", "values": ["none"]},
-                {"path": "frames.str", "values": ["lower", "upper"]},
-                {"path": "frames.str_list", "values": ["lower", "upper"]},
-                {"path": "metadata.encoding_str", "values": []},
-                {"path": "none", "values": ["none"]},
-                {"path": "str", "values": ["lower", "upper"]},
-                {"path": "str_list", "values": ["lower", "upper"]},
-            ],
-        )
+
+        expected = [
+            {"path": "classification.none", "values": ["none"]},
+            {"path": "classification.str", "values": ["lower", "upper"]},
+            {
+                "path": "classification.str_list",
+                "values": ["lower", "upper"],
+            },
+            {"path": "detections.detections.none", "values": ["none"]},
+            {
+                "path": "detections.detections.str",
+                "values": ["lower", "upper"],
+            },
+            {
+                "path": "detections.detections.str_list",
+                "values": ["lower", "upper"],
+            },
+            {"path": "frames.classification.none", "values": ["none"]},
+            {
+                "path": "frames.classification.str",
+                "values": ["lower", "upper"],
+            },
+            {
+                "path": "frames.classification.str_list",
+                "values": ["lower", "upper"],
+            },
+            {
+                "path": "frames.detections.detections.none",
+                "values": ["none"],
+            },
+            {
+                "path": "frames.detections.detections.str",
+                "values": ["lower", "upper"],
+            },
+            {
+                "path": "frames.detections.detections.str_list",
+                "values": ["lower", "upper"],
+            },
+            {"path": "frames.none", "values": ["none"]},
+            {"path": "frames.str", "values": ["lower", "upper"]},
+            {"path": "frames.str_list", "values": ["lower", "upper"]},
+            {"path": "metadata.encoding_str", "values": []},
+            {"path": "none", "values": ["none"]},
+            {"path": "str", "values": ["lower", "upper"]},
+            {"path": "str_list", "values": ["lower", "upper"]},
+        ]
+        for i, res in enumerate(result.data["lightning"]):
+            self.assertEqual(res["path"], expected[i]["path"])
+            self.assertListEqual(sorted(res["values"]), expected[i]["values"])
 
         # test search
         result = await _execute(
@@ -1258,7 +1259,7 @@ class TestObjectIdLightningQueries(unittest.IsolatedAsyncioTestCase):
             self.assertListEqual(path["values"], [])
 
 
-def _add_samples(dataset: fo.Dataset, *sample_data: t.List[t.Dict]):
+def _add_samples(dataset: fo.Dataset, *sample_data: t.Dict):
     samples = []
     keys = set()
     for idx, data in enumerate(sample_data):

@@ -392,8 +392,6 @@ async def _do_distinct_pipeline(
     if query.filters:
         pipeline += get_view(dataset, filters=query.filters)._pipeline()
 
-    pipeline.append({"$sort": {query.path: 1}})
-
     match_search = None
     if query.search:
         match_search = _add_search(query)
@@ -408,21 +406,23 @@ async def _do_distinct_pipeline(
             # match again after unwinding list fields
             pipeline.append(match_search)
 
-    pipeline += [{"$group": {"_id": f"${query.path}"}}]
+    pipeline += [{"$project": {f"value": f"${query.path}"}}]
 
-    values = []
+    values = set()
     exclude = set(query.exclude or [])
     async for value in collection.aggregate(pipeline):
-        value = value["_id"]
+        value = value.get("value")
         if value is None or value in exclude:
             continue
 
-        values.append(value)
+        # TODO: set query.first for sidebar dropdown values to prevent needing to
+        #  iterate over a ton of values potentially
+        values.add(value)
 
         if len(values) == query.first:
             break
 
-    return values
+    return list(values)
 
 
 def _add_search(query: DistinctQuery):
