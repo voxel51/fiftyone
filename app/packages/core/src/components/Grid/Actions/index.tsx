@@ -19,6 +19,7 @@ import DynamicGroupAction from "./DynamicGroup";
 import PatchesAction from "./Patches";
 import SaveFiltersAction from "./SaveFilters";
 
+/** Global scope so React can cache component state */
 const ToggleSidebar = (props: AdaptiveMenuItemComponentPropsType) => (
   <ToggleSidebarAction modal={false} adaptiveMenuItemProps={props} />
 );
