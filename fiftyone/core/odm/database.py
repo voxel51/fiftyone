@@ -311,13 +311,13 @@ def _validate_db_version(config, client):
 
         raise RuntimeError("Failed to validate `mongod` version") from e
 
-    if config.database_validation and version < foc.MIN_MONGODB_VERSION:
+    if config.database_validation and version < foc.MONGODB_MIN_VERSION:
         raise RuntimeError(
             "Found `mongod` version %s, but only %s and higher are "
             "compatible. You can suppress this exception by setting your "
             "`database_validation` config parameter to `False`. See "
             "https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection "
-            "for more information" % (version, foc.MIN_MONGODB_VERSION)
+            "for more information" % (version, foc.MONGODB_MIN_VERSION)
         )
 
 
@@ -1734,8 +1734,8 @@ def _is_fcv_upgradeable(fc_version: Version, server_version: Version) -> bool:
         )
         return False
 
-    elif (fc_version.major == foc.MIN_MONGODB_VERSION.major) or (
-        server_version.major == foc.MIN_MONGODB_VERSION.major
+    elif (fc_version.major == foc.MONGODB_MIN_VERSION.major) or (
+        server_version.major == foc.MONGODB_MIN_VERSION.major
     ):
         _logger.warning(
             "You are running the oldest supported major version of MongoDB. "

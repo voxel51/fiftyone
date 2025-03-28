@@ -90,8 +90,8 @@ class TestUpdateFCV(unittest.TestCase):
         as expected.
         """
 
-        server_version = Version(f"{foc.MIN_MONGODB_VERSION.major + 1}.7.6")
-        fc_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.2.3")
+        server_version = Version(f"{foc.MONGODB_MIN_VERSION.major + 1}.7.6")
+        fc_version = Version(f"{foc.MONGODB_MIN_VERSION.major}.2.3")
 
         mock_admin = MagicMock()
         mock_client.admin = mock_admin
@@ -113,7 +113,7 @@ class TestUpdateFCV(unittest.TestCase):
         mock_admin.command.assert_any_call(expected_call)
 
         mock_logger.warning.assert_any_call(
-            "You are running the oldest supported major version of mongodb. "
+            "You are running the oldest supported major version of MongoDB. "
             "Please refer to https://deprecation.voxel51.com "
             "for deprecation notices. "
             "You can suppress this exception by setting your "
@@ -143,8 +143,8 @@ class TestUpdateFCV(unittest.TestCase):
         This should still be successful.
         """
 
-        server_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.0.0")
-        fc_version = Version(f"{foc.MIN_MONGODB_VERSION.major - 1}.0.0")
+        server_version = Version(f"{foc.MONGODB_MIN_VERSION.major}.0.0")
+        fc_version = Version(f"{foc.MONGODB_MIN_VERSION.major - 1}.0.0")
 
         mock_admin = MagicMock()
         mock_client.admin = mock_admin
@@ -166,7 +166,7 @@ class TestUpdateFCV(unittest.TestCase):
         mock_admin.command.assert_any_call(expected_call)
 
         mock_logger.warning.assert_any_call(
-            "You are running the oldest supported major version of mongodb. "
+            "You are running the oldest supported major version of MongoDB. "
             "Please refer to https://deprecation.voxel51.com "
             "for deprecation notices. "
             "You can suppress this exception by setting your "
@@ -196,8 +196,8 @@ class TestUpdateFCV(unittest.TestCase):
         take place, only logs.
         """
 
-        server_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.0.0")
-        fc_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.0.0")
+        server_version = Version(f"{foc.MONGODB_MIN_VERSION.major}.0.0")
+        fc_version = Version(f"{foc.MONGODB_MIN_VERSION.major}.0.0")
 
         mock_admin = MagicMock()
         mock_client.admin = mock_admin
@@ -213,7 +213,7 @@ class TestUpdateFCV(unittest.TestCase):
         _update_fc_version(mock_client)
 
         mock_logger.warning.assert_any_call(
-            "You are running the oldest supported major version of mongodb. "
+            "You are running the oldest supported major version of MongoDB. "
             "Please refer to https://deprecation.voxel51.com "
             "for deprecation notices. "
             "You can suppress this exception by setting your "
@@ -268,8 +268,8 @@ class TestUpdateFCV(unittest.TestCase):
         parameters.
         """
 
-        server_version = Version(f"{foc.MIN_MONGODB_VERSION.major + 2}.0.0")
-        fc_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.0.0")
+        server_version = Version(f"{foc.MONGODB_MIN_VERSION.major + 2}.0.0")
+        fc_version = Version(f"{foc.MONGODB_MIN_VERSION.major}.0.0")
 
         mock_admin = MagicMock()
         mock_client.admin = mock_admin
@@ -306,8 +306,8 @@ class TestUpdateFCV(unittest.TestCase):
         the feature compatability version is ahead of the server version.
         """
 
-        server_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.0.0")
-        fc_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.1.0")
+        server_version = Version(f"{foc.MONGODB_MIN_VERSION.major}.0.0")
+        fc_version = Version(f"{foc.MONGODB_MIN_VERSION.major}.1.0")
 
         mock_admin = MagicMock()
         mock_client.admin = mock_admin
@@ -349,7 +349,7 @@ class TestUpdateFCV(unittest.TestCase):
         mock_admin = MagicMock()
         mock_client.admin = mock_admin
         mock_client.server_info.return_value = {
-            "version": str(foc.MIN_MONGODB_VERSION)
+            "version": str(foc.MONGODB_MIN_VERSION)
         }
 
         mock_get_logger.return_value = MagicMock()
@@ -357,7 +357,7 @@ class TestUpdateFCV(unittest.TestCase):
 
         mock_admin.command.return_value = {
             "featureCompatibilityVersion": {
-                "version": str(foc.MIN_MONGODB_VERSION)
+                "version": str(foc.MONGODB_MIN_VERSION)
             }
         }
 
@@ -365,7 +365,7 @@ class TestUpdateFCV(unittest.TestCase):
 
         # Check that the warning is triggered for the oldest supported version
         mock_logger.warning.assert_any_call(
-            "You are running the oldest supported major version of mongodb. "
+            "You are running the oldest supported major version of MongoDB. "
             "Please refer to https://deprecation.voxel51.com "
             "for deprecation notices. "
             "You can suppress this exception by setting your "
@@ -384,8 +384,8 @@ class TestUpdateFCV(unittest.TestCase):
         the feature compatability version update failed.
         """
 
-        server_version = Version(f"{foc.MIN_MONGODB_VERSION.major + 1}.0.0")
-        fc_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.0.0")
+        server_version = Version(f"{foc.MONGODB_MIN_VERSION.major + 1}.0.0")
+        fc_version = Version(f"{foc.MONGODB_MIN_VERSION.major}.0.0")
         mock_admin = MagicMock()
         mock_client.admin = mock_admin
         mock_client.server_info.return_value = {"version": str(server_version)}
@@ -404,7 +404,7 @@ class TestUpdateFCV(unittest.TestCase):
         mock_logger.error.assert_any_call(
             "Operation failed while updating database's feature "
             "compatibility version - Could not update FCV. "
-            f"Please manually set it to {foc.MIN_MONGODB_VERSION.major + 1}.0. "
+            f"Please manually set it to {foc.MONGODB_MIN_VERSION.major + 1}.0. "
             "You can suppress this exception by setting your "
             "`database_validation` config parameter to `False`. See "
             "https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection "
@@ -421,8 +421,8 @@ class TestUpdateFCV(unittest.TestCase):
         the feature compatability version update failed.
         """
 
-        server_version = Version(f"{foc.MIN_MONGODB_VERSION.major + 1}.0.0")
-        fc_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.0.0")
+        server_version = Version(f"{foc.MONGODB_MIN_VERSION.major + 1}.0.0")
+        fc_version = Version(f"{foc.MONGODB_MIN_VERSION.major}.0.0")
         mock_admin = MagicMock()
         mock_client.admin = mock_admin
         mock_client.server_info.return_value = {"version": str(server_version)}
@@ -441,7 +441,7 @@ class TestUpdateFCV(unittest.TestCase):
         mock_logger.error.assert_any_call(
             "MongoDB error while updating database's feature "
             "compatibility version - Could not update FCV. "
-            f"Please manually set it to {foc.MIN_MONGODB_VERSION.major + 1}.0. "
+            f"Please manually set it to {foc.MONGODB_MIN_VERSION.major + 1}.0. "
             "You can suppress this exception by setting your "
             "`database_validation` config parameter to `False`. See "
             "https://docs.voxel51.com/user_guide/config.html#configuring-a-mongodb-connection "
@@ -456,8 +456,8 @@ class TestUpdateFCV(unittest.TestCase):
         we aren't managing the mongodb instance (_db_service is None).
         """
 
-        server_version = Version(f"{foc.MIN_MONGODB_VERSION.major + 1}.1.0")
-        fc_version = Version(f"{foc.MIN_MONGODB_VERSION.major}.0.0")
+        server_version = Version(f"{foc.MONGODB_MIN_VERSION.major + 1}.1.0")
+        fc_version = Version(f"{foc.MONGODB_MIN_VERSION.major}.0.0")
 
         mock_admin = MagicMock()
         mock_client.admin = mock_admin
@@ -474,7 +474,7 @@ class TestUpdateFCV(unittest.TestCase):
 
         # Check that the warning is still triggered
         mock_logger.warning.assert_any_call(
-            "You are running the oldest supported major version of mongodb. "
+            "You are running the oldest supported major version of MongoDB. "
             "Please refer to https://deprecation.voxel51.com "
             "for deprecation notices. You can suppress this exception by setting your "
             "`database_validation` config parameter to `False`. See "
