@@ -198,7 +198,7 @@ class SampleTests(unittest.TestCase):
         self.assertEqual(img.height, height)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            file_name = os.path.join(tmp_dir, "image", "jpeg")
+            file_name = os.path.join(tmp_dir, "image.jpeg")
             # Test all possible orientations. width/height only flipped with
             #   5, 6, 7, 8
             for orientation in range(1, 10):
