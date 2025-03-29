@@ -14,7 +14,6 @@ from fiftyone.factory.repos.execution_store import InMemoryExecutionStoreRepo
 
 
 class TestInMemoryExecutionStoreRepo(unittest.TestCase):
-
     def setUp(self):
         self.dataset_id = ObjectId()
         self.repo = InMemoryExecutionStoreRepo(dataset_id=self.dataset_id)
@@ -75,6 +74,30 @@ class TestInMemoryExecutionStoreRepo(unittest.TestCase):
         # Ensure that the expiration timestamp has been updated (allowing for slight time differences)
         self.assertNotEqual(updated_key.expires_at, old_expiration)
 
+    def test_update_policy(self):
+        store_name = "policy_store"
+        key = "policy_key"
+        value = "value3"
+        # Set the key with no policy
+        self.repo.set_key(store_name, key, value)
+        self.assertTrue(self.repo.has_key(store_name, key))
+
+        # Update the policy to EVICT
+        self.repo.update_policy(store_name, key, policy="evict")
+        self.assertTrue(self.repo.has_key(store_name, key))
+        key_doc = self.repo.get_key(store_name, key)
+        self.assertIsNotNone(key_doc)
+        self.assertEqual(key_doc.policy, "evict")
+
+    def test_ttl_implied_policy(self):
+        store_name = "ttl_policy_store"
+        key = "ttl_key"
+        value = "value4"
+        # Set the key with a TTL (implying EVICT policy)
+        self.repo.set_key(store_name, key, value, ttl=60)
+        key_doc = self.repo.get_key(store_name, key)
+        self.assertEqual(key_doc.policy, "evict")
+
     def test_delete_key(self):
         store_name = "delete_key_store"
         key = "delete_key"
@@ -121,6 +144,22 @@ class TestInMemoryExecutionStoreRepo(unittest.TestCase):
         self.assertGreater(deleted_count, 0)
         self.assertFalse(self.repo.has_store_global(store_name))
 
+    def test_clear_cache(self):
+        store_name = "example_cache_store"
+        key = "key_to_clear"
+        self.repo.set_cache_key(store_name, key, "value_to_clear")
+        self.assertTrue(self.repo.has_key(store_name, key))
+        self.repo.clear_cache()
+        self.assertFalse(self.repo.has_key(store_name, key))
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_clear_cache_with_store_name(self):
+        store_name = "specific_cache_store"
+        key = "key_to_clear_specific"
+        self.repo.set_cache_key(store_name, key, "value_to_clear_specific")
+        self.assertTrue(self.repo.has_key(store_name, key))
+        self.repo.clear_cache(store_name)
+        self.assertFalse(self.repo.has_key(store_name, key))
+        key_count = self.repo.count_keys(store_name)
+        self.assertEqual(
+            key_count, 0, "Expected no keys to remain after clearing cache."
+        )
