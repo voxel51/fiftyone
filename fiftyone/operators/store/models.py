@@ -9,8 +9,23 @@ Execution store models.
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field, asdict
 from typing import Optional, Any
+from enum import Enum
 
 from bson import ObjectId
+
+
+class KeyPolicy(str, Enum):
+    """
+    Defines the eviction policy for a key in the execution store.
+
+    - ``PERSIST``: The key is stored persistently and will never be automatically
+      removed. It must be explicitly deleted.
+    - ``EVICT``: The key is considered cacheable and may be removed automatically
+      if a TTL is set, or manually via :meth:`clear_cache`.
+    """
+
+    PERSIST = "persist"
+    EVICT = "evict"
 
 
 @dataclass
@@ -25,6 +40,7 @@ class KeyDocument:
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
     expires_at: Optional[datetime] = None
+    policy: KeyPolicy = KeyPolicy.PERSIST
 
     @staticmethod
     def get_expiration(ttl: Optional[int]) -> Optional[datetime]:

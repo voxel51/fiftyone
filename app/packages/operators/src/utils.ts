@@ -2,6 +2,7 @@ import { getFetchParameters } from "@fiftyone/utilities";
 import { debounce, DebounceSettings, memoize } from "lodash";
 import { KeyboardEventHandler } from "react";
 import { OperatorPromptType, PromptView, ValidationErrorsType } from "./types";
+import uuid from "react-uuid";
 
 export function stringifyError(error, fallback?) {
   if (typeof error === "string") return error;
@@ -141,3 +142,7 @@ type MemoizeResolver = (...args) => any;
 type MemoizedDebounceOptions = DebounceSettings & {
   resolver: MemoizeResolver;
 };
+
+export function generateOperatorSessionId() {
+  return uuid();
+}
