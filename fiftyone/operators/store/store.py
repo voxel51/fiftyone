@@ -23,25 +23,27 @@ class ExecutionStore(object):
             :class:`fiftyone.operators.store.service.ExecutionStoreService`
     """
 
-    def __init__(self, store_name: str, store_service: ExecutionStoreService):
+    def __init__(
+        self,
+        store_name: str,
+        store_service: ExecutionStoreService,
+        default_policy: str = "persist",
+    ):
         self.store_name: str = store_name
         self._store_service: ExecutionStoreService = store_service
+        self._default_policy: str = default_policy
 
     @staticmethod
     def create(
-        store_name: str, dataset_id: Optional[ObjectId] = None
+        store_name: str,
+        dataset_id: Optional[ObjectId] = None,
+        default_policy: str = "persist",
     ) -> "ExecutionStore":
         return ExecutionStore(
-            store_name, ExecutionStoreService(dataset_id=dataset_id)
+            store_name,
+            ExecutionStoreService(dataset_id=dataset_id),
+            default_policy,
         )
-
-    def clear_all(self, cache_only=False) -> None:
-        """Clears all execution stores.
-
-        Args:
-            cache_only (False): whether to clear only cache stores
-        """
-        self._store_service.clear_all(cache_only=cache_only)
 
     def list_stores(self) -> list[str]:
         """Lists all stores in the execution store.
@@ -65,15 +67,23 @@ class ExecutionStore(object):
             return None
         return key_doc.value
 
-    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    def set(
+        self, key: str, value: Any, ttl: Optional[int] = None, policy=None
+    ) -> None:
         """Sets a value in the store with an optional TTL.
 
         Args:
             key: the key to store the value under
             value: the value to store
             ttl (None): the time-to-live in seconds
+            policy ("persist"): the eviction policy for the key, either "persist" or "evict"
         """
-        self._store_service.set_key(self.store_name, key, value, ttl=ttl)
+        if policy is None:
+            policy = self._default_policy
+
+        self._store_service.set_key(
+            self.store_name, key, value, ttl=ttl, policy=policy
+        )
 
     def delete(self, key: str) -> bool:
         """Deletes a key from the store.
@@ -101,6 +111,13 @@ class ExecutionStore(object):
         """Clears all the data in the store."""
         self._store_service.delete_store(self.store_name)
 
+    def clear_cache(self) -> None:
+        """Clears the cache for the store.
+
+        This will remove all keys that are eligible for eviction.
+        """
+        self._store_service.clear_cache(store_name=self.store_name)
+
     def update_ttl(self, key: str, new_ttl: int) -> None:
         """Updates the TTL for a specific key.
 
@@ -109,6 +126,15 @@ class ExecutionStore(object):
             new_ttl: the new TTL in seconds
         """
         self._store_service.update_ttl(self.store_name, key, new_ttl)
+
+    def update_policy(self, key: str, policy: str) -> None:
+        """Updates the eviction policy for a specific key.
+
+        Args:
+            key: the key to update the policy for
+            policy: the new policy, either "persist" or "evict"
+        """
+        self._store_service.update_policy(self.store_name, key, policy)
 
     def get_metadata(self, key: str) -> Optional[dict]:
         """Retrieves the metadata for the given key.
