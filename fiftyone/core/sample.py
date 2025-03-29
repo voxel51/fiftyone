@@ -451,8 +451,13 @@ class _SampleMixin(object):
         if field_name != "filepath":
             return
 
+        # @todo support custom media types?
         new_media_type = fomm.get_media_type(value)
-        if self.media_type != new_media_type:
+        if (
+            self.media_type != new_media_type
+            and new_media_type != fomm.OTHER
+            and self.media_type != fomm.OTHER
+        ):
             raise fomm.MediaTypeError(
                 "A sample's 'filepath' can be changed, but its media type "
                 "cannot; current '%s', new '%s'"
