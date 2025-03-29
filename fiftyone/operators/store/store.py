@@ -85,6 +85,18 @@ class ExecutionStore(object):
             self.store_name, key, value, ttl=ttl, policy=policy
         )
 
+    def set_cache(
+        self, key: str, value: Any, ttl: Optional[int] = None
+    ) -> None:
+        """Sets a value in the store with an optional TTL.
+
+        Args:
+            key: the key to store the value under
+            value: the value to store
+            ttl (None): the time-to-live in seconds
+        """
+        self.set(key, value, ttl=ttl, policy="evict")
+
     def delete(self, key: str) -> bool:
         """Deletes a key from the store.
 
