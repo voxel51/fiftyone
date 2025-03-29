@@ -23,10 +23,14 @@ def execution_cache(
     _func=None,
     *,
     ttl=None,
-    link_to_dataset=True,
+    link_to_dataset=True,  # TODO: rename to dataset_scoped
     key_fn=None,
     store_name=None,
-    version=None
+    version=None,
+    operator_scoped=False,
+    user_scoped=False,
+    prompt_scoped=False,
+    jwt_scoped=False,
 ):
     """
     Decorator for caching function results in an ``ExecutionStore``.
@@ -48,6 +52,11 @@ def execution_cache(
             Defaults to the function name.
         version (None): Set a version number to prevent cache collisions
             when the function implementation changes.
+        operator_scoped (False): Whether to tie the cache entry to the current operator
+        user_scoped (False): Whether to tie the cache entry to the current user
+        prompt_scoped (False): Whether to tie the cache entry to
+            the current operator prompt
+        jwt_scoped (False): Whether to tie the cache entry to the current user's JWT
 
     note::
 
@@ -90,11 +99,41 @@ def execution_cache(
 
         @wraps(func)
         def wrapper(*args, **kwargs):
+            # TODO: add a mechanism to entirely disable caching
+
             ctx, ctx_index = get_ctx_from_args(args)
             cache_key_list = get_cache_key_list(
                 ctx, ctx_index, args, kwargs, key_fn
             )
-            cache_key = build_cache_key(ctx.operator_uri, cache_key_list)
+
+            #
+            # TODO: cleanup this logic, it's a bit of a mess with the elifs
+            # <mess>
+            #
+
+            if operator_scoped:
+                cache_key_list.append(ctx.operator_uri)
+
+            if prompt_scoped:
+                cache_key_list.append(ctx.operator_prompt_id)
+
+            if jwt_scoped and ctx.user_request_token:
+                cache_key_list.append(ctx.user_request_token)
+            elif jwt_scoped:
+                # refuse to cache JWT-scoped data without a JWT
+                return func(*args, **kwargs)
+
+            if user_scoped and ctx.user_id:
+                cache_key_list.append(ctx.user_id)
+            elif user_scoped:
+                # refuse to cache user-scoped data without a user_id
+                return func(*args, **kwargs)
+
+            #
+            # </mess>
+            #
+
+            cache_key = build_cache_key(cache_key_list)
             store = get_store_for_func(ctx, func)
 
             cached_value = store.get(cache_key)
@@ -103,7 +142,7 @@ def execution_cache(
 
             result = func(*args, **kwargs)
             result = make_mongo_safe_value(result)
-            store.set(cache_key, result, ttl=ttl)
+            store.set_cache(cache_key, result, ttl=ttl)
 
             return result
 
