@@ -3,18 +3,20 @@ import { useLoader } from "@react-three/fiber";
 /**
  * Decorates useLoader() to support credentials forwarding
  */
-export const useFoLoader = (
-  loader: Parameters<typeof useLoader>[0],
-  urls: Parameters<typeof useLoader>[1],
+export function useFoLoader<
+  TLoader extends Parameters<typeof useLoader>[0],
+  TInput extends Parameters<typeof useLoader>[1]
+>(
+  loader: TLoader,
+  urls: TInput,
   loaderFunction?: Parameters<typeof useLoader>[2]
-) => {
-  return useLoader(loader, urls, (loader) => {
+) {
+  return useLoader(loader, urls, (loaderInstance) => {
     if (sessionStorage.getItem("customCredentialsAudience")?.length) {
-      loader.setWithCredentials(true);
+      loaderInstance.setWithCredentials(true);
     }
-
     if (loaderFunction) {
-      loaderFunction(loader);
+      loaderFunction(loaderInstance);
     }
   });
-};
+}

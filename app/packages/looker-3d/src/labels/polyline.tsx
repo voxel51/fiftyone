@@ -1,6 +1,8 @@
 import { useCursor } from "@react-three/drei";
 import { useMemo, useState } from "react";
 import type * as THREE from "three";
+import { use3dLabelColor } from "../hooks/use-3d-label-color";
+import { useSimilarLabels3d } from "../hooks/use-similar-labels-3d";
 import { Line } from "./line";
 import type { OverlayProps } from "./shared";
 
@@ -22,6 +24,24 @@ export const Polyline = ({
   tooltip,
   label,
 }: PolyLineProps) => {
+  const { onPointerOver, onPointerOut, ...restEventHandlers } = useMemo(() => {
+    return {
+      ...tooltip.getMeshProps(label),
+    };
+  }, [tooltip, label]);
+
+  const [isPolylineHovered, setIsPolylineHovered] = useState(false);
+  const isSimilarLabelHovered = useSimilarLabels3d(label);
+
+  useCursor(isPolylineHovered);
+
+  const strokeAndFillColor = use3dLabelColor({
+    isSelected: selected,
+    isHovered: isPolylineHovered,
+    isSimilarLabelHovered,
+    defaultColor: color,
+  });
+
   const lines = useMemo(
     () =>
       points3d.map((points) => (
@@ -30,18 +50,12 @@ export const Polyline = ({
           rotation={rotation}
           points={points}
           opacity={opacity}
-          color={selected ? "orange" : color}
-          onClick={onClick}
-          tooltip={tooltip}
+          color={strokeAndFillColor}
           label={label}
         />
       )),
-    [points3d, rotation, opacity, color, selected, onClick, tooltip, label]
+    [points3d, rotation, opacity, strokeAndFillColor, label]
   );
-
-  const [isPolylineHovered, setIsPolylineHovered] = useState(false);
-
-  useCursor(isPolylineHovered);
 
   if (filled) {
     // @todo: filled not yet supported
@@ -51,8 +65,16 @@ export const Polyline = ({
 
   return (
     <group
-      onPointerOver={() => setIsPolylineHovered(true)}
-      onPointerOut={() => setIsPolylineHovered(false)}
+      onPointerOver={() => {
+        setIsPolylineHovered(true);
+        onPointerOver();
+      }}
+      onPointerOut={() => {
+        setIsPolylineHovered(false);
+        onPointerOut();
+      }}
+      onClick={onClick}
+      {...restEventHandlers}
     >
       {lines}
     </group>

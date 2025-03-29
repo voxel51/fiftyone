@@ -6,25 +6,24 @@ Labels stored in dataset samples.
 |
 """
 
-from functools import partial
 import itertools
 import warnings
+from functools import partial
 
-from bson import ObjectId
 import cv2
+import eta.core.frameutils as etaf
+import eta.core.image as etai
+import eta.core.utils as etau
 import numpy as np
 import scipy.ndimage as spn
 import skimage.measure as skm
 import skimage.segmentation as sks
+from bson import ObjectId
 
-import eta.core.frameutils as etaf
-import eta.core.image as etai
-import eta.core.utils as etau
-
-from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
+from fiftyone.core.odm import DynamicEmbeddedDocument, EmbeddedDocument
 
 foue = fou.lazy_import("fiftyone.utils.eta")
 foug = fou.lazy_import("fiftyone.utils.geojson")
@@ -344,6 +343,66 @@ class _HasID(Label):
         self.id = str(value)
 
 
+class InstanceConfig(EmbeddedDocument):
+    """A named label instance.
+
+    Args:
+        id (None): the label instance ID
+        name (None): the label instance name
+    """
+
+    id = fof.ObjectIdField(default=lambda: str(ObjectId()), db_field="_id")
+    name = fof.StringField()
+
+    @property
+    def _id(self):
+        return ObjectId(self.id)
+
+    @_id.setter
+    def _id(self, value):
+        if not isinstance(value, ObjectId) and etau.is_str(value):
+            value = ObjectId(value)
+
+        self.id = value
+
+
+class _HasInstanceConfig(Label):
+    """Mixin for :class:`Label` classes that contain an instance configuration
+    via an ``instance_config`` attribute.
+
+    Contrary to the ``id`` field, which is unique to each label, the
+    ``instance_config`` field is unique to each label instance either temporally or
+    across different modalities, allowing you to identify the same logical label
+    across different samples.
+    """
+
+    instance_config = fof.EagerValidatingEmbeddedDocumentField(InstanceConfig)
+
+    @property
+    def instance_id(self):
+        """The ID of the label instance."""
+        if self.instance_config is None:
+            return None
+
+        return self.instance_config.id
+
+    @instance_id.setter
+    def instance_id(self, value):
+        if self.instance_config is None:
+            self.instance_config = InstanceConfig()
+
+        if not isinstance(value, ObjectId):
+            if etau.is_str(value):
+                value = ObjectId(value)
+            else:
+                raise ValueError(
+                    "Invalid instance ID '%s'; must be an ObjectId or string "
+                    "representation thereof" % value
+                )
+
+        self.instance_config.id = value
+
+
 class _HasLabelList(object):
     """Mixin for :class:`Label` classes that contain a list of :class:`Label`
     instances.
@@ -367,7 +426,7 @@ class Regression(_HasID, Label):
     confidence = fof.FloatField()
 
 
-class Classification(_HasID, Label):
+class Classification(_HasID, _HasInstanceConfig, Label):
     """A classification label.
 
     Args:
@@ -395,7 +454,9 @@ class Classifications(_HasLabelList, Label):
     logits = fof.VectorField()
 
 
-class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
+class Detection(
+    _HasAttributesDict, _HasID, _HasMedia, _HasInstanceConfig, Label
+):
     """An object detection.
 
     Args:
@@ -412,7 +473,6 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
             on disk, which should be a single-channel PNG image where any
             non-zero values represent the instance's extent
         confidence (None): a confidence in ``[0, 1]`` for the detection
-        index (None): an index for the object
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """
@@ -424,7 +484,6 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
     mask = fof.ArrayField()
     mask_path = fof.StringField()
     confidence = fof.FloatField()
-    index = fof.IntField()
 
     @property
     def has_mask(self):
@@ -504,7 +563,6 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
             label=self.label,
             points=polyline.points,
             confidence=self.confidence,
-            index=self.index,
             closed=polyline.closed,
             filled=polyline.filled,
             tags=self.tags,
@@ -587,7 +645,7 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, Label):
         return cls(label=label, bounding_box=bbox, mask=mask, **attributes)
 
 
-class Detections(_HasLabelList, Label):
+class Detections(_HasLabelList, _HasInstanceConfig, Label):
     """A list of object detections in an image.
 
     Args:
@@ -667,7 +725,7 @@ class Detections(_HasLabelList, Label):
         return Segmentation(mask=mask)
 
 
-class Polyline(_HasAttributesDict, _HasID, Label):
+class Polyline(_HasAttributesDict, _HasID, _HasInstanceConfig, Label):
     """A set of semantically related polylines or polygons.
 
     Args:
@@ -676,7 +734,6 @@ class Polyline(_HasAttributesDict, _HasID, Label):
             ``[0, 1] x [0, 1]`` describing the vertices of each shape in the
             polyline
         confidence (None): a confidence in ``[0, 1]`` for the polyline
-        index (None): an index for the polyline
         closed (False): whether the shapes are closed, i.e., and edge should
             be drawn from the last vertex to the first vertex of each shape
         filled (False): whether the polyline represents polygons, i.e., shapes
@@ -688,7 +745,6 @@ class Polyline(_HasAttributesDict, _HasID, Label):
     label = fof.StringField()
     points = fof.PolylinePointsField()
     confidence = fof.FloatField()
-    index = fof.IntField()
     closed = fof.BooleanField(default=False)
     filled = fof.BooleanField(default=False)
 
@@ -738,7 +794,6 @@ class Polyline(_HasAttributesDict, _HasID, Label):
             bounding_box=bounding_box,
             confidence=self.confidence,
             mask=mask,
-            index=self.index,
             tags=self.tags,
             **attributes,
         )
@@ -1012,14 +1067,13 @@ class Polylines(_HasLabelList, Label):
         return Segmentation(mask=mask)
 
 
-class Keypoint(_HasAttributesDict, _HasID, Label):
+class Keypoint(_HasAttributesDict, _HasID, _HasInstanceConfig, Label):
     """A list of keypoints in an image.
 
     Args:
         label (None): a label for the points
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
         confidence (None): a list of confidences in ``[0, 1]`` for each point
-        index (None): an index for the keypoints
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """
@@ -1027,7 +1081,6 @@ class Keypoint(_HasAttributesDict, _HasID, Label):
     label = fof.StringField()
     points = fof.KeypointsField()
     confidence = fof.ListField(fof.FloatField(), null=True)
-    index = fof.IntField()
 
     def to_shapely(self, frame_size=None):
         """Returns a Shapely representation of this instance.
