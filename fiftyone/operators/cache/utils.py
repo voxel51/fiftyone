@@ -55,7 +55,10 @@ def resolve_store_name(ctx, func):
 def convert_args_to_dict(args):
     result = []
     for arg in args:
-        if hasattr(arg, "to_dict"):
+        # TODO: use isinstance(eta.Serializable) or whatever the equivalent is
+        if hasattr(arg, "serialize"):
+            arg = arg.serialize()
+        elif hasattr(arg, "to_dict"):
             arg = arg.to_dict()
         elif hasattr(arg, "to_json"):
             arg = arg.to_json()
@@ -98,12 +101,10 @@ def get_store_for_func(ctx, func):
     )
 
 
-def build_cache_key(operator_uri, cache_key_list):
+def build_cache_key(cache_key_list):
     structured_key = hashkey(*cache_key_list)
     key_string = json.dumps(structured_key, sort_keys=True)
-    sha = hashlib.sha256(key_string.encode("utf-8")).hexdigest()
-
-    return f"{operator_uri}?sha={sha}"
+    return hashlib.sha256(key_string.encode("utf-8")).hexdigest()
 
 
 def get_cache_key_list(ctx, ctx_index, args, kwargs, key_fn):
