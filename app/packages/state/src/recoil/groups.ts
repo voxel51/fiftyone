@@ -38,11 +38,12 @@ import { datasetName, parentMediaTypeSelector } from "./selectors";
 import { State } from "./types";
 import { mapSampleResponse } from "./utils";
 import * as viewAtoms from "./view";
-
-const POINT_CLOUD = "point_cloud";
-const THREE_D = "three_d";
-
-const IS_THREE_D = new Set([POINT_CLOUD, THREE_D]);
+import {
+  is3d,
+  isFo3d,
+  setContains3d,
+  setContainsFo3d,
+} from "@fiftyone/utilities";
 
 export const groupMediaIsCarouselVisibleSetting = atom<boolean>({
   key: "groupMediaIsCarouselVisibleSetting",
@@ -80,7 +81,7 @@ export const groupMediaIs3dVisible = selector<boolean>({
   key: "groupMedia3dVisible",
   get: ({ get }) => {
     const set = get(groupMediaTypesSet);
-    const has3d = set.has(POINT_CLOUD) || set.has(THREE_D);
+    const has3d = setContains3d(set);
     const isImaVidInNestedGroup =
       get(shouldRenderImaVidLooker(true)) && get(isNestedDynamicGroup);
     return get(groupMedia3dVisibleSetting) && has3d && !isImaVidInNestedGroup;
@@ -244,19 +245,14 @@ export const hasGroupSlices = selector<boolean>({
 export const has3dSlice = selector<boolean>({
   key: "has3dSlice",
   get: ({ get }) => {
-    return (
-      get(groupMediaTypesSet).has(POINT_CLOUD) ||
-      get(groupMediaTypesSet).has(THREE_D)
-    );
+    return setContains3d(get(groupMediaTypesSet));
   },
 });
 
 export const hasFo3dSlice = selector<boolean>({
   key: "hasFo3dSlice",
   get: ({ get }) => {
-    return (
-      get(groupMediaTypesSet).has(THREE_D) || get(groupMediaTypesSet).has("3d")
-    );
+    return setContainsFo3d(get(groupMediaTypesSet));
   },
 });
 
@@ -300,7 +296,7 @@ export const all3dSlices = selector<string[]>({
   key: "all3dSlices",
   get: ({ get }) => {
     return get(groupMediaTypes)
-      .filter(({ mediaType }) => IS_THREE_D.has(mediaType))
+      .filter(({ mediaType }) => is3d(mediaType))
       .map(({ name }) => name);
   },
 });
@@ -316,7 +312,7 @@ export const allNon3dSlices = selector<string[]>({
   key: "allNon3dSlices",
   get: ({ get }) => {
     return get(groupMediaTypes)
-      .filter(({ mediaType }) => !IS_THREE_D.has(mediaType))
+      .filter(({ mediaType }) => !is3d(mediaType))
       .map(({ name }) => name);
   },
 });
@@ -441,7 +437,7 @@ export const fo3dSlice = selector({
   key: "fo3dSlice",
   get: ({ get }) => {
     const fo3dSlices = get(groupMediaTypes)
-      .filter(({ mediaType }) => mediaType === "three_d" || mediaType === "3d")
+      .filter(({ mediaType }) => isFo3d(mediaType))
       .map(({ name }) => name);
 
     if (fo3dSlices?.length > 1)
