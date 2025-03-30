@@ -1934,6 +1934,19 @@ class DatasetTests(unittest.TestCase):
             _ = dataset.one(F("filepath").ends_with(".jpg"), exact=True)
 
     @drop_datasets
+    def test_add_samples_generator(self):
+        samples = [fo.Sample(filepath=f"image{i}.jpg") for i in range(10)]
+
+        dataset = fo.Dataset()
+
+        sample_ids = []
+        for ids in dataset.add_samples(samples, generator=True):
+            sample_ids.extend(ids)
+
+        assert len(sample_ids) == 10
+        assert len(dataset) == 10
+
+    @drop_datasets
     def test_merge_sample(self):
         sample1 = fo.Sample(filepath="image.jpg", foo="bar", tags=["a"])
         sample2 = fo.Sample(filepath="image.jpg", spam="eggs", tags=["b"])
