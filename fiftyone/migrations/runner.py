@@ -64,6 +64,19 @@ def get_dataset_revision(name):
     return dataset_doc.get("version", None)
 
 
+def get_datasets_revisions():
+    """Gets the current revision of all datasets.
+
+    Returns:
+        a dictionary mapping dataset names to their revision strings
+    """
+    conn = foo.get_db_conn()
+    return {
+        dataset_doc["name"]: dataset_doc.get("version", None)
+        for dataset_doc in conn.datasets.find({}, {"name": 1, "version": 1})
+    }
+
+
 def migrate_all(destination=None, error_level=0, verbose=False):
     """Migrates the database and all datasets to the specified destination
     revision.
