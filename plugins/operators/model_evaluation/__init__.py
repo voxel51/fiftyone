@@ -539,8 +539,8 @@ class ConfigureScenario(foo.Operator):
             types.String(),
             default=selected_values,
             required=True,
-            label="Classes",
-            description=("Select saved views to get started..."),
+            label="",
+            description=("Select saved views to get started"),
             view=types.AutocompleteView(
                 multiple=True,
                 choices=[types.Choice(value=v, label=v) for v in values],
