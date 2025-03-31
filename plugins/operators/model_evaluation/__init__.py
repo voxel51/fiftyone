@@ -201,18 +201,50 @@ class ConfigureScenario(foo.Operator):
             plot_data = plot_data[::-1]
         return plot_data
 
-    def should_render_sample_distribution(self, params):
+    def is_sample_distribution_enabled_for_custom_code(self, params):
+        """"""
         return (
             params.get("custom_code_stack", {})
             .get("control_stack", {})
             .get("view_sample_distribution", False)
         )
 
-    def render_sample_distribution(self, ctx, inputs, subset_expressions):
-        if not self.should_render_sample_distribution(ctx.params):
-            return
+    def render_empty_sample_distribution(self, inputs, description=None):
+        inputs.view(
+            "empty_sample_distribution",
+            types.HeaderView(
+                label="Subset's sample distribution preview",
+                description=description
+                or "Select a scenario to view the sample distribution",
+            ),
+        )
 
-        # render plot
+    def render_sample_distribution(self, ctx, inputs, scenario_type, values):
+        if not values:
+            return self.render_empty_sample_distribution(inputs)
+
+        subsets = {}
+        if scenario_type == "view":
+            for v in values:
+                subsets[v] = dict(type="view", view=v)
+            self.render_sample_distribution_graph(ctx, inputs, subsets)
+
+        if scenario_type == "custom_code":
+            if not self.is_sample_distribution_enabled_for_custom_code(
+                ctx.params
+            ):
+                return self.render_empty_sample_distribution(
+                    inputs,
+                    description="Please turn on the sample distribution to see the preview.",
+                )
+            else:
+                # NOTE: values for custom_code is the parsed custom code expression
+                self.render_sample_distribution_graph(ctx, inputs, values)
+
+    def render_sample_distribution_graph(
+        self, ctx, inputs, subset_expressions
+    ):
+
         preview_data = self.get_sample_distribution(ctx, subset_expressions)
         plot_data = self.convert_to_plotly_data(ctx, preview_data)
 
@@ -259,90 +291,7 @@ class ConfigureScenario(foo.Operator):
 
     def render_custom_code(self, ctx, inputs, example_type="NORMAL"):
         custom_code, code_key = self.extract_custom_code(ctx, example_type)
-
-        stack = inputs.v_stack(
-            "custom_code_stack",
-            width="100%",
-            align_x="center",
-            componentsProps={
-                "grid": {
-                    "sx": {
-                        "border": "1px solid #333",
-                        "display": "flex",
-                        "flexDirection": "column",
-                    }
-                },
-            },
-        )
-
-        custom_code_controls = stack.h_stack(
-            "control_stack",
-            width="100%",
-            align_x="space-between",
-            py=2,
-            px=2,
-        )
-
-        body_stack = stack.v_stack(
-            "body_stack",
-            width="100%",
-            componentsProps={
-                "grid": {
-                    "sx": {
-                        "display": "flex",
-                    }
-                },
-            },
-        )
-
-        custom_code_controls.view(
-            "info_header_3",
-            types.Header(
-                label="Custom code",
-                divider=False,
-            ),
-        )
-
-        custom_code_controls.bool(
-            "view_sample_distribution",
-            required=True,
-            default=True,
-            label="View sample distribution",
-            view=types.CheckboxView(
-                componentsProps={
-                    "container": {
-                        "sx": {
-                            "border": "1px solid #333",
-                            "padding": "0 2rem 0 1rem",
-                        }
-                    },
-                }
-            ),
-        )
-
-        body_stack.view(
-            code_key,
-            default=custom_code,
-            view=types.CodeView(
-                language="python",
-                space=2,
-                height=250,
-                width="100%",
-                componentsProps={
-                    "editor": {
-                        "width": "100%",
-                        "options": {
-                            "minimap": {"enabled": False},
-                            "scrollBeyondLastLine": False,
-                            "cursorBlinking": "phase",
-                        },
-                    },
-                    "container": {
-                        "width": "100%",
-                    },
-                },
-            ),
-        )
+        stack = self.render_custom_code_content(inputs, custom_code, code_key)
 
         if custom_code:
             custom_code_expression, error = self.process_custom_code(
@@ -359,7 +308,7 @@ class ConfigureScenario(foo.Operator):
                 )
             else:
                 self.render_sample_distribution(
-                    ctx, inputs, custom_code_expression
+                    ctx, inputs, "custom_code", custom_code_expression
                 )
 
     def render_no_values_warning(self, inputs, field_name):
@@ -412,9 +361,12 @@ class ConfigureScenario(foo.Operator):
         self.render_custom_code(ctx, inputs, example_type=reason)
 
     def get_saved_view_scenarios_picker_type(self, ctx):
+        """
+        Returns the view mode for saved views based on the number of available saved views.
+        """
         view_names = ctx.dataset.list_saved_views()
         if not view_names:
-            return "EMPTY", None
+            return "EMPTY", []
 
         view_names = sorted(view_names)
         view_len = len(view_names)
@@ -425,42 +377,70 @@ class ConfigureScenario(foo.Operator):
         return "CHECKBOX", view_names
 
     def render_saved_views(self, ctx, inputs):
+        """Renders sample distribution for subsets using saved views."""
+
         view_type, view_names = self.get_saved_view_scenarios_picker_type(ctx)
 
         if view_type == "EMPTY":
+            # TODO: Implement design for this case
             self.render_no_values_warning(inputs, "saved views")
-            # TODO: we have design for this
-        elif view_type == "AUTO-COMPLETE":
-            self.render_auto_complete_view("saved views", view_names, inputs)
-        elif view_type == "CHECKBOX":
-            stack = inputs.v_stack(
-                "checkbox_view_stack",
-                width="100%",
-                componentsProps={
-                    "grid": {
-                        "sx": {
-                            "border": "1px solid #333",
-                            "display": "flex",
-                            "flexDirection": "column",
-                            "padding": "1rem",
-                            "height": "210px",
-                            "overflowY": "auto",
-                        }
-                    },
-                },
+            return
+
+        if view_type not in {"AUTO-COMPLETE", "CHECKBOX"}:
+            raise ValueError(f"Invalid view type: {view_type}")
+
+        values = {}
+        if view_type == "AUTO-COMPLETE":
+            self.render_auto_complete_view("saved_views", view_names, inputs)
+            current_save_views = (
+                ctx.params.get("classes_saved_views", []) or []
             )
+            values = {v: True for v in current_save_views if v in view_names}
+        else:  # CHECKBOX
+            self.render_checkbox_view(
+                "saved_views_values",
+                view_names,
+                inputs,
+                with_description=f"{len(view_names)} saved views available",
+            )
+            values = ctx.params.get("checkbox_view_stack", {}).get(
+                "saved_views_values", {}
+            )
+
+        self.render_sample_distribution(
+            ctx, inputs, "view", [k for k, v in values.items() if v]
+        )
+
+    def render_checkbox_view(self, key, values, inputs, with_description=None):
+        stack = inputs
+        stack = inputs.v_stack(
+            "checkbox_view_stack",
+            width="100%",
+            componentsProps={
+                "grid": {
+                    "sx": {
+                        "border": "1px solid #333",
+                        "display": "flex",
+                        "flexDirection": "column",
+                        "padding": "1rem",
+                        "max-height": "250px",
+                        "overflowY": "auto",
+                    }
+                },
+            },
+        )
+
+        if with_description:
             stack.view(
                 "info_header_saved_views",
                 types.Header(
                     label="",
-                    description=f"{len(view_names)} saved views available",
+                    description=with_description,
                     divider=False,
                 ),
             )
-            self.render_checkbox_view("saved_views_values", view_names, stack)
 
-    def render_checkbox_view(self, key, values, stack):
-        obj = types.Object()
+        obj = types.Object("checked_scenarios")
         if isinstance(values, list):
             values = {v: 0 for v in values}
 
@@ -685,6 +665,93 @@ class ConfigureScenario(foo.Operator):
 
         prompt = types.PromptView(submit_button_label="Analyze scenario")
         return types.Property(inputs, view=prompt)
+
+    def render_custom_code_content(self, inputs, custom_code, code_key):
+        stack = inputs.v_stack(
+            "custom_code_stack",
+            width="100%",
+            align_x="center",
+            componentsProps={
+                "grid": {
+                    "sx": {
+                        "border": "1px solid #333",
+                        "display": "flex",
+                        "flexDirection": "column",
+                    }
+                },
+            },
+        )
+
+        custom_code_controls = stack.h_stack(
+            "control_stack",
+            width="100%",
+            align_x="space-between",
+            py=2,
+            px=2,
+        )
+
+        body_stack = stack.v_stack(
+            "body_stack",
+            width="100%",
+            componentsProps={
+                "grid": {
+                    "sx": {
+                        "display": "flex",
+                    }
+                },
+            },
+        )
+
+        custom_code_controls.view(
+            "info_header_3",
+            types.Header(
+                label="Custom code",
+                divider=False,
+            ),
+        )
+
+        custom_code_controls.bool(
+            "view_sample_distribution",
+            required=True,
+            default=True,
+            label="View sample distribution",
+            view=types.CheckboxView(
+                componentsProps={
+                    "container": {
+                        "sx": {
+                            "border": "1px solid #333",
+                            "padding": "0 2rem 0 1rem",
+                        }
+                    },
+                }
+            ),
+        )
+
+        body_stack.view(
+            code_key,
+            default=custom_code,
+            view=types.CodeView(
+                language="python",
+                space=2,
+                height=250,
+                width="100%",
+                componentsProps={
+                    "editor": {
+                        "width": "100%",
+                        "options": {
+                            "minimap": {"enabled": False},
+                            "scrollBeyondLastLine": False,
+                            "cursorBlinking": "phase",
+                        },
+                    },
+                    "container": {
+                        "width": "100%",
+                    },
+                },
+            ),
+        )
+
+        return stack
 
     def execute(self, ctx):
         scenario_type = ctx.params.get("scenario_type", None)
