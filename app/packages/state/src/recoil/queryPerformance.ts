@@ -11,6 +11,7 @@ import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { config } from "./config";
 import { getBrowserStorageEffectForKey } from "./customEffects";
+import { filters } from "./filters";
 import { groupSlice } from "./groups";
 import { isLabelPath } from "./labels";
 import { RelayEnvironmentKey } from "./relay";
@@ -50,22 +51,54 @@ export const lightningQuery = graphQLSelectorFamily<
     },
 });
 
-const indexes = foq.graphQLSyncFragmentAtom<foq.indexesFragment$key>(
+const indexInfo = foq.graphQLSyncFragmentAtom<foq.indexesFragment$key>(
   {
     keys: ["dataset"],
     fragments: [foq.datasetFragment, foq.indexesFragment],
   },
   {
-    key: "indexes",
+    key: "indexInfo",
   }
 );
+
+const indexKeysMatch = (one: string[], two: Set<string>) =>
+  one.length === two.size && [...one].every((o) => two.has(o));
+
+export const validIndexes = selectorFamily({
+  key: "validIndexes",
+  get:
+    (keys: Set<string>) =>
+    ({ get }) => {
+      const allIndexes = get(indexInfo).sampleIndexes;
+
+      let matched = false;
+      const trailing: string[] = [];
+      const available: string[] = [];
+      for (const index of allIndexes) {
+        const indexKeys = index.key
+          .slice(0, keys.size)
+          .map(({ field }) => field);
+        if (indexKeysMatch(indexKeys, keys)) {
+          matched = true;
+          index.key[keys.size]?.field &&
+            available.push(index.key[keys.size].field);
+
+          if (index.key[keys.size - 1]) {
+            trailing.push(index.key[keys.size - 1].field);
+          }
+        }
+      }
+
+      return { available, active: matched ? keys : [], trailing };
+    },
+});
 
 const firstKeyMap = selectorFamily({
   key: "firstKeyMap",
   get:
     (frames: boolean) =>
     ({ get }) => {
-      const data = get(indexes);
+      const data = get(indexInfo);
 
       const list = frames ? data.frameIndexes : data.sampleIndexes;
 
@@ -81,66 +114,64 @@ const wildcardProjection = selectorFamily({
       get(firstKeyMap(frames))["$**"]?.wildcardProjection,
 });
 
-const indexesByPath = selector({
+export const indexesByPath = selectorFamily({
   key: "indexesByPath",
-  get: ({ get }) => {
-    const gatherPaths = (space: State.SPACE) =>
-      get(
-        schemaAtoms.fieldPaths({
-          ftype: [BOOLEAN_FIELD, OBJECT_ID_FIELD, STRING_FIELD],
-          space,
-        })
-      );
+  get:
+    (keys: Set<string> | undefined) =>
+    ({ get }) => {
+      const gatherPaths = (space: State.SPACE) =>
+        get(
+          schemaAtoms.fieldPaths({
+            ftype: [BOOLEAN_FIELD, OBJECT_ID_FIELD, STRING_FIELD],
+            space,
+          })
+        );
 
-    const { sampleIndexes: samples, frameIndexes: frames } = get(indexes);
+      const schema = gatherPaths(State.SPACE.SAMPLE);
+      const samplesProjection = get(wildcardProjection(false));
+      const framesProjection = get(wildcardProjection(true));
 
-    const schema = gatherPaths(State.SPACE.SAMPLE);
-    const frameSchema = gatherPaths(State.SPACE.FRAME).map((p) =>
-      p.slice("frames.".length)
-    );
-    const samplesProjection = get(wildcardProjection(false));
-    const framesProjection = get(wildcardProjection(true));
+      const convertWildcards = (
+        field: string,
+        fields: string[],
+        frames: boolean
+      ) => {
+        const projection = frames ? framesProjection : samplesProjection;
 
-    const convertWildcards = (
-      field: string,
-      fields: string[],
-      frames: boolean
-    ) => {
-      const projection = frames ? framesProjection : samplesProjection;
+        const filtered = fields.map((field) => get(schemaAtoms.dbPath(field)));
 
-      const filtered = fields.map((field) => get(schemaAtoms.dbPath(field)));
+        if (field === "$**") {
+          if (!projection) {
+            return filtered;
+          }
+          const set = new Set(projection.fields);
+          const filter = projection.inclusion
+            ? (f: string) => set.has(f)
+            : (f: string) => !set.has(f);
 
-      if (field === "$**") {
-        if (!projection) {
-          return filtered;
+          return filtered.filter(filter);
         }
-        const set = new Set(projection.fields);
-        const filter = projection.inclusion
-          ? (f: string) => set.has(f)
-          : (f: string) => !set.has(f);
 
-        return filtered.filter(filter);
+        if (!field.endsWith(".$**")) {
+          return [field];
+        }
+
+        const parent = field.split(".").slice(0, -1).join(".");
+        return filtered.filter((field) => field.startsWith(parent));
+      };
+      const search =
+        keys ??
+        new Set(
+          Object.keys(get(filters)).map((path) => get(schemaAtoms.dbPath(path)))
+        );
+      const current = get(validIndexes(search));
+      const result = [...current.active];
+      for (const field of current.available) {
+        result.push(...convertWildcards(field, schema, false));
       }
 
-      if (!field.endsWith(".$**")) {
-        return field;
-      }
-
-      const parent = field.split(".").slice(0, -1).join(".");
-      return filtered.filter((field) => field.startsWith(parent));
-    };
-
-    return new Set([
-      ...samples.flatMap(({ key: [{ field }] }) =>
-        convertWildcards(field, schema, false)
-      ),
-      ...frames
-        .flatMap(({ key: [{ field }] }) =>
-          convertWildcards(field, frameSchema, true)
-        )
-        .map((field) => `frames.${field}`),
-    ]);
-  },
+      return new Set(result);
+    },
 });
 
 export const pathIndex = selectorFamily({
@@ -148,7 +179,7 @@ export const pathIndex = selectorFamily({
   get:
     (path: string) =>
     ({ get }) => {
-      const indexes = get(indexesByPath);
+      const indexes = get(indexesByPath(undefined));
       return indexes.has(get(schemaAtoms.dbPath(path)));
     },
 });
@@ -157,8 +188,9 @@ export const pathHasIndexes = selectorFamily({
   key: "pathHasIndexes",
   get:
     (path: string) =>
-    ({ get }) =>
-      !!get(indexedPaths(path)).size,
+    ({ get }) => {
+      return !!get(indexedPaths(path)).size;
+    },
 });
 
 export const indexedPaths = selectorFamily<Set<string>, string>({
@@ -167,7 +199,7 @@ export const indexedPaths = selectorFamily<Set<string>, string>({
     (path: string) =>
     ({ get }) => {
       if (path === "") {
-        return get(indexesByPath);
+        return get(indexesByPath(undefined));
       }
 
       if (
@@ -176,7 +208,7 @@ export const indexedPaths = selectorFamily<Set<string>, string>({
           DYNAMIC_EMBEDDED_DOCUMENT_PATH
       ) {
         const expanded = get(schemaAtoms.expandPath(path));
-        const indexes = get(indexesByPath);
+        const indexes = get(indexesByPath(undefined));
         return new Set(
           get(
             schemaAtoms.fieldPaths({
