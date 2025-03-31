@@ -82,6 +82,7 @@ def get_view(
     sample_filter=None,
     reload=True,
     awaitable=False,
+    sort_by=None,
 ):
     """Gets the view defined by the given request parameters.
 
@@ -137,6 +138,7 @@ def get_view(
                 pagination_data=pagination_data,
                 extended_stages=extended_stages,
                 media_types=media_types,
+                sort_by=sort_by,
             )
 
         return view
@@ -153,6 +155,7 @@ def get_extended_view(
     extended_stages=None,
     pagination_data=False,
     media_types=None,
+    sort_by=None,
 ):
     """Create an extended view with the provided filters.
 
@@ -171,6 +174,9 @@ def get_extended_view(
     if extended_stages:
         # extend view with similarity search, etc. first
         view = extend_view(view, extended_stages)
+
+    if sort_by:
+        view = view.sort_by(sort_by, reverse=True)
 
     if pagination_data:
         # omit all dict field values for performance, not needed by grid

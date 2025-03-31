@@ -2482,6 +2482,7 @@ __metadata:
     "@testing-library/react-hooks": latest
     babel-plugin-relay: ^14.1.0
     html2canvas: 1.0.0-rc.7
+    just-permutations: ^2.2.1
     lodash: ^4.17.21
     prettier: ^2.7.1
     typescript: ^4.7.4
@@ -12552,6 +12553,13 @@ __metadata:
     object.assign: ^4.1.4
     object.values: ^1.1.6
   checksum: f4b05fa4d7b5234230c905cfa88d36dc8a58a6666975a3891429b1a8cdc8a140bca76c297225cb7a499fad25a2c052ac93934449a2c31a44fc9edd06c773780a
+  languageName: node
+  linkType: hard
+
+"just-permutations@npm:^2.2.1":
+  version: 2.2.1
+  resolution: "just-permutations@npm:2.2.1"
+  checksum: b12a2e74b6c692e44636b063000b2b276ebe803e429f244a57abc303b8db70dcc09af5bbae95fa65e6c121b4a1f618fdec1a38c336d4549823f6ceff64c25ac1
   languageName: node
   linkType: hard
 

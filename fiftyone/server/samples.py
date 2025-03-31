@@ -83,6 +83,7 @@ async def paginate_samples(
     extended_stages: t.Optional[BSON] = None,
     sample_filter: t.Optional[SampleFilter] = None,
     pagination_data: t.Optional[bool] = False,
+    sort_by: t.Optional[str] = None,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
     run = lambda reload: fosv.get_view(
         dataset,
@@ -92,6 +93,7 @@ async def paginate_samples(
         extended_stages=extended_stages,
         sample_filter=sample_filter,
         reload=reload,
+        sort_by=sort_by,
     )
     try:
         view = await run_sync_task(run, False)

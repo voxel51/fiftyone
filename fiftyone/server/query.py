@@ -448,7 +448,9 @@ class Query(fosa.AggregateQuery):
         filters: t.Optional[BSON] = None,
         extended_stages: t.Optional[BSON] = None,
         pagination_data: t.Optional[bool] = True,
+        sort_by: t.Optional[str] = None,
     ) -> Connection[SampleItem, str]:
+
         return await paginate_samples(
             dataset,
             view,
@@ -458,6 +460,7 @@ class Query(fosa.AggregateQuery):
             sample_filter=filter,
             extended_stages=extended_stages,
             pagination_data=pagination_data,
+            sort_by=sort_by,
         )
 
     @gql.field

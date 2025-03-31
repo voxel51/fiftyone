@@ -244,7 +244,7 @@ type Dataset {
   appConfig: DatasetAppConfig
   info: JSON
   estimatedFrameCount: Int
-  estimatedSampleCount: Int
+  estimatedSampleCount: Int!
   frameIndexes: [Index!]
   sampleIndexes: [Index!]
   stages(slug: String = null, view: BSONArray = null): BSONArray
@@ -637,6 +637,7 @@ type Query {
     filters: BSON = null
     extendedStages: BSON = null
     paginationData: Boolean = true
+    sortBy: String = null
   ): SampleItemStrConnection!
   sample(
     dataset: String!
