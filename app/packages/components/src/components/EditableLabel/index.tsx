@@ -27,6 +27,10 @@ export default function EditableLabel(props: EditableLabelProps) {
   const [mode, setMode] = useState<"view" | "edit">("view");
   const [updatedLabel, setUpdatedLabel] = useState(label);
 
+  if (!showEditIcon) {
+    return <Typography {...labelProps}>{label}</Typography>;
+  }
+
   return (
     <Stack direction="row" spacing={0.5} alignItems="center">
       {mode === "view" && <Typography {...labelProps}>{label}</Typography>}
@@ -79,7 +83,6 @@ export default function EditableLabel(props: EditableLabelProps) {
       {mode === "view" && (
         <IconButton
           size="small"
-          sx={{ opacity: showEditIcon ? 1 : 0, transition: "opacity 0.3s" }}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
