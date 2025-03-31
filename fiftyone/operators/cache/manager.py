@@ -5,7 +5,7 @@ Execution cache manager.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from fiftyone.operators.store import ExecutionStore
+from fiftyone.operators.store import ExecutionStoreService
 from .utils import resolve_store_name, get_store_for_func
 
 
@@ -13,8 +13,8 @@ def clear_all_caches():
     """
     Clears all named execution stores and their cache entries.
     """
-    # TODO: proper implementation that clears the correct stores
-    ExecutionStore.clear_all(is_cache=True)
+    svc = ExecutionStoreService()
+    svc.clear_cache()
 
 
 def clear_function_cache(ctx, func, store_name=None, link_to_dataset=True):
