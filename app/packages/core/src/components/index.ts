@@ -4,6 +4,7 @@ export { default as EmptySamples } from "./EmptySamples";
 export { default as FieldLabelAndInfo } from "./FieldLabelAndInfo";
 export { default as Loading } from "./Loading";
 export { default as QueryPerformanceToast } from "./QueryPerformanceToast";
+export { default as QueryPerformanceToastTeams } from "./QueryPerformanceToastTeams";
 export { default as ResourceCount } from "./ResourceCount";
 export * from "./Sidebar";
 export { default as Snackbar } from "./Snackbar";
