@@ -83,11 +83,7 @@ class ConfigureScenario(foo.Operator):
                 for choice in SCENARIO_BUILDING_CHOICES
             ],
             componentsProps={
-                "container": {
-                    "sx": {
-                        "width": "100%",
-                    }
-                },
+                "container": {"sx": {"width": "100%"}},
             },
         )
 
@@ -162,15 +158,13 @@ class ConfigureScenario(foo.Operator):
             print(e)
             return
 
-    def convert_to_plotly_data(self, ctx, preview_data):
+    def convert_to_plotly_data(self, params, preview_data):
         if preview_data is None or len(preview_data) == 0:
             return []
 
-        order = ctx.params.get("plot_controls", {}).get(
-            "order", "alphabetical"
-        )
-        limit = ctx.params.get("plot_controls", {}).get("limit", 10)
-        reverse = ctx.params.get("plot_controls", {}).get("reverse", False)
+        order = params.get("plot_controls", {}).get("order", "alphabetical")
+        limit = params.get("plot_controls", {}).get("limit", 10)
+        reverse = params.get("plot_controls", {}).get("reverse", False)
 
         plot_data = []
         for eval_key, counts in preview_data.items():
@@ -221,7 +215,8 @@ class ConfigureScenario(foo.Operator):
                         "sx": {
                             "justifyContent": "center",
                             "padding": "3rem",
-                            "background": "#222",
+                            "background": "background.secondary",
+                            "color": "text.secondary",
                         }
                     },
                     "label": {
@@ -229,6 +224,7 @@ class ConfigureScenario(foo.Operator):
                             "display": "flex",
                             "justifyContent": "center",
                             "padding": ".5rem 0",
+                            "color": "text.secondary",
                         }
                     },
                 },
@@ -261,7 +257,7 @@ class ConfigureScenario(foo.Operator):
         self, ctx, inputs, subset_expressions
     ):
         preview_data = self.get_sample_distribution(ctx, subset_expressions)
-        plot_data = self.convert_to_plotly_data(ctx, preview_data)
+        plot_data = self.convert_to_plotly_data(ctx.params, preview_data)
 
         preview_container = inputs.grid("grid", height="400px", width="100%")
         preview_height = "300px"
@@ -337,20 +333,20 @@ class ConfigureScenario(foo.Operator):
         )
 
     def render_use_custom_code_warning(
-        self, inputs, field_name, reason="TOO_MANY_CATEGORIES"
+        self, inputs, reason="TOO_MANY_CATEGORIES"
     ):
         label, description = None, None
 
         if reason == "TOO_MANY_CATEGORIES":
             label = "Too many categories."
             description = (
-                f"Field {field_name} has too many values to display. "
+                f"Selected field has too many values to display. "
                 + "Please use custom code to define the scenario."
             )
         if reason == "TOO_MANY_INT_CATEGORIES":
             label = "Too many integer values."
             description = (
-                f"Field {field_name} has too many values to display. "
+                f"Selected field has too many values to display. "
                 + "Please use custom code to define the scenario."
             )
         if reason == "FLOAT_TYPE":
@@ -358,7 +354,7 @@ class ConfigureScenario(foo.Operator):
             description = f"To create scenarios based on float fields, please use the custom code mode. "
         if reason == "SLOW":
             label = "Too many values."
-            description = f"Found too many distinct values for this field. "
+            description = f"Found too many distinct values. Please use the auto-complete mode to select the values you want to analyze. "
 
         inputs.view(
             "use_custom_code_instead_warning",
@@ -370,9 +366,9 @@ class ConfigureScenario(foo.Operator):
         )
 
     def render_use_custom_code_instead(
-        self, ctx, inputs, field_name, reason="TOO_MANY_CATEGORIES"
+        self, ctx, inputs, reason="TOO_MANY_CATEGORIES"
     ):
-        self.render_use_custom_code_warning(inputs, field_name, reason)
+        self.render_use_custom_code_warning(inputs, reason)
         self.render_custom_code(ctx, inputs, example_type=reason)
 
     def get_saved_view_scenarios_picker_type(self, ctx):
@@ -404,30 +400,27 @@ class ConfigureScenario(foo.Operator):
         if view_type not in {"AUTO-COMPLETE", "CHECKBOX"}:
             raise ValueError(f"Invalid view type: {view_type}")
 
-        values = {}
         if view_type == "AUTO-COMPLETE":
-            self.render_auto_complete_view("saved_views", view_names, inputs)
-            current_save_views = (
-                ctx.params.get("classes_saved_views", []) or []
-            )
-            values = {v: True for v in current_save_views if v in view_names}
+            self.render_auto_complete_view(ctx, view_names, inputs)
         else:  # CHECKBOX
             self.render_checkbox_view(
-                "saved_views_values",
+                ctx,
                 view_names,
                 inputs,
                 with_description=f"{len(view_names)} saved views available",
             )
-            values = ctx.params.get("checkbox_view_stack", {}).get(
-                "saved_views_values", {}
-            )
 
-        self.render_sample_distribution(
-            ctx, inputs, "view", [k for k, v in values.items() if v]
+    def render_checkbox_view(self, ctx, values, inputs, with_description=None):
+        params = ctx.params
+        scenario_type = self.get_scenario_type(params)
+        key = f"{scenario_type}_values"
+        selected_values_map = (
+            params.get("checkbox_view_stack", {}).get(key, {}) or {}
         )
+        selected_values = [
+            key for key, val in selected_values_map.items() if val
+        ]
 
-    def render_checkbox_view(self, key, values, inputs, with_description=None):
-        stack = inputs
         stack = inputs.v_stack(
             "checkbox_view_stack",
             width="100%",
@@ -447,7 +440,7 @@ class ConfigureScenario(foo.Operator):
 
         if with_description:
             stack.view(
-                "info_header_saved_views",
+                "info_header_{scenario_type}_description",
                 types.Header(
                     label="",
                     description=with_description,
@@ -455,25 +448,38 @@ class ConfigureScenario(foo.Operator):
                 ),
             )
 
-        obj = types.Object("checked_scenarios")
+        obj = types.Object()
         if isinstance(values, list):
             values = {v: 0 for v in values}
 
         for label, count in values.items():
             formatted_count = f"{count:,}"
-            label = f"{label}" + (f" - {formatted_count}" if count > 0 else "")
+            formatted_label = f"{label}" + (
+                f" - {formatted_count}" if count > 0 else ""
+            )
             obj.bool(
                 label,
-                default=False,
-                label=label,
+                default=True if label in selected_values else False,
+                label=formatted_label,
                 view=types.CheckboxView(space=4),
             )
 
+        # TODO: if none selected, set invalid true
         stack.define_property(key, obj)
+
+        if selected_values:
+            self.render_sample_distribution(
+                ctx, inputs, scenario_type, selected_values
+            )
 
     def get_scenarios_picker_type(self, ctx, field_name):
         """
-        Determines the picker type for a given field.
+        Determines the scenario picker type for a given field based on its type and distinct values.
+        - if the field is of type float, shows custom code mode
+        - if the field is boolean, shows checkbox mode
+        - if the field has no distinct values, shows empty mode
+        - if the field has too many distinct values, shows auto-complete or custom code mode
+        - if the field has a manageable number of distinct values, shows checkbox mode
 
         Returns:
             Tuple[str, Any]: Picker type and corresponding values.
@@ -513,14 +519,23 @@ class ConfigureScenario(foo.Operator):
             else ("CHECKBOX", dict(sorted(values.items())))
         )
 
-    def render_auto_complete_view(self, field_name, values, inputs):
-        self.render_use_custom_code_warning(inputs, field_name, reason="SLOW")
+    def render_auto_complete_view(self, ctx, values, inputs):
+        """
+        Renders an auto-complete view as a more compact/efficient input option when,
+        - There are too many distinct values to display and The field is of type string.
+        - There are too many distinct saved views to display as checkbox.
+
+        Eventually, if there are selected values, it attempts to render the sample distribution preview graph
+        """
+        self.render_use_custom_code_warning(inputs, reason="SLOW")
         values = values or []
+        scenario_type = self.get_scenario_type(ctx.params)
+        selected_values = ctx.params.get(f"classes_{scenario_type}", []) or []
 
         inputs.list(
-            f"classes_{field_name}",
+            f"classes_{scenario_type}",
             types.String(),
-            default=None,
+            default=selected_values,
             required=True,
             label="Classes",
             description=("Select saved views to get started..."),
@@ -532,6 +547,11 @@ class ConfigureScenario(foo.Operator):
             ),
         )
 
+        if selected_values:
+            self.render_sample_distribution(
+                ctx, inputs, scenario_type, selected_values
+            )
+
     def render_scenario_picker_view(self, ctx, field_name, inputs):
         """
         Renders the appropriate UI component based on the picker type.
@@ -541,14 +561,12 @@ class ConfigureScenario(foo.Operator):
         render_methods = {
             "EMPTY": lambda: self.render_no_values_warning(inputs, field_name),
             "CODE": lambda: self.render_use_custom_code_instead(
-                ctx, inputs, field_name, reason=values
+                ctx, inputs, reason=values
             ),
             "AUTO-COMPLETE": lambda: self.render_auto_complete_view(
-                field_name, values, inputs
+                ctx, values, inputs
             ),
-            "CHECKBOX": lambda: self.render_checkbox_view(
-                "field_option_values", values, inputs
-            ),
+            "CHECKBOX": lambda: self.render_checkbox_view(ctx, values, inputs),
         }
 
         render_methods.get(view_type, lambda: None)()
@@ -800,7 +818,7 @@ class ConfigureScenario(foo.Operator):
 
             scenario_subsets = custom_code
         if scenario_type == "view":
-            saved_views = ctx.params.get("saved_views_values", {})
+            saved_views = ctx.params.get("views_values", {})
             scenario_subsets = [
                 name for name, selected in saved_views.items() if selected
             ]

@@ -79,7 +79,7 @@ export default function RadioView(props: RadioGroupProps) {
                             width: "100%",
                             background: "none",
                             justifyContent: "flex-start",
-                            color: data === value ? "#FF6D04" : "auto",
+                            color: data === value ? "#FF6D04" : "text.primary",
                             border:
                               data === value
                                 ? "1px solid #FF6D04"
