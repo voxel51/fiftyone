@@ -386,7 +386,7 @@ export default function Evaluation(props: EvaluationProps) {
             status={status}
             canEdit={can_edit_status}
           />
-          <ActionMenu evaluationName={evaluation.info.key} />
+          {!compareKey && <ActionMenu evaluationName={evaluation.info.key} />}
         </Stack>
       </Stack>
 
