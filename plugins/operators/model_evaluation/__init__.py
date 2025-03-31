@@ -157,7 +157,7 @@ class ConfigureScenario(foo.Operator):
             print(e)
             return
 
-    def convert_to_plotly_data(self, params, preview_data):
+    def convert_to_plotly_data(self, preview_data):
         if preview_data is None or len(preview_data) == 0:
             return []
 
@@ -258,7 +258,7 @@ class ConfigureScenario(foo.Operator):
         self, ctx, inputs, subset_expressions
     ):
         preview_data = self.get_sample_distribution(ctx, subset_expressions)
-        plot_data = self.convert_to_plotly_data(ctx.params, preview_data)
+        plot_data = self.convert_to_plotly_data(preview_data)
 
         preview_container = inputs.grid("grid", height="400px", width="100%")
         preview_height = "300px"
@@ -432,7 +432,7 @@ class ConfigureScenario(foo.Operator):
                         "display": "flex",
                         "flexDirection": "column",
                         "padding": "1rem",
-                        "max-height": "250px",
+                        "max-height": "275px",
                         "overflowY": "auto",
                     }
                 },
@@ -471,6 +471,10 @@ class ConfigureScenario(foo.Operator):
         if selected_values:
             self.render_sample_distribution(
                 ctx, inputs, scenario_type, selected_values
+            )
+        else:
+            self.render_empty_sample_distribution(
+                inputs, description="Select a value to get started"
             )
 
     def get_scenarios_picker_type(self, ctx, field_name):
@@ -540,7 +544,9 @@ class ConfigureScenario(foo.Operator):
             default=selected_values,
             required=True,
             label="",
-            description=("Select saved views to get started"),
+            description=(
+                f"Select saved views to get started. {len(selected_values)} selected"
+            ),
             view=types.AutocompleteView(
                 multiple=True,
                 choices=[types.Choice(value=v, label=v) for v in values],
@@ -552,6 +558,10 @@ class ConfigureScenario(foo.Operator):
         if selected_values:
             self.render_sample_distribution(
                 ctx, inputs, scenario_type, selected_values
+            )
+        else:
+            self.render_empty_sample_distribution(
+                inputs, description="Select a value to get started"
             )
 
     def render_scenario_picker_view(self, ctx, field_name, inputs):
@@ -611,6 +621,8 @@ class ConfigureScenario(foo.Operator):
 
         if label_attr:
             self.render_scenario_picker_view(ctx, label_attr, inputs)
+        else:
+            self.render_empty_sample_distribution(inputs)
 
     def get_valid_sample_field_path_options(self, flat_field_schema):
         """
@@ -655,9 +667,12 @@ class ConfigureScenario(foo.Operator):
 
         if field_name:
             self.render_scenario_picker_view(ctx, field_name, inputs)
+        else:
+            self.render_empty_sample_distribution(inputs)
 
     def get_scenario_type(self, params):
         scenario_type = params.get("scenario_type", None)
+
         # TODO: constant and typed enum
         if scenario_type not in [
             "view",
@@ -687,15 +702,12 @@ class ConfigureScenario(foo.Operator):
 
         if scenario_type == "custom_code":
             self.render_custom_code(ctx, inputs)
-
         if scenario_type == "label_attribute":
             self.render_label_attribute(
                 ctx, inputs, gt_field, chosen_scenario_label_attribute
             )
-
         if scenario_type == "view":
             self.render_saved_views(ctx, inputs)
-
         if scenario_type == "sample_field":
             self.render_sample_fields(ctx, inputs, chosen_scenario_field_name)
 
@@ -790,7 +802,7 @@ class ConfigureScenario(foo.Operator):
         return stack
 
     def execute(self, ctx):
-        scenario_type = ctx.params.get("scenario_type", None)
+        scenario_type = self.get_scenario_type(ctx.params)
         if scenario_type is None:
             raise ValueError("Scenario type must be selected")
 
