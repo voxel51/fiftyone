@@ -13,10 +13,6 @@ from fiftyone.operators.store import ExecutionStore
 from .utils import (
     get_ctx_from_args,
     make_mongo_safe_value,
-    build_cache_key,
-    get_store_for_func,
-    get_cache_key_list,
-    get_scoped_cache_key_list,
     resolve_cache_info,
 )
 
@@ -110,7 +106,6 @@ def execution_cache(
 
         @wraps(func)
         def wrapper(*args, **kwargs):
-            # TODO: add a mechanism to entirely disable caching
             ctx, ctx_index = get_ctx_from_args(args)
             cache_key, store, skip_cache = resolve_cache_info(
                 ctx,
@@ -132,6 +127,9 @@ def execution_cache(
                 return cached_value
 
             result = func(*args, **kwargs)
+
+            # TODO: find a more standard naming for this function
+            # we shouldn't know about mongo here...
             result = make_mongo_safe_value(result)
             store.set_cache(cache_key, result, ttl=ttl)
 
@@ -144,7 +142,7 @@ def execution_cache(
 
         def clear_cache(*args, **kwargs):
             ctx, ctx_index = get_ctx_from_args(args)
-            cache_key, store, skip_cache = resolve_cache_info(
+            cache_key, store, _ = resolve_cache_info(
                 ctx,
                 ctx_index,
                 args,

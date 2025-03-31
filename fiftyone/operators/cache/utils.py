@@ -12,6 +12,7 @@ import hashlib
 
 import eta.core.serial as etas
 
+import fiftyone as fo
 from fiftyone.operators.store import ExecutionStore
 
 
@@ -171,6 +172,9 @@ def resolve_cache_info(
     Resolves the cache key and store for a given function call,
     including scope-based keys. Returns (cache_key, store, skip_cache).
     """
+    cached_disabled = fo.config.execution_cache_enabled == False
+    if cached_disabled:
+        return None, None, True
     base_cache_key_list = get_cache_key_list(ctx_index, args, kwargs, key_fn)
 
     scoped_cache_key_list, skip_cache = get_scoped_cache_key_list(
@@ -186,3 +190,8 @@ def resolve_cache_info(
     store = get_store_for_func(ctx, func)
 
     return cache_key, store, skip_cache
+
+
+def is_cache_disabled():
+    fo.config
+    return False
