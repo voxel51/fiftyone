@@ -5,6 +5,7 @@ FiftyOne Server ``/embeddings`` route.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import itertools
 
 from starlette.endpoints import HTTPEndpoint
@@ -20,7 +21,7 @@ import fiftyone.server.view as fosv
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 
 
-MAX_CATEGORIES = 100
+MAX_CATEGORIES = 10
 COLOR_BY_TYPES = (
     fof.StringField,
     fof.BooleanField,
