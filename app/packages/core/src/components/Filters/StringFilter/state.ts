@@ -77,13 +77,15 @@ export const stringSearchResults = selectorFamily<
           Object.entries(get(fos.filters) || {}).filter(([p]) => p !== path)
         );
 
+        const keys = new Set(Object.keys(filters));
+
         return {
           values: get(
             fos.lightningStringResults({
               path,
               search,
               exclude: [...selected.filter((s) => s !== null)] as string[],
-              filters,
+              filters: get(fos.indexesByPath(keys)).has(path) ? filters : {},
             })
           )?.map((value) => ({ value, count: null })),
         };

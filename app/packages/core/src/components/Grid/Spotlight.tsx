@@ -30,7 +30,7 @@ import useZoomSetting from "./useZoomSetting";
 const MAX_INSTANCES = 5151;
 const MAX_ROWS = 5151;
 
-function Spotlight() {
+function Component() {
   const id = useMemoOne(() => uuid(), []);
   const pixels = useMemoOne(() => uuid(), []);
   const spacing = useRecoilValue(gridSpacing);
@@ -120,4 +120,4 @@ function Spotlight() {
   );
 }
 
-export default React.memo(Spotlight);
+export default React.memo(Component);

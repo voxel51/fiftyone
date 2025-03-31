@@ -10292,7 +10292,7 @@ class SampleCollection(object):
 
         return results[0] if scalar_result else results
 
-    async def _async_aggregate(self, aggregations):
+    async def _async_aggregate(self, aggregations, debug=True):
         if not aggregations:
             return []
 
@@ -10324,6 +10324,10 @@ class SampleCollection(object):
             coll_name = self._dataset._sample_collection_name
             collection = foo.get_async_db_conn()[coll_name]
             _results = await foo.aggregate(collection, pipelines)
+            if debug:
+                import fiftyone as fo
+
+                fo.pprint(pipelines)
 
             # Parse facet-able results
             for idx, aggregation in compiled_facet_aggs.items():

@@ -3,11 +3,11 @@ import { groupSlice, groupSlices, useSetGroupSlice } from "@fiftyone/state";
 import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 
-const Slice: React.FC<{ value: string; className: string }> = ({ value }) => {
+const Slice = ({ value }: { className?: string; value: string }) => {
   return <>{value}</>;
 };
 
-const GroupSlice: React.FC = () => {
+const GroupSlice = () => {
   const slice = useRecoilValue(groupSlice);
   if (!slice) {
     throw new Error("slice not defined");

@@ -83,7 +83,9 @@ async def paginate_samples(
     extended_stages: t.Optional[BSON] = None,
     sample_filter: t.Optional[SampleFilter] = None,
     pagination_data: t.Optional[bool] = False,
+    sort_by: t.Optional[str] = None,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
+    raise ValueError("E")
     run = lambda reload: fosv.get_view(
         dataset,
         stages=stages,
@@ -92,6 +94,7 @@ async def paginate_samples(
         extended_stages=extended_stages,
         sample_filter=sample_filter,
         reload=reload,
+        sort_by=sort_by,
     )
     try:
         view = await run_sync_task(run, False)
@@ -104,7 +107,11 @@ async def paginate_samples(
     if int(after) > -1:
         view = view.skip(int(after) + 1)
 
-    pipeline = await get_samples_pipeline(view, sample_filter)
+    pipeline = await get_samples_pipeline(view, sample_filter, sort_by)
+    import fiftyone as fo
+
+    fo.pprint(pipeline)
+    raise ValueError(sort_by)
     samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],
         pipeline,

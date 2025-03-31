@@ -13,6 +13,32 @@ const convertDefault = (defaultRange) => {
   return -(14 - (defaultRange / 10) * 14 + 1);
 };
 
+export const sortFields = selector({
+  key: "sortField",
+  get: ({ get }) => {
+    const f = Object.keys(get(fos.filters) ?? {});
+    const valid = get(fos.validIndexes(new Set(f)));
+    const all = new Set([...valid.available, ...valid.trailing]);
+    return [...all].sort();
+  },
+});
+
+export const sortByState = atom({
+  key: "sortByState",
+  default: "id",
+});
+
+export const sortBy = selector({
+  key: "sortBy",
+  get: ({ get }) => {
+    const fields = get(sortFields);
+    return get(sortByState) &&
+      fields.includes(get(fos.dbPath(get(sortByState))))
+      ? get(sortByState)
+      : null;
+  },
+});
+
 export const defaultGridZoom = selector<number>({
   key: "defaultGridZoom",
   get: ({ get }) => get(fos.config)?.gridZoom,
@@ -168,6 +194,7 @@ export const pageParameters = selector({
         ...params,
         after: page ? String(page * pageSize - 1) : null,
         first: pageSize,
+        sortBy: get(sortBy) ? get(get(sortBy)) : null,
       };
     };
   },

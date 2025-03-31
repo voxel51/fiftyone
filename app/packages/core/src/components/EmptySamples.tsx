@@ -7,7 +7,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import ErrorImg from "../images/error.svg";
 import { ExternalLink } from "../utils/generic";
-import { SamplesHeader } from "./Grid/Header";
+import { SamplesHeader } from "./Grid/Header/Containers";
 
 const BaseContainer = styled.div`
   display: flex;
