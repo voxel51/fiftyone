@@ -28,10 +28,12 @@ import {
   Select,
   Stack,
   SxProps,
+  Tab,
   TableBody,
   TableCell,
   TableHead,
   TableRow,
+  Tabs,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
@@ -57,6 +59,7 @@ import {
   useTriggerEvent,
 } from "./utils";
 import EvaluationTable from "./components/EvaluationTable";
+import { tabStyles } from "./styles";
 
 const KEY_COLOR = "#ff6d04";
 const COMPARE_KEY_COLOR = "#03a9f4";
@@ -83,6 +86,7 @@ export default function Evaluation(props: EvaluationProps) {
   } = props;
   const theme = useTheme();
   const [expanded, setExpanded] = React.useState("overview");
+  const [activeTab, setActiveTab] = useState("overview");
   const [mode, setMode] = useState("chart");
   const [editNoteState, setEditNoteState] = useState({ open: false, note: "" });
   const [classPerformanceConfig, setClassPerformanceConfig] =
@@ -543,7 +547,18 @@ export default function Evaluation(props: EvaluationProps) {
   return (
     <Stack spacing={2} sx={{ p: 2 }}>
       <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-        <Stack direction="row" spacing={0} sx={{ alignItems: "center" }}>
+        <Stack
+          id="evaluation-header"
+          direction="row"
+          spacing={2}
+          sx={{
+            alignItems: "center",
+            flex: 1,
+            "& > *": {
+              marginLeft: "0px !important",
+            },
+          }}
+        >
           <IconButton
             onClick={() => {
               navigateBack();
@@ -552,312 +567,228 @@ export default function Evaluation(props: EvaluationProps) {
           >
             <ArrowBack />
           </IconButton>
-          <EvaluationIcon type={evaluationType} method={evaluationMethod} />
-          <EditableLabel
-            label={name}
-            onSave={(newLabel) => {
-              onRename(name, newLabel);
+
+          {/* First evaluation section */}
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <EvaluationIcon
+              type={evaluation.info.config.type}
+              method={evaluation.info.config.method}
+            />
+            <EditableLabel
+              label={name}
+              onSave={(newLabel) => {
+                onRename(name, newLabel);
+              }}
+              onCancel={() => {}}
+              showEditIcon={!compareKey}
+            />
+          </Stack>
+
+          {/* VS text */}
+          <Typography
+            variant="body2"
+            sx={{
+              color: (theme) => theme.palette.text.secondary,
+              px: 1,
             }}
-          />
+          >
+            vs
+          </Typography>
+
+          {/* Compare dropdown section */}
+          <Stack sx={{ minWidth: 225 }}>
+            {compareKeys.length === 0 ? (
+              <Typography
+                variant="body2"
+                sx={{ color: (theme) => theme.palette.text.secondary }}
+              >
+                You need at least one more evaluation to compare.
+              </Typography>
+            ) : (
+              <Select
+                key={compareKey}
+                sx={{
+                  height: 40,
+                  width: "100%",
+                  minWidth: 225,
+                  background: theme.palette.background.paper,
+                  "& .MuiOutlinedInput-input": {
+                    display: "flex",
+                    alignItems: "center",
+                  },
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    border: "none",
+                  },
+                  "&:hover .MuiOutlinedInput-notchedOutline": {
+                    border: "none",
+                  },
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    border: "none",
+                  },
+                }}
+                defaultValue={compareKey}
+                displayEmpty
+                placeholder="Select a comparison"
+                renderValue={
+                  !compareKey
+                    ? () => (
+                        <Typography sx={{ color: "text.secondary" }}>
+                          Select a comparison
+                        </Typography>
+                      )
+                    : undefined
+                }
+                onChange={(e) => {
+                  setLoadingCompare(false);
+                  onChangeCompareKey(e.target.value as string);
+                }}
+                endAdornment={
+                  compareKey ? (
+                    <IconButton
+                      sx={{ mr: 1 }}
+                      onClick={() => {
+                        onChangeCompareKey("");
+                      }}
+                    >
+                      <Close />
+                    </IconButton>
+                  ) : null
+                }
+              >
+                {compareKeys.map(
+                  ({ key, type, method, disabled, tooltip, tooltipBody }) => {
+                    const menuItem = (
+                      <MenuItem
+                        value={key}
+                        key={key}
+                        sx={{ p: 0 }}
+                        disabled={disabled}
+                      >
+                        <EvaluationIcon
+                          type={type as ConcreteEvaluationType}
+                          method={method}
+                          color={COMPARE_KEY_SECONDARY_COLOR}
+                        />
+                        <Typography>{key}</Typography>
+                      </MenuItem>
+                    );
+                    return disabled ? (
+                      <Tooltip
+                        key={key}
+                        title={
+                          <>
+                            <Typography variant="subtitle1">
+                              {tooltip}
+                            </Typography>
+                            <Typography variant="body2">
+                              {tooltipBody}
+                            </Typography>
+                          </>
+                        }
+                      >
+                        <span>{menuItem}</span>
+                      </Tooltip>
+                    ) : (
+                      menuItem
+                    );
+                  }
+                )}
+              </Select>
+            )}
+          </Stack>
         </Stack>
-        <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+
+        <Stack direction="row" sx={{ alignItems: "center" }}>
           <Status
             setStatusEvent={setStatusEvent}
             status={status}
             canEdit={can_edit_status}
           />
-          <ToggleButtonGroup
-            exclusive
-            value={mode}
-            onChange={(e, mode) => {
-              if (mode) setMode(mode);
-            }}
-            sx={{ height: "28px" }}
-          >
-            <ToggleButton value="chart">
-              <InsertChart />
-            </ToggleButton>
-            <ToggleButton value="info" title="Switch to ">
-              <Info />
-            </ToggleButton>
-          </ToggleButtonGroup>
-          <ActionMenu evaluationName={evaluation.info.key} />
+          {!compareKey && <ActionMenu evaluationName={evaluation.info.key} />}
         </Stack>
       </Stack>
 
-      <Stack direction="row" spacing={1} sx={{ pb: 1 }}>
-        <Stack sx={{ width: "50%" }} spacing={0.5}>
-          <Typography color="secondary">Prediction set</Typography>
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{
-              alignItems: "center",
-              background: theme.palette.background.card,
-              p: "3px",
-              borderRadius: 0.5,
-              pl: 1.5,
-              border: "1px solid",
-              borderColor: theme.palette.divider,
-            }}
-          >
-            <EvaluationIcon
-              type={evaluationType as ConcreteEvaluationType}
-              method={evaluationMethod}
-            />
-            <Typography>{evaluationKey}</Typography>
-          </Stack>
-        </Stack>
-        <Stack sx={{ width: "50%" }} spacing={0.5}>
-          <Stack direction="row" spacing={1}>
-            <Typography color="secondary">Compare against</Typography>
-            {compareEvaluationError && (
-              <Typography sx={{ color: theme.palette.error.main }}>
-                Unsupported model evaluation type
-              </Typography>
-            )}
-          </Stack>
-          {compareKeys.length === 0 ? (
-            <Typography
-              variant="body2"
-              sx={{ color: (theme) => theme.palette.text.tertiary }}
-            >
-              You need at least one more evaluation to compare.
-            </Typography>
-          ) : (
-            <Select
-              key={compareKey}
-              sx={{
-                height: 40,
-                width: "100%",
-                background: theme.palette.background.card,
-                "& .MuiOutlinedInput-input": {
-                  display: "flex",
-                  alignItems: "center",
-                },
-              }}
-              defaultValue={compareKey}
-              onChange={(e) => {
-                setLoadingCompare(false);
-                onChangeCompareKey(e.target.value as string);
-              }}
-              endAdornment={
-                compareKey ? (
-                  <IconButton
-                    sx={{ mr: 1 }}
-                    onClick={() => {
-                      onChangeCompareKey("");
-                    }}
-                  >
-                    <Close />
-                  </IconButton>
-                ) : null
-              }
-            >
-              {compareKeys.map(
-                ({ key, type, method, disabled, tooltip, tooltipBody }) => {
-                  const menuItem = (
-                    <MenuItem
-                      value={key}
-                      key={key}
-                      sx={{ p: 0 }}
-                      disabled={disabled}
-                    >
-                      <EvaluationIcon
-                        type={type as ConcreteEvaluationType}
-                        method={method}
-                        color={COMPARE_KEY_SECONDARY_COLOR}
-                      />
-                      <Typography>{key}</Typography>
-                    </MenuItem>
-                  );
-                  return disabled ? (
-                    <Tooltip
-                      key={key}
-                      title={
-                        <>
-                          <Typography variant="subtitle1">{tooltip}</Typography>
-                          <Typography variant="body2">{tooltipBody}</Typography>
-                        </>
-                      }
-                    >
-                      <span>{menuItem}</span>
-                    </Tooltip>
-                  ) : (
-                    menuItem
-                  );
+      <Box sx={tabStyles.container}>
+        <Tabs
+          value={activeTab}
+          onChange={(e, newValue) => setActiveTab(newValue)}
+          TabIndicatorProps={{
+            style: { display: "none" },
+          }}
+          variant="fullWidth"
+          sx={tabStyles.tabs}
+        >
+          <Tab label="Overview" value="overview" />
+          <Tab label="Scenario Analysis" value="scenario" />
+          <Tab label="Execution Info" value="info" />
+        </Tabs>
+      </Box>
+
+      {/* Overview tab */}
+      {activeTab === "overview" && (
+        <Box>
+          <Card sx={{ p: 2 }}>
+            <Stack direction="row" sx={{ justifyContent: "space-between" }}>
+              <Typography color="secondary">Evaluation notes</Typography>
+              <Box
+                title={
+                  can_edit_note
+                    ? ""
+                    : "You do not have permission to edit evaluation notes"
                 }
-              )}
-            </Select>
-          )}
-        </Stack>
-      </Stack>
-      <Card sx={{ p: 2 }}>
-        <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-          <Typography color="secondary">Evaluation notes</Typography>
-          <Box
-            title={
-              can_edit_note
-                ? ""
-                : "You do not have permission to edit evaluation notes"
-            }
-            sx={{ cursor: can_edit_note ? "pointer" : "not-allowed" }}
-          >
-            <IconButton
-              size="small"
-              color="secondary"
-              sx={{ borderRadius: 16 }}
-              onClick={() => {
-                setEditNoteState((note) => ({ ...note, open: true }));
-              }}
-              disabled={!can_edit_note}
-            >
-              <EditNote />
-            </IconButton>
-          </Box>
-        </Stack>
-        <EvaluationNotes notes={evaluationNotes} variant="details" />
-      </Card>
-      {mode === "chart" && (
-        <Stack spacing={1}>
-          <Accordion
-            expanded={expanded === "summary"}
-            onChange={(e, expanded) => {
-              setExpanded(expanded ? "summary" : "");
-            }}
-            disableGutters
-            sx={{ borderRadius: 1, "&::before": { display: "none" } }}
-          >
-            <AccordionSummary expandIcon={<ExpandMore />}>
-              Summary
-            </AccordionSummary>
-            <AccordionDetails>
-              <EvaluationTable>
-                <TableHead>
-                  <TableRow
-                    sx={{
-                      "th p": {
-                        color: (theme) => theme.palette.text.secondary,
-                        fontSize: "1rem",
-                        fontWeight: 600,
-                      },
-                    }}
-                  >
-                    <TableCell>
-                      <Typography>Metric</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Stack
-                        direction="row"
-                        spacing={1}
-                        sx={{ alignItems: "center" }}
+                sx={{ cursor: can_edit_note ? "pointer" : "not-allowed" }}
+              >
+                <IconButton
+                  size="small"
+                  color="secondary"
+                  sx={{ borderRadius: 16 }}
+                  onClick={() => {
+                    setEditNoteState((note) => ({ ...note, open: true }));
+                  }}
+                  disabled={!can_edit_note}
+                >
+                  <EditNote />
+                </IconButton>
+              </Box>
+            </Stack>
+            <EvaluationNotes notes={evaluationNotes} variant="details" />
+          </Card>
+          {mode === "chart" && (
+            <Stack spacing={1}>
+              <Accordion
+                expanded={expanded === "summary"}
+                onChange={(e, expanded) => {
+                  setExpanded(expanded ? "summary" : "");
+                }}
+                disableGutters
+                sx={{ borderRadius: 1, "&::before": { display: "none" } }}
+              >
+                <AccordionSummary expandIcon={<ExpandMore />}>
+                  Summary
+                </AccordionSummary>
+                <AccordionDetails>
+                  <EvaluationTable>
+                    <TableHead>
+                      <TableRow
+                        sx={{
+                          "th p": {
+                            color: (theme) => theme.palette.text.secondary,
+                            fontSize: "1rem",
+                            fontWeight: 600,
+                          },
+                        }}
                       >
-                        <ColorSquare color={KEY_COLOR} />
-                        <Typography>{name}</Typography>
-                      </Stack>
-                    </TableCell>
-                    {compareKey && (
-                      <>
+                        <TableCell>
+                          <Typography>Metric</Typography>
+                        </TableCell>
                         <TableCell>
                           <Stack
                             direction="row"
                             spacing={1}
                             sx={{ alignItems: "center" }}
                           >
-                            <ColorSquare color={COMPARE_KEY_COLOR} />
-                            <Typography>{compareKey}</Typography>
-                          </Stack>
-                        </TableCell>
-                        <TableCell>
-                          <Typography>Difference</Typography>
-                        </TableCell>
-                      </>
-                    )}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {summaryRows.map((row) => {
-                    const {
-                      property,
-                      value,
-                      compareValue,
-                      lesserIsBetter,
-                      filterable,
-                      id: rowId,
-                      active,
-                      hide,
-                    } = row;
-                    if (hide) return null;
-                    const difference = getNumericDifference(
-                      value,
-                      compareValue
-                    );
-                    const ratio = getNumericDifference(
-                      value,
-                      compareValue,
-                      true,
-                      1
-                    );
-                    const positiveRatio = ratio > 0;
-                    const zeroRatio = ratio === 0;
-                    const negativeRatio = ratio < 0;
-                    const ratioColor = positiveRatio
-                      ? "#8BC18D"
-                      : negativeRatio
-                      ? "#FF6464"
-                      : theme.palette.text.tertiary;
-                    const showTrophy = lesserIsBetter
-                      ? difference < 0
-                      : difference > 0;
-                    const activeStyle: SxProps = {
-                      backgroundColor: theme.palette.voxel["500"],
-                      color: "#FFFFFF",
-                    };
-
-                    return (
-                      <TableRow key={rowId}>
-                        <TableCell component="th" scope="row">
-                          {property}
-                        </TableCell>
-                        <TableCell>
-                          <Stack
-                            direction="row"
-                            sx={{
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                            }}
-                          >
-                            <Typography>
-                              {value ? (
-                                formatValue(value)
-                              ) : (
-                                <Typography color="text.tertiary">—</Typography>
-                              )}
-                            </Typography>
-                            <Stack direction="row" spacing={1}>
-                              {showTrophy && (
-                                <Typography sx={{ fontSize: 12 }}>
-                                  🏆
-                                </Typography>
-                              )}
-                              {filterable && (
-                                <IconButton
-                                  sx={{
-                                    p: 0.25,
-                                    borderRadius: 0.5,
-                                    ...(active === "selected"
-                                      ? activeStyle
-                                      : {}),
-                                  }}
-                                  onClick={() => {
-                                    loadView("field", { field: rowId });
-                                  }}
-                                  title="Load view"
-                                >
-                                  <GridView sx={{ fontSize: 14 }} />
-                                </IconButton>
-                              )}
-                            </Stack>
+                            <ColorSquare color={KEY_COLOR} />
+                            <Typography>{name}</Typography>
                           </Stack>
                         </TableCell>
                         {compareKey && (
@@ -866,558 +797,680 @@ export default function Evaluation(props: EvaluationProps) {
                               <Stack
                                 direction="row"
                                 spacing={1}
-                                sx={{ justifyContent: "space-between" }}
+                                sx={{ alignItems: "center" }}
+                              >
+                                <ColorSquare color={COMPARE_KEY_COLOR} />
+                                <Typography>{compareKey}</Typography>
+                              </Stack>
+                            </TableCell>
+                            <TableCell>
+                              <Typography>Difference</Typography>
+                            </TableCell>
+                          </>
+                        )}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {summaryRows.map((row) => {
+                        const {
+                          property,
+                          value,
+                          compareValue,
+                          lesserIsBetter,
+                          filterable,
+                          id: rowId,
+                          active,
+                          hide,
+                        } = row;
+                        if (hide) return null;
+                        const difference = getNumericDifference(
+                          value,
+                          compareValue
+                        );
+                        const ratio = getNumericDifference(
+                          value,
+                          compareValue,
+                          true,
+                          1
+                        );
+                        const positiveRatio = ratio > 0;
+                        const zeroRatio = ratio === 0;
+                        const negativeRatio = ratio < 0;
+                        const ratioColor = positiveRatio
+                          ? "#8BC18D"
+                          : negativeRatio
+                          ? "#FF6464"
+                          : theme.palette.text.tertiary;
+                        const showTrophy = lesserIsBetter
+                          ? difference < 0
+                          : difference > 0;
+                        const activeStyle: SxProps = {
+                          backgroundColor: theme.palette.voxel["500"],
+                          color: "#FFFFFF",
+                        };
+
+                        return (
+                          <TableRow key={rowId}>
+                            <TableCell component="th" scope="row">
+                              {property}
+                            </TableCell>
+                            <TableCell>
+                              <Stack
+                                direction="row"
+                                sx={{
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                }}
                               >
                                 <Typography>
-                                  {compareValue ? (
-                                    formatValue(compareValue)
+                                  {value ? (
+                                    formatValue(value)
                                   ) : (
                                     <Typography color="text.tertiary">
                                       —
                                     </Typography>
                                   )}
                                 </Typography>
-
-                                {filterable && (
-                                  <IconButton
-                                    sx={{
-                                      p: 0.25,
-                                      borderRadius: 0.5,
-                                      ...(active === "compare"
-                                        ? activeStyle
-                                        : {}),
-                                    }}
-                                    onClick={() => {
-                                      loadView("field", {
-                                        field: rowId,
-                                        key: compareKey,
-                                      });
-                                    }}
-                                    title="Load view"
-                                  >
-                                    <GridView sx={{ fontSize: 16 }} />
-                                  </IconButton>
-                                )}
+                                <Stack direction="row" spacing={1}>
+                                  {showTrophy && (
+                                    <Typography sx={{ fontSize: 12 }}>
+                                      🏆
+                                    </Typography>
+                                  )}
+                                  {filterable && (
+                                    <IconButton
+                                      sx={{
+                                        p: 0.25,
+                                        borderRadius: 0.5,
+                                        ...(active === "selected"
+                                          ? activeStyle
+                                          : {}),
+                                      }}
+                                      onClick={() => {
+                                        loadView("field", { field: rowId });
+                                      }}
+                                      title="Load view"
+                                    >
+                                      <GridView sx={{ fontSize: 14 }} />
+                                    </IconButton>
+                                  )}
+                                </Stack>
                               </Stack>
                             </TableCell>
-                            <TableCell>
-                              <Stack
-                                direction="row"
-                                sx={{ justifyContent: "space-between" }}
-                              >
-                                <Typography>{difference}</Typography>
-                                {!isNaN(ratio) && (
+                            {compareKey && (
+                              <>
+                                <TableCell>
                                   <Stack
                                     direction="row"
-                                    sx={{ alignItems: "center" }}
+                                    spacing={1}
+                                    sx={{ justifyContent: "space-between" }}
                                   >
-                                    {positiveRatio && (
-                                      <ArrowDropUp sx={{ color: ratioColor }} />
-                                    )}
-                                    {negativeRatio && (
-                                      <ArrowDropDown
-                                        sx={{ color: ratioColor }}
-                                      />
-                                    )}
-                                    {zeroRatio && (
-                                      <Typography
-                                        pr={1}
-                                        sx={{ color: ratioColor }}
-                                      >
-                                        —
-                                      </Typography>
-                                    )}
-                                    <Typography
-                                      sx={{
-                                        fontSize: "12px",
-                                        color: ratioColor,
-                                      }}
-                                    >
-                                      {ratio}%
+                                    <Typography>
+                                      {compareValue ? (
+                                        formatValue(compareValue)
+                                      ) : (
+                                        <Typography color="text.tertiary">
+                                          —
+                                        </Typography>
+                                      )}
                                     </Typography>
+
+                                    {filterable && (
+                                      <IconButton
+                                        sx={{
+                                          p: 0.25,
+                                          borderRadius: 0.5,
+                                          ...(active === "compare"
+                                            ? activeStyle
+                                            : {}),
+                                        }}
+                                        onClick={() => {
+                                          loadView("field", {
+                                            field: rowId,
+                                            key: compareKey,
+                                          });
+                                        }}
+                                        title="Load view"
+                                      >
+                                        <GridView sx={{ fontSize: 16 }} />
+                                      </IconButton>
+                                    )}
                                   </Stack>
-                                )}
-                              </Stack>
-                            </TableCell>
-                          </>
-                        )}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </EvaluationTable>
-            </AccordionDetails>
-          </Accordion>
-          <Accordion
-            expanded={expanded === "metric"}
-            onChange={(e, expanded) => {
-              setExpanded(expanded ? "metric" : "");
-            }}
-            disableGutters
-            sx={{ borderRadius: 1, "&::before": { display: "none" } }}
-          >
-            <AccordionSummary expandIcon={<ExpandMore />}>
-              Metric Performance
-            </AccordionSummary>
-            <AccordionDetails>
-              <Stack spacing={1}>
-                <Stack alignItems="flex-end">
-                  <ToggleButtonGroup
-                    exclusive
-                    value={metricMode}
-                    onChange={(e, mode) => {
-                      if (mode) setMetricMode(mode);
-                    }}
-                    sx={{ height: "28px" }}
-                  >
-                    <ToggleButton value="chart">
-                      <InsertChart />
-                    </ToggleButton>
-                    <ToggleButton value="table">
-                      <TableRows />
-                    </ToggleButton>
-                  </ToggleButtonGroup>
-                </Stack>
-                {metricMode === "chart" && (
-                  <EvaluationPlot
-                    data={[
-                      {
-                        histfunc: "sum",
-                        y: computedMetricPerformance.map((m) => m.value),
-                        x: computedMetricPerformance.map((m) => m.property),
-                        type: "histogram",
-                        name: name,
-                        marker: {
-                          color: KEY_COLOR,
-                        },
-                      },
-                      {
-                        histfunc: "sum",
-                        y: computedMetricPerformance.map((m) => m.compareValue),
-                        x: computedMetricPerformance.map((m) => m.property),
-                        type: "histogram",
-                        name: compareKey,
-                        marker: {
-                          color: COMPARE_KEY_COLOR,
-                        },
-                      },
-                    ]}
-                  />
-                )}
-                {metricMode === "table" && (
-                  <EvaluationTable>
-                    <TableHead>
-                      <TableRow
-                        sx={{
-                          "th p": {
-                            color: (theme) => theme.palette.text.secondary,
-                            fontSize: "1rem",
-                            fontWeight: 600,
-                          },
-                        }}
-                      >
-                        <TableCell>
-                          <Typography>Metric</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            sx={{ alignItems: "center" }}
-                          >
-                            <ColorSquare color={KEY_COLOR} />
-                            <Typography>{name}</Typography>
-                          </Stack>
-                        </TableCell>
-                        {compareKey && (
-                          <>
-                            <TableCell>
-                              <Stack
-                                direction="row"
-                                spacing={1}
-                                sx={{ alignItems: "center" }}
-                              >
-                                <ColorSquare color={COMPARE_KEY_COLOR} />
-                                <Typography>{compareKey}</Typography>
-                              </Stack>
-                            </TableCell>
-                            <TableCell>
-                              <Typography>Difference</Typography>
-                            </TableCell>
-                          </>
-                        )}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {computedMetricPerformance.map((row) => (
-                        <TableRow key={row.id}>
-                          <TableCell component="th" scope="row">
-                            {row.property}
-                          </TableCell>
-                          <TableCell>{formatValue(row.value)}</TableCell>
-                          {compareKey && (
-                            <>
-                              <TableCell>
-                                {formatValue(row.compareValue)}
-                              </TableCell>
-                              <TableCell>
-                                {getNumericDifference(
-                                  row.value,
-                                  row.compareValue
-                                )}
-                              </TableCell>
-                            </>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </EvaluationTable>
-                )}
-              </Stack>
-            </AccordionDetails>
-          </Accordion>
-          <Accordion
-            expanded={expanded === "class"}
-            onChange={(e, expanded) => {
-              setExpanded(expanded ? "class" : "");
-            }}
-            disableGutters
-            sx={{ borderRadius: 1, "&::before": { display: "none" } }}
-          >
-            <AccordionSummary expandIcon={<ExpandMore />}>
-              Class Performance
-            </AccordionSummary>
-            <AccordionDetails>
-              <Stack spacing={1}>
-                <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                  <Typography color="secondary">
-                    {CLASS_LABELS[performanceClass]} Per Class
-                    {getConfigLabel({
-                      config: classPerformanceConfig,
-                      type: "classPerformance",
-                      dashed: true,
-                    })}
-                  </Typography>
-                  <Stack
-                    alignItems="flex-end"
-                    direction="row"
-                    spacing={1}
-                    sx={{ alignItems: "center" }}
-                  >
-                    <ToggleButtonGroup
-                      exclusive
-                      value={classMode}
-                      onChange={(e, mode) => {
-                        if (mode) setClassMode(mode);
-                      }}
-                      sx={{ height: "28px" }}
-                    >
-                      <ToggleButton value="chart">
-                        <InsertChart />
-                      </ToggleButton>
-                      <ToggleButton value="table">
-                        <TableRows />
-                      </ToggleButton>
-                    </ToggleButtonGroup>
-                    <Select
-                      value={performanceClass}
-                      size="small"
-                      sx={{ height: 28 }}
-                      onChange={(e) => {
-                        setPerformanceClass(e.target.value as string);
-                      }}
-                    >
-                      {performanceClasses.map((cls) => {
-                        return (
-                          <MenuItem key={cls} value={cls}>
-                            {CLASS_LABELS[cls]}
-                          </MenuItem>
+                                </TableCell>
+                                <TableCell>
+                                  <Stack
+                                    direction="row"
+                                    sx={{ justifyContent: "space-between" }}
+                                  >
+                                    <Typography>{difference}</Typography>
+                                    {!isNaN(ratio) && (
+                                      <Stack
+                                        direction="row"
+                                        sx={{ alignItems: "center" }}
+                                      >
+                                        {positiveRatio && (
+                                          <ArrowDropUp
+                                            sx={{ color: ratioColor }}
+                                          />
+                                        )}
+                                        {negativeRatio && (
+                                          <ArrowDropDown
+                                            sx={{ color: ratioColor }}
+                                          />
+                                        )}
+                                        {zeroRatio && (
+                                          <Typography
+                                            pr={1}
+                                            sx={{ color: ratioColor }}
+                                          >
+                                            —
+                                          </Typography>
+                                        )}
+                                        <Typography
+                                          sx={{
+                                            fontSize: "12px",
+                                            color: ratioColor,
+                                          }}
+                                        >
+                                          {ratio}%
+                                        </Typography>
+                                      </Stack>
+                                    )}
+                                  </Stack>
+                                </TableCell>
+                              </>
+                            )}
+                          </TableRow>
                         );
                       })}
-                    </Select>
-                    <IconButton
-                      onClick={() => {
-                        setClassPerformanceDialogConfig((state) => ({
-                          ...state,
-                          open: true,
-                        }));
-                      }}
-                    >
-                      <Settings />
-                    </IconButton>
-                  </Stack>
-                </Stack>
-                {classMode === "chart" && (
-                  <EvaluationPlot
-                    data={[
-                      {
-                        histfunc: "sum",
-                        y: classPerformance.map((metrics) => metrics.value),
-                        x: classPerformance.map((metrics) => metrics.property),
-                        type: "histogram",
-                        name: `${CLASS_LABELS[performanceClass]} per class`,
-                        marker: {
-                          color: KEY_COLOR,
-                        },
-                        key: name,
-                        selectedpoints: selectedPoints,
-                      },
-                      {
-                        histfunc: "sum",
-                        y: classPerformance.map(
-                          (metrics) => metrics.compareValue
-                        ),
-                        x: classPerformance.map(
-                          (metrics) =>
-                            metrics.compareProperty || metrics.property
-                        ),
-                        type: "histogram",
-                        name: `${CLASS_LABELS[performanceClass]} per class`,
-                        marker: {
-                          color: COMPARE_KEY_COLOR,
-                        },
-                        key: compareKey,
-                        selectedpoints: selectedPoints,
-                      },
-                    ]}
-                    onClick={({ points }) => {
-                      if (selectedPoints?.[0] === points[0]?.pointIndices[0]) {
-                        return loadView("clear", {});
-                      }
-                      loadView("class", { x: points[0]?.x });
-                    }}
-                    layout={{
-                      xaxis: { type: "category" },
-                    }}
-                  />
-                )}
-                {classMode === "table" && (
-                  <EvaluationTable>
-                    <TableHead>
-                      <TableRow
-                        sx={{
-                          "th p": {
-                            color: (theme) => theme.palette.text.secondary,
-                            fontSize: "1rem",
-                            fontWeight: 600,
-                          },
+                    </TableBody>
+                  </EvaluationTable>
+                </AccordionDetails>
+              </Accordion>
+              <Accordion
+                expanded={expanded === "metric"}
+                onChange={(e, expanded) => {
+                  setExpanded(expanded ? "metric" : "");
+                }}
+                disableGutters
+                sx={{ borderRadius: 1, "&::before": { display: "none" } }}
+              >
+                <AccordionSummary expandIcon={<ExpandMore />}>
+                  Metric Performance
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Stack spacing={1}>
+                    <Stack alignItems="flex-end">
+                      <ToggleButtonGroup
+                        exclusive
+                        value={metricMode}
+                        onChange={(e, mode) => {
+                          if (mode) setMetricMode(mode);
                         }}
+                        sx={{ height: "28px" }}
                       >
-                        <TableCell>
-                          <Typography>Metric</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            sx={{ alignItems: "center" }}
+                        <ToggleButton value="chart">
+                          <InsertChart />
+                        </ToggleButton>
+                        <ToggleButton value="table">
+                          <TableRows />
+                        </ToggleButton>
+                      </ToggleButtonGroup>
+                    </Stack>
+                    {metricMode === "chart" && (
+                      <EvaluationPlot
+                        data={[
+                          {
+                            histfunc: "sum",
+                            y: computedMetricPerformance.map((m) => m.value),
+                            x: computedMetricPerformance.map((m) => m.property),
+                            type: "histogram",
+                            name: name,
+                            marker: {
+                              color: KEY_COLOR,
+                            },
+                          },
+                          {
+                            histfunc: "sum",
+                            y: computedMetricPerformance.map(
+                              (m) => m.compareValue
+                            ),
+                            x: computedMetricPerformance.map((m) => m.property),
+                            type: "histogram",
+                            name: compareKey,
+                            marker: {
+                              color: COMPARE_KEY_COLOR,
+                            },
+                          },
+                        ]}
+                      />
+                    )}
+                    {metricMode === "table" && (
+                      <EvaluationTable>
+                        <TableHead>
+                          <TableRow
+                            sx={{
+                              "th p": {
+                                color: (theme) => theme.palette.text.secondary,
+                                fontSize: "1rem",
+                                fontWeight: 600,
+                              },
+                            }}
                           >
-                            <ColorSquare color={KEY_COLOR} />
-                            <Typography>{name}</Typography>
-                          </Stack>
-                        </TableCell>
-                        {compareKey && (
-                          <>
+                            <TableCell>
+                              <Typography>Metric</Typography>
+                            </TableCell>
                             <TableCell>
                               <Stack
                                 direction="row"
                                 spacing={1}
                                 sx={{ alignItems: "center" }}
                               >
-                                <ColorSquare color={COMPARE_KEY_COLOR} />
-                                <Typography>{compareKey}</Typography>
+                                <ColorSquare color={KEY_COLOR} />
+                                <Typography>{name}</Typography>
                               </Stack>
-                            </TableCell>{" "}
-                            <TableCell>
-                              <Typography>Difference</Typography>
                             </TableCell>
-                          </>
-                        )}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {classPerformance.map((row) => (
-                        <TableRow key={row.id}>
-                          <TableCell component="th" scope="row">
-                            {row.property}
-                          </TableCell>
-                          <TableCell>{formatValue(row.value)}</TableCell>
-                          {compareKey && (
-                            <>
-                              <TableCell>
-                                {formatValue(row.compareValue)}
+                            {compareKey && (
+                              <>
+                                <TableCell>
+                                  <Stack
+                                    direction="row"
+                                    spacing={1}
+                                    sx={{ alignItems: "center" }}
+                                  >
+                                    <ColorSquare color={COMPARE_KEY_COLOR} />
+                                    <Typography>{compareKey}</Typography>
+                                  </Stack>
+                                </TableCell>
+                                <TableCell>
+                                  <Typography>Difference</Typography>
+                                </TableCell>
+                              </>
+                            )}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {computedMetricPerformance.map((row) => (
+                            <TableRow key={row.id}>
+                              <TableCell component="th" scope="row">
+                                {row.property}
                               </TableCell>
-                              <TableCell>
-                                {getNumericDifference(
-                                  row.value,
-                                  row.compareValue
-                                )}
-                              </TableCell>
-                            </>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </EvaluationTable>
-                )}
-              </Stack>
-            </AccordionDetails>
-          </Accordion>
-          <Accordion
-            expanded={expanded === "matrices"}
-            onChange={(e, expanded) => {
-              setExpanded(expanded ? "matrices" : "");
-            }}
-            disableGutters
-            sx={{ borderRadius: 1, "&::before": { display: "none" } }}
-          >
-            <AccordionSummary expandIcon={<ExpandMore />}>
-              Confusion Matrices
-            </AccordionSummary>
-            <AccordionDetails>
-              <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                <Typography color="secondary">
-                  {getConfigLabel({ config: confusionMatrixConfig })}
-                </Typography>
-                <Box>
-                  <IconButton
-                    onClick={() => {
-                      setConfusionMatrixDialogConfig((state) => ({
-                        ...state,
-                        open: true,
-                      }));
-                    }}
-                  >
-                    <Settings />
-                  </IconButton>
-                </Box>
-              </Stack>
-              <Stack direction={"row"} key={compareKey}>
-                <Stack sx={{ width: "100%" }}>
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{ alignItems: "center", justifyContent: "center" }}
-                  >
-                    <ColorSquare color={KEY_COLOR} />
-                    <Typography>{name}</Typography>
+                              <TableCell>{formatValue(row.value)}</TableCell>
+                              {compareKey && (
+                                <>
+                                  <TableCell>
+                                    {formatValue(row.compareValue)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {getNumericDifference(
+                                      row.value,
+                                      row.compareValue
+                                    )}
+                                  </TableCell>
+                                </>
+                              )}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </EvaluationTable>
+                    )}
                   </Stack>
-                  <EvaluationPlot
-                    data={[
-                      {
-                        z: confusionMatrix?.matrix,
-                        x: confusionMatrix?.labels,
-                        y: confusionMatrix?.labels,
-                        type: "heatmap",
-                        colorscale: confusionMatrixConfig.log
-                          ? confusionMatrix?.colorscale || "viridis"
-                          : "viridis",
-                        hovertemplate:
-                          [
-                            "<b>count: %{z:d}</b>",
-                            `${
-                              evaluation?.info?.config?.gt_field || "truth"
-                            }: %{y}`,
-                            `${
-                              evaluation?.info?.config?.pred_field ||
-                              "predicted"
-                            }: %{x}`,
-                          ].join(" <br>") + "<extra></extra>",
-                      },
-                    ]}
-                    onClick={({ points }) => {
-                      const firstPoint = points[0];
-                      loadView("matrix", { x: firstPoint.x, y: firstPoint.y });
-                    }}
-                    layout={{
-                      yaxis: {
-                        autorange: "reversed",
-                        type: "category",
-                      },
-                      xaxis: {
-                        type: "category",
-                      },
-                    }}
-                  />
-                </Stack>
-                {compareKey && (
-                  <Stack sx={{ width: "100%" }}>
+                </AccordionDetails>
+              </Accordion>
+              <Accordion
+                expanded={expanded === "class"}
+                onChange={(e, expanded) => {
+                  setExpanded(expanded ? "class" : "");
+                }}
+                disableGutters
+                sx={{ borderRadius: 1, "&::before": { display: "none" } }}
+              >
+                <AccordionSummary expandIcon={<ExpandMore />}>
+                  Class Performance
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Stack spacing={1}>
                     <Stack
                       direction="row"
-                      spacing={1}
-                      sx={{ alignItems: "center", justifyContent: "center" }}
+                      sx={{ justifyContent: "space-between" }}
                     >
-                      <ColorSquare color={COMPARE_KEY_COLOR} />
-                      <Typography>{compareKey}</Typography>
+                      <Typography color="secondary">
+                        {CLASS_LABELS[performanceClass]} Per Class
+                        {getConfigLabel({
+                          config: classPerformanceConfig,
+                          type: "classPerformance",
+                          dashed: true,
+                        })}
+                      </Typography>
+                      <Stack
+                        alignItems="flex-end"
+                        direction="row"
+                        spacing={1}
+                        sx={{ alignItems: "center" }}
+                      >
+                        <ToggleButtonGroup
+                          exclusive
+                          value={classMode}
+                          onChange={(e, mode) => {
+                            if (mode) setClassMode(mode);
+                          }}
+                          sx={{ height: "28px" }}
+                        >
+                          <ToggleButton value="chart">
+                            <InsertChart />
+                          </ToggleButton>
+                          <ToggleButton value="table">
+                            <TableRows />
+                          </ToggleButton>
+                        </ToggleButtonGroup>
+                        <Select
+                          value={performanceClass}
+                          size="small"
+                          sx={{ height: 28 }}
+                          onChange={(e) => {
+                            setPerformanceClass(e.target.value as string);
+                          }}
+                        >
+                          {performanceClasses.map((cls) => {
+                            return (
+                              <MenuItem key={cls} value={cls}>
+                                {CLASS_LABELS[cls]}
+                              </MenuItem>
+                            );
+                          })}
+                        </Select>
+                        <IconButton
+                          onClick={() => {
+                            setClassPerformanceDialogConfig((state) => ({
+                              ...state,
+                              open: true,
+                            }));
+                          }}
+                        >
+                          <Settings />
+                        </IconButton>
+                      </Stack>
                     </Stack>
-                    <EvaluationPlot
-                      data={[
-                        {
-                          z: compareConfusionMatrix?.matrix,
-                          x: compareConfusionMatrix?.labels,
-                          y: compareConfusionMatrix?.labels,
-                          type: "heatmap",
-                          colorscale: confusionMatrixConfig.log
-                            ? compareConfusionMatrix?.colorscale || "viridis"
-                            : "viridis",
-                          hovertemplate:
-                            [
-                              "<b>count: %{z:d}</b>",
-                              `${
-                                evaluation?.info?.config?.gt_field || "truth"
-                              }: %{y}`,
-                              `${
-                                evaluation?.info?.config?.pred_field ||
-                                "predicted"
-                              }: %{x}`,
-                            ].join(" <br>") + "<extra></extra>",
-                        },
-                      ]}
-                      onClick={({ points }) => {
-                        const firstPoint = points[0];
-                        loadView("matrix", {
-                          x: firstPoint.x,
-                          y: firstPoint.y,
-                          key: compareKey,
-                        });
-                      }}
-                      layout={{
-                        yaxis: {
-                          autorange: "reversed",
-                          type: "category",
-                        },
-                        xaxis: {
-                          type: "category",
-                        },
-                      }}
-                    />
+                    {classMode === "chart" && (
+                      <EvaluationPlot
+                        data={[
+                          {
+                            histfunc: "sum",
+                            y: classPerformance.map((metrics) => metrics.value),
+                            x: classPerformance.map(
+                              (metrics) => metrics.property
+                            ),
+                            type: "histogram",
+                            name: `${CLASS_LABELS[performanceClass]} per class`,
+                            marker: {
+                              color: KEY_COLOR,
+                            },
+                            key: name,
+                            selectedpoints: selectedPoints,
+                          },
+                          {
+                            histfunc: "sum",
+                            y: classPerformance.map(
+                              (metrics) => metrics.compareValue
+                            ),
+                            x: classPerformance.map(
+                              (metrics) =>
+                                metrics.compareProperty || metrics.property
+                            ),
+                            type: "histogram",
+                            name: `${CLASS_LABELS[performanceClass]} per class`,
+                            marker: {
+                              color: COMPARE_KEY_COLOR,
+                            },
+                            key: compareKey,
+                            selectedpoints: selectedPoints,
+                          },
+                        ]}
+                        onClick={({ points }) => {
+                          if (
+                            selectedPoints?.[0] === points[0]?.pointIndices[0]
+                          ) {
+                            return loadView("clear", {});
+                          }
+                          loadView("class", { x: points[0]?.x });
+                        }}
+                        layout={{
+                          xaxis: { type: "category" },
+                        }}
+                      />
+                    )}
+                    {classMode === "table" && (
+                      <EvaluationTable>
+                        <TableHead>
+                          <TableRow
+                            sx={{
+                              "th p": {
+                                color: (theme) => theme.palette.text.secondary,
+                                fontSize: "1rem",
+                                fontWeight: 600,
+                              },
+                            }}
+                          >
+                            <TableCell>
+                              <Typography>Metric</Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Stack
+                                direction="row"
+                                spacing={1}
+                                sx={{ alignItems: "center" }}
+                              >
+                                <ColorSquare color={KEY_COLOR} />
+                                <Typography>{name}</Typography>
+                              </Stack>
+                            </TableCell>
+                            {compareKey && (
+                              <>
+                                <TableCell>
+                                  <Stack
+                                    direction="row"
+                                    spacing={1}
+                                    sx={{ alignItems: "center" }}
+                                  >
+                                    <ColorSquare color={COMPARE_KEY_COLOR} />
+                                    <Typography>{compareKey}</Typography>
+                                  </Stack>
+                                </TableCell>{" "}
+                                <TableCell>
+                                  <Typography>Difference</Typography>
+                                </TableCell>
+                              </>
+                            )}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {classPerformance.map((row) => (
+                            <TableRow key={row.id}>
+                              <TableCell component="th" scope="row">
+                                {row.property}
+                              </TableCell>
+                              <TableCell>{formatValue(row.value)}</TableCell>
+                              {compareKey && (
+                                <>
+                                  <TableCell>
+                                    {formatValue(row.compareValue)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {getNumericDifference(
+                                      row.value,
+                                      row.compareValue
+                                    )}
+                                  </TableCell>
+                                </>
+                              )}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </EvaluationTable>
+                    )}
                   </Stack>
-                )}
-              </Stack>
-            </AccordionDetails>
-          </Accordion>
-          <Accordion
-            expanded={expanded === "scenario"}
-            onChange={(e, expanded) => {
-              setExpanded(expanded ? "scenario" : "");
-            }}
-            disableGutters
-            sx={{ borderRadius: 1, "&::before": { display: "none" } }}
-          >
-            <AccordionSummary expandIcon={<ExpandMore />}>
-              Scenario Analysis
-            </AccordionSummary>
-            <AccordionDetails>
-              <EvaluationScenarioAnalysis
-                evaluation={evaluation}
-                data={data}
-                loadScenario={loadScenario}
-              />
-            </AccordionDetails>
-          </Accordion>
-        </Stack>
+                </AccordionDetails>
+              </Accordion>
+              <Accordion
+                expanded={expanded === "matrices"}
+                onChange={(e, expanded) => {
+                  setExpanded(expanded ? "matrices" : "");
+                }}
+                disableGutters
+                sx={{ borderRadius: 1, "&::before": { display: "none" } }}
+              >
+                <AccordionSummary expandIcon={<ExpandMore />}>
+                  Confusion Matrices
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Stack
+                    direction="row"
+                    sx={{ justifyContent: "space-between" }}
+                  >
+                    <Typography color="secondary">
+                      {getConfigLabel({ config: confusionMatrixConfig })}
+                    </Typography>
+                    <Box>
+                      <IconButton
+                        onClick={() => {
+                          setConfusionMatrixDialogConfig((state) => ({
+                            ...state,
+                            open: true,
+                          }));
+                        }}
+                      >
+                        <Settings />
+                      </IconButton>
+                    </Box>
+                  </Stack>
+                  <Stack direction={"row"} key={compareKey}>
+                    <Stack sx={{ width: "100%" }}>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        sx={{ alignItems: "center", justifyContent: "center" }}
+                      >
+                        <ColorSquare color={KEY_COLOR} />
+                        <Typography>{name}</Typography>
+                      </Stack>
+                      <EvaluationPlot
+                        data={[
+                          {
+                            z: confusionMatrix?.matrix,
+                            x: confusionMatrix?.labels,
+                            y: confusionMatrix?.labels,
+                            type: "heatmap",
+                            colorscale: confusionMatrixConfig.log
+                              ? confusionMatrix?.colorscale || "viridis"
+                              : "viridis",
+                            hovertemplate:
+                              [
+                                "<b>count: %{z:d}</b>",
+                                `${
+                                  evaluation?.info?.config?.gt_field || "truth"
+                                }: %{y}`,
+                                `${
+                                  evaluation?.info?.config?.pred_field ||
+                                  "predicted"
+                                }: %{x}`,
+                              ].join(" <br>") + "<extra></extra>",
+                          },
+                        ]}
+                        onClick={({ points }) => {
+                          const firstPoint = points[0];
+                          loadView("matrix", {
+                            x: firstPoint.x,
+                            y: firstPoint.y,
+                          });
+                        }}
+                        layout={{
+                          yaxis: {
+                            autorange: "reversed",
+                            type: "category",
+                          },
+                          xaxis: {
+                            type: "category",
+                          },
+                        }}
+                      />
+                    </Stack>
+                    {compareKey && (
+                      <Stack sx={{ width: "100%" }}>
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          sx={{
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <ColorSquare color={COMPARE_KEY_COLOR} />
+                          <Typography>{compareKey}</Typography>
+                        </Stack>
+                        <EvaluationPlot
+                          data={[
+                            {
+                              z: compareConfusionMatrix?.matrix,
+                              x: compareConfusionMatrix?.labels,
+                              y: compareConfusionMatrix?.labels,
+                              type: "heatmap",
+                              colorscale: confusionMatrixConfig.log
+                                ? compareConfusionMatrix?.colorscale ||
+                                  "viridis"
+                                : "viridis",
+                              hovertemplate:
+                                [
+                                  "<b>count: %{z:d}</b>",
+                                  `${
+                                    evaluation?.info?.config?.gt_field ||
+                                    "truth"
+                                  }: %{y}`,
+                                  `${
+                                    evaluation?.info?.config?.pred_field ||
+                                    "predicted"
+                                  }: %{x}`,
+                                ].join(" <br>") + "<extra></extra>",
+                            },
+                          ]}
+                          onClick={({ points }) => {
+                            const firstPoint = points[0];
+                            loadView("matrix", {
+                              x: firstPoint.x,
+                              y: firstPoint.y,
+                              key: compareKey,
+                            });
+                          }}
+                          layout={{
+                            yaxis: {
+                              autorange: "reversed",
+                              type: "category",
+                            },
+                            xaxis: {
+                              type: "category",
+                            },
+                          }}
+                        />
+                      </Stack>
+                    )}
+                  </Stack>
+                </AccordionDetails>
+              </Accordion>
+            </Stack>
+          )}
+        </Box>
       )}
-      {mode === "info" && (
+
+      {/* Scenario tab */}
+      {activeTab === "scenario" && (
+        <EvaluationScenarioAnalysis
+          evaluation={evaluation}
+          data={data}
+          loadScenario={loadScenario}
+        />
+      )}
+
+      {/* Info tab */}
+      {activeTab === "info" && (
         <Card sx={{ p: 2 }}>
           <EvaluationTable>
             <TableHead>

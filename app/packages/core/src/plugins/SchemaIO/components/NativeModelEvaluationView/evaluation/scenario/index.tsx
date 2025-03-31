@@ -4,6 +4,7 @@ import { isNullish } from "@fiftyone/utilities";
 import { InsertChartOutlined, TableChartOutlined } from "@mui/icons-material";
 import {
   Button,
+  Card,
   CircularProgress,
   MenuItem,
   Select,
@@ -19,6 +20,8 @@ import React, { useEffect, useState } from "react";
 import EvaluationTable from "../../components/EvaluationTable";
 import EvaluationPlot from "../../EvaluationPlot";
 import { formatValue, useTriggerEvent } from "../../utils";
+import EmptyScenario from "./EmptyScenario";
+import { scenarioCardStyles } from "../../styles";
 
 const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 
@@ -38,65 +41,75 @@ export default function EvaluationScenarioAnalysis(props) {
   const isEmpty = scenariosArray.length === 0;
 
   return (
-    <Stack spacing={2}>
-      <Stack direction="row" sx={{ justifyContent: "flex-end" }} spacing={2}>
-        {/* todo@im: remove button below. Only for generating mock data */}
-        <Button
-          variant="outlined"
-          onClick={() => {
-            triggerEvent(
-              "@voxel51/panels/model_evaluation_panel_builtin#generate"
-            );
-          }}
-        >
-          Generate
-        </Button>
-        <Button
-          variant="contained"
-          onClick={() => {
-            promptOperator(panelId, {
-              params: {
-                // TODO: RECENT MERGE BROKE THIS
-                gt_field: evaluationConfig?.gt_field || "ground_truth",
-                scenario_type: "view",
-                scenario_name: "test", // # TODO: Edit will pass current name
-              },
-              operator: CONFIGURE_SCENARIO_ACTION,
-              prompt: true,
-              // callback: (result, opts) => {
-              //   console.log("params", opts.ctx.params);
-              //   onSaveScenario({ subset: opts.ctx.params });
-              //   // TODO: save the subset
-
-              //   // TODO: error handling
-              // },
-            });
-          }}
-        >
-          Create New Scenario
-        </Button>
+    <Card sx={{ p: 2 }}>
+      <Stack direction="row" sx={scenarioCardStyles.header}>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Typography sx={scenarioCardStyles.title}>
+            Scenario Analysis
+          </Typography>
+          <Typography sx={scenarioCardStyles.newBadge}>NEW</Typography>
+        </Stack>
       </Stack>
       {isEmpty ? (
-        <Typography>No scenarios found!</Typography>
+        <EmptyScenario evaluationConfig={evaluationConfig} />
       ) : (
-        <Stack>
-          <Typography>Select a scenario:</Typography>
-          <Select
-            size="small"
-            defaultValue={selectedScenario}
-            onChange={(e) => {
-              setSelectedScenario(e.target.value);
-            }}
-          >
-            {scenariosArray.map((scenario) => {
-              const { id, name } = scenario;
-              return (
-                <MenuItem value={id} key={id}>
-                  <Typography>{name}</Typography>
-                </MenuItem>
-              );
-            })}
-          </Select>
+        <Stack direction="row" spacing={1} justifyContent="space-between">
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography>Scenario:</Typography>
+            <Select
+              size="small"
+              defaultValue={selectedScenario}
+              onChange={(e) => {
+                setSelectedScenario(e.target.value);
+              }}
+            >
+              {scenariosArray.map((scenario) => {
+                const { id, name } = scenario;
+                return (
+                  <MenuItem value={id} key={id}>
+                    <Typography>{name}</Typography>
+                  </MenuItem>
+                );
+              })}
+            </Select>
+          </Stack>
+          <Stack direction="row" spacing={1}>
+            {/* todo@im: remove button below. Only for generating mock data */}
+            <Button
+              variant="outlined"
+              onClick={() => {
+                triggerEvent(
+                  "@voxel51/panels/model_evaluation_panel_builtin#generate"
+                );
+              }}
+            >
+              Generate
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => {
+                promptOperator(panelId, {
+                  params: {
+                    // TODO: RECENT MERGE BROKE THIS
+                    gt_field: evaluationConfig?.gt_field || "ground_truth",
+                    scenario_type: "view",
+                    scenario_name: "test", // # TODO: Edit will pass current name
+                  },
+                  operator: CONFIGURE_SCENARIO_ACTION,
+                  prompt: true,
+                  // callback: (result, opts) => {
+                  //   console.log("params", opts.ctx.params);
+                  //   onSaveScenario({ subset: opts.ctx.params });
+                  //   // TODO: save the subset
+
+                  //   // TODO: error handling
+                  // },
+                });
+              }}
+            >
+              Create New Scenario
+            </Button>
+          </Stack>
         </Stack>
       )}
       {selectedScenario && (
@@ -107,7 +120,7 @@ export default function EvaluationScenarioAnalysis(props) {
           loadScenario={loadScenario}
         />
       )}
-    </Stack>
+    </Card>
   );
 }
 
