@@ -5539,10 +5539,10 @@ to manipulate the fields or subfields of embedded documents in your dataset:
     # Delete an embedded field
     dataset.delete_sample_field("predictions.detections.still_label")
 
-.. _save-contexts:
+.. _efficient-batch-edits:
 
-Save contexts
--------------
+Efficient batch edits
+---------------------
 
 You are always free to perform arbitrary edits to a |Dataset| by iterating over
 its contents and editing the samples directly:
@@ -5680,18 +5680,18 @@ uses in a variety of ways:
     to choose a number of worker processes, unless the method is called in a
     daemon process (subprocess), in which case no workers are used
 
+.. note::
+
+    You can set ``workers<=1`` to disable the
+    use of multithreading and multiprocessing pools in
+    :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`.
+
 -   The ``batch_method`` parameter controls how samples are grouped into batches for processing. When set to "slice",
     samples are grouped sequentially, while "id" groups them by their unique IDs.
 
 -   The ``parallelize_method`` parameter determines how the operation is parallelized. When set to "process", backend
     will utilize multiprocessing pool to parallelize the work across a number of workers. When set to "thread", backend
     will utilize multithreading pool instead.
-
-.. note::
-
-    You can set ``workers<=1`` to disable the
-    use of multithreading and multiprocessing pools in
-    :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`.
 
 You can also pass `progress="workers"` to
 :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
@@ -5800,29 +5800,18 @@ uses in a variety of ways:
     to choose a number of worker processes, unless the method is called in a
     daemon process (subprocess), in which case no workers are used
 
--   The ``batch_method`` parameter controls how samples are grouped into batches for processing. When set to "slice",
-    samples are grouped sequentially, while "id" groups them by their unique IDs.
-
--   The ``parallelize_method`` parameter determines how the operation is parallelized. When set to "process", backend
-    will utilize multiprocessing pool to parallelize the work across a number of workers. When set to "thread", backend
-    will utilize multithreading pool instead.
-
 .. note::
 
     You can set ``workers<=1`` to disable the
     use of multithreading and multiprocessing pools in
     :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`.
 
-By default,
-:meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
-evenly distributes samples to all workers in a single shard per worker.
-However, you can pass the ``shard_size`` parameter to customize the number of
-samples sent to each worker at a time:
+-   The ``batch_method`` parameter controls how samples are grouped into batches for processing. When set to "slice",
+    samples are grouped sequentially, while "id" groups them by their unique IDs.
 
-.. code-block:: python
-    :linenos:
-
-    view.map_samples(map_fcn, reduce_fcn=ReduceFcn, shard_size=50, num_workers=4)
+-   The ``parallelize_method`` parameter determines how the operation is parallelized. When set to "process", backend
+    will utilize multiprocessing pool to parallelize the work across a number of workers. When set to "thread", backend
+    will utilize multithreading pool instead.
 
 You can also pass `progress="workers"` to
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
