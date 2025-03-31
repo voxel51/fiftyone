@@ -397,6 +397,7 @@ export default function Evaluation(props: EvaluationProps) {
           TabIndicatorProps={{
             style: { display: "none" },
           }}
+          variant="fullWidth"
           sx={tabStyles.tabs}
         >
           <Tab label="Overview" value="overview" />
