@@ -20,7 +20,6 @@ from .utils import (
     MAX_CATEGORIES,
 )
 
-# STORE_NAME = "scenarios"
 STORE_NAME = "model_evaluation_panel_builtin"
 
 
@@ -162,10 +161,6 @@ class ConfigureScenario(foo.Operator):
         if preview_data is None or len(preview_data) == 0:
             return []
 
-        order = params.get("plot_controls", {}).get("order", "alphabetical")
-        limit = params.get("plot_controls", {}).get("limit", 10)
-        reverse = params.get("plot_controls", {}).get("reverse", False)
-
         plot_data = []
         for eval_key, counts in preview_data.items():
             for name, count in counts.items():
@@ -182,17 +177,6 @@ class ConfigureScenario(foo.Operator):
                     }
                 )
 
-        if order == "alphabetical":
-            plot_data.sort(key=lambda x: x["x"][0])
-        elif order == "frequency":
-            plot_data.sort(key=lambda x: x["y"][0], reverse=True)
-        else:
-            raise ValueError(f"Invalid order: {order}")
-        if limit:
-            # TODO: handle case where 1 model eval is selected vs. 2
-            plot_data = plot_data[:limit]
-        if reverse:
-            plot_data = plot_data[::-1]
         return plot_data
 
     def is_sample_distribution_enabled_for_custom_code(self, params):
@@ -236,6 +220,23 @@ class ConfigureScenario(foo.Operator):
             return self.render_empty_sample_distribution(inputs)
 
         subsets = {}
+        # NOTE: this case is exact same as "sample_field". the only difference is in their UI - we filter differently.
+        if scenario_type == "label_attribute":
+            scenario_label_attribute = ctx.params.get(
+                "scenario_label_attribute"
+            )
+            for v in values:
+                subsets[v] = dict(
+                    type="field", field=scenario_label_attribute, value=v
+                )
+            self.render_sample_distribution_graph(ctx, inputs, subsets)
+
+        if scenario_type == "sample_field":
+            scenario_field = ctx.params.get("scenario_field")
+            for v in values:
+                subsets[v] = dict(type="field", field=scenario_field, value=v)
+            self.render_sample_distribution_graph(ctx, inputs, subsets)
+
         if scenario_type == "view":
             for v in values:
                 subsets[v] = dict(type="view", view=v)
@@ -527,13 +528,14 @@ class ConfigureScenario(foo.Operator):
 
         Eventually, if there are selected values, it attempts to render the sample distribution preview graph
         """
+        scenario_type = self.get_scenario_type(ctx.params)
+        component_key = f"classes_{scenario_type}"
         self.render_use_custom_code_warning(inputs, reason="SLOW")
         values = values or []
-        scenario_type = self.get_scenario_type(ctx.params)
-        selected_values = ctx.params.get(f"classes_{scenario_type}", []) or []
+        selected_values = ctx.params.get(component_key, []) or []
 
         inputs.list(
-            f"classes_{scenario_type}",
+            component_key,
             types.String(),
             default=selected_values,
             required=True,
