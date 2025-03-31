@@ -3929,7 +3929,6 @@ class SampleCollection(object):
             parallelize_method,
             self,
             workers,
-            map_fcn,
             batch_method,
         )
 
@@ -3960,7 +3959,7 @@ class SampleCollection(object):
                 error if the update function raises an exception for a sample.
         """
         mapper = focm.MapperFactory.create(
-            parallelize_method, self, workers, update_fcn, batch_method
+            parallelize_method, self, workers, batch_method
         )
 
         for _ in mapper.map_samples(

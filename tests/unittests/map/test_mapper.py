@@ -4,19 +4,16 @@
 |
 """
 
-import contextlib
 import collections
+import contextlib
 import random
+from typing import Callable, Iterator, List, Literal, Tuple, TypeVar, Union
 from unittest import mock
-from typing import Callable, Iterator, List, Literal, Union, Tuple, TypeVar
 
 import bson
-import pytest
-
-
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.mapper as fomm
-
+import pytest
 
 T = TypeVar("T")
 R = TypeVar("R")
@@ -79,6 +76,28 @@ class Mapper(fomm.LocalMapper):
         save: bool,
         skip_failures: bool,
     ) -> Iterator[Tuple[bson.ObjectId, Union[R, Exception]]]: ...
+
+    def test_check_if_return_is_sample_positive(self):
+        """Test that check_if_return_is_sample returns True for a sample-like object."""
+        sample_collection = mock.Mock()
+        map_fcn = mock.Mock(
+            return_value=mock.Mock()
+        )  # Mock a sample-like object
+
+        result = self.check_if_return_is_sample(sample_collection, map_fcn)
+
+        assert result is True
+
+    def test_check_if_return_is_sample_negative(self):
+        """Test that check_if_return_is_sample returns False for a non-sample object."""
+        sample_collection = mock.Mock()
+        map_fcn = mock.Mock(
+            return_value="not_a_sample"
+        )  # Mock a non-sample object
+
+        result = self.check_if_return_is_sample(sample_collection, map_fcn)
+
+        assert result is False
 
 
 class TestConstructor:
