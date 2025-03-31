@@ -261,6 +261,7 @@ export default function Evaluation(props: EvaluationProps) {
                 onRename(name, newLabel);
               }}
               onCancel={() => {}}
+              showEditIcon={!compareKey}
             />
           </Stack>
 
