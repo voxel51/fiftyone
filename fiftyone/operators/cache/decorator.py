@@ -103,7 +103,7 @@ def execution_cache(
 
             ctx, ctx_index = get_ctx_from_args(args)
             cache_key_list = get_cache_key_list(
-                ctx, ctx_index, args, kwargs, key_fn
+                ctx_index, args, kwargs, key_fn
             )
 
             #
