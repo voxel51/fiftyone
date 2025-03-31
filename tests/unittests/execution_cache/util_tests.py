@@ -154,15 +154,17 @@ class TestCacheUtils(unittest.TestCase):
     def test_build_cache_key_stable_hash(self):
         uri = "@org/plugin/operator"
         key_list = ["abc", 123]
-        expected = f"{uri}?sha=3b568485c08a7af75fd812405efc8c23b96257acfbe45bebd50b57defd399342"
+        expected = (
+            f"3b568485c08a7af75fd812405efc8c23b96257acfbe45bebd50b57defd399342"
+        )
 
-        result = utils.build_cache_key(uri, key_list)
+        result = utils.build_cache_key(key_list)
         self.assertEqual(result, expected)
 
     def test_get_cache_key_list_default_behavior(self):
         ctx = create_mock_ctx()
         args = [ctx, "val1", 42]
-        result = utils.get_cache_key_list(ctx, 0, args, {}, key_fn=None)
+        result = utils.get_cache_key_list(0, args, {}, key_fn=None)
         self.assertEqual(result, ["val1", 42])
 
     def test_get_cache_key_list_with_custom_key_fn(self):
@@ -172,9 +174,7 @@ class TestCacheUtils(unittest.TestCase):
         def custom_key_fn(ctx, *a):
             return ["custom", ctx.operator_uri]
 
-        result = utils.get_cache_key_list(
-            ctx, 0, args, {}, key_fn=custom_key_fn
-        )
+        result = utils.get_cache_key_list(0, args, {}, key_fn=custom_key_fn)
         self.assertEqual(result, ["custom", ctx.operator_uri])
 
     def test_get_cache_key_list_custom_key_fn_invalid(self):
@@ -185,7 +185,7 @@ class TestCacheUtils(unittest.TestCase):
             return "not-a-list"
 
         with self.assertRaises(ValueError):
-            utils.get_cache_key_list(ctx, 0, args, {}, key_fn=bad_key_fn)
+            utils.get_cache_key_list(0, args, {}, key_fn=bad_key_fn)
 
     def test_get_cache_key_list_custom_key_fn_throws(self):
         ctx = create_mock_ctx()
@@ -195,4 +195,4 @@ class TestCacheUtils(unittest.TestCase):
             raise RuntimeError("oops")
 
         with self.assertRaises(ValueError):
-            utils.get_cache_key_list(ctx, 0, args, {}, key_fn=error_key_fn)
+            utils.get_cache_key_list(0, args, {}, key_fn=error_key_fn)

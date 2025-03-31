@@ -40,18 +40,11 @@ def get_ctx_idx(args):
 
 
 def get_func_attr(func, attr, default=None):
-    return (
-        getattr(func, attr) if hasattr(func, attr) else get_function_id(func)
-    )
+    return getattr(func, attr) if hasattr(func, attr) else default
 
 
 def resolve_store_name(ctx, func):
-    store_name = (
-        func.store_name
-        if hasattr(func, "store_name")
-        else get_function_id(func)
-    )
-    store_name = get_func_attr(func, "store_name", store_name)
+    store_name = get_func_attr(func, "store_name", get_function_id(func))
     version = get_func_attr(func, "exec_cache_version")
     if version:
         store_name = f"{store_name}#v{version}"
