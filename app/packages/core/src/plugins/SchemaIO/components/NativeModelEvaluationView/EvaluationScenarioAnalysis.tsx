@@ -48,7 +48,7 @@ export default function EvaluationScenarioAnalysis(props) {
             promptOperator(panelId, {
               params: {
                 gt_field: evaluationConfig.gt_field,
-                scenario_type: "custom_code",
+                scenario_type: "view",
                 scenario_name: "test", // # TODO: Edit will pass current name
               },
               operator: CONFIGURE_SCENARIO_ACTION,
