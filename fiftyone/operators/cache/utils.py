@@ -124,3 +124,65 @@ def get_cache_key_list(ctx_index, args, kwargs, key_fn):
         cache_key_list = args[ctx_index + 1 :]
 
     return convert_args_to_dict(cache_key_list)
+
+
+def get_scoped_cache_key_list(
+    ctx,
+    operator_scoped=False,
+    prompt_scoped=False,
+    jwt_scoped=False,
+    user_scoped=False,
+):
+    scoped_keys = []
+    skip_cache = False
+
+    scopes = [
+        (operator_scoped, lambda: ctx.operator_uri, True),
+        (prompt_scoped, lambda: ctx.prompt_id, True),
+        (jwt_scoped, lambda: ctx.user_request_token, False),
+        (user_scoped, lambda: ctx.user_id, False),
+    ]
+
+    for enabled, get_value, allow_missing in scopes:
+        if enabled:
+            value = get_value()
+            if value:
+                scoped_keys.append(value)
+            elif allow_missing is False:
+                skip_cache = True
+
+    return scoped_keys, skip_cache
+
+
+def resolve_cache_info(
+    ctx,
+    ctx_index,
+    args,
+    kwargs,
+    key_fn,
+    func,
+    *,
+    operator_scoped=False,
+    user_scoped=False,
+    prompt_scoped=False,
+    jwt_scoped=False,
+):
+    """
+    Resolves the cache key and store for a given function call,
+    including scope-based keys. Returns (cache_key, store, skip_cache).
+    """
+    base_cache_key_list = get_cache_key_list(ctx_index, args, kwargs, key_fn)
+
+    scoped_cache_key_list, skip_cache = get_scoped_cache_key_list(
+        ctx,
+        operator_scoped=operator_scoped,
+        user_scoped=user_scoped,
+        prompt_scoped=prompt_scoped,
+        jwt_scoped=jwt_scoped,
+    )
+
+    cache_key_list = base_cache_key_list + scoped_cache_key_list
+    cache_key = build_cache_key(cache_key_list)
+    store = get_store_for_func(ctx, func)
+
+    return cache_key, store, skip_cache
