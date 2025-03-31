@@ -5680,6 +5680,13 @@ uses in a variety of ways:
     to choose a number of worker processes, unless the method is called in a
     daemon process (subprocess), in which case no workers are used
 
+-   The ``batch_method`` parameter controls how samples are grouped into batches for processing. When set to "slice",
+    samples are grouped sequentially, while "id" groups them by their unique IDs.
+
+-   The ``parallelize_method`` parameter determines how the operation is parallelized. When set to "process", backend
+    will utilize multiprocessing pool to parallelize the work across a number of workers. When set to "thread", backend
+    will utilize multithreading pool instead.
+
 .. note::
 
     You can set ``workers<=1`` to disable the
@@ -5792,6 +5799,13 @@ uses in a variety of ways:
     :func:`recommend_process_pool_workers() <fiftyone.core.utils.recommend_process_pool_workers>`
     to choose a number of worker processes, unless the method is called in a
     daemon process (subprocess), in which case no workers are used
+
+-   The ``batch_method`` parameter controls how samples are grouped into batches for processing. When set to "slice",
+    samples are grouped sequentially, while "id" groups them by their unique IDs.
+
+-   The ``parallelize_method`` parameter determines how the operation is parallelized. When set to "process", backend
+    will utilize multiprocessing pool to parallelize the work across a number of workers. When set to "thread", backend
+    will utilize multithreading pool instead.
 
 .. note::
 
