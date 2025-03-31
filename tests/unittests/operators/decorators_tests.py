@@ -12,13 +12,13 @@ import tempfile
 import unittest
 import time
 from unittest.mock import MagicMock, patch, create_autospec
-from cachetools.keys import hashkey
 
 from fiftyone.operators.decorators import (
     coroutine_timeout,
     dir_state,
 )
 from fiftyone.operators.cache import execution_cache
+from fiftyone.operators.cache.utils import build_cache_key
 from fiftyone.operators.executor import ExecutionContext
 
 
@@ -191,10 +191,6 @@ def function_with_custom_key(ctx, a, b):
     return a + b
 
 
-def str_hk(ctx, args):
-    return f"{ctx.operator_uri}?ckl={str(hashkey(args))}"
-
-
 class TestExecutionCacheDecorator(unittest.TestCase):
     @patch("fiftyone.operators.store.ExecutionStore.create")
     def test_default_cache_usage(self, MockExecutionStore):
@@ -221,8 +217,8 @@ class TestExecutionCacheDecorator(unittest.TestCase):
 
         self.assertEqual(result1, result2)
         self.assertEqual(result1, 3)
-        store_instance.set.assert_called_once_with(
-            str_hk(ctx, [1, 2]), result1, ttl=60
+        store_instance.set_cache.assert_called_once_with(
+            build_cache_key([1, 2]), result1, ttl=60
         )
 
     @patch("fiftyone.operators.store.ExecutionStore.create")
@@ -240,8 +236,8 @@ class TestExecutionCacheDecorator(unittest.TestCase):
 
         self.assertEqual(result1, result2)
         self.assertEqual(result1, 10)
-        store_instance.set.assert_called_once_with(
-            str_hk(ctx, [5, 5]), result1, ttl=60
+        store_instance.set_cache.assert_called_once_with(
+            build_cache_key([5, 5]), result1, ttl=60
         )
 
     @patch("fiftyone.operators.store.ExecutionStore.create")
@@ -260,9 +256,9 @@ class TestExecutionCacheDecorator(unittest.TestCase):
         self.assertEqual(result1, 5)
 
         # Verify that the custom key function was used
-        expected_key = str_hk(ctx, ["custom-key", 2, 3])
+        expected_key = build_cache_key(["custom-key", 2, 3])
         store_instance.get.assert_called_with(expected_key)
-        store_instance.set.assert_called_once_with(
+        store_instance.set_cache.assert_called_once_with(
             expected_key, result1, ttl=60
         )
 
