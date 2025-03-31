@@ -202,7 +202,6 @@ class ConfigureScenario(foo.Operator):
         return plot_data
 
     def is_sample_distribution_enabled_for_custom_code(self, params):
-        """"""
         return (
             params.get("custom_code_stack", {})
             .get("control_stack", {})
@@ -216,6 +215,23 @@ class ConfigureScenario(foo.Operator):
                 label="Subset's sample distribution preview",
                 description=description
                 or "Select a scenario to view the sample distribution",
+                divider=True,
+                componentsProps={
+                    "container": {
+                        "sx": {
+                            "justifyContent": "center",
+                            "padding": "3rem",
+                            "background": "#222",
+                        }
+                    },
+                    "label": {
+                        "sx": {
+                            "display": "flex",
+                            "justifyContent": "center",
+                            "padding": ".5rem 0",
+                        }
+                    },
+                },
             ),
         )
 
@@ -235,7 +251,7 @@ class ConfigureScenario(foo.Operator):
             ):
                 return self.render_empty_sample_distribution(
                     inputs,
-                    description="Please turn on the sample distribution to see the preview.",
+                    description="You can toggle the 'View sample distribution' to see the preview.",
                 )
             else:
                 # NOTE: values for custom_code is the parsed custom code expression
@@ -244,7 +260,6 @@ class ConfigureScenario(foo.Operator):
     def render_sample_distribution_graph(
         self, ctx, inputs, subset_expressions
     ):
-
         preview_data = self.get_sample_distribution(ctx, subset_expressions)
         plot_data = self.convert_to_plotly_data(ctx, preview_data)
 
@@ -500,6 +515,7 @@ class ConfigureScenario(foo.Operator):
 
     def render_auto_complete_view(self, field_name, values, inputs):
         self.render_use_custom_code_warning(inputs, field_name, reason="SLOW")
+        values = values or []
 
         inputs.list(
             f"classes_{field_name}",
