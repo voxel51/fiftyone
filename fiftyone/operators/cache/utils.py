@@ -10,6 +10,8 @@ import numpy as np
 import json
 import hashlib
 
+import eta.core.serial as etas
+
 from fiftyone.operators.store import ExecutionStore
 
 
@@ -21,7 +23,7 @@ def get_ctx_from_args(args):
     ctx, ctx_index = get_ctx_idx(args)
     if ctx_index == -1 or ctx_index > 1:
         raise ValueError(
-            f"@execution_cache requires the first argument to be an ExecutionContext"
+            f"execution_cache requires the first argument to be an ExecutionContext"
         )
     return ctx, ctx_index
 
@@ -36,34 +38,37 @@ def get_ctx_idx(args):
     return None, -1
 
 
+def get_func_attr(func, attr, default=None):
+    return (
+        getattr(func, attr) if hasattr(func, attr) else get_function_id(func)
+    )
+
+
 def resolve_store_name(ctx, func):
     store_name = (
         func.store_name
         if hasattr(func, "store_name")
         else get_function_id(func)
     )
-    version = (
-        func.exec_cache_version
-        if hasattr(func, "exec_cache_version")
-        else None
-    )
+    store_name = get_func_attr(func, "store_name", store_name)
+    version = get_func_attr(func, "exec_cache_version")
     if version:
         store_name = f"{store_name}#v{version}"
     return store_name
 
 
 def convert_args_to_dict(args):
-    result = []
-    for arg in args:
-        # TODO: use isinstance(eta.Serializable) or whatever the equivalent is
-        if hasattr(arg, "serialize"):
-            arg = arg.serialize()
-        elif hasattr(arg, "to_dict"):
-            arg = arg.to_dict()
-        elif hasattr(arg, "to_json"):
-            arg = arg.to_json()
-        result.append(arg)
-    return result
+    return [convert_arg_to_serializable_dict(arg) for arg in args]
+
+
+def convert_arg_to_serializable_dict(arg):
+    if isinstance(arg, etas.Serializable):
+        return arg.serialize()
+    elif hasattr(arg, "to_dict"):
+        return arg.to_dict()
+    elif hasattr(arg, "to_json"):
+        return arg.to_json()
+    return arg
 
 
 def make_mongo_safe_dict(data):
@@ -107,7 +112,7 @@ def build_cache_key(cache_key_list):
     return hashlib.sha256(key_string.encode("utf-8")).hexdigest()
 
 
-def get_cache_key_list(ctx, ctx_index, args, kwargs, key_fn):
+def get_cache_key_list(ctx_index, args, kwargs, key_fn):
     if key_fn:
         try:
             cache_key_list = key_fn(*args, **kwargs)
