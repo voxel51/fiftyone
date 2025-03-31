@@ -92,7 +92,6 @@ export default function Evaluation(props: EvaluationProps) {
   } = props;
   const theme = useTheme();
   const [expanded, setExpanded] = React.useState("summary");
-  const [mode, setMode] = useState("chart");
   const [editNoteState, setEditNoteState] = useState({ open: false, note: "" });
   const [classPerformanceConfig, setClassPerformanceConfig] =
     useState<PLOT_CONFIG_TYPE>({});
@@ -380,27 +379,12 @@ export default function Evaluation(props: EvaluationProps) {
           </Stack>
         </Stack>
 
-        <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+        <Stack direction="row" sx={{ alignItems: "center" }}>
           <Status
             setStatusEvent={setStatusEvent}
             status={status}
             canEdit={can_edit_status}
           />
-          <ToggleButtonGroup
-            exclusive
-            value={mode}
-            onChange={(e, mode) => {
-              if (mode) setMode(mode);
-            }}
-            sx={{ height: "28px" }}
-          >
-            <ToggleButton value="chart">
-              <InsertChart />
-            </ToggleButton>
-            <ToggleButton value="info" title="Switch to ">
-              <Info />
-            </ToggleButton>
-          </ToggleButtonGroup>
           <ActionMenu evaluationName={evaluation.info.key} />
         </Stack>
       </Stack>
@@ -424,7 +408,6 @@ export default function Evaluation(props: EvaluationProps) {
       {/* Tab content */}
       {activeTab === "overview" && (
         <Overview
-          mode={mode}
           expanded={expanded}
           setExpanded={setExpanded}
           evaluationNotes={evaluationNotes}
@@ -449,7 +432,14 @@ export default function Evaluation(props: EvaluationProps) {
         <ScenarioAnalysis onCreateScenario={() => loadScenario()} />
       )}
 
-      {activeTab === "execution" && <ExecutionInfo />}
+      {activeTab === "execution" && (
+        <ExecutionInfo
+          evaluation={evaluation}
+          compareKey={compareKey}
+          compareEvaluation={compareEvaluation}
+          name={name}
+        />
+      )}
 
       <Dialog
         open={Boolean(classPerformanceDialogConfig.open)}
@@ -657,19 +647,6 @@ type PLOT_CONFIG_TYPE = {
 type PLOT_CONFIG_DIALOG_TYPE = PLOT_CONFIG_TYPE & {
   open?: boolean;
 };
-
-function ColorSquare(props: { color: string }) {
-  return (
-    <div
-      style={{
-        width: 16,
-        height: 16,
-        backgroundColor: props.color,
-        borderRadius: 2,
-      }}
-    />
-  );
-}
 
 const EvaluationTable = styled(Table)(({ theme }) => ({
   ".MuiTableCell-root": {
