@@ -16,6 +16,8 @@ from .utils import (
     build_cache_key,
     get_store_for_func,
     get_cache_key_list,
+    get_scoped_cache_key_list,
+    resolve_cache_info,
 )
 
 
@@ -84,12 +86,21 @@ def execution_cache(
                 return ctx.dataset.count_values(path)
 
         # Using a custom key function
-        def custom_key_fn(ctx, path, user_id):
-            return [path, user_id]
+        def custom_key_fn(ctx, path):
+            return [path, get_day_of_week()]
 
-        @execution_cache(ttl=90, key_fn=custom_key_fn)
-        def user_specific_query(ctx, path, user_id):
-            return ctx.dataset.count_values(path)
+        # Combines the custom key function with user-scoped caching
+        @execution_cache(ttl=90, key_fn=custom_key_fn, jwt_scoped=True)
+        def user_specific_query(ctx, path):
+            return ctx.dataset.match(
+                F("creator_id") == ctx.user_id
+            ).count_values(path)
+
+        # Bypass the cache
+        result = expensive_query.uncached(ctx, path)
+
+        # Clear the cache for the given arguments
+        expensive_query.clear_cache(ctx, path)
     """
 
     def decorator(func):
@@ -100,41 +111,21 @@ def execution_cache(
         @wraps(func)
         def wrapper(*args, **kwargs):
             # TODO: add a mechanism to entirely disable caching
-
             ctx, ctx_index = get_ctx_from_args(args)
-            cache_key_list = get_cache_key_list(
-                ctx_index, args, kwargs, key_fn
+            cache_key, store, skip_cache = resolve_cache_info(
+                ctx,
+                ctx_index,
+                args,
+                kwargs,
+                key_fn,
+                func,
+                operator_scoped=operator_scoped,
+                user_scoped=user_scoped,
+                prompt_scoped=prompt_scoped,
+                jwt_scoped=jwt_scoped,
             )
-
-            #
-            # TODO: cleanup this logic, it's a bit of a mess with the elifs
-            # <mess>
-            #
-
-            if operator_scoped:
-                cache_key_list.append(ctx.operator_uri)
-
-            if prompt_scoped:
-                cache_key_list.append(ctx.operator_prompt_id)
-
-            if jwt_scoped and ctx.user_request_token:
-                cache_key_list.append(ctx.user_request_token)
-            elif jwt_scoped:
-                # refuse to cache JWT-scoped data without a JWT
+            if skip_cache:
                 return func(*args, **kwargs)
-
-            if user_scoped and ctx.user_id:
-                cache_key_list.append(ctx.user_id)
-            elif user_scoped:
-                # refuse to cache user-scoped data without a user_id
-                return func(*args, **kwargs)
-
-            #
-            # </mess>
-            #
-
-            cache_key = build_cache_key(cache_key_list)
-            store = get_store_for_func(ctx, func)
 
             cached_value = store.get(cache_key)
             if cached_value is not None:
@@ -145,6 +136,30 @@ def execution_cache(
             store.set_cache(cache_key, result, ttl=ttl)
 
             return result
+
+        def uncached(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        wrapper.uncached = uncached
+
+        def clear_cache(*args, **kwargs):
+            ctx, ctx_index = get_ctx_from_args(args)
+            cache_key, store, skip_cache = resolve_cache_info(
+                ctx,
+                ctx_index,
+                args,
+                kwargs,
+                key_fn,
+                func,
+                operator_scoped=operator_scoped,
+                user_scoped=user_scoped,
+                prompt_scoped=prompt_scoped,
+                jwt_scoped=jwt_scoped,
+            )
+            # TODO: check if this fails when the cache key is not found
+            store.delete(cache_key)
+
+        wrapper.clear_cache = clear_cache
 
         return wrapper
 
