@@ -21,11 +21,9 @@ from typing import (
 )
 
 import bson
-
-
 import fiftyone.core.map.batcher as fomb
+import fiftyone.core.sample as fos
 from fiftyone.core.map.typing import SampleCollection
-
 
 T = TypeVar("T")
 R = TypeVar("R")
@@ -89,6 +87,29 @@ class Mapper(Generic[T], abc.ABC):
             Iterator[Tuple[bson.ObjectId, R]]: The sample ID and the result of
               the map function for the sample.
         """
+
+    @staticmethod
+    def check_if_return_is_sample(
+        sample_collection: SampleCollection[T],
+        map_fcn: Callable[[T], R],
+    ) -> bool:
+        """
+        Check if the map function returns a sample and raise if it does not
+        """
+
+        first_sample = sample_collection.first()
+        if first_sample is None:
+            raise ValueError("Sample collection is empty")
+
+        # make a copy outside of the db
+        sample_copy = first_sample.copy()
+
+        # run the map function on just the copy
+        # if it returns a Sample object, raise
+        if isinstance(map_fcn(sample_copy), fos.Sample):
+            return True
+
+        return False
 
 
 MapSampleBatchesReturnType = Iterator[
