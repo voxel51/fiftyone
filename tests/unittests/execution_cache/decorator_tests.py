@@ -52,10 +52,10 @@ def function_with_custom_key(ctx, a, b):
 
 class TestExecutionCacheDecorator(unittest.TestCase):
     @patch("fiftyone.operators.store.ExecutionStore.create")
-    def test_default_cache_usage(self, MockExecutionStore):
+    def test_default_cache_usage(self, mock_create):
         """Test that default cache usage works as expected."""
         ctx = create_mock_ctx()
-        store_instance = MockExecutionStore.return_value
+        store_instance = mock_create.return_value
         store_instance.get.return_value = None
         result1 = example_default_cache_usage(ctx, 1, 2)
         store_instance.get.return_value = result1
@@ -64,10 +64,10 @@ class TestExecutionCacheDecorator(unittest.TestCase):
         self.assertEqual(result1, 2)
 
     @patch("fiftyone.operators.store.ExecutionStore.create")
-    def test_function_caching(self, MockExecutionStore):
+    def test_function_caching(self, mock_create):
         """Test that cached function calls return the same result and avoid re-execution."""
         ctx = create_mock_ctx()
-        store_instance = MockExecutionStore.return_value
+        store_instance = mock_create.return_value
         store_instance.get.return_value = None  # Simulate cache miss
 
         result1 = example_function(ctx, 1, 2)
@@ -81,12 +81,12 @@ class TestExecutionCacheDecorator(unittest.TestCase):
         )
 
     @patch("fiftyone.operators.store.ExecutionStore.create")
-    def test_method_caching(self, MockExecutionStore):
+    def test_method_caching(self, mock_create):
         """Test that instance methods cache results correctly."""
         ctx = create_mock_ctx()
         obj = MockOperator()
 
-        store_instance = MockExecutionStore.return_value
+        store_instance = mock_create.return_value
         store_instance.get.return_value = None  # Simulate cache miss
 
         result1 = obj.example_method(ctx, 5, 5)
@@ -100,11 +100,11 @@ class TestExecutionCacheDecorator(unittest.TestCase):
         )
 
     @patch("fiftyone.operators.store.ExecutionStore.create")
-    def test_custom_key_function(self, MockExecutionStore):
+    def test_custom_key_function(self, mock_create):
         """Test that custom key functions generate expected cache keys."""
         ctx = create_mock_ctx()
 
-        store_instance = MockExecutionStore.return_value
+        store_instance = mock_create.return_value
         store_instance.get.return_value = None  # Simulate cache miss
 
         result1 = function_with_custom_key(ctx, 2, 3)
@@ -125,3 +125,19 @@ class TestExecutionCacheDecorator(unittest.TestCase):
         """Test that missing ctx argument raises an error."""
         with self.assertRaises(ValueError):
             example_function()  # pylint: disable=no-value-for-parameter
+
+    @patch("fiftyone.operators.store.ExecutionStore.create")
+    def test_clear_cache(self, mock_create):
+        """Test that the cache can be cleared."""
+        ctx = create_mock_ctx()
+        example_function.clear_cache(ctx, 1, 2)
+        cache_key = build_cache_key([1, 2])
+        mock_create.return_value.delete.assert_called_once_with(cache_key)
+
+    @patch("fiftyone.operators.store.ExecutionStore.create")
+    def test_unached(self, mock_create):
+        """Test that un-cached functions are not cached."""
+        ctx = create_mock_ctx()
+        result = example_function.uncached(ctx, 1, 2)
+        mock_create.assert_not_called()
+        self.assertEqual(result, 3)
