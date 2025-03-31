@@ -192,7 +192,7 @@ class ConfigureScenario(foo.Operator):
             types.HeaderView(
                 label="Subset's sample distribution preview",
                 description=description
-                or "Select a scenario to view the sample distribution",
+                or "Select a value to view the sample distribution",
                 divider=True,
                 componentsProps={
                     "container": {
@@ -473,8 +473,18 @@ class ConfigureScenario(foo.Operator):
                 ctx, inputs, scenario_type, selected_values
             )
         else:
+            sub = (
+                "attribute"
+                if scenario_type == "attribute"
+                else (
+                    "field"
+                    if scenario_type == "sample_field"
+                    else "saved view"
+                )
+            )
             self.render_empty_sample_distribution(
-                inputs, description="Select a value to get started"
+                inputs,
+                description=f"Select a {sub} to view sample distribution",
             )
 
     def get_scenarios_picker_type(self, ctx, field_name):
@@ -560,8 +570,18 @@ class ConfigureScenario(foo.Operator):
                 ctx, inputs, scenario_type, selected_values
             )
         else:
+            sub = (
+                "attribute"
+                if scenario_type == "attribute"
+                else (
+                    "field"
+                    if scenario_type == "sample_field"
+                    else "saved view"
+                )
+            )
             self.render_empty_sample_distribution(
-                inputs, description="Select a value to get started"
+                inputs,
+                description=f"Select a {sub} to view sample distribution",
             )
 
     def render_scenario_picker_view(self, ctx, field_name, inputs):
@@ -622,7 +642,10 @@ class ConfigureScenario(foo.Operator):
         if label_attr:
             self.render_scenario_picker_view(ctx, label_attr, inputs)
         else:
-            self.render_empty_sample_distribution(inputs)
+            self.render_empty_sample_distribution(
+                inputs,
+                description=f"Select an attribute to view sample distribution",
+            )
 
     def get_valid_sample_field_path_options(self, flat_field_schema):
         """
@@ -668,7 +691,10 @@ class ConfigureScenario(foo.Operator):
         if field_name:
             self.render_scenario_picker_view(ctx, field_name, inputs)
         else:
-            self.render_empty_sample_distribution(inputs)
+            self.render_empty_sample_distribution(
+                inputs,
+                description=f"Select a field to view sample distribution",
+            )
 
     def get_scenario_type(self, params):
         scenario_type = params.get("scenario_type", None)
