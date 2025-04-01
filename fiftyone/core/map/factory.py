@@ -5,8 +5,7 @@ Factory for mapping backends
 |
 """
 
-from typing import Dict, List, Optional, TypeVar, Type, Union
-
+from typing import Dict, List, Optional, Type, TypeVar, Union
 
 import fiftyone.core.config as focc
 import fiftyone.core.map.batcher as fomb

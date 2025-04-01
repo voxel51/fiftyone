@@ -6,8 +6,6 @@
 
 from unittest import mock
 
-import pytest
-
 import fiftyone.core.config as focc
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.factory as fomf
@@ -40,6 +38,7 @@ class TestCreate:
                 key=mapper_class_key,
                 sample_collection=mock.Mock(),
                 workers=mock.Mock(),
+                map_fcn=mock.Mock(),
                 batch_method=mock.Mock(),
                 **mock.create_autospec(dict),
             )
@@ -68,7 +67,10 @@ class TestCreate:
 
             load_config.assert_called_once()
             init.assert_called_once_with(
-                sample_collection, default_workers, batch_method, **kwargs
+                sample_collection,
+                default_workers,
+                batch_method,
+                **kwargs,
             )
 
             assert isinstance(result, expected_mapper_cls)
