@@ -21,7 +21,7 @@ def patch_load_config():
     """patch load config"""
     with mock.patch.object(focc, "load_config") as load_config:
         config = load_config.return_value = mock.Mock()
-        config.default_parallelization_backend = None
+        config.default_parallelization_method = None
         yield config
 
 
@@ -180,7 +180,7 @@ class TestCreate:
             """test create with explicit mapper key"""
 
             if from_config:
-                config.default_parallelization_backend = key
+                config.default_parallelization_method = key
 
             mapper_classes = [process_mapper_cls, thread_mapper_cls]
             expected_mapper_cls = None

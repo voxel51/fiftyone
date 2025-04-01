@@ -69,7 +69,7 @@ class MapperFactory:
             # it no matter what for now . There was talk about how this
             # behavior could change, (log a warning, explicitly forbid, etc).
             # Once a determination has been made make the changes here.
-            mapper_key = config.default_parallelization_backend
+            mapper_key = config.default_parallelization_method
 
             # If no the parallelization method is not explicitly provided and
             # no default was set, try to use multiprocessing as default, if it

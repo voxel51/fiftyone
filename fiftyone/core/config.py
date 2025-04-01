@@ -239,10 +239,10 @@ class FiftyOneConfig(EnvConfig):
             d, "timezone", env_var="FIFTYONE_TIMEZONE", default=None
         )
 
-        self.default_parallelization_backend = self.parse_string(
+        self.default_parallelization_method = self.parse_string(
             d,
-            "default_parallelization_backend",
-            env_var="FIFTYONE_DEFAULT_PARALLELIZATION_BACKEND",
+            "default_parallelization_method",
+            env_var="FIFTYONE_DEFAULT_PARALLELIZATION_METHOD",
             default=None,
         )
 
