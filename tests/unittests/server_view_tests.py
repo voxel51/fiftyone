@@ -1003,23 +1003,13 @@ class AysncServerViewTests(unittest.IsolatedAsyncioTestCase):
             for sample in samples
             if intervals[0][0] <= sample.field1 <= intervals[0][1]
         }
-        nin_range1 = {
-            sample.id
-            for sample in samples
-            if (intervals[0][0] > sample.field1)
-            or (sample.field1 > intervals[0][1])
-        }
+        nin_range1 = {sid for sid in sample_ids if sid not in in_range1}
         in_range2 = {
             sample.id
             for sample in samples
             if intervals[1][0] <= sample.field2 <= intervals[1][1]
         }
-        nin_range2 = {
-            sample.id
-            for sample in samples
-            if (intervals[1][0] > sample.field2)
-            or (sample.field2 > intervals[1][1])
-        }
+        nin_range2 = {sid for sid in sample_ids if sid not in in_range2}
         filters = [
             (
                 {
@@ -1108,8 +1098,6 @@ class AysncServerViewTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual({sample.id for sample in view}, expected)
 
 
-# making match stage filters {'created_at': {'isMatching': True, 'exclude': True, 'range': [1740188819225.95, 1740189455632.93], 'none': True, 'nan': True, 'inf': True, 'ninf': True}, 'last_modified_at': {'isMatching': True, 'exclude': False, 'range': [1743104634233.11, 1743382219212], 'none': True, 'nan': True, 'inf': True, 'ninf': True}}
-# making match stage filters {'created_at': {'isMatching': True, 'exclude': True, 'range': [1740188819225.95, 1740189455632.93], 'none': True, 'nan': True, 'inf': True, 'ninf': True}, 'last_modified_at': {'isMatching': True, 'exclude': False, 'range': [1743104634233.11, 1743382219212], 'none': True, 'nan': True, 'inf': True, 'ninf': True}}
 class ServerDocTests(unittest.TestCase):
     def test_dataset_doc(self):
         doc = Dataset.modifier({"_id": "id"})
