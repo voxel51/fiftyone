@@ -38,10 +38,13 @@ class ExecutionStore(object):
         store_name: str,
         dataset_id: Optional[ObjectId] = None,
         default_policy: str = "persist",
+        collection_name: Optional[str] = None,
     ) -> "ExecutionStore":
         return ExecutionStore(
             store_name,
-            ExecutionStoreService(dataset_id=dataset_id),
+            ExecutionStoreService(
+                dataset_id=dataset_id, collection_name=collection_name
+            ),
             default_policy,
         )
 

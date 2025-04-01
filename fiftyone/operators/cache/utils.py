@@ -51,52 +51,13 @@ def resolve_store_name(ctx, func):
     return store_name
 
 
-def convert_args_to_dict(args):
-    return [convert_arg_to_serializable_dict(arg) for arg in args]
-
-
-def convert_arg_to_serializable_dict(arg):
-    if isinstance(arg, etas.Serializable):
-        return arg.serialize()
-    elif hasattr(arg, "to_dict"):
-        return arg.to_dict()
-    elif hasattr(arg, "to_json"):
-        return arg.to_json()
-    return arg
-
-
-def make_mongo_safe_dict(data):
-    return {k: make_mongo_safe_value(v) for k, v in data.items()}
-
-
-def make_mongo_safe_value(value):
-    if isinstance(value, dict):
-        return {str(k): make_mongo_safe_value(v) for k, v in value.items()}
-    elif isinstance(value, (list, tuple, set)):
-        return [make_mongo_safe_value(v) for v in value]
-    elif isinstance(value, np.ndarray):
-        return [make_mongo_safe_value(v) for v in value.tolist()]
-    elif isinstance(value, (np.integer,)):
-        return int(value)
-    elif isinstance(value, (np.floating,)):
-        val = float(value)
-        if not np.isfinite(val):
-            raise ValueError(
-                "Non-finite float value cannot be stored in Execution Cache."
-            )
-        return val
-    elif isinstance(value, (np.bool_, bool)):
-        return bool(value)
-    else:
-        return value
-
-
-def get_store_for_func(ctx, func):
+def get_store_for_func(ctx, func, collection_name=None):
     resolved_name = resolve_store_name(ctx, func)
     link_to_dataset = hasattr(func, "link_to_dataset") and func.link_to_dataset
     return ExecutionStore.create(
         store_name=resolved_name,
         dataset_id=ctx.dataset._doc.id if link_to_dataset else None,
+        collection_name=collection_name,
     )
 
 
@@ -160,6 +121,7 @@ def resolve_cache_info(
     user_scoped=False,
     prompt_scoped=False,
     jwt_scoped=False,
+    collection_name=None,
 ):
     """
     Resolves the cache key and store for a given function call,
@@ -180,11 +142,63 @@ def resolve_cache_info(
 
     cache_key_list = base_cache_key_list + scoped_cache_key_list
     cache_key = build_cache_key(cache_key_list)
-    store = get_store_for_func(ctx, func)
+    store = get_store_for_func(ctx, func, collection_name=collection_name)
 
     return cache_key, store, skip_cache
 
 
-def is_cache_disabled():
-    fo.config
-    return False
+def convert_args_to_dict(args):
+    return [auto_serialize(arg) for arg in args]
+
+
+def auto_serialize(value):
+    if isinstance(value, fo.Sample):
+        return make_sample_dict(value)
+    if isinstance(value, etas.Serializable):
+        return value.serialize()
+    elif hasattr(value, "to_dict"):
+        return value.to_dict()
+    elif hasattr(value, "to_json"):
+        return value.to_json()
+    elif isinstance(value, dict):
+        return {str(k): auto_serialize(v) for k, v in value.items()}
+    elif isinstance(value, (list, tuple, set)):
+        return [auto_serialize(v) for v in value]
+    return value
+
+
+def auto_deserialize(value):
+    if is_sample_dict(value):
+        value = {k: v for k, v in value.items() if k != "_cls"}
+        return fo.Sample.from_dict(value)
+    if isinstance(value, dict):
+        return {str(k): auto_deserialize(v) for k, v in value.items()}
+    elif isinstance(value, (list, tuple, set)):
+        return [auto_deserialize(v) for v in value]
+    elif isinstance(value, np.ndarray):
+        return [auto_deserialize(v) for v in value.tolist()]
+    elif isinstance(value, (np.integer,)):
+        return int(value)
+    elif isinstance(value, (np.floating,)):
+        val = float(value)
+        if not np.isfinite(val):
+            raise ValueError(
+                "Non-finite float value cannot be stored in Execution Cache."
+            )
+        return val
+    elif isinstance(value, (np.bool_, bool)):
+        return bool(value)
+    else:
+        return value
+
+
+def is_sample_dict(value):
+    return (
+        isinstance(value, dict)
+        and "_cls" in value
+        and value["_cls"] == "fiftyone.core.sample.Sample"
+    )
+
+
+def make_sample_dict(sample):
+    return {"_cls": "fiftyone.core.sample.Sample", **sample.to_dict()}

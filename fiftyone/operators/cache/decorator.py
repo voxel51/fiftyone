@@ -10,11 +10,7 @@ from functools import wraps
 import numpy as np
 
 from fiftyone.operators.store import ExecutionStore
-from .utils import (
-    get_ctx_from_args,
-    make_mongo_safe_value,
-    resolve_cache_info,
-)
+from .utils import get_ctx_from_args, resolve_cache_info, auto_deserialize
 
 
 def execution_cache(
@@ -29,6 +25,9 @@ def execution_cache(
     user_scoped=False,
     prompt_scoped=False,
     jwt_scoped=False,
+    collection_name=None,
+    serialize=None,
+    deserialize=None,
 ):
     """
     Decorator for caching function results in an ``ExecutionStore``.
@@ -38,8 +37,7 @@ def execution_cache(
         - return a serializable value
         - be idempotent (i.e., it should produce the same
             output for the same input) and not have any side effects
-        - have serializeable parameters or a custom ``key_fn`` to generate
-            cache keys
+        - have serializable parameters and return values
 
     Args:
         ttl (None): Time-to-live for the cached value in seconds.
@@ -55,6 +53,12 @@ def execution_cache(
         prompt_scoped (False): Whether to tie the cache entry to
             the current operator prompt
         jwt_scoped (False): Whether to tie the cache entry to the current user's JWT
+        collection_name (None): Override the default collection name for the execution store
+            used by the execution_cache
+        serialize (None): Custom serialization function given the original value that returns
+            a JSON-serializable value.
+        deserialize (None): Custom deserialization given a JSON-serializable value and returns
+            the original value.
 
     note::
 
@@ -68,6 +72,9 @@ def execution_cache(
         This may yield unexpected return values if the cached function returns
         non-serializable types (e.g., NumPy arrays), since they are converted
         to a JSON-compatible format.
+
+        This behavior can be overridden by providing custom ``serialize`` and/or
+        ``deserialize`` functions.
 
     Example Usage:
         # Standalone function with default caching
@@ -118,20 +125,27 @@ def execution_cache(
                 user_scoped=user_scoped,
                 prompt_scoped=prompt_scoped,
                 jwt_scoped=jwt_scoped,
+                collection_name=collection_name,
             )
             if skip_cache:
                 return func(*args, **kwargs)
 
             cached_value = store.get(cache_key)
             if cached_value is not None:
-                return cached_value
+                if deserialize is not None:
+                    return deserialize(cached_value)
+                else:
+                    return auto_deserialize(cached_value)
 
             result = func(*args, **kwargs)
 
             # TODO: find a more standard naming for this function
             # we shouldn't know about mongo here...
-            result = make_mongo_safe_value(result)
-            store.set_cache(cache_key, result, ttl=ttl)
+            if serialize is not None:
+                value_to_cache = serialize(result)
+            else:
+                value_to_cache = auto_deserialize(result)
+            store.set_cache(cache_key, value_to_cache, ttl=ttl)
 
             return result
 
@@ -153,6 +167,7 @@ def execution_cache(
                 user_scoped=user_scoped,
                 prompt_scoped=prompt_scoped,
                 jwt_scoped=jwt_scoped,
+                collection_name=collection_name,
             )
             # TODO: check if this fails when the cache key is not found
             store.delete(cache_key)

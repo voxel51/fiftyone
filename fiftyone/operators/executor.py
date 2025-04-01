@@ -496,7 +496,6 @@ class ExecutionContext(object):
         self._required_secret_keys = required_secrets
 
         self._prompt_id = request_params.get("prompt_id", None)
-        self._session_id = request_params.get("session_id", None)
 
         if self._required_secret_keys:
             self._secrets_client.register_operator(
