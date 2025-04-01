@@ -94,3 +94,77 @@ class TestCreate:
             )
 
             assert isinstance(result, expected_mapper_cls)
+
+
+class TestConfigDefaultMethod:
+    """Test config handling for parallelize_method"""
+
+    def test_use_config_parallelize_method(self):
+        """Test using default_map_samples_method from config when parallelize_method is None"""
+
+        config_method = "thread"  # Use thread as the config value
+        expected_mapper_cls = fomf.MapperFactory.get(config_method)
+
+        # If key is not passed, use the default from config
+        with mock.patch.object(
+            expected_mapper_cls, "__init__"
+        ) as init, mock.patch.object(focc, "load_config") as load_config:
+            init.return_value = None
+            load_config.return_value.default_map_samples_method = config_method
+
+            # Call create with None as parallelize_method (key)
+            result = fomf.MapperFactory.create(
+                key=None,
+                sample_collection=mock.Mock(),
+                workers=2,
+                batch_method=fomb.SampleBatcher().default(),
+            )
+
+            load_config.assert_called_once()
+            init.assert_called_once()
+            assert isinstance(result, expected_mapper_cls)
+
+        # If key is passed, use the value from key
+        key = "process"
+        expected_mapper_cls = fomf.MapperFactory.get(key)
+        with mock.patch.object(
+            expected_mapper_cls, "__init__"
+        ) as init, mock.patch.object(focc, "load_config") as load_config:
+            init.return_value = None
+            load_config.return_value.default_map_samples_method = config_method
+
+            # Call create with None as parallelize_method (key)
+            result = fomf.MapperFactory.create(
+                key=key,
+                sample_collection=mock.Mock(),
+                workers=2,
+                batch_method=fomb.SampleBatcher().default(),
+            )
+
+            assert isinstance(result, expected_mapper_cls)
+
+    def test_fallback_to_default_when_config_none(self):
+        """Test fallback to default method when both parameter and config value are None"""
+
+        # Get the default implementation from factory
+        default_method = fomf.MapperFactory.default()
+        expected_mapper_cls = fomf.MapperFactory.get(default_method)
+
+        with mock.patch.object(
+            expected_mapper_cls, "__init__"
+        ) as init, mock.patch.object(focc, "load_config") as load_config:
+            init.return_value = None
+            # Set config value to None
+            load_config.return_value.default_map_samples_method = None
+
+            # Call create with None as parallelize_method (key)
+            result = fomf.MapperFactory.create(
+                key=None,
+                sample_collection=mock.Mock(),
+                workers=2,
+                batch_method=fomb.SampleBatcher().default(),
+            )
+
+            load_config.assert_called_once()
+            init.assert_called_once()
+            assert isinstance(result, expected_mapper_cls)
