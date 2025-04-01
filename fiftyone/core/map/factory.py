@@ -81,6 +81,9 @@ class MapperFactory:
         if key is None:
             key = cls.default()
 
+        if key not in cls.__MAPPER_CLASSES:
+            raise ValueError(f"Could not create mapper for: '{key}'")
+
         return cls.__MAPPER_CLASSES[key](
             sample_collection, workers, batch_method, **mapper_extra_kwargs
         )
