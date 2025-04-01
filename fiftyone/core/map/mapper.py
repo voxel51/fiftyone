@@ -7,20 +7,14 @@ Abstract mapping backend
 """
 
 import abc
+import functools
 import logging
-from typing import (
-    Callable,
-    Generic,
-    Iterator,
-    List,
-    Literal,
-    Optional,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import Callable, Iterator, Literal, Optional, Tuple, TypeVar, Union
 
 import bson
+
+
+import fiftyone.core.config as focc
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.sample as fos
 from fiftyone.core.map.typing import SampleCollection
@@ -32,39 +26,90 @@ R = TypeVar("R")
 logger = logging.getLogger(__name__)
 
 
-class Mapper(Generic[T], abc.ABC):
+@functools.lru_cache
+def check_if_return_is_sample(
+    sample_collection: SampleCollection[T],
+    map_fcn: Callable[[T], R],
+) -> bool:
+    """
+    Check if the map function returns a sample and raise if it does not
+    """
+
+    first_sample = sample_collection.first()
+    if first_sample is None:
+        raise ValueError("Sample collection is empty")
+
+    # make a copy outside of the db
+    sample_copy = first_sample.copy()
+
+    # run the map function on just the copy
+    # if it returns a Sample object
+    if isinstance(map_fcn(sample_copy), fos.Sample):
+        return True
+
+    return False
+
+
+class Mapper:
     """Base class for mapping samples in parallel"""
 
-    def __init__(
-        self,
-        sample_collection: SampleCollection[T],
-        workers: Optional[int] = None,
-        batch_method: Optional[str] = None,
-        # kwargs are for sub-classes that have extra parameters
-        **kwargs,  # pylint:disable=unused-argument
-    ):
-        if workers is None:
-            workers = 1
+    @staticmethod
+    def __validate_map_samples(func):
+        """Validate map_samples arguments for all subclasses"""
 
-        self._sample_collection = sample_collection
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> Iterator[Tuple[bson.ObjectId, R]]:
+            sample_collection, map_fcn = args[1], args[2]
+
+            if check_if_return_is_sample(sample_collection, map_fcn):
+                raise ValueError(
+                    "`map_fcn` should not return Samples objects."
+                )
+
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    def __init_subclass__(cls):
+        # Add map_samples validation decorator to all subclasses
+        cls.map_samples = cls.__validate_map_samples(cls.map_samples)
+
+    def __init__(self, batcher: fomb.SampleBatcher, workers: int):
         self._workers = workers
-        self._batch_method = batch_method or fomb.SampleBatcher.default()
+        self._batcher = batcher
 
-    @property
-    def batch_method(self) -> str:
-        """Number of workers"""
-        return self._batch_method
+    @classmethod
+    def create(
+        cls,
+        *_,
+        # pylint:disable-next=unused-argument
+        config: focc.FiftyOneConfig,
+        batcher: fomb.SampleBatcher,
+        # pylint:disable-next=unused-argument
+        workers: Optional[int] = None,
+        **__,
+    ):
+        """Create a new mapper instance"""
 
-    @property
-    def workers(self) -> int:
-        """Number of workers"""
-        return self._workers
+        # Defaults to one worker in base implementation.
+        return cls(batcher, 1)
 
-    @abc.abstractmethod
+    @staticmethod
+    def _handle_map_error(
+        sample_id: bson.ObjectId, err: Exception, skip_failures: bool
+    ):
+        """Common error handling when a map error occurs"""
+
+        if not skip_failures:
+            raise err
+
+        logger.warning("Sample failure: %s\nError: %s\n", sample_id, err)
+
     def map_samples(
         self,
+        sample_collection: SampleCollection[T],
         map_fcn: Callable[[T], R],
-        /,
+        *_,
         progress: Optional[Union[bool, Literal["workers"]]] = None,
         save: bool = False,
         skip_failures: bool = True,
@@ -73,6 +118,8 @@ class Mapper(Generic[T], abc.ABC):
         results.
 
         Args:
+            sample_collection (SampleCollection[T]): The sample collection to
+              map.
             map_fcn (Callable[[T], R]): The map function to apply to each
               sample.
             progress (Union[bool, Literal[&quot;workers&quot;]]): Whether or
@@ -88,53 +135,39 @@ class Mapper(Generic[T], abc.ABC):
               the map function for the sample.
         """
 
-    @staticmethod
-    def check_if_return_is_sample(
-        sample_collection: SampleCollection[T],
-        map_fcn: Callable[[T], R],
-    ) -> bool:
-        """
-        Check if the map function returns a sample and raise if it does not
-        """
-
-        first_sample = sample_collection.first()
-        if first_sample is None:
-            raise ValueError("Sample collection is empty")
-
-        # make a copy outside of the db
-        sample_copy = first_sample.copy()
-
-        # run the map function on just the copy
-        # if it returns a Sample object, raise
-        if isinstance(map_fcn(sample_copy), fos.Sample):
-            return True
-
-        return False
+        # Iterate sequentially in base implementation.
+        for sample in sample_collection.iter_samples(
+            progress=progress, autosave=save
+        ):
+            try:
+                res = map_fcn(sample)
+            except Exception as err:
+                self._handle_map_error(sample.id, err, skip_failures)
+            else:
+                yield sample.id, res
 
 
-MapSampleBatchesReturnType = Iterator[
-    Tuple[bson.ObjectId, Union[Exception, None], Union[R, None]]
-]
-
-
-class LocalMapper(Mapper[T], Generic[T], abc.ABC):
+class LocalMapper(Mapper, abc.ABC):
     """Base class for mapping samples in parallelizing on the same machine"""
 
     @abc.abstractmethod
-    def _map_sample_batches(
+    def _map_samples(
         self,
-        sample_batches: List[fomb.SampleBatch],
+        sample_collection: SampleCollection[T],
         map_fcn: Callable[[T], R],
-        /,
-        progress: Union[bool, Literal["workers"]],
+        *_,
+        progress: Optional[Union[bool, Literal["workers"]]],
         save: bool,
         skip_failures: bool,
-    ) -> MapSampleBatchesReturnType[R]:
+    ) -> Iterator[
+        Tuple[bson.ObjectId, Union[Exception, None], Union[R, None]]
+    ]:
         """Applies map function to each sample batch and returns an iterator
           of the results.
 
         Args:
-            sample_batches (List[fomb.SampleBatch]): The sample batches to map.
+            sample_collection (SampleCollection[T]): The sample collection to
+              map.
             map_fcn (Callable[[T], R]): The map function to apply to each
               sample.
             progress (Union[bool, Literal[&quot;workers&quot;]]): Whether or
@@ -153,54 +186,33 @@ class LocalMapper(Mapper[T], Generic[T], abc.ABC):
 
     def map_samples(
         self,
+        sample_collection: SampleCollection[T],
         map_fcn: Callable[[T], R],
-        /,
+        *_,
         progress: Optional[Union[bool, Literal["workers"]]] = None,
         save: bool = False,
         skip_failures: bool = True,
     ) -> Iterator[Tuple[bson.ObjectId, R]]:
-        result_iter: MapSampleBatchesReturnType
-
+        # If workers if 1 on a the same local machine, no need for the
+        # overhead of trying to parallelize.
         if self._workers <= 1:
-            # If workers if 1 on a the same local machine, no need for the
-            # overhead of trying to parallelize. If will not be beneficial.
-            def wrapped_map_fcn(sample):
-                try:
-                    result = map_fcn(sample)
-                except Exception as err:
-                    return sample.id, err, None
-
-                return sample.id, None, result
-
-            result_iter = (
-                wrapped_map_fcn(sample)
-                for sample in self._sample_collection.iter_samples(
-                    progress=progress, autosave=save
-                )
-            )
-
-        else:
-            result_iter = self._map_sample_batches(
-                fomb.SampleBatcher.split(
-                    self._batch_method,
-                    self._sample_collection,
-                    self._workers,
-                ),
+            yield from super().map_samples(
+                sample_collection,
                 map_fcn,
                 progress=progress,
                 save=save,
                 skip_failures=skip_failures,
             )
+            return
 
-        for sample_id, err, result in result_iter:
+        for sample_id, err, res in self._map_samples(
+            sample_collection,
+            map_fcn,
+            progress=progress,
+            save=save,
+            skip_failures=skip_failures,
+        ):
             if err is not None:
-                if not skip_failures:
-                    raise err
-
-                logger.warning(
-                    "Sample failure: %s\nError: %s\n", sample_id, result
-                )
-                continue
-
-            # Only yield samples that have no exception.
-            yield sample_id, result
+                self._handle_map_error(sample_id, err, skip_failures)
+            else:
+                yield sample_id, res

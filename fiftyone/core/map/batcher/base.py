@@ -7,18 +7,17 @@ Abstract mapping backend
 """
 
 import abc
-from typing import List, Optional, TypeVar
+from typing import List, Optional, Protocol, TypeVar
 
 import numpy as np
 
 from fiftyone.core.map.typing import SampleCollection
 
 T = TypeVar("T")
-R = TypeVar("R")
 
 
 class SampleBatch(abc.ABC):
-    """Abstract sample batch"""
+    """A sample batch"""
 
     @staticmethod
     def _get_sample_collection_indexes(
@@ -40,16 +39,6 @@ class SampleBatch(abc.ABC):
         for start_idx, stop_idx in zip(edges[:-1], edges[1:]):
             yield (start_idx, stop_idx)
 
-    @classmethod
-    @abc.abstractmethod
-    def split(
-        cls,
-        sample_collection: SampleCollection[T],
-        num_workers: int,
-        batch_size: Optional[int] = None,
-    ) -> List["SampleBatch"]:
-        """Get the sample batches"""
-
     @property
     @abc.abstractmethod
     def total(self) -> int:
@@ -60,3 +49,15 @@ class SampleBatch(abc.ABC):
         self, sample_collection: SampleCollection[T]
     ) -> SampleCollection[T]:
         """Create a sample collection from the batch"""
+
+
+class SampleBatcher(Protocol[T]):
+    """Creates sample batches"""
+
+    def split(
+        self,
+        sample_collection: SampleCollection[T],
+        num_workers: int,
+        batch_size: Optional[int] = None,
+    ) -> List[SampleBatch]:
+        """Create a list of sample batches"""

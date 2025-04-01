@@ -7,18 +7,22 @@
 import collections
 import contextlib
 import random
-from typing import Callable, Iterator, List, Literal, Tuple, TypeVar, Union
+from typing import Callable, Iterator, Literal, Tuple, TypeVar, Union
 from unittest import mock
 
 import bson
+import pytest
+
+import fiftyone.core.sample as focs
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.mapper as fomm
-import pytest
+from fiftyone.core.map.typing import SampleCollection
+
 
 T = TypeVar("T")
 R = TypeVar("R")
 
-SAMPLE_COUNT = 128
+SAMPLE_COUNT = 8
 NUM_WORKERS = 8
 
 
@@ -64,60 +68,43 @@ def fixture_sample_collection(samples):
     return sample_collection
 
 
+@pytest.fixture(name="batcher")
+def fixture_batcher():
+    """mock batcher"""
+
+    return mock.create_autospec(fomb.SampleBatcher)
+
+
 class Mapper(fomm.LocalMapper):
     """Test implementation for abstract class"""
 
-    def _map_sample_batches(
+    def _map_samples(
         self,
-        sample_batches: List[fomb.SampleBatch],
+        sample_collection: SampleCollection[T],
         map_fcn: Callable[[T], R],
-        /,
+        *_,
         progress: Union[bool, Literal["workers"]],
         save: bool,
         skip_failures: bool,
     ) -> Iterator[Tuple[bson.ObjectId, Union[R, Exception]]]: ...
 
-    def test_check_if_return_is_sample_positive(self):
-        """Test that check_if_return_is_sample returns True for a sample-like object."""
-        sample_collection = mock.Mock()
-        map_fcn = mock.Mock(
-            return_value=mock.Mock()
-        )  # Mock a sample-like object
 
-        result = self.check_if_return_is_sample(sample_collection, map_fcn)
+@pytest.mark.parametrize(
+    ("expected", "map_fcn_return_value"),
+    (
+        pytest.param(True, mock.create_autospec(focs.Sample), id="True"),
+        pytest.param(False, "not_a_sample", id="False"),
+    ),
+)
+def test_check_if_return_is_sample(expected, map_fcn_return_value):
+    """Test that check_if_return_is_sample returns False for a non-sample
+    object."""
+    sample_collection = mock.Mock()
+    map_fcn = mock.Mock(return_value=map_fcn_return_value)
 
-        assert result is True
+    result = fomm.check_if_return_is_sample(sample_collection, map_fcn)
 
-    def test_check_if_return_is_sample_negative(self):
-        """Test that check_if_return_is_sample returns False for a non-sample object."""
-        sample_collection = mock.Mock()
-        map_fcn = mock.Mock(
-            return_value="not_a_sample"
-        )  # Mock a non-sample object
-
-        result = self.check_if_return_is_sample(sample_collection, map_fcn)
-
-        assert result is False
-
-
-class TestConstructor:
-    """test generic constructor"""
-
-    @pytest.mark.parametrize(
-        ("workers_arg", "expected_workers"),
-        (
-            pytest.param(None, 1, id="worker-is-unset"),
-            pytest.param(5, 5, id="worker-is-set"),
-        ),
-    )
-    def test_workers(self, workers_arg, expected_workers, sample_collection):
-        """test worker value"""
-
-        #####
-        mapper = Mapper(sample_collection, workers_arg)
-        #####
-
-        assert mapper.workers == expected_workers
+    assert result is expected
 
 
 @pytest.mark.parametrize(
@@ -131,44 +118,39 @@ class TestMapSamples:
     """Test map samples"""
 
     @pytest.fixture(name="mapper")
-    def mapper(self, workers, sample_collection):
+    def mapper(self, batcher, workers):
         """Mapper instance"""
-        mapper = Mapper(sample_collection, workers)
+        mapper = Mapper(batcher, workers)
         # pylint:disable-next=protected-access
-        mapper._map_sample_batches = mock.MagicMock()
+        mapper._map_samples = mock.MagicMock()
         return mapper
 
     @pytest.fixture(name="map_fcn_side_effect")
     def map_fcn_side_effect(self, samples):
         """Mapper function side effect"""
-        return [mock.Mock() for _ in samples]
+
+        # Adding extra mock for validating check that occurs testing if the
+        # map function is allowed.
+        return [mock.Mock(), *[mock.Mock() for _ in samples]]
 
     @pytest.fixture(name="map_fcn")
     def map_fcn(self, map_fcn_side_effect):
         """Mock  map function"""
         return mock.Mock(side_effect=map_fcn_side_effect)
 
-    @pytest.fixture(name="map_sample_batches_value")
-    def map_sample_batches_value(self, samples, map_fcn):
+    @pytest.fixture(name="map_samples_value")
+    def map_samples_value(self, samples, map_fcn):
         """Private method return value"""
         return [[sample.id, None, map_fcn.return_value] for sample in samples]
 
-    @pytest.fixture(name="map_sample_batches")
-    def map_sample_batches(self, mapper, map_sample_batches_value):
+    @pytest.fixture(name="map_samples")
+    def map_samples(self, mapper, map_samples_value):
         """Mock private method"""
         # pylint:disable-next=protected-access
-        map_sample_batches = mapper._map_sample_batches
-        map_sample_batches.return_value.__iter__.return_value = (
-            map_sample_batches_value
-        )
+        map_samples = mapper._map_samples
+        map_samples.return_value.__iter__.return_value = map_samples_value
 
-        return map_sample_batches
-
-    @pytest.fixture(name="batcher_split")
-    def patch_batcher_split(self):
-        """Patch batcher.split"""
-        with mock.patch.object(fomb.SampleBatcher, "split") as batcher_split:
-            yield batcher_split
+        return map_samples
 
     @pytest.mark.parametrize(
         "skip_failures",
@@ -183,6 +165,7 @@ class TestMapSamples:
     )
     def test_map_err(
         self,
+        workers,
         skip_failures,
         errors,
         mapper,
@@ -190,17 +173,18 @@ class TestMapSamples:
         samples,
         map_fcn,
         map_fcn_side_effect,
-        map_sample_batches,
-        map_sample_batches_value,
-        batcher_split,
+        map_samples,
+        map_samples_value,
     ):
         """Test map function error"""
 
         for idx, err in errors.items():
-            if mapper.workers == 1:
-                map_fcn_side_effect[idx] = err
+            if workers == 1:
+                # Adding one for validating check that occurs testing if the
+                # map function is allowed.
+                map_fcn_side_effect[idx + 1] = err
             else:
-                map_sample_batches_value[idx][1] = err
+                map_samples_value[idx][1] = err
 
         returned_sample_ids = []
         with contextlib.ExitStack() as ctx:
@@ -210,6 +194,7 @@ class TestMapSamples:
 
             #####
             for sid, _ in mapper.map_samples(
+                sample_collection,
                 map_fcn,
                 progress=(progress := mock.Mock()),
                 save=(save := mock.Mock()),
@@ -229,9 +214,8 @@ class TestMapSamples:
             assert err_ctx.excinfo.value == expected_err
             assert len(returned_sample_ids) == expected_err_idx
 
-        if mapper.workers == 1:
-            assert not batcher_split.called
-            assert not map_sample_batches.called
+        if workers == 1:
+            assert not map_samples.called
 
             sample_collection.iter_samples.assert_called_once_with(
                 progress=progress, autosave=save
@@ -248,18 +232,19 @@ class TestMapSamples:
                     if i <= expected_err_idx
                 ]
 
-            assert map_fcn.call_count == expected_map_fcn_call_count
+            # Adding one for validating check that occurs testing if the map
+            # function is allowed.
+            assert map_fcn.call_count == expected_map_fcn_call_count + 1
             map_fcn.assert_has_calls(expected_map_fcn_calls)
 
         else:
             assert not sample_collection.iter_samples.called
-            assert not map_fcn.called
+            # Expecting one for validation check that occurs testing if the map
+            # function is allowed.
+            assert map_fcn.call_count == 1
 
-            batcher_split.assert_called_once_with(
-                mapper.batch_method, sample_collection, mapper.workers
-            )
-            map_sample_batches.assert_called_once_with(
-                batcher_split.return_value,
+            map_samples.assert_called_once_with(
+                sample_collection,
                 map_fcn,
                 progress=progress,
                 save=save,
@@ -269,18 +254,14 @@ class TestMapSamples:
             assert not sample_collection.iter_samples.called
 
     def test_ok(
-        self,
-        mapper,
-        sample_collection,
-        samples,
-        map_sample_batches,
-        batcher_split,
+        self, workers, mapper, sample_collection, samples, map_samples
     ):
         """Test happy path"""
 
         #####
         results = list(
             mapper.map_samples(
+                sample_collection,
                 map_fcn := mock.Mock(),
                 progress=(progress := mock.Mock()),
                 save=(save := mock.Mock()),
@@ -289,26 +270,25 @@ class TestMapSamples:
         )
         #####
 
-        if mapper.workers == 1:
-            assert not batcher_split.called
-            assert not map_sample_batches.called
+        if workers == 1:
+            assert not map_samples.called
 
             sample_collection.iter_samples.assert_called_once_with(
                 progress=progress, autosave=save
             )
 
-            map_fcn.assert_has_calls([mock.call(sample) for sample in samples])
+            # Adding one for validating check that occurs testing if the map
+            # function is allowed.
+            assert map_fcn.call_count == len(samples) + 1
 
         else:
             assert not sample_collection.iter_samples.called
-            assert not map_fcn.called
+            # Expecting one for validation check that occurs testing if the map
+            # function is allowed.
+            assert map_fcn.call_count == 1
 
-            batcher_split.assert_called_once_with(
-                mapper.batch_method, sample_collection, mapper.workers
-            )
-
-            map_sample_batches.assert_called_once_with(
-                batcher_split.return_value,
+            map_samples.assert_called_once_with(
+                sample_collection,
                 map_fcn,
                 progress=progress,
                 save=save,

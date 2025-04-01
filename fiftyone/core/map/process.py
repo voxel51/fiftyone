@@ -25,6 +25,7 @@ import bson
 from tqdm.auto import tqdm
 
 import fiftyone as fo
+import fiftyone.core.config as focc
 import fiftyone.core.utils as fou
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.mapper as fomm
@@ -37,30 +38,37 @@ T = TypeVar("T")
 R = TypeVar("R")
 
 
-class ProcessMapper(fomm.LocalMapper[T]):
+class ProcessMapper(fomm.LocalMapper):
     """Executes map_samples using multiprocessing."""
 
-    def __init__(
-        self,
-        sample_collection: SampleCollection[T],
+    @classmethod
+    def create(
+        cls,
+        *_,
+        config: focc.FiftyOneConfig,
+        batcher: fomb.SampleBatcher,
         workers: Optional[int] = None,
-        batch_method: Optional[str] = None,
-        **kwargs,
+        **__,
     ):
-        # Check if running in sub-process and if so limit "workers" to 1.
         if multiprocessing.current_process().daemon:
             workers = 1
         elif workers is None:
-            workers = fou.recommend_process_pool_workers()
+            workers = (
+                config.default_process_pool_workers
+                or fou.recommend_process_pool_workers()
+            )
 
-        super().__init__(sample_collection, workers, batch_method, **kwargs)
+        if config.max_process_pool_workers is not None:
+            workers = min(workers, config.max_process_pool_workers)
 
-    def _map_sample_batches(
+        return cls(batcher, workers)
+
+    def _map_samples(
         self,
-        sample_batches: List[fomb.SampleBatch],
+        sample_collection: SampleCollection[T],
         map_fcn: Callable[[T], R],
-        /,
-        progress: Union[bool, Literal["workers"]],
+        *_,
+        progress: Union[bool, Literal["workers"], None],
         save: bool,
         skip_failures: bool,
     ) -> Iterator[Tuple[bson.ObjectId, R]]:
@@ -86,14 +94,16 @@ class ProcessMapper(fomm.LocalMapper[T]):
         cancel_event = multiprocessing.Event()
 
         # Extract information from sample collection.
-        if isinstance(self._sample_collection, fov.DatasetView):
+        if isinstance(sample_collection, fov.DatasetView):
             # pylint:disable-next=protected-access
-            dataset_name = self._sample_collection._root_dataset.name
+            dataset_name = sample_collection._root_dataset.name
             # pylint:disable-next=protected-access
-            view_stages = self._sample_collection._serialize()
+            view_stages = sample_collection._serialize()
         else:
-            dataset_name = self._sample_collection.name
+            dataset_name = sample_collection.name
             view_stages = None
+
+        sample_batches = self._batcher.split(sample_collection, self._workers)
 
         pool = ctx.Pool(
             processes=len(sample_batches),

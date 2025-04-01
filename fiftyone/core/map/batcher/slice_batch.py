@@ -8,16 +8,17 @@ Abstract mapping backend
 
 from typing import List, Optional, TypeVar
 
-import fiftyone.core.map.batcher.batch as fomb
+import fiftyone.core.map.batcher.base as fomb
 from fiftyone.core.map.typing import SampleCollection
 
 T = TypeVar("T")
 
 
-class SampleSliceBatch(fomb.SampleBatch):
+class SampleSliceBatch(fomb.SampleBatcher, fomb.SampleBatch):
     """Sample batch using slices"""
 
     @classmethod
+    # pylint:disable-next=arguments-differ
     def split(
         cls,
         sample_collection: SampleCollection[T],
@@ -25,7 +26,7 @@ class SampleSliceBatch(fomb.SampleBatch):
         batch_size: Optional[int] = None,
     ) -> List["SampleSliceBatch"]:
         return [
-            SampleSliceBatch(start_idx, stop_idx)
+            cls(start_idx, stop_idx)
             for start_idx, stop_idx in cls._get_sample_collection_indexes(
                 sample_collection, num_workers, batch_size
             )

@@ -4,95 +4,277 @@
 |
 """
 
+import multiprocessing
 from unittest import mock
+
+import pytest
 
 import fiftyone.core.config as focc
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.factory as fomf
+import fiftyone.core.map.process as fomp
+import fiftyone.core.map.threading as fomt
 
 
-@pytest.mark.parametrize(
-    ("mapper_class_key", "expected_mapper_cls"),
-    [
-        pytest.param(
-            None,
-            fomf.MapperFactory.get(fomf.MapperFactory.default()),
-            id="no-key-provided",
-        ),
-        *[
-            pytest.param(key, fomf.MapperFactory.get(key), id=key)
-            for key in fomf.MapperFactory.available()
-        ],
-    ],
-)
+@pytest.fixture(name="config", autouse=True)
+def patch_load_config():
+    """patch load config"""
+    with mock.patch.object(focc, "load_config") as load_config:
+        config = load_config.return_value = mock.Mock()
+        config.default_parallelization_backend = None
+        yield config
+
+
+@pytest.fixture(name="process_mapper_cls")
+def fixture_process_mapper_cls():
+    """mock process mapper"""
+
+    return mock.create_autospec(fomp.ProcessMapper)
+
+
+@pytest.fixture(name="thread_mapper_cls")
+def fixture_thread_mapper_cls():
+    """mock process mapper"""
+
+    return mock.create_autospec(fomt.ThreadMapper)
+
+
+@pytest.fixture(name="id_batcher")
+def fixture_id_batcher():
+    """mock id batcher"""
+
+    return mock.create_autospec(fomb.SampleIdBatch)
+
+
+@pytest.fixture(name="slice_batcher")
+def fixture_slice_batcher():
+    """mock slice batcher"""
+
+    return mock.create_autospec(fomb.SampleSliceBatch)
+
+
+@pytest.fixture(name="default_batcher")
+def fixture_default_batcher(id_batcher):
+    """mock default batcher"""
+
+    return id_batcher
+
+
+@pytest.fixture(autouse=True)
+def fixture_mapper_factory(
+    process_mapper_cls, thread_mapper_cls, id_batcher, slice_batcher
+):
+    """patch mapper factory"""
+
+    with mock.patch.object(
+        fomf.MapperFactory, "_MAPPERS", {}
+    ) as mappers, mock.patch.object(
+        fomf.MapperFactory, "_BATCHERS", {}
+    ) as batchers:
+        mappers["process"] = process_mapper_cls
+        mappers["thread"] = thread_mapper_cls
+
+        batchers["id"] = id_batcher
+        batchers["slice"] = slice_batcher
+
+        yield
+
+
 class TestCreate:
     """Test method for creating mapper"""
 
-    @pytest.mark.usefixtures("expected_mapper_cls")
-    def test_invalid_batch_method(self, mapper_class_key):
-        """Test invalid batch method"""
+    @pytest.fixture(name="process_mapper_cls")
+    def patch_process_mapper_cls(self):
+        """patch process mapper cls"""
 
-        with pytest.raises(ValueError):
-            #####
-            fomf.MapperFactory.create(
-                key=mapper_class_key,
-                sample_collection=mock.Mock(),
-                workers=mock.Mock(),
-                map_fcn=mock.Mock(),
-                batch_method=mock.Mock(),
-                **mock.create_autospec(dict),
-            )
-            #####
+        with mock.patch.object(fomp.ProcessMapper, "__init__") as constructor:
+            constructor.return_value = None
+            yield constructor
 
-    def test_use_worker_default(self, mapper_class_key, expected_mapper_cls):
-        """Test happy path with work default"""
+    class TestBatchMethod:
+        """test batch method related code paths"""
 
-        default_workers = mock.create_autospec(int)
+        def test_invalid(self):
+            """test invalid batch method"""
+            with pytest.raises(ValueError):
+                #####
+                fomf.MapperFactory.create(
+                    mapper_key=mock.Mock(),
+                    workers=mock.Mock(),
+                    batch_method="unknown",
+                    **mock.create_autospec(dict),
+                )
+                #####
 
-        with mock.patch.object(
-            expected_mapper_cls, "__init__"
-        ) as init, mock.patch.object(focc, "load_config") as load_config:
-            init.return_value = None
-            load_config.return_value.default_map_workers = default_workers
+        @pytest.mark.parametrize("batch_method", ("id", "slice", None))
+        def test_valid(
+            self,
+            config,
+            batch_method,
+            id_batcher,
+            slice_batcher,
+            thread_mapper_cls,
+        ):
+            """test valid batch methods"""
+
+            expected_batcher = None
+            if batch_method in ("id", None):
+                expected_batcher = id_batcher
+            elif batch_method == "slice":
+                expected_batcher = slice_batcher
+
+            key = "thread"
+            expected_mapper_cls = thread_mapper_cls
 
             #####
             result = fomf.MapperFactory.create(
-                mapper_class_key,
-                sample_collection := mock.Mock(),
-                None,
-                batch_method := fomb.SampleBatcher().default(),
+                key,
+                workers := 1,
+                batch_method=batch_method,
                 **(kwargs := mock.create_autospec(dict)),
             )
             #####
 
-            load_config.assert_called_once()
-            init.assert_called_once_with(
-                sample_collection,
-                default_workers,
-                batch_method,
+            expected_mapper_cls.create.assert_called_once_with(
+                config=config,
+                batcher=expected_batcher,
+                workers=workers,
                 **kwargs,
             )
 
-            assert isinstance(result, expected_mapper_cls)
+            assert result == expected_mapper_cls.create.return_value
 
-    def test_ok(self, mapper_class_key, expected_mapper_cls):
-        """Test happy path"""
+    class TestKey:
+        """test key related code paths"""
 
-        with mock.patch.object(expected_mapper_cls, "__init__") as init:
-            init.return_value = None
+        def test_invalid(self):
+            """Test invalid key"""
+
+            with pytest.raises(ValueError):
+                #####
+                fomf.MapperFactory.create(
+                    mapper_key="unknown",
+                    workers=mock.Mock(),
+                    batch_method=mock.Mock(),
+                    **mock.create_autospec(dict),
+                )
+                #####
+
+        @pytest.mark.parametrize("key", ("process", "thread"))
+        @pytest.mark.parametrize(
+            "from_config",
+            (
+                pytest.param(False, id="as_argument"),
+                pytest.param(True, id="from_config"),
+            ),
+        )
+        def test_explicit_mapper(
+            self,
+            key,
+            from_config,
+            config,
+            process_mapper_cls,
+            thread_mapper_cls,
+            default_batcher,
+        ):
+            """test create with explicit mapper key"""
+
+            if from_config:
+                config.default_parallelization_backend = key
+
+            mapper_classes = [process_mapper_cls, thread_mapper_cls]
+            expected_mapper_cls = None
+            if key == "process":
+                expected_mapper_cls = process_mapper_cls
+            elif key == "thread":
+                expected_mapper_cls = thread_mapper_cls
 
             #####
             result = fomf.MapperFactory.create(
-                mapper_class_key,
-                sample_collection := mock.Mock(),
+                key if not from_config else None,
                 workers := mock.Mock(),
-                batch_method := fomb.SampleBatcher().default(),
                 **(kwargs := mock.create_autospec(dict)),
             )
             #####
 
-            init.assert_called_once_with(
-                sample_collection, workers, batch_method, **kwargs
+            for mapper_cls in mapper_classes:
+                if mapper_cls is not expected_mapper_cls:
+                    assert not mapper_cls.create.called
+
+            expected_mapper_cls.create.assert_called_once_with(
+                config=config,
+                batcher=default_batcher,
+                workers=workers,
+                **kwargs,
             )
 
-            assert isinstance(result, expected_mapper_cls)
+            assert result == expected_mapper_cls.create.return_value
+
+        class TestDefaultMapper:
+            """test inferred mapper"""
+
+            @pytest.fixture(name="current_process", autouse=True)
+            def patch_multiprocessing(self):
+                """patch multiprocessing"""
+                with mock.patch.object(
+                    multiprocessing, "current_process"
+                ) as m:
+                    yield m
+
+            def test_use_multiprocessing(
+                self,
+                current_process,
+                config,
+                process_mapper_cls,
+                thread_mapper_cls,
+                default_batcher,
+            ):
+                """test create with no mapper key"""
+                current_process.return_value.daemon = False
+
+                #####
+                result = fomf.MapperFactory.create(
+                    None,
+                    workers := mock.Mock(),
+                    **(kwargs := mock.create_autospec(dict)),
+                )
+                #####
+
+                assert not thread_mapper_cls.called
+                process_mapper_cls.create.assert_called_once_with(
+                    config=config,
+                    batcher=default_batcher,
+                    workers=workers,
+                    **kwargs,
+                )
+
+                assert result == process_mapper_cls.create.return_value
+
+            def test_use_threading(
+                self,
+                current_process,
+                config,
+                process_mapper_cls,
+                thread_mapper_cls,
+                default_batcher,
+            ):
+                """test create with no mapper key"""
+                current_process.return_value.daemon = True
+
+                #####
+                result = fomf.MapperFactory.create(
+                    None,
+                    workers := mock.Mock(),
+                    **(kwargs := mock.create_autospec(dict)),
+                )
+                #####
+
+                assert not process_mapper_cls.called
+                thread_mapper_cls.create.assert_called_once_with(
+                    config=config,
+                    batcher=default_batcher,
+                    workers=workers,
+                    **kwargs,
+                )
+
+                assert result == thread_mapper_cls.create.return_value

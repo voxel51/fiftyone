@@ -3900,49 +3900,52 @@ class SampleCollection(object):
     def map_samples(
         self,
         map_fcn: Callable[[Any], Any],
+        *_,
         workers: Optional[int] = None,
         batch_method: str = "id",
         progress: Optional[Union[bool, Literal["worker"]]] = None,
-        save: bool = False,
         parallelize_method: str = "process",
         skip_failures: bool = False,
+        save: bool = False,
     ):
         """
-        Applies `map_fcn` to each sample using the specified backend strategy and
-        returns an iterator.
+        Applies `map_fcn` to each sample using the specified backend strategy
+        and returns an iterator.
 
         Args:
             map_fcn: Function to apply to each sample.
             workers (None): Number of workers.
-            batch_method ("id"): Method for sharding ('id' or 'slice').
+            batch_method: Explcit method for batching samples.
             progress (None): Whether to show progress bar.
-            save (False): Whether to save modified samples.
-            parallelize_method ("process"): Method for parallelization ('process'
-              or 'thread').
-            skip_failures (True): whether to gracefully continue without raising an
-                error if the map function raises an exception for a sample.
+            parallelize_method: Explcit method to use for parallelization.
+            skip_failures (True): whether to gracefully continue without
+                raising an error if the update function raises an
+                exception for a sample.
+            save (False): Whether to save any modified samples.
 
         Returns:
             A generator yield processed sample results.
         """
         mapper = focm.MapperFactory.create(
-            parallelize_method,
-            self,
-            workers,
-            batch_method,
+            parallelize_method, workers, batch_method
         )
 
         yield from mapper.map_samples(
-            map_fcn, progress=progress, save=save, skip_failures=skip_failures
+            self,
+            map_fcn,
+            progress=progress,
+            save=save,
+            kip_failures=skip_failures
         )
 
     def update_samples(
         self,
         update_fcn: Callable[[Any], Any],
+        *_,
         workers: Optional[int] = None,
-        batch_method: str = "id",
+        batch_method: str = None,
         progress: Optional[Union[bool, Literal["worker"]]] = None,
-        parallelize_method: str = "process",
+        parallelize_method: str = None,
         skip_failures=True,
     ):
         """
@@ -3951,18 +3954,19 @@ class SampleCollection(object):
         Args:
             update_fcn: Function to apply to each sample.
             workers (None): Number of workers.
-            batch_method ("id"): Method for sharding ('id' or 'slice').
+            batch_method: Explcit method for batching samples.
             progress (None): Whether to show progress bar.
-            parallelize_method ("process"): Method for parallelization ('process'
-              or 'thread'). Default to process.
-            skip_failures (True): whether to gracefully continue without raising an
-                error if the update function raises an exception for a sample.
+            parallelize_method: Explcit method to use for parallelization.
+            skip_failures (True): whether to gracefully continue without
+                raising an error if the update function raises an
+                exception for a sample.
         """
         mapper = focm.MapperFactory.create(
-            parallelize_method, self, workers, batch_method
+            parallelize_method, workers, batch_method
         )
 
         for _ in mapper.map_samples(
+            self,
             update_fcn,
             progress=progress,
             save=True,

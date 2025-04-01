@@ -5,7 +5,9 @@ Factory for mapping backends
 |
 """
 
-from typing import Dict, List, Optional, Type, TypeVar, Union
+import multiprocessing
+from typing import Dict, List, Optional, Type
+
 
 import fiftyone.core.config as focc
 import fiftyone.core.map.batcher as fomb
@@ -13,77 +15,81 @@ import fiftyone.core.map.mapper as fomm
 import fiftyone.core.map.process as fomp
 import fiftyone.core.map.threading as fomt
 
-T = TypeVar("T")
-
 
 class MapperFactory:
     """Manage mapper implementations"""
 
-    __MAPPER_CLASSES: Dict[str, Type[fomm.Mapper]] = {
+    _MAPPERS: Dict[str, Type[fomm.Mapper]] = {
         "process": fomp.ProcessMapper,
         "thread": fomt.ThreadMapper,
     }
 
-    __DEFAULT_KEY = "process"
+    _BATCHERS: Dict[str, fomb.SampleBatcher] = {
+        "id": fomb.SampleIdBatch,
+        "slice": fomb.SampleSliceBatch,
+    }
 
     @classmethod
-    def available(cls) -> List[str]:
+    def batch_methods(cls) -> List[str]:
+        """Get available batcher keys"""
+        return sorted(cls._BATCHERS.keys())
+
+    @classmethod
+    def mapper_keys(cls) -> List[str]:
         """Get available mapper class keys"""
-        return sorted([k for k, _ in cls.__MAPPER_CLASSES.items()])
-
-    @classmethod
-    def default(cls) -> str:
-        """Get default mapper class key"""
-        # Using method to get default to allow for programmatic way to
-        # determine default.
-        return cls.__DEFAULT_KEY
-
-    @classmethod
-    def get(cls, key: str) -> Union[Type[fomm.Mapper], None]:
-        """Get mapper class"""
-        return cls.__MAPPER_CLASSES.get(key)
-
-    @classmethod
-    def key(cls, mapper_cls: Type[fomm.Mapper]) -> Union[str, None]:
-        """Get key for mapper class"""
-        return next(
-            (
-                key
-                for key, value in cls.__MAPPER_CLASSES.items()
-                if value == mapper_cls
-            ),
-            None,
-        )
+        return sorted(cls._MAPPERS.keys())
 
     @classmethod
     def create(
         cls,
-        key: Optional[str],
-        sample_collection: fomm.SampleCollection[T],
+        mapper_key: Optional[str],
         workers: Optional[int],
         batch_method: Optional[str] = None,
         **mapper_extra_kwargs,
     ) -> fomm.Mapper:
         """Create a mapper instance"""
 
-        if workers is None:
-            cfg = focc.load_config()
-            workers = cfg.default_map_workers
+        config = focc.load_config()
 
-        if batch_method is not None and batch_method not in (
-            batch_methods := fomb.SampleBatcher.available()
-        ):
+        if batch_method is None:
+            batch_method = "id"
+
+        if batch_method not in cls._BATCHERS:
             raise ValueError(
-                f"Invalid `batch_method`: {batch_method}. "
-                f"Choose from: {', '.join(batch_methods)}"
+                f"Invalid `batch_method`: {batch_method}. Choose from: "
+                f"{', '.join(cls._BATCHERS.keys())}"
             )
 
-        if key is None:
-            key = cls.default()
+        batcher = cls._BATCHERS[batch_method]
 
-        if key not in cls.__MAPPER_CLASSES:
-            raise ValueError(f"Could not create mapper for: '{key}'")
+        # If the parallelization method is explicitly provided, use it no
+        # matter what.
+        if mapper_key is None:
+            # If the default parallelization method is set in the config, use
+            # it no matter what for now . There was talk about how this
+            # behavior could change, (log a warning, explicitly forbid, etc).
+            # Once a determination has been made make the changes here.
+            mapper_key = config.default_parallelization_backend
 
-        return cls.__MAPPER_CLASSES[key](
-            sample_collection, workers, batch_method, **mapper_extra_kwargs
+            # If no the parallelization method is not explicitly provided and
+            # no default was set, try to use multiprocessing as default, if it
+            # looks like multiprocessing won’t work,  then use threading.
+            if mapper_key is None:
+                mapper_key = (
+                    "process"
+                    if not multiprocessing.current_process().daemon
+                    else "thread"
+                )
+
+        if mapper_key not in cls._MAPPERS:
+            raise ValueError(
+                f"Invalid `mapper_key`: {mapper_key}. Choose from: "
+                f"{', '.join(cls._MAPPERS.keys())}"
+            )
+
+        return cls._MAPPERS[mapper_key].create(
+            config=config,
+            batcher=batcher,
+            workers=workers,
+            **mapper_extra_kwargs,
         )
