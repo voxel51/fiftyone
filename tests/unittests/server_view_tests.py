@@ -986,3 +986,41 @@ class ServerDocTests(unittest.TestCase):
         doc = Dataset.modifier({"_id": "id"})
         self.assertIn("frame_collection_name", doc)
         self.assertEqual(doc["frame_collection_name"], None)
+
+
+class GetExtendedViewTests(unittest.TestCase):
+    def test_filter_invalid_id_returns_none(self):
+        ds = fod.Dataset()
+        ds.add_sample(fos.Sample(filepath="image.png"))
+        view = fosv.get_extended_view(
+            ds.view(),
+            filters={
+                "id": {
+                    "values": ["invalidid"],
+                    "exclude": False,
+                    "isMatching": True,
+                }
+            },
+        )
+        self.assertEqual(len(view), 0)
+        ds.delete()
+
+    def test_filter_valid_id(self):
+        ds = fod.Dataset()
+        sample_id = ds.add_sample(
+            fos.Sample(
+                filepath="image.png",
+            )
+        )
+        view = fosv.get_extended_view(
+            ds.view(),
+            filters={
+                "id": {
+                    "values": [str(sample_id)],
+                    "exclude": False,
+                    "isMatching": True,
+                }
+            },
+        )
+        self.assertEqual(len(view), 1)
+        ds.delete()
