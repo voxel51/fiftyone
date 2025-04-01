@@ -1567,52 +1567,42 @@ class FiftyOneTorchDataset(Dataset):
             else None
         )
         self.get_item = get_item
-        # make this a file we call for very large datasets
-        # TODO: remove duplication with cached_fields, just have
-        # ids always be one of the cached fields.
-        self.ids = _to_bytes_array(samples.values("id"))
+
+        self.ids = self._load_field(samples, "id", local_process_group)
 
         self.cached_fields = None
         self.cache_field_names = cache_field_names
-        self._load_cached_fields(
-            samples, cache_field_names, local_process_group
-        )
+        if cache_field_names is not None:
+            self.cached_fields = {}
+            for fn in cache_field_names:
+                self.cached_fields[fn] = self._load_field(
+                    samples, fn, local_process_group
+                )
 
         # initialized in worker
         self._dataset = None
         self._samples = None
 
-    # need a better solution
-    def _load_cached_fields(
-        self, samples, cache_field_names, local_process_group
-    ):
-        if cache_field_names is None:
-            return
+    def _load_field(self, samples, field_name, local_process_group):
+        if not samples.has_field(field_name):
+            raise ValueError(
+                f'Can\'t find field with name "{field_name}" in samples passed.'
+            )
 
-        self.cached_fields = {}
-        for field_name in cache_field_names:
-            if not samples.has_field(field_name):
-                raise ValueError(
-                    f'Can\'t find field with name "{field_name}" in samples passed.'
-                )
+        # don't get fancy if you don't have to
+        if local_process_group is None:
+            return TorchSerializedList(samples.values(field_name))
 
-            # don't get fancy if you don't have to
-            if local_process_group is None:
-                self.cached_fields[field_name] = TorchSerializedList(
-                    samples.values(field_name)
+        # have to get fancy
+        else:
+            if get_local_rank(local_process_group) == 0:
+                return TorchShmSerializedList(
+                    samples.values(field_name), local_process_group
                 )
-            # have to get fancy
             else:
-                if get_local_rank(local_process_group) == 0:
-                    self.cached_fields[field_name] = TorchShmSerializedList(
-                        samples.values(field_name), local_process_group
-                    )
-                else:
-                    # don't need to pass actual data if not local rank 0
-                    # we read it from shared memory anyways
-                    self.cached_fields[field_name] = TorchShmSerializedList(
-                        [], local_process_group
-                    )
+                # don't need to pass actual data if not local rank 0
+                # we read it from shared memory anyways
+                return TorchShmSerializedList([], local_process_group)
 
     @property
     def samples(self):
@@ -1687,7 +1677,7 @@ class FiftyOneTorchDataset(Dataset):
 
         if self.cached_fields is None:
             # pylint: disable=unsubscriptable-object
-            sample = self._dataset[self.ids[index].decode()]
+            sample = self._dataset[self.ids[index]]
             return self.get_item(sample)
 
         else:
