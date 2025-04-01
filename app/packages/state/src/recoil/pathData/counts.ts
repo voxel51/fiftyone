@@ -67,9 +67,10 @@ export const count = selectorFamily({
         }
 
         if (first === "_label_tags" && value) {
-          return get(cumulativeCounts({ ...params, ...MATCH_LABEL_TAGS }))[
-            value
-          ];
+          return (
+            get(cumulativeCounts({ ...params, ...MATCH_LABEL_TAGS }))[value] ??
+            0
+          );
         }
 
         if (split.length < 2) {

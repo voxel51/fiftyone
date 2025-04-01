@@ -3,6 +3,25 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.7.2
+-------------------------
+*Released April 1, 2025*
+
+Includes all updates from :ref:`FiftyOne 1.4.1 <release-notes-v1.4.1>`
+
+.. _release-notes-v1.4.1:
+
+FiftyOne 1.4.1
+--------------
+*Released April 1, 2025*
+
+App
+
+- Fixed label tags filtering in the
+  :ref:`Query Performance <app-optimizing-query-performance>` sidebar
+  `#5675 <https://github.com/voxel51/fiftyone/pull/5675>`_
+
+
 FiftyOne Enterprise 2.7.1
 -------------------------
 *Released March 24, 2025*
