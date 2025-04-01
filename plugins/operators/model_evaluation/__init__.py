@@ -342,13 +342,13 @@ class ConfigureScenario(foo.Operator):
             label = "Too many categories."
             description = (
                 f"Selected field has too many values to display. "
-                + "Please use custom code to define the scenario."
+                + "Please use the custom code to define the scenario."
             )
         if reason == "TOO_MANY_INT_CATEGORIES":
-            label = "Too many integer values."
+            label = "Too many distinct integer values."
             description = (
                 f"Selected field has too many values to display. "
-                + "Please use custom code to define the scenario."
+                + "Please use the custom code to define the scenario."
             )
         if reason == "FLOAT_TYPE":
             label = "Float type."
@@ -418,9 +418,15 @@ class ConfigureScenario(foo.Operator):
         selected_values_map = (
             params.get("checkbox_view_stack", {}).get(key, {}) or {}
         )
-        selected_values = [
-            key for key, val in selected_values_map.items() if val
-        ]
+
+        # TODO: Ibrahim reproed once - Mani can't repro
+        selected_values = []
+        if isinstance(selected_values_map, list):
+            selected_values = [key for key, val in selected_values_map if val]
+        else:
+            selected_values = [
+                key for key, val in selected_values_map.items() if val
+            ]
 
         stack = inputs.v_stack(
             "checkbox_view_stack",
