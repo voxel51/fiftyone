@@ -18,7 +18,9 @@ const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 export default function EvaluationScenarioAnalysis(props) {
   const { evaluation, data, loadScenario } = props;
   const { scenarios } = evaluation;
-  const [selectedScenario, setSelectedScenario] = useState(null);
+  const [selectedScenario, setSelectedScenario] = useState(
+    getDefaultScenario(scenarios)
+  );
   const panelId = usePanelId();
   const promptOperator = usePanelEvent();
   const triggerEvent = useTriggerEvent();
@@ -73,6 +75,7 @@ export default function EvaluationScenarioAnalysis(props) {
           <Typography>Select a scenario:</Typography>
           <Select
             size="small"
+            defaultValue={selectedScenario}
             onChange={(e) => {
               setSelectedScenario(e.target.value);
             }}
@@ -102,11 +105,7 @@ export default function EvaluationScenarioAnalysis(props) {
 
 function Scenario(props) {
   const { id, data, loadScenario } = props;
-  const [loading, setLoading] = useState(true);
-  const [subset, setSubset] = useState("");
   const scenario = data?.[`scenario_${id}`];
-  const subsets = scenario?.subsets || [];
-  const subsetsData = scenario?.subsets_data || {};
 
   useEffect(() => {
     if (!scenario) {
@@ -118,11 +117,58 @@ function Scenario(props) {
     return <CircularProgress />;
   }
 
+  console.log(">>>", scenario);
+
+  return <ScenarioCharts data={scenario} />;
+}
+
+function ScenarioCharts(props) {
+  const { data } = props;
   return (
     <Stack>
+      <ScenarioPredictionStatistics data={data} />
+      <ScenarioModelPerformance data={data} />
+      <ScenarioConfusionMatrix data={data} />
+      <ScenarioConfidenceDistribution data={data} />
+      <ScenarioMetricPerformance data={data} />
+      <ScenarioSubsetDistribution data={data} />
+    </Stack>
+  );
+}
+
+const MODEL_PERFORMANCE_METRICS = [
+  { label: "Average Confidence", key: "average_confidence" },
+  { label: "F1 Score", key: "fscore" },
+  { label: "Precision", key: "precision" },
+  { label: "Recall", key: "recall" },
+  { label: "IoU", key: "iou" },
+  { label: "mAP", key: "mAP" },
+];
+
+function ScenarioModelPerformance(props) {
+  const { data } = props;
+  const { subsets } = data;
+  const [subset, setSubset] = useState(subsets[0]);
+  const subsetData = data.subsets_data[subset];
+  const { metrics } = subsetData;
+
+  const theta = [];
+  const r = [];
+  for (const metric of MODEL_PERFORMANCE_METRICS) {
+    const { label, key } = metric;
+    const value = metrics[key];
+    if (isNullish(value)) continue;
+    theta.push(label);
+    r.push(value);
+  }
+
+  return (
+    <Stack>
+      <Typography variant="h5">Model Performance</Typography>
       <Typography>Select a subset:</Typography>
       <Select
         size="small"
+        defaultValue={subset}
         onChange={(e) => {
           setSubset(e.target.value);
         }}
@@ -135,51 +181,162 @@ function Scenario(props) {
           );
         })}
       </Select>
-      {subset && <ScenarioModelPerformance data={subsetsData[subset]} />}
+      <EvaluationPlot
+        data={[
+          {
+            type: "scatterpolar",
+            r,
+            theta,
+            fill: "toself",
+          },
+        ]}
+        layout={{
+          polar: {
+            bgcolor: "#272727",
+            radialaxis: {
+              visible: true,
+            },
+          },
+        }}
+      />
     </Stack>
   );
 }
 
-const MODEL_PERFORMANCE_METRICS = [
-  { label: "F1 Score", key: "fscore" },
-  { label: "Precision", key: "precision" },
-  { label: "Recall", key: "recall" },
-  { label: "IoU", key: "iou" },
-  { label: "mAP", key: "mAP" },
-  { label: "Average Confidence", key: "average_confidence" },
-];
-
-function ScenarioModelPerformance(props) {
+function ScenarioPredictionStatistics(props) {
   const { data } = props;
+  const { subsets_data } = data;
 
-  const theta = [];
-  const r = [];
-  for (const metric of MODEL_PERFORMANCE_METRICS) {
-    const { label, key } = metric;
-    const value = data[key];
-    if (isNullish(value)) continue;
-    theta.push(label);
-    r.push(value);
+  const x = ["True Positives", "False Positives", "False Negatives"];
+  const plotData = [];
+
+  for (const subset in subsets_data) {
+    const subsetData = subsets_data[subset];
+    const y = [
+      subsetData.metrics.tp,
+      subsetData.metrics.fp,
+      subsetData.metrics.fn,
+    ];
+    plotData.push({ x, y, name: subset, type: "bar" });
   }
 
   return (
-    <EvaluationPlot
-      data={[
-        {
-          type: "scatterpolar",
-          r,
-          theta,
-          fill: "toself",
-        },
-      ]}
-      layout={{
-        polar: {
-          bgcolor: "#272727",
-          radialaxis: {
-            visible: true,
-          },
-        },
-      }}
-    />
+    <Stack>
+      <Typography variant="h5">Prediction Statistics</Typography>
+
+      <EvaluationPlot data={plotData} />
+    </Stack>
   );
+}
+
+function ScenarioConfusionMatrix(props) {
+  const { data } = props;
+  const { subsets_data } = data;
+
+  const zValues = [
+    [1, null, 30, 50, 1],
+    [20, 1, 60, 80, 30],
+    [30, 60, 1, -10, 20],
+  ];
+
+  const plotData = [
+    {
+      z: zValues,
+      x: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      y: ["Morning", "Afternoon", "Evening"],
+      texttemplate: "%{z}",
+      type: "heatmap",
+      hoverongaps: false,
+    },
+  ];
+
+  return (
+    <Stack>
+      <Typography variant="h5">Prediction Statistics</Typography>
+
+      <EvaluationPlot data={plotData} />
+    </Stack>
+  );
+}
+
+function ScenarioConfidenceDistribution(props) {
+  const { data } = props;
+  const { subsets, subsets_data } = data;
+
+  const plotData = [];
+
+  for (const subset in subsets_data) {
+    const subsetData = subsets_data[subset];
+    plotData.push({ y: subsetData.confidences, name: subset, type: "box" });
+  }
+
+  return (
+    <Stack>
+      <Typography variant="h5">Confidence Distribution</Typography>
+
+      <EvaluationPlot data={plotData} />
+    </Stack>
+  );
+}
+
+function ScenarioMetricPerformance(props) {
+  const { data } = props;
+  const { subsets, subsets_data } = data;
+  const [metric, setMetric] = useState("average_confidence");
+
+  const y = subsets.map((subset) => {
+    const subsetData = subsets_data[subset];
+    return subsetData.metrics[metric];
+  });
+
+  const plotData = [{ x: subsets, y, type: "bar" }];
+
+  return (
+    <Stack>
+      <Typography variant="h5">Metric Performance</Typography>
+      <Typography>Select metric:</Typography>
+      <Select
+        size="small"
+        defaultValue={metric}
+        onChange={(e) => {
+          setMetric(e.target.value);
+        }}
+      >
+        {MODEL_PERFORMANCE_METRICS.map(({ key, label }) => {
+          return (
+            <MenuItem value={key} key={key}>
+              <Typography>{label}</Typography>
+            </MenuItem>
+          );
+        })}
+      </Select>
+      <EvaluationPlot data={plotData} />
+    </Stack>
+  );
+}
+
+function ScenarioSubsetDistribution(props) {
+  const { data } = props;
+  const { subsets, subsets_data } = data;
+
+  const y = subsets.map((subset) => {
+    const subsetData = subsets_data[subset];
+    return subsetData.distribution;
+  });
+
+  const plotData = [{ x: subsets, y, type: "bar" }];
+
+  return (
+    <Stack>
+      <Typography variant="h5">Subset Distribution</Typography>
+      <EvaluationPlot data={plotData} />
+    </Stack>
+  );
+}
+
+function getDefaultScenario(scenarios) {
+  if (!scenarios) return null;
+  const scenarioIds = Object.keys(scenarios);
+  if (scenarioIds.length === 0) return null;
+  return scenarioIds[0];
 }
