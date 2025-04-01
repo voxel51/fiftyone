@@ -3906,7 +3906,7 @@ class SampleCollection(object):
         batch_method: str = "id",
         progress: Optional[Union[bool, Literal["worker"]]] = None,
         save: bool = False,
-        parallelize_method: str = "process",
+        parallelize_method: Optional[str] = None,
         skip_failures: bool = False,
     ):
         """
@@ -3919,8 +3919,9 @@ class SampleCollection(object):
             batch_method ("id"): Method for sharding ('id' or 'slice').
             progress (None): Whether to show progress bar.
             save (False): Whether to save modified samples.
-            parallelize_method ("process"): Method for parallelization ('process'
-              or 'thread').
+            parallelize_method (None): Method for parallelization ('process'
+              or 'thread'). If None, we will use the value from config. If the
+                value in config is None, we will default to 'process'.
             skip_failures (True): whether to gracefully continue without raising an
                 error if the map function raises an exception for a sample.
 
@@ -3944,7 +3945,7 @@ class SampleCollection(object):
         workers: Optional[int] = None,
         batch_method: str = "id",
         progress: Optional[Union[bool, Literal["worker"]]] = None,
-        parallelize_method: str = "process",
+        parallelize_method: Optional[str] = None,
         skip_failures=True,
     ):
         """
@@ -3955,8 +3956,9 @@ class SampleCollection(object):
             workers (None): Number of workers.
             batch_method ("id"): Method for sharding ('id' or 'slice').
             progress (None): Whether to show progress bar.
-            parallelize_method ("process"): Method for parallelization ('process'
-              or 'thread'). Default to process.
+            parallelize_method (None): Method for parallelization ('process'
+              or 'thread'). If None, we will use the value from config. If the
+                value in config is None, we will default to 'process'.
             skip_failures (True): whether to gracefully continue without raising an
                 error if the update function raises an exception for a sample.
         """

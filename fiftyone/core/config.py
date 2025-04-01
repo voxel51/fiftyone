@@ -244,6 +244,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_MAP_WORKERS",
             default=None,
         )
+        self.default_map_samples_method = self.parse_string(
+            d,
+            "default_map_samples_method",
+            env_var="FIFTYONE_DEFAULT_MAP_SAMPLES_METHOD",
+            default=None,
+        )
         self.max_thread_pool_workers = self.parse_int(
             d,
             "max_thread_pool_workers",

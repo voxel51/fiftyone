@@ -5,6 +5,7 @@ Factory for mapping backends
 |
 """
 
+from enum import Enum
 from typing import Dict, List, Optional, TypeVar, Type, Union
 
 
@@ -17,15 +18,20 @@ import fiftyone.core.map.threading as fomt
 T = TypeVar("T")
 
 
+class MapImplementation:
+    PROCESS = "process"
+    THREAD = "thread"
+
+
 class MapperFactory:
     """Manage mapper implementations"""
 
     __MAPPER_CLASSES: Dict[str, Type[fomm.Mapper]] = {
-        "process": fomp.ProcessMapper,
-        "thread": fomt.ThreadMapper,
+        MapImplementation.PROCESS: fomp.ProcessMapper,
+        MapImplementation.THREAD: fomt.ThreadMapper,
     }
 
-    __DEFAULT_KEY = "process"
+    __DEFAULT_KEY = MapImplementation.PROCESS
 
     @classmethod
     def available(cls) -> List[str]:
@@ -66,9 +72,9 @@ class MapperFactory:
         **mapper_extra_kwargs,
     ) -> fomm.Mapper:
         """Create a mapper instance"""
+        cfg = focc.load_config()
 
         if workers is None:
-            cfg = focc.load_config()
             workers = cfg.default_map_workers
 
         if batch_method is not None and batch_method not in (
@@ -79,11 +85,21 @@ class MapperFactory:
                 f"Choose from: {', '.join(batch_methods)}"
             )
 
+        # If batch_method is not provided, use the default from config
+        key = key or cfg.default_map_samples_method
+
         if key is None:
             key = cls.default()
 
         if key not in cls.__MAPPER_CLASSES:
             raise ValueError(f"Could not create mapper for: '{key}'")
+
+        # Check if the current environment supports multiprocessing, if not use threading
+        if (
+            key == MapImplementation.PROCESS
+            and not fomp.check_multiprocessing_support()
+        ):
+            key = MapImplementation.THREAD
 
         return cls.__MAPPER_CLASSES[key](
             sample_collection, workers, batch_method, **mapper_extra_kwargs
