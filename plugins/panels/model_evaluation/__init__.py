@@ -115,13 +115,17 @@ class EvaluationPanel(Panel):
         ctx.panel.set_data("permissions", permissions)
         self.load_pending_evaluations(ctx)
 
-    def get_avg_confidence(self, per_class_metrics):
-        count = 0
-        total = 0
+    def get_confidences(self, per_class_metrics):
+        confidences = []
         for metrics in per_class_metrics.values():
-            count += 1
             if "confidence" in metrics:
-                total += metrics["confidence"]
+                confidences.append(metrics["confidence"])
+        return confidences
+
+    def get_avg_confidence(self, per_class_metrics):
+        confidences = self.get_confidences(per_class_metrics)
+        count = len(confidences)
+        total = sum(confidences)
         return total / count if count > 0 else None
 
     def get_avg_iou(self, per_class_metrics):
@@ -806,7 +810,7 @@ class EvaluationPanel(Panel):
             eval_b_results,
         )
 
-    def get_subset_def_data(self, ctx, info, results, subset_def):
+    def get_subset_def_data(self, info, results, subset_def):
         with results.use_subset(subset_def):
             metrics = results.metrics()
             per_class_metrics = self.get_per_class_metrics(info, results)
@@ -819,7 +823,12 @@ class EvaluationPanel(Panel):
             metrics["mAP"] = self.get_map(results)
             metrics["mAR"] = self.get_mar(results)
             metrics["iou"] = self.get_avg_iou(per_class_metrics)
-            return metrics
+            return {
+                "metrics": metrics,
+                "distribution": len(results.ytrue_ids),
+                "confusion_matrices": self.get_confusion_matrices(results),
+                "confidences": self.get_confidences(per_class_metrics),
+            }
 
     def process_custom_code(self, ctx, custom_code):
         try:
@@ -851,14 +860,14 @@ class EvaluationPanel(Panel):
                 if isinstance(cc_expr, dict):
                     for subset_name, subset_def in cc_expr.items():
                         subset_data = self.get_subset_def_data(
-                            ctx, info, results, subset_def
+                            info, results, subset_def
                         )
                         scenario_data["subsets_data"][
                             subset_name
                         ] = subset_data
                 elif isinstance(cc_expr, list):
                     subset_data = self.get_subset_def_data(
-                        ctx, info, results, subset_def
+                        info, results, subset_def
                     )
                     scenario_data["subsets_data"]["All"] = subset_data
 
@@ -870,7 +879,7 @@ class EvaluationPanel(Panel):
             for subset in scenario_subsets:
                 subset_def = dict(type="view", view=subset)
                 subset_data = self.get_subset_def_data(
-                    ctx, info, results, subset_def
+                    info, results, subset_def
                 )
                 scenario_data["subsets_data"][subset] = subset_data
 
