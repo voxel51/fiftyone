@@ -6,7 +6,7 @@ import AppsIcon from "@mui/icons-material/Apps";
 import React from "react";
 import { useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
-import Grid from "../components/Grid/Grid";
+import Grid from "../components/Grid";
 import Header from "../components/Grid/Header";
 
 const Container = styled.div`
