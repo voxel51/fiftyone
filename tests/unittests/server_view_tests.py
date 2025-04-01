@@ -980,7 +980,136 @@ class AysncServerViewTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(second_samples.edges), 1)
         self.assertEqual(second_samples.edges[0].node.id, second._id)
 
+    @drop_datasets
+    async def test_extended_view_range_queries(self):
+        import fiftyone.core.fields as fof
 
+        dataset = fod.Dataset()
+        dataset.add_sample_field("field1", fof.IntField)
+        dataset.add_sample_field("field2", fof.FloatField)
+        samples = [
+            fos.Sample(
+                filepath="image.png",
+                field1=i,
+                field2=1 / i,
+            )
+            for i in range(1, 10)
+        ]
+        sample_ids = dataset.add_samples(samples)
+
+        intervals = [[2, 5], [0.1, 0.5]]
+        in_range1 = {
+            sample.id
+            for sample in samples
+            if intervals[0][0] <= sample.field1 <= intervals[0][1]
+        }
+        nin_range1 = {
+            sample.id
+            for sample in samples
+            if (intervals[0][0] > sample.field1)
+            or (sample.field1 > intervals[0][1])
+        }
+        in_range2 = {
+            sample.id
+            for sample in samples
+            if intervals[1][0] <= sample.field2 <= intervals[1][1]
+        }
+        nin_range2 = {
+            sample.id
+            for sample in samples
+            if (intervals[1][0] > sample.field2)
+            or (sample.field2 > intervals[1][1])
+        }
+        filters = [
+            (
+                {
+                    "field1": {
+                        "isMatching": True,
+                        "range": intervals[0],
+                        "exclude": False,
+                    }
+                },
+                in_range1,
+            ),
+            (
+                {
+                    "field2": {
+                        "isMatching": True,
+                        "range": intervals[1],
+                        "exclude": True,
+                    }
+                },
+                nin_range2,
+            ),
+            (
+                {
+                    "field1": {
+                        "isMatching": True,
+                        "range": intervals[0],
+                        "exclude": False,
+                    },
+                    "field2": {
+                        "isMatching": True,
+                        "range": intervals[1],
+                        "exclude": False,
+                    },
+                },
+                in_range1.intersection(in_range2),
+            ),
+            (
+                {
+                    "field1": {
+                        "isMatching": True,
+                        "range": intervals[0],
+                        "exclude": True,
+                    },
+                    "field2": {
+                        "isMatching": True,
+                        "range": intervals[1],
+                        "exclude": False,
+                    },
+                },
+                nin_range1.intersection(in_range2),
+            ),
+            (
+                {
+                    "field1": {
+                        "isMatching": True,
+                        "range": intervals[0],
+                        "exclude": False,
+                    },
+                    "field2": {
+                        "isMatching": True,
+                        "range": intervals[1],
+                        "exclude": True,
+                    },
+                },
+                in_range1.intersection(nin_range2),
+            ),
+            (
+                {
+                    "field1": {
+                        "isMatching": True,
+                        "range": intervals[0],
+                        "exclude": True,
+                    },
+                    "field2": {
+                        "isMatching": True,
+                        "range": intervals[1],
+                        "exclude": True,
+                    },
+                },
+                nin_range1.intersection(nin_range2),
+            ),
+        ]
+        for filter, expected in filters:
+            view = fosv.get_view(dataset.name, filters=filter)
+            self.assertEqual(len(view), len(expected))
+            self.assertEqual({sample.id for sample in view}, expected)
+
+
+# making match stage filters {'created_at': {'isMatching': True, 'exclude': True, 'range': [1740188819225.95, 1740189455632.93], 'none': True, 'nan': True, 'inf': True, 'ninf': True}, 'last_modified_at': {'isMatching': True, 'exclude': False, 'range': [1743104634233.11, 1743382219212], 'none': True, 'nan': True, 'inf': True, 'ninf': True}}
+# making match stage filters {'created_at': {'isMatching': True, 'exclude': True, 'range': [1740188819225.95, 1740189455632.93], 'none': True, 'nan': True, 'inf': True, 'ninf': True}, 'last_modified_at': {'isMatching': True, 'exclude': False, 'range': [1743104634233.11, 1743382219212], 'none': True, 'nan': True, 'inf': True, 'ninf': True}}
 class ServerDocTests(unittest.TestCase):
     def test_dataset_doc(self):
         doc = Dataset.modifier({"_id": "id"})
