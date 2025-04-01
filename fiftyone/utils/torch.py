@@ -1572,9 +1572,16 @@ class FiftyOneTorchDataset(Dataset):
 
         self.cached_fields = None
         self.cache_field_names = cache_field_names
-        if cache_field_names is not None:
+        if self.cache_field_names is not None:
             self.cached_fields = {}
-            for fn in cache_field_names:
+
+            to_load = self.cache_field_names
+            if "id" in self.cache_field_names:
+                # we already load the id field
+                to_load.remove("id")
+                self.cached_fields["id"] = self.ids
+
+            for fn in to_load:
                 self.cached_fields[fn] = self._load_field(
                     samples, fn, local_process_group
                 )
