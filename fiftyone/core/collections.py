@@ -3915,7 +3915,7 @@ class SampleCollection(object):
         Args:
             map_fcn: Function to apply to each sample.
             workers (None): Number of workers.
-            batch_method: Explcit method for batching samples.
+            batch_method: Explicit method for batching samples. Supported methods are 'id' and 'slice'
             progress (None): Whether to show progress bar.
             parallelize_method: Explcit method to use for parallelization.
             skip_failures (True): whether to gracefully continue without
