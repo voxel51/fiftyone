@@ -3915,9 +3915,11 @@ class SampleCollection(object):
         Args:
             map_fcn: Function to apply to each sample.
             workers (None): Number of workers.
-            batch_method: Explicit method for batching samples. Supported methods are 'id' and 'slice'
+            batch_method: Explicit method for batching samples. Supported
+              methods are 'id' and 'slice'
             progress (None): Whether to show progress bar.
             parallelize_method: Explicit method to use for parallelization.
+              Supported methods are 'process' and 'thread'.
             skip_failures (True): whether to gracefully continue without
                 raising an error if the update function raises an
                 exception for a sample.
@@ -3935,7 +3937,7 @@ class SampleCollection(object):
             map_fcn,
             progress=progress,
             save=save,
-            kip_failures=skip_failures
+            kip_failures=skip_failures,
         )
 
     def update_samples(
@@ -3954,9 +3956,11 @@ class SampleCollection(object):
         Args:
             update_fcn: Function to apply to each sample.
             workers (None): Number of workers.
-            batch_method: Explcit method for batching samples.
+            batch_method: Explicit method for batching samples. Supported
+              methods are 'id' and 'slice'.
             progress (None): Whether to show progress bar.
-            parallelize_method: Explcit method to use for parallelization.
+            parallelize_method: Explicit method to use for parallelization.
+              Supported methods are 'process' and 'thread'.
             skip_failures (True): whether to gracefully continue without
                 raising an error if the update function raises an
                 exception for a sample.
