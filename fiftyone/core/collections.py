@@ -3937,7 +3937,7 @@ class SampleCollection(object):
             map_fcn,
             progress=progress,
             save=save,
-            kip_failures=skip_failures,
+            skip_failures=skip_failures,
         )
 
     def update_samples(
