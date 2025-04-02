@@ -104,6 +104,30 @@ class TestInMemoryExecutionStoreRepo(unittest.TestCase):
         key_doc = self.repo.get_key(store_name, key)
         self.assertEqual(key_doc.policy, "evict")
 
+    def test_update_policy(self):
+        store_name = "policy_store"
+        key = "policy_key"
+        value = "value3"
+        # Set the key with no policy
+        self.repo.set_key(store_name, key, value)
+        self.assertTrue(self.repo.has_key(store_name, key))
+
+        # Update the policy to EVICT
+        self.repo.update_policy(store_name, key, policy="evict")
+        self.assertTrue(self.repo.has_key(store_name, key))
+        key_doc = self.repo.get_key(store_name, key)
+        self.assertIsNotNone(key_doc)
+        self.assertEqual(key_doc.policy, "evict")
+
+    def test_ttl_implied_policy(self):
+        store_name = "ttl_policy_store"
+        key = "ttl_key"
+        value = "value4"
+        # Set the key with a TTL (implying EVICT policy)
+        self.repo.set_key(store_name, key, value, ttl=60)
+        key_doc = self.repo.get_key(store_name, key)
+        self.assertEqual(key_doc.policy, "evict")
+
     def test_delete_key(self):
         store_name = "delete_key_store"
         key = "delete_key"
