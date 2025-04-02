@@ -3917,7 +3917,7 @@ class SampleCollection(object):
             workers (None): Number of workers.
             batch_method: Explicit method for batching samples. Supported methods are 'id' and 'slice'
             progress (None): Whether to show progress bar.
-            parallelize_method: Explcit method to use for parallelization.
+            parallelize_method: Explicit method to use for parallelization.
             skip_failures (True): whether to gracefully continue without
                 raising an error if the update function raises an
                 exception for a sample.
