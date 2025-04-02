@@ -1694,6 +1694,19 @@ class FiftyOneTorchDataset(Dataset):
             }
             return self.get_item(sample_dict)
 
+    def __getitems__(self, indices):
+        if self._samples is None:
+            self._load_samples()
+
+        if self.cached_fields is None:
+            ids = [self.ids[i] for i in indices]
+            # pylint: disable=unsubscriptable-object
+            samples = self._dataset.select(ids, ordered=True)
+            return [self.get_item(s) for s in samples]
+
+        else:
+            return [self.__getitem__(i) for i in indices]
+
     def __len__(self):
         return len(self.ids)
 
