@@ -47,6 +47,7 @@ class ThreadMapper(fomm.LocalMapper[T]):
         sample_collection: SampleCollection[T],
         workers: Optional[int] = None,
         batch_method: Optional[str] = None,
+        batch_size: Optional[int] = None,
         **kwargs,
     ):
         if workers is None:
@@ -54,7 +55,9 @@ class ThreadMapper(fomm.LocalMapper[T]):
             # a opportunity to determine a better default for threads.
             workers = fou.recommend_process_pool_workers()
 
-        super().__init__(sample_collection, workers, batch_method, **kwargs)
+        super().__init__(
+            sample_collection, workers, batch_method, batch_size, **kwargs
+        )
 
     @staticmethod
     def __worker(

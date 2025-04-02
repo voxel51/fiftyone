@@ -40,6 +40,7 @@ class Mapper(Generic[T], abc.ABC):
         sample_collection: SampleCollection[T],
         workers: Optional[int] = None,
         batch_method: Optional[str] = None,
+        batch_size: Optional[int] = None,
         # kwargs are for sub-classes that have extra parameters
         **kwargs,  # pylint:disable=unused-argument
     ):
@@ -49,6 +50,7 @@ class Mapper(Generic[T], abc.ABC):
         self._sample_collection = sample_collection
         self._workers = workers
         self._batch_method = batch_method or fomb.SampleBatcher.default()
+        self._batch_size = batch_size
 
     @property
     def batch_method(self) -> str:
@@ -59,6 +61,11 @@ class Mapper(Generic[T], abc.ABC):
     def workers(self) -> int:
         """Number of workers"""
         return self._workers
+
+    @property
+    def batch_size(self) -> Optional[int]:
+        """Number of samples per worker batch"""
+        return self._batch_size
 
     @abc.abstractmethod
     def map_samples(
@@ -185,6 +192,7 @@ class LocalMapper(Mapper[T], Generic[T], abc.ABC):
                     self._batch_method,
                     self._sample_collection,
                     self._workers,
+                    self._batch_size,
                 ),
                 map_fcn,
                 progress=progress,

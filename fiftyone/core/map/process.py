@@ -45,6 +45,7 @@ class ProcessMapper(fomm.LocalMapper[T]):
         sample_collection: SampleCollection[T],
         workers: Optional[int] = None,
         batch_method: Optional[str] = None,
+        batch_size: Optional[int] = None,
         **kwargs,
     ):
         # Check if running in sub-process and if so limit "workers" to 1.
@@ -53,7 +54,9 @@ class ProcessMapper(fomm.LocalMapper[T]):
         elif workers is None:
             workers = fou.recommend_process_pool_workers()
 
-        super().__init__(sample_collection, workers, batch_method, **kwargs)
+        super().__init__(
+            sample_collection, workers, batch_method, batch_size, **kwargs
+        )
 
     def _map_sample_batches(
         self,

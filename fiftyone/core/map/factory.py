@@ -62,6 +62,7 @@ class MapperFactory:
         sample_collection: fomm.SampleCollection[T],
         workers: Optional[int],
         batch_method: Optional[str] = None,
+        batch_size: Optional[int] = None,
         **mapper_extra_kwargs,
     ) -> fomm.Mapper:
         """Create a mapper instance"""
@@ -85,5 +86,9 @@ class MapperFactory:
             raise ValueError(f"Could not create mapper for: '{key}'")
 
         return cls.__MAPPER_CLASSES[key](
-            sample_collection, workers, batch_method, **mapper_extra_kwargs
+            sample_collection,
+            workers,
+            batch_method,
+            batch_size,
+            **mapper_extra_kwargs,
         )
