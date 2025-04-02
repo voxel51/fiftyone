@@ -10,6 +10,7 @@ from bson import ObjectId
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 import fiftyone.core.fields as fof
+from fiftyone.core.expressions import ViewField as F
 
 from .utils import (
     get_scenario_example,
@@ -234,7 +235,13 @@ class ConfigureScenario(foo.Operator):
         if scenario_type == "sample_field":
             scenario_field = ctx.params.get("scenario_field")
             for v in values:
-                subsets[v] = dict(type="field", field=scenario_field, value=v)
+                subsets[v] = dict(
+                    type="field",
+                    field=scenario_field,
+                    value=(
+                        True if v == "true" else False if v == "false" else v
+                    ),
+                )
             self.render_sample_distribution_graph(ctx, inputs, subsets)
 
         if scenario_type == "view":
@@ -456,6 +463,7 @@ class ConfigureScenario(foo.Operator):
             )
 
         obj = types.Object()
+        # NOTE: saved views goes through this
         if isinstance(values, list):
             values = {v: 0 for v in values}
 
@@ -515,7 +523,13 @@ class ConfigureScenario(foo.Operator):
         if isinstance(field, fof.FloatField):
             return "CODE", "FLOAT_TYPE"
         if isinstance(field, fof.BooleanField):
-            return "CHECKBOX", [True, False]
+            # example counts {True: 2, None: 135888}
+            counts = ctx.dataset.count_values(field_name)
+            return "CHECKBOX", {
+                "true": counts.get(True, 0),
+                "false": counts.get(False, 0),
+                "none": counts.get(None, 0),
+            }
 
         # Retrieve distinct values (may be slow for large datasets)
         distinct_values = ctx.dataset.distinct(field_name)
@@ -833,6 +847,13 @@ class ConfigureScenario(foo.Operator):
 
         return stack
 
+    def extract_view_selections(self, ctx):
+        checkbox_view = ctx.params.get("checkbox_view_stack", {}) or {}
+        views_checkbox_view = checkbox_view.get("view_values", {}) or {}
+        return [
+            name for name, selected in views_checkbox_view.items() if selected
+        ]
+
     def execute(self, ctx):
         scenario_type = self.get_scenario_type(ctx.params)
         if scenario_type is None:
@@ -845,7 +866,7 @@ class ConfigureScenario(foo.Operator):
         store = ctx.store(STORE_NAME)
         scenarios = store.get("scenarios") or {}
 
-        eval_id_a, eval_id_b = self.extract_evaluation_ids(ctx)
+        eval_id_a, _ = self.extract_evaluation_ids(ctx)
         if eval_id_a is None:
             raise ValueError("No evaluation ids found")
 
@@ -864,10 +885,7 @@ class ConfigureScenario(foo.Operator):
 
             scenario_subsets = custom_code
         if scenario_type == "view":
-            saved_views = ctx.params.get("views_values", {})
-            scenario_subsets = [
-                name for name, selected in saved_views.items() if selected
-            ]
+            scenario_subsets = self.extract_view_selections(ctx)
             if len(scenario_subsets) == 0:
                 raise ValueError("No saved views selected")
 
@@ -878,7 +896,6 @@ class ConfigureScenario(foo.Operator):
             "name": scenario_name,
             "type": scenario_type,
             "subsets": scenario_subsets,
-            "compare_id": eval_id_b,
         }
 
         scenarios[eval_id_a] = scenarios_for_eval

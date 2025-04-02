@@ -49,7 +49,8 @@ export default function EvaluationScenarioAnalysis(props) {
           onClick={() => {
             promptOperator(panelId, {
               params: {
-                gt_field: evaluationConfig.gt_field,
+                // TODO: RECENT MERGE BROKE THIS
+                gt_field: evaluationConfig?.gt_field || "ground_truth",
                 scenario_type: "view",
                 scenario_name: "test", // # TODO: Edit will pass current name
               },
