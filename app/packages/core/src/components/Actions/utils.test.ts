@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import * as utils from "../../../src/components/Actions/utils";
+import * as utils from "./utils";
 
 vi.mock("recoil");
 vi.mock("recoil-relay");
@@ -40,5 +40,12 @@ describe("Resolves tag counts", () => {
       (<unknown>utils.tagStats({ modal: true, labels: true }))
     );
     expect(labelsModal()).toStrictEqual({ one: 1, two: 1 });
+  });
+
+  it("override filters for only a modal sample selection", () => {
+    expect(utils.overrideFilters(false, new Set())).toBe(false);
+    expect(utils.overrideFilters(false, new Set("sample"))).toBe(false);
+    expect(utils.overrideFilters(false, new Set())).toBe(false);
+    expect(utils.overrideFilters(true, new Set("sample"))).toBe(true);
   });
 });
