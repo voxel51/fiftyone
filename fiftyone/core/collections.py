@@ -3904,7 +3904,7 @@ class SampleCollection(object):
         workers: Optional[int] = None,
         batch_method: str = "id",
         progress: Optional[Union[bool, Literal["worker"]]] = None,
-        parallelize_method: str = "process",
+        parallelize_method: Optional[str] = None,
         skip_failures: bool = False,
         save: bool = False,
     ):
@@ -3917,10 +3917,11 @@ class SampleCollection(object):
             workers (None): Number of workers.
             batch_method: Explcit method for batching samples.
             progress (None): Whether to show progress bar.
-            parallelize_method: Explcit method to use for parallelization.
-            skip_failures (True): whether to gracefully continue without
-                raising an error if the update function raises an
-                exception for a sample.
+            parallelize_method (None): Method for parallelization ('process'
+              or 'thread'). If None, we will use the value from config. If the
+                value in config is None, we will default to 'process'.
+            skip_failures (True): whether to gracefully continue without raising an
+                error if the map function raises an exception for a sample.
             save (False): Whether to save any modified samples.
 
         Returns:
@@ -3935,7 +3936,7 @@ class SampleCollection(object):
             map_fcn,
             progress=progress,
             save=save,
-            kip_failures=skip_failures
+            kip_failures=skip_failures,
         )
 
     def update_samples(
@@ -3945,7 +3946,7 @@ class SampleCollection(object):
         workers: Optional[int] = None,
         batch_method: str = None,
         progress: Optional[Union[bool, Literal["worker"]]] = None,
-        parallelize_method: str = None,
+        parallelize_method: Optional[str] = None,
         skip_failures=True,
     ):
         """
@@ -3956,10 +3957,11 @@ class SampleCollection(object):
             workers (None): Number of workers.
             batch_method: Explcit method for batching samples.
             progress (None): Whether to show progress bar.
-            parallelize_method: Explcit method to use for parallelization.
-            skip_failures (True): whether to gracefully continue without
-                raising an error if the update function raises an
-                exception for a sample.
+            parallelize_method (None): Method for parallelization ('process'
+              or 'thread'). If None, we will use the value from config. If the
+                value in config is None, we will default to 'process'.
+            skip_failures (True): whether to gracefully continue without raising an
+                error if the update function raises an exception for a sample.
         """
         mapper = focm.MapperFactory.create(
             parallelize_method, workers, batch_method

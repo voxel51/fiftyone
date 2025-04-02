@@ -278,3 +278,96 @@ class TestCreate:
                 )
 
                 assert result == thread_mapper_cls.create.return_value
+
+
+class TestConfigDefaultMethod:
+    """Test config handling for parallelize_method"""
+
+    def test_use_config_parallelize_method(self):
+        """Test using default_map_samples_method from config when parallelize_method is None"""
+
+        config_method = "thread"  # Use thread as the config value
+
+        with mock.patch.object(focc, "load_config") as load_config:
+            config = load_config.return_value
+            # Set the config to use thread as default method
+            config.default_map_samples_method = config_method
+
+            # Mock the default_parallelization_method property access
+            type(config).default_parallelization_method = mock.PropertyMock(
+                return_value=config_method
+            )
+
+            # Call create with None as mapper_key
+            result = fomf.MapperFactory.create(
+                mapper_key=None,
+                workers=2,
+                batch_method="id",
+            )
+
+            # Check that ThreadMapper.create was called
+            assert fomf.MapperFactory._MAPPERS["thread"].create.called
+            assert (
+                result
+                == fomf.MapperFactory._MAPPERS["thread"].create.return_value
+            )
+
+        # If key is passed, use the value from key
+        mapper_key = "process"
+
+        with mock.patch.object(focc, "load_config") as load_config:
+            config = load_config.return_value
+            # Set the config to use thread as default method
+            config.default_map_samples_method = config_method
+
+            # Mock the default_parallelization_method property access
+            type(config).default_parallelization_method = mock.PropertyMock(
+                return_value=config_method
+            )
+
+            # Call create with explicit mapper_key
+            result = fomf.MapperFactory.create(
+                mapper_key=mapper_key,
+                workers=2,
+                batch_method="id",
+            )
+
+            # Check that ProcessMapper.create was called
+            assert fomf.MapperFactory._MAPPERS["process"].create.called
+            assert (
+                result
+                == fomf.MapperFactory._MAPPERS["process"].create.return_value
+            )
+
+    def test_fallback_to_default_when_config_none(self):
+        """Test fallback to default method when both parameter and config value are None"""
+
+        # Default to process when config value is None
+        with mock.patch.object(
+            focc, "load_config"
+        ) as load_config, mock.patch.object(
+            fomp, "check_multiprocessing_support", return_value=True
+        ):
+
+            config = load_config.return_value
+            # Set the config value to None
+            config.default_map_samples_method = None
+
+            # Mock the default_parallelization_method property access
+            type(config).default_parallelization_method = mock.PropertyMock(
+                return_value=None
+            )
+
+            # Call create with None as mapper_key
+            result = fomf.MapperFactory.create(
+                mapper_key=None,
+                workers=2,
+                batch_method="id",
+            )
+
+            # Should use ProcessMapper since check_multiprocessing_support returns True
+            assert fomf.MapperFactory._MAPPERS["process"].create.called
+            assert (
+                result
+                == fomf.MapperFactory._MAPPERS["process"].create.return_value
+            )

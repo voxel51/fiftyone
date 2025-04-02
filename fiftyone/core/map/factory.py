@@ -5,7 +5,6 @@ Factory for mapping backends
 |
 """
 
-import multiprocessing
 from typing import Dict, List, Optional, Type
 
 
@@ -16,12 +15,17 @@ import fiftyone.core.map.process as fomp
 import fiftyone.core.map.threading as fomt
 
 
+class MapImplementation:
+    PROCESS = "process"
+    THREAD = "thread"
+
+
 class MapperFactory:
     """Manage mapper implementations"""
 
     _MAPPERS: Dict[str, Type[fomm.Mapper]] = {
-        "process": fomp.ProcessMapper,
-        "thread": fomt.ThreadMapper,
+        MapImplementation.PROCESS: fomp.ProcessMapper,
+        MapImplementation.THREAD: fomt.ThreadMapper,
     }
 
     _BATCHERS: Dict[str, fomb.SampleBatcher] = {
@@ -48,8 +52,10 @@ class MapperFactory:
         **mapper_extra_kwargs,
     ) -> fomm.Mapper:
         """Create a mapper instance"""
-
         config = focc.load_config()
+
+        if workers is None:
+            workers = config.default_map_workers
 
         if batch_method is None:
             batch_method = "id"
@@ -63,22 +69,18 @@ class MapperFactory:
         batcher = cls._BATCHERS[batch_method]
 
         # If the parallelization method is explicitly provided, use it no
-        # matter what.
+        # matter what, else read from config
         if mapper_key is None:
-            # If the default parallelization method is set in the config, use
-            # it no matter what for now . There was talk about how this
-            # behavior could change, (log a warning, explicitly forbid, etc).
-            # Once a determination has been made make the changes here.
             mapper_key = config.default_parallelization_method
 
-            # If no the parallelization method is not explicitly provided and
+            # If no  parallelization method is not explicitly provided and
             # no default was set, try to use multiprocessing as default, if it
             # looks like multiprocessing won’t work,  then use threading.
             if mapper_key is None:
                 mapper_key = (
-                    "process"
-                    if not multiprocessing.current_process().daemon
-                    else "thread"
+                    MapImplementation.PROCESS
+                    if fomp.check_multiprocessing_support()
+                    else MapImplementation.THREAD
                 )
 
         if mapper_key not in cls._MAPPERS:
