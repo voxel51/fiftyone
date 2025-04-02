@@ -9,7 +9,6 @@ Abstract mapping backend
 import abc
 from typing import List, Optional, TypeVar
 
-import numpy as np
 
 from fiftyone.core.map.typing import SampleCollection
 
@@ -18,26 +17,6 @@ T = TypeVar("T")
 
 class SampleBatch(abc.ABC):
     """A sample batch"""
-
-    @staticmethod
-    def _get_sample_collection_indexes(
-        sample_collection: SampleCollection[T],
-        workers: int,
-        batch_size: Optional[int] = None,
-    ):
-        n = len(sample_collection)
-
-        if batch_size is not None:
-            # Fixed size shards
-            edges = list(range(0, n + 1, batch_size))
-            if edges[-1] < n:
-                edges.append(n)
-        else:
-            # Split collection into exactly `num_workers` shards
-            edges = [int(round(b)) for b in np.linspace(0, n, workers + 1)]
-
-        for start_idx, stop_idx in zip(edges[:-1], edges[1:]):
-            yield (start_idx, stop_idx)
 
     @classmethod
     @abc.abstractmethod

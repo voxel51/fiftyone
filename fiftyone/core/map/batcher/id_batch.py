@@ -13,6 +13,7 @@ import bson
 
 import fiftyone.core.utils as fou
 import fiftyone.core.map.batcher.batch as fomb
+import fiftyone.core.map.batcher.slice_batch as foms
 from fiftyone.core.map.typing import SampleCollection
 
 fov = fou.lazy_import("fiftyone.core.view")
@@ -32,7 +33,6 @@ class SampleIdBatch(fomb.SampleBatch):
         )
 
     @classmethod
-    # pylint:disable-next=arguments-differ
     def split(
         cls,
         sample_collection: SampleCollection[T],
@@ -49,8 +49,8 @@ class SampleIdBatch(fomb.SampleBatch):
             batch_size = max_batch_size
 
         return [
-            cls(*ids[start_idx:stop_idx])
-            for start_idx, stop_idx in cls._get_sample_collection_indexes(
+            cls(*ids[batch.start_idx : batch.stop_idx])
+            for batch in foms.SampleSliceBatch.split(
                 sample_collection, num_workers, batch_size
             )
         ]
