@@ -31,7 +31,7 @@ class MapperFactory:
 
     @classmethod
     def batch_methods(cls) -> List[str]:
-        """Get available batcher keys"""
+        """Get available batch methods"""
         return sorted(cls._BATCH_CLASSES.keys())
 
     @classmethod
