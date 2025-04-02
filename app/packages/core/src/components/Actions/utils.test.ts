@@ -45,7 +45,7 @@ describe("Resolves tag counts", () => {
   it("override filters for only a modal sample selection", () => {
     expect(utils.overrideFilters(false, new Set())).toBe(false);
     expect(utils.overrideFilters(false, new Set("sample"))).toBe(false);
-    expect(utils.overrideFilters(false, new Set())).toBe(false);
+    expect(utils.overrideFilters(true, new Set())).toBe(false);
     expect(utils.overrideFilters(true, new Set("sample"))).toBe(true);
   });
 });
