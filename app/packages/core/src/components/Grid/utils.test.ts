@@ -22,4 +22,13 @@ describe("spotlight paging", () => {
       })
     ).toStrictEqual(NODE);
   });
+
+  it("throws error for unexpected sample type", () => {
+    const badNode = {
+      ...NODE,
+      __typename: "%other" as const,
+    };
+
+    expect(() => handleNode(badNode)).toThrow("unexpected sample type");
+  });
 });
