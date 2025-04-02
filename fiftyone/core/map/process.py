@@ -38,6 +38,15 @@ T = TypeVar("T")
 R = TypeVar("R")
 
 
+def check_multiprocessing_support():
+    """Checks if the current environment supports multiprocessing.
+
+    Returns:
+        True/False
+    """
+    return multiprocessing.current_process().daemon is False
+
+
 class ProcessMapper(fomm.LocalMapper):
     """Executes map_samples using multiprocessing."""
 
@@ -50,7 +59,8 @@ class ProcessMapper(fomm.LocalMapper):
         workers: Optional[int] = None,
         **__,
     ):
-        if multiprocessing.current_process().daemon:
+        # Check if running in sub-process and if so limit "workers" to 1.
+        if not check_multiprocessing_support():
             workers = 1
         elif workers is None:
             workers = (
