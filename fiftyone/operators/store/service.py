@@ -58,7 +58,10 @@ class ExecutionStoreService(object):
         self._repo: ExecutionStoreRepo = repo
 
     def create_store(
-        self, store_name: str, metadata: Optional[dict[str, Any]] = None
+        self,
+        store_name: str,
+        metadata: Optional[dict[str, Any]] = None,
+        policy: str = "persist",
     ) -> StoreDocument:
         """Creates a new store with the specified name.
 
@@ -68,7 +71,13 @@ class ExecutionStoreService(object):
         Returns:
             a :class:`fiftyone.store.models.StoreDocument`
         """
-        return self._repo.create_store(store_name, metadata=metadata)
+        return self._repo.create_store(
+            store_name, metadata=metadata, policy=policy
+        )
+
+    def clear_cache(self) -> None:
+        """Clears all cache entries in the execution stores."""
+        self._repo.clear_cache()
 
     def get_store(self, store_name: str) -> StoreDocument:
         """Gets the specified store for the current context.
@@ -140,20 +149,35 @@ class ExecutionStoreService(object):
         - If a TTL is provided, the key is **always** treated as ``policy="evict"``.
 
         Args:
-            store_name (str): The name of the store to set the key in.
-            key (str): The key to set.
-            value (Any): The value to associate with the key.
-            ttl (Optional[int]): Optional TTL (in seconds) after which the key
-                will expire and be automatically removed.
-            policy (str): The eviction policy for the key. One of:
-                - ``"persist"`` (default): Key is persistent until deleted.
-                - ``"evict"``: Key is eligible for eviction or cache clearing.
+            store_name: the name of the store
+            key: the key to set
+            value: the value to set
+            ttl (None): an optional TTL in seconds
+            policy (persist): the eviction policy for the key. Can be "persist" or "evict".
+                If "persist", the key will never be automatically removed.
+                If "evict", the key may be removed automatically if a TTL is set,
+                or manually via :meth:`clear_cache`.
 
         Returns:
             KeyDocument: The created or updated key document.
         """
         return self._repo.set_key(
             store_name, key, value, ttl=ttl, policy=policy
+        )
+
+    def set_cache_key(
+        self, store_name: str, key: str, value: Any, ttl: Optional[int] = None
+    ) -> KeyDocument:
+        """Sets the value of a cache key in the specified store.
+
+        Args:
+            store_name: the name of the store
+            key: the key to set
+            value: the value to set
+            ttl (None): an optional TTL in seconds
+        """
+        return self._repo.set_key(
+            store_name, key, value, ttl=ttl, policy="evict"
         )
 
     def has_key(self, store_name: str, key: str) -> bool:
