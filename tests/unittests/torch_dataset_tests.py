@@ -17,12 +17,12 @@ def id_get_item(sample):
 
 
 class ShortLivedDataset:
-    def __init__(self, **kwargs):
+    def __init__(self, num_samples=10, **kwargs):
         super().__init__()
         self._dataset = fo.Dataset(**kwargs)
 
         self._dataset.add_samples(
-            [fo.Sample(filepath=f"image{i}.png") for i in range(10)]
+            [fo.Sample(filepath=f"image{i}.png") for i in range(num_samples)]
         )
 
         self._dataset.persistent = True
@@ -101,6 +101,23 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
             self.assertTrue(
                 "id" not in torch_dataset.cached_fields,
                 "ID field found in cached fields",
+            )
+
+    def test_getitems(self):
+        with ShortLivedDataset(100) as dataset:
+            torch_dataset = dataset.to_torch(id_get_item)
+
+            indices = [12, 35, 66, 21, 4, 15]
+
+            ids = dataset.values("id")
+            ids = [ids[i] for i in indices]
+
+            _ids = torch_dataset.__getitems__(indices)
+
+            self.assertEqual(
+                _ids,
+                ids,
+                "Torch dataset getitem not equal to dataset values",
             )
 
 
