@@ -1,8 +1,10 @@
+import type { Method } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
-import { Method, selectedLabels, useBrowserStorage } from "@fiftyone/state";
+import { selectedLabels, useBrowserStorage } from "@fiftyone/state";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useMemo } from "react";
-import { Snapshot, selectorFamily, useRecoilCallback } from "recoil";
+import type { Snapshot } from "recoil";
+import { selectorFamily, useRecoilCallback } from "recoil";
 
 export const getQueryIds = async (
   snapshot: Snapshot,
@@ -10,13 +12,12 @@ export const getQueryIds = async (
 ): Promise<string[] | string | undefined> => {
   const selectedLabelIds = await snapshot.getPromise(fos.selectedLabelIds);
   const selectedLabels = await snapshot.getPromise(fos.selectedLabels);
-  const methods = await snapshot.getPromise(fos.similarityMethods);
-
-  const labels_field = methods.patches
-    .filter(([method]) => method.key === brainKey)
-    .map(([_, value]) => value)[0];
 
   if (selectedLabelIds.size) {
+    const methods = await snapshot.getPromise(fos.similarityMethods);
+    const labels_field = methods.patches
+      .filter(([method]) => method.key === brainKey)
+      .map(([_, value]) => value)[0];
     return [...selectedLabelIds].filter(
       (id) => selectedLabels[id].field === labels_field
     );
@@ -25,23 +26,6 @@ export const getQueryIds = async (
   const selectedSamples = Array.from(
     await snapshot.getPromise(fos.selectedSamples)
   );
-  const isPatches = await snapshot.getPromise(fos.isPatchesView);
-
-  if (isPatches) {
-    if (selectedSamples.length) {
-      return selectedSamples.map((id) => {
-        const sample = fos.getSample(id);
-        if (sample) {
-          return sample.sample[labels_field]._id as string;
-        }
-
-        throw new Error("sample not found");
-      });
-    }
-
-    return (await snapshot.getPromise(fos.modalSample)).sample[labels_field]
-      ._id as string;
-  }
 
   if (selectedSamples.length) {
     return [...selectedSamples];
