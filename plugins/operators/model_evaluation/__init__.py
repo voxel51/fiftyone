@@ -25,6 +25,14 @@ STORE_NAME = "model_evaluation_panel_builtin"
 
 
 class ConfigureScenario(foo.Operator):
+    custom_code_views = {
+        "CUSTOM_CODE": False,
+        "TOO_MANY_CATEGORIES": False,
+        "TOO_MANY_INT_CATEGORIES": False,
+        "FLOAT_TYPE": False,
+        "SLOW": False,
+    }
+
     @property
     def config(self):
         return foo.OperatorConfig(
@@ -293,22 +301,29 @@ class ConfigureScenario(foo.Operator):
             ),
         )
 
-    def extract_custom_code(self, ctx, example_type):
-        active_scenario_type = self.get_scenario_type(ctx.params)
-        code_key = f"code|{active_scenario_type}|{example_type}"
+    def get_custom_code_key(self, params):
+        scenario_type = self.get_scenario_type(params)
+
+        if scenario_type in ["label_attribute", "sample_field"]:
+            scenario_field = params.get("scenario_field", "")
+            return f"custom_code_{scenario_type}_{scenario_field}"
+
+        return "custom_code"
+
+    def extract_custom_code(self, ctx, example_type="CUSTOM_CODE"):
+        # NOTE: this was causing infinite loop
+        key = self.get_custom_code_key(ctx.params).replace(".", "_")
 
         custom_code = (
             ctx.params.get("custom_code_stack", {})
             .get("body_stack", {})
-            .get(code_key, "")
+            .get(key, "")
         )
 
-        if not custom_code:
-            custom_code = get_scenario_example(example_type)
+        custom_code = custom_code or get_scenario_example(example_type)
+        return custom_code, key
 
-        return custom_code, code_key
-
-    def render_custom_code(self, ctx, inputs, example_type="NORMAL"):
+    def render_custom_code(self, ctx, inputs, example_type="CUSTOM_CODE"):
         custom_code, code_key = self.extract_custom_code(ctx, example_type)
         stack = self.render_custom_code_content(inputs, custom_code, code_key)
 
@@ -418,22 +433,43 @@ class ConfigureScenario(foo.Operator):
                 with_description=f"{len(view_names)} saved views available",
             )
 
-    def render_checkbox_view(self, ctx, values, inputs, with_description=None):
-        params = ctx.params
+    def get_scenario_values_key(self, params):
+        """
+        returns a unique key that holds the latest selected values for a
+        - certain scenario type. has to be one of ("view", "label_attribute", "sample_field")
+        - certain scenario field (ex: "tags", "labels")
+        """
         scenario_type = self.get_scenario_type(params)
-        key = f"{scenario_type}_values"
-        selected_values_map = (
-            params.get("checkbox_view_stack", {}).get(key, {}) or {}
-        )
+        if scenario_type == "view":
+            return f"{scenario_type}_values"
 
-        # TODO: Ibrahim reproed once - Mani can't repro
-        selected_values = []
+        # a field has to be selected at this point
+        scenario_field = params.get("scenario_field", "")
+        if not scenario_field:
+            raise ValueError("Scenario field is missing")
+
+        return f"{scenario_type}_{scenario_field}_values"
+
+    def get_selected_values(self, params):
+        key = self.get_scenario_values_key(params)
+
+        # check if checkbox was used
+        selection_view = params.get("checkbox_view_stack", {}) or {}
+        selected_values_map = selection_view.get(key, {}) or None
+
+        # check if auto-complete was used
+        if not selected_values_map:
+            selected_values_map = params.get(key, {}) or {}
+
+        # TODO: why? cleanup
         if isinstance(selected_values_map, list):
-            selected_values = [key for key, val in selected_values_map if val]
-        else:
-            selected_values = [
-                key for key, val in selected_values_map.items() if val
-            ]
+            return key, selected_values_map
+
+        return key, [key for key, val in selected_values_map.items() if val]
+
+    def render_checkbox_view(self, ctx, values, inputs, with_description=None):
+        scenario_type = self.get_scenario_type(ctx.params)
+        key, selected_values = self.get_selected_values(ctx.params)
 
         stack = inputs.v_stack(
             "checkbox_view_stack",
@@ -562,11 +598,13 @@ class ConfigureScenario(foo.Operator):
 
         Eventually, if there are selected values, it attempts to render the sample distribution preview graph
         """
-        scenario_type = self.get_scenario_type(ctx.params)
-        component_key = f"classes_{scenario_type}"
-        self.render_use_custom_code_warning(inputs, reason="SLOW")
         values = values or []
+
+        scenario_type = self.get_scenario_type(ctx.params)
+        component_key = self.get_scenario_values_key(ctx.params)
         selected_values = ctx.params.get(component_key, []) or []
+
+        self.render_use_custom_code_warning(inputs, reason="SLOW")
 
         inputs.list(
             component_key,
@@ -847,13 +885,6 @@ class ConfigureScenario(foo.Operator):
 
         return stack
 
-    def extract_view_selections(self, ctx):
-        checkbox_view = ctx.params.get("checkbox_view_stack", {}) or {}
-        views_checkbox_view = checkbox_view.get("view_values", {}) or {}
-        return [
-            name for name, selected in views_checkbox_view.items() if selected
-        ]
-
     def execute(self, ctx):
         scenario_type = self.get_scenario_type(ctx.params)
         if scenario_type is None:
@@ -872,20 +903,34 @@ class ConfigureScenario(foo.Operator):
 
         scenarios_for_eval = scenarios.get(eval_id_a) or {}
 
-        # TODO: label-attribute and sample-field
-        if scenario_type == "custom_code":
-            custom_code = (
-                ctx.params.get("custom_code_stack", {})
-                .get("body_stack", {})
-                .get("custom_code", "")
+        # TODO
+        if scenario_type == "label_attribute":
+            print(
+                "saving label attribute",
+                ctx.params.get("scenario_label_attribute", ""),
             )
+        elif scenario_type == "sample_field":
+            _, scenario_subsets = self.get_selected_values(ctx.params)
+
+            if not scenario_subsets:
+                # check custom_code
+                custom_code, _ = self.extract_custom_code(ctx)
+                if custom_code:
+                    # NOTE: we have to do this to reconstruct the custom code back when edit / view later.
+                    scenario_type = "custom_code"
+                    scenario_subsets = custom_code
+                else:
+                    raise ValueError("No sample field selected")
+        elif scenario_type == "custom_code":
+            custom_code, _ = self.extract_custom_code(ctx)
             _, error = self.process_custom_code(ctx, custom_code)
             if error:
                 raise ValueError(f"Error in custom code: {error}")
 
             scenario_subsets = custom_code
-        if scenario_type == "view":
-            scenario_subsets = self.extract_view_selections(ctx)
+        elif scenario_type == "view":
+            _, scenario_subsets = self.get_selected_values(ctx.params)
+
             if len(scenario_subsets) == 0:
                 raise ValueError("No saved views selected")
 
