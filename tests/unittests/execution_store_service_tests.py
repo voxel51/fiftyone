@@ -9,7 +9,7 @@ FiftyOne execution store related unit tests.
 import pytest
 
 import fiftyone as fo
-from fiftyone.operators.store import ExecutionStoreService
+from fiftyone.operators.store import ExecutionStoreService, KeyPolicy
 
 from decorators import drop_collection, drop_datasets
 
@@ -394,3 +394,31 @@ def test_cleanup(svc, svc_with_dataset):
     assert svc_with_dataset.count_stores() == 1
     svc_with_dataset.cleanup()
     assert svc_with_dataset.has_store(B_STORE_NAME) is False
+
+
+@drop_datasets
+@drop_collection(TEST_COLLECTION_NAME)
+def test_clear_cache(svc):
+    svc.create_store("cache_store", policy=KeyPolicy.EVICT)
+    initial_store_count = svc.count_stores()  # Ensure the store is created
+    assert initial_store_count == 1, "There should be one store initially"
+    svc.set_cache_key("cache_store", "cache_key", "cache_value")
+    assert svc.has_key(
+        "cache_store", "cache_key"
+    ), "Cache key should be present"
+    initial_key_count = svc.count_keys("cache_store")
+    assert initial_key_count == 1, "There should be one key in the cache store"
+    # Clear the cache
+    svc.clear_cache()
+    # Verify that the cache has been cleared
+    assert not svc.has_key(
+        "cache_store", "cache_key"
+    ), "Cache key should be removed"
+    assert not svc.has_store("cache_store"), "Cache store should be removed"
+    final_store_count = svc.count_stores()
+    final_key_count = svc.count_keys("cache_store")
+    # Ensure that the store is deleted after clearing the cache
+    assert (
+        final_store_count == 0
+    ), "Store should be deleted after clearing cache"
+    assert final_key_count == 0, "No keys should remain after clearing cache"
