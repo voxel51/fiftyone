@@ -29,22 +29,6 @@ export const lookerOptions = selectorFamily<
   get:
     ({ modal, withFilter }) =>
     ({ get }) => {
-      const panels = get(atoms.lookerPanels);
-      const showConfidence = get(
-        selectors.appConfigOption({ modal: true, key: "showConfidence" })
-      );
-      const showIndex = get(
-        selectors.appConfigOption({ modal: true, key: "showIndex" })
-      );
-      const showLabel = get(
-        selectors.appConfigOption({ modal: true, key: "showLabel" })
-      );
-      const showTooltip = get(
-        selectors.appConfigOption({ modal: true, key: "showTooltip" })
-      );
-      const useFrameNumber = get(
-        selectors.appConfigOption({ modal: true, key: "useFrameNumber" })
-      );
       const globalMediaFallback = Boolean(
         get(selectors.appConfigOption({ modal: true, key: "mediaFallback" }))
       );
@@ -76,15 +60,35 @@ export const lookerOptions = selectorFamily<
         fields: get(atoms.colorScheme).colorscales ?? [],
       };
 
+      let extra = {};
+
+      // modal only configuration
+      if (modal) {
+        const panels = get(atoms.lookerPanels);
+        extra = {
+          showConfidence: get(
+            selectors.appConfigOption({ modal: true, key: "showConfidence" })
+          ),
+          showControls: true,
+          showTooltip: get(
+            selectors.appConfigOption({ modal: true, key: "showTooltip" })
+          ),
+          showHelp: panels.help.isOpen,
+          showIndex: get(
+            selectors.appConfigOption({ modal: true, key: "showIndex" })
+          ),
+          showJSON: panels.json.isOpen,
+          showLabel: get(
+            selectors.appConfigOption({ modal: true, key: "showLabel" })
+          ),
+          useFrameNumber: get(
+            selectors.appConfigOption({ modal: true, key: "useFrameNumber" })
+          ),
+          ...get(atoms.savedLookerOptions),
+        };
+      }
+
       return {
-        showJSON: panels.json.isOpen,
-        showHelp: panels.help.isOpen,
-        showConfidence,
-        showControls: true,
-        showIndex,
-        showLabel,
-        useFrameNumber,
-        showTooltip,
         activePaths,
         ...video,
         isPointcloudDataset: get(selectors.is3DDataset),
@@ -93,7 +97,6 @@ export const lookerOptions = selectorFamily<
         labelTagColors: get(atoms.colorScheme).labelTags ?? {},
         colorscale: colorscale,
         attributeVisibility: activeVisibility,
-        ...get(atoms.savedLookerOptions),
         selectedLabels: [...get(selectors.selectedLabelIds)],
         selectedLabelTags: getActiveLabelTags(
           isLabelTagActive,
@@ -112,6 +115,7 @@ export const lookerOptions = selectorFamily<
         ),
         pointFilter: get(skeletonFilter(modal)),
         mediaFallback,
+        ...extra,
       };
     },
 });
