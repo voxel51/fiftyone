@@ -21,13 +21,13 @@
 #  export PIP_EXTRA_INDEX_URL="https://${PIP_USER}:${PIP_PASS}@${GAR_PATH}"
 #  docker buildx build --push \
 #    --secret id=PIP_EXTRA_INDEX_URL \
-#    --build-arg GPT_PLUGIN_IMAGE="${GPT_IMAGE_NAME}" \
+#    --build-arg CV_BASE_IMAGE_NAME="${CV_BASE_IMAGE_NAME}" \
 #    --build-arg SDK_VERSION="${SDK_VERSION}" \
 #    -t "${INTERNAL_IMAGE_NAME}" --target internalrelease .
 
 
 ARG PYTHON_VERSION=3.11
-ARG GPT_PLUGIN_IMAGE_NAME=fiftyone-app-gpt:local
+ARG CV_BASE_IMAGE_NAME=fiftyone-teams-cv-full:local
 
 FROM python:${PYTHON_VERSION} AS builder
 ARG PIP_INDEX_URL=https://pypi.org/simple
@@ -43,31 +43,49 @@ FROM builder AS internal-wheelhouse
 ARG PIP_INDEX_URL=https://pypi.org/simple
 ARG SDK_VERSION
 
+# See Dockerfile-gpt about these dependenencies. These
+# dependencies may be removed if we don't think that the GPT
+# things are needed in the `internal` image.
 RUN --mount=type=secret,id=PIP_EXTRA_INDEX_URL \
     export PIP_EXTRA_INDEX_URL=$(cat /run/secrets/PIP_EXTRA_INDEX_URL) \
     && pip wheel --wheel-dir=/tmp/wheels \
     albumentations \
     darwin-fiftyone \
-    /tmp/wheels/fiftyone-*-py3-none-any.whl \
-    pyperclip \
-    sentence_transformers \
     databricks-sdk \
     databricks-vectorsearch \
-    "psycopg[binary]"
+    "httpx==0.27.2" \
+    "langchain-community==0.3.5" \
+    "langchain-core==0.3.15" \
+    "langchain-openai==0.2.6" \
+    "langchain==0.3.7" \
+    "openai==1.54.3" \
+    "psycopg[binary]" \
+    "pydantic>=2.0,<2.11" \
+    pyperclip \
+    sentence_transformers \
+    "tiktoken>=0.7.0" \
+    /tmp/wheels/fiftyone-*-py3-none-any.whl
 
-
-FROM ${GPT_PLUGIN_IMAGE_NAME} AS internalrelease
+FROM ${CV_BASE_IMAGE_NAME} AS internalrelease
 
 RUN --mount=type=cache,from=internal-wheelhouse,target=/wheelhouse,ro \
     pip --no-cache-dir install -q --no-index \
     --find-links=/wheelhouse/tmp/wheels \
     albumentations \
     darwin-fiftyone \
-    pyperclip \
-    sentence_transformers \
     databricks-sdk \
     databricks-vectorsearch \
-    "psycopg[binary]"
+    "httpx==0.27.2" \
+    "langchain-community==0.3.5" \
+    "langchain-core==0.3.15" \
+    "langchain-openai==0.2.6" \
+    "langchain==0.3.7" \
+    "openai==1.54.3" \
+    "psycopg[binary]" \
+    "pydantic>=2.0,<2.11" \
+    pyperclip \
+    sentence_transformers \
+    "tiktoken>=0.7.0"
 
 ### `fiftyone-app` image - last to make it the default
 FROM python:${PYTHON_VERSION}-slim AS release
