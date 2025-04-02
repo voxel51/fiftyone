@@ -494,6 +494,9 @@ class ExecutionContext(object):
         self._secrets = {}
         self._secrets_client = PluginSecretsResolver()
         self._required_secret_keys = required_secrets
+
+        self._prompt_id = request_params.get("prompt_id", None)
+
         if self._required_secret_keys:
             self._secrets_client.register_operator(
                 operator_uri=self._operator_uri,
@@ -737,6 +740,18 @@ class ExecutionContext(object):
     def query_performance(self):
         """Whether query performance is enabled."""
         return self.request_params.get("query_performance", None)
+
+    @property
+    def prompt_id(self):
+        """An identifier for the prompt, unique to each instance of a user
+        opening a prompt in the FiftyOne App.
+        """
+        return self._prompt_id
+
+    @property
+    def operator_uri(self):
+        """The URI of the target operator."""
+        return self._operator_uri
 
     def prompt(
         self,
