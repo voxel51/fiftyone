@@ -8,7 +8,7 @@ Sample batcher package declaration.
 
 import types
 
-from fiftyone.core.map.batcher.base import SampleBatch, SampleBatcher
+from fiftyone.core.map.batcher.batch import SampleBatch
 from fiftyone.core.map.batcher.id_batch import SampleIdBatch
 from fiftyone.core.map.batcher.slice_batch import SampleSliceBatch
 

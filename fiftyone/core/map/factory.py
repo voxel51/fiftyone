@@ -19,12 +19,12 @@ import fiftyone.core.map.threading as fomt
 class MapperFactory:
     """Manage mapper implementations"""
 
-    _MAPPERS: Dict[str, Type[fomm.Mapper]] = {
+    _MAPPER_CLASSES: Dict[str, Type[fomm.Mapper]] = {
         "process": fomp.ProcessMapper,
         "thread": fomt.ThreadMapper,
     }
 
-    _BATCHERS: Dict[str, fomb.SampleBatcher] = {
+    _BATCH_CLASSES: Dict[str, Type[fomb.SampleBatch]] = {
         "id": fomb.SampleIdBatch,
         "slice": fomb.SampleSliceBatch,
     }
@@ -32,12 +32,12 @@ class MapperFactory:
     @classmethod
     def batch_methods(cls) -> List[str]:
         """Get available batcher keys"""
-        return sorted(cls._BATCHERS.keys())
+        return sorted(cls._BATCH_CLASSES.keys())
 
     @classmethod
     def mapper_keys(cls) -> List[str]:
         """Get available mapper class keys"""
-        return sorted(cls._MAPPERS.keys())
+        return sorted(cls._MAPPER_CLASSES.keys())
 
     @classmethod
     def create(
@@ -54,13 +54,13 @@ class MapperFactory:
         if batch_method is None:
             batch_method = "id"
 
-        if batch_method not in cls._BATCHERS:
+        if batch_method not in cls._BATCH_CLASSES:
             raise ValueError(
                 f"Invalid `batch_method`: {batch_method}. Choose from: "
-                f"{', '.join(cls._BATCHERS.keys())}"
+                f"{', '.join(cls._BATCH_CLASSES.keys())}"
             )
 
-        batcher = cls._BATCHERS[batch_method]
+        batch_cls = cls._BATCH_CLASSES[batch_method]
 
         # If the parallelization method is explicitly provided, use it no
         # matter what.
@@ -81,15 +81,15 @@ class MapperFactory:
                     else "thread"
                 )
 
-        if mapper_key not in cls._MAPPERS:
+        if mapper_key not in cls._MAPPER_CLASSES:
             raise ValueError(
                 f"Invalid `mapper_key`: {mapper_key}. Choose from: "
-                f"{', '.join(cls._MAPPERS.keys())}"
+                f"{', '.join(cls._MAPPER_CLASSES.keys())}"
             )
 
-        return cls._MAPPERS[mapper_key].create(
+        return cls._MAPPER_CLASSES[mapper_key].create(
             config=config,
-            batcher=batcher,
+            batch_cls=batch_cls,
             workers=workers,
             **mapper_extra_kwargs,
         )

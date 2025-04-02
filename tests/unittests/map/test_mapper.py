@@ -7,7 +7,7 @@
 import collections
 import contextlib
 import random
-from typing import Callable, Iterator, Literal, Tuple, TypeVar, Union
+from typing import TypeVar
 from unittest import mock
 
 import bson
@@ -16,7 +16,6 @@ import pytest
 import fiftyone.core.sample as focs
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.mapper as fomm
-from fiftyone.core.map.typing import SampleCollection
 
 
 T = TypeVar("T")
@@ -72,21 +71,16 @@ def fixture_sample_collection(samples):
 def fixture_batcher():
     """mock batcher"""
 
-    return mock.create_autospec(fomb.SampleBatcher)
+    return mock.create_autospec(fomb.SampleBatch)
 
 
 class Mapper(fomm.LocalMapper):
     """Test implementation for abstract class"""
 
-    def _map_samples(
-        self,
-        sample_collection: SampleCollection[T],
-        map_fcn: Callable[[T], R],
-        *_,
-        progress: Union[bool, Literal["workers"]],
-        save: bool,
-        skip_failures: bool,
-    ) -> Iterator[Tuple[bson.ObjectId, Union[R, Exception]]]: ...
+    @classmethod
+    def create(cls, *_, **__): ...
+
+    def _map_samples_multiple_workers(self, *_, **__): ...
 
 
 @pytest.mark.parametrize(
@@ -122,7 +116,7 @@ class TestMapSamples:
         """Mapper instance"""
         mapper = Mapper(batcher, workers)
         # pylint:disable-next=protected-access
-        mapper._map_samples = mock.MagicMock()
+        mapper._map_samples_multiple_workers = mock.MagicMock()
         return mapper
 
     @pytest.fixture(name="map_fcn_side_effect")
@@ -131,26 +125,28 @@ class TestMapSamples:
 
         # Adding extra mock for validating check that occurs testing if the
         # map function is allowed.
-        return [mock.Mock(), *[mock.Mock() for _ in samples]]
+        return [mock.Mock() for _ in samples]
 
     @pytest.fixture(name="map_fcn")
     def map_fcn(self, map_fcn_side_effect):
         """Mock  map function"""
         return mock.Mock(side_effect=map_fcn_side_effect)
 
-    @pytest.fixture(name="map_samples_value")
-    def map_samples_value(self, samples, map_fcn):
+    @pytest.fixture(name="map_samples_multi_worker_val")
+    def map_samples_multi_worker_val(self, samples, map_fcn):
         """Private method return value"""
         return [[sample.id, None, map_fcn.return_value] for sample in samples]
 
-    @pytest.fixture(name="map_samples")
-    def map_samples(self, mapper, map_samples_value):
+    @pytest.fixture(name="map_samples_multiple_workers")
+    def map_samples_multiple_workers(
+        self, mapper, map_samples_multi_worker_val
+    ):
         """Mock private method"""
         # pylint:disable-next=protected-access
-        map_samples = mapper._map_samples
-        map_samples.return_value.__iter__.return_value = map_samples_value
+        func = mapper._map_samples_multiple_workers
+        func.return_value.__iter__.return_value = map_samples_multi_worker_val
 
-        return map_samples
+        return func
 
     @pytest.mark.parametrize(
         "skip_failures",
@@ -173,18 +169,16 @@ class TestMapSamples:
         samples,
         map_fcn,
         map_fcn_side_effect,
-        map_samples,
-        map_samples_value,
+        map_samples_multiple_workers,
+        map_samples_multi_worker_val,
     ):
         """Test map function error"""
 
         for idx, err in errors.items():
             if workers == 1:
-                # Adding one for validating check that occurs testing if the
-                # map function is allowed.
-                map_fcn_side_effect[idx + 1] = err
+                map_fcn_side_effect[idx] = err
             else:
-                map_samples_value[idx][1] = err
+                map_samples_multi_worker_val[idx][1] = err
 
         returned_sample_ids = []
         with contextlib.ExitStack() as ctx:
@@ -193,7 +187,11 @@ class TestMapSamples:
                 ctx.enter_context(err_ctx)
 
             #####
-            for sid, _ in mapper.map_samples(
+            # Calling protected method to skip validation check on "map_fcn",
+            # since thes tests rely on whether or not that mock was called a
+            # certain number of times.
+            # pylint: disable-next=protected-access
+            for sid, _ in mapper._map_samples(
                 sample_collection,
                 map_fcn,
                 progress=(progress := mock.Mock()),
@@ -215,7 +213,7 @@ class TestMapSamples:
             assert len(returned_sample_ids) == expected_err_idx
 
         if workers == 1:
-            assert not map_samples.called
+            assert not map_samples_multiple_workers.called
 
             sample_collection.iter_samples.assert_called_once_with(
                 progress=progress, autosave=save
@@ -232,18 +230,14 @@ class TestMapSamples:
                     if i <= expected_err_idx
                 ]
 
-            # Adding one for validating check that occurs testing if the map
-            # function is allowed.
-            assert map_fcn.call_count == expected_map_fcn_call_count + 1
+            assert map_fcn.call_count == expected_map_fcn_call_count
             map_fcn.assert_has_calls(expected_map_fcn_calls)
 
         else:
             assert not sample_collection.iter_samples.called
-            # Expecting one for validation check that occurs testing if the map
-            # function is allowed.
-            assert map_fcn.call_count == 1
+            assert not map_fcn.called
 
-            map_samples.assert_called_once_with(
+            map_samples_multiple_workers.assert_called_once_with(
                 sample_collection,
                 map_fcn,
                 progress=progress,
@@ -254,13 +248,22 @@ class TestMapSamples:
             assert not sample_collection.iter_samples.called
 
     def test_ok(
-        self, workers, mapper, sample_collection, samples, map_samples
+        self,
+        workers,
+        mapper,
+        sample_collection,
+        samples,
+        map_samples_multiple_workers,
     ):
         """Test happy path"""
 
         #####
         results = list(
-            mapper.map_samples(
+            # Calling protected method to skip validation check on "map_fcn",
+            # since thes tests rely on whether or not that mock was called a
+            # certain number of times.
+            # pylint: disable-next=protected-access
+            mapper._map_samples(
                 sample_collection,
                 map_fcn := mock.Mock(),
                 progress=(progress := mock.Mock()),
@@ -271,23 +274,19 @@ class TestMapSamples:
         #####
 
         if workers == 1:
-            assert not map_samples.called
+            assert not map_samples_multiple_workers.called
 
             sample_collection.iter_samples.assert_called_once_with(
                 progress=progress, autosave=save
             )
 
-            # Adding one for validating check that occurs testing if the map
-            # function is allowed.
-            assert map_fcn.call_count == len(samples) + 1
+            assert map_fcn.call_count == len(samples)
 
         else:
             assert not sample_collection.iter_samples.called
-            # Expecting one for validation check that occurs testing if the map
-            # function is allowed.
-            assert map_fcn.call_count == 1
+            assert not map_fcn.called
 
-            map_samples.assert_called_once_with(
+            map_samples_multiple_workers.assert_called_once_with(
                 sample_collection,
                 map_fcn,
                 progress=progress,

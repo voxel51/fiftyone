@@ -8,13 +8,13 @@ Abstract mapping backend
 
 from typing import List, Optional, TypeVar
 
-import fiftyone.core.map.batcher.base as fomb
+import fiftyone.core.map.batcher.batch as fomb
 from fiftyone.core.map.typing import SampleCollection
 
 T = TypeVar("T")
 
 
-class SampleSliceBatch(fomb.SampleBatcher, fomb.SampleBatch):
+class SampleSliceBatch(fomb.SampleBatch):
     """Sample batch using slices"""
 
     @classmethod

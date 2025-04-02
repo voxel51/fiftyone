@@ -56,7 +56,7 @@ class TestCreate:
 
         #####
         mapper = fomp.ProcessMapper.create(
-            config=config, batcher=mock.Mock(), workers=workers
+            config=config, batch_cls=mock.Mock(), workers=workers
         )
         #####
 
@@ -96,7 +96,7 @@ class TestCreate:
 
         #####
         mapper = fomp.ProcessMapper.create(
-            config=config, batcher=mock.Mock(), workers=workers
+            config=config, batch_cls=mock.Mock(), workers=workers
         )
         #####
 

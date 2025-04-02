@@ -16,6 +16,7 @@ from typing import (
     Literal,
     Optional,
     Tuple,
+    Type,
     TypeVar,
     Union,
 )
@@ -47,7 +48,7 @@ class ThreadMapper(fomm.LocalMapper):
         cls,
         *_,
         config: focc.FiftyOneConfig,
-        batcher: fomb.SampleBatcher,
+        batch_cls: Type[fomb.SampleBatch],
         workers: Optional[int] = None,
         **__,
     ):
@@ -60,7 +61,7 @@ class ThreadMapper(fomm.LocalMapper):
         if config.max_thread_pool_workers is not None:
             workers = min(workers, config.max_thread_pool_workers)
 
-        return cls(batcher, workers)
+        return cls(batch_cls, workers)
 
     @staticmethod
     def __worker(
@@ -95,7 +96,7 @@ class ThreadMapper(fomm.LocalMapper):
         finally:
             worker_done_event.set()
 
-    def _map_samples(
+    def _map_samples_multiple_workers(
         self,
         sample_collection: SampleCollection[T],
         map_fcn: Callable[[T], R],
@@ -109,7 +110,9 @@ class ThreadMapper(fomm.LocalMapper):
         worker_done_events: List[threading.Event] = []
         cancel_event = threading.Event()
 
-        sample_batches = self._batcher.split(sample_collection, self._workers)
+        sample_batches = self._batch_cls.split(
+            sample_collection, self._workers
+        )
 
         count = len(sample_batches)
         with concurrent.futures.ThreadPoolExecutor(

@@ -67,9 +67,9 @@ def fixture_mapper_factory(
     """patch mapper factory"""
 
     with mock.patch.object(
-        fomf.MapperFactory, "_MAPPERS", {}
+        fomf.MapperFactory, "_MAPPER_CLASSES", {}
     ) as mappers, mock.patch.object(
-        fomf.MapperFactory, "_BATCHERS", {}
+        fomf.MapperFactory, "_BATCH_CLASSES", {}
     ) as batchers:
         mappers["process"] = process_mapper_cls
         mappers["thread"] = thread_mapper_cls
@@ -117,11 +117,11 @@ class TestCreate:
         ):
             """test valid batch methods"""
 
-            expected_batcher = None
+            expected_batch_cls = None
             if batch_method in ("id", None):
-                expected_batcher = id_batcher
+                expected_batch_cls = id_batcher
             elif batch_method == "slice":
-                expected_batcher = slice_batcher
+                expected_batch_cls = slice_batcher
 
             key = "thread"
             expected_mapper_cls = thread_mapper_cls
@@ -137,7 +137,7 @@ class TestCreate:
 
             expected_mapper_cls.create.assert_called_once_with(
                 config=config,
-                batcher=expected_batcher,
+                batch_cls=expected_batch_cls,
                 workers=workers,
                 **kwargs,
             )
@@ -203,7 +203,7 @@ class TestCreate:
 
             expected_mapper_cls.create.assert_called_once_with(
                 config=config,
-                batcher=default_batcher,
+                batch_cls=default_batcher,
                 workers=workers,
                 **kwargs,
             )
@@ -243,7 +243,7 @@ class TestCreate:
                 assert not thread_mapper_cls.called
                 process_mapper_cls.create.assert_called_once_with(
                     config=config,
-                    batcher=default_batcher,
+                    batch_cls=default_batcher,
                     workers=workers,
                     **kwargs,
                 )
@@ -272,7 +272,7 @@ class TestCreate:
                 assert not process_mapper_cls.called
                 thread_mapper_cls.create.assert_called_once_with(
                     config=config,
-                    batcher=default_batcher,
+                    batch_cls=default_batcher,
                     workers=workers,
                     **kwargs,
                 )

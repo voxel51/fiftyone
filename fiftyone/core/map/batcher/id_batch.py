@@ -12,7 +12,7 @@ from typing import List, Optional, TypeVar
 import bson
 
 import fiftyone.core.utils as fou
-import fiftyone.core.map.batcher.base as fomb
+import fiftyone.core.map.batcher.batch as fomb
 from fiftyone.core.map.typing import SampleCollection
 
 fov = fou.lazy_import("fiftyone.core.view")
@@ -20,7 +20,7 @@ fov = fou.lazy_import("fiftyone.core.view")
 T = TypeVar("T")
 
 
-class SampleIdBatch(fomb.SampleBatcher, fomb.SampleBatch):
+class SampleIdBatch(fomb.SampleBatch):
     """Sample batch using ids"""
 
     @classmethod

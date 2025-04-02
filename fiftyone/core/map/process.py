@@ -16,6 +16,7 @@ from typing import (
     Literal,
     Optional,
     Tuple,
+    Type,
     TypeVar,
     Union,
 )
@@ -46,7 +47,7 @@ class ProcessMapper(fomm.LocalMapper):
         cls,
         *_,
         config: focc.FiftyOneConfig,
-        batcher: fomb.SampleBatcher,
+        batch_cls: Type[fomb.SampleBatch],
         workers: Optional[int] = None,
         **__,
     ):
@@ -61,9 +62,9 @@ class ProcessMapper(fomm.LocalMapper):
         if config.max_process_pool_workers is not None:
             workers = min(workers, config.max_process_pool_workers)
 
-        return cls(batcher, workers)
+        return cls(batch_cls, workers)
 
-    def _map_samples(
+    def _map_samples_multiple_workers(
         self,
         sample_collection: SampleCollection[T],
         map_fcn: Callable[[T], R],
@@ -103,7 +104,9 @@ class ProcessMapper(fomm.LocalMapper):
             dataset_name = sample_collection.name
             view_stages = None
 
-        sample_batches = self._batcher.split(sample_collection, self._workers)
+        sample_batches = self._batch_cls.split(
+            sample_collection, self._workers
+        )
 
         pool = ctx.Pool(
             processes=len(sample_batches),

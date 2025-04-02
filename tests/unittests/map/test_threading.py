@@ -63,7 +63,7 @@ class TestCreate:
 
         #####
         mapper = fomt.ThreadMapper.create(
-            config=config, batcher=mock.Mock(), workers=workers
+            config=config, batch_cls=mock.Mock(), workers=workers
         )
         #####
 
