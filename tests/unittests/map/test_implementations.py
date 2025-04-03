@@ -9,8 +9,7 @@ import contextlib
 import pytest
 
 import fiftyone as fo
-import fiftyone.core.map.process as fomp
-import fiftyone.core.map.threading as fomt
+import fiftyone.core.map as fomm
 
 
 INPUT_KEY = "input"
@@ -40,20 +39,14 @@ def fixture_dataset():
         fo.delete_dataset(dataset_name)
 
 
-@pytest.mark.parametrize(
-    "mapper_cls",
-    (
-        pytest.param(fomt.ThreadMapper, id="thread"),
-        pytest.param(fomp.ProcessMapper, id="process"),
-    ),
-)
+@pytest.mark.parametrize("mapper_key", fomm.MapperFactory.mapper_keys())
 class TestMapperImplementations:
     """test mapper implementations"""
 
     @pytest.fixture(name="mapper")
-    def fixture_mapper(self, mapper_cls, dataset):
+    def fixture_mapper(self, mapper_key):
         """Mapper instance"""
-        return mapper_cls(dataset, workers=WORKERS)
+        return fomm.MapperFactory.create(mapper_key, workers=WORKERS)
 
     class TestMapSamples:
         """test Mapper.map_samples"""
@@ -68,7 +61,6 @@ class TestMapperImplementations:
         )
         def test_map_fcn_err(self, mapper, dataset, skip_failures, save):
             """test error in map function"""
-
             err = Exception("Something went wrong")
 
             all_sample_ids = [sample.id for sample in dataset]
@@ -89,6 +81,7 @@ class TestMapperImplementations:
 
                 #####
                 for sample_id, _ in mapper.map_samples(
+                    dataset,
                     map_fnc(err_sample_id),
                     save=save,
                     progress=False,
@@ -123,7 +116,7 @@ class TestMapperImplementations:
 
             #####
             results = list(
-                mapper.map_samples(map_fcn, save=save, progress=False)
+                mapper.map_samples(dataset, map_fcn, save=save, progress=False)
             )
             #####
 
