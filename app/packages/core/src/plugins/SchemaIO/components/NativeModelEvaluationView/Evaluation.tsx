@@ -27,9 +27,7 @@ import {
   MenuItem,
   Select,
   Stack,
-  styled,
   SxProps,
-  Table,
   TableBody,
   TableCell,
   TableHead,
@@ -49,7 +47,7 @@ import Error from "./Error";
 import EvaluationIcon from "./EvaluationIcon";
 import EvaluationNotes from "./EvaluationNotes";
 import EvaluationPlot from "./EvaluationPlot";
-import EvaluationScenarioAnalysis from "./EvaluationScenarioAnalysis";
+import EvaluationScenarioAnalysis from "./evaluation/scenario";
 import Status from "./Status";
 import { ConcreteEvaluationType } from "./Types";
 import {
@@ -58,6 +56,7 @@ import {
   getNumericDifference,
   useTriggerEvent,
 } from "./utils";
+import EvaluationTable from "./components/EvaluationTable";
 
 const KEY_COLOR = "#ff6d04";
 const COMPARE_KEY_COLOR = "#03a9f4";
@@ -83,25 +82,17 @@ export default function Evaluation(props: EvaluationProps) {
     loadScenario,
   } = props;
   const theme = useTheme();
-  const [expanded, setExpanded] = React.useState("summary");
+  const [expanded, setExpanded] = React.useState("overview");
   const [mode, setMode] = useState("chart");
   const [editNoteState, setEditNoteState] = useState({ open: false, note: "" });
-  const [
-    classPerformanceConfig,
-    setClassPerformanceConfig,
-  ] = useState<PLOT_CONFIG_TYPE>({});
-  const [
-    classPerformanceDialogConfig,
-    setClassPerformanceDialogConfig,
-  ] = useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
-  const [
-    confusionMatrixConfig,
-    setConfusionMatrixConfig,
-  ] = useState<PLOT_CONFIG_TYPE>({ log: true });
-  const [
-    confusionMatrixDialogConfig,
-    setConfusionMatrixDialogConfig,
-  ] = useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
+  const [classPerformanceConfig, setClassPerformanceConfig] =
+    useState<PLOT_CONFIG_TYPE>({});
+  const [classPerformanceDialogConfig, setClassPerformanceDialogConfig] =
+    useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
+  const [confusionMatrixConfig, setConfusionMatrixConfig] =
+    useState<PLOT_CONFIG_TYPE>({ log: true });
+  const [confusionMatrixDialogConfig, setConfusionMatrixDialogConfig] =
+    useState<PLOT_CONFIG_DIALOG_TYPE>(DEFAULT_BAR_CONFIG);
   const [metricMode, setMetricMode] = useState("chart");
   const [classMode, setClassMode] = useState("chart");
   const [performanceClass, setPerformanceClass] = useState("precision");
@@ -1406,6 +1397,10 @@ export default function Evaluation(props: EvaluationProps) {
             </AccordionDetails>
           </Accordion>
           <Accordion
+            expanded={expanded === "scenario"}
+            onChange={(e, expanded) => {
+              setExpanded(expanded ? "scenario" : "");
+            }}
             disableGutters
             sx={{ borderRadius: 1, "&::before": { display: "none" } }}
           >
@@ -1727,15 +1722,6 @@ function ColorSquare(props: { color: string }) {
   );
 }
 
-const EvaluationTable = styled(Table)(({ theme }) => ({
-  ".MuiTableCell-root": {
-    border: `1px solid ${theme.palette.divider}`,
-  },
-}));
-EvaluationTable.defaultProps = {
-  size: "small",
-};
-
 const CLASS_LABELS = {
   "f1-score": "F1-Score",
   precision: "Precision",
@@ -1801,8 +1787,9 @@ function getConfigLabel({ config, type, dashed }) {
     type === "classPerformance"
       ? CLASS_PERFORMANCE_SORT_OPTIONS
       : CONFUSION_MATRIX_SORT_OPTIONS;
-  const sortByLabel = sortByLabels.find((option) => option.value === sortBy)
-    ?.label;
+  const sortByLabel = sortByLabels.find(
+    (option) => option.value === sortBy
+  )?.label;
   return dashed ? ` - ${sortByLabel}` : sortByLabel;
 }
 

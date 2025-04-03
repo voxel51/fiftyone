@@ -1,17 +1,24 @@
+import { usePanelEvent } from "@fiftyone/operators";
+import { usePanelId } from "@fiftyone/spaces";
+import { isNullish } from "@fiftyone/utilities";
+import { InsertChartOutlined, TableChartOutlined } from "@mui/icons-material";
 import {
   Button,
   CircularProgress,
   MenuItem,
   Select,
   Stack,
+  TableCell,
+  TableHead,
+  TableRow,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
-import EvaluationPlot from "./EvaluationPlot";
-import { isNullish } from "@fiftyone/utilities";
-import { usePanelEvent } from "@fiftyone/operators";
-import { usePanelId } from "@fiftyone/spaces";
-import { useTriggerEvent } from "./utils";
+import EvaluationTable from "../../components/EvaluationTable";
+import EvaluationPlot from "../../EvaluationPlot";
+import { formatValue, useTriggerEvent } from "../../utils";
 
 const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 
@@ -107,6 +114,7 @@ export default function EvaluationScenarioAnalysis(props) {
 function Scenario(props) {
   const { id, data, loadScenario } = props;
   const scenario = data?.[`scenario_${id}`];
+  const [mode, setMode] = useState("charts");
 
   useEffect(() => {
     if (!scenario) {
@@ -118,21 +126,189 @@ function Scenario(props) {
     return <CircularProgress />;
   }
 
-  console.log(">>>", scenario);
+  return (
+    <Stack>
+      <ToggleButtonGroup
+        value={mode}
+        exclusive
+        onChange={(e, mode) => {
+          setMode(mode);
+        }}
+        size="small"
+      >
+        <ToggleButton value="charts">
+          <InsertChartOutlined />
+        </ToggleButton>
+        <ToggleButton value="table">
+          <TableChartOutlined />
+        </ToggleButton>
+      </ToggleButtonGroup>
+      {mode === "charts" ? (
+        <ScenarioCharts data={scenario} />
+      ) : (
+        <ScenarioTable data={data} scenario={scenario} />
+      )}
+    </Stack>
+  );
+}
 
-  return <ScenarioCharts data={scenario} />;
+function ScenarioTable(props) {
+  return (
+    <Stack>
+      <PredictionStatisticsTable {...props} />
+      <ModelPerformanceMetricsTable {...props} />
+      <ConfidenceDistributionTable {...props} />
+    </Stack>
+  );
+}
+
+function PredictionStatisticsTable(props) {
+  const { scenario, data } = props;
+  const { subsets, subsets_data } = scenario;
+  const name = data?.view?.key;
+
+  return (
+    <Stack>
+      <Typography variant="h5">Prediction Statistics</Typography>
+      <EvaluationTable variant="card" size="medium">
+        <TableHead>
+          <TableRow>
+            <TableCell>Subset</TableCell>
+            <TableCell>{name}</TableCell>
+          </TableRow>
+        </TableHead>
+        {subsets.map((subset) => {
+          const subsetData = subsets_data[subset];
+          const { metrics } = subsetData;
+          return (
+            <TableRow key={subset}>
+              <TableCell>{subset}</TableCell>
+              <TableCell>
+                <Stack spacing={1}>
+                  <Stack direction="row" spacing={1}>
+                    <Typography color="secondary">TP:</Typography>
+                    <Typography>{metrics.tp}</Typography>
+                  </Stack>
+                  <Stack direction="row" spacing={1}>
+                    <Typography color="secondary">FP:</Typography>
+                    <Typography>{metrics.fp}</Typography>
+                  </Stack>
+                  <Stack direction="row" spacing={1}>
+                    <Typography color="secondary">FN:</Typography>
+                    <Typography>{metrics.fn}</Typography>
+                  </Stack>
+                </Stack>
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </EvaluationTable>
+    </Stack>
+  );
+}
+
+function SelectSubset(props) {
+  const { subsets, selected, setSelected } = props;
+
+  return (
+    <Stack>
+      <Typography>Select a subset:</Typography>
+      <Select
+        size="small"
+        defaultValue={selected}
+        onChange={(e) => {
+          setSelected(e.target.value);
+        }}
+      >
+        {subsets.map((subset) => {
+          return (
+            <MenuItem value={subset} key={subset}>
+              <Typography>{subset}</Typography>
+            </MenuItem>
+          );
+        })}
+      </Select>
+    </Stack>
+  );
+}
+
+function ModelPerformanceMetricsTable(props) {
+  const { scenario, data } = props;
+  const { subsets, subsets_data } = scenario;
+  const [subset, setSubset] = useState(subsets[0]);
+  const name = data?.view?.key;
+
+  return (
+    <Stack>
+      <Typography variant="h5">Model Performance Metrics</Typography>
+      <SelectSubset
+        subsets={subsets}
+        selected={subset}
+        setSelected={setSubset}
+      />
+      <EvaluationTable variant="card" size="medium">
+        <TableHead>
+          <TableRow>
+            <TableCell>Metric</TableCell>
+            <TableCell>{name}</TableCell>
+          </TableRow>
+        </TableHead>
+        {MODEL_PERFORMANCE_METRICS.map(({ label, key }) => {
+          const subsetData = subsets_data[subset];
+          const { metrics } = subsetData;
+          const value = metrics[key];
+          return (
+            <TableRow key={key}>
+              <TableCell>{label}</TableCell>
+              <TableCell>{formatValue(value)}</TableCell>
+            </TableRow>
+          );
+        })}
+      </EvaluationTable>
+    </Stack>
+  );
+}
+
+function ConfidenceDistributionTable(props) {
+  const { scenario, data } = props;
+  const { subsets, subsets_data } = scenario;
+  const name = data?.view?.key;
+
+  return (
+    <Stack>
+      <Typography variant="h5">Confidence Distribution</Typography>
+      <EvaluationTable variant="card" size="medium">
+        <TableHead>
+          <TableRow>
+            <TableCell>Subset</TableCell>
+            <TableCell>{name} (Average Confidence)</TableCell>
+          </TableRow>
+        </TableHead>
+        {subsets.map((subset) => {
+          const subsetData = subsets_data[subset];
+          const { metrics } = subsetData;
+          return (
+            <TableRow key={subset}>
+              <TableCell>{subset}</TableCell>
+              <TableCell>{formatValue(metrics.average_confidence)}</TableCell>
+            </TableRow>
+          );
+        })}
+      </EvaluationTable>
+    </Stack>
+  );
 }
 
 function ScenarioCharts(props) {
   const { data } = props;
   return (
     <Stack>
-      <ScenarioPredictionStatistics data={data} />
+      <PredictionStatisticsChart data={data} />
       <ScenarioModelPerformance data={data} />
-      <ScenarioConfusionMatrix data={data} />
-      <ScenarioConfidenceDistribution data={data} />
-      <ScenarioMetricPerformance data={data} />
-      <ScenarioSubsetDistribution data={data} />
+      <ConfusionMatrixChart data={data} />
+      <ConfidenceDistributionChart data={data} />
+      <MetricPerformanceChart data={data} />
+      <SubsetDistributionChart data={data} />
     </Stack>
   );
 }
@@ -166,22 +342,11 @@ function ScenarioModelPerformance(props) {
   return (
     <Stack>
       <Typography variant="h5">Model Performance</Typography>
-      <Typography>Select a subset:</Typography>
-      <Select
-        size="small"
-        defaultValue={subset}
-        onChange={(e) => {
-          setSubset(e.target.value);
-        }}
-      >
-        {subsets.map((subset) => {
-          return (
-            <MenuItem value={subset} key={subset}>
-              <Typography>{subset}</Typography>
-            </MenuItem>
-          );
-        })}
-      </Select>
+      <SelectSubset
+        subsets={subsets}
+        selected={subset}
+        setSelected={setSubset}
+      />
       <EvaluationPlot
         data={[
           {
@@ -204,7 +369,7 @@ function ScenarioModelPerformance(props) {
   );
 }
 
-function ScenarioPredictionStatistics(props) {
+function PredictionStatisticsChart(props) {
   const { data } = props;
   const { subsets_data } = data;
 
@@ -230,37 +395,41 @@ function ScenarioPredictionStatistics(props) {
   );
 }
 
-function ScenarioConfusionMatrix(props) {
+function ConfusionMatrixChart(props) {
   const { data } = props;
-  const { subsets_data } = data;
-
-  const zValues = [
-    [1, null, 30, 50, 1],
-    [20, 1, 60, 80, 30],
-    [30, 60, 1, -10, 20],
-  ];
+  const { subsets } = data;
+  const [subset, setSubset] = useState(subsets[0]);
+  const subsetData = data.subsets_data[subset];
+  const { confusion_matrices } = subsetData;
+  const { az_classes, az_colorscale, az_matrix } = confusion_matrices;
 
   const plotData = [
     {
-      z: zValues,
-      x: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-      y: ["Morning", "Afternoon", "Evening"],
-      texttemplate: "%{z}",
+      z: az_matrix,
+      x: az_classes,
+      y: az_classes,
+      texttemplate: az_classes.length > 10 ? undefined : "%{z}",
       type: "heatmap",
-      hoverongaps: false,
+      colorscale: az_colorscale || "viridis",
     },
   ];
 
   return (
     <Stack>
-      <Typography variant="h5">Prediction Statistics</Typography>
+      <Typography variant="h5">Confusion Matrices</Typography>
+
+      <SelectSubset
+        subsets={subsets}
+        selected={subset}
+        setSelected={setSubset}
+      />
 
       <EvaluationPlot data={plotData} />
     </Stack>
   );
 }
 
-function ScenarioConfidenceDistribution(props) {
+function ConfidenceDistributionChart(props) {
   const { data } = props;
   const { subsets, subsets_data } = data;
 
@@ -280,7 +449,7 @@ function ScenarioConfidenceDistribution(props) {
   );
 }
 
-function ScenarioMetricPerformance(props) {
+function MetricPerformanceChart(props) {
   const { data } = props;
   const { subsets, subsets_data } = data;
   const [metric, setMetric] = useState("average_confidence");
@@ -316,7 +485,7 @@ function ScenarioMetricPerformance(props) {
   );
 }
 
-function ScenarioSubsetDistribution(props) {
+function SubsetDistributionChart(props) {
   const { data } = props;
   const { subsets, subsets_data } = data;
 
