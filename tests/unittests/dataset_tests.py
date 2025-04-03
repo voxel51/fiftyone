@@ -1480,6 +1480,13 @@ class DatasetTests(unittest.TestCase):
             "spam", embedded_doc_type=[fo.Label, fo.Detections]
         )
         dataset.validate_field_type("eggs", embedded_doc_type=fo.Detections)
+        dataset.validate_field_type("tags", subfield=fo.StringField)
+        dataset.validate_field_type(
+            "eggs.detections", subfield=fo.EmbeddedDocumentField
+        )
+        dataset.validate_field_type(
+            "eggs.detections.tags", subfield=fo.StringField
+        )
 
         with self.assertRaises(ValueError):
             dataset.validate_field_type("missing")
@@ -1497,6 +1504,116 @@ class DatasetTests(unittest.TestCase):
             dataset.validate_field_type(
                 "spam", embedded_doc_type=fo.Detections
             )
+
+        with self.assertRaises(ValueError):
+            dataset.validate_field_type(
+                "eggs.detections", subfield=fo.StringField
+            )
+
+        # Top-level label fields
+        schema = dataset.get_field_schema(embedded_doc_type=fo.Label)
+        self.assertSetEqual(set(schema.keys()), {"spam", "eggs"})
+
+        # All list(string) fields
+        schema = dataset.get_field_schema(flat=True, subfield=fo.StringField)
+        self.assertSetEqual(
+            set(schema.keys()),
+            {"tags", "spam.tags", "eggs.detections.tags"},
+        )
+
+        # All fields
+        schema = dataset.get_field_schema(flat=True)
+        self.assertSetEqual(
+            set(schema.keys()),
+            {
+                "id",
+                "filepath",
+                "tags",
+                "metadata",
+                "metadata.size_bytes",
+                "metadata.mime_type",
+                "created_at",
+                "last_modified_at",
+                "foo",
+                "bar",
+                "spam",
+                "spam.id",
+                "spam.tags",
+                "spam.label",
+                "spam.confidence",
+                "spam.logits",
+                "eggs",
+                "eggs.detections",
+                "eggs.detections.id",
+                "eggs.detections.tags",
+                "eggs.detections.attributes",
+                "eggs.detections.attributes.value",
+                "eggs.detections.label",
+                "eggs.detections.bounding_box",
+                "eggs.detections.mask",
+                "eggs.detections.mask_path",
+                "eggs.detections.confidence",
+                "eggs.detections.index",
+            },
+        )
+
+        # All fields that aren't embedded within lists
+        schema = dataset.get_field_schema(flat=True, unwind=False)
+        self.assertSetEqual(
+            set(schema.keys()),
+            {
+                "id",
+                "filepath",
+                "tags",
+                "metadata",
+                "metadata.size_bytes",
+                "metadata.mime_type",
+                "created_at",
+                "last_modified_at",
+                "foo",
+                "bar",
+                "spam",
+                "spam.id",
+                "spam.tags",
+                "spam.label",
+                "spam.confidence",
+                "spam.logits",
+                "eggs",
+                "eggs.detections",
+            },
+        )
+
+        # All string or list(string) fields that aren't embedded within lists
+        schema = dataset.get_field_schema(
+            ftype=(fo.StringField, fo.ListField),
+            subfield=fo.StringField,
+            flat=True,
+            unwind=False,
+        )
+        self.assertSetEqual(
+            set(schema.keys()),
+            {
+                "filepath",
+                "tags",
+                "metadata.mime_type",
+                "foo",
+                "spam.tags",
+                "spam.label",
+            },
+        )
+
+        # All string or list(string) fields that aren't embedded within lists
+        view = dataset.exclude_fields("spam")
+        schema = view.get_field_schema(
+            ftype=(fo.StringField, fo.ListField),
+            subfield=fo.StringField,
+            flat=True,
+            unwind=False,
+        )
+        self.assertSetEqual(
+            set(schema.keys()),
+            {"filepath", "tags", "metadata.mime_type", "foo"},
+        )
 
     @drop_datasets
     def test_validate_sample_fields(self):
