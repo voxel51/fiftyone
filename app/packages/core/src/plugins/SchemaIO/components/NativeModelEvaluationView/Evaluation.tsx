@@ -8,7 +8,6 @@ import {
   EditNote,
   ExpandMore,
   GridView,
-  Info,
   InsertChart,
   Settings,
   TableRows,
@@ -45,12 +44,23 @@ import get from "lodash/get";
 import React, { useEffect, useMemo, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import ActionMenu from "./ActionMenu";
+import ColorSquare from "./components/ColorSquare";
+import EvaluationTable from "./components/EvaluationTable";
+import {
+  COMPARE_KEY_COLOR,
+  COMPARE_KEY_SECONDARY_COLOR,
+  DEFAULT_BAR_CONFIG,
+  KEY_COLOR,
+  NONE_CLASS,
+} from "./constants";
 import Error from "./Error";
+import ExecutionInfo from "./evaluation/Info";
+import EvaluationScenarioAnalysis from "./evaluation/scenario";
 import EvaluationIcon from "./EvaluationIcon";
 import EvaluationNotes from "./EvaluationNotes";
 import EvaluationPlot from "./EvaluationPlot";
-import EvaluationScenarioAnalysis from "./evaluation/scenario";
 import Status from "./Status";
+import { tabStyles } from "./styles";
 import { ConcreteEvaluationType } from "./Types";
 import {
   computeSortedCompareKeys,
@@ -58,14 +68,6 @@ import {
   getNumericDifference,
   useTriggerEvent,
 } from "./utils";
-import EvaluationTable from "./components/EvaluationTable";
-import { tabStyles } from "./styles";
-
-const KEY_COLOR = "#ff6d04";
-const COMPARE_KEY_COLOR = "#03a9f4";
-const COMPARE_KEY_SECONDARY_COLOR = "#87D2FA";
-const DEFAULT_BAR_CONFIG = { sortBy: "default" };
-const NONE_CLASS = "(none)";
 
 export default function Evaluation(props: EvaluationProps) {
   const {
@@ -215,18 +217,13 @@ export default function Evaluation(props: EvaluationProps) {
   }
 
   const evaluationInfo = evaluation.info;
-  const evaluationKey = evaluationInfo.key;
-  const evaluationTimestamp = evaluationInfo.timestamp;
   const evaluationConfig = evaluationInfo.config;
   const evaluationMetrics = evaluation.metrics;
   const evaluationType = evaluationConfig.type;
   const evaluationMethod = evaluationConfig.method;
   const compareEvaluationInfo = compareEvaluation?.info || {};
-  const compareEvaluationKey = compareEvaluationInfo?.key;
-  const compareEvaluationTimestamp = compareEvaluationInfo?.timestamp;
   const compareEvaluationConfig = compareEvaluationInfo?.config || {};
   const compareEvaluationMetrics = compareEvaluation?.metrics || {};
-  const compareEvaluationType = compareEvaluationConfig.type;
   const isObjectDetection = evaluationType === "detection";
   const isClassification = evaluationType === "classification";
   const isSegmentation = evaluationType === "segmentation";
@@ -235,123 +232,6 @@ export default function Evaluation(props: EvaluationProps) {
   const showTpFpFn = isObjectDetection || isBinaryClassification;
   const isNoneBinaryClassification =
     isClassification && evaluationMethod !== "binary";
-  const infoRows = [
-    {
-      id: "evaluation_key",
-      property: "Evaluation Key",
-      value: evaluationKey,
-      compareValue: compareEvaluationKey,
-    },
-    {
-      id: "type",
-      property: "Type",
-      value: evaluationType,
-      compareValue: compareEvaluationType,
-    },
-    {
-      id: "method",
-      property: "Method",
-      value: evaluationConfig.method,
-      compareValue: compareEvaluationConfig.method,
-    },
-    {
-      id: "cls",
-      property: "Classes",
-      value: evaluationConfig.cls,
-      compareValue: compareEvaluationConfig.cls,
-    },
-    {
-      id: "pf",
-      property: "Prediction Field",
-      value: evaluationConfig.pred_field,
-      compareValue: compareEvaluationConfig.pred_field,
-    },
-    {
-      id: "gtf",
-      property: "Ground Truth Field",
-      value: evaluationConfig.gt_field,
-      compareValue: compareEvaluationConfig.gt_field,
-    },
-    {
-      id: "map",
-      property: "mAP Computed",
-      value: Boolean(evaluationConfig.compute_mAP).toString(),
-      compareValue: Boolean(compareEvaluationConfig.compute_mAP).toString(),
-    },
-    {
-      id: "iou",
-      property: "IoU Threshold",
-      value: evaluationConfig.iou,
-      compareValue: compareEvaluationConfig.iou,
-      hide: !isObjectDetection,
-    },
-    {
-      id: "classwise",
-      property: "Classwise",
-      value: Boolean(evaluationConfig.classwise).toString(),
-      compareValue: Boolean(compareEvaluationConfig.classwise).toString(),
-    },
-    {
-      id: "iscrowd",
-      property: "IsCrowd",
-      value: Boolean(evaluationConfig.iscrowd).toString(),
-      compareValue: Boolean(compareEvaluationConfig.iscrowd).toString(),
-    },
-    {
-      id: "use_masks",
-      property: "Use Masks",
-      value: Boolean(evaluationConfig.use_masks).toString(),
-      compareValue: Boolean(compareEvaluationConfig.use_masks).toString(),
-    },
-    {
-      id: "use_boxes",
-      property: "Use Boxes",
-      value: Boolean(evaluationConfig.use_boxes).toString(),
-      compareValue: Boolean(compareEvaluationConfig.use_boxes).toString(),
-    },
-    {
-      id: "tolerance",
-      property: "Tolerance",
-      value: evaluationConfig.tolerance,
-      compareValue: compareEvaluationConfig.tolerance,
-    },
-    {
-      id: "iou_threshs",
-      property: "IoU Thresholds",
-      value: Array.isArray(evaluationConfig.iou_threshs)
-        ? evaluationConfig.iou_threshs.join(", ")
-        : "",
-      compareValue: Array.isArray(compareEvaluationConfig.iou_threshs)
-        ? compareEvaluationConfig.iou_threshs.join(", ")
-        : "",
-      hide: !isObjectDetection,
-    },
-    {
-      id: "max_preds",
-      property: "Max Predictions",
-      value: evaluationConfig.max_preds,
-      compareValue: compareEvaluationConfig.max_preds,
-    },
-    {
-      id: "error_level",
-      property: "Error Level",
-      value: evaluationConfig.error_level,
-      compareValue: compareEvaluationConfig.error_level,
-    },
-    {
-      id: "timestamp",
-      property: "Creation Time",
-      value: evaluationTimestamp?.$date || evaluationTimestamp,
-      compareValue:
-        compareEvaluationTimestamp?.$date || compareEvaluationTimestamp,
-    },
-    {
-      id: "version",
-      property: "Version",
-      value: evaluationInfo.version,
-      compareValue: compareEvaluationInfo.version,
-    },
-  ];
   const metricPerformance = [
     {
       id: "average_confidence",
@@ -1469,62 +1349,12 @@ export default function Evaluation(props: EvaluationProps) {
 
       {/* Info tab */}
       {activeTab === "info" && (
-        <Card sx={{ p: 2 }}>
-          <EvaluationTable>
-            <TableHead>
-              <TableRow
-                sx={{
-                  "th p": {
-                    color: (theme) => theme.palette.text.secondary,
-                    fontSize: "1rem",
-                    fontWeight: 600,
-                  },
-                }}
-              >
-                <TableCell>
-                  <Typography>Property</Typography>
-                </TableCell>
-                <TableCell align="right" sx={{ fontSize: 16 }}>
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{ alignItems: "center" }}
-                  >
-                    <ColorSquare color={KEY_COLOR} />
-                    <Typography>{name}</Typography>
-                  </Stack>
-                </TableCell>
-                {compareKey && (
-                  <TableCell>
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      sx={{ alignItems: "center" }}
-                    >
-                      <ColorSquare color={COMPARE_KEY_COLOR} />
-                      <Typography>{compareKey}</Typography>
-                    </Stack>
-                  </TableCell>
-                )}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {infoRows.map((row) =>
-                row.hide ? null : (
-                  <TableRow key={row.id}>
-                    <TableCell component="th" scope="row">
-                      {row.property}
-                    </TableCell>
-                    <TableCell>{formatValue(row.value)}</TableCell>
-                    {compareKey && (
-                      <TableCell>{formatValue(row.compareValue)}</TableCell>
-                    )}
-                  </TableRow>
-                )
-              )}
-            </TableBody>
-          </EvaluationTable>
-        </Card>
+        <ExecutionInfo
+          name={name}
+          compareKey={compareKey}
+          evaluation={evaluation}
+          compareEvaluation={compareEvaluation}
+        />
       )}
       <Dialog
         open={editNoteState.open}
@@ -1759,19 +1589,6 @@ type EvaluationProps = {
   loadView: (type: string, params: any) => void;
   onRename: (oldName: string, newName: string) => void;
 };
-
-function ColorSquare(props: { color: string }) {
-  return (
-    <div
-      style={{
-        width: 16,
-        height: 16,
-        backgroundColor: props.color,
-        borderRadius: 2,
-      }}
-    />
-  );
-}
 
 const CLASS_LABELS = {
   "f1-score": "F1-Score",

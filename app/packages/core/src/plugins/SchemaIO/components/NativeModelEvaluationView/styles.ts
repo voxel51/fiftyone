@@ -1,10 +1,6 @@
 import { styled } from "@mui/material";
 import { Table } from "@mui/material";
 
-export const KEY_COLOR = "#ff6d04";
-export const COMPARE_KEY_COLOR = "#03a9f4";
-export const COMPARE_KEY_SECONDARY_COLOR = "#87D2FA";
-
 export const EvaluationTable = styled(Table)(({ theme }) => ({
   ".MuiTableCell-root": {
     border: `1px solid ${theme.palette.divider}`,
