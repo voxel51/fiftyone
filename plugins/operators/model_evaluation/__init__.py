@@ -510,7 +510,7 @@ class ConfigureScenario(foo.Operator):
             )
             obj.bool(
                 label,
-                default=True if label in selected_values else False,
+                # default=True if label in selected_values else False,
                 label=formatted_label,
                 view=types.CheckboxView(space=4),
             )
