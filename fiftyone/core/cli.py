@@ -4186,10 +4186,7 @@ class MigrateCommand(Command):
 
                 return
 
-            dataset_vers = {
-                name: fom.get_dataset_revision(name)
-                for name in fod.list_datasets()
-            }
+            dataset_vers = fom.get_datasets_revisions()
 
             _print_migration_table(db_ver, dataset_vers)
             return

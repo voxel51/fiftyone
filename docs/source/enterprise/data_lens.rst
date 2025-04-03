@@ -5,11 +5,9 @@ Data Lens
 
 .. default-role:: code
 
-**Available in FiftyOne Enterprise v2.2+**
-
-Data Lens is a feature built into the :ref:`FiftyOne Enterprise App <enterprise-app>`
-which allows you to use FiftyOne to explore and import samples from external
-data sources.
+Data Lens is a feature built into the
+:ref:`FiftyOne Enterprise App <enterprise-app>` that allows you to use FiftyOne
+to explore and import samples from external data sources.
 
 Whether your data resides in a database like PostgreSQL or a data lake like
 :ref:`Databricks <data-lens-databricks>` or
