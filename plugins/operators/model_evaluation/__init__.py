@@ -288,17 +288,22 @@ class ConfigureScenario(foo.Operator):
                 barmode="group",  # Group bars side by side
                 bargap=0.05,  # Minimal space within a group
                 bargroupgap=0.2,  # Small gap between different groups
-                yaxis=dict(automargin=True),
+                yaxis=dict(
+                    title="Sample Count",
+                    showticklabels=True,  # Ensure ticks are visible
+                    showgrid=True,  # Add grid lines for better visibility
+                ),
+                xaxis=dict(
+                    side="counterclockwise",
+                    title="Scenarios",
+                    automargin=True,
+                    showticklabels=True,  # Ensure ticks are visible
+                    showgrid=False,  # Typically, x-axis grid isn't needed
+                ),
             ),
             data=plot_data,
             height=preview_height,
             width="100%",
-            yaxis=dict(automargin=True),
-            xaxis=dict(
-                title=dict(
-                    text="Count",
-                ),
-            ),
         )
 
     def get_custom_code_key(self, params):
@@ -345,13 +350,15 @@ class ConfigureScenario(foo.Operator):
                     ctx, inputs, "custom_code", custom_code_expression
                 )
 
-    def render_no_values_warning(self, inputs, field_name):
+    def render_no_values_warning(self, inputs, field_name, link=""):
         inputs.view(
             "no_values_warning",
             types.AlertView(
                 severity="warning",
                 label="No values found",
-                description=(f"Field {field_name} has no values to display. "),
+                description=(
+                    f"Field {field_name} has no values to display. {link}"
+                ),
             ),
         )
 
@@ -417,7 +424,11 @@ class ConfigureScenario(foo.Operator):
 
         if view_type == "EMPTY":
             # TODO: Implement design for this case
-            self.render_no_values_warning(inputs, "saved views")
+            self.render_no_values_warning(
+                inputs,
+                "saved views",
+                link="[Learn how to create a saved view](https://docs.voxel51.com/user_guide/using_views.html#saving-views)",
+            )
             return
 
         if view_type not in {"AUTO-COMPLETE", "CHECKBOX"}:
@@ -443,12 +454,16 @@ class ConfigureScenario(foo.Operator):
         if scenario_type == "view":
             return f"{scenario_type}_values"
 
-        # a field has to be selected at this point
+        # sample_field selected
         scenario_field = params.get("scenario_field", "")
+        if not scenario_field:
+            # label attribute selected
+            scenario_field = params.get("scenario_label_attribute", "")
+
         if not scenario_field:
             raise ValueError("Scenario field is missing")
 
-        return f"{scenario_type}_{scenario_field}_values"
+        return f"{scenario_type}_{scenario_field}_values".replace(".", "_")
 
     def get_selected_values(self, params):
         key = self.get_scenario_values_key(params)
@@ -460,10 +475,6 @@ class ConfigureScenario(foo.Operator):
         # check if auto-complete was used
         if not selected_values_map:
             selected_values_map = params.get(key, {}) or {}
-
-        # TODO: why? cleanup
-        if isinstance(selected_values_map, list):
-            return key, selected_values_map
 
         return key, [key for key, val in selected_values_map.items() if val]
 
@@ -510,7 +521,7 @@ class ConfigureScenario(foo.Operator):
             )
             obj.bool(
                 label,
-                # default=True if label in selected_values else False,
+                default=True if label in selected_values else False,
                 label=formatted_label,
                 view=types.CheckboxView(space=4),
             )
@@ -903,13 +914,7 @@ class ConfigureScenario(foo.Operator):
 
         scenarios_for_eval = scenarios.get(eval_id_a) or {}
 
-        # TODO
-        if scenario_type == "label_attribute":
-            print(
-                "saving label attribute",
-                ctx.params.get("scenario_label_attribute", ""),
-            )
-        elif scenario_type == "sample_field":
+        if scenario_type in ["label_attribute", "sample_field"]:
             _, scenario_subsets = self.get_selected_values(ctx.params)
 
             if not scenario_subsets:
@@ -934,7 +939,6 @@ class ConfigureScenario(foo.Operator):
             if len(scenario_subsets) == 0:
                 raise ValueError("No saved views selected")
 
-        # TODO: edit
         scenario_id = ObjectId()
         scenarios_for_eval[str(scenario_id)] = {
             "id": str(scenario_id),
