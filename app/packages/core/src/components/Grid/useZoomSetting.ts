@@ -1,3 +1,4 @@
+import type { Range } from "@fiftyone/state";
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { gridZoom } from "./recoil";
@@ -15,7 +16,7 @@ const NORMAL = 800;
  * Zoom range is then -15 to -1 for the slider all the way to the right to mean
  * "max zoom"
  */
-export const ZOOM_RANGE = [-15, -1];
+export const ZOOM_RANGE: Range = [-15, -1];
 
 /**
  * Determines a maximium aspect ratio threshold for grid rows based on the
