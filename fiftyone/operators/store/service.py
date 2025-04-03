@@ -125,14 +125,27 @@ class ExecutionStoreService(object):
     ) -> KeyDocument:
         """Sets the value of a key in the specified store.
 
+        Keys can be either **persistent** or **cacheable**, depending on the provided
+        ``policy`` or whether a TTL (time-to-live) is set.
+
+        - If ``policy="persist"`` (default), the key will remain in the store until
+          explicitly deleted.
+        - If ``policy="evict"``, the key may be evicted by the system or manually
+          removed using :meth:`~clear_cache`.
+        - If a TTL is provided, the key is **always** treated as ``policy="evict"``.
+
         Args:
-            store_name: the name of the store
-            key: the key to set
-            value: the value to set
-            ttl (None): an optional TTL in seconds
+            store_name (str): The name of the store to set the key in.
+            key (str): The key to set.
+            value (Any): The value to associate with the key.
+            ttl (Optional[int]): Optional TTL (in seconds) after which the key
+                will expire and be automatically removed.
+            policy (str): The eviction policy for the key. One of:
+                - ``"persist"`` (default): Key is persistent until deleted.
+                - ``"evict"``: Key is eligible for eviction or cache clearing.
 
         Returns:
-            a :class:`fiftyone.store.models.KeyDocument`
+            KeyDocument: The created or updated key document.
         """
         return self._repo.set_key(store_name, key, value, ttl=ttl)
 

@@ -133,18 +133,7 @@ class ExecutionStoreRepo(ABC):
         ttl: Optional[int] = None,
         policy: str = "persistent",
     ) -> KeyDocument:
-        """
-        Sets a key in the specified store.
-
-        Keys can be either **persistent** or **cacheable**, depending on the provided
-        `policy` or whether a TTL (time-to-live) is set.
-
-        - If ``policy="persist"`` (default), the key will remain in the store until
-          explicitly deleted.
-        - If ``policy="evict"``, the key may be evicted by the system or manually
-          removed using :meth:`clear_cache`.
-        - If a TTL is provided, the key is **always** treated as ``policy="evict"``.
-
+        """Set a key in a store.
         Args:
             store_name (str): The name of the store to set the key in.
             key (str): The key to set.
