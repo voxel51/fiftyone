@@ -93,10 +93,6 @@ export const getField = (keys: string[], schema: Schema) => {
 
 export const parseSample = (keys: string[], sample: Data, schema: Schema) => {
   if (keys[0] === FRAMES && schema?.frames?.embeddedDocType === FRAMES_SAMPLE) {
-    console.log(typeof sample);
-    if (typeof sample === "string") {
-      throw new Error("WUT");
-    }
     return {
       values: sample?.frames[0] as Sample[],
       schema: schema.frames.fields,

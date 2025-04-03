@@ -14,13 +14,13 @@ export default function Sort() {
   const value = useRecoilValue(sortBy);
   const select = useSetRecoilState(sortByState);
   return (
-    <SliderContainer>
+    <SliderContainer style={{ width: "auto" }}>
       <RightDiv style={{ paddingRight: 0 }}>
         <Selector
           inputStyle={{ height: 28 }}
           component={Field}
           containerStyle={{
-            marginLeft: "0.5rem",
+            margin: "0 0.5rem",
             position: "relative",
           }}
           value={value}

@@ -188,13 +188,13 @@ export const pageParameters = selector({
           : null,
       },
       extendedStages: get(fos.extendedStages),
+      sortBy: get(sortBy) ? get(sortBy) : null,
     };
     return (page: number, pageSize: number) => {
       return {
         ...params,
         after: page ? String(page * pageSize - 1) : null,
         first: pageSize,
-        sortBy: get(sortBy) ? get(get(sortBy)) : null,
       };
     };
   },
