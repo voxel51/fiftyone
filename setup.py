@@ -65,6 +65,7 @@ INSTALL_REQUIRES = [
     "scikit-image",
     "scipy",
     "setuptools",
+    "setuptools_scm<8.1",
     "sseclient-py>=1.7.2,<2",
     "sse-starlette>=0.10.3,<1",
     "starlette>=0.24.0",
