@@ -536,7 +536,7 @@ class ConfigureScenario(foo.Operator):
         else:
             sub = (
                 "attribute"
-                if scenario_type == "attribute"
+                if scenario_type == "label_attribute"
                 else (
                     "field"
                     if scenario_type == "sample_field"
@@ -641,7 +641,7 @@ class ConfigureScenario(foo.Operator):
         else:
             sub = (
                 "attribute"
-                if scenario_type == "attribute"
+                if scenario_type == "label_attribute"
                 else (
                     "field"
                     if scenario_type == "sample_field"
