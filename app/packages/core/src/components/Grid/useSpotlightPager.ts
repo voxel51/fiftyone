@@ -11,6 +11,7 @@ import type { RecoilValueReadOnly } from "recoil";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import type { Subscription } from "relay-runtime";
 import type { Records } from "./useRecords";
+import { handleNode } from "./utils";
 
 export const PAGE_SIZE = 20;
 
@@ -25,21 +26,19 @@ const processSamplePageData = (
   records: Map<string, number>
 ) => {
   return data.samples.edges.map((edge, i) => {
-    if (edge.node.__typename === "%other") {
-      throw new Error("unexpected sample type");
-    }
+    const node = handleNode(edge.node);
+    const id = { description: node.id };
 
-    const id = { description: edge.node.id };
-    store.set(id, edge.node);
-    records.set(edge.node.id, page * PAGE_SIZE + i);
+    store.set(id, node);
+    records.set(node.id, page * PAGE_SIZE + i);
 
     return {
       key: page,
       aspectRatio: zoom
-        ? zoomAspectRatio(edge.node.sample, schema, edge.node.aspectRatio)
-        : edge.node.aspectRatio,
+        ? zoomAspectRatio(node.sample, schema, node.aspectRatio)
+        : node.aspectRatio,
       id,
-      data: edge.node as fos.Sample,
+      data: node as fos.Sample,
     };
   });
 };

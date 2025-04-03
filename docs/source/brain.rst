@@ -392,6 +392,8 @@ time you call
 Alternatively, you can more permanently configure your dimensionality reduction
 method(s) via your :ref:`brain config <brain-config>`.
 
+.. _brain-optimizing-lassoing-performance:
+
 Optimizing lassoing performance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
