@@ -38,6 +38,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.constants as focn
 import fiftyone.core.collections as foc
+from fiftyone.core.dataset_helpers import _create_frame_document_cls, _create_sample_document_cls, _set_field_read_only
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
@@ -307,12 +308,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         "_evaluation_cache",
         "_run_cache",
         "_deleted",
+        "_reference",
     )
 
     def __init__(
         self,
         name=None,
         persistent=False,
+        reference=None,
         overwrite=False,
         _create=True,
         _virtual=False,
@@ -326,16 +329,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if _create:
             doc, sample_doc_cls, frame_doc_cls = _create_dataset(
-                self, name, persistent=persistent, **kwargs
+                self, name, reference, persistent=persistent, **kwargs
             )
         else:
             doc, sample_doc_cls, frame_doc_cls = _load_dataset(
-                self, name, virtual=_virtual
+                self, name, reference, virtual=_virtual
             )
 
         self._doc = doc
         self._sample_doc_cls = sample_doc_cls
         self._frame_doc_cls = frame_doc_cls
+
+        self._reference = reference
 
         self._group_slice = doc.default_group_slice
 
@@ -1386,7 +1391,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a dict mapping field names to :class:`fiftyone.core.fields.Field`
             instances
         """
-        return self._sample_doc_cls.get_field_schema(
+        base_schema = self._sample_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             read_only=read_only,
@@ -1396,6 +1401,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             flat=flat,
             mode=mode,
         )
+
+        if self._reference:
+            reference_schema = self._reference.get_field_schema()
+
+            del reference_schema["id"]
+            del reference_schema["created_at"]
+            del reference_schema["last_modified_at"]
+
+            base_schema.update(reference_schema)
+        
+        return base_schema
+        
 
     def get_frame_field_schema(
         self,
@@ -7939,6 +7956,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _make_sample(self, d):
         doc = self._sample_dict_to_doc(d)
+        if self._reference:
+            return fos.SampleReference.from_doc(doc, dataset=self)
         return fos.Sample.from_doc(doc, dataset=self)
 
     def _sample_dict_to_doc(self, d):
@@ -8068,7 +8087,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return
 
         doc, sample_doc_cls, frame_doc_cls = _load_dataset(
-            self, self.name, virtual=True
+            self, self.name, self._reference, virtual=True
         )
 
         new_media_type = doc.media_type != self.media_type
@@ -8164,6 +8183,7 @@ def _list_datasets_query(include_private=False, glob_patt=None, tags=None):
 def _create_dataset(
     obj,
     name,
+    reference,
     persistent=False,
     _patches=False,
     _frames=False,
@@ -8178,7 +8198,7 @@ def _create_dataset(
     sample_collection_name = _make_sample_collection_name(
         _id, patches=_patches, frames=_frames, clips=_clips
     )
-    sample_doc_cls = _create_sample_document_cls(obj, sample_collection_name)
+    sample_doc_cls = _create_sample_document_cls(obj, sample_collection_name, reference)
 
     # pylint: disable=no-member
     sample_fields = [
@@ -8356,50 +8376,6 @@ def _make_frame_collection_name(sample_collection_name):
     return "frames." + sample_collection_name
 
 
-def _create_sample_document_cls(
-    dataset, sample_collection_name, field_docs=None
-):
-    cls = type(sample_collection_name, (foo.DatasetSampleDocument,), {})
-    cls._dataset = dataset
-
-    _declare_fields(dataset, cls, field_docs=field_docs)
-    return cls
-
-
-def _create_frame_document_cls(
-    dataset, frame_collection_name, field_docs=None
-):
-    cls = type(frame_collection_name, (foo.DatasetFrameDocument,), {})
-    cls._dataset = dataset
-
-    _declare_fields(dataset, cls, field_docs=field_docs)
-    return cls
-
-
-def _declare_fields(dataset, doc_cls, field_docs=None):
-    default_fields = set(doc_cls._fields.keys())
-    if field_docs is not None:
-        default_fields -= {field_doc.name for field_doc in field_docs}
-
-    # Declare default fields that don't already exist
-    now = datetime.utcnow()
-    for field_name in default_fields:
-        field = doc_cls._fields[field_name]
-
-        if isinstance(field, fof.EmbeddedDocumentField):
-            field = foo.create_field(field_name, **foo.get_field_kwargs(field))
-        else:
-            field = field.copy()
-
-        field._set_created_at(now)
-        doc_cls._declare_field(dataset, field_name, field)
-
-    # Declare existing fields
-    if field_docs is not None:
-        for field_doc in field_docs:
-            doc_cls._declare_field(dataset, field_doc.name, field_doc)
-
-
 def _load_clips_source_dataset(frame_collection_name):
     # All clips datasets have a source dataset with the same frame collection
     query = {
@@ -8417,12 +8393,12 @@ def _load_clips_source_dataset(frame_collection_name):
     return load_dataset(doc["name"])
 
 
-def _load_dataset(obj, name, virtual=False):
+def _load_dataset(obj, name, reference, virtual=False):
     if not virtual:
         fomi.migrate_dataset_if_necessary(name)
 
     try:
-        return _do_load_dataset(obj, name)
+        return _do_load_dataset(obj, name, reference)
     except Exception as e:
         try:
             version = fomi.get_dataset_revision(name)
@@ -8439,7 +8415,7 @@ def _load_dataset(obj, name, virtual=False):
         raise e
 
 
-def _do_load_dataset(obj, name):
+def _do_load_dataset(obj, name, reference):
     # pylint: disable=no-member
     db = foo.get_db_conn()
     res = db.datasets.find_one({"name": name})
@@ -8451,7 +8427,7 @@ def _do_load_dataset(obj, name):
     frame_collection_name = dataset_doc.frame_collection_name
 
     sample_doc_cls = _create_sample_document_cls(
-        obj, sample_collection_name, field_docs=dataset_doc.sample_fields
+        obj, sample_collection_name, reference=reference, field_docs=dataset_doc.sample_fields
     )
 
     if sample_collection_name.startswith("clips."):
@@ -10222,13 +10198,6 @@ def _handle_nested_fields(schema):
             break
 
     return safe_schemas
-
-
-def _set_field_read_only(field_doc, read_only):
-    field_doc.read_only = read_only
-    if hasattr(field_doc, "fields"):
-        for _field_doc in field_doc.fields:
-            _set_field_read_only(_field_doc, read_only)
 
 
 def _extract_archive_if_necessary(archive_path, cleanup):

@@ -49,6 +49,7 @@ type :class:`NoDatasetSampleDocument` to type ``dataset._sample_doc_cls``::
 from collections import OrderedDict
 import random
 
+
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm

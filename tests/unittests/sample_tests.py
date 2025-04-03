@@ -5,6 +5,7 @@ FiftyOne sample-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import itertools
 import os
 import tempfile
 import unittest
@@ -12,6 +13,7 @@ import unittest
 from bson import Binary, ObjectId, SON
 import numpy as np
 from PIL import ExifTags, Image
+from parameterized import parameterized
 
 import fiftyone as fo
 from fiftyone import ViewField as F
@@ -1091,6 +1093,90 @@ class SampleFieldTests(unittest.TestCase):
             sample.predictions.detections[0], foo.deserialize_value(d)
         )
         self.assertEqual(sample.object, foo.deserialize_value(d))
+
+
+class SampleReferenceTests(unittest.TestCase):
+    def common(self, pull_base, pull_reference, reload_reference):
+        dataset = fo.Dataset()
+        sample = fo.Sample("test_123.jpg", test_base1="123")
+        dataset.add_sample(sample)
+
+        if pull_base:
+            sample = dataset.first()
+
+        dataset_reference = fo.Dataset(reference=dataset)
+        sample_reference = fo.SampleReference(sample, test_local1="123")
+        dataset_reference.add_sample(sample_reference)
+
+        if reload_reference:
+            dataset_reference = fo.load_dataset(dataset_reference.name)
+        
+        if pull_reference:
+            sample_reference = dataset_reference.first()
+        
+        self.assertEqual(type(sample), fo.Sample)
+        self.assertEqual(type(sample_reference), fo.SampleReference)
+
+        return sample, sample_reference, dataset, dataset_reference
+
+    @drop_datasets
+    def test_not_in_dataset(self):
+        sample = fo.Sample("test_123.jpg", test_base1="123")
+
+        with self.assertRaises(Exception):
+            # sample must be in dataset before it can be referenced
+            sample_reference = fo.SampleReference(sample, test_local="123")
+
+    @parameterized.expand(itertools.product([True, False], repeat=3))
+    @drop_datasets
+    def test_basic(self, pull_base, pull_reference, reload_reference):
+        sample, sample_reference, dataset, dataset_reference = self.common(pull_base, pull_reference, reload_reference)
+
+        self.assertIn("test_123.jpg", sample_reference.filepath)
+        self.assertEqual(sample_reference.test_base1, "123")
+        self.assertEqual(sample_reference.test_local1, "123")
+
+    @parameterized.expand(itertools.product([True, False], repeat=3))
+    @drop_datasets
+    def test_change_base(self, pull_base, pull_reference, reload_reference):
+        sample, sample_reference, dataset, dataset_reference = self.common(pull_base, pull_reference, reload_reference)
+
+        self.assertEqual(sample_reference.test_base1, "123")
+        sample["test_base1"] = "234"
+        sample.save()
+
+        self.assertEqual(sample.test_base1, "234")
+        self.assertEqual(sample_reference.test_base1, "234")
+
+    @parameterized.expand(itertools.product([True, False], repeat=3))
+    @drop_datasets
+    def test_read_only_base_fields(self, pull_base, pull_reference, reload_reference):
+        sample, sample_reference, dataset, dataset_reference = self.common(pull_base, pull_reference, reload_reference)
+
+        # Can edit local fields
+        sample_reference["test_local1"] = "789"
+        
+        with self.assertRaises(Exception):
+            # Cannot edit a base value
+            sample_reference["test_base1"] = "789"
+
+    @parameterized.expand(itertools.product([True, False], repeat=3))
+    @drop_datasets
+    def test_schema(self, pull_base, pull_reference, reload_reference):
+        sample, sample_reference, dataset, dataset_reference = self.common(pull_base, pull_reference, reload_reference)
+
+        self.assertIn("test_base1", dataset.get_field_schema())
+        self.assertNotIn("test_local1", dataset.get_field_schema())
+        self.assertIn("test_base1", dataset_reference.get_field_schema())
+        self.assertIn("test_local1", dataset_reference.get_field_schema())
+
+        # Add new field to base
+
+        sample["test_base2"] = "123"
+        sample.save()
+
+        self.assertIn("test_base2", dataset.get_field_schema())
+        self.assertIn("test_base2", dataset_reference.get_field_schema())
 
 
 if __name__ == "__main__":
