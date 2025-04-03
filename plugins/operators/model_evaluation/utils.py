@@ -17,12 +17,12 @@ SCENARIO_BUILDING_CHOICES = [
     {
         "type": "sample_field",
         "label": "Select sample fields",
-        "icon": "edit_attributes_outlined",
+        "icon": "task_outlined",
     },
     {
         "type": "label_attribute",
         "label": "Select label attributes",
-        "icon": "edit_attributes_outlined",
+        "icon": "task_outlined",
     },
     {
         "type": "view",
