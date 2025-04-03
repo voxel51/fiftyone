@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.7.2
 -------------------------
-*Released April 1, 2025*
+*Released April 4, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.4.1 <release-notes-v1.4.1>`
 
@@ -13,10 +13,18 @@ Includes all updates from :ref:`FiftyOne 1.4.1 <release-notes-v1.4.1>`
 
 FiftyOne 1.4.1
 --------------
-*Released April 1, 2025*
+*Released April 4, 2025*
 
 App
 
+- Fixed rendering of samples in the App that are missing a label tags list
+  `#5686 <https://github.com/voxel51/fiftyone/pull/5686>`_
+- Fixed built-in sort by similarity for patches views
+  `#5685 <https://github.com/voxel51/fiftyone/pull/5685>`_
+- Enabled sample tagging in the modal when a selection is present regardless of
+  sidebar filters `#5684 <https://github.com/voxel51/fiftyone/pull/5684>`_
+- Fixed tagging in the modal for video samples
+  `#5683 <https://github.com/voxel51/fiftyone/pull/5683>`_
 - Fixed label tags filtering in the
   :ref:`Query Performance <app-optimizing-query-performance>` sidebar
   `#5675 <https://github.com/voxel51/fiftyone/pull/5675>`_
