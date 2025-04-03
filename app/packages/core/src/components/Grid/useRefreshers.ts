@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
 import { useMemoOne } from "use-memo-one";
-import { gridAt, gridOffset, gridPage } from "./recoil";
+import { gridAt, gridOffset, gridPage, sortBy } from "./recoil";
 
 export default function useRefreshers() {
   const cropToContent = useRecoilValue(fos.cropToContent(false));
@@ -19,12 +19,13 @@ export default function useRefreshers() {
   const groupSlice = useRecoilValue(fos.groupSlice);
   const mediaField = useRecoilValue(fos.selectedMediaField(false));
   const refresher = useRecoilValue(fos.refresher);
-  const similarityParameters = fos.stringifyObj(
-    useRecoilValue(fos.similarityParameters) || {}
-  );
   const shouldRenderImaVidLooker = useRecoilValue(
     fos.shouldRenderImaVidLooker(false)
   );
+  const similarityParameters = fos.stringifyObj(
+    useRecoilValue(fos.similarityParameters) || {}
+  );
+  const sort = useRecoilValue(sortBy);
   const view = fos.filterView(useRecoilValue(fos.view) ?? []);
 
   // only reload, attempt to return to the last grid location
@@ -53,6 +54,7 @@ export default function useRefreshers() {
     groupSlice,
     shouldRenderImaVidLooker,
     similarityParameters,
+    sort,
     view,
   ]);
 

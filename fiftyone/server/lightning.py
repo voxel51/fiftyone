@@ -392,7 +392,7 @@ async def _do_distinct_pipeline(
     if query.filters:
         pipeline += get_view(dataset, filters=query.filters)._pipeline()
 
-    pipeline.append({"$sort": {query.path: 1}})
+    pipeline.extend([{"$project": {"_id": f"${query.path}"}}])
 
     match_search = None
     if query.search:
@@ -408,7 +408,7 @@ async def _do_distinct_pipeline(
             # match again after unwinding list fields
             pipeline.append(match_search)
 
-    pipeline += [{"$group": {"_id": f"${query.path}"}}]
+    pipeline.extend([{"$group": {"_id": "$_id"}}, {"$sort": {"_id": 1}}])
 
     values = []
     exclude = set(query.exclude or [])

@@ -176,7 +176,7 @@ def get_extended_view(
         view = extend_view(view, extended_stages)
 
     if sort_by:
-        view = view.sort_by(sort_by, reverse=True)
+        view = view.sort_by(sort_by, reverse=False)
 
     if pagination_data:
         # omit all dict field values for performance, not needed by grid
