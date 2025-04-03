@@ -101,9 +101,9 @@ const Header = () => {
             <GroupSlice />
           </RightDiv>
         )}
+        <Sort />
         <Spacing />
         <Zoom />
-        <Sort />
       </RightContainer>
     </SamplesHeader>
   );
