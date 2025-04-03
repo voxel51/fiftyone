@@ -115,7 +115,8 @@ export const shouldShowLabelTag = (
   labelTags?: null | string[] // current label's tags
 ) => {
   return Boolean(
-    (selectedLabelTags?.length === 0 && labelTags?.length > 0) ||
+    ((!selectedLabelTags || selectedLabelTags?.length === 0) &&
+      labelTags?.length > 0) ||
       selectedLabelTags?.some((tag) => labelTags?.includes(tag))
   );
 };
