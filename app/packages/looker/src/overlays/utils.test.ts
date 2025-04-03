@@ -8,5 +8,6 @@ describe("shouldShowLabelTag", () => {
     expect(shouldShowLabelTag(undefined, ["one"])).toBe(true);
     expect(shouldShowLabelTag(["one"], ["one"])).toBe(true);
     expect(shouldShowLabelTag(["one"], ["two"])).toBe(false);
+    expect(shouldShowLabelTag(["one"], undefined)).toBe(false);
   });
 });
