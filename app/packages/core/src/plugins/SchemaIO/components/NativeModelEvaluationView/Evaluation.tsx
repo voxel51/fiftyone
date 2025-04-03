@@ -85,7 +85,7 @@ export default function Evaluation(props: EvaluationProps) {
     loadScenario,
   } = props;
   const theme = useTheme();
-  const [expanded, setExpanded] = React.useState("overview");
+  const [expanded, setExpanded] = React.useState("summary");
   const [activeTab, setActiveTab] = useState("overview");
   const [mode, setMode] = useState("chart");
   const [editNoteState, setEditNoteState] = useState({ open: false, note: "" });
@@ -727,7 +727,7 @@ export default function Evaluation(props: EvaluationProps) {
       {/* Overview tab */}
       {activeTab === "overview" && (
         <Box>
-          <Card sx={{ p: 2 }}>
+          <Card sx={{ p: 2, mb: 2 }}>
             <Stack direction="row" sx={{ justifyContent: "space-between" }}>
               <Typography color="secondary">Evaluation notes</Typography>
               <Box
@@ -851,9 +851,7 @@ export default function Evaluation(props: EvaluationProps) {
 
                         return (
                           <TableRow key={rowId}>
-                            <TableCell component="th" scope="row">
-                              {property}
-                            </TableCell>
+                            <TableCell scope="row">{property}</TableCell>
                             <TableCell>
                               <Stack
                                 direction="row"
