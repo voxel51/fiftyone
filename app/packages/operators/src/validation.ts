@@ -91,7 +91,10 @@ export class ValidationContext {
   validateList(path, property, value) {
     const { elementType, minItems, maxItems } = property.type;
     const valueIsNullish = isNullish(value);
+
     if (valueIsNullish && !isNumber(minItems)) return;
+    if (property.view.name === "HiddenView") return;
+
     const label = pluralize(minItems, "item", "items");
     const minItemsError = new ValidationError(
       `Must have at least ${minItems} ${label}`,
