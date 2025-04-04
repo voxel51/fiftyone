@@ -375,10 +375,16 @@ class ImportBatch(beam.DoFn):
         self._samples.append(sample)
 
     def finish_bundle(self):
-        if self._samples:
-            self._dataset._add_samples_batch(
-                self._samples, self.expand_schema, self.dynamic, self.validate
-            )
+        if not self._samples:
+            return
+
+        self._dataset.add_samples(
+            self._samples,
+            expand_schema=self.expand_schema,
+            dynamic=self.dynamic,
+            validate=self.validate,
+            progress=False,
+        )
 
 
 class MergeBatch(beam.DoFn):
@@ -453,8 +459,10 @@ class MergeBatch(beam.DoFn):
             **kwargs,
         )
 
-        self._dataset._upsert_samples_batch(
-            list(samples), self.expand_schema, False, True
+        self._dataset._upsert_samples(
+            samples,
+            expand_schema=self.expand_schema,
+            progress=False,
         )
 
 
@@ -503,9 +511,9 @@ class ExportBatch(beam.DoFn):
         start = element["start"]
         stop = element["stop"]
         kwargs = self.render_kwargs(kwargs, idx)
+        kwargs["progress"] = False
 
-        with fou.SetAttributes(fo.config, show_progress_bars=False):
-            self._sample_collection[start:stop].export(**kwargs)
+        self._sample_collection[start:stop].export(**kwargs)
 
 
 def _pop_first(x):
