@@ -42,7 +42,7 @@ import {
 const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 
 export default function EvaluationScenarioAnalysis(props) {
-  const { evaluation, data, loadScenario } = props;
+  const { evaluation, data, loadScenarios, loadScenario } = props;
   const { scenarios } = evaluation;
   const [selectedScenario, setSelectedScenario] = useState(
     getDefaultScenario(scenarios)
@@ -69,7 +69,9 @@ export default function EvaluationScenarioAnalysis(props) {
       {isEmpty ? (
         <EmptyScenario
           evaluationConfig={evaluationConfig}
-          onCreateScenario={() => {}}
+          onCreateScenario={() => {
+            loadScenarios();
+          }}
         />
       ) : (
         <Stack direction="row" spacing={1} justifyContent="space-between">
@@ -117,18 +119,12 @@ export default function EvaluationScenarioAnalysis(props) {
                 promptOperator(panelId, {
                   params: {
                     gt_field: evaluationConfig.gt_field,
-                    scenario_type: "view",
+                    scenario_type: "custom_code",
                     scenario_name: "test", // # TODO: Edit will pass current name
                   },
                   operator: CONFIGURE_SCENARIO_ACTION,
                   prompt: true,
-                  // callback: (result, opts) => {
-                  //   console.log("params", opts.ctx.params);
-                  //   onSaveScenario({ subset: opts.ctx.params });
-                  //   // TODO: save the subset
-
-                  //   // TODO: error handling
-                  // },
+                  callback: loadScenarios,
                 });
               }}
             >

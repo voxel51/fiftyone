@@ -38,6 +38,7 @@ export default function Evaluation(props: EvaluationProps) {
     setStatusEvent,
     statuses = {},
     onRename,
+    loadScenarios,
     loadScenario,
   } = props;
   const theme = useTheme();
@@ -297,6 +298,7 @@ export default function Evaluation(props: EvaluationProps) {
         <EvaluationScenarioAnalysis
           evaluation={evaluation}
           data={data}
+          loadScenarios={loadScenarios}
           loadScenario={loadScenario}
         />
       )}
@@ -319,6 +321,7 @@ type EvaluationProps = {
   id: string;
   navigateBack: () => void;
   loadEvaluation: (key?: string) => void;
+  loadScenarios: () => void;
   loadScenario: (id: string, key?: string) => void;
   onChangeCompareKey: (compareKey: string) => void;
   compareKey?: string;
