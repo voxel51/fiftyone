@@ -107,7 +107,7 @@ export default function WorkspaceEditor() {
                 setStatus("deleting");
                 executeOperator(
                   DELETE_WORKSPACE_OPERATOR,
-                  { name },
+                  { names: [name] },
                   {
                     callback: (result) => {
                       if (!result.error) {
