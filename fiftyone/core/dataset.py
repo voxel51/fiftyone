@@ -3245,6 +3245,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         expand_schema=True,
         dynamic=False,
         validate=True,
+        generator=False,
         progress=None,
         num_samples=None,
     ):
@@ -3265,6 +3266,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 document fields that are encountered
             validate (True): whether to validate that the fields of each sample
                 are compliant with the dataset schema before adding it
+            generator (False): whether to yield ID batches as a generator as
+                samples are added to the dataset
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
@@ -3294,11 +3297,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             size_calc_fn=self._calculate_size,
         )
 
+        def _do_add_samples():
+            with batcher:
+                for batch in batcher:
+                    yield self._add_samples_batch(batch)
+
+        if generator:
+            return _do_add_samples()
+
         sample_ids = []
-        with batcher:
-            for batch in batcher:
-                _ids = self._add_samples_batch(batch)
-                sample_ids.extend(_ids)
+        for ids in _do_add_samples():
+            sample_ids.extend(ids)
 
         return sample_ids
 
@@ -3385,6 +3394,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         expand_schema=True,
         dynamic=False,
         validate=True,
+        generator=False,
         progress=None,
         num_samples=None,
     ):
@@ -3405,9 +3415,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             total=num_samples,
         )
 
-        with batcher:
-            for batch in batcher:
-                self._upsert_samples_batch(batch)
+        def _do_upsert_samples():
+            with batcher:
+                for batch in batcher:
+                    yield self._upsert_samples_batch(batch)
+
+        if generator:
+            return _do_upsert_samples()
+
+        for _ in _do_upsert_samples():
+            pass
 
     def _transform_sample(
         self,
@@ -5267,6 +5284,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         expand_schema=True,
         dynamic=False,
         add_info=True,
+        generator=False,
         progress=None,
         **kwargs,
     ):
@@ -5356,6 +5374,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 document fields that are encountered
             add_info (True): whether to add dataset info from the importer (if
                 any) to the dataset's ``info``
+            generator (False): whether to yield ID batches as a generator as
+                samples are added to the dataset
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
@@ -5382,6 +5402,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema=expand_schema,
             dynamic=dynamic,
             add_info=add_info,
+            generator=generator,
             progress=progress,
         )
 
@@ -5608,6 +5629,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dynamic=False,
         add_info=True,
         cleanup=True,
+        generator=False,
         progress=None,
         **kwargs,
     ):
@@ -5693,6 +5715,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             add_info (True): whether to add dataset info from the importer (if
                 any) to the dataset's ``info``
             cleanup (True): whether to delete the archive after extracting it
+            generator (False): whether to yield ID batches as a generator as
+                samples are added to the dataset
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
@@ -5714,6 +5738,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema=expand_schema,
             dynamic=dynamic,
             add_info=add_info,
+            generator=generator,
             progress=progress,
             **kwargs,
         )
@@ -5930,6 +5955,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         expand_schema=True,
         dynamic=False,
         add_info=True,
+        generator=False,
         progress=None,
     ):
         """Adds the samples from the given
@@ -5964,6 +5990,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 document fields that are encountered
             add_info (True): whether to add dataset info from the importer (if
                 any) to the dataset's ``info``
+            generator (False): whether to yield ID batches as a generator as
+                samples are added to the dataset
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
@@ -5979,6 +6007,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema=expand_schema,
             dynamic=dynamic,
             add_info=add_info,
+            generator=generator,
             progress=progress,
         )
 
@@ -6130,6 +6159,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         paths_or_samples,
         sample_parser=None,
         tags=None,
+        generator=False,
         progress=None,
     ):
         """Adds the given images to the dataset.
@@ -6150,6 +6180,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 instance to use to parse the samples
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
+            generator (False): whether to yield ID batches as a generator as
+                samples are added to the dataset
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
@@ -6165,6 +6197,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             paths_or_samples,
             sample_parser,
             tags=tags,
+            generator=generator,
             progress=progress,
         )
 
@@ -6176,6 +6209,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         tags=None,
         expand_schema=True,
         dynamic=False,
+        generator=False,
         progress=None,
     ):
         """Adds the given labeled images to the dataset.
@@ -6209,6 +6243,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if a sample's schema is not a subset of the dataset schema
             dynamic (False): whether to declare dynamic attributes of embedded
                 document fields that are encountered
+            generator (False): whether to yield ID batches as a generator as
+                samples are added to the dataset
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
@@ -6224,6 +6260,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             tags=tags,
             expand_schema=expand_schema,
             dynamic=dynamic,
+            generator=generator,
             progress=progress,
         )
 
@@ -6232,6 +6269,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         images_dir,
         tags=None,
         recursive=True,
+        generator=False,
         progress=None,
     ):
         """Adds the given directory of images to the dataset.
@@ -6246,6 +6284,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             recursive (True): whether to recursively traverse subdirectories
+            generator (False): whether to yield ID batches as a generator as
+                samples are added to the dataset
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
@@ -6256,10 +6296,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         image_paths = foud.parse_images_dir(images_dir, recursive=recursive)
         sample_parser = foud.ImageSampleParser()
         return self.add_images(
-            image_paths, sample_parser, tags=tags, progress=progress
+            image_paths,
+            sample_parser,
+            tags=tags,
+            generator=generator,
+            progress=progress,
         )
 
-    def add_images_patt(self, images_patt, tags=None, progress=None):
+    def add_images_patt(
+        self,
+        images_patt,
+        tags=None,
+        generator=False,
+        progress=None,
+    ):
         """Adds the given glob pattern of images to the dataset.
 
         This operation does not read the images.
@@ -6269,6 +6319,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ``/path/to/images/*.jpg``
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
+            generator (False): whether to yield ID batches as a generator as
+                samples are added to the dataset
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
@@ -6279,7 +6331,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         image_paths = etau.get_glob_matches(images_patt)
         sample_parser = foud.ImageSampleParser()
         return self.add_images(
-            image_paths, sample_parser, tags=tags, progress=progress
+            image_paths,
+            sample_parser,
+            tags=tags,
+            generator=generator,
+            progress=progress,
         )
 
     def ingest_images(
@@ -6289,6 +6345,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         tags=None,
         dataset_dir=None,
         image_format=None,
+        generator=False,
         progress=None,
     ):
         """Ingests the given iterable of images into the dataset.
@@ -6313,6 +6370,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 written. By default, :func:`get_default_dataset_dir` is used
             image_format (None): the image format to use to write the images to
                 disk. By default, ``fiftyone.config.default_image_ext`` is used
+            generator (False): whether to yield ID batches as a generator as
+                samples are added to the dataset
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
@@ -6334,7 +6393,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
         return self.add_importer(
-            dataset_ingestor, tags=tags, progress=progress
+            dataset_ingestor,
+            tags=tags,
+            generator=generator,
+            progress=progress,
         )
 
     def ingest_labeled_images(
@@ -6347,6 +6409,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dynamic=False,
         dataset_dir=None,
         image_format=None,
+        generator=False,
         progress=None,
     ):
         """Ingests the given iterable of labeled image samples into the
@@ -6383,6 +6446,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 written. By default, :func:`get_default_dataset_dir` is used
             image_format (None): the image format to use to write the images to
                 disk. By default, ``fiftyone.config.default_image_ext`` is used
+            generator (False): whether to yield ID batches as a generator as
+                samples are added to the dataset
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
@@ -6406,6 +6471,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             tags=tags,
             expand_schema=expand_schema,
             dynamic=dynamic,
+            generator=generator,
             progress=progress,
         )
 
@@ -6414,6 +6480,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         paths_or_samples,
         sample_parser=None,
         tags=None,
+        generator=False,
         progress=None,
     ):
         """Adds the given videos to the dataset.
@@ -6434,6 +6501,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 instance to use to parse the samples
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
+            generator (False): whether to yield ID batches as a generator as
+                samples are added to the dataset
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
@@ -6445,7 +6514,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_parser = foud.VideoSampleParser()
 
         return foud.add_videos(
-            self, paths_or_samples, sample_parser, tags=tags, progress=progress
+            self,
+            paths_or_samples,
+            sample_parser,
+            tags=tags,
+            generator=generator,
+            progress=progress,
         )
 
     def add_labeled_videos(
@@ -6456,6 +6530,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         tags=None,
         expand_schema=True,
         dynamic=False,
+        generator=False,
         progress=None,
     ):
         """Adds the given labeled videos to the dataset.
@@ -6491,6 +6566,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if a sample's schema is not a subset of the dataset schema
             dynamic (False): whether to declare dynamic attributes of embedded
                 document fields that are encountered
+            generator (False): whether to yield ID batches as a generator as
+                samples are added to the dataset
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
@@ -6506,11 +6583,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             tags=tags,
             expand_schema=expand_schema,
             dynamic=dynamic,
+            generator=generator,
             progress=progress,
         )
 
     def add_videos_dir(
-        self, videos_dir, tags=None, recursive=True, progress=None
+        self,
+        videos_dir,
+        tags=None,
+        recursive=True,
+        generator=False,
+        progress=None,
     ):
         """Adds the given directory of videos to the dataset.
 
@@ -6524,6 +6607,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
             recursive (True): whether to recursively traverse subdirectories
+            generator (False): whether to yield ID batches as a generator as
+                samples are added to the dataset
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
@@ -6534,10 +6619,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         video_paths = foud.parse_videos_dir(videos_dir, recursive=recursive)
         sample_parser = foud.VideoSampleParser()
         return self.add_videos(
-            video_paths, sample_parser, tags=tags, progress=progress
+            video_paths,
+            sample_parser,
+            tags=tags,
+            generator=generator,
+            progress=progress,
         )
 
-    def add_videos_patt(self, videos_patt, tags=None, progress=None):
+    def add_videos_patt(
+        self,
+        videos_patt,
+        tags=None,
+        generator=False,
+        progress=None,
+    ):
         """Adds the given glob pattern of videos to the dataset.
 
         This operation does not read/decode the videos.
@@ -6547,6 +6642,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ``/path/to/videos/*.mp4``
             tags (None): an optional tag or iterable of tags to attach to each
                 sample
+            generator (False): whether to yield ID batches as a generator as
+                samples are added to the dataset
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
@@ -6557,7 +6654,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         video_paths = etau.get_glob_matches(videos_patt)
         sample_parser = foud.VideoSampleParser()
         return self.add_videos(
-            video_paths, sample_parser, tags=tags, progress=progress
+            video_paths,
+            sample_parser,
+            tags=tags,
+            generator=generator,
+            progress=progress,
         )
 
     def ingest_videos(
@@ -6566,6 +6667,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample_parser=None,
         tags=None,
         dataset_dir=None,
+        generator=False,
         progress=None,
     ):
         """Ingests the given iterable of videos into the dataset.
@@ -6588,6 +6690,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample
             dataset_dir (None): the directory in which the videos will be
                 written. By default, :func:`get_default_dataset_dir` is used
+            generator (False): whether to yield ID batches as a generator as
+                samples are added to the dataset
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
@@ -6606,7 +6710,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
         return self.add_importer(
-            dataset_ingestor, tags=tags, progress=progress
+            dataset_ingestor,
+            tags=tags,
+            generator=generator,
+            progress=progress,
         )
 
     def ingest_labeled_videos(
@@ -6617,6 +6724,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         expand_schema=True,
         dynamic=False,
         dataset_dir=None,
+        generator=False,
         progress=None,
     ):
         """Ingests the given iterable of labeled video samples into the
@@ -6642,6 +6750,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 document fields that are encountered
             dataset_dir (None): the directory in which the videos will be
                 written. By default, :func:`get_default_dataset_dir` is used
+            generator (False): whether to yield ID batches as a generator as
+                samples are added to the dataset
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
@@ -6661,6 +6771,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             tags=tags,
             expand_schema=expand_schema,
             dynamic=dynamic,
+            generator=generator,
             progress=progress,
         )
 
