@@ -40,7 +40,6 @@ import { OperatorExecutorOptions } from "./types-internal";
 import { ValidationContext } from "./validation";
 import { Markdown } from "@fiftyone/components";
 import { generateOperatorSessionId } from "./utils";
-import { NonNullChain } from "typescript";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
