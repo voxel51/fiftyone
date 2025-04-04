@@ -75,14 +75,14 @@ export const scenarioCardStyles = {
     alignItems: "center",
   },
   title: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: "Palanquin",
     fontWeight: 600,
     lineHeight: "20px",
     color: "white",
   },
   newBadge: {
-    fontSize: 10,
+    fontSize: 12,
     fontFamily: "Palanquin",
     fontWeight: 700,
     lineHeight: "20px",

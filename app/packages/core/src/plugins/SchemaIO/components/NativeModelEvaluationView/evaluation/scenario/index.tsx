@@ -7,9 +7,11 @@ import {
   TableChartOutlined,
 } from "@mui/icons-material";
 import {
+  Box,
   Button,
   Card,
   CircularProgress,
+  Grid,
   MenuItem,
   Select,
   Stack,
@@ -19,6 +21,7 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Typography,
+  useTheme,
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import EvaluationSelect from "../../components/EvaluationSelect";
@@ -71,13 +74,14 @@ export default function EvaluationScenarioAnalysis(props) {
       ) : (
         <Stack direction="row" spacing={1} justifyContent="space-between">
           <Stack direction="row" spacing={1} alignItems="center">
-            <Typography>Scenario:</Typography>
+            <Typography color="secondary">Scenario:</Typography>
             <EvaluationSelect
               size="small"
               defaultValue={selectedScenario}
               onChange={(e) => {
                 setSelectedScenario(e.target.value as string);
               }}
+              color="secondary"
               ghost
             >
               {scenariosArray.map((scenario) => {
@@ -165,7 +169,15 @@ function Scenario(props) {
   }, [compareKey, compareScenario]);
 
   if (!scenario) {
-    return <CircularProgress />;
+    return (
+      <Stack
+        sx={{ minHeight: 300 }}
+        alignItems="center"
+        justifyContent="center"
+      >
+        <CircularProgress size={24} />
+      </Stack>
+    );
   }
 
   return (
@@ -205,7 +217,7 @@ function PredictionStatisticsTable(props) {
 
   return (
     <Stack>
-      <Typography variant="h5">Prediction Statistics</Typography>
+      <Typography>Prediction Statistics</Typography>
       <EvaluationTable variant="card" size="medium">
         <TableHead>
           <TableRow>
@@ -272,24 +284,22 @@ function SelectSubset(props) {
   const { subsets, selected, setSelected } = props;
 
   return (
-    <Stack>
-      <Typography>Select a subset:</Typography>
-      <Select
-        size="small"
-        defaultValue={selected}
-        onChange={(e) => {
-          setSelected(e.target.value);
-        }}
-      >
-        {subsets.map((subset) => {
-          return (
-            <MenuItem value={subset} key={subset}>
-              <Typography>{subset}</Typography>
-            </MenuItem>
-          );
-        })}
-      </Select>
-    </Stack>
+    <EvaluationSelect
+      size="small"
+      defaultValue={selected}
+      onChange={(e) => {
+        setSelected(e.target.value);
+      }}
+      ghost
+    >
+      {subsets.map((subset) => {
+        return (
+          <MenuItem value={subset} key={subset}>
+            <Typography>{subset}</Typography>
+          </MenuItem>
+        );
+      })}
+    </EvaluationSelect>
   );
 }
 
@@ -302,12 +312,14 @@ function ModelPerformanceMetricsTable(props) {
 
   return (
     <Stack>
-      <Typography variant="h5">Model Performance Metrics</Typography>
-      <SelectSubset
-        subsets={subsets}
-        selected={subset}
-        setSelected={setSubset}
-      />
+      <Stack direction="row" justifyContent="space-between">
+        <Typography>Model Performance</Typography>
+        <SelectSubset
+          subsets={subsets}
+          selected={subset}
+          setSelected={setSubset}
+        />
+      </Stack>
       <EvaluationTable variant="card" size="medium">
         <TableHead>
           <TableRow>
@@ -364,7 +376,7 @@ function ConfidenceDistributionTable(props) {
 
   return (
     <Stack>
-      <Typography variant="h5">Confidence Distribution</Typography>
+      <Typography>Confidence Distribution</Typography>
       <Select
         size="small"
         defaultValue="avg"
@@ -423,16 +435,57 @@ function ConfidenceDistributionTable(props) {
   );
 }
 
+function ScenarioChartCard(props) {
+  const { children } = props;
+  const theme = useTheme();
+
+  return (
+    <Box
+      sx={{
+        p: 2,
+        borderRadius: 1,
+        border: `1px solid ${theme.palette.divider}`,
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
+
 function ScenarioCharts(props) {
   return (
-    <Stack>
-      <PredictionStatisticsChart {...props} />
-      <ScenarioModelPerformanceChart {...props} />
-      <ConfusionMatrixChart {...props} />
-      <ConfidenceDistributionChart {...props} />
-      <MetricPerformanceChart {...props} />
-      <SubsetDistributionChart {...props} />
-    </Stack>
+    <Grid container spacing={2} pt={2}>
+      <Grid item xs={6}>
+        <ScenarioChartCard>
+          <PredictionStatisticsChart {...props} />
+        </ScenarioChartCard>
+      </Grid>
+      <Grid item xs={6}>
+        <ScenarioChartCard>
+          <ScenarioModelPerformanceChart {...props} />
+        </ScenarioChartCard>
+      </Grid>
+      <Grid item xs={12}>
+        <ScenarioChartCard>
+          <ConfusionMatrixChart {...props} />
+        </ScenarioChartCard>
+      </Grid>
+      <Grid item xs={6}>
+        <ScenarioChartCard>
+          <ConfidenceDistributionChart {...props} />
+        </ScenarioChartCard>
+      </Grid>
+      <Grid item xs={6}>
+        <ScenarioChartCard>
+          <MetricPerformanceChart {...props} />
+        </ScenarioChartCard>
+      </Grid>
+      <Grid item xs={12}>
+        <ScenarioChartCard>
+          <SubsetDistributionChart {...props} />
+        </ScenarioChartCard>
+      </Grid>
+    </Grid>
   );
 }
 
@@ -494,12 +547,14 @@ function ScenarioModelPerformanceChart(props) {
   }
   return (
     <Stack>
-      <Typography variant="h5">Model Performance</Typography>
-      <SelectSubset
-        subsets={subsets}
-        selected={subset}
-        setSelected={setSubset}
-      />
+      <Stack direction="row" justifyContent="space-between">
+        <Typography>Model Performance</Typography>
+        <SelectSubset
+          subsets={subsets}
+          selected={subset}
+          setSelected={setSubset}
+        />
+      </Stack>
       <EvaluationPlot
         data={plotData}
         layout={{
@@ -519,6 +574,10 @@ function PredictionStatisticsChart(props) {
   const { scenario, compareScenario } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
+  const [metric, setMetric] = useState("all");
+  const showAllMetric = metric === "all";
+
+  let plotData = new Array<unknown>();
 
   const tp: number[] = [];
   const fp: number[] = [];
@@ -526,6 +585,11 @@ function PredictionStatisticsChart(props) {
   const compareTP: number[] = [];
   const compareFP: number[] = [];
   const compareFN: number[] = [];
+  const metricsByMode = {
+    tp: { main: tp, compare: compareTP },
+    fp: { main: fp, compare: compareFP },
+    fn: { main: fn, compare: compareFN },
+  };
 
   for (const subset of subsets) {
     const metrics = subsets_data[subset].metrics;
@@ -540,68 +604,103 @@ function PredictionStatisticsChart(props) {
     }
   }
 
-  const tpTrace = {
-    x: subsets,
-    y: tp,
-    name: "TP",
-    type: "bar",
-    offsetgroup: 0,
-    marker: { color: KEY_COLOR },
-  };
+  if (showAllMetric) {
+    const tpTrace = {
+      x: subsets,
+      y: tp,
+      name: "TP",
+      type: "bar",
+      offsetgroup: 0,
+      marker: { color: KEY_COLOR },
+    };
 
-  const fpTrace = {
-    x: subsets,
-    y: fp,
-    name: "FP",
-    type: "bar",
-    offsetgroup: 0,
-    marker: { color: SECONDARY_KEY_COLOR },
-  };
-  const fnTrace = {
-    x: subsets,
-    y: fn,
-    name: "FN",
-    type: "bar",
-    offsetgroup: 0,
-    marker: { color: TERTIARY_KEY_COLOR },
-  };
+    const fpTrace = {
+      x: subsets,
+      y: fp,
+      name: "FP",
+      type: "bar",
+      offsetgroup: 0,
+      marker: { color: SECONDARY_KEY_COLOR },
+    };
+    const fnTrace = {
+      x: subsets,
+      y: fn,
+      name: "FN",
+      type: "bar",
+      offsetgroup: 0,
+      marker: { color: TERTIARY_KEY_COLOR },
+    };
 
-  const compareTPTrace = {
-    x: subsets,
-    y: compareTP,
-    name: "Compare TP",
-    type: "bar",
-    offsetgroup: 1,
-    marker: { color: COMPARE_KEY_COLOR },
-  };
+    const compareTPTrace = {
+      x: subsets,
+      y: compareTP,
+      name: "Compare TP",
+      type: "bar",
+      offsetgroup: 1,
+      marker: { color: COMPARE_KEY_COLOR },
+    };
 
-  const compareFPTrace = {
-    x: subsets,
-    y: compareFP,
-    name: "Compare FP",
-    type: "bar",
-    offsetgroup: 1,
-    marker: { color: COMPARE_KEY_SECONDARY_COLOR },
-  };
+    const compareFPTrace = {
+      x: subsets,
+      y: compareFP,
+      name: "Compare FP",
+      type: "bar",
+      offsetgroup: 1,
+      marker: { color: COMPARE_KEY_SECONDARY_COLOR },
+    };
 
-  const compareFNTrace = {
-    x: subsets,
-    y: compareFN,
-    name: "Compare FN",
-    type: "bar",
-    offsetgroup: 1,
-    marker: { color: COMPARE_KEY_TERTIARY_COLOR },
-  };
-  const plotData = [tpTrace, fpTrace, fnTrace];
-  if (compareSubsetsData) {
-    plotData.push(compareTPTrace, compareFPTrace, compareFNTrace);
+    const compareFNTrace = {
+      x: subsets,
+      y: compareFN,
+      name: "Compare FN",
+      type: "bar",
+      offsetgroup: 1,
+      marker: { color: COMPARE_KEY_TERTIARY_COLOR },
+    };
+    plotData = [tpTrace, fpTrace, fnTrace];
+    if (compareSubsetsData) {
+      plotData.push(compareTPTrace, compareFPTrace, compareFNTrace);
+    }
+  } else {
+    const metricsForMode = metricsByMode[metric];
+    const { main, compare } = metricsForMode;
+    plotData = [{ x: subsets, y: main, type: "bar", name: "x" }];
+    if (compareSubsetsData) {
+      plotData.push({ x: subsets, y: compare, type: "bar", name: "x" });
+    }
   }
 
   return (
     <Stack>
-      <Typography variant="h5">Prediction Statistics</Typography>
+      <Stack direction="row" justifyContent="space-between">
+        <Typography>Prediction Statistics</Typography>
+        <EvaluationSelect
+          size="small"
+          value={metric}
+          onChange={(e) => {
+            setMetric(e.target.value);
+          }}
+          ghost
+        >
+          <MenuItem value={"all"} key={"all"}>
+            <Typography>All</Typography>
+          </MenuItem>
+          <MenuItem value={"tp"} key={"tp"}>
+            <Typography>True Positives</Typography>
+          </MenuItem>
+          <MenuItem value={"fp"} key={"fp"}>
+            <Typography>False Positives</Typography>
+          </MenuItem>
+          <MenuItem value={"fn"} key={"fn"}>
+            <Typography>False Negatives</Typography>
+          </MenuItem>
+        </EvaluationSelect>
+      </Stack>
 
-      <EvaluationPlot data={plotData} layout={{ barmode: "stack" }} />
+      <EvaluationPlot
+        data={plotData}
+        layout={showAllMetric ? { barmode: "stack" } : {}}
+      />
     </Stack>
   );
 }
@@ -644,16 +743,18 @@ function ConfusionMatrixChart(props) {
 
   return (
     <Stack>
-      <Typography variant="h5">Confusion Matrices</Typography>
+      <Stack direction="row" justifyContent="space-between">
+        <Typography>Confusion Matrices</Typography>
 
-      <SelectSubset
-        subsets={subsets}
-        selected={subset}
-        setSelected={setSubset}
-      />
+        <SelectSubset
+          subsets={subsets}
+          selected={subset}
+          setSelected={setSubset}
+        />
+      </Stack>
 
       <Stack direction="row" spacing={1}>
-        <Stack sx={{ width: "50%" }}>
+        <Stack sx={{ width: comparePlotData ? "50%" : "100%" }}>
           <EvaluationPlot data={plotData} />
         </Stack>
         {comparePlotData && (
@@ -720,7 +821,7 @@ function ConfidenceDistributionChart(props) {
 
   return (
     <Stack>
-      <Typography variant="h5">Confidence Distribution</Typography>
+      <Typography>Confidence Distribution</Typography>
 
       <EvaluationPlot
         data={plotData}
@@ -753,23 +854,25 @@ function MetricPerformanceChart(props) {
 
   return (
     <Stack>
-      <Typography variant="h5">Metric Performance</Typography>
-      <Typography>Select metric:</Typography>
-      <Select
-        size="small"
-        defaultValue={metric}
-        onChange={(e) => {
-          setMetric(e.target.value);
-        }}
-      >
-        {MODEL_PERFORMANCE_METRICS.map(({ key, label }) => {
-          return (
-            <MenuItem value={key} key={key}>
-              <Typography>{label}</Typography>
-            </MenuItem>
-          );
-        })}
-      </Select>
+      <Stack direction="row" justifyContent="space-between">
+        <Typography>Metric Performance</Typography>
+        <EvaluationSelect
+          size="small"
+          defaultValue={metric}
+          onChange={(e) => {
+            setMetric(e.target.value);
+          }}
+          ghost
+        >
+          {MODEL_PERFORMANCE_METRICS.map(({ key, label }) => {
+            return (
+              <MenuItem value={key} key={key}>
+                <Typography>{label}</Typography>
+              </MenuItem>
+            );
+          })}
+        </EvaluationSelect>
+      </Stack>
       <EvaluationPlot data={plotData} />
     </Stack>
   );
@@ -797,7 +900,7 @@ function SubsetDistributionChart(props) {
 
   return (
     <Stack>
-      <Typography variant="h5">Subset Distribution</Typography>
+      <Typography>Subset Distribution</Typography>
       <EvaluationPlot data={plotData} />
     </Stack>
   );
