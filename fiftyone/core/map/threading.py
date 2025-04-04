@@ -16,6 +16,7 @@ from typing import (
     Literal,
     Optional,
     Tuple,
+    Type,
     TypeVar,
     Union,
 )
@@ -23,6 +24,7 @@ from typing import (
 import bson
 from tqdm import tqdm
 
+import fiftyone.core.config as focc
 import fiftyone.core.utils as fou
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.mapper as fomm
@@ -33,31 +35,34 @@ from fiftyone.core.map.typing import SampleCollection
 T = TypeVar("T")
 R = TypeVar("R")
 
-
 ResultQueue = queue.Queue[
     Tuple[bson.ObjectId, Union[Exception, None], Union[R, None]]
 ]
 
 
-class ThreadMapper(fomm.LocalMapper[T]):
+class ThreadMapper(fomm.LocalMapper):
     """Executes map_samples with threading using iter_samples."""
 
-    def __init__(
-        self,
-        sample_collection: SampleCollection[T],
+    @classmethod
+    def create(
+        cls,
+        *_,
+        config: focc.FiftyOneConfig,
+        batch_cls: Type[fomb.SampleBatch],
         workers: Optional[int] = None,
-        batch_method: Optional[str] = None,
         batch_size: Optional[int] = None,
-        **kwargs,
+        **__,
     ):
         if workers is None:
-            # TODO: Using recommended process pool workers for now. There's
-            # a opportunity to determine a better default for threads.
-            workers = fou.recommend_process_pool_workers()
+            workers = (
+                config.default_thread_pool_workers
+                or fou.recommend_thread_pool_workers()
+            )
 
-        super().__init__(
-            sample_collection, workers, batch_method, batch_size, **kwargs
-        )
+        if config.max_thread_pool_workers is not None:
+            workers = min(workers, config.max_thread_pool_workers)
+
+        return cls(batch_cls, workers, batch_size)
 
     @staticmethod
     def __worker(
@@ -92,11 +97,11 @@ class ThreadMapper(fomm.LocalMapper[T]):
         finally:
             worker_done_event.set()
 
-    def _map_sample_batches(
+    def _map_samples_multiple_workers(
         self,
-        sample_batches: List[fomb.SampleBatch],
+        sample_collection: SampleCollection[T],
         map_fcn: Callable[[T], R],
-        /,
+        *_,
         progress: Union[bool, Literal["workers"]],
         save: bool,
         skip_failures: bool,
@@ -105,6 +110,10 @@ class ThreadMapper(fomm.LocalMapper[T]):
         result_queue: ResultQueue = queue.Queue()
         worker_done_events: List[threading.Event] = []
         cancel_event = threading.Event()
+
+        sample_batches = self._batch_cls.split(
+            sample_collection, self._workers
+        )
 
         count = len(sample_batches)
         with concurrent.futures.ThreadPoolExecutor(
@@ -118,9 +127,7 @@ class ThreadMapper(fomm.LocalMapper[T]):
                 worker_done_event = threading.Event()
                 worker_done_events.append(worker_done_event)
 
-                sample_collection = batch.create_subset(
-                    self._sample_collection
-                )
+                sample_collection = batch.create_subset(sample_collection)
                 sample_iter = sample_collection.iter_samples(autosave=save)
 
                 # This is for a per-worker progress bar.
@@ -165,8 +172,9 @@ class ThreadMapper(fomm.LocalMapper[T]):
                             current_timeout * backoff_factor, max_timeout
                         )
 
-                        # Reset backoff if we've hit too many consecutive timeouts
-                        # This prevents getting stuck with very long timeouts
+                        # Reset backoff if we've hit too many consecutive
+                        # timeouts This prevents getting stuck with very
+                        # long timeouts
                         if current_timeout == max_timeout:
                             current_timeout = initial_timeout
 
