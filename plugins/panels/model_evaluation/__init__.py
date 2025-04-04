@@ -122,11 +122,19 @@ class EvaluationPanel(Panel):
                 confidences.append(metrics["confidence"])
         return confidences
 
-    def get_avg_confidence(self, per_class_metrics):
-        confidences = self.get_confidences(per_class_metrics)
+    def get_avg_confidence(self, confidences):
         count = len(confidences)
         total = sum(confidences)
         return total / count if count > 0 else None
+
+    def get_confidence_distribution(self, confidences):
+        return {
+            "avg": self.get_avg_confidence(confidences),
+            "min": min(confidences),
+            "max": max(confidences),
+            "median": np.median(confidences),
+            "std": np.std(confidences),
+        }
 
     def get_avg_iou(self, per_class_metrics):
         count = 0
@@ -452,8 +460,9 @@ class EvaluationPanel(Panel):
 
             metrics = results.metrics()
             per_class_metrics = self.get_per_class_metrics(info, results)
+            confidences = self.get_confidences(per_class_metrics)
             metrics["average_confidence"] = self.get_avg_confidence(
-                per_class_metrics
+                confidences
             )
             metrics["tp"], metrics["fp"], metrics["fn"] = self.get_tp_fp_fn(
                 info, results
@@ -814,8 +823,9 @@ class EvaluationPanel(Panel):
         with results.use_subset(subset_def):
             metrics = results.metrics()
             per_class_metrics = self.get_per_class_metrics(info, results)
+            confidences = self.get_confidences(per_class_metrics)
             metrics["average_confidence"] = self.get_avg_confidence(
-                per_class_metrics
+                confidences
             )
             metrics["tp"], metrics["fp"], metrics["fn"] = self.get_tp_fp_fn(
                 info, results
@@ -827,7 +837,10 @@ class EvaluationPanel(Panel):
                 "metrics": metrics,
                 "distribution": len(results.ytrue_ids),
                 "confusion_matrices": self.get_confusion_matrices(results),
-                "confidences": self.get_confidences(per_class_metrics),
+                "confidences": confidences,
+                "confidence_distribution": self.get_confidence_distribution(
+                    confidences
+                ),
             }
 
     def process_custom_code(self, ctx, custom_code):
@@ -842,8 +855,9 @@ class EvaluationPanel(Panel):
     def get_scenario_data(self, ctx, scenario):
         view_state = ctx.panel.get_state("view") or {}
         eval_key = view_state.get("key")
-        results = ctx.dataset.load_evaluation_results(eval_key)
-        info = ctx.dataset.get_evaluation_info(eval_key)
+        computed_eval_key = ctx.params.get("key", eval_key)
+        results = ctx.dataset.load_evaluation_results(computed_eval_key)
+        info = ctx.dataset.get_evaluation_info(computed_eval_key)
         scenario_type = scenario.get("type", None)
         scenario_data = scenario.copy()
         scenario_data["subsets_data"] = {}
@@ -888,12 +902,16 @@ class EvaluationPanel(Panel):
     def load_scenario(self, ctx):
         view_state = ctx.panel.get_state("view") or {}
         eval_id = view_state.get("id")
+        eval_key = view_state.get("key")
+        computed_eval_key = ctx.params.get("key", eval_key)
         scenario_id = str(ctx.params.get("id", "") or "")
 
         if scenario_id:
             scenario = self.get_scenario(ctx, eval_id, scenario_id)
             scenario_data = self.get_scenario_data(ctx, scenario)
-            ctx.panel.set_data(f"scenario_{scenario_id}", scenario_data)
+            ctx.panel.set_data(
+                f"scenario_{scenario_id}_{computed_eval_key}", scenario_data
+            )
 
     def render(self, ctx):
         panel = types.Object()

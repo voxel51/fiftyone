@@ -1,4 +1,4 @@
-import { InsertChart, TableRows } from "@mui/icons-material";
+import { InsertChartOutlined, TableChartOutlined } from "@mui/icons-material";
 import {
   Stack,
   TableBody,
@@ -77,10 +77,10 @@ export default function MetricPerformance(props) {
           sx={{ height: "28px" }}
         >
           <ToggleButton value="chart">
-            <InsertChart />
+            <InsertChartOutlined />
           </ToggleButton>
           <ToggleButton value="table">
-            <TableRows />
+            <TableChartOutlined />
           </ToggleButton>
         </ToggleButtonGroup>
       </Stack>
