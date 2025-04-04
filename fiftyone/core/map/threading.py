@@ -112,12 +112,13 @@ class ThreadMapper(fomm.LocalMapper):
         cancel_event = threading.Event()
 
         sample_batches = self._batch_cls.split(
-            sample_collection, self._workers, self._batch_size
+            sample_collection, self.workers, self.batch_size
         )
 
-        count = len(sample_batches)
+        batch_count = len(sample_batches)
+
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=count
+            max_workers=self.workers
         ) as executor:
             for idx, batch in enumerate(sample_batches):
                 # Batch number (index starting at 1)
@@ -133,7 +134,7 @@ class ThreadMapper(fomm.LocalMapper):
 
                 # This is for a per-worker progress bar.
                 if progress == "workers":
-                    desc = f"Batch {i:0{len(str(count))}}/{count}"
+                    desc = f"Batch {i:0{len(str(batch_count))}}/{batch_count}"
 
                     sample_iter = tqdm(
                         sample_iter, total=batch.total, desc=desc, position=i

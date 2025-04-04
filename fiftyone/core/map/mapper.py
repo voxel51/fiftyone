@@ -85,6 +85,11 @@ class Mapper(abc.ABC):
         """Create a new mapper instance"""
 
     @property
+    def workers(self) -> int:
+        """Number of workers to use"""
+        return self._workers
+
+    @property
     def batch_size(self) -> Optional[int]:
         """Number of samples per worker batch"""
         return self._batch_size

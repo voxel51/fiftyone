@@ -106,11 +106,11 @@ class ProcessMapper(fomm.LocalMapper):
             view_stages = None
 
         sample_batches = self._batch_cls.split(
-            sample_collection, self._workers
+            sample_collection, self.workers, self.batch_size
         )
 
         pool = ctx.Pool(
-            processes=self._workers,
+            processes=self.workers,
             initializer=_init_worker,
             initargs=(
                 dataset_name,
