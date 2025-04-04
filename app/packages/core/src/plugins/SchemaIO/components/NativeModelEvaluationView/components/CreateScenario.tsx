@@ -1,7 +1,7 @@
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId } from "@fiftyone/spaces";
-import { Button } from "@mui/material";
 import Add from "@mui/icons-material/Add";
+import { Button } from "@mui/material";
 import React from "react";
 
 export default function CreateScenario(props) {
@@ -26,6 +26,7 @@ export default function CreateScenario(props) {
           callback: loadScenarios,
         });
       }}
+      sx={{ minWidth: "auto" }}
     >
       <Add />
     </Button>

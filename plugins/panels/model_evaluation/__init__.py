@@ -939,6 +939,7 @@ class EvaluationPanel(Panel):
             ctx.panel.set_data(
                 f"scenario_{scenario_id}_{computed_eval_key}", scenario_data
             )
+            ctx.panel.set_state("scenario_loading", False)
 
     def render(self, ctx):
         panel = types.Object()

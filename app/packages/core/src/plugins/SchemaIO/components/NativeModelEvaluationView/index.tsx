@@ -155,6 +155,7 @@ export default function NativeModelEvaluationView(props) {
             triggerEvent(load_scenarios);
           }}
           loadScenario={(id: string, key?: string) => {
+            onChange("scenario_loading", true);
             triggerEvent(load_scenario, { id, key });
           }}
           onChangeCompareKey={(compareKey) => {
