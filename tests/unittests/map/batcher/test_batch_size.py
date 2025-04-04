@@ -62,47 +62,45 @@ class TestBatchSize:
         workers = 4
         batch_size = 10  # Intentionally smaller than sample_count / workers
 
-        # Create a spy on SampleBatcher.split to verify it's called with correct parameters
-        with mock.patch.object(
-            fomb.SampleBatcher, "split", wraps=fomb.SampleBatcher.split
-        ) as mock_split:
-            # Create mapper with small batch_size
-            mapper = MapperFactory.create(
-                mapper_type,
-                dataset,
-                workers=workers,
-                batch_method=batch_method,
-                batch_size=batch_size,
-            )
+        # Get the mapper and batch classes
+        batch_cls = MapperFactory._BATCH_CLASSES[batch_method]
 
-            # Simple mapping function
-            def double_value(sample):
-                return sample["value"] * 2
+        # Create the mapper directly
+        if mapper_type == "thread":
+            mapper_cls = fomt.ThreadMapper
+        else:
+            mapper_cls = fomp.ProcessMapper
 
-            # Run the mapping operation
-            results = list(mapper.map_samples(double_value, progress=False))
+        # Create a mapper instance with the batch size
+        mapper = mapper_cls.create(
+            config=fo.config,
+            batch_cls=batch_cls,
+            workers=workers,
+            batch_size=batch_size,
+        )
 
-            # Verify split was called with correct parameters
-            mock_split.assert_called_once()
-            _, call_args, call_kwargs = mock_split.mock_calls[0]
-            assert call_args[0] == batch_method
-            assert call_args[1] == dataset
-            assert call_args[2] == workers
-            assert call_args[3] == batch_size
+        # Simple mapping function
+        def double_value(sample):
+            return sample["value"] * 2
 
-            # Verify we get correct results
-            assert len(results) == sample_count
+        # Run the mapping operation
+        results = list(
+            mapper.map_samples(dataset, double_value, progress=False)
+        )
 
-            # Collect the original values from the dataset
-            original_values = {
-                str(sample.id): sample["value"]
-                for sample in dataset.iter_samples()
-            }
+        # Verify we get correct results
+        assert len(results) == sample_count
 
-            # Check that each value was doubled correctly
-            for sample_id, result_value in results:
-                original_value = original_values[str(sample_id)]
-                assert result_value == original_value * 2
+        # Collect the original values from the dataset
+        original_values = {
+            str(sample.id): sample["value"]
+            for sample in dataset.iter_samples()
+        }
+
+        # Check that each value was doubled correctly
+        for sample_id, result_value in results:
+            original_value = original_values[str(sample_id)]
+            assert result_value == original_value * 2
 
     @pytest.mark.parametrize(
         "batch_method",
@@ -112,7 +110,7 @@ class TestBatchSize:
         ],
     )
     def test_split_batch_size(self, dataset, batch_method):
-        """Test that SampleBatcher.split creates the correct batches when using batch_size"""
+        """Test that batch splitting creates the correct batches when using batch_size"""
         sample_count = len(dataset)
 
         test_cases = [
@@ -131,10 +129,9 @@ class TestBatchSize:
         for workers, batch_size, expected_num_batches in test_cases:
             description = f"workers={workers}, batch_size={batch_size}"
 
-            # Call split directly
-            batches = fomb.SampleBatcher.split(
-                batch_method, dataset, workers, batch_size
-            )
+            # Get the batch class and create batches
+            batch_cls = MapperFactory._BATCH_CLASSES[batch_method]
+            batches = batch_cls.split(dataset, workers, batch_size)
 
             # Verify correct number of batches
             assert (

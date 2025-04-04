@@ -92,5 +92,6 @@ class MapperFactory:
             config=config,
             batch_cls=batch_cls,
             workers=workers,
-            batch_size=batch_size**mapper_extra_kwargs,
+            batch_size=batch_size,
+            **mapper_extra_kwargs,
         )

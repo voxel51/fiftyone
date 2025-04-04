@@ -112,7 +112,7 @@ class ThreadMapper(fomm.LocalMapper):
         cancel_event = threading.Event()
 
         sample_batches = self._batch_cls.split(
-            sample_collection, self._workers
+            sample_collection, self._workers, self._batch_size
         )
 
         count = len(sample_batches)
@@ -127,8 +127,9 @@ class ThreadMapper(fomm.LocalMapper):
                 worker_done_event = threading.Event()
                 worker_done_events.append(worker_done_event)
 
-                sample_collection = batch.create_subset(sample_collection)
-                sample_iter = sample_collection.iter_samples(autosave=save)
+                # Create a separate subset for this batch
+                batch_collection = batch.create_subset(sample_collection)
+                sample_iter = batch_collection.iter_samples(autosave=save)
 
                 # This is for a per-worker progress bar.
                 if progress == "workers":
