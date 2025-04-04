@@ -7,23 +7,31 @@ ARG PYTHON_VERSION=3.11
 FROM python:${PYTHON_VERSION} AS wheelhouse
 ARG PIP_INDEX_URL=https://pypi.org/simple
 
-RUN pip wheel --wheel-dir=/tmp/wheels "segments-ai==1.6.0" "tqdm>=4.66.1" "pathos==0.2.8"
+RUN pip wheel --wheel-dir=/tmp/wheels \
+    "pathos==0.2.8" \
+    "pydantic>=2.0,<2.11" \
+    "segments-ai==1.12.0" \
+    "tqdm>=4.66.1"
 
 
 FROM ${CV_BASE_IMAGE_NAME} AS scytheplugins
 
 RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     pip --no-cache-dir install -q --no-index \
-    --find-links=/wheelhouse/tmp/wheels "segments-ai==1.6.0" "tqdm>=4.66.1" "pathos==0.2.8"
+    --find-links=/wheelhouse/tmp/wheels \
+      "pathos==0.2.8" \
+      "pydantic>=2.0,<2.11" \
+      "segments-ai==1.12.0" \
+      "tqdm>=4.66.1"
 
 # run as the voxel51 user
 USER 1000:1000
 
 # Default hypercorn settings.
-ENV HYPERCORN_WORKERS=4 
+ENV HYPERCORN_WORKERS=4
 
 #
-# Serve the app. Kept as a CMD and not an 
+# Serve the app. Kept as a CMD and not an
 # ENTRYPOINT so existing customers not impacted
 # if they override these
 #

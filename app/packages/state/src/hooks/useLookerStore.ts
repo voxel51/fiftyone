@@ -1,14 +1,9 @@
-import {
-  FrameLooker,
-  ImageLooker,
-  ImaVidLooker,
-  VideoLooker,
-} from "@fiftyone/looker";
+import type { Lookers } from "@fiftyone/looker";
 import { LRUCache } from "lru-cache";
 import { useState } from "react";
-import { ModalSample } from "../recoil";
+import type { ModalSample } from "../recoil";
 
-export type Lookers = FrameLooker | ImageLooker | ImaVidLooker | VideoLooker;
+export type { Lookers };
 
 const createLookerCache = <T extends Lookers>() => {
   return new LRUCache<string, T>({
@@ -28,17 +23,6 @@ export const stores = new Set<{
   samples: Map<string, ModalSample>;
   lookers: LRUCache<string, Lookers>;
 }>();
-
-export const getSample = (id: string): ModalSample | undefined => {
-  for (const { samples: store } of stores.keys()) {
-    const sample = store.get(id);
-    if (sample) {
-      return sample;
-    }
-  }
-
-  return undefined;
-};
 
 const create = <T extends Lookers>(): LookerStore<T> => {
   const indices = new Map<number, string>();
