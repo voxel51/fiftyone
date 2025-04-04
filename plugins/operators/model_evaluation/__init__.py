@@ -184,7 +184,13 @@ class ConfigureScenario(foo.Operator):
             .get("view_sample_distribution", False)
         )
 
-    def render_empty_sample_distribution(self, inputs, description=None):
+    def render_empty_sample_distribution(
+        self, inputs, params, description=None
+    ):
+        scenario_type = self.get_scenario_type(params)
+        # NOTE: custom code validation happens at render_custom_code when exec() is called
+        is_invalid = scenario_type != "custom_code"
+
         inputs.view(
             "empty_sample_distribution",
             types.HeaderView(
@@ -211,11 +217,13 @@ class ConfigureScenario(foo.Operator):
                     },
                 },
             ),
+            invalid=is_invalid,
+            error_message="No values selected" if is_invalid else None,
         )
 
     def render_sample_distribution(self, ctx, inputs, scenario_type, values):
         if not values:
-            return self.render_empty_sample_distribution(inputs)
+            return self.render_empty_sample_distribution(inputs, ctx.params)
 
         subsets = {}
         # NOTE: this case is exact same as "sample_field". the only difference is in their UI - we filter differently.
@@ -252,6 +260,7 @@ class ConfigureScenario(foo.Operator):
             ):
                 return self.render_empty_sample_distribution(
                     inputs,
+                    ctx.params,
                     description="You can toggle the 'View sample distribution' to see the preview.",
                 )
             else:
@@ -333,6 +342,8 @@ class ConfigureScenario(foo.Operator):
                         label="Error in custom code",
                         description=error,
                     ),
+                    error_message="There is an error in custom code.",
+                    invalid=True,
                 )
             else:
                 self.render_sample_distribution(
@@ -459,13 +470,16 @@ class ConfigureScenario(foo.Operator):
 
         # check if checkbox was used
         selection_view = params.get("checkbox_view_stack", {}) or {}
-        selected_values_map = selection_view.get(key, {}) or None
+        selected_values = selection_view.get(key, {}) or None
 
         # check if auto-complete was used
-        if not selected_values_map:
-            selected_values_map = params.get(key, {}) or {}
+        if not selected_values:
+            selected_values = params.get(key, {}) or {}
 
-        return key, [key for key, val in selected_values_map.items() if val]
+        if isinstance(selected_values, list):
+            return key, selected_values
+
+        return key, [key for key, val in selected_values.items() if val]
 
     def render_checkbox_view(self, ctx, values, inputs, with_description=None):
         scenario_type = self.get_scenario_type(ctx.params)
@@ -534,6 +548,7 @@ class ConfigureScenario(foo.Operator):
             )
             self.render_empty_sample_distribution(
                 inputs,
+                ctx.params,
                 description=f"Select a {sub} to view sample distribution",
             )
 
@@ -620,6 +635,10 @@ class ConfigureScenario(foo.Operator):
                 choices=[types.Choice(value=v, label=v) for v in values],
                 allow_duplicates=False,
                 allow_user_input=False,
+                invalid=True if not selected_values else False,
+                error_message=(
+                    "No values selected" if not selected_values else ""
+                ),
             ),
         )
 
@@ -639,6 +658,7 @@ class ConfigureScenario(foo.Operator):
             )
             self.render_empty_sample_distribution(
                 inputs,
+                ctx.params,
                 description=f"Select a {sub} to view sample distribution",
             )
 
@@ -702,6 +722,7 @@ class ConfigureScenario(foo.Operator):
         else:
             self.render_empty_sample_distribution(
                 inputs,
+                ctx.params,
                 description=f"Select an attribute to view sample distribution",
             )
 
@@ -711,21 +732,26 @@ class ConfigureScenario(foo.Operator):
         """
         options = []
 
+        # Build a list of bad root paths: any path that is a list of documents
+        # Fields inside a list of documents should be filtered out in sample_fields dropdown filtering.
+        # TODO: BMoore/Ritchie to take a look at this
         bad_roots = tuple(
             k + "."
             for k, v in flat_field_schema.items()
             if isinstance(v, fof.ListField)
+            and isinstance(v.field, fof.EmbeddedDocumentField)
         )
 
-        # TODO: any field inside a list of documents not allowed
         for field_path, field in flat_field_schema.items():
             if field_path.startswith(bad_roots):
                 continue
+
             if isinstance(field, ALLOWED_BY_TYPES):
                 options.append(field_path)
-            if isinstance(field, fof.ListField):
-                if isinstance(field.field, ALLOWED_BY_TYPES):
-                    options.append(field_path)
+            elif isinstance(field, fof.ListField) and isinstance(
+                field.field, ALLOWED_BY_TYPES
+            ):
+                options.append(field_path)
 
         return options
 
@@ -751,6 +777,7 @@ class ConfigureScenario(foo.Operator):
         else:
             self.render_empty_sample_distribution(
                 inputs,
+                ctx.params,
                 description=f"Select a field to view sample distribution",
             )
 
