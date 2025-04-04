@@ -177,6 +177,7 @@ def test_get_key(svc):
     KEY = "key1"
     svc.set_key(NAME, KEY, "value1")
     key_doc = svc.get_key(NAME, KEY)
+    assert key_doc.policy == KeyPolicy.PERSIST, "Key policy should be PERSIST"
     assert key_doc.value == "value1"
     assert svc.get_key(NAME, "nonexistent") is None
 
@@ -403,6 +404,10 @@ def test_clear_cache(svc):
     initial_store_count = svc.count_stores()  # Ensure the store is created
     assert initial_store_count == 1, "There should be one store initially"
     svc.set_cache_key("cache_store", "cache_key", "cache_value")
+    key_doc = svc.get_key("cache_store", "cache_key")
+    assert key_doc.policy == KeyPolicy.EVICT, "Key policy should be EVICT"
+    assert key_doc.value == "cache_value", "Key value should match"
+    assert key_doc.policy == "evict", "Key policy should be 'evict'"
     assert svc.has_key(
         "cache_store", "cache_key"
     ), "Cache key should be present"

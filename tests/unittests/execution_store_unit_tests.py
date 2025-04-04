@@ -53,34 +53,44 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
         self.store_service = ExecutionStoreService(self.store_repo)
 
     def test_set_key(self):
-        self.store_repo.set_key(
-            "widgets",
-            "widget_1",
-            {"name": "Widget One", "value": 100},
-            ttl=60000,
-        )
+        store = "widgets"
+        key = "widget_1"
+        value = {"name": "Widget One", "value": 100}
+        ttl = 60000
+
+        self.store_repo.set_key(store, key, value, ttl=ttl)
+
         self.mock_collection.update_one.assert_called_once()
-        self.mock_collection.update_one.assert_called_with(
+        args, kwargs = self.mock_collection.update_one.call_args
+
+        # Filter
+        self.assertEqual(
+            args[0],
             {
-                "store_name": "widgets",
-                "key": "widget_1",
+                "store_name": store,
+                "key": key,
                 "dataset_id": None,
             },
-            {
-                "$set": {
-                    "value": {"name": "Widget One", "value": 100},
-                    "updated_at": IsDateTime(),
-                },
-                "$setOnInsert": {
-                    "store_name": "widgets",
-                    "key": "widget_1",
-                    "created_at": IsDateTime(),
-                    "expires_at": IsDateTime(),
-                    "dataset_id": None,
-                },
-            },
-            upsert=True,
         )
+
+        # Update
+        update = args[1]
+        self.assertIn("$set", update)
+        self.assertIn("$setOnInsert", update)
+
+        self.assertEqual(update["$set"]["value"], value)
+        self.assertIsInstance(update["$set"]["updated_at"], datetime)
+
+        insert = update["$setOnInsert"]
+        self.assertEqual(insert["store_name"], store)
+        self.assertEqual(insert["key"], key)
+        self.assertIsInstance(insert["created_at"], datetime)
+        self.assertIsInstance(insert["expires_at"], datetime)
+        self.assertIsNone(insert["dataset_id"])
+        self.assertEqual(insert["policy"], "evict")
+
+        # Options
+        self.assertEqual(kwargs, {"upsert": True})
 
     def test_get_key(self):
         self.mock_collection.find_one.return_value = {
@@ -91,6 +101,7 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
             "created_at": time.time(),
             "updated_at": time.time(),
             "expires_at": time.time() + 60000,
+            "policy": "evict",
         }
         self.store_service.get_key(store_name="widgets", key="widget_1")
         self.mock_collection.find_one.assert_called_once()
@@ -114,6 +125,7 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
                 "updated_at": None,
                 "expires_at": None,
                 "dataset_id": None,
+                "policy": "persist",
             }
         )
 
@@ -151,8 +163,8 @@ class ExecutionStoreServiceIntegrationTests(unittest.TestCase):
 
     def test_list_keys(self):
         self.mock_collection.find.return_value = [
-            {"store_name": "widgets", "key": "widget_1"},
-            {"store_name": "widgets", "key": "widget_2"},
+            {"store_name": "widgets", "key": "widget_1", "policy": "persist"},
+            {"store_name": "widgets", "key": "widget_2", "policy": "persist"},
         ]
         keys = self.store_repo.list_keys("widgets")
         assert keys == ["widget_1", "widget_2"]
@@ -175,31 +187,42 @@ class TestExecutionStoreIntegration(unittest.TestCase):
         self.store = ExecutionStore("mock_store", self.store_service)
 
     def test_set(self):
-        self.store.set(
-            "widget_1", {"name": "Widget One", "value": 100}, ttl=60000
-        )
+        key = "widget_1"
+        value = {"name": "Widget One", "value": 100}
+        ttl = 60000
+
+        self.store.set(key, value, ttl=ttl)
+
         self.mock_collection.update_one.assert_called_once()
-        self.mock_collection.update_one.assert_called_with(
+        args, kwargs = self.mock_collection.update_one.call_args
+
+        # Filter
+        self.assertEqual(
+            args[0],
             {
                 "store_name": "mock_store",
-                "key": "widget_1",
+                "key": key,
                 "dataset_id": None,
             },
-            {
-                "$set": {
-                    "updated_at": IsDateTime(),
-                    "value": {"name": "Widget One", "value": 100},
-                },
-                "$setOnInsert": {
-                    "store_name": "mock_store",
-                    "key": "widget_1",
-                    "created_at": IsDateTime(),
-                    "expires_at": IsDateTime(),
-                    "dataset_id": None,
-                },
-            },
-            upsert=True,
         )
+
+        # Update
+        update = args[1]
+        self.assertIn("$set", update)
+        self.assertIn("$setOnInsert", update)
+
+        self.assertEqual(update["$set"]["value"], value)
+        self.assertIsInstance(update["$set"]["updated_at"], datetime)
+
+        insert = update["$setOnInsert"]
+        self.assertEqual(insert["store_name"], "mock_store")
+        self.assertEqual(insert["key"], key)
+        self.assertIsInstance(insert["created_at"], datetime)
+        self.assertIsInstance(insert["expires_at"], datetime)
+        self.assertIsNone(insert["dataset_id"])
+
+        # Options
+        self.assertEqual(kwargs, {"upsert": True})
 
     def test_get(self):
         self.mock_collection.find_one.return_value = {
@@ -245,34 +268,44 @@ class ExecutionStoreServiceDatasetIdTests(unittest.TestCase):
         self.store_service = ExecutionStoreService(self.store_repo)
 
     def test_set_key_with_dataset_id(self):
-        self.store_service.set_key(
-            "widgets",
-            "widget_1",
-            {"name": "Widget One", "value": 100},
-            ttl=60000,
-        )
+        store = "widgets"
+        key = "widget_1"
+        value = {"name": "Widget One", "value": 100}
+        ttl = 60000
+
+        self.store_service.set_key(store, key, value, ttl=ttl)
+
         self.mock_collection.update_one.assert_called_once()
-        self.mock_collection.update_one.assert_called_with(
+        args, kwargs = self.mock_collection.update_one.call_args
+
+        # Filter
+        self.assertEqual(
+            args[0],
             {
-                "store_name": "widgets",
-                "key": "widget_1",
+                "store_name": store,
+                "key": key,
                 "dataset_id": self.dataset_id,
             },
-            {
-                "$set": {
-                    "value": {"name": "Widget One", "value": 100},
-                    "updated_at": IsDateTime(),
-                },
-                "$setOnInsert": {
-                    "store_name": "widgets",
-                    "key": "widget_1",
-                    "created_at": IsDateTime(),
-                    "expires_at": IsDateTime(),
-                    "dataset_id": self.dataset_id,
-                },
-            },
-            upsert=True,
         )
+
+        # Update
+        update = args[1]
+        self.assertIn("$set", update)
+        self.assertIn("$setOnInsert", update)
+
+        self.assertEqual(update["$set"]["value"], value)
+        self.assertIsInstance(update["$set"]["updated_at"], datetime)
+
+        insert = update["$setOnInsert"]
+        self.assertEqual(insert["store_name"], store)
+        self.assertEqual(insert["key"], key)
+        self.assertIsInstance(insert["created_at"], datetime)
+        self.assertIsInstance(insert["expires_at"], datetime)
+        self.assertEqual(insert["dataset_id"], self.dataset_id)
+        self.assertEqual(insert["policy"], "evict")
+
+        # Options
+        self.assertEqual(kwargs, {"upsert": True})
 
     def test_get_key_with_dataset_id(self):
         self.mock_collection.find_one.return_value = {
@@ -283,6 +316,7 @@ class ExecutionStoreServiceDatasetIdTests(unittest.TestCase):
             "updated_at": time.time(),
             "expires_at": time.time() + 60000,
             "dataset_id": self.dataset_id,
+            "policy": "evict",
         }
         self.store_service.get_key("widgets", "widget_1")
         self.mock_collection.find_one.assert_called_once()

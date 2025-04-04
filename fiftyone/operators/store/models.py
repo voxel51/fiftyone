@@ -50,12 +50,20 @@ class KeyDocument:
 
         return datetime.utcnow() + timedelta(seconds=ttl)
 
+    @classmethod
+    def from_dict(cls, doc: dict[str, Any]) -> "KeyDocument":
+        """Creates a KeyDocument from a dictionary."""
+
+        doc["policy"] = KeyPolicy(doc.get("policy", "persist"))
+        return cls(**doc)
+
     def to_mongo_dict(self, exclude_id: bool = True) -> dict[str, Any]:
         """Serializes the document to a MongoDB dictionary."""
         data = asdict(self)
         if exclude_id:
             data.pop("_id", None)
-
+        if self.policy:
+            data["policy"] = self.policy.value
         return data
 
 

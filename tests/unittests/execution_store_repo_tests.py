@@ -11,6 +11,7 @@ import unittest
 from bson import ObjectId
 
 from fiftyone.factory.repos.execution_store import InMemoryExecutionStoreRepo
+from fiftyone.factory.repos.execution_store import KeyPolicy
 
 
 class TestInMemoryExecutionStoreRepo(unittest.TestCase):
@@ -58,6 +59,10 @@ class TestInMemoryExecutionStoreRepo(unittest.TestCase):
         key_doc = self.repo.set_key(store_name, key, value, ttl=60)
         self.assertEqual(key_doc.key, key)
         self.assertEqual(key_doc.value, value)
+        self.assertEqual(key_doc.store_name, store_name)
+        self.assertEqual(key_doc.dataset_id, self.dataset_id)
+        self.assertIsNotNone(key_doc.expires_at)
+        self.assertEqual(key_doc.policy, KeyPolicy.EVICT)
         self.assertTrue(self.repo.has_key(store_name, key))
         fetched_key = self.repo.get_key(store_name, key)
         self.assertEqual(fetched_key.value, value)
@@ -73,6 +78,7 @@ class TestInMemoryExecutionStoreRepo(unittest.TestCase):
         updated_key = self.repo.get_key(store_name, key)
         # Ensure that the expiration timestamp has been updated (allowing for slight time differences)
         self.assertNotEqual(updated_key.expires_at, old_expiration)
+        self.assertEqual(updated_key.policy, "evict")
 
     def test_update_policy(self):
         store_name = "policy_store"
