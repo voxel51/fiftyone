@@ -429,6 +429,17 @@ class EvaluationPanel(Panel):
         scenarios = self.get_scenarios(ctx, eval_id) or {}
         return scenarios.get(scenario_id)
 
+    def load_scenarios(self, ctx):
+        view_state = ctx.panel.get_state("view") or {}
+        eval_key = view_state.get("key")
+        computed_eval_key = ctx.params.get("key", eval_key)
+        eval_id = view_state.get("id")
+        computed_eval_id = ctx.params.get("id", eval_id)
+        scenarios = self.get_scenarios(ctx, computed_eval_id)
+        ctx.panel.set_data(
+            f"evaluation_{computed_eval_key}.scenarios", scenarios
+        )
+
     def load_evaluation(self, ctx):
         view_state = ctx.panel.get_state("view") or {}
         eval_key = view_state.get("key")
@@ -929,6 +940,7 @@ class EvaluationPanel(Panel):
                 load_view=self.load_view,
                 rename_evaluation=self.rename_evaluation,
                 delete_evaluation=self.delete_evaluation,
+                load_scenarios=self.load_scenarios,
                 load_scenario=self.load_scenario,
             ),
         )

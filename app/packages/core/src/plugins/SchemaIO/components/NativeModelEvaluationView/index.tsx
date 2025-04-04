@@ -32,6 +32,7 @@ export default function NativeModelEvaluationView(props) {
     load_view,
     rename_evaluation,
     delete_evaluation,
+    load_scenarios,
     load_scenario,
   } = view;
   const {
@@ -149,6 +150,9 @@ export default function NativeModelEvaluationView(props) {
           data={data}
           loadEvaluation={(key?: string) => {
             triggerEvent(load_evaluation, { key, id: keyToId[key as string] });
+          }}
+          loadScenarios={() => {
+            triggerEvent(load_scenarios);
           }}
           loadScenario={(id: string, key?: string) => {
             triggerEvent(load_scenario, { id, key });
