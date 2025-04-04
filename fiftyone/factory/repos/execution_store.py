@@ -130,7 +130,7 @@ class ExecutionStoreRepo(ABC):
         key: str,
         value: Any,
         ttl: Optional[int] = None,
-        policy: str = "persistent",
+        policy: str = "persist",
     ) -> KeyDocument:
         """Set a key in a store.
         Args:
