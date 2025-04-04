@@ -74,7 +74,7 @@ export default function EvaluationScenarioAnalysis(props) {
             <Typography color="secondary">Scenario:</Typography>
             <EvaluationSelect
               size="small"
-              defaultValue={selectedScenario}
+              value={selectedScenario}
               onChange={(e) => {
                 setSelectedScenario(e.target.value as string);
               }}
