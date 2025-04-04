@@ -121,7 +121,12 @@ class ExecutionStoreService(object):
         return self._repo.delete_store(store_name)
 
     def set_key(
-        self, store_name: str, key: str, value: Any, ttl: Optional[int] = None
+        self,
+        store_name: str,
+        key: str,
+        value: Any,
+        ttl: Optional[int] = None,
+        policy: str = "persist",
     ) -> KeyDocument:
         """Sets the value of a key in the specified store.
 
@@ -147,7 +152,9 @@ class ExecutionStoreService(object):
         Returns:
             KeyDocument: The created or updated key document.
         """
-        return self._repo.set_key(store_name, key, value, ttl=ttl)
+        return self._repo.set_key(
+            store_name, key, value, ttl=ttl, policy=policy
+        )
 
     def has_key(self, store_name: str, key: str) -> bool:
         """Determines whether the specified key exists in the specified store.
