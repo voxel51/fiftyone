@@ -3902,6 +3902,7 @@ class SampleCollection(object):
         map_fcn: Callable[[Any], Any],
         workers: Optional[int] = None,
         batch_method: str = "id",
+        batch_size: Optional[int] = None,
         progress: Optional[Union[bool, Literal["worker"]]] = None,
         save: bool = False,
         parallelize_method: str = "process",
@@ -3915,6 +3916,8 @@ class SampleCollection(object):
             map_fcn: Function to apply to each sample.
             workers (None): Number of workers.
             batch_method ("id"): Method for sharding ('id' or 'slice').
+            batch_size (None): Number of samples per batch. If None, the batch size
+                is automatically calculated to be the number of samples per worker.
             progress (None): Whether to show progress bar.
             save (False): Whether to save modified samples.
             parallelize_method ("process"): Method for parallelization ('process'
@@ -3930,6 +3933,7 @@ class SampleCollection(object):
             self,
             workers,
             batch_method,
+            batch_size,
         )
 
         yield from mapper.map_samples(
@@ -3941,6 +3945,7 @@ class SampleCollection(object):
         update_fcn: Callable[[Any], Any],
         workers: Optional[int] = None,
         batch_method: str = "id",
+        batch_size: Optional[int] = None,
         progress: Optional[Union[bool, Literal["worker"]]] = None,
         parallelize_method: str = "process",
         skip_failures=True,
@@ -3952,6 +3957,8 @@ class SampleCollection(object):
             update_fcn: Function to apply to each sample.
             workers (None): Number of workers.
             batch_method ("id"): Method for sharding ('id' or 'slice').
+            batch_size (None): Number of samples per batch. If None, the batch size
+                is automatically calculated to be the number of samples per worker.
             progress (None): Whether to show progress bar.
             parallelize_method ("process"): Method for parallelization ('process'
               or 'thread'). Default to process.
@@ -3959,7 +3966,7 @@ class SampleCollection(object):
                 error if the update function raises an exception for a sample.
         """
         mapper = focm.MapperFactory.create(
-            parallelize_method, self, workers, batch_method
+            parallelize_method, self, workers, batch_method, batch_size
         )
 
         for _ in mapper.map_samples(

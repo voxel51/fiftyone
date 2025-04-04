@@ -99,7 +99,7 @@ class ProcessMapper(fomm.LocalMapper[T]):
             view_stages = None
 
         pool = ctx.Pool(
-            processes=len(sample_batches),
+            processes=self.workers,
             initializer=_init_worker,
             initargs=(
                 dataset_name,
