@@ -475,7 +475,7 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
         return key_doc
 
     def set_cache_key(self, store_name, key, value, ttl=None):
-        return super().set_cache_key(store_name, key, value, ttl)
+        return self.set_key(store_name, key, value, ttl, policy="evict")
 
     def has_key(self, store_name: str, key: str) -> bool:
         result = self._collection.find_one(
