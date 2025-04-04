@@ -479,7 +479,9 @@ class ExecutionContext(object):
         operator_uri=None,
         required_secrets=None,
     ):
-        self.request_params = request_params or {}
+        if request_params is None:
+            request_params = {}
+        self.request_params = request_params
         self.params = self.request_params.get("params", {})
         self.executor = executor
         self.user = None
