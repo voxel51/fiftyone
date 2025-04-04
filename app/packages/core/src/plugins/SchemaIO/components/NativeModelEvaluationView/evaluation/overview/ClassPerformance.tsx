@@ -1,5 +1,9 @@
 import { Dialog } from "@fiftyone/components";
-import { InsertChart, Settings, TableRows } from "@mui/icons-material";
+import {
+  InsertChartOutlined,
+  Settings,
+  TableChartOutlined,
+} from "@mui/icons-material";
 import {
   Button,
   IconButton,
@@ -21,9 +25,9 @@ import EvaluationTable from "../../components/EvaluationTable";
 import { COMPARE_KEY_COLOR, KEY_COLOR } from "../../constants";
 import EvaluationPlot from "../../EvaluationPlot";
 import { formatValue, getNumericDifference } from "../../utils";
+import { DEFAULT_BAR_CONFIG } from "./constants";
 import { PLOT_CONFIG_DIALOG_TYPE, PLOT_CONFIG_TYPE } from "./types";
 import { getConfigLabel, useActiveFilter } from "./utils";
-import { DEFAULT_BAR_CONFIG } from "./constants";
 
 export default function ClassPerformance(props) {
   const { evaluation, compareEvaluation, loadView, name, compareKey } = props;
@@ -101,10 +105,10 @@ export default function ClassPerformance(props) {
             sx={{ height: "28px" }}
           >
             <ToggleButton value="chart">
-              <InsertChart />
+              <InsertChartOutlined />
             </ToggleButton>
             <ToggleButton value="table">
-              <TableRows />
+              <TableChartOutlined />
             </ToggleButton>
           </ToggleButtonGroup>
           <Select

@@ -41,7 +41,7 @@ export default function Evaluation(props: EvaluationProps) {
     loadScenario,
   } = props;
   const theme = useTheme();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("scenario");
   const [loadingCompare, setLoadingCompare] = useState(false);
   const evaluation = useMemo(() => {
     const evaluation = data?.[`evaluation_${name}`];
@@ -319,7 +319,7 @@ type EvaluationProps = {
   id: string;
   navigateBack: () => void;
   loadEvaluation: (key?: string) => void;
-  loadScenario: (id?: string, subset?: string) => void;
+  loadScenario: (id: string, key?: string) => void;
   onChangeCompareKey: (compareKey: string) => void;
   compareKey?: string;
   data: any;
