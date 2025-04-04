@@ -455,6 +455,7 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
                     "store_name",
                     "key",
                     "dataset_id",
+                    "policy",
                 }
             },
             "$setOnInsert": on_insert_fields,

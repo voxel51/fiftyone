@@ -53,9 +53,15 @@ class KeyDocument:
     @classmethod
     def from_dict(cls, doc: dict[str, Any]) -> "KeyDocument":
         """Creates a KeyDocument from a dictionary."""
+        doc = dict(doc)  # avoid mutating the original input
+        raw_policy = doc.pop("policy", None)
 
-        doc["policy"] = KeyPolicy(doc.get("policy", "persist"))
-        return cls(**doc)
+        fallback_policy = (
+            KeyPolicy.EVICT if doc.get("expires_at") else KeyPolicy.PERSIST
+        )
+        policy = KeyPolicy(raw_policy) if raw_policy else fallback_policy
+
+        return cls(**doc, policy=policy)
 
     def to_mongo_dict(self, exclude_id: bool = True) -> dict[str, Any]:
         """Serializes the document to a MongoDB dictionary."""
