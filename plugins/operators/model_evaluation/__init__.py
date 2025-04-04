@@ -126,19 +126,8 @@ class ConfigureScenario(foo.Operator):
 
         return eval_key_a, eval_key_b
 
-    def extract_evaluation_ids(self, ctx):
-        eval_id_a, eval_id_b = None, None
-        evaluations = ctx.params.get("panel_state", {}).get("evaluations", [])
-
-        if len(evaluations) > 0:
-            eval_id_a = evaluations[0]["id"]
-        else:
-            raise ValueError("No evaluation ids found")
-
-        if len(evaluations) > 1:
-            eval_id_b = evaluations[1]["id"]
-
-        return eval_id_a, eval_id_b
+    def extract_evaluation_id(self, ctx):
+        return ctx.params.get("eval_id")
 
     # TODO: use @cache(ttl=x)
     def get_sample_distribution(self, ctx, subset_expressions):
@@ -908,7 +897,7 @@ class ConfigureScenario(foo.Operator):
         store = ctx.store(STORE_NAME)
         scenarios = store.get("scenarios") or {}
 
-        eval_id_a, _ = self.extract_evaluation_ids(ctx)
+        eval_id_a = self.extract_evaluation_id(ctx)
         if eval_id_a is None:
             raise ValueError("No evaluation ids found")
 
