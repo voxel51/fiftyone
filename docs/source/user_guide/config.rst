@@ -18,7 +18,10 @@ FiftyOne supports the configuration options described below:
 | Config field                  | Environment variable                  | Default value                 | Description                                                                            |
 +===============================+=======================================+===============================+========================================================================================+
 | `database_admin`              | `FIFTYONE_DATABASE_ADMIN`             | `True`                        | Whether the client is allowed to trigger database migrations. See                      |
-|                               |                                       |                               | :ref:`this section <database-migrations>` for more information.                        |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `database_compression`        | `FIFTYONE_DATABASE_COMPRESSION`       | `None`                        | `MongoDB Network Compression                                                           |
+|                               |                                       |                               | <https://www.mongodb.com/developer/products/mongodb/mongodb-network-compression/>` to  |
+|                               |                                       |                               | use. Supported values are: None, `zstd` (recommended), `zlib`, or `snappy`.            |
 +-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `database_dir`                | `FIFTYONE_DATABASE_DIR`               | `~/.fiftyone/var/lib/mongo`   | The directory in which to store FiftyOne's backing database. Only applicable if        |
 |                               |                                       |                               | `database_uri` is not defined.                                                         |
