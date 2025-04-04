@@ -873,9 +873,11 @@ class EvaluationPanel(Panel):
         scenario_data = scenario.copy()
         scenario_data["subsets_data"] = {}
 
+        print(">>> scenario_type:", scenario_type)
         if scenario_type == "custom_code":
             custom_code = scenario.get("subsets", None)
             cc_expr, cc_error = self.process_custom_code(ctx, custom_code)
+            subsets_names = []
 
             if cc_error:
                 # TODO
@@ -890,14 +892,18 @@ class EvaluationPanel(Panel):
                         scenario_data["subsets_data"][
                             subset_name
                         ] = subset_data
+                        subsets_names.append(subset_name)
                 elif isinstance(cc_expr, list):
                     subset_data = self.get_subset_def_data(
                         info, results, subset_def
                     )
                     scenario_data["subsets_data"]["All"] = subset_data
-
-                # TODO: talk to bmoore and ibrahim about this
-                scenario_data["subsets_data"]["All"] = subset_data
+                    subsets_names.append("All")
+                else:
+                    # TODO: talk to bmoore and ibrahim about this
+                    scenario_data["subsets_data"]["All"] = subset_data
+                    subsets_names.append("All")
+            scenario_data["subsets"] = subsets_names
         elif scenario_type == "view":
             scenario_subsets = scenario.get("subsets", [])
             for subset in scenario_subsets:
