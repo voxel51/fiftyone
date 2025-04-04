@@ -1,14 +1,7 @@
-import { usePanelEvent } from "@fiftyone/operators";
-import { usePanelId } from "@fiftyone/spaces";
 import { isNullish } from "@fiftyone/utilities";
-import {
-  Add,
-  InsertChartOutlined,
-  TableChartOutlined,
-} from "@mui/icons-material";
+import { InsertChartOutlined, TableChartOutlined } from "@mui/icons-material";
 import {
   Box,
-  Button,
   Card,
   CircularProgress,
   Grid,
@@ -24,12 +17,9 @@ import {
   useTheme,
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
+import CreateScenario from "../../components/CreateScenario";
 import EvaluationSelect from "../../components/EvaluationSelect";
 import EvaluationTable from "../../components/EvaluationTable";
-import EvaluationPlot from "../../EvaluationPlot";
-import { scenarioCardStyles } from "../../styles";
-import { formatValue } from "../../utils";
-import EmptyScenario from "./EmptyScenario";
 import {
   COMPARE_KEY_COLOR,
   COMPARE_KEY_SECONDARY_COLOR,
@@ -38,8 +28,10 @@ import {
   SECONDARY_KEY_COLOR,
   TERTIARY_KEY_COLOR,
 } from "../../constants";
-
-const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
+import EvaluationPlot from "../../EvaluationPlot";
+import { scenarioCardStyles } from "../../styles";
+import { formatValue } from "../../utils";
+import EmptyScenario from "./EmptyScenario";
 
 export default function EvaluationScenarioAnalysis(props) {
   const { evaluation, data, loadScenarios, loadScenario } = props;
@@ -48,13 +40,17 @@ export default function EvaluationScenarioAnalysis(props) {
     getDefaultScenario(scenarios)
   );
   const [mode, setMode] = useState("charts");
-  const panelId = usePanelId();
-  const promptOperator = usePanelEvent();
   const evaluationInfo = evaluation.info;
   const evaluationConfig = evaluationInfo.config;
 
   const scenariosArray = scenarios ? Object.values(scenarios) : [];
   const isEmpty = scenariosArray.length === 0;
+
+  useEffect(() => {
+    if (!selectedScenario) {
+      setSelectedScenario(getDefaultScenario(scenarios));
+    }
+  }, [selectedScenario, setSelectedScenario, scenarios]);
 
   return (
     <Card sx={{ p: 2 }}>
@@ -68,10 +64,9 @@ export default function EvaluationScenarioAnalysis(props) {
       </Stack>
       {isEmpty ? (
         <EmptyScenario
-          evaluationConfig={evaluationConfig}
-          onCreateScenario={() => {
-            loadScenarios();
-          }}
+          eval_id={data?.view?.id}
+          loadScenarios={loadScenarios}
+          gt_field={evaluationConfig.gt_field}
         />
       ) : (
         <Stack direction="row" spacing={1} justifyContent="space-between">
@@ -97,6 +92,11 @@ export default function EvaluationScenarioAnalysis(props) {
             </EvaluationSelect>
           </Stack>
           <Stack direction="row" spacing={1}>
+            <CreateScenario
+              eval_id={data?.view?.id}
+              loadScenarios={loadScenarios}
+              gt_field={evaluationConfig.gt_field}
+            />
             <ToggleButtonGroup
               value={mode}
               exclusive
@@ -112,24 +112,6 @@ export default function EvaluationScenarioAnalysis(props) {
                 <TableChartOutlined />
               </ToggleButton>
             </ToggleButtonGroup>
-            <Button
-              size="small"
-              variant="contained"
-              onClick={() => {
-                promptOperator(panelId, {
-                  params: {
-                    gt_field: evaluationConfig.gt_field,
-                    scenario_type: "custom_code",
-                    scenario_name: "test", // # TODO: Edit will pass current name
-                  },
-                  operator: CONFIGURE_SCENARIO_ACTION,
-                  prompt: true,
-                  callback: loadScenarios,
-                });
-              }}
-            >
-              <Add />
-            </Button>
           </Stack>
         </Stack>
       )}
