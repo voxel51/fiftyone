@@ -28,6 +28,8 @@ App
 - Fixed label tags filtering in the
   :ref:`Query Performance <app-optimizing-query-performance>` sidebar
   `#5675 <https://github.com/voxel51/fiftyone/pull/5675>`_
+- Fixed bug when entering invalid id into sidebar id filter
+  `#5655 <https://github.com/voxel51/fiftyone/pull/5655>`_
 
 
 FiftyOne Enterprise 2.7.1
