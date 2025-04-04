@@ -60,9 +60,15 @@ def check_if_return_is_sample(
 class Mapper(abc.ABC):
     """Base class for mapping samples in parallel"""
 
-    def __init__(self, batch_cls: Type[fomb.SampleBatch], workers: int):
+    def __init__(
+        self,
+        batch_cls: Type[fomb.SampleBatch],
+        workers: int,
+        batch_size: Optional[int] = None,
+    ):
         self._workers = workers
         self._batch_cls = batch_cls
+        self._batch_size = batch_size
 
     @classmethod
     @abc.abstractmethod
@@ -77,6 +83,16 @@ class Mapper(abc.ABC):
         **__,
     ):
         """Create a new mapper instance"""
+
+    @property
+    def workers(self) -> int:
+        """Number of workers to use"""
+        return self._workers
+
+    @property
+    def batch_size(self) -> Optional[int]:
+        """Number of samples per worker batch"""
+        return self._batch_size
 
     @abc.abstractmethod
     def _map_samples(
