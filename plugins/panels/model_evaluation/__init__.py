@@ -898,8 +898,7 @@ class EvaluationPanel(Panel):
 
                 # TODO: talk to bmoore and ibrahim about this
                 scenario_data["subsets_data"]["All"] = subset_data
-
-        if scenario_type == "view":
+        elif scenario_type == "view":
             scenario_subsets = scenario.get("subsets", [])
             for subset in scenario_subsets:
                 subset_def = dict(type="view", view=subset)
@@ -907,6 +906,17 @@ class EvaluationPanel(Panel):
                     info, results, subset_def
                 )
                 scenario_data["subsets_data"][subset] = subset_data
+        elif scenario_type == "sample_field":
+            scenario_subsets = scenario.get("subsets", [])
+            for subset in scenario_subsets:
+                subset_def = dict(type="field", field=subset)
+                subset_data = self.get_subset_def_data(
+                    info, results, subset_def
+                )
+                scenario_data["subsets_data"][subset] = subset_data
+        else:
+            print(">>> scenario_type:", scenario_type)
+            scenario_data["subsets_data"] = None  # unsupported type
 
         return scenario_data
 

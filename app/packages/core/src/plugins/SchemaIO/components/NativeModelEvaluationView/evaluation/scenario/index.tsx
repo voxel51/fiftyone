@@ -176,6 +176,18 @@ function Scenario(props) {
     );
   }
 
+  if (!scenario.subsets_data) {
+    return (
+      <Stack
+        sx={{ minHeight: 300 }}
+        alignItems="center"
+        justifyContent="center"
+      >
+        <Typography>Scenario is unsupported or is invalid</Typography>
+      </Stack>
+    );
+  }
+
   return (
     <Stack>
       {mode === "charts" ? (
