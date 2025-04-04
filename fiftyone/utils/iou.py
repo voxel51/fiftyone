@@ -681,7 +681,10 @@ def _compute_bbox_ious(
                 ious[i, j] = iou
                 if is_symmetric:
                     ious[j, i] = iou
-
+        # If a prediction has no intersection, we need to add it to the ious dict
+        # to account for it downstream
+        if sparse and not ious.get(pred.id):
+            ious[pred.id] = []
     return ious
 
 
