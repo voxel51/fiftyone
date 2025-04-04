@@ -21,6 +21,7 @@ class ExecutionStore(object):
         store_name: the name of the store
         store_service: an
             :class:`fiftyone.operators.store.service.ExecutionStoreService`
+        default_policy ("persist"): the default eviction policy for the store.
     """
 
     def __init__(
@@ -73,13 +74,19 @@ class ExecutionStore(object):
     def set(
         self, key: str, value: Any, ttl: Optional[int] = None, policy=None
     ) -> None:
-        """Sets a value in the store with an optional TTL.
+        """Sets the value of a key in the specified store.
 
         Args:
-            key: the key to store the value under
-            value: the value to store
-            ttl (None): the time-to-live in seconds
-            policy ("persist"): the eviction policy for the key, either "persist" or "evict"
+            key: the key to set
+            value: the value to set
+            ttl (None): an optional TTL in seconds
+            policy (persist): the eviction policy for the key. Can be "persist" or "evict".
+                If "persist", the key will never be automatically removed.
+                If "evict", the key may be removed automatically if a TTL is set,
+                or manually via :meth:`clear_cache`.
+
+        Returns:
+            a :class:`fiftyone.store.models.KeyDocument`
         """
         if policy is None:
             policy = self._default_policy
@@ -91,7 +98,7 @@ class ExecutionStore(object):
     def set_cache(
         self, key: str, value: Any, ttl: Optional[int] = None
     ) -> None:
-        """Sets a value in the store with an optional TTL.
+        """Sets a value in the store with the eviction policy set to "evict".
 
         Args:
             key: the key to store the value under
