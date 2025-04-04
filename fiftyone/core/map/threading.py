@@ -47,6 +47,7 @@ class ThreadMapper(fomm.LocalMapper):
         config: focc.FiftyOneConfig,
         batch_cls: Type[fomb.SampleBatch],
         workers: Optional[int] = None,
+        batch_size: Optional[int] = None,
         **__,
     ):
         if workers is None:
@@ -58,7 +59,7 @@ class ThreadMapper(fomm.LocalMapper):
         if config.max_thread_pool_workers is not None:
             workers = min(workers, config.max_thread_pool_workers)
 
-        return cls(batch_cls, workers)
+        return cls(batch_cls, workers, batch_size)
 
     @staticmethod
     def __worker(
@@ -108,12 +109,13 @@ class ThreadMapper(fomm.LocalMapper):
         cancel_event = threading.Event()
 
         sample_batches = self._batch_cls.split(
-            sample_collection, self._workers
+            sample_collection, self.workers, self.batch_size
         )
 
-        count = len(sample_batches)
+        batch_count = len(sample_batches)
+
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=count
+            max_workers=self.workers
         ) as executor:
             for idx, batch in enumerate(sample_batches):
                 # Batch number (index starting at 1)
@@ -123,8 +125,9 @@ class ThreadMapper(fomm.LocalMapper):
                 worker_done_event = threading.Event()
                 worker_done_events.append(worker_done_event)
 
-                sample_collection = batch.create_subset(sample_collection)
-                sample_iter = sample_collection.iter_samples(autosave=save)
+                # Create a separate subset for this batch
+                batch_collection = batch.create_subset(sample_collection)
+                sample_iter = batch_collection.iter_samples(autosave=save)
 
                 # Use ProgressBar for per-worker progress tracking
                 if progress == "workers":

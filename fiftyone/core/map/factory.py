@@ -45,6 +45,7 @@ class MapperFactory:
         mapper_key: Optional[str],
         workers: Optional[int],
         batch_method: Optional[str] = None,
+        batch_size: Optional[int] = None,
         **mapper_extra_kwargs,
     ) -> fomm.Mapper:
         """Create a mapper instance"""
@@ -91,5 +92,6 @@ class MapperFactory:
             config=config,
             batch_cls=batch_cls,
             workers=workers,
+            batch_size=batch_size,
             **mapper_extra_kwargs,
         )

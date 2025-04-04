@@ -3939,6 +3939,7 @@ class SampleCollection(object):
         *_,
         workers: Optional[int] = None,
         batch_method: str = "id",
+        batch_size: Optional[int] = None,
         progress: Optional[Union[bool, Literal["worker"]]] = None,
         parallelize_method: str = "process",
         skip_failures: bool = False,
@@ -3953,6 +3954,8 @@ class SampleCollection(object):
             workers (None): Number of workers.
             batch_method: Explicit method for batching samples. Supported
               methods are 'id' and 'slice'
+            batch_size (None): Number of samples per batch. If None, the batch size
+                is automatically calculated to be the number of samples per worker.
             progress (None): Whether to show progress bar.
             parallelize_method: Explicit method to use for parallelization.
               Supported methods are 'process' and 'thread'.
@@ -3965,7 +3968,7 @@ class SampleCollection(object):
             A generator yield processed sample results.
         """
         mapper = focm.MapperFactory.create(
-            parallelize_method, workers, batch_method
+            parallelize_method, workers, batch_method, batch_size
         )
 
         yield from mapper.map_samples(
@@ -3982,6 +3985,7 @@ class SampleCollection(object):
         *_,
         workers: Optional[int] = None,
         batch_method: str = None,
+        batch_size: Optional[int] = None,
         progress: Optional[Union[bool, Literal["worker"]]] = None,
         parallelize_method: str = None,
         skip_failures=True,
@@ -3994,6 +3998,8 @@ class SampleCollection(object):
             workers (None): Number of workers.
             batch_method: Explicit method for batching samples. Supported
               methods are 'id' and 'slice'.
+            batch_size (None): Number of samples per batch. If None, the batch size
+                is automatically calculated to be the number of samples per worker.
             progress (None): Whether to show progress bar.
             parallelize_method: Explicit method to use for parallelization.
               Supported methods are 'process' and 'thread'.
@@ -4002,7 +4008,7 @@ class SampleCollection(object):
                 exception for a sample.
         """
         mapper = focm.MapperFactory.create(
-            parallelize_method, workers, batch_method
+            parallelize_method, workers, batch_method, batch_size
         )
 
         for _ in mapper.map_samples(
