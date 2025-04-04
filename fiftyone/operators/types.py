@@ -2133,7 +2133,7 @@ class ErrorView(View):
 class HeaderView(View):
     """Displays a header component.
 
-    Headers can have a ``title``, ``description``, and ``caption``, each of
+    Headers can have a ``label``, ``description``, and ``caption``, each of
     which are displayed in a separate line.
     """
 

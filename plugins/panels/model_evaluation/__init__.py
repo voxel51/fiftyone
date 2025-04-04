@@ -15,10 +15,12 @@ import numpy as np
 
 from fiftyone import ViewField as F
 import fiftyone.core.fields as fof
+from fiftyone.core.plots.plotly import _to_log_colorscale
 from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
-from fiftyone.core.plots.plotly import _to_log_colorscale
 import fiftyone.operators.types as types
+import fiftyone.utils.eval as foue
+import uuid
 
 
 STORE_NAME = "model_evaluation_panel_builtin"
@@ -35,6 +37,8 @@ ENABLE_CACHING = (
 )
 CACHE_TTL = 30 * 24 * 60 * 60  # 30 days in seconds
 SUPPORTED_EVALUATION_TYPES = ["classification", "detection", "segmentation"]
+
+ENABLE_CACHING = False
 
 
 class EvaluationPanel(Panel):
@@ -111,13 +115,34 @@ class EvaluationPanel(Panel):
         ctx.panel.set_data("permissions", permissions)
         self.load_pending_evaluations(ctx)
 
-    def get_avg_confidence(self, per_class_metrics):
+    def get_confidences(self, per_class_metrics):
+        confidences = []
+        for metrics in per_class_metrics.values():
+            if "confidence" in metrics:
+                confidences.append(metrics["confidence"])
+        return confidences
+
+    def get_avg_confidence(self, confidences):
+        count = len(confidences)
+        total = sum(confidences)
+        return total / count if count > 0 else None
+
+    def get_confidence_distribution(self, confidences):
+        return {
+            "avg": self.get_avg_confidence(confidences),
+            "min": min(confidences),
+            "max": max(confidences),
+            "median": np.median(confidences),
+            "std": np.std(confidences),
+        }
+
+    def get_avg_iou(self, per_class_metrics):
         count = 0
         total = 0
         for metrics in per_class_metrics.values():
             count += 1
-            if "confidence" in metrics:
-                total += metrics["confidence"]
+            if "iou" in metrics:
+                total += metrics["iou"]
         return total / count if count > 0 else None
 
     def get_tp_fp_fn(self, info, results):
@@ -395,6 +420,26 @@ class EvaluationPanel(Panel):
         incorrect = np.count_nonzero(results.ypred != results.ytrue)
         return correct, incorrect
 
+    def get_scenarios(self, ctx, eval_id):
+        store = self.get_store(ctx)
+        scenarios = store.get("scenarios") or {}
+        return scenarios.get(eval_id)
+
+    def get_scenario(self, ctx, eval_id, scenario_id):
+        scenarios = self.get_scenarios(ctx, eval_id) or {}
+        return scenarios.get(scenario_id)
+
+    def load_scenarios(self, ctx):
+        view_state = ctx.panel.get_state("view") or {}
+        eval_key = view_state.get("key")
+        computed_eval_key = ctx.params.get("key", eval_key)
+        eval_id = view_state.get("id")
+        computed_eval_id = ctx.params.get("id", eval_id)
+        scenarios = self.get_scenarios(ctx, computed_eval_id)
+        ctx.panel.set_data(
+            f"evaluation_{computed_eval_key}.scenarios", scenarios
+        )
+
     def load_evaluation(self, ctx):
         view_state = ctx.panel.get_state("view") or {}
         eval_key = view_state.get("key")
@@ -426,8 +471,9 @@ class EvaluationPanel(Panel):
 
             metrics = results.metrics()
             per_class_metrics = self.get_per_class_metrics(info, results)
+            confidences = self.get_confidences(per_class_metrics)
             metrics["average_confidence"] = self.get_avg_confidence(
-                per_class_metrics
+                confidences
             )
             metrics["tp"], metrics["fp"], metrics["fn"] = self.get_tp_fp_fn(
                 info, results
@@ -444,6 +490,8 @@ class EvaluationPanel(Panel):
                     metrics["num_incorrect"],
                 ) = self.get_correct_incorrect(results)
 
+            scenarios = self.get_scenarios(ctx, computed_eval_id)
+
             evaluation_data = {
                 "metrics": metrics,
                 "custom_metrics": self.get_custom_metrics(results),
@@ -451,6 +499,7 @@ class EvaluationPanel(Panel):
                 "confusion_matrices": self.get_confusion_matrices(results),
                 "per_class_metrics": per_class_metrics,
                 "mask_targets": mask_targets,
+                "scenarios": scenarios,
             }
             ctx.panel.set_state("missing", results.missing)
 
@@ -577,6 +626,13 @@ class EvaluationPanel(Panel):
         y = view_options.get("y", None)
         field = view_options.get("field", None)
         missing = ctx.panel.get_state("missing", "(none)")
+
+        # Restrict to subset, if applicable
+        subset_name = view_state.get("subset_name", None)
+        if subset_name is not None:
+            subsets = ctx.panel.get_state("subsets")
+            subset_def = subsets.get(subset_name, None)
+            eval_view = foue.get_subset_view(eval_view, gt_field, subset_def)
 
         view = None
         if info.config.type == "classification":
@@ -751,6 +807,140 @@ class EvaluationPanel(Panel):
         if view is not None:
             ctx.ops.set_view(view)
 
+    def load_compare_evaluation_results(self, ctx):
+        base_model_key = (
+            ctx.params.get("panel_state", {}).get("view", {}).get("key", None)
+        )
+        compare_model_key = (
+            ctx.params.get("panel_state", {})
+            .get("view", {})
+            .get("compareKey", None)
+        )
+
+        if base_model_key is None:
+            raise ValueError("No base model key provided")
+
+        eval_a_results = ctx.dataset.load_evaluation_results(base_model_key)
+        eval_b_results = ctx.dataset.load_evaluation_results(compare_model_key)
+
+        return (
+            base_model_key,
+            eval_a_results,
+            compare_model_key,
+            eval_b_results,
+        )
+
+    def get_subset_def_data(self, info, results, subset_def):
+        with results.use_subset(subset_def):
+            metrics = results.metrics()
+            per_class_metrics = self.get_per_class_metrics(info, results)
+            confidences = self.get_confidences(per_class_metrics)
+            metrics["average_confidence"] = self.get_avg_confidence(
+                confidences
+            )
+            metrics["tp"], metrics["fp"], metrics["fn"] = self.get_tp_fp_fn(
+                info, results
+            )
+            metrics["mAP"] = self.get_map(results)
+            metrics["mAR"] = self.get_mar(results)
+            metrics["iou"] = self.get_avg_iou(per_class_metrics)
+            return {
+                "metrics": metrics,
+                "distribution": len(results.ytrue_ids),
+                "confusion_matrices": self.get_confusion_matrices(results),
+                "confidences": confidences,
+                "confidence_distribution": self.get_confidence_distribution(
+                    confidences
+                ),
+            }
+
+    def process_custom_code(self, ctx, custom_code):
+        try:
+            local_vars = {}
+            exec(custom_code, {"ctx": ctx}, local_vars)
+            data = local_vars.get("subsets", {})
+            return data, None
+        except Exception as e:
+            return None, str(e)
+
+    def get_scenario_data(self, ctx, scenario):
+        view_state = ctx.panel.get_state("view") or {}
+        eval_key = view_state.get("key")
+        computed_eval_key = ctx.params.get("key", eval_key)
+        results = ctx.dataset.load_evaluation_results(computed_eval_key)
+        info = ctx.dataset.get_evaluation_info(computed_eval_key)
+        scenario_type = scenario.get("type", None)
+        scenario_data = scenario.copy()
+        scenario_data["subsets_data"] = {}
+
+        print(">>> scenario_type:", scenario_type)
+        if scenario_type == "custom_code":
+            custom_code = scenario.get("subsets", None)
+            cc_expr, cc_error = self.process_custom_code(ctx, custom_code)
+            subsets_names = []
+
+            if cc_error:
+                # TODO
+                print("TODO: custom code load error handling")
+            else:
+                # NOTE: subset expression could be a dict or an array
+                if isinstance(cc_expr, dict):
+                    for subset_name, subset_def in cc_expr.items():
+                        subset_data = self.get_subset_def_data(
+                            info, results, subset_def
+                        )
+                        scenario_data["subsets_data"][
+                            subset_name
+                        ] = subset_data
+                        subsets_names.append(subset_name)
+                elif isinstance(cc_expr, list):
+                    subset_data = self.get_subset_def_data(
+                        info, results, subset_def
+                    )
+                    scenario_data["subsets_data"]["All"] = subset_data
+                    subsets_names.append("All")
+                else:
+                    # TODO: talk to bmoore and ibrahim about this
+                    scenario_data["subsets_data"]["All"] = subset_data
+                    subsets_names.append("All")
+            scenario_data["subsets"] = subsets_names
+        elif scenario_type == "view":
+            scenario_subsets = scenario.get("subsets", [])
+            for subset in scenario_subsets:
+                subset_def = dict(type="view", view=subset)
+                subset_data = self.get_subset_def_data(
+                    info, results, subset_def
+                )
+                scenario_data["subsets_data"][subset] = subset_data
+        elif scenario_type == "sample_field":
+            scenario_subsets = scenario.get("subsets", [])
+            for subset in scenario_subsets:
+                subset_def = dict(type="field", field=subset)
+                subset_data = self.get_subset_def_data(
+                    info, results, subset_def
+                )
+                scenario_data["subsets_data"][subset] = subset_data
+        else:
+            print(">>> scenario_type:", scenario_type)
+            scenario_data["subsets_data"] = None  # unsupported type
+
+        return scenario_data
+
+    def load_scenario(self, ctx):
+        view_state = ctx.panel.get_state("view") or {}
+        eval_id = view_state.get("id")
+        eval_key = view_state.get("key")
+        computed_eval_key = ctx.params.get("key", eval_key)
+        scenario_id = str(ctx.params.get("id", "") or "")
+
+        if scenario_id:
+            scenario = self.get_scenario(ctx, eval_id, scenario_id)
+            scenario_data = self.get_scenario_data(ctx, scenario)
+            ctx.panel.set_data(
+                f"scenario_{scenario_id}_{computed_eval_key}", scenario_data
+            )
+            ctx.panel.set_state("scenario_loading", False)
+
     def render(self, ctx):
         panel = types.Object()
         return types.Property(
@@ -767,6 +957,8 @@ class EvaluationPanel(Panel):
                 load_view=self.load_view,
                 rename_evaluation=self.rename_evaluation,
                 delete_evaluation=self.delete_evaluation,
+                load_scenarios=self.load_scenarios,
+                load_scenario=self.load_scenario,
             ),
         )
 
