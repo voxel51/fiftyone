@@ -11,7 +11,7 @@ import fiftyone as fo
 from fiftyone.operators.cache import execution_cache
 from fiftyone.operators.executor import ExecutionContext
 from fiftyone.operators.store import ExecutionStore
-from fiftyone.operators.cache.utils import build_cache_key
+from fiftyone.operators.cache.utils import _build_cache_key
 from decorators import drop_datasets, drop_collection
 
 TEST_COLLECTION_NAME = "test-execution-cache"

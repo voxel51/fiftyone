@@ -7,7 +7,7 @@ Execution cache decorator.
 """
 
 from fiftyone.operators.cache.utils import (
-    get_ctx_from_args,
+    _get_ctx_from_args,
     resolve_cache_info,
     auto_deserialize,
 )
@@ -115,7 +115,7 @@ def execution_cache(
 
         @wraps(func)
         def wrapper(*args, **kwargs):
-            ctx, ctx_index = get_ctx_from_args(args)
+            ctx, ctx_index = _get_ctx_from_args(args)
             cache_key, store, skip_cache = resolve_cache_info(
                 ctx,
                 ctx_index,
@@ -157,7 +157,7 @@ def execution_cache(
         wrapper.uncached = uncached
 
         def clear_cache(*args, **kwargs):
-            ctx, ctx_index = get_ctx_from_args(args)
+            ctx, ctx_index = _get_ctx_from_args(args)
             cache_key, store, _ = resolve_cache_info(
                 ctx,
                 ctx_index,

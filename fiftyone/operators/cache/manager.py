@@ -6,7 +6,7 @@ Execution cache manager.
 |
 """
 from fiftyone.operators.store import ExecutionStoreService
-from fiftyone.operators.cache.utils import get_store_for_func
+from fiftyone.operators.cache.utils import _get_store_for_func
 
 
 def clear_all_caches():
@@ -32,5 +32,5 @@ def clear_function_cache(ctx, func, store_name=None, link_to_dataset=True):
         func: The original function (not the wrapped one).
         store_name (Nonel): Override the store name if different.
     """
-    store = get_store_for_func(ctx, func)
+    store = _get_store_for_func(ctx, func)
     store.clear()

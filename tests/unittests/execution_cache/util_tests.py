@@ -30,36 +30,36 @@ class TestCacheUtils(unittest.TestCase):
         def dummy():
             pass
 
-        fid = utils.get_function_id(dummy)
+        fid = utils._get_function_id(dummy)
         self.assertIn("dummy", fid)
         self.assertTrue(fid.startswith(dummy.__module__))
 
     def test_get_ctx_from_args_valid(self):
         ctx = create_mock_ctx()
-        result, index = utils.get_ctx_from_args([ctx])
+        result, index = utils._get_ctx_from_args([ctx])
         self.assertEqual(result, ctx)
         self.assertEqual(index, 0)
 
         mock_self = {}
-        result, index = utils.get_ctx_from_args([mock_self, ctx])
+        result, index = utils._get_ctx_from_args([mock_self, ctx])
         self.assertEqual(result, ctx)
         self.assertEqual(index, 1)
 
         with self.assertRaises(ValueError):
-            utils.get_ctx_from_args([])
+            utils._get_ctx_from_args([])
 
     def test_get_ctx_from_args_invalid(self):
         with self.assertRaises(ValueError):
-            utils.get_ctx_from_args(["not-a-ctx", "another-arg"])
+            utils._get_ctx_from_args(["not-a-ctx", "another-arg"])
 
     def test_get_ctx_idx_found(self):
         ctx = create_mock_ctx()
-        result, index = utils.get_ctx_idx([ctx])
+        result, index = utils._get_ctx_idx([ctx])
         self.assertEqual(result, ctx)
         self.assertEqual(index, 0)
 
     def test_get_ctx_idx_not_found(self):
-        result, index = utils.get_ctx_idx(["not-a-ctx"])
+        result, index = utils._get_ctx_idx(["not-a-ctx"])
         self.assertIsNone(result)
         self.assertEqual(index, -1)
 
@@ -67,7 +67,7 @@ class TestCacheUtils(unittest.TestCase):
         def dummy():
             pass
 
-        name = utils.resolve_store_name(create_mock_ctx(), dummy)
+        name = utils._resolve_store_name(create_mock_ctx(), dummy)
         self.assertIn("dummy", name)
 
     def test_resolve_store_name_with_attrs(self):
@@ -77,7 +77,7 @@ class TestCacheUtils(unittest.TestCase):
         dummy.store_name = "custom.store"
         dummy.exec_cache_version = "3"
 
-        result = utils.resolve_store_name(create_mock_ctx(), dummy)
+        result = utils._resolve_store_name(create_mock_ctx(), dummy)
         self.assertEqual(result, "custom.store#v3")
 
     def test_convert_args_to_dict_handles_mixed_inputs(self):
@@ -89,7 +89,7 @@ class TestCacheUtils(unittest.TestCase):
             def to_json(self):
                 return '{"b": 2}'
 
-        result = utils.convert_args_to_dict(
+        result = utils._convert_args_to_dict(
             [
                 HasDict(),
                 HasJSON(),
@@ -188,9 +188,9 @@ class TestCacheUtils(unittest.TestCase):
 
         func.link_to_dataset = True
 
-        utils.get_store_for_func(ctx, func)
+        utils._get_store_for_func(ctx, func)
         mock_create.assert_called_once_with(
-            store_name=utils.get_function_id(func),
+            store_name=utils._get_function_id(func),
             dataset_id="mock-dataset-id",
             collection_name=None,
         )
@@ -204,9 +204,9 @@ class TestCacheUtils(unittest.TestCase):
 
         func.link_to_dataset = False
 
-        utils.get_store_for_func(ctx, func)
+        utils._get_store_for_func(ctx, func)
         mock_create.assert_called_once_with(
-            store_name=utils.get_function_id(func),
+            store_name=utils._get_function_id(func),
             dataset_id=None,
             collection_name=None,
         )
@@ -218,13 +218,13 @@ class TestCacheUtils(unittest.TestCase):
             f"3b568485c08a7af75fd812405efc8c23b96257acfbe45bebd50b57defd399342"
         )
 
-        result = utils.build_cache_key(key_list)
+        result = utils._build_cache_key(key_list)
         self.assertEqual(result, expected)
 
     def test_get_cache_key_list_default_behavior(self):
         ctx = create_mock_ctx()
         args = [ctx, "val1", 42]
-        result = utils.get_cache_key_list(0, args, {}, key_fn=None)
+        result = utils._get_cache_key_list(0, args, {}, key_fn=None)
         self.assertEqual(result, ["val1", 42])
 
     def test_get_cache_key_list_with_custom_key_fn(self):
@@ -234,7 +234,7 @@ class TestCacheUtils(unittest.TestCase):
         def custom_key_fn(ctx, *a):
             return ["custom", ctx.operator_uri]
 
-        result = utils.get_cache_key_list(0, args, {}, key_fn=custom_key_fn)
+        result = utils._get_cache_key_list(0, args, {}, key_fn=custom_key_fn)
         self.assertEqual(result, ["custom", ctx.operator_uri])
 
     def test_get_cache_key_list_custom_key_fn_invalid(self):
@@ -245,7 +245,7 @@ class TestCacheUtils(unittest.TestCase):
             return "not-a-list"
 
         with self.assertRaises(ValueError):
-            utils.get_cache_key_list(0, args, {}, key_fn=bad_key_fn)
+            utils._get_cache_key_list(0, args, {}, key_fn=bad_key_fn)
 
     def test_get_cache_key_list_custom_key_fn_throws(self):
         ctx = create_mock_ctx()
@@ -255,4 +255,4 @@ class TestCacheUtils(unittest.TestCase):
             raise RuntimeError("oops")
 
         with self.assertRaises(ValueError):
-            utils.get_cache_key_list(0, args, {}, key_fn=error_key_fn)
+            utils._get_cache_key_list(0, args, {}, key_fn=error_key_fn)

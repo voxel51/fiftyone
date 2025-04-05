@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from fiftyone.operators.cache import execution_cache
-from fiftyone.operators.cache.utils import build_cache_key
+from fiftyone.operators.cache.utils import _build_cache_key
 from fiftyone.operators.executor import ExecutionContext
 
 # Mock Execution Context with dataset
@@ -77,7 +77,7 @@ class TestExecutionCacheDecorator(unittest.TestCase):
         self.assertEqual(result1, result2)
         self.assertEqual(result1, 3)
         store_instance.set_cache.assert_called_once_with(
-            build_cache_key([1, 2]), result1, ttl=60
+            _build_cache_key([1, 2]), result1, ttl=60
         )
 
     @patch("fiftyone.operators.store.ExecutionStore.create")
@@ -96,7 +96,7 @@ class TestExecutionCacheDecorator(unittest.TestCase):
         self.assertEqual(result1, result2)
         self.assertEqual(result1, 10)
         store_instance.set_cache.assert_called_once_with(
-            build_cache_key([5, 5]), result1, ttl=60
+            _build_cache_key([5, 5]), result1, ttl=60
         )
 
     @patch("fiftyone.operators.store.ExecutionStore.create")
@@ -115,7 +115,7 @@ class TestExecutionCacheDecorator(unittest.TestCase):
         self.assertEqual(result1, 5)
 
         # Verify that the custom key function was used
-        expected_key = build_cache_key(["custom-key", 2, 3])
+        expected_key = _build_cache_key(["custom-key", 2, 3])
         store_instance.get.assert_called_with(expected_key)
         store_instance.set_cache.assert_called_once_with(
             expected_key, result1, ttl=60
@@ -131,7 +131,7 @@ class TestExecutionCacheDecorator(unittest.TestCase):
         """Test that the cache can be cleared."""
         ctx = create_mock_ctx()
         example_function.clear_cache(ctx, 1, 2)
-        cache_key = build_cache_key([1, 2])
+        cache_key = _build_cache_key([1, 2])
         mock_create.return_value.delete.assert_called_once_with(cache_key)
 
     @patch("fiftyone.operators.store.ExecutionStore.create")
