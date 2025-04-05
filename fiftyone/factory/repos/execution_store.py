@@ -152,7 +152,7 @@ class ExecutionStoreRepo(ABC):
     @abstractmethod
     def set_cache_key(
         self, store_name: str, key: str, value: Any, ttl: Optional[int] = None
-    ) -> None:
+    ) -> KeyDocument:
         """Set a cache key in a store.
 
         Args:
@@ -160,6 +160,9 @@ class ExecutionStoreRepo(ABC):
             key (str): the cache key to set
             value (Any): the value to set
             ttl (Optional[int]): the TTL of the cache key
+
+        Returns:
+            KeyDocument: the created or updated cache key document
         """
         pass
 
