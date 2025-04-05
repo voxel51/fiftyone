@@ -6,7 +6,7 @@ Execution cache manager.
 |
 """
 from fiftyone.operators.store import ExecutionStoreService
-from .utils import resolve_store_name, get_store_for_func
+from fiftyone.operators.cache.utils import get_store_for_func
 
 
 def clear_all_caches():

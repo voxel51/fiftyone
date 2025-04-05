@@ -6,11 +6,13 @@ Execution cache decorator.
 |
 """
 
-from functools import wraps
-import numpy as np
+from fiftyone.operators.cache.utils import (
+    get_ctx_from_args,
+    resolve_cache_info,
+    auto_deserialize,
+)
 
-from fiftyone.operators.store import ExecutionStore
-from .utils import get_ctx_from_args, resolve_cache_info, auto_deserialize
+from functools import wraps
 
 
 def execution_cache(
