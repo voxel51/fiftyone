@@ -63,6 +63,12 @@ class FiftyOneConfig(EnvConfig):
         if d is None:
             d = {}
 
+        self.database_compressor = self.parse_string(
+            d,
+            "database_compressor",
+            env_var="FIFTYONE_DATABASE_COMPRESSOR",
+            default=None,
+        )
         self.database_uri = self.parse_string(
             d, "database_uri", env_var="FIFTYONE_DATABASE_URI", default=None
         )
