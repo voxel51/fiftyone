@@ -12,7 +12,15 @@ from typing import Any, Dict, List, Optional
 
 from bson import ObjectId
 
-from fiftyone.operators.store.models import KeyDocument, StoreDocument
+from fiftyone.operators.store.models import (
+    KeyDocument,
+    StoreDocument,
+    KeyPolicy,
+)
+
+#
+# TODO: update these doc strings to match fiftyone patterns!
+#
 
 
 class ExecutionStoreRepo(ABC):
@@ -26,17 +34,21 @@ class ExecutionStoreRepo(ABC):
     methods that this class provides.
     """
 
-    def __init__(self, dataset_id: Optional[ObjectId] = None):
+    def __init__(self, dataset_id: Optional[ObjectId] = None, is_cache=False):
         """Initialize the execution store repository.
 
         Args:
             dataset_id (Optional[ObjectId]): the dataset ID to operate on
+            is_cache (False): whether the store is a cache store
         """
         self._dataset_id = dataset_id
 
     @abstractmethod
     def create_store(
-        self, store_name: str, metadata: Optional[Dict[str, Any]] = None
+        self,
+        store_name: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        policy: str = "persist",
     ) -> StoreDocument:
         """Create a store in the store collection.
 
@@ -46,6 +58,16 @@ class ExecutionStoreRepo(ABC):
 
         Returns:
             StoreDocument: the created store document
+        """
+        pass
+
+    @abstractmethod
+    def clear_cache(self, store_name=None) -> None:
+        """Clear all keys with either a ``ttl`` or ``policy="eviction"``.
+
+        Args:
+            store_name (str, optional): the name of the store to clear. If None,
+                all stores will be queried for deletion.
         """
         pass
 
@@ -104,15 +126,43 @@ class ExecutionStoreRepo(ABC):
 
     @abstractmethod
     def set_key(
-        self, store_name: str, key: str, value: Any, ttl: Optional[int] = None
+        self,
+        store_name: str,
+        key: str,
+        value: Any,
+        ttl: Optional[int] = None,
+        policy: str = "persist",
     ) -> KeyDocument:
         """Set a key in a store.
+        Args:
+            store_name (str): The name of the store to set the key in.
+            key (str): The key to set.
+            value (Any): The value to associate with the key.
+            ttl (Optional[int]): Optional TTL (in seconds) after which the key
+                will expire and be automatically removed.
+            policy (str): The eviction policy for the key. One of:
+                - ``"persist"`` (default): Key is persistent until deleted.
+                - ``"evict"``: Key is eligible for eviction or cache clearing.
+
+        Returns:
+            KeyDocument: The created or updated key document.
+        """
+        pass
+
+    @abstractmethod
+    def set_cache_key(
+        self, store_name: str, key: str, value: Any, ttl: Optional[int] = None
+    ) -> KeyDocument:
+        """Set a cache key in a store.
 
         Args:
-            store_name (str): the name of the store to set the key in
-            key (str): the key to set
+            store_name (str): the name of the store to set the cache key in
+            key (str): the cache key to set
             value (Any): the value to set
-            ttl (Optional[int]): the TTL of the key
+            ttl (Optional[int]): the TTL of the cache key
+
+        Returns:
+            KeyDocument: the created or updated cache key document
         """
         pass
 
@@ -248,8 +298,10 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
 
     COLLECTION_NAME = "execution_store"
 
-    def __init__(self, collection, dataset_id: Optional[ObjectId] = None):
-        super().__init__(dataset_id)
+    def __init__(
+        self, collection, dataset_id: Optional[ObjectId] = None, is_cache=False
+    ):
+        super().__init__(dataset_id, is_cache)
         self._collection = collection
         self._create_indexes()
 
@@ -260,6 +312,7 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
         key_name = "key"
         full_key_name = "unique_store_index"
         dataset_id_name = "dataset_id"
+        policy_name = "policy"
 
         if expires_at_name not in indices:
             self._collection.create_index(
@@ -271,20 +324,44 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
                 name=full_key_name,
                 unique=True,
             )
-        for name in [store_name_name, key_name, dataset_id_name]:
+        for name in [
+            store_name_name,
+            key_name,
+            dataset_id_name,
+            policy_name,
+        ]:
             if name not in indices:
                 self._collection.create_index(name, name=name)
 
     def create_store(
-        self, store_name: str, metadata: Optional[Dict[str, Any]] = None
+        self,
+        store_name: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        policy: str = "persist",
     ) -> StoreDocument:
-        store_doc = StoreDocument(
-            store_name=store_name,
-            dataset_id=self._dataset_id,
-            value=metadata,
+        store_doc = StoreDocument.from_dict(
+            dict(
+                store_name=store_name,
+                dataset_id=self._dataset_id,
+                value=metadata,
+                policy=policy,
+            )
         )
         self._collection.insert_one(store_doc.to_mongo_dict())
         return store_doc
+
+    def clear_cache(self, store_name=None) -> int:
+        query = {
+            "dataset_id": self._dataset_id,
+            "$or": [
+                {"policy": "evict"},
+                {"expires_at": {"$type": "date"}},
+            ],
+        }
+        if store_name is not None:
+            query["store_name"] = store_name
+        result = self._collection.delete_many(query)
+        return result.deleted_count
 
     def get_store(self, store_name: str) -> Optional[StoreDocument]:
         raw_store_doc = self._collection.find_one(
@@ -335,17 +412,31 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
         return result.deleted_count
 
     def set_key(
-        self, store_name: str, key: str, value: Any, ttl: Optional[int] = None
+        self,
+        store_name: str,
+        key: str,
+        value: Any,
+        ttl: Optional[int] = None,
+        policy: str = "persist",
     ) -> KeyDocument:
         now = datetime.utcnow()
         expiration = KeyDocument.get_expiration(ttl)
-        key_doc = KeyDocument(
-            store_name=store_name,
-            key=key,
-            value=value,
-            updated_at=now,
-            expires_at=expiration,
-            dataset_id=self._dataset_id,
+        policy = "evict" if ttl is not None or policy == "evict" else "persist"
+        if ttl is not None or policy == "evict":
+            policy = "evict"
+        else:
+            policy = "persist"
+
+        key_doc = KeyDocument.from_dict(
+            dict(
+                store_name=store_name,
+                key=key,
+                value=value,
+                updated_at=now,
+                expires_at=expiration,
+                dataset_id=self._dataset_id,
+                policy=policy,
+            )
         )
         on_insert_fields = {
             "store_name": store_name,
@@ -353,6 +444,7 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
             "created_at": now,
             "expires_at": expiration if ttl else None,
             "dataset_id": self._dataset_id,
+            "policy": policy,
         }
         update_fields = {
             "$set": {
@@ -366,6 +458,7 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
                     "store_name",
                     "key",
                     "dataset_id",
+                    "policy",
                 }
             },
             "$setOnInsert": on_insert_fields,
@@ -385,6 +478,9 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
             key_doc.updated_at = now
         return key_doc
 
+    def set_cache_key(self, store_name, key, value, ttl=None):
+        return self.set_key(store_name, key, value, ttl, policy="evict")
+
     def has_key(self, store_name: str, key: str) -> bool:
         result = self._collection.find_one(
             {
@@ -403,7 +499,7 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
                 "dataset_id": self._dataset_id,
             }
         )
-        return KeyDocument(**raw_key_doc) if raw_key_doc else None
+        return KeyDocument.from_dict(raw_key_doc) if raw_key_doc else None
 
     def update_ttl(self, store_name: str, key: str, ttl: int) -> bool:
         expiration = KeyDocument.get_expiration(ttl)
@@ -507,25 +603,48 @@ class InMemoryExecutionStoreRepo(ExecutionStoreRepo):
         return (store_name, key, self._dataset_id)
 
     def create_store(
-        self, store_name: str, metadata: Optional[Dict[str, Any]] = None
+        self,
+        store_name: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        policy: str = "persist",
     ) -> StoreDocument:
-        store_doc = StoreDocument(
-            store_name=store_name,
-            dataset_id=self._dataset_id,
-            value=metadata,
+        store_doc = StoreDocument.from_dict(
+            dict(
+                store_name=store_name,
+                dataset_id=self._dataset_id,
+                value=metadata,
+                policy=policy,
+            )
         )
         key = self._doc_key(store_name, "__store__")
         self._docs[key] = store_doc.to_mongo_dict()
         return store_doc
 
+    def clear_cache(self, store_name=None) -> int:
+        deleted = 0
+        for key in list(self._docs):
+            _, key_name, dataset_id = key
+            if (
+                dataset_id == self._dataset_id
+                and self._docs[key].get("policy") == "evict"
+                and (
+                    self._docs[key].get("expires_at") is not None
+                    or store_name is None
+                    or store_name == key[0]
+                )
+            ):
+                del self._docs[key]
+                deleted += 1
+        return deleted
+
     def get_store(self, store_name: str) -> Optional[StoreDocument]:
         key = self._doc_key(store_name, "__store__")
         doc = self._docs.get(key)
         if not doc and self.has_store(store_name):
-            return StoreDocument(
-                store_name=store_name, dataset_id=self._dataset_id
+            return StoreDocument.from_dict(
+                dict(store_name=store_name, dataset_id=self._dataset_id)
             )
-        return StoreDocument(**doc) if doc else None
+        return StoreDocument.from_dict(doc) if doc else None
 
     def has_store(self, store_name: str) -> bool:
         return any(
@@ -553,23 +672,38 @@ class InMemoryExecutionStoreRepo(ExecutionStoreRepo):
         return len(keys_to_delete)
 
     def set_key(
-        self, store_name: str, key: str, value: Any, ttl: Optional[int] = None
+        self,
+        store_name: str,
+        key: str,
+        value: Any,
+        ttl: Optional[int] = None,
+        policy: str = "persist",
     ) -> KeyDocument:
         now = datetime.utcnow()
         expiration = KeyDocument.get_expiration(ttl)
-        key_doc = KeyDocument(
-            store_name=store_name,
-            key=key,
-            value=value,
-            updated_at=now,
-            expires_at=expiration,
-            dataset_id=self._dataset_id,
+        key_doc = KeyDocument.from_dict(
+            dict(
+                store_name=store_name,
+                key=key,
+                value=value,
+                updated_at=now,
+                expires_at=expiration,
+                dataset_id=self._dataset_id,
+                policy="evict"
+                if policy == "evict" or ttl is not None
+                else "persist",
+            )
         )
         composite_key = self._doc_key(store_name, key)
         if composite_key not in self._docs:
             key_doc.created_at = now
         self._docs[composite_key] = key_doc.to_mongo_dict()
         return key_doc
+
+    def set_cache_key(
+        self, store_name: str, key: str, value: Any, ttl: Optional[int] = None
+    ) -> None:
+        return self.set_key(store_name, key, value, ttl=ttl, policy="evict")
 
     def has_key(self, store_name: str, key: str) -> bool:
         composite_key = self._doc_key(store_name, key)
@@ -578,7 +712,7 @@ class InMemoryExecutionStoreRepo(ExecutionStoreRepo):
     def get_key(self, store_name: str, key: str) -> Optional[KeyDocument]:
         composite_key = self._doc_key(store_name, key)
         doc = self._docs.get(composite_key)
-        return KeyDocument(**doc) if doc else None
+        return KeyDocument.from_dict(doc) if doc else None
 
     def update_ttl(self, store_name: str, key: str, ttl: int) -> bool:
         composite_key = self._doc_key(store_name, key)
@@ -587,6 +721,16 @@ class InMemoryExecutionStoreRepo(ExecutionStoreRepo):
             return False
         expiration = KeyDocument.get_expiration(ttl)
         doc["expires_at"] = expiration
+        self._docs[composite_key] = doc
+        return True
+
+    def update_policy(self, store_name: str, key: str, policy: str) -> bool:
+        composite_key = self._doc_key(store_name, key)
+        doc = self._docs.get(composite_key)
+        if not doc:
+            return False
+        # Update the policy in the document
+        doc["policy"] = policy
         self._docs[composite_key] = doc
         return True
 
