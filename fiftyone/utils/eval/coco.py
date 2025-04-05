@@ -500,6 +500,7 @@ def _coco_evaluation_single_iou(gts, preds, eval_key, config):
         eval_key=eval_key,
         id_key=id_key,
         iou_key=iou_key,
+        classwise=config.classwise,
     )
 
     # omit iscrowd
@@ -524,6 +525,7 @@ def _coco_evaluation_iou_sweep(gts, preds, config):
             eval_key="_eval",
             id_key=id_key,
             iou_key=iou_key,
+            classwise=config.classwise,
         )
         for iou_thresh, id_key in zip(iou_threshs, id_keys)
     ]
@@ -595,7 +597,7 @@ def _coco_evaluation_setup(
 
 
 def _compute_matches(
-    cats, pred_ious, iou_thresh, iscrowd, eval_key, id_key, iou_key
+    cats, pred_ious, iou_thresh, iscrowd, eval_key, id_key, iou_key, classwise
 ):
     matches = []
 
@@ -623,9 +625,7 @@ def _compute_matches(
                     if gt[id_key] != _NO_MATCH_ID and not gt_iscrowd:
                         continue
 
-                    # If matching classwise=False
-                    # Only objects with the same class can match a crowd
-                    if gt_iscrowd and gt.label != pred.label:
+                    if gt_iscrowd and (classwise and gt.label != pred.label):
                         continue
 
                     # Crowds are last in order of GTs
@@ -646,22 +646,25 @@ def _compute_matches(
 
                 if best_match:
                     gt = gt_map[best_match]
+                    is_correct_class = gt.label == pred.label or not classwise
 
                     # For crowd GTs, record info for first (highest confidence)
                     # matching prediction on the GT object
                     if gt[id_key] == _NO_MATCH_ID:
-                        gt[eval_key] = "tp" if gt.label == pred.label else "fn"
+                        gt[eval_key] = "tp" if is_correct_class else "fn"
                         gt[id_key] = pred.id
                         gt[iou_key] = best_match_iou
 
-                    pred[eval_key] = "tp" if gt.label == pred.label else "fp"
+                    pred[eval_key] = "tp" if is_correct_class else "fp"
                     pred[id_key] = best_match
                     pred[iou_key] = best_match_iou
 
                     matches.append(
                         (
                             gt.label,
-                            pred.label,
+                            # if classwise=True, gt.label must equal pred.label
+                            # if classwise=False, force pred.label == gt.label
+                            pred.label if classwise else gt.label,
                             best_match_iou,
                             pred_conf,
                             gt.id,
