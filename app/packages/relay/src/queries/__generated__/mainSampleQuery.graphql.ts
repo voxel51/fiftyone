@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d2915b41290da7b904ed7d7becf917d8>>
+ * @generated SignedSource<<32602abe51d4e4ca24bed95a107912d8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -45,6 +45,15 @@ export type mainSampleQuery$data = {
     }>;
   } | {
     readonly __typename: "ThreeDSample";
+    readonly aspectRatio: number;
+    readonly id: string;
+    readonly sample: object;
+    readonly urls: ReadonlyArray<{
+      readonly field: string;
+      readonly url: string | null;
+    }>;
+  } | {
+    readonly __typename: "UnknownSample";
     readonly aspectRatio: number;
     readonly id: string;
     readonly sample: object;
@@ -226,6 +235,12 @@ v9 = [
         "selections": (v8/*: any*/),
         "type": "ThreeDSample",
         "abstractKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": (v8/*: any*/),
+        "type": "UnknownSample",
+        "abstractKey": null
       }
     ],
     "storageKey": null
@@ -259,16 +274,16 @@ return {
     "selections": (v9/*: any*/)
   },
   "params": {
-    "cacheID": "3620bb08051185b996237076ef49a2f1",
+    "cacheID": "e9cc29f6cf93be9a0d1b8d9822cb4a9e",
     "id": null,
     "metadata": {},
     "name": "mainSampleQuery",
     "operationKind": "query",
-    "text": "query mainSampleQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: JSON\n) {\n  sample(dataset: $dataset, view: $view, filters: $filters, filter: $filter) {\n    __typename\n    ... on ImageSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on PointCloudSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on VideoSample {\n      aspectRatio\n      id\n      frameRate\n      frameNumber\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on ThreeDSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n  }\n}\n"
+    "text": "query mainSampleQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: JSON\n) {\n  sample(dataset: $dataset, view: $view, filters: $filters, filter: $filter) {\n    __typename\n    ... on ImageSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on PointCloudSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on VideoSample {\n      aspectRatio\n      id\n      frameRate\n      frameNumber\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on ThreeDSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on UnknownSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "e886574436e86028aafc7255b6088901";
+(node as any).hash = "b8ad396c517793a5face62f66a9d33f6";
 
 export default node;

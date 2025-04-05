@@ -35,8 +35,6 @@ schema = gql.Schema(
 )
 
 MEDIA_TYPES = {media_type: media_type for media_type in fom.MEDIA_TYPES}
-MEDIA_TYPES[fom.POINT_CLOUD] = "point_cloud"
-MEDIA_TYPES[fom.THREE_D] = "three_d"
 
 
 class TestDataset(unittest.IsolatedAsyncioTestCase):

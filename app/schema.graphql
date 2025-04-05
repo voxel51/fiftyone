@@ -226,8 +226,8 @@ type Dataset {
   groupMediaTypes: [Group!]
   groupField: String
   defaultGroupSlice: String
-  mediaType: MediaType
-  parentMediaType: MediaType
+  mediaType: String
+  parentMediaType: String
   maskTargets: [NamedTargets!]!
   defaultMaskTargets: [Target!]
   sampleFields: [SampleField!]!
@@ -365,7 +365,7 @@ type FloatLightningResult implements LightningResult {
 
 type Group {
   name: String!
-  mediaType: MediaType!
+  mediaType: String!
 }
 
 input GroupElementFilter {
@@ -488,14 +488,6 @@ type MaskColor {
 input MaskColorInput {
   color: String!
   intTarget: Int!
-}
-
-enum MediaType {
-  image
-  group
-  point_cloud
-  three_d
-  video
 }
 
 type MediaURL {
@@ -697,7 +689,12 @@ input SampleFilter {
   group: GroupElementFilter = null
 }
 
-union SampleItem = ImageSample | PointCloudSample | ThreeDSample | VideoSample
+union SampleItem =
+    ImageSample
+  | PointCloudSample
+  | ThreeDSample
+  | VideoSample
+  | UnknownSample
 
 type SampleItemStrConnection {
   pageInfo: SampleItemStrPageInfo!
@@ -821,6 +818,13 @@ enum Theme {
 }
 
 type ThreeDSample implements Sample {
+  id: ID!
+  sample: JSON!
+  urls: [MediaURL!]!
+  aspectRatio: Float!
+}
+
+type UnknownSample implements Sample {
   id: ID!
   sample: JSON!
   urls: [MediaURL!]!
