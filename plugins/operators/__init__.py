@@ -1717,6 +1717,7 @@ class AddGroupSlice(foo.Operator):
                     f"Group slice '{name}' already exists"
                 )
 
+            # @todo support custom media types?
             media_type_selector = types.AutocompleteView()
             media_types = fom.MEDIA_TYPES
             for key in media_types:

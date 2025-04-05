@@ -115,12 +115,22 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
     def __init__(self, **kwargs):
         filepath = fos.normalize_path(kwargs["filepath"])
 
+        # @todo support custom media types?
+        media_type = kwargs.pop("media_type", None)
+        if media_type is None:
+            media_type = fomm.get_media_type(filepath)
+        elif media_type not in fomm.MEDIA_TYPES:
+            raise ValueError(
+                "Invalid media_type '%s'. Supported values are %s"
+                % (media_type, fomm.MEDIA_TYPES)
+            )
+
         kwargs["id"] = kwargs.get("id", None)
         kwargs["filepath"] = filepath
         kwargs["created_at"] = None
         kwargs["last_modified_at"] = None
         kwargs["_rand"] = _generate_rand(filepath=filepath)
-        kwargs["_media_type"] = fomm.get_media_type(filepath)
+        kwargs["_media_type"] = media_type
         kwargs["_dataset_id"] = None
 
         self._data = OrderedDict()
