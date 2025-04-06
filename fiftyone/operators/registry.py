@@ -79,7 +79,14 @@ class OperatorRegistry(object):
     """
 
     def __init__(self, enabled=True):
-        self.plugin_contexts = fopc.build_plugin_contexts(enabled=enabled)
+        self._enabled = enabled
+        self.plugin_contexts = self._build_plugin_contexts()
+
+    def _build_plugin_contexts(self):
+        """Builds the plugin contexts for the registry."""
+        self.plugin_contexts = fopc.build_plugin_contexts(
+            enabled=self._enabled
+        )
 
     def list_operators(self, builtin=None, type=None):
         """Lists the available FiftyOne operators.

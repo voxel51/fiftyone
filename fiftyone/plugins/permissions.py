@@ -28,6 +28,11 @@ class ManagedPlugins:
             return plugin.enabled
         return False
 
+    def fingerprint(self):
+        raise NotImplementedError(
+            "fingerprint() not implemented for ManagedPlugins"
+        )
+
     @classmethod
     def from_json(cls, json):
         return ManagedPlugins(
@@ -66,19 +71,32 @@ class ManagedOperators:
         raw_operators = await get_available_operators(
             token, dataset_ids=dataset_ids
         )
+
         return ManagedOperators.from_json(raw_operators)
 
 
 class RemotePluginDefinition:
-    def __init__(self, name, enabled=False):
+    def __init__(self, name, enabled=False, modified_at=None):
         self.name = name
         self.enabled = enabled
+        self.modified_at = modified_at
+
+    def fingerprint():
+        key_list = [
+            self.name,
+            self.enabled,
+            self.modified_at.isoformat() if self.modified_at else None,
+        ]
+        # TODO use hashlib to create a hash of the key_list
+        return json.dumps(key_list)
 
     @classmethod
     def from_json(cls, json):
         return RemotePluginDefinition(
             name=json["name"],
             enabled=json.get("enabled", False),
+            # create time from json date
+            modified_at=time.fromisoformat(json["modifiedAt"]),
         )
 
 
@@ -111,9 +129,11 @@ query ListAvailableOperators($datasetIds: [String!], $onlyEnabled: Boolean) {
         enabled
         pluginName
         uri
+        modifiedAt
     }
 }
 """
+
 _AVAIL_PLUGINS_QUERY = """
 query ListAvailablePlugins {
   plugins {

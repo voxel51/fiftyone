@@ -264,11 +264,11 @@ def establish_db_conn(config):
     mongoengine.connect(_database_name, **_connection_kwargs)
 
     db_config = get_db_config()
-    if db_config.type != foc.CLIENT_TYPE:
-        raise ConnectionError(
-            "Cannot connect to database type '%s' with client type '%s'"
-            % (db_config.type, foc.CLIENT_TYPE)
-        )
+    # if db_config.type != foc.CLIENT_TYPE:
+    #     raise ConnectionError(
+    #         "Cannot connect to database type '%s' with client type '%s'"
+    #         % (db_config.type, foc.CLIENT_TYPE)
+    #     )
 
     if os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
         fom.migrate_database_if_necessary(config=db_config)
