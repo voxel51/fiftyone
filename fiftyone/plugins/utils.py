@@ -8,6 +8,7 @@ FiftyOne plugin utilities.
 import logging
 import multiprocessing.dummy
 import os
+import hashlib
 
 from bs4 import BeautifulSoup
 import yaml
@@ -260,3 +261,8 @@ def _do_get_plugin_info(task):
             spec = gh_repo
 
         logger.debug("Failed to retrieve plugin info for %s: %s", spec, e)
+
+
+def _hash_strings(values):
+    fingerprint_str = ":".join(values)
+    return hashlib.md5(fingerprint_str.encode("utf-8")).hexdigest()

@@ -5,8 +5,12 @@ FiftyOne operator permissions.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+from datetime import datetime
+
 from fiftyone.internal.api_requests import make_request
 from fiftyone.internal.util import get_api_url, get_token_from_request
+from fiftyone.plugins.utils import _hash_strings
 
 
 class ManagedPlugins:
@@ -29,9 +33,9 @@ class ManagedPlugins:
         return False
 
     def fingerprint(self):
-        raise NotImplementedError(
-            "fingerprint() not implemented for ManagedPlugins"
-        )
+        sorted_plugins = sorted(self.plugins, key=lambda p: p.name)
+        key_list = [plugin.fingerprint() for plugin in sorted_plugins]
+        return _hash_strings(key_list)
 
     @classmethod
     def from_json(cls, json):
@@ -81,22 +85,20 @@ class RemotePluginDefinition:
         self.enabled = enabled
         self.modified_at = modified_at
 
-    def fingerprint():
+    def fingerprint(self):
         key_list = [
             self.name,
-            self.enabled,
-            self.modified_at.isoformat() if self.modified_at else None,
+            str(self.enabled),
+            str(self.modified_at.isoformat()),
         ]
-        # TODO use hashlib to create a hash of the key_list
-        return json.dumps(key_list)
+        return _hash_strings(key_list)
 
     @classmethod
     def from_json(cls, json):
         return RemotePluginDefinition(
             name=json["name"],
             enabled=json.get("enabled", False),
-            # create time from json date
-            modified_at=time.fromisoformat(json["modifiedAt"]),
+            modified_at=datetime.fromisoformat(json["modifiedAt"]),
         )
 
 
@@ -116,10 +118,6 @@ class RemoteOperatorDefinition:
             uri=json["uri"],
             enabled=json.get("enabled", False),
         )
-
-
-# an example using the requests module to make a request to a graphql
-# server returning the results in a dictionary
 
 
 _AVAIL_OPERATORS_QUERY = """
