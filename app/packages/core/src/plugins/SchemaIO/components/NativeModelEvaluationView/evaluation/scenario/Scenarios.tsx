@@ -1,4 +1,6 @@
 import { isNullish } from "@fiftyone/utilities";
+import { usePanelId } from "@fiftyone/spaces";
+import { usePanelEvent } from "@fiftyone/operators";
 import {
   Autorenew,
   DragHandle,
@@ -23,7 +25,7 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import ConfusionMatrixConfig from "../../components/ConfusionMatrixConfig";
 import CreateScenario from "../../components/CreateScenario";
 import Difference from "../../components/Difference";
@@ -41,19 +43,24 @@ import EvaluationPlot from "../../EvaluationPlot";
 import { formatValue, getClasses, getMatrix } from "../../utils";
 import Actions from "./Actions";
 
+const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
+
 export default function Scenarios(props) {
   const { evaluation, compareEvaluation, data, loadScenarios, loadScenario } =
     props;
   const { scenarios } = evaluation;
   const [scenario, setScenario] = useState(getDefaultScenario(scenarios));
   const [selectedSubsets, setSelectedSubsets] = useState(["all"]);
+  const promptOperator = usePanelEvent();
+  const panelId = usePanelId();
   const [mode, setMode] = useState("charts");
   const [differenceMode, setDifferenceMode] = useState("percentage");
   const [loading, setLoading] = useState(false);
   const evaluationInfo = evaluation.info;
   const evaluationConfig = evaluationInfo.config;
-  const { key, compareKey } = data?.view;
-  const subsets = data?.[`scenario_${scenario}_${key}`]?.subsets || [];
+  const { key, compareKey, id: eval_id } = data?.view;
+  const fullScenario = data?.[`scenario_${scenario}_${key}`] || {};
+  const subsets = fullScenario?.subsets || [];
 
   const scenariosArray = scenarios ? Object.values(scenarios) : [];
 
@@ -62,6 +69,43 @@ export default function Scenarios(props) {
       setScenario(getDefaultScenario(scenarios));
     }
   }, [scenario, setScenario, scenarios]);
+
+  const onEdit = useCallback(() => {
+    if (fullScenario) {
+      promptOperator(panelId, {
+        params: {
+          gt_field: evaluationConfig.gt_field,
+          scenario_id: fullScenario.id,
+          scenario_type: fullScenario.type,
+          scenario_name: fullScenario.name,
+          scenario_subsets: fullScenario.subsets,
+          scenario_field: fullScenario?.field,
+          key,
+          compare_key: compareKey,
+          eval_id,
+        },
+        operator: CONFIGURE_SCENARIO_ACTION,
+        prompt: true,
+        callback: () => {
+          setLoading(true);
+          loadScenario(scenario, undefined, () => {
+            setLoading(false);
+            loadScenarios();
+          });
+        },
+      });
+    }
+  }, [
+    compareKey,
+    eval_id,
+    evaluationConfig.gt_field,
+    fullScenario,
+    key,
+    loadScenario,
+    panelId,
+    promptOperator,
+    scenario,
+  ]);
 
   return (
     <Stack>
@@ -169,6 +213,7 @@ export default function Scenarios(props) {
               setLoading(true);
               loadScenario(scenario, undefined, () => {
                 setLoading(false);
+                setScenario(scenario);
               });
             }}
           >
@@ -188,9 +233,7 @@ export default function Scenarios(props) {
             onDelete={() => {
               setLoading(true);
             }}
-            onEdit={() => {
-              setLoading(true);
-            }}
+            onEdit={onEdit}
           />
         </Stack>
       </Stack>

@@ -42,14 +42,17 @@ class ConfigureScenario(foo.Operator):
             unlisted=True,
         )
 
-    def render_header(self, inputs):
+    def render_header(self, ctx, inputs):
+        scenario_id = ctx.params.get("scenario_id", None)
+        label = "Edit scenario" if scenario_id else "Create scenario"
+        description = (
+            "Edit this scenario"
+            if scenario_id
+            else "Create a scenario of your dataset to analyze"
+        )
         inputs.view(
             "header",
-            types.Header(
-                label="Create scenario",  # TODO: adapt for edit
-                divider=True,
-                description="Create a scenario of your dataset to analyze",
-            ),
+            types.Header(label=label, divider=True, description=description),
         )
 
     def render_name_input(self, inputs, default):
@@ -465,13 +468,17 @@ class ConfigureScenario(foo.Operator):
     def get_selected_values(self, params):
         key = self.get_scenario_values_key(params)
 
-        # check if checkbox was used
+        # checkbox
         selection_view = params.get("checkbox_view_stack", {}) or {}
-        selected_values = selection_view.get(key, {}) or None
+        selected_values = selection_view.get(key, None) or None
 
-        # check if auto-complete was used
+        # auto-complete
         if not selected_values:
-            selected_values = params.get(key, {}) or {}
+            selected_values = params.get(key, None)
+
+        # maybe values were passed in. ex: Edit flow
+        if not selected_values:
+            selected_values = params.get("scenario_subsets", {}) or {}
 
         if isinstance(selected_values, list):
             return key, selected_values
@@ -806,8 +813,9 @@ class ConfigureScenario(foo.Operator):
 
         inputs.str("key", view=types.HiddenView())
         inputs.str("compare_key", view=types.HiddenView())
+        inputs.str("scenario_id", view=types.HiddenView())
 
-        self.render_header(inputs)
+        self.render_header(ctx, inputs)
 
         chosen_scenario_name = ctx.params.get("scenario_name", None)
         self.render_name_input(inputs, chosen_scenario_name)
@@ -940,9 +948,14 @@ class ConfigureScenario(foo.Operator):
             raise ValueError("No evaluation ids found")
 
         scenarios_for_eval = scenarios.get(eval_id_a) or {}
+        scenario_field = None
 
         if scenario_type in ["label_attribute", "sample_field"]:
             _, scenario_subsets = self.get_selected_values(ctx.params)
+
+            scenario_field = ctx.params.get("scenario_field", "")
+            if not scenario_field:
+                scenario_field = ctx.params.get("scenario_label_attribute", "")
 
             if not scenario_subsets:
                 # check custom_code
@@ -966,14 +979,22 @@ class ConfigureScenario(foo.Operator):
             if len(scenario_subsets) == 0:
                 raise ValueError("No saved views selected")
 
-        scenario_id = ObjectId()
+        existing_scenario_id = ctx.params.get("scenario_id", None)
+        if existing_scenario_id:
+            scenario_id = existing_scenario_id
+        else:
+            scenario_id = ObjectId()
+
         scenario_id_str = str(scenario_id)
-        scenarios_for_eval[str(scenario_id)] = {
+        scenarios_for_eval[scenario_id_str] = {
             "id": scenario_id_str,
             "name": scenario_name,
             "type": scenario_type,
             "subsets": scenario_subsets,
         }
+
+        if scenario_field:
+            scenarios_for_eval[scenario_id_str]["field"] = scenario_field
 
         scenarios[eval_id_a] = scenarios_for_eval
         store.set("scenarios", scenarios)

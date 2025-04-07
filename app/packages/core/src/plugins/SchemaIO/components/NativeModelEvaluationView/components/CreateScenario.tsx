@@ -19,7 +19,7 @@ export default function CreateScenario(props) {
           params: {
             gt_field,
             scenario_type: "custom_code",
-            scenario_name: "test", // # TODO: Edit will pass current name
+            scenario_name: "",
             key: evalKey,
             compare_key: compareKey,
             eval_id,
