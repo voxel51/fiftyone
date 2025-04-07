@@ -21,14 +21,11 @@ from typing import (
 )
 
 import bson
-from tqdm import tqdm
-
-import fiftyone.core.utils as fou
 import fiftyone.core.map.batcher as fomb
 import fiftyone.core.map.mapper as fomm
-
+import fiftyone.core.utils as fou
 from fiftyone.core.map.typing import SampleCollection
-
+from tqdm import tqdm
 
 T = TypeVar("T")
 R = TypeVar("R")
@@ -120,26 +117,29 @@ class ThreadMapper(fomm.LocalMapper[T]):
                 )
                 sample_iter = sample_collection.iter_samples(autosave=save)
 
-                # This is for a per-worker progress bar.
+                # Use ProgressBar for per-worker progress tracking
                 if progress == "workers":
-                    desc = f"Batch {i:0{len(str(count))}}/{count}"
+                    with fou.ProgressBar(
+                        total=batch.total, progress=progress
+                    ) as pb:
 
-                    sample_iter = tqdm(
-                        sample_iter, total=batch.total, desc=desc, position=i
+                        def wrapped_sample_iter():
+                            for sample in sample_iter:
+                                yield sample
+
+                        sample_iter = pb(wrapped_sample_iter())
+
+                    executor.submit(
+                        self.__worker,
+                        cancel_event=cancel_event,
+                        map_fcn=map_fcn,
+                        result_queue=result_queue,
+                        sample_iter=sample_iter,
+                        skip_failures=skip_failures,
+                        worker_done_event=worker_done_event,
                     )
 
-                executor.submit(
-                    self.__worker,
-                    cancel_event=cancel_event,
-                    map_fcn=map_fcn,
-                    result_queue=result_queue,
-                    sample_iter=sample_iter,
-                    skip_failures=skip_failures,
-                    worker_done_event=worker_done_event,
-                )
-
-            # Iterate over queue until an error occurs of all threads are
-            # finished.
+            # Iterate over queue until an error occurs or all threads are finished
             def get_results(
                 q: ResultQueue[R], evts: List[threading.Event]
             ) -> Iterator[R]:
@@ -170,15 +170,14 @@ class ThreadMapper(fomm.LocalMapper[T]):
                         if not (evts := [e for e in evts if not e.is_set()]):
                             break
                     else:
-                        # An error was raised in the map_fcn for a sample.
+                        # An error was raised in the map_fcn for a sample
                         if err is not None:
-                            # When skipping failures, simply yield the the
-                            # sample ID and the error.
+                            # When skipping failures, simply yield the sample ID and the error
                             if skip_failures:
                                 yield sample_id, err, None
                             # When NOT skipping failures, aggregate any errors
                             # to allow for all successfully mapped samples from
-                            # the various workers to be yielded first.
+                            # the various workers to be yielded first
                             else:
                                 sample_errors.append((sample_id, err, None))
                         else:
@@ -187,16 +186,24 @@ class ThreadMapper(fomm.LocalMapper[T]):
 
                 # It is possible to aggregate one error per worker. There
                 # might be a better way to handle this in the future but for
-                # now, return the first error seen.
+                # now, return the first error seen
                 if sample_errors:
                     yield sample_errors[0]
 
-            results = get_results(result_queue, worker_done_events)
-
-            # This is for the global progress bar.
             if progress is True:
-                results = tqdm(
-                    results, total=sum(batch.total for batch in sample_batches)
-                )
+                with fou.ProgressBar(
+                    total=sum(batch.total for batch in sample_batches),
+                    progress=progress,
+                ) as pb:
+                    # Wait for all workers to finish
+                    results = get_results(result_queue, worker_done_events)
+                    while not all(e.is_set() for e in worker_done_events):
+                        pb.update()
 
-            yield from results
+                    # This is for the global progress bar
+                    # if progress is True:
+                    #     with fou.ProgressBar(
+                    #         total=sum(batch.total for batch in sample_batches)
+                    #     )
+
+                    yield from results
