@@ -289,6 +289,13 @@ let theme = extendMuiTheme({
         },
       },
     },
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          backgroundImage: "none",
+        },
+      },
+    },
   },
 
   fontFamily: {

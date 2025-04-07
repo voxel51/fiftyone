@@ -5,7 +5,7 @@ import { Button } from "@mui/material";
 import React from "react";
 
 export default function CreateScenario(props) {
-  const { eval_id, loadScenarios, gt_field } = props;
+  const { eval_id, loadScenarios, gt_field, onAdd } = props;
   const panelId = usePanelId();
   const promptOperator = usePanelEvent();
 
@@ -23,7 +23,11 @@ export default function CreateScenario(props) {
           },
           operator: CONFIGURE_SCENARIO_ACTION,
           prompt: true,
-          callback: loadScenarios,
+          callback: (results) => {
+            loadScenarios(() => {
+              onAdd?.(results?.result?.id);
+            });
+          },
         });
       }}
       sx={{ minWidth: "auto" }}

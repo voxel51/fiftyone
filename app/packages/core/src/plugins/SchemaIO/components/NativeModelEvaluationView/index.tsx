@@ -151,12 +151,12 @@ export default function NativeModelEvaluationView(props) {
           loadEvaluation={(key?: string) => {
             triggerEvent(load_evaluation, { key, id: keyToId[key as string] });
           }}
-          loadScenarios={() => {
-            triggerEvent(load_scenarios);
+          loadScenarios={(callback) => {
+            triggerEvent(load_scenarios, undefined, false, callback);
           }}
-          loadScenario={(id: string, key?: string) => {
+          loadScenario={(id: string, key?: string, callback?: () => void) => {
             onChange("scenario_loading", true);
-            triggerEvent(load_scenario, { id, key });
+            triggerEvent(load_scenario, { id, key }, false, callback);
           }}
           onChangeCompareKey={(compareKey) => {
             onChange("view.compareKey", compareKey);

@@ -23,6 +23,9 @@ const EvaluationSelect = styled(Select, {
 
 EvaluationSelect.defaultProps = {
   size: "small",
+  sx: {
+    color: (theme) => theme.palette.text.secondary,
+  },
 };
 
 export default EvaluationSelect;

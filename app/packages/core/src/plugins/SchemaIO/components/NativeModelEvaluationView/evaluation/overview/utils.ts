@@ -1,10 +1,10 @@
 import { view } from "@fiftyone/state";
 import { useRecoilState } from "recoil";
 import {
-  CLASS_PERFORMANCE_SORT_OPTIONS,
   CONFUSION_MATRIX_SORT_OPTIONS,
   DEFAULT_BAR_CONFIG,
-} from "./constants";
+} from "../../constants";
+import { CLASS_PERFORMANCE_SORT_OPTIONS } from "./constants";
 
 export function useActiveFilter(evaluation, compareEvaluation) {
   const evalKey = evaluation?.info?.key;

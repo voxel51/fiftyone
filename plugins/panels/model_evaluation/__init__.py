@@ -70,6 +70,7 @@ class EvaluationPanel(Panel):
             "can_edit_status": True,
             "can_delete_evaluation": True,
             "can_rename": True,
+            "can_delete_scenario": True,
         }
 
     def can_evaluate(self, ctx):
@@ -86,6 +87,9 @@ class EvaluationPanel(Panel):
 
     def can_rename(self, ctx):
         return self.get_permissions(ctx).get("can_rename", False)
+
+    def can_delete_scenario(self, ctx):
+        return self.get_permissions(ctx).get("can_delete_scenario", False)
 
     def on_load(self, ctx):
         store = self.get_store(ctx)
@@ -873,7 +877,6 @@ class EvaluationPanel(Panel):
         scenario_data = scenario.copy()
         scenario_data["subsets_data"] = {}
 
-        print(">>> scenario_type:", scenario_type)
         if scenario_type == "custom_code":
             custom_code = scenario.get("subsets", None)
             cc_expr, cc_error = self.process_custom_code(ctx, custom_code)
@@ -921,7 +924,6 @@ class EvaluationPanel(Panel):
                 )
                 scenario_data["subsets_data"][subset] = subset_data
         else:
-            print(">>> scenario_type:", scenario_type)
             scenario_data["subsets_data"] = None  # unsupported type
 
         return scenario_data
@@ -941,6 +943,22 @@ class EvaluationPanel(Panel):
             )
             ctx.panel.set_state("scenario_loading", False)
 
+    def delete_scenario(self, ctx):
+        if not self.can_delete_scenario(ctx):
+            ctx.ops.notify(
+                "You do not have permission to delete scenarios",
+                variant="error",
+            )
+            return
+        scenario_id = ctx.params.get("id", None)
+        eval_id = ctx.params.get("eval_id", None)
+        store = self.get_store(ctx)
+        scenarios = store.get("scenarios") or {}
+        scenarios[eval_id].pop(scenario_id, None)
+        store.set("scenarios", scenarios)
+        self.load_scenarios(ctx)
+        ctx.ops.notify(f"Scenario deleted successfully!", variant="success")
+
     def render(self, ctx):
         panel = types.Object()
         return types.Property(
@@ -959,6 +977,7 @@ class EvaluationPanel(Panel):
                 delete_evaluation=self.delete_evaluation,
                 load_scenarios=self.load_scenarios,
                 load_scenario=self.load_scenario,
+                delete_scenario=self.delete_scenario,
             ),
         )
 

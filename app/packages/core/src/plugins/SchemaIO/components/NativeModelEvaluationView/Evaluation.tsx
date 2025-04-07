@@ -297,6 +297,7 @@ export default function Evaluation(props: EvaluationProps) {
       {activeTab === "scenario" && (
         <EvaluationScenarioAnalysis
           evaluation={evaluation}
+          compareEvaluation={compareEvaluation}
           data={data}
           loadScenarios={loadScenarios}
           loadScenario={loadScenario}
@@ -321,7 +322,7 @@ type EvaluationProps = {
   id: string;
   navigateBack: () => void;
   loadEvaluation: (key?: string) => void;
-  loadScenarios: () => void;
+  loadScenarios: (callback?: () => void) => void;
   loadScenario: (id: string, key?: string) => void;
   onChangeCompareKey: (compareKey: string) => void;
   compareKey?: string;

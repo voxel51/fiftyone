@@ -1,7 +1,9 @@
 import { isNullish } from "@fiftyone/utilities";
 import {
   Autorenew,
+  DragHandle,
   InsertChartOutlined,
+  Percent,
   TableChartOutlined,
 } from "@mui/icons-material";
 import {
@@ -9,6 +11,7 @@ import {
   Button,
   CircularProgress,
   Grid,
+  ListItemIcon,
   MenuItem,
   Select,
   Stack,
@@ -21,7 +24,9 @@ import {
   useTheme,
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
+import ConfusionMatrixConfig from "../../components/ConfusionMatrixConfig";
 import CreateScenario from "../../components/CreateScenario";
+import Difference from "../../components/Difference";
 import EvaluationSelect from "../../components/EvaluationSelect";
 import EvaluationTable from "../../components/EvaluationTable";
 import {
@@ -33,18 +38,21 @@ import {
   TERTIARY_KEY_COLOR,
 } from "../../constants";
 import EvaluationPlot from "../../EvaluationPlot";
-import { formatValue } from "../../utils";
+import { formatValue, getClasses, getMatrix } from "../../utils";
 import Actions from "./Actions";
 
 export default function Scenarios(props) {
-  const { evaluation, data, loadScenarios, loadScenario } = props;
+  const { evaluation, compareEvaluation, data, loadScenarios, loadScenario } =
+    props;
   const { scenarios } = evaluation;
   const [scenario, setScenario] = useState(getDefaultScenario(scenarios));
-  const [subset, setSubset] = useState("all");
+  const [selectedSubsets, setSelectedSubsets] = useState(["all"]);
   const [mode, setMode] = useState("charts");
+  const [differenceMode, setDifferenceMode] = useState("percentage");
+  const [loading, setLoading] = useState(false);
   const evaluationInfo = evaluation.info;
   const evaluationConfig = evaluationInfo.config;
-  const { key } = data?.view;
+  const { key, compareKey } = data?.view;
   const subsets = data?.[`scenario_${scenario}_${key}`]?.subsets || [];
 
   const scenariosArray = scenarios ? Object.values(scenarios) : [];
@@ -57,7 +65,13 @@ export default function Scenarios(props) {
 
   return (
     <Stack>
-      <Stack direction="row" spacing={1} justifyContent="space-between">
+      <Stack
+        direction="row"
+        spacing={1}
+        justifyContent="space-between"
+        mt={2}
+        mb={1}
+      >
         <Stack direction="row" spacing={1} alignItems="center">
           <Typography color="secondary">Scenario:</Typography>
           <EvaluationSelect
@@ -80,13 +94,44 @@ export default function Scenarios(props) {
           </EvaluationSelect>
         </Stack>
         <Stack direction="row" spacing={1}>
+          {mode === "tables" && compareKey && (
+            <Select
+              size="small"
+              value={differenceMode}
+              onChange={(e) => {
+                setDifferenceMode(e.target.value as string);
+              }}
+              color="secondary"
+              renderValue={(value) => {
+                return (
+                  <Stack>
+                    {value === "percentage" ? <Percent /> : <DragHandle />}
+                  </Stack>
+                );
+              }}
+            >
+              <MenuItem value="ratio" key="ratio">
+                <ListItemIcon>
+                  <DragHandle />
+                </ListItemIcon>
+                <Typography>Ratio</Typography>
+              </MenuItem>
+              <MenuItem value="percentage" key="percentage">
+                <ListItemIcon>
+                  <Percent />
+                </ListItemIcon>
+                <Typography>Percentage</Typography>
+              </MenuItem>
+            </Select>
+          )}
           <Select
             size="small"
-            value={subset}
+            value={selectedSubsets}
             onChange={(e) => {
-              setSubset(e.target.value as string);
+              setSelectedSubsets(e.target.value as string[]);
             }}
             color="secondary"
+            multiple
           >
             <MenuItem value="all" key="all">
               <Typography>All</Typography>
@@ -112,7 +157,7 @@ export default function Scenarios(props) {
             <ToggleButton value="charts">
               <InsertChartOutlined />
             </ToggleButton>
-            <ToggleButton value="table">
+            <ToggleButton value="tables">
               <TableChartOutlined />
             </ToggleButton>
           </ToggleButtonGroup>
@@ -121,7 +166,10 @@ export default function Scenarios(props) {
             sx={{ minWidth: "auto", p: "4px 10px" }}
             color="secondary"
             onClick={() => {
-              loadScenario(scenario, undefined, true);
+              setLoading(true);
+              loadScenario(scenario, undefined, () => {
+                setLoading(false);
+              });
             }}
           >
             <Autorenew />
@@ -130,8 +178,18 @@ export default function Scenarios(props) {
             eval_id={data?.view?.id}
             loadScenarios={loadScenarios}
             gt_field={evaluationConfig.gt_field}
+            onAdd={(id) => {
+              setScenario(id);
+            }}
           />
-          <Actions />
+          <Actions
+            onDelete={() => {
+              setLoading(true);
+            }}
+            onEdit={() => {
+              setLoading(true);
+            }}
+          />
         </Stack>
       </Stack>
       {scenario && (
@@ -141,6 +199,10 @@ export default function Scenarios(props) {
           data={data}
           loadScenario={loadScenario}
           mode={mode}
+          loading={loading}
+          differenceMode={differenceMode}
+          evaluation={evaluation}
+          compareEvaluation={compareEvaluation}
         />
       )}
     </Stack>
@@ -148,11 +210,10 @@ export default function Scenarios(props) {
 }
 
 function Scenario(props) {
-  const { id, data, loadScenario, mode } = props;
+  const { id, data, loadScenario, mode, loading, differenceMode } = props;
   const { key, compareKey } = data?.view;
   const scenario = data?.[`scenario_${id}_${key}`];
   const compareScenario = data?.[`scenario_${id}_${compareKey}`];
-  const isLoading = data?.scenario_loading;
 
   useEffect(() => {
     if (!scenario) {
@@ -166,7 +227,7 @@ function Scenario(props) {
     }
   }, [compareKey, compareScenario]);
 
-  if (!scenario || isLoading) {
+  if (!scenario || loading) {
     return (
       <Stack
         sx={{ minHeight: 300 }}
@@ -197,21 +258,24 @@ function Scenario(props) {
           data={data}
           scenario={scenario}
           compareScenario={compareScenario}
+          evaluation={props.evaluation}
+          compareEvaluation={props.compareEvaluation}
         />
       ) : (
-        <ScenarioTable
+        <ScenarioTables
           data={data}
           scenario={scenario}
           compareScenario={compareScenario}
+          differenceMode={differenceMode}
         />
       )}
     </Stack>
   );
 }
 
-function ScenarioTable(props) {
+function ScenarioTables(props) {
   return (
-    <Stack>
+    <Stack spacing={2}>
       <PredictionStatisticsTable {...props} />
       <ModelPerformanceMetricsTable {...props} />
       <ConfidenceDistributionTable {...props} />
@@ -220,7 +284,7 @@ function ScenarioTable(props) {
 }
 
 function PredictionStatisticsTable(props) {
-  const { scenario, compareScenario, data } = props;
+  const { scenario, compareScenario, data, differenceMode } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const { key, compareKey } = data?.view;
@@ -234,6 +298,7 @@ function PredictionStatisticsTable(props) {
             <TableCell>Subset</TableCell>
             <TableCell>{key}</TableCell>
             {compareKey && <TableCell>{compareKey}</TableCell>}
+            {compareKey && <TableCell>Difference</TableCell>}
           </TableRow>
         </TableHead>
         {subsets.map((subset) => {
@@ -249,14 +314,31 @@ function PredictionStatisticsTable(props) {
                   <Stack direction="row" spacing={1}>
                     <Typography color="secondary">TP:</Typography>
                     <Typography>{metrics.tp}</Typography>
+                    <Difference
+                      value={metrics.tp}
+                      compareValue={compareMetrics?.tp}
+                      mode="trophy"
+                    />
                   </Stack>
                   <Stack direction="row" spacing={1}>
                     <Typography color="secondary">FP:</Typography>
                     <Typography>{metrics.fp}</Typography>
+                    <Difference
+                      value={metrics.fp}
+                      compareValue={compareMetrics?.fp}
+                      mode="trophy"
+                      lesserIsBetter
+                    />
                   </Stack>
                   <Stack direction="row" spacing={1}>
                     <Typography color="secondary">FN:</Typography>
                     <Typography>{metrics.fn}</Typography>
+                    <Difference
+                      value={metrics.fn}
+                      compareValue={compareMetrics?.fn}
+                      mode="trophy"
+                      lesserIsBetter
+                    />
                   </Stack>
                 </Stack>
               </TableCell>
@@ -267,15 +349,62 @@ function PredictionStatisticsTable(props) {
                       <Stack direction="row" spacing={1}>
                         <Typography color="secondary">TP:</Typography>
                         <Typography>{compareMetrics?.tp}</Typography>
+                        <Difference
+                          value={compareMetrics.tp}
+                          compareValue={metrics.tp}
+                          mode="trophy"
+                        />
                       </Stack>
                       <Stack direction="row" spacing={1}>
                         <Typography color="secondary">FP:</Typography>
                         <Typography>{compareMetrics?.fp}</Typography>
+                        <Difference
+                          value={compareMetrics.fp}
+                          compareValue={metrics.fp}
+                          mode="trophy"
+                          lesserIsBetter
+                        />
                       </Stack>
                       <Stack direction="row" spacing={1}>
                         <Typography color="secondary">FN:</Typography>
                         <Typography>{compareMetrics.fn}</Typography>
+                        <Difference
+                          value={compareMetrics.fn}
+                          compareValue={metrics.fn}
+                          mode="trophy"
+                          lesserIsBetter
+                        />
                       </Stack>
+                    </Stack>
+                  ) : (
+                    <CircularProgress size={16} />
+                  )}
+                </TableCell>
+              )}
+              {compareKey && (
+                <TableCell>
+                  {compareMetrics ? (
+                    <Stack>
+                      <Difference
+                        value={metrics.tp}
+                        compareValue={compareMetrics.tp}
+                        mode={differenceMode}
+                        arrow
+                      />
+                      <Difference
+                        value={metrics.fp}
+                        compareValue={compareMetrics.fp}
+                        mode={differenceMode}
+                        arrow
+                        lesserIsBetter
+                      />
+                      <Difference
+                        value={metrics.fn}
+                        compareValue={compareMetrics.fn}
+                        mode={differenceMode}
+                        arrow
+                        lesserIsBetter
+                      />
                     </Stack>
                   ) : (
                     <CircularProgress size={16} />
@@ -314,7 +443,7 @@ function SelectSubset(props) {
 }
 
 function ModelPerformanceMetricsTable(props) {
-  const { scenario, compareScenario, data } = props;
+  const { scenario, compareScenario, data, differenceMode } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const [subset, setSubset] = useState(subsets[0]);
@@ -336,6 +465,7 @@ function ModelPerformanceMetricsTable(props) {
             <TableCell>Metric</TableCell>
             <TableCell>{key}</TableCell>
             {compareKey && <TableCell>{compareKey}</TableCell>}
+            {compareKey && <TableCell>Difference</TableCell>}
           </TableRow>
         </TableHead>
         {MODEL_PERFORMANCE_METRICS.map(({ label, key }) => {
@@ -347,11 +477,44 @@ function ModelPerformanceMetricsTable(props) {
           return (
             <TableRow key={key}>
               <TableCell>{label}</TableCell>
-              <TableCell>{formatValue(value)}</TableCell>
+              <TableCell>
+                <Stack direction="row" spacing={1}>
+                  <Typography>{formatValue(value)} </Typography>
+                  <Difference
+                    value={value}
+                    compareValue={compareMetrics?.[key]}
+                    mode="trophy"
+                  />
+                </Stack>
+              </TableCell>
               {compareKey && (
                 <TableCell>
                   {compareMetrics ? (
-                    formatValue(compareMetrics[key])
+                    <Stack direction="row" spacing={1}>
+                      <Typography>
+                        {formatValue(compareMetrics[key])}
+                      </Typography>
+                      <Difference
+                        value={compareMetrics[key]}
+                        compareValue={value}
+                        mode="trophy"
+                      />
+                    </Stack>
+                  ) : (
+                    <CircularProgress size={16} />
+                  )}
+                </TableCell>
+              )}
+              {compareKey && (
+                <TableCell>
+                  {compareMetrics ? (
+                    <Difference
+                      value={value}
+                      compareValue={compareMetrics[key]}
+                      mode={differenceMode}
+                      arrow
+                      lesserIsBetter
+                    />
                   ) : (
                     <CircularProgress size={16} />
                   )}
@@ -377,7 +540,7 @@ const CONFIDENCE_DISTRIBUTION_METRICS_VALUES = Object.values(
 );
 
 function ConfidenceDistributionTable(props) {
-  const { scenario, compareScenario, data } = props;
+  const { scenario, compareScenario, data, differenceMode } = props;
   const { key, compareKey } = data?.view;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
@@ -386,22 +549,25 @@ function ConfidenceDistributionTable(props) {
 
   return (
     <Stack>
-      <Typography>Confidence Distribution</Typography>
-      <Select
-        size="small"
-        defaultValue="avg"
-        onChange={(e) => {
-          setMetric(e.target.value);
-        }}
-      >
-        {CONFIDENCE_DISTRIBUTION_METRICS_VALUES.map(({ key, label }) => {
-          return (
-            <MenuItem value={key} key={key}>
-              <Typography>{label}</Typography>
-            </MenuItem>
-          );
-        })}
-      </Select>
+      <Stack direction="row" justifyContent="space-between">
+        <Typography>Confidence Distribution</Typography>
+        <EvaluationSelect
+          size="small"
+          defaultValue="avg"
+          onChange={(e) => {
+            setMetric(e.target.value);
+          }}
+          ghost
+        >
+          {CONFIDENCE_DISTRIBUTION_METRICS_VALUES.map(({ key, label }) => {
+            return (
+              <MenuItem value={key} key={key}>
+                <Typography>{label}</Typography>
+              </MenuItem>
+            );
+          })}
+        </EvaluationSelect>
+      </Stack>
       <EvaluationTable variant="card" size="medium">
         <TableHead>
           <TableRow>
@@ -414,6 +580,7 @@ function ConfidenceDistributionTable(props) {
                 {compareKey} ({metricLabel})
               </TableCell>
             )}
+            {compareKey && <TableCell>Difference ({metricLabel})</TableCell>}
           </TableRow>
         </TableHead>
         {subsets.map((subset) => {
@@ -426,12 +593,45 @@ function ConfidenceDistributionTable(props) {
             <TableRow key={subset}>
               <TableCell>{subset}</TableCell>
               <TableCell>
-                {formatValue(confidence_distribution[metric])}
+                <Stack direction="row" spacing={1}>
+                  <Typography>
+                    {formatValue(confidence_distribution[metric])}
+                  </Typography>
+                  <Difference
+                    value={confidence_distribution[metric]}
+                    compareValue={compareConfidenceDistribution?.[metric]}
+                    mode="trophy"
+                  />
+                </Stack>
               </TableCell>
               {compareKey && (
                 <TableCell>
                   {compareSubsetsData ? (
-                    formatValue(compareConfidenceDistribution[metric])
+                    <Stack direction="row" spacing={1}>
+                      <Typography>
+                        {formatValue(compareConfidenceDistribution[metric])}
+                      </Typography>
+                      <Difference
+                        value={compareConfidenceDistribution[metric]}
+                        compareValue={confidence_distribution[metric]}
+                        mode="trophy"
+                      />
+                    </Stack>
+                  ) : (
+                    <CircularProgress size={16} />
+                  )}
+                </TableCell>
+              )}
+              {compareKey && (
+                <TableCell>
+                  {compareSubsetsData ? (
+                    <Difference
+                      value={confidence_distribution[metric]}
+                      compareValue={compareConfidenceDistribution[metric]}
+                      mode={differenceMode}
+                      arrow
+                      lesserIsBetter
+                    />
                   ) : (
                     <CircularProgress size={16} />
                   )}
@@ -721,46 +921,50 @@ function ConfusionMatrixChart(props) {
   const [subset, setSubset] = useState(subsets[0]);
   const subsetData = scenario.subsets_data[subset];
   const compareSubsetData = compareScenario?.subsets_data[subset];
-  const { confusion_matrices } = subsetData;
-  const compareConfusionMatrices = compareSubsetData?.confusion_matrices;
-  const { az_classes, az_colorscale, az_matrix } = confusion_matrices;
-  const compareAzMatrix = compareConfusionMatrices?.az_matrix;
-  const compareAzClasses = compareConfusionMatrices?.az_classes;
-  const compareAzColorscale = compareConfusionMatrices?.az_colorscale;
-
-  const plotData = [
-    {
-      z: az_matrix,
-      x: az_classes,
-      y: az_classes,
-      texttemplate: az_classes.length > 10 ? undefined : "%{z}",
-      type: "heatmap",
-      colorscale: az_colorscale || "viridis",
-    },
-  ];
+  const [config, setConfig] = useState({ log: true });
+  const evaluationMaskTargets = props.evaluation?.mask_targets || {};
+  const compareEvaluationMaskTargets =
+    props.compareEvaluation?.mask_targets || {};
+  const matrices = subsetData?.confusion_matrices;
+  const matrixData = getMatrix(
+    matrices,
+    config,
+    evaluationMaskTargets,
+    undefined,
+    true
+  );
+  const matrixPlotData = matrixData?.plot;
+  const plotData = [matrixPlotData];
   const comparePlotData = compareScenario
     ? [
-        {
-          z: compareAzMatrix,
-          x: compareAzClasses,
-          y: compareAzClasses,
-          texttemplate: compareAzClasses.length > 10 ? undefined : "%{z}",
-          type: "heatmap",
-          colorscale: compareAzColorscale || "viridis",
-        },
+        getMatrix(
+          compareSubsetData?.confusion_matrices,
+          config,
+          evaluationMaskTargets,
+          compareEvaluationMaskTargets,
+          true
+        )?.plot,
       ]
     : undefined;
+  const classes = getClasses(matrices, evaluationMaskTargets);
 
   return (
     <Stack>
       <Stack direction="row" justifyContent="space-between">
         <Typography>Confusion Matrices</Typography>
 
-        <SelectSubset
-          subsets={subsets}
-          selected={subset}
-          setSelected={setSubset}
-        />
+        <Stack direction="row" spacing={1}>
+          <SelectSubset
+            subsets={subsets}
+            selected={subset}
+            setSelected={setSubset}
+          />
+          <ConfusionMatrixConfig
+            config={config}
+            onSave={setConfig}
+            classes={classes}
+          />
+        </Stack>
       </Stack>
 
       <Stack direction="row" spacing={1}>
@@ -779,59 +983,103 @@ function ConfusionMatrixChart(props) {
 
 function ConfidenceDistributionChart(props) {
   const { scenario, compareScenario } = props;
-  const { subsets_data } = scenario;
+  const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const { key, compareKey } = props.data?.view;
+  const [mode, setMode] = useState("overview");
+  const isOverview = mode === "overview";
 
   const plotData = [];
 
-  if (compareSubsetsData) {
-    const x = [];
+  if (!isOverview) {
     const y = [];
-    const compareX = [];
-    const compareY = [];
     for (const subset in subsets_data) {
       const subsetData = subsets_data[subset];
-      const compareSubsetData = compareSubsetsData[subset];
-      const { confidences } = subsetData;
-      const compareConfidences = compareSubsetData.confidences;
-      const subsetX = new Array(confidences.length).fill(subset);
-      const compareSubsetX = new Array(compareConfidences.length).fill(subset);
-      x.push(...subsetX);
-      y.push(...confidences);
-      compareX.push(...compareSubsetX);
-      compareY.push(...compareConfidences);
+      const { confidence_distribution } = subsetData;
+      y.push(confidence_distribution[mode]);
     }
-    const subsetA = {
-      y,
-      x,
-      name: key,
-      marker: { color: KEY_COLOR },
-      type: "box",
-    };
-    const subsetB = {
-      y: compareY,
-      x: compareX,
-      name: compareKey,
-      marker: { color: COMPARE_KEY_COLOR },
-      type: "box",
-    };
-    plotData.push(subsetA, subsetB);
+    plotData.push({ x: subsets, y, type: "bar", name: key });
+    if (compareSubsetsData) {
+      const compareY = [];
+      for (const subset in compareSubsetsData) {
+        const subsetData = compareSubsetsData[subset];
+        const { confidence_distribution } = subsetData;
+        compareY.push(confidence_distribution[mode]);
+      }
+      plotData.push({ x: subsets, y: compareY, type: "bar", name: compareKey });
+    }
   } else {
-    for (const subset in subsets_data) {
-      const subsetData = subsets_data[subset];
-      plotData.push({
-        y: subsetData.confidences,
-        name: subset,
-        type: "box",
+    if (compareSubsetsData) {
+      const x = [];
+      const y = [];
+      const compareX = [];
+      const compareY = [];
+      for (const subset in subsets_data) {
+        const subsetData = subsets_data[subset];
+        const compareSubsetData = compareSubsetsData[subset];
+        const { confidences } = subsetData;
+        const compareConfidences = compareSubsetData.confidences;
+        const subsetX = new Array(confidences.length).fill(subset);
+        const compareSubsetX = new Array(compareConfidences.length).fill(
+          subset
+        );
+        x.push(...subsetX);
+        y.push(...confidences);
+        compareX.push(...compareSubsetX);
+        compareY.push(...compareConfidences);
+      }
+      const subsetA = {
+        y,
+        x,
+        name: key,
         marker: { color: KEY_COLOR },
-      });
+        type: "box",
+      };
+      const subsetB = {
+        y: compareY,
+        x: compareX,
+        name: compareKey,
+        marker: { color: COMPARE_KEY_COLOR },
+        type: "box",
+      };
+      plotData.push(subsetA, subsetB);
+    } else {
+      for (const subset in subsets_data) {
+        const subsetData = subsets_data[subset];
+        plotData.push({
+          y: subsetData.confidences,
+          name: subset,
+          type: "box",
+          marker: { color: KEY_COLOR },
+        });
+      }
     }
   }
 
   return (
     <Stack>
-      <Typography>Confidence Distribution</Typography>
+      <Stack direction="row" justifyContent="space-between">
+        <Typography>Confidence Distribution</Typography>
+        <EvaluationSelect
+          size="small"
+          value={mode}
+          onChange={(e) => {
+            setMode(e.target.value);
+          }}
+          ghost
+        >
+          <MenuItem value={"overview"} key={"overview"}>
+            <Typography>Overview</Typography>
+          </MenuItem>
+          {CONFIDENCE_DISTRIBUTION_METRICS_VALUES.map(({ key, label }) => {
+            return (
+              <MenuItem value={key} key={key}>
+                <Typography>{label}</Typography>
+              </MenuItem>
+            );
+          })}
+        </EvaluationSelect>
+      </Stack>
 
       <EvaluationPlot
         data={plotData}

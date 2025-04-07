@@ -212,14 +212,7 @@ export default function Overview(props) {
         </Accordion>
       </Stack>
 
-      <Dialog
-        open={editNoteState.open}
-        fullWidth
-        onClose={closeNoteDialog}
-        PaperProps={{
-          sx: { background: (theme) => theme.palette.background.level2 },
-        }}
-      >
+      <Dialog open={editNoteState.open} fullWidth onClose={closeNoteDialog}>
         <Stack spacing={2} sx={{ p: 2 }}>
           <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
             <EditNote sx={{ fontSize: 16 }} color="secondary" />

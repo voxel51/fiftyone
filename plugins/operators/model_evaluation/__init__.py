@@ -968,8 +968,9 @@ class ConfigureScenario(foo.Operator):
                 raise ValueError("No saved views selected")
 
         scenario_id = ObjectId()
+        scenario_id_str = str(scenario_id)
         scenarios_for_eval[str(scenario_id)] = {
-            "id": str(scenario_id),
+            "id": scenario_id_str,
             "name": scenario_name,
             "type": scenario_type,
             "subsets": scenario_subsets,
@@ -982,4 +983,6 @@ class ConfigureScenario(foo.Operator):
             "scenario_type": ctx.params.get("radio_choices", ""),
             "scenario_field": ctx.params.get("scenario_field", ""),
             "label_attribute": ctx.params.get("label_attribute", ""),
+            "name": scenario_name,
+            "id": scenario_id_str,
         }

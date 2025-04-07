@@ -25,7 +25,7 @@ import EvaluationTable from "../../components/EvaluationTable";
 import { COMPARE_KEY_COLOR, KEY_COLOR } from "../../constants";
 import EvaluationPlot from "../../EvaluationPlot";
 import { formatValue, getNumericDifference } from "../../utils";
-import { DEFAULT_BAR_CONFIG } from "./constants";
+import { DEFAULT_BAR_CONFIG } from "../../constants";
 import { PLOT_CONFIG_DIALOG_TYPE, PLOT_CONFIG_TYPE } from "./types";
 import { getConfigLabel, useActiveFilter } from "./utils";
 
@@ -249,9 +249,6 @@ export default function ClassPerformance(props) {
         open={Boolean(classPerformanceDialogConfig.open)}
         fullWidth
         onClose={closeClassPerformanceConfigDialog}
-        PaperProps={{
-          sx: { background: (theme) => theme.palette.background.level2 },
-        }}
       >
         <Stack spacing={2} sx={{ p: 2 }}>
           <Stack direction="row" spacing={1}>
