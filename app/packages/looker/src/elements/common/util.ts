@@ -46,11 +46,11 @@ export const dispatchTooltipEvent = <State extends BaseState>(
         ? overlays[0].getPointInfo(state)
         : null;
 
-    if (detail?.label?.instance_config) {
+    if (detail?.label?.instance) {
       selectiveRenderingEventBus.emit(
         new LabelHoveredEvent({
           labelId: detail.label.id,
-          instanceId: detail.label.instance_config?._id,
+          instanceId: detail.label.instance?._id,
           field: detail.label.field,
         })
       );

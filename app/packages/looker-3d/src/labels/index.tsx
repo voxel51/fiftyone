@@ -87,7 +87,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
           id: label._id,
           field: label.path,
           sampleId: label.sampleId,
-          instanceId: label.instance_config?._id,
+          instanceId: label.instance?._id,
           isShiftPressed: e.shiftKey,
         },
       });
@@ -206,7 +206,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
           labelId: overlay._id,
           field: overlay.path,
           sampleId: overlay.sampleId,
-          instanceId: overlay.instance_config?._id,
+          instanceId: overlay.instance?._id,
         } as LabelData);
       }
     }

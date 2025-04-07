@@ -623,8 +623,9 @@ const AttrInfo = ({ label, field, labelType, children = null }) => {
         ])
       : null;
 
-  const instanceConfigAttributes = label.instance_config
-    ? Object.entries(label.instance_config)
+  // we're prettifying the instance config attributes here
+  const instanceAttributes = label.instance
+    ? Object.entries(label.instance)
         .filter(
           ([k, v]) =>
             typeof v === "string" &&
@@ -640,7 +641,7 @@ const AttrInfo = ({ label, field, labelType, children = null }) => {
       {children}
       {other.map(mapper)}
       {attributes && attributes.map(mapper)}
-      {instanceConfigAttributes && instanceConfigAttributes.map(mapper)}
+      {instanceAttributes && instanceAttributes.map(mapper)}
     </>
   );
 };

@@ -28,9 +28,8 @@ export interface BaseLabel {
    *
    * It is commonly used to cross-link labels between samples.
    */
-  instance_config?: {
+  instance?: {
     _cls: "Instance";
-    name: string;
     _id?: string;
   };
 }
@@ -116,7 +115,7 @@ export abstract class CoordinateOverlay<
       "Creating overlay for label",
       this.label.id,
       "with instanceId",
-      this.label.instance_config?._id
+      this.label.instance?._id
     );
   }
 
@@ -170,7 +169,7 @@ export abstract class CoordinateOverlay<
       field: this.field,
       // @ts-ignore
       frameNumber: state.frameNumber,
-      instanceId: this.label.instance_config?._id,
+      instanceId: this.label.instance?._id,
       // instanceName: this.label.instance_config?.name,
     };
   }

@@ -106,7 +106,7 @@ from .core.labels import (
     TemporalDetections,
     GeoLocation,
     GeoLocations,
-    InstanceConfig,
+    Instance,
 )
 from .core.logging import (
     get_logging_level,

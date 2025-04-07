@@ -527,10 +527,9 @@ function formatSelectedLabels(selectedLabels) {
         field: label.field,
         label_id: label.labelId,
         sample_id: label.sampleId,
-        instance_config: {
+        instance: {
           _cls: "Instance",
           _id: label.instanceId,
-          name: label.instanceName,
         },
       };
       if (!isNullish(label.frameNumber)) {

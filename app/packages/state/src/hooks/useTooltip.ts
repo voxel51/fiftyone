@@ -26,14 +26,14 @@ export default function useTooltip() {
         onPointerOver: () => {
           setTooltipDetail(getDetailsFromLabel(label));
 
-          if (!label.instance_config) {
+          if (!label.instance) {
             return;
           }
 
           selectiveRenderingEventBus.emit(
             new LabelHoveredEvent({
               labelId: label.id,
-              instanceId: label.instance_config._id,
+              instanceId: label.instance._id,
               field: label.path,
               frameNumber: label.frame_number,
             })
@@ -45,7 +45,7 @@ export default function useTooltip() {
             setTooltipDetail(null);
           }
 
-          if (!label.instance_config) {
+          if (!label.instance) {
             return;
           }
 
