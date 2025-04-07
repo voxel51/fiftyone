@@ -343,16 +343,14 @@ class _HasID(Label):
         self.id = str(value)
 
 
-class InstanceConfig(EmbeddedDocument):
-    """A named label instance.
+class Instance(EmbeddedDocument):
+    """A label instance.
 
     Args:
         id (None): the label instance ID
-        name (None): the label instance name
     """
 
     id = fof.ObjectIdField(default=lambda: str(ObjectId()), db_field="_id")
-    name = fof.StringField()
 
     @property
     def _id(self):
@@ -366,30 +364,30 @@ class InstanceConfig(EmbeddedDocument):
         self.id = value
 
 
-class _HasInstanceConfig(Label):
+class _HasInstance(Label):
     """Mixin for :class:`Label` classes that contain an instance configuration
-    via an ``instance_config`` attribute.
+    via an ``instance`` attribute.
 
     Contrary to the ``id`` field, which is unique to each label, the
-    ``instance_config`` field is unique to each label instance either temporally or
+    ``instance`` field is unique to each label instance either temporally or
     across different modalities, allowing you to identify the same logical label
     across different samples.
     """
 
-    instance_config = fof.EagerValidatingEmbeddedDocumentField(InstanceConfig)
+    instance = fof.EagerValidatingEmbeddedDocumentField(Instance)
 
     @property
     def instance_id(self):
         """The ID of the label instance."""
-        if self.instance_config is None:
+        if self.instance is None:
             return None
 
-        return self.instance_config.id
+        return self.instance.id
 
     @instance_id.setter
     def instance_id(self, value):
-        if self.instance_config is None:
-            self.instance_config = InstanceConfig()
+        if self.instance is None:
+            self.instance = Instance()
 
         if not isinstance(value, ObjectId):
             if etau.is_str(value):
@@ -400,7 +398,7 @@ class _HasInstanceConfig(Label):
                     "representation thereof" % value
                 )
 
-        self.instance_config.id = value
+        self.instance.id = value
 
 
 class _HasLabelList(object):
@@ -426,7 +424,7 @@ class Regression(_HasID, Label):
     confidence = fof.FloatField()
 
 
-class Classification(_HasID, _HasInstanceConfig, Label):
+class Classification(_HasID, _HasInstance, Label):
     """A classification label.
 
     Args:
@@ -454,9 +452,7 @@ class Classifications(_HasLabelList, Label):
     logits = fof.VectorField()
 
 
-class Detection(
-    _HasAttributesDict, _HasID, _HasMedia, _HasInstanceConfig, Label
-):
+class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasInstance, Label):
     """An object detection.
 
     Args:
@@ -645,7 +641,7 @@ class Detection(
         return cls(label=label, bounding_box=bbox, mask=mask, **attributes)
 
 
-class Detections(_HasLabelList, _HasInstanceConfig, Label):
+class Detections(_HasLabelList, _HasInstance, Label):
     """A list of object detections in an image.
 
     Args:
@@ -725,7 +721,7 @@ class Detections(_HasLabelList, _HasInstanceConfig, Label):
         return Segmentation(mask=mask)
 
 
-class Polyline(_HasAttributesDict, _HasID, _HasInstanceConfig, Label):
+class Polyline(_HasAttributesDict, _HasID, _HasInstance, Label):
     """A set of semantically related polylines or polygons.
 
     Args:
@@ -1067,7 +1063,7 @@ class Polylines(_HasLabelList, Label):
         return Segmentation(mask=mask)
 
 
-class Keypoint(_HasAttributesDict, _HasID, _HasInstanceConfig, Label):
+class Keypoint(_HasAttributesDict, _HasID, _HasInstance, Label):
     """A list of keypoints in an image.
 
     Args:

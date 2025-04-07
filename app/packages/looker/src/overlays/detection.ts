@@ -73,10 +73,8 @@ export default class DetectionOverlay<
     let doesInstanceMatch = false;
 
     if (
-      this.label.instance_config?._id &&
-      isHoveringParticularLabelWithInstanceConfig(
-        this.label.instance_config._id
-      )
+      this.label.instance?._id &&
+      isHoveringParticularLabelWithInstanceConfig(this.label.instance._id)
     ) {
       doesInstanceMatch = true;
       ctx.strokeStyle = INFO_COLOR;

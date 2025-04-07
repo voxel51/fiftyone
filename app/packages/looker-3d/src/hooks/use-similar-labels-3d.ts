@@ -24,7 +24,7 @@ export const useSimilarLabels3d = (label: OverlayLabel) => {
   const [isSimilarLabelHovered, setIsSimilarLabelHovered] = useState(false);
 
   useEffect(() => {
-    if (!label.instance_config?._id) {
+    if (!label.instance?._id) {
       return;
     }
 
@@ -33,10 +33,10 @@ export const useSimilarLabels3d = (label: OverlayLabel) => {
       (e: LabelHoveredEvent) => {
         const { instanceId } = e.detail;
 
-        if (instanceId === label.instance_config?._id) {
+        if (instanceId === label.instance?._id) {
           setIsSimilarLabelHovered(true);
           jotaiStore.set(updateHoveredInstances, {
-            instanceId: label.instance_config?._id,
+            instanceId: label.instance?._id,
             labelId: label._id,
             field: label.path,
           });

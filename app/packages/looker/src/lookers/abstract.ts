@@ -201,7 +201,7 @@ export abstract class AbstractLooker<
 
     // .find() instead of .filter() because label "instance" is unique per looker
     const label = this.currentOverlays.find(
-      (o) => o.label.instance_config?._id === instanceId
+      (o) => o.label.instance?._id === instanceId
     );
 
     if (!label) {

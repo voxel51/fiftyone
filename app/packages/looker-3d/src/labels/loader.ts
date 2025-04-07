@@ -20,10 +20,9 @@ export type OverlayLabel = {
    *
    * It is commonly used to cross-link labels between samples.
    */
-  instance_config?: {
+  instance?: {
     _cls: "Instance";
     _id: string;
-    name: string;
   };
 };
 
