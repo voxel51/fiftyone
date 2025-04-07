@@ -263,6 +263,6 @@ def _do_get_plugin_info(task):
         logger.debug("Failed to retrieve plugin info for %s: %s", spec, e)
 
 
-def _hash_strings(values):
+def _hash_strings_sha256(values):
     fingerprint_str = ":".join(values)
-    return hashlib.md5(fingerprint_str.encode("utf-8")).hexdigest()
+    return hashlib.sha256(fingerprint_str.encode("utf-8")).hexdigest()
