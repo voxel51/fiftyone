@@ -194,7 +194,8 @@ def establish_db_conn(config):
         _connection_kwargs["port"] = int(established_port)
     if config.database_uri is not None:
         _connection_kwargs["host"] = config.database_uri
-        _connection_kwargs["compressors"] = config.database_compressor
+        if config.database_compressor:
+            _connection_kwargs["compressors"] = config.database_compressor
     elif _db_service is None:
         if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
             return
