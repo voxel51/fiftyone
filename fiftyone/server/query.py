@@ -709,5 +709,7 @@ def _assign_estimated_counts(dataset: Dataset, fo_dataset: fo.Dataset):
 
 def _assign_lightning_info(dataset: Dataset, fo_dataset: fo.Dataset):
     dataset.sample_indexes, dataset.frame_indexes = indexes_from_dict(
-        fo_dataset.get_index_information(include_stats=True)
+        fo_dataset.get_index_information(
+            include_stats=True, _keep_index_names=True
+        )
     )

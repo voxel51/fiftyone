@@ -10,12 +10,12 @@ const LightningIcon = styled(Bolt)`
   color: ${({ theme }) => theme.text.secondary};
 `;
 
-export const LightningBolt: React.FC = (_) => {
+export const LightningBolt = ({ color }: { color?: string }) => {
   return (
     <Tooltip placement="top-center" text={"Indexed"}>
       <LightningIcon
         data-cy={"query-performance"}
-        style={{ height: 16, marginRight: 2, width: 16 }}
+        style={{ height: 16, marginRight: 2, width: 16, color }}
       />
     </Tooltip>
   );
@@ -29,10 +29,14 @@ const Lightning = ({
   frameFilteringDisabled: boolean;
 }) => {
   const expandedPath = useRecoilValue(fos.expandPath(path));
-
+  const filteredIndex = useRecoilValue(
+    fos.pathHasIndexes({ path, withFilters: true })
+  );
+  const hasFilters = useRecoilValue(fos.hasFilters(false));
+  const color = useRecoilValue(fos.pathColor(path));
   return (
     <>
-      <LightningBolt />
+      <LightningBolt color={filteredIndex && hasFilters ? color : undefined} />
       <Arrow
         expanded={fos.sidebarExpanded({ modal: false, path: expandedPath })}
         id={path}
@@ -47,11 +51,14 @@ const IconWrapper = ({ modal, path }: { modal: boolean; path: string }) => {
   const expandedPath = useRecoilValue(fos.expandPath(path));
   const frameFilteringDisabled =
     useRecoilValue(fos.isDisabledFrameFilterPath(path)) && !modal;
-  const indexed = useRecoilValue(fos.pathHasIndexes(path));
+  const indexed = useRecoilValue(fos.pathHasIndexes({ path }));
+  const filteredIndex = useRecoilValue(
+    fos.pathHasIndexes({ path, withFilters: true })
+  );
   const queryPerformance = useRecoilValue(fos.queryPerformance);
   const frameField = useRecoilValue(fos.isFrameField(path));
 
-  if (queryPerformance && indexed && !modal && !frameField) {
+  if (queryPerformance && (indexed || filteredIndex) && !modal && !frameField) {
     return (
       <Lightning path={path} frameFilteringDisabled={frameFilteringDisabled} />
     );

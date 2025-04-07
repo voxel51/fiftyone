@@ -16,7 +16,7 @@ export default function useShow(
       shouldCalculate: !queryPerformance || modal,
     })
   );
-  const indexed = useRecoilValue(fos.pathHasIndexes(path));
+  const indexed = useRecoilValue(fos.pathHasIndexes({ path }));
   const frameField = useRecoilValue(fos.isFrameField(path));
 
   return {

@@ -153,7 +153,7 @@ async def aggregate_resolver(
     # TODO: stop aggregate resolver from being called for non-existent fields,
     #  but fail silently for now by just returning empty results
     try:
-        result = await view._async_aggregate(flattened, debug=True)
+        result = await view._async_aggregate(flattened)
     except:
         return []
 
