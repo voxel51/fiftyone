@@ -5,7 +5,7 @@ import { Button } from "@mui/material";
 import React from "react";
 
 export default function CreateScenario(props) {
-  const { eval_id, loadScenarios, gt_field, onAdd } = props;
+  const { evalKey, compareKey, loadScenarios, gt_field, onAdd } = props;
   const panelId = usePanelId();
   const promptOperator = usePanelEvent();
 
@@ -19,7 +19,8 @@ export default function CreateScenario(props) {
             gt_field,
             scenario_type: "custom_code",
             scenario_name: "test", // # TODO: Edit will pass current name
-            eval_id,
+            key: evalKey,
+            compare_key: compareKey,
           },
           operator: CONFIGURE_SCENARIO_ACTION,
           prompt: true,

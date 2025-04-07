@@ -113,18 +113,9 @@ class ConfigureScenario(foo.Operator):
             return None, str(e)
 
     def extract_evaluation_keys(self, ctx):
-        eval_key_a, eval_key_b = None, None
-        eval_keys = ctx.params.get("panel_state", {}).get("evaluations", [])
-
-        if len(eval_keys) > 0:
-            eval_key_a = eval_keys[0]["key"]
-        else:
-            raise ValueError("No evaluation keys found")
-
-        if len(eval_keys) > 1:
-            eval_key_b = eval_keys[1]["key"]
-
-        return eval_key_a, eval_key_b
+        key = ctx.params.get("key", None)
+        compare_key = ctx.params.get("compare_key", None)
+        return key, compare_key
 
     def extract_evaluation_id(self, ctx):
         return ctx.params.get("eval_id")
@@ -138,18 +129,42 @@ class ConfigureScenario(foo.Operator):
             if eval_key_b:
                 eval_result_b = ctx.dataset.load_evaluation_results(eval_key_b)
 
-            counts = {eval_key_a: {"color": KEY_COLOR}}
+            plot_data = []
+            x = []
+            y = []
             for name, subset_def in subset_expressions.items():
                 with eval_result_a.use_subset(subset_def):
-                    counts[eval_key_a][name] = len(eval_result_a.ytrue_ids)
+                    x.append(name)
+                    y.append(len(eval_result_a.ytrue_ids))
+
+            plot_data.append(
+                {
+                    "x": x,
+                    "y": y,
+                    "type": "bar",
+                    "name": eval_key_a,
+                    "marker": {"color": KEY_COLOR},
+                }
+            )
 
             if eval_key_b and eval_result_b:
-                counts[eval_key_b] = {"color": COMPARE_KEY_COLOR}
+                compare_x = []
+                compare_y = []
                 for name, subset_def in subset_expressions.items():
                     with eval_result_b.use_subset(subset_def):
-                        counts[eval_key_b][name] = len(eval_result_b.ytrue_ids)
+                        compare_x.append(name)
+                        compare_y.append(len(eval_result_b.ytrue_ids))
+                plot_data.append(
+                    {
+                        "x": compare_x,
+                        "y": compare_y,
+                        "type": "bar",
+                        "name": eval_key_b,
+                        "marker": {"color": COMPARE_KEY_COLOR},
+                    }
+                )
 
-            return counts
+            return plot_data
         except Exception as e:
             # TODO show Alert with error?
             print(e)
@@ -171,7 +186,6 @@ class ConfigureScenario(foo.Operator):
                         "type": "bar",
                         "name": eval_key,
                         "marker": {"color": preview_data[eval_key]["color"]},
-                        "width": 0.25,
                     }
                 )
 
@@ -270,8 +284,7 @@ class ConfigureScenario(foo.Operator):
     def render_sample_distribution_graph(
         self, ctx, inputs, subset_expressions
     ):
-        preview_data = self.get_sample_distribution(ctx, subset_expressions)
-        plot_data = self.convert_to_plotly_data(preview_data)
+        plot_data = self.get_sample_distribution(ctx, subset_expressions)
 
         preview_container = inputs.grid("grid", height="400px", width="100%")
         preview_height = "300px"
@@ -279,25 +292,7 @@ class ConfigureScenario(foo.Operator):
             "plot_preview",
             label="Sample distribution preview",
             config=dict(
-                displayModeBar=False,
                 scrollZoom=False,  # Disable zoom on scroll
-            ),
-            layout=dict(
-                barmode="group",  # Group bars side by side
-                bargap=0.05,  # Minimal space within a group
-                bargroupgap=0.2,  # Small gap between different groups
-                yaxis=dict(
-                    title="Sample Count",
-                    showticklabels=True,  # Ensure ticks are visible
-                    showgrid=True,  # Add grid lines for better visibility
-                ),
-                xaxis=dict(
-                    side="counterclockwise",
-                    title="Scenarios",
-                    automargin=True,
-                    showticklabels=True,  # Ensure ticks are visible
-                    showgrid=False,  # Typically, x-axis grid isn't needed
-                ),
             ),
             data=plot_data,
             height=preview_height,
@@ -808,6 +803,10 @@ class ConfigureScenario(foo.Operator):
 
     def resolve_input(self, ctx):
         inputs = types.Object()
+
+        inputs.str("key", view=types.HiddenView())
+        inputs.str("compare_key", view=types.HiddenView())
+
         self.render_header(inputs)
 
         chosen_scenario_name = ctx.params.get("scenario_name", None)

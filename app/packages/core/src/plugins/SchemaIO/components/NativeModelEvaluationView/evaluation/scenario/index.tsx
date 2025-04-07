@@ -11,6 +11,7 @@ export default function EvaluationScenarioAnalysis(props) {
   const evaluationConfig = evaluationInfo.config;
   const scenariosArray = scenarios ? Object.values(scenarios) : [];
   const isEmpty = scenariosArray.length === 0;
+  const { key, compareKey } = data?.view || {};
 
   return (
     <Card sx={{ p: 2 }}>
@@ -27,6 +28,8 @@ export default function EvaluationScenarioAnalysis(props) {
           eval_id={data?.view?.id}
           loadScenarios={loadScenarios}
           gt_field={evaluationConfig.gt_field}
+          evalKey={key}
+          compareKey={compareKey}
         />
       ) : (
         <Scenarios {...props} />

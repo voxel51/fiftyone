@@ -45,11 +45,11 @@ def get_scenario_example(reason="float"):
 
             subsets = {
                 "Sunny unique objects": [
-                    dict(type="field", field="tags", value="test"),
+                    dict(type="field", field="tags", value="validation"),
                     dict(type="field", expr=F("brightness") > 0.75),
                 ],
                 "Rainy common objects": [
-                    dict(type="field", field="tags", value="test"),
+                    dict(type="field", field="tags", value="validation"),
                     dict(type="field", expr=F("brightness") < 0.25),
                 ]
             }

@@ -181,6 +181,8 @@ export default function Scenarios(props) {
             onAdd={(id) => {
               setScenario(id);
             }}
+            evalKey={key}
+            compareKey={compareKey}
           />
           <Actions
             onDelete={() => {
