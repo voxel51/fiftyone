@@ -37,9 +37,10 @@ class LightningPathInput:
     exclude: t.Optional[t.List[str]] = gql.field(
         description="exclude these values from results", default=None
     )
-    first: t.Optional[int] = foc.LIST_LIMIT
-    search: t.Optional[str] = None
     filters: t.Optional[BSON] = None
+    first: t.Optional[int] = foc.LIST_LIMIT
+    index: t.Optional[str] = None
+    search: t.Optional[str] = None
 
 
 @gql.input
@@ -165,8 +166,9 @@ class DistinctQuery:
     has_list: bool
     is_object_id_field: bool
     exclude: t.Optional[t.List[str]] = None
-    search: t.Optional[str] = None
     filters: t.Optional[BSON] = None
+    index: t.Optional[str] = None
+    search: t.Optional[str] = None
 
 
 def _resolve_lightning_path_queries(
@@ -272,6 +274,7 @@ def _resolve_lightning_path_queries(
         d["is_object_id_field"] = True
         d["path"] = field_path
         d["filters"] = path.filters
+        d["index"] = path.index
         return (
             collection,
             [DistinctQuery(**d)],
@@ -289,6 +292,7 @@ def _resolve_lightning_path_queries(
         d["is_object_id_field"] = False
         d["path"] = field_path
         d["filters"] = path.filters
+        d["index"] = path.index
         return (
             collection,
             [DistinctQuery(**d)],
@@ -392,6 +396,9 @@ async def _do_distinct_pipeline(
     if query.filters:
         pipeline += get_view(dataset, filters=query.filters)._pipeline()
 
+    if query.index:
+        pipeline.append({"$sort": {query.path: 1}})
+
     pipeline.extend([{"$project": {"_id": f"${query.path}"}}])
 
     match_search = None
@@ -408,21 +415,28 @@ async def _do_distinct_pipeline(
             # match again after unwinding list fields
             pipeline.append(match_search)
 
-    pipeline.extend([{"$group": {"_id": "$_id"}}, {"$sort": {"_id": 1}}])
+    if query.index:
+        pipeline.extend([{"$group": {"_id": "$_id"}}])
+    else:
+        pipeline.append({"$limit": 1000})
 
-    values = []
+    fo.pprint(pipeline)
+    values = set()
     exclude = set(query.exclude or [])
-    async for value in collection.aggregate(pipeline):
+
+    kwargs = {"hint": query.index} if query.index else {}
+
+    async for value in collection.aggregate(pipeline, **kwargs):
         value = value["_id"]
         if value is None or value in exclude:
             continue
 
-        values.append(value)
+        values.add(value)
 
         if len(values) == query.first:
             break
 
-    return values
+    return sorted(values)
 
 
 def _add_search(query: DistinctQuery):

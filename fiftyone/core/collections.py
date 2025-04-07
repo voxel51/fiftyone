@@ -9684,7 +9684,9 @@ class SampleCollection(object):
         """
         return list(self.get_index_information().keys())
 
-    def get_index_information(self, include_stats=False):
+    def get_index_information(
+        self, include_stats=False, _keep_index_names=False
+    ):
         """Returns a dictionary of information about the indexes on this
         collection.
 
@@ -9722,7 +9724,7 @@ class SampleCollection(object):
                     sample_info[key]["accesses"] = d["accesses"]
 
         for key, info in sample_info.items():
-            if len(info["key"]) == 1:
+            if len(info["key"]) == 1 and not _keep_index_names:
                 field = info["key"][0][0]
                 key = fields_map.get(field, field)
 
@@ -9751,7 +9753,7 @@ class SampleCollection(object):
                         frame_info[key]["accesses"] = d["accesses"]
 
             for key, info in frame_info.items():
-                if len(info["key"]) == 1:
+                if len(info["key"]) == 1 and not _keep_index_names:
                     field = info["key"][0][0]
                     key = fields_map.get(field, field)
 

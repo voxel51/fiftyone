@@ -51,7 +51,7 @@ export const lightningQuery = graphQLSelectorFamily<
     },
 });
 
-const indexInfo = foq.graphQLSyncFragmentAtom<foq.indexesFragment$key>(
+export const indexInfo = foq.graphQLSyncFragmentAtom<foq.indexesFragment$key>(
   {
     keys: ["dataset"],
     fragments: [foq.datasetFragment, foq.indexesFragment],
@@ -70,26 +70,31 @@ export const validIndexes = selectorFamily({
     (keys: Set<string>) =>
     ({ get }) => {
       const allIndexes = get(indexInfo).sampleIndexes;
+      const keyList = [...keys].map((k) => get(schemaAtoms.dbPath(k)));
 
       let matched = false;
-      const trailing: string[] = [];
-      const available: string[] = [];
+      const trailing: [string, string][] = [];
+      const available: [string, string][] = [];
       for (const index of allIndexes) {
         const indexKeys = index.key
           .slice(0, keys.size)
           .map(({ field }) => field);
-        if (indexKeysMatch(indexKeys, keys)) {
+        if (indexKeysMatch(indexKeys, new Set(keyList))) {
           matched = true;
           index.key[keys.size]?.field &&
-            available.push(index.key[keys.size].field);
+            available.push([index.name, index.key[keys.size].field]);
 
           if (index.key[keys.size - 1]) {
-            trailing.push(index.key[keys.size - 1].field);
+            trailing.push([index.name, index.key[keys.size - 1].field]);
           }
         }
       }
 
-      return { available, active: matched ? keys : [], trailing };
+      return {
+        available,
+        active: matched ? keyList : ([] as string[]),
+        trailing,
+      };
     },
 });
 
@@ -159,15 +164,11 @@ export const indexesByPath = selectorFamily({
         const parent = field.split(".").slice(0, -1).join(".");
         return filtered.filter((field) => field.startsWith(parent));
       };
-      const search =
-        keys ??
-        new Set(
-          Object.keys(get(filters)).map((path) => get(schemaAtoms.dbPath(path)))
-        );
-      const current = get(validIndexes(search));
+
+      const current = get(validIndexes(keys || new Set()));
       const result = [...current.active];
-      for (const field of current.available) {
-        result.push(...convertWildcards(field, schema, false));
+      for (const index of current.available) {
+        result.push(...convertWildcards(index[1], schema, false));
       }
 
       return new Set(result);
@@ -177,9 +178,11 @@ export const indexesByPath = selectorFamily({
 export const pathIndex = selectorFamily({
   key: "pathIndex",
   get:
-    (path: string) =>
+    ({ path, withFilters }: { path: string; withFilters?: boolean }) =>
     ({ get }) => {
-      const indexes = get(indexesByPath(undefined));
+      const indexes = get(
+        indexesByPath(withFilters ? get(filterKeys) : undefined)
+      );
       return indexes.has(get(schemaAtoms.dbPath(path)));
     },
 });
@@ -187,19 +190,30 @@ export const pathIndex = selectorFamily({
 export const pathHasIndexes = selectorFamily({
   key: "pathHasIndexes",
   get:
-    (path: string) =>
+    ({ path, withFilters }: { path: string; withFilters?: boolean }) =>
     ({ get }) => {
-      return !!get(indexedPaths(path)).size;
+      return !!get(indexedPaths({ path, withFilters })).size;
     },
 });
 
-export const indexedPaths = selectorFamily<Set<string>, string>({
+const filterKeys = selector({
+  key: "filterKeys",
+  get: ({ get }) => {
+    return new Set(Object.keys(get(filters)));
+  },
+});
+
+export const indexedPaths = selectorFamily<
+  Set<string>,
+  { path: string; withFilters?: boolean }
+>({
   key: "indexedPaths",
   get:
-    (path: string) =>
+    ({ path, withFilters }) =>
     ({ get }) => {
+      const filters = withFilters ? get(filterKeys) : undefined;
       if (path === "") {
-        return get(indexesByPath(undefined));
+        return get(indexesByPath(filters));
       }
 
       if (
@@ -208,7 +222,7 @@ export const indexedPaths = selectorFamily<Set<string>, string>({
           DYNAMIC_EMBEDDED_DOCUMENT_PATH
       ) {
         const expanded = get(schemaAtoms.expandPath(path));
-        const indexes = get(indexesByPath(undefined));
+        const indexes = get(indexesByPath(filters));
         return new Set(
           get(
             schemaAtoms.fieldPaths({
@@ -221,7 +235,7 @@ export const indexedPaths = selectorFamily<Set<string>, string>({
         );
       }
 
-      if (get(pathIndex(path))) {
+      if (get(pathIndex({ path, withFilters }))) {
         return new Set([path]);
       }
 

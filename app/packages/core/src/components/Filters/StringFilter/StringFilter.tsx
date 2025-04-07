@@ -79,16 +79,23 @@ const StringFilter = ({
   const onSelect = useOnSelect(modal, path, selectedAtom);
   const skeleton =
     useRecoilValue(isInKeypointsField(path)) && name === "points";
-  const indexed = useRecoilValue(fos.pathHasIndexes(path));
+  const indexed = useRecoilValue(fos.pathHasIndexes({ path }));
   const theme = useTheme();
   const queryPerformance = useRecoilValue(fos.queryPerformance);
   const frameField = useRecoilValue(fos.isFrameField(path));
+  const filteredIndex = useRecoilValue(
+    fos.pathHasIndexes({ path, withFilters: true })
+  );
   if (named && (!queryPerformance || modal) && !results?.count) {
     return null;
   }
 
   const showQueryPerformanceIcon =
-    named && queryPerformance && indexed && !modal && !frameField;
+    named &&
+    queryPerformance &&
+    (indexed || filteredIndex) &&
+    !modal &&
+    !frameField;
 
   return (
     <NamedStringFilterContainer
@@ -103,7 +110,9 @@ const StringFilter = ({
           template={({ label, hoverTarget }) => (
             <NamedStringFilterHeader>
               <span ref={hoverTarget}>{label}</span>
-              {showQueryPerformanceIcon && <LightningBolt />}
+              {showQueryPerformanceIcon && (
+                <LightningBolt color={filteredIndex ? color : undefined} />
+              )}
             </NamedStringFilterHeader>
           )}
         />

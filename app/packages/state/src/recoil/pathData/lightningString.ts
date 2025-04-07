@@ -6,9 +6,10 @@ export const lightningStringResults = selectorFamily<
   string[],
   {
     path: string;
-    search?: string;
     exclude?: string[];
     filters: SerializableParam;
+    index?: string;
+    search?: string;
   }
 >({
   key: "lightningStringResults",

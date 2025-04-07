@@ -15,7 +15,7 @@ export default function Sort() {
   const select = useSetRecoilState(sortByState);
   return (
     <SliderContainer style={{ width: "auto" }}>
-      <RightDiv style={{ paddingRight: 0 }}>
+      <RightDiv style={{ paddingRight: 0, border: "unset" }}>
         <Selector
           inputStyle={{ height: 28 }}
           component={Field}
