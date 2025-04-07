@@ -360,6 +360,8 @@ class ConfigureScenario(foo.Operator):
                     f"Field {field_name} has no values to display. {link}"
                 ),
             ),
+            error_message="No values found.",
+            invalid=True,
         )
 
     def render_use_custom_code_warning(
@@ -682,6 +684,12 @@ class ConfigureScenario(foo.Operator):
         render_methods.get(view_type, lambda: None)()
 
     def get_valid_label_attribute_path_options(self, schema, gt_field):
+        """
+        Returns all the paths in the dataset schema that are valid label attributes types.
+        - primitives
+        - OR list of primitives
+        - AND path starts with gt_field
+        """
         return [
             path
             for path, field in schema.items()
@@ -729,6 +737,10 @@ class ConfigureScenario(foo.Operator):
     def get_valid_sample_field_path_options(self, flat_field_schema):
         """
         Get valid sample field path options based on the schema.
+        - Filters out
+            - fields having roots with type as List of documents
+            - non-primitives
+            - non-list of primitives
         """
         options = []
 

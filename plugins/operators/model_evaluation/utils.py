@@ -7,7 +7,7 @@ COMPARE_KEY_COLOR = "#03a9f4"
 
 MAX_CATEGORIES = 100
 ALLOWED_BY_TYPES = (
-    fof.StringField,  # TODO: needs a dropdown - call distinct on the field - if too many, show code view
+    fof.StringField,
     fof.BooleanField,  # TODO: needs two checkboxes
     fof.IntField,
     fof.FloatField,
