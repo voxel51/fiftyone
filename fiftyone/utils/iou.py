@@ -5,7 +5,6 @@ Intersection over union (IoU) utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
 import contextlib
 import itertools
 import logging
@@ -629,7 +628,7 @@ def _compute_bbox_ious(
     is_symmetric = preds is gts
 
     if sparse:
-        ious = defaultdict(list)
+        ious = {p.id: [] for p in preds}
     else:
         ious = np.zeros((len(preds), len(gts)))
 
@@ -696,7 +695,7 @@ def _compute_dense_mask_ious(
     is_symmetric = preds is gts
 
     if sparse:
-        ious = defaultdict(list)
+        ious = {p.id: [] for p in preds}
     else:
         ious = np.zeros((len(preds), len(gts)))
 
@@ -752,7 +751,7 @@ def _compute_polygon_ious(
     is_symmetric = preds is gts
 
     if sparse:
-        ious = defaultdict(list)
+        ious = {p.id: [] for p in preds}
     else:
         ious = np.zeros((len(preds), len(gts)))
 
@@ -843,7 +842,7 @@ def _compute_polyline_similarities(preds, gts, classwise=False, sparse=False):
     is_symmetric = preds is gts
 
     if sparse:
-        sims = defaultdict(list)
+        sims = {p.id: [] for p in preds}
     else:
         sims = np.zeros((len(preds), len(gts)))
 
@@ -927,7 +926,7 @@ def _compute_segment_ious(preds, gts, sparse=False):
     is_symmetric = preds is gts
 
     if sparse:
-        ious = defaultdict(list)
+        ious = {p.id: [] for p in preds}
     else:
         ious = np.zeros((len(preds), len(gts)))
 
@@ -972,7 +971,7 @@ def _compute_keypoint_similarities(preds, gts, classwise=False, sparse=False):
     is_symmetric = preds is gts
 
     if sparse:
-        sims = defaultdict(list)
+        sims = {p.id: [] for p in preds}
     else:
         sims = np.zeros((len(preds), len(gts)))
 
