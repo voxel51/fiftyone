@@ -102,7 +102,7 @@ class ThreadMapper(fomm.LocalMapper):
         sample_collection: SampleCollection[T],
         map_fcn: Callable[[T], R],
         *_,
-        progress: Union[bool, Literal["workers"]],
+        progress: Union[bool, Literal["workers"], Callable],
         save: bool,
         skip_failures: bool,
     ) -> Iterator[Tuple[bson.ObjectId, Union[Exception, None], R]]:
