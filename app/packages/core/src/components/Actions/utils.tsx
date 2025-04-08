@@ -6,12 +6,14 @@ import styled from "styled-components";
 export const ActionDiv = styled.div`
   position: relative;
 `;
+
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background.body};
   display: flex;
   margin: 0 -0.5rem;
   padding: 0 0.5rem;
 `;
+
 export const SwitchDiv = animated(styled.div`
   flex-basis: 0;
   flex-grow: 1;
@@ -24,6 +26,7 @@ export const SwitchDiv = animated(styled.div`
   border-bottom-width: 2px;
   text-transform: capitalize;
 `);
+
 export const useHighlightHover = (
   disabled: boolean,
   override: null | boolean = null,
@@ -39,8 +42,11 @@ export const useHighlightHover = (
     backgroundColor: on ? theme.background.level1 : theme.background.level2,
     color: color ? color : on ? theme.text.primary : theme.text.secondary,
   });
+
   const onMouseEnter = () => setHovering(true);
+
   const onMouseLeave = () => setHovering(false);
+
   return {
     style: {
       ...style,
@@ -59,6 +65,7 @@ export const getStringAndNumberProps = (props?: Record<string, unknown>) => {
   if (!props) {
     return {};
   }
+
   return Object.fromEntries(
     Object.entries(props).filter(
       ([_key, value]) => typeof value === "string" || typeof value === "number"
