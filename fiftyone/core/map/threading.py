@@ -70,6 +70,7 @@ class ThreadMapper(fomm.LocalMapper):
         sample_iter: Iterator[T],
         skip_failures: bool,
         worker_done_event: threading.Event,
+        progress_bar: Optional[tqdm] = None,
     ) -> Iterator[Tuple[bson.ObjectId, Union[Exception, None], R]]:
 
         try:
@@ -77,6 +78,8 @@ class ThreadMapper(fomm.LocalMapper):
                 sample := next(sample_iter, None)
             ):
                 try:
+                    if progress_bar:
+                        progress_bar.update(1)
                     result = map_fcn(sample)
                 except Exception as err:
                     if skip_failures:
@@ -129,29 +132,31 @@ class ThreadMapper(fomm.LocalMapper):
                 batch_collection = batch.create_subset(sample_collection)
                 sample_iter = batch_collection.iter_samples(autosave=save)
 
-                # Use ProgressBar for per-worker progress tracking
+
+                # This is for a per-worker progress bar.
+                worker_progress_bar = None
                 if progress == "workers":
-                    with fou.ProgressBar(
-                        total=batch.total, progress=progress
-                    ) as pb:
-
-                        def wrapped_sample_iter():
-                            for sample in sample_iter:
-                                yield sample
-
-                        sample_iter = pb(wrapped_sample_iter())
-
-                    executor.submit(
-                        self.__worker,
-                        cancel_event=cancel_event,
-                        map_fcn=map_fcn,
-                        result_queue=result_queue,
-                        sample_iter=sample_iter,
-                        skip_failures=skip_failures,
-                        worker_done_event=worker_done_event,
+                    desc = f"Batch {i:0{len(str(batch_count))}}/{batch_count}"
+                    worker_progress_bar = tqdm(
+                        sample_iter,
+                        total=batch.total,
+                        desc=desc,
+                        position=i,
                     )
 
-            # Iterate over queue until an error occurs or all threads are finished
+                executor.submit(
+                    self.__worker,
+                    cancel_event=cancel_event,
+                    map_fcn=map_fcn,
+                    result_queue=result_queue,
+                    sample_iter=sample_iter,
+                    skip_failures=skip_failures,
+                    worker_done_event=worker_done_event,
+                    progress_bar=worker_progress_bar,
+                )
+
+            # Iterate over queue until an error occurs of all threads are
+            # finished.
             def get_results(
                 q: ResultQueue[R], evts: List[threading.Event]
             ) -> Iterator[R]:
@@ -209,6 +214,7 @@ class ThreadMapper(fomm.LocalMapper):
                     progress=progress,
                 ) as pb:
                     # Wait for all workers to finish
+<<<<<<< HEAD
                     results = get_results(result_queue, worker_done_events)
                     while not all(e.is_set() for e in worker_done_events):
                         pb.update()
@@ -220,3 +226,12 @@ class ThreadMapper(fomm.LocalMapper):
                     #     )
 
                     yield from results
+=======
+                    for result in get_results(
+                        result_queue, worker_done_events
+                    ):
+                        pb.update()
+                        yield result
+            else:
+                yield from results
+>>>>>>> 754777d362 (update per-worker implementation and global implementation for threading)
