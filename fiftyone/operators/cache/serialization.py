@@ -6,6 +6,7 @@ Execution cache serialization.
 |
 """
 import numpy as np
+from datetime import datetime, date
 
 import eta.core.serial as etas
 
@@ -35,7 +36,9 @@ def auto_serialize(value):
         return {str(k): auto_serialize(v) for k, v in value.items()}
     elif isinstance(value, (list, tuple, set)):
         return [auto_serialize(v) for v in value]
-    elif isinstance(value, (int, float, str, bool)):
+    elif isinstance(value, (date, datetime)):
+        return value.isoformat()
+    elif isinstance(value, (int, float, str, bool)) or value is None:
         return value
     raise TypeError(f"Cannot serialize value of type {type(value)}: {value}")
 
