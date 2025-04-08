@@ -1093,6 +1093,7 @@ function ConfusionMatrixChart(props) {
           </Stack>
         )}
       </Stack>
+      <Legends {...getLegendProps(props)} />
     </Stack>
   );
 }

@@ -351,12 +351,12 @@ class EvaluationPanel(Panel):
                 per_class_metrics[c]["support"] = c_report["support"]
         return per_class_metrics
 
-    def get_confusion_matrix_colorscale(self, matrix):
+    def get_confusion_matrix_colorscale(self, matrix, colorscale_name=None):
         maxval = matrix.max()
-        colorscale = _to_log_colorscale("oranges", maxval)
+        colorscale = _to_log_colorscale(colorscale_name or "oranges", maxval)
         return colorscale
 
-    def get_confusion_matrices(self, results):
+    def get_confusion_matrices(self, results, colorscale_name=None):
         default_classes = results.classes.tolist()
         freq = Counter(results.ytrue)
         if results.missing in freq:
@@ -395,12 +395,20 @@ class EvaluationPanel(Panel):
             tabulate_ids=False,
         )
         default_colorscale = self.get_confusion_matrix_colorscale(
-            default_matrix
+            default_matrix, colorscale_name
         )
-        az_colorscale = self.get_confusion_matrix_colorscale(az_matrix)
-        za_colorscale = self.get_confusion_matrix_colorscale(za_matrix)
-        mc_colorscale = self.get_confusion_matrix_colorscale(mc_matrix)
-        lc_colorscale = self.get_confusion_matrix_colorscale(lc_matrix)
+        az_colorscale = self.get_confusion_matrix_colorscale(
+            az_matrix, colorscale_name
+        )
+        za_colorscale = self.get_confusion_matrix_colorscale(
+            za_matrix, colorscale_name
+        )
+        mc_colorscale = self.get_confusion_matrix_colorscale(
+            mc_matrix, colorscale_name
+        )
+        lc_colorscale = self.get_confusion_matrix_colorscale(
+            lc_matrix, colorscale_name
+        )
         return {
             "default_classes": _default_classes,
             "az_classes": _az_classes,
@@ -834,7 +842,8 @@ class EvaluationPanel(Panel):
             eval_b_results,
         )
 
-    def get_subset_def_data(self, info, results, subset_def):
+    def get_subset_def_data(self, info, results, subset_def, is_compare):
+        colorscale_name = "blues" if is_compare else "oranges"
         with results.use_subset(subset_def):
             metrics = results.metrics()
             per_class_metrics = self.get_per_class_metrics(info, results)
@@ -851,7 +860,9 @@ class EvaluationPanel(Panel):
             return {
                 "metrics": metrics,
                 "distribution": len(results.ytrue_ids),
-                "confusion_matrices": self.get_confusion_matrices(results),
+                "confusion_matrices": self.get_confusion_matrices(
+                    results, colorscale_name
+                ),
                 "confidences": confidences,
                 "confidence_distribution": self.get_confidence_distribution(
                     confidences
@@ -876,6 +887,8 @@ class EvaluationPanel(Panel):
         scenario_type = scenario.get("type", None)
         scenario_data = scenario.copy()
         scenario_data["subsets_data"] = {}
+        # todo@im: need more explicit flag
+        is_compare = True if "key" in ctx.params else False
 
         if scenario_type == "custom_code":
             custom_code = scenario.get("subsets", None)
@@ -890,7 +903,7 @@ class EvaluationPanel(Panel):
                 if isinstance(cc_expr, dict):
                     for subset_name, subset_def in cc_expr.items():
                         subset_data = self.get_subset_def_data(
-                            info, results, subset_def
+                            info, results, subset_def, is_compare
                         )
                         scenario_data["subsets_data"][
                             subset_name
@@ -898,7 +911,7 @@ class EvaluationPanel(Panel):
                         subsets_names.append(subset_name)
                 elif isinstance(cc_expr, list):
                     subset_data = self.get_subset_def_data(
-                        info, results, subset_def
+                        info, results, subset_def, is_compare
                     )
                     scenario_data["subsets_data"]["All"] = subset_data
                     subsets_names.append("All")
@@ -912,7 +925,7 @@ class EvaluationPanel(Panel):
             for subset in scenario_subsets:
                 subset_def = dict(type="view", view=subset)
                 subset_data = self.get_subset_def_data(
-                    info, results, subset_def
+                    info, results, subset_def, is_compare
                 )
                 scenario_data["subsets_data"][subset] = subset_data
         elif scenario_type == "sample_field":
@@ -920,7 +933,7 @@ class EvaluationPanel(Panel):
             for subset in scenario_subsets:
                 subset_def = dict(type="field", field=subset)
                 subset_data = self.get_subset_def_data(
-                    info, results, subset_def
+                    info, results, subset_def, is_compare
                 )
                 scenario_data["subsets_data"][subset] = subset_data
         else:

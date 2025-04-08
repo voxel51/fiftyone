@@ -11,7 +11,7 @@ import {
 } from "../../constants";
 
 export default function Legends(props) {
-  const { primaryKey, compareKey, prediction } = props;
+  const { primaryKey, compareKey, prediction, color, compareColor } = props;
   return (
     <Stack
       sx={{
@@ -24,7 +24,6 @@ export default function Legends(props) {
     >
       {prediction ? (
         <>
-          {" "}
           <Stack direction="row" spacing={1} alignItems="center">
             <ColorSquare color={KEY_COLOR} styles={{ height: 12, width: 12 }} />
             <ColorSquare
@@ -62,13 +61,15 @@ export default function Legends(props) {
             <ColorSquare color={KEY_COLOR} styles={{ height: 12, width: 12 }} />
             <Typography>{primaryKey}</Typography>
           </Stack>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <ColorSquare
-              color={COMPARE_KEY_COLOR}
-              styles={{ height: 12, width: 12 }}
-            />
-            <Typography>{compareKey}</Typography>
-          </Stack>
+          {compareKey && (
+            <Stack direction="row" spacing={1} alignItems="center">
+              <ColorSquare
+                color={COMPARE_KEY_COLOR}
+                styles={{ height: 12, width: 12 }}
+              />
+              <Typography>{compareKey}</Typography>
+            </Stack>
+          )}
         </>
       )}
     </Stack>
