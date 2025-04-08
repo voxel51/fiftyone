@@ -56,7 +56,7 @@ def execution_cache(
             the current operator prompt
         jwt_scoped (False): Whether to tie the cache entry to the current user's JWT
         collection_name (None): Override the default collection name for the execution store
-            used by the execution_cache
+            used by the execution_cache. The default collection name is "execution_store".
         serialize (None): Custom serialization function given the original value that returns
             a JSON-serializable value.
         deserialize (None): Custom deserialization given a JSON-serializable value and returns
