@@ -141,8 +141,6 @@ def execution_cache(
 
             result = func(*args, **kwargs)
 
-            # TODO: find a more standard naming for this function
-            # we shouldn't know about mongo here...
             if serialize is not None:
                 value_to_cache = serialize(result)
             else:
