@@ -185,14 +185,18 @@ def _get_cache_key_list(ctx_index, args, kwargs, key_fn):
     if key_fn:
         try:
             cache_key_list = key_fn(*args, **kwargs)
-            if not isinstance(cache_key_list, list):
-                raise ValueError("Custom key function must return a list.")
+            if isinstance(cache_key_list, list):
+                cache_key_list = tuple(cache_key_list)
+            elif not isinstance(cache_key_list, tuple):
+                raise ValueError(
+                    "Custom key function must return a tuple or list."
+                )
         except Exception as e:
             raise ValueError(f"Failed to create custom cache key: {e}")
     else:
         cache_key_list = args[ctx_index + 1 :]
 
-    return _convert_args_to_dict(cache_key_list)
+    return auto_serialize(cache_key_list)
 
 
 def _get_scoped_cache_key_list(
@@ -221,10 +225,6 @@ def _get_scoped_cache_key_list(
                 skip_cache = True
 
     return scoped_keys, skip_cache
-
-
-def _convert_args_to_dict(args):
-    return [auto_serialize(arg) for arg in args]
 
 
 def _is_sample_dict(value):

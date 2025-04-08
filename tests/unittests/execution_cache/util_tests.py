@@ -80,24 +80,6 @@ class TestCacheUtils(unittest.TestCase):
         result = utils._resolve_store_name(create_mock_ctx(), dummy)
         self.assertEqual(result, "custom.store#v3")
 
-    def test_convert_args_to_dict_handles_mixed_inputs(self):
-        class HasDict:
-            def to_dict(self):
-                return {"a": 1}
-
-        class HasJSON:
-            def to_json(self):
-                return '{"b": 2}'
-
-        result = utils._convert_args_to_dict(
-            [
-                HasDict(),
-                HasJSON(),
-                42,
-            ]
-        )
-        self.assertEqual(result, [{"a": 1}, '{"b": 2}', 42])
-
     def test_auto_deserialize_recursive(self):
         val = {
             "a": np.array([1, 2, 3]),
