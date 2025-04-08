@@ -43,7 +43,7 @@ def auto_serialize(value):
 
 def auto_deserialize(value):
     """
-    Deserializes a value from the execution cache."
+    Deserializes a value from the execution cache.
 
     Args:
         value: the value to deserialize
@@ -54,7 +54,7 @@ def auto_deserialize(value):
     if _is_sample_dict(value):
         value = {k: v for k, v in value.items() if k != "_cls"}
         return fo.Sample.from_dict(value)
-    if isinstance(value, dict):
+    elif isinstance(value, dict):
         return {str(k): auto_deserialize(v) for k, v in value.items()}
     elif isinstance(value, (list, tuple, set)):
         return [auto_deserialize(v) for v in value]

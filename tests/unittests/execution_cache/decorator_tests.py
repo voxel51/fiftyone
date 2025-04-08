@@ -13,6 +13,7 @@ from fiftyone.operators.cache.utils import (
     _build_cache_key,
     _resolve_store_name,
     _get_function_id,
+    auto_serialize,
 )
 from fiftyone.operators.executor import ExecutionContext
 
@@ -52,6 +53,11 @@ def custom_key_fn(ctx, a, b):
 @execution_cache(ttl=60, key_fn=custom_key_fn)
 def function_with_custom_key(ctx, a, b):
     return a + b
+
+
+class NonSerializableObject:
+    def __init__(self, value):
+        self.value = value
 
 
 class TestExecutionCacheDecorator(unittest.TestCase):
@@ -150,33 +156,33 @@ class TestExecutionCacheDecorator(unittest.TestCase):
     def test_set_cache(self, mock_create):
         """Test that the cache can be set manually."""
         ctx = create_mock_ctx()
-        example_function.set_cache(ctx, 1, 2, 42)
+        value = NonSerializableObject(value=42)
+        example_function.set_cache(ctx, 1, 2, value)
         cache_key = _build_cache_key([1, 2])
+        serialized_value = auto_serialize(value)
         mock_create.return_value.set_cache.assert_called_once_with(
-            cache_key, 42, ttl=60
+            cache_key, serialized_value, ttl=60
         )
 
-    @patch("fiftyone.operators.store.ExecutionStore.create")
-    def test_clear_all_caches(self, mock_create):
+    @patch("fiftyone.operators.cache.utils.ExecutionStore")
+    def test_clear_all_caches(self, mock_execution_store):
         """Test that all caches can be cleared."""
-        mock_create.clear()
 
         @execution_cache(ttl=60)
         def my_func():
             pass
 
+        mock_store = MagicMock()
+        mock_execution_store.create.return_value = mock_store
         function_id = _get_function_id(my_func)
         self.assertIsNotNone(function_id)
         store_name = _resolve_store_name(my_func)
         self.assertIsNotNone(store_name)
         my_func.clear_all_caches(dataset_id="mock-dataset-id")
-        # Verify that the clear_cache method was called with the correct arguments
-        mock_create.assert_called_with(
+
+        mock_execution_store.create.assert_called_with(
             dataset_id="mock-dataset-id",
             store_name=store_name,
             collection_name=None,
         )
-        # Verify that the store's delete method was called with the correct cache key
-        # example_function.clear_cache.assert_called_with(
-        #     _build_cache_key(["mock-dataset-id"])
-        # )
+        mock_store.clear_cache.assert_called_once()
