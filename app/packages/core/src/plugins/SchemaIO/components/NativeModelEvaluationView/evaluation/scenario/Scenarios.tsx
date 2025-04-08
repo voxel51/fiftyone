@@ -47,8 +47,14 @@ import Legends from "./Legends";
 const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 
 export default function Scenarios(props) {
-  const { evaluation, compareEvaluation, data, loadScenarios, loadScenario } =
-    props;
+  const {
+    evaluation,
+    compareEvaluation,
+    data,
+    loadScenarios,
+    loadScenario,
+    deleteScenario,
+  } = props;
   const { scenarios } = evaluation;
   const [scenario, setScenario] = useState(getDefaultScenario(scenarios));
   const [selectedSubsets, setSelectedSubsets] = useState(["all"]);
@@ -56,6 +62,7 @@ export default function Scenarios(props) {
   const panelId = usePanelId();
   const [mode, setMode] = useState("charts");
   const [differenceMode, setDifferenceMode] = useState("percentage");
+  const [loadingScenario, setLoadingScenario] = useState(false);
   const [loading, setLoading] = useState(false);
   const evaluationInfo = evaluation.info;
   const evaluationConfig = evaluationInfo.config;
@@ -64,6 +71,7 @@ export default function Scenarios(props) {
   const subsets = fullScenario?.subsets || [];
 
   const scenariosArray = scenarios ? Object.values(scenarios) : [];
+  const scenariosIds = Object.keys(scenarios);
 
   useEffect(() => {
     if (!scenario) {
@@ -88,9 +96,9 @@ export default function Scenarios(props) {
         operator: CONFIGURE_SCENARIO_ACTION,
         prompt: true,
         callback: () => {
-          setLoading(true);
+          setLoadingScenario(true);
           loadScenario(scenario, undefined, () => {
-            setLoading(false);
+            setLoadingScenario(false);
             loadScenarios();
           });
         },
@@ -107,6 +115,18 @@ export default function Scenarios(props) {
     promptOperator,
     scenario,
   ]);
+
+  if (loading) {
+    return (
+      <Stack
+        sx={{ minHeight: 300 }}
+        alignItems="center"
+        justifyContent="center"
+      >
+        <CircularProgress size={24} />
+      </Stack>
+    );
+  }
 
   return (
     <Stack>
@@ -236,10 +256,9 @@ export default function Scenarios(props) {
             sx={{ minWidth: "auto", p: "4px 10px" }}
             color="secondary"
             onClick={() => {
-              setLoading(true);
+              setLoadingScenario(true);
               loadScenario(scenario, undefined, () => {
-                setLoading(false);
-                setScenario(scenario);
+                setLoadingScenario(false);
               });
             }}
           >
@@ -258,6 +277,20 @@ export default function Scenarios(props) {
           <Actions
             onDelete={() => {
               setLoading(true);
+              deleteScenario(scenario, () => {
+                const firstNonDeletedScenario = scenariosIds.find(
+                  (id) => id !== scenario
+                );
+                if (firstNonDeletedScenario) {
+                  setScenario(firstNonDeletedScenario);
+                }
+                loadScenarios(() => {
+                  // todo@im: need to find a better way to do this
+                  setTimeout(() => {
+                    setLoading(false);
+                  }, 500);
+                });
+              });
             }}
             onEdit={onEdit}
           />
@@ -270,7 +303,7 @@ export default function Scenarios(props) {
           data={data}
           loadScenario={loadScenario}
           mode={mode}
-          loading={loading}
+          loading={loadingScenario}
           differenceMode={differenceMode}
           evaluation={evaluation}
           compareEvaluation={compareEvaluation}

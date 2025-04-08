@@ -958,18 +958,16 @@ class EvaluationPanel(Panel):
 
     def delete_scenario(self, ctx):
         if not self.can_delete_scenario(ctx):
-            ctx.ops.notify(
+            return ctx.ops.notify(
                 "You do not have permission to delete scenarios",
                 variant="error",
             )
-            return
         scenario_id = ctx.params.get("id", None)
         eval_id = ctx.params.get("eval_id", None)
         store = self.get_store(ctx)
         scenarios = store.get("scenarios") or {}
         scenarios[eval_id].pop(scenario_id, None)
         store.set("scenarios", scenarios)
-        self.load_scenarios(ctx)
         ctx.ops.notify(f"Scenario deleted successfully!", variant="success")
 
     def render(self, ctx):

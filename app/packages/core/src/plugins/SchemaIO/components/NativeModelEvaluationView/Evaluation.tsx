@@ -40,6 +40,7 @@ export default function Evaluation(props: EvaluationProps) {
     onRename,
     loadScenarios,
     loadScenario,
+    deleteScenario,
   } = props;
   const theme = useTheme();
   const [activeTab, setActiveTab] = useState("scenario");
@@ -301,6 +302,7 @@ export default function Evaluation(props: EvaluationProps) {
           data={data}
           loadScenarios={loadScenarios}
           loadScenario={loadScenario}
+          deleteScenario={deleteScenario}
         />
       )}
 
@@ -323,7 +325,7 @@ type EvaluationProps = {
   navigateBack: () => void;
   loadEvaluation: (key?: string) => void;
   loadScenarios: (callback?: () => void) => void;
-  loadScenario: (id: string, key?: string) => void;
+  loadScenario: (id: string, key?: string, callback?: () => void) => void;
   onChangeCompareKey: (compareKey: string) => void;
   compareKey?: string;
   data: any;
@@ -333,4 +335,5 @@ type EvaluationProps = {
   notes: Record<string, string>;
   loadView: (type: string, params: any) => void;
   onRename: (oldName: string, newName: string) => void;
+  deleteScenario: (id: string, callback?: () => void) => void;
 };
