@@ -1,13 +1,12 @@
-export * from "./Actions";
 export { default as Checkbox } from "./Common/Checkbox";
 export { default as Dataset } from "./Dataset";
 export { default as EmptySamples } from "./EmptySamples";
 export { default as FieldLabelAndInfo } from "./FieldLabelAndInfo";
 export { default as Loading } from "./Loading";
+export { default as QueryPerformanceToast } from "./QueryPerformanceToast";
+export { default as QueryPerformanceToastTeams } from "./QueryPerformanceToastTeams";
 export { default as ResourceCount } from "./ResourceCount";
 export * from "./Sidebar";
 export { default as Snackbar } from "./Snackbar";
-export { default as ViewBar, rollbackViewBar } from "./ViewBar/ViewBar";
 export * from "./Starter";
-export { default as QueryPerformanceToast } from "./QueryPerformanceToast";
-export { default as QueryPerformanceToastTeams } from "./QueryPerformanceToastTeams";
+export { rollbackViewBar, default as ViewBar } from "./ViewBar/ViewBar";

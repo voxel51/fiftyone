@@ -314,8 +314,11 @@ def _build_map_values_entry(ctx, target_view, path):
         view=current_choices,
     )
 
+    # Need to gracefully handle None values
+    _sort = lambda l: sorted(l, key=lambda x: (x is None, x))
+
     new_choices = types.AutocompleteView(space=6)
-    for value in sorted(all_values):
+    for value in _sort(all_values):
         new_choices.add_choice(str(value), label=str(value))
 
     map_schema.str(

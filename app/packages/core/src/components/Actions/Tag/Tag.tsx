@@ -4,26 +4,16 @@ import {
   PopoutSectionTitle,
   useTheme,
 } from "@fiftyone/components";
-import {
-  FrameLooker,
-  ImaVidLooker,
-  ImageLooker,
-  VideoLooker,
-} from "@fiftyone/looker";
+import type { ImaVidLooker, Lookers } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { Lookers, groupId, groupStatistics, refresher } from "@fiftyone/state";
+import { groupId, groupStatistics, refresher } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { useSpring } from "@react-spring/web";
 import numeral from "numeral";
-import React, {
-  MutableRefObject,
-  Suspense,
-  useLayoutEffect,
-  useState,
-} from "react";
+import type { MutableRefObject } from "react";
+import React, { Suspense, useLayoutEffect, useState } from "react";
+import type { RecoilState, RecoilValue } from "recoil";
 import {
-  RecoilState,
-  RecoilValue,
   useRecoilCallback,
   useRecoilRefresher_UNSTABLE,
   useRecoilState,
@@ -31,18 +21,17 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-import { Button } from "../utils";
-import Checker, { CheckState } from "./Checker";
-import Popout from "./Popout";
+import { Button } from "../../utils";
+import Checker, { CheckState } from "../Checker";
+import Popout from "../Popout";
+import { SwitchDiv, SwitcherDiv } from "../utils";
 import {
-  SwitchDiv,
-  SwitcherDiv,
   numItemsInSelection,
   selectedSamplesCount,
   tagParameters,
   tagStatistics,
   tagStats,
-} from "./utils";
+} from "./state";
 
 const TaggingContainerInput = styled.div`
   font-size: 14px;
@@ -149,7 +138,7 @@ const Section = ({
           <TaggingInput
             data-cy={`${labels ? "label" : "sample"}-tag-input`}
             placeholder={
-              count == 0
+              count === 0
                 ? `No ${labels ? "labels" : elementNames.plural}`
                 : disabled
                 ? count === null
@@ -443,17 +432,16 @@ const useLabelPlaceHolder = (
     if (modal && selectedLabels) {
       const labelCount = selectedLabels > 0 ? selectedLabels : totalLabelCount;
       return [labelCount, labelsModalPlaceholder(selectedLabels, labelCount)];
-    } else {
-      const labelCount = selectedSamples ? selectedLabelCount : totalLabelCount;
-      return [
-        labelCount,
-        labelsPlaceholder(selectedSamples, labelCount, null, elementNames),
-      ];
     }
+    const labelCount = selectedSamples ? selectedLabelCount : totalLabelCount;
+    return [
+      labelCount,
+      labelsPlaceholder(selectedSamples, labelCount, null, elementNames),
+    ];
   };
 };
 
-const useSamplePlaceHolder = (
+const getUseSamplePlaceHolder = (
   modal: boolean,
   elementNames: { plural: string; singular: string }
 ) => {
@@ -469,12 +457,11 @@ const useSamplePlaceHolder = (
     const itemCount = useRecoilValue(selectedSamplesCount(modal));
     if (modal && !selectedSamples) {
       return [itemCount, samplesPlaceholder(count, elementNames)];
-    } else {
-      return [
-        itemCount,
-        samplesPlaceholder(itemCount, elementNames, Boolean(selectedSamples)),
-      ];
     }
+    return [
+      itemCount,
+      samplesPlaceholder(itemCount, elementNames, Boolean(selectedSamples)),
+    ];
   };
 };
 
@@ -490,10 +477,8 @@ const SuspenseLoading = () => {
 type TaggerProps = {
   modal: boolean;
   close: () => void;
-  lookerRef?: MutableRefObject<
-    VideoLooker | ImageLooker | FrameLooker | undefined
-  >;
-  anchorRef?: MutableRefObject<HTMLDivElement>;
+  lookerRef?: MutableRefObject<Lookers | undefined>;
+  anchorRef: MutableRefObject<HTMLDivElement | null>;
 };
 
 const Tagger = ({ modal, close, lookerRef, anchorRef }: TaggerProps) => {
@@ -516,7 +501,7 @@ const Tagger = ({ modal, close, lookerRef, anchorRef }: TaggerProps) => {
 
   const submit = useTagCallback(modal, labels, lookerRef);
   const labelPlaceholder = useLabelPlaceHolder(modal, elementNames);
-  const samplePlaceholder = useSamplePlaceHolder(modal, elementNames);
+  const samplePlaceholder = getUseSamplePlaceHolder(modal, elementNames);
   return (
     <Popout
       style={{ width: "12rem" }}
