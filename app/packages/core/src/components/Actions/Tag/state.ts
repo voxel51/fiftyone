@@ -2,6 +2,19 @@ import * as fos from "@fiftyone/state";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { selectorFamily } from "recoil";
 
+/**
+ * Returns true if filters should be omitted from tag parameters
+ *
+ * @param modal is modal context
+ * @param selectedSamples selected samples set
+ */
+export const overrideFilters = (
+  modal: boolean,
+  selectedSamples: Set<string>
+) => {
+  return modal && !!selectedSamples.size;
+};
+
 export const tagStatistics = selectorFamily<
   {
     count: number;
@@ -19,8 +32,8 @@ export const tagStatistics = selectorFamily<
         "/tagging",
         tagParameters({
           activeFields: get(fos.activeLabelFields({ modal })),
-          dataset: get(fos.datasetName) ?? "",
-          filters: get(modal ? fos.modalFilters : fos.filters) ?? {},
+          dataset: get(fos.datasetName),
+          filters: get(modal ? fos.modalFilters : fos.filters),
           groupData:
             get(fos.isGroup) && get(fos.groupField)
               ? {
@@ -37,13 +50,12 @@ export const tagStatistics = selectorFamily<
           selectedSamples: get(fos.selectedSamples),
           selectedLabels: get(fos.selectedLabels),
           targetLabels: countLabels,
-          view: get(fos.view) ?? [],
+          view: get(fos.view),
           extended: !modal ? get(fos.extendedStages) : null,
         })
       );
     },
 });
-
 export const numItemsInSelection = selectorFamily<
   number,
   { modal: boolean; labels: boolean }
@@ -55,7 +67,6 @@ export const numItemsInSelection = selectorFamily<
       return get(tagStatistics({ modal, labels })).count;
     },
 });
-
 export const selectedSamplesCount = selectorFamily<number, boolean>({
   key: "selectedSampleCount",
   get:
@@ -64,7 +75,6 @@ export const selectedSamplesCount = selectorFamily<number, boolean>({
       return get(tagStatistics({ modal, labels: false })).items;
     },
 });
-
 export const tagStats = selectorFamily<
   { [key: string]: number } | null,
   { modal: boolean; labels: boolean }
@@ -82,14 +92,12 @@ export const tagStats = selectorFamily<
                 : fos.sampleTagCounts({ modal: false, extended: false })
             )
           ).map((t) => [t, 0]);
-
       return {
         ...Object.fromEntries(data),
         ...get(tagStatistics({ modal, labels })).tags,
       };
     },
 });
-
 export const tagParameters = ({
   sampleId,
   targetLabels,
@@ -124,7 +132,6 @@ export const tagParameters = ({
   if (groupData && !groups) {
     groupData.slices = groupData.currentSlices;
   }
-
   const getSampleIds = () => {
     if (shouldShowCurrentSample && !groups) {
       if (groupData?.slices) {
@@ -138,12 +145,14 @@ export const tagParameters = ({
     if (selectedSamples.size) {
       return [...selectedSamples];
     }
-
     return null;
   };
 
   return {
     ...params,
+    filters: overrideFilters(params.modal, selectedSamples)
+      ? {}
+      : params.filters,
     label_fields: activeFields,
     target_labels: targetLabels,
     slices: groupData?.slices,

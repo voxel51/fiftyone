@@ -1,14 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import * as utils from "./utils";
+import type { TestSelectorFamily } from "../../../../../../__mocks__/recoil";
+import { setMockAtoms } from "../../../../../../__mocks__/recoil";
+import * as state from "./state";
 
 vi.mock("recoil");
 vi.mock("recoil-relay");
-
-import {
-  TestSelectorFamily,
-  setMockAtoms,
-} from "../../../../../__mocks__/recoil";
-
 describe("Resolves tag counts", () => {
   it("resolves all", () => {
     setMockAtoms({
@@ -21,31 +17,31 @@ describe("Resolves tag counts", () => {
       }),
     });
 
-    const samples = <TestSelectorFamily<typeof utils.tagStats>>(
-      (<unknown>utils.tagStats({ modal: false, labels: false }))
+    const samples = <TestSelectorFamily<typeof state.tagStats>>(
+      (<unknown>state.tagStats({ modal: false, labels: false }))
     );
     expect(samples()).toStrictEqual({ one: 1, two: 1, three: 0 });
 
-    const labels = <TestSelectorFamily<typeof utils.tagStats>>(
-      (<unknown>utils.tagStats({ modal: false, labels: true }))
+    const labels = <TestSelectorFamily<typeof state.tagStats>>(
+      (<unknown>state.tagStats({ modal: false, labels: true }))
     );
     expect(labels()).toStrictEqual({ one: 1, two: 1, three: 0 });
 
-    const samplesModal = <TestSelectorFamily<typeof utils.tagStats>>(
-      (<unknown>utils.tagStats({ modal: true, labels: false }))
+    const samplesModal = <TestSelectorFamily<typeof state.tagStats>>(
+      (<unknown>state.tagStats({ modal: true, labels: false }))
     );
     expect(samplesModal()).toStrictEqual({ one: 1, two: 1 });
 
-    const labelsModal = <TestSelectorFamily<typeof utils.tagStats>>(
-      (<unknown>utils.tagStats({ modal: true, labels: true }))
+    const labelsModal = <TestSelectorFamily<typeof state.tagStats>>(
+      (<unknown>state.tagStats({ modal: true, labels: true }))
     );
     expect(labelsModal()).toStrictEqual({ one: 1, two: 1 });
   });
 
   it("override filters for only a modal sample selection", () => {
-    expect(utils.overrideFilters(false, new Set())).toBe(false);
-    expect(utils.overrideFilters(false, new Set("sample"))).toBe(false);
-    expect(utils.overrideFilters(true, new Set())).toBe(false);
-    expect(utils.overrideFilters(true, new Set("sample"))).toBe(true);
+    expect(state.overrideFilters(false, new Set())).toBe(false);
+    expect(state.overrideFilters(false, new Set("sample"))).toBe(false);
+    expect(state.overrideFilters(true, new Set())).toBe(false);
+    expect(state.overrideFilters(true, new Set("sample"))).toBe(true);
   });
 });
