@@ -172,10 +172,35 @@ export default function Scenarios(props) {
             size="small"
             value={selectedSubsets}
             onChange={(e) => {
-              setSelectedSubsets(e.target.value as string[]);
+              const values = e.target.value as string[];
+              const lastValue = values[values.length - 1];
+              if (values.length === 0 || lastValue === "all") {
+                setSelectedSubsets(["all"]);
+              } else {
+                setSelectedSubsets(values.filter((subset) => subset !== "all"));
+              }
             }}
             color="secondary"
             multiple
+            renderValue={(value) => {
+              const valuesLabels = value.map((subset) => {
+                if (subset === "all") {
+                  return "All";
+                }
+                return subset;
+              });
+              return (
+                <Typography
+                  sx={{
+                    maxWidth: 100,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {valuesLabels.join(", ")}
+                </Typography>
+              );
+            }}
           >
             <MenuItem value="all" key="all">
               <Typography>All</Typography>
@@ -248,6 +273,7 @@ export default function Scenarios(props) {
           differenceMode={differenceMode}
           evaluation={evaluation}
           compareEvaluation={compareEvaluation}
+          selectedSubsets={selectedSubsets}
         />
       )}
     </Stack>
@@ -255,10 +281,20 @@ export default function Scenarios(props) {
 }
 
 function Scenario(props) {
-  const { id, data, loadScenario, mode, loading, differenceMode } = props;
+  const {
+    id,
+    data,
+    loadScenario,
+    mode,
+    loading,
+    differenceMode,
+    selectedSubsets,
+  } = props;
   const { key, compareKey } = data?.view;
-  const scenario = data?.[`scenario_${id}_${key}`];
-  const compareScenario = data?.[`scenario_${id}_${compareKey}`];
+  let scenario = data?.[`scenario_${id}_${key}`];
+  let compareScenario = data?.[`scenario_${id}_${compareKey}`];
+  const showAllSubsets =
+    selectedSubsets.length === 1 && selectedSubsets[0] === "all";
 
   useEffect(() => {
     if (!scenario) {
@@ -294,6 +330,13 @@ function Scenario(props) {
         <Typography>Scenario is unsupported or is invalid</Typography>
       </Stack>
     );
+  }
+
+  if (!showAllSubsets) {
+    scenario = { ...scenario, subsets: selectedSubsets };
+    if (compareScenario) {
+      compareScenario = { ...compareScenario, subsets: selectedSubsets };
+    }
   }
 
   return (
@@ -467,10 +510,16 @@ function PredictionStatisticsTable(props) {
 function SelectSubset(props) {
   const { subsets, selected, setSelected } = props;
 
+  useEffect(() => {
+    if (!subsets.includes(selected)) {
+      setSelected(subsets[0]);
+    }
+  }, [selected, setSelected, subsets]);
+
   return (
     <EvaluationSelect
       size="small"
-      defaultValue={selected}
+      value={selected}
       onChange={(e) => {
         setSelected(e.target.value);
       }}
