@@ -14,6 +14,14 @@ from fiftyone.operators.cache.utils import (
 
 from functools import wraps
 
+_FUNC_ATTRIBUTES = [
+    "store_name",
+    "link_to_dataset",
+    "exec_cache_version",
+    "uncached",
+    "clear_cache",
+]
+
 
 def execution_cache(
     _func=None,
@@ -109,6 +117,13 @@ def execution_cache(
     """
 
     def decorator(func):
+        for attr in _FUNC_ATTRIBUTES:
+            if hasattr(func, attr):
+                raise ValueError(
+                    f"Function {func.__name__} is already decorated with "
+                    f"@execution_cache and cannot be decorated again."
+                )
+
         func.store_name = store_name
         func.link_to_dataset = link_to_dataset
         func.exec_cache_version = version
