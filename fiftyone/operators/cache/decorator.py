@@ -202,7 +202,6 @@ def execution_cache(
                 jwt_scoped=jwt_scoped,
                 collection_name=collection_name,
             )
-            # TODO: check if this fails when the cache key is not found
             store.delete(cache_key)
 
         wrapper.clear_cache = clear_cache
