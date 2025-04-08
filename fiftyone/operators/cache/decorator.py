@@ -9,8 +9,11 @@ Execution cache decorator.
 from fiftyone.operators.cache.utils import (
     _get_ctx_from_args,
     resolve_cache_info,
-    auto_deserialize,
     _get_store_for_func,
+)
+from fiftyone.operators.cache.serialization import (
+    auto_deserialize,
+    auto_serialize,
 )
 
 from functools import wraps

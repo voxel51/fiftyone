@@ -13,8 +13,8 @@ from fiftyone.operators.cache.utils import (
     _build_cache_key,
     _resolve_store_name,
     _get_function_id,
-    auto_serialize,
 )
+from fiftyone.operators.cache.serialization import auto_serialize
 from fiftyone.operators.executor import ExecutionContext
 
 # Mock Execution Context with dataset

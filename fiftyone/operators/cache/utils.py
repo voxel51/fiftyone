@@ -6,73 +6,13 @@ Execution cache utils.
 |
 """
 from cachetools.keys import hashkey
-import numpy as np
-import json
+from dateutil import parser as dateparser
 import hashlib
-
-import eta.core.serial as etas
+import json
 
 import fiftyone as fo
 from fiftyone.operators.store import ExecutionStore
-
-
-def auto_serialize(value):
-    """
-    Serializes a value for storage in the execution cache.
-
-    Args:
-        value: the value to serialize
-
-    Returns:
-        The serialized value.
-    """
-    if isinstance(value, fo.Sample):
-        return _make_sample_dict(value)
-    if isinstance(value, etas.Serializable):
-        return value.serialize()
-    elif hasattr(value, "to_dict"):
-        return value.to_dict()
-    elif hasattr(value, "to_json"):
-        return value.to_json()
-    elif isinstance(value, dict):
-        return {str(k): auto_serialize(v) for k, v in value.items()}
-    elif isinstance(value, (list, tuple, set)):
-        return [auto_serialize(v) for v in value]
-    return value
-
-
-def auto_deserialize(value):
-    """
-    Deserializes a value from the execution cache.
-
-    Args:
-        value: the value to deserialize
-
-    Returns:
-        The deserialized value.
-    """
-    if _is_sample_dict(value):
-        value = {k: v for k, v in value.items() if k != "_cls"}
-        return fo.Sample.from_dict(value)
-    elif isinstance(value, dict):
-        return {str(k): auto_deserialize(v) for k, v in value.items()}
-    elif isinstance(value, (list, tuple, set)):
-        return [auto_deserialize(v) for v in value]
-    elif isinstance(value, np.ndarray):
-        return [auto_deserialize(v) for v in value.tolist()]
-    elif isinstance(value, (np.integer,)):
-        return int(value)
-    elif isinstance(value, (np.floating,)):
-        val = float(value)
-        if not np.isfinite(val):
-            raise ValueError(
-                "Non-finite float value cannot be stored in Execution Cache."
-            )
-        return val
-    elif isinstance(value, (np.bool_, bool)):
-        return bool(value)
-    else:
-        return value
+import fiftyone.operators.cache.serialization as focs
 
 
 def resolve_cache_info(
@@ -198,7 +138,7 @@ def _get_cache_key_list(ctx_index, args, kwargs, key_fn):
     else:
         cache_key_list = args[ctx_index + 1 :]
 
-    return auto_serialize(cache_key_list)
+    return focs.auto_serialize(cache_key_list)
 
 
 def _get_scoped_cache_key_list(
@@ -239,3 +179,13 @@ def _is_sample_dict(value):
 
 def _make_sample_dict(sample):
     return {"_cls": "fiftyone.core.sample.Sample", **sample.to_dict()}
+
+
+def _try_parse_date(value):
+    if isinstance(value, str):
+        try:
+            parsed = dateparser.parse(value)
+            return parsed
+        except (ValueError, OverflowError):
+            return value
+    return value
