@@ -5,6 +5,7 @@ import * as state from "./state";
 
 vi.mock("recoil");
 vi.mock("recoil-relay");
+
 describe("Resolves tag counts", () => {
   it("resolves all", () => {
     setMockAtoms({

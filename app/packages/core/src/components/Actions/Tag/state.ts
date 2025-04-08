@@ -56,6 +56,7 @@ export const tagStatistics = selectorFamily<
       );
     },
 });
+
 export const numItemsInSelection = selectorFamily<
   number,
   { modal: boolean; labels: boolean }
@@ -67,6 +68,7 @@ export const numItemsInSelection = selectorFamily<
       return get(tagStatistics({ modal, labels })).count;
     },
 });
+
 export const selectedSamplesCount = selectorFamily<number, boolean>({
   key: "selectedSampleCount",
   get:
@@ -75,6 +77,7 @@ export const selectedSamplesCount = selectorFamily<number, boolean>({
       return get(tagStatistics({ modal, labels: false })).items;
     },
 });
+
 export const tagStats = selectorFamily<
   { [key: string]: number } | null,
   { modal: boolean; labels: boolean }
@@ -92,12 +95,14 @@ export const tagStats = selectorFamily<
                 : fos.sampleTagCounts({ modal: false, extended: false })
             )
           ).map((t) => [t, 0]);
+
       return {
         ...Object.fromEntries(data),
         ...get(tagStatistics({ modal, labels })).tags,
       };
     },
 });
+
 export const tagParameters = ({
   sampleId,
   targetLabels,
@@ -132,6 +137,7 @@ export const tagParameters = ({
   if (groupData && !groups) {
     groupData.slices = groupData.currentSlices;
   }
+
   const getSampleIds = () => {
     if (shouldShowCurrentSample && !groups) {
       if (groupData?.slices) {
@@ -145,6 +151,7 @@ export const tagParameters = ({
     if (selectedSamples.size) {
       return [...selectedSamples];
     }
+
     return null;
   };
 
