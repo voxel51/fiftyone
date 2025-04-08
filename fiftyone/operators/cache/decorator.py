@@ -37,8 +37,8 @@ def execution_cache(
     The function must:
         - accept a `ctx` argument as the first parameter
         - return a serializable value
-        - be idempotent (i.e., it should produce the same
-            output for the same input) and not have any side effects
+        - should produce the same output for the same input
+        - should have no side effects
         - have serializable parameters and return values
 
     Args:
