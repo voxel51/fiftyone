@@ -45,7 +45,7 @@ export default ({
       lookerRef.current.pause();
   });
 
-  lookerRef.current && fos.useEventHandler(lookerRef.current, "play", close);
+  fos.useEventHandler(lookerRef.current, "play", close);
 
   const closeAndCall = (callback) => {
     return useCallback(() => {
