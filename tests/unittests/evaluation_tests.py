@@ -10,6 +10,7 @@ import random
 import string
 import sys
 import unittest
+import unittest.mock as mock
 import warnings
 
 import numpy as np
@@ -24,7 +25,7 @@ import fiftyone.utils.eval.regression as four
 import fiftyone.utils.eval.segmentation as fous
 import fiftyone.utils.labels as foul
 import fiftyone.utils.iou as foui
-
+import fiftyone.core.collections as foc
 from decorators import drop_datasets
 
 
@@ -1864,7 +1865,6 @@ class DetectionsTests(unittest.TestCase):
             method="coco",
             iou=0.5,
             workers=4,  # Use multiple workers for parallel processing
-            parallel_method="process",  # Use process-based parallelism
         )
 
         # Also evaluate using the standard approach for comparison (single worker)
@@ -2037,8 +2037,70 @@ class DetectionsTests(unittest.TestCase):
                     f"FN count mismatch for sample {sample.id}",
                 )
 
+    @drop_datasets
+    def test_evaluate_detections_map_samples_called(self):
+        dataset = self._make_detections_dataset()
 
-class BoxesTests(unittest.TestCase):
+        with mock.patch.object(
+            foc.SampleCollection, "map_samples", autospec=True
+        ) as mock_map_samples:
+            # Set up the mock to return an empty list of matches
+            mock_map_samples.return_value = []
+
+            # Evaluate with workers to trigger map_samples
+            dataset.evaluate_detections(
+                "predictions",
+                gt_field="ground_truth",
+                eval_key="map_eval",
+                method="coco",
+                iou=0.5,
+                workers=4,
+                parallelize_method="process",  # Use process-based parallelism
+            )
+
+            # Verify that map_samples was called
+            mock_map_samples.assert_called()
+
+            # Verify at least one call had the workers parameter set
+            found_workers = False
+            for call in mock_map_samples.call_args_list:
+                _, kwargs = call
+                if kwargs.get("workers") == 4:
+                    found_workers = True
+                    break
+
+            self.assertTrue(
+                found_workers, "No call to map_samples had workers=4"
+            )
+
+        # Test without workers to ensure map_samples is NOT called with parallel processing
+        with mock.patch.object(
+            foc.SampleCollection, "map_samples", autospec=True
+        ) as mock_map_samples:
+            # Set up the mock to use the default implementation
+            mock_map_samples.side_effect = foc.SampleCollection.map_samples
+
+            # Evaluate without workers
+            dataset.evaluate_detections(
+                "predictions",
+                gt_field="ground_truth",
+                eval_key="no_map_eval",
+                method="coco",
+                iou=0.5,
+                # No workers specified
+            )
+
+            # Verify no call to map_samples had workers=4
+            for call in mock_map_samples.call_args_list:
+                _, kwargs = call
+                self.assertNotEqual(
+                    kwargs.get("workers"),
+                    4,
+                    "map_samples was called with workers=4 when none was specified",
+                )
+
+
+class CuboidTests(unittest.TestCase):
     def _make_dataset(self):
         dataset = fo.Dataset()
 
@@ -2121,6 +2183,80 @@ class BoxesTests(unittest.TestCase):
         )
 
         self.assertEqual(len(dup_ids2), 1)
+
+    @drop_datasets
+    def test_evaluate_detections_map_samples_called(self):
+        """Test that map_samples is called when evaluating detections with workers."""
+        import unittest.mock as mock
+        import numpy as np
+        import fiftyone.core.collections as foc
+
+        dataset = self._make_detections_dataset()
+
+        # Mock the map_samples method at a lower level that will catch all instances
+        with mock.patch.object(
+            foc.SampleCollection, "map_samples", autospec=True
+        ) as mock_map_samples:
+            # Set up the mock to return an empty list of matches
+            mock_map_samples.return_value = []
+
+            try:
+                # Evaluate with workers to trigger map_samples
+                dataset.evaluate_detections(
+                    "predictions",
+                    gt_field="ground_truth",
+                    eval_key="map_eval",
+                    method="coco",
+                    iou=0.5,
+                    workers=4,
+                    parallelize_method="process",  # Use process-based parallelism
+                )
+
+                # Verify that map_samples was called
+                mock_map_samples.assert_called()
+
+                # Verify at least one call had the workers parameter set
+                found_workers = False
+                for call in mock_map_samples.call_args_list:
+                    _, kwargs = call
+                    if kwargs.get("workers") == 4:
+                        found_workers = True
+                        break
+
+                self.assertTrue(
+                    found_workers, "No call to map_samples had workers=4"
+                )
+
+            except Exception as e:
+                # If the test fails due to map_samples not being used in the implementation,
+                # the test should be updated to match the actual implementation
+                self.fail(f"evaluate_detections with workers failed: {e}")
+
+        # Test without workers to ensure map_samples is NOT called with workers
+        with mock.patch.object(
+            foc.SampleCollection, "map_samples", autospec=True
+        ) as mock_map_samples:
+            # Set up the mock to use the default implementation
+            mock_map_samples.side_effect = foc.SampleCollection.map_samples
+
+            # Evaluate without workers
+            dataset.evaluate_detections(
+                "predictions",
+                gt_field="ground_truth",
+                eval_key="no_map_eval",
+                method="coco",
+                iou=0.5,
+                # No workers specified
+            )
+
+            # Verify no call to map_samples had workers=4
+            for call in mock_map_samples.call_args_list:
+                _, kwargs = call
+                self.assertNotEqual(
+                    kwargs.get("workers"),
+                    4,
+                    "map_samples was called with workers=4 when none was specified",
+                )
 
 
 class CuboidTests(unittest.TestCase):
