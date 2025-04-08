@@ -184,9 +184,13 @@ def evaluate_detections(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
-        workers (None): the number of workers to use to compute detections
-        batch_method ("id"): the method to use to shard the dataset
-        parallelize_method ("process"): the backend to use for multiprocessing
+        workers (None): the number of workers to use to compute detections. If
+            set to greater than 1, will use the map_samples function to compute
+            detections in parallel.
+        batch_method ("id"): the method to use to batch the dataset for parallel
+            processing. The supported values are ``"id"`` and ``"slice"``.
+        parallelize_method (None): the backend to use for multiprocessing. The
+            supported values are ``"thread"`` and ``"process"``.
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
 
