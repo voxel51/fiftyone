@@ -138,7 +138,7 @@ def _get_ctx_from_args(args):
     ctx, ctx_index = _get_ctx_idx(args)
     if ctx_index == -1 or ctx_index > 1:
         raise ValueError(
-            f"execution_cache requires the first argument to be an ExecutionContext"
+            "execution_cache requires the first argument to be an ExecutionContext"
         )
     return ctx, ctx_index
 

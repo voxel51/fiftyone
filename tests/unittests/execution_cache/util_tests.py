@@ -194,10 +194,9 @@ class TestCacheUtils(unittest.TestCase):
         )
 
     def test_build_cache_key_stable_hash(self):
-        uri = "@org/plugin/operator"
         key_list = ["abc", 123]
         expected = (
-            f"3b568485c08a7af75fd812405efc8c23b96257acfbe45bebd50b57defd399342"
+            "3b568485c08a7af75fd812405efc8c23b96257acfbe45bebd50b57defd399342"
         )
 
         result = utils._build_cache_key(key_list)
