@@ -2522,19 +2522,6 @@ To cache a function's result scoped to the current ``ctx.dataset``, use the
     with the current dataset and will be automatically deleted when the dataset
     is deleted.
 
-You can also programmatically clear caches via utility functions:
-
-.. code-block:: python
-    :linenos:
-
-    from fiftyone.operators.cache import clear_function_cache, clear_all_caches
-
-    # Clear a specific function's cache
-    clear_function_cache(ctx, expensive_query)
-
-    # Clear all cache entries in all execution stores
-    clear_all_caches()
-
 .. warning::
 
     Cached values must be JSON-serializable. Use the ``serialize`` and
