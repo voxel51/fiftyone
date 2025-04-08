@@ -108,7 +108,7 @@ export default <T extends AbstractLooker<BaseState>>(
         const filePath =
           urls.filepath?.split("?")[0] ?? (sample.filepath as string);
 
-        if (!isNativeMediaType(sample.media_type)) {
+        if (!isNativeMediaType(sample.media_type ?? sample._media_type)) {
           create = MetadataLooker;
         } else {
           if (filePath.endsWith(".pcd") || filePath.endsWith(".fo3d")) {
