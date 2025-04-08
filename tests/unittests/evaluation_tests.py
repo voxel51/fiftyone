@@ -1697,6 +1697,13 @@ class DetectionsTests(unittest.TestCase):
         self._evaluate_coco(dataset, kwargs)
 
     @drop_datasets
+    def test_evaluate_detections_coco_parallel(self):
+        dataset = self._make_detections_dataset()
+        kwargs = {}
+
+        self._evaluate_coco(dataset, kwargs)
+
+    @drop_datasets
     def test_evaluate_instances_coco(self):
         dataset = self._make_instances_dataset()
         kwargs = dict(use_masks=True)
@@ -1843,6 +1850,192 @@ class DetectionsTests(unittest.TestCase):
 
         results = dataset.load_evaluation_results("custom")
         self.assertEqual(type(results), foud.DetectionResults)
+
+    @drop_datasets
+    def test_evaluate_detections_map_samples(self):
+        """Test evaluate_detections with parallel processing parameters."""
+        dataset = self._make_detections_dataset()
+
+        # Evaluate using parallel processing (multiple workers)
+        parallel_results = dataset.evaluate_detections(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="parallel_eval",
+            method="coco",
+            iou=0.5,
+            workers=4,  # Use multiple workers for parallel processing
+            parallel_method="process",  # Use process-based parallelism
+        )
+
+        # Also evaluate using the standard approach for comparison (single worker)
+        standard_results = dataset.evaluate_detections(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="std_eval",
+            method="coco",
+            iou=0.5,
+        )
+
+        # Verify the parallel approach gives the same results as the standard approach
+
+        # Get metrics for both approaches
+        parallel_metrics = parallel_results.metrics()
+        std_metrics = standard_results.metrics()
+
+        # Get confusion matrices for both approaches
+        parallel_cm = parallel_results.confusion_matrix()
+        std_cm = standard_results.confusion_matrix()
+
+        # Verify the confusion matrices have the same shape
+        self.assertEqual(parallel_cm.shape, std_cm.shape)
+
+        # Create numpy arrays for comparison
+        p_cm = np.array(parallel_cm)
+        s_cm = np.array(std_cm)
+
+        # Verify the matrices are identical
+        self.assertTrue(
+            np.array_equal(p_cm, s_cm),
+            f"Confusion matrices don't match:\nParallel:\n{p_cm}\nStandard:\n{s_cm}",
+        )
+
+        # Compare overall counts
+        self.assertEqual(
+            parallel_metrics["support"],
+            std_metrics["support"],
+            "Support counts don't match",
+        )
+
+        # Verify the sample-level metrics are the same
+        for sample in dataset:
+            # Handle the case where fields might not exist
+            parallel_tp = (
+                sample["parallel_eval_tp"]
+                if "parallel_eval_tp" in sample
+                else None
+            )
+            std_tp = sample["std_eval_tp"] if "std_eval_tp" in sample else None
+            self.assertEqual(
+                parallel_tp,
+                std_tp,
+                f"TP count mismatch for sample {sample.id}",
+            )
+
+            parallel_fp = (
+                sample["parallel_eval_fp"]
+                if "parallel_eval_fp" in sample
+                else None
+            )
+            std_fp = sample["std_eval_fp"] if "std_eval_fp" in sample else None
+            self.assertEqual(
+                parallel_fp,
+                std_fp,
+                f"FP count mismatch for sample {sample.id}",
+            )
+
+            parallel_fn = (
+                sample["parallel_eval_fn"]
+                if "parallel_eval_fn" in sample
+                else None
+            )
+            std_fn = sample["std_eval_fn"] if "std_eval_fn" in sample else None
+            self.assertEqual(
+                parallel_fn,
+                std_fn,
+                f"FN count mismatch for sample {sample.id}",
+            )
+
+    @drop_datasets
+    def test_evaluate_detections_map_samples_batch_methods(self):
+        """Test evaluate_detections with batch processing parameters."""
+        dataset = self._make_detections_dataset()
+
+        # Also evaluate using the standard approach for comparison
+        standard_results = dataset.evaluate_detections(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="std_batch_eval",
+            method="coco",
+            iou=0.5,
+        )
+
+        std_cm = standard_results.confusion_matrix()
+
+        for batch_method in ["id", "slice"]:
+            eval_key = "batch_eval_" + batch_method
+            # Evaluate using batch processing parameters
+            batch_results = dataset.evaluate_detections(
+                "predictions",
+                gt_field="ground_truth",
+                eval_key=eval_key,
+                method="coco",
+                iou=0.5,
+                batch_size=2,  # Process samples in batches of 2
+                batch_method=batch_method,
+            )
+
+            # Get confusion matrices for both approaches
+            batch_cm = batch_results.confusion_matrix()
+
+            # Verify the confusion matrices have the same shape
+            self.assertEqual(batch_cm.shape, std_cm.shape)
+
+            # Verify the matrices are identical
+            self.assertTrue(
+                np.array_equal(batch_cm, std_cm),
+                f"Confusion matrices don't match:\nBatch:\n{batch_cm}\nStandard:\n{std_cm}",
+            )
+
+            # Verify the TP/FP/FN counts on each sample are identical
+            for sample in dataset:
+                # Handle the case where fields might not exist
+                batch_tp = (
+                    sample[f"{eval_key}_tp"]
+                    if f"{eval_key}_tp" in sample
+                    else None
+                )
+                std_tp = (
+                    sample["std_batch_eval_tp"]
+                    if "std_batch_eval_tp" in sample
+                    else None
+                )
+                self.assertEqual(
+                    batch_tp,
+                    std_tp,
+                    f"TP count mismatch for sample {sample.id}",
+                )
+
+                batch_fp = (
+                    sample[f"{eval_key}_fp"]
+                    if f"{eval_key}_fp" in sample
+                    else None
+                )
+                std_fp = (
+                    sample["std_batch_eval_fp"]
+                    if "std_batch_eval_fp" in sample
+                    else None
+                )
+                self.assertEqual(
+                    batch_fp,
+                    std_fp,
+                    f"FP count mismatch for sample {sample.id}",
+                )
+
+                batch_fn = (
+                    sample[f"{eval_key}_fn"]
+                    if f"{eval_key}_fn" in sample
+                    else None
+                )
+                std_fn = (
+                    sample["std_batch_eval_fn"]
+                    if "std_batch_eval_fn" in sample
+                    else None
+                )
+                self.assertEqual(
+                    batch_fn,
+                    std_fn,
+                    f"FN count mismatch for sample {sample.id}",
+                )
 
 
 class BoxesTests(unittest.TestCase):
