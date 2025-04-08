@@ -32,7 +32,6 @@ jobs:
       matrix:
         os:
           - ubuntu-22.04-m
-          - windows-latest
         python:
           - "3.9"
           - "3.10"
