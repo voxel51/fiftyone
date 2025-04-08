@@ -251,9 +251,8 @@ def evaluate_detections(
             fn_field=fn_field,
         )
 
-    matches = None
+    matches = []
     if parallelize_method or workers:
-        matches = []
         for _, result in _samples.map_samples(
             _map_fnc,
             workers=workers,
@@ -265,16 +264,8 @@ def evaluate_detections(
             matches.extend(result)
     else:
         for sample in _samples.iter_samples(progress=progress, autosave=save):
-            matches = _compute_matches_single(
-                sample,
-                eval_method,
-                eval_key,
-                save=save,
-                processing_frames=processing_frames,
-                tp_field=tp_field,
-                fp_field=fp_field,
-                fn_field=fn_field,
-            )
+            results = _map_fnc(sample)
+            matches.extend(results)
 
     results = eval_method.generate_results(
         samples,
