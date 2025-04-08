@@ -19,7 +19,7 @@ def execution_cache(
     _func=None,
     *,
     ttl=None,
-    link_to_dataset=True,  # TODO: rename to dataset_scoped
+    link_to_dataset=True,
     key_fn=None,
     store_name=None,
     version=None,

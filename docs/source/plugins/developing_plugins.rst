@@ -2546,6 +2546,8 @@ to the decorator:
 
 - ``ttl``: Time-to-live (in seconds) for the cached entry
 - ``key_fn``: Custom function to generate the cache key
+- ``link_to_dataset``: When ``True``, the cache is dropped when the dataset is
+  deleted (default is ``True``)
 - ``store_name``: Custom store name (default is based on function name)
 - ``version``: Optional version tag to isolate changes in function behavior
 - ``operator_scoped``: Cache is tied to the current operator URI
@@ -2574,61 +2576,6 @@ For example, caching a sample using custom serialization:
     )
     def get_first_sample(ctx):
         return ctx.dataset.first()
-
-Examples
-~~~~~~~~
-
-Here are some more advanced examples of how execution cache can be used in real panels:
-
-**Cache embeddings from a brain key (operator scoped, dataset scoped):**
-
-.. code-block:: python
-    :linenos:
-
-    @execution_cache(
-        ttl=600,
-        key_fn=lambda ctx, brain_key: [brain_key],
-        dataset_scoped=True,
-        operator_scoped=True,
-    )
-    def get_embeddings(ctx, brain_key):
-        results = ctx.dataset.load_brain_results(brain_key)
-        x, y = zip(*results.points.tolist())
-        ids = results.sample_ids
-        return {"x": x, "y": y, "ids": ids}
-
-**Cache filtered view results across user prompts (user and prompt scoped):**
-
-.. code-block:: python
-    :linenos:
-
-    @execution_cache(
-        ttl=300,
-        prompt_scoped=True,
-        user_scoped=True,
-    )
-    def get_filtered_view(ctx, filters):
-        view = ctx.dataset
-        for f in filters:
-            view = view.match(f)
-        return view.serialize()
-
-**Cache plot data for a modal panel (sample-level granularity):**
-
-.. code-block:: python
-    :linenos:
-
-    @execution_cache(
-        key_fn=lambda ctx, sample_id: [sample_id],
-        ttl=900,
-        dataset_scoped=True,
-    )
-    def get_modal_plot(ctx, sample_id):
-        sample = ctx.dataset[sample_id]
-        return {
-            "histogram": compute_histogram(sample),
-            "label": sample.ground_truth.label,
-        }
 
 
 
