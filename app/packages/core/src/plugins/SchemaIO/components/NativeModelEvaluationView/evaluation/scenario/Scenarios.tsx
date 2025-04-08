@@ -42,6 +42,7 @@ import {
 import EvaluationPlot from "../../EvaluationPlot";
 import { formatValue, getClasses, getMatrix } from "../../utils";
 import Actions from "./Actions";
+import Legends from "./Legends";
 
 const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 
@@ -802,84 +803,13 @@ const MODEL_PERFORMANCE_METRICS = [
   { label: "mAP", key: "mAP" },
 ];
 
-function ScenarioModelPerformanceChart(props) {
-  const { scenario, compareScenario } = props;
-  const { subsets } = scenario;
-  const [subset, setSubset] = useState(subsets[0]);
-  const subsetData = scenario.subsets_data[subset];
-  const compareSubsetData = compareScenario?.subsets_data[subset];
-  const { metrics } = subsetData;
-  const compareMetrics = compareSubsetData?.metrics;
-  const { key, compareKey } = props.data?.view;
-
-  const theta = [];
-  const r = [];
-  for (const metric of MODEL_PERFORMANCE_METRICS) {
-    const { label, key } = metric;
-    const value = metrics[key];
-    if (isNullish(value)) continue;
-    theta.push(label);
-    r.push(value);
-  }
-  const plotData = [
-    {
-      type: "scatterpolar",
-      r,
-      theta,
-      fill: "toself",
-      name: key,
-    },
-  ];
-
-  if (compareMetrics) {
-    const compareTheta = [];
-    const compareR = [];
-    for (const metric of MODEL_PERFORMANCE_METRICS) {
-      const { label, key } = metric;
-      const value = compareMetrics[key];
-      if (isNullish(value)) continue;
-      compareTheta.push(label);
-      compareR.push(value);
-    }
-    plotData.push({
-      type: "scatterpolar",
-      r: compareR,
-      theta: compareTheta,
-      fill: "toself",
-      name: compareKey,
-    });
-  }
-  return (
-    <Stack>
-      <Stack direction="row" justifyContent="space-between">
-        <Typography>Model Performance</Typography>
-        <SelectSubset
-          subsets={subsets}
-          selected={subset}
-          setSelected={setSubset}
-        />
-      </Stack>
-      <EvaluationPlot
-        data={plotData}
-        layout={{
-          polar: {
-            bgcolor: "#272727",
-            radialaxis: {
-              visible: true,
-            },
-          },
-        }}
-      />
-    </Stack>
-  );
-}
-
 function PredictionStatisticsChart(props) {
   const { scenario, compareScenario } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const [metric, setMetric] = useState("all");
   const showAllMetric = metric === "all";
+  const { key, compareKey } = props.data?.view || {};
 
   let plotData = new Array<unknown>();
 
@@ -912,7 +842,7 @@ function PredictionStatisticsChart(props) {
     const tpTrace = {
       x: subsets,
       y: tp,
-      name: "TP",
+      name: `${key} True Positives`,
       type: "bar",
       offsetgroup: 0,
       marker: { color: KEY_COLOR },
@@ -921,7 +851,7 @@ function PredictionStatisticsChart(props) {
     const fpTrace = {
       x: subsets,
       y: fp,
-      name: "FP",
+      name: `${key} False Positives`,
       type: "bar",
       offsetgroup: 0,
       marker: { color: SECONDARY_KEY_COLOR },
@@ -929,7 +859,7 @@ function PredictionStatisticsChart(props) {
     const fnTrace = {
       x: subsets,
       y: fn,
-      name: "FN",
+      name: `${key} False Negatives`,
       type: "bar",
       offsetgroup: 0,
       marker: { color: TERTIARY_KEY_COLOR },
@@ -938,7 +868,7 @@ function PredictionStatisticsChart(props) {
     const compareTPTrace = {
       x: subsets,
       y: compareTP,
-      name: "Compare TP",
+      name: `${compareKey} True Positives`,
       type: "bar",
       offsetgroup: 1,
       marker: { color: COMPARE_KEY_COLOR },
@@ -947,7 +877,7 @@ function PredictionStatisticsChart(props) {
     const compareFPTrace = {
       x: subsets,
       y: compareFP,
-      name: "Compare FP",
+      name: `${compareKey} False Positives`,
       type: "bar",
       offsetgroup: 1,
       marker: { color: COMPARE_KEY_SECONDARY_COLOR },
@@ -956,7 +886,7 @@ function PredictionStatisticsChart(props) {
     const compareFNTrace = {
       x: subsets,
       y: compareFN,
-      name: "Compare FN",
+      name: `${compareKey} False Negatives`,
       type: "bar",
       offsetgroup: 1,
       marker: { color: COMPARE_KEY_TERTIARY_COLOR },
@@ -968,9 +898,25 @@ function PredictionStatisticsChart(props) {
   } else {
     const metricsForMode = metricsByMode[metric];
     const { main, compare } = metricsForMode;
-    plotData = [{ x: subsets, y: main, type: "bar", name: "x" }];
+    plotData = [
+      {
+        x: subsets,
+        y: main,
+        type: "bar",
+        name: key,
+        marker: {
+          color: KEY_COLOR,
+        },
+      },
+    ];
     if (compareSubsetsData) {
-      plotData.push({ x: subsets, y: compare, type: "bar", name: "x" });
+      plotData.push({
+        x: subsets,
+        y: compare,
+        type: "bar",
+        name: compareKey,
+        marker: { color: COMPARE_KEY_COLOR },
+      });
     }
   }
 
@@ -1005,6 +951,82 @@ function PredictionStatisticsChart(props) {
         data={plotData}
         layout={showAllMetric ? { barmode: "stack" } : {}}
       />
+      <Legends prediction={showAllMetric} {...getLegendProps(props)} />
+    </Stack>
+  );
+}
+
+function ScenarioModelPerformanceChart(props) {
+  const { scenario, compareScenario } = props;
+  const { subsets } = scenario;
+  const [subset, setSubset] = useState(subsets[0]);
+  const subsetData = scenario.subsets_data[subset];
+  const compareSubsetData = compareScenario?.subsets_data[subset];
+  const { metrics } = subsetData;
+  const compareMetrics = compareSubsetData?.metrics;
+  const { key, compareKey } = props.data?.view;
+
+  const theta = [];
+  const r = [];
+  for (const metric of MODEL_PERFORMANCE_METRICS) {
+    const { label, key } = metric;
+    const value = metrics[key];
+    if (isNullish(value)) continue;
+    theta.push(label);
+    r.push(value);
+  }
+  const plotData = [
+    {
+      type: "scatterpolar",
+      r,
+      theta,
+      fill: "toself",
+      name: key,
+      marker: { color: KEY_COLOR },
+    },
+  ];
+
+  if (compareMetrics) {
+    const compareTheta = [];
+    const compareR = [];
+    for (const metric of MODEL_PERFORMANCE_METRICS) {
+      const { label, key } = metric;
+      const value = compareMetrics[key];
+      if (isNullish(value)) continue;
+      compareTheta.push(label);
+      compareR.push(value);
+    }
+    plotData.push({
+      type: "scatterpolar",
+      r: compareR,
+      theta: compareTheta,
+      fill: "toself",
+      name: compareKey,
+      marker: { color: COMPARE_KEY_COLOR },
+    });
+  }
+  return (
+    <Stack>
+      <Stack direction="row" justifyContent="space-between">
+        <Typography>Model Performance</Typography>
+        <SelectSubset
+          subsets={subsets}
+          selected={subset}
+          setSelected={setSubset}
+        />
+      </Stack>
+      <EvaluationPlot
+        data={plotData}
+        layout={{
+          polar: {
+            bgcolor: "#272727",
+            radialaxis: {
+              visible: true,
+            },
+          },
+        }}
+      />
+      <Legends {...getLegendProps(props)} />
     </Stack>
   );
 }
@@ -1179,6 +1201,8 @@ function ConfidenceDistributionChart(props) {
         data={plotData}
         layout={compareSubsetsData ? { boxmode: "group" } : {}}
       />
+
+      <Legends {...getLegendProps(props)} />
     </Stack>
   );
 }
@@ -1195,13 +1219,21 @@ function MetricPerformanceChart(props) {
     return subsetData.metrics[metric];
   });
 
-  const plotData = [{ x: subsets, y, type: "bar", name: key }];
+  const plotData = [
+    { x: subsets, y, type: "bar", name: key, marker: { color: KEY_COLOR } },
+  ];
   if (compareSubsetsData) {
     const compareY = subsets.map((subset) => {
       const subsetData = compareSubsetsData[subset];
       return subsetData.metrics[metric];
     });
-    plotData.push({ x: subsets, y: compareY, type: "bar", name: compareKey });
+    plotData.push({
+      x: subsets,
+      y: compareY,
+      type: "bar",
+      name: compareKey,
+      marker: { color: COMPARE_KEY_COLOR },
+    });
   }
 
   return (
@@ -1226,6 +1258,7 @@ function MetricPerformanceChart(props) {
         </EvaluationSelect>
       </Stack>
       <EvaluationPlot data={plotData} />
+      <Legends {...getLegendProps(props)} />
     </Stack>
   );
 }
@@ -1241,19 +1274,28 @@ function SubsetDistributionChart(props) {
     return subsetData.distribution;
   });
 
-  const plotData = [{ x: subsets, y, type: "bar", name: key }];
+  const plotData = [
+    { x: subsets, y, type: "bar", name: key, marker: { color: KEY_COLOR } },
+  ];
   if (compareSubsetsData) {
     const compareY = subsets.map((subset) => {
       const subsetData = compareSubsetsData[subset];
       return subsetData.distribution;
     });
-    plotData.push({ x: subsets, y: compareY, type: "bar", name: compareKey });
+    plotData.push({
+      x: subsets,
+      y: compareY,
+      type: "bar",
+      name: compareKey,
+      marker: { color: COMPARE_KEY_COLOR },
+    });
   }
 
   return (
     <Stack>
       <Typography>Subset Distribution</Typography>
       <EvaluationPlot data={plotData} />
+      <Legends {...getLegendProps(props)} />
     </Stack>
   );
 }
@@ -1263,4 +1305,9 @@ function getDefaultScenario(scenarios) {
   const scenarioIds = Object.keys(scenarios);
   if (scenarioIds.length === 0) return null;
   return scenarioIds[0];
+}
+
+function getLegendProps(props) {
+  const { key, compareKey } = props.data?.view || {};
+  return { primaryKey: key, compareKey };
 }
