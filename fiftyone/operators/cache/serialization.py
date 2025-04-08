@@ -35,7 +35,9 @@ def auto_serialize(value):
         return {str(k): auto_serialize(v) for k, v in value.items()}
     elif isinstance(value, (list, tuple, set)):
         return [auto_serialize(v) for v in value]
-    return value
+    elif isinstance(value, (int, float, str, bool)):
+        return value
+    raise TypeError(f"Cannot serialize value of type {type(value)}: {value}")
 
 
 def auto_deserialize(value):

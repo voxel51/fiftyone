@@ -155,13 +155,24 @@ class TestExecutionCacheDecorator(unittest.TestCase):
     @patch("fiftyone.operators.store.ExecutionStore.create")
     def test_set_cache(self, mock_create):
         """Test that the cache can be set manually."""
+
+        def my_serialize(value):
+            return {"v": value.value}
+
+        def my_deserialize(value):
+            return NonSerializableObject(value=value["v"])
+
+        @execution_cache(serialize=my_serialize, deserialize=my_deserialize)
+        def my_func(ctx, value):
+            return value
+
         ctx = create_mock_ctx()
         value = NonSerializableObject(value=42)
-        example_function.set_cache(ctx, 1, 2, value)
+        my_func.set_cache(ctx, 1, 2, value)
         cache_key = _build_cache_key([1, 2])
-        serialized_value = auto_serialize(value)
+        serialized_value = my_serialize(value)
         mock_create.return_value.set_cache.assert_called_once_with(
-            cache_key, serialized_value, ttl=60
+            cache_key, serialized_value, ttl=None
         )
 
     @patch("fiftyone.operators.cache.utils.ExecutionStore")

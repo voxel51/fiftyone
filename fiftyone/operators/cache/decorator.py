@@ -223,7 +223,10 @@ def execution_cache(
                 jwt_scoped=jwt_scoped,
                 collection_name=collection_name,
             )
-            value_to_cache = auto_deserialize(arg_to_cache)
+            if serialize is not None:
+                value_to_cache = serialize(arg_to_cache)
+            else:
+                value_to_cache = auto_serialize(arg_to_cache)
             store.set_cache(cache_key, value_to_cache, ttl=ttl)
 
         wrapper.set_cache = set_cache
