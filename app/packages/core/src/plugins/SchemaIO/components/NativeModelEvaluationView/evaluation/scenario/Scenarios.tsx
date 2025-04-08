@@ -22,6 +22,7 @@ import {
   TableRow,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
   useTheme,
 } from "@mui/material";
@@ -72,6 +73,8 @@ export default function Scenarios(props) {
 
   const scenariosArray = scenarios ? Object.values(scenarios) : [];
   const scenariosIds = Object.keys(scenarios);
+
+  const readOnly = !data.permissions?.can_delete_scenario;
 
   useEffect(() => {
     if (!scenario) {
@@ -276,6 +279,7 @@ export default function Scenarios(props) {
             }}
             evalKey={key}
             compareKey={compareKey}
+            readOnly={readOnly}
           />
           <Actions
             onDelete={() => {
@@ -296,6 +300,7 @@ export default function Scenarios(props) {
               });
             }}
             onEdit={onEdit}
+            readOnly={readOnly}
           />
         </Stack>
       </Stack>

@@ -10,9 +10,10 @@ import {
 } from "@mui/material";
 import React from "react";
 import ConfirmDelete from "../../components/ConfirmDelete";
+import TooltipProvider from "../../../TooltipProvider";
 
 export default function Actions(props) {
-  const { onDelete, onEdit } = props;
+  const { onDelete, onEdit, readOnly } = props;
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
@@ -22,6 +23,9 @@ export default function Actions(props) {
   const handleClose = () => {
     setAnchorEl(null);
   };
+  const tooltipTitle = readOnly
+    ? "You do not have permission to create scenarios"
+    : "Create Scenario";
 
   return (
     <Stack>
@@ -34,28 +38,35 @@ export default function Actions(props) {
         open={open}
         onClose={handleClose}
       >
-        <MenuItem
-          onClick={() => {
-            onEdit?.();
-            handleClose();
-          }}
-        >
-          <ListItemIcon>
-            <EditOutlined fontSize="small" color="secondary" />
-          </ListItemIcon>
-          <Typography color="secondary">Edit</Typography>
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            setDeleteOpen(true);
-            handleClose();
-          }}
-        >
-          <ListItemIcon>
-            <DeleteOutline fontSize="small" color="error" />
-          </ListItemIcon>
-          <Typography color="error">Delete</Typography>
-        </MenuItem>
+        <TooltipProvider title={tooltipTitle}>
+          <MenuItem
+            onClick={() => {
+              onEdit?.();
+              handleClose();
+            }}
+            disabled={readOnly}
+          >
+            <ListItemIcon>
+              <EditOutlined fontSize="small" color="secondary" />
+            </ListItemIcon>
+            <Typography color="secondary">Edit</Typography>
+          </MenuItem>
+        </TooltipProvider>
+        <TooltipProvider title={tooltipTitle}>
+          <MenuItem
+            onClick={() => {
+              setDeleteOpen(true);
+              handleClose();
+            }}
+            disabled={readOnly}
+            title={tooltipTitle}
+          >
+            <ListItemIcon>
+              <DeleteOutline fontSize="small" color="error" />
+            </ListItemIcon>
+            <Typography color="error">Delete</Typography>
+          </MenuItem>
+        </TooltipProvider>
       </Menu>
       <ConfirmDelete
         open={deleteOpen}

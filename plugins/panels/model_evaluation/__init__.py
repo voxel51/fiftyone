@@ -91,6 +91,9 @@ class EvaluationPanel(Panel):
     def can_delete_scenario(self, ctx):
         return self.get_permissions(ctx).get("can_delete_scenario", False)
 
+    def can_edit_scenario(self, ctx):
+        return self.get_permissions(ctx).get("can__scenario", False)
+
     def on_load(self, ctx):
         store = self.get_store(ctx)
         statuses = store.get("statuses") or {}
