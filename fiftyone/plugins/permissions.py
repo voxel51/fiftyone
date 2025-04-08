@@ -129,7 +129,6 @@ query ListAvailableOperators($datasetIds: [String!], $onlyEnabled: Boolean) {
         enabled
         pluginName
         uri
-        modifiedAt
     }
 }
 """
@@ -139,6 +138,7 @@ query ListAvailablePlugins {
   plugins {
     enabled
     name
+    modifiedAt
   }
 }
 """

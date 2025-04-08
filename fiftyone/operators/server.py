@@ -49,6 +49,7 @@ async def _get_operator_registry_for_route(
                 request, dataset_ids
             )
     else:
+        print("WARN.....USING UNAUTHENTICATED OPERATOR REGISTRY")
         registry = OperatorRegistry()
     return registry
 
@@ -169,6 +170,7 @@ class ExecuteOperator(HTTPEndpoint):
             operator_uri,
             data,
             request_token=request_token,
+            registry_override=registry,
         )
         return result.to_json()
 

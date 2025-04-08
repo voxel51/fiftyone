@@ -84,9 +84,10 @@ class OperatorRegistry(object):
 
     def _build_plugin_contexts(self):
         """Builds the plugin contexts for the registry."""
-        self.plugin_contexts = fopc.build_plugin_contexts(
-            enabled=self._enabled
-        )
+        print("WARNING!!!!!!!!")
+        # print a traceback
+        raise RuntimeError("Should not be called....")
+        return fopc.build_plugin_contexts(enabled=self._enabled)
 
     def list_operators(self, builtin=None, type=None):
         """Lists the available FiftyOne operators.
