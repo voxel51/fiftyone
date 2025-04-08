@@ -5,12 +5,10 @@ Data Quality
 
 .. default-role:: code
 
-**Available in FiftyOne Enterprise v2.2+**
-
 The Data Quality panel is a builtin feature of the
-:ref:`FiftyOne Enterprise App <enterprise-app>` that automatically scans your dataset
-for common quality issues and helps you explore and take action to resolve
-them.
+:ref:`FiftyOne Enterprise App <enterprise-app>` that automatically scans your
+dataset for common quality issues and helps you explore and take action to
+resolve them.
 
 .. _data-quality-home:
 

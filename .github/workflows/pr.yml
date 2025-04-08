@@ -94,6 +94,11 @@ jobs:
     if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' || needs.modified-files.outputs.teams-app-changes == 'true' }}
     uses: ./.github/workflows/test.yml
 
+  test-windows:
+    needs: modified-files
+    if: ${{ needs.modified-files.outputs.fiftyone-changes == 'true' }}
+    uses: ./.github/workflows/windows-test.yml
+
   all-tests:
     runs-on: ubuntu-latest
     needs: [build, lint, test, e2e]
