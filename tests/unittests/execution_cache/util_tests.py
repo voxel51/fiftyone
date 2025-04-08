@@ -67,7 +67,7 @@ class TestCacheUtils(unittest.TestCase):
         def dummy():
             pass
 
-        name = utils._resolve_store_name(create_mock_ctx(), dummy)
+        name = utils._resolve_store_name(dummy)
         self.assertIn("dummy", name)
 
     def test_resolve_store_name_with_attrs(self):
@@ -77,7 +77,7 @@ class TestCacheUtils(unittest.TestCase):
         dummy.store_name = "custom.store"
         dummy.exec_cache_version = "3"
 
-        result = utils._resolve_store_name(create_mock_ctx(), dummy)
+        result = utils._resolve_store_name(dummy)
         self.assertEqual(result, "custom.store#v3")
 
     def test_auto_deserialize_recursive(self):
@@ -163,14 +163,17 @@ class TestCacheUtils(unittest.TestCase):
 
     @patch("fiftyone.operators.store.ExecutionStore.create")
     def test_get_store_for_func_with_dataset(self, mock_create):
-        ctx = create_mock_ctx()
-
         def func():
             pass
 
         func.link_to_dataset = True
 
-        utils._get_store_for_func(ctx, func)
+        self.assertEqual(
+            utils._get_function_id(func),
+            "util_tests.TestCacheUtils.test_get_store_for_func_with_dataset.<locals>.func",
+        )
+
+        utils._get_store_for_func(func, "mock-dataset-id")
         mock_create.assert_called_once_with(
             store_name=utils._get_function_id(func),
             dataset_id="mock-dataset-id",
@@ -179,14 +182,12 @@ class TestCacheUtils(unittest.TestCase):
 
     @patch("fiftyone.operators.store.ExecutionStore.create")
     def test_get_store_for_func_without_dataset(self, mock_create):
-        ctx = create_mock_ctx()
-
         def func():
             pass
 
         func.link_to_dataset = False
 
-        utils._get_store_for_func(ctx, func)
+        utils._get_store_for_func(func)
         mock_create.assert_called_once_with(
             store_name=utils._get_function_id(func),
             dataset_id=None,

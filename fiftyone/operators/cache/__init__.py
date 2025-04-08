@@ -8,7 +8,6 @@ Execution cache.
 import types
 
 from .decorator import execution_cache
-from .manager import clear_all_caches, clear_function_cache
 
 # This tells Sphinx to allow refs to imported objects in this module
 # https://stackoverflow.com/a/31594545/16823653

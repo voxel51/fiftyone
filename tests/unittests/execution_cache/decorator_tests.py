@@ -9,7 +9,11 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from fiftyone.operators.cache import execution_cache
-from fiftyone.operators.cache.utils import _build_cache_key
+from fiftyone.operators.cache.utils import (
+    _build_cache_key,
+    _resolve_store_name,
+    _get_function_id,
+)
 from fiftyone.operators.executor import ExecutionContext
 
 # Mock Execution Context with dataset
@@ -135,9 +139,44 @@ class TestExecutionCacheDecorator(unittest.TestCase):
         mock_create.return_value.delete.assert_called_once_with(cache_key)
 
     @patch("fiftyone.operators.store.ExecutionStore.create")
-    def test_unached(self, mock_create):
+    def test_uncached(self, mock_create):
         """Test that un-cached functions are not cached."""
         ctx = create_mock_ctx()
         result = example_function.uncached(ctx, 1, 2)
         mock_create.assert_not_called()
         self.assertEqual(result, 3)
+
+    @patch("fiftyone.operators.store.ExecutionStore.create")
+    def test_set_cache(self, mock_create):
+        """Test that the cache can be set manually."""
+        ctx = create_mock_ctx()
+        example_function.set_cache(ctx, 1, 2, 42)
+        cache_key = _build_cache_key([1, 2])
+        mock_create.return_value.set_cache.assert_called_once_with(
+            cache_key, 42, ttl=60
+        )
+
+    @patch("fiftyone.operators.store.ExecutionStore.create")
+    def test_clear_all_caches(self, mock_create):
+        """Test that all caches can be cleared."""
+        mock_create.clear()
+
+        @execution_cache(ttl=60)
+        def my_func():
+            pass
+
+        function_id = _get_function_id(my_func)
+        self.assertIsNotNone(function_id)
+        store_name = _resolve_store_name(my_func)
+        self.assertIsNotNone(store_name)
+        my_func.clear_all_caches(dataset_id="mock-dataset-id")
+        # Verify that the clear_cache method was called with the correct arguments
+        mock_create.assert_called_with(
+            dataset_id="mock-dataset-id",
+            store_name=store_name,
+            collection_name=None,
+        )
+        # Verify that the store's delete method was called with the correct cache key
+        # example_function.clear_cache.assert_called_with(
+        #     _build_cache_key(["mock-dataset-id"])
+        # )

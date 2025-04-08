@@ -10,6 +10,7 @@ from fiftyone.operators.cache.utils import (
     _get_ctx_from_args,
     resolve_cache_info,
     auto_deserialize,
+    _get_store_for_func,
 )
 
 from functools import wraps
@@ -20,6 +21,8 @@ _FUNC_ATTRIBUTES = [
     "exec_cache_version",
     "uncached",
     "clear_cache",
+    "set_cache",
+    "clear_all_caches",
 ]
 
 
@@ -112,8 +115,20 @@ def execution_cache(
         # Bypass the cache
         result = expensive_query.uncached(ctx, path)
 
+        # Set the cache for the given arguments
+        expensive_query.set_cache(ctx, path, value_to_cache)
+
         # Clear the cache for the given arguments
         expensive_query.clear_cache(ctx, path)
+
+        # Remove all cache entries for the function
+        expensive_query.clear_all_caches()
+
+        # Clear all cache entries for the function
+        expensive_query.clear_all_caches()
+
+        # NOTE: dataset_id is required if link_to_dataset=True
+        expensive_query.clear_all_caches(dataset_id=dataset._doc.id)
     """
 
     def decorator(func):
@@ -188,6 +203,36 @@ def execution_cache(
             store.delete(cache_key)
 
         wrapper.clear_cache = clear_cache
+
+        def set_cache(*args, **kwargs):
+            arg_to_cache = args[-1]
+            regular_args = args[:-1]
+            ctx, ctx_index = _get_ctx_from_args(args)
+            cache_key, store, _ = resolve_cache_info(
+                ctx,
+                ctx_index,
+                regular_args,
+                kwargs,
+                key_fn,
+                func,
+                operator_scoped=operator_scoped,
+                user_scoped=user_scoped,
+                prompt_scoped=prompt_scoped,
+                jwt_scoped=jwt_scoped,
+                collection_name=collection_name,
+            )
+            value_to_cache = auto_deserialize(arg_to_cache)
+            store.set_cache(cache_key, value_to_cache, ttl=ttl)
+
+        wrapper.set_cache = set_cache
+
+        def clear_all_caches(dataset_id=None):
+            store = _get_store_for_func(
+                func, dataset_id=dataset_id, collection_name=collection_name
+            )
+            store.clear_cache()
+
+        wrapper.clear_all_caches = clear_all_caches
 
         return wrapper
 

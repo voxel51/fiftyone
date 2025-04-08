@@ -2513,8 +2513,17 @@ To cache a function's result scoped to the current ``ctx.dataset``, use the
     # Bypass the cache
     result = expensive_query.uncached(ctx, path)
 
+    # Set the cache for the given arguments
+    expensive_query.set_cache(ctx, path, value_to_cache)
+
     # Clear the cache for a specific input
     expensive_query.clear_cache(ctx, path)
+
+    # Clear all cache entries for the function
+    expensive_query.clear_all_caches()
+
+    # NOTE: dataset_id is required if link_to_dataset=True
+    expensive_query.clear_all_caches(dataset_id=dataset._doc.id)
 
 .. note::
 
