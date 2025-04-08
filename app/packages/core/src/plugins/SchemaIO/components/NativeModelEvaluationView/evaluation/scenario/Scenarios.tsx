@@ -87,7 +87,9 @@ export default function Scenarios(props) {
           scenario_id: fullScenario.id,
           scenario_type: fullScenario.type,
           scenario_name: fullScenario.name,
-          scenario_subsets: fullScenario.subsets,
+          scenario_subsets:
+            fullScenario.type === "custom_code" ? [] : fullScenario.subsets,
+          scenario_subsets_code: fullScenario.subsets_code,
           scenario_field: fullScenario?.field,
           key,
           compare_key: compareKey,
@@ -111,6 +113,7 @@ export default function Scenarios(props) {
     fullScenario,
     key,
     loadScenario,
+    loadScenarios,
     panelId,
     promptOperator,
     scenario,

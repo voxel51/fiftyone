@@ -1,5 +1,6 @@
 from textwrap import dedent
 import fiftyone.core.fields as fof
+from enum import Enum
 
 # NOTE: copied from NativeModelEval
 KEY_COLOR = "#ff6d04"
@@ -13,62 +14,83 @@ ALLOWED_BY_TYPES = (
     fof.FloatField,
 )
 
+
+class CustomCodeViewReason(str, Enum):
+    TOO_MANY_CATEGORIES = "TOO_MANY_CATEGORIES"
+    TOO_MANY_INT_CATEGORIES = "TOO_MANY_INT_CATEGORIES"
+    FLOAT_TYPE = "FLOAT_TYPE"
+    SLOW = "SLOW"
+
+
+class ShowOptionsMethod(str, Enum):
+    CODE = "CODE"
+    CHECKBOX = "CHECKBOX"
+    EMPTY = "EMPTY"
+    AUTOCOMPLETE = "AUTO-COMPLETE"
+
+
+class ScenarioType(str, Enum):
+    VIEW = "view"
+    CUSTOM_CODE = "custom_code"
+    LABEL_ATTRIBUTE = "label_attribute"
+    SAMPLE_FIELD = "sample_field"
+
+
 SCENARIO_BUILDING_CHOICES = [
     {
-        "type": "sample_field",
+        "type": ScenarioType.SAMPLE_FIELD,
         "label": "Select sample fields",
         "icon": "task_outlined",
     },
     {
-        "type": "label_attribute",
+        "type": ScenarioType.LABEL_ATTRIBUTE,
         "label": "Select label attributes",
         "icon": "task_outlined",
     },
     {
-        "type": "view",
+        "type": ScenarioType.VIEW,
         "label": "Select saved views",
         "icon": "folder_special_rounded",
     },
     {
-        "type": "custom_code",
+        "type": ScenarioType.CUSTOM_CODE,
         "label": "Custom code",
         "icon": "code_rounded",
     },
 ]
 
 
-def get_scenario_example(reason="float"):
+def get_scenario_example(reason=ScenarioType.CUSTOM_CODE):
     examples = {
-        "CUSTOM_CODE": dedent(
+        ScenarioType.CUSTOM_CODE: dedent(
             """
             from fiftyone import ViewField as F
 
             subsets = {
-                "Sunny unique objects": [
-                    dict(type="field", field="tags", value="validation"),
-                    dict(type="field", expr=F("brightness") > 0.75),
+                "Unique Objects": [
+                    dict(type="field", expr=F("uniqueness") > 0.75),
                 ],
-                "Rainy common objects": [
-                    dict(type="field", field="tags", value="validation"),
-                    dict(type="field", expr=F("brightness") < 0.25),
+                "Common Objects": [
+                    dict(type="field", expr=F("uniqueness") < 0.16),
                 ]
             }
         """
         ).strip(),
-        "FLOAT_TYPE": dedent(
+        CustomCodeViewReason.FLOAT_TYPE: dedent(
             """
             from fiftyone import ViewField as F
+
             subsets = {
-                "Bright objects": [
-                    dict(type="field", expr=F("brightness") > 0.5),
+                "Unique Objects": [
+                    dict(type="field", expr=F("uniqueness") > 0.75),
                 ],
-                "Dark objects": [
-                    dict(type="field", expr=F("brightness") < 0.5),
+                "Common Objects": [
+                    dict(type="field", expr=F("uniqueness") < 0.165),
                 ]
             }
             """
         ).strip(),
-        "TOO_MANY_CATEGORIES": dedent(
+        CustomCodeViewReason.TOO_MANY_CATEGORIES: dedent(
             """
             from fiftyone import ViewField as F
             bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
@@ -79,7 +101,7 @@ def get_scenario_example(reason="float"):
             }
             """
         ).strip(),
-        "TOO_MANY_INT_CATEGORIES": dedent(
+        CustomCodeViewReason.TOO_MANY_INT_CATEGORIES: dedent(
             """
             from fiftyone import ViewField as F
             subsets = {
@@ -87,21 +109,6 @@ def get_scenario_example(reason="float"):
                 "many ints": dict(type="field", expr=F("int_field") <= 100),
             }
             """
-        ).strip(),
-        "OTHER": dedent(
-            """
-            from fiftyone import ViewField as F
-            subsets = {
-                "Sunny unique objects": [
-                    dict(type="field", field="tags", value="sunny"),
-                    dict(type="field", expr=F("uniqueness") > 0.75),
-                ],
-                "Rainy common objects": [
-                    dict(type="field", field="tags", value="rainy"),
-                    dict(type="field", expr=F("uniqueness") < 0.25),
-                ]
-            }
-        """
         ).strip(),
     }
     return examples.get(reason, "")

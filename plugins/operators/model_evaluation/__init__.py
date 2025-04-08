@@ -19,19 +19,17 @@ from .utils import (
     KEY_COLOR,
     COMPARE_KEY_COLOR,
     MAX_CATEGORIES,
+    CustomCodeViewReason,
+    ShowOptionsMethod,
+    ScenarioType,
 )
 
 STORE_NAME = "model_evaluation_panel_builtin"
 
 
 class ConfigureScenario(foo.Operator):
-    custom_code_views = {
-        "CUSTOM_CODE": False,
-        "TOO_MANY_CATEGORIES": False,
-        "TOO_MANY_INT_CATEGORIES": False,
-        "FLOAT_TYPE": False,
-        "SLOW": False,
-    }
+    # tracks the last view type opened
+    last_view_type_used = None
 
     @property
     def config(self):
@@ -206,7 +204,7 @@ class ConfigureScenario(foo.Operator):
     ):
         scenario_type = self.get_scenario_type(params)
         # NOTE: custom code validation happens at render_custom_code when exec() is called
-        is_invalid = scenario_type != "custom_code"
+        is_invalid = scenario_type != ScenarioType.CUSTOM_CODE
 
         inputs.view(
             "empty_sample_distribution",
@@ -243,8 +241,8 @@ class ConfigureScenario(foo.Operator):
             return self.render_empty_sample_distribution(inputs, ctx.params)
 
         subsets = {}
-        # NOTE: this case is exact same as "sample_field". the only difference is in their UI - we filter differently.
-        if scenario_type == "label_attribute":
+        # NOTE: this case is exact same as ScenarioType.SAMPLE_FIELD. the only difference is in their UI - we filter differently.
+        if scenario_type == ScenarioType.LABEL_ATTRIBUTE:
             scenario_label_attribute = ctx.params.get(
                 "scenario_label_attribute"
             )
@@ -254,7 +252,7 @@ class ConfigureScenario(foo.Operator):
                 )
             self.render_sample_distribution_graph(ctx, inputs, subsets)
 
-        if scenario_type == "sample_field":
+        if scenario_type == ScenarioType.SAMPLE_FIELD:
             scenario_field = ctx.params.get("scenario_field")
             for v in values:
                 subsets[v] = dict(
@@ -266,12 +264,12 @@ class ConfigureScenario(foo.Operator):
                 )
             self.render_sample_distribution_graph(ctx, inputs, subsets)
 
-        if scenario_type == "view":
+        if scenario_type == ScenarioType.VIEW:
             for v in values:
-                subsets[v] = dict(type="view", view=v)
+                subsets[v] = dict(type=ScenarioType.VIEW, view=v)
             self.render_sample_distribution_graph(ctx, inputs, subsets)
 
-        if scenario_type == "custom_code":
+        if scenario_type == ScenarioType.CUSTOM_CODE:
             if not self.is_sample_distribution_enabled_for_custom_code(
                 ctx.params
             ):
@@ -305,13 +303,16 @@ class ConfigureScenario(foo.Operator):
     def get_custom_code_key(self, params):
         scenario_type = self.get_scenario_type(params)
 
-        if scenario_type in ["label_attribute", "sample_field"]:
+        if scenario_type in [
+            ScenarioType.LABEL_ATTRIBUTE,
+            ScenarioType.SAMPLE_FIELD,
+        ]:
             scenario_field = params.get("scenario_field", "")
             return f"custom_code_{scenario_type}_{scenario_field}"
 
-        return "custom_code"
+        return ScenarioType.CUSTOM_CODE
 
-    def extract_custom_code(self, ctx, example_type="CUSTOM_CODE"):
+    def extract_custom_code(self, ctx, example_type=ScenarioType.CUSTOM_CODE):
         # NOTE: this was causing infinite loop
         key = self.get_custom_code_key(ctx.params).replace(".", "_")
 
@@ -321,12 +322,20 @@ class ConfigureScenario(foo.Operator):
             .get(key, "")
         )
 
-        custom_code = custom_code or get_scenario_example(example_type)
+        if not custom_code:
+            custom_code = ctx.params.get("scenario_subsets_code", None)
+
+        if not custom_code:
+            custom_code = get_scenario_example(example_type)
+
         return custom_code, key
 
-    def render_custom_code(self, ctx, inputs, example_type="CUSTOM_CODE"):
+    def render_custom_code(
+        self, ctx, inputs, example_type=ScenarioType.CUSTOM_CODE
+    ):
         custom_code, code_key = self.extract_custom_code(ctx, example_type)
         stack = self.render_custom_code_content(inputs, custom_code, code_key)
+        self.last_view_type_used = ShowOptionsMethod.CODE
 
         if custom_code:
             custom_code_expression, error = self.process_custom_code(
@@ -345,7 +354,10 @@ class ConfigureScenario(foo.Operator):
                 )
             else:
                 self.render_sample_distribution(
-                    ctx, inputs, "custom_code", custom_code_expression
+                    ctx,
+                    inputs,
+                    ScenarioType.CUSTOM_CODE,
+                    custom_code_expression,
                 )
 
     def render_no_values_warning(self, inputs, field_name, link=""):
@@ -363,26 +375,26 @@ class ConfigureScenario(foo.Operator):
         )
 
     def render_use_custom_code_warning(
-        self, inputs, reason="TOO_MANY_CATEGORIES"
+        self, inputs, reason=CustomCodeViewReason.TOO_MANY_CATEGORIES
     ):
         label, description = None, None
 
-        if reason == "TOO_MANY_CATEGORIES":
+        if reason == CustomCodeViewReason.TOO_MANY_CATEGORIES:
             label = "Too many categories."
             description = (
                 f"Selected field has too many values to display. "
                 + "Please use the custom code to define the scenario."
             )
-        if reason == "TOO_MANY_INT_CATEGORIES":
+        if reason == CustomCodeViewReason.TOO_MANY_INT_CATEGORIES:
             label = "Too many distinct integer values."
             description = (
                 f"Selected field has too many values to display. "
                 + "Please use the custom code to define the scenario."
             )
-        if reason == "FLOAT_TYPE":
+        if reason == CustomCodeViewReason.FLOAT_TYPE:
             label = "Float type."
             description = f"To create scenarios based on float fields, please use the custom code mode. "
-        if reason == "SLOW":
+        if reason == CustomCodeViewReason.SLOW:
             label = "Too many values."
             description = f"Found too many distinct values. Please use the auto-complete mode to select the values you want to analyze. "
 
@@ -396,7 +408,7 @@ class ConfigureScenario(foo.Operator):
         )
 
     def render_use_custom_code_instead(
-        self, ctx, inputs, reason="TOO_MANY_CATEGORIES"
+        self, ctx, inputs, reason=CustomCodeViewReason.TOO_MANY_CATEGORIES
     ):
         self.render_use_custom_code_warning(inputs, reason)
         self.render_custom_code(ctx, inputs, example_type=reason)
@@ -407,22 +419,22 @@ class ConfigureScenario(foo.Operator):
         """
         view_names = ctx.dataset.list_saved_views()
         if not view_names:
-            return "EMPTY", []
+            return ShowOptionsMethod.EMPTY, []
 
         view_names = sorted(view_names)
         view_len = len(view_names)
 
         if view_len > MAX_CATEGORIES:
-            return "AUTO-COMPLETE", view_names
+            return ShowOptionsMethod.AUTOCOMPLETE, view_names
 
-        return "CHECKBOX", view_names
+        return ShowOptionsMethod.CHECKBOX, view_names
 
     def render_saved_views(self, ctx, inputs):
         """Renders sample distribution for subsets using saved views."""
-
         view_type, view_names = self.get_saved_view_scenarios_picker_type(ctx)
+        self.last_view_type_used = view_type
 
-        if view_type == "EMPTY":
+        if view_type == ShowOptionsMethod.EMPTY:
             # TODO: Implement design for this case
             self.render_no_values_warning(
                 inputs,
@@ -431,10 +443,13 @@ class ConfigureScenario(foo.Operator):
             )
             return
 
-        if view_type not in {"AUTO-COMPLETE", "CHECKBOX"}:
+        if view_type not in {
+            ShowOptionsMethod.AUTOCOMPLETE,
+            ShowOptionsMethod.CHECKBOX,
+        }:
             raise ValueError(f"Invalid view type: {view_type}")
 
-        if view_type == "AUTO-COMPLETE":
+        if view_type == ShowOptionsMethod.AUTOCOMPLETE:
             self.render_auto_complete_view(ctx, view_names, inputs)
         else:  # CHECKBOX
             self.render_checkbox_view(
@@ -447,11 +462,11 @@ class ConfigureScenario(foo.Operator):
     def get_scenario_values_key(self, params):
         """
         returns a unique key that holds the latest selected values for a
-        - certain scenario type. has to be one of ("view", "label_attribute", "sample_field")
+        - certain scenario type. has to be one of type ScenarioType
         - certain scenario field (ex: "tags", "labels")
         """
         scenario_type = self.get_scenario_type(params)
-        if scenario_type == "view":
+        if scenario_type == ScenarioType.VIEW:
             return f"{scenario_type}_values"
 
         # sample_field selected
@@ -467,13 +482,15 @@ class ConfigureScenario(foo.Operator):
 
     def get_selected_values(self, params):
         key = self.get_scenario_values_key(params)
+        selected_values = None
 
         # checkbox
-        selection_view = params.get("checkbox_view_stack", {}) or {}
-        selected_values = selection_view.get(key, None) or None
+        if self.last_view_type_used == ShowOptionsMethod.CHECKBOX:
+            selection_view = params.get("checkbox_view_stack", {}) or {}
+            selected_values = selection_view.get(key, None) or None
 
         # auto-complete
-        if not selected_values:
+        if self.last_view_type_used == ShowOptionsMethod.AUTOCOMPLETE:
             selected_values = params.get(key, None)
 
         # maybe values were passed in. ex: Edit flow
@@ -533,7 +550,6 @@ class ConfigureScenario(foo.Operator):
                 view=types.CheckboxView(space=4),
             )
 
-        # TODO: if none selected, set invalid true
         stack.define_property(key, obj)
 
         if selected_values:
@@ -543,10 +559,10 @@ class ConfigureScenario(foo.Operator):
         else:
             sub = (
                 "attribute"
-                if scenario_type == "label_attribute"
+                if scenario_type == ScenarioType.LABEL_ATTRIBUTE
                 else (
                     "field"
-                    if scenario_type == "sample_field"
+                    if scenario_type == ScenarioType.SAMPLE_FIELD
                     else "saved view"
                 )
             )
@@ -576,11 +592,11 @@ class ConfigureScenario(foo.Operator):
 
         # Field type-based selection
         if isinstance(field, fof.FloatField):
-            return "CODE", "FLOAT_TYPE"
+            return ShowOptionsMethod.CODE, CustomCodeViewReason.FLOAT_TYPE
         if isinstance(field, fof.BooleanField):
             # example counts {True: 2, None: 135888}
             counts = ctx.dataset.count_values(field_name)
-            return "CHECKBOX", {
+            return ShowOptionsMethod.CHECKBOX, {
                 "true": counts.get(True, 0),
                 "false": counts.get(False, 0),
                 "none": counts.get(None, 0),
@@ -591,22 +607,28 @@ class ConfigureScenario(foo.Operator):
         distinct_count = len(distinct_values)
 
         if distinct_count == 0:
-            return "EMPTY", None
+            return ShowOptionsMethod.EMPTY, None
 
         if distinct_count > MAX_CATEGORIES:
             if isinstance(field, fof.StringField):
-                return "AUTO-COMPLETE", distinct_values
+                return ShowOptionsMethod.AUTOCOMPLETE, distinct_values
             if isinstance(field, fof.IntField):
-                return "CODE", "TOO_MANY_INT_CATEGORIES"
+                return (
+                    ShowOptionsMethod.CODE,
+                    CustomCodeViewReason.TOO_MANY_INT_CATEGORIES,
+                )
             else:
-                return "CODE", "TOO_MANY_CATEGORIES"
+                return (
+                    ShowOptionsMethod.CODE,
+                    CustomCodeViewReason.TOO_MANY_CATEGORIES,
+                )
 
         # NOTE: may be slow for large datasets
         values = ctx.dataset.count_values(field_name)
         return (
-            ("EMPTY", None)
+            (ShowOptionsMethod.EMPTY, None)
             if not values
-            else ("CHECKBOX", dict(sorted(values.items())))
+            else (ShowOptionsMethod.CHECKBOX, dict(sorted(values.items())))
         )
 
     def render_auto_complete_view(self, ctx, values, inputs):
@@ -620,10 +642,11 @@ class ConfigureScenario(foo.Operator):
         values = values or []
 
         scenario_type = self.get_scenario_type(ctx.params)
-        component_key = self.get_scenario_values_key(ctx.params)
-        selected_values = ctx.params.get(component_key, []) or []
+        component_key, selected_values = self.get_selected_values(ctx.params)
 
-        self.render_use_custom_code_warning(inputs, reason="SLOW")
+        self.render_use_custom_code_warning(
+            inputs, reason=CustomCodeViewReason.SLOW
+        )
 
         inputs.list(
             component_key,
@@ -653,10 +676,10 @@ class ConfigureScenario(foo.Operator):
         else:
             sub = (
                 "attribute"
-                if scenario_type == "label_attribute"
+                if scenario_type == ScenarioType.LABEL_ATTRIBUTE
                 else (
                     "field"
-                    if scenario_type == "sample_field"
+                    if scenario_type == ScenarioType.SAMPLE_FIELD
                     else "saved view"
                 )
             )
@@ -671,16 +694,21 @@ class ConfigureScenario(foo.Operator):
         Renders the appropriate UI component based on the picker type.
         """
         view_type, values = self.get_scenarios_picker_type(ctx, field_name)
+        self.last_view_type_used = view_type
 
         render_methods = {
-            "EMPTY": lambda: self.render_no_values_warning(inputs, field_name),
-            "CODE": lambda: self.render_use_custom_code_instead(
+            ShowOptionsMethod.EMPTY: lambda: self.render_no_values_warning(
+                inputs, field_name
+            ),
+            ShowOptionsMethod.CODE: lambda: self.render_use_custom_code_instead(
                 ctx, inputs, reason=values
             ),
-            "AUTO-COMPLETE": lambda: self.render_auto_complete_view(
+            ShowOptionsMethod.AUTOCOMPLETE: lambda: self.render_auto_complete_view(
                 ctx, values, inputs
             ),
-            "CHECKBOX": lambda: self.render_checkbox_view(ctx, values, inputs),
+            ShowOptionsMethod.CHECKBOX: lambda: self.render_checkbox_view(
+                ctx, values, inputs
+            ),
         }
 
         render_methods.get(view_type, lambda: None)()
@@ -798,14 +826,14 @@ class ConfigureScenario(foo.Operator):
     def get_scenario_type(self, params):
         scenario_type = params.get("scenario_type", None)
 
-        # TODO: constant and typed enum
         if scenario_type not in [
-            "view",
-            "custom_code",
-            "label_attribute",
-            "sample_field",
+            ScenarioType.VIEW,
+            ScenarioType.CUSTOM_CODE,
+            ScenarioType.LABEL_ATTRIBUTE,
+            ScenarioType.SAMPLE_FIELD,
         ]:
             raise ValueError("Invalid scenario type")
+
         return scenario_type
 
     def resolve_input(self, ctx):
@@ -830,15 +858,15 @@ class ConfigureScenario(foo.Operator):
 
         gt_field = ctx.params.get("gt_field", None)
 
-        if scenario_type == "custom_code":
+        if scenario_type == ScenarioType.CUSTOM_CODE:
             self.render_custom_code(ctx, inputs)
-        if scenario_type == "label_attribute":
+        if scenario_type == ScenarioType.LABEL_ATTRIBUTE:
             self.render_label_attribute(
                 ctx, inputs, gt_field, chosen_scenario_label_attribute
             )
-        if scenario_type == "view":
+        if scenario_type == ScenarioType.VIEW:
             self.render_saved_views(ctx, inputs)
-        if scenario_type == "sample_field":
+        if scenario_type == ScenarioType.SAMPLE_FIELD:
             self.render_sample_fields(ctx, inputs, chosen_scenario_field_name)
 
         prompt = types.PromptView(submit_button_label="Analyze scenario")
@@ -950,34 +978,43 @@ class ConfigureScenario(foo.Operator):
         scenarios_for_eval = scenarios.get(eval_id_a) or {}
         scenario_field = None
 
-        if scenario_type in ["label_attribute", "sample_field"]:
-            _, scenario_subsets = self.get_selected_values(ctx.params)
-
-            scenario_field = ctx.params.get("scenario_field", "")
-            if not scenario_field:
+        if scenario_type in [
+            ScenarioType.LABEL_ATTRIBUTE,
+            ScenarioType.SAMPLE_FIELD,
+        ]:
+            if scenario_type == ScenarioType.SAMPLE_FIELD:
+                scenario_field = ctx.params.get("scenario_field", "")
+            elif scenario_type == ScenarioType.LABEL_ATTRIBUTE:
                 scenario_field = ctx.params.get("scenario_label_attribute", "")
 
-            if not scenario_subsets:
-                # check custom_code
+            # for example uniqueness scenario_field in sample_field mode would show custom code
+            if self.last_view_type_used == ShowOptionsMethod.CODE:
                 custom_code, _ = self.extract_custom_code(ctx)
                 if custom_code:
                     # NOTE: we have to do this to reconstruct the custom code back when edit / view later.
-                    scenario_type = "custom_code"
+                    scenario_type = ScenarioType.CUSTOM_CODE
                     scenario_subsets = custom_code
+                    scenario_field = None  # save None when custom code is used
                 else:
-                    raise ValueError("No sample field selected")
-        elif scenario_type == "custom_code":
+                    raise ValueError("Cannot extract custom code for scenario")
+            else:
+                _, scenario_subsets = self.get_selected_values(ctx.params)
+
+        elif scenario_type == ScenarioType.CUSTOM_CODE:
             custom_code, _ = self.extract_custom_code(ctx)
             _, error = self.process_custom_code(ctx, custom_code)
             if error:
                 raise ValueError(f"Error in custom code: {error}")
 
             scenario_subsets = custom_code
-        elif scenario_type == "view":
+            scenario_field = None  # save None when custom code is used
+        elif scenario_type == ScenarioType.VIEW:
             _, scenario_subsets = self.get_selected_values(ctx.params)
 
             if len(scenario_subsets) == 0:
                 raise ValueError("No saved views selected")
+
+            scenario_field = None
 
         existing_scenario_id = ctx.params.get("scenario_id", None)
         if existing_scenario_id:
@@ -1002,7 +1039,9 @@ class ConfigureScenario(foo.Operator):
         return {
             "scenario_type": ctx.params.get("radio_choices", ""),
             "scenario_field": ctx.params.get("scenario_field", ""),
-            "label_attribute": ctx.params.get("label_attribute", ""),
+            ScenarioType.LABEL_ATTRIBUTE: ctx.params.get(
+                ScenarioType.LABEL_ATTRIBUTE, ""
+            ),
             "name": scenario_name,
             "id": scenario_id_str,
         }

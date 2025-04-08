@@ -920,6 +920,8 @@ class EvaluationPanel(Panel):
                     scenario_data["subsets_data"]["All"] = subset_data
                     subsets_names.append("All")
             scenario_data["subsets"] = subsets_names
+            # NOTE: Mani added this - we need the original custom code for Edit flow
+            scenario_data["subsets_code"] = custom_code
         elif scenario_type == "view":
             scenario_subsets = scenario.get("subsets", [])
             for subset in scenario_subsets:
