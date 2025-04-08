@@ -2503,8 +2503,9 @@ To cache a function's result scoped to the current ``ctx.dataset``, use the
             return ctx.dataset.count_values(path)
 
     # Using a custom key function with user-level scoping
+    # NOTE: must return a tuple or list
     def custom_key_fn(ctx, path):
-        return [path, ctx.user_id]
+        return path, ctx.user_id
 
     @execution_cache(ttl=90, key_fn=custom_key_fn, jwt_scoped=True)
     def user_specific_query(ctx, path):
