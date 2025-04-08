@@ -110,8 +110,8 @@ def resolve_cache_info(
         A tuple containing the cache key, store, and a boolean indicating
         whether to skip the cache.
     """
-    cached_disabled = fo.config.execution_cache_enabled == False
-    if cached_disabled:
+    cache_disabled = not fo.config.execution_cache_enabled
+    if cache_disabled:
         return None, None, True
     base_cache_key_list = _get_cache_key_list(ctx_index, args, kwargs, key_fn)
 
