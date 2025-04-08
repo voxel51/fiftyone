@@ -10,6 +10,7 @@ from typing import List, Optional, Tuple
 
 from bson import ObjectId
 import strawberry as gql
+from bson.errors import InvalidId
 
 import fiftyone.core.collections as foc
 import fiftyone.core.dataset as fod
@@ -526,8 +527,12 @@ def _make_query(path: str, field: fof.Field, args):
         return _make_range_query(path, field, args)
 
     values = args.get("values", None)
-    if isinstance(field, fof.ObjectIdField):
-        values = list(map(lambda v: ObjectId(v), args["values"]))
+    if isinstance(field, fof.ObjectIdField) and values:
+        for i, v in enumerate(values):
+            try:
+                values[i] = ObjectId(v)
+            except InvalidId:
+                values[i] = v
 
     if isinstance(field, (fof.ObjectIdField, fof.StringField)):
         return {path: {"$nin" if args["exclude"] else "$in": values}}

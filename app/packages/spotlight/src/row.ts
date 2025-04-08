@@ -158,7 +158,7 @@ export default class Row<K, V> {
   }: {
     attr: typeof BOTTOM | typeof TOP;
     element: HTMLDivElement;
-    measure: Measure<K, V>;
+    measure?: Measure<K, V>;
     spotlight: Spotlight<K, V>;
     zooming: boolean;
   }) {
@@ -174,15 +174,14 @@ export default class Row<K, V> {
         return;
       }
 
-      measure(item, () =>
-        this.#config.showItem({
-          id: item.id,
-          dimensions: [width, this.height],
-          element,
-          spotlight,
-          zooming,
-        })
-      );
+      const bytes = this.#config.showItem({
+        id: item.id,
+        dimensions: [width, this.height],
+        element,
+        spotlight,
+        zooming,
+      });
+      measure?.(item, bytes);
     }
   }
 

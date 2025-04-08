@@ -337,7 +337,7 @@ visualization run by passing the `method` parameter to
 .. code:: python
     :linenos:
 
-    index = fob.compute_visualization(..., method="<method>", ...)
+    results = fob.compute_visualization(..., method="<method>", ...)
 
 Alternatively, you can change your default dimensionality reduction method for
 an entire session by setting the `FIFTYONE_BRAIN_DEFAULT_VISUALIZATION_METHOD`
@@ -383,7 +383,7 @@ time you call
 .. code:: python
     :linenos:
 
-    index = fob.compute_visualization(
+    results = fob.compute_visualization(
         ...
         method="umap",
         min_dist=0.2,
@@ -391,6 +391,83 @@ time you call
 
 Alternatively, you can more permanently configure your dimensionality reduction
 method(s) via your :ref:`brain config <brain-config>`.
+
+.. _brain-optimizing-lassoing-performance:
+
+Optimizing lassoing performance
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can pass ``create_index=True`` to
+:meth:`compute_visualization() <fiftyone.brain.compute_visualization>` to store
+a spatial index of the computed points in a field of your dataset's samples.
+
+This is highly recommended for large datasets as it enables efficient querying
+when lassoing points in the :ref:`Embeddings panel <app-embeddings-panel>`.
+
+.. tabs::
+
+  .. group-tab:: Image embeddings
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.brain as fob
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        # Generate a visualization with a spatial index
+        results = fob.compute_visualization(
+            dataset,
+            brain_key="img_viz",
+            create_index=True,
+        )
+
+  .. group-tab:: Object embeddings
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.brain as fob
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        # Generate a patch visualization with a spatial index
+        results = fob.compute_visualization(
+            dataset,
+            patches_field="ground_truth",
+            brain_key="gt_viz",
+            create_index=True,
+        )
+
+.. note::
+
+    By default, spatial indexes are created in a field/attribute with name
+    ``brain_key``, but you can customize this by passing the ``points_field``
+    parameter to
+    :meth:`compute_visualization() <fiftyone.brain.compute_visualization>`.
+
+You can check whether an existing visualization result has a spatial index
+via
+:meth:`has_spatial_index <fiftyone.brain.visualization.VisualizationResults.has_spatial_index>`,
+and you can add or remove spatial indexes via
+:meth:`index_points() <fiftyone.brain.visualization.VisualizationResults.index_points>` and
+:meth:`remove_index() <fiftyone.brain.visualization.VisualizationResults.remove_index>`:
+
+.. code-block:: python
+    :linenos:
+
+    print(results.has_spatial_index)
+    # True/False
+
+    # Add a spatial index to existing visualization results
+    results.index_points()
+
+    # Remove the spatial index from existing visualization results
+    results.remove_index()
 
 .. _brain-similarity:
 
