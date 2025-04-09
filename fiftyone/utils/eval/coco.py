@@ -241,7 +241,13 @@ class COCOEvaluation(DetectionEvaluation):
             classes,
             recall_sweep,
         ) = _compute_pr_curves(
-            samples, self.config, classes=classes, progress=progress
+            samples,
+            self.config,
+            classes=classes,
+            progress=progress,
+            workers=workers,
+            batch_method=batch_method,
+            parallelize_method=parallelize_method,
         )
 
         return COCODetectionResults(
@@ -718,7 +724,15 @@ def _compute_matches(
     return matches
 
 
-def _compute_pr_curves(samples, config, classes=None, progress=None):
+def _compute_pr_curves(
+    samples,
+    config,
+    classes=None,
+    progress=None,
+    workers=None,
+    batch_method="id",
+    parallelize_method=None,
+):
     gt_field = config.gt_field
     pred_field = config.pred_field
     iou_threshs = config.iou_threshs
@@ -735,19 +749,32 @@ def _compute_pr_curves(samples, config, classes=None, progress=None):
         _classes = set()
 
     logger.info("Performing IoU sweep...")
-    for sample in samples.iter_samples(progress=progress):
+    if parallelize_method is None and workers is None:
+        workers = 1
+
+    def map_func(sample):
         if processing_frames:
             images = sample.frames.values()
         else:
             images = [sample]
 
+        result = []
         for image in images:
             # Don't edit user's data during sweep
             gts = _copy_labels(image[gt_field])
             preds = _copy_labels(image[pred_field])
+            result.append(_coco_evaluation_iou_sweep(gts, preds, config))
 
-            matches_list = _coco_evaluation_iou_sweep(gts, preds, config)
+        return result
 
+    for _, result in samples.map_samples(
+        map_func,
+        workers=workers,
+        batch_method=batch_method,
+        parallelize_method=parallelize_method,
+        progress=progress,
+    ):
+        for matches_list in result:
             for idx, matches in enumerate(matches_list):
                 for match in matches:
                     gt_label = match[0]

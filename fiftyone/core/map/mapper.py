@@ -230,6 +230,7 @@ class LocalMapper(Mapper, abc.ABC):
         # If workers is <=1 on the same local machine, no need for the
         # overhead of trying to parallelize.
         if self._workers <= 1:
+            print("Using single process")
             for sample in sample_collection.iter_samples(
                 progress=progress, autosave=save
             ):
@@ -241,6 +242,7 @@ class LocalMapper(Mapper, abc.ABC):
                     yield sample.id, res
             return
 
+        print("Using multiple processes")
         for sample_id, err, res in self._map_samples_multiple_workers(
             sample_collection,
             map_fcn,
