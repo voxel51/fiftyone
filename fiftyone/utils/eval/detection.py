@@ -442,6 +442,9 @@ class DetectionEvaluation(BaseEvaluationMethod):
         classes=None,
         missing=None,
         progress=None,
+        workers=None,
+        batch_method="id",
+        parallelize_method=None,
     ):
         """Generates aggregate evaluation results for the samples.
 
@@ -463,6 +466,13 @@ class DetectionEvaluation(BaseEvaluationMethod):
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
+            workers (None): number of workers to use to compute detections, if
+                applicable for parallel processing.
+            batch_method ("id"): the method to use to batch the dataset for
+                parallel processing. The supported values are ``"id"`` and
+                ``"slice"``.
+            parallelize_method (None): the backend to use for multiprocessing.
+                The supported values are ``"thread"`` and ``"process"``.
 
         Returns:
             a :class:`DetectionResults`
