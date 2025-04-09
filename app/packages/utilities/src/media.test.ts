@@ -10,7 +10,7 @@ import {
 
 const pointCloudTypes = ["point-cloud", "point_cloud"];
 const fo3dTypes = ["3d", "three_d"];
-const otherTypes = ["image", "video", "other"];
+const otherTypes = ["image", "video", "other", undefined];
 
 describe("media utils", () => {
   describe("isFo3d", () => {
@@ -20,6 +20,7 @@ describe("media utils", () => {
 
     it("should return false for other types", () => {
       pointCloudTypes.forEach((mt) => expect(isFo3d(mt)).toBeFalsy());
+      otherTypes.forEach((mt) => expect(isFo3d(mt)).toBeFalsy());
     });
   });
 
@@ -27,8 +28,10 @@ describe("media utils", () => {
     it("should return true for point cloud types", () => {
       pointCloudTypes.forEach((mt) => expect(isPointCloud(mt)).toBeTruthy());
     });
+
     it("should return false for other types", () => {
       fo3dTypes.forEach((mt) => expect(isPointCloud(mt)).toBeFalsy());
+      otherTypes.forEach((mt) => expect(isPointCloud(mt)).toBeFalsy());
     });
   });
 
@@ -50,6 +53,7 @@ describe("media utils", () => {
 
     it("should return false for other types", () => {
       expect(setContainsFo3d(new Set(pointCloudTypes))).toBeFalsy();
+      expect(setContainsFo3d(new Set(otherTypes))).toBeFalsy();
     });
   });
 
@@ -60,6 +64,7 @@ describe("media utils", () => {
 
     it("should return false for other types", () => {
       expect(setContainsPointCloud(new Set(fo3dTypes))).toBeFalsy();
+      expect(setContainsPointCloud(new Set(otherTypes))).toBeFalsy();
     });
   });
 
