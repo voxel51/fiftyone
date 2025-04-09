@@ -748,6 +748,7 @@ class ImageGetItem(GetItem):
         self.transform = transform
         self.raw_inputs = raw_inputs
         self.using_half_precision = using_half_precision
+        self.add_required_fields("filepath")
 
     def sample_dict_to_input(self, sample_dict):
         img = _load_image(
