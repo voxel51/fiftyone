@@ -132,7 +132,6 @@ class ThreadMapper(fomm.LocalMapper):
                 batch_collection = batch.create_subset(sample_collection)
                 sample_iter = batch_collection.iter_samples(autosave=save)
 
-
                 # This is for a per-worker progress bar.
                 worker_progress_bar = None
                 if progress == "workers":
@@ -213,25 +212,10 @@ class ThreadMapper(fomm.LocalMapper):
                     total=sum(batch.total for batch in sample_batches),
                     progress=progress,
                 ) as pb:
-                    # Wait for all workers to finish
-<<<<<<< HEAD
-                    results = get_results(result_queue, worker_done_events)
-                    while not all(e.is_set() for e in worker_done_events):
-                        pb.update()
-
-                    # This is for the global progress bar
-                    # if progress is True:
-                    #     with fou.ProgressBar(
-                    #         total=sum(batch.total for batch in sample_batches)
-                    #     )
-
-                    yield from results
-=======
                     for result in get_results(
                         result_queue, worker_done_events
                     ):
                         pb.update()
                         yield result
             else:
-                yield from results
->>>>>>> 754777d362 (update per-worker implementation and global implementation for threading)
+                yield from get_results(result_queue, worker_done_events)
