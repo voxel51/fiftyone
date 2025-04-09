@@ -216,7 +216,6 @@ class ThreadMapper(fomm.LocalMapper):
                     total=sum(batch.total for batch in sample_batches),
                     progress=progress,
                 ) as pb:
-                    # Wait for all workers to finish
                     for result in get_results(
                         result_queue, worker_done_events
                     ):
