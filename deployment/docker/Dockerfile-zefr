@@ -7,7 +7,8 @@ ARG PYTHON_VERSION=3.11
 FROM python:${PYTHON_VERSION} AS wheelhouse
 ARG PIP_INDEX_URL=https://pypi.org/simple
 
-RUN pip wheel --wheel-dir=/tmp/wheels qdrant-client open-clip-torch
+RUN pip install -U pip wheel setuptools && \
+    pip wheel --wheel-dir=/tmp/wheels qdrant-client open-clip-torch
 
 
 FROM ${CV_BASE_IMAGE_NAME} AS zefrplugins

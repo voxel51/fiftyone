@@ -19,7 +19,8 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # pycocotools==2.0.8  seems required for super-gradients
-RUN pip wheel --wheel-dir=/tmp/wheels \
+RUN pip install -U pip wheel setuptools && \
+    pip wheel --wheel-dir=/tmp/wheels \
         open3d \
         open_clip_torch \
         "pycocotools==2.0.8" \
