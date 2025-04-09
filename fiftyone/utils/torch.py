@@ -468,18 +468,6 @@ def _recursive_to_device(obj, device):
         return obj
 
 
-def _recursive_to_cpu_numpy(obj):
-    """Recursively moves tensors nested in dicts or lists to CPU and converts to numpy."""
-    if isinstance(obj, torch.Tensor):
-        return obj.detach().cpu().numpy()
-    elif isinstance(obj, dict):
-        return {k: _recursive_to_cpu_numpy(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [_recursive_to_cpu_numpy(v) for v in obj]
-    else:
-        return obj
-
-
 class TorchModelConfig(fom.ModelConfig):
     def __init__(self, d):
         super().__init__(d)
@@ -723,6 +711,17 @@ class TorchModel(
         return self.predict_all([input])
 
     def predict_all(self, batch):
+        """Main inference code
+
+        Args:
+            batch:  a list of input data.
+                If preprocess is True, this should be a list of samples.
+                If preprocess is False, this should be the result of
+                    [self.get_item(sample) for sample in batch]
+
+        Returns:
+            Output, potentially post processed.
+        """
         if self.preprocess:
             input = [self.get_item(input) for input in batch]
             input = torch.utils.data.default_collate(input)
@@ -733,7 +732,7 @@ class TorchModel(
         if self.postprocess:
             return self._output_processor(raw_output)
 
-        return _recursive_to_cpu_numpy(raw_output)
+        return _recursive_to_device(raw_output, device="cpu")
 
 
 class ImageGetItem(GetItem):
@@ -1008,47 +1007,41 @@ class TorchImageModel(fom.LogitsMixin, TorchModel):
         """The keypoint skeleton for the model, if any."""
         return self._skeleton
 
-    def predict(self, img):
-        """Performs prediction on the given image.
-
-        Args:
-            img: the image to process, which can be any of the following:
-
-                - A PIL image
-                - A uint8 numpy array (HWC)
-                - A Torch tensor (CHW)
-
-        Returns:
-            a :class:`fiftyone.core.labels.Label` instance or dict of
-            :class:`fiftyone.core.labels.Label` instances containing the
-            predictions
-        """
-        if isinstance(img, torch.Tensor):
-            imgs = img.unsqueeze(0)
+    def predict_all(self, batch):
+        """Overwriting parent because it's the only way I think I can stay clean
+        and backwards compatible. Generally subclasses shouldn't need to. If they
+        are it means that they are improperly using one of the core computation parts.
+        i.e. GetItem, Model, OutputProcessor"""
+        if self.preprocess:
+            imgs = [self.get_item(input) for input in batch]
         else:
-            imgs = [img]
+            # already images
+            imgs = batch
 
-        return self._predict_all(imgs)[0]
+        height, width = None, None
 
-    def predict_all(self, imgs):
-        """Performs prediction on the given batch of images.
+        img = imgs[0]
+        if isinstance(img, torch.Tensor):
+            height, width = img.size()[-2:]
+        elif isinstance(img, Image.Image):
+            width, height = img.size
+        elif isinstance(img, np.ndarray):
+            height, width = img.shape[:2]
 
-        Args:
-            imgs: the batch of images to process, which can be any of the
-                following:
+        imgs = _recursive_to_device(imgs, self.device)
 
-                - A list of PIL images
-                - A list of uint8 numpy arrays (HWC)
-                - A list of Torch tensors (CHW)
-                - A uint8 numpy tensor (NHWC)
-                - A Torch tensor (NCHW)
+        raw_output = self._forward_pass(imgs)
 
-        Returns:
-            a list of :class:`fiftyone.core.labels.Label` instances or a list
-            of dicts of :class:`fiftyone.core.labels.Label` instances
-            containing the predictions
-        """
-        return self._predict_all(imgs)
+        if self.postprocess:
+            if self.has_logits:
+                self._output_processor.store_logits = self.store_logits
+            return self._output_processor(
+                raw_output,
+                (width, height),
+                confidence_thresh=self.config.confidence_thresh,
+            )
+
+        return _recursive_to_device(raw_output, device="cpu")
 
     def _predict_all(self, imgs):
         if self._preprocess and self._transforms is not None:
