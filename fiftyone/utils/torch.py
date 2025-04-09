@@ -376,9 +376,15 @@ class GetItem:
 class TorchModelConfig(fom.ModelConfig):
     def __init__(self, d):
         super().__init__(d)
+        self.model = self.parse_raw(d, "model", default=None)
+        self.entrypoint_fcn = self.parse_raw(d, "entrypoint_fcn", default=None)
+        self.entrypoint_args = self.parse_dict(
+            d, "entrypoint_args", default=None
+        )
 
         self.device = self.parse_string(d, "device", default=None)
 
+        # getitem / preprocess
         self.get_item_cls = self.parse_string(d, "get_item_cls", default=None)
         self.get_item_args = self.parse_dict(d, "get_item_args", default=None)
 
@@ -386,6 +392,7 @@ class TorchModelConfig(fom.ModelConfig):
             d, "ragged_batches", default=None
         )
 
+        # postprocess
         self.output_processor = self.parse_raw(
             d, "output_processor", default=None
         )
@@ -396,15 +403,47 @@ class TorchModelConfig(fom.ModelConfig):
             d, "output_processor_args", default=None
         )
 
+        # embeddings
+        self.embeddings_layer = self.parse_string(
+            d, "embeddings_layer", default=None
+        )
+        self.as_feature_extractor = self.parse_bool(
+            d, "as_feature_extractor", default=False
+        )
+
+        # AMP
+        self.use_half_precision = self.parse_bool(
+            d, "use_half_precision", default=None
+        )
+
+        # grad
+        self.no_grad = self.parse_bool(d, "no_grad", default=True)
+
+        # benchmark
+        self.cudnn_benchmark = self.parse_bool(
+            d, "cudnn_benchmark", default=None
+        )
+
 
 class TorchModel(fom.Model, fom.SamplesMixin, fom.TorchModelMixin):
     def __init__(self, config):
         super().__init__()
         self.config = config
 
+        # Load model
+        self._download_model(config)
+        self._model = self._load_model(config)
+
         # build get item
         self.get_item = self._build_get_item(config)
         self._preprocess = True  # flip to false when dataloading
+        # assume batches aren't ragged. May cause some issues but by default gives better performance
+        # most of the time.
+        self._ragged_batches = (
+            config.ragged_batches
+            if config.ragged_batches is not None
+            else False
+        )
 
         # Build output processor
         self._output_processor = self._build_output_processor(config)
@@ -423,6 +462,58 @@ class TorchModel(fom.Model, fom.SamplesMixin, fom.TorchModelMixin):
         self._device = torch.device(device)
         self._using_gpu = self._device.type in ("cuda", "mps")
         self._using_half_precision = self.config.use_half_precision
+        self._no_grad = None
+        self._benchmark_orig = None
+
+        TorchEmbeddingsMixin.__init__(
+            self,
+            self._model,
+            layer_name=self.config.embeddings_layer,
+            as_feature_extractor=self.config.as_feature_extractor,
+        )
+
+    def __enter__(self):
+        if self.config.cudnn_benchmark is not None:
+            self._benchmark_orig = torch.backends.cudnn.benchmark
+            torch.backends.cudnn.benchmark = self.config.cudnn_benchmark
+
+        if self._no_grad:
+            self._no_grad = torch.no_grad()
+            self._no_grad.__enter__()
+
+        return self
+
+    def __exit__(self, *args):
+        if self.config.cudnn_benchmark is not None:
+            torch.backends.cudnn.benchmark = self._benchmark_orig
+            self._benchmark_orig = None
+
+        if self._no_grad:
+            self._no_grad.__exit__(*args)
+            self._no_grad = True
+
+    def _download_model(self, config):
+        pass
+
+    def _load_model(self, config):
+        if config.model is not None:
+            model = config.model
+        else:
+            entrypoint_fcn = config.entrypoint_fcn
+
+            if etau.is_str(entrypoint_fcn):
+                entrypoint_fcn = etau.get_function(entrypoint_fcn)
+
+            kwargs = config.entrypoint_args or {}
+            model = entrypoint_fcn(**kwargs)
+
+        model = model.to(self._device)
+        if self.using_half_precision:
+            model = model.half()
+
+        model.eval()
+
+        return model
 
     @property
     def using_gpu(self):
@@ -468,8 +559,16 @@ class TorchModel(fom.Model, fom.SamplesMixin, fom.TorchModelMixin):
         kwargs = config.get_item_args or {}
         return get_item_cls(**kwargs)
 
+    @property
+    def ragged_batches(self):
+        """Whether :meth:`transforms` may return tensors of different sizes.
+        If True, then passing ragged lists of images to :meth:`predict_all` may
+        not be not allowed.
+        """
+        return self._ragged_batches
+
     @torch.no_grad()
-    def _forward(self, batch):
+    def _forward_pass(self, batch):
         """Applies a forward pass to the given batch of data and returns the
         raw model output with no processing applied.
 
@@ -479,7 +578,7 @@ class TorchModel(fom.Model, fom.SamplesMixin, fom.TorchModelMixin):
         Returns:
             the raw output of the model
         """
-        raise NotImplementedError("subclasses must implement _forward()")
+        return self._model(batch)
 
     @property
     def postprocess(self):
@@ -515,7 +614,7 @@ class TorchModel(fom.Model, fom.SamplesMixin, fom.TorchModelMixin):
         if self.preprocess:
             input = self.get_item(input)
 
-        raw_output = self._forward(input)
+        raw_output = self._forward_pass(input)
 
         if self.postprocess:
             return self._output_processor(raw_output)
@@ -714,33 +813,16 @@ class TorchImageModelConfig(foc.Config):
             running
         device (None): a string specifying the device to use, eg
             ``("cuda:0", "mps", "cpu")``. By default, CUDA is used if
-            available, else CPU is used
+            available, then MPS, else CPU is used
     """
 
     def __init__(self, d):
-        self.model = self.parse_raw(d, "model", default=None)
-        self.entrypoint_fcn = self.parse_raw(d, "entrypoint_fcn", default=None)
-        self.entrypoint_args = self.parse_dict(
-            d, "entrypoint_args", default=None
-        )
         self.transforms = self.parse_raw(d, "transforms", default=None)
         self.transforms_fcn = self.parse_raw(d, "transforms_fcn", default=None)
         self.transforms_args = self.parse_dict(
             d, "transforms_args", default=None
         )
-        # self.ragged_batches = self.parse_bool(
-        #     d, "ragged_batches", default=None
-        # )
         self.raw_inputs = self.parse_bool(d, "raw_inputs", default=None)
-        # self.output_processor = self.parse_raw(
-        #     d, "output_processor", default=None
-        # )
-        # self.output_processor_cls = self.parse_raw(
-        #     d, "output_processor_cls", default=None
-        # )
-        # self.output_processor_args = self.parse_dict(
-        #     d, "output_processor_args", default=None
-        # )
         self.confidence_thresh = self.parse_number(
             d, "confidence_thresh", default=None
         )
@@ -773,19 +855,6 @@ class TorchImageModelConfig(foc.Config):
         )
         self.image_mean = self.parse_array(d, "image_mean", default=None)
         self.image_std = self.parse_array(d, "image_std", default=None)
-        self.embeddings_layer = self.parse_string(
-            d, "embeddings_layer", default=None
-        )
-        self.as_feature_extractor = self.parse_bool(
-            d, "as_feature_extractor", default=False
-        )
-        self.use_half_precision = self.parse_bool(
-            d, "use_half_precision", default=None
-        )
-        self.cudnn_benchmark = self.parse_bool(
-            d, "cudnn_benchmark", default=None
-        )
-        # self.device = self.parse_string(d, "device", default=None)
 
 
 class TorchImageModel(TorchEmbeddingsMixin, fom.LogitsMixin, TorchModel):
@@ -798,22 +867,8 @@ class TorchImageModel(TorchEmbeddingsMixin, fom.LogitsMixin, TorchModel):
     """
 
     def __init__(self, config):
+        super().__init__(config)
         self.config = config
-
-        # device = self.config.device
-        # if device is None:
-        #     device = "cuda:0" if torch.cuda.is_available() else "cpu"
-
-        # # Device details
-        # self._device = torch.device(device)
-        # self._using_gpu = self._device.type in ("cuda", "mps")
-        # self._using_half_precision = self.config.use_half_precision
-        self._no_grad = None
-        self._benchmark_orig = None
-
-        # Load model
-        self._download_model(config)
-        self._model = self._load_model(config)
 
         # Build transforms
         transforms, ragged_batches = self._build_transforms(config)
@@ -826,34 +881,7 @@ class TorchImageModel(TorchEmbeddingsMixin, fom.LogitsMixin, TorchModel):
         self._mask_targets = self._parse_mask_targets(config)
         self._skeleton = self._parse_skeleton(config)
 
-        # # Build output processor
-        # self._output_processor = self._build_output_processor(config)
-
         fom.LogitsMixin.__init__(self)
-        TorchEmbeddingsMixin.__init__(
-            self,
-            self._model,
-            layer_name=self.config.embeddings_layer,
-            as_feature_extractor=self.config.as_feature_extractor,
-        )
-
-    def __enter__(self):
-        if self.config.cudnn_benchmark is not None:
-            self._benchmark_orig = torch.backends.cudnn.benchmark
-            torch.backends.cudnn.benchmark = self.config.cudnn_benchmark
-
-        self._no_grad = torch.no_grad()
-        self._no_grad.__enter__()
-        return self
-
-    def __exit__(self, *args):
-        if self.config.cudnn_benchmark is not None:
-            torch.backends.cudnn.benchmark = self._benchmark_orig
-            self._benchmark_orig = None
-
-        if self._no_grad is not None:
-            self._no_grad.__exit__(*args)
-            self._no_grad = None
 
     @property
     def media_type(self):
@@ -866,43 +894,11 @@ class TorchImageModel(TorchEmbeddingsMixin, fom.LogitsMixin, TorchModel):
         return isinstance(self._output_processor, ClassifierOutputProcessor)
 
     @property
-    def ragged_batches(self):
-        """Whether :meth:`transforms` may return tensors of different sizes.
-        If True, then passing ragged lists of images to :meth:`predict_all` may
-        not be not allowed.
-        """
-        return self._ragged_batches
-
-    @property
     def transforms(self):
         """A ``torchvision.transforms`` function that will be applied to each
         input before prediction, if any.
         """
         return self._transforms
-
-    # @property
-    # def preprocess(self):
-    #     """Whether to apply preprocessing transforms for inference, if any."""
-    #     return self._preprocess
-
-    # @preprocess.setter
-    # def preprocess(self, value):
-    #     self._preprocess = value
-
-    # @property
-    # def using_gpu(self):
-    #     """Whether the model is using GPU."""
-    #     return self._using_gpu
-
-    # @property
-    # def device(self):
-    #     """The :class:`torch:torch.torch.device` that the model is using."""
-    #     return self._device
-
-    # @property
-    # def using_half_precision(self):
-    #     """Whether the model is using half precision."""
-    #     return self._using_half_precision
 
     @property
     def classes(self):
@@ -1049,29 +1045,6 @@ class TorchImageModel(TorchEmbeddingsMixin, fom.LogitsMixin, TorchModel):
             return foo.KeypointSkeleton.from_dict(config.skeleton)
 
         return None
-
-    def _download_model(self, config):
-        pass
-
-    def _load_model(self, config):
-        if config.model is not None:
-            model = config.model
-        else:
-            entrypoint_fcn = config.entrypoint_fcn
-
-            if etau.is_str(entrypoint_fcn):
-                entrypoint_fcn = etau.get_function(entrypoint_fcn)
-
-            kwargs = config.entrypoint_args or {}
-            model = entrypoint_fcn(**kwargs)
-
-        model = model.to(self._device)
-        if self.using_half_precision:
-            model = model.half()
-
-        model.eval()
-
-        return model
 
     def _build_transforms(self, config):
         if config.ragged_batches is not None:
