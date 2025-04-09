@@ -460,13 +460,22 @@ def _recursive_to_device(obj, device):
     """Recursively moves tensors nested in dicts or lists to the given device."""
     if isinstance(obj, torch.Tensor):
         return obj.to(device)
-
     elif isinstance(obj, dict):
         return {k: _recursive_to_device(v, device) for k, v in obj.items()}
-
     elif isinstance(obj, list):
         return [_recursive_to_device(v, device) for v in obj]
+    else:
+        return obj
 
+
+def _recursive_to_cpu_numpy(obj):
+    """Recursively moves tensors nested in dicts or lists to CPU and converts to numpy."""
+    if isinstance(obj, torch.Tensor):
+        return obj.detach().cpu().numpy()
+    elif isinstance(obj, dict):
+        return {k: _recursive_to_cpu_numpy(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_recursive_to_cpu_numpy(v) for v in obj]
     else:
         return obj
 
@@ -728,6 +737,8 @@ class TorchModel(
         if self.postprocess:
             return self._output_processor(raw_output)
 
+        return _recursive_to_cpu_numpy(raw_output)
+
     def predict_all(self, batch):
         if self.preprocess:
             input = [self.get_item(input) for input in batch]
@@ -738,6 +749,8 @@ class TorchModel(
 
         if self.postprocess:
             return self._output_processor(raw_output)
+
+        return _recursive_to_cpu_numpy(raw_output)
 
 
 class ImageGetItem(GetItem):
