@@ -731,6 +731,8 @@ class TorchModel(
     def predict_all(self, batch):
         if self.preprocess:
             input = [self.get_item(input) for input in batch]
+            input = torch.utils.data.default_collate(input)
+            input = _recursive_to_device(input, self.device)
 
         raw_output = self._forward_pass(input)
 
