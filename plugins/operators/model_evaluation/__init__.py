@@ -246,10 +246,14 @@ class ConfigureScenario(foo.Operator):
             scenario_label_attribute = ctx.params.get(
                 "scenario_label_attribute"
             )
+            # todo@mani: need to tweak this depending on how it's stored. Line below
+            # converts "ground_truth.detections.label" to "label"
+            field_name = scenario_label_attribute
+            if "." in scenario_label_attribute:
+                field_name = scenario_label_attribute.split(".")[-1]
+            print(scenario_label_attribute, field_name)
             for v in values:
-                subsets[v] = dict(
-                    type="field", field=scenario_label_attribute, value=v
-                )
+                subsets[v] = dict(type="attribute", field=field_name, value=v)
             self.render_sample_distribution_graph(ctx, inputs, subsets)
 
         if scenario_type == ScenarioType.SAMPLE_FIELD:

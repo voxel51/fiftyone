@@ -941,6 +941,20 @@ class EvaluationPanel(Panel):
                     info, results, subset_def, is_compare
                 )
                 scenario_data["subsets_data"][subset] = subset_data
+        elif scenario_type == "label_attribute":
+            field = scenario.get("field", None)
+            # todo@mani: need to tweak this depending on how it's stored. Line below
+            # converts "ground_truth.detections.label" to "label"
+            scenario_subsets = scenario.get("subsets", [])
+            field_last_part = field.split(".")[-1]
+            for subset in scenario_subsets:
+                subset_def = dict(
+                    type="attribute", field=field_last_part, value=subset
+                )
+                subset_data = self.get_subset_def_data(
+                    info, results, subset_def, is_compare
+                )
+                scenario_data["subsets_data"][subset] = subset_data
         else:
             scenario_data["subsets_data"] = None  # unsupported type
 
