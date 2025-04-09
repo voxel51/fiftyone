@@ -5,6 +5,7 @@ PyTorch utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import functools
 import logging
 import itertools
 import multiprocessing
@@ -33,6 +34,7 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.image as foui
 import fiftyone.core.collections as focol
 import fiftyone.core.sample as fos
+import fiftyone.core.validation as foval
 import fiftyone.core.view as fov
 
 fou.ensure_torch()
@@ -253,6 +255,275 @@ def ensure_torch_hub_requirements(
         )
 
 
+class GetItem:
+    """A class that defines how to get the input for a model from a sample.
+
+    It's __call__ method should return the input for the model from a sample or
+    a dictionary corresponding to a sample view.
+
+    Instances of this class can be used in conjunction with
+    :class:`fiftyone.utils.torch.FiftyOneTorchDataset` to create performant torch datasets.
+
+    A :class:`GetItem` instance should only require the fields specified in `required_fields` from samples.
+    It should look for those fields under the names specified in `field_mapping`.
+    the `field_mapping` dictionary is used to map the fields in the sample to the input fields for the model.
+
+    Subclasses should interact with required_fields and field_mapping through the properties.
+    the method :method:`add_required_fields` can be used to add fields to required_fields.
+    Required fields should be set in the subclass's __init__ method.
+    Required fields cannot repeat. If a field is added twice, it will be ignored.
+    Make sure to check if a superclass has already added a field before adding to it.
+    """
+
+    def __init__(self, field_mapping=None, **kwargs):
+        super().__init__(**kwargs)
+        self.field_mapping = field_mapping
+
+    def __call__(self, sample):
+        """
+        This method should return the a dict holding the input for the model for training.
+
+        Args:
+            sample: a dictionary corresponding to a sample view.
+        """
+        raise NotImplementedError("Subclass should implement this method.")
+
+    @property
+    def required_fields(self):
+        """a list of fields that are required in the sample for the GetItem to work."""
+        if not hasattr(self, "_required_fields_list"):
+            self._required_fields_list = ()
+        return self._required_fields_list
+
+    def add_required_fields(self, value):
+        """
+        Add fields to the required_fields list.
+
+        Args:
+            value: a list of fields or a single field to add to the required
+        """
+        if not hasattr(self, "_required_fields_list"):
+            self._required_fields_list = ()
+        if isinstance(value, str):
+            value = [value]
+        if not isinstance(value, list):
+            raise ValueError("required_fields must be a list or a string.")
+        self._required_fields_list = tuple(
+            set(list(self._required_fields_list) + value)
+        )
+        self.update_field_mapping()
+
+    @property
+    def field_mapping(self):
+        """
+        a dictionary mapping the fields in the sample to the input fields for the model
+        if not defined, we will assume the fields are the same
+
+        When this is updated, the behavior of __call__ should be updated accordingly.
+        This is what allows the user to specify the fields in the sample that are used as input to the model.
+        """
+        if not hasattr(self, "_field_mapping_dict"):
+            self._field_mapping_dict = {}
+        return self._field_mapping_dict
+
+    @field_mapping.setter
+    def field_mapping(self, value):
+        if not hasattr(self, "_field_mapping_dict"):
+            self._field_mapping_dict = {}
+        if value is None:  # generally on init
+            value = {k: k for k in self.required_fields}
+            for k, v in self._field_mapping_dict.items():
+                # if mixins have already set the field mapping, we should keep it
+                value[k] = v
+        if not isinstance(value, dict):
+            raise ValueError("field_mapping must be a dictionary.")
+        for k, v in value.items():
+            if k not in self.required_fields:
+                raise ValueError(
+                    f"field_mapping key {k} not in required_fields."
+                )
+
+        for f in self.required_fields:
+            if f not in value:
+                value[f] = self.field_mapping.get(f, f)
+
+        self._field_mapping_dict = value
+
+    def update_field_mapping(self):
+        """
+        Update the field mapping for the get_item function.
+        """
+        for f in self.required_fields:
+            if f not in self.field_mapping:
+                self.field_mapping[f] = f
+
+    def validate_compatible_samples(self, samples):
+        """
+        Validate that the samples are compatible with the GetItem.
+        This should be called every time so we can fail quickly and loudly when needed.
+
+        TODO: Add type checking for the fields.
+        """
+        # is this the correct way to do this?
+        sample = samples.first()
+        foval.get_fields(sample, self.field_mapping.values(), allow_none=False)
+        try:
+            return self(sample)
+        except Exception as e:
+            raise ValueError("Sample is not compatible with GetItem.") from e
+
+
+class TorchModelConfig(fom.ModelConfig):
+    def __init__(self, d):
+        super().__init__(d)
+
+        self.device = self.parse_string(d, "device", default=None)
+
+        self.get_item_cls = self.parse_string(d, "get_item_cls", default=None)
+        self.get_item_args = self.parse_dict(d, "get_item_args", default=None)
+
+        self.ragged_batches = self.parse_bool(
+            d, "ragged_batches", default=None
+        )
+
+        self.output_processor = self.parse_raw(
+            d, "output_processor", default=None
+        )
+        self.output_processor_cls = self.parse_raw(
+            d, "output_processor_cls", default=None
+        )
+        self.output_processor_args = self.parse_dict(
+            d, "output_processor_args", default=None
+        )
+
+
+class TorchModel(fom.Model, fom.SamplesMixin, fom.TorchModelMixin):
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+
+        # build get item
+        self.get_item = self._build_get_item(config)
+        self._preprocess = True  # flip to false when dataloading
+
+        # Build output processor
+        self._output_processor = self._build_output_processor(config)
+        self._postprocess = self._output_processor is not None
+
+        # incidentals
+        device = self.config.device
+        if device is None:
+            if torch.cuda.is_available():
+                device = "cuda"
+            elif torch.backends.mps.is_available():
+                device = "mps"
+            else:
+                device = "cpu"
+
+        self._device = torch.device(device)
+        self._using_gpu = self._device.type in ("cuda", "mps")
+        self._using_half_precision = self.config.use_half_precision
+
+    @property
+    def using_gpu(self):
+        """Whether the model is using GPU."""
+        return self._using_gpu
+
+    @property
+    def device(self):
+        """The :class:`torch:torch.torch.device` that the model is using."""
+        return self._device
+
+    @property
+    def using_half_precision(self):
+        """Whether the model is using half precision."""
+        return self._using_half_precision
+
+    @property
+    def preprocess(self):
+        """Whether to apply preprocessing transforms for inference, if any."""
+        return self._preprocess
+
+    @preprocess.setter
+    def preprocess(self, value):
+        self._preprocess = value
+
+    def _build_get_item(self, config):
+        """Builds the :class:`GetItem` instance for this model.
+
+        Args:
+            config: a :class:`TorchModelConfig` instance
+        """
+        if config.get_item is not None:
+            return config.get_item
+
+        get_item_cls = config.get_item_cls
+
+        if get_item_cls is None:
+            raise ValueError("No get_item_cls or get_item provided for model")
+
+        if etau.is_str(get_item_cls):
+            get_item_cls = etau.get_class(get_item_cls)
+
+        kwargs = config.get_item_args or {}
+        return get_item_cls(**kwargs)
+
+    @torch.no_grad()
+    def _forward(self, batch):
+        """Applies a forward pass to the given batch of data and returns the
+        raw model output with no processing applied.
+
+        Args:
+            batch: a batch of input data. The result of self.get_item(samples).
+
+        Returns:
+            the raw output of the model
+        """
+        raise NotImplementedError("subclasses must implement _forward()")
+
+    @property
+    def postprocess(self):
+        """Whether to apply postprocessing during prediction."""
+        return self._postprocess
+
+    @postprocess.setter
+    def postprocess(self, value):
+        self._postprocess = value
+
+    def _build_output_processor(self, config):
+        if config.output_processor is not None:
+            return config.output_processor
+
+        output_processor_cls = config.output_processor_cls
+
+        if output_processor_cls is None:
+            return None
+
+        if etau.is_str(output_processor_cls):
+            output_processor_cls = etau.get_class(output_processor_cls)
+
+        kwargs = config.output_processor_args or {}
+        return output_processor_cls(**kwargs)
+
+    # Model interface
+    def predict(self, input):
+        """Applies the model to the given input and returns the model output.
+
+        Args:
+            input: the input to process.
+        """
+        if self.preprocess:
+            input = self.get_item(input)
+
+        raw_output = self._forward(input)
+
+        if self.postprocess:
+            return self._output_processor(raw_output)
+
+    def predict_all(self, batch):
+        return self.predict(batch)
+
+
 class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
     """Mixin for Torch models that can generate embeddings.
 
@@ -457,19 +728,19 @@ class TorchImageModelConfig(foc.Config):
         self.transforms_args = self.parse_dict(
             d, "transforms_args", default=None
         )
-        self.ragged_batches = self.parse_bool(
-            d, "ragged_batches", default=None
-        )
+        # self.ragged_batches = self.parse_bool(
+        #     d, "ragged_batches", default=None
+        # )
         self.raw_inputs = self.parse_bool(d, "raw_inputs", default=None)
-        self.output_processor = self.parse_raw(
-            d, "output_processor", default=None
-        )
-        self.output_processor_cls = self.parse_raw(
-            d, "output_processor_cls", default=None
-        )
-        self.output_processor_args = self.parse_dict(
-            d, "output_processor_args", default=None
-        )
+        # self.output_processor = self.parse_raw(
+        #     d, "output_processor", default=None
+        # )
+        # self.output_processor_cls = self.parse_raw(
+        #     d, "output_processor_cls", default=None
+        # )
+        # self.output_processor_args = self.parse_dict(
+        #     d, "output_processor_args", default=None
+        # )
         self.confidence_thresh = self.parse_number(
             d, "confidence_thresh", default=None
         )
@@ -514,12 +785,10 @@ class TorchImageModelConfig(foc.Config):
         self.cudnn_benchmark = self.parse_bool(
             d, "cudnn_benchmark", default=None
         )
-        self.device = self.parse_string(d, "device", default=None)
+        # self.device = self.parse_string(d, "device", default=None)
 
 
-class TorchImageModel(
-    TorchEmbeddingsMixin, fom.TorchModelMixin, fom.LogitsMixin, fom.Model
-):
+class TorchImageModel(TorchEmbeddingsMixin, fom.LogitsMixin, TorchModel):
     """Wrapper for evaluating a Torch model on images.
 
     See :ref:`this page <model-zoo-custom-models>` for example usage.
@@ -531,14 +800,14 @@ class TorchImageModel(
     def __init__(self, config):
         self.config = config
 
-        device = self.config.device
-        if device is None:
-            device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        # device = self.config.device
+        # if device is None:
+        #     device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-        # Device details
-        self._device = torch.device(device)
-        self._using_gpu = self._device.type in ("cuda", "mps")
-        self._using_half_precision = self.config.use_half_precision
+        # # Device details
+        # self._device = torch.device(device)
+        # self._using_gpu = self._device.type in ("cuda", "mps")
+        # self._using_half_precision = self.config.use_half_precision
         self._no_grad = None
         self._benchmark_orig = None
 
@@ -557,8 +826,8 @@ class TorchImageModel(
         self._mask_targets = self._parse_mask_targets(config)
         self._skeleton = self._parse_skeleton(config)
 
-        # Build output processor
-        self._output_processor = self._build_output_processor(config)
+        # # Build output processor
+        # self._output_processor = self._build_output_processor(config)
 
         fom.LogitsMixin.__init__(self)
         TorchEmbeddingsMixin.__init__(
@@ -611,29 +880,29 @@ class TorchImageModel(
         """
         return self._transforms
 
-    @property
-    def preprocess(self):
-        """Whether to apply preprocessing transforms for inference, if any."""
-        return self._preprocess
+    # @property
+    # def preprocess(self):
+    #     """Whether to apply preprocessing transforms for inference, if any."""
+    #     return self._preprocess
 
-    @preprocess.setter
-    def preprocess(self, value):
-        self._preprocess = value
+    # @preprocess.setter
+    # def preprocess(self, value):
+    #     self._preprocess = value
 
-    @property
-    def using_gpu(self):
-        """Whether the model is using GPU."""
-        return self._using_gpu
+    # @property
+    # def using_gpu(self):
+    #     """Whether the model is using GPU."""
+    #     return self._using_gpu
 
-    @property
-    def device(self):
-        """The :class:`torch:torch.torch.device` that the model is using."""
-        return self._device
+    # @property
+    # def device(self):
+    #     """The :class:`torch:torch.torch.device` that the model is using."""
+    #     return self._device
 
-    @property
-    def using_half_precision(self):
-        """Whether the model is using half precision."""
-        return self._using_half_precision
+    # @property
+    # def using_half_precision(self):
+    #     """Whether the model is using half precision."""
+    #     return self._using_half_precision
 
     @property
     def classes(self):
@@ -1055,6 +1324,14 @@ class SaveLayerTensor(object):
 
 
 class OutputProcessor(object):
+    def __init__(self, **kwargs):
+        pass
+
+    def __call__(self, output):
+        return np.array(output)
+
+
+class ImageOutputProcessor(OutputProcessor):
     """Interface for processing the outputs of Torch models.
 
     Args:
@@ -1080,7 +1357,7 @@ class OutputProcessor(object):
         raise NotImplementedError("subclass must implement __call__")
 
 
-class ClassifierOutputProcessor(OutputProcessor):
+class ClassifierOutputProcessor(ImageOutputProcessor):
     """Output processor for single label classifiers.
 
     Args:
@@ -1141,7 +1418,7 @@ class ClassifierOutputProcessor(OutputProcessor):
         return preds
 
 
-class DetectorOutputProcessor(OutputProcessor):
+class DetectorOutputProcessor(ImageOutputProcessor):
     """Output processor for object detectors.
 
     Args:
@@ -1211,7 +1488,7 @@ class DetectorOutputProcessor(OutputProcessor):
         return fol.Detections(detections=detections)
 
 
-class InstanceSegmenterOutputProcessor(OutputProcessor):
+class InstanceSegmenterOutputProcessor(ImageOutputProcessor):
     """Output processor for instance segementers.
 
     Args:
@@ -1303,7 +1580,7 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
         return fol.Detections(detections=detections)
 
 
-class KeypointDetectorOutputProcessor(OutputProcessor):
+class KeypointDetectorOutputProcessor(ImageOutputProcessor):
     """Output processor for keypoint detection models.
 
     Args:
@@ -1400,7 +1677,7 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
         }
 
 
-class SemanticSegmenterOutputProcessor(OutputProcessor):
+class SemanticSegmenterOutputProcessor(ImageOutputProcessor):
     """Output processor for semantic segementers.
 
     Args:
