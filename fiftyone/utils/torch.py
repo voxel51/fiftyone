@@ -258,19 +258,22 @@ def ensure_torch_hub_requirements(
 class GetItem:
     """A class that defines how to get the input for a model from a sample.
 
-    It's __call__ method should return the input for the model from a sample or
-    a dictionary corresponding to a sample view.
+    It's :method:`fiftyone.utils.torch.GetItem.samples_dict_to_input` method
+    should return the input for the model from a sample or a dictionary corresponding
+    to a sample view.
 
     Instances of this class can be used in conjunction with
     :class:`fiftyone.utils.torch.FiftyOneTorchDataset` to create performant torch datasets.
 
-    A :class:`GetItem` instance should only require the fields specified in `required_fields` from samples.
+    A :class:`fiftyone.utils.torch.GetItem` instance should only require
+    the fields specified in `required_fields` from samples.
     It should look for those fields under the names specified in `field_mapping`.
     the `field_mapping` dictionary is used to map the fields in the sample to the input fields for the model.
 
-    Subclasses should interact with required_fields and field_mapping through the properties.
-    the method :method:`add_required_fields` can be used to add fields to required_fields.
-    Required fields should be set in the subclass's __init__ method.
+    Subclasses should interact with `required_fields` and `field_mapping` through the properties.
+    the method :method:`fiftyone.utils.torch.GetItem.add_required_fields`
+    can be used to add fields to required_fields.
+    Required fields should be set in the subclass's `__init__` method.
     Required fields cannot repeat. If a field is added twice, it will be ignored.
     Make sure to check if a superclass has already added a field before adding to it.
     """
@@ -279,14 +282,22 @@ class GetItem:
         super().__init__(**kwargs)
         self.field_mapping = field_mapping
 
-    def __call__(self, sample):
-        """
-        This method should return the a dict holding the input for the model for training.
+    def samples_dicts_to_input(self, samples_dicts):
+        """Return model input from a list if samples' dicts
 
         Args:
-            sample: a dictionary corresponding to a sample view.
+            samples_dicts:  A list of dictionaries corresponding to sample views.
+                            Can be the samples themselves.
+
+        Returns:
+            model input
         """
         raise NotImplementedError("Subclass should implement this method.")
+
+    def __call__(self, samples):
+        if not isinstance(samples, (list, tuple)):
+            samples = [samples]
+        return self.samples_dicts_to_input(samples)
 
     @property
     def required_fields(self):
@@ -521,6 +532,9 @@ class TorchModel(
             else False
         )
 
+        # SamplesMixin Stuff
+        self.needs_fields = self.get_item.required_fields
+
         # Build output processor
         self._output_processor = self._build_output_processor(config)
         self._postprocess = self._output_processor is not None
@@ -685,7 +699,9 @@ class TorchModel(
         """Applies the model to the given input and returns the model output.
 
         Args:
-            input: the input to process.
+            input:  the input to process.
+                    If ``self.preprocess`` is ``True``, this should be a sample.
+                    If ``self.preprocess`` is ``False``, this should be the result of `self.get_item(sample)`.
         """
         if self.preprocess:
             input = self.get_item(input)
@@ -696,7 +712,13 @@ class TorchModel(
             return self._output_processor(raw_output)
 
     def predict_all(self, batch):
-        return self.predict(batch)
+        if self.preprocess:
+            input = [self.get_item(input) for input in batch]
+
+        raw_output = self._forward_pass(input)
+
+        if self.postprocess:
+            return self._output_processor(raw_output)
 
 
 class TorchImageModelConfig(foc.Config):
