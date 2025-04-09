@@ -373,6 +373,80 @@ class GetItem:
             raise ValueError("Sample is not compatible with GetItem.") from e
 
 
+class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
+    """Mixin for Torch models that can generate embeddings.
+
+    Args:
+        model: the Torch model, a :class:`torch:torch.nn.Module`
+        layer_name (None): the name of the embeddings layer whose output to
+            save, or ``None`` if this model instance should not expose
+            embeddings. Prepend ``"<"`` to save the input tensor instead
+        as_feature_extractor (False): whether to operate the model as a feature
+            extractor. If ``layer_name`` is provided, this layer is passed to
+            torchvision's ``create_feature_extractor()`` function. If no
+            ``layer_name`` is provided, the model's output is used as-is for
+            feature extraction
+    """
+
+    def __init__(self, model, layer_name=None, as_feature_extractor=False):
+        if as_feature_extractor:
+            if layer_name is not None:
+                self._model = create_feature_extractor(
+                    model, return_nodes=[layer_name]
+                )
+
+            embeddings_layer = None
+        elif layer_name is not None:
+            embeddings_layer = SaveLayerTensor(model, layer_name)
+        else:
+            embeddings_layer = None
+
+        self._embeddings_layer = embeddings_layer
+        self._as_feature_extractor = as_feature_extractor
+
+    @property
+    def has_embeddings(self):
+        return self._embeddings_layer is not None or self._as_feature_extractor
+
+    def embed(self, arg):
+        if isinstance(arg, torch.Tensor):
+            args = arg.unsqueeze(0)
+        else:
+            args = [arg]
+
+        if self._as_feature_extractor:
+            return self._predict_all(args)[0]
+
+        self._predict_all(args)
+        return self.get_embeddings()[0]
+
+    def embed_all(self, args):
+        if self._as_feature_extractor:
+            return self._predict_all(args)
+
+        self._predict_all(args)
+        return self.get_embeddings()
+
+    def get_embeddings(self):
+        if not self.has_embeddings:
+            raise ValueError("This model instance does not expose embeddings")
+
+        embeddings = self._embeddings_layer.tensor.detach().cpu().numpy()
+        return embeddings.astype(float, copy=False)
+
+    def _predict_all(self, args):
+        """Applies a forward pass to the given iterable of data and returns
+        the raw model output with no processing applied.
+
+        Args:
+            args: an iterable of data. See :meth:`predict_all` for details
+
+        Returns:
+            the raw output of the model
+        """
+        raise NotImplementedError("subclasses must implement _predict_all()")
+
+
 class TorchModelConfig(fom.ModelConfig):
     def __init__(self, d):
         super().__init__(d)
@@ -425,7 +499,9 @@ class TorchModelConfig(fom.ModelConfig):
         )
 
 
-class TorchModel(fom.Model, fom.SamplesMixin, fom.TorchModelMixin):
+class TorchModel(
+    fom.SamplesMixin, fom.TorchModelMixin, TorchEmbeddingsMixin, fom.Model
+):
     def __init__(self, config):
         super().__init__()
         self.config = config
@@ -623,80 +699,6 @@ class TorchModel(fom.Model, fom.SamplesMixin, fom.TorchModelMixin):
         return self.predict(batch)
 
 
-class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
-    """Mixin for Torch models that can generate embeddings.
-
-    Args:
-        model: the Torch model, a :class:`torch:torch.nn.Module`
-        layer_name (None): the name of the embeddings layer whose output to
-            save, or ``None`` if this model instance should not expose
-            embeddings. Prepend ``"<"`` to save the input tensor instead
-        as_feature_extractor (False): whether to operate the model as a feature
-            extractor. If ``layer_name`` is provided, this layer is passed to
-            torchvision's ``create_feature_extractor()`` function. If no
-            ``layer_name`` is provided, the model's output is used as-is for
-            feature extraction
-    """
-
-    def __init__(self, model, layer_name=None, as_feature_extractor=False):
-        if as_feature_extractor:
-            if layer_name is not None:
-                self._model = create_feature_extractor(
-                    model, return_nodes=[layer_name]
-                )
-
-            embeddings_layer = None
-        elif layer_name is not None:
-            embeddings_layer = SaveLayerTensor(model, layer_name)
-        else:
-            embeddings_layer = None
-
-        self._embeddings_layer = embeddings_layer
-        self._as_feature_extractor = as_feature_extractor
-
-    @property
-    def has_embeddings(self):
-        return self._embeddings_layer is not None or self._as_feature_extractor
-
-    def embed(self, arg):
-        if isinstance(arg, torch.Tensor):
-            args = arg.unsqueeze(0)
-        else:
-            args = [arg]
-
-        if self._as_feature_extractor:
-            return self._predict_all(args)[0]
-
-        self._predict_all(args)
-        return self.get_embeddings()[0]
-
-    def embed_all(self, args):
-        if self._as_feature_extractor:
-            return self._predict_all(args)
-
-        self._predict_all(args)
-        return self.get_embeddings()
-
-    def get_embeddings(self):
-        if not self.has_embeddings:
-            raise ValueError("This model instance does not expose embeddings")
-
-        embeddings = self._embeddings_layer.tensor.detach().cpu().numpy()
-        return embeddings.astype(float, copy=False)
-
-    def _predict_all(self, args):
-        """Applies a forward pass to the given iterable of data and returns
-        the raw model output with no processing applied.
-
-        Args:
-            args: an iterable of data. See :meth:`predict_all` for details
-
-        Returns:
-            the raw output of the model
-        """
-        raise NotImplementedError("subclasses must implement _predict_all()")
-
-
 class TorchImageModelConfig(foc.Config):
     """Configuration for running a :class:`TorchImageModel`.
 
@@ -857,7 +859,7 @@ class TorchImageModelConfig(foc.Config):
         self.image_std = self.parse_array(d, "image_std", default=None)
 
 
-class TorchImageModel(TorchEmbeddingsMixin, fom.LogitsMixin, TorchModel):
+class TorchImageModel(fom.LogitsMixin, TorchModel):
     """Wrapper for evaluating a Torch model on images.
 
     See :ref:`this page <model-zoo-custom-models>` for example usage.
@@ -867,7 +869,7 @@ class TorchImageModel(TorchEmbeddingsMixin, fom.LogitsMixin, TorchModel):
     """
 
     def __init__(self, config):
-        super().__init__(config)
+        TorchModel.__init__(self, config)
         self.config = config
 
         # Build transforms
