@@ -1084,10 +1084,15 @@ class DetectionsTests(unittest.TestCase):
             predictions=fo.Detections(
                 detections=[
                     fo.Detection(
+                        label="cat",
+                        bounding_box=[0.6, 0.6, 0.4, 0.4],
+                        confidence=0.9,
+                    ),
+                    fo.Detection(
                         label="dog",
                         bounding_box=[0.1, 0.1, 0.4, 0.4],
                         confidence=0.9,
-                    )
+                    ),
                 ]
             ),
         )
@@ -1163,11 +1168,17 @@ class DetectionsTests(unittest.TestCase):
             predictions=fo.Detections(
                 detections=[
                     fo.Detection(
+                        label="cat",
+                        bounding_box=[0.6, 0.6, 0.4, 0.4],
+                        confidence=0.9,
+                        mask=np.full((8, 8), True),
+                    ),
+                    fo.Detection(
                         label="dog",
                         bounding_box=[0.1, 0.1, 0.4, 0.4],
                         confidence=0.9,
                         mask=np.full((8, 8), True),
-                    )
+                    ),
                 ]
             ),
         )
@@ -1253,13 +1264,21 @@ class DetectionsTests(unittest.TestCase):
             predictions=fo.Polylines(
                 polylines=[
                     fo.Polyline(
+                        label="cat",
+                        points=[
+                            [(0.6, 0.6), (0.6, 1.0), (1.0, 1.0), (1.0, 0.6)]
+                        ],
+                        filled=True,
+                        confidence=0.9,
+                    ),
+                    fo.Polyline(
                         label="dog",
                         points=[
                             [(0.1, 0.1), (0.1, 0.4), (0.4, 0.4), (0.4, 0.1)]
                         ],
                         filled=True,
                         confidence=0.9,
-                    )
+                    ),
                 ]
             ),
         )
@@ -1345,7 +1364,7 @@ class DetectionsTests(unittest.TestCase):
         # rows = GT, cols = predicted, labels = [cat, dog, None]
         classes = list(results.classes) + [results.missing]
         actual = results.confusion_matrix(classes=classes)
-        expected = np.array([[1, 0, 2], [0, 0, 0], [1, 1, 0]], dtype=int)
+        expected = np.array([[1, 0, 2], [0, 0, 0], [2, 1, 0]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
@@ -1356,12 +1375,12 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field),
-            [None, None, ["fp"], ["tp"], ["fp"]],
+            [None, None, ["fp"], ["tp"], ["fp", "fp"]],
         )
         self.assertIn("eval_tp", dataset.get_field_schema())
         self.assertListEqual(dataset.values("eval_tp"), [0, 0, 0, 1, 0])
         self.assertIn("eval_fp", dataset.get_field_schema())
-        self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 1])
+        self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 2])
         self.assertIn("eval_fn", dataset.get_field_schema())
         self.assertListEqual(dataset.values("eval_fn"), [0, 1, 0, 0, 1])
 
@@ -1383,7 +1402,7 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field),
-            [None, None, [None], [None], [None]],
+            [None, None, [None], [None], [None, None]],
         )
 
         schema = dataset.get_field_schema(flat=True)
@@ -1404,7 +1423,7 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field2),
-            [None, None, ["fp"], ["tp"], ["fp"]],
+            [None, None, ["fp"], ["tp"], ["fp", "fp"]],
         )
 
         schema = dataset.get_field_schema(flat=True)
@@ -1429,7 +1448,7 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field2),
-            [None, None, [None], [None], [None]],
+            [None, None, [None], [None], [None, None]],
         )
 
         schema = dataset.get_field_schema(flat=True)
@@ -1464,7 +1483,7 @@ class DetectionsTests(unittest.TestCase):
         # rows = GT, cols = predicted, labels = [cat, dog, None]
         classes = list(results.classes) + [results.missing]
         actual = results.confusion_matrix(classes=classes)
-        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 0]], dtype=int)
+        expected = np.array([[1, 1, 1], [0, 0, 0], [2, 0, 0]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
@@ -1474,10 +1493,10 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field),
-            [None, None, ["fp"], ["tp"], ["fp"]],
+            [None, None, ["fp"], ["tp"], ["fp", "fp"]],
         )
         self.assertListEqual(dataset.values("eval_tp"), [0, 0, 0, 1, 0])
-        self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 1])
+        self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 2])
         self.assertListEqual(dataset.values("eval_fn"), [0, 1, 0, 0, 1])
 
     def _evaluate_open_images(self, dataset, kwargs):
@@ -1555,7 +1574,7 @@ class DetectionsTests(unittest.TestCase):
         # rows = GT, cols = predicted, labels = [cat, dog, None]
         classes = list(results.classes) + [results.missing]
         actual = results.confusion_matrix(classes=classes)
-        expected = np.array([[1, 0, 2], [0, 0, 0], [1, 1, 0]], dtype=int)
+        expected = np.array([[1, 0, 2], [0, 0, 0], [2, 1, 0]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
@@ -1566,12 +1585,12 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field),
-            [None, None, ["fp"], ["tp"], ["fp"]],
+            [None, None, ["fp"], ["tp"], ["fp", "fp"]],
         )
         self.assertIn("eval_tp", dataset.get_field_schema())
         self.assertListEqual(dataset.values("eval_tp"), [0, 0, 0, 1, 0])
         self.assertIn("eval_fp", dataset.get_field_schema())
-        self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 1])
+        self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 2])
         self.assertIn("eval_fn", dataset.get_field_schema())
         self.assertListEqual(dataset.values("eval_fn"), [0, 1, 0, 0, 1])
 
@@ -1593,7 +1612,7 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field),
-            [None, None, [None], [None], [None]],
+            [None, None, [None], [None], [None, None]],
         )
 
         schema = dataset.get_field_schema(flat=True)
@@ -1614,7 +1633,7 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field2),
-            [None, None, ["fp"], ["tp"], ["fp"]],
+            [None, None, ["fp"], ["tp"], ["fp", "fp"]],
         )
 
         schema = dataset.get_field_schema(flat=True)
@@ -1639,7 +1658,7 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field2),
-            [None, None, [None], [None], [None]],
+            [None, None, [None], [None], [None, None]],
         )
 
         schema = dataset.get_field_schema(flat=True)
@@ -1673,7 +1692,7 @@ class DetectionsTests(unittest.TestCase):
         # rows = GT, cols = predicted, labels = [cat, dog, None]
         classes = list(results.classes) + [results.missing]
         actual = results.confusion_matrix(classes=classes)
-        expected = np.array([[1, 1, 1], [0, 0, 0], [1, 0, 0]], dtype=int)
+        expected = np.array([[1, 1, 1], [0, 0, 0], [2, 0, 0]], dtype=int)
         self.assertEqual(actual.shape, expected.shape)
         self.assertTrue((actual == expected).all())
 
@@ -1683,10 +1702,10 @@ class DetectionsTests(unittest.TestCase):
         )
         self.assertListEqual(
             dataset.values(pred_eval_field),
-            [None, None, ["fp"], ["tp"], ["fp"]],
+            [None, None, ["fp"], ["tp"], ["fp", "fp"]],
         )
         self.assertListEqual(dataset.values("eval_tp"), [0, 0, 0, 1, 0])
-        self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 1])
+        self.assertListEqual(dataset.values("eval_fp"), [0, 0, 1, 0, 2])
         self.assertListEqual(dataset.values("eval_fn"), [0, 1, 0, 0, 1])
 
     @drop_datasets
