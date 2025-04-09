@@ -236,22 +236,26 @@ class ConfigureScenario(foo.Operator):
             error_message="No values selected" if is_invalid else None,
         )
 
+    def get_label_attribute_path(self, params):
+        """
+        Returns the last part of the label attribute path to use in use_subset(type="attribute", ...)
+        """
+        field_name = params.get("scenario_label_attribute")
+        if not field_name:
+            field_name = params.get("scenario_field")
+
+        if "." in field_name:
+            field_name = field_name.split(".")[-1]
+
+        return field_name
+
     def render_sample_distribution(self, ctx, inputs, scenario_type, values):
         if not values:
             return self.render_empty_sample_distribution(inputs, ctx.params)
 
         subsets = {}
-        # NOTE: this case is exact same as ScenarioType.SAMPLE_FIELD. the only difference is in their UI - we filter differently.
         if scenario_type == ScenarioType.LABEL_ATTRIBUTE:
-            scenario_label_attribute = ctx.params.get(
-                "scenario_label_attribute"
-            )
-            # todo@mani: need to tweak this depending on how it's stored. Line below
-            # converts "ground_truth.detections.label" to "label"
-            field_name = scenario_label_attribute
-            if "." in scenario_label_attribute:
-                field_name = scenario_label_attribute.split(".")[-1]
-            print(scenario_label_attribute, field_name)
+            field_name = self.get_label_attribute_path(ctx.params)
             for v in values:
                 subsets[v] = dict(type="attribute", field=field_name, value=v)
             self.render_sample_distribution_graph(ctx, inputs, subsets)
@@ -747,12 +751,13 @@ class ConfigureScenario(foo.Operator):
 
         label_choices = types.Choices()
         for option in valid_options:
-            label_choices.add_choice(option, label=option)
+            # NOTE: we show the last part of the path as the label attribute
+            label_choices.add_choice(option, label=option.split(".")[-1])
 
         inputs.enum(
             "scenario_label_attribute",
             label_choices.values(),
-            default=None,
+            default=label_attr,
             label="Label attribute",
             description="Select a label attribute",
             view=label_choices,
@@ -855,23 +860,27 @@ class ConfigureScenario(foo.Operator):
         scenario_type = self.get_scenario_type(ctx.params)
         self.render_scenario_types(inputs, scenario_type)
 
-        chosen_scenario_field_name = ctx.params.get("scenario_field", None)
-        chosen_scenario_label_attribute = ctx.params.get(
-            "scenario_label_attribute", None
-        )
-
+        selected_scenario_field = ctx.params.get("scenario_field", None)
         gt_field = ctx.params.get("gt_field", None)
 
         if scenario_type == ScenarioType.CUSTOM_CODE:
             self.render_custom_code(ctx, inputs)
         if scenario_type == ScenarioType.LABEL_ATTRIBUTE:
+            selected_scenario_field = ctx.params.get(
+                "scenario_label_attribute", None
+            )
+            if not selected_scenario_field:
+                selected_scenario_field = ctx.params.get(
+                    "scenario_field", None
+                )
+
             self.render_label_attribute(
-                ctx, inputs, gt_field, chosen_scenario_label_attribute
+                ctx, inputs, gt_field, selected_scenario_field
             )
         if scenario_type == ScenarioType.VIEW:
             self.render_saved_views(ctx, inputs)
         if scenario_type == ScenarioType.SAMPLE_FIELD:
-            self.render_sample_fields(ctx, inputs, chosen_scenario_field_name)
+            self.render_sample_fields(ctx, inputs, selected_scenario_field)
 
         prompt = types.PromptView(submit_button_label="Analyze scenario")
         return types.Property(inputs, view=prompt)
