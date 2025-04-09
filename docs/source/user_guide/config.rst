@@ -21,7 +21,7 @@ FiftyOne supports the configuration options described below:
 |                               |                                       |                               | :ref:`this section <database-migrations>` for more information.                        |
 +-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `database_compressor`         | `FIFTYONE_DATABASE_COMPRESSOR`        | `None`                        | `MongoDB Network Compression                                                           |
-|                               |                                       |                               | <https://www.mongodb.com/developer/products/mongodb/mongodb-network-compression/>` to  |
+|                               |                                       |                               | <https://www.mongodb.com/developer/products/mongodb/mongodb-network-compression/>`_ to |
 |                               |                                       |                               | use. Supported values are: None, `zstd` (recommended), `zlib`, or `snappy`.            |
 +-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `database_dir`                | `FIFTYONE_DATABASE_DIR`               | `~/.fiftyone/var/lib/mongo`   | The directory in which to store FiftyOne's backing database. Only applicable if        |
