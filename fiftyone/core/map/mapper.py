@@ -227,7 +227,7 @@ class LocalMapper(Mapper, abc.ABC):
         save: bool = False,
         skip_failures: bool = True,
     ) -> Iterator[Tuple[bson.ObjectId, R]]:
-        # If workers if 1 on a the same local machine, no need for the
+        # If workers is <=1 on the same local machine, no need for the
         # overhead of trying to parallelize.
         if self._workers <= 1:
             for sample in sample_collection.iter_samples(
