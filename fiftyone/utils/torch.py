@@ -720,24 +720,7 @@ class TorchModel(
 
     # Model interface
     def predict(self, input):
-        """Applies the model to the given input and returns the model output.
-
-        Args:
-            input:  the input to process.
-                    If ``self.preprocess`` is ``True``, this should be a sample.
-                    If ``self.preprocess`` is ``False``, this should be the result of `self.get_item(sample)`.
-        """
-        if self.preprocess:
-            input = self.get_item(input)
-            # I really don't like this being here
-            input = _recursive_to_device(input, self.device)
-
-        raw_output = self._forward_pass(input)
-
-        if self.postprocess:
-            return self._output_processor(raw_output)
-
-        return _recursive_to_cpu_numpy(raw_output)
+        return self.predict_all([input])
 
     def predict_all(self, batch):
         if self.preprocess:
