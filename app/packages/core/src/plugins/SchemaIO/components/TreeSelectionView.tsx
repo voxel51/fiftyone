@@ -275,7 +275,7 @@ export default function TreeSelectionView(props: ViewPropsType) {
         return updatedState;
       });
     }
-  }, [data, unboundState]);
+  }, [data]);
 
   // CheckboxView: Represents a single checkbox (either parent or child)
   function CheckboxView({

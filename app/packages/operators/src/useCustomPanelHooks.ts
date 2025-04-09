@@ -78,7 +78,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
     return panelStateLocal?.loaded;
   }, [panelStateLocal?.loaded]);
   const triggerPanelEvent = usePanelEvent();
-  const lazyState = useUnboundState({ panelState });
+  const unboundState = useUnboundState({ panelState });
 
   const onLoad = useCallback(() => {
     if (props.onLoad && !isLoaded) {
@@ -203,7 +203,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
   const handlePanelStatePathChange = useMemo(() => {
     return (path, value, schema, state) => {
       if (schema?.onChange) {
-        const { panelState } = lazyState;
+        const { panelState } = unboundState;
         const currentPanelState = merge({}, panelState?.state, state);
         triggerPanelEvent(panelId, {
           operator: schema.onChange,
@@ -212,7 +212,7 @@ export function useCustomPanelHooks(props: CustomPanelProps): CustomPanelHooks {
         });
       }
     };
-  }, [panelId, triggerPanelEvent, lazyState]);
+  }, [panelId, triggerPanelEvent]);
 
   const handlePanelStatePathChangeDebounced = useMemo(() => {
     return memoizedDebounce(
