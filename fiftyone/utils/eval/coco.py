@@ -767,6 +767,7 @@ def _compute_pr_curves(
 
         return result
 
+    print("Computing pr curves...")
     for _, result in samples.map_samples(
         map_func,
         workers=workers,

@@ -201,17 +201,23 @@ class ActivityNetEvaluation(DetectionEvaluation):
         else:
             _classes = None
 
-        # IoU sweep
-        logger.info("Performing IoU sweep...")
-        for sample in _samples.iter_samples(progress=progress):
+        def map_func(sample):
             # Don't edit user's data during sweep
             gts = _copy_labels(sample[self.gt_field])
             preds = _copy_labels(sample[self.pred_field])
 
-            video_matches = _activitynet_evaluation_iou_sweep(
-                gts, preds, self.config
-            )
+            result = _activitynet_evaluation_iou_sweep(gts, preds, self.config)
+            return result
 
+        # IoU sweep
+        logger.info("Performing IoU sweep...")
+        for _, video_matches in _samples.map_samples(
+            map_func,
+            workers=workers,
+            batch_method=batch_method,
+            parallelize_method=parallelize_method,
+            progress=progress,
+        ):
             for t, t_matches in video_matches.items():
                 for match in t_matches:
                     gt_label = match[0]
