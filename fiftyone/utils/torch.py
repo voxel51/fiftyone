@@ -456,6 +456,21 @@ class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
         raise NotImplementedError("subclasses must implement _predict_all()")
 
 
+def _recursive_to_device(obj, device):
+    """Recursively moves tensors nested in dicts or lists to the given device."""
+    if isinstance(obj, torch.Tensor):
+        return obj.to(device)
+
+    elif isinstance(obj, dict):
+        return {k: _recursive_to_device(v, device) for k, v in obj.items()}
+
+    elif isinstance(obj, list):
+        return [_recursive_to_device(v, device) for v in obj]
+
+    else:
+        return obj
+
+
 class TorchModelConfig(fom.ModelConfig):
     def __init__(self, d):
         super().__init__(d)
@@ -705,6 +720,8 @@ class TorchModel(
         """
         if self.preprocess:
             input = self.get_item(input)
+            # I really don't like this being here
+            input = _recursive_to_device(input, self.device)
 
         raw_output = self._forward_pass(input)
 
@@ -1078,9 +1095,6 @@ class TorchImageModel(fom.LogitsMixin, TorchModel):
             (width, height),
             confidence_thresh=self.config.confidence_thresh,
         )
-
-    def _forward_pass(self, imgs):
-        return self._model(imgs)
 
     def _parse_classes(self, config):
         if config.classes is not None:
