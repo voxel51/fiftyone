@@ -1043,50 +1043,6 @@ class TorchImageModel(fom.LogitsMixin, TorchModel):
 
         return _recursive_to_device(raw_output, device="cpu")
 
-    def _predict_all(self, imgs):
-        if self._preprocess and self._transforms is not None:
-            imgs = [self._transforms(img) for img in imgs]
-
-        height, width = None, None
-
-        if self.config.raw_inputs:
-            # Feed images as list
-            if self._output_processor is not None:
-                img = imgs[0]
-                if isinstance(img, torch.Tensor):
-                    height, width = img.size()[-2:]
-                elif isinstance(img, Image.Image):
-                    width, height = img.size
-                elif isinstance(img, np.ndarray):
-                    height, width = img.shape[:2]
-        else:
-            # Feed images as stacked Tensor
-            if isinstance(imgs, (list, tuple)):
-                imgs = torch.stack(imgs)
-
-            height, width = imgs.size()[-2:]
-
-            imgs = imgs.to(self._device)
-            if self._using_half_precision:
-                imgs = imgs.half()
-
-        output = self._forward_pass(imgs)
-
-        if self._output_processor is None:
-            if isinstance(output, torch.Tensor):
-                output = output.detach().cpu().numpy()
-
-            return output
-
-        if self.has_logits:
-            self._output_processor.store_logits = self.store_logits
-
-        return self._output_processor(
-            output,
-            (width, height),
-            confidence_thresh=self.config.confidence_thresh,
-        )
-
     def _parse_classes(self, config):
         if config.classes is not None:
             return config.classes
