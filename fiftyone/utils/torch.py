@@ -468,6 +468,7 @@ class TorchModelConfig(fom.ModelConfig):
         self.device = self.parse_string(d, "device", default=None)
 
         # getitem / preprocess
+        self.get_item = self.parse_raw(d, "get_item", default=None)
         self.get_item_cls = self.parse_string(d, "get_item_cls", default=None)
         self.get_item_args = self.parse_dict(d, "get_item_args", default=None)
 
@@ -627,6 +628,7 @@ class TorchModel(
     def preprocess(self, value):
         self._preprocess = value
 
+    # new interface
     def _build_get_item(self, config):
         """Builds the :class:`GetItem` instance for this model.
 
@@ -726,20 +728,19 @@ class ImageGetItem(GetItem):
         self,
         transform=None,
         raw_inputs=False,
-        use_numpy=False,
-        force_rgb=False,
         using_half_precision=False,
     ):
         super().__init__()
         self.transform = transform
         self.raw_inputs = raw_inputs
-        self.use_numpy = use_numpy
-        self.force_rgb = force_rgb
         self.using_half_precision = using_half_precision
 
     def sample_dict_to_input(self, sample_dict):
         img = _load_image(
-            sample_dict["filepath"], self.use_numpy, self.force_rgb
+            # hardcoded because that's how it was in fiftyone.core.models._make_data_loader
+            sample_dict["filepath"],
+            use_numpy=False,
+            force_rgb=True,
         )
         if self.transform is not None:
             img = self.transform(img)
@@ -748,18 +749,14 @@ class ImageGetItem(GetItem):
             return img
 
         else:
-            if self.use_numpy:
-                img = torch.tensor(img)
-            else:  # in this case it's a PIL Image
-                img = torchvision.transforms.v2.functional.pil_to_tensor(img)
-
+            img = torchvision.transforms.v2.functional.pil_to_tensor(img)
             if self.using_half_precision:
                 imgs = imgs.half()
 
         return imgs
 
 
-class TorchImageModelConfig(foc.Config):
+class TorchImageModelConfig(TorchModelConfig):
     """Configuration for running a :class:`TorchImageModel`.
 
     Models are represented by this class via the following three components:
@@ -879,6 +876,7 @@ class TorchImageModelConfig(foc.Config):
     """
 
     def __init__(self, d):
+        super().__init__(d)
         self.transforms = self.parse_raw(d, "transforms", default=None)
         self.transforms_fcn = self.parse_raw(d, "transforms_fcn", default=None)
         self.transforms_args = self.parse_dict(
@@ -929,14 +927,24 @@ class TorchImageModel(fom.LogitsMixin, TorchModel):
     """
 
     def __init__(self, config):
-        TorchModel.__init__(self, config)
-        self.config = config
-
-        # Build transforms
+        # Build transforms + GetItem before calling super().__init__()
         transforms, ragged_batches = self._build_transforms(config)
         self._transforms = transforms
         self._ragged_batches = ragged_batches
         self._preprocess = True
+
+        # if user doesn't provide something else, use default ImageGetItem
+        if config.get_item is None and config.get_item_cls is None:
+            config.get_item_cls = ImageGetItem
+            config.get_item_args = {
+                "transform": transforms,
+                "raw_inputs": config.raw_inputs,
+                "using_half_precision": config.use_half_precision,
+            }
+
+        TorchModel.__init__(self, config)
+
+        self.config = config
 
         # Parse model details
         self._classes = self._parse_classes(config)
