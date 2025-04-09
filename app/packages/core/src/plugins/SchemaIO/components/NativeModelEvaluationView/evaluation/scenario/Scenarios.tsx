@@ -102,9 +102,12 @@ export default function Scenarios(props) {
         prompt: true,
         callback: () => {
           setLoadingScenario(true);
-          loadScenario(scenario, undefined, () => {
-            setLoadingScenario(false);
-            loadScenarios();
+          loadScenarios(() => {
+            loadScenario(scenario, undefined, () => {
+              setTimeout(() => {
+                setLoadingScenario(false);
+              }, 500);
+            });
           });
         },
       });
