@@ -18,7 +18,7 @@ FiftyOne supports the configuration options described below:
 | Config field                  | Environment variable                  | Default value                 | Description                                                                            |
 +===============================+=======================================+===============================+========================================================================================+
 | `database_admin`              | `FIFTYONE_DATABASE_ADMIN`             | `True`                        | Whether the client is allowed to trigger database migrations. See                      |
-|								|										|								| :ref:`this section <database-migrations>` for more information.						 |
+|                               |                                       |                               | :ref:`this section <database-migrations>` for more information.                        |
 +-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `database_compressor`         | `FIFTYONE_DATABASE_COMPRESSOR`        | `None`                        | `MongoDB Network Compression                                                           |
 |                               |                                       |                               | <https://www.mongodb.com/developer/products/mongodb/mongodb-network-compression/>` to  |
