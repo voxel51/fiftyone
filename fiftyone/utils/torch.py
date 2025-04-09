@@ -1303,7 +1303,7 @@ class OutputProcessor(object):
         pass
 
     def __call__(self, output):
-        return np.array(output)
+        return output
 
 
 class ImageOutputProcessor(OutputProcessor):
