@@ -282,22 +282,20 @@ class GetItem:
         super().__init__(**kwargs)
         self.field_mapping = field_mapping
 
-    def samples_dicts_to_input(self, samples_dicts):
+    def sample_dict_to_input(self, sample_dict):
         """Return model input from a list if samples' dicts
 
         Args:
-            samples_dicts:  A list of dictionaries corresponding to sample views.
-                            Can be the samples themselves.
+            sample_dict:  A dictionarty corresponding to a sample view.
+                            Can be the sample itself.
 
         Returns:
             model input
         """
         raise NotImplementedError("Subclass should implement this method.")
 
-    def __call__(self, samples):
-        if not isinstance(samples, (list, tuple)):
-            samples = [samples]
-        return self.samples_dicts_to_input(samples)
+    def __call__(self, sample):
+        return self.sample_dict_to_input(sample)
 
     @property
     def required_fields(self):
@@ -719,6 +717,46 @@ class TorchModel(
 
         if self.postprocess:
             return self._output_processor(raw_output)
+
+
+class ImageGetItem(GetItem):
+    """GetItem for :class:`TorchImageModels`"""
+
+    def __init__(
+        self,
+        transform=None,
+        raw_inputs=False,
+        use_numpy=False,
+        force_rgb=False,
+        using_half_precision=False,
+    ):
+        super().__init__()
+        self.transform = transform
+        self.raw_inputs = raw_inputs
+        self.use_numpy = use_numpy
+        self.force_rgb = force_rgb
+        self.using_half_precision = using_half_precision
+
+    def sample_dict_to_input(self, sample_dict):
+        img = _load_image(
+            sample_dict["filepath"], self.use_numpy, self.force_rgb
+        )
+        if self.transform is not None:
+            img = self.transform(img)
+
+        if self.raw_inputs:
+            return img
+
+        else:
+            if self.use_numpy:
+                img = torch.tensor(img)
+            else:  # in this case it's a PIL Image
+                img = torchvision.transforms.v2.functional.pil_to_tensor(img)
+
+            if self.using_half_precision:
+                imgs = imgs.half()
+
+        return imgs
 
 
 class TorchImageModelConfig(foc.Config):
