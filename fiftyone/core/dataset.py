@@ -3616,6 +3616,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields=None,
         omit_fields=None,
         merge_lists=True,
+        merge_embedded_docs=False,
         overwrite=True,
         expand_schema=True,
         validate=True,
@@ -3673,6 +3674,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 (when ``overwrite`` is True) or kept (when ``overwrite`` is
                 False) when their ``id`` matches a label from the provided
                 sample
+            merge_embedded_docs (False): whether to merge the attributes of
+                embedded documents (True) rather than merging the entire
+                top-level field (False)
             overwrite (True): whether to overwrite (True) or skip (False)
                 existing fields and label elements
             expand_schema (True): whether to dynamically add new fields
@@ -3706,6 +3710,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 fields=fields,
                 omit_fields=omit_fields,
                 merge_lists=merge_lists,
+                merge_embedded_docs=merge_embedded_docs,
                 overwrite=overwrite,
                 expand_schema=expand_schema,
                 validate=validate,
@@ -3723,6 +3728,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields=None,
         omit_fields=None,
         merge_lists=True,
+        merge_embedded_docs=False,
         overwrite=True,
         expand_schema=True,
         dynamic=False,
@@ -3804,6 +3810,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 (when ``overwrite`` is True) or kept (when ``overwrite`` is
                 False) when their ``id`` matches a label from the provided
                 samples
+            merge_embedded_docs (False): whether to merge the attributes of
+                embedded documents (True) rather than merging the entire
+                top-level field (False)
             overwrite (True): whether to overwrite (True) or skip (False)
                 existing fields and label elements
             expand_schema (True): whether to dynamically add new fields
@@ -3864,6 +3873,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 fields=fields,
                 omit_fields=omit_fields,
                 merge_lists=merge_lists,
+                merge_embedded_docs=merge_embedded_docs,
                 overwrite=overwrite,
             )
             return
@@ -3894,6 +3904,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     fields=fields,
                     omit_fields=omit_fields,
                     merge_lists=merge_lists,
+                    merge_embedded_docs=merge_embedded_docs,
                     overwrite=overwrite,
                     expand_schema=expand_schema,
                     include_info=False,
@@ -3913,6 +3924,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             fields=fields,
             omit_fields=omit_fields,
             merge_lists=merge_lists,
+            merge_embedded_docs=merge_embedded_docs,
             overwrite=overwrite,
             expand_schema=expand_schema,
             dynamic=dynamic,
@@ -5479,6 +5491,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields=None,
         omit_fields=None,
         merge_lists=True,
+        merge_embedded_docs=False,
         overwrite=True,
         expand_schema=True,
         dynamic=False,
@@ -5632,6 +5645,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 elements are either replaced (when ``overwrite`` is True) or
                 kept (when ``overwrite`` is False) when their ``id`` matches a
                 label from the provided samples
+            merge_embedded_docs (False): whether to merge the attributes of
+                embedded documents (True) rather than merging the entire
+                top-level field (False)
             overwrite (True): whether to overwrite (True) or skip (False)
                 existing fields and label elements
             expand_schema (True): whether to dynamically add new fields
@@ -5668,6 +5684,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             fields=fields,
             omit_fields=omit_fields,
             merge_lists=merge_lists,
+            merge_embedded_docs=merge_embedded_docs,
             overwrite=overwrite,
             expand_schema=expand_schema,
             dynamic=dynamic,
@@ -5816,6 +5833,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields=None,
         omit_fields=None,
         merge_lists=True,
+        merge_embedded_docs=False,
         overwrite=True,
         expand_schema=True,
         dynamic=False,
@@ -5965,6 +5983,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 elements are either replaced (when ``overwrite`` is True) or
                 kept (when ``overwrite`` is False) when their ``id`` matches a
                 label from the provided samples
+            merge_embedded_docs (False): whether to merge the attributes of
+                embedded documents (True) rather than merging the entire
+                top-level field (False)
             overwrite (True): whether to overwrite (True) or skip (False)
                 existing fields and label elements
             expand_schema (True): whether to dynamically add new fields
@@ -5997,6 +6018,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             fields=fields,
             omit_fields=omit_fields,
             merge_lists=merge_lists,
+            merge_embedded_docs=merge_embedded_docs,
             overwrite=overwrite,
             expand_schema=expand_schema,
             dynamic=dynamic,
@@ -6081,6 +6103,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields=None,
         omit_fields=None,
         merge_lists=True,
+        merge_embedded_docs=False,
         overwrite=True,
         expand_schema=True,
         dynamic=False,
@@ -6180,6 +6203,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 elements are either replaced (when ``overwrite`` is True) or
                 kept (when ``overwrite`` is False) when their ``id`` matches a
                 label from the provided samples
+            merge_embedded_docs (False): whether to merge the attributes of
+                embedded documents (True) rather than merging the entire
+                top-level field (False)
             overwrite (True): whether to overwrite (True) or skip (False)
                 existing fields and label elements
             expand_schema (True): whether to dynamically add new fields
@@ -6205,6 +6231,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             fields=fields,
             omit_fields=omit_fields,
             merge_lists=merge_lists,
+            merge_embedded_docs=merge_embedded_docs,
             overwrite=overwrite,
             expand_schema=expand_schema,
             dynamic=dynamic,
@@ -9028,10 +9055,12 @@ def _merge_dataset_doc(
 
     if isinstance(collection_or_doc, foc.SampleCollection):
         # Respects filtered schemas, if any
+        same_dataset = collection_or_doc._root_dataset is dataset
         doc = collection_or_doc._root_dataset._doc
         schema = collection_or_doc.get_field_schema()
         frame_schema = collection_or_doc.get_frame_field_schema() or {}
     else:
+        same_dataset = False
         doc = collection_or_doc
         schema = {f.name: f.to_field() for f in doc.sample_fields}
         frame_schema = {f.name: f.to_field() for f in doc.frame_fields or []}
@@ -9138,7 +9167,7 @@ def _merge_dataset_doc(
             frame_schema, expand_schema=expand_schema
         )
 
-    if not merge_info:
+    if same_dataset or not merge_info:
         curr_doc.reload()
         return
 
@@ -9464,6 +9493,7 @@ def _merge_samples_python(
     fields=None,
     omit_fields=None,
     merge_lists=True,
+    merge_embedded_docs=False,
     overwrite=True,
     expand_schema=True,
     dynamic=False,
@@ -9503,6 +9533,7 @@ def _merge_samples_python(
         fields=fields,
         omit_fields=omit_fields,
         merge_lists=merge_lists,
+        merge_embedded_docs=merge_embedded_docs,
         overwrite=overwrite,
         expand_schema=expand_schema,
     )
@@ -9527,6 +9558,7 @@ def _make_merge_samples_generator(
     fields=None,
     omit_fields=None,
     merge_lists=True,
+    merge_embedded_docs=False,
     overwrite=True,
     expand_schema=True,
 ):
@@ -9558,6 +9590,7 @@ def _make_merge_samples_generator(
                     fields=fields,
                     omit_fields=omit_fields,
                     merge_lists=merge_lists,
+                    merge_embedded_docs=merge_embedded_docs,
                     overwrite=overwrite,
                     expand_schema=expand_schema,
                 )
@@ -9583,6 +9616,7 @@ def _merge_samples_pipeline(
     fields=None,
     omit_fields=None,
     merge_lists=True,
+    merge_embedded_docs=False,
     overwrite=True,
 ):
     in_key_field = key_field
@@ -9627,18 +9661,6 @@ def _merge_samples_pipeline(
             omit_fields, omit_frame_fields = fou.split_frame_fields(
                 omit_fields
             )
-
-        if fields is not None:
-            fields = {k: v for k, v in fields.items() if k not in omit_fields}
-            omit_fields = None
-
-        if contains_videos and frame_fields is not None:
-            frame_fields = {
-                k: v
-                for k, v in frame_fields.items()
-                if k not in omit_frame_fields
-            }
-            omit_frame_fields = None
 
     #
     # Prepare samples merge pipeline
@@ -9712,6 +9734,7 @@ def _merge_samples_pipeline(
         when_matched = _merge_docs(
             src_collection,
             merge_lists=merge_lists,
+            merge_embedded_docs=merge_embedded_docs,
             fields=fields,
             omit_fields=omit_fields,
             delete_fields=delete_fields,
@@ -9816,6 +9839,7 @@ def _merge_samples_pipeline(
             when_frame_matched = _merge_docs(
                 src_collection,
                 merge_lists=merge_lists,
+                merge_embedded_docs=merge_embedded_docs,
                 fields=frame_fields,
                 omit_fields=omit_frame_fields,
                 delete_fields=delete_fields,
@@ -9924,6 +9948,7 @@ def _merge_samples_pipeline(
 def _merge_docs(
     sample_collection,
     merge_lists=True,
+    merge_embedded_docs=False,
     fields=None,
     omit_fields=None,
     delete_fields=None,
@@ -9935,30 +9960,73 @@ def _merge_docs(
     else:
         schema = sample_collection.get_field_schema()
 
+    # Identify list fields that need merging
     if merge_lists:
-        list_fields = []
-        elem_fields = []
-        for field, field_type in schema.items():
-            if fields is not None and field not in fields:
-                continue
-
-            if omit_fields is not None and field in omit_fields:
-                continue
-
-            if isinstance(field_type, fof.ListField):
-                root = fields[field] if fields is not None else field
-                list_fields.append(root)
-            elif isinstance(
-                field_type, fof.EmbeddedDocumentField
-            ) and issubclass(field_type.document_type, fol._HasLabelList):
-                root = fields[field] if fields is not None else field
-                elem_fields.append(
-                    root + "." + field_type.document_type._LABEL_LIST_FIELD
-                )
+        list_fields, elem_fields = _init_merge_lists(
+            schema, fields=fields, omit_fields=omit_fields
+        )
     else:
         list_fields = None
         elem_fields = None
 
+    # Identify embedded document fields that need merging
+    if merge_embedded_docs:
+        (
+            doc_fields,
+            doc_list_fields,
+            doc_elem_fields,
+        ) = _init_merge_embedded_docs(
+            schema,
+            fields=fields,
+            omit_fields=omit_fields,
+            merge_lists=merge_lists,
+        )
+    else:
+        doc_fields = None
+        doc_list_fields = None
+        doc_elem_fields = None
+
+    #
+    # It is possible that the user is mapping data *into* an embedded field
+    # eg: fields={"ground_truth": "data.gt"}
+    #
+    # We must handle such cases by:
+    #   1. always merging the "data" field, even if merging embedded documents
+    #      wasn't explicitly requested
+    #   2. moving any embedded list fields associated with "data" into the
+    #      per-doc lists
+    #
+    if fields is not None:
+        embedded_roots = set()
+        for k, v in fields.items():
+            if "." in v:
+                root = v.split(".", 1)[0]
+                embedded_roots.add(root)
+
+        if embedded_roots and not merge_embedded_docs:
+            doc_fields = []
+            if merge_lists:
+                doc_list_fields = defaultdict(list)
+                doc_elem_fields = defaultdict(list)
+
+        for root in embedded_roots:
+            if root not in doc_fields:
+                doc_fields.append(root)
+
+            if merge_lists:
+                for i in range(len(list_fields)):
+                    f = list_fields[i]
+                    if f.startswith(root + "."):
+                        del list_fields[i]
+                        doc_list_fields[root].append(f[len(root + ".") :])
+
+                for i in range(len(elem_fields)):
+                    f = elem_fields[i]
+                    if f.startswith(root + "."):
+                        del elem_fields[i]
+                        doc_elem_fields[root].append(f[len(root + ".") :])
+
+    # Handle merging of simple fields
     if overwrite:
         root_doc = "$$ROOT"
 
@@ -10016,6 +10084,7 @@ def _merge_docs(
 
         docs = [new_doc, root_doc]
 
+    # Handle merging of list fields
     if list_fields or elem_fields:
         doc = {}
 
@@ -10029,31 +10098,145 @@ def _merge_docs(
 
         docs.append(doc)
 
+    # Handle merging of embedded document fields
+    if doc_fields:
+        doc = {}
+
+        for doc_field in doc_fields:
+            if merge_lists:
+                _doc_list_fields = doc_list_fields.get(doc_field, [])
+                _doc_elem_fields = doc_elem_fields.get(doc_field, [])
+            else:
+                _doc_list_fields = None
+                _doc_elem_fields = None
+
+            _merge_embedded_doc_field(
+                doc,
+                doc_field,
+                list_fields=_doc_list_fields,
+                elem_fields=_doc_elem_fields,
+                overwrite=overwrite,
+            )
+
+        docs.append(doc)
+
     return [{"$replaceWith": {"$mergeObjects": docs}}]
 
 
-def _merge_list_field(doc, list_field):
+def _init_merge_lists(schema, fields=None, omit_fields=None):
+    list_fields = []
+    elem_fields = []
+
+    for field, field_type in schema.items():
+        if fields is not None and field not in fields:
+            continue
+
+        if omit_fields is not None and field in omit_fields:
+            continue
+
+        if isinstance(field_type, fof.ListField):
+            root = fields[field] if fields is not None else field
+            list_fields.append(root)
+        elif isinstance(field_type, fof.EmbeddedDocumentField) and issubclass(
+            field_type.document_type, fol._HasLabelList
+        ):
+            root = fields[field] if fields is not None else field
+            elem_fields.append(
+                root + "." + field_type.document_type._LABEL_LIST_FIELD
+            )
+
+    return list_fields, elem_fields
+
+
+def _init_merge_embedded_docs(
+    schema, fields=None, omit_fields=None, merge_lists=True
+):
+    doc_fields = []
+
+    if merge_lists:
+        doc_list_fields = {}
+        doc_elem_fields = {}
+    else:
+        doc_list_fields = None
+        doc_elem_fields = None
+
+    for field, field_type in schema.items():
+        if fields is not None and field not in fields:
+            continue
+
+        if omit_fields is not None and field in omit_fields:
+            continue
+
+        if isinstance(
+            field_type, fof.EmbeddedDocumentField
+        ) and not issubclass(field_type.document_type, fol._HasLabelList):
+            root = fields[field] if fields is not None else field
+            doc_fields.append(root)
+
+            if merge_lists:
+                _schema = field_type.get_field_schema()
+                _fields = _filter_by_root(fields, root)
+                _omit_fields = _filter_by_root(omit_fields, root)
+
+                _list_fields, _elem_fields = _init_merge_lists(
+                    _schema, fields=_fields, omit_fields=_omit_fields
+                )
+
+                doc_list_fields[root] = _list_fields
+                doc_elem_fields[root] = _elem_fields
+
+    return doc_fields, doc_list_fields, doc_elem_fields
+
+
+def _filter_by_root(fields, root):
+    if fields is None:
+        return None
+
+    is_dict = isinstance(fields, dict)
+    if is_dict:
+        fields = list(fields.values())
+
+    _fields = []
+    for f in fields:
+        if f.startswith(root + "."):
+            _fields.append(f[len(root + ".") :])
+
+    if not _fields:
+        return None
+
+    if is_dict:
+        return {f: f for f in _fields}
+
+    return _fields
+
+
+def _merge_list_field(doc, list_field, root=None):
+    if root is not None:
+        list_path = root + "." + list_field
+    else:
+        list_path = list_field
+
     doc[list_field] = {
         "$switch": {
             "branches": [
                 {
-                    "case": {"$not": {"$gt": ["$" + list_field, None]}},
-                    "then": "$$new." + list_field,
+                    "case": {"$not": {"$gt": ["$" + list_path, None]}},
+                    "then": "$$new." + list_path,
                 },
                 {
-                    "case": {"$not": {"$gt": ["$$new." + list_field, None]}},
-                    "then": "$" + list_field,
+                    "case": {"$not": {"$gt": ["$$new." + list_path, None]}},
+                    "then": "$" + list_path,
                 },
             ],
             "default": {
                 "$concatArrays": [
-                    "$" + list_field,
+                    "$" + list_path,
                     {
                         "$filter": {
-                            "input": "$$new." + list_field,
+                            "input": "$$new." + list_path,
                             "as": "this",
                             "cond": {
-                                "$not": {"$in": ["$$this", "$" + list_field]}
+                                "$not": {"$in": ["$$this", "$" + list_path]}
                             },
                         }
                     },
@@ -10063,18 +10246,25 @@ def _merge_list_field(doc, list_field):
     }
 
 
-def _merge_label_list_field(doc, elem_field, overwrite=False):
-    field, leaf = elem_field.split(".")
+def _merge_label_list_field(doc, elem_field, root=None, overwrite=False):
+    field, leaf = elem_field.rsplit(".", 1)
+
+    if root is not None:
+        elem_path = root + "." + elem_field
+        field_path = root + "." + field
+    else:
+        elem_path = elem_field
+        field_path = field
 
     if overwrite:
-        root = "$$new." + field
+        root_path = "$$new." + field_path
         elements = {
             "$reverseArray": {
                 "$let": {
                     "vars": {
                         "new_ids": {
                             "$map": {
-                                "input": "$$new." + elem_field,
+                                "input": "$$new." + elem_path,
                                 "as": "this",
                                 "in": "$$this._id",
                             },
@@ -10082,9 +10272,9 @@ def _merge_label_list_field(doc, elem_field, overwrite=False):
                     },
                     "in": {
                         "$reduce": {
-                            "input": {"$reverseArray": "$" + elem_field},
+                            "input": {"$reverseArray": "$" + elem_path},
                             "initialValue": {
-                                "$reverseArray": "$$new." + elem_field
+                                "$reverseArray": "$$new." + elem_path
                             },
                             "in": {
                                 "$cond": {
@@ -10108,13 +10298,13 @@ def _merge_label_list_field(doc, elem_field, overwrite=False):
             }
         }
     else:
-        root = "$" + field
+        root_path = "$" + field_path
         elements = {
             "$let": {
                 "vars": {
                     "existing_ids": {
                         "$map": {
-                            "input": "$" + elem_field,
+                            "input": "$" + elem_path,
                             "as": "this",
                             "in": "$$this._id",
                         },
@@ -10122,8 +10312,8 @@ def _merge_label_list_field(doc, elem_field, overwrite=False):
                 },
                 "in": {
                     "$reduce": {
-                        "input": "$$new." + elem_field,
-                        "initialValue": "$" + elem_field,
+                        "input": "$$new." + elem_path,
+                        "initialValue": "$" + elem_path,
                         "in": {
                             "$cond": {
                                 "if": {
@@ -10146,15 +10336,80 @@ def _merge_label_list_field(doc, elem_field, overwrite=False):
         "$switch": {
             "branches": [
                 {
-                    "case": {"$not": {"$gt": ["$" + field, None]}},
-                    "then": "$$new." + field,
+                    "case": {"$not": {"$gt": ["$" + field_path, None]}},
+                    "then": "$$new." + field_path,
                 },
                 {
-                    "case": {"$not": {"$gt": ["$$new." + field, None]}},
-                    "then": "$" + field,
+                    "case": {"$not": {"$gt": ["$$new." + field_path, None]}},
+                    "then": "$" + field_path,
                 },
             ],
-            "default": {"$mergeObjects": [root, {leaf: elements}]},
+            "default": {"$mergeObjects": [root_path, {leaf: elements}]},
+        }
+    }
+
+
+def _merge_embedded_doc_field(
+    doc,
+    doc_field,
+    list_fields=None,
+    elem_fields=None,
+    overwrite=False,
+):
+    if overwrite:
+        root_field = "$" + doc_field
+        new_field = "$$new." + doc_field
+    else:
+        root_field = "$$new." + doc_field
+        new_field = "$" + doc_field
+
+    # Handle merging of simple fields
+    root_doc = root_field
+    new_doc = {
+        "$arrayToObject": {
+            "$filter": {
+                "input": {"$objectToArray": new_field},
+                "as": "item",
+                "cond": {
+                    "$and": [
+                        {"$ne": ["$$item.v", None]},
+                    ]
+                },
+            }
+        }
+    }
+
+    docs = [root_doc, new_doc]
+
+    # Handle merging of nested list fields
+    if list_fields or elem_fields:
+        list_doc = {}
+
+        if list_fields:
+            for list_field in list_fields:
+                _merge_list_field(list_doc, list_field, root=doc_field)
+
+        if elem_fields:
+            for elem_field in elem_fields:
+                _merge_label_list_field(
+                    list_doc, elem_field, root=doc_field, overwrite=overwrite
+                )
+
+        docs.append(list_doc)
+
+    doc[doc_field] = {
+        "$switch": {
+            "branches": [
+                {
+                    "case": {"$not": {"$gt": [root_field, None]}},
+                    "then": new_field,
+                },
+                {
+                    "case": {"$not": {"$gt": [new_field, None]}},
+                    "then": root_field,
+                },
+            ],
+            "default": {"$mergeObjects": docs},
         }
     }
 

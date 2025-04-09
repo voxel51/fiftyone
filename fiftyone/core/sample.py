@@ -292,6 +292,7 @@ class _SampleMixin(object):
         fields=None,
         omit_fields=None,
         merge_lists=True,
+        merge_embedded_docs=False,
         overwrite=True,
         expand_schema=True,
         validate=True,
@@ -338,6 +339,9 @@ class _SampleMixin(object):
                 (when ``overwrite`` is True) or kept (when ``overwrite`` is
                 False) when their ``id`` matches a label from the provided
                 sample
+            merge_embedded_docs (False): whether to merge the attributes of
+                embedded documents (True) rather than merging the entire
+                top-level field (False)
             overwrite (True): whether to overwrite (True) or skip (False)
                 existing fields and label elements
             expand_schema (True): whether to dynamically add new fields
@@ -368,6 +372,7 @@ class _SampleMixin(object):
             fields=fields,
             omit_fields=omit_fields,
             merge_lists=merge_lists,
+            merge_embedded_docs=merge_embedded_docs,
             overwrite=overwrite,
             expand_schema=expand_schema,
             validate=validate,
@@ -380,6 +385,7 @@ class _SampleMixin(object):
                 fields=frame_fields,
                 omit_fields=omit_frame_fields,
                 merge_lists=merge_lists,
+                merge_embedded_docs=merge_embedded_docs,
                 overwrite=overwrite,
                 expand_schema=expand_schema,
                 validate=validate,

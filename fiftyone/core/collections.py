@@ -2316,7 +2316,7 @@ class SampleCollection(object):
         if not isinstance(self, fod.Dataset):
             labels = self._get_selected_labels(fields=in_field)
 
-        dataset = self._dataset
+        dataset = self._root_dataset
         dataset.merge_samples(
             self,
             key_field="id",
