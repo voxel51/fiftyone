@@ -743,8 +743,9 @@ class ImageGetItem(GetItem):
         transform=None,
         raw_inputs=False,
         using_half_precision=False,
+        **kwargs,
     ):
-        super().__init__()
+        super().__init__(**kwargs)
         self.transform = transform
         self.raw_inputs = raw_inputs
         self.using_half_precision = using_half_precision
