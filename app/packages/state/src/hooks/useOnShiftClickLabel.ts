@@ -1,28 +1,105 @@
-import { LabelToggledEvent } from "@fiftyone/looker";
+import { LabelData, LabelToggledEvent } from "@fiftyone/looker";
+import { FrameSample } from "@fiftyone/looker/src/state";
+import { getFetchFunction } from "@fiftyone/utilities";
+import { LRUCache } from "lru-cache";
 import { useRecoilCallback } from "recoil";
-import { hoveredInstances, jotaiStore } from "../jotai";
-import { selectedLabelMap } from "../recoil";
-import { selectedLabels } from "../recoil/atoms";
+import {
+  hoveredInstances,
+  HoveredInstancesLabelsTuple,
+  jotaiStore,
+} from "../jotai";
+import { datasetName, LIMIT_VIEW_STAGE, selectedLabelMap } from "../recoil";
+import { hoveredSample, selectedLabels } from "../recoil/atoms";
+
+const similarLabelsCache = new LRUCache<string, SimilarLabelsResponse | null>({
+  max: 50,
+  ttl: 60 * 1000,
+});
+
+type SimilarLabelsResponse = {
+  label: string;
+  count: number;
+  instance_id: string;
+  label_ids: Record<string, number>;
+  range: [number, number];
+};
+
+const fetchSimilarLabels = async ({
+  instanceId,
+  sampleId,
+  frameNumber,
+  frameCount,
+  numFrames,
+  dataset,
+}: {
+  instanceId: string;
+  sampleId: string;
+  frameNumber: number;
+  frameCount: number;
+  numFrames: number;
+  dataset: string;
+}): Promise<SimilarLabelsResponse | null> => {
+  try {
+    const response = await getFetchFunction()("POST", `/get-similar-labels`, {
+      instanceId,
+      sampleId,
+      frameNumber,
+      frameCount,
+      numFrames,
+      dataset,
+    });
+
+    return response as SimilarLabelsResponse;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+};
+
+export const getSimilarLabelsCached = async (params: {
+  instanceId: string;
+  sampleId: string;
+  frameNumber: number;
+  frameCount: number;
+  numFrames: number;
+  dataset: string;
+}): Promise<SimilarLabelsResponse | null> => {
+  const { instanceId, sampleId, frameNumber, frameCount, numFrames, dataset } =
+    params;
+
+  const key = JSON.stringify([
+    instanceId,
+    sampleId,
+    frameNumber,
+    frameCount,
+    numFrames,
+    dataset,
+  ]);
+
+  if (similarLabelsCache.has(key)) {
+    return similarLabelsCache.get(key) || null;
+  }
+
+  // preemptively set key to null to avoid race condition
+  // or otherwise fetch from multiple looker instances will trigger multiple requests
+  similarLabelsCache.set(key, null);
+
+  try {
+    const result = await fetchSimilarLabels(params);
+    similarLabelsCache.set(key, result);
+    return result;
+  } catch (error) {
+    console.error(error);
+    similarLabelsCache.delete(key);
+    return null;
+  }
+};
 
 export const useOnShiftClickLabel = () => {
-  return useRecoilCallback(
+  const handleGroup = useRecoilCallback(
     ({ set, snapshot }) =>
       async (e: LabelToggledEvent) => {
         const { sourceInstanceId } = e.detail;
-
-        if (!sourceInstanceId) {
-          return;
-        }
-
-        /**
-         * Let k = number of currently hovered similar instances
-         * Let n = number of instances in the modal with that instance config
-         *
-         * Three possible cases:
-         * 1. If k = 0, shift + click selects all instances with that instance config
-         * 2. If k = n, shift + click deselects all instances with that instance config
-         * 3. If 0 < k < n, shift + click selects all instances with that instance config
-         */
 
         const currentHoveredInstances = jotaiStore.get(hoveredInstances);
 
@@ -113,5 +190,101 @@ export const useOnShiftClickLabel = () => {
         }
       },
     []
+  );
+
+  const handleVideo = useRecoilCallback(
+    ({ set, snapshot }) =>
+      async (sampleId: string, labels: LabelData[], e: LabelToggledEvent) => {
+        const { sourceInstanceId, sourceLabelId } = e.detail;
+
+        if (!sourceInstanceId) {
+          return;
+        }
+
+        const similarLabels = await getSimilarLabelsCached({
+          instanceId: sourceInstanceId,
+          sampleId,
+          frameNumber: 1, // always 1 is fine
+          frameCount: 120, // todo: hardcoded for now
+          numFrames: 120, // todo: hardcoded for now
+          dataset: snapshot.getLoadable(datasetName).getValue(),
+        });
+
+        if (!similarLabels) {
+          return;
+        }
+
+        const currentHoveredInstances = jotaiStore.get(hoveredInstances);
+
+        if (!currentHoveredInstances || currentHoveredInstances.length !== 2) {
+          return;
+        }
+
+        const fieldName = (
+          currentHoveredInstances[1] as HoveredInstancesLabelsTuple[1]
+        )[sourceLabelId].field;
+
+        const { label_ids } = similarLabels;
+
+        const labelsToAdd = Object.entries(label_ids).map(
+          ([labelId, frameNumber]) => ({
+            sampleId,
+            labelId,
+            frameNumber,
+            field: fieldName,
+            instanceId: sourceInstanceId,
+          })
+        );
+
+        set(selectedLabels, (prev) => {
+          return [...prev, ...labelsToAdd];
+        });
+      },
+    []
+  );
+
+  return useRecoilCallback(
+    ({ snapshot }) =>
+      async (sampleId: string, labels: LabelData[], e: LabelToggledEvent) => {
+        const { sourceInstanceId, sourceSampleId } = e.detail;
+
+        if (!sourceInstanceId) {
+          return;
+        }
+
+        console.log("View stage is ", LIMIT_VIEW_STAGE);
+
+        /**
+         * IN GROUPS:
+         *
+         * Let k = number of currently hovered similar instances
+         * Let n = number of instances in the modal with that instance config
+         *
+         * Three possible cases:
+         * 1. If k = 0, shift + click selects all instances with that instance config
+         * 2. If k = n, shift + click deselects all instances with that instance config
+         * 3. If 0 < k < n, shift + click selects all instances with that instance config
+         *
+         * IN VIDEO DATASETS:
+         *
+         * Two possible cases:
+         * 1. Shift + click selects all instances with that instance config.
+         * 2. Shift + click deselects all instances with that instance config.
+         */
+
+        const hoveredSampleValue = snapshot
+          .getLoadable(hoveredSample)
+          .getValue() as unknown as FrameSample;
+        const isVideoWithMultipleFrames =
+          hoveredSampleValue?._media_type === "video" &&
+          hoveredSampleValue?.frames?.length > 0;
+
+        if (isVideoWithMultipleFrames) {
+          handleVideo(sourceSampleId, labels, e);
+        } else {
+          return handleGroup(sampleId, labels, e);
+        }
+      },
+    [handleGroup]
   );
 };
