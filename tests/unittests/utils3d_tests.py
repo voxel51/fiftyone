@@ -331,9 +331,9 @@ class GetSceneAssetPaths(unittest.TestCase):
             ]
 
             scene1 = fo3d.Scene()
-            scene1.background = fo3d.SceneBackground(image="back/ground.jpeg")
+            scene1.background = fo3d.SceneBackground(image=os.path.join("back", "ground.jpeg"))
             scene1.add(fo3d.ObjMesh("blah-obj", "relative.obj"))
-            scene1.add(fo3d.PointCloud("blah-pcd", f"{temp_dir}/absolute.pcd"))
+            scene1.add(fo3d.PointCloud("blah-pcd", os.path.join(temp_dir, "absolute.pcd")))
             scene1.write(scene_paths[0])
 
             scene2 = fo3d.Scene()
