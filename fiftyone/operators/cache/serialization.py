@@ -34,14 +34,26 @@ def auto_serialize(value):
         return value.to_json()
     elif isinstance(value, dict):
         return {str(k): auto_serialize(v) for k, v in value.items()}
-    elif isinstance(value, (list, tuple, set)):
+    elif isinstance(value, list):
         return [auto_serialize(v) for v in value]
+    elif isinstance(value, tuple):
+        return {
+            "_cls": "tuple",
+            "values": [auto_serialize(v) for v in value],
+        }
+    elif isinstance(value, set):
+        return {
+            "_cls": "set",
+            "values": [auto_serialize(v) for v in value],
+        }
     elif isinstance(value, (date, datetime)):
         return value.isoformat()
     elif isinstance(value, (int, float, str, bool)) or value is None:
         return value
     elif isinstance(value, np.ndarray):
         return value.tolist()
+    elif isinstance(value, np.generic):
+        return value.item()
     raise TypeError(f"Cannot serialize value of type {type(value)}: {value}")
 
 
@@ -60,6 +72,12 @@ def auto_deserialize(value):
     elif focu._is_sample_dict(value):
         value = {k: v for k, v in value.items() if k != "_cls"}
         return fo.Sample.from_dict(value)
+    elif isinstance(value, dict) and "_cls" in value:
+        cls = value["_cls"]
+        if cls == "tuple":
+            return tuple(auto_deserialize(v) for v in value["values"])
+        elif cls == "set":
+            return set(auto_deserialize(v) for v in value["values"])
     elif isinstance(value, dict):
         return {str(k): auto_deserialize(v) for k, v in value.items()}
     elif isinstance(value, (list, tuple, set)):

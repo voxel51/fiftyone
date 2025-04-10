@@ -40,8 +40,8 @@ class TestCacheSerialization(unittest.TestCase):
         self.assertIsNone(deserialized["none"])
         self.assertEqual(deserialized["str"], "hello")
         self.assertEqual(deserialized["list"], [1, 2, 3])
-        self.assertEqual(set(deserialized["set"]), {7, 8, 9})
-        self.assertEqual(deserialized["tuple"], [4, 5, 6])  # becomes list
+        self.assertEqual(deserialized["set"], {7, 8, 9})
+        self.assertEqual(deserialized["tuple"], (4, 5, 6))
         self.assertEqual(deserialized["nested"]["x"], 10)
 
     def test_auto_serialize_deserialize_datetime(self):
@@ -135,7 +135,7 @@ class TestCacheSerialization(unittest.TestCase):
         dict_of_samples = auto_deserialize({"sample": sample_dict})
         self.assertIsInstance(dict_of_samples["sample"], fo.Sample)
 
-    def test_auto_serialize_numpy(self):
+    def test_auto_serialize_numpy_arrays(self):
         # Integer array
         array = np.array([1, 2, 3], dtype=np.int32)
         result = auto_serialize(array)
@@ -157,3 +157,46 @@ class TestCacheSerialization(unittest.TestCase):
         self.assertIsInstance(result[0], float)
         self.assertNotIsInstance(result[0], np.float32)
         self.assertIsInstance(result, list)
+
+    def test_auto_serialize_numpy_generic(self):
+        # np.int32
+        array = np.int32(42)
+        result = auto_serialize(array)
+        self.assertEqual(result, 42)
+        self.assertIsInstance(result, int)
+
+        # np.float64
+        array = np.float64(3.14)
+        result = auto_serialize(array)
+        self.assertEqual(result, 3.14)
+        self.assertIsInstance(result, float)
+
+    def test_auto_serialize_set_and_tuple(self):
+        # Set
+        s = {1, 2, 3}
+        result = auto_serialize(s)
+        self.assertEqual(result["_cls"], "set")
+        self.assertEqual(set(result["values"]), {1, 2, 3})
+
+        # Tuple
+        t = (4, 5, 6)
+        result = auto_serialize(t)
+        self.assertEqual(result["_cls"], "tuple")
+        self.assertEqual(result["values"], [4, 5, 6])
+        self.assertIsInstance(result["values"], list)
+        self.assertNotIsInstance(result["values"], tuple)
+        self.assertEqual(result["values"][0], 4)
+        self.assertEqual(result["values"][1], 5)
+
+    def test_auto_deserialize_set_and_tuple(self):
+        # Set
+        s = {"_cls": "set", "values": [1, 2, 3]}
+        result = auto_deserialize(s)
+        self.assertEqual(set(result), {1, 2, 3})
+        self.assertIsInstance(result, set)
+
+        # Tuple
+        t = {"_cls": "tuple", "values": [4, 5, 6]}
+        result = auto_deserialize(t)
+        self.assertEqual(result, (4, 5, 6))
+        self.assertIsInstance(result, tuple)
