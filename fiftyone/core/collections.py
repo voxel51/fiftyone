@@ -10274,12 +10274,12 @@ class SampleCollection(object):
 
         # Parse big results
         for idx, aggregation in big_aggs.items():
-            result = _results[idx_map[idx]].to_list()
+            result = list(_results[idx_map[idx]])
             results[idx] = self._parse_big_result(aggregation, result)
 
         # Parse facet-able results
         for idx, aggregation in compiled_facet_aggs.items():
-            result = _results[idx_map[idx]].to_list()
+            result = list(_results[idx_map[idx]])
             data = self._parse_faceted_result(aggregation, result)
             if (
                 isinstance(aggregation, foa.FacetAggregations)
@@ -10327,7 +10327,7 @@ class SampleCollection(object):
 
             # Parse facet-able results
             for idx, aggregation in compiled_facet_aggs.items():
-                result = _results[idx_map[idx]].to_list()
+                result = list(_results[idx_map[idx]])
                 data = self._parse_faceted_result(aggregation, result)
                 if (
                     isinstance(aggregation, foa.FacetAggregations)
