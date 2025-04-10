@@ -61,6 +61,7 @@ def apply_model(
     output_dir=None,
     rel_dir=None,
     progress=None,
+    field_mapping=None,
     **kwargs,
 ):
     """Applies the model to the samples in the collection.
@@ -104,6 +105,8 @@ def apply_model(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
+        field_mapping (None): the field_mapping to use if using a
+            :class:`fiftyone.utils.torch.GetItem` compatible model
         **kwargs: optional model-specific keyword arguments passed through
             to the underlying inference implementation
     """
@@ -250,6 +253,7 @@ def apply_model(
                 skip_failures,
                 filename_maker,
                 progress,
+                field_mapping=field_mapping,
             )
 
         if batch_size is not None:
@@ -410,11 +414,17 @@ def _apply_image_model_data_loader(
     skip_failures,
     filename_maker,
     progress,
+    field_mapping=None,
 ):
     needs_samples = isinstance(model, SamplesMixin)
 
     data_loader = _make_data_loader(
-        samples, model, batch_size, num_workers, skip_failures
+        samples,
+        model,
+        batch_size,
+        num_workers,
+        skip_failures,
+        field_mapping=field_mapping,
     )
 
     with contextlib.ExitStack() as context:
@@ -685,23 +695,22 @@ def _iter_batches(video_reader, batch_size):
         yield frame_numbers, imgs
 
 
-def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
-    # This function supports DataLoaders that emit numpy arrays that can
-    # therefore be used for non-Torch models; but we do not currently use this
-    # functionality
-    use_numpy = not isinstance(model, TorchModelMixin)
+# throw the collate stuff here so it's serializable
+class ErrorHandlingCollate:
+    def __init__(self, skip_failures, ragged_batches, use_numpy):
+        self.skip_failures = skip_failures
 
-    if num_workers is None:
-        num_workers = fout.recommend_num_workers()
+        if ragged_batches:
+            self._collate_fn = self._ragged_batches
+        elif use_numpy:
+            self._collate_fn = self._use_numpy
+        else:
+            self._collate_fn = self._default
 
-    dataset = fout.TorchImageDataset(
-        samples=samples,
-        transform=model.transforms,
-        use_numpy=use_numpy,
-        force_rgb=True,
-        skip_failures=skip_failures,
-    )
+    def __call__(self, batch):
+        return self._collate_fn(batch)
 
+    @staticmethod
     def handle_errors(batch):
         errors = [b for b in batch if isinstance(b, Exception)]
 
@@ -713,54 +722,107 @@ def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
 
         return Exception("\n" + "\n".join([str(e) for e in errors]))
 
-    if model.ragged_batches:
+    def _ragged_batches(self, batch):
+        error = ErrorHandlingCollate.handle_errors(batch)
+        if error is not None:
+            return error
 
-        def collate_fn(batch):
-            error = handle_errors(batch)
-            if error is not None:
-                return error
+        return batch
 
-            return batch  # return list
+    def _use_numpy(self, batch):
+        error = ErrorHandlingCollate.handle_errors(batch)
+        if error is not None:
+            return error
 
-    elif use_numpy:
+        try:
+            return np.stack(batch)
+        except Exception as e:
+            if not self.skip_failures:
+                raise e
 
-        def collate_fn(batch):
-            error = handle_errors(batch)
-            if error is not None:
-                return error
+            return e
 
-            try:
-                return np.stack(batch)
-            except Exception as e:
-                if not skip_failures:
-                    raise e
+    def _default(self, batch):
+        error = ErrorHandlingCollate.handle_errors(batch)
+        if error is not None:
+            return error
 
-                return e
+        try:
+            return tud.dataloader.default_collate(batch)
+        except Exception as e:
+            if not self.skip_failures:
+                raise e
 
-    else:
+            return e
 
-        def collate_fn(batch):
-            error = handle_errors(batch)
-            if error is not None:
-                return error
 
-            try:
-                return tud.dataloader.default_collate(batch)
-            except Exception as e:
-                if not skip_failures:
-                    raise e
+def _make_data_loader(
+    samples, model, batch_size, num_workers, skip_failures, field_mapping=None
+):
 
-                return e
+    # This function supports DataLoaders that emit numpy arrays that can
+    # therefore be used for non-Torch models; but we do not currently use this
+    # functionality
+    use_numpy = not isinstance(model, TorchModelMixin)
+
+    if num_workers is None:
+        num_workers = fout.recommend_num_workers()
+
+    collate_fn = ErrorHandlingCollate(
+        skip_failures, ragged_batches=model.ragged_batches, use_numpy=use_numpy
+    )
 
     if batch_size is None:
         batch_size = 1
+
+    use_fotd = hasattr(model, "_build_get_item")
+
+    if use_fotd:
+        dataset = _make_fo_torch_dataset(
+            samples,
+            model,
+            skip_failures,
+            field_mapping=field_mapping,
+        )
+
+    else:
+        dataset = fout.TorchImageDataset(
+            samples=samples,
+            transform=model.transforms,
+            use_numpy=use_numpy,
+            force_rgb=True,
+            skip_failures=skip_failures,
+        )
 
     return tud.DataLoader(
         dataset,
         batch_size=batch_size,
         num_workers=num_workers,
         collate_fn=collate_fn,
+        pin_memory=True,
+        # being explicit because it's important to be False
+        # if we are only iterating the dataset once
+        # to avoid all sorts of zombies
+        persistent_workers=False,
+        worker_init_fn=None
+        if not use_fotd
+        else fout.FiftyOneTorchDataset.worker_init,
     )
+
+
+def _make_fo_torch_dataset(
+    samples,
+    model,
+    skip_failures,  # have to implement this
+    field_mapping=None,
+):
+    if skip_failures:
+        logger.warning(
+            "skip_failures not implemented yet. Not skipping failures."
+        )
+    get_item = model._build_get_item(field_mapping=field_mapping)
+    dataset = samples.to_torch(get_item=get_item)
+    return dataset
 
 
 def compute_embeddings(
@@ -771,6 +833,7 @@ def compute_embeddings(
     num_workers=None,
     skip_failures=True,
     progress=None,
+    field_mapping=None,
     **kwargs,
 ):
     """Computes embeddings for the samples in the collection using the given
@@ -805,6 +868,8 @@ def compute_embeddings(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
+        field_mapping (None): the field_mapping to use if using a
+            :class:`fiftyone.utils.torch.GetItem` compatible model
         **kwargs: optional model-specific keyword arguments passed through
             to the underlying inference implementation
 
@@ -935,6 +1000,7 @@ def compute_embeddings(
                 num_workers,
                 skip_failures,
                 progress,
+                field_mapping=field_mapping,
             )
 
         if batch_size is not None:
@@ -1052,9 +1118,15 @@ def _compute_image_embeddings_data_loader(
     num_workers,
     skip_failures,
     progress,
+    field_mapping=None,
 ):
     data_loader = _make_data_loader(
-        samples, model, batch_size, num_workers, skip_failures
+        samples,
+        model,
+        batch_size,
+        num_workers,
+        skip_failures,
+        field_mapping=field_mapping,
     )
 
     embeddings = []

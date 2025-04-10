@@ -23,6 +23,7 @@ import eta.core.geometry as etag
 import eta.core.learning as etal
 import eta.core.utils as etau
 from torchvision.models.feature_extraction import create_feature_extractor
+import torchvision.transforms.functional
 
 import fiftyone.core.config as foc
 import fiftyone.core.labels as fol
@@ -34,6 +35,7 @@ import fiftyone.utils.image as foui
 import fiftyone.core.collections as focol
 import fiftyone.core.sample as fos
 import fiftyone.core.view as fov
+import fiftyone.core.validation as foval
 
 fou.ensure_torch()
 import torch
@@ -251,6 +253,124 @@ def ensure_torch_hub_requirements(
         fou.ensure_package(
             req_str, error_level=error_level, log_success=log_success
         )
+
+
+class GetItem:
+    """A class that defines how to get the input for a model from a sample.
+    It's :method:`fiftyone.utils.torch.GetItem.samples_dict_to_input` method
+    should return the input for the model from a sample or a dictionary corresponding
+    to a sample view.
+    Instances of this class can be used in conjunction with
+    :class:`fiftyone.utils.torch.FiftyOneTorchDataset` to create performant torch datasets.
+    A :class:`fiftyone.utils.torch.GetItem` instance should only require
+    the fields specified in `required_fields` from samples.
+    It should look for those fields under the names specified in `field_mapping`.
+    the `field_mapping` dictionary is used to map the fields in the sample to the input fields for the model.
+    Subclasses should interact with `required_fields` and `field_mapping` through the properties.
+    the method :method:`fiftyone.utils.torch.GetItem.add_required_fields`
+    can be used to add fields to required_fields.
+    Required fields should be set in the subclass's `__init__` method.
+    Required fields cannot repeat. If a field is added twice, it will be ignored.
+    Make sure to check if a superclass has already added a field before adding to it.
+    """
+
+    def __init__(self, field_mapping=None, **kwargs):
+        super().__init__(**kwargs)
+        self.field_mapping = field_mapping
+
+    def sample_dict_to_input(self, sample_dict):
+        """Return model input from a list if samples' dicts
+        Args:
+            sample_dict:  A dictionarty corresponding to a sample view.
+                            Can be the sample itself.
+        Returns:
+            model input
+        """
+        raise NotImplementedError("Subclass should implement this method.")
+
+    def __call__(self, sample):
+        return self.sample_dict_to_input(sample)
+
+    @property
+    def required_fields(self):
+        """a list of fields that are required in the sample for the GetItem to work."""
+        if not hasattr(self, "_required_fields_list"):
+            self._required_fields_list = ()
+        return self._required_fields_list
+
+    def add_required_fields(self, value):
+        """
+        Add fields to the required_fields list.
+        Args:
+            value: a list of fields or a single field to add to the required
+        """
+        if not hasattr(self, "_required_fields_list"):
+            self._required_fields_list = ()
+        if isinstance(value, str):
+            value = [value]
+        if not isinstance(value, list):
+            raise ValueError("required_fields must be a list or a string.")
+        self._required_fields_list = tuple(
+            set(list(self._required_fields_list) + value)
+        )
+        self.update_field_mapping()
+
+    @property
+    def field_mapping(self):
+        """
+        a dictionary mapping the fields in the sample to the input fields for the model
+        if not defined, we will assume the fields are the same
+        When this is updated, the behavior of __call__ should be updated accordingly.
+        This is what allows the user to specify the fields in the sample that are used as input to the model.
+        """
+        if not hasattr(self, "_field_mapping_dict"):
+            self._field_mapping_dict = {}
+        return self._field_mapping_dict
+
+    @field_mapping.setter
+    def field_mapping(self, value):
+        if not hasattr(self, "_field_mapping_dict"):
+            self._field_mapping_dict = {}
+        if value is None:  # generally on init
+            value = {k: k for k in self.required_fields}
+            for k, v in self._field_mapping_dict.items():
+                # if mixins have already set the field mapping, we should keep it
+                value[k] = v
+        if not isinstance(value, dict):
+            raise ValueError("field_mapping must be a dictionary.")
+        for k, v in value.items():
+            if k not in self.required_fields:
+                raise ValueError(
+                    f"field_mapping key {k} not in required_fields."
+                )
+
+        for f in self.required_fields:
+            if f not in value:
+                value[f] = self.field_mapping.get(f, f)
+
+        self._field_mapping_dict = value
+
+    def update_field_mapping(self):
+        """
+        Update the field mapping for the get_item function.
+        """
+        for f in self.required_fields:
+            if f not in self.field_mapping:
+                self.field_mapping[f] = f
+
+    def validate_compatible_samples(self, samples):
+        """
+        Validate that the samples are compatible with the GetItem.
+        This should be called every time so we can fail quickly and loudly when needed.
+        TODO: Add type checking for the fields.
+        """
+        # is this the correct way to do this?
+        sample = samples.first()
+        foval.get_fields(sample, self.field_mapping.values(), allow_none=False)
+        try:
+            return self(sample)
+        except Exception as e:
+            raise ValueError("Sample is not compatible with GetItem.") from e
 
 
 class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
@@ -517,6 +637,44 @@ class TorchImageModelConfig(foc.Config):
         self.device = self.parse_string(d, "device", default=None)
 
 
+class ImageGetItem(GetItem):
+    """GetItem for :class:`TorchImageModels`"""
+
+    def __init__(
+        self,
+        transform=None,
+        raw_inputs=False,
+        using_half_precision=False,
+        use_numpy=False,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.transform = transform
+        self.raw_inputs = raw_inputs
+        self.using_half_precision = using_half_precision
+        self.use_numpy = use_numpy
+        self.add_required_fields("filepath")
+
+    def sample_dict_to_input(self, sample_dict):
+        img = _load_image(
+            # hardcoded because that's how it was in fiftyone.core.models._make_data_loader
+            sample_dict["filepath"],
+            use_numpy=self.use_numpy,
+            force_rgb=True,
+        )
+        if self.transform is not None:
+            img = self.transform(img)
+
+        if self.raw_inputs:
+            return img
+
+        else:
+            if self.using_half_precision:
+                imgs = imgs.half()
+
+        return img
+
+
 class TorchImageModel(
     TorchEmbeddingsMixin, fom.TorchModelMixin, fom.LogitsMixin, fom.Model
 ):
@@ -585,6 +743,15 @@ class TorchImageModel(
         if self._no_grad is not None:
             self._no_grad.__exit__(*args)
             self._no_grad = None
+
+    def _build_get_item(self, **kwargs):
+        return ImageGetItem(
+            transform=self._transforms,
+            raw_inputs=self.config.raw_inputs,
+            using_half_precision=self._using_half_precision,
+            use_numpy=False,
+            **kwargs,
+        )
 
     @property
     def media_type(self):
