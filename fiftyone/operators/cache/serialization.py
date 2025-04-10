@@ -80,7 +80,11 @@ def auto_deserialize(value):
             return set(auto_deserialize(v) for v in value["values"])
     elif isinstance(value, dict):
         return {str(k): auto_deserialize(v) for k, v in value.items()}
-    elif isinstance(value, (list, tuple, set)):
+    elif isinstance(value, list):
         return [auto_deserialize(v) for v in value]
+    elif isinstance(value, tuple):
+        return tuple(auto_deserialize(v) for v in value)
+    elif isinstance(value, set):
+        return set(auto_deserialize(v) for v in value)
     else:
         return value
