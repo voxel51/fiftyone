@@ -125,18 +125,18 @@ class TestCacheUtils(unittest.TestCase):
     def test_get_cache_key_list_default_behavior(self):
         ctx = create_mock_ctx()
         args = [ctx, "val1", 42]
-        result = utils._get_cache_key_list(0, args, {}, key_fn=None)
-        self.assertEqual(result, ["val1", 42])
+        result = utils._get_cache_key_tuple(0, args, {}, key_fn=None)
+        self.assertEqual(result, ("val1", 42))
 
     def test_get_cache_key_list_with_custom_key_fn(self):
         ctx = create_mock_ctx()
         args = [ctx]
 
         def custom_key_fn(ctx, *a):
-            return ["custom", ctx.operator_uri]
+            return "custom", ctx.operator_uri
 
-        result = utils._get_cache_key_list(0, args, {}, key_fn=custom_key_fn)
-        self.assertEqual(result, ["custom", ctx.operator_uri])
+        result = utils._get_cache_key_tuple(0, args, {}, key_fn=custom_key_fn)
+        self.assertEqual(result, ("custom", ctx.operator_uri))
 
     def test_get_cache_key_list_custom_key_fn_invalid(self):
         ctx = create_mock_ctx()
@@ -146,7 +146,7 @@ class TestCacheUtils(unittest.TestCase):
             return "not-a-list"
 
         with self.assertRaises(ValueError):
-            utils._get_cache_key_list(0, args, {}, key_fn=bad_key_fn)
+            utils._get_cache_key_tuple(0, args, {}, key_fn=bad_key_fn)
 
     def test_get_cache_key_list_custom_key_fn_throws(self):
         ctx = create_mock_ctx()
@@ -156,4 +156,4 @@ class TestCacheUtils(unittest.TestCase):
             raise RuntimeError("oops")
 
         with self.assertRaises(ValueError):
-            utils._get_cache_key_list(0, args, {}, key_fn=error_key_fn)
+            utils._get_cache_key_tuple(0, args, {}, key_fn=error_key_fn)

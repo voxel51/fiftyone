@@ -53,7 +53,9 @@ def resolve_cache_info(
     cache_disabled = not fo.config.execution_cache_enabled
     if cache_disabled:
         return None, None, True
-    base_cache_key_list = _get_cache_key_list(ctx_index, args, kwargs, key_fn)
+    base_cache_key_tuple = _get_cache_key_tuple(
+        ctx_index, args, kwargs, key_fn
+    )
 
     scoped_cache_key_list, skip_cache = _get_scoped_cache_key_list(
         ctx,
@@ -63,7 +65,7 @@ def resolve_cache_info(
         jwt_scoped=jwt_scoped,
     )
 
-    cache_key_list = base_cache_key_list + scoped_cache_key_list
+    cache_key_list = list(base_cache_key_tuple) + scoped_cache_key_list
     cache_key = _build_cache_key(cache_key_list)
     store = _get_store_for_func(
         func, dataset_id=ctx.dataset._doc.id, collection_name=collection_name
@@ -118,12 +120,13 @@ def _get_store_for_func(func, dataset_id=None, collection_name=None):
 
 
 def _build_cache_key(cache_key_list):
-    structured_key = hashkey(*cache_key_list)
+    serialized_key_list = focs.auto_serialize(cache_key_list)
+    structured_key = hashkey(*serialized_key_list)
     key_string = json.dumps(structured_key, sort_keys=True)
     return hashlib.sha256(key_string.encode("utf-8")).hexdigest()
 
 
-def _get_cache_key_list(ctx_index, args, kwargs, key_fn):
+def _get_cache_key_tuple(ctx_index, args, kwargs, key_fn):
     if key_fn:
         try:
             cache_key_list = key_fn(*args, **kwargs)
@@ -136,9 +139,9 @@ def _get_cache_key_list(ctx_index, args, kwargs, key_fn):
         except Exception as e:
             raise ValueError(f"Failed to create custom cache key: {e}")
     else:
-        cache_key_list = args[ctx_index + 1 :]
+        cache_key_list = tuple(args[ctx_index + 1 :])
 
-    return focs.auto_serialize(cache_key_list)
+    return cache_key_list
 
 
 def _get_scoped_cache_key_list(
