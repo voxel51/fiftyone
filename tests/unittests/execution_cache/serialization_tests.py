@@ -57,7 +57,7 @@ class TestCacheSerialization(unittest.TestCase):
         self.assertEqual(deserialized["dt"].isoformat(), dt.isoformat())
 
     def test_auto_deserialize_recursive_with_sample(self):
-        expected_path = str(Path("hello", "world.jpg"))
+        expected_path = str(Path(Path.cwd().anchor, "hello", "world.jpg"))
         sample_dict = {
             "filepath": expected_path,
             "ground_truth": {"label": "cat", "confidence": 0.9},
@@ -85,7 +85,7 @@ class TestCacheSerialization(unittest.TestCase):
         self.assertIsInstance(result["b"]["date"], datetime.datetime)
 
     def test_auto_serialize_sample(self):
-        expected_path = str(Path("tmp", "image.jpg"))
+        expected_path = str(Path(Path.cwd().anchor, "tmp", "image.jpg"))
         sample = fo.Sample(
             filepath=expected_path,
             ground_truth=fo.Classification(label="cat"),
@@ -97,7 +97,7 @@ class TestCacheSerialization(unittest.TestCase):
         self.assertEqual(result["_cls"], "fiftyone.core.sample.Sample")
 
     def test_auto_serialize_nested_samples(self):
-        expected_path = str(Path("tmp", "image.jpg"))
+        expected_path = str(Path(Path.cwd().anchor, "tmp", "image.jpg"))
         sample = fo.Sample(
             filepath=expected_path,
             ground_truth=fo.Classification(label="cat"),
@@ -108,7 +108,7 @@ class TestCacheSerialization(unittest.TestCase):
         self.assertEqual(result[0]["_cls"], "fiftyone.core.sample.Sample")
 
     def test_auto_deserialize_sample(self):
-        expected_path = str(Path("tmp", "image.jpg"))
+        expected_path = str(Path(Path.cwd().anchor, "tmp", "image.jpg"))
         sample_dict = {
             "filepath": expected_path,
             "ground_truth": {"label": "cat", "confidence": 0.9},
@@ -122,8 +122,8 @@ class TestCacheSerialization(unittest.TestCase):
         self.assertAlmostEqual(result["ground_truth"]["confidence"], 0.9)
 
     def test_auto_deserialize_nested_samples(self):
-        expected_path_img1 = str(Path("tmp", "image.jpg"))
-        expected_path_img2 = str(Path("tmp", "image2.jpg"))
+        expected_path_img1 = str(Path(Path.cwd().anchor, "tmp", "image.jpg"))
+        expected_path_img2 = str(Path(Path.cwd().anchor, "tmp", "image2.jpg"))
 
         sample_dict = {
             "_cls": "fiftyone.core.sample.Sample",
