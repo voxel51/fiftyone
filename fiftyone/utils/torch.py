@@ -670,7 +670,7 @@ class ImageGetItem(GetItem):
 
         else:
             if self.using_half_precision:
-                imgs = imgs.half()
+                img = img.half()
 
         return img
 
