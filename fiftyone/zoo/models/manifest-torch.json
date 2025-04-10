@@ -4225,6 +4225,210 @@
             "date_added": "2024-10-05 19:22:51"
         },
         {
+            "base_name": "yoloe11s-seg-torch",
+            "base_filename": "yoloe-11s-seg.pt",
+            "description": "YOLOE11-S Segmentation model",
+            "source": "https://docs.ultralytics.com/models/yoloe",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 27803986,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yoloe-11s-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.3.99"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "yolo"],
+            "date_added": "2025-04-10 12:24:41"
+        },
+        {
+            "base_name": "yoloe11m-seg-torch",
+            "base_filename": "yoloe-11m-seg.pt",
+            "description": "YOLOE11-M Segmentation model",
+            "source": "https://docs.ultralytics.com/models/yoloe",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 60276714,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yoloe-11m-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.3.99"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "yolo"],
+            "date_added": "2025-04-10 12:24:41"
+        },
+        {
+            "base_name": "yoloe11l-seg-torch",
+            "base_filename": "yoloe-11l-seg.pt",
+            "description": "YOLOE11-L Segmentation model",
+            "source": "https://docs.ultralytics.com/models/yoloe",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 70982416,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yoloe-11l-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.3.99"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "yolo"],
+            "date_added": "2025-04-10 12:24:41"
+        },
+        {
+            "base_name": "yoloev8s-seg-torch",
+            "base_filename": "yoloe-v8s-seg.pt",
+            "description": "YOLOEv8s Segmentation model",
+            "source": "https://docs.ultralytics.com/models/yoloe",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 31135890,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yoloe-v8s-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.3.99"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "yolo"],
+            "date_added": "2025-04-10 12:24:41"
+        },
+        {
+            "base_name": "yoloev8m-seg-torch",
+            "base_filename": "yoloe-v8m-seg.pt",
+            "description": "YOLOEv8m Segmentation model",
+            "source": "https://docs.ultralytics.com/models/yoloe",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 65800690,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yoloe-v8m-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.3.99"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "yolo"],
+            "date_added": "2025-04-10 12:24:41"
+        },
+        {
+            "base_name": "yoloev8l-seg-torch",
+            "base_filename": "yoloe-v8l-seg.pt",
+            "description": "YOLOEv8l Segmentation model",
+            "source": "https://docs.ultralytics.com/models/yoloe",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 70982416,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yoloe-v8l-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.3.99"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["segmentation", "torch", "yolo"],
+            "date_added": "2025-04-10 12:24:41"
+        },
+        {
             "base_name": "rtdetr-l-coco-torch",
             "base_filename": "rtdetr-l-coco.pt",
             "description": "RT-DETR-l model trained on COCO",
