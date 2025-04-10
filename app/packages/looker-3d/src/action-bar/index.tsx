@@ -17,6 +17,7 @@ import { ToggleGridHelper } from "./ToggleGridHelper";
 import { ViewFo3d } from "./ViewFo3d";
 import { ViewHelp } from "./ViewHelp";
 import { ViewJSON } from "./ViewJson";
+import { isFo3d as utilIsFo3d } from "@fiftyone/utilities";
 
 export const ActionBar = ({
   onMouseEnter,
@@ -28,7 +29,7 @@ export const ActionBar = ({
   const isFo3dSlice = useRecoilValue(fos.fo3dSlice);
   const mediaType = useRecoilValue(fos.mediaType);
   const isFo3d = useMemo(
-    () => isFo3dSlice || mediaType === "three_d",
+    () => isFo3dSlice || utilIsFo3d(mediaType),
     [isFo3dSlice, mediaType]
   );
   const hasMultiplePcdSlices = useRecoilValue(fos.hasMultiple3dSlices);
