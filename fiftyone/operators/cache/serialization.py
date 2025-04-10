@@ -40,6 +40,8 @@ def auto_serialize(value):
         return value.isoformat()
     elif isinstance(value, (int, float, str, bool)) or value is None:
         return value
+    elif isinstance(value, np.ndarray):
+        return value.tolist()
     raise TypeError(f"Cannot serialize value of type {type(value)}: {value}")
 
 

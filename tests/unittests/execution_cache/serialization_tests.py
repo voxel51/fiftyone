@@ -6,8 +6,8 @@ Unit tests for cache serialization.
 |
 """
 import unittest
-import json
 import datetime
+import numpy as np
 
 import fiftyone as fo
 from fiftyone import ViewField as F
@@ -134,3 +134,26 @@ class TestCacheSerialization(unittest.TestCase):
 
         dict_of_samples = auto_deserialize({"sample": sample_dict})
         self.assertIsInstance(dict_of_samples["sample"], fo.Sample)
+
+    def test_auto_serialize_numpy(self):
+        # Integer array
+        array = np.array([1, 2, 3], dtype=np.int32)
+        result = auto_serialize(array)
+        self.assertEqual(result, [1, 2, 3])
+        self.assertIsInstance(result, list)
+
+        # np float array using real NumPy float types
+        array = np.array([1.0, 2.0, 3.0], dtype=np.float64)
+        result = auto_serialize(array)
+        self.assertEqual(result, [1.0, 2.0, 3.0])
+        self.assertIsInstance(result[0], float)
+        self.assertNotIsInstance(result[0], np.float64)
+        self.assertIsInstance(result, list)
+
+        # Test with another NumPy float type for good measure
+        array = np.array([4.0, 5.0, 6.0], dtype=np.float32)
+        result = auto_serialize(array)
+        self.assertEqual(result, [4.0, 5.0, 6.0])
+        self.assertIsInstance(result[0], float)
+        self.assertNotIsInstance(result[0], np.float32)
+        self.assertIsInstance(result, list)
