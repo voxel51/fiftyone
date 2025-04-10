@@ -7,7 +7,9 @@ FiftyOne's public interface.
 """
 
 import fiftyone.core.config as _foc
+import fiftyone.utils.databricks as _foud
 
+_foud.with_fiftyone_useragent()
 config = _foc.load_config()
 annotation_config = _foc.load_annotation_config()
 evaluation_config = _foc.load_evaluation_config()
