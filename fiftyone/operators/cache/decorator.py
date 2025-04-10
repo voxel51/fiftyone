@@ -232,6 +232,10 @@ def execution_cache(
         wrapper.set_cache = set_cache
 
         def clear_all_caches(dataset_id=None):
+            if dataset_id is None and func.link_to_dataset:
+                raise ValueError(
+                    "dataset_id must be provided when link_to_dataset=True"
+                )
             store = _get_store_for_func(
                 func, dataset_id=dataset_id, collection_name=collection_name
             )

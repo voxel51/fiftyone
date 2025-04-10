@@ -197,3 +197,6 @@ class TestExecutionCacheDecorator(unittest.TestCase):
             collection_name=None,
         )
         mock_store.clear_cache.assert_called_once()
+
+        with self.assertRaises(ValueError):
+            my_func.clear_all_caches()
