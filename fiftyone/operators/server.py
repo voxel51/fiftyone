@@ -49,7 +49,6 @@ async def _get_operator_registry_for_route(
                 request, dataset_ids
             )
     else:
-        print("WARN.....USING UNAUTHENTICATED OPERATOR REGISTRY")
         registry = OperatorRegistry()
     return registry
 
