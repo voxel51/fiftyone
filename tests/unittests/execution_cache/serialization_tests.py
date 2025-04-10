@@ -5,9 +5,10 @@ Unit tests for cache serialization.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import unittest
 import datetime
 import numpy as np
+from pathlib import Path
+import unittest
 
 import fiftyone as fo
 from fiftyone import ViewField as F
@@ -56,8 +57,9 @@ class TestCacheSerialization(unittest.TestCase):
         self.assertEqual(deserialized["dt"].isoformat(), dt.isoformat())
 
     def test_auto_deserialize_recursive_with_sample(self):
+        expected_path = str(Path("hello", "world.jpg"))
         sample_dict = {
-            "filepath": "/hello/world.jpg",
+            "filepath": expected_path,
             "ground_truth": {"label": "cat", "confidence": 0.9},
             "_cls": "fiftyone.core.sample.Sample",
         }
@@ -79,12 +81,13 @@ class TestCacheSerialization(unittest.TestCase):
         self.assertEqual(result["b"]["nested"], 10)
         self.assertAlmostEqual(result["b"]["float"], 1.23)
         self.assertIsInstance(result["b"]["sample"], fo.Sample)
-        self.assertEqual(result["b"]["sample"].filepath, "/hello/world.jpg")
+        self.assertEqual(result["b"]["sample"].filepath, expected_path)
         self.assertIsInstance(result["b"]["date"], datetime.datetime)
 
     def test_auto_serialize_sample(self):
+        expected_path = str(Path("tmp", "image.jpg"))
         sample = fo.Sample(
-            filepath="/tmp/image.jpg",
+            filepath=expected_path,
             ground_truth=fo.Classification(label="cat"),
         )
         result = auto_serialize(sample)
@@ -94,8 +97,9 @@ class TestCacheSerialization(unittest.TestCase):
         self.assertEqual(result["_cls"], "fiftyone.core.sample.Sample")
 
     def test_auto_serialize_nested_samples(self):
+        expected_path = str(Path("tmp", "image.jpg"))
         sample = fo.Sample(
-            filepath="/tmp/image.jpg",
+            filepath=expected_path,
             ground_truth=fo.Classification(label="cat"),
         )
         nested = [sample]
@@ -104,8 +108,9 @@ class TestCacheSerialization(unittest.TestCase):
         self.assertEqual(result[0]["_cls"], "fiftyone.core.sample.Sample")
 
     def test_auto_deserialize_sample(self):
+        expected_path = str(Path("tmp", "image.jpg"))
         sample_dict = {
-            "filepath": "/tmp/image.jpg",
+            "filepath": expected_path,
             "ground_truth": {"label": "cat", "confidence": 0.9},
             "_cls": "fiftyone.core.sample.Sample",
         }
@@ -113,17 +118,20 @@ class TestCacheSerialization(unittest.TestCase):
         result = auto_deserialize(sample_dict)
 
         self.assertIsInstance(result, fo.Sample)
-        self.assertEqual(result["filepath"], "/tmp/image.jpg")
+        self.assertEqual(result["filepath"], expected_path)
         self.assertAlmostEqual(result["ground_truth"]["confidence"], 0.9)
 
     def test_auto_deserialize_nested_samples(self):
+        expected_path_img1 = str(Path("tmp", "image.jpg"))
+        expected_path_img2 = str(Path("tmp", "image2.jpg"))
+
         sample_dict = {
             "_cls": "fiftyone.core.sample.Sample",
-            "filepath": "/tmp/image.jpg",
+            "filepath": expected_path_img1,
             "ground_truth": {"label": "cat", "confidence": 0.9},
             "other": [
                 {
-                    "filepath": "/tmp/image2.jpg",
+                    "filepath": expected_path_img2,
                     "ground_truth": {"label": "dog", "confidence": 0.8},
                 }
             ],

@@ -5364,21 +5364,21 @@ class ThreeDMediaTests(unittest.TestCase):
             )
 
             scene1 = fo.Scene.from_fo3d(
-                os.path.join(export_dir, "label1/test/s.fo3d")
+                os.path.join(export_dir, "label1", "test", "s.fo3d")
             )
-            self.assertEqual(scene1.background.image, "../../image.jpeg")
+            self.assertEqual(scene1.background.image, os.path.join("..", "..", "image.jpeg"))
 
             for file in scene1.get_asset_paths():
-                with open(os.path.join(export_dir, "label1/test/", file)) as f:
+                with open(os.path.join(export_dir, "label1", "test", file)) as f:
                     self.assertEqual(f.read(), os.path.basename(file))
 
             scene2 = fo.Scene.from_fo3d(
-                os.path.join(export_dir, "label2/test/s.fo3d")
+                os.path.join(export_dir, "label2", "test", "s.fo3d")
             )
-            self.assertEqual(scene2.background.image, "../../image.jpeg")
+            self.assertEqual(scene2.background.image, os.path.join("..", "..", "image.jpeg"))
 
             for file in scene2.get_asset_paths():
-                with open(os.path.join(export_dir, "label2/test/", file)) as f:
+                with open(os.path.join(export_dir, "label2", "test", file)) as f:
                     if file.endswith("image.jpeg"):
                         continue
                     self.assertEqual(

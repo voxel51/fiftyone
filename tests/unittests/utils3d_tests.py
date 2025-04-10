@@ -352,15 +352,15 @@ class GetSceneAssetPaths(unittest.TestCase):
             self.assertSetEqual(
                 set(asset_paths[scene_paths[0]]),
                 {
-                    "back/ground.jpeg",
+                    os.path.join("back", "ground.jpeg"),
                     "relative.obj",
-                    f"{temp_dir}/absolute.pcd",
+                    os.path.join(temp_dir, "absolute.pcd"),
                 },
             )
             self.assertSetEqual(
                 set(asset_paths[scene_paths[1]]),
                 {
-                    "back/ground.jpeg",
+                    os.path.join("back", "ground.jpeg"),
                     "relative2.stl",
                 },
             )
@@ -376,16 +376,16 @@ class GetSceneAssetPaths(unittest.TestCase):
             self.assertSetEqual(
                 set(asset_paths[scene_paths[0]]),
                 {
-                    f"{temp_dir}/back/ground.jpeg",
-                    f"{temp_dir}/relative.obj",
-                    f"{temp_dir}/absolute.pcd",
+                    os.path.join(temp_dir, "back", "ground.jpeg"),
+                    os.path.join(temp_dir, "relative.obj"),
+                    os.path.join(temp_dir, "absolute.pcd"),
                 },
             )
             self.assertSetEqual(
                 set(asset_paths[scene_paths[1]]),
                 {
-                    f"{temp_dir}/back/ground.jpeg",
-                    f"{temp_dir}/relative2.stl",
+                    os.path.join(temp_dir, "back", "ground.jpeg"),
+                    os.path.join(temp_dir, "relative2.stl"),
                 },
             )
 
