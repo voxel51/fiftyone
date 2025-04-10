@@ -138,7 +138,7 @@ class ActivityNetEvaluation(DetectionEvaluation):
         classes=None,
         missing=None,
         progress=None,
-        workers=None,
+        workers=1,
         batch_method="id",
         parallelize_method=None,
     ):
@@ -166,8 +166,8 @@ class ActivityNetEvaluation(DetectionEvaluation):
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
-            workers (None): number of workers to use to compute detections, if
-                applicable for parallel processing.
+            workers (1): the number of workers to use to compute detections. If
+                set to greater than 1, will use parallel processing to compute.
             batch_method ("id"): the method to use to batch the dataset for
                 parallel processing. The supported values are ``"id"`` and
                 ``"slice"``.

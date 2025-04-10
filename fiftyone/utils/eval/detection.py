@@ -85,7 +85,7 @@ def evaluate_detections(
     dynamic=True,
     custom_metrics=None,
     progress=None,
-    workers=None,
+    workers=1,
     batch_method="id",
     parallelize_method=None,
     **kwargs,
@@ -184,9 +184,8 @@ def evaluate_detections(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
-        workers (None): the number of workers to use to compute detections. If
-            set to greater than 1, will use the map_samples function to compute
-            detections in parallel.
+        workers (1): the number of workers to use to compute detections. If
+            set to greater than 1, will use parallel processing to compute.
         batch_method ("id"): the method to use to batch the dataset for parallel
             processing. The supported values are ``"id"`` and ``"slice"``.
         parallelize_method (None): the backend to use for multiprocessing. The
@@ -254,9 +253,6 @@ def evaluate_detections(
             fp_field=fp_field,
             fn_field=fn_field,
         )
-
-    if parallelize_method is None and workers is None:
-        workers = 1
 
     matches = []
     for _, result in _samples.map_samples(
@@ -440,7 +436,7 @@ class DetectionEvaluation(BaseEvaluationMethod):
         classes=None,
         missing=None,
         progress=None,
-        workers=None,
+        workers=1,
         batch_method="id",
         parallelize_method=None,
     ):
