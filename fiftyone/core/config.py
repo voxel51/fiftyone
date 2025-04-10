@@ -288,6 +288,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_MAX_PROCESS_POOL_WORKERS",
             default=None,
         )
+        self.override_api_dynamic_batching = self.parse_bool(
+            d,
+            "override_api_dynamic_batching",
+            env_var="FIFTYONE_OVERRIDE_API_DYNAMIC_BATCHING",
+            default=False,
+        )
         self.signed_url_cache_size = self.parse_int(
             d,
             "signed_url_cache_size",

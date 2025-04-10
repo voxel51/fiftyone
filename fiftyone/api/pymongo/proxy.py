@@ -7,6 +7,7 @@
 import abc
 from typing import Any, Iterable, Mapping, Optional, Tuple, Union
 
+import fiftyone as fo
 from fiftyone.api import client, socket, utils
 from fiftyone.core import utils as fo_utils
 
@@ -99,9 +100,18 @@ class PymongoWebsocketProxy(PymongoRestProxy, abc.ABC):
 
         self.__next_batch = []
         self.__use_next_batching = True
-        self.__dynamic_batcher = fo_utils.ContentSizeDynamicBatcher(
-            None, init_batch_size=100, max_batch_beta=128.0
-        )
+        if fo.config.override_api_dynamic_batching:
+            # Use the same batcher configured for the sdk.
+            # In some cases, particularly when the items within each batch are not large,
+            # configuring a static batcher with a large batch size may
+            # be more efficient than using a dynamic batcher.
+            self.__dynamic_batcher = fo_utils.get_default_batcher(None)
+        else:
+            # Use a dynamic batcher to determine the batch size based on the
+            # content size of the data being sent over the socket.
+            self.__dynamic_batcher = fo_utils.ContentSizeDynamicBatcher(
+                None, init_batch_size=100, max_batch_beta=128.0
+            )
 
     def __proxy_it__(
         self,
