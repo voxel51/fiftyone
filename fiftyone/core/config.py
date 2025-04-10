@@ -256,7 +256,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_MAX_PROCESS_POOL_WORKERS",
             default=None,
         )
-
+        self.execution_cache_enabled = self.parse_bool(
+            d,
+            "execution_cache_enabled",
+            env_var="FIFTYONE_EXECUTION_CACHE_ENABLED",
+            default=True,
+        )
         self._init()
 
     @property

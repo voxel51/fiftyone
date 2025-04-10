@@ -427,3 +427,15 @@ def test_clear_cache(svc):
         final_store_count == 0
     ), "Store should be deleted after clearing cache"
     assert final_key_count == 0, "No keys should remain after clearing cache"
+
+
+@drop_datasets
+@drop_collection(TEST_COLLECTION_NAME)
+def test_clear_cache_on_non_existent_store(svc):
+    # Attempt to clear cache on a non-existent store
+    svc.clear_cache()
+    # Verify that no error is raised and the store count remains 0
+    assert svc.count_stores() == 0, "No stores should be present"
+    assert (
+        svc.count_keys("non_existent_store") == 0
+    ), "No keys should be present"
