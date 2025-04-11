@@ -424,7 +424,7 @@ class Regression(_HasID, Label):
     confidence = fof.FloatField()
 
 
-class Classification(_HasID, _HasInstance, Label):
+class Classification(_HasID, Label):
     """A classification label.
 
     Args:
