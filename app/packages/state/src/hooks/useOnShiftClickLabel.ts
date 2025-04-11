@@ -17,10 +17,9 @@ const similarLabelsCache = new LRUCache<string, SimilarLabelsResponse | null>({
 });
 
 type SimilarLabelsResponse = {
-  label: string;
   count: number;
   instance_id: string;
-  label_ids: Record<string, number>;
+  label_id_map: Record<string, number>;
   range: [number, number];
 };
 
@@ -40,14 +39,18 @@ const fetchSimilarLabels = async ({
   dataset: string;
 }): Promise<SimilarLabelsResponse | null> => {
   try {
-    const response = await getFetchFunction()("POST", `/get-similar-labels`, {
-      instanceId,
-      sampleId,
-      frameNumber,
-      frameCount,
-      numFrames,
-      dataset,
-    });
+    const response = await getFetchFunction()(
+      "POST",
+      `/get-similar-labels-frames`,
+      {
+        instanceId,
+        sampleId,
+        frameNumber,
+        frameCount,
+        numFrames,
+        dataset,
+      }
+    );
 
     return response as SimilarLabelsResponse;
   } catch (error) {
@@ -224,9 +227,9 @@ export const useOnShiftClickLabel = () => {
           currentHoveredInstances[1] as HoveredInstancesLabelsTuple[1]
         )[sourceLabelId].field;
 
-        const { label_ids } = similarLabels;
+        const { label_id_map: labelIdMap } = similarLabels;
 
-        const labelsToAdd = Object.entries(label_ids).map(
+        const labelsToAddOrRemove = Object.entries(labelIdMap).map(
           ([labelId, frameNumber]) => ({
             sampleId,
             labelId,
@@ -236,9 +239,23 @@ export const useOnShiftClickLabel = () => {
           })
         );
 
-        set(selectedLabels, (prev) => {
-          return [...prev, ...labelsToAdd];
-        });
+        // if current label is already selected, and shift + click pressed,
+        // assume user wants to deselect all instances with that instance config
+        const currentSelectedLabels = snapshot
+          .getLoadable(selectedLabelMap)
+          .getValue();
+
+        if (currentSelectedLabels[sourceLabelId]) {
+          set(selectedLabels, (prev) => {
+            return [
+              ...prev.filter((label) => label.instanceId !== sourceInstanceId),
+            ];
+          });
+        } else {
+          set(selectedLabels, (prev) => {
+            return [...prev, ...labelsToAddOrRemove];
+          });
+        }
       },
     []
   );

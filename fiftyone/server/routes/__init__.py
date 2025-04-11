@@ -19,7 +19,7 @@ from .screenshot import Screenshot
 from .tag import Tag
 from .tagging import Tagging
 from .values import Values
-from .get_similar_labels import GetSimilarLabels
+from .get_similar_labels_frames import GetSimilarLabelsFrameCollection
 from fiftyone.operators.server import OperatorRoutes
 
 # Starlette routes should not be created here. Please leave as tuple definitions
@@ -39,6 +39,6 @@ routes = (
         ("/tag", Tag),
         ("/tagging", Tagging),
         ("/values", Values),
-        ("/get-similar-labels", GetSimilarLabels),
+        ("/get-similar-labels-frames", GetSimilarLabelsFrameCollection),
     ]
 )
