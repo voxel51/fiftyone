@@ -5,6 +5,7 @@ FiftyOne 3D utilities unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import os
 import tempfile
 import unittest
@@ -343,7 +344,9 @@ class GetSceneAssetPaths(unittest.TestCase):
             scene1.write(scene_paths[0])
 
             scene2 = fo3d.Scene()
-            scene2.background = fo3d.SceneBackground(image="back/ground.jpeg")
+            scene2.background = fo3d.SceneBackground(
+                image=os.path.join("back", "ground.jpeg")
+            )
             scene2.add(fo3d.StlMesh("blah-obj", "relative2.stl"))
             scene2.write(scene_paths[1])
 

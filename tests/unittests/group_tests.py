@@ -9,6 +9,7 @@ FiftyOne group-related unit tests.
 from itertools import groupby
 import json
 import os
+from pathlib import Path
 import random
 import string
 import unittest
@@ -52,15 +53,15 @@ class GroupTests(unittest.TestCase):
         group = fo.Group()
         samples = [
             fo.Sample(
-                filepath="left-image.jpg",
+                filepath=str(Path(Path.cwd().anchor, "left-image.jpg")),
                 group_field=group.element("left"),
             ),
             fo.Sample(
-                filepath="ego-video.mp4",
+                filepath=str(Path(Path.cwd().anchor, "ego-video.mp4")),
                 group_field=group.element("ego"),
             ),
             fo.Sample(
-                filepath="right-image.jpg",
+                filepath=str(Path(Path.cwd().anchor, "right-image.jpg")),
                 group_field=group.element("right"),
             ),
         ]
@@ -110,11 +111,11 @@ class GroupTests(unittest.TestCase):
         dataset.add_samples(
             [
                 fo.Sample(
-                    filepath="left-image.jpg",
+                    filepath=str(Path(Path.cwd().anchor, "left-image.jpg")),
                     group_field=group.element("left"),
                 ),
                 fo.Sample(
-                    filepath="right-image.jpg",
+                    filepath=str(Path(Path.cwd().anchor, "right-image.jpg")),
                     group_field=group.element("right"),
                 ),
             ]
@@ -1753,32 +1754,32 @@ def _make_group_dataset():
 
     samples = [
         fo.Sample(
-            filepath="left-image1.jpg",
+            filepath=str(Path(Path.cwd().anchor, "left-image1.jpg")),
             group_field=group1.element("left"),
             field=1,
         ),
         fo.Sample(
-            filepath="ego-video1.mp4",
+            filepath=str(Path(Path.cwd().anchor, "ego-video1.mp4")),
             group_field=group1.element("ego"),
             field=2,
         ),
         fo.Sample(
-            filepath="right-image1.jpg",
+            filepath=str(Path(Path.cwd().anchor, "right-image1.jpg")),
             group_field=group1.element("right"),
             field=3,
         ),
         fo.Sample(
-            filepath="left-image2.jpg",
+            filepath=str(Path(Path.cwd().anchor, "left-image2.jpg")),
             group_field=group2.element("left"),
             field=4,
         ),
         fo.Sample(
-            filepath="ego-video2.mp4",
+            filepath=str(Path(Path.cwd().anchor, "ego-video2.mp4")),
             group_field=group2.element("ego"),
             field=5,
         ),
         fo.Sample(
-            filepath="right-image2.jpg",
+            filepath=str(Path(Path.cwd().anchor, "right-image2.jpg")),
             group_field=group2.element("right"),
             field=6,
         ),
@@ -2426,32 +2427,32 @@ def _make_group_by_group_dataset():
 
     samples = [
         fo.Sample(
-            filepath="left-image1.jpg",
+            filepath=str(Path(Path.cwd().anchor, "left-image1.jpg")),
             group_field=group1.element("left"),
             scene="foo",
         ),
         fo.Sample(
-            filepath="right-image1.jpg",
+            filepath=str(Path(Path.cwd().anchor, "right-image1.jpg")),
             group_field=group1.element("right"),
             scene="foo",
         ),
         fo.Sample(
-            filepath="left-image2.jpg",
+            filepath=str(Path(Path.cwd().anchor, "left-image2.jpg")),
             group_field=group2.element("left"),
             scene="foo",
         ),
         fo.Sample(
-            filepath="right-image2.jpg",
+            filepath=str(Path(Path.cwd().anchor, "right-image2.jpg")),
             group_field=group2.element("right"),
             scene="foo",
         ),
         fo.Sample(
-            filepath="left-image3.jpg",
+            filepath=str(Path(Path.cwd().anchor, "left-image3.jpg")),
             group_field=group3.element("left"),
             scene="bar",
         ),
         fo.Sample(
-            filepath="right-image3.jpg",
+            filepath=str(Path(Path.cwd().anchor, "right-image3.jpg")),
             group_field=group3.element("right"),
             scene="bar",
         ),

@@ -5,6 +5,7 @@ Unit tests for cache serialization.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import datetime
 import numpy as np
 from pathlib import Path
