@@ -44,7 +44,7 @@ export default function Evaluation(props: EvaluationProps) {
     loadView,
   } = props;
   const theme = useTheme();
-  const [activeTab, setActiveTab] = useState("scenario");
+  const [activeTab, setActiveTab] = useState("overview");
   const [loadingCompare, setLoadingCompare] = useState(false);
   const evaluation = useMemo(() => {
     const evaluation = data?.[`evaluation_${name}`];

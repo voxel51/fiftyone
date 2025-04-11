@@ -21,7 +21,7 @@ import fiftyone.server.view as fosv
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
 
 
-MAX_CATEGORIES = 10
+MAX_CATEGORIES = 100
 COLOR_BY_TYPES = (
     fof.StringField,
     fof.BooleanField,

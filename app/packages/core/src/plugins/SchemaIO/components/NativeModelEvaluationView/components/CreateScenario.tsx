@@ -14,6 +14,7 @@ export default function CreateScenario(props) {
     onAdd,
     eval_id,
     readOnly,
+    variant = "icon",
   } = props;
 
   const panelId = usePanelId();
@@ -53,7 +54,8 @@ export default function CreateScenario(props) {
         sx={{ minWidth: "auto", height: "100%" }}
         disabled={readOnly}
       >
-        <Add />
+        {variant === "icon" && <Add />}
+        {variant === "text" && "Create a scenario"}
       </Button>
     </TooltipProvider>
   );

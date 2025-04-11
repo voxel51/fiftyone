@@ -19,7 +19,7 @@ export default function EmptyScenario(props) {
           data segments.
         </Typography>
       </Stack>
-      <CreateScenario {...props} />
+      <CreateScenario variant="text" {...props} />
     </Box>
   );
 }
