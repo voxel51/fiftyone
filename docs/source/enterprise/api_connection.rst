@@ -36,7 +36,8 @@ FiftyOne config as described below:
 |                               |                                       |                               | generate one.                                                                          |
 +-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `api_compressor`              | `FIFTYONE_API_COMPRESSOR`             | `lz4`                         | If data being sent to the server should be compressed. Recommended when on VPN or      |
-|                               |                                       |                               | poor internet connection. Defaults to `lz4` but accepts `''` (None), `bz2` and `lzma`. |
+|                               |                                       |                               | poor internet connection. Defaults to `lz4` but accepts `''` (None), `bz2`, `zlib` and |
+|                               |                                       |                               | `lzma`.                                                                                |
 +-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `api_transfer_method`         | `FIFTYONE_API_TRANSFER_METHOD`        | `bytes`                       | How data should be encoded and transferred to the server. Default is `bytes` but       |
 |                               |                                       |                               | accepts `str` as well which will base64 encode and convert to string before sending.   |
