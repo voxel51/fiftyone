@@ -1425,7 +1425,7 @@ class GroupTests(unittest.TestCase):
 
 class GroupImportExportTests(unittest.TestCase):
     def setUp(self):
-        temp_dir = etau.TempDir(basedir=tempfile.gettempdir())
+        temp_dir = etau.TempDir()
         tmp_dir = temp_dir.__enter__()
 
         self._temp_dir = temp_dir
@@ -1775,7 +1775,7 @@ def _make_group_dataset():
             field=4,
         ),
         fo.Sample(
-            filepath=str(Path(Path.cwd().anchor, "ego-video2.mp4")),
+            filepath=_anchor_test_file("ego-video2.mp4"),
             group_field=group2.element("ego"),
             field=5,
         ),
