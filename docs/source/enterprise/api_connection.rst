@@ -27,13 +27,21 @@ Configuring an API connection
 You can configure an API connection by adding an API URI and API key to your
 FiftyOne config as described below:
 
-+-------------------------------+-------------------------------------+--------------------------------------------------------------------------------------------------+
-| Config field                  | Environment variable                | Description                                                                                      |
-+===============================+=====================================+==================================================================================================+
-| `api_uri`                     | `FIFTYONE_API_URI`                  | The URI of your FiftyOne Enterprise API. Ask your deployment admin for this value.               |
-+-------------------------------+-------------------------------------+--------------------------------------------------------------------------------------------------+
-| `api_key`                     | `FIFTYONE_API_KEY`                  | Your FiftyOne Enterprise API key. :ref:`See here <enterprise-generate-api-key>` to generate one. |
-+-------------------------------+-------------------------------------+--------------------------------------------------------------------------------------------------+
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| Config field                  | Environment variable                  | Default value                 | Description                                                                            |
++===============================+=======================================+===============================+========================================================================================+
+| `api_uri`                     | `FIFTYONE_API_URI`                    | `None`                        | The URI of your FiftyOne Enterprise API. Ask your deployment admin for this value.     |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `api_key`                     | `FIFTYONE_API_KEY`                    | `None`                        | Your FiftyOne Enterprise API key. :ref:`See here <enterprise-generate-api-key>` to     |
+|                               |                                       |                               | generate one.                                                                          |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `api_compressor`              | `FIFTYONE_API_COMPRESSOR`             | `lz4`                         | If data being sent to the server should be compressed. Recommended when on VPN or      |
+|                               |                                       |                               | poor internet connection. Defaults to `lz4` but accepts `''` (None), `bz2`, `zlib` and |
+|                               |                                       |                               | `lzma`.                                                                                |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `api_transfer_method`         | `FIFTYONE_API_TRANSFER_METHOD`        | `bytes`                       | How data should be encoded and transferred to the server. Default is `bytes` but       |
+|                               |                                       |                               | accepts `str` as well which will base64 encode and convert to string before sending.   |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 
 For example, you can set environment variables:
 
