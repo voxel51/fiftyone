@@ -100,6 +100,7 @@ class PymongoWebsocketProxy(PymongoRestProxy, abc.ABC):
 
         self.__next_batch = []
         self.__use_next_batching = True
+
         if fo.config.override_api_dynamic_batching:
             # Use the same batcher configured for the sdk.
             # In some cases, particularly when the items within each batch are not large,
@@ -157,7 +158,7 @@ class PymongoWebsocketProxy(PymongoRestProxy, abc.ABC):
         if not self.__use_next_batching:
             return self.__proxy_it__("next")
 
-        # Batch is unset of empty, attempt to get batch from server. If the
+        # Batch is unset if empty, attempt to get batch from server. If the
         # result is falsey iterating is done.
         if not self.__next_batch:
             try:
