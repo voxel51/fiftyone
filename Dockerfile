@@ -109,10 +109,16 @@ ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 # Update the base image and install ffmpeg
 RUN apt-get -qq -y update && apt-get -qq -y upgrade \
     && apt-get -qq install -y --no-install-recommends ffmpeg libcurl4 php-curl \
-    && apt clean && rm -rf /var/lib/apt/lists/*
+    && apt clean && rm -rf /var/lib/apt/lists/* \
+    # upgrade the base image pip, setuptools, and wheel
+    #  addresses CVE-2022-40897
+    && /usr/local/bin/pip --no-cache-dir install -q -U pip setuptools wheel
+
 
 # Create Virtual Env
-RUN python -m venv "${VIRTUAL_ENV}"
+RUN python -m venv "${VIRTUAL_ENV}" \
+    # address CVE-2024-6345 by removing ensurepip metadata
+    && rm -rf /usr/local/lib/python*/ensurepip
 
 # Install wheels from builder stage
 RUN --mount=type=cache,from=builder,target=/builder,ro \
