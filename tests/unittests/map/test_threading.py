@@ -6,11 +6,10 @@
 
 from unittest import mock
 
-import pytest
-
 import fiftyone.core.config as focc
-import fiftyone.core.utils as fou
 import fiftyone.core.map.threading as fomt
+import fiftyone.core.utils as fou
+import pytest
 
 
 class TestCreate:
@@ -76,3 +75,66 @@ class TestCreate:
         assert mapper._workers == (
             max_workers if max_workers is not None else expected_workers
         )
+
+    @pytest.mark.parametrize(
+        "progress_option, expected_module",
+        [
+            pytest.param("workers", "tqdm", id="progress=workers"),
+            pytest.param(True, "fou.ProgressBar", id="progress=True"),
+        ],
+    )
+    def test_progress_module_usage(self, progress_option, expected_module):
+        """Test that the correct progress module is used based on the progress parameter."""
+        with mock.patch(
+            "fiftyone.core.utils.ProgressBar"
+        ) as mock_progress_bar, mock.patch(
+            "fiftyone.core.map.threading.tqdm"
+        ) as mock_tqdm:
+
+            # Mock dependencies
+            sample_collection = mock.Mock()
+            map_fcn = mock.Mock()
+            batch_cls = mock.Mock()
+
+            # Mock the batches returned by batch_cls.split
+            mock_batches = []
+            for _ in range(10):
+                mock_batch = mock.Mock()
+                mock_batch.create_subset = mock.Mock(return_value=mock.Mock())
+                mock_batch.total = 10
+
+                # Mock the sample iterator
+                mock_sample_iter = iter([mock.Mock(id=i) for i in range(10)])
+                mock_batch.create_subset.return_value.iter_samples = mock.Mock(
+                    return_value=mock_sample_iter
+                )
+
+                mock_batches.append(mock_batch)
+
+            batch_cls.split = mock.Mock(return_value=mock_batches)
+
+            config = mock.Mock()
+            config.max_thread_pool_workers = 4
+
+            mapper = fomt.ThreadMapper.create(
+                config=config, batch_cls=batch_cls, workers=2
+            )
+
+            # Call and consume
+            list(
+                mapper._map_samples_multiple_workers(
+                    sample_collection=sample_collection,
+                    map_fcn=map_fcn,
+                    progress=progress_option,
+                    save=False,
+                    skip_failures=False,
+                )
+            )
+
+            # Verify the correct progress module is used
+            if expected_module == "tqdm":
+                mock_tqdm.assert_called()
+                mock_progress_bar.assert_not_called()
+            elif expected_module == "fou.ProgressBar":
+                mock_progress_bar.assert_called()
+                mock_tqdm.assert_not_called()
