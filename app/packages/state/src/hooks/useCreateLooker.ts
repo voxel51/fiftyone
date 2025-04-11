@@ -1,5 +1,6 @@
 import {
   AbstractLooker,
+  MetadataLooker,
   FrameLooker,
   ImaVidLooker,
   ImageLooker,
@@ -31,6 +32,7 @@ import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import { getStandardizedUrls } from "../utils";
+import { isNativeMediaType } from "@fiftyone/looker/src/util";
 
 export default <T extends AbstractLooker<BaseState>>(
   isModal: boolean,
@@ -92,7 +94,8 @@ export default <T extends AbstractLooker<BaseState>>(
           | typeof ImageLooker
           | typeof ImaVidLooker
           | typeof ThreeDLooker
-          | typeof VideoLooker = ImageLooker;
+          | typeof VideoLooker
+          | typeof MetadataLooker = ImageLooker;
 
         const mimeType = getMimeType(sample);
 
@@ -105,24 +108,28 @@ export default <T extends AbstractLooker<BaseState>>(
         const filePath =
           urls.filepath?.split("?")[0] ?? (sample.filepath as string);
 
-        if (filePath.endsWith(".pcd") || filePath.endsWith(".fo3d")) {
-          create = ThreeDLooker;
-        } else if (mimeType !== null) {
-          const isVideo = mimeType.startsWith("video/");
-
-          if (isVideo && (isFrame || isPatch)) {
-            create = FrameLooker;
-          }
-
-          if (isVideo) {
-            create = VideoLooker;
-          }
-
-          if (!isVideo && shouldRenderImaVidLooker) {
-            create = ImaVidLooker;
-          }
+        if (!isNativeMediaType(sample.media_type ?? sample._media_type)) {
+          create = MetadataLooker;
         } else {
-          create = ImageLooker;
+          if (filePath.endsWith(".pcd") || filePath.endsWith(".fo3d")) {
+            create = ThreeDLooker;
+          } else if (mimeType !== null) {
+            const isVideo = mimeType.startsWith("video/");
+
+            if (isVideo && (isFrame || isPatch)) {
+              create = FrameLooker;
+            }
+
+            if (isVideo) {
+              create = VideoLooker;
+            }
+
+            if (!isVideo && shouldRenderImaVidLooker) {
+              create = ImaVidLooker;
+            }
+          } else {
+            create = ImageLooker;
+          }
         }
 
         let config: ConstructorParameters<T>[1] = {

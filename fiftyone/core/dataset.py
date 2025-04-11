@@ -466,12 +466,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if media_type == self._doc.media_type:
             return
 
-        if media_type not in fom.MEDIA_TYPES and media_type != fom.GROUP:
-            raise ValueError(
-                "Invalid media_type '%s'. Supported values are %s"
-                % (media_type, fom.MEDIA_TYPES)
-            )
-
         if len(self) > 0:
             raise ValueError("Cannot set media type of a non-empty dataset")
 
@@ -2784,9 +2778,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "Group slice '%s' with media type %s != %s already exists"
                 % (name, existing_media_type, media_type)
             )
-
-        if media_type not in fom.MEDIA_TYPES:
-            raise ValueError("Invalid media type '%s'" % media_type)
 
         rev_media_types = {
             v: k for k, v in self._doc.group_media_types.items()
