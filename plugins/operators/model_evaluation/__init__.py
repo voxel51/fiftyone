@@ -6,12 +6,12 @@ Scenario plugin.
 |
 """
 
-from bson import ObjectId
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 import fiftyone.core.fields as fof
-from fiftyone.core.expressions import ViewField as F
 
+from bson import ObjectId
+from fiftyone.core.expressions import ViewField as F
 from .utils import (
     get_scenario_example,
     SCENARIO_BUILDING_CHOICES,
@@ -23,6 +23,7 @@ from .utils import (
     ShowOptionsMethod,
     ScenarioType,
 )
+from plugins.utils import get_subsets_from_custom_code
 
 STORE_NAME = "model_evaluation_panel_builtin"
 
@@ -103,15 +104,6 @@ class ConfigureScenario(foo.Operator):
             default=selected_type,
             view=radio_view,
         )
-
-    def process_custom_code(self, ctx, custom_code):
-        try:
-            local_vars = {}
-            exec(custom_code, {"ctx": ctx}, local_vars)
-            data = local_vars.get("subsets", {})
-            return data, None
-        except Exception as e:
-            return None, str(e)
 
     def extract_evaluation_keys(self, ctx):
         key = ctx.params.get("key", None)
@@ -346,7 +338,7 @@ class ConfigureScenario(foo.Operator):
         self.last_view_type_used = ShowOptionsMethod.CODE
 
         if custom_code:
-            custom_code_expression, error = self.process_custom_code(
+            custom_code_expression, error = get_subsets_from_custom_code(
                 ctx, custom_code
             )
             if error:
@@ -1015,7 +1007,7 @@ class ConfigureScenario(foo.Operator):
 
         elif scenario_type == ScenarioType.CUSTOM_CODE:
             custom_code, _ = self.extract_custom_code(ctx)
-            _, error = self.process_custom_code(ctx, custom_code)
+            _, error = get_subsets_from_custom_code(ctx, custom_code)
             if error:
                 raise ValueError(f"Error in custom code: {error}")
 

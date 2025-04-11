@@ -1,5 +1,5 @@
 export function getSubsetDef(scenario, subset) {
-  const { type, field, custom_code } = scenario;
+  const { type, field, subsets_code } = scenario;
   if (type === "view") {
     return { type, view: subset };
   } else if (type === "sample_field") {
@@ -10,7 +10,6 @@ export function getSubsetDef(scenario, subset) {
     const fieldName = fieldParts[fieldParts.length - 1];
     return { type: "attribute", field: fieldName, value: subset };
   } else if (type === "custom_code") {
-    // todo: handle custom code
-    // return { type, field, code: subsets_code };
+    return { type, code: subsets_code, subset };
   }
 }

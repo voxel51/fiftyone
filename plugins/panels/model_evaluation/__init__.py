@@ -6,21 +6,19 @@ Model evaluation panel.
 |
 """
 
-from collections import defaultdict, Counter
 import os
 import traceback
-
-from bson import ObjectId
+import fiftyone.utils.eval as foue
 import numpy as np
+import fiftyone.operators.types as types
 
+from collections import defaultdict, Counter
+from bson import ObjectId
 from fiftyone import ViewField as F
-import fiftyone.core.fields as fof
 from fiftyone.core.plots.plotly import _to_log_colorscale
 from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
-import fiftyone.operators.types as types
-import fiftyone.utils.eval as foue
-import uuid
+from plugins.utils import get_subsets_from_custom_code
 
 
 STORE_NAME = "model_evaluation_panel_builtin"
@@ -644,6 +642,21 @@ class EvaluationPanel(Panel):
 
         # Restrict to subset, if applicable
         subset_def = view_options.get("subset_def", None)
+        subset_def_type = subset_def.get("type", None)
+
+        if subset_def_type == "custom_code":
+            code = subset_def.get("code", None)
+            subset = subset_def.get("subset", None)
+            subsets, error = get_subsets_from_custom_code(ctx, code)
+
+            subset_def = subsets.get(subset, None)
+
+            if error:
+                return ctx.ops.notify(
+                    f"Failed to load custom code subsets: {error}",
+                    variant="error",
+                )
+
         if subset_def is not None:
             eval_view = foue.get_subset_view(eval_view, gt_field, subset_def)
 
@@ -873,15 +886,6 @@ class EvaluationPanel(Panel):
                 ),
             }
 
-    def process_custom_code(self, ctx, custom_code):
-        try:
-            local_vars = {}
-            exec(custom_code, {"ctx": ctx}, local_vars)
-            data = local_vars.get("subsets", {})
-            return data, None
-        except Exception as e:
-            return None, str(e)
-
     def get_scenario_data(self, ctx, scenario):
         view_state = ctx.panel.get_state("view") or {}
         eval_key = view_state.get("key")
@@ -896,7 +900,7 @@ class EvaluationPanel(Panel):
 
         if scenario_type == "custom_code":
             custom_code = scenario.get("subsets", None)
-            cc_expr, cc_error = self.process_custom_code(ctx, custom_code)
+            cc_expr, cc_error = get_subsets_from_custom_code(ctx, custom_code)
             subsets_names = []
 
             if cc_error:
