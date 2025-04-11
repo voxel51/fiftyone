@@ -643,14 +643,15 @@ class EvaluationPanel(Panel):
         missing = ctx.panel.get_state("missing", "(none)")
 
         # Restrict to subset, if applicable
-        subset_name = view_state.get("subset_name", None)
-        if subset_name is not None:
-            subsets = ctx.panel.get_state("subsets")
-            subset_def = subsets.get(subset_name, None)
+        subset_def = view_options.get("subset_def", None)
+        if subset_def is not None:
             eval_view = foue.get_subset_view(eval_view, gt_field, subset_def)
 
         view = None
-        if info.config.type == "classification":
+
+        if view_type == "subset":
+            view = eval_view
+        elif info.config.type == "classification":
             if view_type == "class":
                 # All GT/predictions of class `x`
                 expr = F(f"{gt_field}.label") == x

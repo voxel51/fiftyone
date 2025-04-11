@@ -1,6 +1,6 @@
-import { isNullish } from "@fiftyone/utilities";
-import { usePanelId } from "@fiftyone/spaces";
 import { usePanelEvent } from "@fiftyone/operators";
+import { usePanelId } from "@fiftyone/spaces";
+import { isNullish } from "@fiftyone/utilities";
 import {
   Autorenew,
   DragHandle,
@@ -22,7 +22,6 @@ import {
   TableRow,
   ToggleButton,
   ToggleButtonGroup,
-  Tooltip,
   Typography,
   useTheme,
 } from "@mui/material";
@@ -44,6 +43,7 @@ import EvaluationPlot from "../../EvaluationPlot";
 import { formatValue, getClasses, getMatrix } from "../../utils";
 import Actions from "./Actions";
 import Legends from "./Legends";
+import { getSubsetDef } from "./utils";
 
 const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 
@@ -55,6 +55,7 @@ export default function Scenarios(props) {
     loadScenarios,
     loadScenario,
     deleteScenario,
+    loadView,
   } = props;
   const { scenarios } = evaluation;
   const [scenario, setScenario] = useState(getDefaultScenario(scenarios));
@@ -319,6 +320,7 @@ export default function Scenarios(props) {
           evaluation={evaluation}
           compareEvaluation={compareEvaluation}
           selectedSubsets={selectedSubsets}
+          loadView={loadView}
         />
       )}
     </Stack>
@@ -334,6 +336,7 @@ function Scenario(props) {
     loading,
     differenceMode,
     selectedSubsets,
+    loadView,
   } = props;
   const { key, compareKey } = data?.view;
   let scenario = data?.[`scenario_${id}_${key}`];
@@ -393,6 +396,7 @@ function Scenario(props) {
           compareScenario={compareScenario}
           evaluation={props.evaluation}
           compareEvaluation={props.compareEvaluation}
+          loadView={loadView}
         />
       ) : (
         <ScenarioTables
@@ -400,6 +404,7 @@ function Scenario(props) {
           scenario={scenario}
           compareScenario={compareScenario}
           differenceMode={differenceMode}
+          loadView={loadView}
         />
       )}
     </Stack>
@@ -848,7 +853,7 @@ const MODEL_PERFORMANCE_METRICS = [
 ];
 
 function PredictionStatisticsChart(props) {
-  const { scenario, compareScenario } = props;
+  const { scenario, compareScenario, loadView } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const [metric, setMetric] = useState("all");
@@ -887,6 +892,7 @@ function PredictionStatisticsChart(props) {
       x: subsets,
       y: tp,
       name: `${key} True Positives`,
+      id: "tp",
       type: "bar",
       offsetgroup: 0,
       marker: { color: KEY_COLOR },
@@ -896,6 +902,7 @@ function PredictionStatisticsChart(props) {
       x: subsets,
       y: fp,
       name: `${key} False Positives`,
+      id: "fp",
       type: "bar",
       offsetgroup: 0,
       marker: { color: SECONDARY_KEY_COLOR },
@@ -904,6 +911,7 @@ function PredictionStatisticsChart(props) {
       x: subsets,
       y: fn,
       name: `${key} False Negatives`,
+      id: "fn",
       type: "bar",
       offsetgroup: 0,
       marker: { color: TERTIARY_KEY_COLOR },
@@ -913,6 +921,8 @@ function PredictionStatisticsChart(props) {
       x: subsets,
       y: compareTP,
       name: `${compareKey} True Positives`,
+      id: "tp",
+      isCompare: true,
       type: "bar",
       offsetgroup: 1,
       marker: { color: COMPARE_KEY_COLOR },
@@ -922,6 +932,8 @@ function PredictionStatisticsChart(props) {
       x: subsets,
       y: compareFP,
       name: `${compareKey} False Positives`,
+      id: "fp",
+      isCompare: true,
       type: "bar",
       offsetgroup: 1,
       marker: { color: COMPARE_KEY_SECONDARY_COLOR },
@@ -931,6 +943,8 @@ function PredictionStatisticsChart(props) {
       x: subsets,
       y: compareFN,
       name: `${compareKey} False Negatives`,
+      id: "fn",
+      isCompare: true,
       type: "bar",
       offsetgroup: 1,
       marker: { color: COMPARE_KEY_TERTIARY_COLOR },
@@ -994,6 +1008,13 @@ function PredictionStatisticsChart(props) {
       <EvaluationPlot
         data={plotData}
         layout={showAllMetric ? { barmode: "stack" } : {}}
+        onClick={({ points }) => {
+          const firstPoint = points[0];
+          const { id, isCompare } = firstPoint.data;
+          const subset = firstPoint.x;
+          const subsetDef = getSubsetDef(scenario, subset);
+          loadView("field", { field: id, subset_def: subsetDef });
+        }}
       />
       <Legends prediction={showAllMetric} {...getLegendProps(props)} />
     </Stack>
@@ -1076,7 +1097,7 @@ function ScenarioModelPerformanceChart(props) {
 }
 
 function ConfusionMatrixChart(props) {
-  const { scenario, compareScenario } = props;
+  const { scenario, compareScenario, loadView } = props;
   const { subsets } = scenario;
   const [subset, setSubset] = useState(subsets[0]);
   const subsetData = scenario.subsets_data[subset];
@@ -1129,7 +1150,18 @@ function ConfusionMatrixChart(props) {
 
       <Stack direction="row" spacing={1}>
         <Stack sx={{ width: comparePlotData ? "50%" : "100%" }}>
-          <EvaluationPlot data={plotData} />
+          <EvaluationPlot
+            data={plotData}
+            onClick={({ points }) => {
+              const firstPoint = points[0];
+              const subsetDef = getSubsetDef(scenario, subset);
+              loadView("matrix", {
+                x: firstPoint.x,
+                y: firstPoint.y,
+                subset_def: subsetDef,
+              });
+            }}
+          />
         </Stack>
         {comparePlotData && (
           <Stack sx={{ width: "50%" }}>
@@ -1253,7 +1285,7 @@ function ConfidenceDistributionChart(props) {
 }
 
 function MetricPerformanceChart(props) {
-  const { scenario, compareScenario } = props;
+  const { scenario, compareScenario, loadView } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const [metric, setMetric] = useState("average_confidence");
@@ -1302,14 +1334,22 @@ function MetricPerformanceChart(props) {
           })}
         </EvaluationSelect>
       </Stack>
-      <EvaluationPlot data={plotData} />
+      <EvaluationPlot
+        data={plotData}
+        onClick={({ points }) => {
+          const subset = points[0]?.x;
+          const subsetDef = getSubsetDef(scenario, subset);
+          if (!subsetDef) return;
+          return loadView("subset", { subset_def: subsetDef });
+        }}
+      />
       <Legends {...getLegendProps(props)} />
     </Stack>
   );
 }
 
 function SubsetDistributionChart(props) {
-  const { scenario, compareScenario } = props;
+  const { scenario, compareScenario, loadView } = props;
   const { subsets, subsets_data } = scenario;
   const compareSubsetsData = compareScenario?.subsets_data;
   const { key, compareKey } = props.data?.view;
@@ -1339,7 +1379,15 @@ function SubsetDistributionChart(props) {
   return (
     <Stack>
       <Typography>Subset Distribution</Typography>
-      <EvaluationPlot data={plotData} />
+      <EvaluationPlot
+        data={plotData}
+        onClick={({ points }) => {
+          const subset = points[0]?.x;
+          const subsetDef = getSubsetDef(scenario, subset);
+          if (!subsetDef) return;
+          return loadView("subset", { subset_def: subsetDef });
+        }}
+      />
       <Legends {...getLegendProps(props)} />
     </Stack>
   );

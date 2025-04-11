@@ -41,6 +41,7 @@ export default function Evaluation(props: EvaluationProps) {
     loadScenarios,
     loadScenario,
     deleteScenario,
+    loadView,
   } = props;
   const theme = useTheme();
   const [activeTab, setActiveTab] = useState("scenario");
@@ -303,6 +304,7 @@ export default function Evaluation(props: EvaluationProps) {
           loadScenarios={loadScenarios}
           loadScenario={loadScenario}
           deleteScenario={deleteScenario}
+          loadView={loadView}
         />
       )}
 
