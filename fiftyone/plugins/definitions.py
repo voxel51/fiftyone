@@ -47,7 +47,7 @@ class PluginDefinition(object):
     @property
     def builtin(self):
         """Whether the plugin is a builtin plugin."""
-        return self.directory.startswith(fpc.BUILTIN_PLUGINS_DIR)
+        return self.directory.startswith(str(fpc.BUILTIN_PLUGINS_DIR))
 
     @property
     def shadow_paths(self):

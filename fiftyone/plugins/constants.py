@@ -6,5 +6,9 @@ FiftyOne plugins constants.
 |
 """
 from importlib.resources import files
+from pathlib import Path
 
-BUILTIN_PLUGINS_DIR = files("fiftyone").joinpath("plugins")
+current_file = Path(__file__).resolve()
+BUILTIN_PLUGINS_DIR = current_file.parent.parent.parent / "plugins"
+
+print(BUILTIN_PLUGINS_DIR)
