@@ -1425,7 +1425,7 @@ class GroupTests(unittest.TestCase):
 
 class GroupImportExportTests(unittest.TestCase):
     def setUp(self):
-        temp_dir = etau.TempDir()
+        temp_dir = etau.TempDir(basedir=tempfile.gettempdir())
         tmp_dir = temp_dir.__enter__()
 
         self._temp_dir = temp_dir
