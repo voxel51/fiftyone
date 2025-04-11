@@ -10268,7 +10268,13 @@ class SampleCollection(object):
 
         # Parse batch results
         if batch_aggs:
-            result = _results[0].to_list()
+            try:
+                result = _results[0].to_list()
+            except:
+                # foo.aggregate will have already exhausted the cursor
+                # when called with multiple pipelines, so we don't need
+                # to iterate over the results again
+                result = _results[0]
             for idx, aggregation in batch_aggs.items():
                 results[idx] = self._parse_big_result(aggregation, result)
 
