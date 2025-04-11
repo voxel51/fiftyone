@@ -44,6 +44,8 @@ import { formatValue, getClasses, getMatrix } from "../../utils";
 import Actions from "./Actions";
 import Legends from "./Legends";
 import { getSubsetDef } from "./utils";
+import { atom, useRecoilState } from "recoil";
+import LoadingError from "./LoadingError";
 
 const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 
@@ -327,6 +329,14 @@ export default function Scenarios(props) {
   );
 }
 
+export const loadScenarioErrorState = atom({
+  key: "loadScenarioError",
+  default: {
+    title: "",
+    description: "",
+  },
+});
+
 function Scenario(props) {
   const {
     id,
@@ -344,17 +354,40 @@ function Scenario(props) {
   const showAllSubsets =
     selectedSubsets.length === 1 && selectedSubsets[0] === "all";
 
+  const [{ title: errorCode, description: errorDescription }, setLoadError] =
+    useRecoilState(loadScenarioErrorState);
+
   useEffect(() => {
     if (!scenario) {
-      loadScenario(id);
+      loadScenario(id, undefined, ({ errorMessage = "" }) => {
+        // TODO: do better
+        if (errorMessage?.startsWith("scenario_load_error")) {
+          const [title, description] = errorMessage?.split(":");
+          setLoadError({ title, description });
+        } else {
+          setLoadError({ title: "", description: "" });
+        }
+      });
     }
-  }, [scenario]);
+  }, [id, scenario]);
 
   useEffect(() => {
     if (compareKey && !compareScenario) {
       loadScenario(id, compareKey);
     }
   }, [compareKey, compareScenario]);
+
+  if (errorCode) {
+    return (
+      <Stack
+        sx={{ minHeight: 300 }}
+        alignItems="center"
+        justifyContent="center"
+      >
+        <LoadingError code={errorCode} description={errorDescription} />
+      </Stack>
+    );
+  }
 
   if (!scenario || loading) {
     return (
