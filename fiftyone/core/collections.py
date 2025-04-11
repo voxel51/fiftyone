@@ -10269,8 +10269,10 @@ class SampleCollection(object):
         # Parse batch results
         if batch_aggs:
             try:
+                # Converts the contents of this cursor to a list more
+                # efficiently than iterating
                 result = _results[0].to_list()
-            except:
+            except AttributeError:
                 # foo.aggregate will have already exhausted the cursor
                 # when called with multiple pipelines, so we don't need
                 # to iterate over the results again
