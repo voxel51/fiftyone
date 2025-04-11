@@ -210,7 +210,7 @@ def test_non_existent_input_paths(default_ext):
         pytest.param(
             {"chunk_size": 100},
             focu.InMemoryUniqueFilenameMaker,
-            id="chunk_size-is-set",
+            id="chunk_size-set",
         ),
         pytest.param(
             {}, focu.MultiProcessUniqueFilenameMaker, id="chunk_size-unset"

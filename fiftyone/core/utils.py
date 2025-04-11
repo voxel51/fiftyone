@@ -2232,41 +2232,6 @@ class MultiProcessUniqueFilenameMaker(object):
         self.tmp_dir = os.path.join(tmp_dir_prefix, hashed_params)
         etau.ensure_dir(self.tmp_dir)
 
-    def seen_input_path(self, input_path):
-        """Checks whether we've already seen the given input path.
-
-        Args:
-            input_path: an input path
-
-        Returns:
-            True/False
-        """
-        output_path = self.__get_output_path(input_path)
-
-        if self.output_dir:
-            output_path = os.path.join(self.output_dir, output_path)
-
-        # TODO: make this work
-
-        # return fos.normalize_path(input_path) in self._filepath_map
-
-    def __get_output_path(self, filepath, output_ext=None):
-        filepath = fos.normalize_path(filepath)
-
-        if self.rel_dir is not None:
-            filepath = safe_relpath(filepath, self.rel_dir)
-        else:
-            filepath = os.path.basename(filepath)
-
-        filename_sans_ext, ext = os.path.splitext(filepath)
-
-        # URL handling
-        # @todo improve this, while still maintaining Unix/Windows path support
-        filename_sans_ext = filename_sans_ext.replace("%", "-")
-        ext = output_ext if output_ext is not None else ext.split("?")[0]
-
-        return filename_sans_ext + ext
-
     def get_output_path(self, input_path=None, output_ext=None):
         """Returns a unique output path.
 
@@ -2277,21 +2242,42 @@ class MultiProcessUniqueFilenameMaker(object):
         Returns:
             the output path
         """
-        if bool(input_path):
-            output_path = self.__get_output_path(
-                input_path, output_ext=output_ext
-            )
-        else:
-            output_path = str(uuid.uuid4()) + self.default_ext
+        if input_path:
+            input_path = fos.normalize_path(input_path)
 
-        if self.output_dir:
-            output_path = os.path.join(self.output_dir, output_path)
+            if self.rel_dir is not None:
+                input_path = safe_relpath(input_path, self.rel_dir)
+            else:
+                input_path = os.path.basename(input_path)
+
+            input_path_sans_ext, input_ext = os.path.splitext(input_path)
+
+            # URL handling
+            # @todo improve this, while still maintaining Unix/Windows path
+            # support
+            input_path_sans_ext = input_path_sans_ext.replace("%", "-")
+            input_ext = (
+                output_ext
+                if output_ext is not None
+                else input_ext.split("?")[0]
+            )
+
+            input_path = input_path_sans_ext + input_ext
+        else:
+            input_path = str(uuid.uuid4()) + self.default_ext
+
+        output_path = (
+            os.path.join(self.output_dir, input_path)
+            if self.output_dir
+            else input_path
+        )
 
         output_dir = os.path.dirname(output_path)
         output_name = os.path.basename(output_path)
         output_name_sans_ext, output_ext = os.path.splitext(output_name)
 
-        number = (
+        last_attempted_output_number = None
+        output_number = (
             self.starting_filepath_counts.get(
                 (
                     os.path.splitext(output_path)[0]
@@ -2302,13 +2288,12 @@ class MultiProcessUniqueFilenameMaker(object):
             )
             + 1
         )
-        last_attempted_number = None
         while True:
             # Add  file number to the output path with if necessary
-            if number > 1:
+            if output_number > 1:
                 output_path = os.path.join(
                     output_dir,
-                    output_name_sans_ext + f"-{number}" + output_ext,
+                    output_name_sans_ext + f"-{output_number}" + output_ext,
                 )
 
             try:
@@ -2332,34 +2317,35 @@ class MultiProcessUniqueFilenameMaker(object):
                 # The output path was successfully claimed with a placeholder.
                 break
 
-            last_attempted_number = number
+            last_attempted_output_number = output_number
 
             touch_prefix = os.path.join(self.tmp_dir, output_name_sans_ext)
-            glob_pattern = glob.glob(glob.escape(touch_prefix) + "*")
-            re_pattern = re.escape(touch_prefix) + r"-(\d+).*"
+            touch_glob_pattern = glob.glob(glob.escape(touch_prefix) + "*")
+            touch_re_pattern = re.escape(touch_prefix) + r"-(\d+).*"
 
             touch_paths = [
                 f
-                for f in glob_pattern
+                for f in touch_glob_pattern
                 if self.ignore_exts or os.path.splitext(f)[0] == output_ext
             ]
 
-            new_number = None
-            for filepath in touch_paths:
-                if m := re.match(re_pattern, filepath):
+            touched_number = None
+            for touch_path in touch_paths:
+                if m := re.match(touch_re_pattern, touch_path):
                     n = int(m.group(1))
-                    if new_number is None or n > new_number:
-                        new_number = n
+                    if touched_number is None or n > touched_number:
+                        touched_number = n
 
-            if new_number is None:
-                new_number = len(touch_paths)
+            if touched_number is None:
+                touched_number = len(touch_paths)
 
-            new_number += 1
+            touched_number += 1
 
-            if new_number > last_attempted_number:
-                number = new_number
-            else:
-                number = last_attempted_number + 1
+            output_number = (
+                touched_number
+                if touched_number > last_attempted_output_number
+                else last_attempted_output_number + 1
+            )
 
         return output_path
 
