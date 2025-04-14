@@ -1,4 +1,7 @@
-import { setFrameNumberAtom } from "@fiftyone/playback";
+import {
+  setFrameNumberAtom,
+  updateTimelineConfigAtom,
+} from "@fiftyone/playback";
 import { jotaiStore } from "@fiftyone/state/src/jotai";
 import { getVideoElements } from "../elements";
 import { VIDEO_SHORTCUTS } from "../elements/common";
@@ -266,6 +269,19 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
   }
 
   private setReader() {
+    const frameCount = getFrameNumber(
+      this.state.duration,
+      this.state.duration,
+      this.state.config.frameRate
+    );
+
+    jotaiStore.set(updateTimelineConfigAtom, {
+      name: `timeline-${this.state.config.sampleId}`,
+      configDelta: {
+        totalFrames: frameCount,
+      },
+    });
+
     this.requestFrames = acquireReader({
       addFrame: (frameNumber, frame) =>
         this.frames.set(frameNumber, new WeakRef(frame)),
@@ -277,11 +293,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       customizeColorSetting: this.state.options.customizeColorSetting,
       dispatchEvent: (event, detail) => this.dispatchEvent(event, detail),
       dataset: this.state.config.dataset,
-      frameCount: getFrameNumber(
-        this.state.duration,
-        this.state.duration,
-        this.state.config.frameRate
-      ),
+      frameCount,
       frameNumber: this.state.frameNumber,
       getCurrentFrame: () => this.frameNumber,
       group: this.state.config.group,
