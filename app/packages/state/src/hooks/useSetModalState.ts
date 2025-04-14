@@ -10,6 +10,7 @@ import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
 import * as sidebarAtoms from "../recoil/sidebar";
 import * as sidebarExpandedAtoms from "../recoil/sidebarExpanded";
+import { isPointCloud } from "@fiftyone/utilities";
 
 const setModalFilters = async ({ snapshot, set }: CallbackInterface) => {
   const paths = await snapshot.getPromise(
@@ -73,7 +74,7 @@ export default () => {
         // to find an alternative 2D slice to present by default in the main
         // view
         const map = await snapshot.getPromise(groupAtoms.groupMediaTypesMap);
-        if (map[slice] === "point_cloud") {
+        if (isPointCloud(map[slice])) {
           pinned3d = true;
           activeSlices = [slice];
         }

@@ -75,9 +75,9 @@ class ExecutionStoreService(object):
             store_name, metadata=metadata, policy=policy
         )
 
-    def clear_cache(self) -> None:
+    def clear_cache(self, store_name=None) -> None:
         """Clears all cache entries in the execution stores."""
-        self._repo.clear_cache()
+        self._repo.clear_cache(store_name=store_name)
 
     def get_store(self, store_name: str) -> StoreDocument:
         """Gets the specified store for the current context.

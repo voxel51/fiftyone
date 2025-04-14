@@ -219,6 +219,9 @@ Media type
 When a |Sample| is created, its media type is inferred from the `filepath` to
 the source media and exposed via the `media_type` attribute of the sample.
 
+An explicit `media_type` can also be provided during sample creation, which
+can be used to specify media types which are not natively supported.
+
 .. custombutton::
     :button_text: Learn more about media types
     :button_link: using_datasets.html#using-media-type

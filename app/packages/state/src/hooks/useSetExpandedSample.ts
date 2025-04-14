@@ -5,8 +5,7 @@ import { useRecoilCallback } from "recoil";
 import { modalSelector } from "../recoil";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as groupAtoms from "../recoil/groups";
-
-const THREE_D = new Set(["point_cloud", "three_d"]);
+import { is3d } from "@fiftyone/utilities";
 
 export default () => {
   const setter = useRecoilCallback(
@@ -22,9 +21,9 @@ export default () => {
           .getLoadable(groupAtoms.groupMediaTypes)
           .getValue();
 
-        if (THREE_D.has(map[fallback])) {
+        if (is3d(map[fallback])) {
           fallback = types
-            .filter(({ mediaType }) => !THREE_D.has(mediaType))
+            .filter(({ mediaType }) => !is3d(mediaType))
             .map(({ name }) => name)
             .sort()[0];
 

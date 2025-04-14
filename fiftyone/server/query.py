@@ -36,7 +36,6 @@ from fiftyone.server.dataloader import get_dataloader_resolver
 from fiftyone.server.events import get_state
 from fiftyone.server.indexes import Index, from_dict as indexes_from_dict
 from fiftyone.server.lightning import lightning_resolver
-from fiftyone.server.metadata import MediaType
 from fiftyone.server.paginator import Connection, get_paginator_resolver
 from fiftyone.server.samples import (
     SampleFilter,
@@ -66,7 +65,7 @@ class ActiveFields:
 @gql.type
 class Group:
     name: str
-    media_type: MediaType
+    media_type: str
 
 
 @gql.type
@@ -237,8 +236,8 @@ class Dataset:
     group_media_types: t.Optional[t.List[Group]]
     group_field: t.Optional[str]
     default_group_slice: t.Optional[str]
-    media_type: t.Optional[MediaType]
-    parent_media_type: t.Optional[MediaType]
+    media_type: t.Optional[str]
+    parent_media_type: t.Optional[str]
     mask_targets: t.List[NamedTargets]
     default_mask_targets: t.Optional[t.List[Target]]
     sample_fields: t.List[SampleField]

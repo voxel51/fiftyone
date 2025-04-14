@@ -6,7 +6,6 @@ FiftyOne dataset-related unit tests.
 |
 """
 
-import time
 from copy import deepcopy, copy
 from datetime import date, datetime, timedelta
 import gc
@@ -17,6 +16,7 @@ import unittest
 from unittest.mock import patch
 
 from bson import ObjectId
+from freezegun import freeze_time
 from mongoengine import ValidationError
 import numpy as np
 import pytz
@@ -1052,17 +1052,9 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(int((sample.date - date1).total_seconds()), 0)
 
         # Now change system time to something GMT+
-        system_timezone = os.environ.get("TZ")
-        try:
-            os.environ["TZ"] = "Europe/Madrid"
-            time.tzset()
+        now = datetime.now()
+        with freeze_time(now, tz_offset=1):
             dataset.reload()
-        finally:
-            if system_timezone is None:
-                del os.environ["TZ"]
-            else:
-                os.environ["TZ"] = system_timezone
-            time.tzset()
 
         self.assertEqual(type(sample.date), date)
         self.assertEqual(int((sample.date - date1).total_seconds()), 0)
