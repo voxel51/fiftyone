@@ -484,7 +484,7 @@ the model should detect:
 
 .. note::
 
-    While Ultralytics YOLOE models support `text and visual prompts <https://docs.ultralytics.com/models/yoloe/#textvisual-prompt-models>`,
+    While Ultralytics YOLOE models support `text and visual prompts <https://docs.ultralytics.com/models/yoloe/#textvisual-prompt-models>`_,
     YOLOE in FiftyOne currently only supports text prompts.
 
 .. _ultralytics-batch-inference:
