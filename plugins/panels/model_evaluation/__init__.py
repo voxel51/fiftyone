@@ -924,7 +924,6 @@ class EvaluationPanel(Panel):
                     scenario_data["subsets_data"]["All"] = subset_data
                     subsets_names.append("All")
                 else:
-                    # TODO: talk to bmoore and ibrahim about this
                     scenario_data["subsets_data"]["All"] = subset_data
                     subsets_names.append("All")
             scenario_data["subsets"] = subsets_names
@@ -932,17 +931,12 @@ class EvaluationPanel(Panel):
             scenario_data["subsets_code"] = custom_code
         elif scenario_type == "view":
             scenario_subsets = scenario.get("subsets", [])
-            available_saved_views = ctx.dataset.list_saved_views()
             for subset in scenario_subsets:
-                print("subset", subset, available_saved_views)
-                if subset in available_saved_views:
-                    subset_def = dict(type="view", view=subset)
-                    subset_data = self.get_subset_def_data(
-                        info, results, subset_def, is_compare
-                    )
-                    scenario_data["subsets_data"][subset] = subset_data
-                # else:
-                #     scenario_data["subsets_data"][subset] = {}
+                subset_def = dict(type="view", view=subset)
+                subset_data = self.get_subset_def_data(
+                    info, results, subset_def, is_compare
+                )
+                scenario_data["subsets_data"][subset] = subset_data
         elif scenario_type == "sample_field":
             scenario_subsets = scenario.get("subsets", [])
             for subset in scenario_subsets:
@@ -970,32 +964,68 @@ class EvaluationPanel(Panel):
 
         return scenario_data
 
-    def load_scenario(self, ctx):
-        try:
-            view_state = ctx.panel.get_state("view") or {}
-            eval_id = view_state.get("id")
-            eval_key = view_state.get("key")
-            computed_eval_key = ctx.params.get("key", eval_key)
-            scenario_id = str(ctx.params.get("id", "") or "")
+    def validate_scenario_subsets(self, ctx, scenario):
+        """
+        Validates (as much as possible) the subsets in a scenario.
+        1. For view scenarios, check if the views exist in the dataset.
+        2. For sample_field scenarios, check if the field exists in the dataset.
+            - If the field is tags, check if the tags exist.
+        - If no valid subsets are found, raise an error.
+        """
+        scenario_type = scenario.get("type", None)
+        if scenario_type == "view":
+            subset_views = scenario.get("subsets", [])
+            dataset_views = ctx.dataset.list_saved_views()
+            available_subsets = [v for v in subset_views if v in dataset_views]
 
+            scenario["subsets"] = available_subsets
+        elif scenario_type == "sample_field":
+            scenario_field = scenario.get("field", None)
+            dataset_field_paths = ctx.dataset.get_field_schema(
+                flat=True
+            ).keys()
+
+            # if the exact field does not exist, set subsets to empty
+            if not scenario_field or scenario_field not in dataset_field_paths:
+                scenario["subsets"] = []
+
+            # if field exists, it is tags, but tag doesn't exist
+            if scenario_field and scenario_field == "tags":
+                all_tags = ctx.dataset.distinct("tags")
+                tags = scenario.get("subsets", [])
+                available_tags = [t for t in tags if t in all_tags]
+
+                if set(tags) - set(available_tags):
+                    scenario["subsets"] = []
+
+        if not scenario.get("subsets", []):
+            raise ValueError("invalid subsets found")
+
+        return scenario
+
+    def load_scenario(self, ctx):
+        """
+        Tries to load the scenario given its id and evaluation key
+        If it fails, it shows an error page with options to edit/delete.
+        """
+        view_state = ctx.panel.get_state("view") or {}
+        eval_id = view_state.get("id")
+        eval_key = view_state.get("key")
+        computed_eval_key = ctx.params.get("key", eval_key)
+        scenario_id = str(ctx.params.get("id", "") or "")
+
+        try:
             if scenario_id:
                 scenario = self.get_scenario(ctx, eval_id, scenario_id)
-                prev_views_saved = scenario.get("subsets", [])
-                scenario_type = scenario.get("type", None)
+                validated_scenario = self.validate_scenario_subsets(
+                    ctx, scenario
+                )
+                scenario_data = self.get_scenario_data(ctx, validated_scenario)
 
-                if scenario_type == "view":
-                    available_views = ctx.dataset.list_saved_views()
-                    available_subsets = [
-                        v for v in prev_views_saved if v in available_views
-                    ]
-
-                    # NOTE: if there are no valid subsets, raise
-                    if not available_subsets:
-                        raise ValueError("No subsets found")
-
-                    scenario["subsets"] = available_subsets
-
-                scenario_data = self.get_scenario_data(ctx, scenario)
+                ctx.panel.set_state(
+                    "scenario_load_error",
+                    None,
+                )
                 ctx.panel.set_data(
                     f"scenario_{scenario_id}_{computed_eval_key}",
                     scenario_data,
@@ -1003,7 +1033,15 @@ class EvaluationPanel(Panel):
                 ctx.panel.set_state("scenario_loading", False)
         except Exception:
             ctx.panel.set_state("scenario_loading", False)
-            raise ScenarioLoadError(scenario_id)
+            msg = f"We couldn't load this scenario because the underlying data has changed or been removed. To continue your analysis you can,"
+            ctx.panel.set_state(
+                "scenario_load_error",
+                {
+                    "code": "scenario_load_error",
+                    "error": msg,
+                    "id": scenario_id,
+                },
+            )
 
     def delete_scenario(self, ctx):
         if not self.can_delete_scenario(ctx):
@@ -1164,10 +1202,3 @@ def _get_segmentation_tp_fp_fn_ids(results, field):
 
 def _to_object_ids(ids):
     return [ObjectId(_id) for _id in ids]
-
-
-class ScenarioLoadError(Exception):
-    def __init__(self, id: str):
-        super().__init__(
-            f'scenario_load_error:Failed to load scenario with id="{id}". This is often caused when underlying dataset has been modified. You can delete the scenario and re-create it.'
-        )

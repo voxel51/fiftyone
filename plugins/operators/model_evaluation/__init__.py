@@ -54,7 +54,9 @@ class ConfigureScenario(foo.Operator):
             types.Header(label=label, divider=True, description=description),
         )
 
-    def render_name_input(self, inputs, default):
+    def render_name_input(self, inputs, params):
+        default = params.get("scenario_name", None)
+
         inputs.str(
             "scenario_name",
             label="Scenario Name",
@@ -67,15 +69,6 @@ class ConfigureScenario(foo.Operator):
         )
 
     def render_scenario_types(self, inputs, selected_type):
-        inputs.view(
-            "info_header_2",
-            types.Header(
-                label="Define scenario",
-                divider=False,
-                description="The field that defines the scenario you want to analyze",
-            ),
-        )
-
         groups = types.RadioGroup()
         for choice in SCENARIO_BUILDING_CHOICES:
             groups.add_choice(choice["type"], label=choice["label"])
@@ -833,24 +826,29 @@ class ConfigureScenario(foo.Operator):
             ScenarioType.LABEL_ATTRIBUTE,
             ScenarioType.SAMPLE_FIELD,
         ]:
-            raise ValueError("Invalid scenario type")
+            return ScenarioType.CUSTOM_CODE
 
         return scenario_type
+
+    def get_modal_title(self, ctx):
+        scenario_id = ctx.params.get("scenario_id", None)
+        label = "Edit scenario" if scenario_id else "Create scenario"
+        return label
 
     def resolve_input(self, ctx):
         inputs = types.Object()
 
-        inputs.str("key", view=types.HiddenView())
-        inputs.str("compare_key", view=types.HiddenView())
-        inputs.str("scenario_id", view=types.HiddenView())
-
-        self.render_header(ctx, inputs)
-
-        chosen_scenario_name = ctx.params.get("scenario_name", None)
-        self.render_name_input(inputs, chosen_scenario_name)
+        self.render_name_input(inputs, ctx.params)
+        inputs.str(
+            "key",
+            view=types.HiddenView(),
+        )
 
         scenario_type = self.get_scenario_type(ctx.params)
         self.render_scenario_types(inputs, scenario_type)
+
+        inputs.str("compare_key", view=types.HiddenView())
+        inputs.str("scenario_id", view=types.HiddenView())
 
         selected_scenario_field = ctx.params.get("scenario_field", None)
         gt_field = ctx.params.get("gt_field", None)
@@ -874,7 +872,10 @@ class ConfigureScenario(foo.Operator):
         if scenario_type == ScenarioType.SAMPLE_FIELD:
             self.render_sample_fields(ctx, inputs, selected_scenario_field)
 
-        prompt = types.PromptView(submit_button_label="Analyze scenario")
+        prompt = types.PromptView(
+            submit_button_label="Analyze scenario",
+            label=self.get_modal_title(ctx),
+        )
         return types.Property(inputs, view=prompt)
 
     def render_custom_code_content(self, inputs, custom_code, code_key):

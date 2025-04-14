@@ -49,6 +49,21 @@ import LoadingError from "./LoadingError";
 
 const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 
+interface LoadError {
+  code: string;
+  error: string;
+  id: string; // scenario id
+}
+
+export const loadScenarioErrorState = atom<LoadError>({
+  key: "loadScenarioError",
+  default: {
+    code: "",
+    error: "",
+    id: "",
+  },
+});
+
 export default function Scenarios(props) {
   const {
     evaluation,
@@ -76,7 +91,6 @@ export default function Scenarios(props) {
 
   const scenariosArray = scenarios ? Object.values(scenarios) : [];
   const scenariosIds = Object.keys(scenarios);
-
   const readOnly = !data.permissions?.can_delete_scenario;
 
   useEffect(() => {
@@ -85,8 +99,30 @@ export default function Scenarios(props) {
     }
   }, [scenario, setScenario, scenarios]);
 
+  const onDelete = useCallback(() => {
+    setLoading(true);
+    deleteScenario(scenario, () => {
+      const firstNonDeletedScenario = scenariosIds.find(
+        (id) => id !== scenario
+      );
+      if (firstNonDeletedScenario) {
+        setScenario(firstNonDeletedScenario);
+      }
+      loadScenarios(() => {
+        // todo@im: need to find a better way to do this
+        setTimeout(() => {
+          setLoading(false);
+        }, 500);
+      });
+    });
+  }, [deleteScenario, loadScenarios, scenario, scenariosIds]);
+
   const onEdit = useCallback(() => {
-    if (fullScenario) {
+    if (scenario) {
+      const fullScenario = scenarios?.[scenario];
+      if (!fullScenario) {
+        return;
+      }
       promptOperator(panelId, {
         params: {
           gt_field: evaluationConfig.gt_field,
@@ -119,13 +155,13 @@ export default function Scenarios(props) {
     compareKey,
     eval_id,
     evaluationConfig.gt_field,
-    fullScenario,
     key,
     loadScenario,
     loadScenarios,
     panelId,
     promptOperator,
     scenario,
+    scenarios,
   ]);
 
   if (loading) {
@@ -287,27 +323,7 @@ export default function Scenarios(props) {
             compareKey={compareKey}
             readOnly={readOnly}
           />
-          <Actions
-            onDelete={() => {
-              setLoading(true);
-              deleteScenario(scenario, () => {
-                const firstNonDeletedScenario = scenariosIds.find(
-                  (id) => id !== scenario
-                );
-                if (firstNonDeletedScenario) {
-                  setScenario(firstNonDeletedScenario);
-                }
-                loadScenarios(() => {
-                  // todo@im: need to find a better way to do this
-                  setTimeout(() => {
-                    setLoading(false);
-                  }, 500);
-                });
-              });
-            }}
-            onEdit={onEdit}
-            readOnly={readOnly}
-          />
+          <Actions onDelete={onDelete} onEdit={onEdit} readOnly={readOnly} />
         </Stack>
       </Stack>
       {scenario && (
@@ -323,19 +339,14 @@ export default function Scenarios(props) {
           compareEvaluation={compareEvaluation}
           selectedSubsets={selectedSubsets}
           loadView={loadView}
+          onDelete={onDelete}
+          onEdit={onEdit}
+          readOnly={readOnly}
         />
       )}
     </Stack>
   );
 }
-
-export const loadScenarioErrorState = atom({
-  key: "loadScenarioError",
-  default: {
-    title: "",
-    description: "",
-  },
-});
 
 function Scenario(props) {
   const {
@@ -347,6 +358,9 @@ function Scenario(props) {
     differenceMode,
     selectedSubsets,
     loadView,
+    onDelete,
+    onEdit,
+    readOnly,
   } = props;
   const { key, compareKey } = data?.view;
   let scenario = data?.[`scenario_${id}_${key}`];
@@ -354,20 +368,22 @@ function Scenario(props) {
   const showAllSubsets =
     selectedSubsets.length === 1 && selectedSubsets[0] === "all";
 
-  const [{ title: errorCode, description: errorDescription }, setLoadError] =
+  const loadError = data?.scenario_load_error;
+
+  const [{ code: errorCode, error: errorDescription }, setLoadError] =
     useRecoilState(loadScenarioErrorState);
 
   useEffect(() => {
+    if (loadError && loadError.id === id) {
+      setLoadError(loadError);
+    } else {
+      setLoadError({ code: "", error: "", id: "" });
+    }
+  }, [loadError]);
+
+  useEffect(() => {
     if (!scenario) {
-      loadScenario(id, undefined, ({ errorMessage = "" }) => {
-        // TODO: do better
-        if (errorMessage?.startsWith("scenario_load_error")) {
-          const [title, description] = errorMessage?.split(":");
-          setLoadError({ title, description });
-        } else {
-          setLoadError({ title: "", description: "" });
-        }
-      });
+      loadScenario(id);
     }
   }, [id, scenario]);
 
@@ -384,7 +400,13 @@ function Scenario(props) {
         alignItems="center"
         justifyContent="center"
       >
-        <LoadingError code={errorCode} description={errorDescription} />
+        <LoadingError
+          code={errorCode}
+          description={errorDescription}
+          onDelete={onDelete}
+          onEdit={onEdit}
+          readOnly={readOnly}
+        />
       </Stack>
     );
   }
