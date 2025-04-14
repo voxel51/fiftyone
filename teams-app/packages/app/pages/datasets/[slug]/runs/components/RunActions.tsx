@@ -35,6 +35,9 @@ export default function RunActions(props: RunActionsPropsType) {
     runLink,
     logUploadError,
     logUrl,
+    logPath,
+
+    logSize,
     result,
     hideViewInOrchestrator,
   } = props;
@@ -56,7 +59,8 @@ export default function RunActions(props: RunActionsPropsType) {
   const canViewInOrchestrator =
     runLink && isUrl(runLink) && !hideViewInOrchestrator;
   const isExpired = result?.error?.includes("expired");
-  const hasLogSetup = Boolean(logUrl);
+  const hasLocalPath = Boolean(logPath) && logSize;
+  const hasLogSetup = Boolean(logUrl) || hasLocalPath;
 
   const logDocUrl = RUNS_LOG_DOCUMENTATION;
 
@@ -66,8 +70,11 @@ export default function RunActions(props: RunActionsPropsType) {
   // success or fail: logUrl is present and log_status is some exception = we failed to publish logs
   // when run state is running, we can't download logs
 
+  // new condition: if the user uses local path, logPath would be set, but logUrl would be null;
+  // we still want them to be able to download in this condition
+
   const canDownloadLogs =
-    Boolean(logUrl) &&
+    hasLogSetup &&
     logUploadError == null &&
     [OPERATOR_RUN_STATES.COMPLETED, OPERATOR_RUN_STATES.FAILED].includes(
       runState

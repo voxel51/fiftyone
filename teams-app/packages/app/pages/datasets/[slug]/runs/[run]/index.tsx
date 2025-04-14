@@ -74,6 +74,7 @@ function Run(props) {
     pinned,
     runLink,
     logUrl,
+    logPath,
     logSize,
     metadata,
   } = runData;
@@ -250,7 +251,7 @@ function Run(props) {
           <DefaultLog
             title="Logs size too large"
             button={{
-              url: logUrl,
+              url: logUrl ?? logPath,
               message: "Download logs",
               icon: "download",
             }}
