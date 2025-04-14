@@ -218,6 +218,7 @@ async def execute_or_delegate_operator(
     request_params,
     exhaust=False,
     request_token=None,  # teams-only
+    registry_override=None,  # teams-only
 ):
     """Executes the operator with the given name.
 
@@ -234,6 +235,7 @@ async def execute_or_delegate_operator(
         operator_uri,
         request_params,
         request_token=request_token,  # teams-only
+        registry_override=registry_override,  # teams-only
     )
 
     if isinstance(prepared, ExecutionResult):
@@ -335,8 +337,9 @@ async def prepare_operator_executor(
     api_key=None,  # teams-only
     user=None,  # teams-only
     allow_null_user=False,  # teams-only
+    registry_override=None,  # teams-only
 ):
-    registry = OperatorRegistry()
+    registry = registry_override or OperatorRegistry()
     if registry.operator_exists(operator_uri) is False:
         raise ValueError("Operator '%s' does not exist" % operator_uri)
 

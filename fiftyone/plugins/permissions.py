@@ -5,8 +5,12 @@ FiftyOne operator permissions.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+from datetime import datetime
+
 from fiftyone.internal.api_requests import make_request
 from fiftyone.internal.util import get_api_url, get_token_from_request
+from fiftyone.plugins.utils import _hash_strings_sha256
 
 
 class ManagedPlugins:
@@ -27,6 +31,13 @@ class ManagedPlugins:
         if plugin:
             return plugin.enabled
         return False
+
+    def fingerprint(self):
+        if len(self.plugins) == 0:
+            return _hash_strings_sha256(["empty"])
+        sorted_plugins = sorted(self.plugins, key=lambda p: p.name)
+        key_list = [plugin.fingerprint() for plugin in sorted_plugins]
+        return _hash_strings_sha256(key_list)
 
     @classmethod
     def from_json(cls, json):
@@ -66,19 +77,30 @@ class ManagedOperators:
         raw_operators = await get_available_operators(
             token, dataset_ids=dataset_ids
         )
+
         return ManagedOperators.from_json(raw_operators)
 
 
 class RemotePluginDefinition:
-    def __init__(self, name, enabled=False):
+    def __init__(self, name, enabled=False, modified_at=None):
         self.name = name
         self.enabled = enabled
+        self.modified_at = modified_at
+
+    def fingerprint(self):
+        key_list = [
+            self.name,
+            str(self.enabled),
+            str(self.modified_at.isoformat()),
+        ]
+        return _hash_strings_sha256(key_list)
 
     @classmethod
     def from_json(cls, json):
         return RemotePluginDefinition(
             name=json["name"],
             enabled=json.get("enabled", False),
+            modified_at=datetime.fromisoformat(json["modifiedAt"]),
         )
 
 
@@ -100,10 +122,6 @@ class RemoteOperatorDefinition:
         )
 
 
-# an example using the requests module to make a request to a graphql
-# server returning the results in a dictionary
-
-
 _AVAIL_OPERATORS_QUERY = """
 query ListAvailableOperators($datasetIds: [String!], $onlyEnabled: Boolean) {
     operators(datasetIds: $datasetIds, onlyEnabled: $onlyEnabled) {
@@ -114,11 +132,13 @@ query ListAvailableOperators($datasetIds: [String!], $onlyEnabled: Boolean) {
     }
 }
 """
+
 _AVAIL_PLUGINS_QUERY = """
 query ListAvailablePlugins {
   plugins {
     enabled
     name
+    modifiedAt
   }
 }
 """

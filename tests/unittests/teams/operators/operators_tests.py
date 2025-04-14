@@ -159,7 +159,10 @@ class TestUserCodeWithPermissions:
         #####
 
         prepare_operator_executor_mock.assert_called_once_with(
-            "operator", "params", request_token=ctx.user_request_token
+            "operator",
+            "params",
+            request_token=ctx.user_request_token,
+            registry_override=None,
         )
         do_execute_operator_mock.assert_called_once_with(
             operator, ctx, exhaust=False

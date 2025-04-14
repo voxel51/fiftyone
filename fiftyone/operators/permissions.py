@@ -6,7 +6,8 @@ FiftyOne operator permissions.
 |
 """
 from .registry import OperatorRegistry
-from fiftyone.plugins.permissions import ManagedOperators
+from fiftyone.plugins.permissions import ManagedOperators, ManagedPlugins
+from fiftyone.plugins.managed import build_managed_plugin_contexts
 
 
 # NOTE: if you are resolving a merge conflict
@@ -15,9 +16,17 @@ from fiftyone.plugins.permissions import ManagedOperators
 
 
 class PermissionedOperatorRegistry(OperatorRegistry):
-    def __init__(self, managed_operators):
+    def __init__(self, managed_operators, managed_plugins, enabled=True):
         self.managed_operators = managed_operators
-        super().__init__()
+        self.managed_plugins = managed_plugins
+        self._enabled = enabled
+        self.plugin_contexts = self._build_contexts()
+
+    def _build_contexts(self):
+        return build_managed_plugin_contexts(
+            self._enabled,
+            self.managed_plugins,
+        )
 
     def can_execute(self, operator_uri):
         return self.managed_operators.has_operator(operator_uri)
@@ -28,6 +37,7 @@ class PermissionedOperatorRegistry(OperatorRegistry):
             await ManagedOperators.for_request(
                 request, dataset_ids=dataset_ids
             ),
+            await ManagedPlugins.for_request(request),
         )
 
     @classmethod
@@ -36,4 +46,5 @@ class PermissionedOperatorRegistry(OperatorRegistry):
             await ManagedOperators.for_request(
                 request, dataset_ids=dataset_ids
             ),
+            await ManagedPlugins.for_request(request),
         )
