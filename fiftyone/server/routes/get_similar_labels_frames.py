@@ -44,7 +44,7 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
 
         end_frame = num_frames
 
-        support = [start_frame, end_frame]
+        support = None if stages else [start_frame, end_frame]
 
         def get_frames_view(view):
             view = fov.make_optimized_select_view(
@@ -69,10 +69,6 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
 
         post_pipeline = [
             # Stage 1:
-            # Filter documents to only include frames from the specific sample
-            # by matching _sample_id.
-            {"$match": {"_sample_id": ObjectId(sample_id)}},
-            # Stage 2:
             # Reshape each document by converting the entire document
             # (i.e., $$ROOT) to an array of key-value pairs.
             # Project the frame number and omit the default _id field.
@@ -83,7 +79,7 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
                     "frame_number": 1,
                 }
             },
-            # Stage 3:
+            # Stage 2:
             # Use $facet to perform two parallel pipelines:
             # - "rootLevel": Process spatial labels directly at the root level
             # - "nested": Process spatial labels that are nested inside
@@ -228,7 +224,7 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
                     ],
                 }
             },
-            # Stage 4:
+            # Stage 3:
             # Merge the results from the "rootLevel" and "nested" pipelines
             # into one combined array.
             {
@@ -236,7 +232,7 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
                     "combined": {"$concatArrays": ["$rootLevel", "$nested"]}
                 }
             },
-            # Stage 5:
+            # Stage 4:
             # Transform the combined array of label documents into a mapping
             # object.
             # - Use $reduce to iterate over each element and build an array

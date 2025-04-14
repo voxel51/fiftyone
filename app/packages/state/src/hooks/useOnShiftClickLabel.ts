@@ -9,7 +9,7 @@ import {
   HoveredInstancesLabelsTuple,
   jotaiStore,
 } from "../jotai";
-import { datasetName, selectedLabelMap } from "../recoil";
+import { datasetName, selectedLabelMap, State, view } from "../recoil";
 import { hoveredSample, selectedLabels } from "../recoil/atoms";
 
 const MAX_SIMILAR_LABELS_RESPONSE_CACHE_SIZE = 25;
@@ -39,11 +39,13 @@ const fetchSimilarLabels = async ({
   sampleId,
   numFrames,
   dataset,
+  view,
 }: {
   instanceId: string;
   sampleId: string;
   numFrames: number;
   dataset: string;
+  view: State.Stage[];
 }): Promise<SimilarLabelsResponse | null> => {
   try {
     const response = await getFetchFunction()(
@@ -54,6 +56,7 @@ const fetchSimilarLabels = async ({
         sampleId,
         numFrames,
         dataset,
+        view,
       }
     );
 
@@ -69,10 +72,17 @@ export const getSimilarLabelsCached = async (params: {
   sampleId: string;
   numFrames: number;
   dataset: string;
+  view: State.Stage[];
 }): Promise<SimilarLabelsResponse | null> => {
-  const { instanceId, sampleId, numFrames, dataset } = params;
+  const { instanceId, sampleId, numFrames, dataset, view } = params;
 
-  const key = JSON.stringify([instanceId, sampleId, numFrames, dataset]);
+  const key = JSON.stringify([
+    instanceId,
+    sampleId,
+    numFrames,
+    dataset,
+    (view ?? []).map((v) => `${v._cls}-${v._uuid}`),
+  ]);
 
   if (similarLabelsCache.has(key)) {
     return similarLabelsCache.get(key) || null;
@@ -199,6 +209,8 @@ export const useOnShiftClickLabel = () => {
           return;
         }
 
+        const currentView = snapshot.getLoadable(view).getValue();
+
         const similarLabels = await getSimilarLabelsCached({
           instanceId: sourceInstanceId,
           sampleId,
@@ -206,6 +218,7 @@ export const useOnShiftClickLabel = () => {
             jotaiStore.get(getTimelineConfigAtom(`timeline-${sampleId}`))
               .totalFrames ?? 1,
           dataset: snapshot.getLoadable(datasetName).getValue(),
+          view: currentView,
         });
 
         if (!similarLabels) {
@@ -290,7 +303,7 @@ export const useOnShiftClickLabel = () => {
           hoveredSampleValue?.frames?.length > 0;
 
         if (isVideoWithMultipleFrames) {
-          handleVideo(sourceSampleId, labels, e);
+          return handleVideo(sourceSampleId, labels, e);
         } else {
           return handleGroup(sampleId, labels, e);
         }
