@@ -1,5 +1,6 @@
 import { LabelData, LabelToggledEvent } from "@fiftyone/looker";
 import { FrameSample } from "@fiftyone/looker/src/state";
+import { getTimelineConfigAtom } from "@fiftyone/playback";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { LRUCache } from "lru-cache";
 import { useRecoilCallback } from "recoil";
@@ -11,9 +12,19 @@ import {
 import { datasetName, LIMIT_VIEW_STAGE, selectedLabelMap } from "../recoil";
 import { hoveredSample, selectedLabels } from "../recoil/atoms";
 
+const MAX_SIMILAR_LABELS_RESPONSE_CACHE_SIZE = 25;
+const MAX_SIMILAR_LABELS_RESPONSE_CACHE_TTL = 60 * 1000;
+
+/**
+ * We cache similar labels responses to avoid making multiple requests to
+ * the server for the same instance id.
+ *
+ * Ideally this would be handled in our fetch layer with a SWR-like
+ * mechanism, but that is not yet implemented.
+ * */
 const similarLabelsCache = new LRUCache<string, SimilarLabelsResponse | null>({
-  max: 50,
-  ttl: 60 * 1000,
+  max: MAX_SIMILAR_LABELS_RESPONSE_CACHE_SIZE,
+  ttl: MAX_SIMILAR_LABELS_RESPONSE_CACHE_TTL,
 });
 
 type SimilarLabelsResponse = {
@@ -26,15 +37,11 @@ type SimilarLabelsResponse = {
 const fetchSimilarLabels = async ({
   instanceId,
   sampleId,
-  frameNumber,
-  frameCount,
   numFrames,
   dataset,
 }: {
   instanceId: string;
   sampleId: string;
-  frameNumber: number;
-  frameCount: number;
   numFrames: number;
   dataset: string;
 }): Promise<SimilarLabelsResponse | null> => {
@@ -45,8 +52,6 @@ const fetchSimilarLabels = async ({
       {
         instanceId,
         sampleId,
-        frameNumber,
-        frameCount,
         numFrames,
         dataset,
       }
@@ -62,22 +67,12 @@ const fetchSimilarLabels = async ({
 export const getSimilarLabelsCached = async (params: {
   instanceId: string;
   sampleId: string;
-  frameNumber: number;
-  frameCount: number;
   numFrames: number;
   dataset: string;
 }): Promise<SimilarLabelsResponse | null> => {
-  const { instanceId, sampleId, frameNumber, frameCount, numFrames, dataset } =
-    params;
+  const { instanceId, sampleId, numFrames, dataset } = params;
 
-  const key = JSON.stringify([
-    instanceId,
-    sampleId,
-    frameNumber,
-    frameCount,
-    numFrames,
-    dataset,
-  ]);
+  const key = JSON.stringify([instanceId, sampleId, numFrames, dataset]);
 
   if (similarLabelsCache.has(key)) {
     return similarLabelsCache.get(key) || null;
@@ -207,9 +202,9 @@ export const useOnShiftClickLabel = () => {
         const similarLabels = await getSimilarLabelsCached({
           instanceId: sourceInstanceId,
           sampleId,
-          frameNumber: 1, // always 1 is fine
-          frameCount: 120, // todo: hardcoded for now
-          numFrames: 120, // todo: hardcoded for now
+          numFrames:
+            jotaiStore.get(getTimelineConfigAtom(`timeline-${sampleId}`))
+              .totalFrames ?? 1,
           dataset: snapshot.getLoadable(datasetName).getValue(),
         });
 
