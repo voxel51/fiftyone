@@ -1491,6 +1491,10 @@ class FiftyOneTorchDataset(Dataset):
         local_process_group (None) - only pass if running Distributed Data Parallel (DDP).
             The process group with each of the processes running the main train script
             on the machine this object is on.
+        skip_failures (False): whether to skip failures when loading samples.
+            If True, the dataset will return the exception that occurred in place of the
+            resulting get_item value.
+            If False, the code will fail normally.
 
     Notes:
         General:
