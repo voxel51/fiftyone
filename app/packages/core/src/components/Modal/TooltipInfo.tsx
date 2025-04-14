@@ -517,7 +517,7 @@ const Header = ({ title }: { title: string }) => {
       key="header"
       id={TOOLTIP_HEADER_ID}
     >
-      <span>{title}</span>
+      <span style={{ fontSize: "0.8rem" }}>{title}</span>
       {isTooltipLocked ? (
         <IconButton
           size="small"

@@ -9,7 +9,7 @@ import {
   HoveredInstancesLabelsTuple,
   jotaiStore,
 } from "../jotai";
-import { datasetName, LIMIT_VIEW_STAGE, selectedLabelMap } from "../recoil";
+import { datasetName, selectedLabelMap } from "../recoil";
 import { hoveredSample, selectedLabels } from "../recoil/atoms";
 
 const MAX_SIMILAR_LABELS_RESPONSE_CACHE_SIZE = 25;
@@ -263,8 +263,6 @@ export const useOnShiftClickLabel = () => {
         if (!sourceInstanceId) {
           return;
         }
-
-        console.log("View stage is ", LIMIT_VIEW_STAGE);
 
         /**
          * IN GROUPS:
