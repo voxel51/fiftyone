@@ -13,7 +13,10 @@ import unittest
 import time
 from unittest.mock import patch
 
-from fiftyone.operators.decorators import coroutine_timeout, dir_state
+from fiftyone.operators.decorators import (
+    coroutine_timeout,
+    dir_state,
+)
 
 
 class DirStateTests(unittest.TestCase):

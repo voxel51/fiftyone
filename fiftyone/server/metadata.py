@@ -7,6 +7,7 @@ FiftyOne Server metadata utilities.
 """
 
 import asyncio
+from enum import Enum
 import logging
 import shutil
 import struct
@@ -61,6 +62,7 @@ class MediaType(Enum):
     point_cloud = "point-cloud"
     three_d = "3d"
     video = "video"
+    unknown = "unknown"
 
 
 async def get_metadata(

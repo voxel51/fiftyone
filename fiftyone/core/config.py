@@ -95,6 +95,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_API_TRANSFER_METHOD",
             default="bytes",
         )
+        self.database_compressor = self.parse_string(
+            d,
+            "database_compressor",
+            env_var="FIFTYONE_DATABASE_COMPRESSOR",
+            default=None,
+        )
         self.database_uri = self.parse_string(
             d, "database_uri", env_var="FIFTYONE_DATABASE_URI", default=None
         )
@@ -331,7 +337,12 @@ class FiftyOneConfig(EnvConfig):
             default=None,
             env_var="FIFTYONE_MEDIA_FILEPATH_PREFIX_URL",
         )
-
+        self.execution_cache_enabled = self.parse_bool(
+            d,
+            "execution_cache_enabled",
+            env_var="FIFTYONE_EXECUTION_CACHE_ENABLED",
+            default=True,
+        )
         self._init()
 
     @property

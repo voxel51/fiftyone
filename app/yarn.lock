@@ -1826,7 +1826,7 @@ __metadata:
     lodash: ^4.17.21
     prettier: 2.2.1
     typescript: 4.2.4
-    vite: ^5.4.17
+    vite: ^5.4.18
   languageName: unknown
   linkType: soft
 
@@ -1881,7 +1881,7 @@ __metadata:
     typescript: ^5.3.2
     typescript-plugin-css-modules: ^5.0.2
     uuid: ^8.3.2
-    vite: ^5.4.17
+    vite: ^5.4.18
     vite-plugin-relay: ^1.0.7
     vite-plugin-rewrite-all: ^1.0.2
     vite-plugin-svgr: ^4.2.0
@@ -1915,7 +1915,7 @@ __metadata:
     react-use: ^17.5.1
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^5.1.0
-    vite: ^5.4.17
+    vite: ^5.4.18
   peerDependencies:
     jotai: "*"
     re-resizable: "*"
@@ -1992,7 +1992,7 @@ __metadata:
     typescript-plugin-css-modules: ^5.1.0
     use-memo-one: ^1.1.3
     uuid: ^8.3.2
-    vite: ^5.4.17
+    vite: ^5.4.18
     vite-plugin-relay: ^1.0.7
     xstate: ^4.14.0
   peerDependencies:
@@ -2015,7 +2015,7 @@ __metadata:
     plotly.js: ^3.0.1
     typescript: ^4.7.4
     use-resize-observer: ^9.0.2
-    vite: ^5.4.17
+    vite: ^5.4.18
     vite-plugin-externals: ^0.5.0
   peerDependencies:
     "@mui/icons-material": "*"
@@ -2051,7 +2051,7 @@ __metadata:
     typedoc: ^0.23.21
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^5.0.2
-    vite: ^5.4.17
+    vite: ^5.4.18
     vite-plugin-eslint: ^1.8.1
     vite-plugin-relay: ^2.0.0
     vitest: ^3.0.8
@@ -2065,7 +2065,7 @@ __metadata:
     prettier: ^2.7.1
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^5.1.0
-    vite: ^5.4.17
+    vite: ^5.4.18
   languageName: unknown
   linkType: soft
 
@@ -2093,7 +2093,7 @@ __metadata:
     three: ^0.169.0
     tunnel-rat: ^0.1.2
     typescript: ^5.4.5
-    vite: ^5.4.17
+    vite: ^5.4.18
     vite-plugin-externals: ^0.5.0
   peerDependencies:
     "@mui/icons-material": "*"
@@ -2125,7 +2125,7 @@ __metadata:
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^5.1.0
     uuid: ^8.3.2
-    vite: ^5.4.17
+    vite: ^5.4.18
   peerDependencies:
     jotai: "*"
   languageName: unknown
@@ -2150,7 +2150,7 @@ __metadata:
     react-map-gl: ^7.0.18
     typescript: ^4.7.4
     use-resize-observer: ^9.0.2
-    vite: ^5.4.17
+    vite: ^5.4.18
     vite-plugin-externals: ^0.5.0
   peerDependencies:
     "@mui/icons-material": "*"
@@ -2169,7 +2169,7 @@ __metadata:
     jest: ^29.7.0
     prettier: 2.2.1
     typescript: 4.2.4
-    vite: ^5.4.17
+    vite: ^5.4.18
   peerDependencies:
     "@mui/icons-material": "*"
     "@mui/material": "*"
@@ -2190,7 +2190,7 @@ __metadata:
     prettier: ^3.3.3
     typescript: ^5.5.4
     typescript-eslint: ^7.17.0
-    vite: ^5.4.17
+    vite: ^5.4.18
     vite-plugin-svgr: ^4.2.0
   peerDependencies:
     "@fiftyone/spaces": "*"
@@ -2208,7 +2208,7 @@ __metadata:
     moment: ^2.29.4
     prettier: 2.2.1
     typescript: 4.2.4
-    vite: ^5.4.17
+    vite: ^5.4.18
   languageName: unknown
   linkType: soft
 
@@ -2224,7 +2224,7 @@ __metadata:
     relay-compiler-language-typescript: ^15.0.1
     relay-config: ^12.0.1
     typescript: ^4.7.4
-    vite: ^5.4.17
+    vite: ^5.4.18
   languageName: unknown
   linkType: soft
 
@@ -2236,7 +2236,7 @@ __metadata:
     allotment: ^1.17.0
     react-sortablejs: ^6.1.4
     sortablejs: ^1.15.0
-    vite: ^5.4.17
+    vite: ^5.4.18
   peerDependencies:
     "@mui/icons-material": "*"
     "@mui/material": "*"
@@ -2254,7 +2254,7 @@ __metadata:
     "@biomejs/biome": ^1.7.1
     typescript: ^5.4.5
     typescript-plugin-css-modules: ^5.1.0
-    vite: ^5.4.17
+    vite: ^5.4.18
   languageName: unknown
   linkType: soft
 
@@ -2272,7 +2272,7 @@ __metadata:
     lodash: ^4.17.21
     prettier: ^2.7.1
     typescript: ^4.7.4
-    vite: ^5.4.17
+    vite: ^5.4.18
   peerDependencies:
     react: "*"
     react-error-boundary: "*"
@@ -2294,7 +2294,7 @@ __metadata:
     prettier: ^2.7.1
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^5.1.0
-    vite: ^5.4.17
+    vite: ^5.4.18
   languageName: unknown
   linkType: soft
 
@@ -18457,9 +18457,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vite@npm:^5.4.17":
-  version: 5.4.17
-  resolution: "vite@npm:5.4.17"
+"vite@npm:^5.4.18":
+  version: 5.4.18
+  resolution: "vite@npm:5.4.18"
   dependencies:
     esbuild: ^0.21.3
     fsevents: ~2.3.3
@@ -18496,7 +18496,7 @@ __metadata:
       optional: true
   bin:
     vite: bin/vite.js
-  checksum: c3921629c49fc58a87678620f5537d88a002abb874254a1d8f9952808bb64669c353a2fe2723262f3af865f42042bc5e0e9ee4740190ad97263681f2c052c922
+  checksum: b61bab8c74b7a1a626e26ae2802734d666818b2a1856217b330ea7522e24a619f3d7f690f0466ea844d96549da44409075289cbc0fa8cb0245d40017c8455f74
   languageName: node
   linkType: hard
 

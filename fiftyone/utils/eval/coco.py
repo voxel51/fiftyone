@@ -682,8 +682,7 @@ def _compute_matches(
                             None,
                         )
                     )
-
-            elif pred.label == cat:
+            else:
                 pred[eval_key] = "fp"
                 matches.append(
                     (

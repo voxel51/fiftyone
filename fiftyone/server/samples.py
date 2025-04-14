@@ -9,6 +9,8 @@ FiftyOne Server samples pagination
 import aiohttp
 
 import asyncio
+import collections
+
 import strawberry as gql
 import typing as t
 
@@ -60,6 +62,11 @@ class ThreeDSample(Sample):
 
 
 @gql.type
+class UnknownSample(Sample):
+    pass
+
+
+@gql.type
 class VideoSample(Sample):
     frame_number: int
     frame_rate: float
@@ -67,15 +74,24 @@ class VideoSample(Sample):
 
 SampleItem = gql.union(
     "SampleItem",
-    types=(ImageSample, PointCloudSample, ThreeDSample, VideoSample),
+    types=(
+        ImageSample,
+        PointCloudSample,
+        ThreeDSample,
+        VideoSample,
+        UnknownSample,
+    ),
 )
 
-MEDIA_TYPES = {
-    fom.IMAGE: ImageSample,
-    fom.POINT_CLOUD: PointCloudSample,
-    fom.VIDEO: VideoSample,
-    fom.THREE_D: ThreeDSample,
-}
+MEDIA_TYPES = collections.defaultdict(lambda: UnknownSample)
+MEDIA_TYPES.update(
+    {
+        fom.IMAGE: ImageSample,
+        fom.POINT_CLOUD: PointCloudSample,
+        fom.VIDEO: VideoSample,
+        fom.THREE_D: ThreeDSample,
+    }
+)
 
 
 async def paginate_samples(
@@ -165,17 +181,7 @@ async def _create_sample_item(
     pagination_data: bool,
 ) -> SampleItem:
     media_type = fom.get_media_type(sample["filepath"])
-
-    if media_type == fom.IMAGE:
-        cls = ImageSample
-    elif media_type == fom.VIDEO:
-        cls = VideoSample
-    elif media_type == fom.POINT_CLOUD:
-        cls = PointCloudSample
-    elif media_type == fom.THREE_D:
-        cls = ThreeDSample
-    else:
-        raise ValueError(f"unknown media type '{media_type}'")
+    cls = MEDIA_TYPES[media_type]
 
     metadata = await fosm.get_metadata(
         dataset, sample, media_type, metadata_cache, url_cache, session
