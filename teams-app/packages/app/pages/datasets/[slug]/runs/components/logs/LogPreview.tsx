@@ -28,7 +28,8 @@ export default function LogPreview({ queryRef }) {
 
   const handleDownload = useCallback(() => {
     const link = document.createElement("a");
-    link.href = data.delegatedOperation.logUrl;
+    link.href =
+      data.delegatedOperation.logUrl ?? data.delegatedOperation.logPath;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -36,7 +37,7 @@ export default function LogPreview({ queryRef }) {
       msg: "Logs download started",
       variant: "success",
     });
-  }, [data.delegatedOperation.logUrl]);
+  }, [data.delegatedOperation.logUrl, data.delegatedOperation.logPath]);
 
   // skip logs if date, level, content are all empty
   // if one line have date and level, but no content, the second line have no

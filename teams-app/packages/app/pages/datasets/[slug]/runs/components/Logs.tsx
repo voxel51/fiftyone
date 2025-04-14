@@ -171,7 +171,7 @@ function LogsContent({ logQueryRef, logStatus, runData }: LogsContent) {
         <DefaultLog
           message="Log size too large."
           button={{
-            url: runData.logUrl,
+            url: runData.logUrl ?? runData.logPath,
             message: "Download logs",
             icon: "download",
           }}
