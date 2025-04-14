@@ -211,31 +211,6 @@ def establish_db_conn(config):
                 "how to provide one"
             )
 
-    established_port = os.environ.get("FIFTYONE_PRIVATE_DATABASE_PORT", None)
-    if established_port is not None:
-        _connection_kwargs["port"] = int(established_port)
-    if config.database_uri is not None:
-        _connection_kwargs["host"] = config.database_uri
-        if config.database_compressor:
-            _connection_kwargs["compressors"] = config.database_compressor
-    elif _db_service is None:
-        if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
-            return
-
-        try:
-            _db_service = fos.DatabaseService()
-            port = _db_service.port
-            _connection_kwargs["port"] = port
-            os.environ["FIFTYONE_PRIVATE_DATABASE_PORT"] = str(port)
-
-        except fos.ServiceExecutableNotFound:
-            raise FiftyOneConfigError(
-                "MongoDB could not be installed on your system. Please "
-                "define a `database_uri` in your "
-                "`fiftyone.core.config.FiftyOneConfig` to connect to your"
-                "own MongoDB instance or cluster "
-            )
-
         _connection_kwargs = {
             "__teams_api_client_connect_timeout": config.api_client_connect_timeout,
             "__teams_api_client_read_timeout": config.api_client_read_timeout,
@@ -259,6 +234,8 @@ def establish_db_conn(config):
             _connection_kwargs["port"] = int(established_port)
         if config.database_uri is not None:
             _connection_kwargs["host"] = config.database_uri
+            if config.database_compressor:
+                _connection_kwargs["compressors"] = config.database_compressor
         elif _db_service is None:
             if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
                 return
