@@ -47,6 +47,7 @@ INSTALL_REQUIRES = [
     # kaleido indirectly required by plotly for image export
     # https://plotly.com/python/static-image-export/
     "kaleido!=0.2.1.post1",
+    "lz4",
     "matplotlib",
     "mongoengine~=0.29.1",
     "motor~=3.6.0",

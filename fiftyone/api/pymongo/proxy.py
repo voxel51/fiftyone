@@ -5,13 +5,13 @@
 """
 
 import abc
-from typing import Any, Iterable, Mapping, Optional, Tuple, Union
+from typing import Any, Iterable, Mapping, Optional, Tuple
 
 import fiftyone as fo
 from fiftyone.api import client, socket, utils
 from fiftyone.core import utils as fo_utils
 
-ProxyAPIClient = client.Client
+ProxyAPIClient = client.PymongoClient
 ProxyAPIContext = Iterable[
     Tuple[str, Optional[Iterable[Any]], Optional[Mapping[str, Any]]]
 ]
@@ -35,24 +35,18 @@ class PymongoRestProxy(utils.IProxy, abc.ABC, metaclass=PymongoProxyMeta):
         kwargs: Optional[Mapping[str, Any]] = None,
         is_idempotent: bool = True,
     ):
-        """Send a marshalled REST request to the Teams API."""
+        """Send a REST request to the Teams API."""
 
-        # Build payload
         payload = (self.__proxy_api_context__, (name, args, kwargs))
 
-        # Marshall the payload so any python objects can be transported over
-        # HTTP. They will be unmarshalled on server.
-        marshalled_payload = utils.marshall(payload)
-
-        # Get marshalled response from the server.
-        marshalled_response = self.__proxy_api_client__.post(
+        response = self.__proxy_api_client__.post(
             "_pymongo",
-            payload=marshalled_payload,
+            payload=payload,
             stream=True,
             is_idempotent=is_idempotent,
         )
 
-        return self.__proxy_api_handle_response__(marshalled_response)
+        return self.__proxy_api_handle_response__(response)
 
     @property
     @abc.abstractmethod
@@ -67,13 +61,8 @@ class PymongoRestProxy(utils.IProxy, abc.ABC, metaclass=PymongoProxyMeta):
         in which a context can be derived.
         """
 
-    def __proxy_api_handle_response__(
-        self, marshalled_response: Union[str, bytes]
-    ) -> Any:
-        """Handle a marshalled respoinse from the Teams API."""
-
-        # Unmarshall server response into python objects.
-        response = utils.unmarshall(marshalled_response)
+    def __proxy_api_handle_response__(self, response: Any) -> Any:
+        """Handle a response from the Teams API."""
 
         # If the response is an exception, the server purposefully
         # forwarded it as such and the error should be raised.
@@ -119,20 +108,22 @@ class PymongoWebsocketProxy(PymongoRestProxy, abc.ABC):
         name: str,
         args: Optional[Iterable[Any]] = None,
         kwargs: Optional[Mapping[str, Any]] = None,
+        get_size: bool = False,
     ) -> Any:
-        """Send a marshalled message through a Teams API socket."""
+        """Send a message through a Teams API socket."""
 
-        # Build and marshall the payload so any python objects can be
-        # transported over the socket. They will be unmarshalled on server.
         while True:
             try:
-                # Send marshalled request message
-                marshalled_payload = utils.marshall((name, args, kwargs))
-                self.__proxy_api_socket.send(marshalled_payload)
-
-                # Get marshalled response message from the server.
-                marshalled_response = next(self.__proxy_api_socket)
-                return self.__proxy_api_handle_response__(marshalled_response)
+                self.__proxy_api_socket.send((name, args, kwargs))
+                result = next(self.__proxy_api_socket)
+                return (
+                    (
+                        result[0],
+                        self.__proxy_api_handle_response__(result[1]),
+                    )
+                    if get_size
+                    else self.__proxy_api_handle_response__(result[1])
+                )
             except socket.SocketDisconnectException:
                 self.__proxy_socket_connect__()
 
@@ -147,10 +138,7 @@ class PymongoWebsocketProxy(PymongoRestProxy, abc.ABC):
             "_pymongo/stream"
         )
 
-        # Initialize remote PyMongo target with current context
-        marshalled_ctx = utils.marshall(self.__proxy_api_context__)
-
-        self.__proxy_api_socket.send(marshalled_ctx)
+        self.__proxy_api_socket.send(self.__proxy_api_context__)
 
     # pylint: disable-next=missing-function-docstring
     def next(self) -> Any:
@@ -163,14 +151,16 @@ class PymongoWebsocketProxy(PymongoRestProxy, abc.ABC):
         if not self.__next_batch:
             try:
                 batch_size = next(self.__dynamic_batcher)
-                self.__next_batch = self.__proxy_it__(
-                    "__next_batch", kwargs={"batch_size": batch_size}
+                next_batch_size, self.__next_batch = self.__proxy_it__(
+                    "__next_batch",
+                    kwargs={"batch_size": batch_size},
+                    get_size=True,
                 )
 
                 if not self.__next_batch:
                     raise StopIteration
 
-                self.__dynamic_batcher.apply_backpressure(self.__next_batch)
+                self.__dynamic_batcher.apply_backpressure(next_batch_size)
 
             except AttributeError as err:
                 # Older versions do not have the API `__next_batch` method.

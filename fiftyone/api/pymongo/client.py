@@ -35,7 +35,7 @@ class MongoClient(proxy.PymongoRestProxy):
         if not api_url and not api_key:
             raise ValueError("MongoClient requires an API URL and an API key.")
 
-        self.__proxy_api_client = api_client.Client(
+        self.__proxy_api_client = api_client.PymongoClient(
             api_url,
             api_key,
             disable_websocket_info_logs=disable_websocket_info_logs,

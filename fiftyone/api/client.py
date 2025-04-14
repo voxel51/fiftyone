@@ -19,9 +19,10 @@ from typing import (
 import backoff
 import pymongo
 import requests
+import fiftyone as fo
 from typing_extensions import Literal
 
-from fiftyone.api import constants, errors, socket
+from fiftyone.api import constants, errors, socket, encodings
 
 
 def fatal_http_code(e):
@@ -33,10 +34,12 @@ class Client:
 
     @staticmethod
     def _chunk_generator_factory(
-        s: str, chunk_size=constants.CHUNK_SIZE
+        s: Union[str, bytes], chunk_size=constants.CHUNK_SIZE
     ) -> Callable[[], Iterator[bytes]]:
         def _gen() -> Iterator[bytes]:
-            bytes_ = s.encode()
+
+            bytes_ = s.encode() if isinstance(s, str) else s
+
             for byte_chunk in [
                 bytes_[i : i + chunk_size]
                 for i in range(0, len(bytes_), chunk_size)
@@ -60,7 +63,7 @@ class Client:
         self.__token = token
         self._timeout = timeout
         self.__disable_websocket_info_logs = disable_websocket_info_logs
-
+        self._content_encoding = None
         self._session = requests.Session()
         try:
             version = metadata.version("fiftyone")
@@ -103,16 +106,20 @@ class Client:
     def get(self, url_path: str) -> requests.Response:
         return self.__request("GET", url_path)
 
+    def options(self, url_path: str) -> requests.Response:
+        """Make options request"""
+        return self.__request("OPTIONS", url_path)
+
     def post(
         self,
         url_path: str,
-        payload: str,
+        payload: Any,
         stream: bool = False,
         timeout: Optional[int] = None,
         is_idempotent: bool = True,
     ) -> Any:
         """Make post request"""
-
+        payload = encodings.apply_encoding(payload, self._content_encoding)
         data = payload
         headers = {}
 
@@ -132,20 +139,26 @@ class Client:
             stream=stream,
             is_idempotent=is_idempotent,
         )
+
         # Use response as context manager to ensure it's closed.
         # https://requests.readthedocs.io/en/latest/user/advanced/#body-content-workflow
         with response:
             if stream:
                 # Iter in chunks rather than lines since data isn't newline delimited
-                return b"".join(
+                content = b"".join(
                     chunk
                     for chunk in response.iter_content(
                         chunk_size=constants.CHUNK_SIZE
                     )
                     if chunk
                 )
+                return encodings.apply_decoding(
+                    content, self._content_encoding
+                )
 
-            return response.content
+            return encodings.apply_decoding(
+                response.content, self._content_encoding
+            )
 
     def post_file(
         self,
@@ -180,6 +193,7 @@ class Client:
             self._extra_headers,
             self._timeout,
             self.__disable_websocket_info_logs,
+            self._content_encoding,
         )
 
     def close(self) -> None:
@@ -261,7 +275,7 @@ class Client:
 
     def __request(
         self,
-        method: Literal["POST", "GET"],
+        method: Literal["POST", "GET", "OPTIONS"],
         url_path: str,
         timeout: Optional[int] = None,
         data_generator_factory: Optional[Callable[[], Iterator[bytes]]] = None,
@@ -317,3 +331,51 @@ class Client:
         response.raise_for_status()
 
         return response
+
+
+class PymongoClient(Client):
+    """Class for interfacing with Enterprise API proxy endpoints."""
+
+    def __init__(
+        self,
+        base_url: str,
+        key: str = None,
+        token: str = None,
+        timeout: Optional[
+            Union[int, tuple[int, int]]
+        ] = constants.DEFAULT_TIMEOUT,
+        disable_websocket_info_logs: bool = True,
+    ):
+        super().__init__(
+            base_url=base_url,
+            key=key,
+            token=token,
+            timeout=timeout,
+            disable_websocket_info_logs=disable_websocket_info_logs,
+        )
+        self._content_encoding = self._get_content_headers()
+        headers = {
+            "Content-Type": "application/x-python",
+            "Content-Encoding": ", ".join(self._content_encoding),
+        }
+        self._session.headers.update(headers)
+        self._extra_headers.update(headers)
+
+    def _get_content_headers(self) -> tuple[str, str]:
+        """Returns a list for how to transfer data to the server."""
+        accept = self.options("_pymongo").headers.get("Accept-Encoding")
+        options = accept.split(", ") if accept else []
+        if not options:
+            # this means they have an older version of the API
+            # default to existing behavior
+            return ["pickle", "base64", "str"]
+
+        headers = ["pickle"]
+
+        if fo.config.api_compressor in options:
+            headers += [fo.config.api_compressor]
+
+        if fo.config.api_transfer_method == "str":
+            headers += ["base64", "str"]
+
+        return headers

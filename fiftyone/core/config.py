@@ -83,6 +83,18 @@ class FiftyOneConfig(EnvConfig):
         self.api_uri = self.parse_string(
             d, "api_uri", env_var="FIFTYONE_API_URI", default=None
         )
+        self.api_compressor = self.parse_string(
+            d,
+            "api_compressor",
+            env_var="FIFTYONE_API_COMPRESSOR",
+            default="lz4",
+        )
+        self.api_transfer_method = self.parse_string(
+            d,
+            "api_transfer_method",
+            env_var="FIFTYONE_API_TRANSFER_METHOD",
+            default="bytes",
+        )
         self.database_uri = self.parse_string(
             d, "database_uri", env_var="FIFTYONE_DATABASE_URI", default=None
         )

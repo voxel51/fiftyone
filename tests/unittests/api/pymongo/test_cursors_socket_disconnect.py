@@ -12,13 +12,13 @@ import fiftyone.api.motor
 import fiftyone.api.pymongo
 import fiftyone.api.pymongo.command_cursor
 import fiftyone.api.pymongo.cursor
-from fiftyone.api import client, socket, utils
+from fiftyone.api import client, socket
 
 
 @pytest.fixture(name="api_client", autouse=True)
 def fixture_api_client():
     """Mocked API client"""
-    with mock.patch.object(client, "Client") as m:
+    with mock.patch.object(client, "PymongoClient") as m:
         yield m.return_value
 
 
@@ -79,7 +79,7 @@ class TestSocketDisconnect:
         m = mock.Mock(spec=socket.Socket)
         m.send = mock.Mock()
         m.__next__ = mock.Mock(
-            side_effect=[utils.marshall(value) for value in next_return_values]
+            side_effect=[(0, copy.deepcopy(val)) for val in next_return_values]
         )
         return m
 
@@ -124,7 +124,7 @@ class TestSocketDisconnect:
             assert api_context[-1][2]["skip"] == 0
 
         # Connected with context
-        failing_socket.send.assert_called_with(utils.marshall(api_context))
+        failing_socket.send.assert_called_with(api_context)
 
         #####
         if isinstance(
@@ -161,7 +161,7 @@ class TestSocketDisconnect:
             api_context[-1][2]["skip"] = skip
 
         assert follow_through_socket.send.mock_calls[0] == mock.call(
-            utils.marshall(api_context)
+            api_context
         )
 
         # Initial context + successful calls to "_next_batch"
