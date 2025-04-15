@@ -83,6 +83,7 @@ def get_view(
     reload=True,
     awaitable=False,
     sort_by=None,
+    desc=None,
 ):
     """Gets the view defined by the given request parameters.
 
@@ -139,6 +140,7 @@ def get_view(
                 extended_stages=extended_stages,
                 media_types=media_types,
                 sort_by=sort_by,
+                desc=desc,
             )
 
         return view
@@ -156,6 +158,7 @@ def get_extended_view(
     pagination_data=False,
     media_types=None,
     sort_by=None,
+    desc=None,
 ):
     """Create an extended view with the provided filters.
 
@@ -174,13 +177,6 @@ def get_extended_view(
     if extended_stages:
         # extend view with similarity search, etc. first
         view = extend_view(view, extended_stages)
-
-    if sort_by:
-        view = view.sort_by(sort_by, reverse=False)
-
-    if pagination_data:
-        # omit all dict field values for performance, not needed by grid
-        view = _project_pagination_paths(view, media_types)
 
     if filters:
         if "tags" in filters:
@@ -208,6 +204,13 @@ def get_extended_view(
 
         for stage in stages:
             view = view.add_stage(stage)
+
+    if sort_by:
+        view = view.sort_by(sort_by, reverse=bool(desc))
+
+    if pagination_data:
+        # omit all dict field values for performance, not needed by grid
+        view = _project_pagination_paths(view, media_types)
 
     if pagination_data:
         view = _add_labels_tags_counts(view)

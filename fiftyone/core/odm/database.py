@@ -323,7 +323,7 @@ def _validate_db_version(config, client):
         )
 
 
-def aggregate(collection, pipelines):
+def aggregate(collection, pipelines, hints=None):
     """Executes one or more aggregations on a collection.
 
     Multiple aggregations are executed using multiple threads, and their
@@ -343,15 +343,18 @@ def aggregate(collection, pipelines):
             a list and the list of lists is returned
     """
     pipelines = list(pipelines)
-
     is_list = pipelines and not isinstance(pipelines[0], dict)
     if not is_list:
         pipelines = [pipelines]
+        hints = [hints]
 
     num_pipelines = len(pipelines)
     if isinstance(collection, mtr.AsyncIOMotorCollection):
         if num_pipelines == 1 and not is_list:
-            return collection.aggregate(pipelines[0], allowDiskUse=True)
+            kwargs = {"hint": hints[0]} if hints[0] is not None else {}
+            return collection.aggregate(
+                pipelines[0], allowDiskUse=True, **kwargs
+            )
 
         return _do_async_pooled_aggregate(collection, pipelines)
 

@@ -45,47 +45,6 @@ export const pathSearchCount = selectorFamily({
     },
 });
 
-const filterSearch = selectorFamily({
-  key: "filterSearch",
-  get:
-    (path: string) =>
-    ({ get }) => {
-      const allIndexes = get(fos.indexInfo)?.sampleIndexes ?? [];
-      const filters = get(fos.filters) ?? {};
-      const pathMap: { [key: string]: string } = {};
-      for (const key in filters) {
-        pathMap[get(fos.dbPath(key))] = key;
-      }
-
-      let result: typeof filters | undefined = undefined;
-      let resultName: string | undefined = undefined;
-
-      for (const index of allIndexes) {
-        const current: typeof filters = {};
-        for (const key of index.key) {
-          if (key.field === get(fos.dbPath(path))) {
-            if (
-              !result ||
-              Object.keys(current).length > Object.keys(result).length
-            ) {
-              result = current;
-              resultName = index.name;
-            }
-            break;
-          }
-
-          if (pathMap[key.field]) {
-            current[pathMap[key.field]] = filters[pathMap[key.field]];
-          }
-        }
-      }
-
-      console.log(allIndexes);
-
-      return { filters: result, index: resultName };
-    },
-});
-
 export const stringSearchResults = selectorFamily<
   {
     values?: Result[];
@@ -127,7 +86,7 @@ export const stringSearchResults = selectorFamily<
               path,
               exclude: [...selected.filter((s) => s !== null)] as string[],
               search,
-              ...get(filterSearch(path)),
+              ...get(fos.filterSearch(path)),
             })
           )?.map((value) => ({ value, count: null })),
         };

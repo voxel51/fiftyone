@@ -13,29 +13,76 @@ const convertDefault = (defaultRange) => {
   return -(14 - (defaultRange / 10) * 14 + 1);
 };
 
-export const sortFields = selector({
-  key: "sortField",
+const sortFieldsMap = selector({
+  key: "sortFieldsMap",
   get: ({ get }) => {
     const f = Object.keys(get(fos.filters) ?? {});
     const valid = get(fos.validIndexes(new Set(f)));
-    const all = new Set([...valid.available, ...valid.trailing]);
-    return [...all].sort();
+
+    const map = {};
+    for (const [name, dbField] of [...valid.available, ...valid.trailing]) {
+      const field = get(fos.fieldPath(dbField));
+      if (!map[field]) {
+        map[field] = [];
+      }
+
+      map[field].push(name);
+    }
+
+    return map;
   },
 });
 
-export const sortByState = atom({
-  key: "sortByState",
-  default: "id",
+export const sortFields = selector({
+  key: "sortFields",
+  get: ({ get }) => {
+    const f = Object.keys(get(fos.filters) ?? {});
+    const valid = get(fos.validIndexes(new Set(f)));
+    const all = new Set([
+      ...valid.available.map(([_, i]) => i),
+      ...valid.trailing.map(([_, i]) => i),
+    ]);
+
+    return [...all]
+      .sort()
+      .map((path) => get(fos.fieldPath(path)))
+      .filter((path) => get(fos.isNumericField(path)));
+  },
 });
 
-export const sortBy = selector({
-  key: "sortBy",
+export const gridSortByState = atom({
+  key: "gridSortByState",
+  default: { descending: true, field: "created_at" },
+});
+
+export const gridSortBy = selector({
+  key: "gridSortBy",
   get: ({ get }) => {
+    if (!get(fos.queryPerformance)) {
+      return null;
+    }
+
     const fields = get(sortFields);
-    return get(sortByState) &&
-      fields.includes(get(fos.dbPath(get(sortByState))))
-      ? get(sortByState)
-      : null;
+    const state = get(gridSortByState);
+
+    if (fields.length === 1) {
+      return { descending: state.descending, field: fields[0] };
+    }
+
+    if (!fields.includes(state.field)) {
+      return null;
+    }
+
+    return state;
+  },
+});
+
+const gridSortIndex = selector({
+  key: "gridSortIndex",
+  get: ({ get }) => {
+    const field = get(gridSortBy)?.field;
+    if (!field) return undefined;
+    return get(sortFieldsMap)[field][0];
   },
 });
 
@@ -169,12 +216,23 @@ export const maxGridItemsSizeBytes = atom({
 export const pageParameters = selector({
   key: "paginateGridVariables",
   get: ({ get }) => {
-    const slice = get(fos.groupSlice);
     const dataset = get(fos.datasetName);
 
     if (!dataset) {
       throw new Error("dataset is not defined");
     }
+
+    const slice = get(fos.groupSlice);
+    const queryPerformance = get(fos.queryPerformance);
+
+    const extra = queryPerformance
+      ? {
+          sortBy: get(gridSortBy)?.field,
+          desc: get(gridSortBy)?.descending,
+          hint: get(gridSortIndex),
+        }
+      : {};
+
     const params = {
       dataset,
       view: get(fos.view),
@@ -188,8 +246,9 @@ export const pageParameters = selector({
           : null,
       },
       extendedStages: get(fos.extendedStages),
-      sortBy: get(sortBy) ? get(sortBy) : null,
+      ...extra,
     };
+
     return (page: number, pageSize: number) => {
       return {
         ...params,

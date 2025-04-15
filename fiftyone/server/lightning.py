@@ -317,7 +317,11 @@ async def _do_async_pooled_queries(
     return await asyncio.gather(
         *[
             _do_async_query(
-                dataset, collection, query, None if is_frames else filter
+                dataset,
+                collection,
+                query,
+                None if is_frames else filter,
+                is_frames,
             )
             for collection, query, is_frames in queries
         ]
@@ -329,12 +333,17 @@ async def _do_async_query(
     collection: AsyncIOMotorCollection,
     query: t.Union[DistinctQuery, t.List[t.Dict]],
     filter: t.Optional[t.Mapping[str, str]],
+    is_frames: bool,
 ):
     if isinstance(query, DistinctQuery):
         if query.has_list:
-            return await _do_distinct_query(collection, query)
+            return await _do_list_distinct_queries(
+                dataset, collection, query, filter, is_frames
+            )
 
-        return await _do_distinct_pipeline(dataset, collection, query, filter)
+        return await _do_distinct_queries(
+            dataset, collection, query, filter, is_frames
+        )
 
     if filter:
         for k, v in filter.items():
@@ -344,9 +353,37 @@ async def _do_async_query(
     return [i async for i in collection.aggregate(query)]
 
 
-async def _do_distinct_query(
+async def _do_list_distinct_queries(
+    dataset: fo.Dataset,
     collection: AsyncIOMotorCollection,
-    query: DistinctQuery,
+    query: t.Union[DistinctQuery, t.List[t.Dict]],
+    filter: t.Optional[t.Mapping[str, str]],
+    is_frames: bool,
+):
+    if not query.index:
+        return await _do_distinct_lazy_pipeline(
+            dataset, collection, query, filter, is_frames
+        )
+
+    lazy = asyncio.create_task(
+        _do_distinct_lazy_pipeline(
+            dataset, collection, query, filter, is_frames
+        )
+    )
+    distinct_scan = asyncio.create_task(
+        _do_list_distinct_query(collection, query)
+    )
+    done, pending = await asyncio.wait(
+        [lazy, distinct_scan], return_when=asyncio.FIRST_COMPLETED
+    )
+
+    pending.pop().cancel()
+    return done.pop().result()
+
+
+async def _do_list_distinct_query(
+    collection: AsyncIOMotorCollection,
+    query: t.Union[DistinctQuery, t.List[t.Dict]],
 ):
     match = None
     matcher = lambda v: False
@@ -357,12 +394,7 @@ async def _do_distinct_query(
             match = match[:_TWENTY_FOUR]
             matcher = lambda v: v < match
 
-    try:
-        result = await collection.distinct(query.path)
-    except:
-        # too many results
-        return None
-
+    result = await collection.distinct(query.path)
     values = []
     exclude = set(query.exclude or [])
 
@@ -383,60 +415,80 @@ async def _do_distinct_query(
     return values
 
 
-async def _do_distinct_pipeline(
+async def _do_distinct_queries(
     dataset: fo.Dataset,
     collection: AsyncIOMotorCollection,
     query: DistinctQuery,
     filter: t.Optional[t.Mapping[str, str]],
+    is_frames: bool,
+):
+    if not query.index:
+        return await _do_distinct_lazy_pipeline(
+            dataset, collection, query, filter, is_frames
+        )
+
+    lazy = asyncio.create_task(
+        _do_distinct_lazy_pipeline(
+            dataset, collection, query, filter, is_frames
+        )
+    )
+    grouped = asyncio.create_task(
+        _do_distinct_grouped_pipeline(
+            dataset, collection, query, filter, is_frames
+        )
+    )
+    done, pending = await asyncio.wait(
+        [lazy, grouped], return_when=asyncio.FIRST_COMPLETED
+    )
+
+    pending.pop().cancel()
+    return done.pop().result()
+
+
+async def _do_distinct_lazy_pipeline(
+    dataset: fo.Dataset,
+    collection: AsyncIOMotorCollection,
+    query: DistinctQuery,
+    filter: t.Optional[t.Mapping[str, str]],
+    is_frames: bool,
 ):
     pipeline = []
     if filter:
         pipeline.append({"$match": filter})
 
-    if query.filters:
+    if query.filters and not is_frames:
         pipeline += get_view(dataset, filters=query.filters)._pipeline()
 
-    if query.index:
-        pipeline.append({"$sort": {query.path: 1}})
-
-    pipeline.extend([{"$project": {"_id": f"${query.path}"}}])
-
-    match_search = None
-    if query.search:
-        match_search = _add_search(query)
-        pipeline.append(match_search)
-
-    match_arrays = _match_arrays(dataset, query.path, False) + _unwind(
-        dataset, query.path, False
+    pipeline.extend(
+        [
+            {"$project": {"_id": f"${query.path}"}},
+            {"$match": {"_id": {"$ne": None}}},
+        ]
     )
-    if match_arrays:
-        pipeline += match_arrays
-        if match_search:
-            # match again after unwinding list fields
-            pipeline.append(match_search)
 
-    if query.index:
-        pipeline.extend([{"$group": {"_id": "$_id"}}])
-    else:
-        pipeline.append({"$limit": 1000})
+    return await _handle_pipeline(
+        pipeline, dataset, collection, query, is_frames
+    )
 
-    fo.pprint(pipeline)
-    values = set()
-    exclude = set(query.exclude or [])
 
-    kwargs = {"hint": query.index} if query.index else {}
+async def _do_distinct_grouped_pipeline(
+    dataset: fo.Dataset,
+    collection: AsyncIOMotorCollection,
+    query: DistinctQuery,
+    filter: t.Optional[t.Mapping[str, str]],
+    is_frames: bool,
+):
+    pipeline = []
+    if filter:
+        pipeline.append({"$match": filter})
 
-    async for value in collection.aggregate(pipeline, **kwargs):
-        value = value["_id"]
-        if value is None or value in exclude:
-            continue
+    pipeline.extend(
+        [{"$group": {"_id": f"${query.path}"}}, {"$sort": {"_id": 1}}]
+    )
 
-        values.add(value)
-
-        if len(values) == query.first:
-            break
-
-    return sorted(values)
+    return await _handle_pipeline(
+        pipeline, dataset, collection, query, is_frames
+    )
 
 
 def _add_search(query: DistinctQuery):
@@ -453,7 +505,7 @@ def _add_search(query: DistinctQuery):
             value = {"$lt": ObjectId("0" * _TWENTY_FOUR)}
     else:
         value = Regex(f"^{query.search}")
-    return {"$match": {query.path: value}}
+    return {"$match": {"_id": value}}
 
 
 def _first(
@@ -502,6 +554,48 @@ def _handle_nonfinites(path: str, sort: t.Union[t.Literal[-1], t.Literal[1]]):
     ]
 
 
+async def _handle_pipeline(
+    pipeline,
+    dataset: fo.Dataset,
+    collection: AsyncIOMotorCollection,
+    query: DistinctQuery,
+    is_frames: bool,
+):
+
+    match_search = None
+    if query.search:
+        match_search = _add_search(query)
+        pipeline.append(match_search)
+
+    match_arrays = _match_arrays(dataset, query.path, is_frames) + _unwind(
+        dataset, query.path, is_frames
+    )
+    if match_arrays:
+        pipeline += match_arrays
+        if match_search:
+            # match again after unwinding list fields
+            pipeline.append(match_search)
+
+    pipeline.append({"$limit": 100000})
+
+    values = set()
+    exclude = set(query.exclude or [])
+
+    kwargs = {}
+
+    async for value in collection.aggregate(pipeline, **kwargs):
+        value = value.get("_id", None)
+        if value is None or value in exclude:
+            continue
+
+        values.add(value)
+
+        if len(values) == query.first:
+            break
+
+    return list(sorted(values))
+
+
 def _has_list(dataset: fo.Dataset, path: str, is_frame_field: bool):
     keys = path.split(".")
     path = None
@@ -529,7 +623,6 @@ def _match(path: str, value: t.Union[str, float, int, bool]):
 def _match_arrays(dataset: fo.Dataset, path: str, is_frame_field: bool):
     keys = path.split(".")
     path = None
-    pipeline = []
 
     if is_frame_field:
         path = keys[0]
@@ -540,9 +633,9 @@ def _match_arrays(dataset: fo.Dataset, path: str, is_frame_field: bool):
         field = dataset.get_field(path)
         if isinstance(field, fof.ListField):
             # only once for label list fields, e.g. Detections
-            return [{"$match": {f"{path}.0": {"$exists": True}}}]
+            return [{"$match": {"_id.0": {"$exists": True}}}]
 
-    return pipeline
+    return []
 
 
 def _parse_result(data):
@@ -574,7 +667,7 @@ def _unwind(dataset: fo.Dataset, path: str, is_frame_field: bool):
         path = ".".join([path, key]) if path else key
         field = dataset.get_field(f"{prefix}{path}")
         while isinstance(field, fof.ListField):
-            pipeline.append({"$unwind": f"${path}"})
+            pipeline.append({"$unwind": "$_id"})
             field = field.field
 
     return pipeline

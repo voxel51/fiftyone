@@ -542,10 +542,12 @@ class Count(Aggregation):
         field_or_expr=None,
         expr=None,
         safe=False,
+        _hint=None,
         _optimize=False,
         _unwind=True,
     ):
         super().__init__(field_or_expr, expr=expr, safe=safe)
+        self._hint = _hint
         self._optimize = _optimize
         self._unwind = _unwind
 

@@ -38,6 +38,7 @@ input AggregationForm {
   view: BSONArray!
   viewName: String = null
   queryPerformance: Boolean = false
+  hint: String = null
 }
 
 union AggregationResponses =
@@ -631,6 +632,8 @@ type Query {
     extendedStages: BSON = null
     paginationData: Boolean = true
     sortBy: String = null
+    desc: Boolean = false
+    hint: String = null
   ): SampleItemStrConnection!
   sample(
     dataset: String!

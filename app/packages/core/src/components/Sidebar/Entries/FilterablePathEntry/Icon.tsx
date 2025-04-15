@@ -10,9 +10,15 @@ const LightningIcon = styled(Bolt)`
   color: ${({ theme }) => theme.text.secondary};
 `;
 
-export const LightningBolt = ({ color }: { color?: string }) => {
+export const LightningBolt = ({
+  color,
+  tooltip,
+}: {
+  color?: string;
+  tooltip?: string;
+}) => {
   return (
-    <Tooltip placement="top-center" text={"Indexed"}>
+    <Tooltip placement="top-center" text={tooltip}>
       <LightningIcon
         data-cy={"query-performance"}
         style={{ height: 16, marginRight: 2, width: 16, color }}
@@ -34,9 +40,16 @@ const Lightning = ({
   );
   const hasFilters = useRecoilValue(fos.hasFilters(false));
   const color = useRecoilValue(fos.pathColor(path));
+  const isFiltered = useRecoilValue(
+    fos.fieldIsFiltered({ path, modal: false })
+  );
+
   return (
     <>
-      <LightningBolt color={filteredIndex && hasFilters ? color : undefined} />
+      <LightningBolt
+        color={(filteredIndex && hasFilters) || isFiltered ? color : undefined}
+        tooltip={filteredIndex ? "Compound index" : "Indexed"}
+      />
       <Arrow
         expanded={fos.sidebarExpanded({ modal: false, path: expandedPath })}
         id={path}

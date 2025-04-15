@@ -29,6 +29,26 @@ const VALID_QP_STAGES = new Set([
   SELECT_GROUP_SLICES,
 ]);
 
+export const filterSearch = selectorFamily({
+  key: "filterSearch",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const allIndexes = get(indexInfo)?.sampleIndexes ?? [];
+
+      for (const index of allIndexes) {
+        const key = index.key[0];
+        if (key.field === get(schemaAtoms.dbPath(path))) {
+          return { filters: {}, index: index.name };
+        }
+      }
+
+      const f = { ...get(filters) };
+      delete f[path];
+      return { filters: f };
+    },
+});
+
 export const lightningQuery = graphQLSelectorFamily<
   foq.lightningQuery$variables,
   foq.LightningInput["paths"],
@@ -72,7 +92,7 @@ export const validIndexes = selectorFamily({
       const allIndexes = get(indexInfo).sampleIndexes;
       const keyList = [...keys].map((k) => get(schemaAtoms.dbPath(k)));
 
-      let matched = false;
+      let matched: string | undefined;
       const trailing: [string, string][] = [];
       const available: [string, string][] = [];
       for (const index of allIndexes) {
@@ -80,7 +100,10 @@ export const validIndexes = selectorFamily({
           .slice(0, keys.size)
           .map(({ field }) => field);
         if (indexKeysMatch(indexKeys, new Set(keyList))) {
-          matched = true;
+          if (indexKeys.length) {
+            matched = index.name;
+          }
+
           index.key[keys.size]?.field &&
             available.push([index.name, index.key[keys.size].field]);
 
@@ -92,10 +115,15 @@ export const validIndexes = selectorFamily({
 
       return {
         available,
-        active: matched ? keyList : ([] as string[]),
+        active: (matched ? [matched, keyList] : []) as [string, string[]],
         trailing,
       };
     },
+});
+
+export const activeIndex = selector({
+  key: "activeIndex",
+  get: ({ get }) => get(validIndexes(get(filterKeys))).active[0],
 });
 
 const firstKeyMap = selectorFamily({
@@ -119,10 +147,13 @@ const wildcardProjection = selectorFamily({
       get(firstKeyMap(frames))["$**"]?.wildcardProjection,
 });
 
-export const indexesByPath = selectorFamily({
+export const indexesByPath = selectorFamily<
+  Set<string>,
+  Set<string> | undefined
+>({
   key: "indexesByPath",
   get:
-    (keys: Set<string> | undefined) =>
+    (keys) =>
     ({ get }) => {
       const gatherPaths = (space: State.SPACE) =>
         get(
@@ -166,12 +197,12 @@ export const indexesByPath = selectorFamily({
       };
 
       const current = get(validIndexes(keys || new Set()));
-      const result = [...current.active];
+      const result = current.active.length ? [...current.active[1]] : [];
       for (const index of current.available) {
         result.push(...convertWildcards(index[1], schema, false));
       }
 
-      return new Set(result);
+      return new Set<string>(result);
     },
 });
 
@@ -184,6 +215,22 @@ export const pathIndex = selectorFamily({
         indexesByPath(withFilters ? get(filterKeys) : undefined)
       );
       return indexes.has(get(schemaAtoms.dbPath(path)));
+    },
+});
+
+export const pathHasActiveIndex = selectorFamily({
+  key: "pathHasActiveIndex",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const keys = get(filterKeys);
+      const db = get(schemaAtoms.dbPath(path));
+      return (
+        keys.has(path) &&
+        get(validIndexes(keys))
+          .active.map(([_, p]) => p?.includes(db))
+          .some((t) => t)
+      );
     },
 });
 

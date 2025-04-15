@@ -86,6 +86,10 @@ const StringFilter = ({
   const filteredIndex = useRecoilValue(
     fos.pathHasIndexes({ path, withFilters: true })
   );
+  const isFiltered = useRecoilValue(
+    fos.fieldIsFiltered({ path, modal: false })
+  );
+  const hasFilters = useRecoilValue(fos.hasFilters(false));
   if (named && (!queryPerformance || modal) && !results?.count) {
     return null;
   }
@@ -111,7 +115,14 @@ const StringFilter = ({
             <NamedStringFilterHeader>
               <span ref={hoverTarget}>{label}</span>
               {showQueryPerformanceIcon && (
-                <LightningBolt color={filteredIndex ? color : undefined} />
+                <LightningBolt
+                  color={
+                    (indexed && isFiltered) || (filteredIndex && hasFilters)
+                      ? color
+                      : undefined
+                  }
+                  tooltip={filteredIndex ? "Compound index" : "Indexed"}
+                />
               )}
             </NamedStringFilterHeader>
           )}

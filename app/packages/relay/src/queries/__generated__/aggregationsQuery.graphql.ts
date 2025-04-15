@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<881e44ed7a20e117c89dd22661bc1a0d>>
+ * @generated SignedSource<<ab5596dd2e93c991ff7f7cf7c3c536ca>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,6 +15,7 @@ export type AggregationForm = {
   filters?: object | null;
   groupId?: string | null;
   hiddenLabels: ReadonlyArray<SelectedLabel>;
+  hint?: string | null;
   index?: number | null;
   mixed: boolean;
   paths: ReadonlyArray<string>;

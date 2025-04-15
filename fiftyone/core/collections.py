@@ -10260,7 +10260,9 @@ class SampleCollection(object):
             pipelines.append(pipeline)
 
         # Build facet-able pipelines
-        compiled_facet_aggs, facet_pipelines = self._build_facets(facet_aggs)
+        compiled_facet_aggs, facet_pipelines, _ = self._build_facets(
+            facet_aggs
+        )
         for idx, pipeline in facet_pipelines.items():
             idx_map[idx] = len(pipelines)
             pipelines.append(pipeline)
@@ -10315,7 +10317,7 @@ class SampleCollection(object):
 
         if facet_aggs:
             # Build facet-able pipelines
-            compiled_facet_aggs, facet_pipelines = self._build_facets(
+            compiled_facet_aggs, facet_pipelines, hints = self._build_facets(
                 facet_aggs
             )
             for idx, pipeline in facet_pipelines.items():
@@ -10325,11 +10327,7 @@ class SampleCollection(object):
             # Run all aggregations
             coll_name = self._dataset._sample_collection_name
             collection = foo.get_async_db_conn()[coll_name]
-            _results = await foo.aggregate(collection, pipelines)
-            if debug:
-                import fiftyone as fo
-
-                fo.pprint(pipelines)
+            _results = await foo.aggregate(collection, pipelines, hints)
 
             # Parse facet-able results
             for idx, aggregation in compiled_facet_aggs.items():
@@ -10445,14 +10443,16 @@ class SampleCollection(object):
                 compiled[idx] = aggregation
 
         pipelines = {}
+        hints = []
         for idx, aggregation in compiled.items():
             pipelines[idx] = self._pipeline(
                 pipeline=aggregation.to_mongo(self),
                 attach_frames=aggregation._needs_frames(self),
                 group_slices=aggregation._needs_group_slices(self),
             )
+            hints.append(getattr(aggregation, "_hint", None))
 
-        return compiled, pipelines
+        return compiled, pipelines, hints
 
     def _parse_big_result(self, aggregation, result):
         if result:

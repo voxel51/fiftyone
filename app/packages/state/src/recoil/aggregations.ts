@@ -13,7 +13,7 @@ import {
   groupStatistics,
 } from "./groups";
 import { sidebarSampleId } from "./modal";
-import { queryPerformance } from "./queryPerformance";
+import { activeIndex, queryPerformance } from "./queryPerformance";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
@@ -95,6 +95,7 @@ export const aggregationQuery = graphQLSelectorFamily<
           isQueryPerformance === undefined
             ? get(queryPerformance) && !modal
             : isQueryPerformance,
+        hint: get(activeIndex),
       };
 
       return {
