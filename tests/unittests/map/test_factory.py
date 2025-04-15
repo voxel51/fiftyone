@@ -131,6 +131,7 @@ class TestCreate:
                 key,
                 workers := 1,
                 batch_method=batch_method,
+                batch_size=(batch_size := mock.Mock()),
                 **(kwargs := mock.create_autospec(dict)),
             )
             #####
@@ -138,6 +139,7 @@ class TestCreate:
             expected_mapper_cls.create.assert_called_once_with(
                 config=config,
                 batch_cls=expected_batch_cls,
+                batch_size=batch_size,
                 workers=workers,
                 **kwargs,
             )
@@ -193,6 +195,7 @@ class TestCreate:
             result = fomf.MapperFactory.create(
                 key if not from_config else None,
                 workers := mock.Mock(),
+                batch_size=(batch_size := mock.Mock()),
                 **(kwargs := mock.create_autospec(dict)),
             )
             #####
@@ -204,6 +207,7 @@ class TestCreate:
             expected_mapper_cls.create.assert_called_once_with(
                 config=config,
                 batch_cls=default_batcher,
+                batch_size=batch_size,
                 workers=workers,
                 **kwargs,
             )
@@ -236,6 +240,7 @@ class TestCreate:
                 result = fomf.MapperFactory.create(
                     None,
                     workers := mock.Mock(),
+                    batch_size=(batch_size := mock.Mock()),
                     **(kwargs := mock.create_autospec(dict)),
                 )
                 #####
@@ -244,6 +249,7 @@ class TestCreate:
                 process_mapper_cls.create.assert_called_once_with(
                     config=config,
                     batch_cls=default_batcher,
+                    batch_size=batch_size,
                     workers=workers,
                     **kwargs,
                 )
@@ -265,6 +271,7 @@ class TestCreate:
                 result = fomf.MapperFactory.create(
                     None,
                     workers := mock.Mock(),
+                    batch_size=(batch_size := mock.Mock()),
                     **(kwargs := mock.create_autospec(dict)),
                 )
                 #####
@@ -273,6 +280,7 @@ class TestCreate:
                 thread_mapper_cls.create.assert_called_once_with(
                     config=config,
                     batch_cls=default_batcher,
+                    batch_size=batch_size,
                     workers=workers,
                     **kwargs,
                 )
