@@ -3240,7 +3240,7 @@
         },
         {
             "base_name": "yolov8n-coco-torch",
-            "base_filename": "yolov8n-coco.pt",
+            "base_filename": "yolov8n.pt",
             "description": "Ultralytics YOLOv8n model trained on COCO",
             "source": "https://docs.ultralytics.com/models/yolov8/",
             "author": "Glenn Jocher, et al.",
@@ -3257,7 +3257,7 @@
                 "config": {
                     "entrypoint_fcn": "ultralytics.YOLO",
                     "entrypoint_args": {
-                        "model": "yolov8n-coco.pt"
+                        "model": "yolov8n.pt"
                     },
                     "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor",
                     "raw_inputs": true
