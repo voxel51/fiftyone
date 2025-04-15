@@ -69,7 +69,6 @@ export const useOnShiftClickLabel3d = (
   const getOnShiftClickLabelCallback = useOnShiftClickLabel();
 
   useEffect(() => {
-    console.log("useOnShiftClickLabel3d");
     const unsub = selectiveRenderingEventBus.on(
       FO_LABEL_TOGGLED_EVENT,
       (e: LabelToggledEvent) => {
