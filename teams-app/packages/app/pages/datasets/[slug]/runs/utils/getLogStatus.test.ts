@@ -35,6 +35,19 @@ describe("getLogStatus", () => {
     expect(result).toBe(LOG_STATUS.UNSET);
   });
 
+  it("should NOT return UNSET when the user sets the logPath as as local path", () => {
+    const result = getLogStatus({
+      logUrl: null,
+      logPath: "Home/user/logs",
+      logUploadError: null,
+      runState: OPERATOR_RUN_STATES.COMPLETED,
+      result: null,
+      runLink: null,
+      logSize: 300,
+    });
+    expect(result == LOG_STATUS.UNSET).toBe(false);
+  });
+
   it("should return URL_LINK when runLink is a valid URL and run has finished", () => {
     const result = getLogStatus({
       logUrl: null,
