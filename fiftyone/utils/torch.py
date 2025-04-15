@@ -5,6 +5,7 @@ PyTorch utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import functools
 import logging
 import itertools
 import multiprocessing
@@ -33,6 +34,7 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.image as foui
 import fiftyone.core.collections as focol
 import fiftyone.core.sample as fos
+import fiftyone.core.validation as foval
 import fiftyone.core.view as fov
 
 fou.ensure_torch()
@@ -253,6 +255,133 @@ def ensure_torch_hub_requirements(
         )
 
 
+class GetItem:
+    """A class that defines how to get the input for a model from a sample.
+
+    It's :method:`fiftyone.utils.torch.GetItem.samples_dict_to_input` method
+    should return the input for the model from a sample or a dictionary corresponding
+    to a sample view.
+
+    Instances of this class can be used in conjunction with
+    :class:`fiftyone.utils.torch.FiftyOneTorchDataset` to create performant torch datasets.
+
+    A :class:`fiftyone.utils.torch.GetItem` instance should only require
+    the fields specified in `required_fields` from samples.
+    It should look for those fields under the names specified in `field_mapping`.
+    the `field_mapping` dictionary is used to map the fields in the sample to the input fields for the model.
+
+    Subclasses should interact with `required_fields` and `field_mapping` through the properties.
+    the method :method:`fiftyone.utils.torch.GetItem.add_required_fields`
+    can be used to add fields to required_fields.
+    Required fields should be set in the subclass's `__init__` method.
+    Required fields cannot repeat. If a field is added twice, it will be ignored.
+    Make sure to check if a superclass has already added a field before adding to it.
+    """
+
+    def __init__(self, field_mapping=None, **kwargs):
+        super().__init__(**kwargs)
+        self.field_mapping = field_mapping
+
+    def sample_dict_to_input(self, sample_dict):
+        """Return model input from a list if samples' dicts
+
+        Args:
+            sample_dict:  A dictionarty corresponding to a sample view.
+                            Can be the sample itself.
+
+        Returns:
+            model input
+        """
+        raise NotImplementedError("Subclass should implement this method.")
+
+    def __call__(self, sample):
+        return self.sample_dict_to_input(sample)
+
+    @property
+    def required_fields(self):
+        """a list of fields that are required in the sample for the GetItem to work."""
+        if not hasattr(self, "_required_fields_list"):
+            self._required_fields_list = ()
+        return self._required_fields_list
+
+    def add_required_fields(self, value):
+        """
+        Add fields to the required_fields list.
+
+        Args:
+            value: a list of fields or a single field to add to the required
+        """
+        if not hasattr(self, "_required_fields_list"):
+            self._required_fields_list = ()
+        if isinstance(value, str):
+            value = [value]
+        if not isinstance(value, list):
+            raise ValueError("required_fields must be a list or a string.")
+        self._required_fields_list = tuple(
+            set(list(self._required_fields_list) + value)
+        )
+        self.update_field_mapping()
+
+    @property
+    def field_mapping(self):
+        """
+        a dictionary mapping the fields in the sample to the input fields for the model
+        if not defined, we will assume the fields are the same
+
+        When this is updated, the behavior of __call__ should be updated accordingly.
+        This is what allows the user to specify the fields in the sample that are used as input to the model.
+        """
+        if not hasattr(self, "_field_mapping_dict"):
+            self._field_mapping_dict = {}
+        return self._field_mapping_dict
+
+    @field_mapping.setter
+    def field_mapping(self, value):
+        if not hasattr(self, "_field_mapping_dict"):
+            self._field_mapping_dict = {}
+        if value is None:  # generally on init
+            value = {k: k for k in self.required_fields}
+            for k, v in self._field_mapping_dict.items():
+                # if mixins have already set the field mapping, we should keep it
+                value[k] = v
+        if not isinstance(value, dict):
+            raise ValueError("field_mapping must be a dictionary.")
+        for k, v in value.items():
+            if k not in self.required_fields:
+                raise ValueError(
+                    f"field_mapping key {k} not in required_fields."
+                )
+
+        for f in self.required_fields:
+            if f not in value:
+                value[f] = self.field_mapping.get(f, f)
+
+        self._field_mapping_dict = value
+
+    def update_field_mapping(self):
+        """
+        Update the field mapping for the get_item function.
+        """
+        for f in self.required_fields:
+            if f not in self.field_mapping:
+                self.field_mapping[f] = f
+
+    def validate_compatible_samples(self, samples):
+        """
+        Validate that the samples are compatible with the GetItem.
+        This should be called every time so we can fail quickly and loudly when needed.
+
+        TODO: Add type checking for the fields.
+        """
+        # is this the correct way to do this?
+        sample = samples.first()
+        foval.get_fields(sample, self.field_mapping.values(), allow_none=False)
+        try:
+            return self(sample)
+        except Exception as e:
+            raise ValueError("Sample is not compatible with GetItem.") from e
+
+
 class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
     """Mixin for Torch models that can generate embeddings.
 
@@ -327,7 +456,323 @@ class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
         raise NotImplementedError("subclasses must implement _predict_all()")
 
 
-class TorchImageModelConfig(foc.Config):
+def _recursive_to_device(obj, device):
+    """Recursively moves tensors nested in dicts or lists to the given device."""
+    if isinstance(obj, torch.Tensor):
+        return obj.to(device)
+    elif isinstance(obj, dict):
+        return {k: _recursive_to_device(v, device) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_recursive_to_device(v, device) for v in obj]
+    else:
+        return obj
+
+
+class TorchModelConfig(fom.ModelConfig):
+    def __init__(self, d):
+        super().__init__(d)
+        self.model = self.parse_raw(d, "model", default=None)
+        self.entrypoint_fcn = self.parse_raw(d, "entrypoint_fcn", default=None)
+        self.entrypoint_args = self.parse_dict(
+            d, "entrypoint_args", default=None
+        )
+
+        self.device = self.parse_string(d, "device", default=None)
+
+        # getitem / preprocess
+        self.get_item = self.parse_raw(d, "get_item", default=None)
+        self.get_item_cls = self.parse_string(d, "get_item_cls", default=None)
+        self.get_item_args = self.parse_dict(d, "get_item_args", default=None)
+
+        self.ragged_batches = self.parse_bool(
+            d, "ragged_batches", default=None
+        )
+
+        # postprocess
+        self.output_processor = self.parse_raw(
+            d, "output_processor", default=None
+        )
+        self.output_processor_cls = self.parse_raw(
+            d, "output_processor_cls", default=None
+        )
+        self.output_processor_args = self.parse_dict(
+            d, "output_processor_args", default=None
+        )
+
+        # embeddings
+        self.embeddings_layer = self.parse_string(
+            d, "embeddings_layer", default=None
+        )
+        self.as_feature_extractor = self.parse_bool(
+            d, "as_feature_extractor", default=False
+        )
+
+        # AMP
+        self.use_half_precision = self.parse_bool(
+            d, "use_half_precision", default=None
+        )
+
+        # grad
+        self.no_grad = self.parse_bool(d, "no_grad", default=True)
+
+        # benchmark
+        self.cudnn_benchmark = self.parse_bool(
+            d, "cudnn_benchmark", default=None
+        )
+
+
+class TorchModel(
+    fom.SamplesMixin, fom.TorchModelMixin, TorchEmbeddingsMixin, fom.Model
+):
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+
+        # Load model
+        self._download_model(config)
+        self._model = self._load_model(config)
+
+        # build get item
+        self.get_item = self._build_get_item(config)
+        self._preprocess = True  # flip to false when dataloading
+        # assume batches aren't ragged. May cause some issues but by default gives better performance
+        # most of the time.
+        self._ragged_batches = (
+            config.ragged_batches
+            if config.ragged_batches is not None
+            else False
+        )
+
+        # SamplesMixin Stuff
+        self.needs_fields = self.get_item.required_fields
+
+        # Build output processor
+        self._output_processor = self._build_output_processor(config)
+        self._postprocess = self._output_processor is not None
+
+        # incidentals
+        device = self.config.device
+        if device is None:
+            if torch.cuda.is_available():
+                device = "cuda"
+            elif torch.backends.mps.is_available():
+                device = "mps"
+            else:
+                device = "cpu"
+
+        self._device = torch.device(device)
+        self._using_gpu = self._device.type in ("cuda", "mps")
+        self._using_half_precision = self.config.use_half_precision
+        self._no_grad = None
+        self._benchmark_orig = None
+
+        TorchEmbeddingsMixin.__init__(
+            self,
+            self._model,
+            layer_name=self.config.embeddings_layer,
+            as_feature_extractor=self.config.as_feature_extractor,
+        )
+
+    def __enter__(self):
+        if self.config.cudnn_benchmark is not None:
+            self._benchmark_orig = torch.backends.cudnn.benchmark
+            torch.backends.cudnn.benchmark = self.config.cudnn_benchmark
+
+        if self._no_grad:
+            self._no_grad = torch.no_grad()
+            self._no_grad.__enter__()
+
+        return self
+
+    def __exit__(self, *args):
+        if self.config.cudnn_benchmark is not None:
+            torch.backends.cudnn.benchmark = self._benchmark_orig
+            self._benchmark_orig = None
+
+        if self._no_grad:
+            self._no_grad.__exit__(*args)
+            self._no_grad = True
+
+    def _download_model(self, config):
+        pass
+
+    def _load_model(self, config):
+        if config.model is not None:
+            model = config.model
+        else:
+            entrypoint_fcn = config.entrypoint_fcn
+
+            if etau.is_str(entrypoint_fcn):
+                entrypoint_fcn = etau.get_function(entrypoint_fcn)
+
+            kwargs = config.entrypoint_args or {}
+            model = entrypoint_fcn(**kwargs)
+
+        model = model.to(self._device)
+        if self.using_half_precision:
+            model = model.half()
+
+        model.eval()
+
+        return model
+
+    @property
+    def using_gpu(self):
+        """Whether the model is using GPU."""
+        return self._using_gpu
+
+    @property
+    def device(self):
+        """The :class:`torch:torch.torch.device` that the model is using."""
+        return self._device
+
+    @property
+    def using_half_precision(self):
+        """Whether the model is using half precision."""
+        return self._using_half_precision
+
+    @property
+    def preprocess(self):
+        """Whether to apply preprocessing transforms for inference, if any."""
+        return self._preprocess
+
+    @preprocess.setter
+    def preprocess(self, value):
+        self._preprocess = value
+
+    # new interface
+    def _build_get_item(self, config):
+        """Builds the :class:`GetItem` instance for this model.
+
+        Args:
+            config: a :class:`TorchModelConfig` instance
+        """
+        if config.get_item is not None:
+            return config.get_item
+
+        get_item_cls = config.get_item_cls
+
+        if get_item_cls is None:
+            raise ValueError("No get_item_cls or get_item provided for model")
+
+        if etau.is_str(get_item_cls):
+            get_item_cls = etau.get_class(get_item_cls)
+
+        kwargs = config.get_item_args or {}
+        return get_item_cls(**kwargs)
+
+    @property
+    def ragged_batches(self):
+        """Whether :meth:`transforms` may return tensors of different sizes.
+        If True, then passing ragged lists of images to :meth:`predict_all` may
+        not be not allowed.
+        """
+        return self._ragged_batches
+
+    @torch.no_grad()
+    def _forward_pass(self, batch):
+        """Applies a forward pass to the given batch of data and returns the
+        raw model output with no processing applied.
+
+        Args:
+            batch: a batch of input data. The result of self.get_item(samples).
+
+        Returns:
+            the raw output of the model
+        """
+        return self._model(batch)
+
+    @property
+    def postprocess(self):
+        """Whether to apply postprocessing during prediction."""
+        return self._postprocess
+
+    @postprocess.setter
+    def postprocess(self, value):
+        self._postprocess = value
+
+    def _build_output_processor(self, config):
+        if config.output_processor is not None:
+            return config.output_processor
+
+        output_processor_cls = config.output_processor_cls
+
+        if output_processor_cls is None:
+            return None
+
+        if etau.is_str(output_processor_cls):
+            output_processor_cls = etau.get_class(output_processor_cls)
+
+        kwargs = config.output_processor_args or {}
+        return output_processor_cls(**kwargs)
+
+    # Model interface
+    def predict(self, input):
+        return self.predict_all([input])
+
+    def predict_all(self, batch):
+        """Main inference code
+
+        Args:
+            batch:  a list of input data.
+                If preprocess is True, this should be a list of samples.
+                If preprocess is False, this should be the result of
+                    [self.get_item(sample) for sample in batch]
+
+        Returns:
+            Output, potentially post processed.
+        """
+        if self.preprocess:
+            input = [self.get_item(input) for input in batch]
+            input = torch.utils.data.default_collate(input)
+            input = _recursive_to_device(input, self.device)
+
+        raw_output = self._forward_pass(input)
+
+        if self.postprocess:
+            return self._output_processor(raw_output)
+
+        return _recursive_to_device(raw_output, device="cpu")
+
+
+class ImageGetItem(GetItem):
+    """GetItem for :class:`TorchImageModels`"""
+
+    def __init__(
+        self,
+        transform=None,
+        raw_inputs=False,
+        using_half_precision=False,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.transform = transform
+        self.raw_inputs = raw_inputs
+        self.using_half_precision = using_half_precision
+        self.add_required_fields("filepath")
+
+    def sample_dict_to_input(self, sample_dict):
+        img = _load_image(
+            # hardcoded because that's how it was in fiftyone.core.models._make_data_loader
+            sample_dict["filepath"],
+            use_numpy=False,
+            force_rgb=True,
+        )
+        if self.transform is not None:
+            img = self.transform(img)
+
+        if self.raw_inputs:
+            return img
+
+        else:
+            img = torchvision.transforms.v2.functional.pil_to_tensor(img)
+            if self.using_half_precision:
+                imgs = imgs.half()
+
+        return imgs
+
+
+class TorchImageModelConfig(TorchModelConfig):
     """Configuration for running a :class:`TorchImageModel`.
 
     Models are represented by this class via the following three components:
@@ -443,33 +888,17 @@ class TorchImageModelConfig(foc.Config):
             running
         device (None): a string specifying the device to use, eg
             ``("cuda:0", "mps", "cpu")``. By default, CUDA is used if
-            available, else CPU is used
+            available, then MPS, else CPU is used
     """
 
     def __init__(self, d):
-        self.model = self.parse_raw(d, "model", default=None)
-        self.entrypoint_fcn = self.parse_raw(d, "entrypoint_fcn", default=None)
-        self.entrypoint_args = self.parse_dict(
-            d, "entrypoint_args", default=None
-        )
+        super().__init__(d)
         self.transforms = self.parse_raw(d, "transforms", default=None)
         self.transforms_fcn = self.parse_raw(d, "transforms_fcn", default=None)
         self.transforms_args = self.parse_dict(
             d, "transforms_args", default=None
         )
-        self.ragged_batches = self.parse_bool(
-            d, "ragged_batches", default=None
-        )
         self.raw_inputs = self.parse_bool(d, "raw_inputs", default=None)
-        self.output_processor = self.parse_raw(
-            d, "output_processor", default=None
-        )
-        self.output_processor_cls = self.parse_raw(
-            d, "output_processor_cls", default=None
-        )
-        self.output_processor_args = self.parse_dict(
-            d, "output_processor_args", default=None
-        )
         self.confidence_thresh = self.parse_number(
             d, "confidence_thresh", default=None
         )
@@ -502,24 +931,9 @@ class TorchImageModelConfig(foc.Config):
         )
         self.image_mean = self.parse_array(d, "image_mean", default=None)
         self.image_std = self.parse_array(d, "image_std", default=None)
-        self.embeddings_layer = self.parse_string(
-            d, "embeddings_layer", default=None
-        )
-        self.as_feature_extractor = self.parse_bool(
-            d, "as_feature_extractor", default=False
-        )
-        self.use_half_precision = self.parse_bool(
-            d, "use_half_precision", default=None
-        )
-        self.cudnn_benchmark = self.parse_bool(
-            d, "cudnn_benchmark", default=None
-        )
-        self.device = self.parse_string(d, "device", default=None)
 
 
-class TorchImageModel(
-    TorchEmbeddingsMixin, fom.TorchModelMixin, fom.LogitsMixin, fom.Model
-):
+class TorchImageModel(fom.LogitsMixin, TorchModel):
     """Wrapper for evaluating a Torch model on images.
 
     See :ref:`this page <model-zoo-custom-models>` for example usage.
@@ -529,62 +943,31 @@ class TorchImageModel(
     """
 
     def __init__(self, config):
-        self.config = config
-
-        device = self.config.device
-        if device is None:
-            device = "cuda:0" if torch.cuda.is_available() else "cpu"
-
-        # Device details
-        self._device = torch.device(device)
-        self._using_gpu = self._device.type in ("cuda", "mps")
-        self._using_half_precision = self.config.use_half_precision
-        self._no_grad = None
-        self._benchmark_orig = None
-
-        # Load model
-        self._download_model(config)
-        self._model = self._load_model(config)
-
-        # Build transforms
+        # Build transforms + GetItem before calling super().__init__()
         transforms, ragged_batches = self._build_transforms(config)
         self._transforms = transforms
         self._ragged_batches = ragged_batches
         self._preprocess = True
+
+        # if user doesn't provide something else, use default ImageGetItem
+        if config.get_item is None and config.get_item_cls is None:
+            config.get_item_cls = ImageGetItem
+            config.get_item_args = {
+                "transform": transforms,
+                "raw_inputs": config.raw_inputs,
+                "using_half_precision": config.use_half_precision,
+            }
+
+        TorchModel.__init__(self, config)
+
+        self.config = config
 
         # Parse model details
         self._classes = self._parse_classes(config)
         self._mask_targets = self._parse_mask_targets(config)
         self._skeleton = self._parse_skeleton(config)
 
-        # Build output processor
-        self._output_processor = self._build_output_processor(config)
-
         fom.LogitsMixin.__init__(self)
-        TorchEmbeddingsMixin.__init__(
-            self,
-            self._model,
-            layer_name=self.config.embeddings_layer,
-            as_feature_extractor=self.config.as_feature_extractor,
-        )
-
-    def __enter__(self):
-        if self.config.cudnn_benchmark is not None:
-            self._benchmark_orig = torch.backends.cudnn.benchmark
-            torch.backends.cudnn.benchmark = self.config.cudnn_benchmark
-
-        self._no_grad = torch.no_grad()
-        self._no_grad.__enter__()
-        return self
-
-    def __exit__(self, *args):
-        if self.config.cudnn_benchmark is not None:
-            torch.backends.cudnn.benchmark = self._benchmark_orig
-            self._benchmark_orig = None
-
-        if self._no_grad is not None:
-            self._no_grad.__exit__(*args)
-            self._no_grad = None
 
     @property
     def media_type(self):
@@ -597,43 +980,11 @@ class TorchImageModel(
         return isinstance(self._output_processor, ClassifierOutputProcessor)
 
     @property
-    def ragged_batches(self):
-        """Whether :meth:`transforms` may return tensors of different sizes.
-        If True, then passing ragged lists of images to :meth:`predict_all` may
-        not be not allowed.
-        """
-        return self._ragged_batches
-
-    @property
     def transforms(self):
         """A ``torchvision.transforms`` function that will be applied to each
         input before prediction, if any.
         """
         return self._transforms
-
-    @property
-    def preprocess(self):
-        """Whether to apply preprocessing transforms for inference, if any."""
-        return self._preprocess
-
-    @preprocess.setter
-    def preprocess(self, value):
-        self._preprocess = value
-
-    @property
-    def using_gpu(self):
-        """Whether the model is using GPU."""
-        return self._using_gpu
-
-    @property
-    def device(self):
-        """The :class:`torch:torch.torch.device` that the model is using."""
-        return self._device
-
-    @property
-    def using_half_precision(self):
-        """Whether the model is using half precision."""
-        return self._using_half_precision
 
     @property
     def classes(self):
@@ -658,94 +1009,41 @@ class TorchImageModel(
         """The keypoint skeleton for the model, if any."""
         return self._skeleton
 
-    def predict(self, img):
-        """Performs prediction on the given image.
-
-        Args:
-            img: the image to process, which can be any of the following:
-
-                - A PIL image
-                - A uint8 numpy array (HWC)
-                - A Torch tensor (CHW)
-
-        Returns:
-            a :class:`fiftyone.core.labels.Label` instance or dict of
-            :class:`fiftyone.core.labels.Label` instances containing the
-            predictions
-        """
-        if isinstance(img, torch.Tensor):
-            imgs = img.unsqueeze(0)
+    def predict_all(self, batch):
+        """Overwriting parent because it's the only way I think I can stay clean
+        and backwards compatible. Generally subclasses shouldn't need to. If they
+        are it means that they are improperly using one of the core computation parts.
+        i.e. GetItem, Model, OutputProcessor"""
+        if self.preprocess:
+            imgs = [self.get_item(input) for input in batch]
         else:
-            imgs = [img]
-
-        return self._predict_all(imgs)[0]
-
-    def predict_all(self, imgs):
-        """Performs prediction on the given batch of images.
-
-        Args:
-            imgs: the batch of images to process, which can be any of the
-                following:
-
-                - A list of PIL images
-                - A list of uint8 numpy arrays (HWC)
-                - A list of Torch tensors (CHW)
-                - A uint8 numpy tensor (NHWC)
-                - A Torch tensor (NCHW)
-
-        Returns:
-            a list of :class:`fiftyone.core.labels.Label` instances or a list
-            of dicts of :class:`fiftyone.core.labels.Label` instances
-            containing the predictions
-        """
-        return self._predict_all(imgs)
-
-    def _predict_all(self, imgs):
-        if self._preprocess and self._transforms is not None:
-            imgs = [self._transforms(img) for img in imgs]
+            # already images
+            imgs = batch
 
         height, width = None, None
 
-        if self.config.raw_inputs:
-            # Feed images as list
-            if self._output_processor is not None:
-                img = imgs[0]
-                if isinstance(img, torch.Tensor):
-                    height, width = img.size()[-2:]
-                elif isinstance(img, Image.Image):
-                    width, height = img.size
-                elif isinstance(img, np.ndarray):
-                    height, width = img.shape[:2]
-        else:
-            # Feed images as stacked Tensor
-            if isinstance(imgs, (list, tuple)):
-                imgs = torch.stack(imgs)
+        img = imgs[0]
+        if isinstance(img, torch.Tensor):
+            height, width = img.size()[-2:]
+        elif isinstance(img, Image.Image):
+            width, height = img.size
+        elif isinstance(img, np.ndarray):
+            height, width = img.shape[:2]
 
-            height, width = imgs.size()[-2:]
+        imgs = _recursive_to_device(imgs, self.device)
 
-            imgs = imgs.to(self._device)
-            if self._using_half_precision:
-                imgs = imgs.half()
+        raw_output = self._forward_pass(imgs)
 
-        output = self._forward_pass(imgs)
+        if self.postprocess:
+            if self.has_logits:
+                self._output_processor.store_logits = self.store_logits
+            return self._output_processor(
+                raw_output,
+                (width, height),
+                confidence_thresh=self.config.confidence_thresh,
+            )
 
-        if self._output_processor is None:
-            if isinstance(output, torch.Tensor):
-                output = output.detach().cpu().numpy()
-
-            return output
-
-        if self.has_logits:
-            self._output_processor.store_logits = self.store_logits
-
-        return self._output_processor(
-            output,
-            (width, height),
-            confidence_thresh=self.config.confidence_thresh,
-        )
-
-    def _forward_pass(self, imgs):
-        return self._model(imgs)
+        return _recursive_to_device(raw_output, device="cpu")
 
     def _parse_classes(self, config):
         if config.classes is not None:
@@ -780,29 +1078,6 @@ class TorchImageModel(
             return foo.KeypointSkeleton.from_dict(config.skeleton)
 
         return None
-
-    def _download_model(self, config):
-        pass
-
-    def _load_model(self, config):
-        if config.model is not None:
-            model = config.model
-        else:
-            entrypoint_fcn = config.entrypoint_fcn
-
-            if etau.is_str(entrypoint_fcn):
-                entrypoint_fcn = etau.get_function(entrypoint_fcn)
-
-            kwargs = config.entrypoint_args or {}
-            model = entrypoint_fcn(**kwargs)
-
-        model = model.to(self._device)
-        if self.using_half_precision:
-            model = model.half()
-
-        model.eval()
-
-        return model
 
     def _build_transforms(self, config):
         if config.ragged_batches is not None:
@@ -1055,6 +1330,14 @@ class SaveLayerTensor(object):
 
 
 class OutputProcessor(object):
+    def __init__(self, **kwargs):
+        pass
+
+    def __call__(self, output):
+        return output
+
+
+class ImageOutputProcessor(OutputProcessor):
     """Interface for processing the outputs of Torch models.
 
     Args:
@@ -1080,7 +1363,7 @@ class OutputProcessor(object):
         raise NotImplementedError("subclass must implement __call__")
 
 
-class ClassifierOutputProcessor(OutputProcessor):
+class ClassifierOutputProcessor(ImageOutputProcessor):
     """Output processor for single label classifiers.
 
     Args:
@@ -1141,7 +1424,7 @@ class ClassifierOutputProcessor(OutputProcessor):
         return preds
 
 
-class DetectorOutputProcessor(OutputProcessor):
+class DetectorOutputProcessor(ImageOutputProcessor):
     """Output processor for object detectors.
 
     Args:
@@ -1211,7 +1494,7 @@ class DetectorOutputProcessor(OutputProcessor):
         return fol.Detections(detections=detections)
 
 
-class InstanceSegmenterOutputProcessor(OutputProcessor):
+class InstanceSegmenterOutputProcessor(ImageOutputProcessor):
     """Output processor for instance segementers.
 
     Args:
@@ -1303,7 +1586,7 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
         return fol.Detections(detections=detections)
 
 
-class KeypointDetectorOutputProcessor(OutputProcessor):
+class KeypointDetectorOutputProcessor(ImageOutputProcessor):
     """Output processor for keypoint detection models.
 
     Args:
@@ -1400,7 +1683,7 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
         }
 
 
-class SemanticSegmenterOutputProcessor(OutputProcessor):
+class SemanticSegmenterOutputProcessor(ImageOutputProcessor):
     """Output processor for semantic segementers.
 
     Args:

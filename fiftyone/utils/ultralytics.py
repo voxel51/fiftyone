@@ -631,7 +631,7 @@ def _convert_yolo_pose_model(model):
     return FiftyOneYOLOPoseModel(config)
 
 
-class UltralyticsOutputProcessor(fout.OutputProcessor):
+class UltralyticsOutputProcessor(fout.ImageOutputProcessor):
     """Converts Ultralytics PyTorch Hub model outputs to FiftyOne format."""
 
     def __call__(self, result, frame_size, confidence_thresh=None):
