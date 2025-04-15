@@ -1880,7 +1880,7 @@ def disable_progress_bars():
         fo.config.show_progress_bars = prev_show_progress_bars
 
 
-class InMemoryUniqueFilenameMaker(object):
+class UniqueFilenameMaker(object):
     """A class that generates unique output paths in a directory.
 
     This class provides a :meth:`get_output_path` method that generates unique
@@ -1926,9 +1926,43 @@ class InMemoryUniqueFilenameMaker(object):
             output paths (False)
     """
 
+    def __new__(
+        cls,
+        output_dir,
+        rel_dir=None,
+        alt_dir=None,
+        chunk_size=None,
+        default_ext=None,
+        ignore_exts=False,
+        ignore_existing=False,
+        idempotent=True,
+    ):
+        ppid = None
+        try:
+            ppid = psutil.Process(os.getpid()).ppid()
+            parent_process = psutil.Process(ppid)
+            if "python" not in parent_process.name().lower():
+                ppid = None
+        except psutil.NoSuchProcess:
+            ...
+
+        if ppid is None or chunk_size is not None:
+            return super().__new__(cls)
+
+        return MultiProcessUniqueFilenameMaker(
+            ppid,
+            output_dir,
+            rel_dir,
+            alt_dir,
+            default_ext,
+            ignore_exts,
+            ignore_existing,
+            idempotent,
+        )
+
     def __init__(
         self,
-        output_dir=None,
+        output_dir,
         rel_dir=None,
         alt_dir=None,
         chunk_size=None,
@@ -2105,6 +2139,16 @@ class InMemoryUniqueFilenameMaker(object):
         return os.path.join(root_dir, rel_path)
 
 
+def __rm_unique_filename_tmpdir():
+    try:
+        shutil.rmtree(f"/tmp/fo-unq/{os.getpid()}")
+    except Exception:
+        ...
+
+
+atexit.register(__rm_unique_filename_tmpdir)
+
+
 class MultiProcessUniqueFilenameMaker(object):
     """A class that generates unique output paths in a directory.
 
@@ -2150,6 +2194,7 @@ class MultiProcessUniqueFilenameMaker(object):
 
     def __init__(
         self,
+        ppid,
         output_dir=None,
         rel_dir=None,
         alt_dir=None,
@@ -2193,34 +2238,6 @@ class MultiProcessUniqueFilenameMaker(object):
 
                     self.starting_filepath_counts[key] += 1
 
-        # Get the root temporary directory of the "main process"
-        pid = os.getpid()
-        ppid = None
-        try:
-            _ppid = psutil.Process(pid).ppid()
-            parent_process = psutil.Process(_ppid)
-            if "python" in parent_process.name().lower():
-                ppid = _ppid
-        except psutil.NoSuchProcess:
-            ...
-        tmp_dir_prefix = f"/tmp/fo-unq/{ppid or pid}"
-
-        # If the temporary directory does not exist, create it and ensure
-        # it gets cleaned up when the main process exits only once
-        try:
-            os.makedirs(tmp_dir_prefix, exist_ok=False)
-        except OSError:
-            ...
-        else:
-
-            def cleanup_tmp_dir(dirname):
-                try:
-                    shutil.rmtree(dirname)
-                except Exception:
-                    ...
-
-            atexit.register(cleanup_tmp_dir, tmp_dir_prefix)
-
         # Get a string representation fo the constructor parameters
         hashed_params = hashlib.md5(
             "|".join(
@@ -2239,8 +2256,20 @@ class MultiProcessUniqueFilenameMaker(object):
 
         # Create a temporary directory in main process directory for touched
         # files based on constructor parameters
-        self.tmp_dir = os.path.join(tmp_dir_prefix, hashed_params)
+        self.tmp_dir = os.path.join(f"/tmp/fo-unq/{ppid}", hashed_params)
+
         etau.ensure_dir(self.tmp_dir)
+
+    def seen_input_path(self, input_path):
+        """Checks whether we've already seen the given input path.
+
+        Args:
+            input_path: an input path
+
+        Returns:
+            True/False
+        """
+        raise NotImplementedError()
 
     def get_output_path(self, input_path=None, output_ext=None):
         """Returns a unique output path.
@@ -2374,86 +2403,6 @@ class MultiProcessUniqueFilenameMaker(object):
         root_dir = alt_dir or self.alt_dir or self.output_dir
         rel_path = os.path.relpath(output_path, self.output_dir)
         return os.path.join(root_dir, rel_path)
-
-
-class UniqueFilenameMaker(object):
-    """A class that generates unique output paths in a directory.
-
-    This class provides a :meth:`get_output_path` method that generates unique
-    filenames in the specified output directory.
-
-    If an input path is provided, its filename is maintained, unless a name
-    conflict in ``output_dir`` would occur, in which case an index of the form
-    ``"-%d" % count`` is appended to the filename.
-
-    If no input filename is provided, an output filename of the form
-    ``<output_dir>/<count><default_ext>`` is generated, where ``count`` is the
-    number of files in ``output_dir``.
-
-    If no ``output_dir`` is provided, then unique filenames with no base
-    directory are generated.
-
-    If a ``rel_dir`` is provided, then this path will be stripped from each
-    input path to generate the identifier of each file (rather than just its
-    basename). This argument allows for populating nested subdirectories in
-    ``output_dir`` that match the shape of the input paths.
-
-    If ``alt_dir`` is provided, you can use :meth:`get_alt_path` to retrieve
-    the equivalent path rooted in this directory rather than ``output_dir``.
-
-    Args:
-        output_dir (None): a directory in which to generate output paths
-        rel_dir (None): an optional relative directory to strip from each path.
-            The path is converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.storage.normalize_path`
-        alt_dir (None): an optional alternate directory in which to generate
-            paths when :meth:`get_alt_path` is called
-        chunk_size (None): if provided, output paths will be nested in
-            subdirectories of ``output_dir`` with at most this many files per
-            subdirectory. Has no effect if a ``rel_dir`` is provided
-        default_ext (None): the file extension to use when generating default
-            output paths
-        ignore_exts (False): whether to omit file extensions when checking for
-            duplicate filenames
-        ignore_existing (False): whether to ignore existing files in
-            ``output_dir`` for output filename generation purposes
-        idempotent (True): whether to return the same output path when the same
-            input path is provided multiple times (True) or to generate new
-            output paths (False)
-    """
-
-    def __new__(
-        cls,
-        output_dir=None,
-        rel_dir=None,
-        alt_dir=None,
-        chunk_size=None,
-        default_ext=None,
-        ignore_exts=False,
-        ignore_existing=False,
-        idempotent=True,
-    ):
-        if chunk_size is not None:
-            return InMemoryUniqueFilenameMaker(
-                output_dir,
-                rel_dir,
-                alt_dir,
-                chunk_size,
-                default_ext,
-                ignore_exts,
-                ignore_existing,
-                idempotent,
-            )
-
-        return MultiProcessUniqueFilenameMaker(
-            output_dir,
-            rel_dir,
-            alt_dir,
-            default_ext,
-            ignore_exts,
-            ignore_existing,
-            idempotent,
-        )
 
 
 def safe_relpath(path, start=None, default=None):
