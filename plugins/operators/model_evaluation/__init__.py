@@ -847,6 +847,22 @@ class ConfigureScenario(foo.Operator):
         scenario_type = self.get_scenario_type(ctx.params)
         self.render_scenario_types(inputs, scenario_type)
 
+        scenario_id = ctx.params.get("scenario_id", None)
+        loaded_scenario_changes = ctx.params.get("panel_state", {}).get(
+            f"scenario_{scenario_id}_changes"
+        )
+
+        if loaded_scenario_changes:
+            for change in loaded_scenario_changes.get("changes", []):
+                inputs.view(
+                    f"changes_alert_{change.get('label', '')}",
+                    types.AlertView(
+                        severity="warning",
+                        label=change.get("label", ""),
+                        description=change.get("description", ""),
+                    ),
+                )
+
         inputs.str("compare_key", view=types.HiddenView())
         inputs.str("scenario_id", view=types.HiddenView())
 

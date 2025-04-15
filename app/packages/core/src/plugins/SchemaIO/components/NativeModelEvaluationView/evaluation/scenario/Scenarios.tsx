@@ -89,6 +89,7 @@ export default function Scenarios(props) {
   const { key, compareKey, id: eval_id } = data?.view;
   const fullScenario = data?.[`scenario_${scenario}_${key}`] || {};
   const subsets = fullScenario?.subsets || [];
+  const scenarioChanges = data?.[`scenario_${scenario}_changes`] || [];
 
   const scenariosArray = scenarios ? Object.values(scenarios) : [];
   const scenariosIds = Object.keys(scenarios);
@@ -137,6 +138,7 @@ export default function Scenarios(props) {
           key,
           compare_key: compareKey,
           eval_id,
+          scenarioChanges,
         },
         operator: CONFIGURE_SCENARIO_ACTION,
         prompt: true,
@@ -163,6 +165,7 @@ export default function Scenarios(props) {
     promptOperator,
     scenario,
     scenarios,
+    scenarioChanges,
   ]);
 
   if (loading) {
@@ -371,8 +374,6 @@ function Scenario(props) {
 
   const loadError = data?.scenario_load_error;
   const scenarioChanges = data?.[`scenario_${id}_changes`];
-
-  console.log("scenarioChanges", scenarioChanges);
 
   const [{ code: errorCode, error: errorDescription }, setLoadError] =
     useRecoilState(loadScenarioErrorState);

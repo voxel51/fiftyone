@@ -6,10 +6,10 @@ from enum import Enum
 KEY_COLOR = "#ff6d04"
 COMPARE_KEY_COLOR = "#03a9f4"
 
-MAX_CATEGORIES = 100
+MAX_CATEGORIES = 12  # This was discussed thoroughly.
 ALLOWED_BY_TYPES = (
     fof.StringField,
-    fof.BooleanField,  # TODO: needs two checkboxes
+    fof.BooleanField,
     fof.IntField,
     fof.FloatField,
 )
