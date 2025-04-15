@@ -3259,8 +3259,7 @@
                     "entrypoint_args": {
                         "model": "yolov8n.pt"
                     },
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor",
-                    "raw_inputs": true
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
                 }
             },
             "requirements": {
