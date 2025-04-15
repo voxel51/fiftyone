@@ -1005,7 +1005,10 @@ class EvaluationPanel(Panel):
             # if the exact field does not exist, set subsets to empty
             if not scenario_field or scenario_field not in dataset_field_paths:
                 changes.append(
-                    f'The following field does not exist: "{scenario_field}".'
+                    {
+                        "label": f"The following field does not exists. To continue your analysis, you can edit this scenario.",
+                        "description": f"{scenario_field}",
+                    }
                 )
                 scenario["subsets"] = []
 
@@ -1014,14 +1017,22 @@ class EvaluationPanel(Panel):
                 all_tags = ctx.dataset.distinct("tags")
                 tags = scenario.get("subsets", [])
                 available_tags = [t for t in tags if t in all_tags]
-                missing_tags = set(tags) - set(available_tags)
+                missing_tags = list(set(tags) - set(available_tags))
+
+                print("all_tags", all_tags)
+                print("tags", tags)
+                print("missing_tags", missing_tags)
 
                 if missing_tags:
-                    the_tags = ", ".join(missing_tags)
+                    the_tags = "\n- ".join(missing_tags)
                     changes.append(
-                        f'The following tags do not exist. "{the_tags}".'
+                        {
+                            "label": f"The following tags do not exists. To continue your analysis, you can edit this scenario.",
+                            "description": f"- {the_tags}",
+                        }
                     )
-                    scenario["subsets"] = []
+                    if len(available_tags) == 0:
+                        scenario["subsets"] = []
 
         return scenario, changes
 
