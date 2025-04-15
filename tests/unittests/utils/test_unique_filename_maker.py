@@ -4,7 +4,7 @@ import random
 import shutil
 import tempfile
 import time
-from typing import Any, Dict, Optional, Union, Type
+from typing import Any, Dict, Optional
 
 import pytest
 
@@ -36,6 +36,32 @@ INPUT_PATHS = [
     "juliet",
     "juliet.png",
 ]
+
+
+@pytest.mark.parametrize(
+    "is_main_process",
+    (
+        pytest.param(True, id="main-process"),
+        pytest.param(False, id="sub-process"),
+    ),
+)
+def test_implementation_switch(is_main_process):
+    """select unique filename maker implementation"""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+
+        if is_main_process:
+            filename_maker = focu.UniqueFilenameMaker(tmp_dir)
+
+            assert isinstance(filename_maker, focu.UniqueFilenameMaker)
+
+        else:
+            with multiprocessing.Pool(
+                processes=(processes := 4),
+                initializer=init_process,
+                initargs=(tmp_dir, {}),
+            ) as pool:
+                for _ in range(processes):
+                    assert pool.apply(process_instance_check)
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -89,21 +115,8 @@ def cleanup():
         ),
     ),
 )
-@pytest.mark.parametrize(
-    "unique_filename_maker_cls",
-    (
-        # The following is the original UniqueFilenameMaker just renamed
-        # Uncomment to see that it does not work when run with multiprocessing
-        # ====================================================================
-        # pytest.param(focu.InMemoryUniqueFilenameMaker),
-        # ====================================================================
-        pytest.param(focu.MultiProcessUniqueFilenameMaker),
-    ),
-)
 def test_existing_input_paths(
-    unique_filename_maker_cls,
-    unique_filename_maker_kwargs,
-    existing_filepaths,
+    unique_filename_maker_kwargs, existing_filepaths
 ):
     """test baseline vs parallel with existing input paths"""
 
@@ -116,30 +129,40 @@ def test_existing_input_paths(
             ):
                 ...
 
-        # The following is the original UniqueFilenameMaker just renamed
-        filename_maker = focu.InMemoryUniqueFilenameMaker(
+        filename_maker = focu.UniqueFilenameMaker(
             tmp_dir, **unique_filename_maker_kwargs
         )
 
+        assert isinstance(filename_maker, focu.UniqueFilenameMaker)
+
         # This is the original behavior of `get_output_path``, used as the
         # baseline.
-        expected = [
-            filename_maker.get_output_path(input_path)
-            for input_path in INPUT_PATHS
-        ]
+        expected_input_paths = INPUT_PATHS[:]
+
+        random.shuffle(expected_input_paths)
+
+        expected = list(
+            map(filename_maker.get_output_path, expected_input_paths)
+        )
 
         # Run multiple workers with their own instance UniqueFilenameMaker and
         # aggregate the calls to `get_output_path`.
         with multiprocessing.Pool(
             processes=4,
-            initializer=initialize_worker,
+            initializer=init_process,
             initargs=(
-                unique_filename_maker_cls,
                 tmp_dir,
                 unique_filename_maker_kwargs,
             ),
         ) as pool:
-            actual = list(pool.imap_unordered(worker, INPUT_PATHS))
+            actual_input_paths = INPUT_PATHS[:]
+            random.shuffle(actual_input_paths)
+
+            actual = list(
+                pool.imap_unordered(
+                    process_get_output_path, actual_input_paths
+                )
+            )
 
         # Normalize results
         ignore_exts = unique_filename_maker_kwargs.get("ignore_exts") is True
@@ -174,10 +197,11 @@ def test_non_existent_input_paths(default_ext):
     ):
         input_paths = [None for _ in range(100)]
 
-        # This is the original class just renamed
-        filename_maker = focu.InMemoryUniqueFilenameMaker(
+        filename_maker = focu.UniqueFilenameMaker(
             tmp_dir_1, default_ext=default_ext
         )
+
+        assert isinstance(filename_maker, focu.UniqueFilenameMaker)
 
         expected = [
             filename_maker.get_output_path(input_path)
@@ -186,14 +210,12 @@ def test_non_existent_input_paths(default_ext):
 
         with multiprocessing.Pool(
             processes=4,
-            initializer=initialize_worker,
-            initargs=(
-                focu.MultiProcessUniqueFilenameMaker,
-                tmp_dir_2,
-                {"default_ext": default_ext},
-            ),
+            initializer=init_process,
+            initargs=(tmp_dir_2, {"default_ext": default_ext}),
         ) as pool:
-            actual = list(pool.imap_unordered(worker, input_paths))
+            actual = list(
+                pool.imap_unordered(process_get_output_path, input_paths)
+            )
 
         assert len(expected) == len(actual)
 
@@ -204,49 +226,32 @@ def test_non_existent_input_paths(default_ext):
                     assert default_ext == ext
 
 
-@pytest.mark.parametrize(
-    ("kwargs", "expected_cls"),
-    (
-        pytest.param(
-            {"chunk_size": 100},
-            focu.InMemoryUniqueFilenameMaker,
-            id="chunk_size-set",
-        ),
-        pytest.param(
-            {}, focu.MultiProcessUniqueFilenameMaker, id="chunk_size-unset"
-        ),
-    ),
-)
-def test_implementation_switch(kwargs, expected_cls):
-    """select unique filename maker implementation"""
-    filename_maker = focu.UniqueFilenameMaker(**kwargs)
-    assert isinstance(filename_maker, expected_cls)
-
-
-def initialize_worker(
-    cls: Type[
-        Union[
-            focu.InMemoryUniqueFilenameMaker,
-            focu.MultiProcessUniqueFilenameMaker,
-        ]
-    ],
+def init_process(
     output_dir: str,
     unique_filename_maker_kwargs: Optional[Dict[str, Any]] = None,
 ) -> None:
     """initialize multiprocessing worker"""
 
     # pylint:disable-next=global-variable-undefined
-    global worker_filename_maker
+    global process_filename_maker
 
-    worker_filename_maker = cls(
+    process_filename_maker = focu.UniqueFilenameMaker(
         output_dir, **(unique_filename_maker_kwargs or {})
     )
 
 
-def worker(input_path: str) -> str:
-    """multiprocessing worker"""
+def process_instance_check() -> bool:
+    """process instance check"""
+    return isinstance(
+        process_filename_maker, focu.MultiProcessUniqueFilenameMaker
+    )
 
-    # random sleep to allow for multiprocessing to get names out of order
-    time.sleep(random.randint(0, 10) / 100)
 
-    return worker_filename_maker.get_output_path(input_path)
+def process_get_output_path(input_path: str) -> str:
+    """process get output path"""
+
+    assert isinstance(
+        process_filename_maker, focu.MultiProcessUniqueFilenameMaker
+    )
+
+    return process_filename_maker.get_output_path(input_path)
