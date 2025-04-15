@@ -509,6 +509,8 @@ def _convert_yolo_classification_model(model):
         {
             "model": model,
             "output_processor_cls": UltralyticsClassificationOutputProcessor,
+            "model_path": model.model_name,
+            "image_size": [640, 640],
         }
     )
     return FiftyOneYOLOModel(config)
@@ -519,6 +521,8 @@ def _convert_yolo_detection_model(model):
         {
             "model": model,
             "output_processor_cls": UltralyticsDetectionOutputProcessor,
+            "model_path": model.model_name,
+            "image_size": [640, 640],
         }
     )
     return FiftyOneYOLOModel(config)
@@ -529,6 +533,8 @@ def _convert_yolo_obb_model(model):
         {
             "model": model,
             "output_processor_cls": UltralyticsOBBOutputProcessor,
+            "model_path": model.model_name,
+            "image_size": [640, 640],
         }
     )
     return FiftyOneYOLOModel(config)
@@ -539,6 +545,8 @@ def _convert_yolo_segmentation_model(model):
         {
             "model": model,
             "output_processor_cls": UltralyticsSegmentationOutputProcessor,
+            "model_path": model.model_name,
+            "image_size": [640, 640],
         }
     )
     return FiftyOneYOLOModel(config)
@@ -549,6 +557,7 @@ def _convert_yolo_pose_model(model):
         {
             "model": model,
             "output_processor_cls": UltralyticsPoseOutputProcessor,
+            "model_path": model.model_name,
         }
     )
     return FiftyOneYOLOModel(config)
