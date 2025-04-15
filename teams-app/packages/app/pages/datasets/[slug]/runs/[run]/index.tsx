@@ -126,10 +126,16 @@ function Run(props) {
 
   const runByName = runBy?.name;
 
+  // when user sets logPath to be a local path
+  // and the file size is larger than 1M
+  // we do not support preview logs or download
   const largeLogLocalPath = useMemo(
     () => !logUrl && logPath && logSize && logSize >= 1 * 1024 * 1024,
     [logUrl, logPath, logSize]
   );
+  // when user logPath is a cloud storage path
+  // and the file size is larger than 1M
+  // we support download logs but not preview
   const largeLogRemotepath = useMemo(
     () => logUrl && logSize && logSize >= 1 * 1024 * 1024,
     [logUrl, logSize]

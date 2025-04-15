@@ -168,8 +168,8 @@ function LogsContent({ logQueryRef, logStatus, runData }: LogsContent) {
       return <LogPreview queryRef={logQueryRef} />;
     case LOG_STATUS.UPLOAD_SUCCESS_LARGE_FILE:
       if (!runData.logUrl && runData.logPath) {
-        // when clinets set the logPath with a local path
-        <DefaultLog message="Logs size too large." />;
+        // when users set the logPath with a local path
+        return <DefaultLog message="Logs size too large." />;
       }
       return (
         <DefaultLog
