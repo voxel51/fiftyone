@@ -2,6 +2,7 @@ import { useNotification } from "@fiftyone/hooks";
 import { ExternalLinkIcon, SearchIcon } from "@fiftyone/teams-components";
 import { CONSTANT_VARIABLES, runsLogQuery } from "@fiftyone/teams-state";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
+import { useTheme } from "@mui/material";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
@@ -11,7 +12,6 @@ import { PreloadedQuery, useQueryLoader } from "react-relay";
 import { OperationType } from "relay-runtime";
 import { getLogStatus, LOG_STATUS } from "../utils/getLogStatus";
 import LogPreview from "./logs/LogPreview";
-import { useTheme } from "@mui/material";
 
 type DefaultLog = {
   title?: string; // defaulted to logs not available
@@ -167,11 +167,15 @@ function LogsContent({ logQueryRef, logStatus, runData }: LogsContent) {
     case LOG_STATUS.UPLOAD_SUCCESS:
       return <LogPreview queryRef={logQueryRef} />;
     case LOG_STATUS.UPLOAD_SUCCESS_LARGE_FILE:
+      if (!runData.logUrl && runData.logPath) {
+        // when clinets set the logPath with a local path
+        <DefaultLog message="Logs size too large." />;
+      }
       return (
         <DefaultLog
-          message="Log size too large."
+          message="Logs size too large."
           button={{
-            url: runData.logUrl ?? runData.logPath,
+            url: runData.logUrl,
             message: "Download logs",
             icon: "download",
           }}

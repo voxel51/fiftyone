@@ -28,8 +28,7 @@ export default function LogPreview({ queryRef }) {
 
   const handleDownload = useCallback(() => {
     const link = document.createElement("a");
-    link.href =
-      data.delegatedOperation.logUrl ?? data.delegatedOperation.logPath;
+    link.href = data.delegatedOperation.logUrl;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -37,7 +36,7 @@ export default function LogPreview({ queryRef }) {
       msg: "Logs download started",
       variant: "success",
     });
-  }, [data.delegatedOperation.logUrl, data.delegatedOperation.logPath]);
+  }, [data.delegatedOperation.logUrl]);
 
   // skip logs if date, level, content are all empty
   // if one line have date and level, but no content, the second line have no
@@ -86,6 +85,9 @@ export default function LogPreview({ queryRef }) {
     return <DefaultLog />;
   }
 
+  const localLogPath =
+    processedLogs.length > 0 && !data.delegatedOperation.logUrl;
+
   return (
     <div>
       <Box
@@ -99,14 +101,16 @@ export default function LogPreview({ queryRef }) {
             ? "Logs Preview is not available"
             : " "}
         </Typography>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<CloudDownloadIcon />}
-          onClick={handleDownload}
-        >
-          Download Logs
-        </Button>
+        {!localLogPath && (
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<CloudDownloadIcon />}
+            onClick={handleDownload}
+          >
+            Download Logs
+          </Button>
+        )}
       </Box>
       <Suspense fallback={<TableSkeleton />}>
         <VirtualLogTable data={processedLogs} />
