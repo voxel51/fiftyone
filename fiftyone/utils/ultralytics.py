@@ -12,12 +12,13 @@ import itertools
 import numpy as np
 from PIL import Image
 
-from fiftyone.core.config import Config
+# from fiftyone.core.config import Config
 import fiftyone.core.labels as fol
 from fiftyone.core.models import Model
 import fiftyone.utils.torch as fout
 import fiftyone.core.utils as fou
 import fiftyone.zoo.models as fozm
+import eta.core.utils as etau
 
 ultralytics = fou.lazy_import("ultralytics")
 torch = fou.lazy_import("torch")
@@ -364,28 +365,15 @@ def _to_keypoints(result, confidence_thresh=None):
     return fol.Keypoints(keypoints=keypoints)
 
 
-class FiftyOneYOLOModelConfig(Config, fozm.HasZooModel):
-    """Configuration for a :class:`FiftyOneYOLOModel`.
-
-    Args:
-        model (None): an ``ultralytics.YOLO`` model to use
-        model_name (None): the name of an ``ultralytics.YOLO`` model to load
-        model_path (None): the path to an ``ultralytics.YOLO`` model checkpoint
-        classes (None): an optional list of classes to use for zero-shot
-            prediction
-    """
+class FiftyOneYOLOModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
+    """Configuration for a :class:`FiftyOneYOLOModel`."""
 
     def __init__(self, d):
-        self.model = self.parse_raw(d, "model", default=None)
-        self.model_name = self.parse_raw(d, "model_name", default=None)
-        self.model_path = self.parse_raw(d, "model_path", default=None)
-        self.classes = self.parse_array(d, "classes", default=None)
-        self.device = self.parse_string(
-            d, "device", default="cuda" if torch.cuda.is_available() else "cpu"
-        )
+        d = self.init(d)
+        super().__init__(d)
 
 
-class FiftyOneYOLOModel(Model):
+class FiftyOneYOLOModel(fout.TorchImageModel):
     """FiftyOne wrapper around an ``ultralytics.YOLO`` model.
 
     Args:
@@ -393,21 +381,25 @@ class FiftyOneYOLOModel(Model):
     """
 
     def __init__(self, config):
-        self.config = config
-        self.model = self._load_model(config)
-        self.device = torch.device(config.device)
-        self.model.to(self.device)
+        super().__init__(config)
+
+    def _download_model(self, config):
+        config.download_model_if_necessary()
 
     def _load_model(self, config):
         if config.model is not None:
             return config.model
-
-        if config.model_path is not None:
-            model = ultralytics.YOLO(config.model_path)
-        elif config.model_name is not None:
-            model = ultralytics.YOLO(config.model_name)
         else:
-            model = ultralytics.YOLO()
+            entrypoint_fcn = config.entrypoint_fcn
+
+            if etau.is_str(entrypoint_fcn):
+                entrypoint_fcn = etau.get_function(entrypoint_fcn)
+
+            kwargs = config.entrypoint_args
+            if kwargs:
+                model = entrypoint_fcn(**kwargs)
+            else:
+                model = entrypoint_fcn()
 
         if config.classes:
             if hasattr(ultralytics, "YOLOE") and isinstance(
@@ -421,6 +413,11 @@ class FiftyOneYOLOModel(Model):
 
         return model
 
+    def _parse_classes(self, config):
+        if config.classes is not None:
+            return config.classes
+        return None
+
     @property
     def media_type(self):
         return "image"
@@ -433,42 +430,49 @@ class FiftyOneYOLOModel(Model):
     def transforms(self):
         return None
 
-    @property
-    def preprocess(self):
-        return False
+    def _forward_pass(self, imgs):
+        return self._model(imgs, verbose=False)
 
-    def _format_predictions(self, predictions):
-        raise NotImplementedError(
-            "Subclass must implement _format_predictions()"
+    def _predict_all(self, imgs):
+        height, width = None, None
+
+        if self.config.raw_inputs:
+            # Feed images as list
+            if self._output_processor is not None:
+                img = imgs[0]
+                if isinstance(img, torch.Tensor):
+                    height, width = img.size()[-2:]
+                elif isinstance(img, Image.Image):
+                    width, height = img.size
+                elif isinstance(img, np.ndarray):
+                    height, width = img.shape[:2]
+        else:
+            # Feed images as stacked Tensor
+            if isinstance(imgs, (list, tuple)):
+                imgs = torch.stack(imgs)
+
+            height, width = imgs.size()[-2:]
+
+            imgs = imgs.to(self._device)
+            if self._using_half_precision:
+                imgs = imgs.half()
+
+        output = self._forward_pass(imgs)
+
+        if self._output_processor is None:
+            if isinstance(output, torch.Tensor):
+                output = output.detach().cpu().numpy()
+
+            return output
+
+        if self.has_logits:
+            self._output_processor.store_logits = self.store_logits
+
+        return self._output_processor(
+            output,
+            (width, height),
+            confidence_thresh=self.config.confidence_thresh,
         )
-
-    def predict(self, arg):
-        image = Image.fromarray(arg)
-        predictions = self.model(image, verbose=False)
-        return self._format_predictions(predictions[0])
-
-
-class FiftyOneYOLODetectionModelConfig(FiftyOneYOLOModelConfig):
-    pass
-
-
-class FiftyOneYOLODetectionModel(FiftyOneYOLOModel):
-    """FiftyOne wrapper around an Ultralytics YOLO detection model.
-
-    Args:
-        config: a :class:`FiftyOneYOLODetectionModelConfig`
-    """
-
-    def __init__(self, config):
-        super().__init__(config)
-
-    def _format_predictions(self, predictions):
-        return to_detections(predictions)
-
-    def predict_all(self, args):
-        images = [Image.fromarray(arg) for arg in args]
-        predictions = self.model(images, verbose=False)
-        return self._format_predictions(predictions)
 
 
 class FiftyOneRTDETRModelConfig(FiftyOneYOLOModelConfig):
@@ -549,28 +553,8 @@ class FiftyOneYOLOOBBModel(FiftyOneYOLOModel):
 
     def predict_all(self, args):
         images = [Image.fromarray(arg) for arg in args]
-        predictions = self.model(images, verbose=False)
+        predictions = self._model(images, verbose=False)
         return self._format_predictions(predictions)
-
-
-class FiftyOneYOLOSegmentationModelConfig(FiftyOneYOLOModelConfig):
-    pass
-
-
-class FiftyOneYOLOSegmentationModel(FiftyOneYOLOModel):
-    """FiftyOne wrapper around an Ultralytics YOLO segmentation model.
-
-    Args:
-        config: a :class:`FiftyOneYOLOSegmentationModelConfig`
-    """
-
-    @property
-    def ragged_batches(self):
-        # These models don't yet support batching due to padding issues
-        return True
-
-    def _format_predictions(self, predictions):
-        return to_instances(predictions)
 
 
 class FiftyOneYOLOPoseModelConfig(FiftyOneYOLOModelConfig):
@@ -589,38 +573,28 @@ class FiftyOneYOLOPoseModel(FiftyOneYOLOModel):
 
     def predict_all(self, args):
         images = [Image.fromarray(arg) for arg in args]
-        predictions = self.model(images, verbose=False)
+        predictions = self._model(images, verbose=False)
         return self._format_predictions(predictions)
 
 
-class FiftyOneYOLOClassificationModelConfig(FiftyOneYOLOModelConfig):
-    pass
-
-
-class FiftyOneYOLOClassificationModel(FiftyOneYOLOModel):
-    """FiftyOne wrapper around an Ultralytics YOLO classification model.
-
-    Args:
-        config: a :class:`FiftyOneYOLOClassificationModelConfig`
-    """
-
-    def _format_predictions(self, predictions):
-        logits = predictions.cpu().numpy().probs.data
-        confidence = logits.max()
-        label = self.model.names[logits.argmax()]
-        return fol.Classification(
-            label=label, logits=logits, confidence=confidence
-        )
-
-
 def _convert_yolo_classification_model(model):
-    config = FiftyOneYOLOClassificationModelConfig({"model": model})
-    return FiftyOneYOLOClassificationModel(config)
+    config = FiftyOneYOLOModelConfig(
+        {
+            "model": model,
+            "output_processor_cls": UltralyticsClassificationOutputProcessor,
+        }
+    )
+    return FiftyOneYOLOModel(config)
 
 
 def _convert_yolo_detection_model(model):
-    config = FiftyOneYOLODetectionModelConfig({"model": model})
-    return FiftyOneYOLODetectionModel(config)
+    config = FiftyOneYOLOModelConfig(
+        {
+            "model": model,
+            "output_processor_cls": UltralyticsDetectionOutputProcessor,
+        }
+    )
+    return FiftyOneYOLOModel(config)
 
 
 def _convert_yolo_obb_model(model):
@@ -629,8 +603,13 @@ def _convert_yolo_obb_model(model):
 
 
 def _convert_yolo_segmentation_model(model):
-    config = FiftyOneYOLOSegmentationModelConfig({"model": model})
-    return FiftyOneYOLOSegmentationModel(config)
+    config = FiftyOneYOLOModelConfig(
+        {
+            "model": model,
+            "output_processor_cls": UltralyticsSegmentationOutputProcessor,
+        }
+    )
+    return FiftyOneYOLOModel(config)
 
 
 def _convert_yolo_pose_model(model):
@@ -667,3 +646,29 @@ class UltralyticsOutputProcessor(fout.OutputProcessor):
                 for row in df.itertuples()
             ]
         )
+
+
+class UltralyticsClassificationOutputProcessor(fout.OutputProcessor):
+    """Converts Ultralytics PyTorch Hub model outputs to FiftyOne format."""
+
+    def __call__(self, result, frame_size, confidence_thresh=None):
+        logits = result.cpu().numpy().probs.data
+        confidence = logits.max()
+        label = result.names[logits.argmax()]
+        return fol.Classification(
+            label=label, logits=logits, confidence=confidence
+        )
+
+
+class UltralyticsDetectionOutputProcessor(fout.OutputProcessor):
+    """Converts Ultralytics PyTorch Hub model outputs to FiftyOne format."""
+
+    def __call__(self, result, frame_size, confidence_thresh=None):
+        return to_detections(result)
+
+
+class UltralyticsSegmentationOutputProcessor(fout.OutputProcessor):
+    """Converts Ultralytics PyTorch Hub model outputs to FiftyOne format."""
+
+    def __call__(self, result, frame_size, confidence_thresh=None):
+        return to_instances(result)
