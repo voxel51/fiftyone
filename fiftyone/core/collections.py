@@ -2260,9 +2260,7 @@ class SampleCollection(object):
                 created if necessary
         """
         if not isinstance(self, fod.Dataset):
-            # The label IDs that we'll need to delete from `in_field`
-            _, id_path = self._get_label_field_path(in_field, "id")
-            del_ids = self.values(id_path, unwind=True)
+            labels = self._get_selected_labels(fields=in_field)
 
         dataset = self._dataset
         dataset.merge_samples(
@@ -2278,9 +2276,13 @@ class SampleCollection(object):
         )
 
         if isinstance(self, fod.Dataset):
-            dataset.delete_sample_field(in_field)
+            field_name, is_frame_field = self._handle_frame_field(in_field)
+            if is_frame_field:
+                dataset.delete_frame_field(field_name)
+            else:
+                dataset.delete_sample_field(field_name)
         else:
-            dataset.delete_labels(ids=del_ids, fields=in_field)
+            dataset.delete_labels(labels=labels)
 
     def set_values(
         self,
