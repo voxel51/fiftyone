@@ -247,11 +247,18 @@ function Run(props) {
         {tab === "logs" && !(logSize && logSize >= 1 * 1024 * 1024) && (
           <Logs runData={runData} />
         )}
-        {tab === "logs" && logSize && logSize >= 1 * 1024 * 1024 && (
+        {tab === "logs" &&
+          !logUrl &&
+          logPath &&
+          logSize &&
+          logSize >= 1 * 1024 * 1024 && (
+            <DefaultLog title="Logs size too large to preview" />
+          )}
+        {tab === "logs" && logUrl && logSize && logSize >= 1 * 1024 * 1024 && (
           <DefaultLog
             title="Logs size too large"
             button={{
-              url: logUrl ?? logPath,
+              url: logUrl,
               message: "Download logs",
               icon: "download",
             }}
