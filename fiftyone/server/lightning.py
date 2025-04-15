@@ -19,6 +19,7 @@ import strawberry as gql
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
+from fiftyone.core.utils import run_sync_task
 
 import fiftyone.server.constants as foc
 from fiftyone.server.data import Info
@@ -127,7 +128,10 @@ LightningResults = gql.union(
 async def lightning_resolver(
     input: LightningInput, info: Info
 ) -> t.List[LightningResults]:
-    dataset: fo.Dataset = fo.load_dataset(input.dataset)
+    run = lambda: get_view(input.dataset, reload=True)
+    dataset = await run_sync_task(run)
+    dataset = dataset._dataset
+
     collections, queries, resolvers, is_frames = zip(
         *[
             _resolve_lightning_path_queries(path, dataset, info)
@@ -377,7 +381,10 @@ async def _do_list_distinct_queries(
         [lazy, distinct_scan], return_when=asyncio.FIRST_COMPLETED
     )
 
-    pending.pop().cancel()
+    try:
+        pending.pop().cancel()
+    except:
+        pass
     return done.pop().result()
 
 
@@ -441,7 +448,10 @@ async def _do_distinct_queries(
         [lazy, grouped], return_when=asyncio.FIRST_COMPLETED
     )
 
-    pending.pop().cancel()
+    try:
+        pending.pop().cancel()
+    except:
+        pass
     return done.pop().result()
 
 

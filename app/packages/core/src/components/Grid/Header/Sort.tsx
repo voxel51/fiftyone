@@ -31,25 +31,41 @@ export default function Sort() {
           }}
           value={value?.field}
           onSelect={(_, v) => {
-            v && select((current) => ({ ...current, field: v }));
+            if (!v) {
+              return;
+            }
+            if (v === "-") {
+              select(null);
+              return;
+            }
+
+            select((current) => ({
+              field: v,
+              descending: Boolean(current?.descending),
+            }));
           }}
           useSearch={(v) => {
             const values = indexes.filter((field) => field.startsWith(v));
-            return { values };
+            return { values: ["-", ...values] };
           }}
           overflow={true}
           placeholder="Sort by"
         />
       </RightDiv>
-      <div
-        title={value?.descending ? "Descending" : "Ascending"}
-        onClick={() =>
-          select((current) => ({ ...current, descending: !current.descending }))
-        }
-        style={{ cursor: "pointer", display: "flex" }}
-      >
-        {value?.descending ? <ArrowDownward /> : <ArrowUpward />}
-      </div>
+      {value !== null && (
+        <div
+          title={value?.descending ? "Descending" : "Ascending"}
+          onClick={() =>
+            select((current) => ({
+              ...current,
+              descending: !current.descending,
+            }))
+          }
+          style={{ cursor: "pointer", display: "flex" }}
+        >
+          {value?.descending ? <ArrowDownward /> : <ArrowUpward />}
+        </div>
+      )}
     </SliderContainer>
   );
 }

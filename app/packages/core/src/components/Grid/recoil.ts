@@ -36,8 +36,8 @@ const sortFieldsMap = selector({
 export const sortFields = selector({
   key: "sortFields",
   get: ({ get }) => {
-    const f = Object.keys(get(fos.filters) ?? {});
-    const valid = get(fos.validIndexes(new Set(f)));
+    const filters = Object.keys(get(fos.filters) ?? {});
+    const valid = get(fos.validIndexes(new Set(filters)));
     const all = new Set([
       ...valid.available.map(([_, i]) => i),
       ...valid.trailing.map(([_, i]) => i),
@@ -50,9 +50,12 @@ export const sortFields = selector({
   },
 });
 
-export const gridSortByState = atom({
+export const gridSortByState = atom<{
+  descending: boolean;
+  field: string;
+} | null>({
   key: "gridSortByState",
-  default: { descending: true, field: "created_at" },
+  default: null,
 });
 
 export const gridSortBy = selector({
@@ -64,6 +67,10 @@ export const gridSortBy = selector({
 
     const fields = get(sortFields);
     const state = get(gridSortByState);
+
+    if (!state) {
+      return null;
+    }
 
     if (fields.length === 1) {
       return { descending: state.descending, field: fields[0] };

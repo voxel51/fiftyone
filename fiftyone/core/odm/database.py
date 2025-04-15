@@ -349,6 +349,9 @@ def aggregate(collection, pipelines, hints=None):
         hints = [hints]
 
     num_pipelines = len(pipelines)
+    if hints is None:
+        hints = [None] * num_pipelines
+
     if isinstance(collection, mtr.AsyncIOMotorCollection):
         if num_pipelines == 1 and not is_list:
             kwargs = {"hint": hints[0]} if hints[0] is not None else {}
@@ -356,7 +359,7 @@ def aggregate(collection, pipelines, hints=None):
                 pipelines[0], allowDiskUse=True, **kwargs
             )
 
-        return _do_async_pooled_aggregate(collection, pipelines)
+        return _do_async_pooled_aggregate(collection, pipelines, hints)
 
     if num_pipelines == 1:
         result = collection.aggregate(pipelines[0], allowDiskUse=True)
@@ -376,14 +379,23 @@ def _do_pooled_aggregate(collection, pipelines):
         )
 
 
-async def _do_async_pooled_aggregate(collection, pipelines):
+async def _do_async_pooled_aggregate(collection, pipelines, hints):
     return await asyncio.gather(
-        *[_do_async_aggregate(collection, pipeline) for pipeline in pipelines]
+        *[
+            _do_async_aggregate(collection, pipeline, hint)
+            for pipeline, hint in zip(pipelines, hints)
+        ]
     )
 
 
-async def _do_async_aggregate(collection, pipeline):
-    return [i async for i in collection.aggregate(pipeline, allowDiskUse=True)]
+async def _do_async_aggregate(collection, pipeline, hint):
+    kwargs = {"hint": hint} if hint is not None else {}
+    return [
+        i
+        async for i in collection.aggregate(
+            pipeline, allowDiskUse=True, **kwargs
+        )
+    ]
 
 
 def ensure_connection():
