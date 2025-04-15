@@ -417,52 +417,20 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             return config.classes
         return None
 
-    @property
-    def media_type(self):
-        return "image"
-
-    @property
-    def ragged_batches(self):
-        return False
-
-    @property
-    def transforms(self):
-        return None
-
     def _forward_pass(self, imgs):
         return self._model(imgs, verbose=False)
 
     def _predict_all(self, imgs):
         height, width = None, None
 
-        if self.config.raw_inputs:
-            # Feed images as list
-            if self._output_processor is not None:
-                img = imgs[0]
-                if isinstance(img, torch.Tensor):
-                    height, width = img.size()[-2:]
-                elif isinstance(img, Image.Image):
-                    width, height = img.size
-                elif isinstance(img, np.ndarray):
-                    height, width = img.shape[:2]
-        else:
-            # Feed images as stacked Tensor
-            if isinstance(imgs, (list, tuple)):
-                imgs = torch.stack(imgs)
+        if isinstance(imgs, (list, tuple)):
+            imgs = torch.stack(imgs)
 
-            height, width = imgs.size()[-2:]
-
+        height, width = imgs.size()[-2:]
+        if self._using_gpu:
             imgs = imgs.to(self._device)
-            if self._using_half_precision:
-                imgs = imgs.half()
 
         output = self._forward_pass(imgs)
-
-        if self._output_processor is None:
-            if isinstance(output, torch.Tensor):
-                output = output.detach().cpu().numpy()
-
-            return output
 
         if self.has_logits:
             self._output_processor.store_logits = self.store_logits
@@ -536,46 +504,6 @@ class FiftyOneRTDETRModel(Model):
         return self._format_predictions(predictions[0])
 
 
-class FiftyOneYOLOOBBModelConfig(FiftyOneYOLOModelConfig):
-    pass
-
-
-class FiftyOneYOLOOBBModel(FiftyOneYOLOModel):
-    """FiftyOne wrapper around an Ultralytics YOLO OBB detection model.
-
-    Args:
-        config: a :class:`FiftyOneYOLOConfig`
-    """
-
-    def _format_predictions(self, predictions):
-        return obb_to_polylines(predictions)
-
-    def predict_all(self, args):
-        images = [Image.fromarray(arg) for arg in args]
-        predictions = self._model(images, verbose=False)
-        return self._format_predictions(predictions)
-
-
-class FiftyOneYOLOPoseModelConfig(FiftyOneYOLOModelConfig):
-    pass
-
-
-class FiftyOneYOLOPoseModel(FiftyOneYOLOModel):
-    """FiftyOne wrapper around an Ultralytics YOLO pose model.
-
-    Args:
-        config: a :class:`FiftyOneYOLOPoseModelConfig`
-    """
-
-    def _format_predictions(self, predictions):
-        return to_keypoints(predictions)
-
-    def predict_all(self, args):
-        images = [Image.fromarray(arg) for arg in args]
-        predictions = self._model(images, verbose=False)
-        return self._format_predictions(predictions)
-
-
 def _convert_yolo_classification_model(model):
     config = FiftyOneYOLOModelConfig(
         {
@@ -597,8 +525,13 @@ def _convert_yolo_detection_model(model):
 
 
 def _convert_yolo_obb_model(model):
-    config = FiftyOneYOLOOBBModelConfig({"model": model})
-    return FiftyOneYOLOOBBModel(config)
+    config = FiftyOneYOLOModelConfig(
+        {
+            "model": model,
+            "output_processor_cls": UltralyticsOBBOutputProcessor,
+        }
+    )
+    return FiftyOneYOLOModel(config)
 
 
 def _convert_yolo_segmentation_model(model):
@@ -612,8 +545,13 @@ def _convert_yolo_segmentation_model(model):
 
 
 def _convert_yolo_pose_model(model):
-    config = FiftyOneYOLOPoseModelConfig({"model": model})
-    return FiftyOneYOLOPoseModel(config)
+    config = FiftyOneYOLOModelConfig(
+        {
+            "model": model,
+            "output_processor_cls": UltralyticsPoseOutputProcessor,
+        }
+    )
+    return FiftyOneYOLOModel(config)
 
 
 class UltralyticsOutputProcessor(fout.OutputProcessor):
@@ -648,7 +586,7 @@ class UltralyticsOutputProcessor(fout.OutputProcessor):
 
 
 class UltralyticsClassificationOutputProcessor(fout.OutputProcessor):
-    """Converts Ultralytics PyTorch Hub model outputs to FiftyOne format."""
+    """Converts Ultralytics Classification model outputs to FiftyOne format."""
 
     def __call__(self, result, frame_size, confidence_thresh=None):
         logits = result.cpu().numpy().probs.data
@@ -660,14 +598,28 @@ class UltralyticsClassificationOutputProcessor(fout.OutputProcessor):
 
 
 class UltralyticsDetectionOutputProcessor(fout.OutputProcessor):
-    """Converts Ultralytics PyTorch Hub model outputs to FiftyOne format."""
+    """Converts Ultralytics Detection model outputs to FiftyOne format."""
 
     def __call__(self, result, frame_size, confidence_thresh=None):
         return to_detections(result)
 
 
 class UltralyticsSegmentationOutputProcessor(fout.OutputProcessor):
-    """Converts Ultralytics PyTorch Hub model outputs to FiftyOne format."""
+    """Converts Ultralytics Segmentation model outputs to FiftyOne format."""
 
     def __call__(self, result, frame_size, confidence_thresh=None):
         return to_instances(result)
+
+
+class UltralyticsPoseOutputProcessor(fout.OutputProcessor):
+    """Converts Ultralytics Segmentation model outputs to FiftyOne format."""
+
+    def __call__(self, result, frame_size, confidence_thresh=None):
+        return to_keypoints(result)
+
+
+class UltralyticsOBBOutputProcessor(fout.OutputProcessor):
+    """Converts Ultralytics Segmentation model outputs to FiftyOne format."""
+
+    def __call__(self, result, frame_size, confidence_thresh=None):
+        return obb_to_polylines(result)
