@@ -25,7 +25,7 @@ export default function Actions(props) {
   };
   const tooltipTitle = readOnly
     ? "You do not have permission to create scenarios"
-    : "Create Scenario";
+    : null;
 
   return (
     <Stack>

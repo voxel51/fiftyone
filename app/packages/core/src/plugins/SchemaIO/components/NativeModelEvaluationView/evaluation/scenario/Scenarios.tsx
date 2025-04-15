@@ -46,6 +46,7 @@ import Legends from "./Legends";
 import { getSubsetDef } from "./utils";
 import { atom, useRecoilState } from "recoil";
 import LoadingError from "./LoadingError";
+import AlertView from "../../../AlertView";
 
 const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 
@@ -369,6 +370,9 @@ function Scenario(props) {
     selectedSubsets.length === 1 && selectedSubsets[0] === "all";
 
   const loadError = data?.scenario_load_error;
+  const scenarioChanges = data?.[`scenario_${id}_changes`];
+
+  console.log("scenarioChanges", scenarioChanges);
 
   const [{ code: errorCode, error: errorDescription }, setLoadError] =
     useRecoilState(loadScenarioErrorState);
@@ -444,6 +448,17 @@ function Scenario(props) {
 
   return (
     <Stack>
+      {scenarioChanges && (
+        <AlertView
+          schema={{
+            view: {
+              label: scenarioChanges?.changes?.[0]?.label,
+              description: scenarioChanges?.changes?.[0]?.description,
+              severity: "warning",
+            },
+          }}
+        />
+      )}
       {mode === "charts" ? (
         <ScenarioCharts
           data={data}

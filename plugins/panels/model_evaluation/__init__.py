@@ -966,20 +966,37 @@ class EvaluationPanel(Panel):
 
     def validate_scenario_subsets(self, ctx, scenario):
         """
-        Validates (as much as possible) the subsets in a scenario.
+        Validates the subsets in a scenario and compiles basic changes.
         1. For view scenarios, check if the views exist in the dataset.
-        2. For sample_field scenarios, check if the field exists in the dataset.
+        2. For sample_field and label_attribute scenarios, check if the field exists in the dataset.
             - If the field is tags, check if the tags exist.
-        - If no valid subsets are found, raise an error.
+
+        returns the validated scenario and a list of changes.
+        If the scenario is not valid, it will return an empty list of subsets.
+        If the scenario is valid, it will return the original scenario with the validated subsets.
         """
         scenario_type = scenario.get("type", None)
+        changes = []
+
         if scenario_type == "view":
             subset_views = scenario.get("subsets", [])
             dataset_views = ctx.dataset.list_saved_views()
             available_subsets = [v for v in subset_views if v in dataset_views]
+            unavailable_subsets = [
+                v for v in subset_views if v not in dataset_views
+            ]
+
+            if unavailable_subsets:
+                unavailable = "\n- ".join(unavailable_subsets)
+                changes.append(
+                    {
+                        "label": f"The following views are not available anymore. To continue your analysis, you can edit this scenario.",
+                        "description": f"- {unavailable}",
+                    }
+                )
 
             scenario["subsets"] = available_subsets
-        elif scenario_type == "sample_field":
+        elif scenario_type in ["sample_field", "label_attribute"]:
             scenario_field = scenario.get("field", None)
             dataset_field_paths = ctx.dataset.get_field_schema(
                 flat=True
@@ -987,6 +1004,9 @@ class EvaluationPanel(Panel):
 
             # if the exact field does not exist, set subsets to empty
             if not scenario_field or scenario_field not in dataset_field_paths:
+                changes.append(
+                    f'The following field does not exist: "{scenario_field}".'
+                )
                 scenario["subsets"] = []
 
             # if field exists, it is tags, but tag doesn't exist
@@ -994,14 +1014,16 @@ class EvaluationPanel(Panel):
                 all_tags = ctx.dataset.distinct("tags")
                 tags = scenario.get("subsets", [])
                 available_tags = [t for t in tags if t in all_tags]
+                missing_tags = set(tags) - set(available_tags)
 
-                if set(tags) - set(available_tags):
+                if missing_tags:
+                    the_tags = ", ".join(missing_tags)
+                    changes.append(
+                        f'The following tags do not exist. "{the_tags}".'
+                    )
                     scenario["subsets"] = []
 
-        if not scenario.get("subsets", []):
-            raise ValueError("invalid subsets found")
-
-        return scenario
+        return scenario, changes
 
     def load_scenario(self, ctx):
         """
@@ -1017,15 +1039,33 @@ class EvaluationPanel(Panel):
         try:
             if scenario_id:
                 scenario = self.get_scenario(ctx, eval_id, scenario_id)
-                validated_scenario = self.validate_scenario_subsets(
+                validated_scenario, changes = self.validate_scenario_subsets(
                     ctx, scenario
                 )
+
+                if changes:
+                    # can't load the scenario at all
+                    if not validated_scenario.get("subsets"):
+                        raise ValueError("Failed to load scenario")
+
+                    # can load the scenario - but it might need an edit
+                    ctx.panel.set_state(
+                        f"scenario_{scenario_id}_changes",
+                        {
+                            "scenario": scenario,
+                            "changes": changes,
+                            "id": scenario_id,
+                        },
+                    )
+                else:
+                    ctx.panel.set_state(
+                        f"scenario_{scenario_id}_changes",
+                        None,
+                    )
+
                 scenario_data = self.get_scenario_data(ctx, validated_scenario)
 
-                ctx.panel.set_state(
-                    "scenario_load_error",
-                    None,
-                )
+                ctx.panel.set_state("scenario_load_error", None)
                 ctx.panel.set_data(
                     f"scenario_{scenario_id}_{computed_eval_key}",
                     scenario_data,
