@@ -120,6 +120,55 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
                 "Torch dataset getitem not equal to dataset values",
             )
 
+    def test_skip_failures(self):
+
+        with ShortLivedDataset() as dataset:
+            for i, sample in enumerate(dataset):
+                sample["foo"] = 1 if i % 2 == 0 else None
+                sample.save()
+
+            def gi_foo(sample):
+                return sample["foo"] * 1
+
+            torch_dataset = dataset.to_torch(
+                gi_foo,
+                skip_failures=False,
+            )
+
+            # single get item, no skip
+            for i in range(len(torch_dataset)):
+                if i % 2 == 0:
+                    self.assertEqual(torch_dataset[i], 1)
+                else:
+                    with self.assertRaises(Exception):
+                        _ = torch_dataset[i]
+
+            # batch get items, no skip
+            indices = list(range(len(torch_dataset)))
+            with self.assertRaises(Exception):
+                _ = torch_dataset.__getitems__(indices)
+
+            # single get item, skip
+            torch_dataset = dataset.to_torch(
+                gi_foo,
+                skip_failures=True,
+            )
+            for i in range(len(torch_dataset)):
+                if i % 2 == 0:
+                    self.assertEqual(torch_dataset[i], 1)
+                else:
+                    res = torch_dataset[i]
+                    self.assertTrue(isinstance(res, Exception))
+
+            # batch get items, skip
+            indices = list(range(len(torch_dataset)))
+            res = torch_dataset.__getitems__(indices)
+            for i in range(len(res)):
+                if i % 2 == 0:
+                    self.assertEqual(res[i], 1)
+                else:
+                    self.assertTrue(isinstance(res[i], Exception))
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
