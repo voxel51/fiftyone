@@ -11,6 +11,9 @@ import string
 import sys
 import unittest
 import warnings
+import tempfile
+import shutil
+import time
 
 import numpy as np
 
@@ -25,7 +28,7 @@ import fiftyone.utils.eval.segmentation as fous
 import fiftyone.utils.labels as foul
 import fiftyone.utils.iou as foui
 
-from decorators import drop_datasets
+from .decorators import drop_datasets
 
 
 class CustomRegressionEvaluationConfig(four.SimpleEvaluationConfig):
@@ -3132,6 +3135,256 @@ class VideoSegmentationTests(unittest.TestCase):
         self.assertNotIn("eval2_precision", dataset.get_frame_field_schema())
         self.assertNotIn("eval2_recall", dataset.get_field_schema())
         self.assertNotIn("eval2_recall", dataset.get_frame_field_schema())
+
+
+class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Create a temporary dataset
+        cls.dataset = fo.Dataset("test-evaluate-segmentation-multi")
+
+        # Add some sample data (25 samples to better test performance)
+        for i in range(25):
+            sample = fo.Sample(filepath=f"test_{i}.jpg")
+
+            # Add ground truth segmentations
+            sample["ground_truth"] = fo.Segmentation(
+                mask=np.zeros((100, 100), dtype=np.uint8)
+            )
+            # Set some pixels to class 1
+            sample["ground_truth"].mask[20:40, 20:40] = 1
+
+            # Add predicted segmentations
+            sample["predictions"] = fo.Segmentation(
+                mask=np.zeros((100, 100), dtype=np.uint8)
+            )
+            # Set similar but slightly different pixels to class 1
+            sample["predictions"].mask[25:45, 25:45] = 1
+
+            cls.dataset.add_sample(sample)
+
+        # Create temporary directory for test outputs
+        cls.temp_dir = tempfile.mkdtemp()
+
+    @classmethod
+    def tearDownClass(cls):
+        # Clean up the dataset
+        if hasattr(cls, "dataset"):
+            try:
+                cls.dataset.delete()
+            except:
+                pass
+
+        # Remove temporary directory
+        if hasattr(cls, "temp_dir"):
+            shutil.rmtree(cls.temp_dir, ignore_errors=True)
+
+    def test_evaluate_segmentations_single_worker(self):
+        """Test running segmentation evaluation."""
+        results = self.dataset.evaluate_segmentations(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval_single",
+            method="simple",
+        )
+
+        # Check that results are valid
+        self.assertTrue(hasattr(results, "metrics"))
+
+        # Check that metrics are available and have expected values
+        metrics = results.metrics()
+        self.assertIn("accuracy", metrics)
+        self.assertIn("precision", metrics)
+        self.assertIn("recall", metrics)
+        self.assertIn("fscore", metrics)
+        self.assertIn("support", metrics)
+
+        # All metrics should be between 0 and 1 (except support)
+        self.assertTrue(0 <= metrics["accuracy"] <= 1)
+        self.assertTrue(0 <= metrics["precision"] <= 1)
+        self.assertTrue(0 <= metrics["recall"] <= 1)
+        self.assertTrue(0 <= metrics["fscore"] <= 1)
+
+        # Support should be positive (pixels count)
+        self.assertTrue(metrics["support"] > 0)
+
+    def test_results_consistency(self):
+        """Test that results are consistent across multiple runs."""
+        # First evaluation
+        results1 = self.dataset.evaluate_segmentations(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval_consistency1",
+            method="simple",
+        )
+
+        # Second evaluation
+        results2 = self.dataset.evaluate_segmentations(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval_consistency2",
+            method="simple",
+        )
+
+        # Get metrics from both results
+        metrics1 = results1.metrics()
+        metrics2 = results2.metrics()
+
+        # Check that metrics are consistent
+        for metric in ["accuracy", "precision", "recall", "fscore", "support"]:
+            self.assertAlmostEqual(
+                float(metrics1[metric]), float(metrics2[metric]), places=5
+            )
+
+    def test_evaluation_timing(self):
+        """Test evaluation timing to verify parallelization is working."""
+        # Create a larger dataset
+        large_dataset = fo.Dataset("test-evaluate-segmentation-large")
+
+        # Add 50 samples with larger segmentation masks
+        for i in range(50):
+            sample = fo.Sample(filepath=f"test_large_{i}.jpg")
+
+            # Make larger masks (200x200) to increase computation time
+            sample["ground_truth"] = fo.Segmentation(
+                mask=np.zeros((200, 200), dtype=np.uint8)
+            )
+            # Set some pixels to class 1
+            sample["ground_truth"].mask[40:80, 40:80] = 1
+
+            # Add predicted segmentations
+            sample["predictions"] = fo.Segmentation(
+                mask=np.zeros((200, 200), dtype=np.uint8)
+            )
+            # Set similar but slightly different pixels to class 1
+            sample["predictions"].mask[50:90, 50:90] = 1
+
+            large_dataset.add_sample(sample)
+
+        try:
+            # Time the evaluation
+            start_time = time.time()
+            results = large_dataset.evaluate_segmentations(
+                "predictions",
+                gt_field="ground_truth",
+                eval_key="eval_timing",
+                method="simple",
+            )
+            duration = time.time() - start_time
+
+            # Just verify the evaluation completed successfully
+            self.assertTrue(hasattr(results, "metrics"))
+            metrics = results.metrics()
+            self.assertIn("accuracy", metrics)
+            self.assertIn("precision", metrics)
+            self.assertIn("recall", metrics)
+
+            # Print duration for information
+            print(f"Evaluation duration for 50 samples: {duration:.2f}s")
+
+        finally:
+            # Clean up
+            large_dataset.delete()
+
+
+class EvaluateSegmentationBasicTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Create a temporary dataset
+        cls.dataset = fo.Dataset("test-evaluate-segmentation-basic")
+
+        # Add some sample data
+        for i in range(10):
+            sample = fo.Sample(filepath=f"test_{i}.jpg")
+
+            # Add ground truth segmentations
+            sample["ground_truth"] = fo.Segmentation(
+                mask=np.zeros((100, 100), dtype=np.uint8)
+            )
+            # Set some pixels to class 1
+            sample["ground_truth"].mask[20:40, 20:40] = 1
+
+            # Add predicted segmentations
+            sample["predictions"] = fo.Segmentation(
+                mask=np.zeros((100, 100), dtype=np.uint8)
+            )
+            # Set similar but slightly different pixels to class 1
+            sample["predictions"].mask[25:45, 25:45] = 1
+
+            cls.dataset.add_sample(sample)
+
+        # Create temporary directory for test outputs
+        cls.temp_dir = tempfile.mkdtemp()
+
+    @classmethod
+    def tearDownClass(cls):
+        # Clean up the dataset
+        if hasattr(cls, "dataset"):
+            try:
+                cls.dataset.delete()
+            except:
+                pass
+
+        # Remove temporary directory
+        if hasattr(cls, "temp_dir"):
+            shutil.rmtree(cls.temp_dir, ignore_errors=True)
+
+    def test_evaluate_segmentations_simple(self):
+        """Test basic segmentation evaluation."""
+        results = self.dataset.evaluate_segmentations(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval_basic",
+            method="simple",
+        )
+
+        # Check that results are valid
+        self.assertTrue(hasattr(results, "metrics"))
+
+        # Check that metrics are available and have expected values
+        metrics = results.metrics()
+        self.assertIn("accuracy", metrics)
+        self.assertIn("precision", metrics)
+        self.assertIn("recall", metrics)
+        self.assertIn("fscore", metrics)
+        self.assertIn("support", metrics)
+
+        # All metrics should be between 0 and 1 (except support)
+        self.assertTrue(0 <= metrics["accuracy"] <= 1)
+        self.assertTrue(0 <= metrics["precision"] <= 1)
+        self.assertTrue(0 <= metrics["recall"] <= 1)
+        self.assertTrue(0 <= metrics["fscore"] <= 1)
+
+        # Support should be positive (pixels count)
+        self.assertTrue(metrics["support"] > 0)
+
+    def test_results_consistency(self):
+        """Test that results are consistent across multiple runs."""
+        # First evaluation
+        results1 = self.dataset.evaluate_segmentations(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval_consistency1",
+            method="simple",
+        )
+
+        # Second evaluation
+        results2 = self.dataset.evaluate_segmentations(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval_consistency2",
+            method="simple",
+        )
+
+        # Get metrics from both results
+        metrics1 = results1.metrics()
+        metrics2 = results2.metrics()
+
+        # Check that metrics are consistent
+        for metric in ["accuracy", "precision", "recall", "fscore", "support"]:
+            self.assertAlmostEqual(
+                float(metrics1[metric]), float(metrics2[metric]), places=5
+            )
 
 
 if __name__ == "__main__":

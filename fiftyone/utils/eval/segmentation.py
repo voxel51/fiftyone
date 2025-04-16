@@ -550,7 +550,7 @@ class SimpleEvaluation(SegmentationEvaluation):
             classes,
             matches=matches,
             missing=missing,
-            parallelize_method=self,
+            backend=self,
         )
 
 
