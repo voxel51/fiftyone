@@ -11,15 +11,13 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 import fiftyone.core.view as fov
 import fiftyone.server.view as fosv
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.utils import run_sync_task
 from fiftyone.server.decorators import route
-
-SPATIAL_LABEL_TYPES = ["Detection", "Polyline", "Keypoint"]
-SPATIAL_LABEL_LIST_TYPES = ["Detections", "Polylines", "Keypoints"]
 
 
 class GetSimilarLabelsFrameCollection(HTTPEndpoint):
@@ -40,12 +38,25 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
                 status_code=400,
             )
 
-        num_frames = int(data.get("numFrames"))
+        num_frames_str = data.get("numFrames")
 
-        if not num_frames or num_frames <= 0:
+        if not num_frames_str:
             return JSONResponse(
                 {
-                    "error": "numFrames is required and must be a positive integer",
+                    "error": "numFrames is required",
+                },
+                status_code=400,
+            )
+
+        try:
+            num_frames = int(num_frames_str)
+
+            if num_frames <= 0:
+                raise ValueError
+        except ValueError:
+            return JSONResponse(
+                {
+                    "error": "numFrames must be a positive integer greater than 0",
                 },
                 status_code=400,
             )
@@ -100,6 +111,14 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
 
         view = await run_sync_task(get_frames_view, view)
 
+        filtered_schema = view.get_frame_field_schema(
+            flat=True, embedded_doc_type=fol.Instance
+        )
+
+        field_names_with_instance = list(
+            map(lambda f: f.split(".")[0], filtered_schema)
+        )
+
         post_pipeline = [
             # Stage 1:
             # Reshape each document by converting the entire document
@@ -125,15 +144,15 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
                         {"$unwind": "$doc"},
                         {
                             # Filter for documents where:
-                            # 1. The class (_cls) is one of the spatial label
-                            # types (NON-LIST aka "rootLevel", here)
+                            # 1. Key is one of the field names in the schema
+                            #    that contains an instance field
                             # 2. The label instance matches the specified
-                            # instance id.
+                            #    instance id.
                             "$match": {
                                 "$and": [
                                     {
-                                        "doc.v._cls": {
-                                            "$in": SPATIAL_LABEL_TYPES,
+                                        "doc.k": {
+                                            "$in": field_names_with_instance,
                                         },
                                     },
                                     {
@@ -159,60 +178,40 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
                         # Unwind the key-value pairs to iterate over possible
                         # nested label structures.
                         {"$unwind": "$doc"},
-                        # Filter for documents where the class indicates
-                        # a list of labels (e.g., Detections, Polylines,
-                        # Keypoints).
+                        # Filter for documents where the key is one of the field
+                        # names in the schema that contains an instance field.
                         {
                             "$match": {
-                                "doc.v._cls": {"$in": SPATIAL_LABEL_LIST_TYPES}
+                                "doc.k": {"$in": field_names_with_instance}
                             }
                         },
                         # Project a field "nestedItems" using $switch to choose
-                        # the correct nested array field based on the _cls.
+                        # the correct nested array field based on the key.
                         # This extracts the array of nested labels (e.g.,
                         # detections, polylines, or keypoints).
                         {
                             "$project": {
                                 "nestedItems": {
-                                    "$switch": {
-                                        "branches": [
-                                            {
-                                                "case": {
-                                                    "$eq": [
-                                                        "$doc.v._cls",
-                                                        "Detections",
+                                    "$ifNull": [
+                                        "$doc.v.polylines",
+                                        {
+                                            "$ifNull": [
+                                                "$doc.v.detections",
+                                                {
+                                                    "$ifNull": [
+                                                        "$doc.v.keypoints",
+                                                        [],
                                                     ]
                                                 },
-                                                "then": "$doc.v.detections",
-                                            },
-                                            {
-                                                "case": {
-                                                    "$eq": [
-                                                        "$doc.v._cls",
-                                                        "Polylines",
-                                                    ]
-                                                },
-                                                "then": "$doc.v.polylines",
-                                            },
-                                            {
-                                                "case": {
-                                                    "$eq": [
-                                                        "$doc.v._cls",
-                                                        "Keypoints",
-                                                    ]
-                                                },
-                                                "then": "$doc.v.keypoints",
-                                            },
-                                        ],
-                                        "default": [],
-                                    }
+                                            ]
+                                        },
+                                    ]
                                 },
                                 "frameNumber": "$frame_number",
                             }
                         },
                         # From the nested items, filter and transform:
-                        # - Use $filter to select items that are spatial labels
-                        #   (as defined in SPATIAL_LABEL_TYPES) and whose
+                        # - Use $filter to select items whose
                         #   instance id matches the given instance.
                         # - Use $map to convert each matching label into its
                         #   _id.
@@ -228,21 +227,9 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
                                                 "input": "$nestedItems",
                                                 "as": "item",
                                                 "cond": {
-                                                    "$and": [
-                                                        {
-                                                            "$in": [
-                                                                "$$item._cls",
-                                                                SPATIAL_LABEL_TYPES,
-                                                            ]
-                                                        },
-                                                        {
-                                                            "$eq": [
-                                                                "$$item.instance._id",
-                                                                ObjectId(
-                                                                    instance_id
-                                                                ),
-                                                            ]
-                                                        },
+                                                    "$eq": [
+                                                        "$$item.instance._id",
+                                                        ObjectId(instance_id),
                                                     ]
                                                 },
                                             }
