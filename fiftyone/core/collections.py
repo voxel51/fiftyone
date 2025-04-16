@@ -17,7 +17,6 @@ import warnings
 from collections import defaultdict
 from copy import copy
 from datetime import datetime
-from typing import Any, Callable, Literal, Optional, Union
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -3899,15 +3898,15 @@ class SampleCollection(object):
 
     def map_samples(
         self,
-        map_fcn: Callable[[Any], Any],
+        map_fcn,
         *_,
-        workers: Optional[int] = None,
-        batch_method: str = "id",
-        batch_size: Optional[int] = None,
-        progress: Optional[Union[bool, Literal["worker"]]] = None,
-        parallelize_method: str = "process",
-        skip_failures: bool = False,
-        save: bool = False,
+        workers=None,
+        batch_method="id",
+        batch_size=None,
+        progress=None,
+        parallelize_method="process",
+        skip_failures=False,
+        save=False,
     ):
         """
         Applies `map_fcn` to each sample using the specified backend strategy
@@ -3920,10 +3919,12 @@ class SampleCollection(object):
               methods are 'id' and 'slice'
             batch_size (None): Number of samples per batch. If None, the batch size
                 is automatically calculated to be the number of samples per worker.
-            progress (None): Whether to show progress bar.
+            progress (None): Whether to show progress bar. If None, uses the
+                default value ``fiftyone.config.show_progress_bars``. If "workers",
+                shows a progress bar for each worker.
             parallelize_method: Explicit method to use for parallelization.
               Supported methods are 'process' and 'thread'.
-            skip_failures (True): whether to gracefully continue without
+            skip_failures (False): whether to gracefully continue without
                 raising an error if the update function raises an
                 exception for a sample.
             save (False): Whether to save any modified samples.
@@ -3945,13 +3946,13 @@ class SampleCollection(object):
 
     def update_samples(
         self,
-        update_fcn: Callable[[Any], Any],
+        update_fcn,
         *_,
-        workers: Optional[int] = None,
-        batch_method: str = None,
-        batch_size: Optional[int] = None,
-        progress: Optional[Union[bool, Literal["worker"]]] = None,
-        parallelize_method: str = None,
+        workers=None,
+        batch_method=None,
+        batch_size=None,
+        progress=None,
+        parallelize_method=None,
         skip_failures=True,
     ):
         """
@@ -3964,10 +3965,12 @@ class SampleCollection(object):
               methods are 'id' and 'slice'.
             batch_size (None): Number of samples per batch. If None, the batch size
                 is automatically calculated to be the number of samples per worker.
-            progress (None): Whether to show progress bar.
+            progress (None): Whether to show progress bar. If None, uses the
+                default value ``fiftyone.config.show_progress_bars``. If "workers",
+                shows a progress bar for each worker.
             parallelize_method: Explicit method to use for parallelization.
               Supported methods are 'process' and 'thread'.
-            skip_failures (True): whether to gracefully continue without
+            skip_failures (False): whether to gracefully continue without
                 raising an error if the update function raises an
                 exception for a sample.
         """
