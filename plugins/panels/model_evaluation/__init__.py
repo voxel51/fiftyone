@@ -1019,10 +1019,6 @@ class EvaluationPanel(Panel):
                 available_tags = [t for t in tags if t in all_tags]
                 missing_tags = list(set(tags) - set(available_tags))
 
-                print("all_tags", all_tags)
-                print("tags", tags)
-                print("missing_tags", missing_tags)
-
                 if missing_tags:
                     the_tags = "\n- ".join(missing_tags)
                     changes.append(
