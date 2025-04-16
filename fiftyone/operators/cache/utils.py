@@ -13,6 +13,7 @@ import json
 import fiftyone as fo
 from fiftyone.operators.store import ExecutionStore
 import fiftyone.operators.cache.serialization as focs
+from fiftyone.operators.cache.ephemeral import get_ephemeral_cache
 
 
 def resolve_cache_info(
@@ -23,6 +24,7 @@ def resolve_cache_info(
     key_fn,
     func,
     *,
+    residency="transient",
     operator_scoped=False,
     user_scoped=False,
     prompt_scoped=False,
@@ -30,29 +32,19 @@ def resolve_cache_info(
     collection_name=None,
 ):
     """
-    Resolves the cache key and store for a given function call,
+    Resolves the cache key, store, and memory cache for a given function call,
     including scope-based keys.
 
-    Args:
-        ctx: the ExecutionContext
-        ctx_index: the index of the ExecutionContext in the args
-        args: the function arguments
-        kwargs: the function keyword arguments
-        key_fn: a custom function to generate cache keys
-        func: the function being executed
-        operator_scoped: whether to include operator-scoped keys
-        user_scoped: whether to include user-scoped keys
-        prompt_scoped: whether to include prompt-scoped keys
-        jwt_scoped: whether to include JWT-scoped keys
-        collection_name: optional collection name for the store
-
     Returns:
-        A tuple containing the cache key, store, and a boolean indicating
-        whether to skip the cache.
+        A tuple: (cache_key, store, memory_cache, skip_cache)
     """
     cache_disabled = not fo.config.execution_cache_enabled
     if cache_disabled:
-        return None, None, True
+        return None, None, None, True
+
+    if residency not in ("ephemeral", "transient", "persistent", "hybrid"):
+        raise ValueError(f"Unsupported residency mode: {residency}")
+
     base_cache_key_tuple = _get_cache_key_tuple(
         ctx_index, args, kwargs, key_fn
     )
@@ -67,11 +59,29 @@ def resolve_cache_info(
 
     cache_key_list = list(base_cache_key_tuple) + scoped_cache_key_list
     cache_key = _build_cache_key(cache_key_list)
-    store = _get_store_for_func(
-        func, dataset_id=ctx.dataset._doc.id, collection_name=collection_name
-    )
 
-    return cache_key, store, skip_cache
+    memory_cache = None
+    store = None
+
+    if residency == "ephemeral":
+        func_id = _get_function_id(func)
+        memory_cache = get_ephemeral_cache(func_id)
+    elif residency == "hybrid":
+        func_id = _get_function_id(func)
+        memory_cache = get_ephemeral_cache(func_id)
+        store = _get_store_for_func(
+            func,
+            dataset_id=ctx.dataset._doc.id,
+            collection_name=collection_name,
+        )
+    elif residency in ("transient", "persistent"):
+        store = _get_store_for_func(
+            func,
+            dataset_id=ctx.dataset._doc.id,
+            collection_name=collection_name,
+        )
+
+    return cache_key, store, memory_cache, skip_cache
 
 
 def _get_function_id(func):

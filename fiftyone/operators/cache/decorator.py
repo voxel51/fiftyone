@@ -32,6 +32,7 @@ _FUNC_ATTRIBUTES = [
 def execution_cache(
     _func=None,
     *,
+    residency="transient",
     ttl=None,
     link_to_dataset=True,
     key_fn=None,
@@ -75,6 +76,17 @@ def execution_cache(
             a JSON-serializable value.
         deserialize (None): Custom deserialization given a JSON-serializable value and returns
             the original value.
+        residency ("hybrid"): The residency of the cache. Can be one of:
+            - "transient": Cache is stored in the execution store with policy="evict".
+            - "persistent": Cache is stored in the execution store with policy="persist".
+            - "ephemeral": Cache is stored in memory and is cleared when the process ends.
+            - "hybrid": (default) Combination of transient and ephemeral. Cache is stored in memory
+                and in the execution store. The memory cache is used first, and if
+                the value is not found, it falls back to the execution store.
+        max_size (None): Maximum size of the memory cache. Only applicable for
+            "ephemeral" and "hybrid" residency modes. If not provided, the default
+            size is 128. The cache will evict the least recently used items when
+            the size exceeds this limit.
 
     note::
 
@@ -149,13 +161,14 @@ def execution_cache(
         @wraps(func)
         def wrapper(*args, **kwargs):
             ctx, ctx_index = _get_ctx_from_args(args)
-            cache_key, store, skip_cache = resolve_cache_info(
+            cache_key, store, memory_cache, skip_cache = resolve_cache_info(
                 ctx,
                 ctx_index,
                 args,
                 kwargs,
                 key_fn,
                 func,
+                residency=residency,
                 operator_scoped=operator_scoped,
                 user_scoped=user_scoped,
                 prompt_scoped=prompt_scoped,
@@ -165,20 +178,48 @@ def execution_cache(
             if skip_cache:
                 return func(*args, **kwargs)
 
-            cached_value = store.get(cache_key)
+            # Hybrid and Ephemeral: Check memory cache first
+            if memory_cache is not None and cache_key in memory_cache:
+                cached_value = memory_cache[cache_key]
+                return (
+                    deserialize(cached_value)
+                    if deserialize
+                    else auto_deserialize(cached_value)
+                )
+
+            # Transient/Persistent/Hybrid: Check store (if applicable)
+            cached_value = None
+            if store is not None:
+                cached_value = store.get(cache_key)
+
             if cached_value is not None:
-                if deserialize is not None:
-                    return deserialize(cached_value)
-                else:
-                    return auto_deserialize(cached_value)
+                result = (
+                    deserialize(cached_value)
+                    if deserialize
+                    else auto_deserialize(cached_value)
+                )
 
+                # Hybrid: Warm memory cache
+                if memory_cache is not None:
+                    memory_cache[cache_key] = (
+                        serialize(result)
+                        if serialize
+                        else auto_serialize(result)
+                    )
+
+                return result
+
+            # Cache miss: compute result
             result = func(*args, **kwargs)
+            value_to_cache = (
+                serialize(result) if serialize else auto_serialize(result)
+            )
 
-            if serialize is not None:
-                value_to_cache = serialize(result)
-            else:
-                value_to_cache = auto_deserialize(result)
-            store.set_cache(cache_key, value_to_cache, ttl=ttl)
+            if store is not None:
+                store.set_cache(cache_key, value_to_cache, ttl=ttl)
+
+            if memory_cache is not None:
+                memory_cache[cache_key] = value_to_cache
 
             return result
 
@@ -189,45 +230,54 @@ def execution_cache(
 
         def clear_cache(*args, **kwargs):
             ctx, ctx_index = _get_ctx_from_args(args)
-            cache_key, store, _ = resolve_cache_info(
+            cache_key, store, memory_cache, _ = resolve_cache_info(
                 ctx,
                 ctx_index,
                 args,
                 kwargs,
                 key_fn,
                 func,
+                residency=residency,
                 operator_scoped=operator_scoped,
                 user_scoped=user_scoped,
                 prompt_scoped=prompt_scoped,
                 jwt_scoped=jwt_scoped,
                 collection_name=collection_name,
             )
-            store.delete(cache_key)
+            if store:
+                store.delete(cache_key)
+            if memory_cache is not None and cache_key in memory_cache:
+                del memory_cache[cache_key]
 
         wrapper.clear_cache = clear_cache
 
         def set_cache(*args, **kwargs):
             arg_to_cache = args[-1]
             regular_args = args[:-1]
-            ctx, ctx_index = _get_ctx_from_args(args)
-            cache_key, store, _ = resolve_cache_info(
+            ctx, ctx_index = _get_ctx_from_args(regular_args)
+            cache_key, store, memory_cache, _ = resolve_cache_info(
                 ctx,
                 ctx_index,
                 regular_args,
                 kwargs,
                 key_fn,
                 func,
+                residency=residency,
                 operator_scoped=operator_scoped,
                 user_scoped=user_scoped,
                 prompt_scoped=prompt_scoped,
                 jwt_scoped=jwt_scoped,
                 collection_name=collection_name,
             )
-            if serialize is not None:
-                value_to_cache = serialize(arg_to_cache)
-            else:
-                value_to_cache = auto_serialize(arg_to_cache)
-            store.set_cache(cache_key, value_to_cache, ttl=ttl)
+            value_to_cache = (
+                serialize(arg_to_cache)
+                if serialize
+                else auto_serialize(arg_to_cache)
+            )
+            if store:
+                store.set_cache(cache_key, value_to_cache, ttl=ttl)
+            if memory_cache is not None:
+                memory_cache[cache_key] = value_to_cache
 
         wrapper.set_cache = set_cache
 
