@@ -1,3 +1,4 @@
+import contextlib
 import multiprocessing
 import os
 import random
@@ -37,6 +38,17 @@ INPUT_PATHS = [
 ]
 
 
+@pytest.fixture(autouse=True, scope="session")
+def cleanup():
+    """cleanup after all tests complete"""
+
+    # registered `atexit` cleanup function is not working with pytest, however
+    # it does work when manually running
+    # cleaning up touched files after the session finishes
+    with contextlib.suppress(Exception):
+        shutil.rmtree(f"/tmp/fo-unq/{os.getpid()}")
+
+
 @pytest.mark.parametrize(
     "is_main_process",
     (
@@ -65,22 +77,6 @@ def test_implementation_switch(is_main_process):
             ) as pool:
                 for _ in range(processes):
                     assert pool.apply(process_instance_check)
-
-
-@pytest.fixture(autouse=True, scope="session")
-def cleanup():
-    """cleanup after all tests complete"""
-    pid = os.getpid()
-
-    yield
-
-    # registered `atexit` cleanup function is not working with pytest, however
-    # it does work when manually running
-    # cleaning up touched files after the session finishes
-    try:
-        shutil.rmtree(f"/tmp/fo-unq/{pid}")
-    except Exception:
-        ...
 
 
 @pytest.mark.parametrize(

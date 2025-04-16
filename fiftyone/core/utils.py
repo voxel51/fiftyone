@@ -11,7 +11,7 @@ import atexit
 from bson import json_util
 from base64 import b64encode, b64decode
 from collections import defaultdict
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from copy import deepcopy
 from datetime import date, datetime
 import glob
@@ -2130,10 +2130,8 @@ class UniqueFilenameMaker(object):
 
 
 def __rm_unique_filename_tmpdir():
-    try:
+    with suppress(Exception):
         shutil.rmtree(f"/tmp/fo-unq/{os.getpid()}")
-    except Exception:
-        ...
 
 
 atexit.register(__rm_unique_filename_tmpdir)
