@@ -83,14 +83,6 @@ def fixture_mapper_factory(
 class TestCreate:
     """Test method for creating mapper"""
 
-    @pytest.fixture(name="process_mapper_cls")
-    def patch_process_mapper_cls(self):
-        """patch process mapper cls"""
-
-        with mock.patch.object(fomp.ProcessMapper, "__init__") as constructor:
-            constructor.return_value = None
-            yield constructor
-
     class TestBatchMethod:
         """test batch method related code paths"""
 
