@@ -1934,7 +1934,7 @@ class UniqueFilenameMaker(object):
             if "python" not in parent_process.name().lower():
                 ppid = None
         except psutil.NoSuchProcess:
-            ...
+            pass  # Proceed with ppid as None if parent process doesn't exist
 
         if ppid is None or chunk_size is not None:
             return super().__new__(cls)
@@ -2138,7 +2138,10 @@ atexit.register(__rm_unique_filename_tmpdir)
 
 
 class MultiProcessUniqueFilenameMaker(object):
-    """A class that generates unique output paths in a directory.
+    """A class that generates unique output paths in a directory. This is
+    multiprocess safe and uses a shared temporary directory structure organized
+    by parent process ID and configuration hash. The approach is robust and
+    handles edge cases like idempotency and file extensions.
 
     This class provides a :meth:`get_output_path` method that generates unique
     filenames in the specified output directory.
@@ -2340,6 +2343,7 @@ class MultiProcessUniqueFilenameMaker(object):
 
                 if self.idempotent:
                     break
+
             else:
                 # The output path was successfully claimed with a placeholder.
                 break
@@ -2372,6 +2376,12 @@ class MultiProcessUniqueFilenameMaker(object):
                 touched_number
                 if touched_number > last_attempted_output_number
                 else last_attempted_output_number + 1
+            )
+
+            logger.debug(
+                "Temporary file already used: %s. Attempting to append -%s.",
+                touch_path,
+                output_number,
             )
 
         return output_path
