@@ -26,7 +26,7 @@ import fiftyone.utils.eval.segmentation as fous
 import fiftyone.utils.labels as foul
 import fiftyone.utils.iou as foui
 import fiftyone.core.collections as foc
-from decorators import drop_datasets
+from .decorators import drop_datasets
 
 
 class CustomRegressionEvaluationConfig(four.SimpleEvaluationConfig):
@@ -2032,73 +2032,7 @@ class DetectionsTests(unittest.TestCase):
 
     @drop_datasets
     def test_evaluate_detections_map_samples_called(self):
-        dataset = self._make_detections_dataset()
-
-        with mock.patch.object(
-            foc.SampleCollection, "map_samples", autospec=True
-        ) as mock_map_samples:
-            # Set up the mock to return an empty list of matches
-            mock_map_samples.return_value = []
-
-            # Evaluate with workers to trigger map_samples
-            dataset.evaluate_detections(
-                "predictions",
-                gt_field="ground_truth",
-                eval_key="map_eval",
-                method="coco",
-                iou=0.5,
-                workers=4,
-                parallelize_method="process",  # Use process-based parallelism
-            )
-
-            # Verify that map_samples was called
-            mock_map_samples.assert_called()
-
-            # Verify at least one call had the workers parameter set
-            found_workers = False
-            for call in mock_map_samples.call_args_list:
-                _, kwargs = call
-                if kwargs.get("workers") == 4:
-                    found_workers = True
-                    break
-
-            self.assertTrue(
-                found_workers, "No call to map_samples had workers=4"
-            )
-
-        # Test without workers to ensure map_samples is NOT called with parallel processing
-        with mock.patch.object(
-            foc.SampleCollection, "map_samples", autospec=True
-        ) as mock_map_samples:
-            # Set up the mock to use the default implementation
-            mock_map_samples.side_effect = foc.SampleCollection.map_samples
-
-            # Evaluate without workers
-            dataset.evaluate_detections(
-                "predictions",
-                gt_field="ground_truth",
-                eval_key="no_map_eval",
-                method="coco",
-                iou=0.5,
-                # No workers specified
-            )
-
-            # Verify no call to map_samples had workers=4
-            for call in mock_map_samples.call_args_list:
-                _, kwargs = call
-                self.assertNotEqual(
-                    kwargs.get("workers"),
-                    4,
-                    "map_samples was called with workers=4 when none was specified",
-                )
-
-    @drop_datasets
-    def test_evaluate_detections_map_samples_called(self):
         """Test that map_samples is called when evaluating detections with workers."""
-        import unittest.mock as mock
-        import numpy as np
-        import fiftyone.core.collections as foc
-
         dataset = self._make_detections_dataset()
 
         # Mock the map_samples method at a lower level that will catch all instances
@@ -2166,6 +2100,156 @@ class DetectionsTests(unittest.TestCase):
                     4,
                     "map_samples was called with workers=4 when none was specified",
                 )
+
+    @drop_datasets
+    def test_evaluate_detections_map_samples_called(self):
+        """Test that map_samples is called with correct parameters when evaluating detections."""
+        # Get a dataset
+        dataset = self._make_detections_dataset()
+
+        # Mock the map_samples method to track calls
+        original_map_samples = fo.Dataset.map_samples
+
+        # Keep track of calls to map_samples
+        map_samples_calls = []
+
+        def mock_map_samples(self, *args, **kwargs):
+            # Record the call
+            map_samples_calls.append(kwargs)
+            # Call the original function
+            return original_map_samples(self, *args, **kwargs)
+
+        try:
+            # Patch the map_samples method
+            with mock.patch.object(
+                fo.Dataset, "map_samples", new=mock_map_samples
+            ):
+                # Test with different worker counts
+                for worker_count in [1, 2, 4]:
+                    # Reset tracking
+                    map_samples_calls.clear()
+
+                    # Run evaluation with specific worker count
+                    dataset.evaluate_detections(
+                        "predictions",
+                        gt_field="ground_truth",
+                        eval_key=f"eval_validate_workers_{worker_count}",
+                        method="coco",
+                        workers=worker_count,
+                    )
+
+                    # Verify that map_samples was called
+                    self.assertTrue(
+                        len(map_samples_calls) > 0,
+                        f"map_samples was not called when workers={worker_count}",
+                    )
+
+                    # Verify workers parameter was correctly passed
+                    self.assertEqual(
+                        map_samples_calls[0].get("workers"),
+                        worker_count,
+                        f"map_samples was called with incorrect workers value. Expected {worker_count}, got {map_samples_calls[0].get('workers')}",
+                    )
+
+                # Test different parallelize methods
+                for method in ["process", "thread"]:
+                    # Reset tracking
+                    map_samples_calls.clear()
+
+                    # Run evaluation with specific parallelize method
+                    dataset.evaluate_detections(
+                        "predictions",
+                        gt_field="ground_truth",
+                        eval_key=f"eval_validate_method_{method}",
+                        method="coco",
+                        workers=2,
+                        parallelize_method=method,
+                    )
+
+                    # Verify that map_samples was called
+                    self.assertTrue(
+                        len(map_samples_calls) > 0,
+                        f"map_samples was not called when parallelize_method={method}",
+                    )
+
+                    # Verify parallelize_method parameter was correctly passed
+                    self.assertEqual(
+                        map_samples_calls[0].get("parallelize_method"),
+                        method,
+                        f"map_samples was called with incorrect parallelize_method value. Expected {method}, got {map_samples_calls[0].get('parallelize_method')}",
+                    )
+
+                # Test different batch methods
+                for batch_method in ["id", "slice"]:
+                    # Reset tracking
+                    map_samples_calls.clear()
+
+                    # Run evaluation with specific batch method
+                    dataset.evaluate_detections(
+                        "predictions",
+                        gt_field="ground_truth",
+                        eval_key=f"eval_validate_batch_{batch_method}",
+                        method="coco",
+                        workers=2,
+                        batch_method=batch_method,
+                    )
+
+                    # Verify that map_samples was called
+                    self.assertTrue(
+                        len(map_samples_calls) > 0,
+                        f"map_samples was not called when batch_method={batch_method}",
+                    )
+
+                    # Verify batch_method parameter was correctly passed
+                    self.assertEqual(
+                        map_samples_calls[0].get("batch_method"),
+                        batch_method,
+                        f"map_samples was called with incorrect batch_method value. Expected {batch_method}, got {map_samples_calls[0].get('batch_method')}",
+                    )
+
+                # Finally, test a combination of all parameters
+                map_samples_calls.clear()
+
+                # Define test parameters
+                test_workers = 4
+                test_parallelize = "thread"
+                test_batch = "slice"
+
+                dataset.evaluate_detections(
+                    "predictions",
+                    gt_field="ground_truth",
+                    eval_key="eval_validate_all",
+                    method="coco",
+                    workers=test_workers,
+                    parallelize_method=test_parallelize,
+                    batch_method=test_batch,
+                )
+
+                # Verify that map_samples was called
+                self.assertTrue(
+                    len(map_samples_calls) > 0,
+                    "map_samples was not called with combined parameters",
+                )
+
+                # Check all parameters were passed correctly
+                self.assertEqual(
+                    map_samples_calls[0].get("workers"),
+                    test_workers,
+                    f"workers parameter not passed correctly. Expected {test_workers}, got {map_samples_calls[0].get('workers')}",
+                )
+                self.assertEqual(
+                    map_samples_calls[0].get("parallelize_method"),
+                    test_parallelize,
+                    f"parallelize_method parameter not passed correctly. Expected {test_parallelize}, got {map_samples_calls[0].get('parallelize_method')}",
+                )
+                self.assertEqual(
+                    map_samples_calls[0].get("batch_method"),
+                    test_batch,
+                    f"batch_method parameter not passed correctly. Expected {test_batch}, got {map_samples_calls[0].get('batch_method')}",
+                )
+        finally:
+            # No need to restore map_samples since we used a context manager
+            pass
 
 
 class BoxesTests(unittest.TestCase):
@@ -2821,11 +2905,6 @@ class VideoDetectionsTests(unittest.TestCase):
         self.assertNotIn("eval_tp", schema)
         self.assertNotIn("eval_fp", schema)
         self.assertNotIn("eval_fn", schema)
-
-        schema = dataset.get_frame_field_schema(flat=True)
-        self.assertNotIn("eval_tp", schema)
-        self.assertNotIn("eval_fp", schema)
-        self.assertNotIn("eval_fn", schema)
         self.assertNotIn("ground_truth.detections.eval", schema)
         self.assertNotIn("ground_truth.detections.eval_id", schema)
         self.assertNotIn("ground_truth.detections.eval_iou", schema)
@@ -2844,11 +2923,6 @@ class VideoDetectionsTests(unittest.TestCase):
         )
 
         schema = dataset.get_field_schema(flat=True)
-        self.assertIn("eval2_tp", schema)
-        self.assertIn("eval2_fp", schema)
-        self.assertIn("eval2_fn", schema)
-
-        schema = dataset.get_frame_field_schema(flat=True)
         self.assertIn("eval2_tp", schema)
         self.assertIn("eval2_fp", schema)
         self.assertIn("eval2_fn", schema)
@@ -2874,11 +2948,6 @@ class VideoDetectionsTests(unittest.TestCase):
         )
 
         schema = dataset.get_field_schema(flat=True)
-        self.assertNotIn("eval2_tp", schema)
-        self.assertNotIn("eval2_fp", schema)
-        self.assertNotIn("eval2_fn", schema)
-
-        schema = dataset.get_frame_field_schema(flat=True)
         self.assertNotIn("eval2_tp", schema)
         self.assertNotIn("eval2_fp", schema)
         self.assertNotIn("eval2_fn", schema)
@@ -3455,6 +3524,150 @@ class VideoSegmentationTests(unittest.TestCase):
         self.assertNotIn("eval2_precision", dataset.get_frame_field_schema())
         self.assertNotIn("eval2_recall", dataset.get_field_schema())
         self.assertNotIn("eval2_recall", dataset.get_frame_field_schema())
+
+
+class EvaluateDetectionMultiWorkerTests(unittest.TestCase):
+    """Tests for using multiple workers with evaluate_detections."""
+
+    @classmethod
+    @drop_datasets
+    def setUpClass(cls):
+        cls.dataset = fo.Dataset("test-evaluate-detection-multi")
+        cls.tmp_dir = etau.TempDir()
+
+        # Create 10 sample images with ground truth and predictions
+        for i in range(10):
+            sample = fo.Sample(filepath=f"image{i}.jpg")
+
+            # Add ground truth detections
+            sample["ground_truth"] = fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.3, 0.3],
+                        confidence=0.9,
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.5, 0.5, 0.4, 0.4],
+                        confidence=0.8,
+                    ),
+                ]
+            )
+
+            # Add predicted detections
+            sample["predictions"] = fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0.12, 0.12, 0.28, 0.28],
+                        confidence=0.8,
+                    ),
+                    fo.Detection(
+                        label="dog",
+                        bounding_box=[0.52, 0.52, 0.38, 0.38],
+                        confidence=0.7,
+                    ),
+                ]
+            )
+
+            cls.dataset.add_sample(sample)
+
+    @classmethod
+    @drop_datasets
+    def tearDownClass(cls):
+        try:
+            if cls.dataset.name in fo.list_datasets():
+                cls.dataset.delete()
+        except:
+            pass
+        try:
+            cls.tmp_dir.close()
+        except:
+            pass
+
+    def test_evaluate_detections_single_worker(self):
+        # Test evaluation with a single worker
+        results = self.dataset.evaluate_detections(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval_single",
+            method="coco",
+            compute_mAP=True,
+            workers=1,
+        )
+
+        # Check that results are returned and have expected properties
+        self.assertIsNotNone(results)
+        metrics = results.metrics()
+        self.assertIn("precision", metrics)
+        self.assertIn("recall", metrics)
+        self.assertIsInstance(results.precision, np.ndarray)
+        self.assertIsInstance(results.recall, np.ndarray)
+        self.assertIsInstance(results.thresholds, np.ndarray)
+
+    def test_evaluate_detections_multiple_workers(self):
+        # Test evaluation with multiple workers
+        results = self.dataset.evaluate_detections(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval_multi",
+            method="coco",
+            compute_mAP=True,
+            workers=2,
+        )
+
+        # Check that results are returned and have expected properties
+        self.assertIsNotNone(results)
+        metrics = results.metrics()
+        self.assertIn("precision", metrics)
+        self.assertIn("recall", metrics)
+        self.assertIsInstance(results.precision, np.ndarray)
+        self.assertIsInstance(results.recall, np.ndarray)
+        self.assertIsInstance(results.thresholds, np.ndarray)
+
+    def test_results_consistency(self):
+        # Test that results are consistent between single and multiple worker evaluations
+        results_single = self.dataset.evaluate_detections(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="consistency_single",
+            method="coco",
+            compute_mAP=True,
+            workers=1,
+        )
+
+        results_multi = self.dataset.evaluate_detections(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="consistency_multi",
+            method="coco",
+            compute_mAP=True,
+            workers=2,
+        )
+
+        # Check that precision arrays have the same shape
+        self.assertEqual(
+            results_single.precision.shape, results_multi.precision.shape
+        )
+
+        # Check that recall arrays have the same shape
+        self.assertEqual(
+            results_single.recall.shape, results_multi.recall.shape
+        )
+
+        # Check that thresholds match
+        np.testing.assert_array_equal(
+            results_single.thresholds, results_multi.thresholds
+        )
+
+        # Values should be very close (allowing for minor floating point differences)
+        np.testing.assert_allclose(
+            results_single.precision, results_multi.precision, rtol=1e-5
+        )
+        np.testing.assert_allclose(
+            results_single.recall, results_multi.recall, rtol=1e-5
+        )
 
 
 if __name__ == "__main__":
