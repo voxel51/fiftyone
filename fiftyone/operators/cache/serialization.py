@@ -46,8 +46,10 @@ def auto_serialize(value):
             "_cls": "set",
             "values": [auto_serialize(v) for v in value],
         }
-    elif isinstance(value, (date, datetime)):
-        return value.isoformat()
+    elif isinstance(value, datetime):
+        return {"_cls": "datetime", "value": value.isoformat()}
+    elif isinstance(value, date):
+        return {"_cls": "date", "value": value.isoformat()}
     elif isinstance(value, (int, float, str, bool)) or value is None:
         return value
     elif isinstance(value, np.ndarray):
@@ -67,9 +69,7 @@ def auto_deserialize(value):
     Returns:
         The deserialized value.
     """
-    if isinstance(value, str):
-        return focu._try_parse_date(value)
-    elif focu._is_sample_dict(value):
+    if focu._is_sample_dict(value):
         value = {k: v for k, v in value.items() if k != "_cls"}
         return fo.Sample.from_dict(value)
     elif isinstance(value, dict) and "_cls" in value:
@@ -78,6 +78,13 @@ def auto_deserialize(value):
             return tuple(auto_deserialize(v) for v in value["values"])
         elif cls == "set":
             return set(auto_deserialize(v) for v in value["values"])
+        elif cls == "date":
+            return datetime.fromisoformat(value["value"]).date()
+        elif cls == "datetime":
+            return datetime.fromisoformat(value["value"])
+        raise TypeError(f"Cannot deserialize value of type {cls}: {value}")
+    elif isinstance(value, str):
+        return value
     elif isinstance(value, dict):
         return {str(k): auto_deserialize(v) for k, v in value.items()}
     elif isinstance(value, list):

@@ -109,9 +109,8 @@ INT_CLS = {
     fof.IntField: IntLightningResult,
 }
 
-LightningResults = gql.union(
-    "LightningResults",
-    (
+LightningResults = t.Annotated[
+    t.Union[
         BooleanLightningResult,
         DateLightningResult,
         DateTimeLightningResult,
@@ -119,8 +118,9 @@ LightningResults = gql.union(
         IntLightningResult,
         ObjectIdLightningResult,
         StringLightningResult,
-    ),
-)
+    ],
+    gql.union("LightningResults"),
+]
 
 
 async def lightning_resolver(
