@@ -5,6 +5,7 @@ FiftyOne Server aggregations
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from datetime import date, datetime, timedelta
 import typing as t
 
@@ -54,10 +55,12 @@ class StrCountValuesResponse(CountValuesResponse[str]):
     values: t.List[ValueCount[str]]
 
 
-CountValuesResponses = gql.union(
-    "CountValuesResponses",
-    (BoolCountValuesResponse, IntCountValuesResponse, StrCountValuesResponse),
-)
+CountValuesResponses = t.Annotated[
+    t.Union[
+        BoolCountValuesResponse, IntCountValuesResponse, StrCountValuesResponse
+    ],
+    gql.union("CountValuesResponses"),
+]
 COUNT_VALUES_TYPES = {fo.BooleanField, fo.IntField, fo.StringField}
 
 
@@ -105,14 +108,14 @@ class Aggregate:
     histogram_values: t.Optional[HistogramValues] = None
 
 
-HistogramValuesResponses = gql.union(
-    "HistogramValuesResponses",
-    (
+HistogramValuesResponses = t.Annotated[
+    t.Union[
         DatetimeHistogramValuesResponse,
         FloatHistogramValuesResponse,
         IntHistogramValuesResponse,
-    ),
-)
+    ],
+    gql.union("HistogramValuesResponses"),
+]
 
 
 HISTOGRAM_VALUES_TYPES = {
@@ -134,9 +137,8 @@ class AggregateQuery:
         view_name: t.Optional[str] = None,
         form: t.Optional[ExtendedViewForm] = None,
     ) -> t.List[
-        gql.union(
-            "AggregationResponses",
-            (
+        t.Annotated[
+            t.Union[
                 CountResponse,
                 BoolCountValuesResponse,
                 IntCountValuesResponse,
@@ -144,8 +146,9 @@ class AggregateQuery:
                 DatetimeHistogramValuesResponse,
                 FloatHistogramValuesResponse,
                 IntHistogramValuesResponse,
-            ),
-        )
+            ],
+            gql.union("AggregationResponses"),
+        ]
     ]:
         view = await load_view(
             dataset_name=dataset_name,
