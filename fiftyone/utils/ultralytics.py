@@ -410,7 +410,9 @@ class FiftyOneYOLOModel(Model):
             model = ultralytics.YOLO()
 
         if config.classes:
-            if isinstance(model, ultralytics.YOLOE):
+            if hasattr(ultralytics, "YOLOE") and isinstance(
+                model, ultralytics.YOLOE
+            ):
                 model.set_classes(
                     config.classes, model.get_text_pe(config.classes)
                 )
