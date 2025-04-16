@@ -396,6 +396,8 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
 
             kwargs = config.entrypoint_args
             if kwargs:
+                if config.model_path:
+                    kwargs["model"] = config.model_path
                 model = entrypoint_fcn(**kwargs)
             else:
                 model = entrypoint_fcn()
@@ -410,6 +412,25 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             else:
                 model.set_classes(config.classes)
 
+        if not model.predictor:
+            conf = (
+                config.confidence_thresh if config.confidence_thresh else 0.01
+            )
+            custom = {
+                "conf": conf,
+                "batch": 1,
+                "save": False,
+                "mode": "predict",
+                "rect": True,
+                "verbose": False,
+            }
+            args = {**model.overrides, **custom}
+            # Uses private Ultralytics method to load. Fix this.
+            model.predictor = model._smart_load("predictor")(
+                overrides=args,
+                _callbacks=model.callbacks,
+            )
+            model.predictor.setup_model(model=model.model, verbose=False)
         return model
 
     def _parse_classes(self, config):
@@ -418,7 +439,19 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         return None
 
     def _forward_pass(self, imgs):
-        return self._model(imgs, verbose=False)
+        return self._model.predictor(imgs, stream=False)
+
+    # def _build_transforms(self, config):
+    #     if config.ragged_batches is not None:
+    #         ragged_batches = config.ragged_batches
+    #     else:
+    #         ragged_batches = True
+
+    #     transforms = [self._model.predictor.preprocess]
+    #     transforms.append(torchvision.transforms.ToTensor())
+    #     transforms = torchvision.transforms.Compose(transforms)
+
+    #     return transforms, ragged_batches
 
 
 class FiftyOneRTDETRModelConfig(FiftyOneYOLOModelConfig):
