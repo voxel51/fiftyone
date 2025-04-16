@@ -3,7 +3,6 @@ import os
 import random
 import shutil
 import tempfile
-import time
 from typing import Any, Dict, Optional
 
 import pytest
@@ -52,7 +51,11 @@ def test_implementation_switch(is_main_process):
         if is_main_process:
             filename_maker = focu.UniqueFilenameMaker(tmp_dir)
 
-            assert isinstance(filename_maker, focu.UniqueFilenameMaker)
+            assert isinstance(
+                filename_maker, focu.UniqueFilenameMaker
+            ) and not isinstance(
+                filename_maker, focu.MultiProcessUniqueFilenameMaker
+            )
 
         else:
             with multiprocessing.Pool(
@@ -133,13 +136,16 @@ def test_existing_input_paths(
             tmp_dir, **unique_filename_maker_kwargs
         )
 
-        assert isinstance(filename_maker, focu.UniqueFilenameMaker)
+        assert isinstance(
+            filename_maker, focu.UniqueFilenameMaker
+        ) and not isinstance(
+            filename_maker, focu.MultiProcessUniqueFilenameMaker
+        )
 
         # This is the original behavior of `get_output_path``, used as the
         # baseline.
-        expected_input_paths = INPUT_PATHS[:]
 
-        random.shuffle(expected_input_paths)
+        random.shuffle(expected_input_paths := INPUT_PATHS[:])
 
         expected = list(
             map(filename_maker.get_output_path, expected_input_paths)
@@ -155,8 +161,7 @@ def test_existing_input_paths(
                 unique_filename_maker_kwargs,
             ),
         ) as pool:
-            actual_input_paths = INPUT_PATHS[:]
-            random.shuffle(actual_input_paths)
+            random.shuffle(actual_input_paths := INPUT_PATHS[:])
 
             actual = list(
                 pool.imap_unordered(
@@ -244,7 +249,7 @@ def process_instance_check() -> bool:
     """process instance check"""
     return isinstance(
         process_filename_maker, focu.MultiProcessUniqueFilenameMaker
-    )
+    ) and not isinstance(process_filename_maker, focu.UniqueFilenameMaker)
 
 
 def process_get_output_path(input_path: str) -> str:

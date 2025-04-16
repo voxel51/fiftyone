@@ -1918,7 +1918,7 @@ class UniqueFilenameMaker(object):
 
     def __new__(
         cls,
-        output_dir,
+        output_dir=None,
         rel_dir=None,
         alt_dir=None,
         chunk_size=None,
@@ -1952,7 +1952,7 @@ class UniqueFilenameMaker(object):
 
     def __init__(
         self,
-        output_dir,
+        output_dir=None,
         rel_dir=None,
         alt_dir=None,
         chunk_size=None,
