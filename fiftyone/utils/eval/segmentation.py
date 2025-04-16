@@ -42,10 +42,9 @@ def evaluate_segmentations(
     method=None,
     custom_metrics=None,
     progress=None,
-    num_workers=1,
+    workers=1,
     batch_method="id",
     parallelize_method=None,
-    use_backoff=False,
     **kwargs,
 ):
     """Evaluates the specified semantic segmentation masks in the given
@@ -101,13 +100,11 @@ def evaluate_segmentations(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
-        num_workers (1): the number of processes to use for parallel
+        workers (1): the number of processes to use for parallel
             processing. Set to a value greater than 1 to enable parallel
             processing
         batch_method ("id"): the method to use to shard the dataset
         parallelize_method (None): the parallelize_method to use for multiprocessing
-        use_backoff (False): whether to use exponential backoff when retrying
-            failed operations
         **kwargs: optional keyword arguments for the constructor of the
             :class:`SegmentationEvaluationConfig` being used
 
@@ -137,10 +134,9 @@ def evaluate_segmentations(
         eval_key=eval_key,
         mask_targets=mask_targets,
         progress=progress,
-        num_workers=num_workers,
+        workers=workers,
         batch_method=batch_method,
         parallelize_method=parallelize_method,
-        use_backoff=use_backoff,
     )
     eval_method.compute_custom_metrics(samples, eval_key, results)
     eval_method.save_run_results(samples, eval_key, results)
@@ -233,7 +229,6 @@ class SegmentationEvaluation(BaseEvaluationMethod):
         workers=1,
         batch_method="id",
         parallelize_method=None,
-        use_backoff=False,
     ):
         """Evaluates the predicted segmentation masks in the given samples with
         respect to the specified ground truth masks.
@@ -253,8 +248,6 @@ class SegmentationEvaluation(BaseEvaluationMethod):
                 processing
             batch_method ("id"): the method to use to shard the dataset
             parallelize_method (None): the parallelize_method to use for multiprocessing
-            use_backoff (False): whether to use exponential backoff when retrying
-                failed operations
 
         Returns:
             a :class:`SegmentationResults` instance
@@ -400,7 +393,6 @@ class SimpleEvaluation(SegmentationEvaluation):
         workers=1,
         batch_method="id",
         parallelize_method=None,
-        use_backoff=False,
     ):
         """Evaluates the predicted segmentation masks in the given samples with
         respect to the specified ground truth masks.
@@ -420,8 +412,6 @@ class SimpleEvaluation(SegmentationEvaluation):
                 processing
             batch_method ("id"): the method to use to shard the dataset
             parallelize_method (None): the parallelize_method to use for multiprocessing
-            use_backoff (False): whether to use exponential backoff when retrying
-                failed operations
 
         Returns:
             a :class:`SegmentationResults` instance
@@ -446,7 +436,6 @@ class SimpleEvaluation(SegmentationEvaluation):
                 workers=workers,
                 batch_method=batch_method,
                 parallelize_method=parallelize_method,
-                use_backoff=use_backoff,
             )
 
         _samples = samples.select_fields([gt_field, pred_field])
@@ -530,27 +519,16 @@ class SimpleEvaluation(SegmentationEvaluation):
 
         logger.info("Evaluating segmentations...")
 
-        # Use parallelized processing if parallelize_method is provided
-        if parallelize_method is not None and workers > 1:
-            eval_data = []
-            for _, result in samples.map_samples(
-                _eval_sample,
-                workers=workers,
-                batch_method=batch_method,
-                progress=progress,
-                save=save,
-                parallelize_method=parallelize_method,
-                use_backoff=use_backoff,
-            ):
-                eval_data.append(result)
-        else:
-            # Use sequential processing
-            eval_data = []
-            for sample in _samples.iter_samples(
-                progress=progress, autosave=save
-            ):
-                result = _eval_sample(sample)
-                eval_data.append(result)
+        eval_data = []
+        for _, result in samples.map_samples(
+            _eval_sample,
+            workers=workers,
+            batch_method=batch_method,
+            progress=progress,
+            save=save,
+            parallelize_method=parallelize_method,
+        ):
+            eval_data.append(result)
 
         # Aggregate results
         confusion_matrix = np.zeros((len(values), len(values)), dtype=int)
@@ -797,7 +775,6 @@ def _get_mask_values(
     workers=1,
     batch_method="id",
     parallelize_method=None,
-    use_backoff=False,
 ):
     _samples = samples.select_fields([gt_field, pred_field])
     pred_field, processing_frames = samples._handle_frame_field(pred_field)
@@ -829,23 +806,14 @@ def _get_mask_values(
 
         return sample_values, sample_is_rgb
 
-    # Use parallel processing if parallelize_method is provided
-    if parallelize_method is not None and workers > 1:
-        for _, (sample_values, sample_is_rgb) in samples.map_samples(
-            _get_sample_values,
-            workers=workers,
-            batch_method=batch_method,
-            progress=progress,
-            use_backoff=use_backoff,
-        ):
-            values.update(sample_values)
-            is_rgb = is_rgb or sample_is_rgb
-    else:
-        # Use sequential processing
-        for sample in _samples.iter_samples(progress=progress):
-            sample_values, sample_is_rgb = _get_sample_values(sample)
-            values.update(sample_values)
-            is_rgb = is_rgb or sample_is_rgb
+    for _, (sample_values, sample_is_rgb) in samples.map_samples(
+        _get_sample_values,
+        workers=workers,
+        batch_method=batch_method,
+        progress=progress,
+    ):
+        values.update(sample_values)
+        is_rgb = is_rgb or sample_is_rgb
 
     values = sorted(values)
 
