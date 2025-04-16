@@ -32,12 +32,45 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
     async def post(self, request: Request, data: dict):
         instance_id = data.get("instanceId")
 
+        if not instance_id:
+            return JSONResponse(
+                {
+                    "error": "instanceId is required",
+                },
+                status_code=400,
+            )
+
         num_frames = int(data.get("numFrames"))
+
+        if not num_frames or num_frames <= 0:
+            return JSONResponse(
+                {
+                    "error": "numFrames is required and must be a positive integer",
+                },
+                status_code=400,
+            )
+
         dataset = data.get("dataset")
 
-        stages = data.get("view", [])
+        if not dataset:
+            return JSONResponse(
+                {
+                    "error": "dataset is required",
+                },
+                status_code=400,
+            )
 
         sample_id = data.get("sampleId")
+
+        if not sample_id:
+            return JSONResponse(
+                {
+                    "error": "sampleId is required",
+                },
+                status_code=400,
+            )
+
+        stages = data.get("view", [])
         extended = data.get("extended", None)
 
         start_frame = 1

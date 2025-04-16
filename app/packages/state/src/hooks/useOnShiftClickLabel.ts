@@ -298,6 +298,11 @@ export const useOnShiftClickLabel = () => {
         const hoveredSampleValue = snapshot
           .getLoadable(hoveredSample)
           .getValue() as unknown as FrameSample;
+
+        if (!hoveredSampleValue) {
+          return;
+        }
+
         const isVideoWithMultipleFrames =
           hoveredSampleValue?._media_type === "video" &&
           hoveredSampleValue?.frames?.length > 0;
@@ -308,6 +313,6 @@ export const useOnShiftClickLabel = () => {
           return handleGroup(sampleId, labels, e);
         }
       },
-    [handleGroup]
+    [handleGroup, handleVideo]
   );
 };
