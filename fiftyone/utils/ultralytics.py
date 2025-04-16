@@ -420,27 +420,6 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
     def _forward_pass(self, imgs):
         return self._model(imgs, verbose=False)
 
-    def _predict_all(self, imgs):
-        height, width = None, None
-
-        if isinstance(imgs, (list, tuple)):
-            imgs = torch.stack(imgs)
-
-        height, width = imgs.size()[-2:]
-        if self._using_gpu:
-            imgs = imgs.to(self._device)
-
-        output = self._forward_pass(imgs)
-
-        if self.has_logits:
-            self._output_processor.store_logits = self.store_logits
-
-        return self._output_processor(
-            output,
-            (width, height),
-            confidence_thresh=self.config.confidence_thresh,
-        )
-
 
 class FiftyOneRTDETRModelConfig(FiftyOneYOLOModelConfig):
     """Configuration for a :class:`FiftyOneRTDETRModel`.
