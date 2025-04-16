@@ -31,6 +31,8 @@ class TestCacheSerialization(unittest.TestCase):
             "tuple": (4, 5, 6),
             "set": {7, 8, 9},
             "nested": {"x": 10, "y": [11, 12]},
+            "date": datetime.date(2021, 6, 9),
+            "single_char": "1",
         }
 
         serialized = auto_serialize(data)
@@ -45,6 +47,9 @@ class TestCacheSerialization(unittest.TestCase):
         self.assertEqual(deserialized["set"], {7, 8, 9})
         self.assertEqual(deserialized["tuple"], (4, 5, 6))
         self.assertEqual(deserialized["nested"]["x"], 10)
+        self.assertEqual(deserialized["nested"]["y"], [11, 12])
+        self.assertEqual(deserialized["date"], datetime.date(2021, 6, 9))
+        self.assertEqual(deserialized["single_char"], "1")
 
     def test_auto_serialize_deserialize_datetime(self):
         dt = datetime.datetime(2019, 4, 11, 12, 0, 0)
@@ -72,7 +77,6 @@ class TestCacheSerialization(unittest.TestCase):
                 "bool": True,
                 "float": 1.23,
                 "sample": sample_dict,
-                "date": "2023-10-01T12:00:00Z",
             },
         }
 
@@ -83,7 +87,6 @@ class TestCacheSerialization(unittest.TestCase):
         self.assertAlmostEqual(result["b"]["float"], 1.23)
         self.assertIsInstance(result["b"]["sample"], fo.Sample)
         self.assertEqual(result["b"]["sample"].filepath, expected_path)
-        self.assertIsInstance(result["b"]["date"], datetime.datetime)
 
     def test_auto_serialize_sample(self):
         expected_path = str(Path(Path.cwd().anchor, "tmp", "image.jpg"))
