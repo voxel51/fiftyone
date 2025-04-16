@@ -41,7 +41,7 @@ export const getLogStatus = (runData: RunData) => {
       ? LOG_STATUS.UPLOAD_SUCCESS_LARGE_FILE
       : LOG_STATUS.UPLOAD_SUCCESS;
   }
-
+  // when log preview is available (could be either cloud storage or local path)
   if ((logUrl || (logPath && logSize)) && !logUploadError && runHasFinished) {
     return LOG_STATUS.UPLOAD_SUCCESS;
   }
