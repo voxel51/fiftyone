@@ -35,17 +35,54 @@ export const filterSearch = selectorFamily({
     (path: string) =>
     ({ get }) => {
       const allIndexes = get(indexInfo)?.sampleIndexes ?? [];
+      const f = get(filters) ?? {};
+      const pathMap: { [key: string]: string } = {};
+      for (const key in f) {
+        pathMap[get(schemaAtoms.dbPath(key))] = key;
+      }
+
+      let result: typeof f | undefined = undefined;
+      let resultName: string | undefined = undefined;
 
       for (const index of allIndexes) {
-        const key = index.key[0];
-        if (key.field === get(schemaAtoms.dbPath(path))) {
+        if (index.key[0].field === get(schemaAtoms.dbPath(path))) {
           return { filters: {}, index: index.name };
         }
       }
 
-      const f = { ...get(filters) };
-      delete f[path];
-      return { filters: f };
+      for (const index of allIndexes) {
+        const current: typeof f = {};
+        for (const key of index.key) {
+          if (key.field === get(schemaAtoms.dbPath(path))) {
+            if (
+              !result ||
+              Object.keys(current).length > Object.keys(result).length
+            ) {
+              result = current;
+              resultName = index.name;
+            }
+            break;
+          }
+
+          if (pathMap[key.field]) {
+            current[pathMap[key.field]] = f[pathMap[key.field]];
+          }
+        }
+      }
+
+      if (!result) {
+        const active = get(validIndexes(get(filterKeys))).active;
+
+        if (active.length) {
+          result = {};
+          for (const key of active[1]) {
+            result[pathMap[key]] = f[pathMap[key]];
+          }
+          resultName = active[0];
+        }
+      }
+
+      return { filters: result, index: resultName };
     },
 });
 
@@ -350,4 +387,29 @@ const queryPerformanceStore = atomFamily<boolean, string>({
       valueClass: "boolean",
     }),
   ],
+});
+
+const queryPerformanceMaxSearchStore = atomFamily<number, string>({
+  key: "queryPerformanceMaxSearchStore",
+  default: 100000,
+  effects: (datasetId) => [
+    getBrowserStorageEffectForKey(
+      `queryPerformanceMaxSearchResults-${datasetId}`,
+      {
+        sessionStorage: true,
+        valueClass: "number",
+      }
+    ),
+  ],
+});
+
+export const queryPerformanceMaxSearch = selector({
+  key: "queryPerformanceMaxSearch",
+  get: ({ get }) => get(queryPerformanceMaxSearchStore(get(datasetId))),
+  set: ({ get, set }, value) => {
+    set(
+      queryPerformanceMaxSearchStore(get(datasetId)),
+      value instanceof DefaultValue ? 100000 : value
+    );
+  },
 });

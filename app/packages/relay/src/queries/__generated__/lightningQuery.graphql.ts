@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<388464e77a547faf7bf6634749498adf>>
+ * @generated SignedSource<<8c23c1e574662b858477516767787ab6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -19,6 +19,7 @@ export type LightningPathInput = {
   filters?: object | null;
   first?: number | null;
   index?: string | null;
+  maxDocumentsSearch?: number | null;
   path: string;
   search?: string | null;
 };

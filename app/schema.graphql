@@ -464,8 +464,9 @@ input LightningPathInput {
   """
   exclude: [String!] = null
   filters: BSON = null
-  first: Int = 200
+  first: Int = 100
   index: String = null
+  maxDocumentsSearch: Int = null
   search: String = null
 }
 
@@ -610,7 +611,7 @@ type Query {
   ): [AggregationResponses!]!
   datasets(
     search: String
-    first: Int = 200
+    first: Int = 100
     after: String = null
   ): DatasetStrConnection!
   aggregations(form: AggregationForm!): [AggregateResult!]!

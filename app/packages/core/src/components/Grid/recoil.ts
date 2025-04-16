@@ -33,63 +33,19 @@ const sortFieldsMap = selector({
   },
 });
 
-export const sortFields = selector({
-  key: "sortFields",
-  get: ({ get }) => {
-    const filters = Object.keys(get(fos.filters) ?? {});
-    const valid = get(fos.validIndexes(new Set(filters)));
-    const all = new Set([
-      ...valid.available.map(([_, i]) => i),
-      ...valid.trailing.map(([_, i]) => i),
-    ]);
-
-    return [...all]
-      .sort()
-      .map((path) => get(fos.fieldPath(path)))
-      .filter((path) => get(fos.isNumericField(path)));
-  },
-});
-
-export const gridSortByState = atom<{
-  descending: boolean;
-  field: string;
-} | null>({
-  key: "gridSortByState",
-  default: null,
-});
-
-export const gridSortBy = selector({
-  key: "gridSortBy",
-  get: ({ get }) => {
-    if (!get(fos.queryPerformance)) {
-      return null;
-    }
-
-    const fields = get(sortFields);
-    const state = get(gridSortByState);
-
-    if (!state) {
-      return null;
-    }
-
-    if (fields.length === 1) {
-      return { descending: state.descending, field: fields[0] };
-    }
-
-    if (!fields.includes(state.field)) {
-      return null;
-    }
-
-    return state;
-  },
-});
-
 const gridSortIndex = selector({
   key: "gridSortIndex",
   get: ({ get }) => {
-    const field = get(gridSortBy)?.field;
+    if (!get(fos.queryPerformance)) {
+      return undefined;
+    }
+
+    const field = get(fos.gridSortBy)?.field;
     if (!field) return undefined;
-    return get(sortFieldsMap)[field][0];
+
+    const map = get(sortFieldsMap);
+    if (!map[field]) return undefined;
+    return map[field][0];
   },
 });
 
@@ -234,8 +190,8 @@ export const pageParameters = selector({
 
     const extra = queryPerformance
       ? {
-          sortBy: get(gridSortBy)?.field,
-          desc: get(gridSortBy)?.descending,
+          sortBy: get(fos.gridSortBy)?.field,
+          desc: get(fos.gridSortBy)?.descending,
           hint: get(gridSortIndex),
         }
       : {};

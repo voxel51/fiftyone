@@ -48,7 +48,7 @@ const Lightning = ({
     <>
       <LightningBolt
         color={(filteredIndex && hasFilters) || isFiltered ? color : undefined}
-        tooltip={filteredIndex ? "Compound index" : "Indexed"}
+        tooltip={filteredIndex && hasFilters ? "Compound index" : "Indexed"}
       />
       <Arrow
         expanded={fos.sidebarExpanded({ modal: false, path: expandedPath })}

@@ -121,7 +121,9 @@ const StringFilter = ({
                       ? color
                       : undefined
                   }
-                  tooltip={filteredIndex ? "Compound index" : "Indexed"}
+                  tooltip={
+                    filteredIndex && hasFilters ? "Compound index" : "Indexed"
+                  }
                 />
               )}
             </NamedStringFilterHeader>

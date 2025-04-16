@@ -17,6 +17,7 @@ import {
 import {
   MANAGING_GRID_MEMORY,
   OPTIMIZING_QUERY_PERFORMANCE,
+  QUERY_PERFORMANCE_RESULTS,
 } from "../../../utils/links";
 import Checkbox from "../../Common/Checkbox";
 import RadioGroup from "../../Common/RadioGroup";
@@ -193,6 +194,10 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
 const QueryPerformance = () => {
   const theme = useTheme();
   const [enabled, setEnabled] = useRecoilState(fos.queryPerformance);
+  const [maxSearch, setMaxSearch] = useRecoilState(
+    fos.queryPerformanceMaxSearch
+  );
+  const resetMaxSearch = useResetRecoilState(fos.queryPerformanceMaxSearch);
   if (!useRecoilValue(fos.enableQueryPerformanceConfig)) {
     return null;
   }
@@ -221,6 +226,53 @@ const QueryPerformance = () => {
           onClick: () => setEnabled(value === "enabled"),
         }))}
       />
+      <ActionOption
+        id="qp-results"
+        text="Query Performance results"
+        href={QUERY_PERFORMANCE_RESULTS}
+        title={"More on Query Performance results"}
+        style={{
+          background: "unset",
+          color: theme.text.primary,
+          paddingTop: 0,
+          paddingBottom: 0,
+        }}
+        svgStyles={{ height: "1rem", marginTop: 7.5 }}
+      />
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          columnGap: "0.5rem",
+        }}
+      >
+        <Selector
+          placeholder="max search"
+          onSelect={async (text) => {
+            if (text === "") {
+              resetMaxSearch();
+              return "";
+            }
+            const value = Number.parseInt(text);
+
+            if (!Number.isNaN(value)) {
+              setMaxSearch(value);
+              return text;
+            }
+
+            return "";
+          }}
+          inputStyle={{
+            fontSize: "1rem",
+            textAlign: "right",
+            float: "right",
+          }}
+          key={"query-performance-results"}
+          value={maxSearch.toString()}
+          containerStyle={{ display: "flex", justifyContent: "right", flex: 1 }}
+        />
+        <div>max search</div>
+      </div>
     </>
   );
 };

@@ -1,9 +1,8 @@
 import { Selector } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
+import { gridSortBy, gridSortFields } from "@fiftyone/state";
 import { ArrowDownward, ArrowUpward } from "@mui/icons-material";
 import React from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
-import { gridSortBy, gridSortByState, sortFields } from "../recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { RightDiv, SliderContainer } from "./Containers";
 
 const Field = ({ value }: { className?: string; value: string }) => {
@@ -11,11 +10,9 @@ const Field = ({ value }: { className?: string; value: string }) => {
 };
 
 export default function Sort() {
-  const indexes = useRecoilValue(sortFields);
-  const value = useRecoilValue(gridSortBy);
-  const select = useSetRecoilState(gridSortByState);
-  const queryPerformance = useRecoilValue(fos.queryPerformance);
-  if (!indexes.length || !queryPerformance) {
+  const fields = useRecoilValue(gridSortFields);
+  const [value, select] = useRecoilState(gridSortBy);
+  if (!fields.length) {
     return null;
   }
 
@@ -45,7 +42,7 @@ export default function Sort() {
             }));
           }}
           useSearch={(v) => {
-            const values = indexes.filter((field) => field.startsWith(v));
+            const values = fields.filter((field) => field.startsWith(v));
             return { values: ["-", ...values] };
           }}
           overflow={true}
