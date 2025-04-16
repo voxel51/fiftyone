@@ -816,12 +816,8 @@ def _make_fo_torch_dataset(
     skip_failures,  # have to implement this
     field_mapping=None,
 ):
-    if skip_failures:
-        logger.warning(
-            "skip_failures not implemented yet. Not skipping failures."
-        )
     get_item = model._build_get_item(field_mapping=field_mapping)
-    dataset = samples.to_torch(get_item=get_item)
+    dataset = samples.to_torch(get_item=get_item, skip_failures=skip_failures)
     return dataset
 
 
