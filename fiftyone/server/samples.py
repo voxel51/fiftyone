@@ -72,16 +72,13 @@ class VideoSample(Sample):
     frame_rate: float
 
 
-SampleItem = gql.union(
-    "SampleItem",
-    types=(
-        ImageSample,
-        PointCloudSample,
-        ThreeDSample,
-        VideoSample,
-        UnknownSample,
-    ),
-)
+SampleItem = t.Annotated[
+    t.Union[
+        ImageSample, PointCloudSample, ThreeDSample, VideoSample, UnknownSample
+    ],
+    gql.union("SampleItem"),
+]
+
 
 MEDIA_TYPES = collections.defaultdict(lambda: UnknownSample)
 MEDIA_TYPES.update(

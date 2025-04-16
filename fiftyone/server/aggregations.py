@@ -96,17 +96,17 @@ class StringAggregation(Aggregation):
     values: t.Optional[t.List[StringAggregationValue]] = None
 
 
-AggregateResult = gql.union(
-    "AggregateResult",
-    (
+AggregateResult = t.Annotated[
+    t.Union[
         BooleanAggregation,
         DataAggregation,
         IntAggregation,
         FloatAggregation,
         RootAggregation,
         StringAggregation,
-    ),
-)
+    ],
+    gql.union("AggregateResult"),
+]
 
 
 async def aggregate_resolver(
