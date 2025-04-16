@@ -811,6 +811,7 @@ def _get_mask_values(
         workers=workers,
         batch_method=batch_method,
         progress=progress,
+        parallelize_method=parallelize_method,
     ):
         values.update(sample_values)
         is_rgb = is_rgb or sample_is_rgb

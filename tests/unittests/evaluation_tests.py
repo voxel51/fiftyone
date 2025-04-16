@@ -3208,6 +3208,76 @@ class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
         # Support should be positive (pixels count)
         self.assertTrue(metrics["support"] > 0)
 
+    def test_multi_worker_configurations(self):
+        """Test different worker counts, parallelize methods, and batch methods."""
+        # Define test configurations
+        configs = [
+            # workers, parallelize_method, batch_method
+            (2, "process", "id"),
+            (2, "process", "slice"),
+            (2, "thread", "id"),
+            (2, "thread", "slice"),
+            (4, "process", "id"),
+            (4, "process", "slice"),
+            (4, "thread", "id"),
+            (4, "thread", "slice"),
+        ]
+
+        results_dict = {}
+
+        # Run evaluations with different configurations
+        for i, (workers, parallelize_method, batch_method) in enumerate(
+            configs
+        ):
+            eval_key = f"eval_config_{i}"
+
+            print(
+                f"\nTesting with {workers} workers, {parallelize_method} parallelize method, {batch_method} batch method"
+            )
+
+            results = self.dataset.evaluate_segmentations(
+                "predictions",
+                gt_field="ground_truth",
+                eval_key=eval_key,
+                method="simple",
+                workers=workers,
+                parallelize_method=parallelize_method,
+                batch_method=batch_method,
+            )
+
+            # Store results for comparison
+            results_dict[eval_key] = results.metrics()
+
+            # Check that results are valid
+            self.assertTrue(hasattr(results, "metrics"))
+            metrics = results.metrics()
+
+            # Check that metrics are available
+            self.assertIn("accuracy", metrics)
+            self.assertIn("precision", metrics)
+            self.assertIn("recall", metrics)
+
+            # All metrics should be between 0 and 1 (except support)
+            self.assertTrue(0 <= metrics["accuracy"] <= 1)
+            self.assertTrue(0 <= metrics["precision"] <= 1)
+            self.assertTrue(0 <= metrics["recall"] <= 1)
+
+        # Verify consistency of results across all configurations
+        baseline_metrics = results_dict["eval_config_0"]
+        for eval_key, metrics in results_dict.items():
+            if eval_key == "eval_config_0":
+                continue
+
+            print(f"Comparing baseline to {eval_key}")
+            for metric in ["accuracy", "precision", "recall", "fscore"]:
+                # Allow for small floating-point differences
+                self.assertAlmostEqual(
+                    float(baseline_metrics[metric]),
+                    float(metrics[metric]),
+                    places=5,
+                    msg=f"{metric} differs between configurations",
+                )
+
     def test_results_consistency(self):
         """Test that results are consistent across multiple runs."""
         # First evaluation
@@ -3216,6 +3286,7 @@ class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
             gt_field="ground_truth",
             eval_key="eval_consistency1",
             method="simple",
+            workers=2,
         )
 
         # Second evaluation
@@ -3224,6 +3295,7 @@ class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
             gt_field="ground_truth",
             eval_key="eval_consistency2",
             method="simple",
+            workers=2,
         )
 
         # Get metrics from both results
@@ -3236,55 +3308,153 @@ class EvaluateSegmentationMultiWorkerTests(unittest.TestCase):
                 float(metrics1[metric]), float(metrics2[metric]), places=5
             )
 
-    def test_evaluation_timing(self):
-        """Test evaluation timing to verify parallelization is working."""
-        # Create a larger dataset
-        large_dataset = fo.Dataset("test-evaluate-segmentation-large")
+    def test_map_samples_validation(self):
+        """Test validation of map_samples parameters when evaluating segmentations."""
+        import unittest.mock as mock
 
-        # Add 50 samples with larger segmentation masks
-        for i in range(50):
-            sample = fo.Sample(filepath=f"test_large_{i}.jpg")
+        # Mock the map_samples method to track calls
+        original_map_samples = fo.Dataset.map_samples
 
-            # Make larger masks (200x200) to increase computation time
-            sample["ground_truth"] = fo.Segmentation(
-                mask=np.zeros((200, 200), dtype=np.uint8)
-            )
-            # Set some pixels to class 1
-            sample["ground_truth"].mask[40:80, 40:80] = 1
+        # Keep track of calls to map_samples
+        map_samples_calls = []
 
-            # Add predicted segmentations
-            sample["predictions"] = fo.Segmentation(
-                mask=np.zeros((200, 200), dtype=np.uint8)
-            )
-            # Set similar but slightly different pixels to class 1
-            sample["predictions"].mask[50:90, 50:90] = 1
-
-            large_dataset.add_sample(sample)
+        def mock_map_samples(self, *args, **kwargs):
+            # Record the call
+            map_samples_calls.append(kwargs)
+            # Call the original function
+            return original_map_samples(self, *args, **kwargs)
 
         try:
-            # Time the evaluation
-            start_time = time.time()
-            results = large_dataset.evaluate_segmentations(
-                "predictions",
-                gt_field="ground_truth",
-                eval_key="eval_timing",
-                method="simple",
-            )
-            duration = time.time() - start_time
+            # Patch the map_samples method
+            with mock.patch.object(
+                fo.Dataset, "map_samples", new=mock_map_samples
+            ):
+                # Test with different worker counts
+                for worker_count in [1, 2, 4]:
+                    # Reset tracking
+                    map_samples_calls.clear()
 
-            # Just verify the evaluation completed successfully
-            self.assertTrue(hasattr(results, "metrics"))
-            metrics = results.metrics()
-            self.assertIn("accuracy", metrics)
-            self.assertIn("precision", metrics)
-            self.assertIn("recall", metrics)
+                    # Run evaluation with specific worker count
+                    self.dataset.evaluate_segmentations(
+                        "predictions",
+                        gt_field="ground_truth",
+                        eval_key=f"eval_validate_workers_{worker_count}",
+                        method="simple",
+                        workers=worker_count,
+                    )
 
-            # Print duration for information
-            print(f"Evaluation duration for 50 samples: {duration:.2f}s")
+                    # Verify that map_samples was called
+                    self.assertTrue(
+                        len(map_samples_calls) > 0,
+                        f"map_samples was not called when workers={worker_count}",
+                    )
 
+                    # Verify workers parameter was correctly passed
+                    self.assertEqual(
+                        map_samples_calls[0].get("workers"),
+                        worker_count,
+                        f"map_samples was called with incorrect workers value. Expected {worker_count}, got {map_samples_calls[0].get('workers')}",
+                    )
+
+                # Test different parallelize methods
+                for method in ["process", "thread"]:
+                    # Reset tracking
+                    map_samples_calls.clear()
+
+                    # Run evaluation with specific parallelize method
+                    self.dataset.evaluate_segmentations(
+                        "predictions",
+                        gt_field="ground_truth",
+                        eval_key=f"eval_validate_method_{method}",
+                        method="simple",
+                        workers=2,
+                        parallelize_method=method,
+                    )
+
+                    # Verify that map_samples was called
+                    self.assertTrue(
+                        len(map_samples_calls) > 0,
+                        f"map_samples was not called when parallelize_method={method}",
+                    )
+
+                    # Verify parallelize_method parameter was correctly passed
+                    self.assertEqual(
+                        map_samples_calls[0].get("parallelize_method"),
+                        method,
+                        f"map_samples was called with incorrect parallelize_method value. Expected {method}, got {map_samples_calls[0].get('parallelize_method')}",
+                    )
+
+                # Test different batch methods
+                for batch_method in ["id", "slice"]:
+                    # Reset tracking
+                    map_samples_calls.clear()
+
+                    # Run evaluation with specific batch method
+                    self.dataset.evaluate_segmentations(
+                        "predictions",
+                        gt_field="ground_truth",
+                        eval_key=f"eval_validate_batch_{batch_method}",
+                        method="simple",
+                        workers=2,
+                        batch_method=batch_method,
+                    )
+
+                    # Verify that map_samples was called
+                    self.assertTrue(
+                        len(map_samples_calls) > 0,
+                        f"map_samples was not called when batch_method={batch_method}",
+                    )
+
+                    # Verify batch_method parameter was correctly passed
+                    self.assertEqual(
+                        map_samples_calls[0].get("batch_method"),
+                        batch_method,
+                        f"map_samples was called with incorrect batch_method value. Expected {batch_method}, got {map_samples_calls[0].get('batch_method')}",
+                    )
+
+                # Finally, test a combination of all parameters
+                map_samples_calls.clear()
+
+                # Define test parameters
+                test_workers = 4
+                test_parallelize = "thread"
+                test_batch = "slice"
+
+                self.dataset.evaluate_segmentations(
+                    "predictions",
+                    gt_field="ground_truth",
+                    eval_key="eval_validate_all",
+                    method="simple",
+                    workers=test_workers,
+                    parallelize_method=test_parallelize,
+                    batch_method=test_batch,
+                )
+
+                # Verify that map_samples was called
+                self.assertTrue(
+                    len(map_samples_calls) > 0,
+                    "map_samples was not called with combined parameters",
+                )
+
+                # Check all parameters were passed correctly
+                self.assertEqual(
+                    map_samples_calls[0].get("workers"),
+                    test_workers,
+                    f"workers parameter not passed correctly. Expected {test_workers}, got {map_samples_calls[0].get('workers')}",
+                )
+                self.assertEqual(
+                    map_samples_calls[0].get("parallelize_method"),
+                    test_parallelize,
+                    f"parallelize_method parameter not passed correctly. Expected {test_parallelize}, got {map_samples_calls[0].get('parallelize_method')}",
+                )
+                self.assertEqual(
+                    map_samples_calls[0].get("batch_method"),
+                    test_batch,
+                    f"batch_method parameter not passed correctly. Expected {test_batch}, got {map_samples_calls[0].get('batch_method')}",
+                )
         finally:
-            # Clean up
-            large_dataset.delete()
+            # No need to restore map_samples since we used a context manager
+            pass
 
 
 class EvaluateSegmentationBasicTests(unittest.TestCase):
