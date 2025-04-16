@@ -470,6 +470,8 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasInstance, Label):
             non-zero values represent the instance's extent
         confidence (None): a confidence in ``[0, 1]`` for the detection
         index (None): an index for the object
+        instance (None): an instance of :class:`Instance` to link this
+            detection label to other similar labels
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """
@@ -734,6 +736,8 @@ class Polyline(_HasAttributesDict, _HasID, _HasInstance, Label):
             polyline
         confidence (None): a confidence in ``[0, 1]`` for the polyline
         index (None): an index for the polyline
+        instance (None): an instance of :class:`Instance` to link this
+            polyline label to other similar labels
         closed (False): whether the shapes are closed, i.e., and edge should
             be drawn from the last vertex to the first vertex of each shape
         filled (False): whether the polyline represents polygons, i.e., shapes
@@ -1077,6 +1081,8 @@ class Keypoint(_HasAttributesDict, _HasID, _HasInstance, Label):
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
         confidence (None): a list of confidences in ``[0, 1]`` for each point
         index (None): an index for the keypoints
+        instance (None): an instance of :class:`Instance` to link this
+            keypoint label to other similar labels
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """
