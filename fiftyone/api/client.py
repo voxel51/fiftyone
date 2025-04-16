@@ -3,6 +3,7 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 import posixpath
 from importlib import metadata
 from typing import (
@@ -23,6 +24,8 @@ import fiftyone as fo
 from typing_extensions import Literal
 
 from fiftyone.api import constants, errors, socket, encodings
+
+logger = logging.getLogger(__name__)
 
 
 def fatal_http_code(e):
@@ -366,6 +369,10 @@ class PymongoClient(Client):
         accept = self.options("_pymongo").headers.get("Accept-Encoding")
         options = accept.split(", ") if accept else []
         if not options:
+            logger.debug(
+                "Server version does not support compression or byte transfer method,"
+                + "defaulting to None and str. Upgrade server version to use these features."
+            )
             # this means they have an older version of the API
             # default to existing behavior
             return ["pickle", "base64", "str"]
@@ -374,6 +381,12 @@ class PymongoClient(Client):
 
         if fo.config.api_compressor in options:
             headers += [fo.config.api_compressor]
+        else:
+            if fo.config.api_compressor != "none":
+                logger.debug(
+                    "Compressor %s not supported by server version, defaulting to None",
+                    fo.config.api_compressor,
+                )
 
         if fo.config.api_transfer_method == "str":
             headers += ["base64", "str"]
