@@ -4442,8 +4442,15 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-11s-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor",
+                    "image_size": [640, 640]
+                }
             },
             "requirements": {
                 "packages": [
@@ -4476,8 +4483,15 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-11m-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor",
+                    "image_size": [640, 640]
+                }
             },
             "requirements": {
                 "packages": [
@@ -4510,8 +4524,15 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-11l-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor",
+                    "image_size": [640, 640]
+                }
             },
             "requirements": {
                 "packages": [
@@ -4544,8 +4565,15 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-v8s-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor",
+                    "image_size": [640, 640]
+                }
             },
             "requirements": {
                 "packages": [
@@ -4578,8 +4606,15 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-v8m-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor",
+                    "image_size": [640, 640]
+                }
             },
             "requirements": {
                 "packages": [
@@ -4612,8 +4647,15 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOSegmentationModel",
-                "config": {}
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-v8l-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor",
+                    "image_size": [640, 640]
+                }
             },
             "requirements": {
                 "packages": [
@@ -4652,7 +4694,8 @@
                     "entrypoint_args": {
                         "model": "rtdetr-l.pt"
                     },
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor",
+                    "image_size": [640, 640]
                 }
             },
             "requirements": {
@@ -4692,7 +4735,8 @@
                     "entrypoint_args": {
                         "model": "rtdetr-x.pt"
                     },
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor",
+                    "image_size": [640, 640]
                 }
             },
             "requirements": {
