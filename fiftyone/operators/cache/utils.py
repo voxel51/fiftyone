@@ -30,6 +30,7 @@ def resolve_cache_info(
     prompt_scoped=False,
     jwt_scoped=False,
     collection_name=None,
+    max_size=None,
 ):
     """
     Resolves the cache key, store, and memory cache for a given function call,
@@ -41,9 +42,6 @@ def resolve_cache_info(
     cache_disabled = not fo.config.execution_cache_enabled
     if cache_disabled:
         return None, None, None, True
-
-    if residency not in ("ephemeral", "transient", "persistent", "hybrid"):
-        raise ValueError(f"Unsupported residency mode: {residency}")
 
     base_cache_key_tuple = _get_cache_key_tuple(
         ctx_index, args, kwargs, key_fn
@@ -65,16 +63,16 @@ def resolve_cache_info(
 
     if residency == "ephemeral":
         func_id = _get_function_id(func)
-        memory_cache = get_ephemeral_cache(func_id)
+        memory_cache = get_ephemeral_cache(func_id, max_size=max_size)
     elif residency == "hybrid":
         func_id = _get_function_id(func)
-        memory_cache = get_ephemeral_cache(func_id)
+        memory_cache = get_ephemeral_cache(func_id, max_size=max_size)
         store = _get_store_for_func(
             func,
             dataset_id=ctx.dataset._doc.id,
             collection_name=collection_name,
         )
-    elif residency in ("transient", "persistent"):
+    elif residency == "transient":
         store = _get_store_for_func(
             func,
             dataset_id=ctx.dataset._doc.id,

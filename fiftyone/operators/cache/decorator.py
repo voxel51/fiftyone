@@ -28,11 +28,18 @@ _FUNC_ATTRIBUTES = [
     "clear_all_caches",
 ]
 
+_RESIDENCY_OPTIONS = [
+    "transient",
+    "ephemeral",
+    "hybrid",
+]
+
 
 def execution_cache(
     _func=None,
     *,
-    residency="transient",
+    residency="hybrid",
+    max_size=None,
     ttl=None,
     link_to_dataset=True,
     key_fn=None,
@@ -78,7 +85,6 @@ def execution_cache(
             the original value.
         residency ("hybrid"): The residency of the cache. Can be one of:
             - "transient": Cache is stored in the execution store with policy="evict".
-            - "persistent": Cache is stored in the execution store with policy="persist".
             - "ephemeral": Cache is stored in memory and is cleared when the process ends.
             - "hybrid": (default) Combination of transient and ephemeral. Cache is stored in memory
                 and in the execution store. The memory cache is used first, and if
@@ -154,6 +160,18 @@ def execution_cache(
                     f"@execution_cache and cannot be decorated again."
                 )
 
+        if residency not in _RESIDENCY_OPTIONS:
+            raise ValueError(
+                f"Invalid residency option '{residency}'. "
+                f"Valid options are: {_RESIDENCY_OPTIONS}"
+            )
+
+        # max_size is only applicable for ephemeral and hybrid residency
+        if max_size is not None and residency not in ["ephemeral", "hybrid"]:
+            raise ValueError(
+                f"max_size is only valid for ephemeral and hybrid residency."
+            )
+
         func.store_name = store_name
         func.link_to_dataset = link_to_dataset
         func.exec_cache_version = version
@@ -174,6 +192,7 @@ def execution_cache(
                 prompt_scoped=prompt_scoped,
                 jwt_scoped=jwt_scoped,
                 collection_name=collection_name,
+                max_size=max_size,
             )
             if skip_cache:
                 return func(*args, **kwargs)

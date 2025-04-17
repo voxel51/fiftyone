@@ -91,10 +91,14 @@ class TestExecutionCacheWithSamples(unittest.TestCase):
         sample = get_first_sample(ctx)
         self.assertIsInstance(sample, fo.Sample)
 
+    @drop_datasets
+    @drop_collection(TEST_COLLECTION_NAME)
     def test_ephemeral_residency(self):
         call_count = {"ephemeral": 0}
 
-        @execution_cache(residency="ephemeral")
+        @execution_cache(
+            residency="ephemeral", collection_name=TEST_COLLECTION_NAME
+        )
         def cached(ctx):
             call_count["ephemeral"] += 1
             return "ephemeral!"
@@ -106,63 +110,89 @@ class TestExecutionCacheWithSamples(unittest.TestCase):
         self.assertEqual(cached(ctx), "ephemeral!")
         self.assertEqual(call_count["ephemeral"], 1)
 
+    @drop_datasets
     @drop_collection(TEST_COLLECTION_NAME)
-    def test_transient_residency(self):
-        call_count = {"transient": 0}
+    def test_ephemeral_cache_max_size_lru_eviction(self):
+        calls = []
+
+        @execution_cache(
+            residency="ephemeral",
+            max_size=2,
+            collection_name=TEST_COLLECTION_NAME,
+        )
+        def cached(ctx, arg):
+            calls.append(arg)
+            return f"value-{arg}"
+
+        dataset = create_test_dataset()
+        ctx = setup_ctx(dataset)
+
+        # Initial inserts (fills cache to max_size)
+        self.assertEqual(cached(ctx, 1), "value-1")  # MISS
+        self.assertEqual(cached(ctx, 2), "value-2")  # MISS
+
+        # Re-accessing existing key (1) should not cause eviction
+        self.assertEqual(cached(ctx, 1), "value-1")  # HIT
+
+        # Adding a new key (3) should evict key 2 (LRU)
+        self.assertEqual(cached(ctx, 3), "value-3")  # MISS, evicts 2
+
+        # Now:
+        # 1 → should be in cache (most recently used)
+        # 3 → just added
+        # 2 → should be evicted, so it triggers a call
+        self.assertEqual(cached(ctx, 2), "value-2")  # MISS again
+
+        # Calls should reflect actual cache misses only
+        self.assertEqual(calls, [1, 2, 3, 2])
+
+    @drop_datasets
+    @drop_collection(TEST_COLLECTION_NAME)
+    def test_transient_cache_hits_in_memory(self):
+        calls = []
 
         @execution_cache(
             residency="transient", ttl=60, collection_name=TEST_COLLECTION_NAME
         )
-        def cached(ctx):
-            call_count["transient"] += 1
-            return "transient!"
+        def cached(ctx, tag):
+            calls.append(tag)
+            return f"transient-{tag}"
 
         dataset = create_test_dataset()
         ctx = setup_ctx(dataset)
 
-        self.assertEqual(cached(ctx), "transient!")
-        self.assertEqual(cached(ctx), "transient!")
-        self.assertEqual(call_count["transient"], 1)
+        # Cache miss
+        self.assertEqual(cached(ctx, "a"), "transient-a")
 
+        # Same input, cache hit
+        self.assertEqual(cached(ctx, "a"), "transient-a")
+
+        # Only one call should have been made
+        self.assertEqual(calls, ["a"])
+
+    @drop_datasets
     @drop_collection(TEST_COLLECTION_NAME)
-    def test_persistent_residency(self):
-        call_count = {"persistent": 0}
-
-        @execution_cache(
-            residency="persistent", collection_name=TEST_COLLECTION_NAME
-        )
-        def cached(ctx):
-            call_count["persistent"] += 1
-            return "persistent!"
-
-        dataset = create_test_dataset()
-        ctx = setup_ctx(dataset)
-
-        self.assertEqual(cached(ctx), "persistent!")
-        self.assertEqual(cached(ctx), "persistent!")
-        self.assertEqual(call_count["persistent"], 1)
-
-    @drop_collection(TEST_COLLECTION_NAME)
-    def test_hybrid_residency(self):
-        call_count = {"hybrid": 0}
+    def test_hybrid_cache_combines_memory_and_disk(self):
+        calls = []
 
         @execution_cache(
             residency="hybrid", ttl=60, collection_name=TEST_COLLECTION_NAME
         )
-        def cached(ctx):
-            call_count["hybrid"] += 1
-            return "hybrid!"
+        def cached(ctx, tag):
+            calls.append(tag)
+            return f"hybrid-{tag}"
 
         dataset = create_test_dataset()
         ctx = setup_ctx(dataset)
 
-        self.assertEqual(cached(ctx), "hybrid!")
-        self.assertEqual(cached(ctx), "hybrid!")
-        self.assertEqual(call_count["hybrid"], 1)
+        self.assertEqual(cached(ctx, "c"), "hybrid-c")  # MISS
+        self.assertEqual(cached(ctx, "c"), "hybrid-c")  # HIT (mem or disk)
 
-    def test_invalid_residency(self):
+        self.assertEqual(calls, ["c"])
+
+    def test_invalid_residency_raises_value_error(self):
         with self.assertRaises(ValueError):
 
-            @execution_cache(residency="unknown")
-            def bad_cached(ctx):
-                return "invalid"
+            @execution_cache(residency="wat")
+            def bad(ctx, tag):
+                return f"nope-{tag}"
