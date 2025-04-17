@@ -1969,7 +1969,12 @@ class UniqueFilenameMaker(object):
 
         self._idx = len(filenames)
         for filename in filenames:
-            self._filename_counts[filename] += 1
+            if self.ignore_exts:
+                key, _ = os.path.splitext(filename)
+            else:
+                key = filename
+
+            self._filename_counts[key] += 1
 
     def seen_input_path(self, input_path):
         """Checks whether we've already seen the given input path.
