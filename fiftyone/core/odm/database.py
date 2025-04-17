@@ -820,8 +820,14 @@ def insert_documents(docs, coll, ordered=False, progress=None, num_docs=None):
         with batcher:
             for batch in batcher:
                 batch = list(batch)
-                coll.insert_many(batch, ordered=ordered)
+                res = coll.bulk_write(batch, ordered=ordered)
                 ids.extend(b["_id"] for b in batch)
+                if res.bulk_api_result.get("nBytes") and hasattr(
+                    batcher, "set_encoding_ratio"
+                ):
+                    batcher.set_encoding_ratio(
+                        res.bulk_api_result.get("nBytes")
+                    )
 
     except BulkWriteError as bwe:
         msg = bwe.details["writeErrors"][0]["errmsg"]
@@ -847,7 +853,13 @@ def bulk_write(ops, coll, ordered=False, progress=False):
         with batcher:
             for batch in batcher:
                 batch = list(batch)
-                coll.bulk_write(batch, ordered=ordered)
+                res = coll.bulk_write(batch, ordered=ordered)
+                if res.bulk_api_result.get("nBytes") and hasattr(
+                    batcher, "set_encoding_ratio"
+                ):
+                    batcher.set_encoding_ratio(
+                        res.bulk_api_result.get("nBytes")
+                    )
 
     except BulkWriteError as bwe:
         msg = bwe.details["writeErrors"][0]["errmsg"]
