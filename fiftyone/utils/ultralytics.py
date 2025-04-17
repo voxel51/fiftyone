@@ -425,8 +425,7 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
                 "verbose": False,
             }
             args = {**model.overrides, **custom}
-            # Uses private Ultralytics method to load. Fix this.
-            model.predictor = model._smart_load("predictor")(
+            model.predictor = model.task_map[model.task]["predictor"](
                 overrides=args,
                 _callbacks=model.callbacks,
             )
