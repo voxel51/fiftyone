@@ -825,9 +825,7 @@ def insert_documents(docs, coll, ordered=False, progress=None, num_docs=None):
                 if hasattr(res, "nBytes") and hasattr(
                     batcher, "set_encoding_ratio"
                 ):
-                    batcher.set_encoding_ratio(
-                        res.bulk_api_result.get("nBytes")
-                    )
+                    batcher.set_encoding_ratio(res.nBytes)
 
     except BulkWriteError as bwe:
         msg = bwe.details["writeErrors"][0]["errmsg"]
