@@ -21,6 +21,7 @@ import eta.core.utils as etau
 
 ultralytics = fou.lazy_import("ultralytics")
 torch = fou.lazy_import("torch")
+torchvision = fou.lazy_import("torchvision")
 
 
 def convert_ultralytics_model(model):
@@ -429,6 +430,9 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
                 overrides=args,
                 _callbacks=model.callbacks,
             )
+            model.predictor.imgsz = (
+                config.image_size if config.image_size else (640, 640)
+            )
             model.predictor.setup_model(model=model.model, verbose=False)
         return model
 
@@ -440,17 +444,37 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
     def _forward_pass(self, imgs):
         return self._model.predictor(imgs, stream=False)
 
-    # def _build_transforms(self, config):
-    #     if config.ragged_batches is not None:
-    #         ragged_batches = config.ragged_batches
-    #     else:
-    #         ragged_batches = True
+    def _build_transforms(self, config):
+        if config.ragged_batches is not None:
+            ragged_batches = config.ragged_batches
+        else:
+            ragged_batches = True
 
-    #     transforms = [self._model.predictor.preprocess]
-    #     transforms.append(torchvision.transforms.ToTensor())
-    #     transforms = torchvision.transforms.Compose(transforms)
+        transforms = [self.preprocess]
+        transforms = torchvision.transforms.Compose(transforms)
 
-    #     return transforms, ragged_batches
+        return transforms, ragged_batches
+
+    def preprocess(self, im):
+        """Taken from ultralytics.engine.predictor.BasePredictor.preprocess.
+
+        This is required to apply Ultralytics preprocessing as a transform in FiftyOne.
+        """
+        not_tensor = not isinstance(im, torch.Tensor)
+        if not_tensor:
+            im = np.stack(
+                self._model.predictor.pre_transform([np.asarray(im)])
+            )
+            im = im[..., ::-1].transpose((0, 3, 1, 2))
+            im = np.squeeze(im, axis=0)
+            im = np.ascontiguousarray(im)
+            im = torch.from_numpy(im)
+
+        im = im.to(self._device)
+        im = im.half() if self._model.predictor.model.fp16 else im.float()
+        if not_tensor:
+            im /= 255
+        return im
 
 
 class FiftyOneRTDETRModelConfig(FiftyOneYOLOModelConfig):
