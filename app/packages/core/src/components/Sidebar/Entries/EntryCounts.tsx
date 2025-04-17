@@ -45,7 +45,9 @@ export const PathEntryCounts = ({ modal, path }: PathEntryCountsProps) => {
   const shown = useRecoilValue(showEntryCounts({ modal, path }));
 
   // empty path means we are showing grid sample count which is always allowed
-  return (!queryPerformance || hasFilters || path === "") && shown ? (
+  return (!queryPerformance || hasFilters || path === "") &&
+    shown &&
+    (path !== "_label_tags" || modal) ? (
     <SuspenseEntryCounts
       countAtom={queryPerformance ? undefined : getAtom(false)}
       subcountAtom={getAtom(true)}
@@ -76,17 +78,24 @@ export const labelTagsCount = selectorFamily({
   get:
     (props: { modal: boolean; extended: boolean }) =>
     ({ get }) => {
+      if (get(fos.queryPerformance) && !props.modal) {
+        return { count: null, results: [] };
+      }
+
       const labelTagObj = get(
         fos.cumulativeCounts({
           ...fos.MATCH_LABEL_TAGS,
           ...props,
         })
       );
+
       if (!labelTagObj) return { count: 0, results: [] };
+
       const labelTags = Object.entries(labelTagObj).map(([value, count]) => ({
         value,
         count,
       }));
+
       const count = labelTags.reduce((acc, { count }) => acc + count, 0);
       return { count, results: labelTags };
     },
@@ -99,6 +108,9 @@ export const LabelTagCounts = ({
   modal: boolean;
   tag: string;
 }) => {
+  if (useRecoilValue(fos.queryPerformance)) {
+    return null;
+  }
   return (
     <SuspenseEntryCounts
       countAtom={labelTagCount({ modal, tag, extended: false })}

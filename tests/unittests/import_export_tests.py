@@ -3479,6 +3479,35 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             )
         )
 
+        # Test full schema merge
+
+        export_dir = self._new_dir()
+
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame()
+
+        dataset1 = fo.Dataset()
+        dataset1.add_sample(sample1)
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame()
+
+        dataset2 = fo.Dataset()
+        dataset2.add_sample(sample2)
+
+        dataset2.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+            export_media=False,
+        )
+
+        dataset1.add_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertEqual(len(dataset1), 2)
+
     @skipwindows
     @drop_datasets
     def test_legacy_fiftyone_dataset(self):
@@ -3842,6 +3871,35 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
                 m1 < m2 for m1, m2 in zip(last_modified_at1, last_modified_at2)
             )
         )
+
+        # Test full schema merge
+
+        export_dir = self._new_dir()
+
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame()
+
+        dataset1 = fo.Dataset()
+        dataset1.add_sample(sample1)
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame()
+
+        dataset2 = fo.Dataset()
+        dataset2.add_sample(sample2)
+
+        dataset2.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+            export_media=False,
+        )
+
+        dataset1.add_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        self.assertEqual(len(dataset1), 2)
 
 
 class OpenLABELImageDatasetTests(ImageDatasetTests):
@@ -5306,21 +5364,29 @@ class ThreeDMediaTests(unittest.TestCase):
             )
 
             scene1 = fo.Scene.from_fo3d(
-                os.path.join(export_dir, "label1/test/s.fo3d")
+                os.path.join(export_dir, "label1", "test", "s.fo3d")
             )
-            self.assertEqual(scene1.background.image, "../../image.jpeg")
+            self.assertEqual(
+                scene1.background.image, os.path.join("..", "..", "image.jpeg")
+            )
 
             for file in scene1.get_asset_paths():
-                with open(os.path.join(export_dir, "label1/test/", file)) as f:
+                with open(
+                    os.path.join(export_dir, "label1", "test", file)
+                ) as f:
                     self.assertEqual(f.read(), os.path.basename(file))
 
             scene2 = fo.Scene.from_fo3d(
-                os.path.join(export_dir, "label2/test/s.fo3d")
+                os.path.join(export_dir, "label2", "test", "s.fo3d")
             )
-            self.assertEqual(scene2.background.image, "../../image.jpeg")
+            self.assertEqual(
+                scene2.background.image, os.path.join("..", "..", "image.jpeg")
+            )
 
             for file in scene2.get_asset_paths():
-                with open(os.path.join(export_dir, "label2/test/", file)) as f:
+                with open(
+                    os.path.join(export_dir, "label2", "test", file)
+                ) as f:
                     if file.endswith("image.jpeg"):
                         continue
                     self.assertEqual(

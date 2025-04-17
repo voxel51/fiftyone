@@ -6,9 +6,6 @@ Interface for sample collections.
 |
 """
 
-from collections import defaultdict
-from copy import copy
-from datetime import datetime
 import fnmatch
 import itertools
 import logging
@@ -16,21 +13,18 @@ import os
 import random
 import string
 import timeit
-from typing import Any, Callable, Literal, Optional, Union
 import warnings
-
-from bson import ObjectId
-from pymongo import InsertOne, UpdateOne, UpdateMany, WriteConcern
+from collections import defaultdict
+from copy import copy
+from datetime import datetime
 
 import eta.core.serial as etas
 import eta.core.utils as etau
-
 import fiftyone.core.aggregations as foa
 import fiftyone.core.annotation as foan
 import fiftyone.core.brain as fob
-import fiftyone.core.expressions as foe
-from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
+import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
@@ -43,6 +37,9 @@ import fiftyone.core.runs as fors
 import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
+from bson import ObjectId
+from fiftyone.core.expressions import ViewField as F
+from pymongo import InsertOne, UpdateMany, UpdateOne, WriteConcern
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 fos = fou.lazy_import("fiftyone.core.stages")
@@ -3786,6 +3783,9 @@ class SampleCollection(object):
         mask_targets=None,
         method=None,
         progress=None,
+        workers=1,
+        batch_method="id",
+        parallelize_method=None,
         **kwargs,
     ):
         """Evaluates the specified semantic segmentation masks in this
@@ -3842,6 +3842,11 @@ class SampleCollection(object):
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
+            workers (1): the number of processes to use for parallel
+                processing. Set to a value greater than 1 to enable parallel
+                processing
+            batch_method ("id"): the method to use to shard the dataset
+            parallelize_method (None): the parallelize_method to use for multiprocessing
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig`
                 being used
@@ -3857,6 +3862,9 @@ class SampleCollection(object):
             mask_targets=mask_targets,
             method=method,
             progress=progress,
+            workers=workers,
+            batch_method=batch_method,
+            parallelize_method=parallelize_method,
             **kwargs,
         )
 
@@ -3901,50 +3909,61 @@ class SampleCollection(object):
 
     def map_samples(
         self,
-        map_fcn: Callable[[Any], Any],
-        workers: Optional[int] = None,
-        batch_method: str = "id",
-        progress: Optional[Union[bool, Literal["worker"]]] = None,
-        save: bool = False,
-        parallelize_method: str = "process",
-        skip_failures: bool = False,
+        map_fcn,
+        *_,
+        workers=None,
+        batch_method="id",
+        batch_size=None,
+        progress=None,
+        parallelize_method="process",
+        skip_failures=False,
+        save=False,
     ):
         """
-        Applies `map_fcn` to each sample using the specified backend strategy and
-        returns an iterator.
+        Applies `map_fcn` to each sample using the specified backend strategy
+        and returns an iterator.
 
         Args:
             map_fcn: Function to apply to each sample.
             workers (None): Number of workers.
-            batch_method ("id"): Method for sharding ('id' or 'slice').
-            progress (None): Whether to show progress bar.
-            save (False): Whether to save modified samples.
-            parallelize_method ("process"): Method for parallelization ('process'
-              or 'thread').
-            skip_failures (True): whether to gracefully continue without raising an
-                error if the map function raises an exception for a sample.
+            batch_method: Explicit method for batching samples. Supported
+              methods are 'id' and 'slice'
+            batch_size (None): Number of samples per batch. If None, the batch size
+                is automatically calculated to be the number of samples per worker.
+            progress (None): Whether to show progress bar. If None, uses the
+                default value ``fiftyone.config.show_progress_bars``. If "workers",
+                shows a progress bar for each worker.
+            parallelize_method: Explicit method to use for parallelization.
+              Supported methods are 'process' and 'thread'.
+            skip_failures (False): whether to gracefully continue without
+                raising an error if the update function raises an
+                exception for a sample.
+            save (False): Whether to save any modified samples.
 
         Returns:
             A generator yield processed sample results.
         """
         mapper = focm.MapperFactory.create(
-            parallelize_method,
-            self,
-            workers,
-            batch_method,
+            parallelize_method, workers, batch_method, batch_size
         )
 
         yield from mapper.map_samples(
-            map_fcn, progress=progress, save=save, skip_failures=skip_failures
+            self,
+            map_fcn,
+            progress=progress,
+            save=save,
+            skip_failures=skip_failures,
         )
 
     def update_samples(
         self,
-        update_fcn: Callable[[Any], Any],
-        workers: Optional[int] = None,
-        batch_method: str = "id",
-        progress: Optional[Union[bool, Literal["worker"]]] = None,
-        parallelize_method: str = "process",
+        update_fcn,
+        *_,
+        workers=None,
+        batch_method=None,
+        batch_size=None,
+        progress=None,
+        parallelize_method=None,
         skip_failures=True,
     ):
         """
@@ -3953,18 +3972,25 @@ class SampleCollection(object):
         Args:
             update_fcn: Function to apply to each sample.
             workers (None): Number of workers.
-            batch_method ("id"): Method for sharding ('id' or 'slice').
-            progress (None): Whether to show progress bar.
-            parallelize_method ("process"): Method for parallelization ('process'
-              or 'thread'). Default to process.
-            skip_failures (True): whether to gracefully continue without raising an
-                error if the update function raises an exception for a sample.
+            batch_method: Explicit method for batching samples. Supported
+              methods are 'id' and 'slice'.
+            batch_size (None): Number of samples per batch. If None, the batch size
+                is automatically calculated to be the number of samples per worker.
+            progress (None): Whether to show progress bar. If None, uses the
+                default value ``fiftyone.config.show_progress_bars``. If "workers",
+                shows a progress bar for each worker.
+            parallelize_method: Explicit method to use for parallelization.
+              Supported methods are 'process' and 'thread'.
+            skip_failures (False): whether to gracefully continue without
+                raising an error if the update function raises an
+                exception for a sample.
         """
         mapper = focm.MapperFactory.create(
-            parallelize_method, self, workers, batch_method
+            parallelize_method, workers, batch_method, batch_size
         )
 
         for _ in mapper.map_samples(
+            self,
             update_fcn,
             progress=progress,
             save=True,
@@ -5888,6 +5914,72 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.MapLabels(field, map))
+
+    @view_stage
+    def map_values(self, field, map):
+        """Maps the values in the given field to new values for each sample in
+        the collection.
+
+        Examples::
+
+            import random
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            ANIMALS = [
+                "bear", "bird", "cat", "cow", "dog", "elephant", "giraffe",
+                "horse", "sheep", "zebra"
+            ]
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            values = [random.choice(ANIMALS) for _ in range(len(dataset))]
+            dataset.set_values("str_field", values)
+            dataset.set_values("list_field", [[v] for v in values])
+
+            dataset.set_field("ground_truth.detections.tags", [F("label")]).save()
+
+            # Map all animals to string "animal"
+            mapping = {a: "animal" for a in ANIMALS}
+
+            #
+            # Map values in top-level fields
+            #
+
+            view = dataset.map_values("str_field", mapping)
+
+            print(view.count_values("str_field"))
+            # {"animal": 200}
+
+            view = dataset.map_values("list_field", mapping)
+
+            print(view.count_values("list_field"))
+            # {"animal": 200}
+
+            #
+            # Map values in nested fields
+            #
+
+            view = dataset.map_values("ground_truth.detections.label", mapping)
+
+            print(view.count_values("ground_truth.detections.label"))
+            # {"animal": 183, ...}
+
+            view = dataset.map_values("ground_truth.detections.tags", mapping)
+
+            print(view.count_values("ground_truth.detections.tags"))
+            # {"animal": 183, ...}
+
+        Args:
+            field: the field or ``embedded.field.name`` to map
+            map: a dict mapping values to new values
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.MapValues(field, map))
 
     @view_stage
     def set_field(self, field, expr, _allow_missing=False):
@@ -11212,6 +11304,12 @@ class SampleCollection(object):
             raise ValueError(f"Dataset has no store '{store_name}'")
 
         return foos.ExecutionStore(store_name, svc)
+
+    def to_torch(self, get_item, **kwargs):
+        """See fo.utils.torch.FiftyOneTorchDataset for documentation."""
+        from fiftyone.utils.torch import FiftyOneTorchDataset
+
+        return FiftyOneTorchDataset(self, get_item, **kwargs)
 
 
 def _iter_label_fields(sample_collection):

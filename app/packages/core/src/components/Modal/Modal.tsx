@@ -5,8 +5,8 @@ import React, { useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { ModalActionsRow } from "../Actions";
 import Sidebar from "../Sidebar";
+import Actions from "./Actions";
 import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
 import { TooltipInfo } from "./TooltipInfo";
@@ -214,7 +214,7 @@ const Modal = () => {
         onClick={onClickModalWrapper}
         data-cy="modal"
       >
-        <ModalActionsRow />
+        <Actions />
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }}>
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />

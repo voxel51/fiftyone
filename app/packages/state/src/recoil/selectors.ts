@@ -9,7 +9,7 @@ import {
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
 import { currentSlice, fieldVisibilityStage, isGroup } from "@fiftyone/state";
-import { toSnakeCase } from "@fiftyone/utilities";
+import { is3d, toSnakeCase } from "@fiftyone/utilities";
 import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 import * as atoms from "./atoms";
@@ -94,7 +94,7 @@ export const isVideoDataset = selector({
 
 export const is3DDataset = selector({
   key: "is3DDataset",
-  get: ({ get }) => ["point_cloud", "three_d"].includes(get(atoms.mediaType)),
+  get: ({ get }) => is3d(get(atoms.mediaType)),
 });
 
 export const timeZone = selector<string>({
@@ -142,14 +142,10 @@ export const datasetAppConfig = graphQLSyncFragmentAtom<
   }
 );
 
-export const defaultVisibilityLabels =
-  selector<State.DefaultVisibilityLabelsConfig>({
-    key: "defaultVisibilityLabels",
-    get: ({ get }) => {
-      return get(datasetAppConfig)
-        ?.defaultVisibilityLabels as State.DefaultVisibilityLabelsConfig | null;
-    },
-  });
+export const activeFieldsConfig = selector({
+  key: "activeFieldsConfig",
+  get: ({ get }) => get(datasetAppConfig)?.activeFields,
+});
 
 export const disableFrameFiltering = selector<boolean>({
   key: "disableFrameFiltering",

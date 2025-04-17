@@ -99,7 +99,6 @@ export abstract class AbstractLooker<
 
   protected readonly abortController: AbortController;
   protected currentOverlays: Overlay<State>[];
-  protected sample: S;
   protected readonly updater: StateUpdate<State>;
 
   private batchMergedUpdates: Partial<State> = {};
@@ -568,7 +567,10 @@ export abstract class AbstractLooker<
     parent?.removeChild(this.lookerElement.element);
   }
 
-  abstract updateOptions(options: Partial<State["options"]>): void;
+  abstract updateOptions(
+    options: Partial<State["options"]>,
+    disableReload?: boolean
+  ): void;
 
   private updateSampleDebounced = (() => {
     let timeoutId: ReturnType<typeof setTimeout>;
@@ -619,15 +621,19 @@ export abstract class AbstractLooker<
       })
       .then(({ sample, coloring }) => {
         this.sample = sample;
-        this.state.options.coloring = coloring;
         this.loadOverlays(sample);
 
-        this.dispatchEvent("refresh", {});
-
         // to run looker reconciliation
-        this.updater({
+        this.updater((prev) => ({
+          ...prev,
           overlaysPrepared: true,
-        });
+          options: {
+            ...prev.options,
+            coloring,
+          },
+        }));
+
+        this.dispatchEvent("refresh", {});
       })
       .catch((error) => {
         this.updater({ error });
@@ -839,13 +845,17 @@ export abstract class AbstractLooker<
         // this helps prevent memory leaks from, for instance, dangling ImageBitmaps
         this.cleanOverlays();
         this.sample = sample;
-        this.state.options.coloring = coloring;
         this.loadOverlays(sample);
-        this.updater({
+        this.updater((prev) => ({
+          ...prev,
           overlaysPrepared: true,
           disabled: false,
           reloading: false,
-        });
+          options: {
+            ...prev.options,
+            coloring,
+          },
+        }));
 
         labelsWorker.removeEventListener("message", listener);
 

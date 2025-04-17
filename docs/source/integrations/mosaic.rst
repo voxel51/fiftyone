@@ -1,7 +1,7 @@
 .. _mosaic-integration:
 
 Databricks Mosaic AI Integration
-=======================================
+================================
 
 .. default-role:: code
 

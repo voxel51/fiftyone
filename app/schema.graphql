@@ -1,3 +1,8 @@
+type ActiveFields {
+  exclude: Boolean
+  paths: [String!]
+}
+
 input Aggregate {
   count: Count = null
   countValues: CountValues = null
@@ -221,8 +226,8 @@ type Dataset {
   groupMediaTypes: [Group!]
   groupField: String
   defaultGroupSlice: String
-  mediaType: MediaType
-  parentMediaType: MediaType
+  mediaType: String
+  parentMediaType: String
   maskTargets: [NamedTargets!]!
   defaultMaskTargets: [Target!]
   sampleFields: [SampleField!]!
@@ -247,8 +252,8 @@ type Dataset {
 }
 
 type DatasetAppConfig {
+  activeFields: ActiveFields
   colorScheme: ColorScheme
-  defaultVisibilityLabels: FieldVisibilityConfig
   disableFrameFiltering: Boolean
   dynamicGroupsTargetFrameRate: Int!
   gridMediaField: String!
@@ -331,11 +336,6 @@ input ExtendedViewForm {
   slice: String = null
 }
 
-type FieldVisibilityConfig {
-  include: [String!]
-  exclude: [String!]
-}
-
 type FloatAggregation implements Aggregation {
   path: String!
   count: Int!
@@ -365,7 +365,7 @@ type FloatLightningResult implements LightningResult {
 
 type Group {
   name: String!
-  mediaType: MediaType!
+  mediaType: String!
 }
 
 input GroupElementFilter {
@@ -490,14 +490,6 @@ input MaskColorInput {
   intTarget: Int!
 }
 
-enum MediaType {
-  image
-  group
-  point_cloud
-  three_d
-  video
-}
-
 type MediaURL {
   field: String!
   url: String
@@ -614,7 +606,6 @@ type Query {
     viewName: String = null
     form: ExtendedViewForm = null
   ): [AggregationResponses!]!
-  dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset
   datasets(
     search: String
     first: Int = 200
@@ -628,6 +619,7 @@ type Query {
   dev: Boolean!
   doNotTrack: Boolean!
   estimatedDatasetCount: Int!
+  dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset
   samples(
     dataset: String!
     view: BSONArray!
@@ -697,7 +689,12 @@ input SampleFilter {
   group: GroupElementFilter = null
 }
 
-union SampleItem = ImageSample | PointCloudSample | ThreeDSample | VideoSample
+union SampleItem =
+    ImageSample
+  | PointCloudSample
+  | ThreeDSample
+  | VideoSample
+  | UnknownSample
 
 type SampleItemStrConnection {
   pageInfo: SampleItemStrPageInfo!
@@ -821,6 +818,13 @@ enum Theme {
 }
 
 type ThreeDSample implements Sample {
+  id: ID!
+  sample: JSON!
+  urls: [MediaURL!]!
+  aspectRatio: Float!
+}
+
+type UnknownSample implements Sample {
   id: ID!
   sample: JSON!
   urls: [MediaURL!]!

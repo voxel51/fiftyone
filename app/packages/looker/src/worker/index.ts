@@ -15,6 +15,7 @@ import {
   getCls,
   getFetchFunction,
   setFetchFunction,
+  is3d,
 } from "@fiftyone/utilities";
 import { CHUNK_SIZE } from "../constants";
 import {
@@ -316,7 +317,7 @@ interface ReaderMethod {
 
 export interface ProcessSample {
   uuid: string;
-  sample: Sample & FrameSample;
+  sample: Sample | FrameSample;
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
   labelTagColors: LabelTagColor;
@@ -358,7 +359,7 @@ const processSample = async ({
   const imageBitmapPromises: Promise<ImageBitmap[]>[] = [];
   let maskTargetsBuffers: ArrayBuffer[] = [];
 
-  if (sample?._media_type === "point-cloud" || sample?._media_type === "3d") {
+  if (is3d(sample?._media_type)) {
     // we process all 3d labels regardless of active paths
     process3DLabels(schema, sample);
   } else {
@@ -385,25 +386,24 @@ const processSample = async ({
   }
 
   // this usually only applies to thumbnail frame
+  // sample.frames, if defined, should have only one frame
   // other frames are processed in the stream (see `getSendChunk`)
-  if (sample.frames?.length) {
+  if (sample.frames?.length > 0) {
     const allFramePromises: ReturnType<typeof processLabels>[] = [];
-    for (const frame of sample.frames) {
-      allFramePromises.push(
-        processLabels(
-          frame,
-          coloring,
-          "frames.",
-          sources,
-          customizeColorSetting,
-          colorscale,
-          labelTagColors,
-          selectedLabelTags,
-          schema,
-          activePaths
-        )
-      );
-    }
+    allFramePromises.push(
+      processLabels(
+        sample.frames[0],
+        coloring,
+        "frames.",
+        sources,
+        customizeColorSetting,
+        colorscale,
+        labelTagColors,
+        selectedLabelTags,
+        schema,
+        activePaths
+      )
+    );
     const framePromisesResolved = await Promise.all(allFramePromises);
     for (const [bitmapPromises, buffers] of framePromisesResolved) {
       if (bitmapPromises.length !== 0) {

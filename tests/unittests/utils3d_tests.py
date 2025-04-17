@@ -5,6 +5,7 @@ FiftyOne 3D utilities unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import os
 import tempfile
 import unittest
@@ -331,13 +332,21 @@ class GetSceneAssetPaths(unittest.TestCase):
             ]
 
             scene1 = fo3d.Scene()
-            scene1.background = fo3d.SceneBackground(image="back/ground.jpeg")
+            scene1.background = fo3d.SceneBackground(
+                image=os.path.join("back", "ground.jpeg")
+            )
             scene1.add(fo3d.ObjMesh("blah-obj", "relative.obj"))
-            scene1.add(fo3d.PointCloud("blah-pcd", f"{temp_dir}/absolute.pcd"))
+            scene1.add(
+                fo3d.PointCloud(
+                    "blah-pcd", os.path.join(temp_dir, "absolute.pcd")
+                )
+            )
             scene1.write(scene_paths[0])
 
             scene2 = fo3d.Scene()
-            scene2.background = fo3d.SceneBackground(image="back/ground.jpeg")
+            scene2.background = fo3d.SceneBackground(
+                image=os.path.join("back", "ground.jpeg")
+            )
             scene2.add(fo3d.StlMesh("blah-obj", "relative2.stl"))
             scene2.write(scene_paths[1])
 
@@ -352,15 +361,15 @@ class GetSceneAssetPaths(unittest.TestCase):
             self.assertSetEqual(
                 set(asset_paths[scene_paths[0]]),
                 {
-                    "back/ground.jpeg",
+                    os.path.join("back", "ground.jpeg"),
                     "relative.obj",
-                    f"{temp_dir}/absolute.pcd",
+                    os.path.join(temp_dir, "absolute.pcd"),
                 },
             )
             self.assertSetEqual(
                 set(asset_paths[scene_paths[1]]),
                 {
-                    "back/ground.jpeg",
+                    os.path.join("back", "ground.jpeg"),
                     "relative2.stl",
                 },
             )
@@ -376,16 +385,16 @@ class GetSceneAssetPaths(unittest.TestCase):
             self.assertSetEqual(
                 set(asset_paths[scene_paths[0]]),
                 {
-                    f"{temp_dir}/back/ground.jpeg",
-                    f"{temp_dir}/relative.obj",
-                    f"{temp_dir}/absolute.pcd",
+                    os.path.join(temp_dir, "back", "ground.jpeg"),
+                    os.path.join(temp_dir, "relative.obj"),
+                    os.path.join(temp_dir, "absolute.pcd"),
                 },
             )
             self.assertSetEqual(
                 set(asset_paths[scene_paths[1]]),
                 {
-                    f"{temp_dir}/back/ground.jpeg",
-                    f"{temp_dir}/relative2.stl",
+                    os.path.join(temp_dir, "back", "ground.jpeg"),
+                    os.path.join(temp_dir, "relative2.stl"),
                 },
             )
 

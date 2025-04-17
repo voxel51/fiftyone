@@ -1,44 +1,61 @@
-import { RENDER_STATUS_PAINTING } from "@fiftyone/looker/src/worker/shared";
+import { Coloring, ImaVidLooker, VideoLooker } from "@fiftyone/looker";
+import { Colorscale } from "@fiftyone/looker/src/state";
+import { RENDER_STATUS_PENDING } from "@fiftyone/looker/src/worker/shared";
 import type Spotlight from "@fiftyone/spotlight";
 import type { ID } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { useDetectNewActiveLabelFields } from "../Sidebar/useDetectNewActiveLabelFields";
 import type { LookerCache } from "./types";
 
-const handleNewOverlays = (entry: fos.Lookers, newFields: string[]) => {
-  const overlays = entry.getSampleOverlays() ?? [];
-  const changed = overlays.filter(
-    (o) =>
-      o.field &&
-      (o.label?.mask_path?.length > 0 ||
-        o.label?.map_path?.length > 0 ||
-        o.label?.mask ||
-        o.label?.map) &&
-      newFields.includes(o.field)
-  );
-
-  for (const overlay of changed) {
-    if (overlay.label) {
-      // "pending" means we're marking this label for rendering or
-      // painting, even if it's interrupted, say by unchecking sidebar
-      overlay.label._renderStatus = RENDER_STATUS_PAINTING;
-    }
-  }
-
-  changed?.length && entry.refreshSample(newFields);
+export const getOverlays = (entry: fos.Lookers) => {
+  // todo: there should be consistency here between video looker and other looker
+  return entry instanceof VideoLooker
+    ? entry.pluckedOverlays ?? []
+    : entry.getSampleOverlays() ?? [];
 };
 
-const handleChangedOverlays = (entry: fos.Lookers) => {
+export const markTheseOverlaysAsPending = (
+  overlays: ReturnType<typeof getOverlays>
+) => {
+  for (const overlay of overlays) {
+    markOverlayAsPending(overlay);
+  }
+};
+
+const markOverlayAsPending = (
+  overlay: ReturnType<typeof getOverlays>[number]
+) => {
+  if (overlay.label) {
+    overlay.label = {
+      ...overlay.label,
+      _renderStatus: RENDER_STATUS_PENDING,
+    };
+  }
+};
+
+export const handleNetNewOverlays = (
+  entry: fos.Lookers,
+  newFields: string[]
+) => {
+  if (entry instanceof ImaVidLooker) {
+    entry.refreshSample(newFields, entry.frameNumber);
+  } else {
+    entry.refreshSample(newFields);
+  }
+};
+
+export const handlePotentiallyStillPendingOverlays = (entry: fos.Lookers) => {
   const overlays = entry.getSampleOverlays() ?? [];
   const rerender: string[] = [];
+
   for (const overlay of overlays) {
     if (!overlay.field) {
       continue;
     }
 
-    if (overlay?.label?._renderStatus !== RENDER_STATUS_PAINTING) {
+    if (overlay?.label?._renderStatus !== RENDER_STATUS_PENDING) {
       continue;
     }
 
@@ -53,29 +70,67 @@ const useItemUpdater = (
   cache: LookerCache,
   options: ReturnType<typeof fos.useLookerOptions>
 ) => {
-  const { getNewFields } = useDetectNewActiveLabelFields({ modal: false });
+  const { getNewFields, removeField } = useDetectNewActiveLabelFields({
+    modal: false,
+  });
   const selected = useRecoilValue(fos.selectedSamples);
 
   return useCallback(
-    (fontSize: number) => {
+    (fontSize: number, lastColoringKey: string | null) => {
       return (id: ID) => {
         const entry = cache.get(id.description);
         if (!entry) {
           return;
         }
 
-        entry.updateOptions({
-          ...options,
-          fontSize,
-          selected: selected.has(id.description),
-        });
+        const thisColoringKey = getColoringKey(
+          options.coloring,
+          options.colorscale
+        );
 
-        const newFields = getNewFields(id.description);
-        // rerender looker if active fields have changed and have never been
-        // rendered before
-        newFields?.length
-          ? handleNewOverlays(entry, newFields)
-          : handleChangedOverlays(entry);
+        if (lastColoringKey !== thisColoringKey) {
+          removeField(id.description);
+        }
+
+        const newFields = getNewFields(id.description) ?? [];
+        const shouldHardReload = Boolean(newFields?.length);
+
+        if (shouldHardReload) {
+          const overlays = getOverlays(entry);
+          const newOverlays = overlays.filter(
+            (o) =>
+              o.field &&
+              (o.label?.mask_path?.length > 0 ||
+                o.label?.map_path?.length > 0 ||
+                o.label?.mask ||
+                o.label?.map) &&
+              newFields.includes(o.field)
+          );
+
+          if (newOverlays?.length) {
+            markTheseOverlaysAsPending(newOverlays);
+          }
+        }
+
+        // we want to update looker settings, since async manager refs them
+        // todo: decouple async manager from looker state and pass options in
+        // handleNewOverlays / refreshSample
+        entry.updateOptions(
+          {
+            ...options,
+            fontSize,
+            selected: selected.has(id.description),
+          },
+          shouldHardReload
+        );
+
+        if (shouldHardReload) {
+          handleNetNewOverlays(entry, newFields ?? []);
+        } else {
+          handlePotentiallyStillPendingOverlays(entry);
+        }
+
+        entry.updateOptions({}, shouldHardReload);
       };
     },
     [cache, getNewFields, options, selected]
@@ -96,9 +151,22 @@ export default function useUpdates({
   const { init, deferred } = fos.useDeferrer();
   const itemUpdater = useItemUpdater(cache, options);
 
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
+  const lastColoringKeyRef = useRef(
+    getColoringKey(options.coloring, options.colorscale)
+  );
+
   useEffect(() => {
     deferred(() => {
-      spotlight?.updateItems(itemUpdater(getFontSize()));
+      spotlight?.updateItems(
+        itemUpdater(getFontSize(), lastColoringKeyRef.current)
+      );
+      lastColoringKeyRef.current = getColoringKey(
+        optionsRef.current.coloring,
+        optionsRef.current.colorscale
+      );
       cache.empty();
     });
   }, [cache, deferred, getFontSize, itemUpdater, spotlight]);
@@ -107,3 +175,15 @@ export default function useUpdates({
     return spotlight ? init() : undefined;
   }, [spotlight, init]);
 }
+
+export const getColoringKey = (
+  coloring: Coloring | undefined,
+  colorscale: Colorscale | undefined,
+  suffix?: string
+) => {
+  if (!coloring) {
+    return null;
+  }
+
+  return `${coloring?.seed}-${coloring?.by}-${coloring.scale.length}-${coloring.pool.length}-${colorscale?.fields.length}-${colorscale?.default.name}-${suffix}`;
+};

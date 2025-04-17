@@ -15,7 +15,7 @@ interface EventTarget {
 }
 
 export const useEventHandler = (
-  target: EventTarget,
+  target: EventTarget | undefined,
   eventType: string,
   handler: React.EventHandler<any>,
   options?: boolean | AddEventListenerOptions
@@ -28,14 +28,14 @@ export const useEventHandler = (
   }, [handler]);
 
   useEffect(() => {
-    if (!target) return;
+    if (!target) return () => undefined;
 
     const wrapper: typeof handler = (e) => handlerRef.current(e);
 
     target.addEventListener(eventType, wrapper, options);
 
     return () => {
-      target && target.removeEventListener(eventType, wrapper, options);
+      target?.removeEventListener(eventType, wrapper, options);
     };
   }, [target, eventType, options]);
 };
@@ -50,10 +50,12 @@ export const useObserve = (target, handler) => {
 
   useEffect(() => {
     if (!target) {
-      return;
+      return () => undefined;
     }
-    observerRef.current.observe(target);
-    return () => observerRef.current.unobserve(target);
+
+    const current = observerRef.current;
+    current.observe(target);
+    return () => current.unobserve(target);
   }, [target]);
 };
 

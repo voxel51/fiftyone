@@ -10,6 +10,7 @@ import types
 from .runner import (
     get_database_revision,
     get_dataset_revision,
+    get_datasets_revisions,
     migrate_all,
     migrate_database_if_necessary,
     migrate_dataset_if_necessary,

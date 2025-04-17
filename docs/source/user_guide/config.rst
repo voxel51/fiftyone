@@ -20,6 +20,10 @@ FiftyOne supports the configuration options described below:
 | `database_admin`              | `FIFTYONE_DATABASE_ADMIN`             | `True`                        | Whether the client is allowed to trigger database migrations. See                      |
 |                               |                                       |                               | :ref:`this section <database-migrations>` for more information.                        |
 +-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `database_compressor`         | `FIFTYONE_DATABASE_COMPRESSOR`        | `None`                        | `MongoDB Network Compression                                                           |
+|                               |                                       |                               | <https://www.mongodb.com/developer/products/mongodb/mongodb-network-compression/>`_ to |
+|                               |                                       |                               | use. Supported values are: None, `zstd` (recommended), `zlib`, or `snappy`.            |
++-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `database_dir`                | `FIFTYONE_DATABASE_DIR`               | `~/.fiftyone/var/lib/mongo`   | The directory in which to store FiftyOne's backing database. Only applicable if        |
 |                               |                                       |                               | `database_uri` is not defined.                                                         |
 +-------------------------------+---------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
@@ -373,7 +377,7 @@ You must also add `?authSource=admin` to your database URI:
 Using a different MongoDB version
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-FiftyOne is designed for **MongoDB v4.4 or later**.
+FiftyOne is designed for **MongoDB v5.0 or later**.
 
 If you wish to connect FiftyOne to a MongoDB database whose version is not
 explicitly supported, you will also need to set the `database_validation`

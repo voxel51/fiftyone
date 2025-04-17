@@ -42,6 +42,9 @@ def evaluate_segmentations(
     method=None,
     custom_metrics=None,
     progress=None,
+    workers=1,
+    batch_method="id",
+    parallelize_method=None,
     **kwargs,
 ):
     """Evaluates the specified semantic segmentation masks in the given
@@ -97,6 +100,11 @@ def evaluate_segmentations(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
+        workers (1): the number of processes to use for parallel
+            processing. Set to a value greater than 1 to enable parallel
+            processing
+        batch_method ("id"): the method to use to shard the dataset
+        parallelize_method (None): the parallelize_method to use for multiprocessing
         **kwargs: optional keyword arguments for the constructor of the
             :class:`SegmentationEvaluationConfig` being used
 
@@ -126,6 +134,9 @@ def evaluate_segmentations(
         eval_key=eval_key,
         mask_targets=mask_targets,
         progress=progress,
+        workers=workers,
+        batch_method=batch_method,
+        parallelize_method=parallelize_method,
     )
     eval_method.compute_custom_metrics(samples, eval_key, results)
     eval_method.save_run_results(samples, eval_key, results)
@@ -210,7 +221,14 @@ class SegmentationEvaluation(BaseEvaluationMethod):
                 dataset.add_frame_field(dice_field, fof.FloatField)
 
     def evaluate_samples(
-        self, samples, eval_key=None, mask_targets=None, progress=None
+        self,
+        samples,
+        eval_key=None,
+        mask_targets=None,
+        progress=None,
+        workers=1,
+        batch_method="id",
+        parallelize_method=None,
     ):
         """Evaluates the predicted segmentation masks in the given samples with
         respect to the specified ground truth masks.
@@ -225,6 +243,11 @@ class SegmentationEvaluation(BaseEvaluationMethod):
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
+            workers (1): the number of processes to use for parallel
+                processing. Set to a value greater than 1 to enable parallel
+                processing
+            batch_method ("id"): the method to use to shard the dataset
+            parallelize_method (None): the parallelize_method to use for multiprocessing
 
         Returns:
             a :class:`SegmentationResults` instance
@@ -362,8 +385,37 @@ class SimpleEvaluation(SegmentationEvaluation):
     """
 
     def evaluate_samples(
-        self, samples, eval_key=None, mask_targets=None, progress=None
+        self,
+        samples,
+        eval_key=None,
+        mask_targets=None,
+        progress=None,
+        workers=1,
+        batch_method="id",
+        parallelize_method=None,
     ):
+        """Evaluates the predicted segmentation masks in the given samples with
+        respect to the specified ground truth masks.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            eval_key (None): an evaluation key for this evaluation
+            mask_targets (None): a dict mapping mask values to labels. May
+                contain a subset of the possible classes if you wish to
+                evaluate a subset of the semantic classes. By default, the
+                observed pixel values are used as labels
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
+            workers (1): the number of processes to use for parallel
+                processing. Set to a value greater than 1 to enable parallel
+                processing
+            batch_method ("id"): the method to use to shard the dataset
+            parallelize_method (None): the parallelize_method to use for multiprocessing
+
+        Returns:
+            a :class:`SegmentationResults` instance
+        """
         pred_field = self.config.pred_field
         gt_field = self.config.gt_field
 
@@ -377,16 +429,18 @@ class SimpleEvaluation(SegmentationEvaluation):
         else:
             logger.info("Computing possible mask values...")
             values, classes = _get_mask_values(
-                samples, pred_field, gt_field, progress=progress
+                samples,
+                pred_field,
+                gt_field,
+                progress=progress,
+                workers=workers,
+                batch_method=batch_method,
+                parallelize_method=parallelize_method,
             )
 
         _samples = samples.select_fields([gt_field, pred_field])
         pred_field, processing_frames = samples._handle_frame_field(pred_field)
         gt_field, _ = samples._handle_frame_field(gt_field)
-
-        nc = len(values)
-        confusion_matrix = np.zeros((nc, nc), dtype=int)
-        matches = []
 
         bandwidth = self.config.bandwidth
         average = self.config.average
@@ -400,14 +454,15 @@ class SimpleEvaluation(SegmentationEvaluation):
             if compute_dice:
                 dice_field = "%s_dice" % eval_key
 
-        logger.info("Evaluating segmentations...")
-        for sample in _samples.iter_samples(progress=progress, autosave=save):
+        def _eval_sample(sample):
             if processing_frames:
                 images = sample.frames.values()
             else:
                 images = [sample]
 
-            sample_conf_mat = np.zeros((nc, nc), dtype=int)
+            sample_conf_mat = np.zeros((len(values), len(values)), dtype=int)
+            sample_matches = []
+
             for image in images:
                 gt_seg = image[gt_field]
                 if gt_seg is None or not gt_seg.has_mask:
@@ -430,7 +485,7 @@ class SimpleEvaluation(SegmentationEvaluation):
                 sample_conf_mat += image_conf_mat
 
                 for i, j in zip(*np.nonzero(image_conf_mat)):
-                    matches.append(
+                    sample_matches.append(
                         (
                             classes[i],
                             classes[j],
@@ -450,8 +505,6 @@ class SimpleEvaluation(SegmentationEvaluation):
                     if compute_dice:
                         image[dice_field] = _compute_dice_score(image_conf_mat)
 
-            confusion_matrix += sample_conf_mat
-
             if save:
                 sacc, spre, srec = _compute_accuracy_precision_recall(
                     sample_conf_mat, values, average
@@ -460,9 +513,31 @@ class SimpleEvaluation(SegmentationEvaluation):
                 sample[pre_field] = spre
                 sample[rec_field] = srec
                 if compute_dice:
-                    sample[dice_field] = _compute_dice_score(confusion_matrix)
+                    sample[dice_field] = _compute_dice_score(sample_conf_mat)
 
-        if nc > 0:
+            return sample_conf_mat, sample_matches
+
+        logger.info("Evaluating segmentations...")
+
+        eval_data = []
+        for _, result in samples.map_samples(
+            _eval_sample,
+            workers=workers,
+            batch_method=batch_method,
+            progress=progress,
+            save=save,
+            parallelize_method=parallelize_method,
+        ):
+            eval_data.append(result)
+
+        # Aggregate results
+        confusion_matrix = np.zeros((len(values), len(values)), dtype=int)
+        matches = []
+        for conf_mat, sample_matches in eval_data:
+            confusion_matrix += conf_mat
+            matches.extend(sample_matches)
+
+        if len(values) > 0:
             missing = classes[0] if values[0] in (0, "#000000") else None
         else:
             missing = None
@@ -692,15 +767,27 @@ def _compute_accuracy_precision_recall(confusion_matrix, values, average):
     return metrics["accuracy"], metrics["precision"], metrics["recall"]
 
 
-def _get_mask_values(samples, pred_field, gt_field, progress=None):
+def _get_mask_values(
+    samples,
+    pred_field,
+    gt_field,
+    progress=None,
+    workers=1,
+    batch_method="id",
+    parallelize_method=None,
+):
     _samples = samples.select_fields([gt_field, pred_field])
     pred_field, processing_frames = samples._handle_frame_field(pred_field)
     gt_field, _ = samples._handle_frame_field(gt_field)
 
+    # Use a shared set to collect values across processes
     values = set()
     is_rgb = False
 
-    for sample in _samples.iter_samples(progress=progress):
+    def _get_sample_values(sample):
+        sample_values = set()
+        sample_is_rgb = False
+
         if processing_frames:
             images = sample.frames.values()
         else:
@@ -712,10 +799,22 @@ def _get_mask_values(samples, pred_field, gt_field, progress=None):
                 if seg is not None and seg.has_mask:
                     mask = seg.get_mask()
                     if mask.ndim == 3:
-                        is_rgb = True
+                        sample_is_rgb = True
                         mask = fof.rgb_array_to_int(mask)
 
-                    values.update(mask.ravel())
+                    sample_values.update(mask.ravel())
+
+        return sample_values, sample_is_rgb
+
+    for _, (sample_values, sample_is_rgb) in samples.map_samples(
+        _get_sample_values,
+        workers=workers,
+        batch_method=batch_method,
+        progress=progress,
+        parallelize_method=parallelize_method,
+    ):
+        values.update(sample_values)
+        is_rgb = is_rgb or sample_is_rgb
 
     values = sorted(values)
 

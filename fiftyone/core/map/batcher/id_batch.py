@@ -13,6 +13,7 @@ import bson
 
 import fiftyone.core.utils as fou
 import fiftyone.core.map.batcher.batch as fomb
+import fiftyone.core.map.batcher.slice_batch as foms
 from fiftyone.core.map.typing import SampleCollection
 
 fov = fou.lazy_import("fiftyone.core.view")
@@ -38,6 +39,8 @@ class SampleIdBatch(fomb.SampleBatch):
         num_workers: int,
         batch_size: Optional[int] = None,
     ) -> List["SampleIdBatch"]:
+        num_workers = max(num_workers, 1)
+
         ids = sample_collection.values("id")
 
         # Must cap size of select(ids) stages
@@ -48,8 +51,8 @@ class SampleIdBatch(fomb.SampleBatch):
             batch_size = max_batch_size
 
         return [
-            SampleIdBatch(*ids[start_idx:stop_idx])
-            for start_idx, stop_idx in cls._get_sample_collection_indexes(
+            cls(*ids[batch.start_idx : batch.stop_idx])
+            for batch in foms.SampleSliceBatch.split(
                 sample_collection, num_workers, batch_size
             )
         ]
