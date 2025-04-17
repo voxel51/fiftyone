@@ -4647,7 +4647,13 @@
             },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneRTDETRModel",
-                "config": {}
+                "config": {
+                    "entrypoint_fcn": "ultralytics.RTDETR",
+                    "entrypoint_args": {
+                        "model": "rtdetr-l.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
@@ -4681,7 +4687,13 @@
             },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneRTDETRModel",
-                "config": {}
+                "config": {
+                    "entrypoint_fcn": "ultralytics.RTDETR",
+                    "entrypoint_args": {
+                        "model": "rtdetr-x.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": [
