@@ -346,7 +346,7 @@ class TestSkipFailures:
         """A function that will fail on samples where field_to_process is None."""
         # Handle copied samples used in check_if_return_is_sample
         if not hasattr(sample, "id") or sample.id is None:
-            return "SAMPLE_COPY_CHECK"
+            return
 
         if sample.field_to_process is None:
             raise ValueError(
@@ -415,32 +415,29 @@ class TestSkipFailures:
     ):
         """Test that results are the same with single worker vs multiple workers."""
 
-        # Helper to extract just the values from the results (ignoring sample IDs)
-        def get_result_values(results):
-            return sorted([result[1] for result in results])
-
         # Process with a single worker
-        single_worker_results = list(
-            sample_dataset.map_samples(
+        single_worker_results = [
+            result
+            for _, result in sample_dataset.map_samples(
                 self._failing_function,
                 workers=1,
                 skip_failures=True,
                 parallelize_method=parallelize_method,
             )
-        )
+        ]
 
         # Process with multiple workers
-        multi_worker_results = list(
-            sample_dataset.map_samples(
+        multi_worker_results = [
+            result
+            for _, result in sample_dataset.map_samples(
                 self._failing_function,
                 workers=2,
                 skip_failures=True,
                 parallelize_method=parallelize_method,
             )
-        )
+        ]
 
         # Results should be consistent between single and multi-worker
-        assert len(single_worker_results) == len(multi_worker_results)
-        assert get_result_values(single_worker_results) == get_result_values(
-            multi_worker_results
-        )
+        sorted(single_worker_results)
+        sorted(multi_worker_results)
+        assert single_worker_results == multi_worker_results
