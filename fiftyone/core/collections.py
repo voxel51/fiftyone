@@ -10415,6 +10415,7 @@ class SampleCollection(object):
                     "Batchable aggregations must have pipelines with a single "
                     "$project stage; found %s" % _pipeline
                 )
+        project["_id"] = False
 
         return self._pipeline(
             pipeline=[{"$project": project}],
