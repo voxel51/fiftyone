@@ -634,14 +634,10 @@ def _get_label_type(samples, backend, label_type, label_field, label_info):
     if "type" in label_info:
         label_type = label_info["type"]
 
-    field_name, is_frame_field = samples._handle_frame_field(label_field)
+    field = samples.get_field(label_field)
+    is_frame_field = samples._is_frame_field(label_field)
 
-    if is_frame_field:
-        schema = samples.get_frame_field_schema()
-    else:
-        schema = samples.get_field_schema()
-
-    if field_name not in schema:
+    if field is None:
         if label_type is None:
             raise ValueError(
                 "You must specify a type for new label field '%s'"
@@ -650,7 +646,7 @@ def _get_label_type(samples, backend, label_type, label_field, label_info):
 
         return label_type, is_frame_field, False, False
 
-    _existing_type = _get_backend_field_type(backend, schema[field_name])
+    _existing_type = _get_backend_field_type(backend, field)
     _multiple_types = isinstance(_existing_type, list)
 
     if label_type is not None:
@@ -1261,14 +1257,9 @@ def _prompt_field(
         fo_label_type = _LABEL_TYPES_MAP[label_type]
 
     if label_field:
-        _, is_frame_field = dataset._handle_frame_field(label_field)
+        is_frame_field = dataset._is_frame_field(label_field)
     else:
-        _, is_frame_field = dataset._handle_frame_field(new_field)
-
-    if is_frame_field:
-        schema = dataset.get_frame_field_schema()
-    else:
-        schema = dataset.get_field_schema()
+        is_frame_field = dataset._is_frame_field(new_field)
 
     while True:
         if is_frame_field and not dataset._is_frame_field(new_field):
@@ -1282,18 +1273,14 @@ def _prompt_field(
         is_good_field = _new_field not in label_schema
 
         if is_good_field:
-            if is_frame_field:
-                field, _ = dataset._handle_frame_field(new_field)
-            else:
-                field = new_field
-
-            if field not in schema:
+            _field = dataset.get_field(new_field)
+            if _field is None:
                 break  # new field
 
             try:
-                field_type = schema[field].document_type
+                field_type = _field.document_type
             except:
-                field_type = type(schema[field])
+                field_type = type(_field)
 
             if label_type == "scalar":
                 # As long as it is not an embedded document field, assume the
