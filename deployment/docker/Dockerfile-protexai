@@ -13,6 +13,7 @@ RUN pip wheel --wheel-dir=/tmp/wheels \
   "onnxruntime-gpu==1.17.1" \
   "opencv-python==4.9.0.80" \
   "pandas==2.2.1" \
+  "pydantic>=2.0,<2.11" \
   "slack_sdk==3.27.1" \
   "wandb==0.16.4"
 
@@ -27,6 +28,7 @@ RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     opencv-python \
     onnxruntime-gpu \
     pandas \
+    "pydantic>=2.0,<2.11" \
     slack-sdk \
     wandb
 
