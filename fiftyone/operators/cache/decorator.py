@@ -91,7 +91,7 @@ def execution_cache(
                 the value is not found, it falls back to the execution store.
         max_size (None): Maximum size of the memory cache. Only applicable for
             "ephemeral" and "hybrid" residency modes. If not provided, the default
-            size is 128. The cache will evict the least recently used items when
+            size is 1024. The cache will evict the least recently used items when
             the size exceeds this limit.
 
     note::
@@ -169,7 +169,7 @@ def execution_cache(
         # max_size is only applicable for ephemeral and hybrid residency
         if max_size is not None and residency not in ["ephemeral", "hybrid"]:
             raise ValueError(
-                f"max_size is only valid for ephemeral and hybrid residency."
+                "max_size is only valid for ephemeral and hybrid residency."
             )
 
         func.store_name = store_name

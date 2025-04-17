@@ -6,7 +6,7 @@ _EPHEMERAL_CACHE_LOCK = Lock()
 
 
 def get_ephemeral_cache(func_id, max_size=None):
-    max_size = max_size or 1000
+    max_size = max_size or 1024
     with _EPHEMERAL_CACHE_LOCK:
         if func_id not in _EPHEMERAL_CACHE_REGISTRY:
             _EPHEMERAL_CACHE_REGISTRY[func_id] = LRUCache(maxsize=max_size)
