@@ -186,7 +186,7 @@ class TestExecutionCacheWithSamples(unittest.TestCase):
         ctx = setup_ctx(dataset)
 
         self.assertEqual(cached(ctx, "c"), "hybrid-c")  # MISS
-        self.assertEqual(cached(ctx, "c"), "hybrid-c")  # HIT (mem or disk)
+        self.assertEqual(cached(ctx, "c"), "hybrid-c")  # HIT
 
         self.assertEqual(calls, ["c"])
 

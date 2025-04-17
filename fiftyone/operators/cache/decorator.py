@@ -197,7 +197,7 @@ def execution_cache(
             if skip_cache:
                 return func(*args, **kwargs)
 
-            # Hybrid and Ephemeral: Check memory cache first
+            # Hybrid or Ephemeral
             if memory_cache is not None and cache_key in memory_cache:
                 cached_value = memory_cache[cache_key]
                 return (
@@ -206,7 +206,7 @@ def execution_cache(
                     else auto_deserialize(cached_value)
                 )
 
-            # Transient/Persistent/Hybrid: Check store (if applicable)
+            # Transient or Hybrid
             cached_value = None
             if store is not None:
                 cached_value = store.get(cache_key)
@@ -228,7 +228,7 @@ def execution_cache(
 
                 return result
 
-            # Cache miss: compute result
+            # Cache miss
             result = func(*args, **kwargs)
             value_to_cache = (
                 serialize(result) if serialize else auto_serialize(result)
