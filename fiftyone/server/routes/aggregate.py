@@ -9,12 +9,12 @@ FiftyOne Server /aggregation and /tagging routes
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 
-import fiftyone.core.aggregations as foa
 import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
 
 import fiftyone.server.view as fosv
+import fiftyone.core.odm as foo
 
 
 class Aggregate(HTTPEndpoint):
@@ -33,7 +33,28 @@ class Aggregate(HTTPEndpoint):
         if sample_ids:
             view = fov.make_optimized_select_view(view, sample_ids)
 
-        aggregate_result = view.aggregate(
-            [foa.Aggregation._from_dict(agg) for agg in aggregations]
+        collection = foo.get_async_db_conn()[
+            view._dataset._sample_collection_name
+        ]
+
+        ids = []
+        points = []
+        _results = foo.aggregate(
+            collection,
+            [
+                {
+                    "$project": {
+                        "_id": "$_id",
+                        "long": "$location.point.long",
+                        "lat": "$location.point.lat",
+                    }
+                }
+            ],
+            "_id_1_location.point.long_1_location.point.lat_1",
         )
-        return {"aggregate": aggregate_result}
+
+        async for value in _results:
+            ids.append(str(value["_id"]))
+            points.append([value["long"], value["lat"]])
+
+        return {"aggregate": [ids, points]}
