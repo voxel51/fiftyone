@@ -12,7 +12,7 @@ RUN pip wheel --wheel-dir=/tmp/wheels \
   "numpy==1.26.4" \
   "onnxruntime-gpu==1.17.1" \
   "opencv-python==4.9.0.80" \
-  "pandas==2.2.1" \
+  "pandas==2.2.3" \
   "pydantic>=2.0,<2.11" \
   "slack_sdk==3.27.1" \
   "wandb==0.16.4"
