@@ -29,6 +29,14 @@ if TYPE_CHECKING:
     from fiftyone.api.pymongo.database import Database
 
 
+class InsertManyResult(pymongo.results.InsertManyResult):
+    """Subclass for pymongo.results.InsertManyResult"""
+
+    def __init__(self, inserted_ids, acknowledged, nBytes):
+        super().__init__(inserted_ids, acknowledged)
+        self.nBytes = nBytes
+
+
 class Collection(proxy.PymongoRestProxy):
     """Proxy for pymongo.collection.Collection"""
 
@@ -170,7 +178,13 @@ class Collection(proxy.PymongoRestProxy):
                     manually_set.add(idx)
 
         try:
-            res = self.__proxy_it__("bulk_write", (requests, *args), kwargs)
+            size, res = self.__proxy_it__(
+                "bulk_write",
+                (requests, *args),
+                kwargs,
+                get_request_size=True,
+            )
+            res.bulk_api_result["nBytes"] = size
         except pymongo.errors.BulkWriteError as bwe:
             # Remove any manually set _ids before re-raising.
             for err in bwe.details["writeErrors"]:
@@ -218,9 +232,9 @@ class Collection(proxy.PymongoRestProxy):
         documents: Iterable[bson.raw_bson.RawBSONDocument],
         *args: Any,
         **kwargs: Any,
-    ) -> pymongo.results.InsertManyResult:
+    ) -> InsertManyResult:
         inserted_ids = []
-
+        size = -1
         if documents:
             # Modify each document client-side and ensure _id exists and is first
             # to avoid additional reordering server-side
@@ -231,11 +245,12 @@ class Collection(proxy.PymongoRestProxy):
                 doc["_id"] = oid
                 documents[i] = {"_id": oid, **doc}
             try:
-                _ = self.__proxy_it__(
+                size, _ = self.__proxy_it__(
                     "insert_many",
                     (documents, *args),
                     kwargs,
                     is_idempotent=False,
+                    get_request_size=True,
                 )
             except requests.exceptions.ReadTimeout as e:
                 # ReadTimeouts can occur even if the operation eventually succeeds server-side.
@@ -247,8 +262,8 @@ class Collection(proxy.PymongoRestProxy):
                 )
                 logging.debug("ReadTimeout error: %s", e)
 
-        return pymongo.results.InsertManyResult(
-            inserted_ids, acknowledged=WriteConcern() != 0
+        return InsertManyResult(
+            inserted_ids, acknowledged=WriteConcern() != 0, nBytes=size
         )
 
     # pylint: disable-next=missing-function-docstring

@@ -34,6 +34,7 @@ class PymongoRestProxy(utils.IProxy, abc.ABC, metaclass=PymongoProxyMeta):
         args: Optional[Iterable[Any]] = None,
         kwargs: Optional[Mapping[str, Any]] = None,
         is_idempotent: bool = True,
+        get_request_size: bool = False,
     ):
         """Send a REST request to the Teams API."""
 
@@ -44,9 +45,14 @@ class PymongoRestProxy(utils.IProxy, abc.ABC, metaclass=PymongoProxyMeta):
             payload=payload,
             stream=True,
             is_idempotent=is_idempotent,
+            get_request_size=get_request_size,
         )
 
-        return self.__proxy_api_handle_response__(response)
+        return (
+            (response[0], self.__proxy_api_handle_response__(response[1]))
+            if get_request_size
+            else self.__proxy_api_handle_response__(response)
+        )
 
     @property
     @abc.abstractmethod

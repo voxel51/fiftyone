@@ -4,7 +4,7 @@ FiftyOne continual delegated executor related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
+import sys
 import time
 import unittest
 import multiprocessing
@@ -115,6 +115,9 @@ def start_executor(
     executor.start()
 
 
+@unittest.skipIf(
+    sys.platform.startswith("win"), "doesnt need to work on Windows"
+)
 @patch.object(
     delegated_operation,
     "is_remote_service",

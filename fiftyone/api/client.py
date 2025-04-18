@@ -120,9 +120,11 @@ class Client:
         stream: bool = False,
         timeout: Optional[int] = None,
         is_idempotent: bool = True,
-    ) -> Any:
+        get_request_size: bool = False,
+    ) -> Union[Any, tuple[int, Any]]:
         """Make post request"""
         payload = encodings.apply_encoding(payload, self._content_encoding)
+        request_size = len(payload)
         data = payload
         headers = {}
 
@@ -146,6 +148,7 @@ class Client:
         # Use response as context manager to ensure it's closed.
         # https://requests.readthedocs.io/en/latest/user/advanced/#body-content-workflow
         with response:
+            content = response.content if not stream else None
             if stream:
                 # Iter in chunks rather than lines since data isn't newline delimited
                 content = b"".join(
@@ -155,12 +158,13 @@ class Client:
                     )
                     if chunk
                 )
-                return encodings.apply_decoding(
-                    content, self._content_encoding
-                )
-
-            return encodings.apply_decoding(
-                response.content, self._content_encoding
+            decoded_content = encodings.apply_decoding(
+                content, self._content_encoding
+            )
+            return (
+                (request_size, decoded_content)
+                if get_request_size
+                else decoded_content
             )
 
     def post_file(

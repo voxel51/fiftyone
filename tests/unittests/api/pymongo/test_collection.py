@@ -36,7 +36,7 @@ def fixture_sample_docs():
 
 def test_insert_many(fixture_sample_collection, fixture_sample_docs):
     """Test insert_many preserves preassigned _ids."""
-
+    fixture_sample_collection.__proxy_it__.return_value = (0, {})
     inserted_result = fixture_sample_collection.insert_many(
         fixture_sample_docs
     )
@@ -47,7 +47,11 @@ def test_insert_many(fixture_sample_collection, fixture_sample_docs):
     for doc in fixture_sample_docs:
         assert doc["_id"] in inserted_result.inserted_ids
     fixture_sample_collection.__proxy_it__.assert_called_once_with(
-        "insert_many", (fixture_sample_docs,), {}, is_idempotent=False
+        "insert_many",
+        (fixture_sample_docs,),
+        {},
+        is_idempotent=False,
+        get_request_size=True,
     )
 
 
@@ -55,7 +59,7 @@ def test_insert_many_assigns_ids(
     fixture_sample_collection, fixture_sample_docs
 ):
     """Test that docs without _ids are assigned new ObjectIds."""
-
+    fixture_sample_collection.__proxy_it__.return_value = (0, {})
     new_docs = []
     for doc in fixture_sample_docs:
         new_doc = doc.copy()
@@ -65,7 +69,11 @@ def test_insert_many_assigns_ids(
     inserted_result = fixture_sample_collection.insert_many(new_docs)
 
     fixture_sample_collection.__proxy_it__.assert_called_once_with(
-        "insert_many", (new_docs,), {}, is_idempotent=False
+        "insert_many",
+        (new_docs,),
+        {},
+        is_idempotent=False,
+        get_request_size=True,
     )
     assert isinstance(inserted_result, pymongo.results.InsertManyResult)
     assert inserted_result.acknowledged is True
@@ -76,6 +84,7 @@ def test_insert_many_assigns_ids(
 
 def test_insert_many_handles_empty_input(fixture_sample_collection):
     """Test insert_many with an empty list does nothing."""
+    fixture_sample_collection.__proxy_it__.return_value = (0, {})
     inserted_result = fixture_sample_collection.insert_many([])
 
     assert isinstance(inserted_result, pymongo.results.InsertManyResult)
