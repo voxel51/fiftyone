@@ -8,7 +8,7 @@ FROM python:${PYTHON_VERSION} AS wheelhouse
 ARG PIP_INDEX_URL=https://pypi.org/simple
 
 RUN pip wheel --wheel-dir=/tmp/wheels \
-  "encord==0.1.111" \
+  "encord==0.1.158" \
   "numpy==1.26.4" \
   "onnxruntime-gpu==1.17.1" \
   "opencv-python==4.9.0.80" \
