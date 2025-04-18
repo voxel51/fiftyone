@@ -8,14 +8,15 @@ FROM python:${PYTHON_VERSION} AS wheelhouse
 ARG PIP_INDEX_URL=https://pypi.org/simple
 
 RUN pip install -U pip wheel setuptools && \
-  pip wheel --wheel-dir=/tmp/wheels \
-    "encord==0.1.111" \
-    "numpy==1.26.4" \
-    "onnxruntime-gpu==1.17.1" \
-    "opencv-python==4.9.0.80" \
-    "pandas==2.2.1" \
-    "slack_sdk==3.27.1" \
-    "wandb==0.16.4"
+    pip wheel --wheel-dir=/tmp/wheels \
+      "encord==0.1.158" \
+      "numpy==1.26.4" \
+      "onnxruntime-gpu==1.17.1" \
+      "opencv-python==4.9.0.80" \
+      "pandas==2.2.3" \
+      "pydantic>=2.0,<2.11" \
+      "slack_sdk==3.27.1" \
+      "wandb==0.16.4"
 
 
 FROM ${CV_BASE_IMAGE_NAME} AS protexaiplugins
@@ -28,6 +29,7 @@ RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     opencv-python \
     onnxruntime-gpu \
     pandas \
+    "pydantic>=2.0,<2.11" \
     slack-sdk \
     wandb
 
