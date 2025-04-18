@@ -1,4 +1,4 @@
-import { LabelData, LabelToggledEvent } from "@fiftyone/looker";
+import { LabelToggledEvent } from "@fiftyone/looker";
 import { useRecoilCallback } from "recoil";
 import { hoveredInstances, jotaiStore } from "../jotai";
 import { selectedLabelMap } from "../recoil";
@@ -7,7 +7,7 @@ import { selectedLabels } from "../recoil/atoms";
 export const useOnShiftClickLabel = () => {
   return useRecoilCallback(
     ({ set, snapshot }) =>
-      async (sampleId: string, labels: LabelData[], e: LabelToggledEvent) => {
+      async (e: LabelToggledEvent) => {
         const { sourceInstanceId } = e.detail;
 
         if (!sourceInstanceId) {
@@ -61,7 +61,7 @@ export const useOnShiftClickLabel = () => {
             return [
               ...prev,
               ...Object.values(currentlyHoveredInstanceLabels).map((e) => ({
-                sampleId,
+                sampleId: e.sampleId,
                 labelId: e.labelId,
                 frameNumber: e.frameNumber,
                 field: e.field,
@@ -89,28 +89,24 @@ export const useOnShiftClickLabel = () => {
           currentSelectedInstanceCount > 0 &&
           currentSelectedInstanceCount < currentHoveredInstanceCount
         ) {
-          const labelsToAdd = labels.filter(
-            (l) =>
-              l.instanceId === sourceInstanceId &&
-              !currentSelectedLabels[l.labelId]
-          );
+          const labelsToAdd = Object.values(currentlyHoveredInstanceLabels)
+            .filter((l) => !currentSelectedLabels[l.labelId])
+            .map((l) => ({
+              sampleId: l.sampleId,
+              labelId: l.labelId,
+              frameNumber: l.frameNumber,
+              field: l.field,
+              instanceId: l.instanceId,
+            }));
 
           if (labelsToAdd.length > 0) {
             set(selectedLabels, (prev) => {
-              const deduped = [...prev, ...labelsToAdd].filter(
+              return [...prev, ...labelsToAdd].filter(
                 (v, i, self) =>
                   self.findIndex((t) => t.labelId === v.labelId) === i
               );
-
-              if (deduped.length === currentHoveredInstanceCount) {
-                // if we don't stop propagation, it's possible that the
-                // in one of the handlers, scenario 2 is triggered again
-                // and we end up with all labels toggled off
-                e.stopImmediatePropagation();
-              }
-
-              return deduped;
             });
+            e.stopImmediatePropagation();
           }
 
           return;
