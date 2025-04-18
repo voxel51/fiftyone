@@ -356,7 +356,7 @@ class TestSkipFailures:
         # For non-failing samples, return the processed value
         return sample.field_to_process.upper()
 
-    @pytest.mark.parametrize("parallelize_method", ["process"])
+    @pytest.mark.parametrize("parallelize_method", ["process", "thread"])
     @pytest.mark.parametrize("workers", [1, 2])
     def test_skip_failures_true(
         self, sample_dataset, parallelize_method, workers
@@ -391,7 +391,7 @@ class TestSkipFailures:
             assert result[1].isupper()
             assert result[1].startswith("VALUE_")
 
-    @pytest.mark.parametrize("parallelize_method", ["process"])
+    @pytest.mark.parametrize("parallelize_method", ["process", "thread"])
     @pytest.mark.parametrize("workers", [1, 2])
     def test_skip_failures_false(
         self, sample_dataset, parallelize_method, workers
@@ -416,28 +416,30 @@ class TestSkipFailures:
         """Test that results are the same with single worker vs multiple workers."""
 
         # Process with a single worker
-        single_worker_results = [
-            result
-            for _, result in sample_dataset.map_samples(
-                self._failing_function,
-                workers=1,
-                skip_failures=True,
-                parallelize_method=parallelize_method,
-            )
-        ]
+        single_worker_results = sorted(
+            [
+                result
+                for _, result in sample_dataset.map_samples(
+                    self._failing_function,
+                    workers=1,
+                    skip_failures=True,
+                    parallelize_method=parallelize_method,
+                )
+            ]
+        )
 
         # Process with multiple workers
-        multi_worker_results = [
-            result
-            for _, result in sample_dataset.map_samples(
-                self._failing_function,
-                workers=2,
-                skip_failures=True,
-                parallelize_method=parallelize_method,
-            )
-        ]
+        multi_worker_results = sorted(
+            [
+                result
+                for _, result in sample_dataset.map_samples(
+                    self._failing_function,
+                    workers=2,
+                    skip_failures=True,
+                    parallelize_method=parallelize_method,
+                )
+            ]
+        )
 
         # Results should be consistent between single and multi-worker
-        sorted(single_worker_results)
-        sorted(multi_worker_results)
         assert single_worker_results == multi_worker_results

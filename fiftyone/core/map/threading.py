@@ -82,14 +82,12 @@ class ThreadMapper(fomm.LocalMapper):
                         progress_bar.update(1)
                     result = map_fcn(sample)
                 except Exception as err:
-                    if skip_failures:
-                        # Cancel other workers as soon as possible.
-                        cancel_event.set()
-
                     # Add sample ID and error to the queue.
                     result_queue.put((sample.id, err, None))
 
-                    if skip_failures:
+                    if not skip_failures:
+                        # Cancel other workers as soon as possible.
+                        cancel_event.set()
                         break
                 else:
                     # Add sample ID and result to the queue.
