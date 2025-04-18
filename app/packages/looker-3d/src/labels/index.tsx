@@ -1,4 +1,10 @@
-import { LabelData, Sample } from "@fiftyone/looker";
+import {
+  FO_LABEL_TOGGLED_EVENT,
+  LabelData,
+  LabelToggledEvent,
+  Sample,
+  selectiveRenderingEventBus,
+} from "@fiftyone/looker";
 import {
   getLabelColor,
   shouldShowLabelTag,
@@ -6,14 +12,14 @@ import {
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { fieldSchema } from "@fiftyone/state";
+import { useOnShiftClickLabel } from "@fiftyone/state/src/hooks/useOnShiftClickLabel";
 import { ThreeEvent } from "@react-three/fiber";
 import { folder, useControls } from "leva";
 import { get as _get } from "lodash";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { PANEL_ORDER_LABELS } from "../constants";
 import { usePathFilter } from "../hooks";
-import { useOnShiftClickLabel3d } from "../hooks/use-similar-labels-3d";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
 import { cuboidLabelLineWidthAtom, polylineLabelLineWidthAtom } from "../state";
 import { toEulerFromDegreesArray } from "../utils";
@@ -214,7 +220,20 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     return allLabels;
   }, [rawOverlays]);
 
-  useOnShiftClickLabel3d(canonicalSampleId, allLabels);
+  const getOnShiftClickLabelCallback = useOnShiftClickLabel();
+
+  useEffect(() => {
+    const unsub = selectiveRenderingEventBus.on(
+      FO_LABEL_TOGGLED_EVENT,
+      (e: LabelToggledEvent) => {
+        getOnShiftClickLabelCallback(e);
+      }
+    );
+
+    return () => {
+      unsub();
+    };
+  }, [getOnShiftClickLabelCallback]);
 
   return (
     <group>

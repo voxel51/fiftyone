@@ -287,12 +287,7 @@ export default <T extends AbstractLooker<BaseState>>(
 
         selectiveRenderingEventBus.on(
           FO_LABEL_TOGGLED_EVENT,
-          (e) =>
-            getOnShiftClickLabelCallback(
-              sample._id,
-              looker.getCurrentSampleLabels(),
-              e
-            ),
+          (e) => getOnShiftClickLabelCallback(e),
           abortControllerRef.current.signal
         );
 

@@ -31,6 +31,8 @@ export type LabelId = string;
  * Data associated with label instance hovered events.
  */
 export interface LabelHoveredEventData {
+  /** The sample identifier. */
+  sampleId: string;
   /** The field related to the label, e.g. "ground_truth" */
   field: string;
   /** The instance identifier. */

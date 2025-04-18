@@ -1,6 +1,5 @@
 import { Lookers } from "@fiftyone/state";
 import {
-  hoveredInstances,
   jotaiStore,
   removeAllHoveredInstances,
   updateHoveredInstances,
@@ -197,7 +196,11 @@ export abstract class AbstractLooker<
   }
 
   private labelHoveredListener = (e: LabelHoveredEvent) => {
-    const { instanceId } = e.detail;
+    const {
+      instanceId,
+      sampleId: _sourceSampleId,
+      labelId: _sourceLabelId,
+    } = e.detail;
 
     // .find() instead of .filter() because label "instance" is unique per looker
     const label = this.currentOverlays.find(
@@ -209,6 +212,7 @@ export abstract class AbstractLooker<
     }
 
     jotaiStore.set(updateHoveredInstances, {
+      sampleId: this.state.config.sampleId,
       instanceId,
       labelId: label.label.id,
       field: label.field,

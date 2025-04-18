@@ -110,13 +110,6 @@ export abstract class CoordinateOverlay<
   constructor(field: string, label: Label) {
     this.field = field;
     this.label = label;
-
-    console.log(
-      "Creating overlay for label",
-      this.label.id,
-      "with instanceId",
-      this.label.instance?._id
-    );
   }
 
   abstract draw(ctx: CanvasRenderingContext2D, state: Readonly<State>): void;

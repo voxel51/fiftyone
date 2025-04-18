@@ -49,6 +49,7 @@ export const dispatchTooltipEvent = <State extends BaseState>(
     if (detail?.label?.instance) {
       selectiveRenderingEventBus.emit(
         new LabelHoveredEvent({
+          sampleId: state.config.sampleId,
           labelId: detail.label.id,
           instanceId: detail.label.instance?._id,
           field: detail.label.field,
