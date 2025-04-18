@@ -9044,6 +9044,27 @@ class SampleCollection(object):
         Returns:
             the list of values
         """
+        # if the field is `_id`, `id`, or `filepath`, we can use a covered index
+        # query to get the values directly from the collection
+        if (
+            field_or_expr in ["_id", "id", "filepath"]
+            and self._is_full_collection()
+        ):
+            if field_or_expr == "id":
+                field_or_expr = "_id"
+            proj = {field_or_expr: 1}
+            if field_or_expr != "_id":
+                # strip off the id if we are not asking for it so that a
+                # single field index can cover the query
+                proj["_id"] = 0
+
+            return [
+                doc[field_or_expr]
+                for doc in self._dataset._sample_collection.find(
+                    {}, proj, hint={field_or_expr: 1}
+                )
+            ]
+
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
             expr=expr,
