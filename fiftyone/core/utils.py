@@ -1628,6 +1628,8 @@ class ContentSizeBatcher(BaseBatcher):
             if size_calculation_fn
             else default_calculate_size
         )
+        self._last_batch_content_size = None
+        self._encoding_ratio = 1.0
 
     def __iter__(self):
         super().__iter__()
@@ -1664,7 +1666,8 @@ class ContentSizeBatcher(BaseBatcher):
                     self.max_batch_size
                     and len(curr_batch) >= self.max_batch_size
                 ) or (
-                    batch_content_size + next_element_size > self.target_size
+                    batch_content_size + next_element_size
+                    > self.target_size * self._encoding_ratio
                 ):
                     break
 
@@ -1680,7 +1683,14 @@ class ContentSizeBatcher(BaseBatcher):
                 break
 
         self._last_batch_size = len(curr_batch)
+        self._last_batch_content_size = batch_content_size
         return curr_batch
+
+    def set_encoding_ratio(self, encoded_batch_size):
+        if self._last_batch_content_size and encoded_batch_size > 0:
+            self._encoding_ratio = (
+                self._last_batch_content_size / encoded_batch_size
+            )
 
 
 def default_calculate_size(obj):

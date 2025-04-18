@@ -3245,7 +3245,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             copy=True,
         )
 
-        ids = self._add_samples_batch([sample])
+        _, ids = self._add_samples_batch([sample])
         return ids[0]
 
     def add_samples(
@@ -3306,8 +3306,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample_ids = []
         with batcher:
             for batch in batcher:
-                _ids = self._add_samples_batch(batch)
+                res, _ids = self._add_samples_batch(batch)
                 sample_ids.extend(_ids)
+                if hasattr(res, "nBytes") and hasattr(
+                    batcher, "set_encoding_ratio"
+                ):
+                    batcher.set_encoding_ratio(res.nBytes)
 
         return sample_ids
 
@@ -3370,12 +3374,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples_and_docs: a list of tuples of the form (sample, dict) where the dict
                 is the sample's backing document
         Returns:
-            a list of IDs of the samples that were added to this dataset
+            a tuple of pymongo.results.InsertManyResult and a list of IDs of the samples
+            that were added to this dataset
         """
         dicts = [doc for _, doc in samples_and_docs]
         try:
             # adds `_id` to each dict
-            self._sample_collection.insert_many(dicts)
+            res = self._sample_collection.insert_many(dicts)
         except BulkWriteError as bwe:
             msg = bwe.details["writeErrors"][0]["errmsg"]
             raise ValueError(msg) from bwe
@@ -3386,7 +3391,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if sample.media_type == fom.VIDEO:
                 sample.frames.save()
 
-        return [str(d["_id"]) for d in dicts]
+        return (res, [str(d["_id"]) for d in dicts])
 
     def _upsert_samples(
         self,
