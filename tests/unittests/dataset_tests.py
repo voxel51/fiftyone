@@ -1670,6 +1670,10 @@ class DatasetTests(unittest.TestCase):
                 "eggs.detections.mask_path",
                 "eggs.detections.confidence",
                 "eggs.detections.index",
+                "eggs.detections.instance",
+                "eggs.detections.instance.id",
+                "spam.instance",
+                "spam.instance.id",
             },
         )
 
@@ -1694,6 +1698,8 @@ class DatasetTests(unittest.TestCase):
                 "spam.label",
                 "spam.confidence",
                 "spam.logits",
+                "spam.instance",
+                "spam.instance.id",
                 "eggs",
                 "eggs.detections",
             },

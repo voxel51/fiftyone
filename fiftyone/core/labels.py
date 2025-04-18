@@ -644,7 +644,7 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasInstance, Label):
         return cls(label=label, bounding_box=bbox, mask=mask, **attributes)
 
 
-class Detections(_HasLabelList, _HasInstance, Label):
+class Detections(_HasLabelList, Label):
     """A list of object detections in an image.
 
     Args:
