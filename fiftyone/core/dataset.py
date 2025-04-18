@@ -1500,11 +1500,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         info_keys=None,
         created_after=None,
         include_private=False,
         flat=False,
+        unwind=True,
         mode=None,
     ):
         """Returns a schema dictionary describing the fields of the samples in
@@ -1518,6 +1520,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to which to restrict the returned schema. Must be
+                subclass(es) of :class:`fiftyone.core.fields.Field`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
@@ -1528,10 +1533,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            unwind (True): whether to traverse into list fields. Only
+                applicable when ``flat=True``
             mode (None): whether to apply the above constraints before and/or
-                after flattening the schema. Only applicable when ``flat`` is
-                True. Supported values are ``("before", "after", "both")``.
-                The default is ``"after"``
+                after flattening the schema. Only applicable when ``flat=True``.
+                Supported values are ``("before", "after", "both")``. The
+                default is ``"after"``
 
         Returns:
             a dict mapping field names to :class:`fiftyone.core.fields.Field`
@@ -1540,11 +1547,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._sample_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
             read_only=read_only,
             info_keys=info_keys,
             created_after=created_after,
             include_private=include_private,
             flat=flat,
+            unwind=unwind,
             mode=mode,
         )
 
@@ -1552,11 +1561,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self,
         ftype=None,
         embedded_doc_type=None,
+        subfield=None,
         read_only=None,
         info_keys=None,
         created_after=None,
         include_private=False,
         flat=False,
+        unwind=True,
         mode=None,
     ):
         """Returns a schema dictionary describing the fields of the frames of
@@ -1572,6 +1583,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            subfield (None): an optional subfield type or iterable of subfield
+                types to which to restrict the returned schema. Must be
+                subclass(es) of :class:`fiftyone.core.fields.Field`
             read_only (None): whether to restrict to (True) or exclude (False)
                 read-only fields. By default, all fields are included
             info_keys (None): an optional key or list of keys that must be in
@@ -1582,10 +1596,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            unwind (True): whether to traverse into list fields. Only
+                applicable when ``flat=True``
             mode (None): whether to apply the above constraints before and/or
-                after flattening the schema. Only applicable when ``flat`` is
-                True. Supported values are ``("before", "after", "both")``.
-                The default is ``"after"``
+                after flattening the schema. Only applicable when ``flat=True``.
+                Supported values are ``("before", "after", "both")``. The
+                default is ``"after"``
 
         Returns:
             a dict mapping field names to :class:`fiftyone.core.fields.Field`
@@ -1597,11 +1613,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._frame_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
             read_only=read_only,
             info_keys=info_keys,
             created_after=created_after,
             include_private=include_private,
             flat=flat,
+            unwind=unwind,
             mode=mode,
         )
 
@@ -3429,7 +3447,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             copy=True,
         )
 
-        ids = self._add_samples_batch([sample])
+        _, ids = self._add_samples_batch([sample])
         return ids[0]
 
     @requires_can_edit
@@ -3491,8 +3509,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample_ids = []
         with batcher:
             for batch in batcher:
-                _ids = self._add_samples_batch(batch)
+                res, _ids = self._add_samples_batch(batch)
                 sample_ids.extend(_ids)
+                if hasattr(res, "nBytes") and hasattr(
+                    batcher, "set_encoding_ratio"
+                ):
+                    batcher.set_encoding_ratio(res.nBytes)
 
         return sample_ids
 
@@ -3556,12 +3578,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples_and_docs: a list of tuples of the form (sample, dict) where the dict
                 is the sample's backing document
         Returns:
-            a list of IDs of the samples that were added to this dataset
+            a tuple of pymongo.results.InsertManyResult and a list of IDs of the samples
+            that were added to this dataset
         """
         dicts = [doc for _, doc in samples_and_docs]
         try:
             # adds `_id` to each dict
-            self._sample_collection.insert_many(dicts)
+            res = self._sample_collection.insert_many(dicts)
         except BulkWriteError as bwe:
             msg = bwe.details["writeErrors"][0]["errmsg"]
             raise ValueError(msg) from bwe
@@ -3572,7 +3595,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if sample.media_type == fom.VIDEO:
                 sample.frames.save()
 
-        return [str(d["_id"]) for d in dicts]
+        return (res, [str(d["_id"]) for d in dicts])
 
     def _upsert_samples(
         self,
