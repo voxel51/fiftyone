@@ -1,4 +1,4 @@
-import { LabelData, LabelToggledEvent } from "@fiftyone/looker";
+import { LabelToggledEvent } from "@fiftyone/looker";
 import { FrameSample } from "@fiftyone/looker/src/state";
 import { getTimelineConfigAtom } from "@fiftyone/playback";
 import { getFetchFunction } from "@fiftyone/utilities";
@@ -202,7 +202,7 @@ export const useOnShiftClickLabel = () => {
 
   const handleVideo = useRecoilCallback(
     ({ set, snapshot }) =>
-      async (sampleId: string, labels: LabelData[], e: LabelToggledEvent) => {
+      async (e: LabelToggledEvent) => {
         const { sourceInstanceId, sourceLabelId } = e.detail;
 
         if (!sourceInstanceId) {
@@ -213,10 +213,11 @@ export const useOnShiftClickLabel = () => {
 
         const similarLabels = await getSimilarLabelsCached({
           instanceId: sourceInstanceId,
-          sampleId,
+          sampleId: e.detail.sourceSampleId,
           numFrames:
-            jotaiStore.get(getTimelineConfigAtom(`timeline-${sampleId}`))
-              .totalFrames ?? 1,
+            jotaiStore.get(
+              getTimelineConfigAtom(`timeline-${e.detail.sourceSampleId}`)
+            ).totalFrames ?? 1,
           dataset: snapshot.getLoadable(datasetName).getValue(),
           view: currentView,
         });
@@ -239,7 +240,7 @@ export const useOnShiftClickLabel = () => {
 
         const labelsToAddOrRemove = Object.entries(labelIdMap).map(
           ([labelId, frameNumber]) => ({
-            sampleId,
+            sampleId: e.detail.sourceSampleId,
             labelId,
             frameNumber,
             field: fieldName,
@@ -270,8 +271,8 @@ export const useOnShiftClickLabel = () => {
 
   return useRecoilCallback(
     ({ snapshot }) =>
-      async (sampleId: string, labels: LabelData[], e: LabelToggledEvent) => {
-        const { sourceInstanceId, sourceSampleId } = e.detail;
+      async (e: LabelToggledEvent) => {
+        const { sourceInstanceId } = e.detail;
 
         if (!sourceInstanceId) {
           return;
@@ -308,9 +309,9 @@ export const useOnShiftClickLabel = () => {
           hoveredSampleValue?.frames?.length > 0;
 
         if (isVideoWithMultipleFrames) {
-          return handleVideo(sourceSampleId, labels, e);
+          return handleVideo(e);
         } else {
-          return handleGroup(sampleId, labels, e);
+          return handleGroup(e);
         }
       },
     [handleGroup, handleVideo]
