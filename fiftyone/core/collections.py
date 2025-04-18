@@ -10642,6 +10642,9 @@ class SampleCollection(object):
                     "$project stage; found %s" % _pipeline
                 )
 
+        if "_id" not in project:
+            project["_id"] = False
+
         return self._pipeline(
             pipeline=[{"$project": project}],
             attach_frames=attach_frames,

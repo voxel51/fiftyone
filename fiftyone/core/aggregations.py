@@ -2903,10 +2903,15 @@ class Values(Aggregation):
             field = fof.ObjectIdField()
             id_to_str = False
 
+        #
         # Optimization: use field inclusion syntax when possible
-        if self._expr is None and path == "_id":
+        #
+        # Note that this is only allowed because these fields are *required*
+        # _make_extract_values_pipeline is required when fields may be missing
+        #
+        if self._expr is None and path in ("_id", "filepath"):
             big_field = path
-            _pipeline = [{"$project": {"_id": 1}}]
+            _pipeline = [{"$project": {big_field: 1}}]
         else:
             _pipeline = _make_extract_values_pipeline(
                 path,
@@ -2991,7 +2996,11 @@ def _make_extract_values_pipeline(
             expr = _extract_list_values(inner_list_field, expr)
 
     if big_result:
-        return [{"$project": {big_field: expr.to_mongo(prefix="$" + root)}}]
+        project = {big_field: expr.to_mongo(prefix="$" + root)}
+        if big_field != "_id":
+            project["_id"] = False
+
+        return [{"$project": project}]
 
     return [
         {"$project": {"value": expr.to_mongo(prefix="$" + root)}},
