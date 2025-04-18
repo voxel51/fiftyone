@@ -7,14 +7,14 @@ ARG PYTHON_VERSION=3.11
 FROM python:${PYTHON_VERSION} AS wheelhouse
 ARG PIP_INDEX_URL=https://pypi.org/simple
 
-RUN pip wheel --wheel-dir=/tmp/wheels qdrant-client open-clip-torch
+RUN pip wheel --wheel-dir=/tmp/wheels qdrant-client open-clip-torch "pydantic>=2.0,<2.11"
 
 
 FROM ${CV_BASE_IMAGE_NAME} AS zefrplugins
 
 RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     pip --no-cache-dir install -q --no-index \
-    --find-links=/wheelhouse/tmp/wheels qdrant-client open-clip-torch
+    --find-links=/wheelhouse/tmp/wheels qdrant-client open-clip-torch "pydantic>=2.0,<2.11"
 
 
 # run as the voxel51 user
