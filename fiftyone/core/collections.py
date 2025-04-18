@@ -9057,13 +9057,20 @@ class SampleCollection(object):
                 # strip off the id if we are not asking for it so that a
                 # single field index can cover the query
                 proj["_id"] = 0
-
-            return [
-                doc[field_or_expr]
-                for doc in self._dataset._sample_collection.find(
-                    {}, proj, hint={field_or_expr: 1}
+            try:
+                return [
+                    doc[field_or_expr]
+                    for doc in self._dataset._sample_collection.find(
+                        {}, proj, hint={field_or_expr: 1}
+                    )
+                ]
+            except Exception as e:
+                # Since _id is always indexed and filepath should be indexed,
+                # there should be no issues, but just in case
+                logging.warning(
+                    f"Covered index query for {field_or_expr} failed: {e}. "
+                    f"Falling back to aggregation."
                 )
-            ]
 
         make = lambda field_or_expr: foa.Values(
             field_or_expr,
