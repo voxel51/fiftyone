@@ -1687,7 +1687,7 @@ class ContentSizeBatcher(BaseBatcher):
         return curr_batch
 
     def set_encoding_ratio(self, encoded_batch_size):
-        if self._last_batch_content_size:
+        if self._last_batch_content_size and encoded_batch_size > 0:
             self._encoding_ratio = (
                 self._last_batch_content_size / encoded_batch_size
             )
