@@ -17,6 +17,7 @@ import fiftyone.core.utils as fou
 from fiftyone.core.config import Config
 from fiftyone.core.models import EmbeddingsMixin, Model, PromptMixin
 from fiftyone.zoo.models import HasZooModel
+import fiftyone.utils.torch as fout
 
 torch = fou.lazy_import("torch")
 transformers = fou.lazy_import("transformers")
@@ -331,7 +332,9 @@ class FiftyOneTransformerConfig(Config, HasZooModel):
             self.model = None
 
 
-class FiftyOneZeroShotTransformerConfig(FiftyOneTransformerConfig):
+class FiftyOneZeroShotTransformerConfig(
+    fout.TorchImageModelConfig, HasZooModel
+):
     """Configuration for a :class:`FiftyOneZeroShotTransformer`.
 
     Args:
@@ -342,9 +345,10 @@ class FiftyOneZeroShotTransformerConfig(FiftyOneTransformerConfig):
     """
 
     def __init__(self, d):
-        self.text_prompt = self.parse_string(d, "text_prompt", default=None)
-        self.classes = self.parse_array(d, "classes", default=None)
+        d = self.init(d)
         super().__init__(d)
+        self.name_or_path = self.parse_string(d, "name_or_path", default=None)
+        self.text_prompt = self.parse_string(d, "text_prompt", default=None)
 
 
 class TransformerEmbeddingsMixin(EmbeddingsMixin):
@@ -488,7 +492,9 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, Model):
 
 
 class FiftyOneZeroShotTransformer(
-    ZeroShotTransformerEmbeddingsMixin, ZeroShotTransformerPromptMixin, Model
+    fout.TorchImageModel,
+    ZeroShotTransformerEmbeddingsMixin,
+    ZeroShotTransformerPromptMixin,
 ):
     """FiftyOne wrapper around a ``transformers`` model.
 
@@ -497,32 +503,13 @@ class FiftyOneZeroShotTransformer(
     """
 
     def __init__(self, config):
-        self.config = config
-        self.classes = config.classes
-        self.model = self._load_model(config)
-        self.device = torch.device(self.config.device)
-        self.model.to(self.device)
-        self.processor = self._load_processor()
+        super().__init__(config)
+        self.processor = self._load_processor(config)
         self._text_prompts = None
 
-    @property
-    def media_type(self):
-        return "image"
-
-    @property
-    def ragged_batches(self):
-        return False
-
-    @property
-    def transforms(self):
-        return None
-
-    @property
-    def preprocess(self):
-        return False
-
-    def _load_processor(self):
-        return _get_processor(self.model)
+    def _load_processor(self, config):
+        kwargs = {"do_rescale": not isinstance(self, fout.TorchImageModel)}
+        return _get_processor(self._model, **kwargs)
 
     def _load_model(self, config):
         if config.model is not None:
@@ -586,7 +573,7 @@ class FiftyOneZeroShotTransformerForImageClassification(
         if config.model is not None:
             return config.model
 
-        device = torch.device(config.device)
+        device = torch.device(self._device)
         model = transformers.AutoModel.from_pretrained(config.name_or_path).to(
             device
         )
@@ -604,37 +591,13 @@ class FiftyOneZeroShotTransformerForImageClassification(
         )
 
         with torch.no_grad():
-            outputs = self.model(**inputs.to(self.device))
+            outputs = self._model(**inputs.to(self.device))
 
         logits_per_image = (
             outputs.logits_per_image.detach().cpu()
         )  # this is the image-text similarity score
 
-        probs = logits_per_image.softmax(
-            dim=1
-        )  # we can take the softmax to get the label probabilities
-        conf = probs.max(
-            dim=1
-        ).values.numpy()  # the confidence of the most likely label
-        logits = (
-            logits_per_image.numpy()
-        )  # we can also take the logits and train a linear classifier on top
-        arg_max = (
-            probs.argmax(dim=1).numpy().astype(int)
-        )  # the argmax of the label probabilities
-        classifs = [
-            fol.Classification(
-                label=self.classes[arg_max[i]],
-                confidence=conf[i],
-                logits=logits[i],
-            )
-            for i in range(logits.shape[0])
-        ]
-
-        if len(classifs) == 1:
-            classifs = classifs[0]
-
-        return classifs
+        return logits_per_image
 
     def _predict_all_from_retrieval(self, args):
         return [self._predict_from_retrieval(arg) for arg in args]
@@ -646,29 +609,16 @@ class FiftyOneZeroShotTransformerForImageClassification(
         with torch.no_grad():
             for text_prompt in text_prompts:
                 inputs = self.processor(arg, text_prompt, return_tensors="pt")
-                outputs = self.model(**(inputs.to(self.device)))
+                outputs = self._model(**(inputs.to(self.device)))
                 logits.append(outputs.logits[0, :].item())
 
-        logits = np.array(logits)
-        probs = np.exp(logits) / np.sum(np.exp(logits))
-        conf = probs.max()
-        arg_max = int(probs.argmax())
-        label = self.classes[arg_max]
+        return logits
 
-        return fol.Classification(
-            label=label,
-            confidence=conf,
-            logits=logits,
-        )
-
-    def predict_all(self, args):
-        if _has_text_and_image_features(self.model):
-            return self._predict_all_from_features(args)
+    def _forward_pass(self, imgs):
+        if _has_text_and_image_features(self._model):
+            return self._predict_all_from_features(imgs)
         else:
-            return self._predict_all_from_retrieval(args)
-
-    def predict(self, arg):
-        return self.predict_all(arg)
+            return self._predict_all_from_retrieval(imgs)
 
 
 class FiftyOneTransformerForImageClassificationConfig(
@@ -749,13 +699,8 @@ class FiftyOneZeroShotTransformerForObjectDetection(
     """
 
     def __init__(self, config):
-        self.config = config
-        self.classes = config.classes
         self.processor = self._load_processor(config)
-        self.model = self._load_model(config)
-        self.device = torch.device(self.config.device)
-        self.model.to(self.device)
-        self._text_prompts = None
+        super().__init__(config)
 
     def _load_processor(self, config):
         name_or_path = config.name_or_path
@@ -763,7 +708,10 @@ class FiftyOneZeroShotTransformerForObjectDetection(
             if config.model is not None:
                 name_or_path = config.model.name_or_path
 
-        return transformers.AutoProcessor.from_pretrained(name_or_path)
+        kwargs = {"do_rescale": not isinstance(self, fout.TorchImageModel)}
+        return transformers.AutoProcessor.from_pretrained(
+            name_or_path, **kwargs
+        )
 
     def _load_model(self, config):
         name_or_path = config.name_or_path
@@ -776,7 +724,7 @@ class FiftyOneZeroShotTransformerForObjectDetection(
         else:
             return _get_detector_from_processor(
                 self.processor, name_or_path
-            ).to(config.device)
+            ).to(self._device)
 
     def _process_inputs(self, args):
         text_prompts = self._get_text_prompts()
@@ -787,19 +735,15 @@ class FiftyOneZeroShotTransformerForObjectDetection(
 
     def _predict(self, inputs, target_sizes):
         with torch.no_grad():
-            outputs = self.model(**(inputs.to(self.device)))
-
+            outputs = self._model(**(inputs.to(self.device)))
         results = self.processor.image_processor.post_process_object_detection(
             outputs, target_sizes=target_sizes
         )
-        image_shapes = [i[::-1] for i in target_sizes]
+        return results
 
-        id2label = {i: c for i, c in enumerate(self.classes)}
-        return to_detections(results, id2label, image_shapes)
-
-    def predict(self, arg):
-        target_sizes = [arg.shape[:-1][::-1]]
-        inputs = self._process_inputs(arg)
+    def _forward_pass(self, args):
+        target_sizes = [args.shape[-2:]]
+        inputs = self._process_inputs(args)
         return self._predict(inputs, target_sizes)
 
 
@@ -1063,10 +1007,10 @@ def _get_image_processor(model):
     return image_processor
 
 
-def _get_processor(model):
+def _get_processor(model, **kwargs):
     try:
         processor = transformers.AutoProcessor.from_pretrained(
-            model.config._name_or_path
+            model.config._name_or_path, **kwargs
         )
     except:
         raise ValueError(

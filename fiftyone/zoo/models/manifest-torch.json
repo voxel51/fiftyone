@@ -2755,7 +2755,9 @@
             "size_bytes": null,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
-                "config": {}
+                "config": {
+                    "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "transformers"],
@@ -2787,7 +2789,9 @@
             "size_bytes": null,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
-                "config": {}
+                "config": {
+                    "output_processor_cls": "fiftyone.utils.torch.DetectorOutputProcessor"
+                }
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "transformers"],
