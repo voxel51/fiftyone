@@ -55,137 +55,6 @@ def convert_ultralytics_model(model):
         )
 
 
-def _extract_track_ids(result):
-    """Get ultralytics track ids if present, else use Nones"""
-    return (
-        result.boxes.id.detach().cpu().numpy().astype(int)
-        if result.boxes.is_track
-        else [None] * result.boxes.conf.size(0)
-    )
-
-
-def to_detections(results, confidence_thresh=None):
-    """Converts ``ultralytics.YOLO`` boxes to FiftyOne format.
-
-    Args:
-        results: a single or list of ``ultralytics.engine.results.Results``
-        confidence_thresh (None): a confidence threshold to filter boxes
-
-    Returns:
-        a single or list of :class:`fiftyone.core.labels.Detections`
-    """
-    single = not isinstance(results, list)
-    if single:
-        results = [results]
-
-    batch = [
-        _to_detections(r, confidence_thresh=confidence_thresh) for r in results
-    ]
-
-    if single:
-        return batch[0]
-
-    return batch
-
-
-def _to_detections(result, confidence_thresh=None):
-    if result.boxes is None:
-        return None
-
-    classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
-    boxes = result.boxes.xywhn.detach().cpu().numpy().astype(float)
-    confs = result.boxes.conf.detach().cpu().numpy().astype(float)
-    track_ids = _extract_track_ids(result)
-
-    detections = []
-    for cls, box, conf, idx in zip(classes, boxes, confs, track_ids):
-        if confidence_thresh is not None and conf < confidence_thresh:
-            continue
-
-        label = result.names[cls]
-        xc, yc, w, h = box
-
-        detection = fol.Detection(
-            label=label,
-            bounding_box=[xc - 0.5 * w, yc - 0.5 * h, w, h],
-            confidence=conf,
-            index=idx,
-        )
-        detections.append(detection)
-
-    return fol.Detections(detections=detections)
-
-
-def to_instances(results, confidence_thresh=None):
-    """Converts ``ultralytics.YOLO`` instance segmentations to FiftyOne format.
-
-    Args:
-        results: a single or list of ``ultralytics.engine.results.Results``
-        confidence_thresh (None): a confidence threshold to filter boxes
-
-    Returns:
-        a single or list of :class:`fiftyone.core.labels.Detections`
-    """
-    single = not isinstance(results, list)
-    if single:
-        results = [results]
-
-    batch = [
-        _to_instances(r, confidence_thresh=confidence_thresh) for r in results
-    ]
-
-    if single:
-        return batch[0]
-
-    return batch
-
-
-def _to_instances(result, confidence_thresh=None):
-    if result.masks is None:
-        return None
-
-    classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
-    boxes = result.boxes.xywhn.detach().cpu().numpy().astype(float)
-    masks = result.masks.data.detach().cpu().numpy() > 0.5
-    confs = result.boxes.conf.detach().cpu().numpy().astype(float)
-    track_ids = _extract_track_ids(result)
-
-    # convert from center coords to corner coords
-    boxes[:, 0] -= boxes[:, 2] / 2.0
-    boxes[:, 1] -= boxes[:, 3] / 2.0
-
-    detections = []
-    for cls, box, mask, conf, idx in zip(
-        classes, boxes, masks, confs, track_ids
-    ):
-        if confidence_thresh is not None and conf < confidence_thresh:
-            continue
-
-        label = result.names[cls]
-        w, h = mask.shape
-        tmp = np.copy(box)
-        tmp[2] += tmp[0]
-        tmp[3] += tmp[1]
-        tmp[0] *= h
-        tmp[2] *= h
-        tmp[1] *= w
-        tmp[3] *= w
-        tmp = [int(b) for b in tmp]
-        y0, x0, y1, x1 = tmp
-        sub_mask = mask[x0:x1, y0:y1]
-
-        detection = fol.Detection(
-            label=label,
-            bounding_box=list(box),
-            mask=sub_mask.astype(bool),
-            confidence=conf,
-            index=idx,
-        )
-        detections.append(detection)
-
-    return fol.Detections(detections=detections)
-
-
 def obb_to_polylines(results, confidence_thresh=None, filled=False):
     """Converts ``ultralytics.YOLO`` instance segmentations to FiftyOne format.
 
@@ -237,133 +106,6 @@ def _obb_to_polylines(result, filled, confidence_thresh=None):
         )
         polylines.append(polyline)
     return fol.Polylines(polylines=polylines)
-
-
-def to_polylines(results, confidence_thresh=None, tolerance=2, filled=True):
-    """Converts ``ultralytics.YOLO`` instance segmentations to FiftyOne format.
-
-    Args:
-        results: a single or list of ``ultralytics.engine.results.Results``
-        confidence_thresh (None): a confidence threshold to filter boxes
-        tolerance (2): a tolerance, in pixels, when generating approximate
-            polylines for instance masks. Typical values are 1-3 pixels
-        filled (True): whether the polyline should be filled
-
-    Returns:
-        a single or list of :class:`fiftyone.core.labels.Polylines`
-    """
-    single = not isinstance(results, list)
-    if single:
-        results = [results]
-
-    batch = [
-        _to_polylines(
-            r, tolerance, filled, confidence_thresh=confidence_thresh
-        )
-        for r in results
-    ]
-
-    if single:
-        return batch[0]
-
-    return batch
-
-
-def _to_polylines(result, tolerance, filled, confidence_thresh=None):
-    if result.masks is None:
-        return None
-
-    classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
-    confs = result.boxes.conf.detach().cpu().numpy().astype(float)
-    track_ids = _extract_track_ids(result)
-
-    if tolerance > 1:
-        masks = result.masks.data.detach().cpu().numpy() > 0.5
-        points = itertools.repeat(None)
-    else:
-        masks = itertools.repeat(None)
-        points = result.masks.xyn
-
-    polylines = []
-    for cls, mask, _points, conf, idx in zip(
-        classes, masks, points, confs, track_ids
-    ):
-        if confidence_thresh is not None and conf < confidence_thresh:
-            continue
-
-        if _points is None:
-            _points = fol._get_polygons(mask, tolerance)
-        else:
-            _points = [_points.astype(float)]
-
-        label = result.names[cls]
-
-        polyline = fol.Polyline(
-            label=label,
-            points=_points,
-            confidence=conf,
-            closed=True,
-            filled=filled,
-            index=idx,
-        )
-        polylines.append(polyline)
-
-    return fol.Polylines(polylines=polylines)
-
-
-def to_keypoints(results, confidence_thresh=None):
-    """Converts ``ultralytics.YOLO`` keypoints to FiftyOne format.
-
-    Args:
-        results: a single or list of ``ultralytics.engine.results.Results``
-        confidence_thresh (None): a confidence threshold to filter keypoints
-
-    Returns:
-        a single or list of :class:`fiftyone.core.labels.Keypoints`
-    """
-    single = not isinstance(results, list)
-    if single:
-        results = [results]
-
-    batch = [
-        _to_keypoints(r, confidence_thresh=confidence_thresh) for r in results
-    ]
-
-    if single:
-        return batch[0]
-
-    return batch
-
-
-def _to_keypoints(result, confidence_thresh=None):
-    if result.keypoints is None:
-        return None
-
-    classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
-    points = result.keypoints.xyn.detach().cpu().numpy().astype(float)
-    if result.keypoints.conf is not None:
-        confs = result.keypoints.conf.detach().cpu().numpy().astype(float)
-    else:
-        confs = itertools.repeat(None)
-    track_ids = _extract_track_ids(result)
-
-    keypoints = []
-    for cls, _points, _confs, idx in zip(classes, points, confs, track_ids):
-        if confidence_thresh is not None:
-            _points[_confs < confidence_thresh] = np.nan
-
-        label = result.names[cls]
-        _confidence = _confs.tolist() if _confs is not None else None
-
-        keypoint = fol.Keypoint(
-            label=label,
-            points=_points.tolist(),
-            confidence=_confidence,
-            index=idx,
-        )
-        keypoints.append(keypoint)
-
-    return fol.Keypoints(keypoints=keypoints)
 
 
 class FiftyOneYOLOModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
@@ -437,10 +179,15 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
     def _parse_classes(self, config):
         if config.classes is not None:
             return config.classes
+        if isinstance(self._model.names, dict):
+            return list(self._model.names.values())
         return None
 
     def _forward_pass(self, imgs):
-        return self._model.predictor(imgs, stream=False)
+        self._model.predictor.setup_source(imgs)
+        self._model.predictor.batch = [""]
+        preds = self._model.predictor.inference(imgs)
+        return {"preds": preds, "imgs": imgs, "orig_imgs": imgs}
 
     def _build_transforms(self, config):
         if config.ragged_batches is not None:
@@ -448,31 +195,33 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         else:
             ragged_batches = True
 
-        transforms = [self.preprocess]
+        transforms = [self.preprocess_im]
         transforms = torchvision.transforms.Compose(transforms)
 
         return transforms, ragged_batches
 
-    def preprocess(self, im):
-        """Taken from ultralytics.engine.predictor.BasePredictor.preprocess.
+    def preprocess_im(self, im):
+        out_im = self._model.predictor.preprocess([np.asarray(im)])
+        return torch.squeeze(out_im, axis=0)
 
-        This is required to apply Ultralytics preprocessing as a transform in FiftyOne.
-        """
-        not_tensor = not isinstance(im, torch.Tensor)
-        if not_tensor:
-            im = np.stack(
-                self._model.predictor.pre_transform([np.asarray(im)])
-            )
-            im = im[..., ::-1].transpose((0, 3, 1, 2))
-            im = np.squeeze(im, axis=0)
-            im = np.ascontiguousarray(im)
-            im = torch.from_numpy(im)
+    def _build_output_processor(self, config):
+        if config.output_processor is not None:
+            return config.output_processor
 
-        im = im.to(self._device)
-        im = im.half() if self._model.predictor.model.fp16 else im.float()
-        if not_tensor:
-            im /= 255
-        return im
+        output_processor_cls = config.output_processor_cls
+
+        if output_processor_cls is None:
+            return None
+
+        if etau.is_str(output_processor_cls):
+            output_processor_cls = etau.get_class(output_processor_cls)
+
+        kwargs = config.output_processor_args or {}
+        return output_processor_cls(
+            classes=self._classes,
+            post_processor=self._model.predictor,
+            **kwargs,
+        )
 
 
 class FiftyOneRTDETRModelConfig(FiftyOneYOLOModelConfig):
@@ -581,41 +330,143 @@ class UltralyticsOutputProcessor(fout.OutputProcessor):
         )
 
 
-class UltralyticsClassificationOutputProcessor(fout.OutputProcessor):
+class UltralyticsPostProcessor(object):
+    post_processor = None
+
+    def post_process(self, output):
+        imgs = output.get("imgs", None)
+        orig_imgs = output.get("orig_imgs", None)
+        preds = output["preds"]
+        if self.post_processor is None:
+            raise ValueError("Ultralytics post processor is set to")
+
+        if imgs is None or orig_imgs is None:
+            raise ValueError(
+                "Ultralytics post processor needs transformed and original images."
+            )
+        out = self.post_processor.postprocess(preds, imgs, orig_imgs)
+        return out
+
+
+class UltralyticsClassificationOutputProcessor(
+    fout.ClassifierOutputProcessor, UltralyticsPostProcessor
+):
     """Converts Ultralytics Classification model outputs to FiftyOne format."""
 
-    def __call__(self, result, frame_size, confidence_thresh=None):
-        logits = result.cpu().numpy().probs.data
-        confidence = logits.max()
-        label = result.names[logits.argmax()]
-        return fol.Classification(
-            label=label, logits=logits, confidence=confidence
-        )
+    def __init__(
+        self,
+        classes=None,
+        store_logits=False,
+        post_processor=None,
+    ):
+        super().__init__(classes=classes, store_logits=store_logits)
+        self.post_processor = post_processor
+
+    def __call__(self, output, frame_size, confidence_thresh=None):
+        if isinstance(output, dict):
+            results = self.post_process(output)
+            preds = [{"logits": result.probs} for result in results]
+        else:
+            preds = output
+        return super().__call__(preds, frame_size, confidence_thresh)
 
 
-class UltralyticsDetectionOutputProcessor(fout.OutputProcessor):
+class UltralyticsDetectionOutputProcessor(
+    fout.DetectorOutputProcessor, UltralyticsPostProcessor
+):
     """Converts Ultralytics Detection model outputs to FiftyOne format."""
 
-    def __call__(self, result, frame_size, confidence_thresh=None):
-        return to_detections(result)
+    def __init__(
+        self,
+        classes=None,
+        post_processor=None,
+    ):
+        super().__init__(classes)
+        self.post_processor = post_processor
+
+    def __call__(self, output, frame_size, confidence_thresh=None):
+        if isinstance(output, dict):
+            results = self.post_process(output)
+            preds = [
+                {
+                    "boxes": result.boxes.xyxy,
+                    "labels": result.boxes.cls.int(),
+                    "scores": result.boxes.conf,
+                }
+                for result in results
+            ]
+        else:
+            preds = output
+        return super().__call__(preds, frame_size, confidence_thresh)
 
 
-class UltralyticsSegmentationOutputProcessor(fout.OutputProcessor):
+class UltralyticsSegmentationOutputProcessor(
+    fout.InstanceSegmenterOutputProcessor, UltralyticsPostProcessor
+):
     """Converts Ultralytics Segmentation model outputs to FiftyOne format."""
 
-    def __call__(self, result, frame_size, confidence_thresh=None):
-        return to_instances(result)
+    def __init__(
+        self,
+        classes=None,
+        post_processor=None,
+    ):
+        super().__init__(classes)
+        self.post_processor = post_processor
+
+    def __call__(self, output, frame_size, confidence_thresh=None):
+        if isinstance(output, dict):
+            results = self.post_process(output)
+            preds = [
+                {
+                    "boxes": result.boxes.xyxy,
+                    "labels": result.boxes.cls.int(),
+                    "scores": result.boxes.conf,
+                    "masks": result.masks.data,
+                }
+                for result in results
+            ]
+        else:
+            preds = output
+        return super().__call__(preds, frame_size, confidence_thresh)
 
 
-class UltralyticsPoseOutputProcessor(fout.OutputProcessor):
+class UltralyticsPoseOutputProcessor(
+    fout.KeypointDetectorOutputProcessor, UltralyticsPostProcessor
+):
     """Converts Ultralytics Segmentation model outputs to FiftyOne format."""
 
-    def __call__(self, result, frame_size, confidence_thresh=None):
-        return to_keypoints(result)
+    def __init__(
+        self,
+        classes=None,
+        post_processor=None,
+    ):
+        super().__init__(classes)
+        self.post_processor = post_processor
+
+    def __call__(self, output, frame_size, confidence_thresh=None):
+        if isinstance(output, dict):
+            preds = self.post_process(output)
+        else:
+            preds = output
+        return super().__call__(preds, frame_size, confidence_thresh)
 
 
-class UltralyticsOBBOutputProcessor(fout.OutputProcessor):
+class UltralyticsOBBOutputProcessor(
+    fout.OutputProcessor, UltralyticsPostProcessor
+):
     """Converts Ultralytics Segmentation model outputs to FiftyOne format."""
 
-    def __call__(self, result, frame_size, confidence_thresh=None):
-        return obb_to_polylines(result)
+    def __init__(
+        self,
+        classes=None,
+        post_processor=None,
+    ):
+        super().__init__(classes)
+        self.post_processor = post_processor
+
+    def __call__(self, output, _, confidence_thresh=None):
+        if isinstance(output, dict):
+            preds = self.post_process(output)
+        else:
+            preds = output
+        return obb_to_polylines(preds, confidence_thresh=confidence_thresh)
