@@ -753,6 +753,17 @@ class TorchImageModel(
             **kwargs,
         )
 
+    def build_get_item(self, **kwargs):
+        """Builds a :class:`GetItem` instance for the model.
+
+        Args:
+            **kwargs: additional parameters for :class:`GetItem`
+
+        Returns:
+            a :class:`GetItem` instance
+        """
+        return self._build_get_item(**kwargs)
+
     @property
     def media_type(self):
         """The media type processed by the model."""

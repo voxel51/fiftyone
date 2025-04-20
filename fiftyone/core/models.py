@@ -775,7 +775,7 @@ def _make_data_loader(
     if batch_size is None:
         batch_size = 1
 
-    use_fotd = hasattr(model, "_build_get_item")
+    use_fotd = hasattr(model, "build_get_item")
 
     if use_fotd:
         dataset = _make_fo_torch_dataset(
@@ -816,7 +816,7 @@ def _make_fo_torch_dataset(
     skip_failures,
     field_mapping=None,
 ):
-    get_item = model._build_get_item(field_mapping=field_mapping)
+    get_item = model.build_get_item(field_mapping=field_mapping)
     dataset = samples.to_torch(get_item=get_item, skip_failures=skip_failures)
     return dataset
 
