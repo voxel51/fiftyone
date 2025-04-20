@@ -813,7 +813,7 @@ def _make_data_loader(
 def _make_fo_torch_dataset(
     samples,
     model,
-    skip_failures,  # have to implement this
+    skip_failures,
     field_mapping=None,
 ):
     get_item = model._build_get_item(field_mapping=field_mapping)
