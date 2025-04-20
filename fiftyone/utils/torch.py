@@ -338,7 +338,7 @@ class GetItem:
                 value[k] = v
         if not isinstance(value, dict):
             raise ValueError("field_mapping must be a dictionary.")
-        for k, v in value.items():
+        for k in value.keys():
             if k not in self.required_fields:
                 raise ValueError(
                     f"field_mapping key {k} not in required_fields."
