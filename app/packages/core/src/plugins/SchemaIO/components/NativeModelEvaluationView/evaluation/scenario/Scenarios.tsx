@@ -130,10 +130,12 @@ export default function Scenarios(props) {
           gt_field: evaluationConfig.gt_field,
           scenario_id: fullScenario.id,
           scenario_type: fullScenario.type,
-          scenario_name: fullScenario.name,
+          scenario_name: fullScenario.name, // this will change as input change
+          original_name: fullScenario.name, // this will not change as input change
           scenario_subsets:
             fullScenario.type === "custom_code" ? [] : fullScenario.subsets,
-          scenario_subsets_code: fullScenario.subsets_code,
+          scenario_subsets_code:
+            fullScenario.subsets_code || fullScenario.subsets,
           scenario_field: fullScenario?.field,
           key,
           compare_key: compareKey,

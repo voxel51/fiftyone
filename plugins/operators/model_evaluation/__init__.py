@@ -10,7 +10,6 @@ import fiftyone.operators as foo
 import fiftyone.operators.types as types
 import fiftyone.core.fields as fof
 from fiftyone.operators.cache import execution_cache
-import asyncio
 
 from bson import ObjectId
 from fiftyone.core.expressions import ViewField as F
@@ -43,18 +42,38 @@ class ConfigureScenario(foo.Operator):
             unlisted=True,
         )
 
-    def render_name_input(self, inputs, params):
-        default = params.get("scenario_name", None)
+    def render_name_input(self, ctx, inputs):
+        params = ctx.params
+        scenario_name = params.get("scenario_name", None)
+
+        is_edit_mode = True if ctx.params.get("scenario_id", None) else False
+        scenario_names = self.get_scenario_names(ctx)
+
+        is_invalid = False
+        error_message = ""
+
+        if is_edit_mode:
+            original_name = params.get("original_name", None)
+            if scenario_name != original_name:
+                if scenario_name in scenario_names:
+                    is_invalid = True
+                    error_message = "Scenario name already exists"
+        else:
+            if scenario_name in scenario_names:
+                is_invalid = True
+                error_message = "Scenario name already exists"
 
         inputs.str(
             "scenario_name",
             label="Scenario Name",
-            default=default,
+            default=scenario_name,
             required=True,
             view=types.TextFieldView(
                 label="Scenario Name",
                 placeholder="Enter a name for the scenario",
             ),
+            invalid=is_invalid,
+            error_message=error_message,
         )
 
     def render_scenario_types(self, inputs, selected_type):
@@ -95,33 +114,75 @@ class ConfigureScenario(foo.Operator):
     def extract_evaluation_id(self, ctx):
         return ctx.params.get("eval_id")
 
-    def get_sample_distribution_key_fn(self, _, subset_expression):
-        return ["sample-distribution-key", str(subset_expression)]
+    def get_subset_def_data_for_eval_key(
+        self, ctx, eval_key, _, name, subset_def
+    ):
+        """
+        Builds and returns an execution cache key for each type of scenario.
+        - custom code: we use the expression
+        - label attribute: selected field and value
+        - sample field: selected field and vlue
+        - saved view: selected view
+        """
+        scenario_type = self.get_scenario_type(ctx.params)
 
-    @execution_cache(key_fn=get_sample_distribution_key_fn)
+        if scenario_type == ScenarioType.CUSTOM_CODE:
+            key = [
+                "sample-distribution-data",
+                eval_key,
+                name,
+                str(subset_def),
+            ]
+        elif scenario_type == ScenarioType.VIEW:
+            key = [
+                "sample-distribution-data",
+                eval_key,
+                name,
+                scenario_type,
+                subset_def.get("view", ""),
+            ]
+        else:
+            key = [
+                "sample-distribution-data",
+                eval_key,
+                name,
+                scenario_type,
+                subset_def.get("field", ""),
+                subset_def.get("value", ""),
+            ]
+
+        return key
+
+    # NOTE: TTL is 7 days - subject to fine-tuning
+    @execution_cache(
+        key_fn=get_subset_def_data_for_eval_key, ttl=7 * 24 * 60 * 60
+    )
+    def get_subset_def_data_for_eval(
+        self, ctx, _, eval_result, name, subset_def
+    ):
+        x, y = [], []
+        with eval_result.use_subset(subset_def):
+            x.append(name)
+            y.append(len(eval_result.ytrue_ids))
+        return x, y
+
     def get_sample_distribution(self, ctx, subset_expressions):
         try:
             eval_key_a, eval_key_b = self.extract_evaluation_keys(ctx)
 
             eval_result_a = ctx.dataset.load_evaluation_results(eval_key_a)
-            eval_result_b = (
-                ctx.dataset.load_evaluation_results(eval_key_b)
-                if eval_key_b
-                else None
-            )
-
-            # Pre-allocate and localize variables for speed
-            use_subset_a = eval_result_a.use_subset
-            ytrue_ids_a = eval_result_a.ytrue_ids
+            if eval_key_b:
+                eval_result_b = ctx.dataset.load_evaluation_results(eval_key_b)
 
             plot_data = []
             x = []
             y = []
-
             for name, subset_def in subset_expressions.items():
-                with use_subset_a(subset_def):
-                    x.append(name)
-                    y.append(len(ytrue_ids_a))
+                more_x, more_y = self.get_subset_def_data_for_eval(
+                    ctx, eval_key_a, eval_result_a, name, subset_def
+                )
+                x += more_x
+                y += more_y
 
             plot_data.append(
                 {
@@ -134,15 +195,15 @@ class ConfigureScenario(foo.Operator):
             )
 
             if eval_key_b and eval_result_b:
-                use_subset_b = eval_result_b.use_subset
-                ytrue_ids_b = eval_result_b.ytrue_ids
                 compare_x = []
                 compare_y = []
 
                 for name, subset_def in subset_expressions.items():
-                    with use_subset_b(subset_def):
-                        compare_x.append(name)
-                        compare_y.append(len(ytrue_ids_b))
+                    more_x, more_y = self.get_subset_def_data_for_eval(
+                        ctx, eval_key_b, eval_result_b, name, subset_def
+                    )
+                    compare_x += more_x
+                    compare_y += more_y
 
                 plot_data.append(
                     {
@@ -155,8 +216,8 @@ class ConfigureScenario(foo.Operator):
                 )
 
             return plot_data
-
         except Exception as e:
+            # TODO show Alert / error
             print(e)
             return
 
@@ -182,9 +243,7 @@ class ConfigureScenario(foo.Operator):
         return plot_data
 
     def is_sample_distribution_enabled_for_custom_code(self, params):
-        # return True
-        # NOTE: if performance lacks and execution_cache can't help, we should
-        # bring this back
+        # NOTE: performance might lack if it is on by default.
         return (
             params.get("custom_code_stack", {})
             .get("control_stack", {})
@@ -313,7 +372,7 @@ class ConfigureScenario(foo.Operator):
         return ScenarioType.CUSTOM_CODE
 
     def extract_custom_code(self, ctx, example_type=ScenarioType.CUSTOM_CODE):
-        # NOTE: this was causing infinite loop
+        # NOTE: this was causing infinite loop if missing replace
         key = self.get_custom_code_key(ctx.params).replace(".", "_")
 
         custom_code = (
@@ -842,10 +901,19 @@ class ConfigureScenario(foo.Operator):
         label = "Edit scenario" if scenario_id else "Create scenario"
         return label
 
+    def get_scenario_names(self, ctx):
+        store = ctx.store(STORE_NAME)
+        scenarios = store.get("scenarios") or {}
+
+        eval_id_a = self.extract_evaluation_id(ctx)
+        scenarios = scenarios.get(eval_id_a) or {}
+
+        return [scenario.get("name") for _, scenario in scenarios.items()]
+
     def resolve_input(self, ctx):
         inputs = types.Object()
 
-        self.render_name_input(inputs, ctx.params)
+        self.render_name_input(ctx, inputs)
         inputs.str(
             "key",
             view=types.HiddenView(),
@@ -997,12 +1065,12 @@ class ConfigureScenario(foo.Operator):
         if scenario_name is None or len(scenario_name) < 2:
             raise ValueError("Scenario name is missing")
 
-        store = ctx.store(STORE_NAME)
-        scenarios = store.get("scenarios") or {}
-
         eval_id_a = self.extract_evaluation_id(ctx)
         if eval_id_a is None:
             raise ValueError("No evaluation ids found")
+
+        store = ctx.store(STORE_NAME)
+        scenarios = store.get("scenarios") or {}
 
         scenarios_for_eval = scenarios.get(eval_id_a) or {}
         scenario_field = None

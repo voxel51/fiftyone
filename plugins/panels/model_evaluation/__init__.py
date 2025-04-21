@@ -19,6 +19,7 @@ from fiftyone.core.plots.plotly import _to_log_colorscale
 from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
 from plugins.utils import get_subsets_from_custom_code
+from fiftyone.operators.cache import execution_cache
 
 
 STORE_NAME = "model_evaluation_panel_builtin"
@@ -886,6 +887,38 @@ class EvaluationPanel(Panel):
                 ),
             }
 
+    def get_subset_def_data_for_eval_key(self, ctx, scenario):
+        """
+        Builds and returns an execution cache key for each type of scenario.
+        """
+        view_state = ctx.panel.get_state("view") or {}
+        eval_key = view_state.get("key")
+        computed_eval_key = ctx.params.get("key", eval_key)
+
+        scenario_type = scenario.get("type", "")
+        scenario_field = scenario.get("field", "")
+        scenario_subsets = scenario.get("subsets", "")
+
+        if scenario_type in ["label_attribute", "sample_field"]:
+            return [
+                "subset-data",
+                computed_eval_key,
+                scenario_type,
+                scenario_field,
+                scenario_subsets,
+            ]
+
+        return [
+            "subset-data",
+            computed_eval_key,
+            scenario_type,
+            scenario_subsets,
+        ]
+
+    # NOTE: TTL is 7 days - subject to fine-tuning
+    @execution_cache(
+        key_fn=get_subset_def_data_for_eval_key, ttl=7 * 24 * 60 * 60
+    )
     def get_scenario_data(self, ctx, scenario):
         view_state = ctx.panel.get_state("view") or {}
         eval_key = view_state.get("key")
