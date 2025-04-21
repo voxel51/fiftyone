@@ -1700,7 +1700,9 @@ class FiftyOneTorchDataset(Dataset):
 
         if self.cached_fields is None:
             # pylint: disable=unsubscriptable-object
-            sample = self._dataset[self.ids[index]]
+            sample = fov.make_optimized_select_view(
+                self._samples, self.ids[index]
+            ).first()
             return self._get_item(sample)
 
         else:
@@ -1717,7 +1719,9 @@ class FiftyOneTorchDataset(Dataset):
         if self.cached_fields is None:
             ids = [self.ids[i] for i in indices]
             # pylint: disable=unsubscriptable-object
-            samples = self._dataset.select(ids, ordered=True)
+            samples = fov.make_optimized_select_view(
+                self._samples, ids, ordered=True
+            )
             return [self._get_item(s) for s in samples]
 
         else:
