@@ -106,7 +106,9 @@ class ServerSamplesTests(unittest.IsolatedAsyncioTestCase):
 
 async def _resolve_lookup_stage(view: fo.DatasetView):
     pipeline = await get_samples_pipeline(view, None)
-    return pipeline[0]
+    for stage in pipeline:
+        if "$lookup" in stage:
+            return stage
 
 
 def _get_expected_lookup_stage(view: fo.DatasetView, clips=False, limit=False):
