@@ -9,6 +9,8 @@ Scenario plugin.
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 import fiftyone.core.fields as fof
+from fiftyone.operators.cache import execution_cache
+import asyncio
 
 from bson import ObjectId
 from fiftyone.core.expressions import ViewField as F
@@ -39,19 +41,6 @@ class ConfigureScenario(foo.Operator):
             label="Configure scenario",
             dynamic=True,
             unlisted=True,
-        )
-
-    def render_header(self, ctx, inputs):
-        scenario_id = ctx.params.get("scenario_id", None)
-        label = "Edit scenario" if scenario_id else "Create scenario"
-        description = (
-            "Edit this scenario"
-            if scenario_id
-            else "Create a scenario of your dataset to analyze"
-        )
-        inputs.view(
-            "header",
-            types.Header(label=label, divider=True, description=description),
         )
 
     def render_name_input(self, inputs, params):
@@ -106,22 +95,33 @@ class ConfigureScenario(foo.Operator):
     def extract_evaluation_id(self, ctx):
         return ctx.params.get("eval_id")
 
-    # TODO: use @cache(ttl=x)
+    def get_sample_distribution_key_fn(self, _, subset_expression):
+        return ["sample-distribution-key", str(subset_expression)]
+
+    @execution_cache(key_fn=get_sample_distribution_key_fn)
     def get_sample_distribution(self, ctx, subset_expressions):
         try:
             eval_key_a, eval_key_b = self.extract_evaluation_keys(ctx)
 
             eval_result_a = ctx.dataset.load_evaluation_results(eval_key_a)
-            if eval_key_b:
-                eval_result_b = ctx.dataset.load_evaluation_results(eval_key_b)
+            eval_result_b = (
+                ctx.dataset.load_evaluation_results(eval_key_b)
+                if eval_key_b
+                else None
+            )
+
+            # Pre-allocate and localize variables for speed
+            use_subset_a = eval_result_a.use_subset
+            ytrue_ids_a = eval_result_a.ytrue_ids
 
             plot_data = []
             x = []
             y = []
+
             for name, subset_def in subset_expressions.items():
-                with eval_result_a.use_subset(subset_def):
+                with use_subset_a(subset_def):
                     x.append(name)
-                    y.append(len(eval_result_a.ytrue_ids))
+                    y.append(len(ytrue_ids_a))
 
             plot_data.append(
                 {
@@ -134,12 +134,16 @@ class ConfigureScenario(foo.Operator):
             )
 
             if eval_key_b and eval_result_b:
+                use_subset_b = eval_result_b.use_subset
+                ytrue_ids_b = eval_result_b.ytrue_ids
                 compare_x = []
                 compare_y = []
+
                 for name, subset_def in subset_expressions.items():
-                    with eval_result_b.use_subset(subset_def):
+                    with use_subset_b(subset_def):
                         compare_x.append(name)
-                        compare_y.append(len(eval_result_b.ytrue_ids))
+                        compare_y.append(len(ytrue_ids_b))
+
                 plot_data.append(
                     {
                         "x": compare_x,
@@ -151,8 +155,8 @@ class ConfigureScenario(foo.Operator):
                 )
 
             return plot_data
+
         except Exception as e:
-            # TODO show Alert with error?
             print(e)
             return
 
@@ -178,6 +182,9 @@ class ConfigureScenario(foo.Operator):
         return plot_data
 
     def is_sample_distribution_enabled_for_custom_code(self, params):
+        # return True
+        # NOTE: if performance lacks and execution_cache can't help, we should
+        # bring this back
         return (
             params.get("custom_code_stack", {})
             .get("control_stack", {})
@@ -941,7 +948,7 @@ class ConfigureScenario(foo.Operator):
         custom_code_controls.bool(
             "view_sample_distribution",
             required=True,
-            default=True,
+            default=False,
             label="View sample distribution",
             view=types.CheckboxView(
                 componentsProps={
