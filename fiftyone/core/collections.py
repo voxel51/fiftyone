@@ -3941,7 +3941,7 @@ class SampleCollection(object):
             save (False): Whether to save any modified samples.
 
         Returns:
-            A generator yield processed sample results.
+            A generator yielding processed sample results.
         """
         mapper = focm.MapperFactory.create(
             parallelize_method, workers, batch_method, batch_size
