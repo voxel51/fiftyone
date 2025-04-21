@@ -436,7 +436,7 @@ class ConfigureScenario(foo.Operator):
     def render_use_custom_code_warning(
         self, inputs, reason=CustomCodeViewReason.TOO_MANY_CATEGORIES
     ):
-        label, description = None, None
+        label, description, severity = None, None, "warning"
 
         if reason == CustomCodeViewReason.TOO_MANY_CATEGORIES:
             label = "Too many categories."
@@ -454,13 +454,14 @@ class ConfigureScenario(foo.Operator):
             label = "Float type."
             description = f"To create scenarios based on float fields, please use the custom code mode. "
         if reason == CustomCodeViewReason.SLOW:
+            severity = "info"
             label = "Too many values."
             description = f"Found too many distinct values. Please use the auto-complete mode to select the values you want to analyze. "
 
         inputs.view(
             "use_custom_code_instead_warning",
             types.AlertView(
-                severity="warning",
+                severity=severity,
                 label=label,
                 description=description,
             ),
