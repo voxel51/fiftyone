@@ -285,8 +285,7 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
             view._dataset._sample_collection_name
         ]
         _results = await foo.aggregate(collection, pipeline).to_list(None)
-        label_id_map = _results[0]["labelIdMap"]
-
+        label_id_map = _results[0]["labelIdMap"] if _results else {}
         return JSONResponse(
             {
                 "count": len(label_id_map),
