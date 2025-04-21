@@ -516,7 +516,10 @@ def _first(
     if limit:
         pipeline.append({"$limit": limit})
 
-    pipeline += [{"$project": {"_id": f"${path}"}}, {"$sort": {"_id": sort}}]
+    pipeline += [
+        {"$sort": {path: sort}},
+        {"$project": {"_id": f"${path}"}},
+    ]
 
     matched_arrays = _match_arrays(dataset, path, is_frame_field)
     if matched_arrays:
@@ -574,7 +577,8 @@ async def _handle_pipeline(
 
     if query.search:
         match_search = _add_search(query)
-        pipeline.append(match_search)
+        if len(match_arrays) <= 2:
+            pipeline.append(match_search)
 
     if match_arrays:
         pipeline += match_arrays
