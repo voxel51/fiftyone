@@ -1674,6 +1674,9 @@ class FiftyOneTorchDataset(Dataset):
         self._dataset = fo.load_dataset(self.name)
         if self.stages is not None:
             self._samples = fov.DatasetView._build(self._dataset, self.stages)
+            self._samples = fov.make_optimized_select_view(
+                self._samples, self.ids, ordered=True
+            )
         else:
             self._samples = self._dataset
 
@@ -1698,7 +1701,7 @@ class FiftyOneTorchDataset(Dataset):
 
         if self.cached_fields is None:
             # pylint: disable=unsubscriptable-object
-            sample = self._dataset[self.ids[index]]
+            sample = self._samples[self.ids[index]]
             return self._get_item(sample)
 
         else:
@@ -1715,7 +1718,7 @@ class FiftyOneTorchDataset(Dataset):
         if self.cached_fields is None:
             ids = [self.ids[i] for i in indices]
             # pylint: disable=unsubscriptable-object
-            samples = self._dataset.select(ids, ordered=True)
+            samples = self._samples.select(ids, ordered=True)
             return [self._get_item(s) for s in samples]
 
         else:
