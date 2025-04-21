@@ -5752,7 +5752,7 @@ in a collection and saving the sample edits:
 By default,
 :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
 leverages a multithreading or multiprocessing pool to parallelize the work across a number of
-workers, resulting in a significant performance improvements over the equivalent
+workers, resulting in a significant performance improvement over the equivalent
 :meth:`iter_samples(autosave=True) <fiftyone.core.dataset.Dataset.iter_samples>`
 syntax:
 
