@@ -90,26 +90,11 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
 
         support = None if stages else [start_frame, end_frame]
 
-        def get_frames_view(view):
-            view = fov.make_optimized_select_view(
-                view, sample_id, flatten=True
-            )
-
-            view = view.set_field(
-                "frames",
-                F("frames").filter(
-                    (F("frame_number") >= start_frame)
-                    & (F("frame_number") <= end_frame)
-                ),
-            )
-
-            return view
-
         view = await fosv.get_view(
             dataset, stages=stages, extended_stages=extended, awaitable=True
         )
 
-        view = await run_sync_task(get_frames_view, view)
+        view = fov.make_optimized_select_view(view, sample_id, flatten=True)
 
         filtered_schema = view.get_frame_field_schema(
             flat=True, embedded_doc_type=fol.Instance
@@ -296,11 +281,11 @@ class GetSimilarLabelsFrameCollection(HTTPEndpoint):
             frames_only=True, support=support, post_pipeline=post_pipeline
         )
 
-        conn = foo.get_db_conn()
-        collection = conn[view._dataset._sample_collection_name]
-        label_id_map = list(foo.aggregate(collection, pipeline))[0][
-            "labelIdMap"
+        collection = foo.get_async_db_conn()[
+            view._dataset._sample_collection_name
         ]
+        _results = await foo.aggregate(collection, pipeline).to_list(None)
+        label_id_map = _results[0]["labelIdMap"]
 
         return JSONResponse(
             {
