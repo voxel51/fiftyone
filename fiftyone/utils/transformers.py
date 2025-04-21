@@ -392,7 +392,7 @@ class ZeroShotTransformerEmbeddingsMixin(EmbeddingsMixin):
 
     @property
     def has_embeddings(self):
-        return _has_text_and_image_features(self.model)
+        return _has_text_and_image_features(self._model)
 
     def embed(self, arg):
         return self._embed(arg)[0]
@@ -403,8 +403,8 @@ class ZeroShotTransformerEmbeddingsMixin(EmbeddingsMixin):
     def _embed(self, args):
         inputs = self.processor(images=args, return_tensors="pt")
         with torch.no_grad():
-            image_features = self.model.base_model.get_image_features(
-                **inputs.to(self.device)
+            image_features = self._model.base_model.get_image_features(
+                **inputs.to(self._device)
             )
 
         return image_features.cpu().numpy()
@@ -415,7 +415,7 @@ class ZeroShotTransformerPromptMixin(PromptMixin):
 
     @property
     def can_embed_prompts(self):
-        return _has_text_and_image_features(self.model)
+        return _has_text_and_image_features(self._model)
 
     def embed_prompt(self, prompt):
         """Generates an embedding for the given text prompt.
@@ -442,8 +442,8 @@ class ZeroShotTransformerPromptMixin(PromptMixin):
     def _embed_prompts(self, prompts):
         inputs = self.processor(text=prompts, return_tensors="pt")
         with torch.no_grad():
-            text_features = self.model.base_model.get_text_features(
-                **inputs.to(self.device)
+            text_features = self._model.base_model.get_text_features(
+                **inputs.to(self._device)
             )
         return text_features
 
@@ -492,9 +492,9 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, Model):
 
 
 class FiftyOneZeroShotTransformer(
-    fout.TorchImageModel,
     ZeroShotTransformerEmbeddingsMixin,
     ZeroShotTransformerPromptMixin,
+    fout.TorchImageModel,
 ):
     """FiftyOne wrapper around a ``transformers`` model.
 
