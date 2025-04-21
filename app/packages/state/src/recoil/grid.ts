@@ -26,7 +26,10 @@ export const gridSortDescendingStore = atomFamily<boolean, string>({
   ],
 });
 
-export const gridSortBy = selector<{ descending: boolean; field: string }>({
+export const gridSortBy = selector<null | {
+  descending: boolean;
+  field: string;
+}>({
   key: "gridSortBy",
   get: ({ get }) => {
     const id = get(datasetId) ?? "";

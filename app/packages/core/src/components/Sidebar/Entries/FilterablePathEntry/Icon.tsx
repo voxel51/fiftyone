@@ -47,7 +47,7 @@ const Lightning = ({
   return (
     <>
       <LightningBolt
-        color={(filteredIndex && hasFilters) || isFiltered ? color : undefined}
+        color={filteredIndex || isFiltered ? color : undefined}
         tooltip={filteredIndex && hasFilters ? "Compound index" : "Indexed"}
       />
       <Arrow

@@ -78,7 +78,7 @@ export const aggregationQuery = graphQLSelectorFamily<
       const aggForm = {
         index: get(refresher),
         dataset,
-        extendedStages: root ? [] : get(selectors.extendedStages),
+        extendedStages: root ? {} : get(selectors.extendedStagesNoSort),
         filters:
           extended && !root
             ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)

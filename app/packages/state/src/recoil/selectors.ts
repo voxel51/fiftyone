@@ -518,7 +518,33 @@ export const extendedStages = selector({
 
     return {
       ...get(extendedStagesUnsorted),
+      ...rest,
+    };
+  },
+});
 
+export const extendedStagesNoSort = selector({
+  key: "extendedStagesNoSort",
+  get: ({ get }) => {
+    const similarity = get(atoms.similarityParameters);
+    const fvStage = get(fieldVisibilityStage);
+    const rest: object = fvStage?.cls
+      ? {
+          [fvStage.cls]: {
+            field_names: fvStage.kwargs.field_names,
+            _allow_missing: true,
+          },
+        }
+      : {};
+
+    if (similarity) {
+      rest["fiftyone.core.stages.SortBySimilarity"] = similarity
+        ? toSnakeCase(similarity)
+        : undefined;
+    }
+
+    return {
+      ...get(extendedStagesUnsorted),
       ...rest,
     };
   },

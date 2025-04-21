@@ -33,18 +33,18 @@ const sortFieldsMap = selector({
   },
 });
 
-const gridSortIndex = selector({
-  key: "gridSortIndex",
+const gridIndex = selector({
+  key: "gridIndex",
   get: ({ get }) => {
     if (!get(fos.queryPerformance)) {
       return undefined;
     }
 
     const field = get(fos.gridSortBy)?.field;
-    if (!field) return undefined;
+    if (!field) return get(fos.activeIndex);
 
     const map = get(sortFieldsMap);
-    if (!map[field]) return undefined;
+    if (!map[field]) return get(fos.activeIndex);
     return map[field][0];
   },
 });
@@ -192,7 +192,7 @@ export const pageParameters = selector({
       ? {
           sortBy: get(fos.gridSortBy)?.field,
           desc: get(fos.gridSortBy)?.descending,
-          hint: get(gridSortIndex),
+          hint: get(gridIndex),
         }
       : {};
 
@@ -208,7 +208,9 @@ export const pageParameters = selector({
             }
           : null,
       },
-      extendedStages: get(fos.extendedStages),
+      extendedStages: queryPerformance
+        ? get(fos.extendedStagesNoSort)
+        : get(fos.extendedStages),
       ...extra,
     };
 

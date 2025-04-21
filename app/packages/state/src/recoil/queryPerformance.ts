@@ -72,7 +72,6 @@ export const filterSearch = selectorFamily({
 
       if (!result) {
         const active = get(validIndexes(get(filterKeys))).active;
-
         if (active.length) {
           result = {};
           for (const key of active[1]) {
@@ -119,17 +118,18 @@ export const indexInfo = foq.graphQLSyncFragmentAtom<foq.indexesFragment$key>(
 );
 
 const indexKeysMatch = (one: string[], two: Set<string>) =>
-  one.length === two.size && [...one].every((o) => two.has(o));
+  one.length <= two.size && [...one].every((o) => two.has(o));
 
 export const validIndexes = selectorFamily({
   key: "validIndexes",
   get:
     (keys: Set<string>) =>
     ({ get }) => {
-      const allIndexes = get(indexInfo).sampleIndexes;
+      const allIndexes = get(indexInfo)?.sampleIndexes ?? [];
       const keyList = [...keys].map((k) => get(schemaAtoms.dbPath(k)));
 
       let matched: string | undefined;
+      let matchedKeys = [];
       const trailing: [string, string][] = [];
       const available: [string, string][] = [];
       for (const index of allIndexes) {
@@ -137,8 +137,11 @@ export const validIndexes = selectorFamily({
           .slice(0, keys.size)
           .map(({ field }) => field);
         if (indexKeysMatch(indexKeys, new Set(keyList))) {
-          if (indexKeys.length) {
+          if (indexKeys.length && indexKeys.length > matchedKeys.length) {
             matched = index.name;
+            matchedKeys = indexKeys.map((field) =>
+              get(schemaAtoms.fieldPath(field))
+            );
           }
 
           index.key[keys.size]?.field &&
@@ -152,7 +155,7 @@ export const validIndexes = selectorFamily({
 
       return {
         available,
-        active: (matched ? [matched, keyList] : []) as [string, string[]],
+        active: (matched ? [matched, matchedKeys] : []) as [string, string[]],
         trailing,
       };
     },
@@ -269,6 +272,20 @@ export const pathHasActiveIndex = selectorFamily({
           .some((t) => t)
       );
     },
+});
+
+const indexMap = selector({
+  key: "indexMap",
+  get: ({ get }) => {
+    const map: { [key: string]: Set<string> } = {};
+    for (const index of get(indexInfo).sampleIndexes) {
+      map[index.name] = new Set(
+        index.key.map(({ field }) => get(schemaAtoms.fieldPath(field)))
+      );
+    }
+
+    return map;
+  },
 });
 
 export const pathHasIndexes = selectorFamily({
@@ -391,7 +408,7 @@ const queryPerformanceStore = atomFamily<boolean, string>({
 
 const queryPerformanceMaxSearchStore = atomFamily<number, string>({
   key: "queryPerformanceMaxSearchStore",
-  default: 100000,
+  default: 10000,
   effects: (datasetId) => [
     getBrowserStorageEffectForKey(
       `queryPerformanceMaxSearchResults-${datasetId}`,

@@ -5,8 +5,9 @@ import type { RecoilState } from "recoil";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
-import { LightningBolt } from "../../Sidebar/Entries/FilterablePathEntry/Icon";
 import { isInKeypointsField } from "../state";
+import useIncompleteResults from "../use-incomplete-results";
+import useQueryPerformanceIcon from "../use-query-performance-icon";
 import useQueryPerformanceTimeout from "../use-query-performance-timeout";
 import Checkboxes from "./Checkboxes";
 import ResultComponent from "./Result";
@@ -79,27 +80,14 @@ const StringFilter = ({
   const onSelect = useOnSelect(modal, path, selectedAtom);
   const skeleton =
     useRecoilValue(isInKeypointsField(path)) && name === "points";
-  const indexed = useRecoilValue(fos.pathHasIndexes({ path }));
   const theme = useTheme();
+
+  const footer = useIncompleteResults(path);
+  const icon = useQueryPerformanceIcon(modal, named, path);
   const queryPerformance = useRecoilValue(fos.queryPerformance);
-  const frameField = useRecoilValue(fos.isFrameField(path));
-  const filteredIndex = useRecoilValue(
-    fos.pathHasIndexes({ path, withFilters: true })
-  );
-  const isFiltered = useRecoilValue(
-    fos.fieldIsFiltered({ path, modal: false })
-  );
-  const hasFilters = useRecoilValue(fos.hasFilters(false));
   if (named && (!queryPerformance || modal) && !results?.count) {
     return null;
   }
-
-  const showQueryPerformanceIcon =
-    named &&
-    queryPerformance &&
-    (indexed || filteredIndex) &&
-    !modal &&
-    !frameField;
 
   return (
     <NamedStringFilterContainer
@@ -114,18 +102,7 @@ const StringFilter = ({
           template={({ label, hoverTarget }) => (
             <NamedStringFilterHeader>
               <span ref={hoverTarget}>{label}</span>
-              {showQueryPerformanceIcon && (
-                <LightningBolt
-                  color={
-                    (indexed && isFiltered) || (filteredIndex && hasFilters)
-                      ? color
-                      : undefined
-                  }
-                  tooltip={
-                    filteredIndex && hasFilters ? "Compound index" : "Indexed"
-                  }
-                />
-              )}
+              {icon}
             </NamedStringFilterHeader>
           )}
         />
@@ -145,7 +122,7 @@ const StringFilter = ({
               fontSize: "1rem",
               width: "100%",
             }}
-            noResults={"Too many results"}
+            footer={footer}
             containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
             toKey={(value) => String(value.value)}
             id={path}
