@@ -13,7 +13,6 @@ import math
 import typing as t
 
 import asyncio
-from bson.regex import Regex
 from motor.motor_asyncio import AsyncIOMotorCollection
 import strawberry as gql
 
@@ -404,7 +403,7 @@ async def _do_distinct_queries(
         _do_list_distinct_query(collection, query)
         if query.has_list
         else _do_distinct_grouped_pipeline(
-            dataset, collection, query, filter, is_frames
+            dataset, collection, query, is_frames
         )
     )
     done, pending = await asyncio.wait(
@@ -426,7 +425,7 @@ async def _do_list_distinct_query(
     matcher = lambda v: False
     if query.search:
         match = query.search
-        matcher = lambda v: match not in v
+        matcher = lambda v: not v.startswith(match)
         if query.is_object_id_field:
             match = match[:_TWENTY_FOUR]
             matcher = lambda v: v < match
@@ -466,11 +465,8 @@ async def _do_distinct_lazy_pipeline(
     if query.filters and not is_frames:
         pipeline += get_view(dataset, filters=query.filters)._pipeline()
 
-    pipeline.extend(
-        [
-            {"$project": {"_id": f"${query.path}"}},
-            {"$match": {"_id": {"$ne": None}}},
-        ]
+    pipeline.append(
+        {"$project": {"_id": f"${query.path}"}},
     )
 
     return await _handle_pipeline(
@@ -482,16 +478,9 @@ async def _do_distinct_grouped_pipeline(
     dataset: fo.Dataset,
     collection: AsyncIOMotorCollection,
     query: DistinctQuery,
-    filter: t.Optional[t.Mapping[str, str]],
     is_frames: bool,
 ):
-    pipeline = []
-    if filter:
-        pipeline.append({"$match": filter})
-
-    pipeline.extend(
-        [{"$group": {"_id": f"${query.path}"}}, {"$sort": {"_id": 1}}]
-    )
+    pipeline = [{"$group": {"_id": f"${query.path}"}}, {"$sort": {"_id": 1}}]
 
     return await _handle_pipeline(
         pipeline, dataset, collection, query, is_frames, disable_limit=True
@@ -511,7 +500,7 @@ def _add_search(query: DistinctQuery):
             # search is not valid
             value = {"$lt": ObjectId("0" * _TWENTY_FOUR)}
     else:
-        value = Regex(f"^{query.search}")
+        value = {"$regex": f"^{query.search}"}
     return {"$match": {"_id": value}}
 
 
@@ -527,36 +516,36 @@ def _first(
     if limit:
         pipeline.append({"$limit": limit})
 
-    pipeline.append({"$sort": {path: sort}})
+    pipeline += [{"$project": {"_id": f"${path}"}}, {"$sort": {"_id": sort}}]
 
     matched_arrays = _match_arrays(dataset, path, is_frame_field)
     if matched_arrays:
         pipeline += matched_arrays
     elif floats:
-        pipeline.extend(_handle_nonfinites(path, sort))
+        pipeline.extend(_handle_nonfinites(sort))
 
-    pipeline.extend([{"$match": {path: {"$exists": True}}}, {"$limit": 1}])
+    pipeline.extend([{"$limit": 1}])
     unwound = _unwind(dataset, path, is_frame_field)
     if unwound:
         pipeline += unwound
         if floats:
-            pipeline.extend(_handle_nonfinites(path, sort))
+            pipeline.extend(_handle_nonfinites(sort))
 
     return pipeline + [
         {
             "$group": {
                 "_id": None,
-                "value": {"$min" if sort == 1 else "$max": f"${path}"},
+                "value": {"$min" if sort == 1 else "$max": "$_id"},
             }
         }
     ]
 
 
-def _handle_nonfinites(path: str, sort: t.Union[t.Literal[-1], t.Literal[1]]):
+def _handle_nonfinites(sort: t.Union[t.Literal[-1], t.Literal[1]]):
     return [
         {
             "$match": {
-                path: (
+                "_id": (
                     {"$gt": float("-inf")}
                     if sort == 1
                     else {"$lt": float("inf")}
@@ -575,25 +564,26 @@ async def _handle_pipeline(
     disable_limit=False,
 ):
     match_search = None
-    if query.search:
-        match_search = _add_search(query)
-        pipeline.append(match_search)
+
+    if not disable_limit and query.max_documents_search:
+        pipeline.append({"$limit": query.max_documents_search})
 
     match_arrays = _match_arrays(dataset, query.path, is_frames) + _unwind(
         dataset, query.path, is_frames
     )
+
+    if query.search:
+        match_search = _add_search(query)
+        pipeline.append(match_search)
+
     if match_arrays:
         pipeline += match_arrays
         if match_search:
             # match again after unwinding list fields
             pipeline.append(match_search)
 
-    if not disable_limit and query.max_documents_search:
-        pipeline.append({"$limit": query.max_documents_search})
-
     values = set()
     exclude = set(query.exclude or [])
-
     kwargs = {"hint": query.index} if query.index else {}
 
     async for value in collection.aggregate(pipeline, **kwargs):
