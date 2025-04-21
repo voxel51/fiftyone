@@ -5794,9 +5794,9 @@ uses in a variety of ways:
 -   The ``batch_method`` parameter controls how samples are grouped into batches for processing. When set to "slice",
     samples are grouped sequentially, while "id" groups them by their unique IDs.
 
--   The ``parallelize_method`` parameter determines how the operation is parallelized. When set to "process", backend
-    will utilize multiprocessing pool to parallelize the work across a number of workers. When set to "thread", backend
-    will utilize multithreading pool instead.
+-   The ``parallelize_method`` parameter determines how the operation is parallelized. When set to "process", the backend
+    will utilize a multiprocessing pool to parallelize the work across a number of workers. When set to "thread", the backend
+    will utilize a multithreading pool instead.
 
 You can also pass `progress="workers"` to
 :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`
