@@ -23,8 +23,6 @@ import fiftyone.core.view as fov
 def map_samples(
     sample_collection,
     map_fcn,
-    reduce_fcn=None,
-    aggregate_fcn=None,
     return_outputs=True,
     save=False,
     num_workers=None,
@@ -33,40 +31,17 @@ def map_samples(
     progress=None,
 ):
     """Applies the given function to each sample in the collection via a
-    multiprocessing pool, optionally saving any sample edits and
-    reducing/aggregating the outputs.
+    multiprocessing pool, optionally saving any sample edits and returning
+    the results as a generator.
 
-    When only a ``map_fcn`` is provided, this function effectively performs
-    the following map operation with the outer loop in parallel::
-
-        for batch_view in fou.iter_slices(sample_collection, shard_size):
-            for sample in batch_view.iter_samples(autosave=save):
-                sample_output = map_fcn(sample)
-                yield sample.id, sample_output
-
-    When a ``reduce_fcn`` is provided, this function effectively performs the
-    following map-reduce operation with the outer loop in parallel::
-
-        reducer = reduce_fcn(sample_collection)
-        reducer.init()
+    This function effectively performs the following map operation with the
+    outer loop in parallel::
 
         for batch_view in fou.iter_slices(sample_collection, shard_size):
             for sample in batch_view.iter_samples(autosave=save):
                 sample_output = map_fcn(sample)
-                reducer.add(sample.id, sample_output)
-
-        output = reducer.finalize()
-
-    When an ``aggregate_fcn`` is provided, this function effectively performs
-    the following map-aggregate operation with the outer loop in parallel::
-
-        outputs = {}
-
-        for batch_view in fou.iter_slices(sample_collection, shard_size):
-            for sample in batch_view.iter_samples(autosave=save):
-                outputs[sample.id] = map_fcn(sample)
-
-        output = aggregate_fcn(sample_collection, outputs)
+                if return_outputs:
+                    yield sample.id, sample_output
 
     Example::
 
@@ -103,49 +78,11 @@ def map_samples(
 
         print(dict(counter))
 
-        #
-        # Example 3: map-reduce
-        #
-
-        def map_fcn(sample):
-            return sample.ground_truth.label.lower()
-
-        class ReduceFcn(fo.ReduceFcn):
-            def init(self):
-                self.accumulator = Counter()
-
-            def add(self, sample_id, output):
-                self.accumulator[output] += 1
-
-            def finalize(self):
-                return dict(self.accumulator)
-
-        counts = foum.map_samples(view, map_fcn, reduce_fcn=ReduceFcn)
-        print(counts)
-
-        #
-        # Example 4: map-aggregate
-        #
-
-        def map_fcn(sample):
-            return sample.ground_truth.label.lower()
-
-        def aggregate_fcn(sample_collection, outputs):
-            return dict(Counter(outputs.values()))
-
-        counts = foum.map_samples(view, map_fcn, aggregate_fcn=aggregate_fcn)
-        print(counts)
-
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         map_fcn: a function to apply to each sample
-        reduce_fcn (None): an optional :class:`ReduceFcn` subclass to reduce
-            the map outputs. See above for usage information
-        aggregate_fcn (None): an optional function to aggregate the map
-            outputs. See above for usage information
-        return_outputs (True): whether to return the map outputs. This has no
-            effect when a ``reduce_fcn`` or ``aggregate_fcn`` is provided
+        return_outputs (True): whether to return the map outputs
         save (False): whether to save any sample edits applied by ``map_fcn``
         num_workers (None): the number of workers to use. The default is
             :meth:`fiftyone.core.utils.recommend_process_pool_workers`. If this
@@ -163,7 +100,6 @@ def map_samples(
     Returns:
         one of the following:
 
-        -   the output of ``reduce_fcn`` or ``aggregate_fcn``, if provided
         -   a generator that emits ``(sample_id, map_output)`` tuples, if
             ``return_outputs`` is True
         -   None, otherwise
@@ -180,8 +116,6 @@ def map_samples(
         return _map_samples_single(
             sample_collection,
             map_fcn,
-            reduce_fcn=reduce_fcn,
-            aggregate_fcn=aggregate_fcn,
             return_outputs=return_outputs,
             save=save,
             progress=progress,
@@ -202,16 +136,6 @@ def map_samples(
     )
 
     ctx = fou.get_multiprocessing_context()
-
-    if reduce_fcn is not None:
-        reducer = reduce_fcn(sample_collection)
-    elif aggregate_fcn is not None:
-        reducer = ReduceFcn(sample_collection, aggregate_fcn=aggregate_fcn)
-    else:
-        reducer = None
-
-    if reducer is not None:
-        return_outputs = True
 
     if progress is None:
         progress = fo.config.show_progress_bars
@@ -256,11 +180,7 @@ def map_samples(
 
     pb = fou.ProgressBar(total=num_samples, progress=progress)
 
-    if reducer is not None:
-        return _do_map_reduce_samples(
-            pool, pb, batches, batch_count, queue, reducer
-        )
-    elif queue is not None:
+    if queue is not None:
         return _do_map_samples(pool, pb, batches, batch_count, queue)
     else:
         return _do_update_samples(pool, pb, batches, batch_count, sample_count)
@@ -305,56 +225,17 @@ def _do_map_samples(pool, pb, batches, batch_count, queue):
         pool.join()
 
 
-def _do_map_reduce_samples(pool, pb, batches, batch_count, queue, reducer):
-    num_batches = len(batches)
-
-    reducer.init()
-
-    with pool, pb:
-        pool.map_async(_map_batch, batches)
-
-        while True:
-            try:
-                result = queue.get(timeout=0.01)
-                pb.update()
-                reducer.add(*result)
-            except Empty:
-                if batch_count.value >= num_batches:
-                    break
-
-        queue.close()
-        queue.join_thread()
-
-        pool.close()
-        pool.join()
-
-    return reducer.finalize()
-
-
 def _map_samples_single(
     sample_collection,
     map_fcn,
-    reduce_fcn=None,
-    aggregate_fcn=None,
     return_outputs=True,
     save=False,
     progress=None,
 ):
-    if reduce_fcn is not None:
-        reducer = reduce_fcn(sample_collection)
-    elif aggregate_fcn is not None:
-        reducer = ReduceFcn(sample_collection, aggregate_fcn=aggregate_fcn)
-    else:
-        reducer = None
-
     if progress == "workers":
         progress = True
 
-    if reducer is not None:
-        return _do_map_reduce_samples_single(
-            sample_collection, map_fcn, reducer, save=save, progress=progress
-        )
-    elif return_outputs:
+    if return_outputs:
         return _do_map_samples_single(
             sample_collection, map_fcn, save=save, progress=progress
         )
@@ -381,63 +262,6 @@ def _do_map_samples_single(
     ):
         sample_output = map_fcn(sample)
         yield sample.id, sample_output
-
-
-def _do_map_reduce_samples_single(
-    sample_collection, map_fcn, reducer, save=False, progress=None
-):
-    reducer.init()
-
-    for sample in sample_collection.iter_samples(
-        autosave=save, progress=progress
-    ):
-        sample_output = map_fcn(sample)
-        reducer.add(sample.id, sample_output)
-
-    return reducer.finalize()
-
-
-class ReduceFcn(object):
-    """Base class for reducers for use with :func:`map_samples`.
-
-    Subclasses may optionally override :meth:`init`, :meth:`add`,
-    :meth:`update`, and :meth:`finalize` as necessary.
-    """
-
-    def __init__(self, sample_collection, aggregate_fcn=None):
-        self.sample_collection = sample_collection
-        self.aggregate_fcn = aggregate_fcn
-        self.accumulator = None
-
-    def init(self):
-        """Initializes the reducer."""
-        self.accumulator = {}
-
-    def add(self, sample_id, output):
-        """Adds a map output to the reducer.
-
-        Args:
-            sample_id: a sample ID
-            output: a map output
-        """
-        self.accumulator[sample_id] = output
-
-    def update(self, outputs):
-        """Adds a batch of map outputs to the reducer.
-
-        Args:
-            outputs: a dict mapping sample IDs to map outputs
-        """
-        self.accumulator.update(outputs)
-
-    def finalize(self):
-        """Finalizes the reducer and returns the result, if any.
-
-        Returns:
-            the final output, or None
-        """
-        if self.aggregate_fcn is not None:
-            return self.aggregate_fcn(self.sample_collection, self.accumulator)
 
 
 def _init_batches(

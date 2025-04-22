@@ -3315,8 +3315,6 @@ class SampleCollection(object):
     def map_samples(
         self,
         map_fcn,
-        reduce_fcn=None,
-        aggregate_fcn=None,
         save=False,
         num_workers=None,
         shard_size=None,
@@ -3324,44 +3322,19 @@ class SampleCollection(object):
         progress=None,
     ):
         """Applies the given function to each sample in the collection and
-        optionally reduces/aggregates the results.
+        returns the results as a generator.
 
         By default, a multiprocessing pool is used to parallelize the work,
         unless this method is called in a daemon process (subprocess), in which
         case no workers are used.
 
-        When only a ``map_fcn`` is provided, this function effectively performs
-        the following map operation with the outer loop in parallel::
+        This function effectively performs the following map operation with the
+        outer loop in parallel::
 
             for batch_view in fou.iter_slices(sample_collection, shard_size):
                 for sample in batch_view.iter_samples(autosave=save):
                     sample_output = map_fcn(sample)
                     yield sample.id, sample_output
-
-        When a ``reduce_fcn`` is provided, this function effectively performs
-        the following map-reduce operation with the outer loop in parallel::
-
-            reducer = reduce_fcn(sample_collection)
-            reducer.init()
-
-            for batch_view in fou.iter_slices(sample_collection, shard_size):
-                for sample in batch_view.iter_samples(autosave=save):
-                    sample_output = map_fcn(sample)
-                    reducer.add(sample.id, sample_output)
-
-            output = reducer.finalize()
-
-        When an ``aggregate_fcn`` is provided, this function effectively
-        performs the following map-aggregate operation with the outer loop in
-        parallel::
-
-            outputs = {}
-
-            for batch_view in fou.iter_slices(sample_collection, shard_size):
-                for sample in batch_view.iter_samples(autosave=save):
-                    outputs[sample.id] = map_fcn(sample)
-
-            output = aggregate_fcn(sample_collection, outputs)
 
         Example::
 
@@ -3373,10 +3346,6 @@ class SampleCollection(object):
             dataset = foz.load_zoo_dataset("cifar10", split="train")
             view = dataset.select_fields("ground_truth")
 
-            #
-            # Example 1: map
-            #
-
             def map_fcn(sample):
                 return sample.ground_truth.label.upper()
 
@@ -3386,46 +3355,8 @@ class SampleCollection(object):
 
             print(dict(counter))
 
-            #
-            # Example 2: map-reduce
-            #
-
-            def map_fcn(sample):
-                return sample.ground_truth.label.upper()
-
-            class ReduceFcn(fo.ReduceFcn):
-                def init(self):
-                    self.accumulator = Counter()
-
-                def add(self, sample_id, output):
-                    self.accumulator[output] += 1
-
-                def finalize(self):
-                    return dict(self.accumulator)
-
-            counts = view.map_samples(map_fcn, reduce_fcn=ReduceFcn)
-            print(counts)
-
-            #
-            # Example 3: map-aggregate
-            #
-
-            def map_fcn(sample):
-                return sample.ground_truth.label.upper()
-
-            def aggregate_fcn(sample_collection, outputs):
-                return dict(Counter(outputs.values()))
-
-            counts = view.map_samples(map_fcn, aggregate_fcn=aggregate_fcn)
-            print(counts)
-
         Args:
             map_fcn: a function to apply to each sample in the collection
-            reduce_fcn (None): an optional
-                :class:`fiftyone.utils.multiprocessing.ReduceFcn` subclass to
-                reduce the map outputs. See above for usage information
-            aggregate_fcn (None): an optional function to aggregate the map
-                outputs. See above for usage information
             save (False): whether to save any sample edits applied by
                 ``map_fcn``
             num_workers (None): the number of workers to use. By default,
@@ -3445,13 +3376,10 @@ class SampleCollection(object):
                 "workers" to render per-worker progress bars
 
         Returns:
-            the output of ``reduce_fcn`` or ``aggregate_fcn``, if provided,
-            otherwise a generator that emits ``(sample_id, map_output)`` tuples
+            a generator that emits ``(sample_id, map_output)`` tuples
         """
         return self._map_samples(
             map_fcn,
-            reduce_fcn=reduce_fcn,
-            aggregate_fcn=aggregate_fcn,
             save=save,
             num_workers=num_workers,
             shard_size=shard_size,
@@ -3462,8 +3390,6 @@ class SampleCollection(object):
     def _map_samples(
         self,
         map_fcn,
-        reduce_fcn=None,
-        aggregate_fcn=None,
         return_outputs=True,
         save=False,
         num_workers=None,
@@ -3474,8 +3400,6 @@ class SampleCollection(object):
         return foum.map_samples(
             self,
             map_fcn,
-            reduce_fcn=reduce_fcn,
-            aggregate_fcn=aggregate_fcn,
             return_outputs=return_outputs,
             save=save,
             num_workers=num_workers,

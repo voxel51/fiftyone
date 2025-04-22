@@ -168,19 +168,6 @@ class DatasetViewTests(unittest.TestCase):
         def map_fcn(sample):
             return sample.foo.upper()
 
-        class ReduceFcn(fo.ReduceFcn):
-            def init(self):
-                self.accumulator = Counter()
-
-            def add(self, sample_id, output):
-                self.accumulator[output] += 1
-
-            def finalize(self):
-                return dict(self.accumulator)
-
-        def aggregate_fcn(view, outputs):
-            return dict(Counter(outputs.values()))
-
         #
         # Multiple workers
         #
@@ -193,26 +180,6 @@ class DatasetViewTests(unittest.TestCase):
 
         self.assertDictEqual(counts, {"BAR": 50})
 
-        counts = view.map_samples(
-            map_fcn,
-            reduce_fcn=ReduceFcn,
-            num_workers=2,
-            shard_size=10,
-            shard_method="id",
-        )
-
-        self.assertDictEqual(counts, {"BAR": 50})
-
-        counts = view.map_samples(
-            map_fcn,
-            aggregate_fcn=aggregate_fcn,
-            num_workers=2,
-            shard_size=10,
-            shard_method="slice",
-        )
-
-        self.assertDictEqual(counts, {"BAR": 50})
-
         #
         # Main process
         #
@@ -222,16 +189,6 @@ class DatasetViewTests(unittest.TestCase):
             counter[value] += 1
 
         counts = dict(counter)
-
-        self.assertDictEqual(counts, {"BAR": 50})
-
-        counts = view.map_samples(map_fcn, reduce_fcn=ReduceFcn, num_workers=1)
-
-        self.assertDictEqual(counts, {"BAR": 50})
-
-        counts = view.map_samples(
-            map_fcn, aggregate_fcn=aggregate_fcn, num_workers=1
-        )
 
         self.assertDictEqual(counts, {"BAR": 50})
 

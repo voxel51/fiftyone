@@ -5843,8 +5843,7 @@ Map-reduce operations
 The
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
 method provides a powerful and efficient interface for iterating over samples,
-applying a function to each sample, and optionally reducing/aggregating the
-results:
+applying a function to each sample, and returning the results as a generator.
 
 .. code-block:: python
     :linenos:
@@ -5897,95 +5896,6 @@ Keep the following points in mind while using
 -   If your ``map_fcn`` modifies samples in-place, you must pass ``save=True``
     to save these edits
 
-You can also perform map-reduce and map-aggregate operations with
-:meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
-by providing a ``reduce_fcn`` or ``aggregate_fcn``:
-
-.. tabs::
-
-    .. group-tab:: Reduce function
-
-        Reduce functions allow you to efficiently accumulate the outputs of the
-        map function as they are emitted:
-
-        .. code-block:: python
-            :linenos:
-
-            def map_fcn(sample):
-                return sample.ground_truth.label.upper()
-
-            class ReduceFcn(fo.ReduceFcn):
-                def init(self):
-                    self.accumulator = Counter()
-
-                def add(self, sample_id, output):
-                    self.accumulator[output] += 1
-
-                def finalize(self):
-                    return dict(self.accumulator)
-
-            counts = view.map_samples(map_fcn, reduce_fcn=ReduceFcn)
-
-            print(counts)
-            # {'DEER': 5000, 'HORSE': 5000, 'AIRPLANE': 5000, ..., 'DOG': 5000}
-
-        Under the hood,
-        :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
-        with a reduce function effectively performs the following operation
-        with the outer loop in parallel:
-
-        .. code-block:: python
-            :linenos:
-
-            import fiftyone.core.utils as fou
-
-            reducer = ReduceFcn(view)
-            reducer.init()
-
-            for batch_view in fou.iter_slices(view, batch_size=3125):
-                for sample in batch_view.iter_samples():
-                    sample_output = map_fcn(sample)
-                    reducer.add(sample.id, sample_output)
-
-            output = reducer.finalize()
-
-    .. group-tab:: Aggregate function
-
-        Aggregate functions allow you to perform an action on the dictionary of
-        all map function outputs:
-
-        .. code-block:: python
-            :linenos:
-
-            def map_fcn(sample):
-                return sample.ground_truth.label.upper()
-
-            def aggregate_fcn(sample_collection, outputs):
-                return dict(Counter(outputs.values()))
-
-            counts = view.map_samples(map_fcn, aggregate_fcn=aggregate_fcn)
-
-            print(counts)
-            # {'DEER': 5000, 'HORSE': 5000, 'AIRPLANE': 5000, ..., 'DOG': 5000}
-
-        Under the hood,
-        :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
-        with an aggregate function effectively performs the following operation
-        with the outer loop in parallel:
-
-        .. code-block:: python
-            :linenos:
-
-            import fiftyone.core.utils as fou
-
-            outputs = {}
-
-            for batch_view in fou.iter_slices(view, batch_size=3125):
-                for sample in batch_view.iter_samples():
-                    outputs[sample.id] = map_fcn(sample)
-
-            output = aggregate_fcn(view, outputs)
-
 You can configure the number of workers that
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
 uses in a variety of ways:
@@ -6021,7 +5931,7 @@ samples sent to each worker at a time:
 .. code-block:: python
     :linenos:
 
-    view.map_samples(map_fcn, reduce_fcn=ReduceFcn, shard_size=50, num_workers=4)
+    view.map_samples(map_fcn, shard_size=50, num_workers=4)
 
 You can also pass `progress="workers"` to
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
@@ -6030,7 +5940,7 @@ to render progress bar(s) for each worker:
 .. code-block:: python
     :linenos:
 
-    view.map_samples(map_fcn, reduce_fcn=ReduceFcn, num_workers=16, progress="workers")
+    view.map_samples(map_fcn, num_workers=16, progress="workers")
 
 .. code-block:: text
 
