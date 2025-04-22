@@ -3442,8 +3442,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Transforms the given sample and returns the transformed sample and
         dict as a pair.
 
-        This method handles schema expansion, validation, and preparing the
-        sample's backing document before adding it to the database.
+        This method handles schema expansion, validation, and preparing the sample's
+        backing document before adding it to the database.
+
+        Args:
+            sample: The sample to transform
+            expand_schema: Whether to dynamically add new sample fields encountered
+            dynamic: Whether to declare dynamic attributes of embedded document fields
+            validate: Whether to validate the sample against the dataset schema
+            copy: Whether to create a copy of the sample if it's already in a dataset
+            include_id: Whether to include the sample's ID in the backing document
+
+        Returns:
+            A tuple of (transformed_sample, backing_document_dict)
         """
         if copy and sample._in_db:
             sample = sample.copy()
@@ -3476,7 +3487,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return len(str(sample[1]))
 
     def _upsert_samples_batch(self, samples_and_docs):
-        """Upserts the given samples and their backing docs to the database."""
+        """Upserts the given samples and their backing docs to the database
+
+        Args:
+            samples_and_docs: a list of tuples of the form (sample, dict) where the dict
+                is the sample's backing document
+        """
         ops = []
         for sample, d in samples_and_docs:
             if sample.id:

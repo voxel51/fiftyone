@@ -1153,7 +1153,7 @@ class Batcher(abc.ABC):
                 )
                 self._render_progress = False
 
-        if self.transform_fn is not None:
+        if self.transform_fn is not None and self._iter is not None:
             self._iter = map(self.transform_fn, self._iter)
 
         return self
@@ -1777,6 +1777,7 @@ def get_default_batcher(
         return batcher(
             iterable,
             transform_fn=transform_fn,
+            size_calc_fn=size_calc_fn,
             progress=progress,
             total=total,
         )
