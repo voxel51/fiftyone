@@ -3236,7 +3236,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             the ID of the sample in the dataset
         """
-        # call manually because this is typically done by the batcher
         sample = self._transform_sample(
             sample,
             expand_schema=expand_schema,
@@ -3254,6 +3253,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         expand_schema=True,
         dynamic=False,
         validate=True,
+        batcher=None,
         progress=None,
         num_samples=None,
     ):
@@ -3274,6 +3274,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 document fields that are encountered
             validate (True): whether to validate that the fields of each sample
                 are compliant with the dataset schema before adding it
+            batcher (None): an optional :class:`fiftyone.core.utils.Batcher`
+                class to use to batch the samples, or ``False`` to add all
+                samples in a single batch. By default,
+                ``fiftyone.config.default_batcher`` is used
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
@@ -3297,10 +3301,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         batcher = fou.get_default_batcher(
             samples,
-            progress=progress,
-            total=num_samples,
+            batcher=batcher,
             transform_fn=transform_fn,
             size_calc_fn=self._calculate_size,
+            progress=progress,
+            total=num_samples,
         )
 
         sample_ids = []
@@ -3368,7 +3373,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self.skip(num_samples).values("id")
 
     def _add_samples_batch(self, samples_and_docs):
-        """Writes the given samples and backing docs to the database and returns their IDs
+        """Writes the given samples and backing docs to the database and returns their IDs.
 
         Args:
             samples_and_docs: a list of tuples of the form (sample, dict) where the dict
@@ -3399,6 +3404,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         expand_schema=True,
         dynamic=False,
         validate=True,
+        batcher=None,
         progress=None,
         num_samples=None,
     ):
@@ -3413,9 +3419,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         batcher = fou.get_default_batcher(
             samples,
-            progress=progress,
+            batcher=batcher,
             transform_fn=transform_fn,
             size_calc_fn=self._calculate_size,
+            progress=progress,
             total=num_samples,
         )
 
@@ -3426,27 +3433,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _transform_sample(
         self,
         sample,
-        expand_schema,
-        dynamic,
-        validate,
+        expand_schema=True,
+        dynamic=False,
+        validate=True,
         copy=False,
         include_id=False,
     ):
-        """Transforms the given sample and returns the transformed sample and dict as a pair
+        """Transforms the given sample and returns the transformed sample and
+        dict as a pair.
 
-        This method handles schema expansion, validation, and preparing the sample's
-        backing document before adding it to the database.
-
-        Args:
-            sample: The sample to transform
-            expand_schema: Whether to dynamically add new sample fields encountered
-            dynamic: Whether to declare dynamic attributes of embedded document fields
-            validate: Whether to validate the sample against the dataset schema
-            copy: Whether to create a copy of the sample if it's already in a dataset
-            include_id: Whether to include the sample's ID in the backing document
-
-        Returns:
-            A tuple of (transformed_sample, backing_document_dict)
+        This method handles schema expansion, validation, and preparing the
+        sample's backing document before adding it to the database.
         """
         if copy and sample._in_db:
             sample = sample.copy()
@@ -3479,12 +3476,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return len(str(sample[1]))
 
     def _upsert_samples_batch(self, samples_and_docs):
-        """Upserts the given samples and their backing docs to the database
-
-        Args:
-            samples_and_docs: a list of tuples of the form (sample, dict) where the dict
-                is the sample's backing document
-        """
+        """Upserts the given samples and their backing docs to the database."""
         ops = []
         for sample, d in samples_and_docs:
             if sample.id:
