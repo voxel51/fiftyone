@@ -859,7 +859,7 @@ def bulk_write(ops, coll, ordered=False, batcher=None, progress=False):
         ordered (False): whether the operations must be performed in order
         batcher (None): an optional :class:`fiftyone.core.utils.Batcher` class
             to use to batch the operations, or ``False`` to strictly perform
-            the the operations in a single batch. By default,
+            the operations in a single batch. By default,
             ``fiftyone.config.default_batcher`` is used
         progress (False): whether to render a progress bar (True/False), use
             the default value ``fiftyone.config.show_progress_bars`` (None), or
