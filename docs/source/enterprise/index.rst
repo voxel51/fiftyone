@@ -16,7 +16,7 @@ FiftyOne Enterprise
         </a>
       </th>
       <th>
-        <a target="_blank" href="https://voxel51.com/book-a-demo/?utm_medium=referral&utm_source=opensource">
+        <a target="_blank" href="https://voxel51.com/book-a-demo/">
           <img src="../_static/images/icons/zoom-512px.png">
           &nbsp Talk to us
         </a>
@@ -152,7 +152,7 @@ pages on this site apply to Enterprise deployments as well.
 .. note::
 
     Look interesting?
-    `Schedule a demo <https://voxel51.com/book-a-demo/?utm_medium=referral&utm_source=opensource>`_ to get
+    `Schedule a demo <https://voxel51.com/book-a-demo>`_ to get
     started with FiftyOne Enterprise
 
 .. toctree::
