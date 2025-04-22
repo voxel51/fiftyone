@@ -39,7 +39,7 @@ def check_if_return_is_sample(
     map_fcn: Callable[[T], R],
 ) -> bool:
     """
-    Check if the map function returns a sample and raise if it does not
+    Check if the map function returns a sample
     """
 
     first_sample = sample_collection.first()
@@ -227,8 +227,7 @@ class LocalMapper(Mapper, abc.ABC):
         save: bool = False,
         skip_failures: bool = True,
     ) -> Iterator[Tuple[bson.ObjectId, R]]:
-        # If workers if 1 on a the same local machine, no need for the
-        # overhead of trying to parallelize.
+        # If workers is 1, use iter_samples to iterate over the samples
         if self._workers <= 1:
             for sample in sample_collection.iter_samples(
                 progress=progress, autosave=save

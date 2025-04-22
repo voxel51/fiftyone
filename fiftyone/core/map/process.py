@@ -277,14 +277,12 @@ def _map_batch(args: Tuple[int, int, fomb.SampleBatch]):
             try:
                 sample_output = process_map_fcn(sample)
             except Exception as err:
-                if process_skip_failures:
-                    # Cancel other workers as soon as possible.
-                    process_cancel_event.set()
-
                 # Add sample ID and error to the queue.
                 process_queue.put((sample.id, err, None))
 
-                if process_skip_failures:
+                # If not skipping failures, cancel workers as soon as possible.
+                if not process_skip_failures:
+                    process_cancel_event.set()
                     break
             else:
                 # Add sample ID and result to the queue.
