@@ -1330,6 +1330,52 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return self._make_sample(d)
 
+    def _get_ids_or_filepaths(
+        self,
+        indexed_field,
+    ):
+        """Extracts the id field from all samples in the collection,
+        returning a list of values in an unordered fashion.
+
+        Args:
+            indexed_field: a field name that is indexed in the collection.
+
+        Returns:
+            the list of values
+        """
+        if indexed_field not in ["_id", "id", "filepath"]:
+            raise ValueError(
+                "Only `_id`, `id`, and `filepath` are supported for this method"
+            )
+
+        # We can use a covered index query to get the values directly
+        if indexed_field == "id":
+            indexed_field = "_id"
+        proj = {indexed_field: 1}
+        if indexed_field != "_id":
+            # strip off the id if we are not asking for it so that a
+            # single field index can cover the query
+            proj["_id"] = 0
+        try:
+            return [
+                doc[indexed_field]
+                for doc in self._dataset._sample_collection.find(
+                    {}, proj, hint={indexed_field: 1}
+                )
+            ]
+        except Exception as e:
+            # Since _id is always indexed and filepath should be indexed,
+            # there should be no issues, but just in case
+            logging.warning(
+                f"Covered index query for {indexed_field} failed: {e}. "
+            )
+
+    def get_ids(self):
+        return self._get_ids_or_filepaths("_id")
+
+    def get_filepaths(self):
+        return self._get_ids_or_filepaths("filepath")
+
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
         entire dataset.
