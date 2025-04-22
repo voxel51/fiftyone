@@ -1533,7 +1533,7 @@ FiftyOne 0.23.7
 App
 
 - Updated `Have a Team?` link in the App to point to the
-  `Book a demo <https://voxel51.com/book-a-demo/?utm_source=FiftyOneApp>`_ page
+  `Book a demo <https://voxel51.com/book-a-demo/?utm_medium=referral&utm_source=opensource>`_ page
   `#4127 <https://github.com/voxel51/fiftyone/pull/4127>`_
 - Fixed indexed boolean fields in :ref:`lightning mode <app-lightning-mode>`
   `#4139 <https://github.com/voxel51/fiftyone/pull/4139>`_
