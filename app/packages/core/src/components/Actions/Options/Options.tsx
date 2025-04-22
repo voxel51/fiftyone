@@ -226,53 +226,61 @@ const QueryPerformance = () => {
           onClick: () => setEnabled(value === "enabled"),
         }))}
       />
-      <ActionOption
-        id="qp-results"
-        text="Query Performance results"
-        href={QUERY_PERFORMANCE_RESULTS}
-        title={"More on Query Performance results"}
-        style={{
-          background: "unset",
-          color: theme.text.primary,
-          paddingTop: 0,
-          paddingBottom: 0,
-        }}
-        svgStyles={{ height: "1rem", marginTop: 7.5 }}
-      />
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          columnGap: "0.5rem",
-        }}
-      >
-        <Selector
-          placeholder="max search"
-          onSelect={async (text) => {
-            if (text === "") {
-              resetMaxSearch();
-              return "";
-            }
-            const value = Number.parseInt(text);
+      {enabled && (
+        <>
+          <ActionOption
+            id="qp-results"
+            text="Query Performance results"
+            href={QUERY_PERFORMANCE_RESULTS}
+            title={"More on Query Performance results"}
+            style={{
+              background: "unset",
+              color: theme.text.primary,
+              paddingTop: 0,
+              paddingBottom: 0,
+            }}
+            svgStyles={{ height: "1rem", marginTop: 7.5 }}
+          />
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              columnGap: "0.5rem",
+            }}
+          >
+            <Selector
+              placeholder="max search"
+              onSelect={async (text) => {
+                if (text === "") {
+                  resetMaxSearch();
+                  return "";
+                }
+                const value = Number.parseInt(text);
 
-            if (!Number.isNaN(value)) {
-              setMaxSearch(value);
-              return text;
-            }
+                if (!Number.isNaN(value)) {
+                  setMaxSearch(value);
+                  return text;
+                }
 
-            return "";
-          }}
-          inputStyle={{
-            fontSize: "1rem",
-            textAlign: "right",
-            float: "right",
-          }}
-          key={"query-performance-results"}
-          value={maxSearch.toString()}
-          containerStyle={{ display: "flex", justifyContent: "right", flex: 1 }}
-        />
-        <div>max search</div>
-      </div>
+                return "";
+              }}
+              inputStyle={{
+                fontSize: "1rem",
+                textAlign: "right",
+                float: "right",
+              }}
+              key={"query-performance-results"}
+              value={maxSearch.toString()}
+              containerStyle={{
+                display: "flex",
+                justifyContent: "right",
+                flex: 1,
+              }}
+            />
+            <div>max search</div>
+          </div>
+        </>
+      )}
     </>
   );
 };

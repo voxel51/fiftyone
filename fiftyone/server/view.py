@@ -174,8 +174,13 @@ def get_extended_view(
     """
     label_tags = None
 
+    sort_by_stage = None
     if extended_stages:
         # extend view with similarity search, etc. first
+        # omit sort_by, which is happens last
+        sort_by_stage = extended_stages.pop(
+            "fiftyone.core.stages.SortBy", None
+        )
         view = extend_view(view, extended_stages)
 
     if filters:
@@ -204,6 +209,11 @@ def get_extended_view(
 
         for stage in stages:
             view = view.add_stage(stage)
+
+    if sort_by_stage:
+        view = extend_view(
+            view, {"fiftyone.core.stages.SortBy": sort_by_stage}
+        )
 
     if sort_by:
         view = view.sort_by(sort_by, reverse=bool(desc))
