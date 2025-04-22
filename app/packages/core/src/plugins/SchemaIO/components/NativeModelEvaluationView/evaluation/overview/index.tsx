@@ -75,6 +75,8 @@ export default function Overview(props) {
   const triggerEvent = useTriggerEvent();
   const setEditingField = useSetRecoilState(editingFieldAtom);
 
+  const trackEvent = useTriggerEvent();
+
   const closeNoteDialog = () => {
     setEditNoteState((note) => ({ ...note, open: false }));
   };
@@ -131,6 +133,11 @@ export default function Overview(props) {
           expanded={expanded === "summary"}
           onChange={(e, expanded) => {
             setExpanded(expanded ? "summary" : "");
+            trackEvent("evaluation_card_click", {
+              name: "summary",
+              compare_evaluation: compareKey,
+              evaluation_id: id,
+            });
           }}
           disableGutters
           sx={{ borderRadius: 1, "&::before": { display: "none" } }}
@@ -152,6 +159,11 @@ export default function Overview(props) {
           expanded={expanded === "metric"}
           onChange={(e, expanded) => {
             setExpanded(expanded ? "metric" : "");
+            trackEvent("evaluation_card_click", {
+              name: "metric",
+              compare_evaluation: compareKey,
+              evaluation_id: id,
+            });
           }}
           disableGutters
           sx={{ borderRadius: 1, "&::before": { display: "none" } }}
@@ -172,6 +184,11 @@ export default function Overview(props) {
           expanded={expanded === "class"}
           onChange={(e, expanded) => {
             setExpanded(expanded ? "class" : "");
+            trackEvent("evaluation_card_click", {
+              name: "class",
+              compare_evaluation: compareKey,
+              evaluation_id: id,
+            });
           }}
           disableGutters
           sx={{ borderRadius: 1, "&::before": { display: "none" } }}
@@ -193,6 +210,11 @@ export default function Overview(props) {
           expanded={expanded === "matrices"}
           onChange={(e, expanded) => {
             setExpanded(expanded ? "matrices" : "");
+            trackEvent("evaluation_card_click", {
+              name: "matrices",
+              compare_evaluation: compareKey,
+              evaluation_id: id,
+            });
           }}
           disableGutters
           sx={{ borderRadius: 1, "&::before": { display: "none" } }}

@@ -25,6 +25,7 @@ import Status from "./Status";
 import { tabStyles } from "./styles";
 import { ConcreteEvaluationType } from "./Types";
 import { computeSortedCompareKeys } from "./utils";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 export default function Evaluation(props: EvaluationProps) {
   const {
@@ -45,6 +46,7 @@ export default function Evaluation(props: EvaluationProps) {
   } = props;
   const theme = useTheme();
   const [activeTab, setActiveTab] = useState("overview");
+  const trackEvent = useTrackEvent();
   const [loadingCompare, setLoadingCompare] = useState(false);
   const evaluation = useMemo(() => {
     const evaluation = data?.[`evaluation_${name}`];
@@ -279,7 +281,14 @@ export default function Evaluation(props: EvaluationProps) {
       <Box sx={tabStyles.container}>
         <Tabs
           value={activeTab}
-          onChange={(e, newValue) => setActiveTab(newValue)}
+          onChange={(e, newValue) => {
+            setActiveTab(newValue);
+            trackEvent("evaluation_tab_clicked", {
+              tab: newValue,
+              evaluation: name,
+              compareKey,
+            });
+          }}
           TabIndicatorProps={{
             style: { display: "none" },
           }}

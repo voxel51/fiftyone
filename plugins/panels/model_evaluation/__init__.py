@@ -20,6 +20,7 @@ from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
 from plugins.utils import get_subsets_from_custom_code
 from fiftyone.operators.cache import execution_cache
+import fiftyone.core.view as fov
 
 
 STORE_NAME = "model_evaluation_panel_builtin"
@@ -294,7 +295,8 @@ class EvaluationPanel(Panel):
         eval_key = view_state.get("key")
         computed_eval_key = ctx.params.get("key", eval_key)
         view = ctx.dataset.load_evaluation_view(computed_eval_key)
-        ctx.ops.set_view(view)
+        if isinstance(view, fov.DatasetView):
+            ctx.ops.set_view(view)
 
     def compute_avg_confs(self, results):
         counts = defaultdict(int)

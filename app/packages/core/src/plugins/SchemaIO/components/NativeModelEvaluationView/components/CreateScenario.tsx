@@ -4,6 +4,7 @@ import Add from "@mui/icons-material/Add";
 import { Button } from "@mui/material";
 import React from "react";
 import TooltipProvider from "../../TooltipProvider";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 export default function CreateScenario(props) {
   const {
@@ -19,6 +20,7 @@ export default function CreateScenario(props) {
 
   const panelId = usePanelId();
   const promptOperator = usePanelEvent();
+  const trackEvent = useTrackEvent();
 
   return (
     <TooltipProvider
@@ -45,6 +47,9 @@ export default function CreateScenario(props) {
             operator: CONFIGURE_SCENARIO_ACTION,
             prompt: true,
             callback: (results) => {
+              trackEvent("create_scenario_modal_open", {
+                eval_id,
+              });
               loadScenarios(() => {
                 onAdd?.(results?.result?.id);
               });

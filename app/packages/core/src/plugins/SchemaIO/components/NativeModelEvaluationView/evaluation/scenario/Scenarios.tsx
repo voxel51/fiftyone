@@ -47,6 +47,7 @@ import { getSubsetDef } from "./utils";
 import { atom, useRecoilState } from "recoil";
 import LoadingError from "./LoadingError";
 import AlertView from "../../../AlertView";
+import { useTrackEvent } from "@fiftyone/analytics";
 
 const CONFIGURE_SCENARIO_ACTION = "model_evaluation_configure_scenario";
 
@@ -90,6 +91,7 @@ export default function Scenarios(props) {
   const fullScenario = data?.[`scenario_${scenario}_${key}`] || {};
   const subsets = fullScenario?.subsets || [];
   const scenarioChanges = data?.[`scenario_${scenario}_changes`] || [];
+  const trackEvent = useTrackEvent();
 
   const scenariosArray = scenarios ? Object.values(scenarios) : [];
   const scenariosIds = Object.keys(scenarios);
@@ -103,6 +105,10 @@ export default function Scenarios(props) {
 
   const onDelete = useCallback(() => {
     setLoading(true);
+    trackEvent("delete_scenario_click", {
+      eval_id,
+      scenario_id: scenario,
+    });
     deleteScenario(scenario, () => {
       const firstNonDeletedScenario = scenariosIds.find(
         (id) => id !== scenario
@@ -117,7 +123,14 @@ export default function Scenarios(props) {
         }, 500);
       });
     });
-  }, [deleteScenario, loadScenarios, scenario, scenariosIds]);
+  }, [
+    deleteScenario,
+    eval_id,
+    loadScenarios,
+    scenario,
+    scenariosIds,
+    trackEvent,
+  ]);
 
   const onEdit = useCallback(() => {
     if (scenario) {
@@ -125,6 +138,13 @@ export default function Scenarios(props) {
       if (!fullScenario) {
         return;
       }
+      trackEvent("edit_scenario_modal_open", {
+        eval_id,
+        scenario_id: fullScenario.id,
+        scenario_type: fullScenario.type,
+        scenario_name: fullScenario.name,
+        scenario_subsets: fullScenario.subsets,
+      });
       promptOperator(panelId, {
         params: {
           gt_field: evaluationConfig.gt_field,
@@ -157,17 +177,18 @@ export default function Scenarios(props) {
       });
     }
   }, [
-    compareKey,
-    eval_id,
-    evaluationConfig.gt_field,
-    key,
-    loadScenario,
-    loadScenarios,
-    panelId,
-    promptOperator,
     scenario,
     scenarios,
+    trackEvent,
+    eval_id,
+    promptOperator,
+    panelId,
+    evaluationConfig.gt_field,
+    key,
+    compareKey,
     scenarioChanges,
+    loadScenarios,
+    loadScenario,
   ]);
 
   if (loading) {
