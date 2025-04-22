@@ -45,7 +45,7 @@ class ProcessMapper(fomm.LocalMapper):
     @classmethod
     def create(
         cls,
-        *_,
+        *,
         config: focc.FiftyOneConfig,
         batch_cls: Type[fomb.SampleBatch],
         workers: Optional[int] = None,
@@ -69,7 +69,7 @@ class ProcessMapper(fomm.LocalMapper):
         self,
         sample_collection: SampleCollection[T],
         map_fcn: Callable[[T], R],
-        *_,
+        *,
         progress: Union[bool, Literal["workers"], None],
         save: bool,
         skip_failures: bool,

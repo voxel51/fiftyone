@@ -3910,7 +3910,7 @@ class SampleCollection(object):
     def map_samples(
         self,
         map_fcn,
-        *_,
+        *,
         workers=None,
         batch_method="id",
         batch_size=None,
