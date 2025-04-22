@@ -1075,7 +1075,8 @@
                     },
                     "output_processor_cls": "fiftyone.utils.torch.DetectorOutputProcessor",
                     "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
-                    "confidence_thresh": 0.3
+                    "confidence_thresh": 0.3,
+                    "image_size": [640, 640]
                 }
             },
             "requirements": {
