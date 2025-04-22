@@ -393,28 +393,12 @@ async def _do_distinct_queries(
             dataset, collection, query, filter, is_frames
         )
 
-    lazy = asyncio.create_task(
-        _do_distinct_lazy_pipeline(
-            dataset, collection, query, filter, is_frames
-        )
-    )
+    if query.has_list:
+        return await _do_list_distinct_query(collection, query)
 
-    distinct = asyncio.create_task(
-        _do_list_distinct_query(collection, query)
-        if query.has_list
-        else _do_distinct_grouped_pipeline(
-            dataset, collection, query, is_frames
-        )
+    return await _do_distinct_grouped_pipeline(
+        dataset, collection, query, is_frames
     )
-    done, pending = await asyncio.wait(
-        [lazy, distinct], return_when=asyncio.FIRST_COMPLETED
-    )
-
-    try:
-        pending.pop().cancel()
-    except:
-        pass
-    return done.pop().result()
 
 
 async def _do_list_distinct_query(

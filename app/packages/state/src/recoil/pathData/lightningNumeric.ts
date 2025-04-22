@@ -1,7 +1,7 @@
 import { selectorFamily } from "recoil";
 import {
-  indexedPaths,
   lightningQuery,
+  pathHasIndexes,
   queryPerformanceMaxSearch,
 } from "../queryPerformance";
 import { filterFields, isNumericField } from "../schema";
@@ -20,7 +20,7 @@ export const lightningNumericResults = selectorFamily({
   get:
     (path: string) =>
     ({ get }) => {
-      const index = get(indexedPaths({ path }));
+      const index = get(pathHasIndexes({ path }));
 
       const [data] = get(
         lightningQuery([
@@ -85,7 +85,7 @@ export const lightningNonfinites = selectorFamily({
   get:
     (path: string) =>
     ({ get }) => {
-      const index = get(indexedPaths({ path }));
+      const index = get(pathHasIndexes({ path }));
 
       const [data] = get(
         lightningQuery([
