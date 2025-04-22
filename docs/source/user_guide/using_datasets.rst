@@ -5717,7 +5717,7 @@ The benefit of the above approach versus passing ``autosave=True`` to
 to be explicit about which samples you are editing, which avoids unnecessary
 computations if your loop only edits certain samples.
 
-.. _updating-samples:
+.. _update-samples-operations:
 
 Updating samples
 ----------------
@@ -5792,7 +5792,9 @@ uses in a variety of ways:
     :meth:`update_samples() <fiftyone.core.collections.SampleCollection.update_samples>`.
 
 -   The ``batch_method`` parameter controls how samples are grouped into batches for processing. When set to "slice",
-    samples are grouped sequentially, while "id" groups them by their unique IDs.
+    samples are grouped sequentially, while "id" groups them by their unique IDs. ``id` is the default method because
+    it can work well across datasets and views. `slice` works well when the dataset collection or view is continuous,
+    or the order of samples is important for the mapping function.
 
 -   The ``parallelize_method`` parameter determines how the operation is parallelized. When set to "process", the backend
     will utilize a multiprocessing pool to parallelize the work across a number of workers. When set to "thread", the backend
@@ -5826,7 +5828,7 @@ to render progress bar(s) for each worker:
     Batch 15/16: 100%|█████████████████████████████████████████████████| 3125/3125 [905.06it/s]
     Batch 16/16: 100%|█████████████████████████████████████████████████| 3125/3125 [911.72it/s]
 
-.. _map-reduce-operations:
+.. _map-samples-operations:
 
 Mapping samples operations
 --------------------------
@@ -5879,16 +5881,17 @@ workers, resulting in a significant performance improvements over the equivalent
 Keep the following points in mind while using
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`:
 
--   The samples are not processed in any particular order
+-   The samples are not processed in any particular order.
 
 -   Your ``map_fcn`` should not modify global state or variables defined
-    outside of the function
+    outside of the function.
 
 -   If your ``map_fcn`` modifies samples in-place, you must pass ``save=True``
-    to save these edits
+    to save these edits.
 
--   Your ``map_fcn`` should not return any samples as the document objects are
-    not able to serialize and deserialize.
+-   Your ``map_fcn`` should not return any samples object because of a current
+    limitation of the Fiftyone document objects to serialize and deserialize
+    across parallel processes.
 
 You can configure the number of workers that
 :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
@@ -5896,14 +5899,14 @@ uses in a variety of ways:
 
 -   Manually configure the number of workers for a particular
     :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
-    call by passing the ``workers`` parameter
+    call by passing the ``workers`` parameter.
 
 -   If neither of the above settings are applied,
     :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`
     will use
     :func:`recommend_process_pool_workers() <fiftyone.core.utils.recommend_process_pool_workers>`
     to choose a number of worker processes, unless the method is called in a
-    daemon process (subprocess), in which case no workers are used
+    daemon process (subprocess), in which case no workers are used.
 
 .. note::
 
@@ -5912,7 +5915,9 @@ uses in a variety of ways:
     :meth:`map_samples() <fiftyone.core.collections.SampleCollection.map_samples>`.
 
 -   The ``batch_method`` parameter controls how samples are grouped into batches for processing. When set to "slice",
-    samples are grouped sequentially, while "id" groups them by their unique IDs.
+    samples are grouped sequentially, while "id" groups them by their unique IDs. ``id` is the default method because
+    it can work well across datasets and views. `slice` works well when the dataset collection or view is continuous,
+    or the order of samples is important for the mapping function.
 
 -   The ``parallelize_method`` parameter determines how the operation is parallelized. When set to "process", backend
     will utilize multiprocessing pool to parallelize the work across a number of workers. When set to "thread", backend
@@ -5925,7 +5930,7 @@ to render progress bar(s) for each worker:
 .. code-block:: python
     :linenos:
 
-    view.map_samples(map_fcn, reduce_fcn=ReduceFcn, num_workers=16, progress="workers")
+    view.map_samples(map_fcn, workers=16, progress="workers")
 
 .. code-block:: text
 
