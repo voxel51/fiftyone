@@ -1777,7 +1777,6 @@ def get_default_batcher(
         return batcher(
             iterable,
             transform_fn=transform_fn,
-            size_calc_fn=size_calc_fn,
             progress=progress,
             total=total,
         )
