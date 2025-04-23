@@ -78,11 +78,9 @@ class Mapper(fomm.LocalMapper):
     """Test implementation for abstract class"""
 
     @classmethod
-    def create(cls, *_, **__):
-        ...
+    def create(cls, *_, **__): ...
 
-    def _map_samples_multiple_workers(self, *_, **__):
-        ...
+    def _map_samples_multiple_workers(self, *_, **__): ...
 
 
 @pytest.mark.parametrize(
@@ -367,7 +365,7 @@ class TestSkipFailures:
         results = list(
             sample_dataset.map_samples(
                 self._failing_function,
-                workers=workers,
+                num_workers=workers,
                 skip_failures=True,
                 parallelize_method=parallelize_method,
             )
@@ -403,7 +401,7 @@ class TestSkipFailures:
             list(
                 sample_dataset.map_samples(
                     self._failing_function,
-                    workers=workers,
+                    num_workers=workers,
                     skip_failures=False,
                     parallelize_method=parallelize_method,
                 )
@@ -421,7 +419,7 @@ class TestSkipFailures:
                 result
                 for _, result in sample_dataset.map_samples(
                     self._failing_function,
-                    workers=1,
+                    num_workers=1,
                     skip_failures=True,
                     parallelize_method=parallelize_method,
                 )
@@ -434,7 +432,7 @@ class TestSkipFailures:
                 result
                 for _, result in sample_dataset.map_samples(
                     self._failing_function,
-                    workers=2,
+                    num_workers=2,
                     skip_failures=True,
                     parallelize_method=parallelize_method,
                 )
