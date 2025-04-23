@@ -4010,11 +4010,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if labels is not None:
             self._delete_labels(labels, fields=fields)
 
-        if ids is None and tags is None and view is None:
-            return
+        if view is not None:
+            labels = view._get_selected_labels(fields=fields)
+            self._delete_labels(labels, fields=fields)
 
-        if view is not None and view._dataset is not self:
-            raise ValueError("`view` must be a view into the same dataset")
+        if ids is None and tags is None:
+            return
 
         if etau.is_str(ids):
             ids = [ids]
@@ -4036,41 +4037,29 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         now = datetime.utcnow()
 
+        batch_size = fou.recommend_batch_size_for_value(
+            ObjectId(), max_size=100000
+        )
+
         sample_ops = []
         frame_ops = []
         for field in fields:
-            if view is not None:
-                _, id_path = view._get_label_field_path(field, "_id")
-                view_ids = _discard_none(view.values(id_path, unwind=True))
-            else:
-                view_ids = None
-
             root, is_list_field = self._get_label_field_root(field)
             root, is_frame_field = self._handle_frame_field(root)
 
             ops = []
             if is_list_field:
-                if view_ids is not None:
-                    ops.append(
-                        UpdateMany(
-                            {root + "._id": {"$in": view_ids}},
-                            {
-                                "$pull": {root: {"_id": {"$in": view_ids}}},
-                                "$set": {"last_modified_at": now},
-                            },
-                        )
-                    )
-
                 if ids is not None:
-                    ops.append(
-                        UpdateMany(
-                            {root + "._id": {"$in": ids}},
-                            {
-                                "$pull": {root: {"_id": {"$in": ids}}},
-                                "$set": {"last_modified_at": now},
-                            },
+                    for _ids in fou.iter_batches(ids, batch_size):
+                        ops.append(
+                            UpdateMany(
+                                {root + "._id": {"$in": _ids}},
+                                {
+                                    "$pull": {root: {"_id": {"$in": _ids}}},
+                                    "$set": {"last_modified_at": now},
+                                },
+                            )
                         )
-                    )
 
                 if tags is not None:
                     ops.append(
@@ -4087,21 +4076,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         )
                     )
             else:
-                if view_ids is not None:
-                    ops.append(
-                        UpdateMany(
-                            {root + "._id": {"$in": view_ids}},
-                            {"$set": {root: None, "last_modified_at": now}},
-                        )
-                    )
-
                 if ids is not None:
-                    ops.append(
-                        UpdateMany(
-                            {root + "._id": {"$in": ids}},
-                            {"$set": {root: None, "last_modified_at": now}},
+                    for _ids in fou.iter_batches(ids, batch_size):
+                        ops.append(
+                            UpdateMany(
+                                {root + "._id": {"$in": _ids}},
+                                {
+                                    "$set": {
+                                        root: None,
+                                        "last_modified_at": now,
+                                    }
+                                },
+                            )
                         )
-                    )
 
                 if tags is not None:
                     ops.append(
