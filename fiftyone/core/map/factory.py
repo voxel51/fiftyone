@@ -46,8 +46,8 @@ class MapperFactory:
         """Get the FiftyoneConfig"""
 
         # Loading dynamically here as it causes actual unit tests to fail
-        # without importing the world.  Adding lru cache to ensure it only
-        # happens once.
+        # without importing the world and using the global. Adding lru cache
+        # to ensure it only happens once.
         return focc.load_config()
 
     @classmethod
