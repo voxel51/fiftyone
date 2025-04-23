@@ -9720,7 +9720,9 @@ class SampleCollection(object):
         """
         return list(self.get_index_information().keys())
 
-    def get_index_information(self, include_stats=False):
+    def get_index_information(
+        self, include_stats=False, _keep_index_names=False
+    ):
         """Returns a dictionary of information about the indexes on this
         collection.
 
@@ -9758,7 +9760,7 @@ class SampleCollection(object):
                     sample_info[key]["accesses"] = d["accesses"]
 
         for key, info in sample_info.items():
-            if len(info["key"]) == 1:
+            if len(info["key"]) == 1 and not _keep_index_names:
                 field = info["key"][0][0]
                 key = fields_map.get(field, field)
 
@@ -9787,7 +9789,7 @@ class SampleCollection(object):
                         frame_info[key]["accesses"] = d["accesses"]
 
             for key, info in frame_info.items():
-                if len(info["key"]) == 1:
+                if len(info["key"]) == 1 and not _keep_index_names:
                     field = info["key"][0][0]
                     key = fields_map.get(field, field)
 
@@ -10294,7 +10296,9 @@ class SampleCollection(object):
             pipelines.append(pipeline)
 
         # Build facet-able pipelines
-        compiled_facet_aggs, facet_pipelines = self._build_facets(facet_aggs)
+        compiled_facet_aggs, facet_pipelines, _ = self._build_facets(
+            facet_aggs
+        )
         for idx, pipeline in facet_pipelines.items():
             idx_map[idx] = len(pipelines)
             pipelines.append(pipeline)
@@ -10331,7 +10335,7 @@ class SampleCollection(object):
 
         return results[0] if scalar_result else results
 
-    async def _async_aggregate(self, aggregations):
+    async def _async_aggregate(self, aggregations, debug=True):
         if not aggregations:
             return []
 
@@ -10352,7 +10356,7 @@ class SampleCollection(object):
 
         if facet_aggs:
             # Build facet-able pipelines
-            compiled_facet_aggs, facet_pipelines = self._build_facets(
+            compiled_facet_aggs, facet_pipelines, hints = self._build_facets(
                 facet_aggs
             )
             for idx, pipeline in facet_pipelines.items():
@@ -10362,7 +10366,7 @@ class SampleCollection(object):
             # Run all aggregations
             coll_name = self._dataset._sample_collection_name
             collection = foo.get_async_db_conn()[coll_name]
-            _results = await foo.aggregate(collection, pipelines)
+            _results = await foo.aggregate(collection, pipelines, hints)
 
             # Parse facet-able results
             for idx, aggregation in compiled_facet_aggs.items():
@@ -10478,14 +10482,16 @@ class SampleCollection(object):
                 compiled[idx] = aggregation
 
         pipelines = {}
+        hints = []
         for idx, aggregation in compiled.items():
             pipelines[idx] = self._pipeline(
                 pipeline=aggregation.to_mongo(self),
                 attach_frames=aggregation._needs_frames(self),
                 group_slices=aggregation._needs_group_slices(self),
             )
+            hints.append(getattr(aggregation, "_hint", None))
 
-        return compiled, pipelines
+        return compiled, pipelines, hints
 
     def _parse_big_result(self, aggregation, result):
         if result:
