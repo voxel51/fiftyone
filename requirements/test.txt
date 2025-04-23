@@ -9,5 +9,7 @@ pytest-mock==3.10.0
 pytest-asyncio
 python-jose>=3.3.0,<4
 shapely
-tensorflow==2.17.0
+tensorflow>=2.17.0
+torch>=2.2.2
+torchvision>=0.17.2
 twine>=3

@@ -8,6 +8,7 @@ FiftyOne dataset-related unit tests.
 
 from copy import deepcopy, copy
 from datetime import date, datetime, timedelta
+from functools import partial
 import gc
 import os
 import random
@@ -26,6 +27,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
+import fiftyone.core.utils as fou
 from fiftyone.operators.store import ExecutionStoreService
 import fiftyone.utils.data as foud
 from fiftyone import ViewField as F
@@ -614,6 +616,46 @@ class DatasetTests(unittest.TestCase):
         self.assertTrue(last_loaded_at2 > last_loaded_at1)
         self.assertEqual(created_at2, created_at1)
         self.assertEqual(last_modified_at2, last_modified_at1)
+
+    @drop_datasets
+    def test_last_modified_at_deletions(self):
+        samples = [
+            fo.Sample(filepath="image1.jpg"),
+            fo.Sample(filepath="image2.png"),
+            fo.Sample(filepath="image3.jpg"),
+            fo.Sample(filepath="image4.jpg"),
+            fo.Sample(filepath="image5.jpg"),
+            fo.Sample(filepath="image6.jpg"),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        last_modified_at1 = dataset.last_modified_at
+
+        dataset[:5].keep()
+        last_modified_at2 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 5)
+        self.assertTrue(last_modified_at2 > last_modified_at1)
+
+        dataset[-1:].clear()
+        last_modified_at3 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 4)
+        self.assertTrue(last_modified_at3 > last_modified_at2)
+
+        dataset.delete_samples(dataset[:2])
+        last_modified_at4 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 2)
+        self.assertTrue(last_modified_at4 > last_modified_at3)
+
+        dataset.clear()
+        last_modified_at5 = dataset.last_modified_at
+
+        self.assertEqual(len(dataset), 0)
+        self.assertTrue(last_modified_at5 > last_modified_at4)
 
     @drop_datasets
     def test_indexes(self):
@@ -1806,6 +1848,26 @@ class DatasetTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             _ = dataset.one(F("filepath").ends_with(".jpg"), exact=True)
+
+    @drop_datasets
+    def test_add_samples_batcher(self):
+        samples = [fo.Sample(filepath=f"image{i}.jpg") for i in range(10)]
+
+        # No batching
+        batcher = False
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples, batcher=batcher)
+
+        assert len(dataset) == 10
+
+        # Custom batcher
+        batcher = partial(fou.StaticBatcher, batch_size=2)
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples, batcher=batcher)
+
+        assert len(dataset) == 10
 
     @drop_datasets
     def test_merge_sample(self):

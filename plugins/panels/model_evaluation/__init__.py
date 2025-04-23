@@ -6,19 +6,21 @@ Model evaluation panel.
 |
 """
 
-from collections import defaultdict, Counter
 import os
 import traceback
-
-from bson import ObjectId
+import fiftyone.utils.eval as foue
 import numpy as np
+import fiftyone.operators.types as types
 
+from collections import defaultdict, Counter
+from bson import ObjectId
 from fiftyone import ViewField as F
-import fiftyone.core.fields as fof
+from fiftyone.core.plots.plotly import _to_log_colorscale
 from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
-from fiftyone.core.plots.plotly import _to_log_colorscale
-import fiftyone.operators.types as types
+from plugins.utils import get_subsets_from_custom_code
+from fiftyone.operators.cache import execution_cache
+import fiftyone.core.view as fov
 
 
 STORE_NAME = "model_evaluation_panel_builtin"
@@ -36,6 +38,8 @@ ENABLE_CACHING = (
 )
 CACHE_TTL = 30 * 24 * 60 * 60  # 30 days in seconds
 SUPPORTED_EVALUATION_TYPES = ["classification", "detection", "segmentation"]
+
+ENABLE_CACHING = False
 
 
 def _has_edit_permission(ctx):
@@ -75,6 +79,7 @@ class EvaluationPanel(Panel):
             "can_edit_status": can_edit,
             "can_delete_evaluation": can_edit,
             "can_rename": can_edit,
+            "can_delete_scenario": can_edit,
         }
 
     def can_evaluate(self, ctx):
@@ -91,6 +96,12 @@ class EvaluationPanel(Panel):
 
     def can_rename(self, ctx):
         return self.get_permissions(ctx).get("can_rename", False)
+
+    def can_delete_scenario(self, ctx):
+        return self.get_permissions(ctx).get("can_delete_scenario", False)
+
+    def can_edit_scenario(self, ctx):
+        return self.get_permissions(ctx).get("can__scenario", False)
 
     def on_load(self, ctx):
         store = self.get_store(ctx)
@@ -120,13 +131,34 @@ class EvaluationPanel(Panel):
         ctx.panel.set_data("permissions", permissions)
         self.load_pending_evaluations(ctx)
 
-    def get_avg_confidence(self, per_class_metrics):
+    def get_confidences(self, per_class_metrics):
+        confidences = []
+        for metrics in per_class_metrics.values():
+            if "confidence" in metrics:
+                confidences.append(metrics["confidence"])
+        return confidences
+
+    def get_avg_confidence(self, confidences):
+        count = len(confidences)
+        total = sum(confidences)
+        return total / count if count > 0 else None
+
+    def get_confidence_distribution(self, confidences):
+        return {
+            "avg": self.get_avg_confidence(confidences),
+            "min": min(confidences),
+            "max": max(confidences),
+            "median": np.median(confidences),
+            "std": np.std(confidences),
+        }
+
+    def get_avg_iou(self, per_class_metrics):
         count = 0
         total = 0
         for metrics in per_class_metrics.values():
             count += 1
-            if "confidence" in metrics:
-                total += metrics["confidence"]
+            if "iou" in metrics:
+                total += metrics["iou"]
         return total / count if count > 0 else None
 
     def get_tp_fp_fn(self, info, results):
@@ -272,7 +304,8 @@ class EvaluationPanel(Panel):
         eval_key = view_state.get("key")
         computed_eval_key = ctx.params.get("key", eval_key)
         view = ctx.dataset.load_evaluation_view(computed_eval_key)
-        ctx.ops.set_view(view)
+        if isinstance(view, fov.DatasetView):
+            ctx.ops.set_view(view)
 
     def compute_avg_confs(self, results):
         counts = defaultdict(int)
@@ -331,12 +364,12 @@ class EvaluationPanel(Panel):
                 per_class_metrics[c]["support"] = c_report["support"]
         return per_class_metrics
 
-    def get_confusion_matrix_colorscale(self, matrix):
+    def get_confusion_matrix_colorscale(self, matrix, colorscale_name=None):
         maxval = matrix.max()
-        colorscale = _to_log_colorscale("oranges", maxval)
+        colorscale = _to_log_colorscale(colorscale_name or "oranges", maxval)
         return colorscale
 
-    def get_confusion_matrices(self, results):
+    def get_confusion_matrices(self, results, colorscale_name=None):
         default_classes = results.classes.tolist()
         freq = Counter(results.ytrue)
         if results.missing in freq:
@@ -375,12 +408,20 @@ class EvaluationPanel(Panel):
             tabulate_ids=False,
         )
         default_colorscale = self.get_confusion_matrix_colorscale(
-            default_matrix
+            default_matrix, colorscale_name
         )
-        az_colorscale = self.get_confusion_matrix_colorscale(az_matrix)
-        za_colorscale = self.get_confusion_matrix_colorscale(za_matrix)
-        mc_colorscale = self.get_confusion_matrix_colorscale(mc_matrix)
-        lc_colorscale = self.get_confusion_matrix_colorscale(lc_matrix)
+        az_colorscale = self.get_confusion_matrix_colorscale(
+            az_matrix, colorscale_name
+        )
+        za_colorscale = self.get_confusion_matrix_colorscale(
+            za_matrix, colorscale_name
+        )
+        mc_colorscale = self.get_confusion_matrix_colorscale(
+            mc_matrix, colorscale_name
+        )
+        lc_colorscale = self.get_confusion_matrix_colorscale(
+            lc_matrix, colorscale_name
+        )
         return {
             "default_classes": _default_classes,
             "az_classes": _az_classes,
@@ -403,6 +444,26 @@ class EvaluationPanel(Panel):
         correct = np.count_nonzero(results.ypred == results.ytrue)
         incorrect = np.count_nonzero(results.ypred != results.ytrue)
         return correct, incorrect
+
+    def get_scenarios(self, ctx, eval_id):
+        store = self.get_store(ctx)
+        scenarios = store.get("scenarios") or {}
+        return scenarios.get(eval_id)
+
+    def get_scenario(self, ctx, eval_id, scenario_id):
+        scenarios = self.get_scenarios(ctx, eval_id) or {}
+        return scenarios.get(scenario_id)
+
+    def load_scenarios(self, ctx):
+        view_state = ctx.panel.get_state("view") or {}
+        eval_key = view_state.get("key")
+        computed_eval_key = ctx.params.get("key", eval_key)
+        eval_id = view_state.get("id")
+        computed_eval_id = ctx.params.get("id", eval_id)
+        scenarios = self.get_scenarios(ctx, computed_eval_id)
+        ctx.panel.set_data(
+            f"evaluation_{computed_eval_key}.scenarios", scenarios
+        )
 
     def load_evaluation(self, ctx):
         view_state = ctx.panel.get_state("view") or {}
@@ -435,8 +496,9 @@ class EvaluationPanel(Panel):
 
             metrics = results.metrics()
             per_class_metrics = self.get_per_class_metrics(info, results)
+            confidences = self.get_confidences(per_class_metrics)
             metrics["average_confidence"] = self.get_avg_confidence(
-                per_class_metrics
+                confidences
             )
             metrics["tp"], metrics["fp"], metrics["fn"] = self.get_tp_fp_fn(
                 info, results
@@ -453,6 +515,8 @@ class EvaluationPanel(Panel):
                     metrics["num_incorrect"],
                 ) = self.get_correct_incorrect(results)
 
+            scenarios = self.get_scenarios(ctx, computed_eval_id)
+
             evaluation_data = {
                 "metrics": metrics,
                 "custom_metrics": self.get_custom_metrics(results),
@@ -460,6 +524,7 @@ class EvaluationPanel(Panel):
                 "confusion_matrices": self.get_confusion_matrices(results),
                 "per_class_metrics": per_class_metrics,
                 "mask_targets": mask_targets,
+                "scenarios": scenarios,
             }
             ctx.panel.set_state("missing", results.missing)
 
@@ -587,8 +652,31 @@ class EvaluationPanel(Panel):
         field = view_options.get("field", None)
         missing = ctx.panel.get_state("missing", "(none)")
 
+        # Restrict to subset, if applicable
+        subset_def = view_options.get("subset_def", None)
+        subset_def_type = subset_def.get("type", None)
+
+        if subset_def_type == "custom_code":
+            code = subset_def.get("code", None)
+            subset = subset_def.get("subset", None)
+            subsets, error = get_subsets_from_custom_code(ctx, code)
+
+            subset_def = subsets.get(subset, None)
+
+            if error:
+                return ctx.ops.notify(
+                    f"Failed to load custom code subsets: {error}",
+                    variant="error",
+                )
+
+        if subset_def is not None:
+            eval_view = foue.get_subset_view(eval_view, gt_field, subset_def)
+
         view = None
-        if info.config.type == "classification":
+
+        if view_type == "subset":
+            view = eval_view
+        elif info.config.type == "classification":
             if view_type == "class":
                 # All GT/predictions of class `x`
                 expr = F(f"{gt_field}.label") == x
@@ -760,6 +848,306 @@ class EvaluationPanel(Panel):
         if view is not None:
             ctx.ops.set_view(view)
 
+    def load_compare_evaluation_results(self, ctx):
+        base_model_key = (
+            ctx.params.get("panel_state", {}).get("view", {}).get("key", None)
+        )
+        compare_model_key = (
+            ctx.params.get("panel_state", {})
+            .get("view", {})
+            .get("compareKey", None)
+        )
+
+        if base_model_key is None:
+            raise ValueError("No base model key provided")
+
+        eval_a_results = ctx.dataset.load_evaluation_results(base_model_key)
+        eval_b_results = ctx.dataset.load_evaluation_results(compare_model_key)
+
+        return (
+            base_model_key,
+            eval_a_results,
+            compare_model_key,
+            eval_b_results,
+        )
+
+    def get_subset_def_data(self, info, results, subset_def, is_compare):
+        colorscale_name = "blues" if is_compare else "oranges"
+        with results.use_subset(subset_def):
+            metrics = results.metrics()
+            per_class_metrics = self.get_per_class_metrics(info, results)
+            confidences = self.get_confidences(per_class_metrics)
+            metrics["average_confidence"] = self.get_avg_confidence(
+                confidences
+            )
+            metrics["tp"], metrics["fp"], metrics["fn"] = self.get_tp_fp_fn(
+                info, results
+            )
+            metrics["mAP"] = self.get_map(results)
+            metrics["mAR"] = self.get_mar(results)
+            metrics["iou"] = self.get_avg_iou(per_class_metrics)
+            return {
+                "metrics": metrics,
+                "distribution": len(results.ytrue_ids),
+                "confusion_matrices": self.get_confusion_matrices(
+                    results, colorscale_name
+                ),
+                "confidences": confidences,
+                "confidence_distribution": self.get_confidence_distribution(
+                    confidences
+                ),
+            }
+
+    def get_subset_def_data_for_eval_key(self, ctx, scenario):
+        """
+        Builds and returns an execution cache key for each type of scenario.
+        """
+        view_state = ctx.panel.get_state("view") or {}
+        eval_key = view_state.get("key")
+        computed_eval_key = ctx.params.get("key", eval_key)
+
+        scenario_type = scenario.get("type", "")
+        scenario_field = scenario.get("field", "")
+        scenario_subsets = scenario.get("subsets", "")
+
+        if scenario_type in ["label_attribute", "sample_field"]:
+            return [
+                "subset-data",
+                computed_eval_key,
+                scenario_type,
+                scenario_field,
+                scenario_subsets,
+            ]
+
+        return [
+            "subset-data",
+            computed_eval_key,
+            scenario_type,
+            scenario_subsets,
+        ]
+
+    # NOTE: TTL is 7 days - subject to fine-tuning
+    @execution_cache(
+        key_fn=get_subset_def_data_for_eval_key, ttl=7 * 24 * 60 * 60
+    )
+    def get_scenario_data(self, ctx, scenario):
+        view_state = ctx.panel.get_state("view") or {}
+        eval_key = view_state.get("key")
+        computed_eval_key = ctx.params.get("key", eval_key)
+        results = ctx.dataset.load_evaluation_results(computed_eval_key)
+        info = ctx.dataset.get_evaluation_info(computed_eval_key)
+        scenario_type = scenario.get("type", None)
+        scenario_data = scenario.copy()
+        scenario_data["subsets_data"] = {}
+        # todo@im: need more explicit flag
+        is_compare = True if "key" in ctx.params else False
+
+        if scenario_type == "custom_code":
+            custom_code = scenario.get("subsets", None)
+            cc_expr, cc_error = get_subsets_from_custom_code(ctx, custom_code)
+            subsets_names = []
+
+            if cc_error:
+                # TODO
+                print("TODO: custom code load error handling")
+            else:
+                # NOTE: subset expression could be a dict or an array
+                if isinstance(cc_expr, dict):
+                    for subset_name, subset_def in cc_expr.items():
+                        subset_data = self.get_subset_def_data(
+                            info, results, subset_def, is_compare
+                        )
+                        scenario_data["subsets_data"][
+                            subset_name
+                        ] = subset_data
+                        subsets_names.append(subset_name)
+                elif isinstance(cc_expr, list):
+                    subset_data = self.get_subset_def_data(
+                        info, results, subset_def, is_compare
+                    )
+                    scenario_data["subsets_data"]["All"] = subset_data
+                    subsets_names.append("All")
+                else:
+                    scenario_data["subsets_data"]["All"] = subset_data
+                    subsets_names.append("All")
+            scenario_data["subsets"] = subsets_names
+            # NOTE: Mani added this - we need the original custom code for Edit flow
+            scenario_data["subsets_code"] = custom_code
+        elif scenario_type == "view":
+            scenario_subsets = scenario.get("subsets", [])
+            for subset in scenario_subsets:
+                subset_def = dict(type="view", view=subset)
+                subset_data = self.get_subset_def_data(
+                    info, results, subset_def, is_compare
+                )
+                scenario_data["subsets_data"][subset] = subset_data
+        elif scenario_type == "sample_field":
+            scenario_subsets = scenario.get("subsets", [])
+            for subset in scenario_subsets:
+                subset_def = dict(type="field", field=subset)
+                subset_data = self.get_subset_def_data(
+                    info, results, subset_def, is_compare
+                )
+                scenario_data["subsets_data"][subset] = subset_data
+        elif scenario_type == "label_attribute":
+            field = scenario.get("field", None)
+            # todo@mani: need to tweak this depending on how it's stored. Line below
+            # converts "ground_truth.detections.label" to "label"
+            scenario_subsets = scenario.get("subsets", [])
+            field_last_part = field.split(".")[-1]
+            for subset in scenario_subsets:
+                subset_def = dict(
+                    type="attribute", field=field_last_part, value=subset
+                )
+                subset_data = self.get_subset_def_data(
+                    info, results, subset_def, is_compare
+                )
+                scenario_data["subsets_data"][subset] = subset_data
+        else:
+            scenario_data["subsets_data"] = None  # unsupported type
+
+        return scenario_data
+
+    def validate_scenario_subsets(self, ctx, scenario):
+        """
+        Validates the subsets in a scenario and compiles basic changes.
+        1. For view scenarios, check if the views exist in the dataset.
+        2. For sample_field and label_attribute scenarios, check if the field exists in the dataset.
+            - If the field is tags, check if the tags exist.
+
+        returns the validated scenario and a list of changes.
+        If the scenario is not valid, it will return an empty list of subsets.
+        If the scenario is valid, it will return the original scenario with the validated subsets.
+        """
+        scenario_type = scenario.get("type", None)
+        changes = []
+
+        if scenario_type == "view":
+            subset_views = scenario.get("subsets", [])
+            dataset_views = ctx.dataset.list_saved_views()
+            available_subsets = [v for v in subset_views if v in dataset_views]
+            unavailable_subsets = [
+                v for v in subset_views if v not in dataset_views
+            ]
+
+            if unavailable_subsets:
+                unavailable = "\n- ".join(unavailable_subsets)
+                changes.append(
+                    {
+                        "label": f"The following views are not available anymore. To continue your analysis, you can edit this scenario.",
+                        "description": f"- {unavailable}",
+                    }
+                )
+
+            scenario["subsets"] = available_subsets
+        elif scenario_type in ["sample_field", "label_attribute"]:
+            scenario_field = scenario.get("field", None)
+            dataset_field_paths = ctx.dataset.get_field_schema(
+                flat=True
+            ).keys()
+
+            # if the exact field does not exist, set subsets to empty
+            if not scenario_field or scenario_field not in dataset_field_paths:
+                changes.append(
+                    {
+                        "label": f"The following field does not exists. To continue your analysis, you can edit this scenario.",
+                        "description": f"{scenario_field}",
+                    }
+                )
+                scenario["subsets"] = []
+
+            # if field exists, it is tags, but tag doesn't exist
+            if scenario_field and scenario_field == "tags":
+                all_tags = ctx.dataset.distinct("tags")
+                tags = scenario.get("subsets", [])
+                available_tags = [t for t in tags if t in all_tags]
+                missing_tags = list(set(tags) - set(available_tags))
+
+                if missing_tags:
+                    the_tags = "\n- ".join(missing_tags)
+                    changes.append(
+                        {
+                            "label": f"The following tags do not exists. To continue your analysis, you can edit this scenario.",
+                            "description": f"- {the_tags}",
+                        }
+                    )
+                    if len(available_tags) == 0:
+                        scenario["subsets"] = []
+
+        return scenario, changes
+
+    def load_scenario(self, ctx):
+        """
+        Tries to load the scenario given its id and evaluation key
+        If it fails, it shows an error page with options to edit/delete.
+        """
+        view_state = ctx.panel.get_state("view") or {}
+        eval_id = view_state.get("id")
+        eval_key = view_state.get("key")
+        computed_eval_key = ctx.params.get("key", eval_key)
+        scenario_id = str(ctx.params.get("id", "") or "")
+
+        try:
+            if scenario_id:
+                scenario = self.get_scenario(ctx, eval_id, scenario_id)
+                validated_scenario, changes = self.validate_scenario_subsets(
+                    ctx, scenario
+                )
+
+                if changes:
+                    # can't load the scenario at all
+                    if not validated_scenario.get("subsets"):
+                        raise ValueError("Failed to load scenario")
+
+                    # can load the scenario - but it might need an edit
+                    ctx.panel.set_state(
+                        f"scenario_{scenario_id}_changes",
+                        {
+                            "scenario": scenario,
+                            "changes": changes,
+                            "id": scenario_id,
+                        },
+                    )
+                else:
+                    ctx.panel.set_state(
+                        f"scenario_{scenario_id}_changes",
+                        None,
+                    )
+
+                scenario_data = self.get_scenario_data(ctx, validated_scenario)
+
+                ctx.panel.set_state("scenario_load_error", None)
+                ctx.panel.set_data(
+                    f"scenario_{scenario_id}_{computed_eval_key}",
+                    scenario_data,
+                )
+                ctx.panel.set_state("scenario_loading", False)
+        except Exception:
+            ctx.panel.set_state("scenario_loading", False)
+            msg = f"We couldn't load this scenario because the underlying data has changed or been removed. To continue your analysis you can,"
+            ctx.panel.set_state(
+                "scenario_load_error",
+                {
+                    "code": "scenario_load_error",
+                    "error": msg,
+                    "id": scenario_id,
+                },
+            )
+
+    def delete_scenario(self, ctx):
+        if not self.can_delete_scenario(ctx):
+            return ctx.ops.notify(
+                "You do not have permission to delete scenarios",
+                variant="error",
+            )
+        scenario_id = ctx.params.get("id", None)
+        eval_id = ctx.params.get("eval_id", None)
+        store = self.get_store(ctx)
+        scenarios = store.get("scenarios") or {}
+        scenarios[eval_id].pop(scenario_id, None)
+        store.set("scenarios", scenarios)
+        ctx.ops.notify(f"Scenario deleted successfully!", variant="success")
+
     def render(self, ctx):
         panel = types.Object()
         return types.Property(
@@ -776,6 +1164,9 @@ class EvaluationPanel(Panel):
                 load_view=self.load_view,
                 rename_evaluation=self.rename_evaluation,
                 delete_evaluation=self.delete_evaluation,
+                load_scenarios=self.load_scenarios,
+                load_scenario=self.load_scenario,
+                delete_scenario=self.delete_scenario,
             ),
         )
 

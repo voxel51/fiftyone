@@ -6557,7 +6557,7 @@ class SelectFields(ViewStage):
             return False
 
         if self._field_names is None:
-            return False
+            return True
 
         # @todo consider `meta_filter` here too?
         return any(

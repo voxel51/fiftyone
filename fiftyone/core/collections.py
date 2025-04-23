@@ -10985,7 +10985,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
-    def aggregate(self, aggregations):
+    def aggregate(self, aggregations, _mongo=False):
         """Aggregates one or more
         :class:`fiftyone.core.aggregations.Aggregation` instances.
 
@@ -11037,6 +11037,9 @@ class SampleCollection(object):
         for idx, pipeline in facet_pipelines.items():
             idx_map[idx] = len(pipelines)
             pipelines.append(pipeline)
+
+        if _mongo:
+            return pipelines[0] if scalar_result else pipelines
 
         # Run all aggregations
         _results = foo.aggregate(self._dataset._sample_collection, pipelines)

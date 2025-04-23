@@ -121,7 +121,6 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
             )
 
     def test_skip_failures(self):
-
         with ShortLivedDataset() as dataset:
             for i, sample in enumerate(dataset):
                 sample["foo"] = 1 if i % 2 == 0 else None

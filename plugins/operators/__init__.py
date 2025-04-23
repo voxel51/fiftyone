@@ -18,6 +18,7 @@ import fiftyone.operators as foo
 import fiftyone.operators.types as types
 from fiftyone.core.odm.workspace import default_workspace_factory
 from .embeddings import ComputeVisualization, ManageVisualizationIndexes
+from .model_evaluation import ConfigureScenario
 
 
 class EditFieldInfo(foo.Operator):
@@ -2675,3 +2676,4 @@ def register(p):
     p.register(ListFiles)
     p.register(ComputeVisualization)
     p.register(ManageVisualizationIndexes)
+    p.register(ConfigureScenario)
