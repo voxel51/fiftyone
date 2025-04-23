@@ -430,10 +430,10 @@ class FiftyOneTransformer(fout.TorchImageModel):
         if self.preprocess:
             if isinstance(args, list):
                 # list of images
-                args = self.transforms(args, return_tensors="pt")
+                args = self.transforms(args)
             elif isinstance(args, dict):
                 # dict of various inputs
-                args = self.transforms(**args, return_tensors="pt")
+                args = self.transforms(**args)
 
         height, width = args["pixel_values"].shape[-2:]
 
@@ -453,9 +453,15 @@ class FiftyOneTransformer(fout.TorchImageModel):
     def _forward_pass(self, args):
         return self._model(**args)
 
+    def _load_transforms(self, config):
+        processor = super()._load_transforms(config)
+        return _HFTransformsHandler(processor)
+
     @staticmethod
     def collate_fn(batch):
+        print(batch)
         print([type(b) for b in batch])
+        print(type(batch[0]["pixel_values"][0].shape))
         print(batch[0]["pixel_values"])
         keys = batch[0].keys()
         res = {}
@@ -1011,6 +1017,19 @@ def _get_detector_from_processor(processor, model_name_or_path):
         detector_class_name,
     )
     return detector_class.from_pretrained(model_name_or_path)
+
+
+class _HFTransformsHandler:
+    def __init__(self, processor):
+        self.processor = processor
+
+    def __call__(self, args):
+        if isinstance(args, dict):
+            # multiple inputs
+            return self.processor(**args, return_tensors="pt")
+        else:
+            # single input, most likely either a list of images or a single image
+            return self.processor(args, return_tensors="pt")
 
 
 MODEL_TYPE_TO_CONFIG_CLASS = {
