@@ -433,7 +433,7 @@ class UltralyticsSegmentationOutputProcessor(
 class UltralyticsPoseOutputProcessor(
     fout.KeypointDetectorOutputProcessor, UltralyticsPostProcessor
 ):
-    """Converts Ultralytics Segmentation model outputs to FiftyOne format."""
+    """Converts Ultralytics Pose model outputs to FiftyOne format."""
 
     def __init__(
         self,
@@ -445,7 +445,17 @@ class UltralyticsPoseOutputProcessor(
 
     def __call__(self, output, frame_size, confidence_thresh=None):
         if isinstance(output, dict):
-            preds = self.post_process(output)
+            results = self.post_process(output)
+            preds = [
+                {
+                    "boxes": result.boxes.xyxy,
+                    "labels": result.boxes.cls.int(),
+                    "scores": result.boxes.conf,
+                    "keypoints": result.keypoints.xyn,
+                    "keypoints_scores": result.keypoints.conf,
+                }
+                for result in results
+            ]
         else:
             preds = output
         return super().__call__(preds, frame_size, confidence_thresh)
@@ -454,7 +464,7 @@ class UltralyticsPoseOutputProcessor(
 class UltralyticsOBBOutputProcessor(
     fout.OutputProcessor, UltralyticsPostProcessor
 ):
-    """Converts Ultralytics Segmentation model outputs to FiftyOne format."""
+    """Converts Ultralytics Oriented Bounding Box model outputs to FiftyOne format."""
 
     def __init__(
         self,
