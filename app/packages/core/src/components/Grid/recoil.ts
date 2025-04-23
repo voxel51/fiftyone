@@ -188,13 +188,19 @@ export const pageParameters = selector({
     const slice = get(fos.groupSlice);
     const queryPerformance = get(fos.queryPerformance);
 
-    const extra = queryPerformance
-      ? {
-          sortBy: get(fos.gridSortBy)?.field,
-          desc: get(fos.gridSortBy)?.descending,
-          hint: get(gridIndex),
-        }
-      : {};
+    const extendedStages = queryPerformance
+      ? get(fos.extendedStagesNoSort)
+      : get(fos.extendedStages);
+
+    const extra =
+      queryPerformance &&
+      !extendedStages["fiftyone.core.stages.SortBySimilarity"]
+        ? {
+            sortBy: get(fos.gridSortBy)?.field,
+            desc: get(fos.gridSortBy)?.descending,
+            hint: get(gridIndex),
+          }
+        : {};
 
     const params = {
       dataset,
@@ -208,9 +214,7 @@ export const pageParameters = selector({
             }
           : null,
       },
-      extendedStages: queryPerformance
-        ? get(fos.extendedStagesNoSort)
-        : get(fos.extendedStages),
+      extendedStages,
       ...extra,
     };
 
