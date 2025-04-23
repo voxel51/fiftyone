@@ -42,8 +42,8 @@ class MapperFactory:
     @classmethod
     def create(
         cls,
-        mapper_key: Optional[str],
-        num_workers: Optional[int],
+        mapper_key: Optional[str] = None,
+        num_workers: Optional[int] = None,
         batch_method: Optional[str] = None,
         batch_size: Optional[int] = None,
         **mapper_extra_kwargs,
